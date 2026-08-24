@@ -89,19 +89,25 @@ function* update (instance, puzzle) {
   }
 
   // ---- Forward: the clue's minimum forces a guaranteed increasing prefix ----
+  // Cells line[0..kmin-1] strictly increase for every feasible clue value, so
+  // this run has length at least kmin. That justifies the same per-cell window
+  // the pinned case used, driven by kmin: line[j] needs j cells below it and
+  // kmin-1-j above it. Using kmin (the smallest feasible length) gives the
+  // loosest ceiling, so a value it drops is impossible for every feasible clue.
+  // Stronger than the neighbour-only `less` chain, which only looks one step.
   const kmin = Math.min(...Array.from(puzzle.getCandidates(clue)))
-  for (let j = 1; j < kmin && j < n; j++) yield* less(puzzle, line[j - 1], line[j])
+  for (let j = 0; j < kmin && j < n; j++) {
+    if (j >= 1) yield* less(puzzle, line[j - 1], line[j])
+    const floor = lo + j
+    const ceil = hi - (kmin - 1 - j)
+    const bad = []
+    for (let d = lo; d <= hi; d++) if (d < floor || d > ceil) bad.push(d)
+    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), line[j])
+  }
 
-  // ---- Forward: clue pinned -> static chain bounds + the descent ----
+  // ---- Forward: clue pinned -> the descent below the prefix's last cell ----
   if (puzzle.hasValue(clue)) {
-    const k = puzzle.getValue(clue)
-    for (let j = 0; j < k && j < n; j++) {
-      const floor = lo + j
-      const ceil = hi - (k - 1 - j)
-      const bad = []
-      for (let d = lo; d <= hi; d++) if (d < floor || d > ceil) bad.push(d)
-      if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), line[j])
-    }
+    const k = puzzle.getValue(clue)      // k === kmin here, so the window above already ran
     if (k < n) yield* less(puzzle, line[k], line[k - 1])
   }
 }
