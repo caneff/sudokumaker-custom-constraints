@@ -13,6 +13,26 @@ Read it as CSV without a browser:
 https://docs.google.com/spreadsheets/d/1C5rQaYlDJb3HVzHJSp5UibgM9uo57fwRdxgUOl8t7nA/export?format=csv&gid=0
 ```
 
+## Reading the code behind a link
+
+The catalog's links are `tinyurl.com` redirects to `sudokumaker.app/?puzzle=...`.
+The puzzle JSON — including every constraint's JavaScript — is LZString-compressed
+in the `puzzle=` parameter. Resolve the redirect, then decompress:
+
+```python
+import urllib.parse
+from lzstring import LZString   # uv run --with lzstring
+raw = LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(link.split("puzzle=")[-1]))
+doc = json.loads(raw)
+# code lives at doc["puzzle"]["constraints"][*]["definition"]["backend"]["code"]
+#            and doc["puzzle"]["constraints"][*]["definition"]["components"][*]["code"]
+```
+
+tinyurl rate-limits fast loops — resolve with backoff and retry.
+`curlingclips-links.json` caches the resolved `sudokumaker.app` URLs for the 47
+curlingclips rows (44 resolved; 3 pending a re-fetch), so a future run can skip
+tinyurl. See `advanced-techniques.md` for what the decoded code teaches.
+
 ## Columns
 
 `Type` (Custom Constraint or Template), `Name`, and `Size / Link /

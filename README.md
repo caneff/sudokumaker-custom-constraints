@@ -27,6 +27,9 @@ a promised contract. Each claim below is tagged:
   through `replaceComponent`, with signatures.
 - `docs/patterns.md` — local groups, the interactive-outside frame, encoding.
 - `docs/catalog.md` — the community spreadsheet of 200+ constraints.
+- `docs/advanced-techniques.md` — techniques for stronger deductions, decoded
+  from curlingclips' shipped constraint code (built-in hijacking, arc
+  consistency, negative constraints, cross-constraint interaction).
 - `docs/testing-and-generation.md` — how to test a component for soundness off
   the app, and how to build and uniqueness-check a puzzle with OR-Tools.
 
