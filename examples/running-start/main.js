@@ -24,7 +24,9 @@ for (let i = 0; i < groups.length; i++) {
   for (let j = i + 1; j < groups.length; j++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
     const name = `running start pair ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    // Pass groups[i].line: clue i reads it as the increasing prefix, clue j reads
+    // its reverse, i.e. a strictly decreasing suffix of the same line.
     puzzle.addConstraintComponent(
-      new RunningStartPairComponent(name, groups[i].clue, groups[j].clue, groups[i].line.length))
+      new RunningStartPairComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
   }
 }

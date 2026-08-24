@@ -61,26 +61,30 @@ all sound:
   stronger than a min/max interval — it also removes interior values whose
   descent is impossible, and a filled cell anywhere on the line counts.
 - **Forward, guaranteed prefix** — if the clue's smallest remaining candidate is
-  `kmin`, the first `kmin` cells must strictly increase; enforce those
-  inequalities before the clue is pinned.
-- **Forward, pinned** — a known clue `k` gives the prefix its chain bounds
-  (`line[i]` in `[1+i, 9−(k−1−i)]`), candidate-aware pairwise `<`, and the
-  descent `line[k] < line[k−1]`.
+  `kmin`, the first `kmin` cells must strictly increase. Enforce the pairwise
+  `<` chain and, for each cell `line[j]` with `j < kmin`, the window
+  `[1+j, 9−(kmin−1−j)]`: it needs `j` cells below and `kmin−1−j` above. This runs
+  before the clue is pinned and is tighter than the neighbour-only chain, which
+  only looks one step.
+- **Forward, pinned** — a known clue `k` is the guaranteed prefix above (with
+  `kmin == k`) plus the descent `line[k] < line[k−1]`.
 - **Cross-line pair** — two clues on opposite ends of one line share a
   permutation: the left increasing run and the right increasing-inward run can
   share at most one cell (the peak), so `A + B <= n + 1`. The pair component
-  caps each clue at `n + 1` minus the other's smallest remaining value. It shines
-  early, when one clue is a given and the line is still open.
+  caps each clue at `n + 1` minus the other's smallest remaining value. When
+  `A + B` is forced to exactly `n + 1`, the line is unimodal — strictly up to
+  the shared peak, then strictly down — so it propagates both monotone runs and
+  tightens every cell (on a full row the peak becomes a 9 once all-different
+  joins in). It shines early, when one clue is a given and the line is open.
 - **validate** — once clue and line are filled, the count must equal the clue.
 
 ## Run the tests
 
-Soundness (needs Node and a solution dump):
+Soundness (needs Node):
 
 ```
-# fresh_sol.json must hold {"val": <121 board values>, "groups": [[clueCell, [lineCells...]], ...]}
 node soundness-harness.mjs
-# -> "random partial-state tests: 20000  soundness violations: 0"
+# -> line + pair components, 0 violations, "PASS"
 ```
 
 Generation and uniqueness (needs Python with ortools):
@@ -90,7 +94,8 @@ python generate.py
 # -> chosen seed, interior givens, clues kept, "FINAL unique OK"
 ```
 
-`soundness-harness.mjs` reads its solution from `fresh_sol.json`; produce that
-file by decoding a built puzzle link (see `../../docs/patterns.md`) and writing
-out the `cells` values and the constraint's `input.groups` in
-`[clueCell, lineCells]` form.
+`soundness-harness.mjs` reads the seed-104 solution from `seed104_solution.json` (a
+committed dump of the puzzle's `cells` values and the constraint's
+`input.groups` in `[clueCell, lineCells]` form). The pair test also fuzzes a
+synthetic mountain line, because no line in this puzzle reaches the
+`A + B == n + 1` case that drives the pair's unimodal branch.
