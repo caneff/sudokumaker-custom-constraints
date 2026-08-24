@@ -14,18 +14,22 @@ strict drop.
 
 ## Files
 
-- `main.js` — the backend segment. One self-contained component per line.
-- `RunningStartComponent.js` — the component segment. Both directions of
+- `main.js` — the backend segment. One component per line, plus a pair
+  component for any two clues on opposite ends of one line.
+- `RunningStartComponent.js` — the per-line component. Both directions of
   propagation plus the final check.
+- `RunningStartPairComponent.js` — couples two clues on opposite ends of one
+  line through `A + B <= n + 1`.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `generate.py` — fresh grid, derived clues, uniqueness proof (OR-Tools).
 
 ## Paste into SudokuMaker
 
 Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code and
-`RunningStartComponent.js` as one component named `RunningStartComponent`. Each
-group is one line: cell 0 the outside clue, the rest the line read inward.
+local constraint, and paste `main.js` as the main code. Add two component
+segments: `RunningStartComponent` and `RunningStartPairComponent`. Each group is
+one line: cell 0 the outside clue, the rest the line read inward. When a puzzle
+clues both ends of a line, the backend adds one pair component for that line.
 
 ## Why one self-contained component
 
@@ -41,17 +45,25 @@ does everything itself.
 Forward (clue known or partly bounded) and reverse (clue read from the line),
 all sound:
 
-- **Reverse, exact** — a filled leading run that then drops fixes the clue; a
-  fully increasing line fixes it to the line length.
-- **Reverse, bounds** — a filled increasing run of length `i` (next cell empty)
-  gives `clue ≥ i`, and `clue ≤ i + (9 − lastValue)`. Also `clue ≤ 10 −
-  min-candidate(line[0])`.
+- **Reverse, feasible clue set** — `feasibleClues` walks the line once and keeps
+  only the clue values the live candidates can still realize. A value `k` needs
+  an increasing prefix of length `k` and, unless `k` is the whole line, a
+  descent at position `k`. The walk tracks the smallest and largest end value an
+  increasing prefix can reach; it drops `k` only when even the largest reachable
+  predecessor cannot be beaten, so it never removes a true clue. This is
+  stronger than a min/max interval — it also removes interior values whose
+  descent is impossible, and a filled cell anywhere on the line counts.
 - **Forward, guaranteed prefix** — if the clue's smallest remaining candidate is
   `kmin`, the first `kmin` cells must strictly increase; enforce those
   inequalities before the clue is pinned.
 - **Forward, pinned** — a known clue `k` gives the prefix its chain bounds
   (`line[i]` in `[1+i, 9−(k−1−i)]`), candidate-aware pairwise `<`, and the
   descent `line[k] < line[k−1]`.
+- **Cross-line pair** — two clues on opposite ends of one line share a
+  permutation: the left increasing run and the right increasing-inward run can
+  share at most one cell (the peak), so `A + B <= n + 1`. The pair component
+  caps each clue at `n + 1` minus the other's smallest remaining value. It shines
+  early, when one clue is a given and the line is still open.
 - **validate** — once clue and line are filled, the count must equal the clue.
 
 ## Run the tests

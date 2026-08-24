@@ -28,12 +28,47 @@ function* less (puzzle, a, b) {
   if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), b)
 }
 
-// Keep only clue candidates within [lb, ub].
-function* boundClue (puzzle, clue, lb, ub, lo, hi) {
-  if (puzzle.hasValue(clue)) return
-  const bad = []
-  for (let d = lo; d <= hi; d++) if (d < lb || d > ub) bad.push(d)
-  if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
+// The set of clue values the line's live candidates can still realize.
+//
+// A clue value k means: cells line[0..k-1] strictly increase, then (if k < n)
+// cell line[k] drops below line[k-1]. So k is possible only if both hold:
+//   1. an increasing prefix of length k exists in the candidates, and
+//   2. k == n, or a descent at position k is achievable.
+//
+// Walk the line tracking, for each prefix length, the smallest and largest end
+// value an increasing prefix can reach:
+//   minEnd[j] = smallest value at line[j] ending a length-(j+1) increasing run
+//               (greedy smallest-above-previous — the longest-prefix walk),
+//   maxEnd[j] = largest candidate at line[j] above that minimal previous end.
+// A prefix of length k=j+1 exists exactly while minEnd stays defined. The
+// descent at k needs some candidate of line[k] below an achievable end value,
+// so below maxEnd[k-1]. Rejecting k only when even the largest reachable
+// predecessor cannot be beaten keeps this sound — it never drops a true clue.
+function feasibleClues (puzzle, line) {
+  const n = line.length
+  const feasible = new Set()
+  let prevMin = -Infinity
+  for (let j = 0; j < n; j++) {
+    let mn = Infinity
+    let mx = -Infinity
+    for (const d of puzzle.getCandidates(line[j])) {
+      if (d > prevMin) {
+        if (d < mn) mn = d
+        if (d > mx) mx = d
+      }
+    }
+    if (mn === Infinity) break                 // no length-(j+1) prefix; no longer clue either
+    prevMin = mn
+    const k = j + 1
+    if (k === n) {
+      feasible.add(k)
+    } else {
+      let minNext = Infinity
+      for (const d of puzzle.getCandidates(line[k])) if (d < minNext) minNext = d
+      if (minNext < mx) feasible.add(k)         // a descent below the largest reachable end is possible
+    }
+  }
+  return feasible
 }
 
 function* update (instance, puzzle) {
@@ -42,22 +77,15 @@ function* update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
 
-  // ---- Reverse: read the filled, strictly increasing leading run ----
-  let i = 0
-  while (i < n && puzzle.hasValue(line[i]) &&
-         (i === 0 || puzzle.getValue(line[i]) > puzzle.getValue(line[i - 1]))) i++
-
-  if (i === n) {
-    yield* boundClue(puzzle, clue, n, n, lo, hi)               // whole line increases: exact n
-  } else if (puzzle.hasValue(line[i])) {
-    yield* boundClue(puzzle, clue, i, i, lo, hi)               // a filled cell drops: exact i
-  } else {
-    const lb = Math.max(i, 1)                                   // run reaches at least i
-    let ub = hi
-    if (i >= 1) ub = Math.min(ub, i + (hi - puzzle.getValue(line[i - 1])))
-    const c0 = Array.from(puzzle.getCandidates(line[0]))        // clue <= hi - min(line[0]) + 1
-    ub = Math.min(ub, hi - Math.min(...c0) + 1)
-    yield* boundClue(puzzle, clue, lb, ub, lo, hi)
+  // ---- Reverse: keep only clue values the line can still realize ----
+  // Candidate-aware, so filled cells anywhere on the line count. Stronger than a
+  // min/max interval: it also drops interior values whose required descent is
+  // impossible, not just values outside the reachable run-length range.
+  if (!puzzle.hasValue(clue)) {
+    const feasible = feasibleClues(puzzle, line)
+    const bad = []
+    for (let d = lo; d <= hi; d++) if (!feasible.has(d)) bad.push(d)
+    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
   }
 
   // ---- Forward: the clue's minimum forces a guaranteed increasing prefix ----
