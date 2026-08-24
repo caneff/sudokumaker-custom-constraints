@@ -22,6 +22,9 @@ strict drop.
   line through `A + B <= n + 1`.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `generate.py` — fresh grid, derived clues, uniqueness proof (OR-Tools).
+- `PUZZLE_LINK.txt` — the built SudokuMaker link for the seed-104 grid. Open it
+  to play the example. Note: this link predates the pair component; rebuild it
+  after changing `main.js`.
 
 ## Paste into SudokuMaker
 
