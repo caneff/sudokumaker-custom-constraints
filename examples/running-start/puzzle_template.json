@@ -3,7 +3,7 @@
  "puzzle": {
   "name": "Running Start",
   "author": "generated",
-  "comment": "Running Start (variant of Skyscrapers). Each outside clue counts how many digits keep increasing, from the cell next to the clue reading inward, until the first digit smaller than its predecessor. E.g. 1 2 4 5 3 ... scores 4.\n\nNormal sudoku rules. 21 clues shown, 6 interior givens; unique solution. Corner 1s are solver-support only.",
+  "comment": "Running Start (Skyscrapers variant). Outside clues on lines must contain a digit, and that digit indicates the length of the first ascending sequence in that direction. E.g. a row 142536879 gives a left clue of 2 (1, 4) and a right clue of 1 (9).\n\nNormal sudoku rules. 21 clues shown, 6 interior givens; unique solution. Corner 1s are solver-support only.",
   "type": "custom",
   "width": 11,
   "height": 11,

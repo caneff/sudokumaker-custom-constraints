@@ -1,16 +1,14 @@
 # Running Start — a worked custom constraint
 
-Running Start is a Skyscrapers variant. Each outside clue counts how many digits
-keep increasing, starting from the cell next to the clue and reading inward,
-until the first digit smaller than its predecessor.
+Running Start is a Skyscrapers variant. Outside clues on lines must contain a
+digit, and that digit indicates the length of the first ascending sequence in
+that direction.
 
-Example line `1 2 4 5 3 9 6 8 7`:
-- From the left: `1 < 2 < 4 < 5`, then `3` drops → clue **4**.
-- From the right (`7 8 6 …`): `7 < 8`, then `6` drops → clue **2**.
-
-A line's clue is `1 + (length of the strictly increasing run from the clued
-end)`. In a sudoku line all digits differ, so "not increasing" always means a
-strict drop.
+For example, a row with `142536879` gives a left clue of **2** (1, 4) and a
+right clue of **1** (9). Reading from the left, `1 < 4`, then `2` drops, so the
+run is the two cells `1 4`. Reading from the right, `9` drops to `7` at once, so
+the run is the single cell `9`. The first cell always counts. In a sudoku line
+all digits differ, so "not ascending" always means a strict drop.
 
 ## Files
 
