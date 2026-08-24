@@ -23,8 +23,12 @@ strict drop.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `generate.py` — fresh grid, derived clues, uniqueness proof (OR-Tools).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link for the seed-104 grid. Open it
-  to play the example. Note: this link predates the pair component; rebuild it
-  after changing `main.js`.
+  to play the example.
+- `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main.js` and the component
+  files. Run it after changing any of them:
+  `uv run --with lzstring examples/running-start/build_link.py`.
+- `puzzle_template.json` — the puzzle frame (grid, clue ring, groups, regions,
+  cosmetics) with the code fields empty. `build_link.py` fills them in.
 
 ## Paste into SudokuMaker
 
