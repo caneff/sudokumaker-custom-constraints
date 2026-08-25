@@ -115,6 +115,21 @@ def generate(n, bh, bw):
 
 # ---- document assembly ----------------------------------------------------
 
+# One worked example per size: a line, then the left and right clue it gives.
+RULE_EXAMPLES = {
+    4: "a row with 1324 gives a left clue of 2 (1, 3) and a right clue of 1 (4)",
+    6: "a row with 142356 gives a left clue of 2 (1, 4) and a right clue of 1 (6)",
+    9: "a row with 142356789 gives a left clue of 2 (1, 4) and a right clue of 1 (9)",
+}
+
+
+def rule_text(n):
+    rule = ("Outside cells on lines must contain a digit, and that digit indicates "
+            "the length of the first ascending sequence in that direction.")
+    ex = RULE_EXAMPLES.get(n)
+    return f"{rule} For example, {ex}." if ex else rule
+
+
 def build_doc(n, bh, bw, grid, clue, givens, active, lines):
     W = n + 2
     idx = lambda r, c: r * W + c
@@ -199,9 +214,10 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
 
     return {"formatVersion": "1.6.0", "puzzle": {
         "name": f"Running Start {n}x{n}", "author": "generated",
-        "comment": ("Running Start. Outside clues on lines give the length of the "
-                    "first ascending sequence read inward."),
-        "type": "custom", "width": W, "height": W,
+        "comment": rule_text(n),
+        # minDigit/maxDigit pin the digit range to n; the app otherwise
+        # defaults a custom puzzle to 0..9 regardless of grid size.
+        "type": "custom", "width": W, "height": W, "minDigit": 1, "maxDigit": n,
         "cells": cells, "constraints": constraints,
         "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}}}}
 
@@ -214,6 +230,8 @@ def check(link, doc, n):
                 if c.get("definition", {}).get("name") == "Running Start Lines")
     assert len(rs_c["input"]["groups"]) == 4 * n, f"expected {4*n} groups"
     assert rs_c["definition"]["backend"]["code"] == minify_js((HERE / "main.js").read_text())
+    assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
+    assert doc["puzzle"]["minDigit"] == 1
 
 
 if __name__ == "__main__":
