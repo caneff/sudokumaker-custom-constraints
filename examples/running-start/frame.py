@@ -5,7 +5,7 @@
 #
 # Three layers, drawn in this order:
 #   White Lines      paint over every ring cell so the ring reads as a margin.
-#   Outside Outlines box exactly the ring cells that show a given; none blank.
+#   Outside Outlines box exactly the given clue cells; not the corner fillers.
 #   Grid Outer Border the black square around the interior, drawn on top.
 
 
@@ -19,7 +19,11 @@ def cosmetics(W, cells):
     ring_cells = ([(0, c) for c in range(W)] + [(W - 1, c) for c in range(W)]
                   + [(r, 0) for r in range(1, W - 1)] + [(r, W - 1) for r in range(1, W - 1)])
     white = [rect(c, r) for (r, c) in ring_cells]
-    outlines = [rect(c, r) for (r, c) in ring_cells if cells[idx(r, c)].get("given")]
+    # box a given clue cell, but not the corner fillers (a corner sits on both
+    # edges and belongs to no line, so its "1" is solver support, not a clue)
+    corner = lambda r, c: r in (0, W - 1) and c in (0, W - 1)
+    outlines = [rect(c, r) for (r, c) in ring_cells
+                if cells[idx(r, c)].get("given") and not corner(r, c)]
     border = [[{"x": x, "y": 1} for x in range(1, W)]
               + [{"x": W - 1, "y": y} for y in range(2, W)]
               + [{"x": x, "y": W - 1} for x in range(W - 2, 0, -1)]
