@@ -1,10 +1,12 @@
 // Behavior test for the independent OR-Tools Numbered Rooms verifier (verify.py).
-// It asserts the values #21 asks for, not just that the script ran: the puzzle
-// is UNIQUE under an independent model that agrees with the fixture; the rule is
-// load-bearing (drop all clues and two completions remain); and every clue is
-// individually redundant. The count literals below are the discovered facts for
-// gen_9.json — a broken model or a changed fixture moves them and fails here.
+// It asserts the values that matter, not just that the script ran: the shipped
+// puzzle (3 carved givens, all clues) is UNIQUE under a from-scratch model that
+// agrees with the fixture; the clues are load-bearing (drop them and two
+// completions remain); and the logical floor is one (clues alone are unique).
+// The literals below are the facts for the carved puzzle — a broken model, a
+// changed carve, or a changed fixture moves them and fails here.
 //
+//   node examples/numbered-rooms/recovery-probe.mjs   # writes min_givens.json
 //   node examples/numbered-rooms/verify.test.mjs
 
 import { execFileSync } from 'child_process'
@@ -21,14 +23,15 @@ const out = execFileSync('uv', ['run', '--with', 'ortools', 'python3', VERIFY], 
 let failed = false
 const check = (ok, msg) => { if (!ok) { failed = true; console.log(`FAIL: ${msg}`) } else console.log(`PASS: ${msg}`) }
 
-check(/full puzzle: 1 solution\(s\) — UNIQUE/.test(out), 'full puzzle is unique under the independent model')
+check(/shipped puzzle: 3 interior givens/.test(out), 'shipped puzzle carries the 3 carved givens')
+check(/1 solution\(s\) — UNIQUE/.test(out), 'shipped puzzle is unique under the independent model')
 check(/agrees with the fixture solution/.test(out), 'independent model agrees with the fixture solution')
-check(/dropping all 36 leaves 2 completions/.test(out), 'rule is load-bearing: all clues dropped leaves two completions')
-check(/redundant clues: 36 of 36\b/.test(out), 'every clue is individually redundant')
+check(/clues load-bearing: .* -> 2 completions/.test(out), 'clues are load-bearing: dropping them leaves two completions')
+check(/logical floor: clues alone \(0 givens\) -> 1 solution/.test(out), 'the clues alone are already logically unique')
 
 if (failed) {
   console.log('--- verifier output ---')
   console.log(out)
   process.exit(1)
 }
-console.log('verify.test.mjs: independent OR-Tools model confirms uniqueness, a load-bearing rule, and full clue redundancy')
+console.log('verify.test.mjs: independent OR-Tools model confirms the carved puzzle is unique, its clues load-bearing')
