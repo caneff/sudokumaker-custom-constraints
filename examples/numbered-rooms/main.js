@@ -1,0 +1,10 @@
+// Numbered Rooms (escape-the-grid). One self-contained component per line does
+// all the work — no split across a wrapper and a built-in (see docs/gotchas.md
+// #1). group.cells[0] is the outside clue; the rest is the line, nearest the
+// clue first (docs/gotchas.md #3: trust the author's group order).
+for (const group of input.groups) {
+  const name = helpers.naming.getCellsDescription(group.cells)
+  puzzle.addConstraintComponent(
+    new NumberedRoomsComponent(name, group.cells[0], group.cells.slice(1))
+  )
+}
