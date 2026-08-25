@@ -1,7 +1,8 @@
 //! Hit Counts. An outside clue k on a line counts the "hits": read inward, a
 //! cell is a hit when its digit equals its distance from the clue. So line[i]
 //! (0-based) is a hit when line[i] === i + 1, and k is the number of hits. The
-//! cells are independent, so k is a plain count of booleans; k can be 0.
+//! cells are independent, so k is a plain count of booleans; k can be 0. A line
+//! is a permutation, so k is never n - 1: fixing n - 1 cells forces the nth.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -67,8 +68,20 @@ function* update (instance, puzzle) {
   }
 }
 
+// A line is a permutation, so it can never have exactly n - 1 hits: fix n - 1
+// cells on their target and the last value has only its home left, forcing an
+// nth hit. So n - 1 is never a legal clue. Drop it once at load; this bites on a
+// hidden clue and flows through to the side-sum and pair via the shared cell.
+function* initialize (instance, puzzle) {
+  const n = instance.line.length
+  if (n >= 2 && Array.from(puzzle.getCandidates(instance.clue)).includes(n - 1)) {
+    yield puzzle.removeCandidateFromCell(n - 1, instance.clue)
+  }
+}
+
 function validate (instance, puzzle) {
   const { clue, line } = instance
+  if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1) return false
   if (!puzzle.getCellsAreFilled([clue, ...line])) return true
   return puzzle.getValue(clue) === hitCount(puzzle, line)
 }
