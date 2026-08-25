@@ -15,6 +15,7 @@
 import json, pathlib, random, sys, urllib.parse
 from ortools.sat.python import cp_model
 from lzstring import LZString
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from minify import minify_js
 from frame import cosmetics
 
