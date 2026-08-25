@@ -41,6 +41,15 @@ lives in `docs/`, and each rule points there.
 - See `docs/agents/design-reasoning.md`. The supported constraint set is small
   and grows on demand, so "nothing needs this yet" is circular.
 
+## A deduction must pay for itself in solve time
+
+- **A stronger deduction is worth adding only when it makes the solver faster.**
+  Sound and tighter is not enough — a deduction runs every propagation, so it
+  must save more search than it costs. Judge it the way a solver is judged:
+  end-to-end solve time on real puzzles, not strength or nodes cut. See
+  `docs/agents/design-reasoning.md` and the worked measurement in
+  `examples/hit-counts/recovery-probe.mjs`.
+
 ## Tests assert an observable outcome
 
 - **No test that only proves the code ran.** A soundness harness asserts zero

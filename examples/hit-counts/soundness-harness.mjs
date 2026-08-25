@@ -20,7 +20,7 @@ const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 'scan', 'matchingBounds'])
+const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize'])
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
 const pairMod = load('HitCountsPairComponent.js', ['setParams', 'update'])
 
@@ -44,11 +44,9 @@ const hits = perm => perm.reduce((k, x, i) => k + (x === i + 1 ? 1 : 0), 0)
 const lines = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [2, 3, 4, 5, 6, 7, 8, 9, 1]]   // identity (9), derangement (0)
 for (let i = 0; i < 400; i++) lines.push(shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
-const LINE9 = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 let tests = 0
 let bad = 0
 let pruned8 = 0
-let matchBeat = 0    // states where the matching bound is tighter than the naive tally
 const seenClues = new Set()
 for (let iter = 0; iter < 40000; iter++) {
   const perm = lines[iter % lines.length]
@@ -60,10 +58,7 @@ for (let iter = 0; iter < 40000; iter++) {
   const clueSeed = seeder(0, 9)
   const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v))
   const inst = {}
-  mod.setParams(inst, CLUE, LINE9)
-  const naive = mod.scan(p, LINE9)                   // naive [forced, possible]
-  const mbds = mod.matchingBounds(p, LINE9)          // matching [min, max]
-  if (mbds && (mbds.min > naive.forced || mbds.max < naive.possible)) matchBeat++
+  mod.setParams(inst, CLUE, [0, 1, 2, 3, 4, 5, 6, 7, 8])
   const had8 = p.getCandidates(CLUE).has(8)          // n - 1 = 8 for a line of 9
   for (const _ of mod.initialize(inst, p)) { /* one-time n-1 prune */ }
   if (had8 && !p.getCandidates(CLUE).has(8)) pruned8++
@@ -71,7 +66,7 @@ for (let iter = 0; iter < 40000; iter++) {
   tests++
   if (v) { bad++; if (bad <= 5) console.log('violation', v, 'clue', clueVal) }
 }
-console.log('hit-counts component:', tests, 'tests,', bad, 'violations,', pruned8, 'n-1 prunes,', matchBeat, 'matching-tighter')
+console.log('hit-counts component:', tests, 'tests,', bad, 'violations,', pruned8, 'n-1 prunes')
 console.log('clue values exercised:', [...seenClues].sort((a, b) => a - b).join(' '))
 
 // ---- Side-sum component: n clues on a side sum to exactly n ----
@@ -182,33 +177,8 @@ for (const [c, v] of Object.entries(G)) {
 if (gCand.get(20).size !== 1) { guardBad++; console.log('GUARD touched the miss cell L0') }
 console.log('pair guard:', guardBad === 0 ? 'OK' : 'FAIL')
 
-// ---- Matching guard: the per-line bound sees co-existence, the naive tally does not ----
-// n = 3, arc-consistent for all-different, yet only one hit is reachable:
-//   L0 in {1,3}   L1 in {2,3}   L2 in {1,2}
-// The naive possible = 2 (L0 can be a 1, L1 can be a 2), but placing both strands
-// L2 on a 3 it does not hold. Both legal permutations, 1 3 2 and 3 2 1, hit exactly
-// once, so the clue is forced to 1. The naive bound leaves {0,1,2}; matching pins 1.
-const mCand = new Map([
-  [500, new Set([0, 1, 2])],
-  [30, new Set([1, 3])], [31, new Set([2, 3])], [32, new Set([1, 2])]
-])
-const mp = {
-  hasValue: c => mCand.get(c).size === 1,
-  getValue: c => [...mCand.get(c)][0],
-  getCandidates: c => mCand.get(c),
-  removeCandidateFromCell: (d, c) => { mCand.get(c).delete(d) },
-  removeCandidatesFromCell: (s, c) => { const set = mCand.get(c); for (const d of s) set.delete(d) }
-}
-const mInst = {}
-mod.setParams(mInst, 500, [30, 31, 32])
-for (let pass = 0; pass < 10; pass++) { for (const _ of mod.update(mInst, mp)) { /* drain */ } }
-let matchBad = 0
-const clueLeft = [...mCand.get(500)].sort((a, b) => a - b).join(',')
-if (clueLeft !== '1') { matchBad++; console.log('MATCH guard: clue left', clueLeft, 'expected 1') }
-console.log('matching guard:', matchBad === 0 ? 'OK' : 'FAIL')
-
 const ok = bad === 0 && sideBad === 0 && pairBad === 0 && dynBad === 0 &&
-  guardBad === 0 && matchBad === 0 && pairFired > 0 && pruned8 > 0 && matchBeat > 0 &&
+  guardBad === 0 && pairFired > 0 && pruned8 > 0 &&
   !seenClues.has(8) && seenClues.has(0) && seenClues.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
