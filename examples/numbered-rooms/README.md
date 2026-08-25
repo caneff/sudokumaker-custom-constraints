@@ -45,13 +45,43 @@ both directions, before the clue is solved:
 3. When one index remains, make the target cell and the clue equal both ways —
    before either is a singleton.
 
+## The pair fact — two clues on one line
+
+A row (or column) usually carries a clue at each end. Let `a` be the left index
+(the digit in the first inside cell) and `b` the right index (the digit in the
+last inside cell). The left clue reads `line[a-1]`, the right clue reads
+`line[N-b]` — the same cell exactly when `a + b === N + 1`. So:
+
+    a + b === N + 1   =>  left clue === right clue     (always)
+    left clue === right clue  =>  a + b === N + 1       (when the line is distinct)
+
+The second direction holds only because a sudoku line has no repeats: equal clues
+must be the *same* cell, not two different cells that happen to share a digit.
+
+Two smaller facts fall out and need no extra code:
+
+- **Index 1 forces clue 1.** If the first inside cell is 1, the index points at
+  itself, so the clue is 1. The per-line component already deduces this (its
+  reachable set collapses to `{1}`).
+- The biconditional's easy half (`sum ⟹ equal clues`) is a plain consequence of
+  the per-line rule; only the pair adds the cross-clue coupling.
+
+`NumberedRoomsPairComponent.js` enforces the biconditional both ways. Because the
+outside clues are often the given digits, "equal clues fix the index sum" prunes
+the two index cells on the first pass — a deduction no single-line component can
+reach.
+
 ## Files
 
-- `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
-  constraint editor, replacing the old backend and `CustomIndexComponent`.
+- `main.js`, `NumberedRoomsComponent.js`, `NumberedRoomsPairComponent.js` — paste
+  these three into the SudokuMaker constraint editor, replacing the old backend
+  and `CustomIndexComponent`.
 - `ORIGINAL_*.js` — the shipped version, kept for reference.
-- `soundness-harness.mjs` — proves `update` never removes a true value
-  (405k fuzz tests) and that it prunes with the clue still unsolved.
+- `soundness-harness.mjs` — proves neither `update` removes a true value (405k
+  line + 5k distinct-line pair + 13k non-distinct pair fuzz tests) and that each
+  prunes early: the line component with the clue unsolved, the pair component
+  with the index sum fixed by equal clues. The non-distinct block also proves the
+  `getCellsSeeEachOther` guard is load-bearing (remove it and it fails).
 - `build_link.py` — rebuilds the puzzle link with the new code.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle.
 

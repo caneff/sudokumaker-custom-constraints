@@ -25,11 +25,11 @@ def build():
         d = c.get("definition", {})
         if d.get("name") == "Custom Numbered Rooms":
             d["backend"]["code"] = minify_js((HERE / "main.js").read_text())
-            d["components"] = [{
-                "type": "code",
-                "name": "NumberedRoomsComponent",
-                "code": minify_js((HERE / "NumberedRoomsComponent.js").read_text()),
-            }]
+            d["components"] = [
+                {"type": "code", "name": name,
+                 "code": minify_js((HERE / f"{name}.js").read_text())}
+                for name in ("NumberedRoomsComponent", "NumberedRoomsPairComponent")
+            ]
             break
     else:
         raise SystemExit("template is missing the 'Custom Numbered Rooms' constraint")
@@ -44,8 +44,9 @@ def check(link, doc):
     nr = next(c for c in doc["puzzle"]["constraints"]
               if c.get("definition", {}).get("name") == "Custom Numbered Rooms")
     comps = nr["definition"]["components"]
-    assert [x["name"] for x in comps] == ["NumberedRoomsComponent"], comps
+    assert [x["name"] for x in comps] == ["NumberedRoomsComponent", "NumberedRoomsPairComponent"], comps
     assert "NumberedRoomsComponent" in nr["definition"]["backend"]["code"]
+    assert "NumberedRoomsPairComponent" in nr["definition"]["backend"]["code"]
 
 
 if __name__ == "__main__":
