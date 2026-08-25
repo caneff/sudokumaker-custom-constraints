@@ -214,7 +214,7 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
         "name": f"Hit Counts {n}x{n}", "author": "generated",
         "comment": ("Hit Counts. An outside clue counts the cells whose digit equals "
                     "their distance from that clue, reading inward. A clue can be 0."),
-        "type": "custom", "width": W, "height": W, "minDigit": 0,
+        "type": "custom", "width": W, "height": W, "minDigit": 0, "maxDigit": n,
         "cells": cells, "constraints": constraints,
         "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}}}}
 
@@ -224,6 +224,7 @@ def check(link, doc, n):
         urllib.parse.unquote(link.split("puzzle=")[-1])))
     assert back == doc, "link does not decode back to the built document"
     assert doc["puzzle"]["minDigit"] == 0, "minDigit must be 0 to allow a 0 clue"
+    assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     hc = next(c for c in doc["puzzle"]["constraints"]
               if c.get("definition", {}).get("name") == "Hit Counts Lines")
     assert len(hc["input"]["groups"]) == 4 * n, f"expected {4*n} groups"

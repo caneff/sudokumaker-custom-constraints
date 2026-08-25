@@ -24,7 +24,9 @@ for (const g of groups) {
 //! step between a line's first two cells (+1 left, -1 right, +W top, -W bottom):
 //! same step === same side. Only fire on a full side of n clues, where the sum
 //! is exactly n; a partial side would make the sum an unsound bound.
-const n = helpers.digits.maxDigit
+//! n is the line length (a line is a full row/column), not helpers.digits.maxDigit,
+//! which the app can set past n when minDigit is 0.
+const n = groups.length > 0 ? groups[0].line.length : 0
 const bySide = new Map()
 for (const g of groups) {
   const step = g.line.length >= 2 ? g.line[1] - g.line[0] : g.line[0] - g.clue

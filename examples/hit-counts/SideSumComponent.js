@@ -14,8 +14,7 @@ function setParams (instance, cells, target) {
 
 // Bounds propagation for sum(cells) === target. Each cell sits in
 // [target - (sum of other maxima), target - (sum of other minima)].
-function* update (instance, puzzle) {
-  const { cells, target } = instance
+function* propagate (cells, target, puzzle) {
   const mins = []
   const maxs = []
   let sumMin = 0
@@ -32,6 +31,16 @@ function* update (instance, puzzle) {
     const bad = Array.from(puzzle.getCandidates(cells[i])).filter(d => d < lo || d > hi)
     if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), cells[i])
   }
+}
+
+// Run once at creation: the side's given clues already bound the rest (e.g. if
+// the shown clues sum to n, the hidden ones are forced to 0 right away).
+function* initialize (instance, puzzle) {
+  yield* propagate(instance.cells, instance.target, puzzle)
+}
+
+function* update (instance, puzzle) {
+  yield* propagate(instance.cells, instance.target, puzzle)
 }
 
 function validate (instance, puzzle) {
