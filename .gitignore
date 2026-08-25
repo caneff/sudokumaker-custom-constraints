@@ -5,3 +5,6 @@ __pycache__/
 fresh_sol.json
 gen.json
 .venv/
+
+# local session state and worktrees
+.claude/
