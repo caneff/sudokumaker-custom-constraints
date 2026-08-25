@@ -126,3 +126,26 @@ pass cheap:
 - **Deduce both directions in one component.** Each line component runs the
   clue-from-line and line-from-clue deductions in the same `update`, so one pass
   prunes both ends.
+
+## Generalizable single-clue moves
+
+Two moves appear in one example each but transfer to any outside-clue
+constraint.
+
+**Aggregate coupling: bound a whole side's clues at once.** Hit Counts'
+`SideSumComponent` uses that the `n` clues on one side sum to exactly `n` — each
+column is a permutation, so it gives one hit, `n` per side. The component
+enforces `sum === n` with bounds propagation over all `n` clue cells: each cell
+sits in `[target - sum(other maxima), target - sum(other minima)]`. This couples
+clues that share no cell, the strongest kind of cut. Any side of clues with a
+provable total or bound can do the same — visible-count sums, X-sums, sandwich.
+It needs the whole side present, so fire it only on a full side of `n` clues; a
+partial side gives an unsound bound.
+
+**Exact feasible-clue set from one walk.** Running Start's `feasibleClues` does
+not bound the clue to a min/max interval. It walks the line once, tracking the
+smallest and largest value a length-`k` increasing prefix can end on, and keeps
+a clue value `k` only when a real descent after it is still possible. This drops
+interior values a plain range would keep. Any clue that encodes a line pattern —
+run length, visible count, first-seen digit — can compute its exact feasible set
+this way in one pass over candidates: stronger than an interval, still cheap.
