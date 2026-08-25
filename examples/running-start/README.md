@@ -1,13 +1,14 @@
 # Running Start — a worked custom constraint
 
-Outside clues on lines must contain a digit, and that digit indicates the length
+Outside cells on clues must contain a digit, and that digit indicates the length
 of the first ascending sequence in that direction.
 
-For example, a row with `142536879` gives a left clue of **2** (1, 4) and a
-right clue of **1** (9). Reading from the left, `1 < 4`, then `2` drops, so the
-run is the two cells `1 4`. Reading from the right, `9` drops to `7` at once, so
-the run is the single cell `9`. The first cell always counts. In a sudoku line
-all digits differ, so "not ascending" always means a strict drop.
+For example, a row with `142356789` gives a left clue of **2** (1, 4) and a
+right clue of **1** (9). Reading from the left, `1 < 4`, then `3` drops below
+`4`, so the run is the two cells `1 4`. Reading from the right, `9` drops to `8`
+at once, so the run is the single cell `9`. The first cell always counts. In a
+sudoku line all digits differ, so "not ascending" always means a strict drop.
+The 4x4 and 6x6 puzzles carry the same rule with a size-appropriate example.
 
 ## Files
 

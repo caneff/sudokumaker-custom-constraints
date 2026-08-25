@@ -42,6 +42,15 @@ def build():
     cons = doc["puzzle"]["constraints"]
     cons[:] = [c for c in cons if c.get("type") != 2000]
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
+    # pin the digit range to 9 (the app defaults a custom puzzle to 0..9) and
+    # match the rule wording used by the 4x4/6x6 builder
+    doc["puzzle"]["minDigit"] = 1
+    doc["puzzle"]["maxDigit"] = 9
+    doc["puzzle"]["comment"] = (
+        "Outside cells on clues must contain a digit, and that digit indicates "
+        "the length of the first ascending sequence in that direction. For "
+        "example, a row with 142356789 gives a left clue of 2 (1, 4) and a "
+        "right clue of 1 (9).")
     payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
     return "https://sudokumaker.app/?puzzle=" + payload, doc
 
