@@ -39,13 +39,59 @@ function scan (puzzle, line) {
   return { forced, possible, free }
 }
 
+// The naive [forced, possible] counts each cell alone, so it over-counts: it can
+// promise more hits than any one permutation of the line delivers. Tighten it
+// with a matching. The line is a permutation of 1..n, so a legal state is a
+// perfect matching of positions to values, each position taking a value from its
+// candidates. A hit is the edge (position i, value i+1). Return the least and
+// most hit edges over any such matching — the true hit count lies in that range.
+// Return null when no perfect matching exists (a dead state); the caller then
+// keeps the naive bound rather than acting on a contradiction.
+//
+// n <= 9, so a bitmask pass over the used-value set is small and exact. dp[mask]
+// holds the [min, max] hits when the first i positions fill exactly the values in
+// mask (popcount(mask) === i). Each position adds one value not yet used.
+function matchingBounds (puzzle, line) {
+  const n = line.length
+  const cands = line.map(cell =>
+    Array.from(puzzle.getCandidates(cell)).filter(v => v >= 1 && v <= n))
+  const SIZE = 1 << n
+  let curMin = new Array(SIZE).fill(Infinity)
+  let curMax = new Array(SIZE).fill(-Infinity)
+  curMin[0] = 0
+  curMax[0] = 0
+  for (let i = 0; i < n; i++) {
+    const nextMin = new Array(SIZE).fill(Infinity)
+    const nextMax = new Array(SIZE).fill(-Infinity)
+    for (let mask = 0; mask < SIZE; mask++) {
+      if (curMax[mask] === -Infinity) continue        // position i-1 never reached this mask
+      for (const v of cands[i]) {
+        const bit = 1 << (v - 1)
+        if (mask & bit) continue                      // value already used
+        const nextMask = mask | bit
+        const add = v === i + 1 ? 1 : 0               // a hit edge
+        nextMin[nextMask] = Math.min(nextMin[nextMask], curMin[mask] + add)
+        nextMax[nextMask] = Math.max(nextMax[nextMask], curMax[mask] + add)
+      }
+    }
+    curMin = nextMin
+    curMax = nextMax
+  }
+  const full = SIZE - 1
+  if (curMax[full] === -Infinity) return null         // no perfect matching
+  return { min: curMin[full], max: curMax[full] }
+}
+
 function* update (instance, puzzle) {
   const { clue, line } = instance
   const { forced, possible, free } = scan(puzzle, line)
 
-  // ---- Reverse: the clue is the hit count, so it lies in [forced, possible] ----
+  // ---- Reverse: the clue is the hit count, so it lies in [min, max] ----
+  // The matching bound is at least as tight as [forced, possible]: a forced cell
+  // hits in every matching, so min >= forced, and no matching beats possible.
   if (!puzzle.hasValue(clue)) {
-    const bad = Array.from(puzzle.getCandidates(clue)).filter(d => d < forced || d > possible)
+    const bound = matchingBounds(puzzle, line) || { min: forced, max: possible }
+    const bad = Array.from(puzzle.getCandidates(clue)).filter(d => d < bound.min || d > bound.max)
     if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
   }
 
