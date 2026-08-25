@@ -162,11 +162,27 @@ no hidden clue on its own, they recover 4 hidden clues on `gen_6` and 10 on
   floor plus the side-sum and pair components already reach the same fixpoint, so
   the tighter clue bound is redundant.
 
-The result holds under a weaker singles-only floor too (`--floor=singles`). So the
-clue-bound tightening, though correct, buys no measured solving power on the
-current puzzles. Any real value would have to come from the interior-facing
-deduction — the matching-driven cell eliminations tracked as a follow-up — or from
-pruning inside search, which this root-fixpoint probe does not measure.
+The result holds under a weaker singles-only floor too (`--floor=singles`).
+
+The `--search` mode closes the last gap — pruning inside search, where pinned
+cells turn line domains partial and the matching should bite most:
+
+```
+node examples/hit-counts/recovery-probe.mjs gen_9.json --search --only=on
+```
+
+It runs a full DFS that proves uniqueness (MRV branching, one solution) and counts
+the nodes explored, matching off vs on. The matching cuts almost nothing:
+
+- `gen_6` — 261 nodes off, 259 on (2 fewer, 0.8%);
+- `gen_9` — 38620 nodes off, 38578 on (42 fewer, 0.1%).
+
+So on the current puzzles the clue-bound tightening is effectively inert both at
+the root and in search. It is sound and correct, but earns no measured solving
+power against a Régin-strength all-different. Any real value would have to come
+from the interior-facing deduction — the matching-driven cell eliminations tracked
+as a follow-up. (Each `--search` run on `n = 9` takes a few minutes; run one mode
+at a time with `--only`.)
 
 - **No n − 1 clue** — a line is a permutation, so it can never have exactly
   `n − 1` hits: fix `n − 1` cells on their target and the last value has only its

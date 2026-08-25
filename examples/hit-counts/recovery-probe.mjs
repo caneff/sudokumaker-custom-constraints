@@ -182,8 +182,8 @@ for (let br = 0; br < n; br += bh) for (let bc = 0; bc < n; bc += bw) {
 
 // ---- the fixpoint ----
 const totalCands = () => { let s = 0; for (const set of cand.values()) s += set.size; return s }
-function runToFixpoint (comps) {
-  for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, puzzle)) { /* n-1 prune */ }
+function runToFixpoint (comps, init = true) {
+  if (init) for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, puzzle)) { /* n-1 prune */ }
   for (let pass = 0; pass < 500; pass++) {
     const before = totalCands()
     for (const inst of comps) for (const _ of inst.__mod.update(inst, puzzle)) { /* apply */ }
@@ -235,15 +235,99 @@ function tighterLines () {
   return count
 }
 
+// ---- search: does the matching cut backtracking? ----
+// Root recovery is only half the story: during search, cells get pinned and the
+// line domains turn partial — exactly where the matching bites. So run a full
+// DFS that proves uniqueness (finds every solution, expecting one) and count the
+// nodes explored, matching on vs off. Fewer nodes = the matching pruned dead
+// branches earlier. Same MRV branching (fewest candidates first, values
+// ascending) both runs, so the count reflects the puzzles the solver actually
+// meets in search, not a synthetic state.
+const INT = []
+for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) INT.push(interior(r, c))
+const cloneCand = () => { const m = new Map(); for (const [k, v] of cand) m.set(k, new Set(v)); return m }
+const anyEmpty = () => { for (const s of cand.values()) if (s.size === 0) return true; return false }
+// A state is dead if a cell is empty OR some all-different group has no perfect
+// matching (its cells cannot take distinct values). The GAC floor leaves an
+// infeasible group untouched rather than emptying a cell, so the search must test
+// matchability itself — without this, non-all-different leaves slip through.
+function dead () {
+  if (anyEmpty()) return true
+  for (const g of alldiffGroups) if (maxMatch(g, c => cand.get(c)) !== g.length) return true
+  return false
+}
+// A full interior is a real solution only if every line's hit count equals its
+// clue. update prunes toward this but does not reject a completed line on its own
+// (it skips the reverse check once the clue is pinned), so the real solver leans
+// on validate at the leaf; this is that leaf check, model-independent.
+function validLeaf () {
+  for (const g of groups) {
+    const clueCellId = g.cells[0]
+    const line = g.cells.slice(1)
+    if (cand.get(clueCellId).size !== 1) return false
+    const clueV = [...cand.get(clueCellId)][0]
+    let h = 0
+    for (let i = 0; i < line.length; i++) if ([...cand.get(line[i])][0] === i + 1) h++
+    if (h !== clueV) return false
+  }
+  return true
+}
+function pickMRV () {
+  let best = null; let bs = Infinity
+  for (const c of INT) { const s = cand.get(c).size; if (s > 1 && s < bs) { bs = s; best = c } }
+  return best
+}
+const NODE_CAP = 3_000_000
+let nodes; let solutions; let capped
+function dfs (comps) {
+  if (capped || nodes > NODE_CAP) { capped = true; return }
+  const cell = pickMRV()
+  if (cell === null) { if (validLeaf()) solutions++; return }
+  for (const v of [...cand.get(cell)].sort((a, b) => a - b)) {
+    nodes++
+    const saved = cloneCand()
+    cand.set(cell, new Set([v]))
+    runToFixpoint(comps, false)
+    if (!dead()) dfs(comps)
+    cand = saved
+    if (capped) return
+  }
+}
+function searchRun (mode) {
+  freshState()
+  const comps = mode === 'floor' ? [] : buildComps(mode === 'on')
+  for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, puzzle)) { /* n-1 prune */ }
+  runToFixpoint(comps, false)
+  nodes = 0; solutions = 0; capped = false
+  if (!dead()) dfs(comps)
+  return { nodes, solutions, capped }
+}
+
 console.log(`${file}: n=${n}, box ${bh}x${bw}, ${active.length}/${keys.length} clues shown, ${hiddenKeys.length} hidden, ${Object.keys(givens).length} interior givens (floor: ${FLOOR})`)
-freshState()
-const tightStart = tighterLines()
-for (let pass = 0; pass < 500; pass++) { const b = totalCands(); for (const g of alldiffGroups) floorGroup(g); if (totalCands() === b) break }
-const tightAfterFloor = tighterLines()
-console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${FLOOR} floor`)
-const floor = report('floor only  ', 'floor')
-const off = report('matching OFF', 'off')
-const on = report('matching ON ', 'on')
-console.log(`  DELTA components over floor (off - floor): hidden +${off.hiddenRecovered - floor.hiddenRecovered}, interior +${off.interiorSolved - floor.interiorSolved}, removed +${off.removed - floor.removed}`)
-console.log(`  DELTA matching over naive  (on - off):    hidden +${on.hiddenRecovered - off.hiddenRecovered}, interior +${on.interiorSolved - off.interiorSolved}, removed +${on.removed - off.removed}`)
-if (on.lost || off.lost || floor.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }
+
+if (process.argv.includes('--search')) {
+  // Only off vs on: the full constraint set has the one true solution, so the tree
+  // is bounded. (A floor-only run has no clue constraints and countless solutions,
+  // so it never terminates — it is not a meaningful search baseline.)
+  // --only=on / --only=off runs a single mode (each is slow on n=9).
+  const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1]
+  const modes = [['matching OFF', 'off'], ['matching ON ', 'on']].filter(([, m]) => !only || m === only)
+  for (const [label, mode] of modes) {
+    const t = Date.now()
+    const r = searchRun(mode)
+    const note = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions}!)`)
+    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}, ${Date.now() - t}ms${note}`)
+  }
+} else {
+  freshState()
+  const tightStart = tighterLines()
+  for (let pass = 0; pass < 500; pass++) { const b = totalCands(); for (const g of alldiffGroups) floorGroup(g); if (totalCands() === b) break }
+  const tightAfterFloor = tighterLines()
+  console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${FLOOR} floor`)
+  const floor = report('floor only  ', 'floor')
+  const off = report('matching OFF', 'off')
+  const on = report('matching ON ', 'on')
+  console.log(`  DELTA components over floor (off - floor): hidden +${off.hiddenRecovered - floor.hiddenRecovered}, interior +${off.interiorSolved - floor.interiorSolved}, removed +${off.removed - floor.removed}`)
+  console.log(`  DELTA matching over naive  (on - off):    hidden +${on.hiddenRecovered - off.hiddenRecovered}, interior +${on.interiorSolved - off.interiorSolved}, removed +${on.removed - off.removed}`)
+  if (on.lost || off.lost || floor.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }
+}
