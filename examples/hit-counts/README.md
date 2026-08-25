@@ -177,12 +177,22 @@ the nodes explored, matching off vs on. The matching cuts almost nothing:
 - `gen_6` — 261 nodes off, 259 on (2 fewer, 0.8%);
 - `gen_9` — 38620 nodes off, 38578 on (42 fewer, 0.1%).
 
-So on the current puzzles the clue-bound tightening is effectively inert both at
-the root and in search. It is sound and correct, but earns no measured solving
-power against a Régin-strength all-different. Any real value would have to come
-from the interior-facing deduction — the matching-driven cell eliminations tracked
-as a follow-up. (Each `--search` run on `n = 9` takes a few minutes; run one mode
-at a time with `--only`.)
+Nodes are only a proxy; the goal is a solver that is *faster*. By that measure the
+matching is a net loss. It runs an `O(n · 2ⁿ)` pass per line per propagation —
+about 78x the naive `O(n)` scan on `n = 9` (17 µs vs 0.2 µs per call) — to save
+under 1% of nodes, so wall-clock solve time goes *up*: gen_6 ~4-7% slower, gen_9
+~13% slower (147 s to 167 s in the probe). The probe's own time is dominated by
+its brute all-different floor, so in a real solver with a fast all-different the
+matching would be a larger share of each node's cost — the slowdown there is if
+anything worse, not better.
+
+So on the current puzzles the clue-bound tightening is inert at the root, barely
+prunes search, and costs time. It is sound and correct but earns no speed. Any
+real value would have to come from the interior-facing deduction — the
+matching-driven cell eliminations tracked as a follow-up — and that path is even
+heavier per call, so it must clear the same bar: measure end-to-end solve time,
+not nodes, before committing. (Each `--search` run on `n = 9` takes a few minutes;
+run one mode at a time with `--only`.)
 
 - **No n − 1 clue** — a line is a permutation, so it can never have exactly
   `n − 1` hits: fix `n − 1` cells on their target and the last value has only its
