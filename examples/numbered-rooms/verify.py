@@ -29,8 +29,8 @@ import sys
 from ortools.sat.python import cp_model
 
 HERE = pathlib.Path(__file__).parent
-CAP = 2            # stop the solution count here; 2 is enough to tell unique apart
-TIME_LIMIT = 30    # seconds per solve
+CAP = 2  # stop the solution count here; 2 is enough to tell unique apart
+TIME_LIMIT = 30  # seconds per solve
 
 
 def load():
@@ -104,7 +104,9 @@ def main():
 
     count, first = solutions(gen, n, interior, all_clues, kept)
     verdict = "UNIQUE" if count == 1 else f"{count}+ solutions — NOT UNIQUE"
-    print(f"shipped puzzle: {len(kept)} interior givens, {len(all_clues)} clues (all shown)")
+    print(
+        f"shipped puzzle: {len(kept)} interior givens, {len(all_clues)} clues (all shown)"
+    )
     print(f"  {count} solution(s) — {verdict}")
 
     ok = count == 1
@@ -113,7 +115,9 @@ def main():
         mismatch = [i for i in interior if first[i] != sol[str(i)]]
         if mismatch:
             ok = False
-            print(f"  MISMATCH: model solution differs from the fixture at {len(mismatch)} cells: {mismatch[:5]}")
+            print(
+                f"  MISMATCH: model solution differs from the fixture at {len(mismatch)} cells: {mismatch[:5]}"
+            )
         else:
             print("  independent model agrees with the fixture solution")
 
@@ -121,7 +125,9 @@ def main():
     # interior then has more than one completion. One completion would mean the
     # givens alone solve it and the rule is doing nothing (an inert model).
     bare, _ = solutions(gen, n, interior, [], kept)
-    print(f"  clues load-bearing: keep the {len(kept)} givens, drop all {len(all_clues)} clues -> {bare} completions")
+    print(
+        f"  clues load-bearing: keep the {len(kept)} givens, drop all {len(all_clues)} clues -> {bare} completions"
+    )
     if bare < 2:
         ok = False
         print("  INERT: the rule removed nothing — the givens alone are unique")

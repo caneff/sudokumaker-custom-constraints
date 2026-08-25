@@ -10,12 +10,15 @@
 #
 # Writes PUZZLE_LINK.txt next to this script.
 
-import json, pathlib
-from lzstring import LZString
+import json
+import pathlib
 import sys
+
+from lzstring import LZString
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 from frame import cosmetics
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -28,7 +31,11 @@ def build():
         if c.get("type") == 1000 and d.get("name") == "Running Start Lines":
             d["backend"]["code"] = minify_js((HERE / "main.js").read_text())
             d["components"] = [
-                {"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
+                {
+                    "type": "code",
+                    "name": f[:-3],
+                    "code": minify_js((HERE / f).read_text()),
+                }
                 for f in COMPONENTS
             ]
             break
@@ -54,7 +61,8 @@ def build():
         "direction. For example, a row with 142356789 gives a left clue of 2 "
         "(1, 4) and a right clue of 1 (9)."
         "\n\nThe 1s in the corners only fill space for SudokuMaker's solver; "
-        "delete them before publishing.")
+        "delete them before publishing."
+    )
     payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
     return "https://sudokumaker.app/?puzzle=" + payload, doc
 
@@ -62,14 +70,23 @@ def build():
 def check(link, doc):
     # round-trips, and the injected code is really in there
     import urllib.parse
-    back = json.loads(LZString.decompressFromEncodedURIComponent(
-        urllib.parse.unquote(link.split("puzzle=")[-1])))
+
+    back = json.loads(
+        LZString.decompressFromEncodedURIComponent(
+            urllib.parse.unquote(link.split("puzzle=")[-1])
+        )
+    )
     assert back == doc, "link does not decode back to the built document"
-    rs = next(c for c in doc["puzzle"]["constraints"]
-              if c.get("definition", {}).get("name") == "Running Start Lines")
+    rs = next(
+        c
+        for c in doc["puzzle"]["constraints"]
+        if c.get("definition", {}).get("name") == "Running Start Lines"
+    )
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
-    assert rs["definition"]["backend"]["code"] == minify_js((HERE / "main.js").read_text())
+    assert rs["definition"]["backend"]["code"] == minify_js(
+        (HERE / "main.js").read_text()
+    )
     assert len(rs["input"]["groups"]) == 36, "expected 36 line groups"
 
 

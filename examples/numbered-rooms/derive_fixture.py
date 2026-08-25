@@ -26,7 +26,9 @@ N = 9
 def decode():
     url = (HERE / "numbered_rooms.url").read_text().strip()
     payload = url.split("puzzle=")[-1]
-    return json.loads(LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(payload)))
+    return json.loads(
+        LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(payload))
+    )
 
 
 def build():
@@ -40,13 +42,19 @@ def build():
 
     interior = [r * W + c for r in range(1, N + 1) for c in range(1, N + 1)]
 
-    regions = next(c["regions"] for c in p["constraints"] if c.get("type") == 1 and "regions" in c)
+    regions = next(
+        c["regions"] for c in p["constraints"] if c.get("type") == 1 and "regions" in c
+    )
     by_region = defaultdict(list)
     for i in interior:
         by_region[regions[i]].append(i)
     boxes = [sorted(v) for k, v in sorted(by_region.items()) if len(v) == N]
 
-    nr = next(c for c in p["constraints"] if c.get("definition", {}).get("name") == "Custom Numbered Rooms")
+    nr = next(
+        c
+        for c in p["constraints"]
+        if c.get("definition", {}).get("name") == "Custom Numbered Rooms"
+    )
     groups = [{"cells": g["cells"]} for g in nr["input"]["groups"]]
     clue_cells = [g["cells"][0] for g in groups]
 
@@ -57,10 +65,19 @@ def build():
             raise SystemExit(f"cell {i} has no solution value")
         solution[str(i)] = v
 
-    givens = [i for i in interior if isinstance(cells[i], dict) and cells[i].get("given")]
+    givens = [
+        i for i in interior if isinstance(cells[i], dict) and cells[i].get("given")
+    ]
 
-    return {"n": N, "W": W, "box": [3, 3], "groups": groups, "boxes": boxes,
-            "solution": solution, "givens": givens}
+    return {
+        "n": N,
+        "W": W,
+        "box": [3, 3],
+        "groups": groups,
+        "boxes": boxes,
+        "solution": solution,
+        "givens": givens,
+    }
 
 
 def check(gen):
@@ -82,7 +99,9 @@ def check(gen):
         clue = sol[str(g["cells"][0])]
         line = g["cells"][1:]
         k = sol[str(line[0])]
-        assert 1 <= k <= len(line) and sol[str(line[k - 1])] == clue, f"NR rule broken on {g}"
+        assert 1 <= k <= len(line) and sol[str(line[k - 1])] == clue, (
+            f"NR rule broken on {g}"
+        )
     assert len(gen["givens"]) == 31, gen["givens"]
     assert all(str(i) in sol for i in interior)
 
@@ -91,4 +110,6 @@ if __name__ == "__main__":
     gen = build()
     check(gen)
     (HERE / "gen_9.json").write_text(json.dumps(gen) + "\n")
-    print(f"wrote gen_9.json ({len(gen['groups'])} clues, {len(gen['givens'])} interior givens)")
+    print(
+        f"wrote gen_9.json ({len(gen['groups'])} clues, {len(gen['givens'])} interior givens)"
+    )

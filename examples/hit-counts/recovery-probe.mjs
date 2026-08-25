@@ -79,9 +79,11 @@ const st = makeCandidateState()
 
 function freshState () {
   st.cand = new Map()
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-    const g = givens[`${r},${c}`]
-    st.cand.set(interior(r, c), g != null ? new Set([g]) : RANGE(1, n))
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const g = givens[`${r},${c}`]
+      st.cand.set(interior(r, c), g != null ? new Set([g]) : RANGE(1, n))
+    }
   }
   for (const k of keys) {
     const side = k[0]; const i = +k.slice(1)
@@ -141,7 +143,7 @@ function matchingBounds (line) {
 function matchingReverse () {
   for (const g of groups) {
     const clueId = g.cells[0]
-    if (st.cand.get(clueId).size === 1) continue          // pinned: the component's !hasValue guard
+    if (st.cand.get(clueId).size === 1) continue // pinned: the component's !hasValue guard
     const mb = matchingBounds(g.cells.slice(1))
     if (!mb) continue
     for (const d of [...st.cand.get(clueId)]) if (d < mb.min || d > mb.max) st.cand.get(clueId).delete(d)
@@ -154,10 +156,12 @@ const floorGroup = makeAllDifferentFloor(st, { kind: FLOOR, maxDigit: n })
 const alldiffGroups = []
 for (let r = 0; r < n; r++) alldiffGroups.push(Array.from({ length: n }, (_, c) => interior(r, c)))
 for (let c = 0; c < n; c++) alldiffGroups.push(Array.from({ length: n }, (_, r) => interior(r, c)))
-for (let br = 0; br < n; br += bh) for (let bc = 0; bc < n; bc += bw) {
-  const cells = []
-  for (let dr = 0; dr < bh; dr++) for (let dc = 0; dc < bw; dc++) cells.push(interior(br + dr, bc + dc))
-  alldiffGroups.push(cells)
+for (let br = 0; br < n; br += bh) {
+  for (let bc = 0; bc < n; bc += bw) {
+    const cells = []
+    for (let dr = 0; dr < bh; dr++) for (let dc = 0; dc < bw; dc++) cells.push(interior(br + dr, bc + dc))
+    alldiffGroups.push(cells)
+  }
 }
 
 // ---- measure one run ----

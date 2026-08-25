@@ -10,7 +10,11 @@
 #
 # Writes PUZZLE_LINK.txt next to this script.
 
-import json, pathlib, sys, urllib.parse
+import json
+import pathlib
+import sys
+import urllib.parse
+
 from lzstring import LZString
 
 HERE = pathlib.Path(__file__).parent
@@ -23,7 +27,9 @@ ORIGINAL = HERE / "numbered_rooms.url"
 def build():
     url = ORIGINAL.read_text().strip()
     payload = url.split("puzzle=")[-1]
-    doc = json.loads(LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(payload)))
+    doc = json.loads(
+        LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(payload))
+    )
 
     # Carve the interior: keep only the givens the components cannot solve without
     # (min_givens.json), then drop the "given" flag on the rest. A cell with no
@@ -40,31 +46,47 @@ def build():
         if d.get("name") == "Custom Numbered Rooms":
             d["backend"]["code"] = minify_js((HERE / "main.js").read_text())
             d["components"] = [
-                {"type": "code", "name": name,
-                 "code": minify_js((HERE / f"{name}.js").read_text())}
+                {
+                    "type": "code",
+                    "name": name,
+                    "code": minify_js((HERE / f"{name}.js").read_text()),
+                }
                 for name in ("NumberedRoomsComponent", "NumberedRoomsPairComponent")
             ]
             break
     else:
         raise SystemExit("template is missing the 'Custom Numbered Rooms' constraint")
-    link = "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(json.dumps(doc))
+    link = "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(
+        json.dumps(doc)
+    )
     return link, doc, kept
 
 
 def check(link, doc, kept):
-    back = json.loads(LZString.decompressFromEncodedURIComponent(
-        urllib.parse.unquote(link.split("puzzle=")[-1])))
+    back = json.loads(
+        LZString.decompressFromEncodedURIComponent(
+            urllib.parse.unquote(link.split("puzzle=")[-1])
+        )
+    )
     assert back == doc, "link does not decode back to the built document"
-    nr = next(c for c in doc["puzzle"]["constraints"]
-              if c.get("definition", {}).get("name") == "Custom Numbered Rooms")
+    nr = next(
+        c
+        for c in doc["puzzle"]["constraints"]
+        if c.get("definition", {}).get("name") == "Custom Numbered Rooms"
+    )
     comps = nr["definition"]["components"]
-    assert [x["name"] for x in comps] == ["NumberedRoomsComponent", "NumberedRoomsPairComponent"], comps
+    assert [x["name"] for x in comps] == [
+        "NumberedRoomsComponent",
+        "NumberedRoomsPairComponent",
+    ], comps
     assert "NumberedRoomsComponent" in nr["definition"]["backend"]["code"]
     assert "NumberedRoomsPairComponent" in nr["definition"]["backend"]["code"]
     # The shipped interior givens are exactly the carved set.
     cells = doc["puzzle"]["cells"]
     givens = json.loads((HERE / "gen_9.json").read_text())["givens"]
-    shipped = {i for i in givens if isinstance(cells[i], dict) and cells[i].get("given")}
+    shipped = {
+        i for i in givens if isinstance(cells[i], dict) and cells[i].get("given")
+    }
     assert shipped == kept, (sorted(shipped), sorted(kept))
 
 
@@ -72,4 +94,6 @@ if __name__ == "__main__":
     link, doc, kept = build()
     check(link, doc, kept)
     (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
-    print(f"wrote PUZZLE_LINK.txt ({len(link)} chars); shipped {len(kept)} interior givens {sorted(kept)}")
+    print(
+        f"wrote PUZZLE_LINK.txt ({len(link)} chars); shipped {len(kept)} interior givens {sorted(kept)}"
+    )
