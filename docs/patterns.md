@@ -81,3 +81,48 @@ Document shape (top level): `formatVersion`, `puzzle`. Inside `puzzle`:
 A `type: 1000` constraint carries `definition.backend.code` (the main segment)
 and `definition.components[]` (each `{ type: "code", name, code }`), plus
 `input.groups` for a local constraint.
+
+## Coupling opposite-end clues
+
+Two clues that read the same line from opposite ends couple into one bound that
+neither clue reaches alone. Both the Hit Counts and Running Start examples do
+this in a separate pair component (`*PairComponent.js`), which `main.js` adds
+whenever two groups hold the same line reversed.
+
+The bound has the same shape in both:
+
+- **Hit Counts:** a left hit at cell `j` is value `j+1`, a right hit is `n-j`;
+  they coincide only at the center, so the hit sets are disjoint and
+  `A + B <= n` (`n+1` when `n` is odd and the center hits both ways).
+- **Running Start:** the left run is an increasing prefix, the right run an
+  increasing-inward suffix; the two share at most the peak, so `A + B <= n + 1`.
+
+From the bound, cap each clue by the other's smallest remaining value: remove
+from `A` every candidate above `cap - min(B)`, and the reverse for `B`. It fires
+whenever either clue's candidates shrink.
+
+**Saturation pins the line.** When `min(A) + min(B) === cap`, both clues are
+pinned and every cell is committed. Hit Counts restricts each still-hittable
+cell to `{j+1, n-j}`; Running Start propagates the two monotone runs from the
+forced peak. These are per-cell cuts from the clues alone, before any interior
+digit is known.
+
+**Tighten the cap as cells fill.** The static cap is loose once interior cells
+lose the power to hit. Hit Counts recomputes `cap` each pass by summing, per
+cell, whether it can still hit either way; a lower cap is a stronger clue bound.
+Any end-pair bound whose terms decay as cells fill can do the same.
+
+## Cheap passes
+
+A component's `update` runs to a fixpoint and reruns on every change. Keep each
+pass cheap:
+
+- **Never yield an empty removal.** Guard every `yield` with
+  `if (removed.length > 0)`. A no-op Change wakes the solver for nothing and can
+  stall the fixpoint. Both examples guard every yield.
+- **Skip work the solved state makes pointless.** Guard the reverse pass (deduce
+  the clue from the line) behind `if (!puzzle.hasValue(clue))`; once the clue is
+  known there is nothing to deduce about it.
+- **Deduce both directions in one component.** Each line component runs the
+  clue-from-line and line-from-clue deductions in the same `update`, so one pass
+  prunes both ends.
