@@ -171,12 +171,13 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
     for c in range(n):
         groups.append(group(('T', c))); groups.append(group(('B', c)))
 
-    # cosmetics: hide the ring, box the shown clues, draw the interior border
+    # cosmetics: hide the ring, box every given outside cell, draw the border
     ring_cells = ([(0, c) for c in range(W)] + [(W - 1, c) for c in range(W)]
                   + [(r, 0) for r in range(1, W - 1)] + [(r, W - 1) for r in range(1, W - 1)])
     white = [rect(c, r) for (r, c) in ring_cells]
-    outlines = [rect(ci % W, ci // W) for ci in
-                (ring_index(k) for k in lines if k in active)]
+    # outline exactly the outside cells that show a given (clues and corners),
+    # and nothing where the ring is blank
+    outlines = [rect(c, r) for (r, c) in ring_cells if cells[idx(r, c)].get("given")]
     border = [[{"x": x, "y": 1} for x in range(1, n + 2)]
               + [{"x": n + 1, "y": y} for y in range(2, n + 2)]
               + [{"x": x, "y": n + 1} for x in range(n, 0, -1)]
