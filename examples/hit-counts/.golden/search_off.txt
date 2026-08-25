@@ -1,0 +1,2 @@
+gen_6.json: n=6, box 2x3, 13/24 clues shown, 11 hidden, 0 interior givens (floor: regin)
+  matching OFF: 261 search nodes, 1 solution, 236ms
