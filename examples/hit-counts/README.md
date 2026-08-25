@@ -21,6 +21,8 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `main.js` — the backend segment. One component per clued line.
 - `HitCountsComponent.js` — the per-line component. It bounds the clue from the
   line and forces or forbids hits when the clue's range demands it.
+- `SideSumComponent.js` — the per-side component. The `n` clues on one side sum
+  to exactly `n`; it propagates that sum across the side's clue cells.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `build_size.py` — builds the whole document from scratch for any grid size. It
   generates a grid, derives every line's hit count, carves a unique puzzle
@@ -34,6 +36,22 @@ no ordering. That makes Hit Counts simpler than Running Start.
   SudokuMaker links. Open one to play the example.
 - `frame.py`, `minify.py` — build helpers shared with Running Start (the
   interactive-outside frame cosmetics and the link-shrinking pass).
+
+## Side sums — a strong global clue
+
+The `n` clues on one side sum to **exactly** `n`. Take the left side. Its clue on
+row `r` counts the columns `j` where row `r` holds digit `j` at column `j`. Sum
+the left clues over all rows and regroup by column: for column `j`, how many rows
+hold digit `j` in column `j`? Column `j` is a permutation of `1..n`, so digit `j`
+sits there exactly once. Every column gives one hit, so the left clues sum to
+`n`. Rows are permutations too, so the same holds for every side.
+
+This couples every clue on a side: knowing `n - 1` of them fixes the last, and
+partial knowledge tightens the rest. `SideSumComponent` propagates it by bounds.
+`main.js` groups the clues by side using the step between a line's first two
+cells (`+1` left, `-1` right, `+W` top, `-W` bottom): same step, same side. It
+fires only on a full side of `n` clues — the sum is `n` exactly only when every
+line on the side is present, which the frame guarantees.
 
 ## Why no pair component
 
@@ -61,9 +79,9 @@ holding its own distance.
 ## Paste into SudokuMaker
 
 Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add one component
-segment, `HitCountsComponent`. Each group is one line: cell 0 the outside clue,
-the rest the line read inward.
+local constraint, and paste `main.js` as the main code. Add two component
+segments, `HitCountsComponent` and `SideSumComponent`. Each group is one line:
+cell 0 the outside clue, the rest the line read inward.
 
 ## What the component deduces
 
@@ -89,7 +107,7 @@ Soundness (needs Node):
 
 ```
 node examples/hit-counts/soundness-harness.mjs
-# -> 40000 tests, 0 violations, clue values 0..9 exercised, "PASS"
+# -> line + side-sum components, 0 violations, clue values 0..9, "PASS"
 ```
 
 The harness fuzzes random permutations of `1..9` read in a random direction, so
