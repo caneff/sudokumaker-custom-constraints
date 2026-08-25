@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Cross-constraint deduction for two Hit Counts clues on opposite ends of one
 // line. The left clue A counts cells whose value equals their distance from the
 // left; the right clue B counts cells whose value equals their distance from the
@@ -33,7 +34,7 @@ function setParams (instance, clueA, clueB, line) {
   instance.n = line.length
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
   const ca = Array.from(puzzle.getCandidates(clueA))
   const cb = Array.from(puzzle.getCandidates(clueB))
@@ -76,6 +77,6 @@ function* update (instance, puzzle) {
 }
 
 // Run once at creation: two given opposite clues can pin the whole line at load.
-function* initialize (instance, puzzle) {
-  yield* update(instance, puzzle)
+function * initialize (instance, puzzle) {
+  yield * update(instance, puzzle)
 }

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Cross-constraint deduction for two Running Start clues on opposite ends of one
 // line. The left clue A counts a strictly increasing run inward from the left;
 // the right clue B counts one inward from the right. On the same line those are
@@ -30,7 +31,7 @@ function setParams (instance, clueA, clueB, line) {
 }
 
 // Arc-consistency for a strict "a < b" using live candidates.
-function* less (puzzle, a, b) {
+function * less (puzzle, a, b) {
   const ca = Array.from(puzzle.getCandidates(a))
   const cb = Array.from(puzzle.getCandidates(b))
   const maxB = Math.max(...cb)
@@ -44,12 +45,12 @@ function* less (puzzle, a, b) {
 // Treat cells as one strictly increasing run of pinned length cells.length:
 // cell j needs j cells below it and (k-1-j) above, so it sits in
 // [lo+j, hi-(k-1-j)]. Also chain adjacent cells with `less`.
-function* incRun (puzzle, cells) {
+function * incRun (puzzle, cells) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const k = cells.length
   for (let j = 0; j < k; j++) {
-    if (j >= 1) yield* less(puzzle, cells[j - 1], cells[j])
+    if (j >= 1) yield * less(puzzle, cells[j - 1], cells[j])
     const floor = lo + j
     const ceil = hi - (k - 1 - j)
     const bad = []
@@ -58,7 +59,7 @@ function* incRun (puzzle, cells) {
   }
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
   const cap = n + 1
   const ca = Array.from(puzzle.getCandidates(clueA))
@@ -73,9 +74,9 @@ function* update (instance, puzzle) {
   // A + B <= cap always, and A >= minA, B >= minB. So minA + minB === cap forces
   // A = minA and B = minB (both pinned) with A + B = n + 1: the unimodal case.
   if (minA + minB === cap) {
-    const a = minA                       // increasing prefix length; peak at index a-1
+    const a = minA // increasing prefix length; peak at index a-1
     const peak = a - 1
-    yield* incRun(puzzle, line.slice(0, peak + 1))       // line[0..peak] strictly up
-    yield* incRun(puzzle, line.slice(peak).reverse())    // line[peak..n-1] strictly down
+    yield * incRun(puzzle, line.slice(0, peak + 1)) // line[0..peak] strictly up
+    yield * incRun(puzzle, line.slice(peak).reverse()) // line[peak..n-1] strictly down
   }
 }

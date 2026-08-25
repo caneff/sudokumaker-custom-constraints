@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Skyscrapers with an interactive outside clue. An outside clue k on a line
 //! means: read the line inward from the clue, and exactly k buildings are
 //! visible. A building is visible when it is taller than every building before
@@ -37,7 +38,7 @@ const KEY = (j, m) => j * 32 + m
 function forwardStates (puzzle, line) {
   const n = line.length
   const F = []
-  let cur = new Set([KEY(0, 0)])          // before cell 0: nothing visible, max 0
+  let cur = new Set([KEY(0, 0)]) // before cell 0: nothing visible, max 0
   for (let i = 0; i < n; i++) {
     const next = new Set()
     const cands = Array.from(puzzle.getCandidates(line[i]))
@@ -70,8 +71,7 @@ function backwardStates (puzzle, line, accept, hi) {
     for (let j = 0; j <= n; j++) {
       for (let m = 0; m <= hi; m++) {
         for (const d of cands) {
-          if (d > m) { if (C[i + 1].has(KEY(j + 1, d))) { cur.add(KEY(j, m)); break } }
-          else if (d < m) { if (C[i + 1].has(KEY(j, m))) { cur.add(KEY(j, m)); break } }
+          if (d > m) { if (C[i + 1].has(KEY(j + 1, d))) { cur.add(KEY(j, m)); break } } else if (d < m) { if (C[i + 1].has(KEY(j, m))) { cur.add(KEY(j, m)); break } }
         }
       }
     }
@@ -80,7 +80,7 @@ function backwardStates (puzzle, line, accept, hi) {
   return C
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clue, line } = instance
   const n = line.length
   const hi = helpers.digits.maxDigit
@@ -102,7 +102,7 @@ function* update (instance, puzzle) {
   // counts still open once the clue's own candidates are taken into account
   const accept = new Set()
   for (const d of puzzle.getCandidates(clue)) if (lineFeasible.has(d)) accept.add(d)
-  if (accept.size === 0) return           // contradiction; the solver sees it on the clue
+  if (accept.size === 0) return // contradiction; the solver sees it on the clue
 
   // ---- Forward: keep only line candidates on some accepted path ----
   const C = backwardStates(puzzle, line, accept, hi)
@@ -114,8 +114,7 @@ function* update (instance, puzzle) {
       for (const key of prev) {
         const j = (key / 32) | 0
         const m = key % 32
-        if (d > m) { if (C[i].has(KEY(j + 1, d))) { ok = true; break } }
-        else if (d < m) { if (C[i].has(KEY(j, m))) { ok = true; break } }
+        if (d > m) { if (C[i].has(KEY(j + 1, d))) { ok = true; break } } else if (d < m) { if (C[i].has(KEY(j, m))) { ok = true; break } }
       }
       if (!ok) bad.push(d)
     }

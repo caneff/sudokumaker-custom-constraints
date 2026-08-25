@@ -13,12 +13,18 @@
 # Args: n box_height box_width   (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
 
-import json, pathlib, random, sys, urllib.parse
-from ortools.sat.python import cp_model
+import json
+import pathlib
+import random
+import sys
+import urllib.parse
+
 from lzstring import LZString
+from ortools.sat.python import cp_model
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 from frame import cosmetics
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["SkyscraperComponent.js", "SkyscraperPairComponent.js"]
@@ -26,14 +32,21 @@ COMPONENTS = ["SkyscraperComponent.js", "SkyscraperPairComponent.js"]
 
 # ---- grid generation ------------------------------------------------------
 
+
 def make_grid(rng, n, bh, bw):
     # Start from the standard shift pattern, then shuffle bands, rows, stacks,
     # columns, and digit labels. Every step preserves sudoku validity.
     base = [[((r * bw + r // bh + c) % n) for c in range(n)] for r in range(n)]
-    bands = [b * bh + r for b in rng.sample(range(n // bh), n // bh)
-             for r in rng.sample(range(bh), bh)]
-    stacks = [s * bw + c for s in rng.sample(range(n // bw), n // bw)
-              for c in rng.sample(range(bw), bw)]
+    bands = [
+        b * bh + r
+        for b in rng.sample(range(n // bh), n // bh)
+        for r in rng.sample(range(bh), bh)
+    ]
+    stacks = [
+        s * bw + c
+        for s in rng.sample(range(n // bw), n // bw)
+        for c in rng.sample(range(bw), bw)
+    ]
     digits = rng.sample(range(1, n + 1), n)
     return [[digits[base[bands[r]][stacks[c]]] for c in range(n)] for r in range(n)]
 
@@ -41,11 +54,11 @@ def make_grid(rng, n, bh, bw):
 def make_lines(n):
     lines = {}
     for r in range(n):
-        lines[('L', r)] = [(r, c) for c in range(n)]
-        lines[('R', r)] = [(r, c) for c in range(n - 1, -1, -1)]
+        lines[("L", r)] = [(r, c) for c in range(n)]
+        lines[("R", r)] = [(r, c) for c in range(n - 1, -1, -1)]
     for c in range(n):
-        lines[('T', c)] = [(r, c) for r in range(n)]
-        lines[('B', c)] = [(r, c) for r in range(n - 1, -1, -1)]
+        lines[("T", c)] = [(r, c) for r in range(n)]
+        lines[("B", c)] = [(r, c) for r in range(n - 1, -1, -1)]
     return lines
 
 
@@ -66,7 +79,7 @@ def add_visibility(m, x, cells, kk, n, tag):
     for i in range(n):
         b = m.NewBoolVar(f"v{tag}_{i}")
         if i == 0:
-            m.Add(b == 1)                       # the first building is always visible
+            m.Add(b == 1)  # the first building is always visible
         else:
             greater = []
             for j in range(i):
@@ -88,21 +101,30 @@ def unique(lines, clue, active, givens, n, bh, bw):
         m.AddAllDifferent([x[r, i] for r in range(n)])
     for br in range(0, n, bh):
         for bc in range(0, n, bw):
-            m.AddAllDifferent([x[br + dr, bc + dc] for dr in range(bh) for dc in range(bw)])
-    for (r, c), v in givens.items(): m.Add(x[r, c] == v)
+            m.AddAllDifferent(
+                [x[br + dr, bc + dc] for dr in range(bh) for dc in range(bw)]
+            )
+    for (r, c), v in givens.items():
+        m.Add(x[r, c] == v)
     for k in active:
         cells = lines[k]
         add_visibility(m, x, cells, clue[k], n, f"{k[0]}{k[1]}")
-    s = cp_model.CpSolver(); s.parameters.max_time_in_seconds = 10; s.parameters.num_workers = 8
-    if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE): return None
+    s = cp_model.CpSolver()
+    s.parameters.max_time_in_seconds = 10
+    s.parameters.num_workers = 8
+    if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        return None
     s1 = {(r, c): s.Value(x[r, c]) for r in range(n) for c in range(n)}
     lits = []
     for (r, c), v in s1.items():
         b = m.NewBoolVar(f"d{r}{c}")
-        m.Add(x[r, c] != v).OnlyEnforceIf(b); m.Add(x[r, c] == v).OnlyEnforceIf(b.Not())
+        m.Add(x[r, c] != v).OnlyEnforceIf(b)
+        m.Add(x[r, c] == v).OnlyEnforceIf(b.Not())
         lits.append(b)
     m.AddBoolOr(lits)
-    s2 = cp_model.CpSolver(); s2.parameters.max_time_in_seconds = 10; s2.parameters.num_workers = 8
+    s2 = cp_model.CpSolver()
+    s2.parameters.max_time_in_seconds = 10
+    s2.parameters.num_workers = 8
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
@@ -113,28 +135,36 @@ def generate(n, bh, bw, seeds):
         rng = random.Random(seed)
         grid = make_grid(rng, n, bh, bw)
         clue = {k: sky([grid[r][c] for (r, c) in cells]) for k, cells in lines.items()}
-        active = set(lines.keys())      # every line clued while carving givens
+        active = set(lines.keys())  # every line clued while carving givens
         givens = {}
-        cells_all = [(r, c) for r in range(n) for c in range(n)]; rng.shuffle(cells_all)
+        cells_all = [(r, c) for r in range(n) for c in range(n)]
+        rng.shuffle(cells_all)
         if not unique(lines, clue, active, givens, n, bh, bw):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
-                if unique(lines, clue, active, givens, n, bh, bw): break
+                if unique(lines, clue, active, givens, n, bh, bw):
+                    break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
-            if not unique(lines, clue, active, givens, n, bh, bw): givens[cell] = v
+            if not unique(lines, clue, active, givens, n, bh, bw):
+                givens[cell] = v
         cnt = len(givens)
         print(f"  seed {seed}: interior givens = {cnt}")
         if best is None or cnt < best[0]:
             best = (cnt, seed, grid, clue, dict(givens), set(active))
     cnt, seed, grid, clue, givens, active = best
-    rng = random.Random(seed * 7); order = list(active); rng.shuffle(order)
+    rng = random.Random(seed * 7)
+    order = list(active)
+    rng.shuffle(order)
     for k in order:
         active.discard(k)
-        if not unique(lines, clue, active, givens, n, bh, bw): active.add(k)
+        if not unique(lines, clue, active, givens, n, bh, bw):
+            active.add(k)
     assert unique(lines, clue, active, givens, n, bh, bw) is True
-    print(f"CHOSEN seed {seed}: interior givens={len(givens)}, clues shown={len(active)}, "
-          f"clues interactive (hidden)={4 * n - len(active)}")
+    print(
+        f"CHOSEN seed {seed}: interior givens={len(givens)}, clues shown={len(active)}, "
+        f"clues interactive (hidden)={4 * n - len(active)}"
+    )
     return seed, grid, clue, givens, active, lines
 
 
@@ -148,15 +178,19 @@ RULE_EXAMPLES = {
 }
 
 
-CORNER_NOTE = ("The 1s in the corners only fill space for SudokuMaker's solver; "
-               "delete them before publishing.")
+CORNER_NOTE = (
+    "The 1s in the corners only fill space for SudokuMaker's solver; "
+    "delete them before publishing."
+)
 
 
 def rule_text(n):
-    rule = ("Skyscrapers (interactive outside clues): each outside cell holds a digit "
-            "equal to the number of buildings visible along its line. A building is "
-            "visible when it is taller than every building before it. Blank outside "
-            "cells are interactive: read them off the line as you solve.")
+    rule = (
+        "Skyscrapers (interactive outside clues): each outside cell holds a digit "
+        "equal to the number of buildings visible along its line. A building is "
+        "visible when it is taller than every building before it. Blank outside "
+        "cells are interactive: read them off the line as you solve."
+    )
     ex = RULE_EXAMPLES.get(n)
     if ex:
         rule = f"{rule} For example, {ex}."
@@ -177,21 +211,29 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
     for r in range(n):
         for c in range(n):
             cell = {"value": grid[r][c]}
-            if (r, c) in givens: cell["given"] = True
+            if (r, c) in givens:
+                cell["given"] = True
             cells[idx(r + 1, c + 1)] = cell
 
     # clue ring: every line carries its true clue value; shown clues are given,
     # the rest stay blank for the solver to deduce (the interactive clues)
     def ring_index(key):
         s, i = key
-        if s == 'L': return idx(i + 1, 0)
-        if s == 'R': return idx(i + 1, W - 1)
-        if s == 'T': return idx(0, i + 1)
-        if s == 'B': return idx(W - 1, i + 1)
+        if s == "L":
+            return idx(i + 1, 0)
+        if s == "R":
+            return idx(i + 1, W - 1)
+        if s == "T":
+            return idx(0, i + 1)
+        if s == "B":
+            return idx(W - 1, i + 1)
+        return None
+
     for key in lines:
         ci = ring_index(key)
         cell = {"value": clue[key]}
-        if key in active: cell["given"] = True
+        if key in active:
+            cell["given"] = True
         cells[ci] = cell
 
     # regions: interior boxes, ring = -1
@@ -201,69 +243,110 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
             regions[idx(r + 1, c + 1)] = (r // bh) * (n // bw) + (c // bw)
 
     # transparent row/column cages over the interior (hidden rowcol helpers)
-    row_cages = [{"cells": [idx(r + 1, c + 1) for c in range(n)], "value": 0} for r in range(n)]
-    col_cages = [{"cells": [idx(r + 1, c + 1) for r in range(n)], "value": 0} for c in range(n)]
+    row_cages = [
+        {"cells": [idx(r + 1, c + 1) for c in range(n)], "value": 0} for r in range(n)
+    ]
+    col_cages = [
+        {"cells": [idx(r + 1, c + 1) for r in range(n)], "value": 0} for c in range(n)
+    ]
     cage_style = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
 
     # skyscraper groups: clue cell then line read inward
     def group(key):
         ci = ring_index(key)
         line = [idx(r + 1, c + 1) for (r, c) in lines[key]]
-        return {"cells": [ci] + line, "value": ""}
+        return {"cells": [ci, *line], "value": ""}
+
     groups = []
     for r in range(n):
-        groups.append(group(('L', r))); groups.append(group(('R', r)))
+        groups.append(group(("L", r)))
+        groups.append(group(("R", r)))
     for c in range(n):
-        groups.append(group(('T', c))); groups.append(group(('B', c)))
+        groups.append(group(("T", c)))
+        groups.append(group(("B", c)))
 
     backend_code = minify_js((HERE / "main.js").read_text())
-    components = [{"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
-                 for f in COMPONENTS]
+    components = [
+        {"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
+        for f in COMPONENTS
+    ]
 
     postproc_code = (
         "function postprocessJSON(json) {\n"
         "    json.metadata.norowcol = true;\n"
         '    json.cages.forEach(cage => cage.hidden ? cage.type = "rowcol" : null)\n'
-        "}\n")
+        "}\n"
+    )
 
     constraints = [
         {"type": 1, "regions": regions},
         {"name": "Rows", "type": 301, "cages": row_cages, "style": cage_style},
         {"name": "Columns", "type": 301, "cages": col_cages, "style": cage_style},
         {"type": 0},
-        {"name": "Skyscraper Lines", "type": 1000,
-         "definition": {
-             "name": "Skyscraper Lines",
-             "input": [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}],
-             "backend": {"type": "code", "code": backend_code},
-             "components": components},
-         "input": {"groups": groups}, "style": {}},
-        {"type": 1000,
-         "definition": {"name": "JSON Postproc", "input": [],
-                        "backend": {"type": "code", "code": postproc_code},
-                        "components": []},
-         "input": {}, "style": {}},
+        {
+            "name": "Skyscraper Lines",
+            "type": 1000,
+            "definition": {
+                "name": "Skyscraper Lines",
+                "input": [
+                    {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
+                ],
+                "backend": {"type": "code", "code": backend_code},
+                "components": components,
+            },
+            "input": {"groups": groups},
+            "style": {},
+        },
+        {
+            "type": 1000,
+            "definition": {
+                "name": "JSON Postproc",
+                "input": [],
+                "backend": {"type": "code", "code": postproc_code},
+                "components": [],
+            },
+            "input": {},
+            "style": {},
+        },
         *cosmetics(W, cells),
     ]
 
-    return {"formatVersion": "1.6.0", "puzzle": {
-        "name": f"Skyscrapers Interactive {n}x{n}", "author": "generated",
-        "comment": rule_text(n),
-        # minDigit/maxDigit pin the digit range to n; the app otherwise
-        # defaults a custom puzzle to 0..9 regardless of grid size.
-        "type": "custom", "width": W, "height": W, "minDigit": 1, "maxDigit": n,
-        "cells": cells, "constraints": constraints,
-        "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}}}}
+    return {
+        "formatVersion": "1.6.0",
+        "puzzle": {
+            "name": f"Skyscrapers Interactive {n}x{n}",
+            "author": "generated",
+            "comment": rule_text(n),
+            # minDigit/maxDigit pin the digit range to n; the app otherwise
+            # defaults a custom puzzle to 0..9 regardless of grid size.
+            "type": "custom",
+            "width": W,
+            "height": W,
+            "minDigit": 1,
+            "maxDigit": n,
+            "cells": cells,
+            "constraints": constraints,
+            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
+        },
+    }
 
 
 def check(link, doc, n):
-    back = json.loads(LZString.decompressFromEncodedURIComponent(
-        urllib.parse.unquote(link.split("puzzle=")[-1])))
+    back = json.loads(
+        LZString.decompressFromEncodedURIComponent(
+            urllib.parse.unquote(link.split("puzzle=")[-1])
+        )
+    )
     assert back == doc, "link does not decode back to the built document"
-    sk = next(c for c in doc["puzzle"]["constraints"]
-              if c.get("definition", {}).get("name") == "Skyscraper Lines")
-    assert len(sk["input"]["groups"]) == 4 * n, f"expected {4*n} groups"
-    assert sk["definition"]["backend"]["code"] == minify_js((HERE / "main.js").read_text())
+    sk = next(
+        c
+        for c in doc["puzzle"]["constraints"]
+        if c.get("definition", {}).get("name") == "Skyscraper Lines"
+    )
+    assert len(sk["input"]["groups"]) == 4 * n, f"expected {4 * n} groups"
+    assert sk["definition"]["backend"]["code"] == minify_js(
+        (HERE / "main.js").read_text()
+    )
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == 1
 
@@ -274,12 +357,23 @@ if __name__ == "__main__":
     seeds = range(101, 141) if len(sys.argv) < 5 else range(101, 101 + int(sys.argv[4]))
     seed, grid, clue, givens, active, lines = generate(n, bh, bw, seeds)
     doc = build_doc(n, bh, bw, grid, clue, givens, active, lines)
-    link = "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(json.dumps(doc))
+    link = "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(
+        json.dumps(doc)
+    )
     check(link, doc, n)
     (HERE / f"PUZZLE_LINK_{n}x{n}.txt").write_text(link + "\n")
-    json.dump({"seed": seed, "n": n, "box": [bh, bw], "grid": grid,
-               "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
-               "active": [f"{s}{i}" for (s, i) in active],
-               "givens": {f"{r},{c}": v for (r, c), v in givens.items()}},
-              open(HERE / f"gen_{n}.json", "w"), indent=1)
+    with (HERE / f"gen_{n}.json").open("w") as f:
+        json.dump(
+            {
+                "seed": seed,
+                "n": n,
+                "box": [bh, bw],
+                "grid": grid,
+                "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
+                "active": [f"{s}{i}" for (s, i) in active],
+                "givens": {f"{r},{c}": v for (r, c), v in givens.items()},
+            },
+            f,
+            indent=1,
+        )
     print(f"wrote PUZZLE_LINK_{n}x{n}.txt ({len(link)} chars) and gen_{n}.json")

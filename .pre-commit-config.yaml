@@ -1,0 +1,36 @@
+# Fast local gate before each commit. Run once after cloning:
+#   uvx pre-commit install
+# The full gate (tests + soundness fuzz) is too slow for a commit hook and runs
+# in CI via `just check`. Keep verbatim comparison files and probe goldens
+# untouched — they must stay byte-for-byte.
+exclude: '^(examples/numbered-rooms/ORIGINAL_|examples/skyscraper/original/|examples/[^/]+/\.golden/)'
+
+repos:
+  # Python: ruff check + format, its own isolated env, reads ruff.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Upstream hygiene.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+
+  # JavaScript: StandardJS runs from the repo's node_modules, reading the
+  # package.json "standard" config (globals, snippet excludes). pass_filenames
+  # is off so it lints the whole project as configured, not a hook-passed list.
+  - repo: local
+    hooks:
+      - id: standard
+        name: StandardJS
+        entry: npx standard
+        language: system
+        files: '\.(js|mjs)$'
+        pass_filenames: false

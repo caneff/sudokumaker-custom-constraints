@@ -30,7 +30,7 @@ function visible (vals) {
 
 function shuffled () {
   const a = [...Array(N).keys()].map(i => i + 1)
-  for (let i = N - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]] }
+  for (let i = N - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] }
   return a
 }
 
@@ -67,7 +67,7 @@ const CA = 100
 const CB = 101
 let pairTests = 0
 let pairBad = 0
-let pairFired = 0        // coverage: the unimodal (saturating) branch actually ran
+let pairFired = 0 // coverage: the unimodal (saturating) branch actually ran
 for (let iter = 0; iter < 20000; iter++) {
   // half random lines, half forced unimodal so L + R == N + 1 fires often
   let perm

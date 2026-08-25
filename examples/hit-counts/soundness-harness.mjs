@@ -15,7 +15,7 @@ import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { read, load } = makeIo(HERE)
+const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
@@ -29,19 +29,19 @@ const pairMod = load('HitCountsPairComponent.js', ['setParams', 'update'])
 function seeder (lo, hi) {
   return (c, v) => {
     const mode = [1, 2, 3][(rnd() * 3) | 0]
-    if (mode === 1) return [v]                       // pinned
+    if (mode === 1) return [v] // pinned
     const s = new Set([v])
-    for (let d = lo; d <= hi; d++) if (rnd() < 0.5) s.add(d)   // subset keeping truth
+    for (let d = lo; d <= hi; d++) if (rnd() < 0.5) s.add(d) // subset keeping truth
     return [...s]
   }
 }
 
 const CLUE = 100
-const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]] } return a }
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
 const hits = perm => perm.reduce((k, x, i) => k + (x === i + 1 ? 1 : 0), 0)
 
 // A pool of lines: many random permutations plus the two forced extremes.
-const lines = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [2, 3, 4, 5, 6, 7, 8, 9, 1]]   // identity (9), derangement (0)
+const lines = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [2, 3, 4, 5, 6, 7, 8, 9, 1]] // identity (9), derangement (0)
 for (let i = 0; i < 400; i++) lines.push(shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
 let tests = 0
@@ -59,8 +59,8 @@ for (let iter = 0; iter < 40000; iter++) {
   const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v))
   const inst = {}
   mod.setParams(inst, CLUE, [0, 1, 2, 3, 4, 5, 6, 7, 8])
-  const had8 = p.getCandidates(CLUE).has(8)          // n - 1 = 8 for a line of 9
-  for (const _ of mod.initialize(inst, p)) { /* one-time n-1 prune */ }
+  const had8 = p.getCandidates(CLUE).has(8) // n - 1 = 8 for a line of 9
+  Array.from(mod.initialize(inst, p)) // one-time n-1 prune
   if (had8 && !p.getCandidates(CLUE).has(8)) pruned8++
   const v = violates(mod, inst, p, truth)
   tests++
@@ -76,7 +76,7 @@ const N = 9
 const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
 function composition () {
   const v = new Array(N).fill(0)
-  for (let h = 0; h < N; h++) v[(rnd() * N) | 0]++   // drop nine hits into nine slots
+  for (let h = 0; h < N; h++) v[(rnd() * N) | 0]++ // drop nine hits into nine slots
   return v
 }
 let sideTests = 0
@@ -108,7 +108,7 @@ const trueA = pairLine.reduce((k, v, j) => k + (v === j + 1 ? 1 : 0), 0)
 const trueB = pairLine.reduce((k, v, j) => k + (v === nP - j ? 1 : 0), 0)
 let pairTests = 0
 let pairBad = 0
-let pairFired = 0     // coverage: the extreme (every-cell-a-hit) branch ran
+let pairFired = 0 // coverage: the extreme (every-cell-a-hit) branch ran
 for (let iter = 0; iter < 20000; iter++) {
   const truth = { [PA]: trueA, [PB]: trueB }
   for (let i = 0; i < nP; i++) truth[PLINE[i]] = pairLine[i]
@@ -154,7 +154,7 @@ console.log('pair dynamic-cap:', dynTests, 'tests,', dynBad, 'violations')
 // right target 4). The cap drops to 3; clues A = 0, B = 3 force the extreme. The
 // three can-hit cells must be pinned to their pairs, and L0 must be left untouched
 // (never emptied). Truth is a consistent state with A = 0, B = 3.
-const G = { 400: 0, 401: 3, 20: 2, 21: 3, 22: 2, 23: 1 }   // clueA, clueB, L0..L3
+const G = { 400: 0, 401: 3, 20: 2, 21: 3, 22: 2, 23: 1 } // clueA, clueB, L0..L3
 const gCand = new Map([
   [400, new Set([0])], [401, new Set([3])],
   [20, new Set([2])], [21, new Set([1, 2, 3, 4])],
@@ -168,7 +168,7 @@ const gp = {
 }
 const gInst = {}
 pairMod.setParams(gInst, 400, 401, [20, 21, 22, 23])
-for (const _ of pairMod.update(gInst, gp)) { /* drain */ }
+Array.from(pairMod.update(gInst, gp)) // drain
 let guardBad = 0
 for (const [c, v] of Object.entries(G)) {
   if (!gCand.get(+c).has(v)) { guardBad++; console.log('GUARD lost', c, v) }

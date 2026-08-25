@@ -16,6 +16,13 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   every constraint change and expect zero violations. Full standards in
   `CODING_STANDARDS.md`.
 
+## Commands
+
+- **Full gate — run before calling any task done:** `just check`
+- Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
+- Probe goldens: `just test` — Soundness fuzz: `just soundness`
+- Node dev tools install with `npm ci`; Python runs through `uv`.
+
 ## Pointers
 
 - Coding + testing standards → `CODING_STANDARDS.md`

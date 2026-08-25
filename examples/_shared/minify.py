@@ -19,11 +19,11 @@ def minify_js(src):
     out = []
     for line in src.splitlines():
         stripped = line.lstrip()
-        if stripped.startswith("//!"):                 # keep, as a plain comment
+        if stripped.startswith("//!"):  # keep, as a plain comment
             indent = line[: len(line) - len(stripped)]
             out.append(indent + "// " + stripped[3:].strip())
             continue
-        line = re.sub(r"(?<!:)//.*$", "", line)        # drop comments, keep URLs
+        line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
         if line.strip():
             out.append(line.rstrip())
     return "\n".join(out) + "\n"
@@ -35,7 +35,8 @@ if __name__ == "__main__":
         "  //! kept note\n"
         "const x = 1        // inline note, dropped\n"
         "\n"
-        "  const u = 'http://a/b'\n")
+        "  const u = 'http://a/b'\n"
+    )
     got = minify_js(sample)
     assert got == "  // kept note\nconst x = 1\n  const u = 'http://a/b'\n", repr(got)
     print("minify self-check OK")

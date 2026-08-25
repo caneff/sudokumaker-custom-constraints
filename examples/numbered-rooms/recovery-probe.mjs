@@ -44,7 +44,6 @@ globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => 
 const interiorCells = []
 for (let r = 1; r <= n; r++) for (let c = 1; c <= n; c++) interiorCells.push(r * W + c)
 const clueCells = groups.map(g => g.cells[0])
-const givenSet = new Set(givens)
 
 const rows = []
 for (let r = 1; r <= n; r++) rows.push(Array.from({ length: n }, (_, c) => r * W + (c + 1)))

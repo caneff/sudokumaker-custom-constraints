@@ -20,7 +20,7 @@ export function installGlobals (minDigit, maxDigit) {
 export function makeIo (here) {
   const read = f => readFileSync(join(here, f), 'utf8')
   const load = (file, names) =>
-    eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()')
+    eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
   return { read, load }
 }
 
@@ -55,7 +55,7 @@ export function violates (mod, inst, p, truth) {
   for (let pass = 0; pass < 20; pass++) {
     let sizes = 0
     for (const s of p._cand.values()) sizes += s.size
-    for (const _ of mod.update(inst, p)) { /* drain */ }
+    Array.from(mod.update(inst, p)) // drain
     let after = 0
     for (const s of p._cand.values()) after += s.size
     if (after === sizes) break
