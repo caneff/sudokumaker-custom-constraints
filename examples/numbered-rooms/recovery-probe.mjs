@@ -26,7 +26,7 @@
 import { readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo } from '../_shared/harness-lib.mjs'
 import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
@@ -94,10 +94,53 @@ function buildComps () {
   })
 }
 
+// ---- the ORIGINAL wiring (ORIGINAL_*.js), modelled ----
+// The shipped version was a wrapper (ORIGINAL_CustomIndexComponent.js) that did
+// NOTHING while its clue cell was blank, and once the clue was pinned swapped in
+// the built-in IndexComponent to run the forward "index the line" prune. No pair
+// coupling, no line -> clue direction. This engine models neither replaceComponent
+// nor the built-in, so, exactly as the Skyscraper probe does, we model the
+// original line as OUR component gated to fire only when the clue is pinned: at
+// that point our update runs the same forward index prune the built-in does. That
+// GIVES the original every per-line deduction ours has for a KNOWN clue; the only
+// features left under test are the two our version adds — the line -> clue
+// direction that lets a blank clue be deduced, and the pair index-sum coupling.
+// If the real built-in is weaker than our forward pass, the original is slower
+// still, so this comparison is conservative.
+const nrMod = makeIo(HERE).load('NumberedRoomsComponent.js', ['setParams', 'update', 'validate'])
+const gatedLine = {
+  setParams: nrMod.setParams,
+  * update (inst, puzzle) {
+    if (!puzzle.hasValue(inst.clue)) return // inert until the clue is pinned
+    yield * nrMod.update(inst, puzzle) //     then the forward index prune (= built-in)
+  },
+  validate: nrMod.validate
+}
+function buildOriginal () {
+  return groups.map(g => {
+    const inst = { name: '' }
+    gatedLine.setParams(inst, g.cells[0], g.cells.slice(1))
+    inst.__mod = gatedLine
+    return inst
+  })
+}
+
 // A full assignment is a real solution only if every component instance's own
 // validate accepts it (update prunes toward the rule but does not reject a
 // completed instance on its own). This is the components' rule, not a re-model.
 const makeValidLeaf = comps => () => comps.every(inst => inst.__mod.validate(inst, state.puzzle))
+
+// A wiring-independent leaf check: the Numbered Rooms rule read straight off the
+// geometry (line[k-1] === clue), so both wirings are scored by the same truth.
+function geometricLeaf () {
+  for (const g of groups) {
+    const clue = g.cells[0]; const line = g.cells.slice(1)
+    const k = state.puzzle.getValue(line[0])
+    if (k < 1 || k > line.length) return false
+    if (state.puzzle.getValue(line[k - 1]) !== state.puzzle.getValue(clue)) return false
+  }
+  return true
+}
 
 const floorGroup = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: n })
 
@@ -143,7 +186,7 @@ const floor = report('floor only ', false)
 const comp = report('components ', true)
 console.log(`  DELTA components over floor: clues +${comp.cluesPinned - floor.cluesPinned}, interior +${comp.interiorSolved - floor.interiorSolved}, removed +${comp.removed - floor.removed}`)
 
-// ---- uniqueness search ----
+// ---- uniqueness search (ours, the shipped 3-given puzzle) ----
 seed(kept)
 const comps = buildComps()
 runToFixpoint(state, comps, alldiffGroups, floorGroup)
@@ -157,5 +200,35 @@ const res = search(state, {
 })
 const note = res.capped ? ' CAPPED' : (res.solutions === 1 ? '' : ` (solutions=${res.solutions}!)`)
 console.log(`  uniqueness: ${res.nodes} search nodes, ${res.solutions} solution${res.solutions === 1 ? '' : 's'}, ${Date.now() - t}ms${note}`)
+
+// ---- solve-speed: ours vs the original, same start state ----
+// Both wire onto the PURE-CLUE puzzle — 36 clues shown, ZERO interior givens —
+// and branch the interior; clues are shown givens, so the search never branches
+// them. Zero givens is the honest stress test: with the 3 carved givens the
+// components finish by propagation (0 nodes) and so does the original, so nothing
+// separates them. Drop the givens and both must search. Fewer nodes = the extra
+// deduction our version adds (the pair index-sum coupling, plus the line -> clue
+// direction) paid off in less backtracking.
+const NODE_CAP = +((process.argv.find(a => a.startsWith('--cap=')) || '').split('=')[1]) || 200000
+const noGivens = new Set()
+function solveRun (build) {
+  seed(noGivens)
+  const c = build()
+  runToFixpoint(state, c, alldiffGroups, floorGroup)
+  const start = Date.now()
+  const r = search(state, { interior: interiorCells, comps: c, alldiffGroups, floorGroup, validLeaf: geometricLeaf, nodeCap: NODE_CAP })
+  return { ...r, ms: Date.now() - start }
+}
+const runs = { original: solveRun(buildOriginal), ours: solveRun(buildComps) }
+for (const label of ['original', 'ours']) {
+  const r = runs[label]
+  const tag = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions})`)
+  console.log(`  0-given ${label.padEnd(8)}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}, ${r.ms}ms${tag}`)
+}
+if (!runs.ours.capped && runs.ours.nodes > 0) {
+  const ratio = (runs.original.nodes / runs.ours.nodes).toFixed(0)
+  const atLeast = runs.original.capped ? '>' : ''
+  console.log(`  ours explores ${atLeast}${ratio}x fewer nodes than the original${runs.original.capped ? ' (original never finished within the cap)' : ''}`)
+}
 
 if (floor.lost || comp.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }

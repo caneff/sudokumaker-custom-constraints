@@ -28,6 +28,13 @@ check(!/\bsolutions=/.test(out), 'no extra-solution warning (solutions=N)')
 check(!/CAPPED/.test(out), 'search finished under the node cap (not capped)')
 check(!/TRUE-VALUE LOST/.test(out), 'no true value removed by any component')
 
+// The improvement, timed: on the pure-clue puzzle (0 interior givens) ours must
+// explore strictly fewer search nodes than the modelled original wrapper.
+const oNodes = +(out.match(/0-given original\s*: (\d+) search nodes/) || [])[1]
+const ourNodes = +(out.match(/0-given ours\s*: (\d+) search nodes/) || [])[1]
+check(Number.isFinite(oNodes) && Number.isFinite(ourNodes) && ourNodes < oNodes,
+  `ours searches fewer nodes than the original (${ourNodes} < ${oNodes})`)
+
 if (failed) {
   console.log('--- probe output ---')
   console.log(out)
