@@ -12,6 +12,8 @@
 
 import json, pathlib
 from lzstring import LZString
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from minify import minify_js
 from frame import cosmetics
 
