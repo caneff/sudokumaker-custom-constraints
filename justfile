@@ -3,16 +3,18 @@
 # Full gate (run before calling any task done): lint, tests, soundness fuzz.
 check: lint test soundness
 
-# Lint the Node code (StandardJS) and the Python generators (ruff). The .js
-# constraint snippets are excluded — they run in SudokuMaker, not Node.
+# Lint the Node code (StandardJS) and the Python generators (ruff check +
+# format check). The verbatim ORIGINAL_*/original/ snippets are excluded.
 lint:
     npx standard
     uvx ruff check examples
+    uvx ruff format --check examples
 
-# Auto-fix what the linters can.
+# Auto-fix + format in place.
 fmt:
     npx standard --fix
     uvx ruff check --fix examples
+    uvx ruff format examples
 
 # Regression goldens for the recovery/speed probes.
 test:

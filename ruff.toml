@@ -1,9 +1,18 @@
-# Light gate for the Python puzzle generators. This repo is JavaScript-first;
-# the .py files are build/generation scripts, not a typed package. So this
-# catches real bugs — pyflakes (unused imports, undefined names), import order,
-# pyupgrade, bugbear — but leaves out line-length and the formatter. The scripts
-# were not written to 88 columns, and reflowing them is a separate sweep, not
-# part of adding a lint gate. The strict ANN/S/N/ty stack a Python library would
-# carry is likewise deferred.
+# Gate for the Python puzzle generators. This repo is JavaScript-first; the .py
+# files are build/generation scripts, not a typed package. This select is the
+# bug-and-clarity core — pyflakes, imports, bugbear, pyupgrade, simplify,
+# comprehensions, perf, returns, pathlib, ruff-native — plus the formatter.
+#
+# Deliberately OUT: the rules that would rewrite the scripts' hand-chosen style
+# rather than catch a bug — ANN (annotate every function), E501 (line length),
+# E701/E702 (the compact one-liner style), S101 (asserts are fine in a script).
+# The full typed-package stack is a separate pass.
+#
+# No `ty`: 21 of its 22 diagnostics here are unresolved-import — ortools and
+# lzstring are on-demand deps (`uv run --with ...`), and the _shared helpers load
+# through a runtime sys.path.insert ty cannot follow. Type-checking these scripts
+# would mean declaring those deps and fighting sys.path for no real coverage.
+line-length = 88
+
 [lint]
-select = ["F", "I", "UP", "B"]
+select = ["F", "I", "B", "UP", "SIM", "C4", "PIE", "PERF", "RET", "PTH", "RUF"]
