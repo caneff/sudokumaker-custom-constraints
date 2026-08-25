@@ -37,8 +37,9 @@ no ordering. That makes Hit Counts simpler than Running Start.
   box_width == size`).
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` — the built
   SudokuMaker links. Open one to play the example.
-- `frame.py`, `minify.py` — build helpers shared with Running Start (the
-  interactive-outside frame cosmetics and the link-shrinking pass).
+- `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
+  Running Start (the interactive-outside frame cosmetics and the link-shrinking
+  pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.
 
 ## Side sums — a strong global clue
 

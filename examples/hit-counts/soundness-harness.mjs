@@ -10,60 +10,19 @@
 // the clue ranges over 0..9. We also force in the identity (clue 9) and a
 // derangement (clue 0) to exercise both extremes on every run.
 
-import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname } from 'path'
+import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const read = f => readFileSync(join(HERE, f), 'utf8')
+const { read, load } = makeIo(HERE)
+const { rnd } = makeRng()
 
-globalThis.SudokuDigitSet = { from: a => ({ __set: new Set(a), [Symbol.iterator] () { return this.__set[Symbol.iterator]() } }) }
-globalThis.helpers = { digits: { minDigit: 0, maxDigit: 9 } }
+installGlobals(0, 9)
 
-function load (file, names) {
-  return eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()')
-}
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 'scan', 'matchingBounds'])
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
 const pairMod = load('HitCountsPairComponent.js', ['setParams', 'update'])
-
-// Deterministic RNG.
-let rng = 12345
-const rnd = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff }
-
-// A mock puzzle over a truth map (cell -> true value). Each cell starts with a
-// candidate set that always contains its true value.
-function makePuzzle (truth, seed) {
-  const cand = new Map()
-  for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
-  return {
-    _cand: cand,
-    hasValue: c => cand.get(c).size === 1,
-    getValue: c => [...cand.get(c)][0],
-    getCandidates: c => cand.get(c),
-    getCellsAreFilled: cs => cs.every(c => cand.get(c).size === 1),
-    removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
-    removeCandidatesFromCell: (s, c) => { const set = cand.get(c); for (const d of s) set.delete(d) }
-  }
-}
-
-// Run update to a fixpoint (bounded), then report a cell that lost its true
-// value or went empty.
-function violates (m, inst, p, truth) {
-  for (let pass = 0; pass < 20; pass++) {
-    let sizes = 0
-    for (const s of p._cand.values()) sizes += s.size
-    for (const _ of m.update(inst, p)) { /* drain */ }
-    let after = 0
-    for (const s of p._cand.values()) after += s.size
-    if (after === sizes) break
-  }
-  for (const [c, v] of Object.entries(truth)) {
-    if (!p._cand.get(+c).has(v)) return { cell: +c, lost: v }
-    if (p._cand.get(+c).size === 0) return { cell: +c, empty: true }
-  }
-  return null
-}
 
 // A random candidate seed keeping the true value. `hi` bounds the range: line
 // cells use 1..9, the clue cell uses 0..9 (it can be 0).
