@@ -84,16 +84,31 @@ reach.
   `getCellsSeeEachOther` guard is load-bearing (remove it and it fails).
 - `build_link.py` — rebuilds the puzzle link with the new code.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle.
+- `derive_fixture.py` — decodes the hand-made puzzle (`numbered_rooms.url`) into
+  `gen_9.json`: the interior solution, the 31 interior givens, the box regions,
+  and the 36 clue+line groups.
+- `gen_9.json` — that fixture, the start state the recovery probe seeds.
+- `recovery-probe.mjs` — runs the real components (the same `main.js` wiring
+  SudokuMaker runs) over the fixture on top of a Régin-strength (GAC)
+  all-different floor, reports what propagation recovers, and proves the puzzle
+  unique with a DFS search. It reuses the shared engine in
+  `../_shared/recovery-lib.mjs`. With the 36 clues shown, the components solve
+  the interior in full (69 → 81 cells) and the puzzle is unique by propagation
+  alone — zero search nodes, one solution.
 
 ## Run
 
     node examples/numbered-rooms/soundness-harness.mjs
+    node examples/numbered-rooms/recovery-probe.mjs
+    uv run --with lzstring examples/numbered-rooms/derive_fixture.py   # rebuild gen_9.json
     uv run --with lzstring examples/numbered-rooms/build_link.py
 
 ## Not covered
 
-This rebuilds the existing hand-made puzzle with the stronger component; it does
-not regenerate the puzzle or re-check its uniqueness under the new logic (no
-OR-Tools pass, unlike `running-start`). The soundness harness proves the
-component never removes a true candidate — the property that keeps a real puzzle
-solvable.
+`recovery-probe.mjs` proves the puzzle unique under the shipped components (a
+JS-side check over the sudoku all-different plus the Numbered Rooms rule). It
+does not regenerate a fresh puzzle, and it is not an independent OR-Tools model
+of the constraint the way `running-start/generate.py` is — it runs the same
+component code the app runs, so a bug shared by the component and the probe
+would hide from both. The soundness harness is the separate guard: it proves the
+component never removes a true candidate.
