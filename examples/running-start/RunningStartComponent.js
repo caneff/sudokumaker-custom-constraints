@@ -1,3 +1,7 @@
+//! Running Start. An outside clue k on a line means: read inward, the first
+//! strictly ascending run is k cells long. So line[0..k-1] strictly increase,
+//! then (unless k is the whole line) line[k] drops below it.
+
 function getAffectedCells (clue, line) {
   return [clue, ...line]
 }

@@ -5,6 +5,8 @@
 // We add ONE self-contained component per line (see the gotcha about
 // replaceComponent and custom components in ../../docs/gotchas.md).
 
+//! Each group is one clued line: cell 0 is the outside clue, the rest is the
+//! line read inward from the cell next to the clue.
 const groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
 
 for (const g of groups) {

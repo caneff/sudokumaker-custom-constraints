@@ -15,6 +15,7 @@
 import json, pathlib, random, sys, urllib.parse
 from ortools.sat.python import cp_model
 from lzstring import LZString
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -181,8 +182,8 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
               + [{"x": x, "y": n + 1} for x in range(n, 0, -1)]
               + [{"x": 1, "y": y} for y in range(n, 0, -1)]]
 
-    rs_backend_code = (HERE / "main.js").read_text()
-    components = [{"type": "code", "name": f[:-3], "code": (HERE / f).read_text()}
+    rs_backend_code = minify_js((HERE / "main.js").read_text())
+    components = [{"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
                  for f in COMPONENTS]
 
     postproc_code = (
@@ -218,8 +219,8 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
 
     return {"formatVersion": "1.6.0", "puzzle": {
         "name": f"Running Start {n}x{n}", "author": "generated",
-        "comment": ("Running Start (Skyscrapers variant). Outside clues on lines "
-                    "give the length of the first ascending sequence read inward."),
+        "comment": ("Running Start. Outside clues on lines give the length of the "
+                    "first ascending sequence read inward."),
         "type": "custom", "width": W, "height": W,
         "cells": cells, "constraints": constraints,
         "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}}}}
@@ -232,7 +233,7 @@ def check(link, doc, n):
     rs_c = next(c for c in doc["puzzle"]["constraints"]
                 if c.get("definition", {}).get("name") == "Running Start Lines")
     assert len(rs_c["input"]["groups"]) == 4 * n, f"expected {4*n} groups"
-    assert rs_c["definition"]["backend"]["code"] == (HERE / "main.js").read_text()
+    assert rs_c["definition"]["backend"]["code"] == minify_js((HERE / "main.js").read_text())
 
 
 if __name__ == "__main__":
