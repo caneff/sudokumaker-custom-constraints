@@ -1,7 +1,9 @@
 // Behavior test for the Numbered Rooms recovery probe. There is no golden here
-// (unlike Hit Counts) — the probe is new, so the test asserts the two facts the
-// ticket cares about: the DFS proves the puzzle UNIQUE (exactly one solution,
-// not capped), and no component removes a true value (zero true-value loss).
+// (unlike Hit Counts) — the probe is new, so the test asserts the facts the
+// ticket cares about: the carve cuts the 31 hand-made givens to 3 the components
+// solve by logic; from those 3 the components solve the whole interior (81/81)
+// by propagation; the DFS proves the puzzle UNIQUE (exactly one solution, not
+// capped); and no component removes a true value (zero true-value loss).
 //
 //   node examples/numbered-rooms/recovery-probe.test.mjs
 
@@ -19,6 +21,8 @@ const out = execFileSync('node', [PROBE], { encoding: 'utf8' })
 let failed = false
 const check = (ok, msg) => { if (!ok) { failed = true; console.log(`FAIL: ${msg}`) } else console.log(`PASS: ${msg}`) }
 
+check(/carve: components solve by logic \(no search\) with 3 of 31 givens/.test(out), 'carve cuts 31 givens to 3')
+check(/components : clues 36\/36, interior 81\/81/.test(out), 'components solve the whole interior from the 3 givens')
 check(/\b1 solution\b/.test(out), 'DFS reports exactly one solution')
 check(!/\bsolutions=/.test(out), 'no extra-solution warning (solutions=N)')
 check(!/CAPPED/.test(out), 'search finished under the node cap (not capped)')

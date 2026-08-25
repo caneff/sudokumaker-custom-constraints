@@ -5,6 +5,12 @@
 // search. The engine lives in ../_shared/recovery-lib.mjs; this file supplies
 // only the Numbered Rooms geometry, seeding, and leaf check.
 //
+// It also carves the givens: the hand-made puzzle ships 31 interior givens, but
+// the components solve the whole interior by logic (no search) from far fewer.
+// The probe drops givens to that minimum, writes the kept set to min_givens.json
+// (build_link.py ships it, verify.py confirms it), and runs the rest on that
+// carved puzzle.
+//
 //   node examples/numbered-rooms/recovery-probe.mjs
 //
 // The fixture (gen_9.json, from derive_fixture.py) is an 11x11 board: an
@@ -17,7 +23,7 @@
 // hidden instead and the interior has two completions: the clues are load-
 // bearing, not decoration.)
 
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { installGlobals } from '../_shared/harness-lib.mjs'
@@ -66,7 +72,7 @@ function getCellsSeeEachOther (cells) {
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
 const state = makeCandidateState()
 state.puzzle.getCellsSeeEachOther = getCellsSeeEachOther
-function freshState () {
+function seed (givenSet) {
   state.cand = new Map()
   for (const i of interiorCells) state.cand.set(i, givenSet.has(i) ? new Set([solution[String(i)]]) : RANGE(1, n))
   for (const i of clueCells) state.cand.set(i, new Set([solution[String(i)]])) // clues are shown
@@ -96,9 +102,30 @@ const makeValidLeaf = comps => () => comps.every(inst => inst.__mod.validate(ins
 
 const floorGroup = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: n })
 
+// ---- carve the givens ----
+// Do the components solve the whole interior by propagation alone (no search)
+// from this given set?
+function propSolves (givenSet) {
+  seed(givenSet)
+  runToFixpoint(state, buildComps(), alldiffGroups, floorGroup)
+  return interiorCells.every(i => state.cand.get(i).size === 1)
+}
+
+// Drop each hand-made given while the components still solve by propagation
+// alone. `kept` is then the fewest givens that keep the puzzle solvable by the
+// intended logic — a minimal set (dropping one more forces a search), though
+// which minimal set depends on the drop order. build_link.py ships exactly this
+// set; verify.py confirms it is still uniquely solvable.
+let kept = new Set(givens)
+for (const i of givens) {
+  const trial = new Set(kept); trial.delete(i)
+  if (propSolves(trial)) kept = trial
+}
+writeFileSync(join(HERE, 'min_givens.json'), JSON.stringify({ kept: [...kept].sort((a, b) => a - b) }) + '\n')
+
 // ---- report one mode ----
 function report (label, useComps) {
-  freshState()
+  seed(kept)
   const start = state.total()
   const comps = useComps ? buildComps() : []
   const passes = runToFixpoint(state, comps, alldiffGroups, floorGroup)
@@ -111,13 +138,14 @@ function report (label, useComps) {
   return { cluesPinned, interiorSolved, removed, lost }
 }
 
-console.log(`gen_9.json: n=${n}, ${clueCells.length} clues (all shown), ${givens.length} interior givens`)
+console.log(`gen_9.json: n=${n}, ${clueCells.length} clues (all shown), ${givens.length} hand-made interior givens`)
+console.log(`carve: components solve by logic (no search) with ${kept.size} of ${givens.length} givens -> wrote min_givens.json (${[...kept].sort((a, b) => a - b).join(', ')})`)
 const floor = report('floor only ', false)
 const comp = report('components ', true)
 console.log(`  DELTA components over floor: clues +${comp.cluesPinned - floor.cluesPinned}, interior +${comp.interiorSolved - floor.interiorSolved}, removed +${comp.removed - floor.removed}`)
 
 // ---- uniqueness search ----
-freshState()
+seed(kept)
 const comps = buildComps()
 runToFixpoint(state, comps, alldiffGroups, floorGroup)
 const t = Date.now()

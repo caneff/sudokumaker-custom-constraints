@@ -82,33 +82,71 @@ reach.
   prunes early: the line component with the clue unsolved, the pair component
   with the index sum fixed by equal clues. The non-distinct block also proves the
   `getCellsSeeEachOther` guard is load-bearing (remove it and it fails).
-- `build_link.py` — rebuilds the puzzle link with the new code.
-- `PUZZLE_LINK.txt` — the ready-to-open puzzle.
+- `build_link.py` — rebuilds the puzzle link with the new code, and carves the
+  interior down to the givens in `min_givens.json` (drops the `given` flag on the
+  rest, so those cells show empty).
+- `PUZZLE_LINK.txt` — the ready-to-open puzzle: 36 clues, 3 interior givens.
 - `derive_fixture.py` — decodes the hand-made puzzle (`numbered_rooms.url`) into
-  `gen_9.json`: the interior solution, the 31 interior givens, the box regions,
-  and the 36 clue+line groups.
+  `gen_9.json`: the interior solution, the 31 hand-made interior givens, the box
+  regions, and the 36 clue+line groups.
 - `gen_9.json` — that fixture, the start state the recovery probe seeds.
+- `min_givens.json` — the carve result: the 3 interior givens the components need
+  to solve by logic. Written by `recovery-probe.mjs`, read by `build_link.py` and
+  `verify.py`.
 - `recovery-probe.mjs` — runs the real components (the same `main.js` wiring
   SudokuMaker runs) over the fixture on top of a Régin-strength (GAC)
-  all-different floor, reports what propagation recovers, and proves the puzzle
-  unique with a DFS search. It reuses the shared engine in
-  `../_shared/recovery-lib.mjs`. With the 36 clues shown, the components solve
-  the interior in full (69 → 81 cells) and the puzzle is unique by propagation
-  alone — zero search nodes, one solution.
+  all-different floor. It **carves** the interior — dropping each hand-made given
+  while the components still solve the whole interior by propagation alone — to
+  the minimum (3 of 31), writes that set to `min_givens.json`, then reports what
+  propagation recovers from it and proves the puzzle unique with a DFS search. It
+  reuses the shared engine in `../_shared/recovery-lib.mjs`. From the 3 givens the
+  components solve the interior in full (3 → 81 cells) and the puzzle is unique by
+  propagation alone — zero search nodes, one solution.
+- `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
+  rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
+  clue`), never touching the component code, and confirms the shipped puzzle (the
+  3 carved givens plus all 36 clues): the interior is uniquely solvable, the one
+  solution matches the fixture, and the clues are load-bearing (keep the givens,
+  drop every clue, and two completions remain). It also reports the logical floor
+  — the clues alone, with zero givens, are already unique — which is why the
+  hand-made 31 givens were far more than the puzzle needs.
 
 ## Run
 
     node examples/numbered-rooms/soundness-harness.mjs
-    node examples/numbered-rooms/recovery-probe.mjs
+    node examples/numbered-rooms/recovery-probe.mjs                    # carves, writes min_givens.json
+    uv run --with ortools examples/numbered-rooms/verify.py            # independent OR-Tools check
+    node examples/numbered-rooms/verify.test.mjs
     uv run --with lzstring examples/numbered-rooms/derive_fixture.py   # rebuild gen_9.json
-    uv run --with lzstring examples/numbered-rooms/build_link.py
+    uv run --with lzstring examples/numbered-rooms/build_link.py       # ships the carved givens
+
+## Carving the givens
+
+The hand-made puzzle shipped 31 interior givens. That is far too many: with the
+stronger component the 36 border clues do almost all the work. `recovery-probe.mjs`
+carves the interior — it drops each given while the components still solve the
+whole interior by propagation alone — down to **3 givens** (cells 83, 92, 108).
+From those 3 the components solve all 81 cells by logic, no search. `build_link.py`
+ships that carved puzzle.
+
+Three givens, not zero: the clues alone are already *logically* unique (`verify.py`
+reports this floor), but the components cannot reach that solution by propagation —
+from zero givens they stall and a solver would have to search. Three givens is the
+fewest that keep the puzzle solvable by the intended logic.
+
+## Two independent checks
+
+`recovery-probe.mjs` proves the carved puzzle unique under the shipped components
+(a JS-side check over the sudoku all-different plus the Numbered Rooms rule). It
+runs the same component code the app runs, so a bug shared by the component and
+the probe would hide from both. `verify.py` is the independent guard against
+that: it re-models the rule in OR-Tools from scratch and reaches the same
+verdict — one solution, matching the fixture. The soundness harness is the third
+guard: it proves the component never removes a true candidate.
 
 ## Not covered
 
-`recovery-probe.mjs` proves the puzzle unique under the shipped components (a
-JS-side check over the sudoku all-different plus the Numbered Rooms rule). It
-does not regenerate a fresh puzzle, and it is not an independent OR-Tools model
-of the constraint the way `running-start/generate.py` is — it runs the same
-component code the app runs, so a bug shared by the component and the probe
-would hide from both. The soundness harness is the separate guard: it proves the
-component never removes a true candidate.
+Neither check regenerates a fresh puzzle the way `running-start/generate.py`
+does; both verify the one hand-made puzzle in `gen_9.json` (carved). Numbered
+Rooms has no generator (`derive_fixture.py` decodes the hand-made document), so
+there is no fresh puzzle to regenerate.
