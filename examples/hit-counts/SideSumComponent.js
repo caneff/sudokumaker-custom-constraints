@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Side sum. The n Hit Counts clues on one side of the grid sum to exactly n.
 //! Regroup the side's hits by target column: each column is a permutation, so its
 //! own value sits at home exactly once, giving one hit per column, n in all. This
@@ -14,7 +15,7 @@ function setParams (instance, cells, target) {
 
 // Bounds propagation for sum(cells) === target. Each cell sits in
 // [target - (sum of other maxima), target - (sum of other minima)].
-function* propagate (cells, target, puzzle) {
+function * propagate (cells, target, puzzle) {
   const mins = []
   const maxs = []
   let sumMin = 0
@@ -35,12 +36,12 @@ function* propagate (cells, target, puzzle) {
 
 // Run once at creation: the side's given clues already bound the rest (e.g. if
 // the shown clues sum to n, the hidden ones are forced to 0 right away).
-function* initialize (instance, puzzle) {
-  yield* propagate(instance.cells, instance.target, puzzle)
+function * initialize (instance, puzzle) {
+  yield * propagate(instance.cells, instance.target, puzzle)
 }
 
-function* update (instance, puzzle) {
-  yield* propagate(instance.cells, instance.target, puzzle)
+function * update (instance, puzzle) {
+  yield * propagate(instance.cells, instance.target, puzzle)
 }
 
 function validate (instance, puzzle) {

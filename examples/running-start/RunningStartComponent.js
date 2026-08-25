@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Running Start. An outside clue k on a line means: read inward, the first
 //! strictly ascending run is k cells long. So line[0..k-1] strictly increase,
 //! then (unless k is the whole line) line[k] drops below it.
@@ -21,7 +22,7 @@ function runningStart (puzzle, line) {
 }
 
 // Arc-consistency for a strict "a < b" using live candidates.
-function* less (puzzle, a, b) {
+function * less (puzzle, a, b) {
   const ca = Array.from(puzzle.getCandidates(a))
   const cb = Array.from(puzzle.getCandidates(b))
   const maxB = Math.max(...cb)
@@ -61,7 +62,7 @@ function feasibleClues (puzzle, line) {
         if (d > mx) mx = d
       }
     }
-    if (mn === Infinity) break                 // no length-(j+1) prefix; no longer clue either
+    if (mn === Infinity) break // no length-(j+1) prefix; no longer clue either
     prevMin = mn
     const k = j + 1
     if (k === n) {
@@ -69,13 +70,13 @@ function feasibleClues (puzzle, line) {
     } else {
       let minNext = Infinity
       for (const d of puzzle.getCandidates(line[k])) if (d < minNext) minNext = d
-      if (minNext < mx) feasible.add(k)         // a descent below the largest reachable end is possible
+      if (minNext < mx) feasible.add(k) // a descent below the largest reachable end is possible
     }
   }
   return feasible
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clue, line } = instance
   const n = line.length
   const lo = helpers.digits.minDigit
@@ -101,7 +102,7 @@ function* update (instance, puzzle) {
   // Stronger than the neighbour-only `less` chain, which only looks one step.
   const kmin = Math.min(...Array.from(puzzle.getCandidates(clue)))
   for (let j = 0; j < kmin && j < n; j++) {
-    if (j >= 1) yield* less(puzzle, line[j - 1], line[j])
+    if (j >= 1) yield * less(puzzle, line[j - 1], line[j])
     const floor = lo + j
     const ceil = hi - (kmin - 1 - j)
     const bad = []
@@ -111,8 +112,8 @@ function* update (instance, puzzle) {
 
   // ---- Forward: clue pinned -> the descent below the prefix's last cell ----
   if (puzzle.hasValue(clue)) {
-    const k = puzzle.getValue(clue)      // k === kmin here, so the window above already ran
-    if (k < n) yield* less(puzzle, line[k], line[k - 1])
+    const k = puzzle.getValue(clue) // k === kmin here, so the window above already ran
+    if (k < n) yield * less(puzzle, line[k], line[k - 1])
   }
 }
 

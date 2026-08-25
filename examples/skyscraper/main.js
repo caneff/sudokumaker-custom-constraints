@@ -31,7 +31,7 @@ for (let i = 0; i < groups.length; i++) {
 // tallest building. Each side's nearest rank is a house (a full row or column),
 // so the tallest building sits under exactly one clue on that side. The built-in
 // count constraint states it directly, coupling all the clues on a side.
-const W = groups[0].line.length + 2          // board is the n x n grid plus a clue ring
+const W = groups[0].line.length + 2 // board is the n x n grid plus a clue ring
 function side (ci) {
   if (ci < W) return 'T'
   if (ci >= W * (W - 1)) return 'B'

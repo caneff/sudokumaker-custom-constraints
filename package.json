@@ -11,13 +11,31 @@
     "standard": "^17.1.2"
   },
   "standard": {
-    "//": "The .js files are constraint snippets pasted into SudokuMaker, not Node modules — linting them as Node reports the SudokuMaker API functions as unused and its globals as undefined. Lint the .mjs harness/probe code we run; the snippets stay judged by eye (see CODING_STANDARDS.md).",
+    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet) and the component constructors main.js references; each component file disables no-unused-vars for its API functions. `ignore` holds only the verbatim ORIGINAL_*/original/ comparison files, which must stay exactly as their author wrote them.",
     "ignore": [
-      "examples/**/*.js"
+      "examples/numbered-rooms/ORIGINAL_backend.js",
+      "examples/numbered-rooms/ORIGINAL_CustomIndexComponent.js",
+      "examples/skyscraper/original/CustomSkyscraperLineComponent.js",
+      "examples/skyscraper/original/main.js"
     ],
     "globals": [
       "SudokuDigitSet",
-      "helpers"
+      "helpers",
+      "input",
+      "puzzle",
+      "SudokuMaker",
+      "SkyscraperComponent",
+      "SkyscraperPairComponent",
+      "HitCountsComponent",
+      "HitCountsPairComponent",
+      "SideSumComponent",
+      "NumberedRoomsComponent",
+      "NumberedRoomsPairComponent",
+      "RunningStartComponent",
+      "RunningStartPairComponent",
+      "ExactDigitCountComponent",
+      "CustomSkyscraperLineComponent",
+      "CustomIndexComponent"
     ]
   }
 }

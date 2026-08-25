@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Numbered Rooms (escape-the-grid variant). A line reads inward from an
 //! outside clue cell. Let O be the clue cell and line[0..m-1] the inside cells,
 //! nearest the clue first. The first inside cell line[0] holds a 1-based index
@@ -38,7 +39,7 @@ function feasibleIndices (puzzle, clue, line) {
   return K
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clue, line } = instance
   const K = feasibleIndices(puzzle, clue, line)
 

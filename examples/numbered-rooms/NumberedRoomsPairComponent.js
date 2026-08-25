@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Two Numbered Rooms clues on opposite ends of one line. Read from the left,
 //! the first cell holds index a and the clue O_L equals line[a-1]. Read from the
 //! right, the last cell holds index b and the clue O_R equals line[N-b]. Those
@@ -26,11 +27,11 @@ function setParams (instance, clueL, clueR, line) {
   instance.bCell = line[line.length - 1]
 }
 
-function* prune (puzzle, cell, bad) {
+function * prune (puzzle, cell, bad) {
   if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), cell)
 }
 
-function* update (instance, puzzle) {
+function * update (instance, puzzle) {
   const { clueL, clueR, line, N, aCell, bCell } = instance
   const candL = Array.from(puzzle.getCandidates(clueL))
   const candR = Array.from(puzzle.getCandidates(clueR))
@@ -44,16 +45,16 @@ function* update (instance, puzzle) {
 
   // Unconditional. a + b === N + 1 forces the two clues onto one cell, so equal.
   if (sumForced) {
-    yield* prune(puzzle, clueL, candL.filter(v => !candR.includes(v)))
-    yield* prune(puzzle, clueR, candR.filter(v => !candL.includes(v)))
+    yield * prune(puzzle, clueL, candL.filter(v => !candR.includes(v)))
+    yield * prune(puzzle, clueR, candR.filter(v => !candL.includes(v)))
   }
 
   // Unconditional (contrapositive of the above): clues that cannot be equal
   // cannot share a cell, so a + b !== N + 1. Drop an index whose only surviving
   // partner would force the forbidden sum.
   if (cluesDisjoint) {
-    yield* prune(puzzle, aCell, aVals.filter(a => bVals.length > 0 && bVals.every(b => b === N + 1 - a)))
-    yield* prune(puzzle, bCell, bVals.filter(b => aVals.length > 0 && aVals.every(a => a === N + 1 - b)))
+    yield * prune(puzzle, aCell, aVals.filter(a => bVals.length > 0 && bVals.every(b => b === N + 1 - a)))
+    yield * prune(puzzle, bCell, bVals.filter(b => aVals.length > 0 && aVals.every(a => a === N + 1 - b)))
   }
 
   // Distinct line only. "Equal clues" and "different clues" both reason from
@@ -62,16 +63,16 @@ function* update (instance, puzzle) {
   if (puzzle.getCellsSeeEachOther(line)) {
     // Equal clues ==> a + b === N + 1: keep only indices whose complement survives.
     if (candL.length === 1 && candR.length === 1 && candL[0] === candR[0]) {
-      yield* prune(puzzle, aCell,
+      yield * prune(puzzle, aCell,
         Array.from(puzzle.getCandidates(aCell)).filter(a => !(inRange(a) && bVals.includes(N + 1 - a))))
-      yield* prune(puzzle, bCell,
+      yield * prune(puzzle, bCell,
         Array.from(puzzle.getCandidates(bCell)).filter(b => !(inRange(b) && aVals.includes(N + 1 - b))))
     }
     // a + b === N + 1 impossible ==> the clues sit on different cells, so they
     // differ. When one clue is fixed, that value leaves the other.
     if (!sumPossible) {
-      if (candL.length === 1) yield* prune(puzzle, clueR, candR.filter(v => v === candL[0]))
-      if (candR.length === 1) yield* prune(puzzle, clueL, candL.filter(v => v === candR[0]))
+      if (candL.length === 1) yield * prune(puzzle, clueR, candR.filter(v => v === candL[0]))
+      if (candR.length === 1) yield * prune(puzzle, clueL, candL.filter(v => v === candR[0]))
     }
   }
 }
