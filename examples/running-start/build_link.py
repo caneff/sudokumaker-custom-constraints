@@ -47,10 +47,12 @@ def build():
     doc["puzzle"]["minDigit"] = 1
     doc["puzzle"]["maxDigit"] = 9
     doc["puzzle"]["comment"] = (
-        "Outside cells on clues must contain a digit, and that digit indicates "
-        "the length of the first ascending sequence in that direction. For "
-        "example, a row with 142356789 gives a left clue of 2 (1, 4) and a "
-        "right clue of 1 (9).")
+        "Running Start: Outside cells on clues must contain a digit, and that "
+        "digit indicates the length of the first ascending sequence in that "
+        "direction. For example, a row with 142356789 gives a left clue of 2 "
+        "(1, 4) and a right clue of 1 (9)."
+        "\n\nThe 1s in the corners only fill space for SudokuMaker's solver; "
+        "delete them before publishing.")
     payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
     return "https://sudokumaker.app/?puzzle=" + payload, doc
 

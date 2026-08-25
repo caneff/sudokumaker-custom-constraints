@@ -10,6 +10,10 @@ at once, so the run is the single cell `9`. The first cell always counts. In a
 sudoku line all digits differ, so "not ascending" always means a strict drop.
 The 4x4 and 6x6 puzzles carry the same rule with a size-appropriate example.
 
+Each puzzle's in-app rule text is prefixed `Running Start:` and ends with a note
+that the corner `1`s only fill space for SudokuMaker's solver and should be
+deleted before publishing.
+
 ## Files
 
 - `main.js` — the backend segment. One component per line, plus a pair
