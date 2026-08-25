@@ -163,7 +163,58 @@ for (let iter = 0; iter < 20000; iter++) {
 }
 console.log('pair component:', pairTests, 'tests,', pairBad, 'violations,', pairFired, 'extreme firings')
 
-const ok = bad === 0 && sideBad === 0 && pairBad === 0 && pairFired > 0 &&
-  seenClues.has(0) && seenClues.has(9)
+// ---- Pair over random permutations: exercise the dynamic cap ----
+// Random lines usually have cells that hit neither way, so the cap A + B <= (cells
+// that can still hit) drops below the static n (+1). Clue A counts fixed points,
+// clue B counts fixed points of the reverse. Truth is always consistent, so any
+// removed true value is a bug.
+const rev = a => a.slice().reverse()
+let dynTests = 0
+let dynBad = 0
+for (let iter = 0; iter < 40000; iter++) {
+  const perm = lines[iter % lines.length]
+  const truth = { [PA]: hits(perm), [PB]: hits(rev(perm)) }
+  for (let i = 0; i < 9; i++) truth[PLINE[i]] = perm[i]
+  const lineSeed = seeder(1, 9)
+  const clueSeed = seeder(0, 9)
+  const p = makePuzzle(truth, (c, v) => (c === PA || c === PB ? clueSeed : lineSeed)(c, v))
+  const inst = {}
+  pairMod.setParams(inst, PA, PB, PLINE)
+  const v = violates(pairMod, inst, p, truth)
+  dynTests++
+  if (v) { dynBad++; if (dynBad <= 5) console.log('DYN PAIR violation', v) }
+}
+console.log('pair dynamic-cap:', dynTests, 'tests,', dynBad, 'violations')
+
+// ---- Deterministic guard: the pin branch skips a cell that can hit neither ----
+// n = 4. Cell L0 is pinned to 2 (a miss: 2 is neither its left target 1 nor its
+// right target 4). The cap drops to 3; clues A = 0, B = 3 force the extreme. The
+// three can-hit cells must be pinned to their pairs, and L0 must be left untouched
+// (never emptied). Truth is a consistent state with A = 0, B = 3.
+const G = { 400: 0, 401: 3, 20: 2, 21: 3, 22: 2, 23: 1 }   // clueA, clueB, L0..L3
+const gCand = new Map([
+  [400, new Set([0])], [401, new Set([3])],
+  [20, new Set([2])], [21, new Set([1, 2, 3, 4])],
+  [22, new Set([1, 2, 3, 4])], [23, new Set([1, 2, 3, 4])]
+])
+const gp = {
+  _cand: gCand,
+  getCandidates: c => gCand.get(c),
+  removeCandidateFromCell: (d, c) => { gCand.get(c).delete(d) },
+  removeCandidatesFromCell: (s, c) => { const set = gCand.get(c); for (const d of s) set.delete(d) }
+}
+const gInst = {}
+pairMod.setParams(gInst, 400, 401, [20, 21, 22, 23])
+for (const _ of pairMod.update(gInst, gp)) { /* drain */ }
+let guardBad = 0
+for (const [c, v] of Object.entries(G)) {
+  if (!gCand.get(+c).has(v)) { guardBad++; console.log('GUARD lost', c, v) }
+  if (gCand.get(+c).size === 0) { guardBad++; console.log('GUARD emptied', c) }
+}
+if (gCand.get(20).size !== 1) { guardBad++; console.log('GUARD touched the miss cell L0') }
+console.log('pair guard:', guardBad === 0 ? 'OK' : 'FAIL')
+
+const ok = bad === 0 && sideBad === 0 && pairBad === 0 && dynBad === 0 &&
+  guardBad === 0 && pairFired > 0 && seenClues.has(0) && seenClues.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

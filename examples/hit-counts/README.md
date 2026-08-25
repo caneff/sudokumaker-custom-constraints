@@ -71,12 +71,21 @@ clue `A` counts the first set, the right clue `B` the second, so
 
 Each clue caps the other: `A <= cap - B` and `B <= cap - A`.
 
+The cap is not fixed. It starts at `n` (or `n + 1`) and **drops as the interior
+fills in**: once a cell has lost both its left-hit value `j + 1` and its
+right-hit value `n - j`, it can never be a hit either way, so it no longer counts
+toward the cap. `HitCountsPairComponent` recomputes
+
+    cap = number of cells that can still hit  (the center counted twice)
+
+on every pass, so interior progress feeds straight back into tighter clue bounds.
+
 The cut has real teeth at the cap. When `A + B` is forced to `cap`, every cell
-is a hit — left or right. So cell `j` is pinned to just `{j + 1, n - j}` (a
-single value at the odd-`n` center). That fires from the two clues alone, before
-any interior digit is known — a deduction no single-line component can reach.
-`HitCountsPairComponent` caps each clue and, at the cap, makes the per-cell cut.
-`main.js` pairs two clues whose lines are the exact reverse of each other.
+that can still hit must hit. So each such cell is pinned to just `{j + 1, n - j}`
+(a single value at the odd-`n` center); a cell that can hit neither is a forced
+miss and is left alone. That fires from the two clues alone, before any interior
+digit is known — a deduction no single-line component can reach. `main.js` pairs
+two clues whose lines are the exact reverse of each other.
 
 Unlike the side sum, this coupling is not a tautology: it constrains the
 interior digits directly, not just the hidden clues.
@@ -134,4 +143,6 @@ the clue ranges over `0..9`. It seeds partial states that keep each cell's true
 value, runs the component to a fixpoint, and checks no true value was removed. It
 forces in the identity line (clue 9) and a derangement (clue 0) on every run. The
 pair section drives a line at the `A + B == cap` extreme and counts how often the
-per-cell branch fires, so the strong cut stays covered.
+per-cell branch fires; a second pair loop fuzzes random permutations, whose
+can't-hit cells exercise the dynamic cap; and a deterministic guard checks the
+pin branch never empties a forced-miss cell.
