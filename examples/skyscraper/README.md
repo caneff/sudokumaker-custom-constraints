@@ -58,6 +58,34 @@ clue of `1` means the cell next to it is the tallest building. Each side's
 nearest rank is a full row or column, so the tallest building sits under exactly
 one clue per side. This couples all nine clues on a side.
 
+## Is it faster than the original?
+
+Yes, by a wide margin — the original does not solve an interactive puzzle at all
+within a sane search budget. `recovery-probe.mjs` runs both wirings over the same
+generated puzzle, on top of a Régin-strength all-different floor, and counts the
+search nodes a uniqueness solve takes. Fewer nodes means the constraint pruned
+more and the solver guessed less.
+
+| puzzle | ours | original |
+| --- | --- | --- |
+| `gen_4` | 2 nodes | did not finish (200k-node cap) |
+| `gen_6` | 36 nodes | did not finish (200k-node cap) |
+| `gen_9` | 2652 nodes | did not finish (30k-node cap) |
+
+The reason is the interactive clue. The puzzle's one solution needs the skyscraper
+deductions; the sudoku rule and the shown clues alone do not pin it. Ours deduces
+the blank clues and prunes the lines, so it solves by nearly pure logic. The
+original deduces nothing about a blank clue, so it must *guess* every blank clue,
+and it wanders. The probe models the original's built-in as our own forward prune,
+gated to fire only once a clue is pinned — so the original gets every per-line
+deduction ours has for a known clue. The gap is exactly the three features it
+lacks: blank-clue deduction, pair coupling, and the one-1-per-side count. Run it:
+
+```
+node examples/skyscraper/recovery-probe.mjs gen_6.json            # root recovery + soundness
+node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count nodes
+```
+
 ## Files
 
 - `main.js` — the backend segment. One component per line, one pair component
@@ -69,6 +97,9 @@ one clue per side. This couples all nine clues on a side.
 - `soundness-harness.mjs` — Node soundness fuzz for both components. Soundness =
   the component never removes a cell's true value. Run it:
   `node examples/skyscraper/soundness-harness.mjs`.
+- `recovery-probe.mjs` — runs both wirings (ours and the original) over a built
+  puzzle to compare solve work. Root recovery and soundness by default,
+  search-node counts with `--search`. See "Is it faster than the original?".
 - `build_size.py` — builds the whole document for any grid size: a grid, the
   derived clues, a minimal set of interior givens and shown clues carved to a
   unique solution (OR-Tools), and the encoded link. Blank clues are the

@@ -1,0 +1,4 @@
+gen_4.json: n=4, box 2x2, 3/16 clues shown, 13 blank, 0 interior givens
+  original: 2001 search nodes, 0 solutions, Nms CAPPED
+  ours    : 2 search nodes, 1 solution, Nms
+  ours explores >1001x fewer nodes than the original (original never finished within the cap)
