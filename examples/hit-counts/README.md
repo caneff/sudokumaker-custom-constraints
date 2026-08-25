@@ -120,31 +120,30 @@ Let `forced` be the cells already pinned to their own distance (a hit no matter
 what) and `possible` be the cells whose distance is still a candidate (a hit is
 still open). The true number of hits lies in `[forced, possible]`.
 
-This naive count reads each cell alone, so it over-counts: it can promise more
-hits than any one permutation of the line delivers. Take a line of three,
-already arc-consistent for all-different: `L0 ∈ {1,3}`, `L1 ∈ {2,3}`,
-`L2 ∈ {1,2}`. The naive `possible` is 2 — `L0` can be a 1 and `L1` a 2 — but
-those two together strand `L2` on a 3 it does not hold. Both legal permutations,
-`1 3 2` and `3 2 1`, hit once, so the clue is 1, not "up to 2".
+### A tighter bound we measured and did not ship
 
-The component tightens the bound with a **matching**. A line is a permutation of
-`1..n`, so a legal state is a perfect matching of positions to values, each
-position taking a value from its candidates; a hit is the edge from position `i`
-to value `i + 1`. `matchingBounds` returns the least and most hit edges over any
-such matching, and the true hit count lies in that range. This range sits inside
-`[forced, possible]`: a forced cell hits in every matching, so the low end never
-drops below `forced`, and no matching beats `possible`. For `n ≤ 9` the matching
-is a small pass over the set of used values.
+The naive count reads each cell alone, so it over-counts: it can promise more hits
+than any one permutation of the line delivers. Take a line of three, already
+arc-consistent for all-different: `L0 ∈ {1,3}`, `L1 ∈ {2,3}`, `L2 ∈ {1,2}`. The
+naive `possible` is 2 — `L0` can be a 1 and `L1` a 2 — but those two together
+strand `L2` on a 3 it does not hold. Both legal permutations, `1 3 2` and `3 2 1`,
+hit once, so the true clue is 1, not "up to 2".
 
-### Does the tighter bound help?
+A **matching** captures this. A line is a permutation of `1..n`, so a legal state
+is a perfect matching of positions to values, each from its candidates; a hit is
+the edge from position `i` to value `i + 1`. The least and most hit edges over any
+such matching bound the true hit count, and that range sits inside
+`[forced, possible]`. It is sound and strictly tighter — and it earns nothing on
+these puzzles, so the component keeps the naive bound. `recovery-probe.mjs` is how
+we found that out; it is worth keeping as the way to test the next candidate
+deduction.
 
-Sound and tighter is not the same as useful. `recovery-probe.mjs` measures the
-real gain: it runs the actual components — the same `main.js` wiring the app runs
-— over a generated puzzle's start state to a propagation fixpoint, with a
-Régin-strength (GAC) all-different over every row, column, and box as the floor.
-It runs three ways and diffs what propagation recovers: the floor alone (no
-hit-counts components — the baseline before any hit-counts deduction), then the
-components with the matching bound off (pre-#12) and on (shipped).
+The probe runs the real components — the same `main.js` wiring the app runs — to a
+propagation fixpoint, with a Régin-strength (GAC) all-different over every row,
+column, and box as the floor. It runs three ways and diffs what propagation
+recovers: the floor alone (no hit-counts components — the baseline before any
+hit-counts deduction), the components with the naive clue bound (`off`), and the
+components plus the candidate matching bound (`on`).
 
 ```
 node examples/hit-counts/recovery-probe.mjs gen_9.json --floor=regin
@@ -201,8 +200,7 @@ run one mode at a time with `--only`.)
   and feeds the side-sum and pair through the shared cell.
 
 - **Reverse, clue from line** — the clue is the hit count, so drop every clue
-  candidate below the matching's low end or above its high end (the naive
-  `[forced, possible]` when no matching exists — a dead state).
+  candidate below `forced` or above `possible`.
 - **Forward, forbid hits** — if the clue's largest candidate equals `forced`, no
   more cells may hit, so remove the target digit from every free cell.
 - **Forward, force hits** — if the clue's smallest candidate needs every free
@@ -225,10 +223,7 @@ node examples/hit-counts/soundness-harness.mjs
 The harness fuzzes random permutations of `1..9` read in a random direction, so
 the clue ranges over `0..9`. It seeds partial states that keep each cell's true
 value, runs the component to a fixpoint, and checks no true value was removed. It
-forces in the identity line (clue 9) and a derangement (clue 0) on every run. It
-counts the states where the matching bound is tighter than the naive tally (the
-`matching-tighter` figure) and asserts a deterministic three-cell guard where the
-matching pins the clue to 1 while the naive count leaves `0..2`. The
+forces in the identity line (clue 9) and a derangement (clue 0) on every run. The
 pair section drives a line at the `A + B == cap` extreme and counts how often the
 per-cell branch fires; a second pair loop fuzzes random permutations, whose
 can't-hit cells exercise the dynamic cap; and a deterministic guard checks the

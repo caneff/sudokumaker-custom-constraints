@@ -104,17 +104,11 @@ function makeCtor (mod) {
 }
 
 // Build the component instances by running main.js exactly as SudokuMaker does.
-// matchingOn=false patches matchingBounds to return null, so the component falls
-// back to the naive bound — the only difference between the two runs.
-function buildComps (matchingOn) {
-  let hcSrc = read('HitCountsComponent.js')
-  if (!matchingOn) {
-    const patched = hcSrc.replace('function matchingBounds (puzzle, line) {',
-      'function matchingBounds (puzzle, line) {\n  return null // probe: matching off')
-    if (patched === hcSrc) throw new Error('matching-off patch did not match — the diff would be meaningless')
-    hcSrc = patched
-  }
-  const hc = loadSrc(hcSrc, ['setParams', 'update', 'initialize', 'scan', 'matchingBounds'])
+// The shipped component uses the naive [forced, possible] clue bound; the matching
+// is the CANDIDATE deduction this probe evaluates, applied as an extra propagator
+// (matchingReverse) in the 'on' runs, never baked into the component.
+function buildComps () {
+  const hc = loadSrc(read('HitCountsComponent.js'), ['setParams', 'update', 'initialize'])
   const side = loadSrc(read('SideSumComponent.js'), ['setParams', 'update'])
   const pair = loadSrc(read('HitCountsPairComponent.js'), ['setParams', 'update'])
   const comps = []
@@ -124,6 +118,49 @@ function buildComps (matchingOn) {
   run({ groups }, globalThis.helpers, registrar,
     makeCtor(hc), makeCtor(side), makeCtor(pair))
   return comps
+}
+
+// The candidate deduction under test: the Régin-style matching clue bound. A legal
+// line is a perfect matching of positions to values (each from its candidates); a
+// hit is the edge from position i to value i+1. matchingBounds returns the least
+// and most hit edges over any such matching — a bound at least as tight as naive
+// [forced, possible] — or null when no matching exists. matchingReverse applies it
+// as an extra propagator: it tightens each unpinned clue to that range, exactly
+// what a component-level matching bound would do, without touching the component.
+function matchingBounds (line) {
+  const nn = line.length
+  const cands = line.map(cell => [...cand.get(cell)].filter(v => v >= 1 && v <= nn))
+  const SIZE = 1 << nn
+  let curMin = new Array(SIZE).fill(Infinity)
+  let curMax = new Array(SIZE).fill(-Infinity)
+  curMin[0] = 0; curMax[0] = 0
+  for (let i = 0; i < nn; i++) {
+    const nextMin = new Array(SIZE).fill(Infinity)
+    const nextMax = new Array(SIZE).fill(-Infinity)
+    for (let mask = 0; mask < SIZE; mask++) {
+      if (curMax[mask] === -Infinity) continue
+      for (const v of cands[i]) {
+        const bit = 1 << (v - 1)
+        if (mask & bit) continue
+        const nm = mask | bit
+        const add = v === i + 1 ? 1 : 0
+        nextMin[nm] = Math.min(nextMin[nm], curMin[mask] + add)
+        nextMax[nm] = Math.max(nextMax[nm], curMax[mask] + add)
+      }
+    }
+    curMin = nextMin; curMax = nextMax
+  }
+  const full = SIZE - 1
+  return curMax[full] === -Infinity ? null : { min: curMin[full], max: curMax[full] }
+}
+function matchingReverse () {
+  for (const g of groups) {
+    const clueId = g.cells[0]
+    if (cand.get(clueId).size === 1) continue          // pinned: the component's !hasValue guard
+    const mb = matchingBounds(g.cells.slice(1))
+    if (!mb) continue
+    for (const d of [...cand.get(clueId)]) if (d < mb.min || d > mb.max) cand.get(clueId).delete(d)
+  }
 }
 
 // ---- Régin (GAC) all-different floor ----
@@ -182,12 +219,13 @@ for (let br = 0; br < n; br += bh) for (let bc = 0; bc < n; bc += bw) {
 
 // ---- the fixpoint ----
 const totalCands = () => { let s = 0; for (const set of cand.values()) s += set.size; return s }
-function runToFixpoint (comps, init = true) {
+function runToFixpoint (comps, init = true, matching = false) {
   if (init) for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, puzzle)) { /* n-1 prune */ }
   for (let pass = 0; pass < 500; pass++) {
     const before = totalCands()
     for (const inst of comps) for (const _ of inst.__mod.update(inst, puzzle)) { /* apply */ }
     for (const g of alldiffGroups) floorGroup(g)
+    if (matching) matchingReverse()
     if (totalCands() === before) return pass + 1
   }
   return -1
@@ -196,13 +234,13 @@ function runToFixpoint (comps, init = true) {
 // ---- measure one run ----
 const hiddenKeys = keys.filter(k => !activeSet.has(k))
 // mode: 'floor' runs the all-different floor alone (no hit-counts components) —
-// the baseline BEFORE any hit-counts deduction; 'off' and 'on' add the components
-// with the matching bound off (pre-#12) and on (shipped).
+// the baseline before any hit-counts deduction; 'off' adds the shipped components
+// (naive clue bound); 'on' also applies the candidate matching bound.
 function report (label, mode) {
   freshState()
   const start = totalCands()
-  const comps = mode === 'floor' ? [] : buildComps(mode === 'on')
-  const passes = runToFixpoint(comps)
+  const comps = mode === 'floor' ? [] : buildComps()
+  const passes = runToFixpoint(comps, true, mode === 'on')
   const hiddenRecovered = hiddenKeys.filter(k => {
     const side = k[0]; const i = +k.slice(1)
     return cand.get(clueCell(side, i)).size === 1
@@ -224,12 +262,12 @@ function report (label, mode) {
 // means the feature never fires here, so a zero recovery delta is expected, not a
 // bug in the probe.
 function tighterLines () {
-  const hc = loadSrc(read('HitCountsComponent.js'), ['scan', 'matchingBounds'])
+  const hc = loadSrc(read('HitCountsComponent.js'), ['scan'])
   let count = 0
   for (const g of groups) {
     const line = g.cells.slice(1)
     const naive = hc.scan(puzzle, line)
-    const mb = hc.matchingBounds(puzzle, line)
+    const mb = matchingBounds(line)
     if (mb && (mb.min > naive.forced || mb.max < naive.possible)) count++
   }
   return count
@@ -279,7 +317,7 @@ function pickMRV () {
 }
 const NODE_CAP = 3_000_000
 let nodes; let solutions; let capped
-function dfs (comps) {
+function dfs (comps, matching) {
   if (capped || nodes > NODE_CAP) { capped = true; return }
   const cell = pickMRV()
   if (cell === null) { if (validLeaf()) solutions++; return }
@@ -287,19 +325,20 @@ function dfs (comps) {
     nodes++
     const saved = cloneCand()
     cand.set(cell, new Set([v]))
-    runToFixpoint(comps, false)
-    if (!dead()) dfs(comps)
+    runToFixpoint(comps, false, matching)
+    if (!dead()) dfs(comps, matching)
     cand = saved
     if (capped) return
   }
 }
 function searchRun (mode) {
   freshState()
-  const comps = mode === 'floor' ? [] : buildComps(mode === 'on')
+  const matching = mode === 'on'
+  const comps = buildComps()
   for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, puzzle)) { /* n-1 prune */ }
-  runToFixpoint(comps, false)
+  runToFixpoint(comps, false, matching)
   nodes = 0; solutions = 0; capped = false
-  if (!dead()) dfs(comps)
+  if (!dead()) dfs(comps, matching)
   return { nodes, solutions, capped }
 }
 
