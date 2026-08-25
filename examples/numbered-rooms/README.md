@@ -101,7 +101,14 @@ reach.
   propagation recovers from it and proves the puzzle unique with a DFS search. It
   reuses the shared engine in `../_shared/recovery-lib.mjs`. From the 3 givens the
   components solve the interior in full (3 → 81 cells) and the puzzle is unique by
-  propagation alone — zero search nodes, one solution.
+  propagation alone — zero search nodes, one solution. It also **times ours against
+  the original** wrapper. With the 3 carved givens both finish by propagation, so
+  the probe drops to the hardest form — the pure-clue puzzle, 36 clues and zero
+  givens, still unique — and makes both wirings solve it by search. The original
+  (modelled as our line gated to fire only once its clue is pinned, no pair
+  coupling — the same conservative model the Skyscraper probe uses) explores about
+  6x more search nodes than our version, whose pair index-sum coupling prunes the
+  interior the wrapper cannot.
 - `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
   rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
   clue`), never touching the component code, and confirms the shipped puzzle (the
