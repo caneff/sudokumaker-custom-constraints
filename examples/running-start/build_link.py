@@ -13,6 +13,7 @@
 import json, pathlib
 from lzstring import LZString
 from minify import minify_js
+from frame import cosmetics
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -36,6 +37,11 @@ def build():
         d = c.get("definition", {})
         if d.get("name") == "JSON Postproc":
             d["backend"]["code"] = minify_js(d["backend"]["code"])
+    # replace the template's hand-drawn cosmetics with generated ones, so the
+    # outlines box exactly the given outside cells (same rule as the 4x4/6x6)
+    cons = doc["puzzle"]["constraints"]
+    cons[:] = [c for c in cons if c.get("type") != 2000]
+    cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
     payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
     return "https://sudokumaker.app/?puzzle=" + payload, doc
 

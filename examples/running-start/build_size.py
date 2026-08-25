@@ -16,6 +16,7 @@ import json, pathlib, random, sys, urllib.parse
 from ortools.sat.python import cp_model
 from lzstring import LZString
 from minify import minify_js
+from frame import cosmetics
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -114,11 +115,6 @@ def generate(n, bh, bw):
 
 # ---- document assembly ----------------------------------------------------
 
-def rect(x, y):
-    return [{"x": x, "y": y}, {"x": x + 1, "y": y}, {"x": x + 1, "y": y + 1},
-            {"x": x, "y": y + 1}, {"x": x, "y": y}]
-
-
 def build_doc(n, bh, bw, grid, clue, givens, active, lines):
     W = n + 2
     idx = lambda r, c: r * W + c
@@ -171,18 +167,6 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
     for c in range(n):
         groups.append(group(('T', c))); groups.append(group(('B', c)))
 
-    # cosmetics: hide the ring, box every given outside cell, draw the border
-    ring_cells = ([(0, c) for c in range(W)] + [(W - 1, c) for c in range(W)]
-                  + [(r, 0) for r in range(1, W - 1)] + [(r, W - 1) for r in range(1, W - 1)])
-    white = [rect(c, r) for (r, c) in ring_cells]
-    # outline exactly the outside cells that show a given (clues and corners),
-    # and nothing where the ring is blank
-    outlines = [rect(c, r) for (r, c) in ring_cells if cells[idx(r, c)].get("given")]
-    border = [[{"x": x, "y": 1} for x in range(1, n + 2)]
-              + [{"x": n + 1, "y": y} for y in range(2, n + 2)]
-              + [{"x": x, "y": n + 1} for x in range(n, 0, -1)]
-              + [{"x": 1, "y": y} for y in range(n, 0, -1)]]
-
     rs_backend_code = minify_js((HERE / "main.js").read_text())
     components = [{"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
                  for f in COMPONENTS]
@@ -210,12 +194,7 @@ def build_doc(n, bh, bw, grid, clue, givens, active, lines):
                         "backend": {"type": "code", "code": postproc_code},
                         "components": []},
          "input": {}, "style": {}},
-        {"name": "White Lines (to hide outside cell borders)", "type": 2000,
-         "lines": white, "style": {"thickness": 0.05, "color": "#ffffffff"}},
-        {"name": "Outside Cell Outlines", "type": 2000,
-         "lines": outlines, "style": {"thickness": 0.03, "color": "#d7d7d7ff"}},
-        {"name": "Grid Outer Border", "type": 2000,
-         "lines": border, "style": {"thickness": 0.07, "color": "#000000ff"}},
+        *cosmetics(W, cells),
     ]
 
     return {"formatVersion": "1.6.0", "puzzle": {
