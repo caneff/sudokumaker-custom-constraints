@@ -29,7 +29,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo } from '../_shared/harness-lib.mjs'
 import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
@@ -90,7 +90,8 @@ function freshState () {
 }
 
 // ---- load the real components + the real main.js wiring ----
-const mainSrc = readFileSync(join(HERE, 'main.js'), 'utf8')
+const { read } = makeIo(HERE)
+const mainSrc = read('main.js')
 function buildComps () {
   return loadComponents({
     here: HERE,
@@ -191,8 +192,8 @@ function report (label, mode) {
 // means the feature never fires here, so a zero recovery delta is expected, not a
 // bug in the probe.
 function tighterLines () {
-  const read = f => readFileSync(join(HERE, f), 'utf8')
-  const hc = eval('(function(){' + read('HitCountsComponent.js') + '\n return {scan};})()')
+  const { load } = makeIo(HERE)
+  const hc = load('HitCountsComponent.js', ['scan'])
   let count = 0
   for (const g of groups) {
     const line = g.cells.slice(1)

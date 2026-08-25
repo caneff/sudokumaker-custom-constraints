@@ -1,8 +1,8 @@
-// Regression golden for the recovery probe: after the engine extraction
-// (issue #22), the probe must print BYTE-IDENTICAL output to before. Covers
-// the report path (gen_6, gen_9) and the search path (gen_6, matching on and
-// off) — gen_9's full --search is too slow to golden directly (minutes), so
-// gen_6 stands in for the search code path.
+// Regression golden for the recovery probe: asserts its stdout is
+// BYTE-IDENTICAL to a fixed golden, per invocation. Covers the report path
+// (gen_6, gen_9) and the search path (gen_6, matching on and off) — gen_9's
+// full --search takes minutes, too slow to golden directly, so gen_6 stands
+// in for the search code path.
 //
 //   node examples/hit-counts/recovery-probe.test.mjs
 

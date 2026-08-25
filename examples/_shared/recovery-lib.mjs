@@ -10,8 +10,7 @@
 // is a different shape from the fixed-map makePuzzle in harness-lib.mjs,
 // which is why the two files stay separate.
 
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { makeIo } from './harness-lib.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
 // `state.cand` is meant to be reassigned wholesale (fresh seed, or restored
@@ -93,9 +92,7 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //   mainSrc: the text of main.js.
 //   input: the object main.js reads as `input` (its groups/geometry).
 export function loadComponents ({ here, files, mainSrc, input }) {
-  const read = f => readFileSync(join(here, f), 'utf8')
-  const loadSrc = (src, names) =>
-    eval('(function(){' + src + '\n return {' + names.join(',') + '};})()')
+  const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
     mod.setParams(inst, ...args)
@@ -104,7 +101,7 @@ export function loadComponents ({ here, files, mainSrc, input }) {
   }
   const comps = []
   const registrar = { addConstraintComponent: inst => comps.push(inst) }
-  const mods = files.map(f => loadSrc(read(f.file), f.names))
+  const mods = files.map(f => load(f.file, f.names))
   const run = new Function('input', 'helpers', 'puzzle', ...files.map(f => f.ctorName), mainSrc)
   run(input, globalThis.helpers, registrar, ...mods.map(makeCtor))
   return comps
