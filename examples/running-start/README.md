@@ -25,6 +25,15 @@ all digits differ, so "not ascending" always means a strict drop.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main.js` and the component
   files. Run it after changing any of them:
   `uv run --with lzstring examples/running-start/build_link.py`.
+- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt` — smaller Running Start puzzles.
+- `build_size.py` — builds the whole document from scratch for any grid size,
+  no template needed. It generates a grid, derives every line's clue, carves a
+  unique puzzle (OR-Tools), and encodes the link. It shares `main.js` and the
+  component files, so a fix there flows to every size on the next run:
+  `uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2`
+  `uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3`
+  The three args are the grid size and the box height and width (`box_height *
+  box_width == size`).
 - `puzzle_template.json` — the puzzle frame (grid, clue ring, groups, regions,
   cosmetics) with the code fields empty. `build_link.py` fills them in.
 
