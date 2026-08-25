@@ -24,6 +24,7 @@ function load (file, names) {
   return eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()')
 }
 const mod = load('HitCountsComponent.js', ['setParams', 'update'])
+const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
 
 // Deterministic RNG.
 let rng = 12345
@@ -47,11 +48,11 @@ function makePuzzle (truth, seed) {
 
 // Run update to a fixpoint (bounded), then report a cell that lost its true
 // value or went empty.
-function violates (inst, p, truth) {
+function violates (m, inst, p, truth) {
   for (let pass = 0; pass < 20; pass++) {
     let sizes = 0
     for (const s of p._cand.values()) sizes += s.size
-    for (const _ of mod.update(inst, p)) { /* drain */ }
+    for (const _ of m.update(inst, p)) { /* drain */ }
     let after = 0
     for (const s of p._cand.values()) after += s.size
     if (after === sizes) break
@@ -97,13 +98,38 @@ for (let iter = 0; iter < 40000; iter++) {
   const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v))
   const inst = {}
   mod.setParams(inst, CLUE, [0, 1, 2, 3, 4, 5, 6, 7, 8])
-  const v = violates(inst, p, truth)
+  const v = violates(mod, inst, p, truth)
   tests++
   if (v) { bad++; if (bad <= 5) console.log('violation', v, 'clue', clueVal) }
 }
 console.log('hit-counts component:', tests, 'tests,', bad, 'violations')
 console.log('clue values exercised:', [...seenClues].sort((a, b) => a - b).join(' '))
 
-const ok = bad === 0 && seenClues.has(0) && seenClues.has(9)
+// ---- Side-sum component: n clues on a side sum to exactly n ----
+// A side is nine clue cells whose true values sum to 9 (a random composition of
+// 9 into nine parts, each 0..9). The component must never remove a true value.
+const N = 9
+const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
+function composition () {
+  const v = new Array(N).fill(0)
+  for (let h = 0; h < N; h++) v[(rnd() * N) | 0]++   // drop nine hits into nine slots
+  return v
+}
+let sideTests = 0
+let sideBad = 0
+for (let iter = 0; iter < 20000; iter++) {
+  const vals = composition()
+  const truth = {}
+  for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
+  const p = makePuzzle(truth, seeder(0, 9))
+  const inst = {}
+  sideMod.setParams(inst, SIDE, N)
+  const v = violates(sideMod, inst, p, truth)
+  sideTests++
+  if (v) { sideBad++; if (sideBad <= 5) console.log('SIDE violation', v, 'vals', vals) }
+}
+console.log('side-sum component:', sideTests, 'tests,', sideBad, 'violations')
+
+const ok = bad === 0 && sideBad === 0 && seenClues.has(0) && seenClues.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

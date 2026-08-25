@@ -19,3 +19,19 @@ for (const g of groups) {
   const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
   puzzle.addConstraintComponent(new HitCountsComponent(name, g.clue, g.line))
 }
+
+//! Side sum: the n clues on one side sum to exactly n. Group the clues by the
+//! step between a line's first two cells (+1 left, -1 right, +W top, -W bottom):
+//! same step === same side. Only fire on a full side of n clues, where the sum
+//! is exactly n; a partial side would make the sum an unsound bound.
+const n = helpers.digits.maxDigit
+const bySide = new Map()
+for (const g of groups) {
+  const step = g.line.length >= 2 ? g.line[1] - g.line[0] : g.line[0] - g.clue
+  if (!bySide.has(step)) bySide.set(step, [])
+  bySide.get(step).push(g.clue)
+}
+for (const [step, clueCells] of bySide) {
+  if (clueCells.length !== n) continue
+  puzzle.addConstraintComponent(new SideSumComponent(`side sum step ${step}`, clueCells, n))
+}
