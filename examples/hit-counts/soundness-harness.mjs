@@ -23,7 +23,7 @@ globalThis.helpers = { digits: { minDigit: 0, maxDigit: 9 } }
 function load (file, names) {
   return eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()')
 }
-const mod = load('HitCountsComponent.js', ['setParams', 'update'])
+const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize'])
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
 const pairMod = load('HitCountsPairComponent.js', ['setParams', 'update'])
 
@@ -87,6 +87,7 @@ for (let i = 0; i < 400; i++) lines.push(shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
 let tests = 0
 let bad = 0
+let pruned8 = 0
 const seenClues = new Set()
 for (let iter = 0; iter < 40000; iter++) {
   const perm = lines[iter % lines.length]
@@ -99,11 +100,14 @@ for (let iter = 0; iter < 40000; iter++) {
   const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v))
   const inst = {}
   mod.setParams(inst, CLUE, [0, 1, 2, 3, 4, 5, 6, 7, 8])
+  const had8 = p.getCandidates(CLUE).has(8)          // n - 1 = 8 for a line of 9
+  for (const _ of mod.initialize(inst, p)) { /* one-time n-1 prune */ }
+  if (had8 && !p.getCandidates(CLUE).has(8)) pruned8++
   const v = violates(mod, inst, p, truth)
   tests++
   if (v) { bad++; if (bad <= 5) console.log('violation', v, 'clue', clueVal) }
 }
-console.log('hit-counts component:', tests, 'tests,', bad, 'violations')
+console.log('hit-counts component:', tests, 'tests,', bad, 'violations,', pruned8, 'n-1 prunes')
 console.log('clue values exercised:', [...seenClues].sort((a, b) => a - b).join(' '))
 
 // ---- Side-sum component: n clues on a side sum to exactly n ----
@@ -215,6 +219,7 @@ if (gCand.get(20).size !== 1) { guardBad++; console.log('GUARD touched the miss 
 console.log('pair guard:', guardBad === 0 ? 'OK' : 'FAIL')
 
 const ok = bad === 0 && sideBad === 0 && pairBad === 0 && dynBad === 0 &&
-  guardBad === 0 && pairFired > 0 && seenClues.has(0) && seenClues.has(9)
+  guardBad === 0 && pairFired > 0 && pruned8 > 0 && !seenClues.has(8) &&
+  seenClues.has(0) && seenClues.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

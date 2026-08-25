@@ -117,6 +117,12 @@ Let `forced` be the cells already pinned to their own distance (a hit no matter
 what) and `possible` be the cells whose distance is still a candidate (a hit is
 still open). The true number of hits lies in `[forced, possible]`.
 
+- **No n − 1 clue** — a line is a permutation, so it can never have exactly
+  `n − 1` hits: fix `n − 1` cells on their target and the last value has only its
+  home position left, forcing an nth hit. So `n − 1` is never a legal clue. The
+  component drops it from every clue cell at load, which narrows the hidden clues
+  and feeds the side-sum and pair through the shared cell.
+
 - **Reverse, clue from line** — the clue is the hit count, so drop every clue
   candidate below `forced` or above `possible`.
 - **Forward, forbid hits** — if the clue's largest candidate equals `forced`, no
