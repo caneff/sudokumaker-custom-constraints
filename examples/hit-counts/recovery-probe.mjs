@@ -195,10 +195,13 @@ function runToFixpoint (comps) {
 
 // ---- measure one run ----
 const hiddenKeys = keys.filter(k => !activeSet.has(k))
-function report (label, matchingOn) {
+// mode: 'floor' runs the all-different floor alone (no hit-counts components) —
+// the baseline BEFORE any hit-counts deduction; 'off' and 'on' add the components
+// with the matching bound off (pre-#12) and on (shipped).
+function report (label, mode) {
   freshState()
   const start = totalCands()
-  const comps = buildComps(matchingOn)
+  const comps = mode === 'floor' ? [] : buildComps(mode === 'on')
   const passes = runToFixpoint(comps)
   const hiddenRecovered = hiddenKeys.filter(k => {
     const side = k[0]; const i = +k.slice(1)
@@ -238,7 +241,9 @@ const tightStart = tighterLines()
 for (let pass = 0; pass < 500; pass++) { const b = totalCands(); for (const g of alldiffGroups) floorGroup(g); if (totalCands() === b) break }
 const tightAfterFloor = tighterLines()
 console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${FLOOR} floor`)
-const off = report('matching OFF', false)
-const on = report('matching ON ', true)
-console.log(`  DELTA (on - off): hidden +${on.hiddenRecovered - off.hiddenRecovered}, interior +${on.interiorSolved - off.interiorSolved}, removed +${on.removed - off.removed}`)
-if (on.lost || off.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }
+const floor = report('floor only  ', 'floor')
+const off = report('matching OFF', 'off')
+const on = report('matching ON ', 'on')
+console.log(`  DELTA components over floor (off - floor): hidden +${off.hiddenRecovered - floor.hiddenRecovered}, interior +${off.interiorSolved - floor.interiorSolved}, removed +${off.removed - floor.removed}`)
+console.log(`  DELTA matching over naive  (on - off):    hidden +${on.hiddenRecovered - off.hiddenRecovered}, interior +${on.interiorSolved - off.interiorSolved}, removed +${on.removed - off.removed}`)
+if (on.lost || off.lost || floor.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }

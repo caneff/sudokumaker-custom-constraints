@@ -142,13 +142,17 @@ Sound and tighter is not the same as useful. `recovery-probe.mjs` measures the
 real gain: it runs the actual components — the same `main.js` wiring the app runs
 — over a generated puzzle's start state to a propagation fixpoint, with a
 Régin-strength (GAC) all-different over every row, column, and box as the floor.
-It runs twice, matching bound on and off, and diffs what propagation recovers.
+It runs three ways and diffs what propagation recovers: the floor alone (no
+hit-counts components — the baseline before any hit-counts deduction), then the
+components with the matching bound off (pre-#12) and on (shipped).
 
 ```
 node examples/hit-counts/recovery-probe.mjs gen_9.json --floor=regin
 ```
 
-On the shipped puzzles the extra recovery is **zero**:
+The components as a whole earn their keep — over the sudoku floor, which recovers
+no hidden clue on its own, they recover 4 hidden clues on `gen_6` and 10 on
+`gen_9`. But the matching refinement adds **zero** on top of the naive bound:
 
 - `gen_6` — the matching never even fires: the interior starts empty, so every
   line's candidates stay wide and the matching bound equals the naive one on all
