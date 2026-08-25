@@ -123,11 +123,18 @@ RULE_EXAMPLES = {
 }
 
 
+CORNER_NOTE = ("The 1s in the corners only fill space for SudokuMaker's solver; "
+               "delete them before publishing.")
+
+
 def rule_text(n):
-    rule = ("Outside cells on clues must contain a digit, and that digit indicates "
-            "the length of the first ascending sequence in that direction.")
+    rule = ("Running Start: Outside cells on clues must contain a digit, and that "
+            "digit indicates the length of the first ascending sequence in that "
+            "direction.")
     ex = RULE_EXAMPLES.get(n)
-    return f"{rule} For example, {ex}." if ex else rule
+    if ex:
+        rule = f"{rule} For example, {ex}."
+    return f"{rule}\n\n{CORNER_NOTE}"
 
 
 def build_doc(n, bh, bw, grid, clue, givens, active, lines):
