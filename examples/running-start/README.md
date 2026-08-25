@@ -1,6 +1,6 @@
 # Running Start — a worked custom constraint
 
-Outside cells on lines must contain a digit, and that digit indicates the length
+Outside cells on clues must contain a digit, and that digit indicates the length
 of the first ascending sequence in that direction.
 
 For example, a row with `142356789` gives a left clue of **2** (1, 4) and a

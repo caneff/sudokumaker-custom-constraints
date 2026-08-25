@@ -124,7 +124,7 @@ RULE_EXAMPLES = {
 
 
 def rule_text(n):
-    rule = ("Outside cells on lines must contain a digit, and that digit indicates "
+    rule = ("Outside cells on clues must contain a digit, and that digit indicates "
             "the length of the first ascending sequence in that direction.")
     ex = RULE_EXAMPLES.get(n)
     return f"{rule} For example, {ex}." if ex else rule
