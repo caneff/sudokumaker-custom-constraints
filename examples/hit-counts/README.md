@@ -27,6 +27,8 @@ no ordering. That makes Hit Counts simpler than Running Start.
   clues on the ends of one line through `A + B <= n` (`+ 1` when `n` is odd), and
   at that cap pins every cell to two values.
 - `soundness-harness.mjs` — Node soundness test (see below).
+- `recovery-probe.mjs` — measures whether the matching bound actually helps solve a
+  real generated puzzle (see "Does the tighter bound help?" below).
 - `build_size.py` — builds the whole document from scratch for any grid size. It
   generates a grid, derives every line's hit count, carves a unique puzzle
   (OR-Tools), and encodes the link:
@@ -133,6 +135,34 @@ such matching, and the true hit count lies in that range. This range sits inside
 `[forced, possible]`: a forced cell hits in every matching, so the low end never
 drops below `forced`, and no matching beats `possible`. For `n ≤ 9` the matching
 is a small pass over the set of used values.
+
+### Does the tighter bound help?
+
+Sound and tighter is not the same as useful. `recovery-probe.mjs` measures the
+real gain: it runs the actual components — the same `main.js` wiring the app runs
+— over a generated puzzle's start state to a propagation fixpoint, with a
+Régin-strength (GAC) all-different over every row, column, and box as the floor.
+It runs twice, matching bound on and off, and diffs what propagation recovers.
+
+```
+node examples/hit-counts/recovery-probe.mjs gen_9.json --floor=regin
+```
+
+On the shipped puzzles the extra recovery is **zero**:
+
+- `gen_6` — the matching never even fires: the interior starts empty, so every
+  line's candidates stay wide and the matching bound equals the naive one on all
+  24 lines. Nothing to bite.
+- `gen_9` — the matching *does* fire (tighter than naive on ~14 of 36 lines), yet
+  the recovered clues and cells are identical with it on or off. The all-different
+  floor plus the side-sum and pair components already reach the same fixpoint, so
+  the tighter clue bound is redundant.
+
+The result holds under a weaker singles-only floor too (`--floor=singles`). So the
+clue-bound tightening, though correct, buys no measured solving power on the
+current puzzles. Any real value would have to come from the interior-facing
+deduction — the matching-driven cell eliminations tracked as a follow-up — or from
+pruning inside search, which this root-fixpoint probe does not measure.
 
 - **No n − 1 clue** — a line is a permutation, so it can never have exactly
   `n − 1` hits: fix `n − 1` cells on their target and the last value has only its
