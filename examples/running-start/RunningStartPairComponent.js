@@ -14,6 +14,10 @@
 // monotone runs, which pins the peak (a 9 on a full row) and tightens every
 // cell — deductions no single-line component can reach.
 
+//! Two Running Start clues on opposite ends of one line couple as A + B <= n + 1
+//! (the two increasing runs share at most the peak). When A + B == n + 1 the line
+//! is unimodal: strictly up to the peak, then strictly down.
+
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
 }

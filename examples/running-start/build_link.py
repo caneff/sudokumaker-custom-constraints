@@ -12,6 +12,7 @@
 
 import json, pathlib
 from lzstring import LZString
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -22,14 +23,19 @@ def build():
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
         if c.get("type") == 1000 and d.get("name") == "Running Start Lines":
-            d["backend"]["code"] = (HERE / "main.js").read_text()
+            d["backend"]["code"] = minify_js((HERE / "main.js").read_text())
             d["components"] = [
-                {"type": "code", "name": f[:-3], "code": (HERE / f).read_text()}
+                {"type": "code", "name": f[:-3], "code": minify_js((HERE / f).read_text())}
                 for f in COMPONENTS
             ]
             break
     else:
         raise SystemExit("template is missing the 'Running Start Lines' constraint")
+    # trim the postproc helper's verbose comments out of the shared link too
+    for c in doc["puzzle"]["constraints"]:
+        d = c.get("definition", {})
+        if d.get("name") == "JSON Postproc":
+            d["backend"]["code"] = minify_js(d["backend"]["code"])
     payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
     return "https://sudokumaker.app/?puzzle=" + payload, doc
 
@@ -44,7 +50,7 @@ def check(link, doc):
               if c.get("definition", {}).get("name") == "Running Start Lines")
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
-    assert rs["definition"]["backend"]["code"] == (HERE / "main.js").read_text()
+    assert rs["definition"]["backend"]["code"] == minify_js((HERE / "main.js").read_text())
     assert len(rs["input"]["groups"]) == 36, "expected 36 line groups"
 
 

@@ -1,8 +1,7 @@
 # Running Start — a worked custom constraint
 
-Running Start is a Skyscrapers variant. Outside clues on lines must contain a
-digit, and that digit indicates the length of the first ascending sequence in
-that direction.
+Outside clues on lines must contain a digit, and that digit indicates the length
+of the first ascending sequence in that direction.
 
 For example, a row with `142536879` gives a left clue of **2** (1, 4) and a
 right clue of **1** (9). Reading from the left, `1 < 4`, then `2` drops, so the
