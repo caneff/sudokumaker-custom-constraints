@@ -23,6 +23,9 @@ no ordering. That makes Hit Counts simpler than Running Start.
   line and forces or forbids hits when the clue's range demands it.
 - `SideSumComponent.js` — the per-side component. The `n` clues on one side sum
   to exactly `n`; it propagates that sum across the side's clue cells.
+- `HitCountsPairComponent.js` — the opposite-pair component. It couples the two
+  clues on the ends of one line through `A + B <= n` (`+ 1` when `n` is odd), and
+  at that cap pins every cell to two values.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `build_size.py` — builds the whole document from scratch for any grid size. It
   generates a grid, derives every line's hit count, carves a unique puzzle
@@ -53,14 +56,30 @@ cells (`+1` left, `-1` right, `+W` top, `-W` bottom): same step, same side. It
 fires only on a full side of `n` clues — the sum is `n` exactly only when every
 line on the side is present, which the frame guarantees.
 
-## Why no pair component
+## Opposite pair — a cut from the two clues alone
 
-Running Start couples two clues on opposite ends of one line, because its two
-increasing runs share at most the peak. Hit Counts has no such coupling worth
-coding. A left hit and a right hit fall on the same cell only at the exact
-middle of the line, so the only cross bound is `A + B <= n` (`+ 1` when `n` is
-odd). Fixed points average one per line, so `A` and `B` stay small and that
-bound almost never bites. The per-line component is the whole constraint.
+Two clues on opposite ends of one line couple. Read a cell at 0-based index `j`
+on a line of length `n`. It is a **left hit** when its value is `j + 1` (its
+distance from the left clue) and a **right hit** when its value is `n - j` (its
+distance from the right clue). Those two values are equal only at the exact
+center (`n` odd, `j = (n-1)/2`, value `(n+1)/2`). So the left-hit cells and the
+right-hit cells are disjoint apart from that one shared center cell. The left
+clue `A` counts the first set, the right clue `B` the second, so
+
+    A + B <= n        (n even)
+    A + B <= n + 1    (n odd, the center can be a hit from both sides).
+
+Each clue caps the other: `A <= cap - B` and `B <= cap - A`.
+
+The cut has real teeth at the cap. When `A + B` is forced to `cap`, every cell
+is a hit — left or right. So cell `j` is pinned to just `{j + 1, n - j}` (a
+single value at the odd-`n` center). That fires from the two clues alone, before
+any interior digit is known — a deduction no single-line component can reach.
+`HitCountsPairComponent` caps each clue and, at the cap, makes the per-cell cut.
+`main.js` pairs two clues whose lines are the exact reverse of each other.
+
+Unlike the side sum, this coupling is not a tautology: it constrains the
+interior digits directly, not just the hidden clues.
 
 ## The clue of 0
 
@@ -79,9 +98,9 @@ holding its own distance.
 ## Paste into SudokuMaker
 
 Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add two component
-segments, `HitCountsComponent` and `SideSumComponent`. Each group is one line:
-cell 0 the outside clue, the rest the line read inward.
+local constraint, and paste `main.js` as the main code. Add three component
+segments, `HitCountsComponent`, `SideSumComponent`, and `HitCountsPairComponent`.
+Each group is one line: cell 0 the outside clue, the rest the line read inward.
 
 ## What the component deduces
 
@@ -107,10 +126,12 @@ Soundness (needs Node):
 
 ```
 node examples/hit-counts/soundness-harness.mjs
-# -> line + side-sum components, 0 violations, clue values 0..9, "PASS"
+# -> line + side-sum + pair components, 0 violations, clue values 0..9, "PASS"
 ```
 
 The harness fuzzes random permutations of `1..9` read in a random direction, so
 the clue ranges over `0..9`. It seeds partial states that keep each cell's true
 value, runs the component to a fixpoint, and checks no true value was removed. It
-forces in the identity line (clue 9) and a derangement (clue 0) on every run.
+forces in the identity line (clue 9) and a derangement (clue 0) on every run. The
+pair section drives a line at the `A + B == cap` extreme and counts how often the
+per-cell branch fires, so the strong cut stays covered.

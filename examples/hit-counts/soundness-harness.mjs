@@ -25,6 +25,7 @@ function load (file, names) {
 }
 const mod = load('HitCountsComponent.js', ['setParams', 'update'])
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
+const pairMod = load('HitCountsPairComponent.js', ['setParams', 'update'])
 
 // Deterministic RNG.
 let rng = 12345
@@ -130,6 +131,39 @@ for (let iter = 0; iter < 20000; iter++) {
 }
 console.log('side-sum component:', sideTests, 'tests,', sideBad, 'violations')
 
-const ok = bad === 0 && sideBad === 0 && seenClues.has(0) && seenClues.has(9)
+// ---- Pair component: opposite clues cap each other; the extreme pins each cell ----
+// A fixed line at the A + B == cap extreme: identity with its two ends swapped, so
+// every cell is a left hit (value j+1) or a right hit (value n-j). The component
+// must never remove a true value, and the extreme branch must actually fire.
+const PA = 300
+const PB = 301
+const PLINE = [10, 11, 12, 13, 14, 15, 16, 17, 18]
+const pairLine = [9, 2, 3, 4, 5, 6, 7, 8, 1]
+const nP = pairLine.length
+const capP = nP + (nP % 2 === 1 ? 1 : 0)
+const trueA = pairLine.reduce((k, v, j) => k + (v === j + 1 ? 1 : 0), 0)
+const trueB = pairLine.reduce((k, v, j) => k + (v === nP - j ? 1 : 0), 0)
+let pairTests = 0
+let pairBad = 0
+let pairFired = 0     // coverage: the extreme (every-cell-a-hit) branch ran
+for (let iter = 0; iter < 20000; iter++) {
+  const truth = { [PA]: trueA, [PB]: trueB }
+  for (let i = 0; i < nP; i++) truth[PLINE[i]] = pairLine[i]
+  const lineSeed = seeder(1, 9)
+  const clueSeed = seeder(0, 9)
+  const p = makePuzzle(truth, (c, v) => (c === PA || c === PB ? clueSeed : lineSeed)(c, v))
+  const inst = {}
+  pairMod.setParams(inst, PA, PB, PLINE)
+  const minA = Math.min(...p.getCandidates(PA))
+  const minB = Math.min(...p.getCandidates(PB))
+  if (minA + minB === capP) pairFired++
+  const v = violates(pairMod, inst, p, truth)
+  pairTests++
+  if (v) { pairBad++; if (pairBad <= 5) console.log('PAIR violation', v) }
+}
+console.log('pair component:', pairTests, 'tests,', pairBad, 'violations,', pairFired, 'extreme firings')
+
+const ok = bad === 0 && sideBad === 0 && pairBad === 0 && pairFired > 0 &&
+  seenClues.has(0) && seenClues.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

@@ -24,7 +24,7 @@ from minify import minify_js
 from frame import cosmetics
 
 HERE = pathlib.Path(__file__).parent
-COMPONENTS = ["HitCountsComponent.js", "SideSumComponent.js"]
+COMPONENTS = ["HitCountsComponent.js", "SideSumComponent.js", "HitCountsPairComponent.js"]
 
 
 # ---- grid generation ------------------------------------------------------
