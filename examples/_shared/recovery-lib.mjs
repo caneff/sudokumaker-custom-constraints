@@ -61,7 +61,7 @@ export function maxMatch (cells, getCand) {
 export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {}) {
   function gacGroup (cells) {
     const base = c => state.cand.get(c)
-    if (maxMatch(cells, base) !== cells.length) return   // dead state: leave it
+    if (maxMatch(cells, base) !== cells.length) return // dead state: leave it
     for (const cell of cells) {
       for (const v of [...state.cand.get(cell)]) {
         const getCand = c => (c === cell ? new Set([v]) : state.cand.get(c))
@@ -91,7 +91,11 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //     'HitCountsComponent').
 //   mainSrc: the text of main.js.
 //   input: the object main.js reads as `input` (its groups/geometry).
-export function loadComponents ({ here, files, mainSrc, input }) {
+//   builtins: in-memory modules for the built-in components main.js constructs
+//     but that ship with SudokuMaker, not as example files — each is
+//     { ctorName, mod } where mod supplies setParams/update (e.g.
+//     ExactDigitCountComponent). They join the file-backed ctors in scope.
+export function loadComponents ({ here, files, mainSrc, input, builtins = [] }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
@@ -101,9 +105,10 @@ export function loadComponents ({ here, files, mainSrc, input }) {
   }
   const comps = []
   const registrar = { addConstraintComponent: inst => comps.push(inst) }
-  const mods = files.map(f => load(f.file, f.names))
-  const run = new Function('input', 'helpers', 'puzzle', ...files.map(f => f.ctorName), mainSrc)
-  run(input, globalThis.helpers, registrar, ...mods.map(makeCtor))
+  const fromFiles = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
+  const ctors = [...fromFiles, ...builtins]
+  const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func
+  run(input, globalThis.helpers, registrar, ...ctors.map(c => makeCtor(c.mod)))
   return comps
 }
 
@@ -113,10 +118,10 @@ export function loadComponents ({ here, files, mainSrc, input }) {
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
 // `maxPasses`. Returns the pass count it took, or -1 if it never settled.
 export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null, maxPasses = 500 } = {}) {
-  if (init) for (const inst of comps) if (inst.__mod.initialize) for (const _ of inst.__mod.initialize(inst, state.puzzle)) { /* n-1 prune */ }
+  if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle)) // n-1 prune
   for (let pass = 0; pass < maxPasses; pass++) {
     const before = state.total()
-    for (const inst of comps) for (const _ of inst.__mod.update(inst, state.puzzle)) { /* apply */ }
+    for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle)) // apply
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
     if (state.total() === before) return pass + 1
