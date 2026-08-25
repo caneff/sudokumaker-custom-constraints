@@ -95,20 +95,37 @@ reach.
   `../_shared/recovery-lib.mjs`. With the 36 clues shown, the components solve
   the interior in full (69 → 81 cells) and the puzzle is unique by propagation
   alone — zero search nodes, one solution.
+- `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
+  rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
+  clue`), never touching the component code, and answers two questions over
+  `gen_9.json`: the shown clues keep the interior uniquely solvable, and that one
+  solution matches the fixture solution; and which clues are redundant. Result:
+  the puzzle is unique, all 36 clues are **individually** redundant (dropping any
+  one keeps a unique solution) yet **collectively** load-bearing (drop them all
+  and the 31 interior givens leave two completions).
 
 ## Run
 
     node examples/numbered-rooms/soundness-harness.mjs
     node examples/numbered-rooms/recovery-probe.mjs
+    uv run --with ortools examples/numbered-rooms/verify.py            # independent OR-Tools check
+    node examples/numbered-rooms/verify.test.mjs
     uv run --with lzstring examples/numbered-rooms/derive_fixture.py   # rebuild gen_9.json
     uv run --with lzstring examples/numbered-rooms/build_link.py
 
-## Not covered
+## Two independent checks
 
 `recovery-probe.mjs` proves the puzzle unique under the shipped components (a
 JS-side check over the sudoku all-different plus the Numbered Rooms rule). It
-does not regenerate a fresh puzzle, and it is not an independent OR-Tools model
-of the constraint the way `running-start/generate.py` is — it runs the same
-component code the app runs, so a bug shared by the component and the probe
-would hide from both. The soundness harness is the separate guard: it proves the
-component never removes a true candidate.
+runs the same component code the app runs, so a bug shared by the component and
+the probe would hide from both. `verify.py` is the independent guard against
+that: it re-models the rule in OR-Tools from scratch and reaches the same
+verdict — one solution, matching the fixture. The soundness harness is the third
+guard: it proves the component never removes a true candidate.
+
+## Not covered
+
+Neither check regenerates a fresh puzzle the way `running-start/generate.py`
+does; both verify the one hand-made puzzle in `gen_9.json`. Numbered Rooms has
+no generator (`derive_fixture.py` decodes the hand-made document), so there is
+no fresh puzzle to regenerate.
