@@ -10,12 +10,15 @@
 #
 # Writes PUZZLE_LINK.txt next to this script.
 
-import json, pathlib
-from lzstring import LZString
+import json
+import pathlib
 import sys
+
+from lzstring import LZString
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 from frame import cosmetics
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]

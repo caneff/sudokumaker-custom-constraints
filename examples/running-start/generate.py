@@ -1,5 +1,8 @@
-import random, json
+import json
+import random
+
 from ortools.sat.python import cp_model
+
 
 def base(r,c): return (3*(r%3)+r//3+c)%9
 def make_grid(rng):

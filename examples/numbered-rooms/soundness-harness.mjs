@@ -22,7 +22,7 @@ const mod = load('NumberedRoomsComponent.js', ['setParams', 'update'])
 
 // Every valid tuple: line in {1..D}^m, index k = line[0] in 1..m, clue = line[k-1].
 // Cell ids: 0 = clue, 1..m = line[0..m-1].
-function* validTuples (m, D) {
+function * validTuples (m, D) {
   const line = new Array(m).fill(1)
   while (true) {
     const k = line[0]
@@ -75,8 +75,8 @@ console.log('soundness:', tests, 'tests,', bad, 'violations')
 // {1,2,3,4}; a correct component removes {1,2,4} from it while it is unsolved.
 installGlobals(1, 4)
 const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
-  if (c === 1) return [2]          // index forced to 2
-  if (c === 2) return [3]          // target (line[1]) forced to 3
+  if (c === 1) return [2] // index forced to 2
+  if (c === 2) return [3] // target (line[1]) forced to 3
   if (c === 0) return [1, 2, 3, 4] // clue unsolved
   return [1, 2, 3, 4]
 })
@@ -85,7 +85,7 @@ mod.setParams(inst, 0, [1, 2, 3, 4])
 let removals = 0
 for (let pass = 0; pass < 20; pass++) {
   let before = 0; for (const s of p._cand.values()) before += s.size
-  for (const _ of mod.update(inst, p)) { /* drain */ }
+  Array.from(mod.update(inst, p)) // drain
   let after = 0; for (const s of p._cand.values()) after += s.size
   removals += before - after
   if (after === before) break
@@ -100,7 +100,7 @@ console.log('strength: clue pruned to', clueCands, `(was {1,2,3,4}), ${removals}
 // sudoku line), where the a+b===N+1 <=> O_L===O_R biconditional holds.
 const pairMod = load('NumberedRoomsPairComponent.js', ['setParams', 'update'])
 
-function* permutations (arr) {
+function * permutations (arr) {
   if (arr.length <= 1) { yield arr; return }
   for (let i = 0; i < arr.length; i++) {
     const rest = [...arr.slice(0, i), ...arr.slice(i + 1)]
@@ -124,7 +124,7 @@ for (const N of [4, 5, 6]) {
   const seed = seeder(N)
   const CL = 100
   const CR = 101
-  const line = Array.from({ length: N }, (_, i) => i)   // cell ids 0..N-1
+  const line = Array.from({ length: N }, (_, i) => i) // cell ids 0..N-1
   for (const perm of permutations(Array.from({ length: N }, (_, i) => i + 1))) {
     const a = perm[0]
     const b = perm[N - 1]
@@ -149,16 +149,16 @@ console.log('pair soundness:', pairTests, 'tests,', pairBad, 'violations')
 installGlobals(1, 5)
 const line5 = [0, 1, 2, 3, 4]
 const pp = makePairPuzzle({ 100: 4, 101: 4, 0: 4, 1: 0, 2: 0, 3: 0, 4: 2 }, (c, v) => {
-  if (c === 100 || c === 101) return [4]            // both clues equal
-  if (c === 4) return [2]                            // right index b = 2
-  if (c === 0) return [1, 2, 3, 4, 5]                // left index a: full
+  if (c === 100 || c === 101) return [4] // both clues equal
+  if (c === 4) return [2] // right index b = 2
+  if (c === 0) return [1, 2, 3, 4, 5] // left index a: full
   return [1, 2, 3, 4, 5]
 })
 const pinst = {}
 pairMod.setParams(pinst, 100, 101, line5)
 for (let pass = 0; pass < 20; pass++) {
   let before = 0; for (const s of pp._cand.values()) before += s.size
-  for (const _ of pairMod.update(pinst, pp)) { /* drain */ }
+  Array.from(pairMod.update(pinst, pp)) // drain
   let after = 0; for (const s of pp._cand.values()) after += s.size
   if (after === before) break
 }
@@ -172,7 +172,7 @@ console.log('pair strength: left index pruned to', aCands, '(equal clues => a+b=
 // {1..N}^N (repeats allowed) that satisfies each clue's own index relation, and
 // check the pair component removes no true value. Without the guard, a line like
 // [2,_,_,2] with equal middle cells loses a true clue value here.
-function* rowsWithRepeats (N) {
+function * rowsWithRepeats (N) {
   const line = new Array(N).fill(1)
   while (true) {
     yield [...line]
@@ -197,7 +197,7 @@ for (const N of [4, 5]) {
     const truth = { [CL]: row[a - 1], [CR]: row[N - b] }
     for (let i = 0; i < N; i++) truth[i] = row[i]
     for (let rep = 0; rep < 4; rep++) {
-      const p = makePairPuzzle(truth, seed, false)   // line NOT known distinct
+      const p = makePairPuzzle(truth, seed, false) // line NOT known distinct
       const inst = {}
       pairMod.setParams(inst, CL, CR, line)
       const v = violates(pairMod, inst, p, truth)

@@ -12,12 +12,18 @@
 # Args: n box_height box_width   (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
 
-import json, pathlib, random, sys, urllib.parse
-from ortools.sat.python import cp_model
+import json
+import pathlib
+import random
+import sys
+import urllib.parse
+
 from lzstring import LZString
+from ortools.sat.python import cp_model
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 from frame import cosmetics
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]

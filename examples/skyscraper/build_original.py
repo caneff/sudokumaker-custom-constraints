@@ -7,11 +7,17 @@
 # Writes PUZZLE_LINK_<n>x<n>_original.txt next to this script and checks that the
 # only difference from PUZZLE_LINK_<n>x<n>.txt is the custom constraint's code.
 
-import json, pathlib, sys, urllib.parse, copy
+import copy
+import json
+import pathlib
+import sys
+import urllib.parse
+
 from lzstring import LZString
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 import build_size
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"

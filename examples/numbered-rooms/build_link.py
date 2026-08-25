@@ -7,7 +7,11 @@
 #
 # Writes PUZZLE_LINK.txt next to this script.
 
-import json, pathlib, sys, urllib.parse
+import json
+import pathlib
+import sys
+import urllib.parse
+
 from lzstring import LZString
 
 HERE = pathlib.Path(__file__).parent

@@ -17,12 +17,18 @@
 # allow 0 anywhere) and add a look-and-say cage "00" (zero 0s) over the interior,
 # which keeps 0 out of the sudoku itself. Only the clue ring may be 0.
 
-import json, pathlib, random, sys, urllib.parse
-from ortools.sat.python import cp_model
+import json
+import pathlib
+import random
+import sys
+import urllib.parse
+
 from lzstring import LZString
+from ortools.sat.python import cp_model
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from minify import minify_js
 from frame import cosmetics
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["HitCountsComponent.js", "SideSumComponent.js", "HitCountsPairComponent.js"]

@@ -1,0 +1,23 @@
+{
+  "name": "sudokumaker-custom-constraints",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Worked examples of custom SudokuMaker constraint components.",
+  "scripts": {
+    "lint": "standard",
+    "test": "node examples/_shared/recovery-lib.test.mjs && node examples/hit-counts/recovery-probe.test.mjs && node examples/numbered-rooms/recovery-probe.test.mjs && node examples/skyscraper/recovery-probe.test.mjs"
+  },
+  "devDependencies": {
+    "standard": "^17.1.2"
+  },
+  "standard": {
+    "//": "The .js files are constraint snippets pasted into SudokuMaker, not Node modules — linting them as Node reports the SudokuMaker API functions as unused and its globals as undefined. Lint the .mjs harness/probe code we run; the snippets stay judged by eye (see CODING_STANDARDS.md).",
+    "ignore": [
+      "examples/**/*.js"
+    ],
+    "globals": [
+      "SudokuDigitSet",
+      "helpers"
+    ]
+  }
+}

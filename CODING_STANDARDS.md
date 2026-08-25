@@ -1,9 +1,12 @@
 # Coding standards
 
 The rules a change to a constraint (or its tests and generators) must satisfy.
-This repo has no build or lint gate, so these are judged by eye — by a human
-reviewer or an agent reading a diff. Thin on purpose: the load-bearing detail
-lives in `docs/`, and each rule points there.
+`just check` gates the mechanical part — StandardJS on the Node code, ruff on
+the Python generators, the probe goldens, and the soundness fuzz. The rules
+below are the part a gate cannot judge: a human reviewer or an agent reads them
+off the diff. The `.js` constraint snippets are not linted — they run in
+SudokuMaker, not Node, so they stay judged by eye. Thin on purpose: the
+load-bearing detail lives in `docs/`, and each rule points there.
 
 ## Soundness is the invariant
 

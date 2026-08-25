@@ -1,0 +1,9 @@
+# Light gate for the Python puzzle generators. This repo is JavaScript-first;
+# the .py files are build/generation scripts, not a typed package. So this
+# catches real bugs — pyflakes (unused imports, undefined names), import order,
+# pyupgrade, bugbear — but leaves out line-length and the formatter. The scripts
+# were not written to 88 columns, and reflowing them is a separate sweep, not
+# part of adding a lint gate. The strict ANN/S/N/ty stack a Python library would
+# carry is likewise deferred.
+[lint]
+select = ["F", "I", "UP", "B"]
