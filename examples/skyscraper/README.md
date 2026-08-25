@@ -82,6 +82,11 @@ one clue per side. This couples all nine clues on a side.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` — built
   links. Open one to play the example.
 - `gen_<n>.json` — the grid, clues, shown clues, and givens for each built size.
+- `original/` and `build_original.py` — ChinStrap's original wrapper code, plus
+  a re-encoder that rebuilds the same generated puzzle with it. The
+  `PUZZLE_LINK_<n>x<n>_original.txt` links are the same grid, givens, and clues
+  as the improved links, so you can compare the two solve experiences directly:
+  `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
 
 ## Paste into SudokuMaker
 
