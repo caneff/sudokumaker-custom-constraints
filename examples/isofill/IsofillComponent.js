@@ -3,7 +3,7 @@
 //! cells; every cell in a region holds the same digit; all ten digits appear.
 //! So each digit fills exactly ten cells.
 //!
-//! One whole-grid component, three deductions per digit:
+//! One whole-grid component, five deductions per digit:
 //!   Cap:   a digit already in ten cells leaves every other cell.
 //!   Force: a digit with exactly ten cells still open takes all of them.
 //!   Reach: walk from the digit's placed cells through cells that still allow
@@ -12,6 +12,9 @@
 //!          the solver sees the dead branch (decision #66).
 //!   Capacity: if that walk meets fewer than ten cells the region can never
 //!          reach ten; a placed cell is emptied, as for a split.
+//!   Homeless: a digit with no placed cell still needs a connected blob of ten
+//!          cells that allow it. None → dead branch (the digit leaves every
+//!          cell); exactly one → cells outside it lose the digit.
 //! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
@@ -72,7 +75,22 @@ function * update (instance, puzzle) {
       for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
     } else if (placed.length + open.length === size) {
       for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
-    } else if (placed.length > 0) {
+    } else if (placed.length === 0) {
+      // Homeless: the digit still needs a connected home of `size` open cells.
+      // No home is a dead branch (the digit leaves every cell); one home means
+      // the region lies inside it, so cells outside lose the digit.
+      const seen = new Set()
+      const homes = []
+      for (const i of open) {
+        if (seen.has(i)) continue
+        const blob = reach([i], cells.length, allowed, side)
+        for (const j of blob) seen.add(j)
+        if (blob.size >= size) homes.push(blob)
+      }
+      if (homes.length <= 1) {
+        for (const i of open) if (!(homes.length && homes[0].has(i))) yield puzzle.removeCandidateFromCell(d, cells[i])
+      }
+    } else {
       // Any region cell is within (size - placed) steps of the placed set.
       const near = reach(placed, size - placed.length, allowed, side)
       // Capacity: the whole region lies inside `near`, so fewer than `size`
