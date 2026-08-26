@@ -5,9 +5,10 @@
 //
 //   node examples/isofill/soundness-harness.mjs
 //
-// The fixture is a valid ISOFILL solution: row r holds digit r, so each digit
-// is one orthogonally connected ten-cell region. The count floor never reads
-// region shape, so a plain fixture covers it.
+// Two fixtures, both valid ISOFILL solutions:
+//   rows — row r holds digit r (covers cap and force).
+//   bent — each pair of rows splits into two L-shaped regions, so the reach
+//          deduction walks around corners.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -23,9 +24,21 @@ const mod = load('IsofillComponent.js', ['setParams', 'update'])
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
-const truth = {}
-for (const c of CELLS) truth[c] = Math.floor(c / N)
 const ALL = Array.from({ length: N }, (_, d) => d)
+
+const rows = {}
+for (const c of CELLS) rows[c] = Math.floor(c / N)
+
+// Rows 2r,2r+1: digit 2r takes cols 0-5 of the top row and cols 0-3 of the
+// bottom row; digit 2r+1 takes the rest. Ten cells each, both connected.
+const bent = {}
+for (const c of CELLS) {
+  const r = Math.floor(c / N)
+  const x = c % N
+  const top = r % 2 === 0
+  const band = Math.floor(r / 2)
+  bent[c] = (top ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
+}
 
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 function seeder (c, v) {
@@ -37,33 +50,53 @@ function seeder (c, v) {
   return [...s]
 }
 
-// ---- Fuzz: true values survive ----
-let tests = 0
-let bad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const p = makePuzzle(truth, seeder)
+function run (truth, seed) {
+  const p = makePuzzle(truth, seed)
   const inst = {}
   mod.setParams(inst, CELLS)
-  const v = violates(mod, inst, p, truth)
-  tests++
-  if (v) { bad++; if (bad <= 5) console.log('violation', v) }
+  return { p, v: violates(mod, inst, p, truth) }
 }
-console.log('isofill component:', tests, 'tests,', bad, 'violations')
+
+// ---- Fuzz: true values survive, on both fixtures ----
+let bad = 0
+for (const [name, truth] of [['rows', rows], ['bent', bent]]) {
+  let fails = 0
+  for (let iter = 0; iter < 20000; iter++) {
+    const { v } = run(truth, seeder)
+    if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
+  }
+  console.log('isofill', name, 'fixture: 20000 tests,', fails, 'violations')
+  bad += fails
+}
 
 // ---- Cap: digit 0 fills row 0, so no other cell may keep 0 ----
-const capP = makePuzzle(truth, (c, v) => (v === 0 ? [v] : ALL))
-const capInst = {}
-mod.setParams(capInst, CELLS)
-const capOk = !violates(mod, capInst, capP, truth) && CELLS.slice(N).every(c => !capP.getCandidates(c).has(0))
+const cap = run(rows, (c, v) => (v === 0 ? [v] : ALL))
+const capOk = !cap.v && CELLS.slice(N).every(c => !cap.p.getCandidates(c).has(0))
 
 // ---- Force: digit 0 has exactly ten open cells (row 0), so they must be 0 ----
-const forceP = makePuzzle(truth, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
-const forceInst = {}
-mod.setParams(forceInst, CELLS)
-const forceOk = !violates(mod, forceInst, forceP, truth) && CELLS.slice(0, N).every(c => forceP.getCandidates(c).size === 1)
+const force = run(rows, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
+const forceOk = !force.v && CELLS.slice(0, N).every(c => force.p.getCandidates(c).size === 1)
 
-console.log('cap fired:', capOk, '| force fired:', forceOk)
+// ---- Reach: only cell 0 is placed (digit 0), so cell 99 (18 steps away) loses 0 ----
+const reach = run(bent, (c, v) => (c === 0 ? [v] : ALL))
+const reachOk = !reach.v && !reach.p.getCandidates(99).has(0) && reach.p.getCandidates(9).has(0)
 
-const ok = bad === 0 && capOk && forceOk
+// ---- Split: cells 0 and 99 both placed as 0 can never join; the stranded cell empties ----
+const split = makePuzzle(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
+const splitInst = {}
+mod.setParams(splitInst, CELLS)
+Array.from(mod.update(splitInst, split))
+const splitOk = split.getCandidates(0).size === 0 || split.getCandidates(99).size === 0
+
+// ---- Split at cap: ten placed 0s (cells 0-8 and 99) can never join either ----
+const capSplit = makePuzzle(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
+const capSplitInst = {}
+mod.setParams(capSplitInst, CELLS)
+Array.from(mod.update(capSplitInst, capSplit))
+const capSplitOk = capSplit.getCandidates(99).size === 0
+
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk)
+
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

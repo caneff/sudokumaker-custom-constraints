@@ -38,34 +38,13 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
+import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
 
 const linkFile = process.argv[2]
 const reps = parseInt(process.argv[3] || '7', 10)
 const iconName = process.argv[4] || 'ShowCandidates'
 if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
-
-// The app prints one "took" per phase ("✨ Solved took 3.7s", then "This is a
-// unique solution. took 0.0s"). Return their sum in ms, or null if none.
-function parseTook (text) {
-  const ms = [...text.matchAll(/took\s+([\d.]+)\s*(ms|s)\b/gi)]
-    .map(m => (m[2].toLowerCase() === 's' ? parseFloat(m[1]) * 1000 : parseFloat(m[1])))
-  return ms.length ? Math.round(ms.reduce((a, b) => a + b, 0)) : null
-}
-
-function readVerdict (text) {
-  if (/unique solution/i.test(text)) return 'unique'
-  if (/multiple solutions|not unique|no solution/i.test(text)) return 'not-unique'
-  return '?'
-}
-
-// The app footer prints its own version, e.g. "v2026.08.14-d47fc4b". The
-// timing driver (time_example.py) puts it in every printed row so a stale
-// number is traceable to the app build that produced it.
-function parseVersion (text) {
-  const m = text.match(/\bv\d{4}\.\d{2}\.\d{2}-[0-9a-f]+\b/)
-  return m ? m[0] : null
-}
 
 // Click the innermost element whose exact trimmed text equals `t`.
 const clickText = (page, t) => page.evaluate((t) => {
@@ -131,14 +110,7 @@ async function runOnce (page) {
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
-  const verdict = readVerdict(text)
-  // No verdict = the search did not finish; a partial "took" is not a time.
-  return { ms: verdict === '?' ? null : parseTook(text), verdict, version: parseVersion(text) }
-}
-
-const median = xs => {
-  const s = xs.filter(x => x != null).sort((a, b) => a - b)
-  return s.length ? s[Math.floor(s.length / 2)] : null
+  return { ...parseReadout(text), version: parseVersion(text) }
 }
 
 const browser = await chromium.launch()
@@ -153,11 +125,11 @@ for (let k = 0; k < reps; k++) {
 await browser.close()
 
 console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)
-for (const r of rows) console.log(`  took ${r.ms}ms  [${r.verdict}]`)
-const ok = rows.map(r => r.ms)
-console.log(`  MEDIAN ${median(ok)}ms  (min ${Math.min(...ok.filter(x => x != null))}, max ${Math.max(...ok.filter(x => x != null))})  over ${ok.filter(x => x != null).length}/${reps} reps`)
+for (const r of rows) console.log(repLine(r))
+console.log(medianLine(rows))
 
-// One machine-readable line for time_example.py: the median it times with,
-// plus the app version so every printed row names the build it measured.
+// One machine-readable line for time_example.py: the median of `sum` (first
+// solve + uniqueness search, the whole run that exercises `update`), plus the
+// app version so every printed row names the build it measured.
 const version = rows.map(r => r.version).find(Boolean) ?? null
-console.log('JSON: ' + JSON.stringify({ median: median(ok), version }))
+console.log('JSON: ' + JSON.stringify({ median: median(rows.map(r => r.sum)), version }))

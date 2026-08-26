@@ -27,10 +27,13 @@ the app's own readout, not a self-computed clock, keeps it honest.
 
 The app prints **two** readouts, one per phase: "✨ Solved — took 2.3s" when it
 finds the first solution, then "This is a unique solution. took 0.4s" when the
-second search finishes. The driver waits for the verdict text, then sums both.
-An earlier version returned at the first "took" it saw; on a slow board that
-timed the first phase only and reported nonsense (500 ms for a 19 s search).
-A row with verdict `?` means the verdict never appeared and the time is null.
+second search finishes. The driver waits for the verdict text, then reports
+the first-solve time, the uniqueness-search time, and their sum, per rep,
+plus a median line for each of the three. An earlier version returned at the
+first "took" it saw; on a slow board that timed the first phase only and
+reported nonsense (500 ms for a 19 s search).
+A rep with verdict `?` means the verdict never appeared: it reports `null`
+for all three times and is excluded from the medians.
 
 Before each run the driver turns **off** "Non-deterministic solve" (Solver
 settings → Solutions finder → Advanced settings). With it on, the same board

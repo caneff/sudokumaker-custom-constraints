@@ -19,6 +19,7 @@ fmt:
 # Regression goldens for the recovery/speed probes.
 test:
     node examples/_shared/recovery-lib.test.mjs
+    node examples/_shared/app-solve-lib.test.mjs
     node examples/hit-counts/recovery-probe.test.mjs
     node examples/skyscraper/recovery-probe.test.mjs
     uv run --with lzstring examples/_shared/link_codec.test.py
