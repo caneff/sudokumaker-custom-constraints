@@ -41,12 +41,17 @@ def empty_interior(doc):
     return doc
 
 
+def empty_link_file(src_path, out_path):
+    """Read the link at src_path, empty its interior, write it to out_path."""
+    doc = empty_interior(decode_puzzle(pathlib.Path(src_path).read_text().strip()))
+    pathlib.Path(out_path).write_text(encode_link(doc))
+
+
 def main(argv):
     if len(argv) != 4 or argv[1] != "empty":
         raise SystemExit("usage: probe_link.py empty <src_link> <out_link>")
     _, _, src, out = argv
-    doc = empty_interior(decode_puzzle(pathlib.Path(src).read_text().strip()))
-    pathlib.Path(out).write_text(encode_link(doc))
+    empty_link_file(src, out)
     print(f"wrote {out}")
 
 

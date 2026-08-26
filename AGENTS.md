@@ -23,6 +23,9 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - **Full gate — run before calling any task done:** `just check`
 - Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
 - Probe goldens: `just test` — Soundness fuzz: `just soundness`
+- Real-app timing for one example: `just time <example>` — prints a
+  paste-ready row; drives the live site, so it stays out of `just check`. See
+  `docs/real-app-timing.md`.
 - Node dev tools install with `npm ci`; Python runs through `uv`.
 
 ## Pointers

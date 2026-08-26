@@ -9,6 +9,14 @@ mock can still cost more than it saves in the app.
 `examples/_shared/app-solve.mjs` times the real solver. Use it to settle "does
 this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
 
+For an example with a `build_link.py` (numbered-rooms, skyscraper), `just time
+<example>` runs the whole loop below in one command: it builds a candidate
+link from the working-tree component, times baseline and candidate 3 reps
+each, and prints one paste-ready row (date, app version, board, both medians,
+ratio, PASS/FAIL at candidate <= 0.9x baseline). Byte-equal candidate code
+prints a baseline-only row. The manual steps below are what it automates, and
+still apply to an example with no `build_link.py` yet.
+
 ## How it works
 
 `app-solve.mjs` loads the link, clicks the "Find all solutions and valid

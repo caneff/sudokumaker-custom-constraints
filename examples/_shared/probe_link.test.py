@@ -1,11 +1,14 @@
-# empty_interior drops inner non-given values, keeps givens and the outer ring.
+# empty_interior drops inner non-given values, keeps givens and the outer
+# ring. empty_link_file wraps it as a file-to-file step (used by both this
+# module's own CLI and examples/_shared/time_example.py).
 #
 #   uv run --with lzstring examples/_shared/probe_link.test.py
 
 import pathlib
+import tempfile
 
 from link_codec import decode_puzzle
-from probe_link import empty_interior
+from probe_link import empty_interior, empty_link_file
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
@@ -32,5 +35,11 @@ if __name__ == "__main__":
         on_ring = i // w in (0, h - 1) or i % w in (0, w - 1)
         if on_ring and "value" in before[i]:
             assert "value" in c, f"outer-ring cell {i} lost its value"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = pathlib.Path(tmp) / "probe.txt"
+        empty_link_file(LINK_FILE, out)
+        via_file = decode_puzzle(out.read_text().rstrip("\n"))
+        assert via_file == doc, "empty_link_file did not match empty_interior"
 
     print("ok")

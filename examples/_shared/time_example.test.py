@@ -51,7 +51,10 @@ if __name__ == "__main__":
         == "| 2026-08-26 | v2026.08.14-d47fc4b | numbered-rooms | 1000ms | — | — | BASELINE |"
     )
 
-    # missing PUZZLE_LINK.txt raises naming the file
+    # missing PUZZLE_LINK.txt raises naming the file. Exact-message check,
+    # not a substring: decode_puzzle() on a missing file also raises
+    # FileNotFoundError mentioning the path, so a substring check would still
+    # pass with the driver's own guard deleted -- a hollow witness.
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "no-baseline"
         example_dir.mkdir()
@@ -60,7 +63,7 @@ if __name__ == "__main__":
             run(example_dir)
             raise AssertionError("expected a missing-PUZZLE_LINK.txt failure")
         except FileNotFoundError as e:
-            assert "PUZZLE_LINK.txt" in str(e)
+            assert str(e) == f"missing {example_dir / 'PUZZLE_LINK.txt'}"
 
     # missing build_link.py raises naming the file
     with tempfile.TemporaryDirectory() as tmp:
@@ -71,6 +74,6 @@ if __name__ == "__main__":
             run(example_dir)
             raise AssertionError("expected a missing-build_link.py failure")
         except FileNotFoundError as e:
-            assert "build_link.py" in str(e)
+            assert str(e) == f"missing {example_dir / 'build_link.py'}"
 
     print("ok")
