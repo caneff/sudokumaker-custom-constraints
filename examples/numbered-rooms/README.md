@@ -67,6 +67,15 @@ per-line component below carries the whole example.
 
 ## Files
 
+- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` —
+  share-ready boards of each size, built by `build_size.py` on the shared
+  interactive-outside frame (`gen_<n>.json` records each seed):
+  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3`
+  (args: `n box_height box_width`). Every one is unique with no interior
+  givens — the real app's verdict on each is "unique" — and only the shown
+  clues are stored; the rest of the board is empty. The constraint code they
+  embed mentions nothing from this repo. Not timing boards: over half the
+  ring is shown.
 - `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
 - `ORIGINAL_*.js` — the shipped wrapper, kept for reference and used by
