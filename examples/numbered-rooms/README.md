@@ -72,8 +72,20 @@ per-line component below carries the whole example.
   this component.
 - `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
   a same-board timing comparison.
+- `PUZZLE_LINK_clued.txt` — the same 8-arrow board with all 36 outside clues
+  filled from the puzzle's solution (interior unchanged, still blank but for
+  the one given): the ordinary, ready-to-play version of the puzzle.
+- `PUZZLE_LINK_clued_original.txt` — the clued board with the original wrapper
+  code, for a same-board timing comparison. Both solve instantly and uniquely
+  (0ms, one rep each) -- an ordinary, mostly-solved-by-logic puzzle does not
+  show the capability gap; see "Timing in the real app" below.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
   and the `ORIGINAL_*.js` files, changing only the constraint code.
+- `build_clued.py` — rebuilds both `PUZZLE_LINK_clued.txt` and
+  `PUZZLE_LINK_clued_original.txt` from `PUZZLE_LINK.txt`, filling the 36
+  clues from the board's own solution and checking that solution against the
+  sudoku and Numbered Rooms rules before writing anything:
+  `uv run --with lzstring examples/numbered-rooms/build_clued.py`.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one named component's code
   swapped for a candidate file, board and clues unchanged:
   `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
