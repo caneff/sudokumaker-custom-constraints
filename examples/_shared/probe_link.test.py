@@ -5,7 +5,7 @@
 import pathlib
 
 from link_codec import decode_puzzle
-from probe_link import empty_interior
+from probe_link import empty_interior, strip_to_givens
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
@@ -32,5 +32,17 @@ if __name__ == "__main__":
         on_ring = i // w in (0, h - 1) or i % w in (0, w - 1)
         if on_ring and "value" in before[i]:
             assert "value" in c, f"outer-ring cell {i} lost its value"
+
+    # strip keeps only given cells; every other cell is empty
+    doc2 = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+    strip_to_givens(doc2)
+    for i, c in enumerate(doc2["puzzle"]["cells"]):
+        if c.get("given"):
+            assert "value" in c, f"strip: given cell {i} lost its value"
+        else:
+            assert c == {}, f"strip: non-given cell {i} not empty: {c}"
+    assert any(c.get("given") for c in doc2["puzzle"]["cells"]), (
+        "strip removed all givens"
+    )
 
     print("ok")

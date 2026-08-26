@@ -105,7 +105,7 @@ async function runOnce (page) {
   // the first phase.
   try {
     await page.waitForFunction(
-      () => /unique solution|multiple solutions|not unique|no solution/i.test(document.body.innerText),
+      () => /unique solution|multiple solutions|not unique|no solution|found [\d,]+ solutions|stopped (solving|counting)/i.test(document.body.innerText),
       null, { timeout: 300000 })
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)

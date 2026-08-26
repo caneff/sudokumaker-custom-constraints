@@ -37,9 +37,14 @@ every heavier technique off.
 
 The link must make the solver **search**. A finished link stores the whole
 solution in its cells, so the solver only verifies a filled grid — fast, and
-equally fast for every code variant. `probe_link.py` empties the interior first,
-leaving the givens and the outside-clue ring, so the solver starts from the
-givens.
+equally fast for every code variant. **Strip the link first, every time.**
+`probe_link.py strip` keeps only given cells and drops every value and pencil
+mark; `probe_link.py empty` keeps the outer ring too, for puzzles whose clues
+sit there as non-given values (Numbered Rooms, Skyscraper). Pick the mode by
+where the clues live, never by habit: `empty` on ISOFILL left 36 solution
+values in the ring and produced a false "unique in 2 s". The app tells you when
+you got it wrong — its verdict reads "based on already entered values and pencil
+marks". A number read off such a run is not a timing.
 
 To compare two code variants you need one board solved by each. Both examples
 ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
@@ -66,15 +71,15 @@ uv run --with lzstring examples/_shared/probe_link.py empty \
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3
 
-# ISOFILL: the shipped link, emptied. "Original" is the count-floor-only
-# component before #79; rebuild its link from history to reproduce:
-#   git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
-uv run --with lzstring examples/_shared/probe_link.py empty \
-  examples/isofill/PUZZLE_LINK.txt /tmp/iso_empty.txt
-node examples/_shared/app-solve.mjs /tmp/iso_empty.txt 3
-uv run --with lzstring examples/_shared/probe_link.py empty \
-  /tmp/iso_orig_full.txt /tmp/iso_orig.txt
-node examples/_shared/app-solve.mjs /tmp/iso_orig.txt 3
+# ISOFILL: no ring clues, so STRIP (givens only), never `empty`. "Original" is
+# the count-floor-only component before #79; take its link from history.
+git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
+uv run --with lzstring examples/_shared/probe_link.py strip \
+  examples/isofill/PUZZLE_LINK.txt /tmp/iso_strip.txt
+uv run --with lzstring examples/_shared/probe_link.py strip \
+  /tmp/iso_orig_full.txt /tmp/iso_orig_strip.txt
+node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3
+node examples/_shared/app-solve.mjs /tmp/iso_orig_strip.txt 3
 ```
 
 ## Results
@@ -86,7 +91,7 @@ solve off. Same board within each row; only the constraint code differs.
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
-| ISOFILL (emptied, 35 givens)  | ~2.3 s (1.6 + 0.7) | no verdict: 10,000 solutions in 1.3 s | count floor alone never finishes; reach pruning proves unique |
+| ISOFILL (stripped, 35 givens) | no verdict (app time limit, `[timeout]`) | "Found 10,000 solutions" in 0.3 s | neither reaches a verdict; reach pruning turns a fast wrong answer into a slow none |
 
 The stronger components pay off where the search is genuinely hard and the clues
 are not all handed to the solver. On a board whose clues are all filled the app
@@ -118,9 +123,13 @@ the per-`update` price the app pays for it.
   (`ShowCandidates`). SudokuMaker is pre-release — if an icon name changes,
   re-probe.
 - **This hits the live site.** It is not part of `just check`.
-- **Do not empty by the given flag alone.** A clue is not always a given:
-  Numbered Rooms stores its outside clues as non-given cell values in the ring.
-  "Keep givens, empty the rest" deletes those clues and the app reports the
-  puzzle "not unique" (verified). `probe_link.py` keeps the whole outer ring for
-  this reason. This rule fits the edge-clue examples in this repo; a puzzle that
-  holds no clues in its cells would need a different emptier.
+- **Never time with entered values present.** The app solves from the cells as
+  loaded, givens and entered values alike, and says so: "This is a unique
+  solution (based on already entered values and pencil marks)". Strip first.
+  `app-solve.mjs` reports `[timeout]` when the app stops at its own limit and
+  `[not-unique]` on "Found N solutions"; both carry null times.
+- **Pick the strip mode by where the clues live.** `strip` keeps givens only.
+  `empty` also keeps the outer ring, because a clue is not always a given:
+  Numbered Rooms stores its outside clues as non-given cell values in the ring,
+  and stripping them makes the app report "not unique" (verified). Use `empty`
+  for the edge-clue examples and `strip` for everything else (ISOFILL).

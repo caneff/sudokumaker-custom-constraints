@@ -81,20 +81,27 @@ gotcha 2); the deductions above do the work, `validate` states the rule.
 All of it reads each cell's candidates as a `DigitSet` (wrap it in
 `Array.from`; build one back with `SudokuDigitSet.from`).
 
-Reach is required, not a timing-gated stretch: without it the app reaches no
-verdict at all. Its cost is on the record in `../../docs/real-app-timing.md`.
+Reach is required, not a timing-gated stretch: without it the app never
+reaches a verdict. With it, on this instance, it still does not — see the next
+section and `../../docs/real-app-timing.md`.
 
 ## What the app checks
 
-The shipped link opens, plays, and the app's own "Find all solutions" button
-proves it unique: measured in the live app (`app-solve.mjs`, app build of
-2026-08-26), the link with every non-given cell emptied reads "unique" in about
-2 s (median of three: 1.6 s to the first solution, 0.7 s to close the search).
-That is the reach deduction: the solver rejects a disconnected filling during
-search instead of enumerating count-valid grids.
+The shipped link stores the full solution as entered values (35 black givens,
+65 blue entries). Strip it before you time or play it:
+`uv run --with lzstring examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
 
-`verify.py` stays the independent proof: it models the rule from scratch
-(flow-based connectivity), so it agrees with the app for a different reason.
+On the stripped grid the app's "Find all solutions" does **not** reach a
+verdict (live app, build of 2026-08-26, `app-solve.mjs`): it stops at its own
+time limit. The count-floor-only component before reach was added returns
+"Found 10,000 solutions" in 0.3 s on the same grid, so reach prunes — it turns
+a fast wrong answer into no answer — but not enough for the app to close the
+search. An earlier "unique in 2 s" figure was measured with 36 solution values
+still entered in the outer ring and was wrong.
+
+`verify.py` is the uniqueness proof: it models the rule from scratch
+(flow-based connectivity). Getting the app to a verdict is an open decision on
+the map (#48): stronger pruning, more givens, or both.
 
 ## Run the tests
 

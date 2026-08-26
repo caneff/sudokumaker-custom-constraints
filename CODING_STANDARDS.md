@@ -56,6 +56,14 @@ load-bearing detail lives in `docs/`, and each rule points there.
   counts pruning; to time the app's own solver, see `docs/real-app-timing.md`.
   The two can disagree — a deduction that cuts nodes in the mock can still be
   slower in the app.
+- **Time only against a grid stripped to its givens.** A shipped link stores
+  the full solution as entered values. The app solves from whatever is in the
+  cells, so a run with entered values or pencil marks present is not a timing —
+  the app says so in its readout: "based on already entered values and pencil
+  marks". Strip the link first (`probe_link.py strip`, or `empty` for a puzzle
+  whose clues sit in the outer ring as non-given values) and never read a
+  number off a grid that was not stripped. Verified the hard way: ISOFILL read
+  "unique in 2 s" with 36 ring values still entered, and "no verdict" without.
 - **Do not benchmark an outside-clue component on a board whose ring is mostly
   specified.** A component that reads clues from the border (Numbered Rooms,
   Skyscraper, any edge-interactable) must be timed on a puzzle that leaves the

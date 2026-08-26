@@ -16,8 +16,16 @@
 # holds the outside clues (Numbered Rooms, Skyscraper), so it stays; only inner
 # non-given cells lose their stored value.
 #
-# Why keep the whole ring instead of "keep givens, empty the rest"? Because a
-# clue is not always a given. Numbered Rooms stores its 36 outside clues as
+#   uv run --with lzstring examples/_shared/probe_link.py strip a.txt a_probe.txt
+#
+# `strip` is the stricter mode: keep only given cells, drop every value and
+# pencil mark from the rest. Use it for any puzzle whose clues are all givens
+# (ISOFILL). Timing with entered values present is not a timing: the app then
+# reports a verdict "based on already entered values" and the solver never
+# searches.
+#
+# Why does `empty` keep the whole ring instead of "keep givens, empty the rest"?
+# Because a clue is not always a given. Numbered Rooms stores its 36 outside clues as
 # non-given cell VALUES in the ring, not as givens (only the 4 filler corners
 # are given). Empty every non-given cell and you delete the clues -- verified:
 # the app then reports the puzzle "not unique". The given flag does not separate
@@ -41,11 +49,22 @@ def empty_interior(doc):
     return doc
 
 
+def strip_to_givens(doc):
+    """Clear every non-given cell entirely (value, pencil marks, all). Returns doc."""
+    for cell in doc["puzzle"]["cells"]:
+        if not cell.get("given"):
+            cell.clear()
+    return doc
+
+
+MODES = {"empty": empty_interior, "strip": strip_to_givens}
+
+
 def main(argv):
-    if len(argv) != 4 or argv[1] != "empty":
-        raise SystemExit("usage: probe_link.py empty <src_link> <out_link>")
-    _, _, src, out = argv
-    doc = empty_interior(decode_puzzle(pathlib.Path(src).read_text().strip()))
+    if len(argv) != 4 or argv[1] not in MODES:
+        raise SystemExit("usage: probe_link.py empty|strip <src_link> <out_link>")
+    _, mode, src, out = argv
+    doc = MODES[mode](decode_puzzle(pathlib.Path(src).read_text().strip()))
     pathlib.Path(out).write_text(encode_link(doc))
     print(f"wrote {out}")
 
