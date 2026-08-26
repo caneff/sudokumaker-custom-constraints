@@ -42,7 +42,7 @@ installGlobals(1, 4)
 }
 
 // ---- 2. never weaker than the pinned reference
-const REF_COMMIT = 'aad8ce4' // last commit before the clue≠index rule landed
+const REF_COMMIT = '143b34d' // last commit before the solved-clue position prune landed
 const refSrc = execFileSync('git', ['show', `${REF_COMMIT}:examples/numbered-rooms/NumberedRoomsComponent.js`], { cwd: HERE, encoding: 'utf8' })
 const ref = eval('(function(){' + refSrc + '\n return {' + NAMES.join(',') + '};})()') // eslint-disable-line no-eval
 

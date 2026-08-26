@@ -21,14 +21,14 @@ const { rnd, pick } = makeRng()
 const mod = load('NumberedRoomsComponent.js', ['setParams', 'update'])
 
 // Every valid tuple: line in {1..D}^m, index k = line[0] in 1..m, clue = line[k-1].
-// Cell ids: 0 = clue, 1..m = line[0..m-1]. The line is one row/column, so for
-// k > 1 the target line[k-1] differs from line[0] — the one sudoku fact the
-// component's clue≠index rule relies on; tuples that break it are not truths.
+// Cell ids: 0 = clue, 1..m = line[0..m-1]. The line is one row/column, so its
+// cells hold distinct digits — the sudoku fact the component's clue≠index rule
+// and solved-clue position prune rely on; tuples that break it are not truths.
 function * validTuples (m, D) {
   const line = new Array(m).fill(1)
   while (true) {
     const k = line[0]
-    if (k >= 1 && k <= m && (k === 1 || line[k - 1] !== line[0])) {
+    if (k >= 1 && k <= m && new Set(line).size === m) {
       const truth = { 0: line[k - 1] }
       for (let i = 0; i < m; i++) truth[i + 1] = line[i]
       yield truth
