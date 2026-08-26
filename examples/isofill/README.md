@@ -115,12 +115,19 @@ search. An earlier "unique in 2 s" figure was measured with 36 solution values
 still entered in the outer ring and was wrong.
 
 The same grid with 44 givens (`puzzle-44.json`) is the yardstick: the app
-proves it unique in ~9.1 s with capacity, ~25.9 s without. The next deduction
-(a digit with no placed cell must still have a ten-cell home, #91) is the
-planned step toward a verdict on the 35-given instance.
+proves it unique in ~9.1 s with capacity, ~25.9 s without.
 
-`verify.py` is the uniqueness proof: it models the rule from scratch
-(flow-based connectivity).
+**Final verdict on the shipped 35-given instance: the app does not prove it
+unique.** The kept deductions are cap, force, reach (with split), and
+capacity. A fifth, *homeless* — a digit with no placed cell must still have a
+connected ten-cell home among the cells that allow it — was built, fuzzed
+clean, and timed (#91): still no verdict on the 35-given board (`[timeout]`
+3/3) and the same ~9.1 s on the 44-given fixture, so it was removed; the
+commit that added it stays in git history. What comes after homeless is
+open fog on map #48. `verify.py` is the proof that the puzzle is unique.
+
+`verify.py` models the rule from scratch (flow-based connectivity) and does
+not depend on the app.
 
 ## Run the tests
 
