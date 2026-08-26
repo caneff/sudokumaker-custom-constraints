@@ -22,69 +22,51 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// The 1-based indices k that are still possible. k is possible only when it is
-// a live candidate of the indexer line[0], points at a real inside cell
-// (1..m), and its target cell line[k-1] shares at least one live candidate with
-// the clue. k === 1 is the self-reference line[0] === O; the same test holds.
-//
-// Clue≠index: for k > 1 the target line[k-1] and the indexer line[0] are two
-// cells of one row/column, so they hold different digits. line[0] holds k, so
-// the target — and the clue — cannot be k. The clue digit d = k is not a match
-// for index k unless k = 1. (Assumes the line is one row/column, which is what
-// the rule means; main.js trusts the author's group for that.)
-function targetMatches (puzzle, line, k, d) {
-  return (k === 1 || d !== k) && puzzle.getCandidates(line[k - 1]).has(d)
-}
-
-function feasibleIndices (puzzle, clue, line) {
-  const m = line.length
-  const clueCands = Array.from(puzzle.getCandidates(clue))
-  const K = new Set()
-  for (const k of puzzle.getCandidates(line[0])) {
-    if (k < 1 || k > m) continue
-    if (clueCands.some(d => targetMatches(puzzle, line, k, d))) K.add(k)
-  }
-  return K
-}
-
+// One pass over bitmasks (bit d = digit d), the shape ISS's ValueIndexing uses.
+// A 1-based index k is feasible when it is a live candidate of the indexer
+// line[0], points at a real inside cell (1..m), and its target line[k-1] has a
+// digit the clue can match. "Match" carries the one sudoku fact the line gives:
+//   k = 1  — the target IS the indexer, which holds k, so the clue must be 1;
+//   k > 1  — the target and the indexer are two cells of one row/column, so
+//            the target (and the clue) cannot be k.
+// Assumes the line is one row/column, which is what the rule means; main.js
+// trusts the author's group for that. Every read is of the pre-pass masks, so
+// the k = 1 case needs no second pass (see OPTIMIZATION_LOG.md, the k=1 trap).
 function * update (instance, puzzle) {
   const { clue, line } = instance
-  const K = feasibleIndices(puzzle, clue, line)
+  const m = line.length
+  const clueM = puzzle.getCandidatesBitMask(clue)
+  const idxM = puzzle.getCandidatesBitMask(line[0])
+
+  let K = 0 // feasible indices, as a digit mask
+  let reach = 0 // clue digits some feasible index can realize
+  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
+    if (!(idxM & bit)) continue
+    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM
+    t = k === 1 ? t & bit : t & ~bit
+    if (t) { K |= bit; reach |= t }
+  }
 
   // No index works: a dead branch. Empty the indexer so the solver sees the
   // contradiction now instead of after more propagation.
-  if (K.size === 0) {
-    yield puzzle.removeCandidatesFromCell(puzzle.getCandidates(line[0]), line[0])
+  if (K === 0) {
+    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(idxM), line[0])
     return
   }
 
-  // Prune the indexer line[0]: drop any index value that cannot be realized.
-  const badK = Array.from(puzzle.getCandidates(line[0])).filter(k => !K.has(k))
-  if (badK.length > 0) {
-    yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(badK), line[0])
-  }
+  // Prune the indexer to the feasible indices (this also drops out-of-range
+  // values), and the clue to the digits a feasible target can realize.
+  if (idxM & ~K) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(idxM & ~K), line[0])
+  if (clueM & ~reach) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM & ~reach), clue)
 
-  // Prune the clue O: it must equal some feasible target cell, so it can only
-  // hold a digit that some line[k-1] (k feasible) still allows.
-  const badO = Array.from(puzzle.getCandidates(clue))
-    .filter(d => ![...K].some(k => targetMatches(puzzle, line, k, d)))
-  if (badO.length > 0) {
-    yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(badO), clue)
-  }
-
-  // Only one index left: the target cell and the clue are equal. Sound even
-  // before line[0] is a singleton, because in any solution the index must be
-  // one of the feasible values, and here only one remains. The clue side is
-  // already covered: with a single feasible index, the clue prune above kept
-  // exactly this target's matching candidates. Only the target still needs
-  // narrowing to the clue's candidates.
-  if (K.size === 1) {
-    const target = line[[...K][0] - 1]
-    const clueSet = new Set(puzzle.getCandidates(clue))
-    const rmTarget = Array.from(puzzle.getCandidates(target)).filter(d => !clueSet.has(d))
-    if (rmTarget.length > 0) {
-      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmTarget), target)
-    }
+  // Only one index left: in every solution the index is that k, so the target
+  // equals the clue. `reach` is then exactly the target digits the clue can
+  // match, so narrow the target to it. (The clue side is done above.)
+  if ((K & (K - 1)) === 0) {
+    const k = 31 - Math.clz32(K)
+    const target = line[k - 1]
+    const rm = puzzle.getCandidatesBitMask(target) & ~reach
+    if (rm) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rm), target)
   }
 }
 
