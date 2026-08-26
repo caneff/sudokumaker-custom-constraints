@@ -19,8 +19,15 @@
 #   uv run --with lzstring examples/_shared/probe_link.py empty a.txt a_probe.txt
 #
 # The interior is the grid minus its outer ring (row/col 0 and W-1). The ring
-# holds the outside clues (Numbered Rooms, Skyscraper) the constraint reads, so
-# it stays; only inner non-given cells lose their stored value.
+# holds the outside clues (Numbered Rooms, Skyscraper), so it stays; only inner
+# non-given cells lose their stored value.
+#
+# Why keep the whole ring instead of "keep givens, empty the rest"? Because a
+# clue is not always a given. Numbered Rooms stores its 36 outside clues as
+# non-given cell VALUES in the ring, not as givens (only the 4 filler corners
+# are given). Empty every non-given cell and you delete the clues -- verified:
+# the app then reports the puzzle "not unique". The given flag does not separate
+# clue from solution here, so we separate them by position instead.
 
 import copy
 import pathlib

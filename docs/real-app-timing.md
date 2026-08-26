@@ -87,3 +87,9 @@ per-`update` price the app pays for it.
   `app-solve.mjs` addresses "check unique" by position (index 4). SudokuMaker is
   pre-release — if the toolbar order changes, re-probe the indices.
 - **This hits the live site.** It is not part of `just check`.
+- **Do not empty by the given flag alone.** A clue is not always a given:
+  Numbered Rooms stores its outside clues as non-given cell values in the ring.
+  "Keep givens, empty the rest" deletes those clues and the app reports the
+  puzzle "not unique" (verified). `probe_link.py` keeps the whole outer ring for
+  this reason. This rule fits the edge-clue examples in this repo; a puzzle that
+  holds no clues in its cells would need a different emptier.
