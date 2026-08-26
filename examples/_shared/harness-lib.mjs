@@ -16,10 +16,8 @@ export class DigitSet {
   get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
   has (d) { return (this.mask & (1 << d)) !== 0 }
   valueOf () { return this.mask }
-  intersects (o) { return (this.mask & o.valueOf()) !== 0 }
-  intersect (o) { this.mask &= o.valueOf(); return this }
-  union (o) { this.mask |= o.valueOf(); return this }
-  subtract (o) { this.mask &= ~o.valueOf(); return this }
+  // ponytail: the app's intersect/union/subtract (mutating) are not mocked —
+  // no component uses them yet. Add them here when one does.
   * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
 }
 
@@ -59,24 +57,27 @@ export function makePuzzle (truth, seed) {
     getValue: c => [...cand.get(c)][0],
     // A fresh DigitSet per call, as in the app — mutating it is safe.
     getCandidates: c => DigitSet.from(cand.get(c)),
-    getCandidatesBitMask: c => DigitSet.from(cand.get(c)).mask,
+    getCandidatesBitMask: c => { let m = 0; for (const d of cand.get(c)) m |= 1 << d; return m },
     getCellsAreFilled: cs => cs.every(c => cand.get(c).size === 1),
     removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
     removeCandidatesFromCell: (s, c) => { const set = cand.get(c); for (const d of s) set.delete(d) }
   }
 }
 
-// Run a component's update to a fixpoint (bounded), then report a cell that lost
-// its true value or went empty. Returns null when the true values all survive.
-export function violates (mod, inst, p, truth) {
+// Run a component's update until a pass removes nothing (bounded at 20 passes).
+export function fixpoint (mod, inst, p) {
+  const total = () => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
   for (let pass = 0; pass < 20; pass++) {
-    let sizes = 0
-    for (const s of p._cand.values()) sizes += s.size
+    const before = total()
     Array.from(mod.update(inst, p)) // drain
-    let after = 0
-    for (const s of p._cand.values()) after += s.size
-    if (after === sizes) break
+    if (total() === before) break
   }
+}
+
+// Run to a fixpoint, then report a cell that lost its true value or went
+// empty. Returns null when the true values all survive.
+export function violates (mod, inst, p, truth) {
+  fixpoint(mod, inst, p)
   for (const [c, v] of Object.entries(truth)) {
     if (!p._cand.get(+c).has(v)) return { cell: +c, lost: v }
     if (p._cand.get(+c).size === 0) return { cell: +c, empty: true }

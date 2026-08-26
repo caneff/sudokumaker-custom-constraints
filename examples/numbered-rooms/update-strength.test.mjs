@@ -16,21 +16,12 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { execFileSync } from 'child_process'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
 const NAMES = ['setParams', 'update']
 const mod = load('NumberedRoomsComponent.js', NAMES)
-
-function fixpoint (m, inst, p) {
-  for (let pass = 0; pass < 20; pass++) {
-    let before = 0; for (const s of p._cand.values()) before += s.size
-    Array.from(m.update(inst, p))
-    let after = 0; for (const s of p._cand.values()) after += s.size
-    if (after === before) break
-  }
-}
 
 // ---- 1. clue≠index: index pinned to 2, everything else open => clue loses 2
 installGlobals(1, 4)
@@ -61,7 +52,9 @@ let weaker = 0
 for (const [m, D] of [[4, 6], [5, 5], [6, 6]]) {
   installGlobals(1, D)
   const line = Array.from({ length: m }, (_, i) => i + 1)
-  const truth = {}; for (let c = 0; c <= m; c++) truth[c] = 1 // unused: no soundness claim here
+  // makePuzzle keys its cells off a truth map; no truth is claimed here, the
+  // seed below decides every candidate set, so the values are placeholders.
+  const cells = {}; for (let c = 0; c <= m; c++) cells[c] = 0
   for (let rep = 0; rep < 20000; rep++) {
     const start = new Map()
     for (let c = 0; c <= m; c++) {
@@ -71,8 +64,8 @@ for (const [m, D] of [[4, 6], [5, 5], [6, 6]]) {
       start.set(c, s)
     }
     const seed = c => start.get(c)
-    const pNew = makePuzzle(truth, seed); const iNew = {}; mod.setParams(iNew, 0, line); fixpoint(mod, iNew, pNew)
-    const pRef = makePuzzle(truth, seed); const iRef = {}; ref.setParams(iRef, 0, line); fixpoint(ref, iRef, pRef)
+    const pNew = makePuzzle(cells, seed); const iNew = {}; mod.setParams(iNew, 0, line); fixpoint(mod, iNew, pNew)
+    const pRef = makePuzzle(cells, seed); const iRef = {}; ref.setParams(iRef, 0, line); fixpoint(ref, iRef, pRef)
     // A dead state (some cell emptied by either side) has no solution, so
     // "weaker" means nothing there; skip it.
     const dead = [...pNew._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)
@@ -86,5 +79,6 @@ for (const [m, D] of [[4, 6], [5, 5], [6, 6]]) {
   }
 }
 console.log('never-weaker:', states, 'states,', weaker, 'weaker cells')
+assert.ok(states > 10000, 'the dead-state filter must leave most states to compare')
 assert.strictEqual(weaker, 0)
 console.log('PASS')

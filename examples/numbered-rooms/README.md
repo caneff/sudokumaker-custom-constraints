@@ -98,6 +98,8 @@ per-line component below carries the whole example.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one named component's code
   swapped for a candidate file, board and clues unchanged:
   `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
+  Add `--backend main.js` to swap the main code in as well (the committed
+  link carries both, and `build_link.test.py` checks both round-trip).
   See `docs/real-app-timing.md`.
 
 ## Run
