@@ -1,6 +1,6 @@
 # build_link.py --component --out: decode the output and assert the only
 # difference from the committed PUZZLE_LINK.txt is the swapped-in component's
-# code. Prior art: the check build_original.py made before this ticket, and
+# code. Prior art: the check in build_original.py, and
 # examples/_shared/probe_link.test.py.
 #
 #   uv run --with lzstring examples/numbered-rooms/build_link.test.py

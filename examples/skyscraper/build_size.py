@@ -99,3 +99,4 @@ if __name__ == "__main__":
     run(SPEC)
     if n == 9:
         (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
+        print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")
