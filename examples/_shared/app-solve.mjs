@@ -59,6 +59,14 @@ function readVerdict (text) {
   return '?'
 }
 
+// The app footer prints its own version, e.g. "v2026.08.14-d47fc4b". The
+// timing driver (time_example.py) puts it in every printed row so a stale
+// number is traceable to the app build that produced it.
+function parseVersion (text) {
+  const m = text.match(/\bv\d{4}\.\d{2}\.\d{2}-[0-9a-f]+\b/)
+  return m ? m[0] : null
+}
+
 // Click the innermost element whose exact trimmed text equals `t`.
 const clickText = (page, t) => page.evaluate((t) => {
   const els = [...document.querySelectorAll('*')]
@@ -125,7 +133,7 @@ async function runOnce (page) {
   const text = await page.evaluate(() => document.body.innerText)
   const verdict = readVerdict(text)
   // No verdict = the search did not finish; a partial "took" is not a time.
-  return { ms: verdict === '?' ? null : parseTook(text), verdict }
+  return { ms: verdict === '?' ? null : parseTook(text), verdict, version: parseVersion(text) }
 }
 
 const median = xs => {
@@ -148,3 +156,8 @@ console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)
 for (const r of rows) console.log(`  took ${r.ms}ms  [${r.verdict}]`)
 const ok = rows.map(r => r.ms)
 console.log(`  MEDIAN ${median(ok)}ms  (min ${Math.min(...ok.filter(x => x != null))}, max ${Math.max(...ok.filter(x => x != null))})  over ${ok.filter(x => x != null).length}/${reps} reps`)
+
+// One machine-readable line for time_example.py: the median it times with,
+// plus the app version so every printed row names the build it measured.
+const version = rows.map(r => r.version).find(Boolean) ?? null
+console.log('JSON: ' + JSON.stringify({ median: median(ok), version }))

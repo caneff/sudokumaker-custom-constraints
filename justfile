@@ -26,6 +26,7 @@ test:
     uv run --with lzstring examples/_shared/link_swap.test.py
     uv run --with lzstring examples/numbered-rooms/build_link.test.py
     uv run --with lzstring examples/skyscraper/build_link.test.py
+    uv run --with lzstring examples/_shared/time_example.test.py
     uv run --with ortools examples/isofill/verify.py
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
     uv run --with lzstring examples/isofill/build_link.py
@@ -37,3 +38,10 @@ soundness:
     node examples/numbered-rooms/soundness-harness.mjs
     node examples/running-start/soundness-harness.mjs
     node examples/skyscraper/soundness-harness.mjs
+
+# Real-app timing for one example: baseline (committed PUZZLE_LINK.txt) vs a
+# candidate built from the working-tree component, on the live site. Prints
+# one paste-ready row. Not part of `check` -- it drives the live app.
+# See docs/real-app-timing.md.
+time example:
+    uv run --with lzstring examples/_shared/time_example.py {{example}}
