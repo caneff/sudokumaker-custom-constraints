@@ -1,2 +1,2 @@
-gen_6.json: n=6, box 2x3, 13/24 clues shown, 11 hidden, 0 interior givens (floor: regin)
-  matching ON : 259 search nodes, 1 solution, 248ms
+gen_6.json: n=6, box 2x3, 14/24 clues shown, 10 hidden, 0 interior givens (floor: regin)
+  matching ON : 1012 search nodes, 1 solution, 815ms
