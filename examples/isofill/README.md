@@ -21,15 +21,20 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count and by reach, and a `validate` leaf check (see below).
+  prunes by count, reach, and capacity, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
 - `puzzle.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
+- `puzzle-44.json` — the same grid with 44 givens: a fixture the app is known
+  to close (unique in ~31 s on 2026-08-26), kept for comparing component
+  variants. Not the shipped instance.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
-  `uv run --with lzstring examples/isofill/build_link.py`.
+  `uv run --with lzstring examples/isofill/build_link.py`. `--component` and
+  `--out` swap in a candidate component file and write elsewhere; that is what
+  `just time isofill` uses.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 
 ## Paste into SudokuMaker
@@ -58,7 +63,7 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs three sound deductions per digit. Ten regions of ten cells, one
+`update` runs four sound deductions per digit. Ten regions of ten cells, one
 digit each, means every digit fills exactly ten cells:
 
 - **Cap** — once a digit occupies ten cells, remove it from every other cell's
@@ -73,6 +78,10 @@ digit each, means every digit fills exactly ten cells:
   cells of one digit cannot join within nine steps the region is split; the
   component empties the stranded cell's candidates so the solver sees the dead
   branch. Cell neighbours come from index arithmetic on the row-major list.
+- **Capacity** — the same walk, read the other way: every cell of the region
+  lies inside it, so if the walk meets fewer than ten cells the region can
+  never reach ten. The component empties a placed cell of that digit, as for a
+  split, and the solver drops the branch. Free — the walk is already computed.
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
 connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
@@ -82,8 +91,10 @@ All of it reads each cell's candidates as a `DigitSet` (wrap it in
 `Array.from`; build one back with `SudokuDigitSet.from`).
 
 Reach is required, not a timing-gated stretch: without it the app never
-reaches a verdict. With it, on this instance, it still does not — see the next
-section and `../../docs/real-app-timing.md`.
+reaches a verdict. Capacity earned its place by timing: on the 44-given
+fixture it cuts the app's verdict from ~25.9 s to ~9.1 s. On the shipped
+35-given instance the app still reaches no verdict — see the next section and
+`../../docs/real-app-timing.md`.
 
 ## What the app checks
 
@@ -93,15 +104,20 @@ The shipped link stores the full solution as entered values (35 black givens,
 
 On the stripped grid the app's "Find all solutions" does **not** reach a
 verdict (live app, build of 2026-08-26, `app-solve.mjs`): it stops at its own
-time limit. The count-floor-only component before reach was added returns
-"Found 10,000 solutions" in 0.3 s on the same grid, so reach prunes — it turns
-a fast wrong answer into no answer — but not enough for the app to close the
+time limit (about a minute), with reach alone and with reach plus capacity.
+The count-floor-only component before reach was added returns "Found 10,000
+solutions" in 0.3 s on the same grid, so the pruning works — it turns a fast
+wrong answer into no answer — but not yet enough for the app to close the
 search. An earlier "unique in 2 s" figure was measured with 36 solution values
 still entered in the outer ring and was wrong.
 
+The same grid with 44 givens (`puzzle-44.json`) is the yardstick: the app
+proves it unique in ~9.1 s with capacity, ~25.9 s without. The next deduction
+(a digit with no placed cell must still have a ten-cell home, #91) is the
+planned step toward a verdict on the 35-given instance.
+
 `verify.py` is the uniqueness proof: it models the rule from scratch
-(flow-based connectivity). Getting the app to a verdict is an open decision on
-the map (#48): stronger pruning, more givens, or both.
+(flow-based connectivity).
 
 ## Run the tests
 
@@ -111,17 +127,19 @@ Soundness (needs Node):
 node examples/isofill/soundness-harness.mjs
 # -> isofill rows fixture: 20000 tests, 0 violations
 # -> isofill bent fixture: 20000 tests, 0 violations
+# -> isofill shipped fixture: 20000 tests, 0 violations
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true
 # -> PASS
 ```
 
 The harness mocks only the puzzle methods the component calls, seeds random
-partial fills of two valid ISOFILL solutions (one with row *r* holding digit
-*r*, one with bent L-shaped regions so reach walks around corners) in which
-every cell still allows its true value, runs `update` to a fixpoint, and asserts
-every true value survived. It also builds one state for each deduction — cap,
-force, reach, split, split with all ten cells placed — and checks each fired,
+partial fills of three valid ISOFILL solutions (one with row *r* holding digit
+*r*, one with bent L-shaped regions so reach walks around corners, and the
+shipped grid from `puzzle.json`) in which every cell still allows its true
+value, runs `update` to a fixpoint, and asserts every true value survived. It
+also builds one state for each deduction — cap, force, reach, split, split
+with all ten cells placed, capacity — and checks each fired,
 and checks `validate` accepts a full valid grid and rejects a count-valid but
 split one.
 
@@ -130,6 +148,7 @@ Uniqueness (needs Python; `uv` fetches OR-Tools):
 ```
 uv run --with ortools examples/isofill/verify.py                                # self-check
 uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json   # -> unique
+uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-44.json # -> unique
 ```
 
 `verify.py` models the rule as exact counts (ten cells per digit) plus a

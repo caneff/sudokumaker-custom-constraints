@@ -6,9 +6,14 @@
 # IsofillComponent.js, so a component fix flows into the link on the next run.
 #
 #   uv run --with lzstring examples/isofill/build_link.py
+#   uv run --with lzstring examples/isofill/build_link.py \
+#       --component /path/IsofillComponent.js --out /tmp/candidate.txt
 #
-# Writes PUZZLE_LINK.txt next to this script.
+# Writes PUZZLE_LINK.txt next to this script; --component / --out swap in a
+# candidate component file and write elsewhere (what time_example.py passes);
+# --puzzle builds another instance, e.g. puzzle-44.json.
 
+import argparse
 import json
 import pathlib
 import sys
@@ -26,8 +31,10 @@ RULE = (
 )
 
 
-def build():
-    spec = json.loads((HERE / "puzzle.json").read_text())
+def build(
+    component_path=HERE / "IsofillComponent.js", puzzle_path=HERE / "puzzle.json"
+):
+    spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
     cells = []
     for r in range(N):
@@ -63,7 +70,7 @@ def build():
                                 "type": "code",
                                 "name": "IsofillComponent",
                                 "code": minify_js(
-                                    (HERE / "IsofillComponent.js").read_text()
+                                    pathlib.Path(component_path).read_text()
                                 ),
                             }
                         ],
@@ -90,7 +97,12 @@ def check(link, doc, n_clues):
 
 
 if __name__ == "__main__":
-    link, doc, n_clues = build()
+    p = argparse.ArgumentParser()
+    p.add_argument("--component", default=HERE / "IsofillComponent.js")
+    p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
+    p.add_argument("--puzzle", default=HERE / "puzzle.json")
+    args = p.parse_args()
+    link, doc, n_clues = build(args.component, args.puzzle)
     check(link, doc, n_clues)
-    (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
-    print(f"wrote PUZZLE_LINK.txt ({len(link)} chars, {n_clues} givens)")
+    pathlib.Path(args.out).write_text(link + "\n")
+    print(f"wrote {args.out} ({len(link)} chars, {n_clues} givens)")

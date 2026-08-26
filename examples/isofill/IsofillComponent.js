@@ -10,6 +10,8 @@
 //!          it, at most (10 - placed) steps; cells beyond the walk lose it.
 //!          A placed cell the walk never meets is a split: it is emptied so
 //!          the solver sees the dead branch (decision #66).
+//!   Capacity: if that walk meets fewer than ten cells the region can never
+//!          reach ten; a placed cell is emptied, as for a split.
 //! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
@@ -73,6 +75,9 @@ function * update (instance, puzzle) {
     } else if (placed.length > 0) {
       // Any region cell is within (size - placed) steps of the placed set.
       const near = reach(placed, size - placed.length, allowed, side)
+      // Capacity: the whole region lies inside `near`, so fewer than `size`
+      // cells there is a dead branch; empty a placed cell so the solver sees it.
+      if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
       for (const i of open) if (!near.has(i)) yield puzzle.removeCandidateFromCell(d, cells[i])
     }
     if (placed.length > 1) {
