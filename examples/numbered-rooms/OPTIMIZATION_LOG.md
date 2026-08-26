@@ -20,7 +20,8 @@ directly comparable to later ones.
 | Distinct-line "index k, clue k" prune | Rejected | ~5× slower than the ~1.3 s baseline (~6.5 s) | none shipped yet | same board/timer as the two rows above | 9eeff70 |
 | **Current baseline** (`NumberedRoomsComponent`, today) | Kept (reference for #64) | median of 5 reps — first 10100 ms, unique 9000 ms, sum 19000 ms; spread across reps: first 9800–10700 ms, unique 8800–9800 ms, sum 18800–20500 ms | solves instantly — took 100 ms total (first 100 ms, unique 0 ms), verdict unique. Correctness check only, not a timing bar. | 8-arrow `PUZZLE_LINK.txt` / `PUZZLE_LINK_clued.txt`, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 931c985 (board), this log's commit |
 | Single-pass `feasibleIndices` (cheaper, same deductions) | Rejected — no gain | median of 5 reps — first 10100 ms, unique 8900 ms, sum 19200 ms; reps 18700–19600 ms, inside the baseline's 18800–20500 ms spread | verdict unique | 8-arrow board, same app version and day as the baseline row | not committed (#78) |
-| **Clue≠index rule in the loop + bitmask single pass + empty-K contradiction** (#87) — **new baseline** | Kept | median of 5 reps — first 1600 ms, unique 1500 ms, sum 3100 ms; reps 3000–3100 ms. `just time` 3-rep row: baseline 19400 ms, candidate 3000 ms, ratio 0.15 | verdict unique, 100 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | this row's commit |
+| Clue≠index rule in the loop + bitmask single pass + empty-K contradiction (#87) | Kept | median of 5 reps — first 1600 ms, unique 1500 ms, sum 3100 ms; reps 3000–3100 ms. `just time` 3-rep row: baseline 19400 ms, candidate 3000 ms, ratio 0.15 | verdict unique, 100 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 46e2d58 |
+| **Solved-clue position prune** (clue solved to c ⇒ drop c from every line cell at a dead index) — **new baseline** | Kept | median of 5 reps — first 1000 ms, unique 900 ms, sum 1900 ms; reps 1900–2100 ms. Same-session #87 baseline: sum 2600 ms, reps 2400–2600 ms (the machine was faster than on the #87 row's day — compare within the session, ratio ~0.73). `just time` 3-rep row: baseline 2400 ms, candidate 1800 ms, ratio 0.75 | verdict unique, 0 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | this row's commit |
 
 The #87 row answers the "distinct-line" rejection above: the rule was never
 the cost, the extra pass was. Folded into the one feasibility loop as a match
@@ -42,13 +43,19 @@ that no true value is removed. A 60000-state fuzz comparing the old and new
 future rewrite of `update` should run that same old-vs-new comparison, not just
 the soundness harness.
 
+The solved-clue row is the converse of the feasibility loop: the loop uses
+"cell lacks c ⇒ index dead"; the prune uses "index dead ⇒ cell lacks c", which
+holds because the line is one house so c sits in exactly one of its cells.
+The soundness harness now generates only distinct-digit lines for that reason.
+
 ## Win bar (for any future attempt against the current baseline)
 
 A candidate beats the baseline only if **both** hold, each on a 5-run median:
 
-1. **Hard board faster.** Its sum median is below 3000 ms — outside the
-   #87 baseline's own run-to-run spread (3000–3100 ms). A result inside that
-   range is noise, not a win.
+1. **Hard board faster.** Its sum median is below the current baseline's
+   run-to-run spread, measured in the **same session** (day-to-day drift is
+   larger than the spread: the #87 code timed 3000–3100 ms one session and
+   2400–2600 ms the next). A result inside that range is noise, not a win.
 2. **Clued board still unique.** `PUZZLE_LINK_clued.txt` still reports verdict
    `unique`. It solves near-instantly either way, so its time is not part of
    the bar — only the verdict is.

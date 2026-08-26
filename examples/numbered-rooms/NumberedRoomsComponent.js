@@ -9,8 +9,9 @@
 //! The clue is a CELL, not a constant, so the built-in IndexComponent (which
 //! needs a fixed value to index) cannot enforce this. This component does it
 //! directly: each update pass prunes the indexer line[0], prunes the clue down
-//! to the still-feasible targets, and equates the target with the clue once one
-//! index remains — all from the first pass, before the clue is solved. See
+//! to the still-feasible targets, equates the target with the clue once one
+//! index remains, and once the clue is solved drops its digit from every line
+//! cell at a dead index — all from the first pass. See
 //! README.md for how this compares to the earlier wrapper (ORIGINAL_*.js).
 
 function getAffectedCells (clue, line) {
@@ -58,6 +59,17 @@ function * update (instance, puzzle) {
   // values), and the clue to the digits a feasible target can realize.
   if (idxM & ~K) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(idxM & ~K), line[0])
   if (clueM & ~reach) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM & ~reach), clue)
+
+  // Clue solved to c: c sits in exactly one cell of the line (one house), and
+  // that cell is the target, so c can only live at a feasible index. Drop c
+  // from every cell at a dead index — the converse of the loop above.
+  if ((clueM & (clueM - 1)) === 0) {
+    for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
+      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) {
+        yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM), line[k - 1])
+      }
+    }
+  }
 
   // Only one index left: in every solution the index is that k, so the target
   // equals the clue. `reach` is then exactly the target digits the clue can
