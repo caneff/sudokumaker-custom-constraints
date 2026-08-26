@@ -45,12 +45,12 @@ const iconName = process.argv[4] || 'ShowCandidates'
 if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
-// The app prints "took 3.7s" or "took 340ms". Return the first one in ms.
+// The app prints one "took" per phase ("✨ Solved took 3.7s", then "This is a
+// unique solution. took 0.0s"). Return their sum in ms, or null if none.
 function parseTook (text) {
-  const m = text.match(/took\s+([\d.]+)\s*(ms|s)\b/i)
-  if (!m) return null
-  const n = parseFloat(m[1])
-  return Math.round(m[2].toLowerCase() === 's' ? n * 1000 : n)
+  const ms = [...text.matchAll(/took\s+([\d.]+)\s*(ms|s)\b/gi)]
+    .map(m => (m[2].toLowerCase() === 's' ? parseFloat(m[1]) * 1000 : parseFloat(m[1])))
+  return ms.length ? Math.round(ms.reduce((a, b) => a + b, 0)) : null
 }
 
 function readVerdict (text) {
@@ -113,14 +113,19 @@ async function runOnce (page) {
     return false
   }, iconName)
   if (!clicked) throw new Error('solve button not found: Icon ' + iconName)
+  // Wait for the VERDICT, not the first "took": the solve phase prints its
+  // "took" before the uniqueness search finishes, and reading then times only
+  // the first phase.
   try {
     await page.waitForFunction(
-      () => /took\s+[\d.]+\s*(ms|s)\b/i.test(document.body.innerText),
-      null, { timeout: 120000 })
-  } catch { /* fall through; a missing readout shows as a null time */ }
+      () => /unique solution|multiple solutions|not unique|no solution/i.test(document.body.innerText),
+      null, { timeout: 300000 })
+  } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
-  return { ms: parseTook(text), verdict: readVerdict(text) }
+  const verdict = readVerdict(text)
+  // No verdict = the search did not finish; a partial "took" is not a time.
+  return { ms: verdict === '?' ? null : parseTook(text), verdict }
 }
 
 const median = xs => {
