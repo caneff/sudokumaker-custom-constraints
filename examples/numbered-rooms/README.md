@@ -45,46 +45,29 @@ both directions, before the clue is solved:
 3. When one index remains, make the target cell and the clue equal both ways —
    before either is a singleton.
 
-## The pair fact — two clues on one line
+## A stronger deduction that did not pay off
 
-A row (or column) usually carries a clue at each end. Let `a` be the left index
-(the digit in the first inside cell) and `b` the right index (the digit in the
-last inside cell). The left clue reads `line[a-1]`, the right clue reads
-`line[N-b]` — the same cell exactly when `a + b === N + 1`. So:
-
-    a + b === N + 1   =>  left clue === right clue     (always)
-    left clue === right clue  =>  a + b === N + 1       (when the line is distinct)
-
-The second direction holds only because a sudoku line has no repeats: equal clues
-must be the *same* cell, not two different cells that happen to share a digit.
-
-Two smaller facts fall out and need no extra code:
-
-- **Index 1 forces clue 1.** If the first inside cell is 1, the index points at
-  itself, so the clue is 1. The per-line component already deduces this (its
-  reachable set collapses to `{1}`).
-- The biconditional's easy half (`sum ⟹ equal clues`) is a plain consequence of
-  the per-line rule; only the pair adds the cross-clue coupling.
-
-`NumberedRoomsPairComponent.js` enforces the biconditional both ways. Because the
-outside clues are often the given digits, "equal clues fix the index sum" prunes
-the two index cells on the first pass — a deduction no single-line component can
-reach.
+Two clues on opposite ends of one line couple: with left index `a` and right
+index `b` on a line of length `N`, `a + b === N + 1` exactly when the two clues
+land on the same cell, so equal clues fix the index sum. A `NumberedRoomsPair`
+component once enforced this. It was sound and it cut search nodes, but on the
+shipped board it **tripled** the real solve time (2.3s → 6.7s): the extra
+component ran every propagation and cost more than the nodes it saved. Removed,
+per "a deduction must pay for itself in solve time" (`CODING_STANDARDS.md`). The
+per-line component below carries the whole example.
 
 ## Files
 
-- `main.js`, `NumberedRoomsComponent.js`, `NumberedRoomsPairComponent.js` — paste
-  these three into the SudokuMaker constraint editor, replacing the old backend
-  and `CustomIndexComponent`.
+- `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
+  constraint editor, replacing the old backend and `CustomIndexComponent`.
 - `ORIGINAL_*.js` — the shipped wrapper, kept for reference and used by
   `build_original.py`.
-- `soundness-harness.mjs` — proves neither `update` removes a true value (405k
-  line + 5k distinct-line pair + 13k non-distinct pair fuzz tests) and that each
-  prunes early: the line component with the clue unsolved, the pair component
-  with the index sum fixed by equal clues. The non-distinct block also proves the
-  `getCellsSeeEachOther` guard is load-bearing (remove it and it fails).
+- `soundness-harness.mjs` — proves `update` removes no true value (405k fuzz
+  tests) and that it prunes early: the clue narrows while it is still unsolved,
+  which the shipped wrapper never did.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle and the source of truth for this
-  example: 36 clues, 3 interior givens.
+  example: a hard board with **blank outside clues** (the solver deduces all 36)
+  and one interior given, so the solver must search.
 - `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
   a same-board timing comparison.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
@@ -117,15 +100,22 @@ original wrapper cannot solve by logic at all, and ours can.
 
 ## Timing in the real app
 
-`PUZZLE_LINK.txt` shows all 36 clues, so both wirings solve it by logic and the
-capability gap above never shows. On that shipped puzzle ours is in fact a little
-*slower* (~55 ms vs ~36 ms) — the stronger deductions cost more per solver call
-than they save when no clue is blank. See `docs/real-app-timing.md` for the
-method and the full ours-vs-original table, timed in the real SudokuMaker solver.
+`PUZZLE_LINK.txt` leaves the outside clues blank, so the solver must deduce them
+and search — the real Numbered Rooms case, where the capability gap shows. Timed
+in the real SudokuMaker solver (empty grid, non-deterministic solve off, the
+default "singles only" technique set, median of 3 runs):
+
+| wiring | solve time |
+|---|---|
+| original wrapper (`CustomIndexComponent`) | ~11.9 s |
+| **ours** (`NumberedRoomsComponent`) | **~2.3 s** |
+
+Ours is about 5× faster. The gap is the point of the rewrite: the wrapper is
+inert on a blank clue and the solver must guess it, while ours deduces the clue
+from its line. See `docs/real-app-timing.md` for the method, the reproduce
+commands, and the skyscraper comparison.
 
 ## Not covered
 
 Numbered Rooms has no generator; `PUZZLE_LINK.txt` is a single hand-made puzzle,
-now the committed source of truth. There is no fresh puzzle to regenerate, and no
-interactable (some-clues-blank) puzzle is shipped — the blank-clue win above is
-argued from the code, not measured here.
+now the committed source of truth. There is no fresh puzzle to regenerate.
