@@ -175,18 +175,19 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
     for r, c in [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]:
         cells[idx(r, c)] = {"given": True, "value": 1}
 
-    # interior values (full solution); given flag on the given cells
+    # interior: a given carries its value; every other cell is EMPTY. The
+    # solution is never stored — a non-given value ships as an entered digit.
     interior = []
     for r in range(n):
         for c in range(n):
-            cell = {"value": grid[r][c]}
-            if (r, c) in givens:
-                cell["given"] = True
-            cells[idx(r + 1, c + 1)] = cell
+            cells[idx(r + 1, c + 1)] = (
+                {"value": grid[r][c], "given": True} if (r, c) in givens else {}
+            )
             interior.append(idx(r + 1, c + 1))
 
-    # clue ring: every line carries its true clue value; shown clues are given,
-    # the rest stay blank for the solver to deduce (the interactive clues)
+    # clue ring: a shown clue is a given; a hidden (interactive) clue is an
+    # EMPTY cell. Never store the hidden value — a non-given value ships as an
+    # entered digit, so the recipient opens the link with every clue typed in.
     def ring_index(key):
         s, i = key
         if s == "L":
@@ -201,10 +202,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
 
     for key in lines:
         ci = ring_index(key)
-        cell = {"value": clue[key]}
-        if key in active:
-            cell["given"] = True
-        cells[ci] = cell
+        cells[ci] = {"value": clue[key], "given": True} if key in active else {}
 
     # regions: interior boxes, ring = -1
     regions = [-1] * (W * W)

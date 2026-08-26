@@ -41,9 +41,13 @@ author builds a grid one ring larger than the puzzle (an 11×11 board around a
   cells correctly. This needs a userscript at publish time; it is optional and
   cosmetic for solving.
 
-Whether a clue is **shown** is the `given` flag on its ring cell, not its
-presence. `given: true` = a visible clue the solver reads; `given: false` = a
-blank the solver must deduce. The full solution value is stored either way.
+**A cell holds a value only when it is a given.** A shown clue is a ring cell
+with `given: true` and its value; a hidden (interactive) clue is an **empty**
+ring cell, `{}`; an interior cell that is not a given is `{}` too. Never store
+the solution or a hidden clue's value: a non-given value is an *entered* digit,
+so the shared link opens with the grid and clues already typed in.
+`framebuild.py` enforces this; the "n entered values on the board" refusal in
+`app-solve.mjs` is the symptom when a link gets it wrong.
 
 ## Encoding a puzzle
 
