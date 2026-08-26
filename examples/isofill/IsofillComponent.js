@@ -3,7 +3,7 @@
 //! cells; every cell in a region holds the same digit; all ten digits appear.
 //! So each digit fills exactly ten cells.
 //!
-//! One whole-grid component, three deductions per digit:
+//! One whole-grid component, four deductions per digit:
 //!   Cap:   a digit already in ten cells leaves every other cell.
 //!   Force: a digit with exactly ten cells still open takes all of them.
 //!   Reach: walk from the digit's placed cells through cells that still allow
@@ -13,9 +13,6 @@
 //!   Capacity: if that walk meets fewer than ten cells the region can never
 //!          reach ten; a placed cell is emptied, as for a split.
 //! validate is the exact leaf check: each digit one connected blob of ten.
-//! Tried and removed (#91): a homeless-digit check (a digit with no placed
-//! cell needs a ten-cell connected home). Sound, but it changed neither the
-//! verdict nor the time in the app; see git history.
 
 function getAffectedCells (cells) {
   return cells
