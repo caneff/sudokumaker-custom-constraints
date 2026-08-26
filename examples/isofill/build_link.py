@@ -10,8 +10,8 @@
 #       --component /path/IsofillComponent.js --out /tmp/candidate.txt
 #
 # Writes PUZZLE_LINK.txt next to this script; --component / --out swap in a
-# candidate component file and write elsewhere (what time_example.py passes);
-# --puzzle builds another instance, e.g. puzzle-44.json.
+# candidate component file and write elsewhere; --puzzle builds another
+# instance, e.g. puzzle-44.json.
 
 import argparse
 import json
@@ -31,9 +31,7 @@ RULE = (
 )
 
 
-def build(
-    component_path=HERE / "IsofillComponent.js", puzzle_path=HERE / "puzzle.json"
-):
+def build(component_path, puzzle_path):
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
     cells = []

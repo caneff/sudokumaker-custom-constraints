@@ -102,7 +102,7 @@ solve off. Same board within each row; only the constraint code differs.
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
-| ISOFILL (stripped, 35 givens) | no verdict (app time limit, `[timeout]`), with or without capacity | "Found 10,000 solutions" in 0.3 s | neither reaches a verdict; reach pruning turns a fast wrong answer into a slow none |
+| ISOFILL (stripped, 35 givens) | no verdict (app time limit, `[timeout]` 3/3, 2026-08-26), with or without capacity | "Found 10,000 solutions" in 0.3 s | neither reaches a verdict; reach pruning turns a fast wrong answer into a slow none |
 | ISOFILL (stripped, 44 givens, `puzzle-44.json`) | reach only ~25.9 s; reach + capacity **~9.1 s** (2026-08-26, 3/3 unique) | — | capacity kept: 2.8× faster where the app closes at all (#90) |
 
 The stronger components pay off where the search is genuinely hard and the clues
