@@ -102,8 +102,8 @@ solve off. Same board within each row; only the constraint code differs.
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
-| ISOFILL (stripped, 35 givens) | **final: no verdict** (app time limit, `[timeout]` 3/3, 2026-08-26) with reach, reach + capacity, and reach + capacity + homeless alike | "Found 10,000 solutions" in 0.3 s | neither reaches a verdict; reach pruning turns a fast wrong answer into a slow none. Kept: cap, force, reach, capacity. Homeless removed (#91); next step is fog on map #48 |
-| ISOFILL (stripped, 44 givens, `puzzle-44.json`) | reach only ~25.9 s; reach + capacity **~9.1 s** (2026-08-26, 3/3 unique); + homeless ~9.1 s (reps 9.6/9.1/9.1 s, no change) | — | capacity kept: 2.8× faster where the app closes at all (#90); homeless removed: no gain (#91) |
+| ISOFILL (stripped, 35 givens) | **no verdict** (app time limit, `[timeout]` 3/3, 2026-08-26) with reach, reach + capacity, reach + capacity + homeless, and the one-pass scan alike | "Found 10,000 solutions" in 0.3 s | neither reaches a verdict; reach pruning turns a fast wrong answer into a slow none. Kept: cap, force, reach, capacity, one-pass scan. Homeless removed (#91); clue ladder re-time is #98 |
+| ISOFILL (stripped, 44 givens, `puzzle-44.json`) | reach only ~25.9 s; reach + capacity **~9.1 s** (2026-08-26, 3/3 unique); + homeless ~9.1 s (reps 9.6/9.1/9.1 s, no change); one-pass scan **5.7 s vs 11.2 s** same-session pair (reps 5.6/5.7/6.2 vs 11.8/11.2/11.2), ratio 0.51 | — | capacity kept: 2.8× faster where the app closes at all (#90); homeless removed: no gain (#91); one-pass scan kept: 2× faster, same deductions (#97) |
 
 The stronger components pay off where the search is genuinely hard and the clues
 are not all handed to the solver. On a board whose clues are all filled the app

@@ -89,7 +89,12 @@ connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
 gotcha 2); the deductions above do the work, `validate` states the rule.
 
 All of it reads each cell's candidates as a `DigitSet` (wrap it in
-`Array.from`; build one back with `SudokuDigitSet.from`).
+`Array.from`; build one back with `SudokuDigitSet.from`). `update` reads the
+grid **once** per call and builds every digit's placed, open, and allowed
+sets from that one scan. It runs on every search node, so a scan per digit
+(ten reads of each cell) cost real time: the one-pass scan halved the app's
+verdict on the 44-given fixture (5.7 s vs 11.2 s, same session) with no
+change to the deductions. The harness asserts the read count.
 
 Reach is required, not a timing-gated stretch: without it the app never
 reaches a verdict. Capacity earned its place by timing: on the 44-given
@@ -136,7 +141,7 @@ node examples/isofill/soundness-harness.mjs
 # -> isofill bent fixture: 20000 tests, 0 violations
 # -> isofill shipped fixture: 20000 tests, 0 violations
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | one pass: true (100 reads)
 # -> PASS
 ```
 
@@ -146,7 +151,8 @@ partial fills of three valid ISOFILL solutions (one with row *r* holding digit
 shipped grid from `puzzle.json`) in which every cell still allows its true
 value, runs `update` to a fixpoint, and asserts every true value survived. It
 also builds one state for each deduction — cap, force, reach, split, split
-with all ten cells placed, capacity — and checks each fired,
+with all ten cells placed, capacity — and checks each fired, checks `update`
+reads each cell's candidates at most once per call,
 and checks `validate` accepts a full valid grid and rejects a count-valid but
 split one.
 
