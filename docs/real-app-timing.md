@@ -50,7 +50,7 @@ Install the browser once, build the probe links, then run:
 ```sh
 npm i && npx playwright install chromium
 
-# Numbered rooms: blank-clue board (13 arrows, one interior given), ours vs
+# Numbered rooms: blank-clue board (8 arrows, one interior given), ours vs
 # original code. Already searchable, so no emptying needed.
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3

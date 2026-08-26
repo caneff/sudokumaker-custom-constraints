@@ -67,8 +67,9 @@ per-line component below carries the whole example.
   which the shipped wrapper never did.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle and the source of truth for this
   example: a hard board with **blank outside clues** (the solver deduces all 36),
-  13 arrow bulbs, and one interior given, so the solver must search. An earlier
-  fixture had 24 arrows; fewer arrows leave more of the work to this component.
+  8 arrow bulbs, and one interior given, so the solver must search. Earlier
+  fixtures had 24 and then 13 arrows; fewer arrows leave more of the work to
+  this component.
 - `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
   a same-board timing comparison.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`

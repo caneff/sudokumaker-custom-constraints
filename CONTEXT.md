@@ -57,6 +57,19 @@ Use these terms exactly. Do not drift to synonyms.
 - **generation** — building a fresh grid, deriving clues, and proving a unique
   solution with OR-Tools CP-SAT (`generate.py`). See
   `docs/testing-and-generation.md`.
+- **real-app timing** — the solve time SudokuMaker's own solver reports for a
+  link, read by a browser driver. The only clock that decides whether a
+  deduction pays for itself. See `docs/real-app-timing.md`.
+- **mock probe** — our Node GAC + DFS mock run over a component. It measures
+  deduction strength (candidates recovered, search nodes cut), not seconds. Its
+  verdict does not transfer to the app. See `docs/real-app-timing.md`.
+- **same-board pair** — two links on one identical board that differ only in
+  constraint code: the **baseline** (the code shipped today) and the
+  **candidate** (the change under test). The unit a real-app timing compares.
+  SudokuMaker's original wrapper was the baseline only for the first rewrite.
+- **searchable link** — a link whose interior is emptied so the solver must
+  search from the givens and the outside-clue ring. A finished link only verifies
+  a filled grid and times the same for every code variant.
 
 ## Invariants
 
