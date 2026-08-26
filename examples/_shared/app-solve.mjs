@@ -38,7 +38,7 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseReadout, repLine, medianLine } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
 
 const linkFile = process.argv[2]
 const reps = parseInt(process.argv[3] || '7', 10)
@@ -110,7 +110,7 @@ async function runOnce (page) {
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
-  return parseReadout(text)
+  return { ...parseReadout(text), version: parseVersion(text) }
 }
 
 const browser = await chromium.launch()
@@ -127,3 +127,9 @@ await browser.close()
 console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)
 for (const r of rows) console.log(repLine(r))
 console.log(medianLine(rows))
+
+// One machine-readable line for time_example.py: the median of `sum` (first
+// solve + uniqueness search, the whole run that exercises `update`), plus the
+// app version so every printed row names the build it measured.
+const version = rows.map(r => r.version).find(Boolean) ?? null
+console.log('JSON: ' + JSON.stringify({ median: median(rows.map(r => r.sum)), version }))

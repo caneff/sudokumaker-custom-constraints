@@ -60,12 +60,17 @@ def strip_to_givens(doc):
 MODES = {"empty": empty_interior, "strip": strip_to_givens}
 
 
+def empty_link_file(src_path, out_path, mode="empty"):
+    """Read the link at src_path, apply the mode, write it to out_path."""
+    doc = MODES[mode](decode_puzzle(pathlib.Path(src_path).read_text().strip()))
+    pathlib.Path(out_path).write_text(encode_link(doc))
+
+
 def main(argv):
     if len(argv) != 4 or argv[1] not in MODES:
         raise SystemExit("usage: probe_link.py empty|strip <src_link> <out_link>")
     _, mode, src, out = argv
-    doc = MODES[mode](decode_puzzle(pathlib.Path(src).read_text().strip()))
-    pathlib.Path(out).write_text(encode_link(doc))
+    empty_link_file(src, out, mode)
     print(f"wrote {out}")
 
 

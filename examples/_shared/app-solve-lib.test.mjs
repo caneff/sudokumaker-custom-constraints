@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseReadout, repLine, medianLine } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -72,3 +72,7 @@ import { parseReadout, repLine, medianLine } from './app-solve-lib.mjs'
 }
 
 console.log('app-solve-lib.test.mjs: all seams pass')
+
+// ---- app version from the footer ----
+assert.strictEqual(parseVersion('SudokuMaker v2026.08.14-d47fc4b  Solved took 1s'), 'v2026.08.14-d47fc4b')
+assert.strictEqual(parseVersion('no footer here'), null)

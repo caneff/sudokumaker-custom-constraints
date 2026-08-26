@@ -46,3 +46,11 @@ export function medianLine (rows) {
   const sum = median(rows.map(r => r.sum))
   return `  MEDIAN first ${first}ms  unique ${unique}ms  sum ${sum}ms  over ${n}/${rows.length} reps`
 }
+
+// The app footer prints its own version, e.g. "v2026.08.14-d47fc4b". The
+// timing driver (time_example.py) puts it in every printed row so a stale
+// number is traceable to the app build that produced it.
+export function parseVersion (text) {
+  const m = text.match(/\bv\d{4}\.\d{2}\.\d{2}-[0-9a-f]+\b/)
+  return m ? m[0] : null
+}
