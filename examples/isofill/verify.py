@@ -97,6 +97,13 @@ def self_check():
         pass
     else:
         raise AssertionError("disconnected region accepted")
+    # A blank grid under a 1ms cap must raise, never report a verdict.
+    try:
+        unique({}, limit=0.001)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("timeout reported a verdict")
     print("self-check ok")
 
 
