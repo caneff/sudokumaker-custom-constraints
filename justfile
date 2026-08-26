@@ -23,6 +23,7 @@ test:
     node examples/skyscraper/recovery-probe.test.mjs
     uv run --with lzstring examples/_shared/link_codec.test.py
     uv run --with lzstring examples/_shared/probe_link.test.py
+    uv run --with ortools examples/isofill/verify.py
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
 soundness:
