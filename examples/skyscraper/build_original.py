@@ -2,7 +2,7 @@
 # instead of the improved components, so the two can be compared on the same
 # grid, givens, and clues. No solving: it reuses gen_<n>.json and re-encodes.
 #
-#   uv run --with lzstring examples/skyscraper/build_original.py 9
+#   uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9
 #
 # Writes PUZZLE_LINK_<n>x<n>_original.txt next to this script and checks that the
 # only difference from PUZZLE_LINK_<n>x<n>.txt is the custom constraint's code.
@@ -11,12 +11,11 @@ import copy
 import json
 import pathlib
 import sys
-import urllib.parse
-
-from lzstring import LZString
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
+import link_codec
+from framebuild import build_doc, make_lines
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -27,7 +26,7 @@ def load_gen(n):
     g = json.loads((HERE / f"gen_{n}.json").read_text())
     bh, bw = g["box"]
     grid = g["grid"]
-    lines = build_size.make_lines(n)
+    lines = make_lines(n)
     clue = {(k[0], int(k[1:])): v for k, v in g["clue"].items()}
     active = {(k[0], int(k[1:])) for k in g["active"]}
     givens = {
@@ -82,7 +81,7 @@ def blanked(doc):
 if __name__ == "__main__":
     n = int(sys.argv[1])
     bh, bw, grid, clue, givens, active, lines = load_gen(n)
-    improved = build_size.build_doc(n, bh, bw, grid, clue, givens, active, lines)
+    improved = build_doc(build_size.SPEC, n, bh, bw, grid, clue, givens, active, lines)
     original = swap_to_original(improved)
 
     # the two puzzles must be identical everywhere except the constraint code
@@ -94,14 +93,8 @@ if __name__ == "__main__":
     )
     assert original["puzzle"]["cells"] == improved["puzzle"]["cells"], "cells differ"
 
-    link = "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(
-        json.dumps(original)
-    )
-    back = json.loads(
-        LZString.decompressFromEncodedURIComponent(
-            urllib.parse.unquote(link.split("puzzle=")[-1])
-        )
-    )
+    link = link_codec.encode_link(original)
+    back = link_codec.decode_puzzle(link)
     assert back == original, "link does not decode back to the built document"
 
     (HERE / f"PUZZLE_LINK_{n}x{n}_original.txt").write_text(link + "\n")
