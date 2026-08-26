@@ -93,8 +93,13 @@ All of it reads each cell's candidates as a `DigitSet` (wrap it in
 grid **once** per call and builds every digit's placed, open, and allowed
 sets from that one scan. It runs on every search node, so a scan per digit
 (ten reads of each cell) cost real time: the one-pass scan halved the app's
-verdict on the 44-given fixture (5.7 s vs 11.2 s, same session) with no
-change to the deductions. The harness asserts the read count.
+verdict on the 44-given fixture (5.7 s vs 11.2 s, same session). The rules
+are the same four; what changes is that every digit sees the grid as it was
+at the start of the call, not the removals earlier digits yielded in the
+same call. That is sound (fuzz clean) and never weaker at the fixpoint: on
+a 5,000-state differential against the per-digit scan it was equal on 4,816
+and strictly tighter on 184, looser on none.
+The harness asserts the read count.
 
 Reach is required, not a timing-gated stretch: without it the app never
 reaches a verdict. Capacity earned its place by timing: on the 44-given
