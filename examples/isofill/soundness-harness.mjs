@@ -11,7 +11,8 @@
 //          deduction walks around corners.
 
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import { dirname, join } from 'path'
+import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -57,9 +58,14 @@ function run (truth, seed) {
   return { p, v: violates(mod, inst, p, truth) }
 }
 
-// ---- Fuzz: true values survive, on both fixtures ----
+// shipped — the grid in puzzle.json (also the grid of the 44-clue fixture).
+const shipped = {}
+JSON.parse(readFileSync(join(HERE, 'puzzle.json'), 'utf8')).grid
+  .forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
+
+// ---- Fuzz: true values survive, on all fixtures ----
 let bad = 0
-for (const [name, truth] of [['rows', rows], ['bent', bent]]) {
+for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
   let fails = 0
   for (let iter = 0; iter < 20000; iter++) {
     const { v } = run(truth, seeder)
@@ -95,6 +101,14 @@ mod.setParams(capSplitInst, CELLS)
 Array.from(mod.update(capSplitInst, capSplit))
 const capSplitOk = capSplit.getCandidates(99).size === 0
 
+// ---- Capacity: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
+// cells in all) can never grow to ten; the placed cell empties ----
+const capacity = makePuzzle(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
+const capacityInst = {}
+mod.setParams(capacityInst, CELLS)
+Array.from(mod.update(capacityInst, capacity))
+const capacityOk = capacity.getCandidates(0).size === 0
+
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
@@ -104,8 +118,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
