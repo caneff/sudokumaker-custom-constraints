@@ -109,10 +109,10 @@ default "singles only" technique set, median of 3 runs):
 
 | wiring | solve time |
 |---|---|
-| original wrapper (`CustomIndexComponent`) | ~95 s (one rep in three never finished) |
-| **ours** (`NumberedRoomsComponent`) | **~1.4 s** |
+| original wrapper (`CustomIndexComponent`) | >300 s (no rep in three finished) |
+| **ours** (`NumberedRoomsComponent`) | **~21.5 s** |
 
-Ours is about 70× faster. The gap is the point of the rewrite: the wrapper is
+Ours is more than 14× faster. The gap is the point of the rewrite: the wrapper is
 inert on a blank clue and the solver must guess it, while ours deduces the clue
 from its line. See `docs/real-app-timing.md` for the method, the reproduce
 commands, and the skyscraper comparison.

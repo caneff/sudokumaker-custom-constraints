@@ -71,7 +71,7 @@ solve off. Same board within each row; only the constraint code differs.
 
 | Puzzle                        | Ours     | Original    | Result            |
 | ----------------------------- | -------- | ----------- | ----------------- |
-| Numbered rooms (blank clues)  | ~1.4 s   | ~95 s       | ours ~70× faster  |
+| Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
 
 The stronger components pay off where the search is genuinely hard and the clues
