@@ -48,8 +48,8 @@ both directions, before the clue is solved:
    be 1.
 3. When one index remains, make the target cell and the clue equal both ways —
    before either is a singleton.
-4. When no index remains, empty the indexer so the solver sees the dead
-   branch at once.
+4. When no index remains, empty the indexer and the clue so the solver sees
+   the dead branch at once.
 
 All four run in one pass over candidate bitmasks
 (`puzzle.getCandidatesBitMask`), the shape ISS's `ValueIndexing` handler uses.

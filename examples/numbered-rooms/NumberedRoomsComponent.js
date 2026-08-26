@@ -11,8 +11,7 @@
 //! directly: each update pass prunes the indexer line[0], prunes the clue down
 //! to the still-feasible targets, equates the target with the clue once one
 //! index remains, and once the clue is solved drops its digit from every line
-//! cell at a dead index — all from the first pass. See
-//! README.md for how this compares to the earlier wrapper (ORIGINAL_*.js).
+//! cell at a dead index — all from the first pass.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -30,14 +29,16 @@ function setParams (instance, clue, line) {
 //   k = 1  — the target IS the indexer, which holds k, so the clue must be 1;
 //   k > 1  — the target and the indexer are two cells of one row/column, so
 //            the target (and the clue) cannot be k.
-// Assumes the line is one row/column, which is what the rule means; main.js
-// trusts the author's group for that. Every read is of the pre-pass masks, so
-// the k = 1 case needs no second pass (see OPTIMIZATION_LOG.md, the k=1 trap).
+// Assumes the line is one row/column, which is what the rule means; the main
+// code trusts the author's group for that. Every read is of the pre-pass
+// masks, so the k = 1 case needs no second pass: the indexer's own mask is
+// read before this pass prunes it.
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const m = line.length
   const clueM = puzzle.getCandidatesBitMask(clue)
   const idxM = puzzle.getCandidatesBitMask(line[0])
+  const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)
 
   let K = 0 // feasible indices, as a digit mask
   let reach = 0 // clue digits some feasible index can realize
@@ -48,26 +49,19 @@ function * update (instance, puzzle) {
     if (t) { K |= bit; reach |= t }
   }
 
-  // No index works: a dead branch. Empty the indexer so the solver sees the
-  // contradiction now instead of after more propagation.
-  if (K === 0) {
-    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(idxM), line[0])
-    return
-  }
-
   // Prune the indexer to the feasible indices (this also drops out-of-range
-  // values), and the clue to the digits a feasible target can realize.
-  if (idxM & ~K) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(idxM & ~K), line[0])
-  if (clueM & ~reach) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM & ~reach), clue)
+  // values) and the clue to the digits a feasible target can realize. With no
+  // feasible index both empty, and the solver sees the contradiction now.
+  if (idxM & ~K) yield drop(idxM & ~K, line[0])
+  if (clueM & ~reach) yield drop(clueM & ~reach, clue)
+  if (!K) return
 
   // Clue solved to c: c sits in exactly one cell of the line (one house), and
   // that cell is the target, so c can only live at a feasible index. Drop c
   // from every cell at a dead index — the converse of the loop above.
   if ((clueM & (clueM - 1)) === 0) {
     for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
-      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) {
-        yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM), line[k - 1])
-      }
+      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) yield drop(clueM, line[k - 1])
     }
   }
 
@@ -75,10 +69,9 @@ function * update (instance, puzzle) {
   // equals the clue. `reach` is then exactly the target digits the clue can
   // match, so narrow the target to it. (The clue side is done above.)
   if ((K & (K - 1)) === 0) {
-    const k = 31 - Math.clz32(K)
-    const target = line[k - 1]
+    const target = line[31 - Math.clz32(K) - 1] // clz32 is exact; Math.log2 is not by spec
     const rm = puzzle.getCandidatesBitMask(target) & ~reach
-    if (rm) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rm), target)
+    if (rm) yield drop(rm, target)
   }
 }
 
