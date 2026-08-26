@@ -44,7 +44,10 @@ line backwards; trust the group order. **[verified]**
 
 `puzzle.getCandidates(cell)` returns a `DigitSet`. Wrap it with `Array.from(...)`
 before using array methods (`filter`, `includes`, spread into `Math.max`). Build
-one to pass back with `SudokuDigitSet.from([...])`. **[verified]**
+one to pass back with `SudokuDigitSet.from([...])`, or from a bitmask with
+`new SudokuDigitSet(mask)` (bit `d` = digit `d`; `puzzle.getCandidatesBitMask`
+reads one). The set algebra (`intersect`, `union`, `subtract`) **mutates** the
+set it is called on. Members in `docs/puzzle-api.md`. **[verified]**
 
 ## 5. The puzzle ships with its full solution
 

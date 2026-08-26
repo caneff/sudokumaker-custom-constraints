@@ -53,11 +53,15 @@ if __name__ == "__main__":
         )
 
         # swapping the currently-shipped component back in reproduces
-        # PUZZLE_LINK.txt exactly
+        # PUZZLE_LINK.txt exactly; so does the committed main code
         same = decode_puzzle(build(HERE / "NumberedRoomsComponent.js", out))
         assert same == base, (
             "the committed component must round-trip to PUZZLE_LINK.txt"
         )
+        same = decode_puzzle(
+            build(HERE / "NumberedRoomsComponent.js", out, HERE / "main.js")
+        )
+        assert same == base, "the committed main.js must round-trip to PUZZLE_LINK.txt"
 
         # a component whose name is not registered on the constraint fails
         # loud, not silently -- e.g. the differently-named original wrapper

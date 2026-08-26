@@ -12,7 +12,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -84,14 +84,9 @@ const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
 })
 const inst = {}
 mod.setParams(inst, 0, [1, 2, 3, 4])
-let removals = 0
-for (let pass = 0; pass < 20; pass++) {
-  let before = 0; for (const s of p._cand.values()) before += s.size
-  Array.from(mod.update(inst, p)) // drain
-  let after = 0; for (const s of p._cand.values()) after += s.size
-  removals += before - after
-  if (after === before) break
-}
+let removals = 0; for (const s of p._cand.values()) removals += s.size
+fixpoint(mod, inst, p)
+for (const s of p._cand.values()) removals -= s.size
 const clueCands = [...p._cand.get(0)]
 const strong = removals > 0 && clueCands.length === 1 && clueCands[0] === 3
 console.log('strength: clue pruned to', clueCands, `(was {1,2,3,4}), ${removals} removals with clue unsolved`)

@@ -4,7 +4,8 @@ The solving object is available as `puzzle` or `sudoku`. `helpers` is also
 reachable as `puzzle.helpers`. Signatures below are from the community docs
 ([Chris-Tophski repo][src]) plus what we verified in use. Many methods there are
 marked TODO; this file keeps the ones you actually reach for. Tags: **[verified]**
-= we used it; **[docs]** = documented, not personally exercised.
+= we used it; **[verified]** (bundle) = read in the app's own JS bundle, not
+yet used by a component here; **[docs]** = documented, not personally exercised.
 
 [src]: https://github.com/Chris-Tophski/SudokuMakerConstraints
 
