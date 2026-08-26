@@ -13,9 +13,16 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
 
 `app-solve.mjs` loads the link, clicks the "Find all solutions and valid
 candidates" button (the `ShowCandidates` icon), and reads the time the app
-prints ("took 2.3s"). That button searches the whole tree to prove uniqueness,
-so it runs the custom component's `update` on every node — the work we want to
-time. Reading the app's own readout, not a self-computed clock, keeps it honest.
+prints. That button searches the whole tree to prove uniqueness, so it runs the
+custom component's `update` on every node — the work we want to time. Reading
+the app's own readout, not a self-computed clock, keeps it honest.
+
+The app prints **two** readouts, one per phase: "✨ Solved — took 2.3s" when it
+finds the first solution, then "This is a unique solution. took 0.4s" when the
+second search finishes. The driver waits for the verdict text, then sums both.
+An earlier version returned at the first "took" it saw; on a slow board that
+timed the first phase only and reported nonsense (500 ms for a 19 s search).
+A row with verdict `?` means the verdict never appeared and the time is null.
 
 Before each run the driver turns **off** "Non-deterministic solve" (Solver
 settings → Solutions finder → Advanced settings). With it on, the same board
@@ -64,8 +71,8 @@ solve off. Same board within each row; only the constraint code differs.
 
 | Puzzle                        | Ours     | Original    | Result            |
 | ----------------------------- | -------- | ----------- | ----------------- |
-| Numbered rooms (blank clues)  | ~2.3 s   | ~11.9 s     | ours ~5× faster   |
-| Skyscraper 9×9                | ~2.4 s   | ~37.9 s     | ours ~16× faster  |
+| Numbered rooms (blank clues)  | ~2.7 s   | ~15.5 s     | ours ~6× faster   |
+| Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
 
 The stronger components pay off where the search is genuinely hard and the clues
 are not all handed to the solver. On a board whose clues are all filled the app
@@ -76,7 +83,8 @@ CODING_STANDARDS.md), or the fixture flatters the lazy wrapper.
 
 Not every stronger deduction survives this test. Numbered Rooms once shipped a
 second `NumberedRoomsPairComponent` that coupled the two clues on a line. It was
-sound and cut nodes, but it tripled the real solve time (2.3 s → 6.7 s) and was
+sound and cut nodes, but it tripled the real solve time (2.3 s → 6.7 s, first
+phase only, before the two-phase readout fix) and was
 removed. The mock's node-count verdict does not transfer: it counts pruning, not
 the per-`update` price the app pays for it.
 

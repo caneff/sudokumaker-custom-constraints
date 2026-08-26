@@ -15,6 +15,8 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   error, the solver just rules out the answer. Re-run the soundness harness on
   every constraint change and expect zero violations. Full standards in
   `CODING_STANDARDS.md`.
+- **Never print a puzzle link in chat.** A link is a 10 KB blob. Write it to a
+  file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
 
 ## Commands
 
