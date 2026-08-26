@@ -113,4 +113,6 @@ if __name__ == "__main__":
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
-        print("unique" if unique(givens) else "not unique")
+        ok = unique(givens)
+        print("unique" if ok else "not unique")
+        sys.exit(0 if ok else 1)
