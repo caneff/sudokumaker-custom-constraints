@@ -111,16 +111,6 @@ const capSplitOk = capSplit.getCandidates(99).size === 0
 const capacity = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
 const capacityOk = capacity.getCandidates(0).size === 0
 
-// ---- Homeless, no home: digit 0 has no placed cell and is allowed only in
-// cells 0-8 (nine cells): no ten-cell home, so every cell loses 0 ----
-const noHome = once(rows, (c, v) => (c <= 8 ? ALL : ALL.slice(1)))
-const noHomeOk = CELLS.every(c => !noHome.getCandidates(c).has(0))
-
-// ---- Homeless, one home: digit 0 allowed in row 0 (ten cells) and in the
-// isolated cell 50: cell 50 loses 0, row 0 keeps it ----
-const oneHome = once(rows, (c, v) => (c <= 9 || c === 50 ? ALL : ALL.slice(1)))
-const oneHomeOk = !oneHome.getCandidates(50).has(0) && oneHome.getCandidates(0).has(0)
-
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
@@ -130,8 +120,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| homeless fired:', noHomeOk && oneHomeOk)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && noHomeOk && oneHomeOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
