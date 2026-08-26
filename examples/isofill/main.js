@@ -5,8 +5,11 @@
 // `helpers.cellIds.getAllCellIds()` and registers ONE component over the whole
 // grid. That component counts each digit across all hundred cells.
 
-//! ISOFILL is global: one component watches the whole grid and caps every
-//! digit at ten cells.
-puzzle.addConstraintComponent(
-  new IsofillComponent('ISOFILL', Array.from(helpers.cellIds.getAllCellIds()))
-)
+//! ISOFILL is global: one component watches the whole grid. The component
+//! finds neighbours by index arithmetic, so the list must be row-major over
+//! the square: build it by coordinates, do not trust getAllCellIds() order.
+const cells = []
+for (let y = 0; y < 10; y++) {
+  for (let x = 0; x < 10; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }))
+}
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
