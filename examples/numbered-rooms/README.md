@@ -76,132 +76,56 @@ reach.
 - `main.js`, `NumberedRoomsComponent.js`, `NumberedRoomsPairComponent.js` — paste
   these three into the SudokuMaker constraint editor, replacing the old backend
   and `CustomIndexComponent`.
-- `ORIGINAL_*.js` — the shipped version, kept for reference.
+- `ORIGINAL_*.js` — the shipped wrapper, kept for reference and used by
+  `build_original.py`.
 - `soundness-harness.mjs` — proves neither `update` removes a true value (405k
   line + 5k distinct-line pair + 13k non-distinct pair fuzz tests) and that each
   prunes early: the line component with the clue unsolved, the pair component
   with the index sum fixed by equal clues. The non-distinct block also proves the
   `getCellsSeeEachOther` guard is load-bearing (remove it and it fails).
-- `build_link.py` — rebuilds the puzzle link with the new code, and carves the
-  interior down to the givens in `min_givens.json` (drops the `given` flag on the
-  rest, so those cells show empty).
-- `PUZZLE_LINK.txt` — the ready-to-open puzzle: 36 clues, 3 interior givens.
-- `derive_fixture.py` — decodes the hand-made puzzle (`numbered_rooms.url`) into
-  `gen_9.json`: the interior solution, the 31 hand-made interior givens, the box
-  regions, and the 36 clue+line groups.
-- `gen_9.json` — that fixture, the start state the recovery probe seeds.
-- `min_givens.json` — the carve result: the 3 interior givens the components need
-  to solve by logic. Written by `recovery-probe.mjs`, read by `build_link.py` and
-  `verify.py`.
-- `recovery-probe.mjs` — runs the real components (the same `main.js` wiring
-  SudokuMaker runs) over the fixture on top of a Régin-strength (GAC)
-  all-different floor. It **carves** the interior — dropping each hand-made given
-  while the components still solve the whole interior by propagation alone — to
-  the minimum (3 of 31), writes that set to `min_givens.json`, then reports what
-  propagation recovers from it and proves the puzzle unique with a DFS search. It
-  reuses the shared engine in `../_shared/recovery-lib.mjs`. From the 3 givens the
-  components solve the interior in full (3 → 81 cells) and the puzzle is unique by
-  propagation alone — zero search nodes, one solution. It also **times ours against
-  the original** wrapper. With the 3 carved givens both finish by propagation, so
-  the probe drops to the hardest form — the pure-clue puzzle, 36 clues and zero
-  givens, still unique — and makes both wirings solve it by search. The original
-  (modelled as our line gated to fire only once its clue is pinned, no pair
-  coupling — the same conservative model the Skyscraper probe uses) explores about
-  6x more search nodes than our version. **But that 6x is a footnote, not the
-  improvement.** This puzzle shows all 36 clues, so no clue is ever blank and the
-  wrapper never has to guess one — the comparison isolates only the pair coupling,
-  which is a wash across random all-clues-shown boards. The real, decisive win is
-  on an *interactable* puzzle (some clues shown, the rest blank); see “The real
-  win: interactable puzzles” below and `sweep.mjs`.
-- `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
-  rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
-  clue`), never touching the component code, and confirms the shipped puzzle (the
-  3 carved givens plus all 36 clues): the interior is uniquely solvable, the one
-  solution matches the fixture, and the clues are load-bearing (keep the givens,
-  drop every clue, and two completions remain). It also reports the logical floor
-  — the clues alone, with zero givens, are already unique — which is why the
-  hand-made 31 givens were far more than the puzzle needs.
-- `gen_puzzle.py` — generates a random, *interactable* Numbered Rooms puzzle
-  (`gen_9_s*.json`): solve a random 9x9 sudoku with OR-Tools, read each clue off
-  the rule, then carve to a playable board — a handful of shown clues and a
-  handful of interior givens, the rest of the clues blank, with the interior still
-  uniquely solvable (uniqueness checked by the `verify.py` oracle). Seeded, so the
-  committed boards are reproducible. The fixture adds a `shownClues` field to the
-  `gen_9.json` schema.
-- `sweep.mjs` — runs ours vs the original wrapper over the `gen_9_s*.json` boards
-  and asks which can SOLVE each one (branching the interior and every blank clue).
-  Ours solves every board; the original solves none, because it must guess each
-  blank clue. `sweep.test.mjs` guards that on a fast subset.
+- `PUZZLE_LINK.txt` — the ready-to-open puzzle and the source of truth for this
+  example: 36 clues, 3 interior givens.
+- `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
+  a same-board timing comparison.
+- `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
+  and the `ORIGINAL_*.js` files, changing only the constraint code.
 
 ## Run
 
-    node examples/numbered-rooms/sweep.mjs                             # can each wiring solve a real puzzle?
-    uv run --with ortools examples/numbered-rooms/gen_puzzle.py 7      # regenerate one board (seed 7)
-
     node examples/numbered-rooms/soundness-harness.mjs
-    node examples/numbered-rooms/recovery-probe.mjs                    # carves, writes min_givens.json
-    uv run --with ortools examples/numbered-rooms/verify.py            # independent OR-Tools check
-    node examples/numbered-rooms/verify.test.mjs
-    uv run --with lzstring examples/numbered-rooms/derive_fixture.py   # rebuild gen_9.json
-    uv run --with lzstring examples/numbered-rooms/build_link.py       # ships the carved givens
+    uv run --with lzstring examples/numbered-rooms/build_original.py   # rebuild the original-code link
 
-## Carving the givens
+## Why the stronger component wins
 
-The hand-made puzzle shipped 31 interior givens. That is far too many: with the
-stronger component the 36 border clues do almost all the work. `recovery-probe.mjs`
-carves the interior — it drops each given while the components still solve the
-whole interior by propagation alone — down to **3 givens** (cells 83, 92, 108).
-From those 3 the components solve all 81 cells by logic, no search. `build_link.py`
-ships that carved puzzle.
+The reason is in the original code, not a benchmark. `ORIGINAL_CustomIndexComponent.js`
+does nothing until the clue cell has a value:
 
-Three givens, not zero: the clues alone are already *logically* unique (`verify.py`
-reports this floor), but the components cannot reach that solution by propagation —
-from zero givens they stall and a solver would have to search. Three givens is the
-fewest that keep the puzzle solvable by the intended logic.
+```js
+if (puzzle.hasValue(cell)) {
+  yield puzzle.replaceComponent(instance,
+    new IndexComponent(instance.name, puzzle.getValue(cell), cells[0], cells))
+}
+```
 
-## The real win: interactable puzzles
+A real Numbered Rooms puzzle shows only *some* of its outside clues and leaves the
+rest blank for the solver to deduce. On a blank clue the wrapper is inert — it
+waits for the clue to be pinned, then runs the built-in index prune — so its only
+way to fill a blank clue is to guess it. `NumberedRoomsComponent.js` deduces a
+blank clue from its line, both directions, before anything is solved. That
+capability gap is the point: a puzzle that is mostly blank clues is one the
+original wrapper cannot solve by logic at all, and ours can.
 
-A real Numbered Rooms puzzle shows only *some* of its outside clues; the solver
-deduces the rest along with the interior. That is where the stronger component
-earns its keep, and where the original wrapper falls apart. The wrapper is inert
-on a blank clue — it waits for the clue to be pinned, then runs the built-in index
-prune — so the only way it fills a blank clue is to guess it. Ours deduces a blank
-clue from its line, so it never has to.
+## Timing in the real app
 
-`sweep.mjs` measures this. Each board (`gen_9_s*.json`, from `gen_puzzle.py`) shows
-a handful of clues and a handful of interior givens, leaves the rest of the clues
-blank, and stays uniquely solvable. Both wirings then search for a solution,
-branching the interior and every blank clue:
-
-| board | shown clues | blank | givens | original | ours |
-|-------|------------:|------:|-------:|----------|------|
-| s1 | 13 | 23 |  9 | no solution (capped) | solved, 8047 nodes |
-| s2 | 14 | 22 |  8 | no solution (capped) | solved, 43 nodes |
-| s3 | 12 | 24 |  9 | no solution (capped) | solved, 135 nodes |
-| s4 | 14 | 22 |  9 | no solution (capped) | solved, 2153 nodes |
-| s5 | 14 | 22 |  7 | no solution (capped) | solved, 3103 nodes |
-| s6 | 13 | 23 | 10 | no solution (capped) | solved, 1812 nodes |
-
-Ours solves every board; the original solves none — it exhausts the node cap
-guessing blank clues and never reaches a solution. This is the improvement the
-`## What was slow and weak` section promised, now measured: the wrapper's
-one-direction, inert-until-pinned design cannot handle blank clues, and a real
-puzzle is mostly blank clues. (The recovery probe's ~6x is a separate, weaker
-point on the all-clues-shown shipped puzzle — see its caveat.)
-
-## Two independent checks
-
-`recovery-probe.mjs` proves the carved puzzle unique under the shipped components
-(a JS-side check over the sudoku all-different plus the Numbered Rooms rule). It
-runs the same component code the app runs, so a bug shared by the component and
-the probe would hide from both. `verify.py` is the independent guard against
-that: it re-models the rule in OR-Tools from scratch and reaches the same
-verdict — one solution, matching the fixture. The soundness harness is the third
-guard: it proves the component never removes a true candidate.
+`PUZZLE_LINK.txt` shows all 36 clues, so both wirings solve it by logic and the
+capability gap above never shows. On that shipped puzzle ours is in fact a little
+*slower* (~55 ms vs ~36 ms) — the stronger deductions cost more per solver call
+than they save when no clue is blank. See `docs/real-app-timing.md` for the
+method and the full ours-vs-original table, timed in the real SudokuMaker solver.
 
 ## Not covered
 
-Neither check regenerates a fresh puzzle the way `running-start/generate.py`
-does; both verify the one hand-made puzzle in `gen_9.json` (carved). Numbered
-Rooms has no generator (`derive_fixture.py` decodes the hand-made document), so
-there is no fresh puzzle to regenerate.
+Numbered Rooms has no generator; `PUZZLE_LINK.txt` is a single hand-made puzzle,
+now the committed source of truth. There is no fresh puzzle to regenerate, and no
+interactable (some-clues-blank) puzzle is shipped — the blank-clue win above is
+argued from the code, not measured here.

@@ -5,9 +5,10 @@
   "description": "Worked examples of custom SudokuMaker constraint components.",
   "scripts": {
     "lint": "standard",
-    "test": "node examples/_shared/recovery-lib.test.mjs && node examples/hit-counts/recovery-probe.test.mjs && node examples/numbered-rooms/recovery-probe.test.mjs && node examples/skyscraper/recovery-probe.test.mjs"
+    "test": "node examples/_shared/recovery-lib.test.mjs && node examples/hit-counts/recovery-probe.test.mjs && node examples/skyscraper/recovery-probe.test.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
     "standard": "^17.1.2"
   },
   "standard": {
