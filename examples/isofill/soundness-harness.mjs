@@ -54,15 +54,13 @@ console.log('isofill component:', tests, 'tests,', bad, 'violations')
 const capP = makePuzzle(truth, (c, v) => (v === 0 ? [v] : ALL))
 const capInst = {}
 mod.setParams(capInst, CELLS)
-violates(mod, capInst, capP, truth)
-const capOk = CELLS.slice(N).every(c => !capP.getCandidates(c).has(0))
+const capOk = !violates(mod, capInst, capP, truth) && CELLS.slice(N).every(c => !capP.getCandidates(c).has(0))
 
 // ---- Force: digit 0 has exactly ten open cells (row 0), so they must be 0 ----
 const forceP = makePuzzle(truth, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
 const forceInst = {}
 mod.setParams(forceInst, CELLS)
-violates(mod, forceInst, forceP, truth)
-const forceOk = CELLS.slice(0, N).every(c => forceP.getCandidates(c).size === 1)
+const forceOk = !violates(mod, forceInst, forceP, truth) && CELLS.slice(0, N).every(c => forceP.getCandidates(c).size === 1)
 
 console.log('cap fired:', capOk, '| force fired:', forceOk)
 
