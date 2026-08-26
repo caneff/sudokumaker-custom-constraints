@@ -27,6 +27,7 @@ test:
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
 soundness:
     node examples/hit-counts/soundness-harness.mjs
+    node examples/isofill/soundness-harness.mjs
     node examples/numbered-rooms/soundness-harness.mjs
     node examples/running-start/soundness-harness.mjs
     node examples/skyscraper/soundness-harness.mjs
