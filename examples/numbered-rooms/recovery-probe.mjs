@@ -102,11 +102,13 @@ function buildComps () {
 // nor the built-in, so, exactly as the Skyscraper probe does, we model the
 // original line as OUR component gated to fire only when the clue is pinned: at
 // that point our update runs the same forward index prune the built-in does. That
-// GIVES the original every per-line deduction ours has for a KNOWN clue; the only
-// features left under test are the two our version adds — the line -> clue
-// direction that lets a blank clue be deduced, and the pair index-sum coupling.
-// If the real built-in is weaker than our forward pass, the original is slower
-// still, so this comparison is conservative.
+// GIVES the original every per-line deduction ours has for a KNOWN clue. Our
+// version adds two things over that: the line -> clue direction that deduces a
+// blank clue, and the pair index-sum coupling. NOTE: this fixture shows all 36
+// clues, so no clue is ever blank and the gate is always open — the line -> clue
+// direction is NOT exercised here. The only feature the comparison below actually
+// isolates is the pair coupling. If the real built-in is weaker than our forward
+// pass, the original is slower still, so this comparison is conservative.
 const nrMod = makeIo(HERE).load('NumberedRoomsComponent.js', ['setParams', 'update', 'validate'])
 const gatedLine = {
   setParams: nrMod.setParams,
@@ -206,9 +208,18 @@ console.log(`  uniqueness: ${res.nodes} search nodes, ${res.solutions} solution$
 // and branch the interior; clues are shown givens, so the search never branches
 // them. Zero givens is the honest stress test: with the 3 carved givens the
 // components finish by propagation (0 nodes) and so does the original, so nothing
-// separates them. Drop the givens and both must search. Fewer nodes = the extra
-// deduction our version adds (the pair index-sum coupling, plus the line -> clue
-// direction) paid off in less backtracking.
+// separates them. Drop the givens and both must search, and here ours (with the
+// pair coupling) explores ~6x fewer nodes.
+//
+// READ THIS BEFORE TRUSTING THE 6x. That number is specific to THIS hand-made
+// puzzle, not a general property of the pair component. On random 9x9 boards the
+// pair coupling wins about half the time and LOSES the other half: it adds
+// per-node work, and with MRV branching the extra pruning does not reliably
+// shrink the tree. Bigger boards do not help either — the GAC floor's per-node
+// cost explodes and both wirings time out. So take this as one favorable data
+// point, not proof ours searches faster. The general, board-independent wins are
+// elsewhere: ours deduces a blank clue (the original cannot) and it is sound (the
+// 405k-test soundness-harness.mjs). Speed is a bonus this puzzle happens to give.
 const NODE_CAP = +((process.argv.find(a => a.startsWith('--cap=')) || '').split('=')[1]) || 200000
 const noGivens = new Set()
 function solveRun (build) {

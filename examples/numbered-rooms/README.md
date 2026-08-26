@@ -107,8 +107,14 @@ reach.
   givens, still unique — and makes both wirings solve it by search. The original
   (modelled as our line gated to fire only once its clue is pinned, no pair
   coupling — the same conservative model the Skyscraper probe uses) explores about
-  6x more search nodes than our version, whose pair index-sum coupling prunes the
-  interior the wrapper cannot.
+  6x more search nodes than our version. **But read that number with care:** the
+  6x is specific to this hand-made puzzle, not a general property. On random 9x9
+  boards the pair coupling wins about half the time and loses the other half — it
+  adds per-node work, and with MRV branching the extra pruning does not reliably
+  shrink the search tree; bigger boards just time out the toy engine. The general,
+  board-independent wins of the stronger component are elsewhere: it deduces a
+  blank clue (the wrapper cannot) and it is sound (the 405k-test soundness
+  harness). On this puzzle the smaller search is a bonus, not the headline.
 - `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
   rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
   clue`), never touching the component code, and confirms the shipped puzzle (the
