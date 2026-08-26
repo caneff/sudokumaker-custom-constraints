@@ -23,6 +23,9 @@ test:
     node examples/skyscraper/recovery-probe.test.mjs
     uv run --with lzstring examples/_shared/link_codec.test.py
     uv run --with lzstring examples/_shared/probe_link.test.py
+    uv run --with lzstring examples/_shared/link_swap.test.py
+    uv run --with lzstring examples/numbered-rooms/build_link.test.py
+    uv run --with lzstring examples/skyscraper/build_link.test.py
     uv run --with ortools examples/isofill/verify.py
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
     uv run --with lzstring examples/isofill/build_link.py

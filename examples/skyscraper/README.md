@@ -110,14 +110,19 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
-- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` — built
-  links. Open one to play the example.
+- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
+  built links. Open one to play the example.
 - `gen_<n>.json` — the grid, clues, shown clues, and givens for each built size.
 - `original/` and `build_original.py` — ChinStrap's original wrapper code, plus
-  a re-encoder that rebuilds the same generated puzzle with it. The
-  `PUZZLE_LINK_<n>x<n>_original.txt` links are the same grid, givens, and clues
-  as the improved links, so you can compare the two solve experiences directly:
+  a re-encoder that rebuilds the same generated puzzle with it. `PUZZLE_LINK_original.txt`
+  (9x9) and `PUZZLE_LINK_4x4_original.txt`/`PUZZLE_LINK_6x6_original.txt` are the
+  same grid, givens, and clues as the improved links, so you can compare the two
+  solve experiences directly:
   `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
+- `build_link.py` — rebuilds the committed `PUZZLE_LINK.txt` (9x9) with one
+  named component's code swapped for a candidate file, board and clues
+  unchanged: `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperComponent.js --out /tmp/candidate.txt`.
+  See `docs/real-app-timing.md`.
 
 ## Paste into SudokuMaker
 

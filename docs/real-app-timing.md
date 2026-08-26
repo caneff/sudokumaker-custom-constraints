@@ -57,9 +57,9 @@ node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original
 
 # Skyscraper: the shipped same-board pairs, emptied first so the solver searches.
 uv run --with lzstring examples/_shared/probe_link.py empty \
-  examples/skyscraper/PUZZLE_LINK_9x9.txt /tmp/sky_ours.txt
+  examples/skyscraper/PUZZLE_LINK.txt /tmp/sky_ours.txt
 uv run --with lzstring examples/_shared/probe_link.py empty \
-  examples/skyscraper/PUZZLE_LINK_9x9_original.txt /tmp/sky_orig.txt
+  examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3
 ```

@@ -4,22 +4,25 @@
 #
 #   uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9
 #
-# Writes PUZZLE_LINK_<n>x<n>_original.txt next to this script and checks that the
-# only difference from PUZZLE_LINK_<n>x<n>.txt is the custom constraint's code.
+# Writes PUZZLE_LINK_<n>x<n>_original.txt next to this script (PUZZLE_LINK_original.txt
+# for n=9, the plain-named pair) and checks that the only difference from the
+# improved link is the custom constraint's code. The original wrapper renames
+# its component and swaps the backend too, so it uses replace_constraint_code
+# directly rather than build_link.py's same-name-only --component contract.
 
-import copy
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-import link_codec
 from framebuild import build_doc, make_lines
+from link_swap import check_and_write, replace_constraint_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
+CONSTRAINT_NAME = "Skyscraper Lines"
 
 
 def load_gen(n):
@@ -35,70 +38,30 @@ def load_gen(n):
     return bh, bw, grid, clue, givens, active, lines
 
 
-def swap_to_original(doc):
-    doc = copy.deepcopy(doc)
-    sk = next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == "Skyscraper Lines"
-    )
-    sk["definition"]["backend"]["code"] = minify_js((ORIG / "main.js").read_text())
-    sk["definition"]["components"] = [
-        {
-            "type": "code",
-            "name": "CustomSkyscraperLineComponent",
-            "code": minify_js((ORIG / "CustomSkyscraperLineComponent.js").read_text()),
-        }
-    ]
-    return doc
-
-
-def constraint_code(doc):
-    sk = next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == "Skyscraper Lines"
-    )
-    return {
-        "backend": sk["definition"]["backend"]["code"],
-        "components": sk["definition"]["components"],
-    }
-
-
-def blanked(doc):
-    # doc with the Skyscraper Lines code fields emptied, for an apples-to-apples diff
-    d = copy.deepcopy(doc)
-    sk = next(
-        c
-        for c in d["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == "Skyscraper Lines"
-    )
-    sk["definition"]["backend"]["code"] = ""
-    sk["definition"]["components"] = []
-    return d
-
-
 if __name__ == "__main__":
     n = int(sys.argv[1])
     bh, bw, grid, clue, givens, active, lines = load_gen(n)
     improved = build_doc(build_size.SPEC, n, bh, bw, grid, clue, givens, active, lines)
-    original = swap_to_original(improved)
 
-    # the two puzzles must be identical everywhere except the constraint code
-    assert blanked(improved) == blanked(original), (
-        "frames differ beyond the constraint code"
-    )
-    assert constraint_code(improved) != constraint_code(original), (
-        "code was not swapped"
-    )
-    assert original["puzzle"]["cells"] == improved["puzzle"]["cells"], "cells differ"
+    backend_code = minify_js((ORIG / "main.js").read_text())
+    component_code = minify_js((ORIG / "CustomSkyscraperLineComponent.js").read_text())
+    assert backend_code and component_code, "original code empty"
 
-    link = link_codec.encode_link(original)
-    back = link_codec.decode_puzzle(link)
-    assert back == original, "link does not decode back to the built document"
-
-    (HERE / f"PUZZLE_LINK_{n}x{n}_original.txt").write_text(link + "\n")
-    print(
-        f"wrote PUZZLE_LINK_{n}x{n}_original.txt ({len(link)} chars) "
-        f"— same puzzle as PUZZLE_LINK_{n}x{n}.txt, original wrapper code"
+    original = replace_constraint_code(
+        improved,
+        CONSTRAINT_NAME,
+        backend_code=backend_code,
+        components=[
+            {
+                "type": "code",
+                "name": "CustomSkyscraperLineComponent",
+                "code": component_code,
+            }
+        ],
     )
+
+    out_name = (
+        "PUZZLE_LINK_original.txt" if n == 9 else f"PUZZLE_LINK_{n}x{n}_original.txt"
+    )
+    link = check_and_write(improved, original, CONSTRAINT_NAME, HERE / out_name)
+    print(f"wrote {out_name} ({len(link)} chars) — same puzzle, original wrapper code")

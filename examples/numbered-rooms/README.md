@@ -74,6 +74,10 @@ per-line component below carries the whole example.
   a same-board timing comparison.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
   and the `ORIGINAL_*.js` files, changing only the constraint code.
+- `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one named component's code
+  swapped for a candidate file, board and clues unchanged:
+  `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
+  See `docs/real-app-timing.md`.
 
 ## Run
 
