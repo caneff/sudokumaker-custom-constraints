@@ -111,6 +111,16 @@ const capSplitOk = capSplit.getCandidates(99).size === 0
 const capacity = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
 const capacityOk = capacity.getCandidates(0).size === 0
 
+// ---- One pass: update reads each cell's candidates at most once per call ----
+const onePass = makePuzzle(rows, () => ALL)
+let reads = 0
+const getCandidates = onePass.getCandidates.bind(onePass)
+onePass.getCandidates = c => { reads++; return getCandidates(c) }
+const onePassInst = {}
+mod.setParams(onePassInst, CELLS)
+Array.from(mod.update(onePassInst, onePass))
+const onePassOk = reads <= CELLS.length
+
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
@@ -120,8 +130,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

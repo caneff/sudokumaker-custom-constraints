@@ -54,20 +54,31 @@ function * update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
+  // One scan of the grid builds every digit's state: update runs on every
+  // search node, so each cell is read once, not once per digit.
+  const placedOf = []
+  const openOf = []
+  const allowedOf = []
   for (let d = lo; d <= hi; d++) {
+    placedOf[d] = []
+    openOf[d] = []
+    allowedOf[d] = new Array(cells.length).fill(false)
+  }
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i]
+    if (puzzle.hasValue(c)) {
+      const d = puzzle.getValue(c)
+      placedOf[d].push(i); allowedOf[d][i] = true
+    } else {
+      for (const d of Array.from(puzzle.getCandidates(c))) { openOf[d].push(i); allowedOf[d][i] = true }
+    }
+  }
+  for (let d = lo; d <= hi; d++) {
+    const placed = placedOf[d]
+    const open = openOf[d]
+    const allowed = allowedOf[d]
     const others = []
     for (let e = lo; e <= hi; e++) if (e !== d) others.push(e)
-    const placed = []
-    const open = []
-    const allowed = new Array(cells.length).fill(false)
-    for (let i = 0; i < cells.length; i++) {
-      const c = cells[i]
-      if (puzzle.hasValue(c)) {
-        if (puzzle.getValue(c) === d) { placed.push(i); allowed[i] = true }
-      } else if (Array.from(puzzle.getCandidates(c)).includes(d)) {
-        open.push(i); allowed[i] = true
-      }
-    }
     if (placed.length === size) {
       for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
     } else if (placed.length + open.length === size) {
