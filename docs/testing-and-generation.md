@@ -4,6 +4,9 @@ You cannot step a component in the SudokuMaker solver. Test the logic outside
 the app instead. Two jobs: prove the component is **sound**, and prove the
 puzzle has a **unique** solution.
 
+> To time a component in the *real* app solver (not our mock), drive the live
+> site with Playwright — see `docs/real-app-timing.md`.
+
 ## Soundness: mock the solver in Node
 
 Soundness means the component never removes a candidate that the true solution

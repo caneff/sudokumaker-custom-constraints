@@ -52,7 +52,10 @@ load-bearing detail lives in `docs/`, and each rule points there.
   must save more search than it costs. Judge it the way a solver is judged:
   end-to-end solve time on real puzzles, not strength or nodes cut. See
   `docs/agents/design-reasoning.md` and the worked measurement in
-  `examples/hit-counts/recovery-probe.mjs`.
+  `examples/hit-counts/recovery-probe.mjs`. That probe times our mock, which
+  counts pruning; to time the app's own solver, see `docs/real-app-timing.md`.
+  The two can disagree — a deduction that cuts nodes in the mock can still be
+  slower in the app.
 
 ## Tests assert an observable outcome
 
