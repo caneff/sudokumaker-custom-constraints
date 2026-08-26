@@ -108,13 +108,14 @@ reach.
   (modelled as our line gated to fire only once its clue is pinned, no pair
   coupling — the same conservative model the Skyscraper probe uses) explores about
   6x more search nodes than our version. **But read that number with care:** the
-  6x is specific to this hand-made puzzle, not a general property. On random 9x9
-  boards the pair coupling wins about half the time and loses the other half — it
-  adds per-node work, and with MRV branching the extra pruning does not reliably
-  shrink the search tree; bigger boards just time out the toy engine. The general,
-  board-independent wins of the stronger component are elsewhere: it deduces a
-  blank clue (the wrapper cannot) and it is sound (the 405k-test soundness
-  harness). On this puzzle the smaller search is a bonus, not the headline.
+  6x is specific to this hand-made puzzle, not a general property. `sweep.mjs`
+  proves it on eight random 9x9 boards: ours wins four and loses four (see the
+  table below). The pair coupling adds per-node work, and with MRV branching the
+  extra pruning does not reliably shrink the search tree; bigger boards just time
+  out the toy engine. The general, board-independent wins of the stronger
+  component are elsewhere: it deduces a blank clue (the wrapper cannot) and it is
+  sound (the 405k-test soundness harness). On this puzzle the smaller search is a
+  bonus, not the headline.
 - `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
   rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
   clue`), never touching the component code, and confirms the shipped puzzle (the
@@ -123,8 +124,19 @@ reach.
   drop every clue, and two completions remain). It also reports the logical floor
   — the clues alone, with zero givens, are already unique — which is why the
   hand-made 31 givens were far more than the puzzle needs.
+- `gen_size.py` — generates a random, valid Numbered Rooms board (`gen_9_s*.json`)
+  for the sweep: solve a random 9x9 sudoku with OR-Tools, then read each clue off
+  the rule. Seeded, so the committed boards are reproducible.
+- `sweep.mjs` — runs ours vs the original wrapper over the `gen_9_s*.json` boards
+  and prints the node counts side by side. It is the evidence that the 6x above is
+  board-specific: ours wins on some boards and loses on others. `sweep.test.mjs`
+  guards that point (ours both wins and loses, and the two wirings agree on the
+  solution count of every board).
 
 ## Run
+
+    node examples/numbered-rooms/sweep.mjs                             # ours vs original over random boards
+    uv run --with ortools examples/numbered-rooms/gen_size.py 9        # regenerate one board (seed 9)
 
     node examples/numbered-rooms/soundness-harness.mjs
     node examples/numbered-rooms/recovery-probe.mjs                    # carves, writes min_givens.json
@@ -146,6 +158,31 @@ Three givens, not zero: the clues alone are already *logically* unique (`verify.
 reports this floor), but the components cannot reach that solution by propagation —
 from zero givens they stall and a solver would have to search. Three givens is the
 fewest that keep the puzzle solvable by the intended logic.
+
+## The timing is board-specific
+
+The recovery probe times ours at ~6x fewer search nodes than the original wrapper
+on the hand-made puzzle. That gap does not generalize. `sweep.mjs` runs both
+wirings over eight random boards (`gen_9_s1..s8.json`, all 36 clues shown, zero
+givens, still solvable):
+
+| board | original nodes | ours nodes | winner |
+|-------|---------------:|-----------:|--------|
+| s1 |    20 |  121 | original |
+| s2 |   629 |   66 | ours |
+| s3 |   168 |  123 | ours |
+| s4 |  1019 | 1520 | original |
+| s5 |    34 |   47 | original |
+| s6 |    43 |   60 | original |
+| s7 |   129 |   48 | ours |
+| s8 |    41 |   23 | ours |
+
+Ours wins four, loses four. The pair coupling adds per-node work; under MRV
+branching the extra pruning helps on some boards and hurts on others. So the 6x on
+the hand-made puzzle is one favorable point, not proof the component searches
+faster. Its real, board-independent wins are the blank-clue deduction and
+soundness — not speed. (Every row above agrees on solution count across the two
+wirings; that agreement is the soundness cross-check `sweep.test.mjs` asserts.)
 
 ## Two independent checks
 
