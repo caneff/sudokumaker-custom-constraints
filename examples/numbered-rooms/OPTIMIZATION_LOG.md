@@ -20,6 +20,14 @@ directly comparable to later ones.
 | Distinct-line "index k, clue k" prune | Rejected | ~5× slower than the ~1.3 s baseline (~6.5 s) | none shipped yet | same board/timer as the two rows above | 9eeff70 |
 | **Current baseline** (`NumberedRoomsComponent`, today) | Kept (reference for #64) | median of 5 reps — first 10100 ms, unique 9000 ms, sum 19000 ms; spread across reps: first 9800–10700 ms, unique 8800–9800 ms, sum 18800–20500 ms | solves instantly — took 100 ms total (first 100 ms, unique 0 ms), verdict unique. Correctness check only, not a timing bar. | 8-arrow `PUZZLE_LINK.txt` / `PUZZLE_LINK_clued.txt`, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 931c985 (board), this log's commit |
 | Single-pass `feasibleIndices` (cheaper, same deductions) | Rejected — no gain | median of 5 reps — first 10100 ms, unique 8900 ms, sum 19200 ms; reps 18700–19600 ms, inside the baseline's 18800–20500 ms spread | verdict unique | 8-arrow board, same app version and day as the baseline row | not committed (#78) |
+| **Clue≠index rule in the loop + bitmask single pass + empty-K contradiction** (#87) — **new baseline** | Kept | median of 5 reps — first 1600 ms, unique 1500 ms, sum 3100 ms; reps 3000–3100 ms. `just time` 3-rep row: baseline 19400 ms, candidate 3000 ms, ratio 0.15 | verdict unique, 100 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | this row's commit |
+
+The #87 row answers the "distinct-line" rejection above: the rule was never
+the cost, the extra pass was. Folded into the one feasibility loop as a match
+predicate (`k = 1` → target must be `k`; `k > 1` → target must not be `k`) on
+`puzzle.getCandidatesBitMask` it is ~6× faster than the code without it.
+`update-strength.test.mjs` is the old-vs-new never-weaker fuzz the trap
+section asks for, pinned to the pre-#87 commit.
 
 ## The k=1 ordering trap
 
@@ -38,8 +46,8 @@ the soundness harness.
 
 A candidate beats the baseline only if **both** hold, each on a 5-run median:
 
-1. **Hard board faster.** Its sum median is below 18800 ms — outside the
-   baseline's own run-to-run spread (18800–20500 ms). A result inside that
+1. **Hard board faster.** Its sum median is below 3000 ms — outside the
+   #87 baseline's own run-to-run spread (3000–3100 ms). A result inside that
    range is noise, not a win.
 2. **Clued board still unique.** `PUZZLE_LINK_clued.txt` still reports verdict
    `unique`. It solves near-instantly either way, so its time is not part of

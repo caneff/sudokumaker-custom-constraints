@@ -8,10 +8,25 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
+// The app's DigitSet, as read from its bundle (docs/puzzle-api.md): a bitmask
+// where bit d is digit d. The algebra methods MUTATE and return this.
+export class DigitSet {
+  constructor (mask = 0) { this.mask = +mask }
+  static from (digits) { let m = 0; for (const d of digits) m |= 1 << d; return new this(m) }
+  get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
+  has (d) { return (this.mask & (1 << d)) !== 0 }
+  valueOf () { return this.mask }
+  intersects (o) { return (this.mask & o.valueOf()) !== 0 }
+  intersect (o) { this.mask &= o.valueOf(); return this }
+  union (o) { this.mask |= o.valueOf(); return this }
+  subtract (o) { this.mask &= ~o.valueOf(); return this }
+  * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
+}
+
 // Set the two globals a component reads. minDigit/maxDigit differ per example
 // (Hit Counts allows a 0 clue, Running Start does not).
 export function installGlobals (minDigit, maxDigit) {
-  globalThis.SudokuDigitSet = { from: a => ({ __set: new Set(a), [Symbol.iterator] () { return this.__set[Symbol.iterator]() } }) }
+  globalThis.SudokuDigitSet = DigitSet
   globalThis.helpers = { digits: { minDigit, maxDigit } }
 }
 
@@ -42,7 +57,9 @@ export function makePuzzle (truth, seed) {
     _cand: cand,
     hasValue: c => cand.get(c).size === 1,
     getValue: c => [...cand.get(c)][0],
-    getCandidates: c => cand.get(c),
+    // A fresh DigitSet per call, as in the app — mutating it is safe.
+    getCandidates: c => DigitSet.from(cand.get(c)),
+    getCandidatesBitMask: c => DigitSet.from(cand.get(c)).mask,
     getCellsAreFilled: cs => cs.every(c => cand.get(c).size === 1),
     removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
     removeCandidatesFromCell: (s, c) => { const set = cand.get(c); for (const d of s) set.delete(d) }

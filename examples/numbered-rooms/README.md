@@ -42,8 +42,17 @@ both directions, before the clue is solved:
 1. Prune the indexer `line[0]`: drop any index that points at a cell whose
    candidates cannot meet the clue's.
 2. Prune the clue: it can only hold a digit some still-feasible target allows.
+   "Allows" includes the one fact the line's geometry gives: for index `k > 1`
+   the target and the indexer are two cells of one row/column, so the clue
+   cannot be `k`; for `k = 1` the target *is* the indexer, so the clue must
+   be 1.
 3. When one index remains, make the target cell and the clue equal both ways —
    before either is a singleton.
+4. When no index remains, empty the indexer so the solver sees the dead
+   branch at once.
+
+All four run in one pass over candidate bitmasks
+(`puzzle.getCandidatesBitMask`), the shape ISS's `ValueIndexing` handler uses.
 
 ## A stronger deduction that did not pay off
 
@@ -126,9 +135,10 @@ default "singles only" technique set, median of 3 runs):
 | wiring | solve time |
 |---|---|
 | original wrapper (`CustomIndexComponent`) | >300 s (no rep in three finished) |
-| **ours** (`NumberedRoomsComponent`) | **~21.5 s** |
+| ours, before #87 (`NumberedRoomsComponent`) | ~19–21.5 s |
+| **ours** (`NumberedRoomsComponent`, with the clue≠index rule) | **~3.1 s** (5-rep median, 2026-08-26) |
 
-Ours is more than 14× faster. The gap is the point of the rewrite: the wrapper is
+Ours is about 100× faster than the wrapper. The gap is the point of the rewrite: the wrapper is
 inert on a blank clue and the solver must guess it, while ours deduces the clue
 from its line. See `docs/real-app-timing.md` for the method, the reproduce
 commands, and the skyscraper comparison.

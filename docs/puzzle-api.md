@@ -14,7 +14,8 @@ marked TODO; this file keeps the ones you actually reach for. Tags: **[verified]
 |-|-|-|
 | `puzzle.hasValue(cell)` | boolean | Is the cell solved to a single value. **[verified]** |
 | `puzzle.getValue(cell)` | number | The solved digit. Undefined if not solved. **[verified]** |
-| `puzzle.getCandidates(cell)` | DigitSet | Remaining candidates. Wrap in `Array.from`. **[verified]** |
+| `puzzle.getCandidates(cell)` | DigitSet | Remaining candidates, as a **fresh copy** each call (`new DigitSet(mask)` in the bundle). Wrap in `Array.from`, or use the mask algebra below. **[verified]** |
+| `puzzle.getCandidatesBitMask(cell)` | number | The raw candidate bitmask (bit `d` = digit `d`). Cheapest read; Numbered Rooms uses it. **[verified]** (bundle) |
 | `puzzle.getCellsAreFilled(cells)` | boolean | True when every listed cell is solved. **[verified]** |
 | `puzzle.getCellAt(col, row)` | CellId | 0-based coordinates to cell id. **[docs]** |
 | `puzzle.getX(cell)` / `getY(cell)` | number | 0-based column / row of a cell. **[docs]** |
@@ -75,6 +76,9 @@ exact signature before relying on one. **[docs]**
 | Member | Meaning |
 |-|-|
 | `SudokuDigitSet.from(array)` | Build a set from an array of digits. **[verified]** |
-| `set.has(digit)` | Membership. **[docs]** |
-| `set.intersect(other)` / `.union(other)` / `.subtract(other)` | Set algebra, returns a DigitSet. **[docs]** |
+| `new SudokuDigitSet(mask)` | Build a set from a bitmask (bit `d` = digit `d`). **[verified]** (read from the app bundle, 2026-08-26) |
+| `set.mask` / `set.valueOf()` | The bitmask. **[verified]** (bundle) |
+| `set.has(digit)` / `set.size` | Membership / count. **[verified]** (bundle) |
+| `set.intersects(other)` | True when the sets share a digit. Does not mutate. **[verified]** (bundle) |
+| `set.intersect(other)` / `.union(other)` / `.subtract(other)` | Set algebra. **Mutates `set` in place and returns it** — not a new set. Safe on `getCandidates()` results, which are fresh copies. **[verified]** (bundle) |
 | `Array.from(set)` | Iterate as an array. **[verified]** |
