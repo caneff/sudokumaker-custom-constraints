@@ -26,11 +26,10 @@ equally fast for every code variant. `probe_link.py` empties the interior first,
 leaving the givens and the outside-clue ring, so the solver starts from the
 givens.
 
-To compare two code variants you need one board solved by each. The skyscraper
-example ships same-board pairs already (`build_original.py`). Numbered rooms does
-not — "ours" carved the board down to 7 givens the strong components can solve,
-"original" keeps 35 — so `probe_link.py graft` puts the 7-given board onto the
-original-code document.
+To compare two code variants you need one board solved by each. Both examples
+ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
+(the original wrapper code on the identical board), built by each example's
+`build_original.py`. Empty each and time them.
 
 ## Reproduce
 
@@ -43,8 +42,8 @@ cd examples
 # Numbered rooms: same 7-given board, ours vs original code.
 uv run --with lzstring ../examples/_shared/probe_link.py empty \
   numbered-rooms/PUZZLE_LINK.txt /tmp/nr_ours.txt
-uv run --with lzstring ../examples/_shared/probe_link.py graft \
-  numbered-rooms/PUZZLE_LINK.txt numbered-rooms/numbered_rooms.url /tmp/nr_orig.txt
+uv run --with lzstring ../examples/_shared/probe_link.py empty \
+  numbered-rooms/PUZZLE_LINK_original.txt /tmp/nr_orig.txt
 
 # Skyscraper: the shipped same-board pairs, just emptied.
 uv run --with lzstring ../examples/_shared/probe_link.py empty \

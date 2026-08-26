@@ -7,14 +7,8 @@
 # milliseconds, no search. To time the real solver you must first empty the
 # interior so it solves from the givens.
 #
-#   empty  <src_link> <out_link>              # empty one link's interior
-#   graft  <board_link> <code_link> <out>     # board's cells into code's doc,
-#                                             # then empty -- same board, other code
-#
-# `graft` builds a fair pair: two links that share one board and differ only in
-# the constraint code, for the numbered-rooms case where the "ours" and
-# "original" links carry different givens. The skyscraper example already ships
-# same-board pairs (build_original.py), so those need only `empty`.
+# To compare two code variants, empty each half of a same-board pair -- the
+# "ours" link and the "original" link each example's build_original.py writes.
 #
 #   uv run --with lzstring examples/_shared/probe_link.py empty a.txt a_probe.txt
 #
@@ -29,7 +23,6 @@
 # the app then reports the puzzle "not unique". The given flag does not separate
 # clue from solution here, so we separate them by position instead.
 
-import copy
 import pathlib
 import sys
 
@@ -48,27 +41,11 @@ def empty_interior(doc):
     return doc
 
 
-def graft_board(board_doc, code_doc):
-    """Copy board_doc's cells (its grid + givens) onto code_doc, keeping
-    code_doc's constraint code. Returns code_doc."""
-    code_doc["puzzle"]["cells"] = copy.deepcopy(board_doc["puzzle"]["cells"])
-    return code_doc
-
-
-def _read(path):
-    return decode_puzzle(pathlib.Path(path).read_text().strip())
-
-
 def main(argv):
-    cmd = argv[1] if len(argv) > 1 else ""
-    if cmd == "empty":
-        _, _, src, out = argv
-        doc = empty_interior(_read(src))
-    elif cmd == "graft":
-        _, _, board, code, out = argv
-        doc = empty_interior(graft_board(_read(board), _read(code)))
-    else:
-        raise SystemExit(__doc__ or "usage: probe_link.py empty|graft ...")
+    if len(argv) != 4 or argv[1] != "empty":
+        raise SystemExit("usage: probe_link.py empty <src_link> <out_link>")
+    _, _, src, out = argv
+    doc = empty_interior(decode_puzzle(pathlib.Path(src).read_text().strip()))
     pathlib.Path(out).write_text(encode_link(doc))
     print(f"wrote {out}")
 
