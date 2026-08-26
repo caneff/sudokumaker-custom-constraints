@@ -28,13 +28,14 @@ exists to teach.
 - `puzzle.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
 - `puzzle-44.json` — the same grid with 44 givens: a fixture the app is known
-  to close (unique in ~31 s on 2026-08-26), kept for comparing component
-  variants. Not the shipped instance.
+  to close (unique in ~9.1 s with capacity, ~25.9 s without), kept for
+  comparing component variants. Not the shipped instance. The harness asserts
+  the two grids stay identical.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
-  `uv run --with lzstring examples/isofill/build_link.py`. `--component` and
-  `--out` swap in a candidate component file and write elsewhere; that is what
-  `just time isofill` uses.
+  `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
+  swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
+  builds another instance (`puzzle-44.json` for timing).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 
 ## Paste into SudokuMaker
@@ -93,8 +94,10 @@ All of it reads each cell's candidates as a `DigitSet` (wrap it in
 Reach is required, not a timing-gated stretch: without it the app never
 reaches a verdict. Capacity earned its place by timing: on the 44-given
 fixture it cuts the app's verdict from ~25.9 s to ~9.1 s. On the shipped
-35-given instance the app still reaches no verdict — see the next section and
-`../../docs/real-app-timing.md`.
+35-given instance the app still reaches no verdict, so on that grid alone the
+deduction shows no gain; it is kept because the 44-given fixture is the only
+grid where a gain can be measured at all, and there it is 2.8×. See the next
+section and `../../docs/real-app-timing.md`.
 
 ## What the app checks
 

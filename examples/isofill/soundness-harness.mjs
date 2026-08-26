@@ -59,9 +59,20 @@ function run (truth, seed) {
 }
 
 // shipped — the grid in puzzle.json (also the grid of the 44-clue fixture).
+const grid = f => JSON.parse(readFileSync(join(HERE, f), 'utf8')).grid
+const shippedGrid = grid('puzzle.json')
+if (shippedGrid.join() !== grid('puzzle-44.json').join()) throw new Error('puzzle-44.json grid differs from puzzle.json')
 const shipped = {}
-JSON.parse(readFileSync(join(HERE, 'puzzle.json'), 'utf8')).grid
-  .forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
+shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
+
+// Run update once (one call is enough for a directed check) and return the puzzle.
+function once (truth, seed) {
+  const p = makePuzzle(truth, seed)
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  Array.from(mod.update(inst, p))
+  return p
+}
 
 // ---- Fuzz: true values survive, on all fixtures ----
 let bad = 0
@@ -88,25 +99,16 @@ const reach = run(bent, (c, v) => (c === 0 ? [v] : ALL))
 const reachOk = !reach.v && !reach.p.getCandidates(99).has(0) && reach.p.getCandidates(9).has(0)
 
 // ---- Split: cells 0 and 99 both placed as 0 can never join; the stranded cell empties ----
-const split = makePuzzle(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
-const splitInst = {}
-mod.setParams(splitInst, CELLS)
-Array.from(mod.update(splitInst, split))
+const split = once(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
 const splitOk = split.getCandidates(0).size === 0 || split.getCandidates(99).size === 0
 
 // ---- Split at cap: ten placed 0s (cells 0-8 and 99) can never join either ----
-const capSplit = makePuzzle(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
-const capSplitInst = {}
-mod.setParams(capSplitInst, CELLS)
-Array.from(mod.update(capSplitInst, capSplit))
+const capSplit = once(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
 const capSplitOk = capSplit.getCandidates(99).size === 0
 
 // ---- Capacity: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
 // cells in all) can never grow to ten; the placed cell empties ----
-const capacity = makePuzzle(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
-const capacityInst = {}
-mod.setParams(capacityInst, CELLS)
-Array.from(mod.update(capacityInst, capacity))
+const capacity = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
 const capacityOk = capacity.getCandidates(0).size === 0
 
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
