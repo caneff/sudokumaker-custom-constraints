@@ -24,6 +24,8 @@ test:
     uv run --with lzstring examples/_shared/link_codec.test.py
     uv run --with lzstring examples/_shared/probe_link.test.py
     uv run --with ortools examples/isofill/verify.py
+    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
+    uv run --with lzstring examples/isofill/build_link.py
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
 soundness:

@@ -28,6 +28,7 @@
       "SkyscraperComponent",
       "SkyscraperPairComponent",
       "HitCountsComponent",
+    "IsofillComponent",
       "HitCountsPairComponent",
       "SideSumComponent",
       "NumberedRoomsComponent",
