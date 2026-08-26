@@ -50,8 +50,8 @@ Install the browser once, build the probe links, then run:
 ```sh
 npm i && npx playwright install chromium
 
-# Numbered rooms: blank-clue board, ours vs original code. Already searchable
-# (clues blank, one interior given), so no emptying needed.
+# Numbered rooms: blank-clue board (13 arrows, one interior given), ours vs
+# original code. Already searchable, so no emptying needed.
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
 node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3
 
@@ -71,7 +71,7 @@ solve off. Same board within each row; only the constraint code differs.
 
 | Puzzle                        | Ours     | Original    | Result            |
 | ----------------------------- | -------- | ----------- | ----------------- |
-| Numbered rooms (blank clues)  | ~2.7 s   | ~15.5 s     | ours ~6× faster   |
+| Numbered rooms (blank clues)  | ~1.4 s   | ~95 s       | ours ~70× faster  |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
 
 The stronger components pay off where the search is genuinely hard and the clues
