@@ -62,6 +62,12 @@ each, means every digit fills exactly ten cells. Two sound deductions follow:
 - **Force** — when a digit has exactly ten cells that can still hold it, place
   it in all ten.
 
+Both deductions read each cell's candidates as a `DigitSet` (wrap it in
+`Array.from`; build one back with `SudokuDigitSet.from`). There is no
+`validate`: the count floor is fully enforced by `update` (an eleventh cell of
+a digit has no candidates left), and a leaf check for connectivity would be the
+rule the component deliberately does not carry.
+
 Nothing else. There is no connectivity reasoning: the component does not reject
 a candidate for stranding a region or splitting one. That is a deliberate
 deferral, not an oversight. A stronger deduction must pay for itself in
