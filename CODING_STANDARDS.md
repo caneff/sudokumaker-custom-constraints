@@ -56,6 +56,15 @@ load-bearing detail lives in `docs/`, and each rule points there.
   counts pruning; to time the app's own solver, see `docs/real-app-timing.md`.
   The two can disagree — a deduction that cuts nodes in the mock can still be
   slower in the app.
+- **Do not benchmark an outside-clue component on a board whose ring is mostly
+  specified.** A component that reads clues from the border (Numbered Rooms,
+  Skyscraper, any edge-interactable) must be timed on a puzzle that leaves the
+  majority of the ring cells empty, so the solver actually searches the clue
+  cells. When most of the ring is already filled, a wrapper that waits for the
+  clue to collapse hands off to a built-in component on the first pass, and the
+  fixture measures that hand-off, not the search. Such a board flatters the lazy
+  wrapper and hides where a stronger component pays off. Pick the board first;
+  reject any where the ring is more than half specified.
 
 ## Tests assert an observable outcome
 
