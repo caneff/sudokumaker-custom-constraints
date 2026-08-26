@@ -19,6 +19,20 @@ directly comparable to later ones.
 | Hand-off to built-in `IndexComponent` once the clue is solved | Rejected — no gain | no gain over the ~1.3 s baseline (no separate number recorded) | none shipped yet | same board/timer as the row above | 9eeff70 |
 | Distinct-line "index k, clue k" prune | Rejected | ~5× slower than the ~1.3 s baseline (~6.5 s) | none shipped yet | same board/timer as the two rows above | 9eeff70 |
 | **Current baseline** (`NumberedRoomsComponent`, today) | Kept (reference for #64) | median of 5 reps — first 10100 ms, unique 9000 ms, sum 19000 ms; spread across reps: first 9800–10700 ms, unique 8800–9800 ms, sum 18800–20500 ms | solves instantly — took 100 ms total (first 100 ms, unique 0 ms), verdict unique. Correctness check only, not a timing bar. | 8-arrow `PUZZLE_LINK.txt` / `PUZZLE_LINK_clued.txt`, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 931c985 (board), this log's commit |
+| Single-pass `feasibleIndices` (cheaper, same deductions) | Rejected — no gain | median of 5 reps — first 10100 ms, unique 8900 ms, sum 19200 ms; reps 18700–19600 ms, inside the baseline's 18800–20500 ms spread | verdict unique | 8-arrow board, same app version and day as the baseline row | not committed (#78) |
+
+## The k=1 ordering trap
+
+The single-pass attempt above first looked correct and was not. `update` prunes
+the indexer `line[0]` and **yields** that removal before it computes the clue's
+reachable set. When the feasible index is `k = 1`, the target *is* `line[0]`, so
+the clue prune reads the already-narrowed indexer. Computing everything in one
+pass reads `line[0]` before its own prune lands, which leaves the clue wider —
+sound, but weaker, and invisible to the soundness harness, which only checks
+that no true value is removed. A 60000-state fuzz comparing the old and new
+`update` output candidate-for-candidate caught it; 2480 states differed. Any
+future rewrite of `update` should run that same old-vs-new comparison, not just
+the soundness harness.
 
 ## Win bar (for any future attempt against the current baseline)
 
