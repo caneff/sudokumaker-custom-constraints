@@ -16,8 +16,16 @@
 # holds the outside clues (Numbered Rooms, Skyscraper), so it stays; only inner
 # non-given cells lose their stored value.
 #
-# Why keep the whole ring instead of "keep givens, empty the rest"? Because a
-# clue is not always a given. Numbered Rooms stores its 36 outside clues as
+#   uv run --with lzstring examples/_shared/probe_link.py strip a.txt a_probe.txt
+#
+# `strip` is the stricter mode: keep only given cells, drop every value and
+# pencil mark from the rest. Use it for any puzzle whose clues are all givens
+# (ISOFILL). Timing with entered values present is not a timing: the app then
+# reports a verdict "based on already entered values" and the solver never
+# searches.
+#
+# Why does `empty` keep the whole ring instead of "keep givens, empty the rest"?
+# Because a clue is not always a given. Numbered Rooms stores its 36 outside clues as
 # non-given cell VALUES in the ring, not as givens (only the 4 filler corners
 # are given). Empty every non-given cell and you delete the clues -- verified:
 # the app then reports the puzzle "not unique". The given flag does not separate
@@ -37,21 +45,55 @@ def empty_interior(doc):
         row, col = divmod(i, w)
         inner = 0 < row < h - 1 and 0 < col < w - 1
         if inner and not cell.get("given"):
-            cell.pop("value", None)
+            cell.clear()
     return doc
 
 
-def empty_link_file(src_path, out_path):
-    """Read the link at src_path, empty its interior, write it to out_path."""
-    doc = empty_interior(decode_puzzle(pathlib.Path(src_path).read_text().strip()))
+def strip_to_givens(doc):
+    """Clear every non-given cell entirely (value, pencil marks, all). Returns doc."""
+    for cell in doc["puzzle"]["cells"]:
+        if not cell.get("given"):
+            cell.clear()
+    return doc
+
+
+MODES = {"empty": empty_interior, "strip": strip_to_givens}
+
+
+def check_stripped(doc, ring_clues=False):
+    """Raise ValueError unless every non-given cell is empty. With ring_clues,
+    outer-ring cells may keep a value (edge-clue puzzles store clues there).
+    This is the gate: a timing run on a grid with entered values or pencil
+    marks is not a timing, and the app says so in its verdict."""
+    w, h = doc["puzzle"]["width"], doc["puzzle"]["height"]
+    bad = []
+    for i, cell in enumerate(doc["puzzle"]["cells"]):
+        if cell.get("given") or not cell:
+            continue
+        row, col = divmod(i, w)
+        on_ring = row in (0, h - 1) or col in (0, w - 1)
+        if ring_clues and on_ring and set(cell) == {"value"}:
+            continue
+        bad.append(i)
+    if bad:
+        raise ValueError(
+            f"{len(bad)} non-given cells hold values or pencil marks "
+            f"(first: {bad[:5]}); strip the link first (probe_link.py strip)"
+        )
+
+
+def empty_link_file(src_path, out_path, mode="empty"):
+    """Read the link at src_path, apply the mode, check it, write it to out_path."""
+    doc = MODES[mode](decode_puzzle(pathlib.Path(src_path).read_text().strip()))
+    check_stripped(doc, ring_clues=(mode == "empty"))
     pathlib.Path(out_path).write_text(encode_link(doc))
 
 
 def main(argv):
-    if len(argv) != 4 or argv[1] != "empty":
-        raise SystemExit("usage: probe_link.py empty <src_link> <out_link>")
-    _, _, src, out = argv
-    empty_link_file(src, out)
+    if len(argv) != 4 or argv[1] not in MODES:
+        raise SystemExit("usage: probe_link.py empty|strip <src_link> <out_link>")
+    _, mode, src, out = argv
+    empty_link_file(src, out, mode)
     print(f"wrote {out}")
 
 

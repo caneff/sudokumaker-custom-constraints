@@ -17,11 +17,11 @@ exists to teach.
 
 ## Files
 
-- `main.js` — the main code. No `input.groups`; it reads
-  `helpers.cellIds.getAllCellIds()` and registers a single `IsofillComponent`
-  over all hundred cells.
+- `main.js` — the main code. No `input.groups`; it builds the hundred cell ids
+  row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
+  `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by counting (see below).
+  prunes by count and by reach, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
@@ -42,54 +42,66 @@ paste `main.js` as the main code. Add one component segment named
 ## The global pattern
 
 ```js
-puzzle.addConstraintComponent(
-  new IsofillComponent('ISOFILL', Array.from(helpers.cellIds.getAllCellIds()))
-)
+const cells = []
+for (let y = 0; y < 10; y++) {
+  for (let x = 0; x < 10; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }))
+}
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
 ```
 
 The constructor arguments after the name go to `setParams` and
 `getAffectedCells` in order. `getAffectedCells` returns the same cell list, so
 the solver re-runs `update` when any cell changes. That is the right trigger for
-a rule that counts across the whole grid, and the scan is cheap arithmetic.
+a rule that counts across the whole grid. The list is built by coordinates, not
+from `getAllCellIds()`, because the component finds neighbours by index
+arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` enforces only the **count floor**. Ten regions of ten cells, one digit
-each, means every digit fills exactly ten cells. Two sound deductions follow:
+`update` runs three sound deductions per digit. Ten regions of ten cells, one
+digit each, means every digit fills exactly ten cells:
 
 - **Cap** — once a digit occupies ten cells, remove it from every other cell's
   candidates.
 - **Force** — when a digit has exactly ten cells that can still hold it, place
   it in all ten.
+- **Reach** — walk outward from the digit's placed cells, stepping only into
+  orthogonal neighbours that still allow the digit, at most `10 − placed`
+  steps. A cell the walk never meets loses the candidate. Sound because a
+  ten-cell region with `k` placed cells has at most `10 − k` open cells, so
+  every region cell is within that many steps of a placed one. When two placed
+  cells of one digit cannot join within nine steps the region is split; the
+  component empties the stranded cell's candidates so the solver sees the dead
+  branch. Cell neighbours come from index arithmetic on the row-major list.
 
-Both deductions read each cell's candidates as a `DigitSet` (wrap it in
-`Array.from`; build one back with `SudokuDigitSet.from`). There is no
-`validate`: the count floor is fully enforced by `update` (an eleventh cell of
-a digit has no candidates left), and a leaf check for connectivity would be the
-rule the component deliberately does not carry.
+`validate` is the exact leaf check: on a full grid, each digit must be one
+connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
+gotcha 2); the deductions above do the work, `validate` states the rule.
 
-Nothing else. There is no connectivity reasoning: the component does not reject
-a candidate for stranding a region or splitting one. That is a deliberate
-deferral, not an oversight. A stronger deduction must pay for itself in
-end-to-end solve time in the real app (see `../../CODING_STANDARDS.md` and
-`../../docs/real-app-timing.md`). Connectivity pruning gets written only if a
-timing run shows the count floor leaves the solver too slow, and kept only if
-the timing then improves.
+All of it reads each cell's candidates as a `DigitSet` (wrap it in
+`Array.from`; build one back with `SudokuDigitSet.from`).
 
-## What the app can and cannot check
+Reach is required, not a timing-gated stretch: without it the app never
+reaches a verdict. With it, on this instance, it still does not — see the next
+section and `../../docs/real-app-timing.md`.
 
-The shipped link opens and plays. The app's own "Find all solutions" button
-does **not** prove it unique: measured in the live app (`app-solve.mjs`, app
-build of 2026-08-26), the link with every non-given cell emptied returns
-"Found 10,000 solutions" in 1.3 s. That is the count floor doing exactly what it
-promises and no more — the app's solver sees only the deductions `update` makes,
-so it accepts any filling where every digit has ten cells, connected or not.
-More givens would not change this; only a puzzle the force deduction pins
-completely would read as unique in the app.
+## What the app checks
 
-`verify.py` is the uniqueness proof. The in-app verdict becomes meaningful only
-if connectivity moves into the component, and that is the timing decision the
-deferral above leaves open.
+The shipped link stores the full solution as entered values (35 black givens,
+65 blue entries). Strip it before you time or play it:
+`uv run --with lzstring examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
+
+On the stripped grid the app's "Find all solutions" does **not** reach a
+verdict (live app, build of 2026-08-26, `app-solve.mjs`): it stops at its own
+time limit. The count-floor-only component before reach was added returns
+"Found 10,000 solutions" in 0.3 s on the same grid, so reach prunes — it turns
+a fast wrong answer into no answer — but not enough for the app to close the
+search. An earlier "unique in 2 s" figure was measured with 36 solution values
+still entered in the outer ring and was wrong.
+
+`verify.py` is the uniqueness proof: it models the rule from scratch
+(flow-based connectivity). Getting the app to a verdict is an open decision on
+the map (#48): stronger pruning, more givens, or both.
 
 ## Run the tests
 
@@ -97,14 +109,21 @@ Soundness (needs Node):
 
 ```
 node examples/isofill/soundness-harness.mjs
-# -> 20000 tests, 0 violations, cap fired: true | force fired: true, PASS
+# -> isofill rows fixture: 20000 tests, 0 violations
+# -> isofill bent fixture: 20000 tests, 0 violations
+# -> validate: true
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true
+# -> PASS
 ```
 
 The harness mocks only the puzzle methods the component calls, seeds random
-partial fills of a valid ISOFILL solution (row *r* holds digit *r*) in which
+partial fills of two valid ISOFILL solutions (one with row *r* holding digit
+*r*, one with bent L-shaped regions so reach walks around corners) in which
 every cell still allows its true value, runs `update` to a fixpoint, and asserts
-every true value survived. It also builds one state where the cap must fire and
-one where the force must fire, and checks each pruned.
+every true value survived. It also builds one state for each deduction — cap,
+force, reach, split, split with all ten cells placed — and checks each fired,
+and checks `validate` accepts a full valid grid and rejects a count-valid but
+split one.
 
 Uniqueness (needs Python; `uv` fetches OR-Tools):
 

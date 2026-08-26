@@ -1,9 +1,9 @@
 // ISOFILL — main (backend) code segment.
 //
 // A global constraint: the author draws no groups, so there is no
-// `input.groups` to read. The main code takes every cell id from
-// `helpers.cellIds.getAllCellIds()` and registers ONE component over the whole
-// grid. That component counts each digit across all hundred cells.
+// `input.groups` to read. The main code builds every cell id by coordinates and
+// registers ONE component over the whole grid. That component counts each
+// digit across all hundred cells and walks each digit's reach.
 
 //! ISOFILL is global: one component watches the whole grid. The component
 //! finds neighbours by index arithmetic, so the list must be row-major over

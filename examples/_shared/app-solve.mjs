@@ -40,10 +40,15 @@ import { chromium } from 'playwright'
 import fs from 'fs'
 import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
 
-const linkFile = process.argv[2]
-const reps = parseInt(process.argv[3] || '7', 10)
-const iconName = process.argv[4] || 'ShowCandidates'
-if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name]')
+// --ring-clues: allow entered values, for edge-clue puzzles whose clues are
+// stored as non-given values in the outer ring. Everything else must be
+// stripped to its givens or the run is refused (see checkStripped).
+const ringClues = process.argv.includes('--ring-clues')
+const args = process.argv.slice(2).filter(a => a !== '--ring-clues')
+const linkFile = args[0]
+const reps = parseInt(args[1] || '7', 10)
+const iconName = args[2] || 'ShowCandidates'
+if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 // Click the innermost element whose exact trimmed text equals `t`.
@@ -90,9 +95,25 @@ async function makeDeterministic (page) {
   await page.waitForTimeout(300)
 }
 
+// The app draws givens black and entered values blue. A grid with entered
+// values makes the solver verify instead of search, and the app says so in
+// its verdict ("based on already entered values"). Refuse before solving.
+async function checkStripped (page) {
+  const entered = await page.evaluate(() =>
+    [...document.querySelectorAll('svg text')].filter(t => {
+      const fill = t.getAttribute('fill') || window.getComputedStyle(t).fill
+      return !/^(#000|black|rgb\(0, 0, 0\))$/.test(fill)
+    }).length)
+  if (entered > 0 && !ringClues) {
+    throw new Error(`${linkFile}: ${entered} entered values on the board; strip it first ` +
+      '(probe_link.py strip), or pass --ring-clues for an edge-clue puzzle')
+  }
+}
+
 async function runOnce (page) {
   await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(1200)
+  await checkStripped(page)
   await makeDeterministic(page)
   const clicked = await page.evaluate((icon) => {
     const s = [...document.querySelectorAll('svg')].find(e => e.getAttribute('class') === 'Icon ' + icon)
@@ -105,11 +126,14 @@ async function runOnce (page) {
   // the first phase.
   try {
     await page.waitForFunction(
-      () => /unique solution|multiple solutions|not unique|no solution/i.test(document.body.innerText),
+      () => /unique solution|multiple solutions|not unique|no solution|found [\d,]+ solutions|stopped (solving|counting)/i.test(document.body.innerText),
       null, { timeout: 300000 })
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
+  if (/based on already entered values/i.test(text) && !ringClues) {
+    throw new Error(`${linkFile}: the app judged "based on already entered values" -- not a timing; strip the link first`)
+  }
   return { ...parseReadout(text), version: parseVersion(text) }
 }
 
