@@ -81,10 +81,13 @@ def build_candidate(example_dir, component_file, out_path):
     )
 
 
-def run_app_solve(link_path):
+def run_app_solve(link_path, ring_clues=False):
     """Run the real-app timing driver and return its {median, version}."""
+    cmd = ["node", str(APP_SOLVE), str(link_path), str(REPS)]
+    if ring_clues:
+        cmd.append("--ring-clues")
     result = subprocess.run(
-        ["node", str(APP_SOLVE), str(link_path), str(REPS)],
+        cmd,
         capture_output=True,
         text=True,
     )
@@ -119,10 +122,12 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     return row, verdict
 
 
-def run(example_dir):
+def run(example_dir, ring_clues=False):
     """Time one example end to end and return (row, verdict). Raises
     FileNotFoundError naming the file when PUZZLE_LINK.txt or build_link.py
-    is missing."""
+    is missing. Links are stripped to their givens before timing; ring_clues
+    keeps the outer ring for edge-clue puzzles (probe_link.py `empty`)."""
+    mode = "empty" if ring_clues else "strip"
     baseline_link = example_dir / "PUZZLE_LINK.txt"
     if not baseline_link.exists():
         raise FileNotFoundError(f"missing {baseline_link}")
@@ -144,8 +149,8 @@ def run(example_dir):
         )
 
         baseline_probe = tmp / "baseline_probe.txt"
-        empty_link_file(baseline_link, baseline_probe)
-        baseline_result = run_app_solve(baseline_probe)
+        empty_link_file(baseline_link, baseline_probe, mode)
+        baseline_result = run_app_solve(baseline_probe, ring_clues)
 
         date = datetime.date.today().isoformat()
         version = baseline_result["version"]
@@ -154,8 +159,8 @@ def run(example_dir):
             return build_row(date, version, example_dir.name, baseline_result["median"])
 
         candidate_probe = tmp / "candidate_probe.txt"
-        empty_link_file(candidate_link, candidate_probe)
-        candidate_result = run_app_solve(candidate_probe)
+        empty_link_file(candidate_link, candidate_probe, mode)
+        candidate_result = run_app_solve(candidate_probe, ring_clues)
         return build_row(
             date,
             version,
@@ -166,7 +171,9 @@ def run(example_dir):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        raise SystemExit("usage: time_example.py <example>")
-    row, _verdict = run(ROOT / "examples" / sys.argv[1])
+    ring = "--ring-clues" in sys.argv
+    names = [a for a in sys.argv[1:] if a != "--ring-clues"]
+    if len(names) != 1:
+        raise SystemExit("usage: time_example.py <example> [--ring-clues]")
+    row, _verdict = run(ROOT / "examples" / names[0], ring_clues=ring)
     print(row)

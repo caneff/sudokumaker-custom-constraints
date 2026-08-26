@@ -45,5 +45,7 @@ soundness:
 # candidate built from the working-tree component, on the live site. Prints
 # one paste-ready row. Not part of `check` -- it drives the live app.
 # See docs/real-app-timing.md.
-time example:
-    uv run --with lzstring examples/_shared/time_example.py {{example}}
+# Links are stripped to their givens first. An edge-clue example (skyscraper,
+# numbered-rooms) keeps its ring: just time skyscraper --ring-clues
+time example *flags:
+    uv run --with lzstring examples/_shared/time_example.py {{example}} {{flags}}

@@ -52,7 +52,10 @@ sit there as non-given values (Numbered Rooms, Skyscraper). Pick the mode by
 where the clues live, never by habit: `empty` on ISOFILL left 36 solution
 values in the ring and produced a false "unique in 2 s". The app tells you when
 you got it wrong — its verdict reads "based on already entered values and pencil
-marks". A number read off such a run is not a timing.
+marks". A number read off such a run is not a timing — and the tools refuse
+it: `app-solve.mjs` counts the blue (entered) digits on the loaded board and
+exits with an error unless you pass `--ring-clues`; `probe_link.py` refuses to
+write a probe that is not stripped; `time_example.py` strips by default.
 
 To compare two code variants you need one board solved by each. Both examples
 ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
@@ -76,8 +79,8 @@ uv run --with lzstring examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK.txt /tmp/sky_ours.txt
 uv run --with lzstring examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
-node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3
-node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3
+node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3 --ring-clues
+node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3 --ring-clues
 
 # ISOFILL: no ring clues, so STRIP (givens only), never `empty`. "Original" is
 # the count-floor-only component before #79; take its link from history.
@@ -134,6 +137,8 @@ the per-`update` price the app pays for it.
 - **Never time with entered values present.** The app solves from the cells as
   loaded, givens and entered values alike, and says so: "This is a unique
   solution (based on already entered values and pencil marks)". Strip first.
+  `app-solve.mjs` enforces it: any entered (blue) digit on the board, or that
+  phrase in the verdict, is an error unless `--ring-clues` is passed.
   `app-solve.mjs` reports `[timeout]` when the app stops at its own limit and
   `[not-unique]` on "Found N solutions"; both carry null times.
 - **Pick the strip mode by where the clues live.** `strip` keeps givens only.

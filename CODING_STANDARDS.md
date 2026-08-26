@@ -61,8 +61,10 @@ load-bearing detail lives in `docs/`, and each rule points there.
   cells, so a run with entered values or pencil marks present is not a timing —
   the app says so in its readout: "based on already entered values and pencil
   marks". Strip the link first (`probe_link.py strip`, or `empty` for a puzzle
-  whose clues sit in the outer ring as non-given values) and never read a
-  number off a grid that was not stripped. Verified the hard way: ISOFILL read
+  whose clues sit in the outer ring as non-given values). The tools enforce
+  it: `app-solve.mjs` refuses a board with entered digits unless
+  `--ring-clues` is passed, and `probe_link.py` refuses to write an unstripped
+  probe. Verified the hard way: ISOFILL read
   "unique in 2 s" with 36 ring values still entered, and "no verdict" without.
 - **Do not benchmark an outside-clue component on a board whose ring is mostly
   specified.** A component that reads clues from the border (Numbered Rooms,

@@ -8,7 +8,7 @@ import pathlib
 import tempfile
 
 from link_codec import decode_puzzle
-from probe_link import empty_interior, empty_link_file, strip_to_givens
+from probe_link import check_stripped, empty_interior, empty_link_file, strip_to_givens
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
@@ -53,5 +53,36 @@ if __name__ == "__main__":
         empty_link_file(LINK_FILE, out)
         via_file = decode_puzzle(out.read_text().rstrip("\n"))
         assert via_file == doc, "empty_link_file did not match empty_interior"
+
+    # check_stripped: the enforcement. A shipped link (solution entered) is
+    # refused; a stripped one passes; ring values pass only with ring_clues.
+    ISO = HERE.parent / "isofill" / "PUZZLE_LINK.txt"
+    shipped = decode_puzzle(ISO.read_text().rstrip("\n"))
+    try:
+        check_stripped(shipped)
+        raise AssertionError("check_stripped accepted a link with entered values")
+    except ValueError as e:
+        assert "65 non-given cells" in str(e), str(e)
+    check_stripped(strip_to_givens(decode_puzzle(ISO.read_text().rstrip("\n"))))
+    ring_kept = empty_interior(decode_puzzle(ISO.read_text().rstrip("\n")))
+    try:
+        check_stripped(ring_kept)
+        raise AssertionError("check_stripped accepted ring values without ring_clues")
+    except ValueError:
+        pass
+    check_stripped(ring_kept, ring_clues=True)
+
+    # empty clears pencil marks from inner cells, not just values
+    marked = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+    inner = next(i for i in inner_filled)
+    marked["puzzle"]["cells"][inner]["pencilMarks"] = [1, 2]
+    empty_interior(marked)
+    assert marked["puzzle"]["cells"][inner] == {}, "empty left pencil marks"
+
+    # empty_link_file refuses to write a probe that is not stripped
+    with tempfile.TemporaryDirectory() as tmp:
+        out = pathlib.Path(tmp) / "probe.txt"
+        empty_link_file(ISO, out, "strip")
+        assert check_stripped(decode_puzzle(out.read_text())) is None
 
     print("ok")

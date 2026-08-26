@@ -45,7 +45,7 @@ def empty_interior(doc):
         row, col = divmod(i, w)
         inner = 0 < row < h - 1 and 0 < col < w - 1
         if inner and not cell.get("given"):
-            cell.pop("value", None)
+            cell.clear()
     return doc
 
 
@@ -60,9 +60,32 @@ def strip_to_givens(doc):
 MODES = {"empty": empty_interior, "strip": strip_to_givens}
 
 
+def check_stripped(doc, ring_clues=False):
+    """Raise ValueError unless every non-given cell is empty. With ring_clues,
+    outer-ring cells may keep a value (edge-clue puzzles store clues there).
+    This is the gate: a timing run on a grid with entered values or pencil
+    marks is not a timing, and the app says so in its verdict."""
+    w, h = doc["puzzle"]["width"], doc["puzzle"]["height"]
+    bad = []
+    for i, cell in enumerate(doc["puzzle"]["cells"]):
+        if cell.get("given") or not cell:
+            continue
+        row, col = divmod(i, w)
+        on_ring = row in (0, h - 1) or col in (0, w - 1)
+        if ring_clues and on_ring and set(cell) == {"value"}:
+            continue
+        bad.append(i)
+    if bad:
+        raise ValueError(
+            f"{len(bad)} non-given cells hold values or pencil marks "
+            f"(first: {bad[:5]}); strip the link first (probe_link.py strip)"
+        )
+
+
 def empty_link_file(src_path, out_path, mode="empty"):
-    """Read the link at src_path, apply the mode, write it to out_path."""
+    """Read the link at src_path, apply the mode, check it, write it to out_path."""
     doc = MODES[mode](decode_puzzle(pathlib.Path(src_path).read_text().strip()))
+    check_stripped(doc, ring_clues=(mode == "empty"))
     pathlib.Path(out_path).write_text(encode_link(doc))
 
 
