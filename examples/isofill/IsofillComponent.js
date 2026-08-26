@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! ISOFILL. Divide the grid into ten regions of ten orthogonally connected
 //! cells; every cell in a region holds the same digit; all ten digits appear.
 //! So each digit fills exactly ten cells.
@@ -10,6 +10,7 @@
 //!          it, at most (10 - placed) steps; cells beyond the walk lose it.
 //!          A placed cell the walk never meets is a split: it is emptied so
 //!          the solver sees the dead branch (decision #66).
+//! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
   return cells
@@ -80,4 +81,26 @@ function * update (instance, puzzle) {
       for (const i of placed) if (!joined.has(i)) yield puzzle.removeCandidateFromCell(d, cells[i])
     }
   }
+}
+
+// Exact check on a full grid: every digit is one connected blob of `size` cells.
+function validate (instance, puzzle) {
+  const { cells, side } = instance
+  if (!puzzle.getCellsAreFilled(cells)) return true
+  const lo = helpers.digits.minDigit
+  const hi = helpers.digits.maxDigit
+  const size = cells.length / (hi - lo + 1)
+  for (let d = lo; d <= hi; d++) {
+    const allowed = new Array(cells.length).fill(false)
+    let first = -1
+    let count = 0
+    for (let i = 0; i < cells.length; i++) {
+      if (puzzle.getValue(cells[i]) !== d) continue
+      allowed[i] = true
+      count++
+      if (first < 0) first = i
+    }
+    if (count !== size || reach([first], size, allowed, side).size !== size) return false
+  }
+  return true
 }

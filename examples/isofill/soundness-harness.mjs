@@ -20,7 +20,7 @@ const { rnd, pick } = makeRng()
 
 installGlobals(0, 9)
 
-const mod = load('IsofillComponent.js', ['setParams', 'update'])
+const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -95,8 +95,17 @@ mod.setParams(capSplitInst, CELLS)
 Array.from(mod.update(capSplitInst, capSplit))
 const capSplitOk = capSplit.getCandidates(99).size === 0
 
+// ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
+const full = makePuzzle(bent, (c, v) => [v])
+const inst = {}
+mod.setParams(inst, CELLS)
+const swapped = { ...bent, 0: bent[99], 99: bent[0] }
+const swapP = makePuzzle(swapped, (c, v) => [v])
+const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
+
+console.log('validate:', validateOk)
 console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

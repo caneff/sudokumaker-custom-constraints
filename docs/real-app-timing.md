@@ -65,6 +65,16 @@ uv run --with lzstring examples/_shared/probe_link.py empty \
   examples/skyscraper/PUZZLE_LINK_original.txt /tmp/sky_orig.txt
 node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3
 node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3
+
+# ISOFILL: the shipped link, emptied. "Original" is the count-floor-only
+# component before #79; rebuild its link from history to reproduce:
+#   git show c5569cd~1:examples/isofill/PUZZLE_LINK.txt > /tmp/iso_orig_full.txt
+uv run --with lzstring examples/_shared/probe_link.py empty \
+  examples/isofill/PUZZLE_LINK.txt /tmp/iso_empty.txt
+node examples/_shared/app-solve.mjs /tmp/iso_empty.txt 3
+uv run --with lzstring examples/_shared/probe_link.py empty \
+  /tmp/iso_orig_full.txt /tmp/iso_orig.txt
+node examples/_shared/app-solve.mjs /tmp/iso_orig.txt 3
 ```
 
 ## Results
@@ -76,6 +86,7 @@ solve off. Same board within each row; only the constraint code differs.
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9                | ~3.0 s   | ~55.7 s     | ours ~19× faster  |
+| ISOFILL (emptied, 35 givens)  | ~2.3 s (1.6 + 0.7) | no verdict: 10,000 solutions in 1.3 s | count floor alone never finishes; reach pruning proves unique |
 
 The stronger components pay off where the search is genuinely hard and the clues
 are not all handed to the solver. On a board whose clues are all filled the app
