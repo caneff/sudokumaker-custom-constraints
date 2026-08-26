@@ -6,87 +6,121 @@
 // solver and times it, so "a deduction must pay for itself in solve time"
 // (CODING_STANDARDS.md) is judged on the engine that ships, not on a stand-in.
 //
-// How it works: the app's solver runs in a Web Worker and speaks a small
-// message protocol -- `start` -> `init` (compile + set up the constraint),
-// then `findNext` -> `update` (search to the next solution). "Check unique"
-// finds the first solution, then searches again to prove no second exists.
-// This driver wraps `window.Worker` to timestamp those messages, clicks the
-// "check unique" button, and waits for the verdict text.
+// It clicks the app's "Find all solutions and valid candidates" button and
+// reads the time the app prints ("took 3.7s"). That button runs the solver
+// across the whole search to prove uniqueness, so it exercises the custom
+// component's `update` on every node -- the work we want to time. Reading the
+// app's own readout, not a self-computed clock, keeps this honest: it is the
+// same number you see when you click the button by hand.
 //
 //   npm i            # once: installs playwright (a devDependency)
 //   npx playwright install chromium
-//   node examples/_shared/app-solve.mjs <link_file> [reps] [button_index]
+//   node examples/_shared/app-solve.mjs <link_file> [reps] [icon_name]
 //
-// The link must be a PROBE link (interior emptied -- see probe_link.py). A
-// finished link stores the full solution, so the solver only verifies it and
-// every code variant looks equally fast.
+// Before each solve it turns OFF "Non-deterministic solve" (Solver settings ->
+// Solutions finder -> Advanced settings), so the solver walks a fixed order and
+// the timing is repeatable. With that toggle on, the same board swings 10x-20x
+// run to run and the numbers mean nothing. The step throws if the toggle is
+// missing, so a run never silently times a non-deterministic solve.
 //
-// ponytail: the solver controls are icon buttons with no labels, so the "check
-// unique" one is addressed by its position among `.LargeIconButton` (default
-// index 4). SudokuMaker is pre-release; if the toolbar order changes, re-probe
-// the indices (click each, see which prints "unique!") and pass the new one.
+// The link must make the solver SEARCH. A finished link stores the full
+// solution, so the solver only verifies it and every code variant looks equally
+// fast. Empty the interior (probe_link.py) or ship a puzzle with few givens.
+//
+// The solve time is strongly nondeterministic -- the same board can swing more
+// than 10x run to run -- so read the MEDIAN over many reps, not any one number.
+//
+// ponytail: the solver controls are icon buttons with no text. Address them by
+// their `<svg class="Icon NAME">`: "ShowCandidates" is "Find all solutions and
+// valid candidates" (the default, the full search that proves uniqueness);
+// "CheckSolution" checks a filled grid. SudokuMaker is pre-release; if an icon
+// name changes, re-probe (dump each button's `<svg class="Icon ...">`).
 
 import { chromium } from 'playwright'
 import fs from 'fs'
 
 const linkFile = process.argv[2]
 const reps = parseInt(process.argv[3] || '7', 10)
-const button = parseInt(process.argv[4] || '4', 10)
-if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [button_index]')
+const iconName = process.argv[4] || 'ShowCandidates'
+if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
-const VERDICT = /(unique!|not unique|no solutions?|solution amount limit|reached the)/i
+// The app prints "took 3.7s" or "took 340ms". Return the first one in ms.
+function parseTook (text) {
+  const m = text.match(/took\s+([\d.]+)\s*(ms|s)\b/i)
+  if (!m) return null
+  const n = parseFloat(m[1])
+  return Math.round(m[2].toLowerCase() === 's' ? n * 1000 : n)
+}
 
-// Installed in the page before any app code, so it wraps the Worker the app
-// creates. Records {dir, label, t} for every message in/out, on a clock that
-// starts at page load.
-function instrumentWorker () {
-  window.__solverLog = []
-  const t0 = performance.now()
-  const label = m => {
-    try { return (m && (m.type || m.method)) || '' } catch { return '' }
-  }
-  const Native = window.Worker
-  window.Worker = class extends Native {
-    constructor (...args) {
-      super(...args)
-      this.addEventListener('message', e =>
-        window.__solverLog.push({ dir: 'in', label: label(e.data), t: performance.now() - t0 }))
-      const post = this.postMessage.bind(this)
-      this.postMessage = (m, ...rest) => {
-        window.__solverLog.push({ dir: 'out', label: label(m), t: performance.now() - t0 })
-        return post(m, ...rest)
-      }
-    }
-  }
+function readVerdict (text) {
+  if (/unique solution/i.test(text)) return 'unique'
+  if (/multiple solutions|not unique|no solution/i.test(text)) return 'not-unique'
+  return '?'
+}
+
+// Click the innermost element whose exact trimmed text equals `t`.
+const clickText = (page, t) => page.evaluate((t) => {
+  const els = [...document.querySelectorAll('*')]
+    .filter(e => e.textContent.replace(/\s+/g, ' ').trim() === t)
+  const el = els[els.length - 1]
+  if (el) { el.click(); return true }
+  return false
+}, t)
+
+// Turn OFF "Non-deterministic solve" so the solver walks a fixed order and the
+// timing is repeatable. Path: Tools tab -> cog icon -> Solver settings modal ->
+// Solutions finder tab -> Advanced settings -> the toggle. Throw if any step is
+// missing: a silently-skipped toggle would time a non-deterministic solve and
+// the numbers would be noise.
+async function makeDeterministic (page) {
+  await clickText(page, 'Tools')
+  await page.waitForTimeout(300)
+  const cog = await page.evaluate(() => {
+    const s = [...document.querySelectorAll('svg')].find(e => e.getAttribute('class') === 'Icon CogWheel')
+    if (s) { s.closest('button').click(); return true }
+    return false
+  })
+  if (!cog) throw new Error('cog icon not found')
+  await page.waitForTimeout(500)
+  if (!await clickText(page, 'Solver settings')) throw new Error('Solver settings button not found')
+  await page.waitForTimeout(600)
+  if (!await clickText(page, 'Solutions finder')) throw new Error('Solutions finder tab not found')
+  await page.waitForTimeout(400)
+  if (!await clickText(page, 'Advanced settings')) throw new Error('Advanced settings section not found')
+  await page.waitForTimeout(500)
+  const state = await page.evaluate(() => {
+    const label = [...document.querySelectorAll('label.clickable')]
+      .find(e => /Non-deterministic solve/i.test(e.textContent))
+    if (!label) return 'no-label'
+    const input = document.getElementById(label.getAttribute('for'))
+    if (!input) return 'no-input'
+    if (input.checked) label.click() // was on -> turn off
+    return document.getElementById(label.getAttribute('for')).checked ? 'still-on' : 'off'
+  })
+  if (state !== 'off') throw new Error('non-deterministic toggle: ' + state)
+  await page.keyboard.press('Escape') // close the modal
+  await page.waitForTimeout(300)
 }
 
 async function runOnce (page) {
   await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-  await page.waitForTimeout(1500)
-  await page.evaluate(() => { window.__solverLog.length = 0 }) // drop load traffic
-  await page.$$eval('button.LargeIconButton', (els, i) => els[i] && els[i].click(), button)
+  await page.waitForTimeout(1200)
+  await makeDeterministic(page)
+  const clicked = await page.evaluate((icon) => {
+    const s = [...document.querySelectorAll('svg')].find(e => e.getAttribute('class') === 'Icon ' + icon)
+    if (s) { s.closest('button').click(); return true }
+    return false
+  }, iconName)
+  if (!clicked) throw new Error('solve button not found: Icon ' + iconName)
   try {
-    await page.waitForFunction(re => new RegExp(re, 'i').test(document.body.innerText),
-      VERDICT.source, { timeout: 120000 })
-  } catch { /* fall through; a missing verdict shows as null timings */ }
+    await page.waitForFunction(
+      () => /took\s+[\d.]+\s*(ms|s)\b/i.test(document.body.innerText),
+      null, { timeout: 120000 })
+  } catch { /* fall through; a missing readout shows as a null time */ }
   await page.waitForTimeout(300)
-
-  const log = await page.evaluate(() => window.__solverLog)
-  const verdict = await page.evaluate(() =>
-    document.body.innerText.match(/(unique!|not unique|no solutions?|has a solution)[^\n]{0,20}/gi)?.slice(0, 3) || [])
-  const find = l => log.find(m => m.label === l)
-  const start = find('start')
-  const init = find('init')
-  const firstUpdate = log.find(m => m.dir === 'in' && m.label === 'update')
-  const lastIn = [...log].reverse().find(m => m.dir === 'in')
-  const ms = (a, b) => (a && b) ? Math.round(b.t - a.t) : null
-  return {
-    total: ms(start, lastIn), // start -> last worker reply (both solutions)
-    setup: ms(start, init), // start -> init (compile + set up constraint)
-    firstSolution: ms(init, firstUpdate), // init -> first solution found
-    verdict
-  }
+  const text = await page.evaluate(() => document.body.innerText)
+  return { ms: parseTook(text), verdict: readVerdict(text) }
 }
 
 const median = xs => {
@@ -96,7 +130,6 @@ const median = xs => {
 
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
-await context.addInitScript(instrumentWorker)
 
 const rows = []
 for (let k = 0; k < reps; k++) {
@@ -106,8 +139,7 @@ for (let k = 0; k < reps; k++) {
 }
 await browser.close()
 
-console.log(`${linkFile}  (button ${button}, ${reps} reps)`)
-for (const r of rows) {
-  console.log(`  total ${r.total}ms  setup ${r.setup}  first-solution ${r.firstSolution}  ${JSON.stringify(r.verdict)}`)
-}
-console.log(`  MEDIAN total ${median(rows.map(r => r.total))}ms  setup ${median(rows.map(r => r.setup))}  first-solution ${median(rows.map(r => r.firstSolution))}`)
+console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)
+for (const r of rows) console.log(`  took ${r.ms}ms  [${r.verdict}]`)
+const ok = rows.map(r => r.ms)
+console.log(`  MEDIAN ${median(ok)}ms  (min ${Math.min(...ok.filter(x => x != null))}, max ${Math.max(...ok.filter(x => x != null))})  over ${ok.filter(x => x != null).length}/${reps} reps`)
