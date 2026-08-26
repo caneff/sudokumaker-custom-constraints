@@ -11,14 +11,19 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
 
 ## How it works
 
-SudokuMaker runs its solver in a Web Worker. The worker speaks a small protocol:
+`app-solve.mjs` loads the link, clicks the "Find all solutions and valid
+candidates" button (the `ShowCandidates` icon), and reads the time the app
+prints ("took 2.3s"). That button searches the whole tree to prove uniqueness,
+so it runs the custom component's `update` on every node — the work we want to
+time. Reading the app's own readout, not a self-computed clock, keeps it honest.
 
-- `start` → `init` — compile the constraint code and set it up.
-- `findNext` → `update` — search to the next solution.
-
-"Check unique" finds the first solution, then searches again to prove no second
-one exists. `app-solve.mjs` wraps `window.Worker` to timestamp these messages,
-loads the link, clicks the "check unique" button, and waits for the verdict.
+Before each run the driver turns **off** "Non-deterministic solve" (Solver
+settings → Solutions finder → Advanced settings). With it on, the same board
+swings 10×–20× run to run and the numbers are noise; off, the solver walks a
+fixed order and the timing is repeatable. The step fails loud if the toggle is
+missing, so a run never silently times a non-deterministic solve. Everything
+else stays at the app default — in the Solutions finder that is "singles only",
+every heavier technique off.
 
 The link must make the solver **search**. A finished link stores the whole
 solution in its cells, so the solver only verifies a filled grid — fast, and
@@ -37,54 +42,59 @@ Install the browser once, build the probe links, then run:
 
 ```sh
 npm i && npx playwright install chromium
-cd examples
 
-# Numbered rooms: same 7-given board, ours vs original code.
-uv run --with lzstring ../examples/_shared/probe_link.py empty \
-  numbered-rooms/PUZZLE_LINK.txt /tmp/nr_ours.txt
-uv run --with lzstring ../examples/_shared/probe_link.py empty \
-  numbered-rooms/PUZZLE_LINK_original.txt /tmp/nr_orig.txt
+# Numbered rooms: blank-clue board, ours vs original code. Already searchable
+# (clues blank, one interior given), so no emptying needed.
+node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK.txt 3
+node examples/_shared/app-solve.mjs examples/numbered-rooms/PUZZLE_LINK_original.txt 3
 
-# Skyscraper: the shipped same-board pairs, just emptied.
-uv run --with lzstring ../examples/_shared/probe_link.py empty \
-  skyscraper/PUZZLE_LINK_9x9.txt /tmp/sky_ours.txt
-uv run --with lzstring ../examples/_shared/probe_link.py empty \
-  skyscraper/PUZZLE_LINK_9x9_original.txt /tmp/sky_orig.txt
-
-cd ..
-node examples/_shared/app-solve.mjs /tmp/nr_ours.txt 7
-node examples/_shared/app-solve.mjs /tmp/nr_orig.txt 7
-node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 7
-node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 4   # slow; fewer reps
+# Skyscraper: the shipped same-board pairs, emptied first so the solver searches.
+uv run --with lzstring examples/_shared/probe_link.py empty \
+  examples/skyscraper/PUZZLE_LINK_9x9.txt /tmp/sky_ours.txt
+uv run --with lzstring examples/_shared/probe_link.py empty \
+  examples/skyscraper/PUZZLE_LINK_9x9_original.txt /tmp/sky_orig.txt
+node examples/_shared/app-solve.mjs /tmp/sky_ours.txt 3
+node examples/_shared/app-solve.mjs /tmp/sky_orig.txt 3
 ```
 
 ## Results
 
-Median "check unique" wall time, app v2026.08.14-d47fc4b. Same board within each
-row; only the constraint code differs.
+Median "took" readout over 3 runs, app v2026.08.14-d47fc4b, non-deterministic
+solve off. Same board within each row; only the constraint code differs.
 
-| Puzzle                     | Ours    | Original    | Result                 |
-| -------------------------- | ------- | ----------- | ---------------------- |
-| Numbered rooms (7 givens)  | 55 ms   | 36 ms       | original ~1.5× faster  |
-| Skyscraper 6×6             | 44 ms   | 41 ms       | tie                    |
-| Skyscraper 9×9             | 444 ms  | ~10,500 ms  | ours ~24× faster       |
+| Puzzle                        | Ours     | Original    | Result            |
+| ----------------------------- | -------- | ----------- | ----------------- |
+| Numbered rooms (blank clues)  | ~2.3 s   | ~11.9 s     | ours ~5× faster   |
+| Skyscraper 9×9                | ~2.4 s   | ~37.9 s     | ours ~16× faster  |
 
-Setup (`start` → `init`) is ~20 ms everywhere; the difference is all search.
+The stronger components pay off where the search is genuinely hard and the clues
+are not all handed to the solver. On a board whose clues are all filled the app
+solves by logic and the gap closes — even reverses, because the stronger
+`update` costs more per call than it saves. So the board matters: time an
+outside-clue component on a puzzle that leaves the clues blank (see
+CODING_STANDARDS.md), or the fixture flatters the lazy wrapper.
 
-The stronger components pay off where the search is genuinely hard (skyscraper
-9×9) and cost a little where it is not (the easy numbered-rooms board). This is
-why the mock's node-count verdict does not transfer: it counts pruning, not the
-per-`update` price the app pays for it.
+Not every stronger deduction survives this test. Numbered Rooms once shipped a
+second `NumberedRoomsPairComponent` that coupled the two clues on a line. It was
+sound and cut nodes, but it tripled the real solve time (2.3 s → 6.7 s) and was
+removed. The mock's node-count verdict does not transfer: it counts pruning, not
+the per-`update` price the app pays for it.
 
 ## Caveats
 
 - **Numbers are machine- and run-specific.** Read the ratios and orders of
   magnitude, not the absolute milliseconds.
-- **The search is nondeterministic.** The original skyscraper 9×9 swung from ~8 s
-  to ~19 s across runs. Take several reps.
-- **The button index can drift.** The solver controls are unlabeled icons;
-  `app-solve.mjs` addresses "check unique" by position (index 4). SudokuMaker is
-  pre-release — if the toolbar order changes, re-probe the indices.
+- **Turn non-deterministic solve off.** `app-solve.mjs` does this before every
+  run; it is what makes the reps agree (the medians above vary by <5% run to
+  run). With it on, the same board swings 10×–20× and the numbers are noise.
+- **Match the technique set.** The Solutions finder defaults to "singles only".
+  Turning on the heavier techniques (X-Wings, by contradiction, …) makes a weak
+  component crawl for minutes on the same board. `app-solve.mjs` leaves the
+  defaults; compare like with like.
+- **The icon name can drift.** The solver controls are unlabeled icons;
+  `app-solve.mjs` addresses them by their `<svg class="Icon NAME">`
+  (`ShowCandidates`). SudokuMaker is pre-release — if an icon name changes,
+  re-probe.
 - **This hits the live site.** It is not part of `just check`.
 - **Do not empty by the given flag alone.** A clue is not always a given:
   Numbered Rooms stores its outside clues as non-given cell values in the ring.
