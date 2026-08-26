@@ -12,7 +12,9 @@
 #   uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3
 #
 # Args: n box_height box_width   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script, except
+# for n=9: that size is the plain-named pair build_link.py and build_original.py
+# reuse, so it lands as PUZZLE_LINK.txt (gen_9.json keeps its name).
 
 import pathlib
 import sys
@@ -93,4 +95,7 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
+    n = int(sys.argv[1])
     run(SPEC)
+    if n == 9:
+        (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")

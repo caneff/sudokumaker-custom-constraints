@@ -7,63 +7,38 @@
 # Writes PUZZLE_LINK_original.txt next to this script and checks that the only
 # difference from PUZZLE_LINK.txt is the "Custom Numbered Rooms" constraint code.
 # PUZZLE_LINK.txt is the source of truth; this mirrors skyscraper/build_original.py.
+# The original wrapper renames its component and swaps the backend too, so it
+# uses replace_constraint_code directly rather than build_link.py's
+# same-name-only --component contract.
 
-import copy
-import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from link_codec import decode_puzzle, encode_link
+from link_codec import decode_puzzle
+from link_swap import check_and_write, replace_constraint_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
-NAME = "Custom Numbered Rooms"
-
-
-def nr_constraint(doc):
-    return next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == NAME
-    )
-
-
-def swap_to_original(doc):
-    doc = copy.deepcopy(doc)
-    d = nr_constraint(doc)["definition"]
-    d["backend"]["code"] = minify_js((HERE / "ORIGINAL_backend.js").read_text())
-    d["components"] = [
-        {
-            "type": "code",
-            "name": "CustomIndexComponent",
-            "code": minify_js((HERE / "ORIGINAL_CustomIndexComponent.js").read_text()),
-        }
-    ]
-    return doc
-
-
-def blanked(doc):
-    # doc with the constraint code fields emptied, for an apples-to-apples diff
-    d = copy.deepcopy(doc)
-    defn = nr_constraint(d)["definition"]
-    defn["backend"]["code"] = ""
-    defn["components"] = []
-    return d
-
+CONSTRAINT_NAME = "Custom Numbered Rooms"
 
 if __name__ == "__main__":
     ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    original = swap_to_original(ours)
 
-    assert blanked(ours) == blanked(original), (
-        "frames differ beyond the constraint code"
-    )
-    assert nr_constraint(original)["definition"]["backend"]["code"], (
-        "original code empty"
+    backend_code = minify_js((HERE / "ORIGINAL_backend.js").read_text())
+    component_code = minify_js((HERE / "ORIGINAL_CustomIndexComponent.js").read_text())
+    assert backend_code and component_code, "original code empty"
+
+    original = replace_constraint_code(
+        ours,
+        CONSTRAINT_NAME,
+        backend_code=backend_code,
+        components=[
+            {"type": "code", "name": "CustomIndexComponent", "code": component_code}
+        ],
     )
 
-    link = encode_link(original)
-    assert decode_puzzle(link) == original, "link does not round-trip"
-    (HERE / "PUZZLE_LINK_original.txt").write_text(link)
-    print(f"wrote PUZZLE_LINK_original.txt ({len(json.dumps(original))} bytes of doc)")
+    link = check_and_write(
+        ours, original, CONSTRAINT_NAME, HERE / "PUZZLE_LINK_original.txt"
+    )
+    print(f"wrote PUZZLE_LINK_original.txt ({len(link)} chars)")
