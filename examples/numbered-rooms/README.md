@@ -66,8 +66,9 @@ per-line component below carries the whole example.
   tests) and that it prunes early: the clue narrows while it is still unsolved,
   which the shipped wrapper never did.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle and the source of truth for this
-  example: a hard board with **blank outside clues** (the solver deduces all 36)
-  and one interior given, so the solver must search.
+  example: a hard board with **blank outside clues** (the solver deduces all 36),
+  13 arrow bulbs, and one interior given, so the solver must search. An earlier
+  fixture had 24 arrows; fewer arrows leave more of the work to this component.
 - `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
   a same-board timing comparison.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
@@ -107,10 +108,10 @@ default "singles only" technique set, median of 3 runs):
 
 | wiring | solve time |
 |---|---|
-| original wrapper (`CustomIndexComponent`) | ~15.5 s |
-| **ours** (`NumberedRoomsComponent`) | **~2.7 s** |
+| original wrapper (`CustomIndexComponent`) | ~95 s (one rep in three never finished) |
+| **ours** (`NumberedRoomsComponent`) | **~1.4 s** |
 
-Ours is about 6× faster. The gap is the point of the rewrite: the wrapper is
+Ours is about 70× faster. The gap is the point of the rewrite: the wrapper is
 inert on a blank clue and the solver must guess it, while ours deduces the clue
 from its line. See `docs/real-app-timing.md` for the method, the reproduce
 commands, and the skyscraper comparison.
