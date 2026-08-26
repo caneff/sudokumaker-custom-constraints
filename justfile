@@ -26,6 +26,7 @@ test:
     uv run --with lzstring examples/_shared/probe_link.test.py
     uv run --with lzstring examples/_shared/link_swap.test.py
     uv run --with lzstring examples/numbered-rooms/build_link.test.py
+    uv run --with lzstring examples/numbered-rooms/build_clued.test.py
     uv run --with lzstring examples/skyscraper/build_link.test.py
     uv run --with ortools examples/isofill/verify.py
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
