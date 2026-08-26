@@ -133,6 +133,12 @@ inert on a blank clue and the solver must guess it, while ours deduces the clue
 from its line. See `docs/real-app-timing.md` for the method, the reproduce
 commands, and the skyscraper comparison.
 
+Every speed-up tried on this component since — kept or rejected, with its
+numbers and commit — is logged in `OPTIMIZATION_LOG.md`. The win bar for a new
+attempt: faster on the hard board **and** the clued board still verdicts
+unique, both judged on a 5-run median against the current baseline row, and a
+difference inside that baseline's run-to-run spread does not count.
+
 ## Not covered
 
 Numbered Rooms has no generator; `PUZZLE_LINK.txt` is a single hand-made puzzle,

@@ -1,0 +1,36 @@
+# Numbered Rooms — optimization log
+
+Every speed-up tried on `NumberedRoomsComponent.js`, kept or rejected, with the
+numbers that decided it. Read this before trying a new one — a dead end here
+does not need a second attempt. Background: `docs/real-app-timing.md` (the
+method), issue #21 (soundness groundwork), issue #64 (this log's parent).
+
+Boards and the timer changed twice while these were tried (24 arrows → 13
+arrows → 8 arrows; one "took" reading → first/unique/sum). Each row's caveat
+says which board and timer produced its numbers — earlier rows are not
+directly comparable to later ones.
+
+| Variant | Kept / rejected | Hard-board numbers (first / unique / sum) | Clued-board result | Board + timer caveat | Commit |
+|---|---|---|---|---|---|
+| 24-arrow board baseline | Kept (reference) | not split; sum only — ours ~2.7 s, original wrapper ~15.5 s (~6×) | none shipped yet | 24-arrow board, 3 reps median, two-phase timer (just fixed) | 9eeff70 (retime), board from 5b6a3b5 |
+| 13-arrow board baseline | Kept (reference) | not split; sum only — ours ~1.4 s, original wrapper ~95 s (~70×, one original rep of three never returned within 300 s) | none shipped yet | 13-arrow board, 3 reps median, two-phase timer | 70b3b30 |
+| Pair component (`NumberedRoomsPairComponent`) | Rejected | first phase only — 2.3 s → 6.7 s (tripled) | none shipped yet | 24-arrow shipped board, single measurement, **before** the two-phase timer fix (the "6.7 s" is first-solve time only, not a sum) | added 1116515, removed 5b6a3b5 |
+| Early exit on a filled line | Rejected — no gain | no gain over the ~1.3 s baseline (no separate number recorded) | none shipped yet | "a harder blank-clue board" per commit message, close to the 13-arrow board's ~1.4 s; informal note, not a committed fixture | 9eeff70 |
+| Hand-off to built-in `IndexComponent` once the clue is solved | Rejected — no gain | no gain over the ~1.3 s baseline (no separate number recorded) | none shipped yet | same board/timer as the row above | 9eeff70 |
+| Distinct-line "index k, clue k" prune | Rejected | ~5× slower than the ~1.3 s baseline (~6.5 s) | none shipped yet | same board/timer as the two rows above | 9eeff70 |
+| **Current baseline** (`NumberedRoomsComponent`, today) | Kept (reference for #64) | median of 5 reps — first 10100 ms, unique 9000 ms, sum 19000 ms; spread across reps: first 9800–10700 ms, unique 8800–9800 ms, sum 18800–20500 ms | solves instantly — took 100 ms total (first 100 ms, unique 0 ms), verdict unique. Correctness check only, not a timing bar. | 8-arrow `PUZZLE_LINK.txt` / `PUZZLE_LINK_clued.txt`, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 931c985 (board), this log's commit |
+
+## Win bar (for any future attempt against the current baseline)
+
+A candidate beats the baseline only if **both** hold, each on a 5-run median:
+
+1. **Hard board faster.** Its sum median is below 18800 ms — outside the
+   baseline's own run-to-run spread (18800–20500 ms). A result inside that
+   range is noise, not a win.
+2. **Clued board still unique.** `PUZZLE_LINK_clued.txt` still reports verdict
+   `unique`. It solves near-instantly either way, so its time is not part of
+   the bar — only the verdict is.
+
+Miss either test and the variant is rejected: drop the code, add a row to
+this table with its numbers and commit, and stop — do not retry a variant
+already rejected above.
