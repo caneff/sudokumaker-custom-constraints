@@ -21,6 +21,7 @@ test:
     node examples/_shared/recovery-lib.test.mjs
     node examples/hit-counts/recovery-probe.test.mjs
     node examples/numbered-rooms/recovery-probe.test.mjs
+    node examples/numbered-rooms/sweep.test.mjs
     node examples/skyscraper/recovery-probe.test.mjs
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.

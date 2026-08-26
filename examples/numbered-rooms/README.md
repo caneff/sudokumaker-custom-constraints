@@ -107,8 +107,12 @@ reach.
   givens, still unique — and makes both wirings solve it by search. The original
   (modelled as our line gated to fire only once its clue is pinned, no pair
   coupling — the same conservative model the Skyscraper probe uses) explores about
-  6x more search nodes than our version, whose pair index-sum coupling prunes the
-  interior the wrapper cannot.
+  6x more search nodes than our version. **But that 6x is a footnote, not the
+  improvement.** This puzzle shows all 36 clues, so no clue is ever blank and the
+  wrapper never has to guess one — the comparison isolates only the pair coupling,
+  which is a wash across random all-clues-shown boards. The real, decisive win is
+  on an *interactable* puzzle (some clues shown, the rest blank); see “The real
+  win: interactable puzzles” below and `sweep.mjs`.
 - `verify.py` — the independent OR-Tools check. It re-models the Numbered Rooms
   rule from scratch as a CP-SAT `AddElement` constraint (`line[line[0] - 1] ==
   clue`), never touching the component code, and confirms the shipped puzzle (the
@@ -117,8 +121,22 @@ reach.
   drop every clue, and two completions remain). It also reports the logical floor
   — the clues alone, with zero givens, are already unique — which is why the
   hand-made 31 givens were far more than the puzzle needs.
+- `gen_puzzle.py` — generates a random, *interactable* Numbered Rooms puzzle
+  (`gen_9_s*.json`): solve a random 9x9 sudoku with OR-Tools, read each clue off
+  the rule, then carve to a playable board — a handful of shown clues and a
+  handful of interior givens, the rest of the clues blank, with the interior still
+  uniquely solvable (uniqueness checked by the `verify.py` oracle). Seeded, so the
+  committed boards are reproducible. The fixture adds a `shownClues` field to the
+  `gen_9.json` schema.
+- `sweep.mjs` — runs ours vs the original wrapper over the `gen_9_s*.json` boards
+  and asks which can SOLVE each one (branching the interior and every blank clue).
+  Ours solves every board; the original solves none, because it must guess each
+  blank clue. `sweep.test.mjs` guards that on a fast subset.
 
 ## Run
+
+    node examples/numbered-rooms/sweep.mjs                             # can each wiring solve a real puzzle?
+    uv run --with ortools examples/numbered-rooms/gen_puzzle.py 7      # regenerate one board (seed 7)
 
     node examples/numbered-rooms/soundness-harness.mjs
     node examples/numbered-rooms/recovery-probe.mjs                    # carves, writes min_givens.json
@@ -140,6 +158,36 @@ Three givens, not zero: the clues alone are already *logically* unique (`verify.
 reports this floor), but the components cannot reach that solution by propagation —
 from zero givens they stall and a solver would have to search. Three givens is the
 fewest that keep the puzzle solvable by the intended logic.
+
+## The real win: interactable puzzles
+
+A real Numbered Rooms puzzle shows only *some* of its outside clues; the solver
+deduces the rest along with the interior. That is where the stronger component
+earns its keep, and where the original wrapper falls apart. The wrapper is inert
+on a blank clue — it waits for the clue to be pinned, then runs the built-in index
+prune — so the only way it fills a blank clue is to guess it. Ours deduces a blank
+clue from its line, so it never has to.
+
+`sweep.mjs` measures this. Each board (`gen_9_s*.json`, from `gen_puzzle.py`) shows
+a handful of clues and a handful of interior givens, leaves the rest of the clues
+blank, and stays uniquely solvable. Both wirings then search for a solution,
+branching the interior and every blank clue:
+
+| board | shown clues | blank | givens | original | ours |
+|-------|------------:|------:|-------:|----------|------|
+| s1 | 13 | 23 |  9 | no solution (capped) | solved, 8047 nodes |
+| s2 | 14 | 22 |  8 | no solution (capped) | solved, 43 nodes |
+| s3 | 12 | 24 |  9 | no solution (capped) | solved, 135 nodes |
+| s4 | 14 | 22 |  9 | no solution (capped) | solved, 2153 nodes |
+| s5 | 14 | 22 |  7 | no solution (capped) | solved, 3103 nodes |
+| s6 | 13 | 23 | 10 | no solution (capped) | solved, 1812 nodes |
+
+Ours solves every board; the original solves none — it exhausts the node cap
+guessing blank clues and never reaches a solution. This is the improvement the
+`## What was slow and weak` section promised, now measured: the wrapper's
+one-direction, inert-until-pinned design cannot handle blank clues, and a real
+puzzle is mostly blank clues. (The recovery probe's ~6x is a separate, weaker
+point on the all-clues-shown shipped puzzle — see its caveat.)
 
 ## Two independent checks
 

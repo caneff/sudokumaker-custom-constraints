@@ -102,11 +102,13 @@ function buildComps () {
 // nor the built-in, so, exactly as the Skyscraper probe does, we model the
 // original line as OUR component gated to fire only when the clue is pinned: at
 // that point our update runs the same forward index prune the built-in does. That
-// GIVES the original every per-line deduction ours has for a KNOWN clue; the only
-// features left under test are the two our version adds — the line -> clue
-// direction that lets a blank clue be deduced, and the pair index-sum coupling.
-// If the real built-in is weaker than our forward pass, the original is slower
-// still, so this comparison is conservative.
+// GIVES the original every per-line deduction ours has for a KNOWN clue. Our
+// version adds two things over that: the line -> clue direction that deduces a
+// blank clue, and the pair index-sum coupling. NOTE: this fixture shows all 36
+// clues, so no clue is ever blank and the gate is always open — the line -> clue
+// direction is NOT exercised here. The only feature the comparison below actually
+// isolates is the pair coupling. If the real built-in is weaker than our forward
+// pass, the original is slower still, so this comparison is conservative.
 const nrMod = makeIo(HERE).load('NumberedRoomsComponent.js', ['setParams', 'update', 'validate'])
 const gatedLine = {
   setParams: nrMod.setParams,
@@ -206,9 +208,22 @@ console.log(`  uniqueness: ${res.nodes} search nodes, ${res.solutions} solution$
 // and branch the interior; clues are shown givens, so the search never branches
 // them. Zero givens is the honest stress test: with the 3 carved givens the
 // components finish by propagation (0 nodes) and so does the original, so nothing
-// separates them. Drop the givens and both must search. Fewer nodes = the extra
-// deduction our version adds (the pair index-sum coupling, plus the line -> clue
-// direction) paid off in less backtracking.
+// separates them. Drop the givens and both must search, and here ours (with the
+// pair coupling) explores ~6x fewer nodes.
+//
+// READ THIS BEFORE TRUSTING THE 6x. It is NOT the main improvement. This puzzle
+// shows all 36 clues, so no clue is ever blank and the original wrapper never has
+// to guess one — the comparison here isolates only the pair coupling, and that
+// coupling is a wash: on random all-clues-shown boards it wins about as often as
+// it loses (it adds per-node work the extra pruning does not always repay). The
+// 6x is one favorable case, not proof ours searches faster in general.
+//
+// The real, decisive win shows on an INTERACTABLE puzzle — some clues shown, the
+// rest blank — which is what a Numbered Rooms puzzle actually is. There the
+// original is inert on every blank clue and must guess it, so it never solves;
+// ours deduces blank clues from their lines and solves normally. sweep.mjs
+// measures exactly that over several random interactable boards: ours solves
+// every one, the original none. That is the headline; this 6x is a footnote.
 const NODE_CAP = +((process.argv.find(a => a.startsWith('--cap=')) || '').split('=')[1]) || 200000
 const noGivens = new Set()
 function solveRun (build) {

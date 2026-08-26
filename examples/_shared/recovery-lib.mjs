@@ -145,20 +145,24 @@ export function dead (state, alldiffGroups) {
 // caller's model-specific check that a full assignment is a real solution
 // (the components prune toward this but do not reject a completed instance
 // on their own). Returns {nodes, solutions, capped} — capped means the
-// NODE_CAP was hit before the search finished.
-export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000 }) {
+// NODE_CAP was hit before the search finished. `stopAtFirst` returns as soon as
+// one solution is found (solutions caps at 1, capped stays false): use it to ask
+// "can this wiring solve the puzzle at all" rather than "is it unique" — the
+// difference between finding a solution and proving no others exist.
+export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000, stopAtFirst = false }) {
   let nodes = 0
   let solutions = 0
   let capped = false
+  let done = false
   function pickMRV () {
     let best = null; let bs = Infinity
     for (const c of interior) { const s = state.cand.get(c).size; if (s > 1 && s < bs) { bs = s; best = c } }
     return best
   }
   function dfs () {
-    if (capped || nodes > nodeCap) { capped = true; return }
+    if (done || capped || nodes > nodeCap) { if (!done) capped = true; return }
     const cell = pickMRV()
-    if (cell === null) { if (validLeaf()) solutions++; return }
+    if (cell === null) { if (validLeaf()) { solutions++; if (stopAtFirst) done = true } return }
     for (const v of [...state.cand.get(cell)].sort((a, b) => a - b)) {
       nodes++
       const saved = state.clone()
@@ -166,7 +170,7 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       runToFixpoint(state, comps, alldiffGroups, floorGroup, { init: false, extra })
       if (!dead(state, alldiffGroups)) dfs()
       state.cand = saved
-      if (capped) return
+      if (capped || done) return
     }
   }
   if (!dead(state, alldiffGroups)) dfs()
