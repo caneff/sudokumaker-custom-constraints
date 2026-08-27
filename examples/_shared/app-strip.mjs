@@ -55,7 +55,7 @@ import { chromium } from 'playwright'
 import fs from 'fs'
 import path from 'path'
 import { parseReadout } from './app-solve-lib.mjs'
-import { clickText, clickIcon, makeDeterministic } from './app-dom.mjs'
+import { clickText, clickIcon, makeDeterministic, useRecordedApp } from './app-dom.mjs'
 import { seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
 
 const args = process.argv.slice(2)
@@ -161,6 +161,7 @@ async function restoreGiven (page, row, col, digit) {
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
+await useRecordedApp(page.context())
 await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
 await page.waitForTimeout(1500)
 await makeDeterministic(page)
@@ -201,4 +202,5 @@ for (let i = 0; i < kept.length;) {
 }
 
 console.log(`minimum ${kept.length} givens`)
+await page.context().close()
 await browser.close()

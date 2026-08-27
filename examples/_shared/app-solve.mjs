@@ -39,7 +39,7 @@
 import { chromium } from 'playwright'
 import fs from 'fs'
 import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
-import { clickIcon, makeDeterministic } from './app-dom.mjs'
+import { clickIcon, makeDeterministic, useRecordedApp } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring. Everything else must be
@@ -92,6 +92,7 @@ async function runOnce (page) {
 
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
+await useRecordedApp(context)
 
 const rows = []
 for (let k = 0; k < reps; k++) {
@@ -102,6 +103,7 @@ for (let k = 0; k < reps; k++) {
   rows.push(await runOnce(page))
   await page.close()
 }
+await context.close()
 await browser.close()
 
 console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)

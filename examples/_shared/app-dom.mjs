@@ -3,6 +3,30 @@
 // so it runs only under Playwright -- the pure, node:assert-testable logic
 // lives in app-solve-lib.mjs and app-strip-lib.mjs instead.
 
+import fs from 'fs'
+
+// Serve the app from a recorded HAR so repeated runs stay off the network.
+// No HAR yet, or SM_LIVE=1: load live and record it (written when the
+// CONTEXT closes -- browser.close() alone drops it, so the drivers close
+// their context first). Otherwise replay from disk. The puzzle rides in the
+// `?puzzle=` query, so on replay the document request is rewritten to `/`
+// (the same SPA index the HAR holds); the page's own location keeps the
+// query, so the app still reads the puzzle. Replay pins the app version --
+// re-record with SM_LIVE=1 after a SudokuMaker release.
+export async function useRecordedApp (context) {
+  const har = new URL('./sudokumaker.har', import.meta.url).pathname
+  const update = process.env.SM_LIVE === '1' || !fs.existsSync(har)
+  // embed: one file, no sidecar assets beside it.
+  await context.routeFromHAR(har, { update, updateContent: 'embed', notFound: 'abort' })
+  if (!update) {
+    // SM_OFFLINE=1 cuts the browser's network: proof the replay is complete.
+    if (process.env.SM_OFFLINE === '1') await context.setOffline(true)
+    await context.route(/^https:\/\/sudokumaker\.app\/\?puzzle=/,
+      route => route.fallback({ url: 'https://sudokumaker.app/' }))
+  }
+  console.error(update ? `app: live, recording ${har}` : `app: replay from ${har}`)
+}
+
 // Click the innermost element whose exact trimmed text equals `t`.
 export const clickText = (page, t) => page.evaluate((t) => {
   const els = [...document.querySelectorAll('*')]

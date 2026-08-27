@@ -30,12 +30,8 @@ EDGES = [
 ]
 
 
-def unique(givens, limit=60):
-    """True if exactly one ISOFILL grid matches the givens, False if more.
-
-    Raises ValueError when none does and TimeoutError when a solve hits `limit`
-    seconds — a timeout is never reported as unique.
-    """
+def model(givens):
+    """The ISOFILL model with `givens` pinned; returns (model, cell vars)."""
     m = cp_model.CpModel()
     x = {p: m.NewIntVar(0, N - 1, f"x{p}") for p in CELLS}
     for p, v in givens.items():
@@ -57,6 +53,26 @@ def unique(givens, limit=60):
             inflow = sum(f for (_, q), f in flow.items() if q == p)
             outflow = sum(f for (q, _), f in flow.items() if q == p)
             m.Add(inflow - outflow == holds[p] - N * root[p])
+    return m, x
+
+
+def sample(seed):
+    """A random ISOFILL grid (no givens) as ten row strings."""
+    m, x = model({})
+    s = cp_model.CpSolver()
+    s.parameters.random_seed = seed
+    s.parameters.num_workers = 8
+    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    return ["".join(str(s.Value(x[r, c])) for c in range(N)) for r in range(N)]
+
+
+def unique(givens, limit=60):
+    """True if exactly one ISOFILL grid matches the givens, False if more.
+
+    Raises ValueError when none does and TimeoutError when a solve hits `limit`
+    seconds — a timeout is never reported as unique.
+    """
+    m, x = model(givens)
 
     def solve():
         s = cp_model.CpSolver()
@@ -110,6 +126,11 @@ def self_check():
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
+    elif sys.argv[1] == "sample":
+        # verify.py sample <seed>: a full grid as puzzle.json with every cell
+        # given, ready for app-strip.mjs --grid.
+        grid = sample(int(sys.argv[2]))
+        print(json.dumps({"grid": grid, "clues": CELLS}))
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}

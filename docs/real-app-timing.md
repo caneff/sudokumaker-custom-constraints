@@ -82,6 +82,18 @@ line that starts with `[probe]` and drops the rest. To count anything else
 (how often a branch fires), patch the probe copy by hand the same way. Worked
 example: `docs/research/133-skip-unchanged.md`.
 
+## Offline runs: the recorded app
+
+Both drivers serve the app from `examples/_shared/sudokumaker.har`
+(gitignored) through Playwright's `routeFromHAR`. The first run on a machine
+has no HAR, so it loads the live site and records it; every later run replays
+from disk and never touches the network. The puzzle rides in the `?puzzle=`
+query; on replay that document request is rewritten to `/` (the same app
+index), so one recording covers every puzzle. Replay
+pins the app version: after a SudokuMaker release, re-record with
+`SM_LIVE=1 node examples/_shared/app-solve.mjs ...` and check the version the
+readout prints.
+
 ## app-strip.mjs: unattended greedy clue removal
 
 `examples/_shared/app-strip.mjs` uses the same app, and the same solve
