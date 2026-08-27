@@ -196,6 +196,19 @@ deadPut(9, [90, 91, 92, 93, 94, 95, 96, 97, 98, 99])
 const silentDead = once(rows, c => (c in deadPinned ? [deadPinned[c]] : [0, 1]))
 const silentDeadOk = CELLS.some(c => silentDead.getCandidates(c).size === 0)
 
+// ---- Crossing: cells 55 and 66 are one diagonal of an interior 2x2 block and
+// both hold digit 0; cell 56 holds 5. Digit 5's region would have to cross
+// digit 0's to reach cell 65, so cell 65 loses 5 -- and its neighbours, which
+// no diagonal crosses, keep it ----
+const cross = once(rows, c => (c === 55 || c === 66 ? [0] : c === 56 ? [5] : ALL))
+const crossOk = !cross.getCandidates(65).has(5) &&
+  [57, 64, 67, 75].every(c => cross.getCandidates(c).has(5))
+
+// ---- Crossing, half a diagonal: cell 66 is open, so nothing crosses and
+// cell 65 keeps 5 ----
+const halfCross = once(rows, c => (c === 55 ? [0] : c === 56 ? [5] : ALL))
+const halfCrossOk = halfCross.getCandidates(65).has(5)
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -215,8 +228,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| crossing fired:', crossOk, '| half crossing quiet:', halfCrossOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && crossOk && halfCrossOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
