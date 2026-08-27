@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # swap_component_code: only the named component's code changes
     swapped = swap_component_code(
-        base, CONSTRAINT_NAME, "SkyscraperComponent", "NEW CODE"
+        base, CONSTRAINT_NAME, "SkyscraperLineComponent", "NEW CODE"
     )
     base_components = find_constraint(base, CONSTRAINT_NAME)["definition"]["components"]
     new_components = find_constraint(swapped, CONSTRAINT_NAME)["definition"][
@@ -36,8 +36,8 @@ if __name__ == "__main__":
     got = {c["name"]: c["code"] for c in new_components}
     want = {c["name"]: c["code"] for c in base_components}
     diffs = [name for name in got if got[name] != want[name]]
-    assert diffs == ["SkyscraperComponent"], (
-        f"expected only SkyscraperComponent to change, got {diffs}"
+    assert diffs == ["SkyscraperLineComponent"], (
+        f"expected only SkyscraperLineComponent to change, got {diffs}"
     )
     assert (
         find_constraint(swapped, CONSTRAINT_NAME)["definition"]["backend"]["code"]

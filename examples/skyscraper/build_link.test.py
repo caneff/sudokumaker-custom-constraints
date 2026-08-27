@@ -4,10 +4,6 @@
 # component and the backend untouched. Prior art: the check in
 # build_original.py, and examples/_shared/probe_link.test.py.
 #
-# The committed link still registers the components the joint
-# SkyscraperLineComponent replaced, so the candidate file borrows one of
-# those registered names; the links are regenerated in a follow-up.
-#
 #   uv run --with lzstring examples/skyscraper/build_link.test.py
 
 import pathlib
@@ -29,9 +25,9 @@ if __name__ == "__main__":
         tmp = pathlib.Path(tmp)
         out = tmp / "candidate.txt"
 
-        # a candidate file under a registered component name, the shape a
-        # real edit-and-retime loop uses
-        candidate = tmp / "SkyscraperComponent.js"
+        # a candidate file for the same registered component name, the shape
+        # a real edit-and-retime loop uses
+        candidate = tmp / "SkyscraperLineComponent.js"
         candidate.write_text(
             (HERE / "SkyscraperLineComponent.js").read_text() + "\n//! candidate edit\n"
         )
@@ -53,17 +49,20 @@ if __name__ == "__main__":
         }
         assert new_components.keys() == base_components.keys()
         assert (
-            new_components["SkyscraperComponent"]
-            != base_components["SkyscraperComponent"]
+            new_components["SkyscraperLineComponent"]
+            != base_components["SkyscraperLineComponent"]
         )
-        # the sibling component and the backend are untouched
-        assert (
-            new_components["SkyscraperPairComponent"]
-            == base_components["SkyscraperPairComponent"]
-        )
+        # the backend is untouched
         assert (
             find_constraint(doc, CONSTRAINT_NAME)["definition"]["backend"]["code"]
             == find_constraint(base, CONSTRAINT_NAME)["definition"]["backend"]["code"]
+        )
+
+        # swapping the currently-shipped component back in reproduces
+        # PUZZLE_LINK.txt exactly
+        same = decode_puzzle(build(HERE / "SkyscraperLineComponent.js", out))
+        assert same == base, (
+            "the committed component must round-trip to PUZZLE_LINK.txt"
         )
 
         # an unknown component name fails loud, not silently

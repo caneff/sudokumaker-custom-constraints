@@ -10,11 +10,6 @@
 # component registered on PUZZLE_LINK.txt's "Skyscraper Lines" constraint;
 # that component's code becomes the given file's, minified. The backend and
 # any sibling component are untouched.
-#
-# The committed PUZZLE_LINK.txt still registers the two components the
-# joint SkyscraperLineComponent replaced (SkyscraperComponent and
-# SkyscraperPairComponent); the links are regenerated in a follow-up, and
-# until then --component must use one of those registered names.
 
 import argparse
 import pathlib
