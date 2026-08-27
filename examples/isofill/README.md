@@ -21,7 +21,7 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count, reach, capacity, and cut, and a `validate` leaf check (see below).
+  prunes by count, reach, capacity, cut, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
@@ -31,6 +31,10 @@ exists to teach.
   comparing component variants (it closed long before the 35-given instance
   did: ~9.1 s with capacity, ~25.9 s without; 0 ms with cut). Not the shipped instance. The harness asserts
   the two grids stay identical.
+- `puzzle-32.json` — a different grid (sampled with CP-SAT, stripped in the
+  app) with 32 givens, unique. The hard fixture: the shipped grid is minimal
+  at 35 givens and closes in 0.2 s, too fast to rank rules; this one takes
+  the app ~27 s, so a rule change shows. Not the shipped instance.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
@@ -64,8 +68,9 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs five sound deductions per digit. Ten regions of ten cells, one
-digit each, means every digit fills exactly ten cells:
+`update` runs five sound deductions per digit and one across digits. Ten
+regions of ten cells, one digit each, means every digit fills exactly ten
+cells:
 
 - **Cap** — once a digit occupies ten cells, remove it from every other cell's
   candidates.
@@ -89,6 +94,15 @@ digit each, means every digit fills exactly ten cells:
   the same argument as reach and capacity, applied to the grid minus one cell.
   Not free: one or two extra walks per open cell in the digit's walk — but
   it is the rule that lets the app close the shipped instance (below).
+- **Budget** — the one rule that looks across digits. Every open cell needs
+  a digit, and digit `d` can take at most `10 − placed` more cells, only
+  cells inside its walk. Build the flow network source → digit (capacity
+  `10 − placed`) → open cell (capacity 1, if the cell is in the digit's
+  walk) → sink; if the max flow covers fewer than all open cells, no
+  assignment exists and the branch is dead (the component empties a cell).
+  Sound because the walk over-approximates the region. It catches what the
+  per-digit rules cannot: a wrong region for one digit that starves the
+  others. One augmenting-path flow on ≤80 nodes per call.
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
 connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
@@ -113,8 +127,14 @@ fixture it cut the app's verdict from ~25.9 s to ~9.1 s. Cut is the rule
 that closes the shipped instance: with cap, force, reach, and capacity alone
 the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
 ~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
-44-given fixtures in 0 ms. See the next section and
-`../../docs/real-app-timing.md`.
+44-given fixtures in 0 ms. Budget earned its place on the 32-given fixture
+and on a board with a player's pencil marks: 27.6 s → 26.8 s stripped, and
+12.4 s → 7.3 s with correct two-candidate marks that steer the app's search
+into a bad branch. The walk itself is written without allocation (neighbour
+lists built once in `setParams`, a byte mask in place of a `Set`): same
+rules, 40.4 s → 27.6 s on the 32-given fixture, because `update` runs on
+every search node and its own cost was most of the solve time. See the next
+section and `../../docs/real-app-timing.md`.
 
 ## What the app checks
 

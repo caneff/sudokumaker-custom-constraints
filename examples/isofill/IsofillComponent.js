@@ -3,7 +3,7 @@
 //! cells; every cell in a region holds the same digit; all ten digits appear.
 //! So each digit fills exactly ten cells.
 //!
-//! One whole-grid component, five deductions per digit:
+//! One whole-grid component, five deductions per digit and one across digits:
 //!   Cap:   a digit already in ten cells leaves every other cell.
 //!   Force: a digit with exactly ten cells still open takes all of them.
 //!   Reach: walk from the digit's placed cells through cells that still allow
@@ -14,6 +14,11 @@
 //!          reach ten; a placed cell is emptied, as for a split.
 //!   Cut:   an open cell in that walk whose removal starves it below ten,
 //!          or strands a placed cell, must hold the digit.
+//!   Budget: every open cell needs a digit, and each digit can take at most
+//!          (10 - placed) more cells, only inside its walk. If no assignment
+//!          covers every open cell (max flow falls short) the branch is dead.
+//!          This is the one rule that sees across digits: a wrong region
+//!          for one digit starves the others' budgets.
 //! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
@@ -23,6 +28,9 @@ function getAffectedCells (cells) {
 function setParams (instance, cells) {
   instance.cells = cells
   instance.side = Math.round(Math.sqrt(cells.length))
+  // Neighbour lists once, not per visit: update runs on every search node and
+  // the cut rule walks the grid hundreds of times per call.
+  instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
 }
 
 // Orthogonal neighbours by index arithmetic; cells are row-major on a square.
@@ -36,23 +44,27 @@ function neighbours (i, side) {
 }
 
 // Cells reachable from `starts` in at most `depth` steps through `allowed`.
-function reach (starts, depth, allowed, side) {
-  const seen = new Set(starts)
+// Returns { mask, size }: a byte per cell plus the count, in place of a Set —
+// this walk is the hot loop of every search node.
+function reach (starts, depth, allowed, nbrs) {
+  const mask = new Uint8Array(nbrs.length)
+  let size = 0
+  for (const i of starts) if (!mask[i]) { mask[i] = 1; size++ }
   let frontier = starts
   for (let step = 0; step < depth && frontier.length; step++) {
     const next = []
     for (const i of frontier) {
-      for (const n of neighbours(i, side)) {
-        if (allowed[n] && !seen.has(n)) { seen.add(n); next.push(n) }
+      for (const n of nbrs[i]) {
+        if (allowed[n] && !mask[n]) { mask[n] = 1; size++; next.push(n) }
       }
     }
     frontier = next
   }
-  return seen
+  return { mask, size }
 }
 
 function * update (instance, puzzle) {
-  const { cells, side } = instance
+  const { cells, nbrs } = instance
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
@@ -86,22 +98,23 @@ function * update (instance, puzzle) {
       for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
     } else if (placed.length > 0) {
       // Any region cell is within (size - placed) steps of the placed set.
-      const near = reach(placed, size - placed.length, allowed, side)
+      const near = reach(placed, size - placed.length, allowed, nbrs)
+      state[d].near = near.mask
       // Capacity: the whole region lies inside `near`, so fewer than `size`
       // cells there is a dead branch; empty a placed cell so the solver sees it.
       if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
-      for (const i of open) if (!near.has(i)) yield puzzle.removeCandidateFromCell(d, cells[i])
+      for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
       // Cut: an open cell whose removal starves the walk (< size cells) or
       // strands a placed cell must hold the digit (ticket #101).
       const depth = size - placed.length
       for (const x of open) {
-        if (!near.has(x)) continue
+        if (!near.mask[x]) continue
         allowed[x] = false
-        const without = reach(placed, depth, allowed, side)
+        const without = reach(placed, depth, allowed, nbrs)
         let cut = without.size < size
         if (!cut && placed.length > 1) {
-          const joined = reach([placed[0]], size - 1, allowed, side)
-          cut = placed.some(i => !joined.has(i))
+          const joined = reach([placed[0]], size - 1, allowed, nbrs)
+          cut = placed.some(i => !joined.mask[i])
         }
         allowed[x] = true
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
@@ -109,15 +122,63 @@ function * update (instance, puzzle) {
     }
     if (placed.length > 1) {
       // Any two cells of a size-cell region are within (size - 1) steps.
-      const joined = reach([placed[0]], size - 1, allowed, side)
-      for (const i of placed) if (!joined.has(i)) yield puzzle.removeCandidateFromCell(d, cells[i])
+      const joined = reach([placed[0]], size - 1, allowed, nbrs)
+      for (const i of placed) if (!joined.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
     }
   }
+  // Budget: every open cell needs a digit, and digit d can take at most
+  // (size - placed) more cells, all inside its walk. If no assignment covers
+  // every open cell (a max flow falls short) the branch is dead: empty a cell.
+  const dead = budgetDead(state, lo, hi, size, cells.length)
+  if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(Array.from({ length: hi - lo + 1 }, (_, k) => lo + k)), cells[dead])
+}
+
+// Max flow source -> digit (cap size - placed) -> open cell (cap 1, if the
+// cell is in the digit's walk) -> sink. Returns an open cell index when the
+// flow cannot cover every open cell, else -1. Augmenting-path BFS: the graph
+// has at most (digits + open cells + 2) nodes, so this is cheap per call.
+function budgetDead (state, lo, hi, size, n) {
+  const nd = hi - lo + 1
+  const openIdx = new Int16Array(n).fill(-1)
+  const opens = []
+  for (let d = lo; d <= hi; d++) {
+    for (const i of state[d].open) if (openIdx[i] < 0) { openIdx[i] = opens.length; opens.push(i) }
+  }
+  if (opens.length === 0) return -1
+  // nodes: 0 = source, 1..nd = digits, nd+1..nd+opens = cells, last = sink;
+  // residual capacities in a dense matrix (at most ~80 nodes).
+  const S = 0; const T = nd + opens.length + 1; const V = T + 1
+  const cap = new Int8Array(V * V)
+  const adj = Array.from({ length: V }, () => [])
+  const addEdge = (u, v, c) => { adj[u].push(v); adj[v].push(u); cap[u * V + v] = c }
+  for (let d = lo; d <= hi; d++) {
+    const k = 1 + d - lo
+    addEdge(S, k, size - state[d].placed.length)
+    const near = state[d].near
+    for (const i of state[d].open) if (!near || near[i]) addEdge(k, nd + 1 + openIdx[i], 1)
+  }
+  for (let j = 0; j < opens.length; j++) addEdge(nd + 1 + j, T, 1)
+  let flow = 0
+  const prev = new Int16Array(V)
+  const queue = new Int16Array(V)
+  for (;;) {
+    prev.fill(-1); prev[S] = S
+    let head = 0; let tail = 0
+    queue[tail++] = S
+    while (head < tail && prev[T] < 0) {
+      const u = queue[head++]
+      for (const v of adj[u]) if (prev[v] < 0 && cap[u * V + v] > 0) { prev[v] = u; queue[tail++] = v }
+    }
+    if (prev[T] < 0) break
+    for (let v = T; v !== S; v = prev[v]) { const u = prev[v]; cap[u * V + v]--; cap[v * V + u]++ }
+    flow++
+  }
+  return flow < opens.length ? opens[0] : -1
 }
 
 // Exact check on a full grid: every digit is one connected blob of `size` cells.
 function validate (instance, puzzle) {
-  const { cells, side } = instance
+  const { cells, nbrs } = instance
   if (!puzzle.getCellsAreFilled(cells)) return true
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
@@ -132,7 +193,7 @@ function validate (instance, puzzle) {
       count++
       if (first < 0) first = i
     }
-    if (count !== size || reach([first], size, allowed, side).size !== size) return false
+    if (count !== size || reach([first], size, allowed, nbrs).size !== size) return false
   }
   return true
 }
