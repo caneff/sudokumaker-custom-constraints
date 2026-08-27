@@ -219,10 +219,9 @@ if (process.argv.includes('--search')) {
   const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1]
   const modes = [['matching OFF', 'off'], ['matching ON ', 'on']].filter(([, m]) => !only || m === only)
   for (const [label, mode] of modes) {
-    const t = Date.now()
     const r = searchRun(mode)
     const note = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions}!)`)
-    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}, ${Date.now() - t}ms${note}`)
+    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}${note}`)
   }
 } else {
   freshState()
