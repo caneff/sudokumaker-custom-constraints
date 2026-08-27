@@ -14,6 +14,10 @@
 //!          reach ten; a placed cell is emptied, as for a split.
 //!   Cut:   an open cell in that walk whose removal starves it below ten,
 //!          or strands a placed cell, must hold the digit.
+//!   Silent: a digit with no placed cell has no walk to start. Its region
+//!          still sits inside one connected component of the cells that allow
+//!          it, so every component under ten cells loses the digit; if none
+//!          reaches ten the branch is dead.
 //!   Budget: every open cell needs a digit, and each digit can take at most
 //!          (10 - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
@@ -213,6 +217,25 @@ function * update (instance, puzzle) {
         }
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
       }
+    } else if (open.length > 0) {
+      // Silent: a digit with no placed cell gets no walk above, because every
+      // walk starts from one. Its region still lies inside a single
+      // orthogonally connected component of the cells that allow it, so a
+      // component smaller than `size` can hold no region (ticket #142).
+      const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
+      near.fill(0)
+      const small = []
+      let big = false
+      for (const start of open) {
+        if (near[start]) continue
+        const comp = reach(instance, [start], Infinity, allowed)
+        for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) small.push(i) }
+        if (comp.size >= size) big = true
+      }
+      // No component fits the region: a dead branch, so empty a cell.
+      if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); continue }
+      for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
+      state[d].near = near // budget (below) limits this digit to the components that fit
     }
     if (placed.length > 1) {
       // Any two cells of a size-cell region are within (size - 1) steps.
