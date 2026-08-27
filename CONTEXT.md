@@ -71,6 +71,35 @@ Use these terms exactly. Do not drift to synonyms.
   search from the givens and the outside-clue ring. A finished link only verifies
   a filled grid and times the same for every code variant.
 
+### Region-building terms (from `examples/isofill/`)
+
+- **region** — the ten orthogonally connected cells that hold one digit. The
+  thing a region-building constraint discovers.
+- **placed cell** — a cell whose only candidate is the digit. **open cell** — a
+  cell with more than one candidate. A region is placed cells plus the open
+  cells it will take.
+- **blob** — a maximal connected set of placed cells of one digit. A region has
+  one blob when finished; several before.
+- **walk** — a breadth-first search from a digit's placed cells through cells
+  that still allow the digit, limited by how many open cells the region can
+  still take. The over-approximation of the region that every other rule reads.
+- **reach** — the rule that drops the digit from a cell the walk never meets.
+- **capacity** — the rule that kills the branch when the walk holds fewer than
+  ten cells.
+- **cut** — the rule that places the digit in an open cell the region cannot do
+  without. Two tests: **starve** (without the cell the walk holds fewer than
+  ten) and **strand** (without the cell a placed cell is unreachable).
+- **door** — an open cell next to a blob that still allows the digit. One door
+  is the cheap case of cut.
+- **seed** — the one placed cell a walk starts from when placed cells cost
+  nothing and open cells cost one step.
+- **silent digit** — a digit with no placed cell. Gets no walk; handled by
+  the connected components of the cells that allow it.
+- **budget** — the rule that matches open cells to digits' remaining slots and
+  kills the branch when no full matching exists.
+- **tour** — a lower bound on region size from the distances between three
+  placed cells.
+
 ## Invariants
 
 These shape every constraint; breaking one costs an afternoon. Detail in
