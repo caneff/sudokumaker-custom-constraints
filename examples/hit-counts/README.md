@@ -37,8 +37,13 @@ no ordering. That makes Hit Counts simpler than Running Start.
   `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3`
   The three args are the grid size and the box height and width (`box_height *
   box_width == size`).
-- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` — the built
-  SudokuMaker links. Open one to play the example.
+- `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
+  the built SudokuMaker links. Open one to play the example. The 9x9 takes the
+  plain name because `build_link.py` and the timing loop reuse that board.
+- `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
+  swapped for a candidate file, leaving the board and the sibling components
+  untouched. It is the same-board pair `just time hit-counts` needs:
+  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsComponent.js --out /tmp/candidate.txt`
 - `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
   Running Start (the interactive-outside frame cosmetics and the link-shrinking
   pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.

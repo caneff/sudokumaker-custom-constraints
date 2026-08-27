@@ -12,7 +12,9 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
 #
 # Args: n box_height box_width   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script, except
+# that the 9x9 is the board the timing loop and build_link.py reuse, so it
+# lands as PUZZLE_LINK.txt (gen_9.json keeps its name).
 #
 # A clue is the number of "hits" on a line: read inward, a cell is a hit when
 # its digit equals its distance from the clue. A hit count of 0 is a legal clue.
@@ -83,4 +85,8 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
+    n = int(sys.argv[1])
     run(SPEC)
+    if n == 9:
+        (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
+        print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")
