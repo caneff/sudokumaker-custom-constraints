@@ -69,6 +69,7 @@ more and the solver guessed less.
 | `gen_4` | 0 nodes | did not finish (200k-node cap) |
 | `gen_6` | 8 nodes | did not finish (200k-node cap) |
 | `gen_9` | 762 nodes | did not finish (30k-node cap) |
+| `gen_9_timing` (timing-only board, #140) | 6,972 nodes | not run |
 
 The reason is the interactive clue. The puzzle's one solution needs the skyscraper
 deductions; the sudoku rule and the shown clues alone do not pin it. Ours deduces
@@ -116,10 +117,20 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   same grid, givens, and clues as the improved links, so you can compare the two
   solve experiences directly:
   `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
-- `build_link.py` — rebuilds the committed `PUZZLE_LINK.txt` (9x9) with one
-  named component's code swapped for a candidate file, board and clues
-  unchanged: `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
-  See `docs/real-app-timing.md`.
+- `build_link.py` — rebuilds a committed board link with one named
+  component's code swapped for a candidate file, board and clues unchanged:
+  `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
+  Defaults to `PUZZLE_LINK.txt`; pass `--board PUZZLE_LINK_timing.txt` to swap
+  against the timing board instead. See `docs/real-app-timing.md`.
+- `PUZZLE_LINK_timing.txt`, `gen_9_timing.json` — a harder 9x9 board, timing
+  only (#140): 15 of 36 ring clues shown, most of the ring blank, ~6,972 mock
+  search nodes (`recovery-probe.mjs gen_9_timing.json --search --only=ours`).
+  The shipped `PUZZLE_LINK.txt` shows 21/36 clues (58%), too many to show a
+  per-call timing change; `just time skyscraper --ring-clues --board
+  PUZZLE_LINK_timing.txt` times against this board instead.
+- `build_timing.py` — picks and builds that board: `scan <lo> <hi>` carves one
+  board per seed and prints its mock node count (about a minute a seed);
+  `build <seed>` writes the pair. `build 135` reproduces the committed files.
 
 ## Paste into SudokuMaker
 

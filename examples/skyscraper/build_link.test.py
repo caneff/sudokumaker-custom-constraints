@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import CONSTRAINT_NAME, build
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 
 if __name__ == "__main__":
@@ -64,6 +64,28 @@ if __name__ == "__main__":
         assert same == base, (
             "the committed component must round-trip to PUZZLE_LINK.txt"
         )
+
+        # --board: swap against a different committed link, not just
+        # PUZZLE_LINK.txt. Build one from a copy of the base doc with a
+        # harmless field changed, so it is distinguishable from base but
+        # still a valid "Skyscraper Lines" board.
+        other_doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+        other_doc["puzzle"]["name"] = other_doc["puzzle"]["name"] + " (other board)"
+        other_board = tmp / "other_board.txt"
+        other_board.write_text(encode_link(other_doc) + "\n")
+
+        board_link = build(candidate, out, board_path=other_board)
+        board_doc = decode_puzzle(board_link)
+        assert board_doc["puzzle"]["name"] == other_doc["puzzle"]["name"], (
+            "--board must swap against the given board, not PUZZLE_LINK.txt"
+        )
+        assert blanked(board_doc, CONSTRAINT_NAME) == blanked(
+            other_doc, CONSTRAINT_NAME
+        )
+
+        # omitting --board keeps default behaviour byte-identical
+        default_link = build(candidate, out)
+        assert default_link == link
 
         # an unknown component name fails loud, not silently
         try:

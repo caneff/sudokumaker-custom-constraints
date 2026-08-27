@@ -8,3 +8,4 @@ gen.json
 
 # local session state and worktrees
 .claude/
+examples/skyscraper/.scan/

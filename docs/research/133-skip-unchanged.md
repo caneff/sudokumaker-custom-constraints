@@ -32,8 +32,11 @@ bar either way.
 against a wrapper that hands off on the first pass; this component has no
 hand-off, and the 57,000 `update` calls show the search ran. Still, the
 timing here is weak evidence; the call/skip ratio (a 7% ceiling) is what
-carries the verdict. A harder timing board with most of the ring blank is
-its own ticket.
+carries the verdict. `examples/skyscraper/PUZZLE_LINK_timing.txt` (#140) is
+the harder board this note called for: 15 of 36 ring clues shown, most of the
+ring blank, ~6,972 mock search nodes. A re-run of this experiment should time
+against it (`just time skyscraper --ring-clues --board
+PUZZLE_LINK_timing.txt`), not the shipped board.
 
 **Verdict.** The app re-runs a component almost only when one of its cells
 changed, as `docs/component-contract.md` states for `getAffectedCells`. The
