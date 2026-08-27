@@ -4,21 +4,22 @@
 # ~5 s with ±30% noise, too fast to show a per-call change.
 #
 #   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py scan 101 161
-#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build 208
+#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build-adv 427
 #
 # scan-adv / build-adv: same, but the carve hides the informative ring clues
-# (1, 9, 2, 8) first so the mid-range clues stay shown. Over seeds 135,200-209
-# it lifted the median node count 68 -> 177 under the exact DP (#137), but the
-# seed spread is larger than the lever: random seed 208 (871 nodes, 300 ms in
-# the app) beat the best adversarial seed (200: 784 nodes, 100 ms). Use both.
+# (1, 9, 2, 8) first so the mid-range clues stay shown. Over 160 seeds it
+# lifted the median node count and found the hardest board (adv 427: 5681
+# nodes, 2000 ms in the app; best random, 328: 4846 nodes but 200 ms). The
+# seed spread is still larger than the lever, and mock nodes only roughly
+# predict app time, so scan wide with both modes and time the top few.
 #
 # scan: for each seed, carve the board as build_size.py would and count the mock
 # search nodes (recovery-probe.mjs --search --only=ours). One line per seed;
 # about a minute each, the carve dominates. PROBE-TIMEOUT marks a board harder
 # than the probe's budget. Pick the hardest seed with over half the ring blank,
 # and confirm it stays under the app's 300 s limit before committing it.
-# build: write the pair for one seed; the committed pair is seed 208 (seed 135
-# fell to 16 nodes / 0 ms after #137, below the app's readout floor).
+# build: write the pair for one seed; the committed pair is build-adv 427 (seed
+# 135 fell to 16 nodes / 0 ms after #137, below the app's readout floor).
 
 import json
 import os

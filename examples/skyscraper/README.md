@@ -139,9 +139,9 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   Defaults to `PUZZLE_LINK.txt`; pass `--board PUZZLE_LINK_timing.txt` to swap
   against the timing board instead. See `docs/real-app-timing.md`.
 - `PUZZLE_LINK_timing.txt`, `gen_9_timing.json` — a harder 9x9 board, timing
-  only (#140): 19 of 36 ring clues shown, ~871 mock search nodes under the
+  only (#140): 20 of 36 ring clues shown, ~5,681 mock search nodes under the
   exact DP (`recovery-probe.mjs gen_9_timing.json --search --only=ours`),
-  300 ms in the app. Seed 135, the first timing board, fell to 16 nodes and
+  2000 ms in the app. Seed 135, the first timing board, fell to 16 nodes and
   0 ms after #137, below the app's readout floor, so it could no longer
   show a change.
   The shipped `PUZZLE_LINK.txt` shows 21/36 clues (58%), too many to show a
@@ -149,10 +149,11 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   PUZZLE_LINK_timing.txt` times against this board instead.
 - `build_timing.py` — picks and builds that board: `scan <lo> <hi>` carves one
   board per seed and prints its mock node count (about a minute a seed);
-  `build <seed>` writes the pair. `build 208` reproduces the committed files.
+  `build <seed>` writes the pair. `build-adv 427` reproduces the committed files.
   `scan-adv` / `build-adv` hide the informative clues (1, 9, 2, 8) first so
-  mid-range clues stay shown; it lifts the median node count but the seed
-  spread is larger, so scan with both.
+  mid-range clues stay shown; it lifts the median node count, but the seed
+  spread is larger and mock nodes only roughly predict app time, so scan
+  wide with both and time the top few in the app.
 
 ## Paste into SudokuMaker
 
