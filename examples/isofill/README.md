@@ -21,7 +21,7 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count, reach, capacity, cut, and budget, and a `validate` leaf check (see below).
+  prunes by count, reach, capacity, cut, tour, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
@@ -69,7 +69,7 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs five sound deductions per digit and one across digits. Ten
+`update` runs six sound deductions per digit and one across digits. Ten
 regions of ten cells, one digit each, means every digit fills exactly ten
 cells:
 
@@ -95,6 +95,17 @@ cells:
   the same argument as reach and capacity, applied to the grid minus one cell.
   Not free: one or two extra walks per open cell in the digit's walk — but
   it is the rule that lets the app close the shipped instance (below).
+- **Tour** — the region is a connected set holding every placed cell and
+  the candidate cell, so a walk round its spanning tree is a closed tour
+  through all of them: the region has at least 1 + half the perimeter of
+  any three of those points (BFS distances through allowed cells). Tighter
+  than the depth bound when the placed cells are spread: two placed cells
+  nine apart leave only the cells between them, not everything within eight
+  steps of either. Cells the bound rejects leave the walk before cut and
+  budget read it. Costs one BFS per placed cell. Three points, not four:
+  the four-point version (min of the three 4-cycle orders) read 35.6 s on
+  the 32-given fixture, against 15.3 s for triples — the loop over triples
+  of placed cells per open cell cost more than it pruned.
 - **Budget** — the one rule that looks across digits. Every open cell needs
   a digit, and digit `d` can take at most `10 − placed` more cells, only
   cells inside its walk. Build the flow network source → digit (capacity
@@ -105,6 +116,11 @@ cells:
   per-digit rules cannot: a wrong region for one digit that starves the
   others. Done as a bipartite matching (Kuhn's augmenting path per open
   cell, digits with `10 − placed` slots), a few lines and cheap per call.
+  Open cells and slots count the same, so a full matching is perfect, and
+  the component then prunes on it (Régin): an unmatched cell–digit pair
+  lies in some other perfect matching only if cell and digit share a
+  strongly connected component of the residual graph; any other pair loses
+  the candidate. One Tarjan pass over ~110 nodes per call.
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
 connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
@@ -130,7 +146,8 @@ that closes the shipped instance: with cap, force, reach, and capacity alone
 the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
 ~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
 44-given fixtures in 0 ms. Budget pays on the stripped 32-given fixture
-(27.6 s → 24.8 s) and, the reason it was written, on the shipped puzzle with a
+(27.6 s → 24.8 s); its matching prune 24.9 s → 23.4 s; the tour bound on top
+24.9 s → **15.3 s** (2026-08-27, 3/3) and, the reason it was written, on the shipped puzzle with a
 player's correct two-candidate pencil marks, which steer the app's search
 into a bad branch: 12.4 s → 7.2 s. That marks run is evidence of robustness,
 not a timing (a run with marks present is never a timing,
@@ -161,7 +178,8 @@ solution" in 0.2 s** (live app v2026.08.14-d47fc4b, 2026-08-27, `app-solve.mjs`,
 An earlier "unique in 2 s" figure was measured with 36 solution values still
 entered in the outer ring and was wrong.
 
-The kept deductions are cap, force, reach (with split), capacity, and cut.
+The kept deductions are cap, force, reach (with split), capacity, cut, tour,
+and budget with its matching prune.
 *Homeless* (a digit with no placed cell must still have a connected ten-cell
 home) was tried and removed: sound, but no verdict change and no time change
 (#91; the commit stays in git history). `verify.py` stays the independent
@@ -179,7 +197,7 @@ node examples/isofill/soundness-harness.mjs
 # -> isofill shipped fixture: 2000 tests, 0 violations
 # (FUZZ=20000 node ... for the deep run, ~2 min)
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | one pass: true (100 reads)
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | tour fired: true | budget fired: true | budget prune fired: true | one pass: true (100 reads)
 # -> PASS
 ```
 
@@ -189,7 +207,8 @@ partial fills of three valid ISOFILL solutions (one with row *r* holding digit
 shipped grid from `puzzle.json`) in which every cell still allows its true
 value, runs `update` to a fixpoint, and asserts every true value survived. It
 also builds one state for each deduction — cap, force, reach, split, split
-with all ten cells placed, capacity, cut — and checks each fired, checks `update`
+with all ten cells placed, capacity, cut, tour, budget, budget prune — and
+checks each fired, checks `update`
 reads each cell's candidates at most once per call,
 and checks `validate` accepts a full valid grid and rejects a count-valid but
 split one.
