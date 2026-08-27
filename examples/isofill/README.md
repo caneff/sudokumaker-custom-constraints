@@ -99,6 +99,10 @@ cells:
   the same argument as reach and capacity, applied to the grid minus one cell.
   Not free: one or two extra walks per open cell in the digit's walk — but
   it is the rule that lets the app close the shipped instance (below).
+  Each of those walks stops as soon as it has its answer — ten cells, or
+  every placed cell seen — and a dead-end cell (one allowed neighbour) skips
+  the walks: removing it removes only itself. Same rule, and the app's time
+  on the 32-given fixture fell 15.3 s → 5.7 s.
 - **Tour** — the region is a connected set holding every placed cell and
   the candidate cell, so a walk round its spanning tree is a closed tour
   through all of them: the region has at least 1 + half the perimeter of
@@ -151,13 +155,13 @@ the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
 ~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
 44-given fixtures in 0 ms. Budget pays on the stripped 32-given fixture
 (27.6 s → 24.8 s); its matching prune 24.9 s → 23.4 s; the tour bound on top
-24.9 s → **15.3 s** (2026-08-27, 3/3) and, the reason it was written, on the shipped puzzle with a
+24.9 s → 15.3 s; early-stopping cut walks 15.3 s → **5.7 s** (2026-08-27, 3/3) and, the reason it was written, on the shipped puzzle with a
 player's correct two-candidate pencil marks, which steer the app's search
 into a bad branch: 12.4 s → 7.2 s. That marks run is evidence of robustness,
 not a timing (a run with marks present is never a timing,
 `CODING_STANDARDS.md`). The walk itself
-builds neighbour lists once in `setParams` and uses a byte mask in place of a
-`Set`: same rules, 40.4 s → 27.6 s on the 32-given fixture, because `update`
+builds neighbour lists once in `setParams` and uses a stamped visit mask on
+the instance in place of a `Set` (no allocation per walk): same rules, 40.4 s → 27.6 s on the 32-given fixture, because `update`
 runs on every search node and its own cost was most of the solve time. See
 the next section and `../../docs/real-app-timing.md`.
 
