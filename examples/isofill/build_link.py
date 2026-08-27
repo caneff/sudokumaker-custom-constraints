@@ -53,6 +53,9 @@ def build(component_path, puzzle_path):
             "comment": RULE,
             "cells": cells,
             "constraints": [
+                # the built-in "Given digits" constraint every frame carries;
+                # without it the app lists no givens (found live, 2026-08-27)
+                {"type": 0},
                 {
                     "name": "ISOFILL",
                     "type": 1000,
@@ -75,7 +78,7 @@ def build(component_path, puzzle_path):
                     },
                     "input": {},
                     "style": {},
-                }
+                },
             ],
         },
     }
@@ -89,7 +92,8 @@ def check(link, doc, n_clues):
     assert (p["type"], p["width"], p["height"], p["minDigit"]) == ("custom", N, N, 0)
     assert len(p["cells"]) == N * N and not any("houses" in k for k in p)
     assert sum(1 for c in p["cells"] if c.get("given")) == n_clues
-    d = p["constraints"][0]["definition"]
+    assert p["constraints"][0] == {"type": 0}, "given-digits constraint missing"
+    d = p["constraints"][1]["definition"]
     assert d["input"] == [], "a global constraint has no groups"
     assert [c["name"] for c in d["components"]] == ["IsofillComponent"]
 

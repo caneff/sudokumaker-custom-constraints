@@ -3,7 +3,7 @@
 //! cells; every cell in a region holds the same digit; all ten digits appear.
 //! So each digit fills exactly ten cells.
 //!
-//! One whole-grid component, four deductions per digit:
+//! One whole-grid component, five deductions per digit:
 //!   Cap:   a digit already in ten cells leaves every other cell.
 //!   Force: a digit with exactly ten cells still open takes all of them.
 //!   Reach: walk from the digit's placed cells through cells that still allow
@@ -12,6 +12,8 @@
 //!          the solver sees the dead branch (decision #66).
 //!   Capacity: if that walk meets fewer than ten cells the region can never
 //!          reach ten; a placed cell is emptied, as for a split.
+//!   Cut:   an open cell in that walk whose removal starves it below ten,
+//!          or strands a placed cell, must hold the digit.
 //! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
@@ -89,6 +91,21 @@ function * update (instance, puzzle) {
       // cells there is a dead branch; empty a placed cell so the solver sees it.
       if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
       for (const i of open) if (!near.has(i)) yield puzzle.removeCandidateFromCell(d, cells[i])
+      // Cut: an open cell whose removal starves the walk (< size cells) or
+      // strands a placed cell must hold the digit (ticket #101).
+      const depth = size - placed.length
+      for (const x of open) {
+        if (!near.has(x)) continue
+        allowed[x] = false
+        const without = reach(placed, depth, allowed, side)
+        let cut = without.size < size
+        if (!cut && placed.length > 1) {
+          const joined = reach([placed[0]], size - 1, allowed, side)
+          cut = placed.some(i => !joined.has(i))
+        }
+        allowed[x] = true
+        if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
+      }
     }
     if (placed.length > 1) {
       // Any two cells of a size-cell region are within (size - 1) steps.
