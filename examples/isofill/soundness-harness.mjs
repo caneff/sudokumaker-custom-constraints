@@ -233,10 +233,48 @@ const swapped = { ...bent, 0: bent[99], 99: bent[0] }
 const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
+// ---- 9x9 with digits 1-9: the same component on the other supported board.
+// One fuzz fixture (rows, one digit per row) plus a cap check, with the
+// globals re-installed for the 1-9 range ----
+installGlobals(1, 9)
+const N9 = 9
+const CELLS9 = Array.from({ length: N9 * N9 }, (_, i) => i)
+const ALL9 = Array.from({ length: N9 }, (_, d) => d + 1)
+const rows9 = {}
+for (const c of CELLS9) rows9[c] = Math.floor(c / N9) + 1
+let bad9 = 0
+for (let iter = 0; iter < FUZZ; iter++) {
+  const p = makePuzzle(rows9, (c, v) => {
+    const mode = pick(['pin', 'full', 'subset'])
+    if (mode === 'pin') return [v]
+    if (mode === 'full') return ALL9
+    const s = new Set([v])
+    for (const d of ALL9) if (rnd() < 0.5) s.add(d)
+    return [...s]
+  })
+  const inst = {}
+  mod.setParams(inst, CELLS9)
+  const v = violates(mod, inst, p, rows9)
+  if (v) { bad9++; if (bad9 <= 5) console.log('9x9 violation', v) }
+}
+console.log('isofill 9x9 fixture:', `${FUZZ} tests,`, bad9, 'violations')
+const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
+const cap9Inst = {}
+mod.setParams(cap9Inst, CELLS9)
+Array.from(mod.update(cap9Inst, cap9))
+const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
+// A board that does not split evenly among its digits must throw, not prune.
+installGlobals(0, 9)
+const badInst = {}
+mod.setParams(badInst, CELLS9)
+let threw = false
+try { Array.from(mod.update(badInst, makePuzzle(rows9, () => ALL))) } catch { threw = true }
+console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
+
 console.log('validate:', validateOk)
 console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
 console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

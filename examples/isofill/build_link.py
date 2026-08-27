@@ -1,7 +1,9 @@
 # Build the SudokuMaker puzzle link for the ISOFILL example from source.
 #
-# There is no template: a custom 10x10 board with no houses is small enough to
+# There is no template: a custom square board with no houses is small enough to
 # build from scratch (the board fields come from the scaffold check in #50).
+# The side comes from the grid's row count and the lowest digit from the
+# optional "minDigit" key (default 0): 10x10 with 0-9, or 9x9 with 1-9.
 # The grid and clue set come from puzzle.json; the code comes from main.js and
 # IsofillComponent.js, so a component fix flows into the link on the next run.
 #
@@ -23,20 +25,21 @@ from link_codec import decode_puzzle, encode_link
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
-N = 10
 CONSTRAINT_NAME = "ISOFILL"
 TIMED_COMPONENT = "IsofillComponent"
 RULE = (
     "Normal sudoku rules apply on the inner grid. "
-    "ISOFILL: Divide the grid into 10 regions, each with 10 orthogonally "
+    "ISOFILL: Divide the grid into {n} regions, each with {n} orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "
-    "All of the digits 0-9 must appear in the grid."
+    "All of the digits {lo}-{hi} must appear in the grid."
 )
 
 
 def build(component_path, puzzle_path):
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
+    N = len(spec["grid"])
+    lo = spec.get("minDigit", 0)
     # a cell holds a value only when it is a clue: a non-given value ships as an
     # entered digit and the recipient opens a solved board
     cells = [
@@ -52,8 +55,8 @@ def build(component_path, puzzle_path):
             "type": "custom",
             "width": N,
             "height": N,
-            "minDigit": 0,
-            "comment": RULE,
+            "minDigit": lo,
+            "comment": RULE.format(n=N, lo=lo, hi=lo + N - 1),
             "cells": cells,
             "constraints": [
                 # the built-in "Given digits" constraint every frame carries;
@@ -92,7 +95,9 @@ def check(link, doc, n_clues):
     back = decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
     p = back["puzzle"]
-    assert (p["type"], p["width"], p["height"], p["minDigit"]) == ("custom", N, N, 0)
+    N = p["width"]
+    assert (p["type"], p["height"]) == ("custom", N)
+    assert p["minDigit"] + N - 1 <= 9, "digits must fit the app's 0-9 range"
     assert len(p["cells"]) == N * N and not any("houses" in k for k in p)
     assert sum(1 for c in p["cells"] if c.get("given")) == n_clues
     assert p["constraints"][0] == {"type": 0}, "given-digits constraint missing"

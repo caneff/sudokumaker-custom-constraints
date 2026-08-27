@@ -15,6 +15,7 @@ FIXTURES = [
     "puzzle-32.json",
     "puzzle-35-silent.json",
     "puzzle-44.json",
+    "puzzle-9x9.json",
 ]
 
 for name in FIXTURES:
