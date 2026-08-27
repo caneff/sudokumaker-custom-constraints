@@ -26,6 +26,7 @@ export function makeCandidateState () {
       hasValue: c => state.cand.get(c).size === 1,
       getValue: c => [...state.cand.get(c)][0],
       getCandidates: c => state.cand.get(c),
+      getCandidatesBitMask: c => { let m = 0; for (const d of state.cand.get(c)) m |= 1 << d; return m },
       getCellsAreFilled: cs => cs.every(c => state.cand.get(c).size === 1),
       removeCandidateFromCell: (d, c) => { state.cand.get(c).delete(d) },
       removeCandidatesFromCell: (s, c) => { const set = state.cand.get(c); for (const d of s) set.delete(d) }
