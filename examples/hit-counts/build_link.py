@@ -23,6 +23,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Hit Counts Lines"
+TIMED_COMPONENT = "HitCountsComponent"
 
 
 def build(component_path, out_path):

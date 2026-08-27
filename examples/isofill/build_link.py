@@ -25,6 +25,7 @@ from minify import minify_js
 HERE = pathlib.Path(__file__).parent
 N = 10
 CONSTRAINT_NAME = "ISOFILL"
+TIMED_COMPONENT = "IsofillComponent"
 RULE = (
     "ISOFILL: Divide the grid into 10 regions, each with 10 orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "

@@ -22,6 +22,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
+TIMED_COMPONENT = "NumberedRoomsComponent"
 
 
 def build(component_path, out_path, backend_path=None):

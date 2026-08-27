@@ -23,6 +23,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Skyscraper Lines"
+TIMED_COMPONENT = "SkyscraperComponent"
 
 
 def build(component_path, out_path):

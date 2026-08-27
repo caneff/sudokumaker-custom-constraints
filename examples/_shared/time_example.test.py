@@ -13,7 +13,24 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from time_example import build_row, run
+from time_example import build_row, find_component_file, run
+
+
+def _doc(names):
+    """A minimal decode_puzzle()-shaped doc registering the given component
+    names on one constraint."""
+    return {
+        "puzzle": {
+            "constraints": [
+                {
+                    "definition": {
+                        "components": [{"name": n, "code": f"// {n}\n"} for n in names]
+                    }
+                }
+            ]
+        }
+    }
+
 
 if __name__ == "__main__":
     # candidate under the 0.9x bar -> PASS
@@ -75,5 +92,78 @@ if __name__ == "__main__":
             raise AssertionError("expected a missing-build_link.py failure")
         except FileNotFoundError as e:
             assert str(e) == f"missing {example_dir / 'build_link.py'}"
+
+    # TIMED_COMPONENT declared -> returns that file, ignoring any other
+    # matching .js file that happens to sit alongside it
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "declared"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text(
+            'CONSTRAINT_NAME = "Widget Lines"\nTIMED_COMPONENT = "WidgetComponent"\n'
+        )
+        (example_dir / "WidgetComponent.js").write_text("// widget\n")
+        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
+        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
+        result = find_component_file(example_dir, doc)
+        assert result == example_dir / "WidgetComponent.js"
+
+    # TIMED_COMPONENT declared but no working-tree file for it -> loud
+    # FileNotFoundError, even though another registered component's file
+    # sits right there
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "declared-missing-file"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text(
+            'TIMED_COMPONENT = "WidgetComponent"\n'
+        )
+        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
+        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
+        try:
+            find_component_file(example_dir, doc)
+            raise AssertionError("expected a missing-component-file failure")
+        except FileNotFoundError:
+            pass
+
+    # TIMED_COMPONENT declared but not a registered component -> loud
+    # ValueError
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "declared-unregistered"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text(
+            'TIMED_COMPONENT = "GadgetComponent"\n'
+        )
+        (example_dir / "GadgetComponent.js").write_text("// gadget\n")
+        doc = _doc(["WidgetComponent"])
+        try:
+            find_component_file(example_dir, doc)
+            raise AssertionError("expected an unregistered-component failure")
+        except ValueError:
+            pass
+
+    # no TIMED_COMPONENT, single working-tree match -> unchanged behaviour
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "undeclared-single"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
+        (example_dir / "WidgetComponent.js").write_text("// widget\n")
+        doc = _doc(["WidgetComponent"])
+        result = find_component_file(example_dir, doc)
+        assert result == example_dir / "WidgetComponent.js"
+
+    # no TIMED_COMPONENT, several working-tree matches -> unchanged
+    # fail-loud behaviour (this is the case the issue is about: an
+    # undeclared multi-component example must still fail loud)
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "undeclared-multi"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
+        (example_dir / "WidgetComponent.js").write_text("// widget\n")
+        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
+        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
+        try:
+            find_component_file(example_dir, doc)
+            raise AssertionError("expected an ambiguous-match failure")
+        except ValueError:
+            pass
 
     print("ok")
