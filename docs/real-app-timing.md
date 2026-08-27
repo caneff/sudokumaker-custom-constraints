@@ -72,12 +72,15 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 (the original wrapper code on the identical board), built by each example's
 `build_original.py`. Empty each and time them.
 
-To count something inside the app (how often `update` runs, how often a
-branch fires), make a probe copy of the component that
-`console.log('[probe] calls=...')` every few hundred calls, build a link from
-it with `build_link.py --component`, and run `app-solve.mjs` on the emptied
-link: the driver relays every browser console line that starts with `[probe]`
-and drops the rest. Worked example: `docs/research/133-skip-unchanged.md`.
+To count how often the app calls a component's `update` on one run:
+`uv run --with lzstring examples/_shared/count_calls.py skyscraper
+examples/skyscraper/SkyscraperLineComponent.js --ring-clues`. It makes a probe
+copy of the component that `console.log('[probe] calls=...')` every 500
+calls, builds a link from it with `build_link.py --component`, and runs
+`app-solve.mjs` on the emptied link; the driver relays every browser console
+line that starts with `[probe]` and drops the rest. To count anything else
+(how often a branch fires), patch the probe copy by hand the same way. Worked
+example: `docs/research/133-skip-unchanged.md`.
 
 ## app-strip.mjs: unattended greedy clue removal
 

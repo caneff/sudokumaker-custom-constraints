@@ -1,0 +1,63 @@
+# Count how many times the REAL app calls a component's `update` on one
+# "Find all solutions" run. The first question before any per-call
+# optimisation: is this component's update hot at all? (#133 asked it of the
+# skyscraper line component: 57,000 calls, so 0.1 ms per call is the lever.)
+#
+#   uv run --with lzstring examples/_shared/count_calls.py skyscraper \
+#       examples/skyscraper/SkyscraperLineComponent.js [--ring-clues]
+#
+# Makes a probe copy of the component whose `update` logs
+# `[probe] calls=N` every 500 calls, builds the example's same-board link from
+# it (build_link.py --component), empties the link so the solver searches, and
+# runs app-solve.mjs once; the driver relays the `[probe]` lines. Prints the
+# final count and the app's time. See docs/real-app-timing.md.
+
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from time_example import APP_SOLVE, build_candidate, empty_link_file
+
+EXAMPLES = pathlib.Path(__file__).parent.parent
+HOOK = "function * update (instance, puzzle) {"
+COUNTER = (
+    "let _probeCalls = 0\n" + HOOK + "\n"
+    "  if (++_probeCalls % 500 === 0) console.log(`[probe] calls=${_probeCalls}`)"
+)
+
+
+def main(example, component, ring_clues):
+    component = pathlib.Path(component)
+    src = component.read_text()
+    if HOOK not in src:
+        sys.exit(f"{component}: no `{HOOK}` to hook")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        probe = tmp / component.name  # build_link.py swaps by basename
+        probe.write_text(src.replace(HOOK, COUNTER, 1))
+        link = tmp / "probe.txt"
+        build_candidate(EXAMPLES / example, probe, link)
+        emptied = tmp / "probe_empty.txt"
+        empty_link_file(link, emptied, "empty" if ring_clues else "strip")
+        cmd = ["node", str(APP_SOLVE), str(emptied), "1"]
+        if ring_clues:
+            cmd.append("--ring-clues")
+        out = subprocess.run(cmd, capture_output=True, text=True)
+    probes = [ln for ln in out.stdout.splitlines() if ln.startswith("[probe]")]
+    if out.returncode != 0 or not probes:
+        sys.exit(
+            f"app-solve.mjs gave no [probe] lines:\n{out.stdout[-800:]}{out.stderr[-800:]}"
+        )
+    took = [ln for ln in out.stdout.splitlines() if "median" in ln]
+    print(
+        f"{component.name}: {probes[-1]} (last 500-call mark); {took[-1] if took else ''}"
+    )
+
+
+if __name__ == "__main__":
+    args = [a for a in sys.argv[1:] if a != "--ring-clues"]
+    if len(args) != 2:
+        sys.exit("usage: count_calls.py <example> <component.js> [--ring-clues]")
+    main(args[0], args[1], "--ring-clues" in sys.argv)
