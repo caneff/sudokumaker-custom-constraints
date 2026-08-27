@@ -71,3 +71,9 @@ load-bearing detail lives in `docs/`, and each rule points there.
 ## Style
 
 - Boring over clever. The reader at 3am wins.
+
+## Per-call cost patterns
+
+- Writing or tightening an `update`? See `docs/agents/per-call-cost.md` for
+  ISS's `enforceConsistency` cost patterns (bitmask state, scratch buffers,
+  bit idioms) and where SudokuMaker's shipped Skyscraper DP departs from them.
