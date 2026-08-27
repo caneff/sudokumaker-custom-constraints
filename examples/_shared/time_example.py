@@ -12,6 +12,7 @@
 #
 # Stays out of `just check`: it drives the live site (docs/real-app-timing.md).
 
+import argparse
 import datetime
 import json
 import pathlib
@@ -95,19 +96,28 @@ def find_component_file(example_dir, base_doc):
     return example_dir / f"{matches[0]}.js"
 
 
-def build_candidate(example_dir, component_file, out_path):
+def build_candidate(example_dir, component_file, out_path, board=None):
+    """Build the candidate link via the example's build_link.py. `board`
+    (None = the example's PUZZLE_LINK.txt) is passed as --board, which only
+    skyscraper's build_link.py takes; any other example fails loud here rather
+    than inside build_link.py's argument parser."""
+    if board and "--board" not in (example_dir / "build_link.py").read_text():
+        raise SystemExit(f"{example_dir.name}/build_link.py has no --board flag")
+    cmd = [
+        "uv",
+        "run",
+        "--with",
+        "lzstring",
+        str(example_dir / "build_link.py"),
+        "--component",
+        str(component_file),
+        "--out",
+        str(out_path),
+    ]
+    if board:
+        cmd += ["--board", str(example_dir / board)]
     subprocess.run(
-        [
-            "uv",
-            "run",
-            "--with",
-            "lzstring",
-            str(example_dir / "build_link.py"),
-            "--component",
-            str(component_file),
-            "--out",
-            str(out_path),
-        ],
+        cmd,
         check=True,
         capture_output=True,
         text=True,
@@ -155,13 +165,15 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     return row, verdict
 
 
-def run(example_dir, ring_clues=False):
+def run(example_dir, ring_clues=False, board=None):
     """Time one example end to end and return (row, verdict). Raises
-    FileNotFoundError naming the file when PUZZLE_LINK.txt or build_link.py
+    FileNotFoundError naming the file when the board link or build_link.py
     is missing. Links are stripped to their givens before timing; ring_clues
-    keeps the outer ring for edge-clue puzzles (probe_link.py `empty`)."""
+    keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
+    `board` names a link file (relative to example_dir) other than
+    PUZZLE_LINK.txt to time; the printed row's board label then names it."""
     mode = "empty" if ring_clues else "strip"
-    baseline_link = example_dir / "PUZZLE_LINK.txt"
+    baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
     if not baseline_link.exists():
         raise FileNotFoundError(f"missing {baseline_link}")
     build_link_py = example_dir / "build_link.py"
@@ -170,12 +182,13 @@ def run(example_dir, ring_clues=False):
 
     base_doc = decode_puzzle(baseline_link.read_text().strip())
     component_file = find_component_file(example_dir, base_doc)
+    board_label = f"{example_dir.name} ({board})" if board else example_dir.name
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
 
         candidate_link = tmp / "candidate.txt"
-        build_candidate(example_dir, component_file, candidate_link)
+        build_candidate(example_dir, component_file, candidate_link, board=board)
         candidate_doc = decode_puzzle(candidate_link.read_text().strip())
         byte_equal = registered_components(candidate_doc) == registered_components(
             base_doc
@@ -189,7 +202,7 @@ def run(example_dir, ring_clues=False):
         version = baseline_result["version"]
 
         if byte_equal:
-            return build_row(date, version, example_dir.name, baseline_result["median"])
+            return build_row(date, version, board_label, baseline_result["median"])
 
         candidate_probe = tmp / "candidate_probe.txt"
         empty_link_file(candidate_link, candidate_probe, mode)
@@ -197,16 +210,21 @@ def run(example_dir, ring_clues=False):
         return build_row(
             date,
             version,
-            example_dir.name,
+            board_label,
             baseline_result["median"],
             candidate_result["median"],
         )
 
 
 if __name__ == "__main__":
-    ring = "--ring-clues" in sys.argv
-    names = [a for a in sys.argv[1:] if a != "--ring-clues"]
-    if len(names) != 1:
-        raise SystemExit("usage: time_example.py <example> [--ring-clues]")
-    row, _verdict = run(ROOT / "examples" / names[0], ring_clues=ring)
+    p = argparse.ArgumentParser()
+    p.add_argument("example")
+    p.add_argument("--ring-clues", action="store_true")
+    p.add_argument(
+        "--board", help="link file in the example dir, instead of PUZZLE_LINK.txt"
+    )
+    a = p.parse_args()
+    row, _verdict = run(
+        ROOT / "examples" / a.example, ring_clues=a.ring_clues, board=a.board
+    )
     print(row)

@@ -13,7 +13,7 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from time_example import build_row, find_component_file, run
+from time_example import build_candidate, build_row, find_component_file, run
 
 
 def _doc(names):
@@ -92,6 +92,34 @@ if __name__ == "__main__":
             raise AssertionError("expected a missing-build_link.py failure")
         except FileNotFoundError as e:
             assert str(e) == f"missing {example_dir / 'build_link.py'}"
+
+    # board= names a different board file; the default PUZZLE_LINK.txt is not
+    # consulted -- the missing-file error names the requested board, not the
+    # default
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "other-board"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text("# stub\n")
+        (example_dir / "PUZZLE_LINK.txt").write_text("stub\n")  # present, but unused
+        try:
+            run(example_dir, board="PUZZLE_LINK_timing.txt")
+            raise AssertionError("expected a missing-timing-board failure")
+        except FileNotFoundError as e:
+            assert str(e) == f"missing {example_dir / 'PUZZLE_LINK_timing.txt'}"
+
+    # board= against an example whose build_link.py has no --board flag fails
+    # loud, naming the example, before any link is built
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "no-board-flag"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text("# stub, no board flag\n")
+        try:
+            build_candidate(
+                example_dir, example_dir / "X.js", example_dir / "out", board="B.txt"
+            )
+            raise AssertionError("expected a no---board failure")
+        except SystemExit as e:
+            assert str(e) == "no-board-flag/build_link.py has no --board flag"
 
     # TIMED_COMPONENT declared -> returns that file, ignoring any other
     # matching .js file that happens to sit alongside it
