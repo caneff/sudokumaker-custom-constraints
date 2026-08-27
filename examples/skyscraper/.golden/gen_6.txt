@@ -1,5 +1,5 @@
 gen_6.json: n=6, box 2x3, 8/24 clues shown, 16 blank, 0 interior givens
   original: hidden 0/16, interior 6/36, removed 79 cands, 4 passes
-  ours    : hidden 2/16, interior 6/36, removed 115 cands, 4 passes
-  DELTA ours over original: hidden +2, interior +0, removed +36
+  ours    : hidden 3/16, interior 7/36, removed 138 cands, 5 passes
+  DELTA ours over original: hidden +3, interior +1, removed +59
   (run with --search for solve-node counts)

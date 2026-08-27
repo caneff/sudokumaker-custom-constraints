@@ -18,9 +18,9 @@ times baseline and candidate 3 reps each, and prints one paste-ready row
 manual steps below are what it automates, and still apply to an example with
 no `build_link.py` yet.
 
-An example that registers more than one component (hit-counts,
-running-start, skyscraper each register a `Pair` component alongside the
-main one) declares which one `just time` follows: `build_link.py` sets
+An example that registers more than one component (hit-counts and
+running-start each register a `Pair` component alongside the main one)
+declares which one `just time` follows: `build_link.py` sets
 `TIMED_COMPONENT = "<ComponentName>"`, a sibling of the existing
 `CONSTRAINT_NAME` constant. Without that declaration, the driver falls back
 to the one registered component that has a same-named `.js` file in the
@@ -148,7 +148,7 @@ solve off. Same board within each row; only the constraint code differs.
 | Puzzle                        | Ours     | Original    | Result            |
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
-| Skyscraper 9×9 (given-only link, 21 active clues, 15 blank) | >300 s (`[timeout]`, 2026-08-27) | — | not yet timed: the true board exceeds the app limit. The earlier ~3.0 s vs ~55.7 s pair was timed with the 15 blank clues shipped as entered digits (fixed in a04b390) and is void (#113) |
+| Skyscraper 9×9 (given-only link, 21 active clues, 15 blank) | **unique in 2.8 s** with the joint peak-split `SkyscraperLineComponent` (2026-08-27, 3/3, reps 2.7/2.8/2.8 s, v2026.08.14). Before (per-line DP + pair cap): >300 s (`[timeout]`, 2026-08-27) | — | the joint component pays for itself: the true board went from over the app limit to seconds (#128). The earlier ~3.0 s vs ~55.7 s pair was timed with the 15 blank clues shipped as entered digits (fixed in a04b390) and is void (#113) |
 | Hit counts 9×9 (given-only link, 27 active clues) | >300 s (`[timeout]`, 2026-08-27) | — | same as Skyscraper: the true board exceeds the app limit (#113) |
 | ISOFILL (stripped, 35 givens) | **unique in 0.2 s** with cut (2026-08-27, 3/3, reps 0.2/0.2/0.2). Before cut: **no verdict** (app time limit, `[timeout]` 3/3, 2026-08-26) with reach, reach + capacity, reach + capacity + homeless, and the one-pass scan alike | "Found 10,000 solutions" in 0.3 s | cut kept (#101): the one rule that closes the search. Kept: cap, force, reach, capacity, cut, one-pass scan. Homeless removed (#91) |
 | ISOFILL clue ladder, no cut (stripped, 2026-08-27, 3 reps, #98) | 36/37/39 givens `[timeout]` 3/3; 40 givens 34.3 s or 41.4 s (one extra each); 41 givens 12.0 s | — | the search shrinks fast past 40 givens; with cut every rung reads 0–0.2 s |

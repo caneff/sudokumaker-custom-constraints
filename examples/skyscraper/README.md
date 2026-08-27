@@ -22,35 +22,33 @@ Two things follow, and both hurt an interactive clue:
   — the whole point of an interactive outside clue.
 - **It never couples the two ends of a line.** Each clue is on its own.
 
-So this example is one self-contained component per line that prunes both
-directions itself, plus a pair component and a per-side count. It follows the
-same shape as `../running-start/`; see `../../docs/gotchas.md` on why a custom
+So this example is one self-contained component per line that reads both end
+clues and the whole line together, plus a per-side count. It follows the same
+shape as `../running-start/`; see `../../docs/gotchas.md` on why a custom
 component must not lean on `replaceComponent`.
 
 ## What the components deduce
 
-**`SkyscraperComponent.js` — one per line, both directions.** It runs a
-forward/backward visibility DP over the line's live candidates, in the spirit of
-the Interactive Sudoku Solver's skyscraper handler but in plain digit sets. The
-state at each cell is the count of buildings seen so far and the tallest so far.
+**`SkyscraperLineComponent.js` — one per line, both clues at once.** A line is
+a full house, so its tallest building is exactly `n`, at one cell: the peak.
+The left clue is `1 +` the left-to-right maxima before the peak; the right clue
+is `1 +` the right-to-left maxima after it. The prefix and the suffix are
+disjoint, so each is a small DP over the digits below `n` — the state at each
+cell is the count of buildings seen so far and the tallest so far — and the two
+DPs join at every cell that can still hold the peak.
 
-- **Reverse (clue from line):** a clue value `k` is feasible only when some
-  candidate assignment makes exactly `k` buildings visible. The component removes
-  every clue value the line cannot realize.
-- **Forward (line from clue):** for the clue values still open, it keeps in each
-  line cell only the candidates that take part in some assignment reaching one of
-  those counts. This is full arc consistency for the clue, not a min/max bound.
+- **Clues from the line:** a clue value is feasible only when some peak position
+  realizes it on its side while the other side realizes some value the other
+  clue still allows. The component removes every clue value no peak position
+  supports.
+- **Line from the clues:** each cell keeps `n` only where the peak can sit, and
+  keeps a smaller digit only when it lies on some prefix or suffix path that
+  finishes with both clues accepted. This is arc consistency for the pair of
+  clues, not a min/max bound, and it subsumes the `L + R <= n + 1` cap.
 
-The DP ignores that a line's digits are all different. That makes its sets a
-little larger, never smaller, so it never removes a true value. The solver's own
-row/column rule recovers the rest.
-
-**`SkyscraperPairComponent.js` — two clues on one line.** The left clue `L` and
-the right clue `R` on the same line satisfy `L + R <= n + 1`. Only the tallest
-building is visible from both ends; every other building is visible from at most
-one end, so the two counts share exactly the peak. The component caps each clue
-by the other. When `L + R == n + 1` the line is unimodal — it rises to the peak,
-then falls — and the component propagates both runs, which pins the peak.
+The DPs ignore that the digits inside a prefix or suffix are all different. That
+makes their sets a little larger, never smaller, so the component never removes
+a true value. The solver's own row/column rule recovers the rest.
 
 **One `1` per side.** `main.js` adds a built-in
 `ExactDigitCountComponent(name, 1, 1, sideClues)` for each of the four sides. A
@@ -68,18 +66,18 @@ more and the solver guessed less.
 
 | puzzle | ours | original |
 | --- | --- | --- |
-| `gen_4` | 2 nodes | did not finish (200k-node cap) |
-| `gen_6` | 36 nodes | did not finish (200k-node cap) |
-| `gen_9` | 2652 nodes | did not finish (30k-node cap) |
+| `gen_4` | 0 nodes | did not finish (200k-node cap) |
+| `gen_6` | 8 nodes | did not finish (200k-node cap) |
+| `gen_9` | 762 nodes | did not finish (30k-node cap) |
 
 The reason is the interactive clue. The puzzle's one solution needs the skyscraper
 deductions; the sudoku rule and the shown clues alone do not pin it. Ours deduces
 the blank clues and prunes the lines, so it solves by nearly pure logic. The
 original deduces nothing about a blank clue, so it must *guess* every blank clue,
-and it wanders. The probe models the original's built-in as our own forward prune,
-gated to fire only once a clue is pinned — so the original gets every per-line
-deduction ours has for a known clue. The gap is exactly the three features it
-lacks: blank-clue deduction, pair coupling, and the one-1-per-side count. Run it:
+and it wanders. The probe models the original's built-in as a one-clue forward
+prune, gated to fire only once a clue is pinned — so the original gets every
+per-line deduction for a known clue. The gap is exactly the features it lacks:
+blank-clue deduction, two-clue coupling, and the one-1-per-side count. Run it:
 
 ```
 node examples/skyscraper/recovery-probe.mjs gen_6.json            # root recovery + soundness
@@ -88,15 +86,14 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
 
 ## Files
 
-- `main.js` — the backend segment. One component per line, one pair component
-  per doubly-clued line, and one count component per side.
-- `SkyscraperComponent.js` — the per-line component. Both directions plus the
-  final check.
-- `SkyscraperPairComponent.js` — couples the two clues on one line through
-  `L + R <= n + 1`.
-- `soundness-harness.mjs` — Node soundness fuzz for both components. Soundness =
-  the component never removes a cell's true value. Run it:
-  `node examples/skyscraper/soundness-harness.mjs`.
+- `main.js` — the backend segment. One line component per pair of opposite
+  clues, and one count component per side.
+- `SkyscraperLineComponent.js` — the line component: both clues, the whole
+  line, and the final check.
+- `soundness-harness.mjs` — Node soundness fuzz for the line component.
+  Soundness = the component never removes a cell's true value. Run it:
+  `node examples/skyscraper/soundness-harness.mjs` (`FUZZ=20000` for the deep
+  run).
 - `recovery-probe.mjs` — runs both wirings (ours and the original) over a built
   puzzle to compare solve work. Root recovery and soundness by default,
   search-node counts with `--search`. See "Is it faster than the original?".
@@ -121,13 +118,13 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
 - `build_link.py` — rebuilds the committed `PUZZLE_LINK.txt` (9x9) with one
   named component's code swapped for a candidate file, board and clues
-  unchanged: `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperComponent.js --out /tmp/candidate.txt`.
+  unchanged: `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
   See `docs/real-app-timing.md`.
 
 ## Paste into SudokuMaker
 
 Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add two component
-segments: `SkyscraperComponent` and `SkyscraperPairComponent`. Each group is one
+local constraint, and paste `main.js` as the main code. Add one component
+segment: `SkyscraperLineComponent`. Each group is one
 line: cell 0 the outside clue, the rest the line read inward. Leave a clue cell
 blank (`given: false`) to make it interactive; mark it given to show it.
