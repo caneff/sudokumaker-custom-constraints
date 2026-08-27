@@ -197,11 +197,10 @@ if (process.argv.includes('--search')) {
   const modes = [['original', buildOriginal], ['ours    ', buildOurs]].filter(([m]) => !only || m.trim() === only)
   const seen = {}
   for (const [label, build] of modes) {
-    const t = Date.now()
     const r = searchRun(build)
     seen[label.trim()] = r
     const note = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions}!)`)
-    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}, ${Date.now() - t}ms${note}`)
+    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}${note}`)
   }
   if (seen.original && seen.ours && !seen.ours.capped && seen.ours.nodes > 0) {
     const ratio = (seen.original.nodes / seen.ours.nodes).toFixed(0)
