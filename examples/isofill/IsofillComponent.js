@@ -33,6 +33,10 @@ function setParams (instance, cells) {
   // Neighbour lists once, not per visit: update runs on every search node and
   // the cut rule walks the grid hundreds of times per call.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
+  instance.mask = new Uint32Array(cells.length) // stamped visit mask, see reach
+  instance.targets = new Uint32Array(cells.length)
+  instance.stamp = 0
+  instance.targetStamp = 0
 }
 
 // Orthogonal neighbours by index arithmetic; cells are row-major on a square.
@@ -46,24 +50,36 @@ function neighbours (i, side) {
 }
 
 // Cells reachable from `starts` in at most `depth` steps through `allowed`.
-// Returns { mask, size }: one byte array per walk plus the count, in place of
-// a Set and a fresh neighbour array per visit — this walk is the hot loop of
-// every search node.
-function reach (starts, depth, allowed, nbrs) {
-  const mask = new Uint8Array(nbrs.length)
+// Returns { size, stamp }: `instance.mask[i] === stamp` marks a visited cell
+// until the next walk. Mask and stamp live on `instance` so a walk allocates nothing — this is the hot
+// loop of every search node. `limit` stops the walk once it holds that many
+// cells; `targets` (a stamped set of `want` cells) stops it once every target
+// is seen. Both callers only ask a yes/no, so they need no more of the walk.
+function reach (instance, starts, depth, allowed, limit = Infinity, targets = null, want = 0) {
+  const { nbrs, mask, targetStamp } = instance
+  const stamp = ++instance.stamp
   let size = 0
-  for (const i of starts) if (!mask[i]) { mask[i] = 1; size++ }
-  let frontier = starts
-  for (let step = 0; step < depth && frontier.length; step++) {
+  let frontier = []
+  for (const i of starts) {
+    if (mask[i] === stamp) continue
+    mask[i] = stamp; size++; frontier.push(i)
+    if (targets && targets[i] === targetStamp) want--
+  }
+  if (targets && want <= 0) return { size, stamp, done: true }
+  for (let step = 0; step < depth && frontier.length && size < limit; step++) {
     const next = []
     for (const i of frontier) {
       for (const n of nbrs[i]) {
-        if (allowed[n] && !mask[n]) { mask[n] = 1; size++; next.push(n) }
+        if (allowed[n] && mask[n] !== stamp) {
+          mask[n] = stamp; size++; next.push(n)
+          if (targets && targets[n] === targetStamp && --want === 0) return { size, stamp, done: true }
+          if (size >= limit) return { size, stamp, done: false }
+        }
       }
     }
     frontier = next
   }
-  return { mask, size }
+  return { size, stamp, done: false }
 }
 
 // BFS distance from `start` to every cell through `allowed`; unreachable
@@ -119,10 +135,13 @@ function * update (instance, puzzle) {
       for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
     } else if (placed.length > 0) {
       // Any region cell is within (size - placed) steps of the placed set.
-      const near = reach(placed, size - placed.length, allowed, nbrs)
-      // Capacity: the whole region lies inside `near`, so fewer than `size`
+      const walk = reach(instance, placed, size - placed.length, allowed)
+      // Capacity: the whole region lies inside the walk, so fewer than `size`
       // cells there is a dead branch; empty a placed cell so the solver sees it.
-      if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+      if (walk.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+      // Own copy: later walks reuse instance.mask.
+      const near = { size: walk.size, mask: new Uint8Array(cells.length) }
+      for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
       // Tour bound: the region is a connected set holding every placed cell
       // and x, so walking round a spanning tree of it is a closed tour through
       // them all; its cells number at least 1 + half the perimeter of any
@@ -154,25 +173,32 @@ function * update (instance, puzzle) {
       state[d].near = near.mask // budget (below) limits this digit to its walk
       for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
       // Cut: an open cell whose removal starves the walk (< size cells) or
-      // strands a placed cell must hold the digit (ticket #101).
+      // strands a placed cell must hold the digit (ticket #101). Each walk
+      // stops as soon as it has its answer: `size` cells, or every placed cell.
       const depth = size - placed.length
+      const targetStamp = ++instance.targetStamp
+      for (const i of placed) instance.targets[i] = targetStamp
       for (const x of open) {
         if (!near.mask[x]) continue
-        allowed[x] = false
-        const without = reach(placed, depth, allowed, nbrs)
-        let cut = without.size < size
-        if (!cut && placed.length > 1) {
-          const joined = reach([placed[0]], size - 1, allowed, nbrs)
-          cut = placed.some(i => !joined.mask[i])
+        let cut
+        let ways = 0
+        for (const n of nbrs[x]) if (allowed[n]) ways++
+        if (ways <= 1) {
+          // A dead end: removing it removes only itself.
+          cut = near.size - 1 < size
+        } else {
+          allowed[x] = false
+          cut = reach(instance, placed, depth, allowed, size).size < size
+          if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
+          allowed[x] = true
         }
-        allowed[x] = true
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
       }
     }
     if (placed.length > 1) {
       // Any two cells of a size-cell region are within (size - 1) steps.
-      const joined = reach([placed[0]], size - 1, allowed, nbrs)
-      for (const i of placed) if (!joined.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
+      const joined = reach(instance, [placed[0]], size - 1, allowed)
+      for (const i of placed) if (instance.mask[i] !== joined.stamp) yield puzzle.removeCandidateFromCell(d, cells[i])
     }
   }
   // Budget: every open cell needs a digit, and digit d can take at most
@@ -286,7 +312,7 @@ function validate (instance, puzzle) {
       count++
       if (first < 0) first = i
     }
-    if (count !== size || reach([first], size, allowed, nbrs).size !== size) return false
+    if (count !== size || reach(instance, [first], size, allowed).size !== size) return false
   }
   return true
 }
