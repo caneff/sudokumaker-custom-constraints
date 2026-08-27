@@ -43,6 +43,10 @@ class Spec:
     )
 
 
+# Every generated link opens with this sentence (project rule).
+RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+
+
 # ---- grid generation ------------------------------------------------------
 
 
@@ -285,7 +289,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
         "puzzle": {
             "name": f"{spec.title} {n}x{n}",
             "author": "",
-            "comment": spec.comment_fn(n),
+            "comment": RULES_PREFIX + spec.comment_fn(n),
             # minDigit/maxDigit pin the digit range to n; the app otherwise
             # defaults a custom puzzle to 0..9 regardless of grid size.
             "type": "custom",
