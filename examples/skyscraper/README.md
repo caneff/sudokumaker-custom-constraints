@@ -155,3 +155,10 @@ local constraint, and paste `main.js` as the main code. Add one component
 segment: `SkyscraperLineComponent`. Each group is one
 line: cell 0 the outside clue, the rest the line read inward. Leave a clue cell
 blank (`given: false`) to make it interactive; mark it given to show it.
+
+## Timing
+
+| 2026-08-27 | v2026.08.14-d47fc4b | skyscraper | 300ms | — | — | BASELINE |
+
+`just time skyscraper --ring-clues` (candidate byte-equal to baseline, so
+only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.

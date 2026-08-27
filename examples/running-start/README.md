@@ -110,3 +110,10 @@ committed dump of the puzzle's `cells` values and the constraint's
 `input.groups` in `[clueCell, lineCells]` form). The pair test also fuzzes a
 synthetic mountain line, because no line in this puzzle reaches the
 `A + B == n + 1` case that drives the pair's unimodal branch.
+
+## Timing
+
+| 2026-08-27 | v2026.08.14-d47fc4b | running-start | 1800ms | — | — | BASELINE |
+
+`just time running-start` (candidate byte-equal to baseline, so only a
+BASELINE row prints). See `docs/real-app-timing.md` for the protocol.

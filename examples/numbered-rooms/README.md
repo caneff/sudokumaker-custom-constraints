@@ -160,6 +160,13 @@ attempt: faster on the hard board **and** the clued board still verdicts
 unique, both judged on a 5-run median against the current baseline row, and a
 difference inside that baseline's run-to-run spread does not count.
 
+## Timing
+
+| 2026-08-27 | v2026.08.14-d47fc4b | numbered-rooms | 2300ms | — | — | BASELINE |
+
+`just time numbered-rooms --ring-clues` (candidate byte-equal to baseline, so
+only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.
+
 ## Not covered
 
 Numbered Rooms has no generator; `PUZZLE_LINK.txt` is a single hand-made puzzle,

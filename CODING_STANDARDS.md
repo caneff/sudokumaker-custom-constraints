@@ -47,34 +47,12 @@ load-bearing detail lives in `docs/`, and each rule points there.
 
 ## A deduction must pay for itself in solve time
 
-- **A stronger deduction is worth adding only when it makes the solver faster.**
-  Sound and tighter is not enough — a deduction runs every propagation, so it
-  must save more search than it costs. Judge it the way a solver is judged:
-  end-to-end solve time on real puzzles, not strength or nodes cut. See
-  `docs/agents/design-reasoning.md` and the worked measurement in
-  `examples/hit-counts/recovery-probe.mjs`. That probe times our mock, which
-  counts pruning; to time the app's own solver, see `docs/real-app-timing.md`.
-  The two can disagree — a deduction that cuts nodes in the mock can still be
-  slower in the app.
-- **Time only against a grid stripped to its givens.** A shipped link stores
-  the full solution as entered values. The app solves from whatever is in the
-  cells, so a run with entered values or pencil marks present is not a timing —
-  the app says so in its readout: "based on already entered values and pencil
-  marks". Strip the link first (`probe_link.py strip`, or `empty` for a puzzle
-  whose clues sit in the outer ring as non-given values). The tools enforce
-  it: `app-solve.mjs` refuses a board with entered digits unless
-  `--ring-clues` is passed, and `probe_link.py` refuses to write an unstripped
-  probe. Verified the hard way: ISOFILL read
-  "unique in 2 s" with 36 ring values still entered, and "no verdict" without.
-- **Do not benchmark an outside-clue component on a board whose ring is mostly
-  specified.** A component that reads clues from the border (Numbered Rooms,
-  Skyscraper, any edge-interactable) must be timed on a puzzle that leaves the
-  majority of the ring cells empty, so the solver actually searches the clue
-  cells. When most of the ring is already filled, a wrapper that waits for the
-  clue to collapse hands off to a built-in component on the first pass, and the
-  fixture measures that hand-off, not the search. Such a board flatters the lazy
-  wrapper and hides where a stronger component pays off. Pick the board first;
-  reject any where the ring is more than half specified.
+- **Trigger:** a deduction added to or removed from a component's `update`.
+- **Tool:** `just time <example>` (`--ring-clues` for an example whose clues
+  sit in the ring: Numbered Rooms, Skyscraper).
+- **Bar:** candidate ≤ 0.9× baseline, 3 reps, non-deterministic solve off.
+- **Record:** paste the printed row into the example's README, `## Timing`.
+- Full method, stripping rules, and caveats: `docs/real-app-timing.md`.
 
 ## Tests assert an observable outcome
 

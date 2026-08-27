@@ -232,3 +232,11 @@ pair section drives a line at the `A + B == cap` extreme and counts how often th
 per-cell branch fires; a second pair loop fuzzes random permutations, whose
 can't-hit cells exercise the dynamic cap; and a deterministic guard checks the
 pin branch never empties a forced-miss cell.
+
+## Timing
+
+`just time hit-counts` failed: `app-solve.mjs` refused the baseline probe with
+"1 entered values on the board; strip it first (probe_link.py strip), or pass
+--ring-clues for an edge-clue puzzle." The committed `PUZZLE_LINK.txt` does
+not strip clean through the tool's default `strip` mode. No row recorded —
+see `docs/real-app-timing.md` for the protocol once this is fixed.

@@ -315,3 +315,10 @@ There is no generator. Write a full solution grid into `puzzle.json`, list the
 clue cells, and run `verify.py` on it. It must print `unique`. To carve clues,
 remove one at a time and re-run; keep any whose removal makes the puzzle
 ambiguous. `just check` re-verifies the shipped instance on every run.
+
+## Timing
+
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill | 1500ms | — | — | BASELINE |
+
+`just time isofill` (candidate byte-equal to baseline, so only a BASELINE row
+prints). See `docs/real-app-timing.md` for the protocol.
