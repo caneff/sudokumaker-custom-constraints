@@ -18,10 +18,6 @@
 //!          still sits inside one connected component of the cells that allow
 //!          it, so every component under ten cells loses the digit; if none
 //!          reaches ten the branch is dead.
-//!   Crossing: two regions cannot sit on the two diagonals of a 2x2 block --
-//!          their paths would have to cross, and the crossing cell would
-//!          belong to both. One diagonal placed on a and one cell of the
-//!          other placed on b != a leaves the fourth cell unable to hold b.
 //!   Budget: every open cell needs a digit, and each digit can take at most
 //!          (10 - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
@@ -41,7 +37,6 @@ function setParams (instance, cells) {
   // Neighbour lists once, not per visit: update runs on every search node and
   // the cut rule walks the grid hundreds of times per call.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  instance.values = new Int16Array(cells.length) // placed digit per cell, -1 open
   instance.mask = new Uint32Array(cells.length) // stamped visit mask, see reach
   instance.targets = new Uint32Array(cells.length)
   instance.stamp = 0
@@ -121,7 +116,7 @@ function distances (instance, start, allowed, dist) {
 }
 
 function * update (instance, puzzle) {
-  const { cells, nbrs, side, values } = instance
+  const { cells, nbrs } = instance
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
@@ -144,39 +139,14 @@ function * update (instance, puzzle) {
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i]
     if (puzzle.hasValue(c)) {
-      const v = puzzle.getValue(c)
-      const s = state[v] // a value outside lo..hi throws: fail loud
+      const s = state[puzzle.getValue(c)] // a value outside lo..hi throws: fail loud
       s.placed.push(i)
       s.allowed[i] = 1
-      values[i] = v
     } else {
-      values[i] = -1
       for (const d of Array.from(puzzle.getCandidates(c))) {
         state[d].open.push(i)
         state[d].allowed[i] = 1
       }
-    }
-  }
-  // Crossing: a 2x2 block with one diagonal placed on digit a and one cell of
-  // the other diagonal placed on b != a leaves the fourth cell unable to hold
-  // b -- b's region would have to cross a's, and the crossing cell would
-  // belong to both (ISS's ConnectedCrossing). Three placed corners leave one
-  // target, so a block yields at most one removal; a target already placed on
-  // b empties, which is the dead branch the checkerboard is.
-  for (let r = 0; r + 1 < side; r++) {
-    for (let x = 0; x + 1 < side; x++) {
-      const nw = r * side + x
-      const ne = nw + 1
-      const sw = nw + side
-      const se = sw + 1
-      let target = -1
-      let b = -1
-      if (values[nw] >= 0 && values[nw] === values[se]) {
-        if (values[ne] >= 0 && values[ne] !== values[nw]) { target = sw; b = values[ne] } else if (values[sw] >= 0 && values[sw] !== values[nw]) { target = ne; b = values[sw] }
-      } else if (values[ne] >= 0 && values[ne] === values[sw]) {
-        if (values[nw] >= 0 && values[nw] !== values[ne]) { target = se; b = values[nw] } else if (values[se] >= 0 && values[se] !== values[ne]) { target = nw; b = values[se] }
-      }
-      if (b >= 0 && state[b].allowed[target]) yield puzzle.removeCandidateFromCell(b, cells[target])
     }
   }
   for (let d = lo; d <= hi; d++) {

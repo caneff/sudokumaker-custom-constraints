@@ -234,6 +234,15 @@ uniqueness — so the ranking fixture is what the verdict rests on. `verify.py`
 stays the independent proof that the puzzle is unique: it models the rule from
 scratch (flow-based connectivity) and does not depend on the app.
 
+*Crossing* — two regions cannot sit on the two diagonals of one 2×2 block,
+because their paths would have to cross and the crossing cell would belong to
+both (`ConnectedCrossing` in Interactive Sudoku Solver) — was tried and
+removed (#148): sound, and it fires, but no board got faster and two got
+slower, because the walk rules already refute nearly every checkerboard. The
+numbers and the probe that explains them are the #148 row in
+`docs/real-app-timing.md`; the rule and its two directed tests are in git
+history.
+
 ## Run the tests
 
 Soundness (needs Node):
