@@ -96,6 +96,9 @@ const context = await browser.newContext({ viewport: { width: 1400, height: 900 
 const rows = []
 for (let k = 0; k < reps; k++) {
   const page = await context.newPage()
+  // A component under measurement may console.log('[probe] ...') counters
+  // (calls, skips); relay only those lines, the site's own logging stays out.
+  page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
   rows.push(await runOnce(page))
   await page.close()
 }

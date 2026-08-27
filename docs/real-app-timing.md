@@ -72,6 +72,16 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 (the original wrapper code on the identical board), built by each example's
 `build_original.py`. Empty each and time them.
 
+To count how often the app calls a component's `update` on one run:
+`uv run --with lzstring examples/_shared/count_calls.py skyscraper
+examples/skyscraper/SkyscraperLineComponent.js --ring-clues`. It makes a probe
+copy of the component that `console.log('[probe] calls=...')` every 500
+calls, builds a link from it with `build_link.py --component`, and runs
+`app-solve.mjs` on the emptied link; the driver relays every browser console
+line that starts with `[probe]` and drops the rest. To count anything else
+(how often a branch fires), patch the probe copy by hand the same way. Worked
+example: `docs/research/133-skip-unchanged.md`.
+
 ## app-strip.mjs: unattended greedy clue removal
 
 `examples/_shared/app-strip.mjs` uses the same app, and the same solve
@@ -149,6 +159,7 @@ solve off. Same board within each row; only the constraint code differs.
 | ----------------------------- | -------- | ----------- | ----------------- |
 | Numbered rooms (blank clues)  | ~21.5 s  | >300 s (0/3 finished) | ours >14× faster |
 | Skyscraper 9×9 (given-only link, 21 active clues, 15 blank) | **unique in 2.8 s** with the joint peak-split `SkyscraperLineComponent` (2026-08-27, 3/3, reps 2.7/2.8/2.8 s, v2026.08.14). Before (per-line DP + pair cap): >300 s (`[timeout]`, 2026-08-27) | — | the joint component pays for itself: the true board went from over the app limit to seconds (#128). The earlier ~3.0 s vs ~55.7 s pair was timed with the 15 blank clues shipped as entered digits (fixed in a04b390) and is void (#113) |
+| Skyscraper 9×9, skip-unchanged cache in `update` (#133) | baseline 4.5 s / candidate 6.4 s, then 6.1 s / 6.1 s (each a `just time` median of 3, 2026-08-27, v2026.08.14) | — | dropped: the app re-runs a component almost only when one of its cells changed, so the skip fires on 7% of 57,000 calls; a wash inside the noise, below the 0.9× bar. See `docs/research/133-skip-unchanged.md` |
 | Hit counts 9×9 (given-only link, 27 active clues) | >300 s (`[timeout]`, 2026-08-27) | — | same as Skyscraper: the true board exceeds the app limit (#113) |
 | ISOFILL (stripped, 35 givens) | **unique in 0.2 s** with cut (2026-08-27, 3/3, reps 0.2/0.2/0.2). Before cut: **no verdict** (app time limit, `[timeout]` 3/3, 2026-08-26) with reach, reach + capacity, reach + capacity + homeless, and the one-pass scan alike | "Found 10,000 solutions" in 0.3 s | cut kept (#101): the one rule that closes the search. Kept: cap, force, reach, capacity, cut, one-pass scan. Homeless removed (#91) |
 | ISOFILL clue ladder, no cut (stripped, 2026-08-27, 3 reps, #98) | 36/37/39 givens `[timeout]` 3/3; 40 givens 34.3 s or 41.4 s (one extra each); 41 givens 12.0 s | — | the search shrinks fast past 40 givens; with cut every rung reads 0–0.2 s |
