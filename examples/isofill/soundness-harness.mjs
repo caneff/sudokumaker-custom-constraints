@@ -196,6 +196,25 @@ deadPut(9, [90, 91, 92, 93, 94, 95, 96, 97, 98, 99])
 const silentDead = once(rows, c => (c in deadPinned ? [deadPinned[c]] : [0, 1]))
 const silentDeadOk = CELLS.some(c => silentDead.getCandidates(c).size === 0)
 
+// ---- Perimeter split arc: digit 0 sits at border cells 0 and 3, digit 1 at
+// border cells 1 and 5. Read round the border those four are 0, 1, 0, 1, so
+// the two regions would have to interleave. Two disjoint connected regions
+// cannot, so the board is dead and a cell empties ----
+const arc = once(rows, c => (c === 0 || c === 3 ? [0] : c === 1 || c === 5 ? [1] : ALL))
+const arcOk = CELLS.some(c => arc.getCandidates(c).size === 0)
+
+// ---- Perimeter flank: digit 0 at border cells 0 and 3 flanks open border
+// cells 1 and 2, and digit 1 is placed at border cell 6, outside that arc. So
+// cell 1 cannot be 1 -- that reads 0, 1, 0, 1 round the border -- and it loses
+// nothing else: digit 2, placed only at interior cell 12, has no border
+// witness, and the silent digits stay. Interior cell 11 is not on the walk ----
+const flank = once(rows, c => (c === 0 || c === 3 ? [0] : c === 6 ? [1] : c === 12 ? [2] : ALL))
+// Cell 1 keeps every digit but 1 -- the assertion is the whole surviving set,
+// so a rule that stripped more than the outside digit would fail here.
+const flankKept = ALL.filter(d => d !== 1)
+const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
+  !flank.getCandidates(2).has(1) && flank.getCandidates(11).has(1)
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -215,8 +234,9 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
+console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
 console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

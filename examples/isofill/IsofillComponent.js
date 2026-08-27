@@ -18,6 +18,14 @@
 //!          still sits inside one connected component of the cells that allow
 //!          it, so every component under ten cells loses the digit; if none
 //!          reaches ten the branch is dead.
+//!   Perimeter: two disjoint connected regions cannot interleave round the
+//!          border, so four border cells never read a,b,a,b in cyclic order.
+//!          A digit whose placed border cells fall in two arcs separated by
+//!          one other digit both ways is that interleave: a dead branch. An
+//!          open border cell flanked by digit a both ways loses every digit
+//!          placed elsewhere on the border. The flank pass is one lap of the
+//!          border; the split-arc pass is one lap per digit holding two or
+//!          more border cells, over the compacted list of placed cells.
 //!   Budget: every open cell needs a digit, and each digit can take at most
 //!          (10 - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
@@ -50,6 +58,24 @@ function setParams (instance, cells) {
   instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
   instance.dist = []
   instance.others = []
+  // The border cells in cyclic order, and the scratch the perimeter rule walks
+  // them with: the placed positions and their digits. Its arc-id row is sized
+  // from the digit range, which only update reads.
+  instance.border = perimeter(instance.side)
+  instance.value = new Int8Array(cells.length)
+  instance.at = new Int16Array(instance.border.length)
+  instance.dig = new Int8Array(instance.border.length)
+}
+
+// The border cells of a `side` x `side` grid, in cyclic order clockwise from
+// the top-left corner.
+function perimeter (side) {
+  const out = []
+  for (let x = 0; x < side; x++) out.push(x)
+  for (let y = 1; y < side; y++) out.push(y * side + side - 1)
+  for (let x = side - 2; x >= 0; x--) out.push((side - 1) * side + x)
+  for (let y = side - 2; y >= 1; y--) out.push(y * side)
+  return out
 }
 
 // Orthogonal neighbours by index arithmetic; cells are row-major on a square.
@@ -136,10 +162,14 @@ function * update (instance, puzzle) {
     }
     state.digits.push(d)
   }
+  const value = instance.value // cell -> its value, or -1 while open
+  value.fill(-1)
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i]
     if (puzzle.hasValue(c)) {
-      const s = state[puzzle.getValue(c)] // a value outside lo..hi throws: fail loud
+      const d = puzzle.getValue(c)
+      value[i] = d
+      const s = state[d] // a value outside lo..hi throws: fail loud
       s.placed.push(i)
       s.allowed[i] = 1
     } else {
@@ -249,6 +279,66 @@ function * update (instance, puzzle) {
   const { dead, drops } = budget(state, lo, hi, size)
   if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[dead])
   for (const [x, d] of drops) yield puzzle.removeCandidateFromCell(d, cells[x])
+  yield * perimeterRule(instance, puzzle, lo, hi)
+}
+
+// Perimeter: two disjoint orthogonally connected regions cannot interleave
+// round the border. There are no four border cells in cyclic order a, b, a, b:
+// region a holds a path joining its two cells and region b one joining its
+// own, and extending each path's ends to the grid edge inside their own cells
+// gives two curves in the rectangle whose ends interleave on its boundary, so
+// the curves cross -- and two axis-aligned centre-to-centre paths cross only at
+// a cell centre, which the regions cannot share.
+//
+// Two deductions follow, both reading only the border cycle:
+//   Split arc: a digit whose placed border cells fall in two arcs with one
+//     other digit placed in each is exactly that a, b, a, b -- a dead branch,
+//     so a placed cell is emptied and the solver sees it.
+//   Flank: an open border cell whose nearest placed border cells in both
+//     directions hold digit a loses every digit b placed elsewhere on the
+//     border, since a, b, a, b is what the cycle would then read. A digit
+//     placed only in the interior witnesses no such arc and is left alone.
+function * perimeterRule (instance, puzzle, lo, hi) {
+  const { cells, border, value, at, dig } = instance
+  const arcOf = instance.arcOf || (instance.arcOf = new Int8Array(hi + 1)) // arc id per digit
+  const n = border.length
+  let m = 0 // placed border cells, in cyclic order
+  let mask = 0 // digits placed somewhere on the border
+  for (let k = 0; k < n; k++) {
+    const d = value[border[k]]
+    if (d >= 0) { at[m] = k; dig[m++] = d; mask |= 1 << d }
+  }
+  if (m < 2) return // one arc at most, and no second digit to interleave with
+  // Split arc: for a digit placed at two or more border cells, walk the cycle
+  // from one of them. Its cells cut the cycle into arcs; a digit that lands in
+  // two of them interleaves with it.
+  for (let a = lo; a <= hi; a++) {
+    if (!(mask & (1 << a))) continue
+    let first = -1
+    let count = 0
+    for (let s = 0; s < m; s++) if (dig[s] === a) { count++; if (first < 0) first = s }
+    if (count < 2) continue
+    arcOf.fill(-1)
+    let id = -1
+    for (let t = 0; t < m; t++) {
+      const d = dig[(first + t) % m]
+      if (d === a) { id++; continue }
+      if (arcOf[d] < 0) arcOf[d] = id
+      else if (arcOf[d] !== id) { yield puzzle.removeCandidateFromCell(a, cells[border[at[first]]]); return }
+    }
+  }
+  // Flank: one lap, stripping each gap whose two flanking cells hold the same
+  // digit. Every cell strictly between two consecutive placed cells is open.
+  for (let s = 0; s < m; s++) {
+    const a = dig[s]
+    if (dig[(s + 1) % m] !== a) continue
+    const strip = mask & ~(1 << a)
+    if (!strip) continue
+    const q = at[(s + 1) % m]
+    for (let k = at[s] + 1 >= n ? 0 : at[s] + 1; k !== q; k = k + 1 >= n ? 0 : k + 1) {
+      yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(strip), cells[border[k]])
+    }
+  }
 }
 
 // Bipartite matching, open cells to digits, where digit d has (size - placed)

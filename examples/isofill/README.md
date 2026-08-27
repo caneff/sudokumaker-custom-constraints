@@ -145,6 +145,25 @@ cells:
   components also become the digit's walk for budget below, so the matching
   prune sees the restriction too. One flood fill per silent digit, over
   cells the digit already allows.
+- **Perimeter** — the only rule that reads the border as a cycle. Two
+  disjoint orthogonally connected regions cannot interleave round it: no four
+  border cells read `a, b, a, b` in cyclic order. Region `a` holds a path
+  joining its two cells and region `b` one joining its own; extend each path's
+  ends to the grid edge inside their own cells and the two curves have
+  interleaved ends on the rectangle's boundary, so they cross — and two
+  axis-aligned centre-to-centre paths cross only at a cell centre, which
+  disjoint regions cannot share. Two deductions follow. *Split arc*: a digit
+  whose placed border cells fall into two arcs with one other digit placed in
+  each is that forbidden `a, b, a, b`, so the branch is dead (the component
+  empties a cell). *Flank*: an open border cell whose nearest placed border
+  cells in both directions hold digit `a` loses every digit `b` placed
+  somewhere else on the border, because `b` there would read `a, b, a, b`. A
+  digit placed only in the *interior* gives no such witness and is left alone,
+  and interior cells are never touched. This is ISS's `ConnectedBorder`
+  (`connected_values.md` §5.3), which handles two sets; ISOFILL's regions
+  partition the grid, so the rule runs per digit pair instead of on one
+  transition count. One lap of the 36 border cells for the flank pass, and one
+  lap per digit that holds two or more border cells for the split-arc pass.
 - **Budget** — the one rule that looks across digits. Every open cell needs
   a digit, and digit `d` can take at most `10 − placed` more cells, only
   cells inside its walk. Build the flow network source → digit (capacity
@@ -218,7 +237,7 @@ An earlier "unique in 2 s" figure was measured with 36 solution values still
 entered in the outer ring and was wrong.
 
 The kept deductions are cap, force, reach (with split), capacity, cut, tour,
-silent, and budget with its matching prune.
+silent, perimeter, and budget with its matching prune.
 *Homeless* — an earlier, weaker form of silent that pruned only when exactly
 one component of ten or more cells survived — was tried and removed: sound,
 but no verdict change and no time change (#91; the commit stays in git
@@ -242,6 +261,21 @@ slower, because the walk rules already refute nearly every checkerboard. The
 numbers and the probe that explains them are the #148 row in
 `docs/real-app-timing.md`; the rule and its two directed tests are in git
 history.
+
+*Perimeter* — kept (#149). It is the third rule tried from ISS's connectivity
+handler and the first that pays. Where crossing and the blob gate only saw
+what `reach` and `cut` already see, this one fires on border cells the walk
+rules cannot decide, because a region can still route around the obstruction
+inside the grid: over the harness fuzz set, 4,037 of 10,000 states end at a
+strictly tighter fixpoint with the rule than without it. In the app it fired
+on 30% of `puzzle-32`'s update calls and 43% of `puzzle-35-silent`'s, against
+crossing's 0.7%. The timing follows the firing: `puzzle-35-silent`
+48.8 s → 34.9 s, ratio **0.72**, well past the 0.9× bar and far outside that
+board's spread, and two more interleaved pairs read 0.76 and 0.73; `puzzle-30` flat to slightly better; `puzzle-32` flat on
+medians (4.0 s either way over seven interleaved baseline/candidate rounds),
+though five of those seven rounds leaned 5–13% slow, so read it as a wash the
+rule pays for many times over on the hard board. The numbers are the #149 rows
+in `## Timing` below and the #149 commit body.
 
 *The blob gate on cut* — the cut rule walks twice per open cell, once to ask
 whether removing the cell starves the region below ten and once to ask whether
@@ -319,6 +353,22 @@ ambiguous. `just check` re-verifies the shipped instance on every run.
 ## Timing
 
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill | 1500ms | — | — | BASELINE |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-35-silent (#149 perimeter) | 48.8 s | 34.9 s | 0.72 | KEPT; pairs 0.72/0.76/0.73 |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-30 (#149 perimeter) | 5.0 s | 4.8 s | 0.96 | wash |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-32 (#149 perimeter) | 4.0 s | 4.0 s | 1.00 | median of 7 interleaved rounds; 5 leaned 5–13% slow |
 
 `just time isofill` (candidate byte-equal to baseline, so only a BASELINE row
 prints). See `docs/real-app-timing.md` for the protocol.
+
+The three #149 rows are hand-run, because `build_link.py` takes no `--board`
+and `just time` therefore cannot reach the hard fixtures. Baseline and
+candidate links were built from the component at `17b4344` and from this
+branch, each stripped to its givens and timed 3 reps with `app-solve.mjs`
+against the recorded app. Only `puzzle-35-silent` clears the 0.9x bar, and it
+is the board the verdict rests on: three separate interleaved
+baseline/candidate pairs read 0.72, 0.76 and 0.73, a 14 s gap against a
+baseline that spread 4.9 s. `puzzle-32`'s row is the median of seven
+interleaved rounds (baseline 3.7/4.2/3.8/4.3/4.0/4.3/3.7 s, candidate
+4.0/4.4/4.3/4.0/4.4/4.0/4.0 s). The rounds were interleaved because a straight
+A-then-B pass drifted: one later baseline block on `puzzle-32` read 5.0 s
+against an earlier 3.6 s on identical code.
