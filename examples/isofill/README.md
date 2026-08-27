@@ -35,14 +35,27 @@ exists to teach.
   app with `../_shared/app-strip.mjs`) with 32 givens; `verify.py` (CP-SAT)
   proves it unique. The hard fixture: the shipped grid is minimal
   at 35 givens and closes in 0.2 s, too fast to rank rules; this one takes
-  the app ~27 s, so a rule change shows. Not the shipped instance.
+  the app ~27 s, so a rule change shows. Not the shipped instance. Now
+  minimal under the current component (4.1 s; no given can go).
+- `puzzle-30.json`, `puzzle-35-silent.json` — the **silent-digit** fixtures,
+  built to attack the component where it is weakest: a digit with no given
+  at all gets no rule (reach, tour, cut, and the walk that limits budget all
+  need a placed cell), so the app finds its region by guessing. Both are
+  CP-SAT strips of one sampled grid (`verify.py sample 11`) that remove every
+  given of one digit first, then the rest; `verify.py` proves each unique.
+  `puzzle-30.json` (digit 3 silent, 30 givens) reads unique in **6.7 s** —
+  the ranking fixture. `puzzle-35-silent.json` (digit 2 silent, 35 givens)
+  gets **no verdict** inside the app's minute; give it one cell of digit 2
+  back and it closes in 0.1 s. That is the gap to close next: a deduction
+  for a digit with zero placed cells.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
   swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
   builds another instance (`puzzle-44.json` for timing).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
-- `PUZZLE_LINK-32.txt`, `PUZZLE_LINK-44.txt` — the hard fixtures as
+- `PUZZLE_LINK-30.txt`, `PUZZLE_LINK-32.txt`, `PUZZLE_LINK-35-silent.txt`,
+  `PUZZLE_LINK-44.txt` — the hard fixtures as
   stripped links (givens only, nothing entered), built by
   `build_hard_links.py` on every `just check`. Open one to see the board the
   timing table is talking about.

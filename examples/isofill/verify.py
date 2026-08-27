@@ -61,6 +61,9 @@ def sample(seed):
     m, x = model({})
     s = cp_model.CpSolver()
     s.parameters.random_seed = seed
+    # A seed alone barely moves the default search (it hands back striped
+    # grids); randomize_search makes the seed pick a genuinely different grid.
+    s.parameters.randomize_search = True
     s.parameters.num_workers = 8
     assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
     return ["".join(str(s.Value(x[r, c])) for c in range(N)) for r in range(N)]
