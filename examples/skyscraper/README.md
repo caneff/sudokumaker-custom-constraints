@@ -33,11 +33,13 @@ component must not lean on `replaceComponent`.
 a full house, so its tallest building is exactly `n`, at one cell: the peak.
 The left clue is `1 +` the left-to-right maxima before the peak; the right clue
 is `1 +` the right-to-left maxima after it. The prefix and the suffix are
-disjoint, so each is a small DP over the digits below `n` — the state at each
-cell is the count of buildings seen so far and the tallest so far — and the two
-DPs join at every cell that can still hold the peak. Each DP layer is a bitmask
-of possible tallest-so-far digits per count, held in one reused buffer, so a
-layer transition is a handful of bit operations.
+disjoint and together use every digit below `n` exactly once, so each is a DP
+over *subsets* of those digits — the state is the subset used so far plus the
+count of buildings seen — and the two DPs join at every cell that can still
+hold the peak, pairing a subset on one side with its complement on the other.
+A subset fixes both how many cells are filled (its popcount) and the tallest so
+far (its highest digit), so a whole DP layer is one bitmask of counts per
+subset, held in one reused buffer indexed by subset.
 
 - **Clues from the line:** a clue value is feasible only when some peak position
   realizes it on its side while the other side realizes some value the other
@@ -48,9 +50,10 @@ layer transition is a handful of bit operations.
   finishes with both clues accepted. This is arc consistency for the pair of
   clues, not a min/max bound, and it subsumes the `L + R <= n + 1` cap.
 
-The DPs ignore that the digits inside a prefix or suffix are all different. That
-makes their sets a little larger, never smaller, so the component never removes
-a true value. The solver's own row/column rule recovers the rest.
+Tracking the digit subset makes the sweep exact for a line: a value survives
+only when some full line assignment consistent with the candidates and both
+clues uses it. The true line is a permutation, so every one of its steps is a
+transition the DP takes and no true value is ever removed.
 
 **One `1` per side.** `main.js` adds a built-in
 `ExactDigitCountComponent(name, 1, 1, sideClues)` for each of the four sides. A
