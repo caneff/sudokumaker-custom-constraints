@@ -70,3 +70,10 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search } from
 }
 
 console.log('recovery-lib.test.mjs: all seams pass')
+
+// ---- the mock puzzle's bitmask read mirrors the app: bit d = digit d ----
+{
+  const state = makeCandidateState()
+  state.cand.set(0, new Set([1, 3, 9]))
+  assert.strictEqual(state.puzzle.getCandidatesBitMask(0), (1 << 1) | (1 << 3) | (1 << 9))
+}
