@@ -39,7 +39,11 @@ def build(component_path, puzzle_path):
         for c in range(N):
             # a cell holds a value only when it is a given; anything else
             # ships as an entered digit and the recipient opens a solved board
-            cell = {"value": int(spec["grid"][r][c]), "given": True} if (r, c) in clues else {}
+            cell = (
+                {"value": int(spec["grid"][r][c]), "given": True}
+                if (r, c) in clues
+                else {}
+            )
             cells.append(cell)
     doc = {
         "formatVersion": "1.6.0",
