@@ -40,6 +40,7 @@ from minify import minify_js
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
 CONSTRAINT_NAME = "Running Start Lines"
+TIMED_COMPONENT = "RunningStartComponent"
 
 
 def build(component_path, out_path):

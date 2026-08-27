@@ -41,12 +41,45 @@ def registered_components(doc):
     return result
 
 
+TIMED_COMPONENT_RE = re.compile(r'^TIMED_COMPONENT\s*=\s*"([^"]+)"', re.MULTILINE)
+
+
+def read_timed_component(example_dir):
+    """The name in build_link.py's TIMED_COMPONENT = "..." line, or None if
+    the example declares no such constant. Reads the file as text -- no
+    import -- so a side-effect-heavy build_link.py module body never runs."""
+    build_link_py = example_dir / "build_link.py"
+    m = TIMED_COMPONENT_RE.search(build_link_py.read_text())
+    return m.group(1) if m else None
+
+
 def find_component_file(example_dir, base_doc):
-    """The one registered component with a same-named .js file on disk --
-    the working-tree source build_link.py's --component contract expects.
-    Raises if none or more than one file matches: a silent pick among
+    """The working-tree component file the timing loop follows.
+
+    If build_link.py declares TIMED_COMPONENT = "<Name>", that name settles
+    it: <example_dir>/<Name>.js, or a loud failure naming the problem
+    (missing file, or a name not registered on the base doc).
+
+    Otherwise, the one registered component with a same-named .js file on
+    disk. Raises if none or more than one file matches: a silent pick among
     several would time the wrong edit (CODING_STANDARDS: fail loud)."""
     names = sorted(registered_components(base_doc))
+
+    declared = read_timed_component(example_dir)
+    if declared is not None:
+        if declared not in names:
+            raise ValueError(
+                f"{example_dir.name}'s TIMED_COMPONENT ({declared!r}) is not "
+                f"a registered component ({', '.join(names)})"
+            )
+        component_file = example_dir / f"{declared}.js"
+        if not component_file.exists():
+            raise FileNotFoundError(
+                f"{example_dir.name}'s TIMED_COMPONENT ({declared!r}) has no "
+                f"working-tree file at {component_file}"
+            )
+        return component_file
+
     matches = [n for n in names if (example_dir / f"{n}.js").exists()]
     if not matches:
         raise FileNotFoundError(

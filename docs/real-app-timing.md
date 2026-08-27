@@ -9,13 +9,23 @@ mock can still cost more than it saves in the app.
 `examples/_shared/app-solve.mjs` times the real solver. Use it to settle "does
 this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
 
-For an example with a `build_link.py` (numbered-rooms, skyscraper), `just time
-<example>` runs the whole loop below in one command: it builds a candidate
-link from the working-tree component, times baseline and candidate 3 reps
-each, and prints one paste-ready row (date, app version, board, both medians,
-ratio, PASS/FAIL at candidate <= 0.9x baseline). Byte-equal candidate code
-prints a baseline-only row. The manual steps below are what it automates, and
-still apply to an example with no `build_link.py` yet.
+For an example with a `build_link.py` (hit-counts, isofill, numbered-rooms,
+running-start, skyscraper), `just time <example>` runs the whole loop below in
+one command: it builds a candidate link from the working-tree component,
+times baseline and candidate 3 reps each, and prints one paste-ready row
+(date, app version, board, both medians, ratio, PASS/FAIL at candidate <=
+0.9x baseline). Byte-equal candidate code prints a baseline-only row. The
+manual steps below are what it automates, and still apply to an example with
+no `build_link.py` yet.
+
+An example that registers more than one component (hit-counts,
+running-start, skyscraper each register a `Pair` component alongside the
+main one) declares which one `just time` follows: `build_link.py` sets
+`TIMED_COMPONENT = "<ComponentName>"`, a sibling of the existing
+`CONSTRAINT_NAME` constant. Without that declaration, the driver falls back
+to the one registered component that has a same-named `.js` file in the
+example directory, and still fails loud — `FileNotFoundError` for zero
+matches, `ValueError` for several — rather than guess which edit to time.
 
 ## How it works
 
