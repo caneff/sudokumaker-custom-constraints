@@ -27,6 +27,7 @@ N = 10
 CONSTRAINT_NAME = "ISOFILL"
 TIMED_COMPONENT = "IsofillComponent"
 RULE = (
+    "Normal sudoku rules apply on the inner grid. "
     "ISOFILL: Divide the grid into 10 regions, each with 10 orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "
     "All of the digits 0-9 must appear in the grid."
