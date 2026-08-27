@@ -3,7 +3,7 @@
 // run. Run: node examples/_shared/app-strip-lib.test.mjs
 
 import assert from 'assert'
-import { seededShuffle, decideRemoval, keptLine, keepLine, minimumLine, outputJson } from './app-strip-lib.mjs'
+import { seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
 
 // ---- seededShuffle: a fixed seed reproduces one exact, known permutation ----
 {
@@ -13,51 +13,16 @@ import { seededShuffle, decideRemoval, keptLine, keepLine, minimumLine, outputJs
   assert.deepStrictEqual(a, b, 'same seed must reproduce the same order')
 }
 
-// ---- decideRemoval: a unique verdict on the first attempt removes the clue, no retry ----
-{
-  const r = decideRemoval('unique')
-  assert.strictEqual(r.needsRetry, false)
-  assert.strictEqual(r.remove, true)
-  assert.strictEqual(r.finalVerdict, 'unique')
-}
+// ---- settleVerdict: a non-'?' first verdict is final, v2 unread ----
+assert.strictEqual(settleVerdict('unique', undefined), 'unique')
+assert.strictEqual(settleVerdict('not-unique', undefined), 'not-unique')
+assert.strictEqual(settleVerdict('timeout', undefined), 'timeout')
 
-// ---- decideRemoval: not-unique keeps the given, no retry ----
-{
-  const r = decideRemoval('not-unique')
-  assert.strictEqual(r.needsRetry, false)
-  assert.strictEqual(r.remove, false)
-  assert.strictEqual(r.finalVerdict, 'not-unique')
-}
-
-// ---- decideRemoval: a timeout keeps the given, no retry ----
-{
-  const r = decideRemoval('timeout')
-  assert.strictEqual(r.needsRetry, false)
-  assert.strictEqual(r.remove, false)
-  assert.strictEqual(r.finalVerdict, 'timeout')
-}
-
-// ---- decideRemoval: one retry on '?', never a second ----
-{
-  const cases = [
-    // [verdict1, verdict2, needsRetry, remove, finalVerdict]
-    ['?', null, true, false, '?'], // no second verdict yet -> ask for one retry
-    ['?', 'unique', false, true, 'unique'], // retry came back unique -> remove
-    ['?', 'not-unique', false, false, 'not-unique'], // retry came back not-unique -> keep
-    ['?', '?', false, false, '?'] // retry still '?' -> keep, no further retry
-  ]
-  for (const [v1, v2, needsRetry, remove, finalVerdict] of cases) {
-    const r = decideRemoval(v1, v2)
-    assert.strictEqual(r.needsRetry, needsRetry, `needsRetry for (${v1}, ${v2})`)
-    assert.strictEqual(r.remove, remove, `remove for (${v1}, ${v2})`)
-    assert.strictEqual(r.finalVerdict, finalVerdict, `finalVerdict for (${v1}, ${v2})`)
-  }
-}
-
-// ---- print lines ----
-assert.strictEqual(keptLine(34, 'unique', 200), '34 givens  unique  200 ms')
-assert.strictEqual(keepLine(2, 5, 'not-unique'), 'keep (2,5)  (not-unique)')
-assert.strictEqual(minimumLine(35), 'minimum 35 givens')
+// ---- settleVerdict: a '?' first verdict settles on the retry's verdict, ----
+// ---- whatever that is -- never a second retry ----
+assert.strictEqual(settleVerdict('?', 'unique'), 'unique')
+assert.strictEqual(settleVerdict('?', 'not-unique'), 'not-unique')
+assert.strictEqual(settleVerdict('?', '?'), '?')
 
 // ---- output JSON sorts the surviving clues and keeps the grid as given ----
 {

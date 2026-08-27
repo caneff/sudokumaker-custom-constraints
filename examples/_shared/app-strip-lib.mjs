@@ -27,25 +27,11 @@ export function seededShuffle (arr, seed) {
   return a
 }
 
-// Whether a removal trial survives, given the verdict(s) the app returned.
-// The driver runs one solve; on a '?' verdict (no readout appeared) it
-// retries once and passes both here. A retried '?' still keeps the given --
-// this never loops beyond one retry.
-export function decideRemoval (verdict1, verdict2 = null) {
-  const settled = verdict1 === '?' ? verdict2 : verdict1
-  return { needsRetry: settled === null, finalVerdict: settled ?? '?', remove: settled === 'unique' }
-}
-
-export function keptLine (n, verdict, ms) {
-  return `${n} givens  ${verdict}  ${ms} ms`
-}
-
-export function keepLine (row, col, verdict) {
-  return `keep (${row},${col})  (${verdict})`
-}
-
-export function minimumLine (n) {
-  return `minimum ${n} givens`
+// Settle a trial's verdict: a '?' (no readout appeared) gets exactly one
+// retry, and whatever that retry returns is final -- never a second retry.
+// v2 is only read when v1 is '?'.
+export function settleVerdict (v1, v2) {
+  return v1 === '?' ? v2 : v1
 }
 
 // The surviving clue set, sorted, alongside the grid it was cut from.

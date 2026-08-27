@@ -56,7 +56,7 @@ import fs from 'fs'
 import path from 'path'
 import { parseReadout } from './app-solve-lib.mjs'
 import { clickText, clickIcon, makeDeterministic } from './app-dom.mjs'
-import { seededShuffle, decideRemoval, keptLine, keepLine, minimumLine, outputJson } from './app-strip-lib.mjs'
+import { seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
 
 const args = process.argv.slice(2)
 const gridFlagIdx = args.indexOf('--grid')
@@ -174,22 +174,22 @@ for (let i = 0; i < kept.length;) {
   const digit = grid[row][col]
 
   let readout = await trySolveWithout(page, row, col)
-  let decision = decideRemoval(readout.verdict)
-  if (decision.needsRetry) {
+  let verdict = readout.verdict
+  if (verdict === '?') {
     await settleAfterSolve(page)
     readout = await trySolveWithout(page, row, col)
-    decision = decideRemoval('?', readout.verdict)
+    verdict = settleVerdict('?', readout.verdict)
   }
 
-  if (decision.remove) {
+  if (verdict === 'unique') {
     kept.splice(i, 1)
-    console.log(keptLine(kept.length, decision.finalVerdict, readout.sum))
+    console.log(`${kept.length} givens  ${verdict}  ${readout.sum} ms`)
     fs.writeFileSync(outPath, outputJson(grid, kept))
   } else {
     await settleAfterSolve(page)
     await restoreGiven(page, row, col, digit)
-    console.log(keepLine(row, col, decision.finalVerdict))
-    if (decision.finalVerdict === 'timeout') {
+    console.log(`keep (${row},${col})  (${verdict})`)
+    if (verdict === 'timeout') {
       const timeoutPath = outPath.replace(/\.json$/, `.timeout-${kept.length}.json`)
       fs.writeFileSync(timeoutPath, outputJson(grid, kept))
     }
@@ -200,5 +200,5 @@ for (let i = 0; i < kept.length;) {
   await settleAfterSolve(page)
 }
 
-console.log(minimumLine(kept.length))
+console.log(`minimum ${kept.length} givens`)
 await browser.close()
