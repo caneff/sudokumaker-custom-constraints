@@ -32,7 +32,8 @@ exists to teach.
   did: ~9.1 s with capacity, ~25.9 s without; 0 ms with cut). Not the shipped instance. The harness asserts
   the two grids stay identical.
 - `puzzle-32.json` — a different grid (sampled with CP-SAT, stripped in the
-  app) with 32 givens, unique. The hard fixture: the shipped grid is minimal
+  app with `../_shared/app-strip.mjs`) with 32 givens; `verify.py` (CP-SAT)
+  proves it unique. The hard fixture: the shipped grid is minimal
   at 35 givens and closes in 0.2 s, too fast to rank rules; this one takes
   the app ~27 s, so a rule change shows. Not the shipped instance.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
@@ -102,7 +103,8 @@ cells:
   assignment exists and the branch is dead (the component empties a cell).
   Sound because the walk over-approximates the region. It catches what the
   per-digit rules cannot: a wrong region for one digit that starves the
-  others. One augmenting-path flow on ≤80 nodes per call.
+  others. Done as a bipartite matching (Kuhn's augmenting path per open
+  cell, digits with `10 − placed` slots), a few lines and cheap per call.
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
 connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
@@ -127,14 +129,16 @@ fixture it cut the app's verdict from ~25.9 s to ~9.1 s. Cut is the rule
 that closes the shipped instance: with cap, force, reach, and capacity alone
 the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
 ~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
-44-given fixtures in 0 ms. Budget earned its place on the 32-given fixture
-and on a board with a player's pencil marks: 27.6 s → 26.8 s stripped, and
-12.4 s → 7.3 s with correct two-candidate marks that steer the app's search
-into a bad branch. The walk itself is written without allocation (neighbour
-lists built once in `setParams`, a byte mask in place of a `Set`): same
-rules, 40.4 s → 27.6 s on the 32-given fixture, because `update` runs on
-every search node and its own cost was most of the solve time. See the next
-section and `../../docs/real-app-timing.md`.
+44-given fixtures in 0 ms. Budget pays on the stripped 32-given fixture
+(27.6 s → 24.8 s) and, the reason it was written, on the shipped puzzle with a
+player's correct two-candidate pencil marks, which steer the app's search
+into a bad branch: 12.4 s → 7.2 s. That marks run is evidence of robustness,
+not a timing (a run with marks present is never a timing,
+`CODING_STANDARDS.md`). The walk itself
+builds neighbour lists once in `setParams` and uses a byte mask in place of a
+`Set`: same rules, 40.4 s → 27.6 s on the 32-given fixture, because `update`
+runs on every search node and its own cost was most of the solve time. See
+the next section and `../../docs/real-app-timing.md`.
 
 ## What the app checks
 

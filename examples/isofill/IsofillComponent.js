@@ -44,8 +44,9 @@ function neighbours (i, side) {
 }
 
 // Cells reachable from `starts` in at most `depth` steps through `allowed`.
-// Returns { mask, size }: a byte per cell plus the count, in place of a Set —
-// this walk is the hot loop of every search node.
+// Returns { mask, size }: one byte array per walk plus the count, in place of
+// a Set and a fresh neighbour array per visit — this walk is the hot loop of
+// every search node.
 function reach (starts, depth, allowed, nbrs) {
   const mask = new Uint8Array(nbrs.length)
   let size = 0
@@ -72,8 +73,10 @@ function * update (instance, puzzle) {
   // search node, so each cell is read once). Every digit then sees this
   // snapshot, not the removals earlier digits yield in the same call.
   const state = []
+  state.digits = []
   for (let d = lo; d <= hi; d++) {
     state[d] = { placed: [], open: [], allowed: new Array(cells.length).fill(false) }
+    state.digits.push(d)
   }
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i]
@@ -99,10 +102,10 @@ function * update (instance, puzzle) {
     } else if (placed.length > 0) {
       // Any region cell is within (size - placed) steps of the placed set.
       const near = reach(placed, size - placed.length, allowed, nbrs)
-      state[d].near = near.mask
       // Capacity: the whole region lies inside `near`, so fewer than `size`
       // cells there is a dead branch; empty a placed cell so the solver sees it.
       if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+      state[d].near = near.mask // budget (below) limits this digit to its walk
       for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
       // Cut: an open cell whose removal starves the walk (< size cells) or
       // strands a placed cell must hold the digit (ticket #101).
@@ -128,52 +131,40 @@ function * update (instance, puzzle) {
   }
   // Budget: every open cell needs a digit, and digit d can take at most
   // (size - placed) more cells, all inside its walk. If no assignment covers
-  // every open cell (a max flow falls short) the branch is dead: empty a cell.
-  const dead = budgetDead(state, lo, hi, size, cells.length)
-  if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(Array.from({ length: hi - lo + 1 }, (_, k) => lo + k)), cells[dead])
+  // every open cell the branch is dead: empty that cell.
+  const dead = budgetDead(state, lo, hi, size)
+  if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[dead])
 }
 
-// Max flow source -> digit (cap size - placed) -> open cell (cap 1, if the
-// cell is in the digit's walk) -> sink. Returns an open cell index when the
-// flow cannot cover every open cell, else -1. Augmenting-path BFS: the graph
-// has at most (digits + open cells + 2) nodes, so this is cheap per call.
-function budgetDead (state, lo, hi, size, n) {
-  const nd = hi - lo + 1
-  const openIdx = new Int16Array(n).fill(-1)
-  const opens = []
+// Bipartite matching, open cells to digits, where digit d has (size - placed)
+// slots and offers them only to open cells inside its walk. Kuhn's augmenting
+// path per cell. Returns the first cell that no matching can cover, else -1.
+function budgetDead (state, lo, hi, size) {
+  const n = state[lo].allowed.length
+  const isOpen = new Uint8Array(n)
+  const options = [] // cell -> digits whose walk holds it
+  const taken = [] // digit -> cells matched to it
   for (let d = lo; d <= hi; d++) {
-    for (const i of state[d].open) if (openIdx[i] < 0) { openIdx[i] = opens.length; opens.push(i) }
-  }
-  if (opens.length === 0) return -1
-  // nodes: 0 = source, 1..nd = digits, nd+1..nd+opens = cells, last = sink;
-  // residual capacities in a dense matrix (at most ~80 nodes).
-  const S = 0; const T = nd + opens.length + 1; const V = T + 1
-  const cap = new Int8Array(V * V)
-  const adj = Array.from({ length: V }, () => [])
-  const addEdge = (u, v, c) => { adj[u].push(v); adj[v].push(u); cap[u * V + v] = c }
-  for (let d = lo; d <= hi; d++) {
-    const k = 1 + d - lo
-    addEdge(S, k, size - state[d].placed.length)
+    taken[d] = []
     const near = state[d].near
-    for (const i of state[d].open) if (!near || near[i]) addEdge(k, nd + 1 + openIdx[i], 1)
-  }
-  for (let j = 0; j < opens.length; j++) addEdge(nd + 1 + j, T, 1)
-  let flow = 0
-  const prev = new Int16Array(V)
-  const queue = new Int16Array(V)
-  for (;;) {
-    prev.fill(-1); prev[S] = S
-    let head = 0; let tail = 0
-    queue[tail++] = S
-    while (head < tail && prev[T] < 0) {
-      const u = queue[head++]
-      for (const v of adj[u]) if (prev[v] < 0 && cap[u * V + v] > 0) { prev[v] = u; queue[tail++] = v }
+    for (const i of state[d].open) {
+      isOpen[i] = 1
+      if (!near || near[i]) (options[i] || (options[i] = [])).push(d)
     }
-    if (prev[T] < 0) break
-    for (let v = T; v !== S; v = prev[v]) { const u = prev[v]; cap[u * V + v]--; cap[v * V + u]++ }
-    flow++
   }
-  return flow < opens.length ? opens[0] : -1
+  const augment = (x, seen) => {
+    for (const d of options[x] || []) {
+      if (seen[d]) continue
+      seen[d] = 1
+      if (taken[d].length < size - state[d].placed.length) { taken[d].push(x); return true }
+      for (let k = 0; k < taken[d].length; k++) {
+        if (augment(taken[d][k], seen)) { taken[d][k] = x; return true }
+      }
+    }
+    return false
+  }
+  for (let x = 0; x < n; x++) if (isOpen[x] && !augment(x, new Uint8Array(hi + 1))) return x
+  return -1
 }
 
 // Exact check on a full grid: every digit is one connected blob of `size` cells.

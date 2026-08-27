@@ -64,6 +64,9 @@ const shippedGrid = grid('puzzle.json')
 if (shippedGrid.join() !== grid('puzzle-44.json').join()) throw new Error('puzzle-44.json grid differs from puzzle.json')
 const shipped = {}
 shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
+// hard — the 32-given fixture's grid, the one budget was tuned on.
+const hard = {}
+grid('puzzle-32.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
 
 // Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {
@@ -79,7 +82,7 @@ function once (truth, seed) {
 // pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
 const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0
-for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
+for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped], ['hard', hard]]) {
   let fails = 0
   for (let iter = 0; iter < FUZZ; iter++) {
     const { v } = run(truth, seeder)
