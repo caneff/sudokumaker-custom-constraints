@@ -64,6 +64,9 @@ const shippedGrid = grid('puzzle.json')
 if (shippedGrid.join() !== grid('puzzle-44.json').join()) throw new Error('puzzle-44.json grid differs from puzzle.json')
 const shipped = {}
 shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
+// hard — the 32-given fixture's grid, the one budget was tuned on.
+const hard = {}
+grid('puzzle-32.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
 
 // Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {
@@ -79,7 +82,7 @@ function once (truth, seed) {
 // pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
 const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0
-for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
+for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped], ['hard', hard]]) {
   let fails = 0
   for (let iter = 0; iter < FUZZ; iter++) {
     const { v } = run(truth, seeder)
@@ -120,6 +123,13 @@ const capacityOk = capacity.getCandidates(0).size === 0
 const cut = once(bent, (c, v) => (c === 0 ? [0] : c <= 10 ? ALL : ALL.slice(1)))
 const cutOk = cut.getCandidates(1).size === 1 && cut.getCandidates(1).has(0) && cut.getCandidates(10).size > 1
 
+// ---- Budget: rows 0-1 (twenty cells) allow only digits 1 and 2 while every
+// other row is fixed, so digit 2 is complete and digit 1 can take ten cells:
+// no assignment covers twenty cells. Per digit nothing is wrong (cap only
+// drops 2), but the max flow falls short and a cell empties ----
+const budget = once(rows, (c, v) => (c < 2 * N ? [1, 2] : [v]))
+const budgetOk = CELLS.some(c => budget.getCandidates(c).size === 0)
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -139,8 +149,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| budget fired:', budgetOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && budgetOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

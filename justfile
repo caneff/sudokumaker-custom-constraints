@@ -20,6 +20,7 @@ fmt:
 test:
     node examples/_shared/recovery-lib.test.mjs
     node examples/_shared/app-solve-lib.test.mjs
+    node examples/_shared/app-strip-lib.test.mjs
     node examples/hit-counts/recovery-probe.test.mjs
     node examples/skyscraper/recovery-probe.test.mjs
     node examples/numbered-rooms/update-strength.test.mjs

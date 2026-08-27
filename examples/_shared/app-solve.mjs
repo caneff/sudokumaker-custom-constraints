@@ -39,6 +39,7 @@
 import { chromium } from 'playwright'
 import fs from 'fs'
 import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
+import { clickIcon, makeDeterministic } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring. Everything else must be
@@ -50,50 +51,6 @@ const reps = parseInt(args[1] || '7', 10)
 const iconName = args[2] || 'ShowCandidates'
 if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
-
-// Click the innermost element whose exact trimmed text equals `t`.
-const clickText = (page, t) => page.evaluate((t) => {
-  const els = [...document.querySelectorAll('*')]
-    .filter(e => e.textContent.replace(/\s+/g, ' ').trim() === t)
-  const el = els[els.length - 1]
-  if (el) { el.click(); return true }
-  return false
-}, t)
-
-// Turn OFF "Non-deterministic solve" so the solver walks a fixed order and the
-// timing is repeatable. Path: Tools tab -> cog icon -> Solver settings modal ->
-// Solutions finder tab -> Advanced settings -> the toggle. Throw if any step is
-// missing: a silently-skipped toggle would time a non-deterministic solve and
-// the numbers would be noise.
-async function makeDeterministic (page) {
-  await clickText(page, 'Tools')
-  await page.waitForTimeout(300)
-  const cog = await page.evaluate(() => {
-    const s = [...document.querySelectorAll('svg')].find(e => e.getAttribute('class') === 'Icon CogWheel')
-    if (s) { s.closest('button').click(); return true }
-    return false
-  })
-  if (!cog) throw new Error('cog icon not found')
-  await page.waitForTimeout(500)
-  if (!await clickText(page, 'Solver settings')) throw new Error('Solver settings button not found')
-  await page.waitForTimeout(600)
-  if (!await clickText(page, 'Solutions finder')) throw new Error('Solutions finder tab not found')
-  await page.waitForTimeout(400)
-  if (!await clickText(page, 'Advanced settings')) throw new Error('Advanced settings section not found')
-  await page.waitForTimeout(500)
-  const state = await page.evaluate(() => {
-    const label = [...document.querySelectorAll('label.clickable')]
-      .find(e => /Non-deterministic solve/i.test(e.textContent))
-    if (!label) return 'no-label'
-    const input = document.getElementById(label.getAttribute('for'))
-    if (!input) return 'no-input'
-    if (input.checked) label.click() // was on -> turn off
-    return document.getElementById(label.getAttribute('for')).checked ? 'still-on' : 'off'
-  })
-  if (state !== 'off') throw new Error('non-deterministic toggle: ' + state)
-  await page.keyboard.press('Escape') // close the modal
-  await page.waitForTimeout(300)
-}
 
 // The app draws givens black and entered values blue. A grid with entered
 // values makes the solver verify instead of search, and the app says so in
@@ -115,11 +72,7 @@ async function runOnce (page) {
   await page.waitForTimeout(1200)
   await checkStripped(page)
   await makeDeterministic(page)
-  const clicked = await page.evaluate((icon) => {
-    const s = [...document.querySelectorAll('svg')].find(e => e.getAttribute('class') === 'Icon ' + icon)
-    if (s) { s.closest('button').click(); return true }
-    return false
-  }, iconName)
+  const clicked = await clickIcon(page, iconName)
   if (!clicked) throw new Error('solve button not found: Icon ' + iconName)
   // Wait for the VERDICT, not the first "took": the solve phase prints its
   // "took" before the uniqueness search finishes, and reading then times only
