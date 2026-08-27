@@ -1,11 +1,12 @@
 // Pure decision and formatting logic for app-strip.mjs -- greedy clue removal
 // with the live SudokuMaker app as the uniqueness oracle. Split out so this
 // runs under node:assert without a browser; the Playwright driver imports it
-// alongside readVerdict from app-solve-lib.mjs.
+// alongside readVerdict/parseReadout from app-solve-lib.mjs.
 
 // A small deterministic PRNG (mulberry32) so a "seeded-random" removal order
-// is reproducible across runs without pulling in a dependency.
-export function mulberry32 (seed) {
+// is reproducible across runs without pulling in a dependency. Module-local:
+// only seededShuffle needs it.
+function mulberry32 (seed) {
   let a = seed >>> 0
   return function () {
     a |= 0
@@ -31,25 +32,23 @@ export function seededShuffle (arr, seed) {
 // retries once and passes both here. A retried '?' still keeps the given --
 // this never loops beyond one retry.
 export function decideRemoval (verdict1, verdict2 = null) {
-  const needsRetry = verdict1 === '?' && verdict2 === null
-  const finalVerdict = needsRetry ? verdict1 : (verdict1 === '?' ? verdict2 : verdict1)
-  return { needsRetry, finalVerdict, remove: finalVerdict === 'unique' }
+  const settled = verdict1 === '?' ? verdict2 : verdict1
+  return { needsRetry: settled === null, finalVerdict: settled ?? '?', remove: settled === 'unique' }
 }
 
 export function keptLine (n, verdict, ms) {
   return `${n} givens  ${verdict}  ${ms} ms`
 }
 
-export function keepLine (cell, verdict) {
-  return `keep (${cell[0]},${cell[1]})  (${verdict})`
+export function keepLine (row, col, verdict) {
+  return `keep (${row},${col})  (${verdict})`
 }
 
 export function minimumLine (n) {
   return `minimum ${n} givens`
 }
 
-// The surviving clue set, sorted, alongside the grid it was cut from --
-// matches proto_strip_app.py's output shape.
+// The surviving clue set, sorted, alongside the grid it was cut from.
 export function outputJson (grid, clues) {
   const sorted = clues.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])
   return JSON.stringify({ grid, clues: sorted }) + '\n'
