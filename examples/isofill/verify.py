@@ -3,11 +3,13 @@
     uv run --with ortools examples/isofill/verify.py            # self-check
     uv run --with ortools examples/isofill/verify.py puzzle.json
 
-puzzle.json: {"grid": [10 strings of digits], "clues": [[r, c], ...]}. The
-clues name the given cells; their digits come from the grid.
+puzzle.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
+"minDigit": 0}. The clues name the given cells; their digits come from the
+grid. The board is N x N with N digits from minDigit (default 0): 10x10 with
+0-9, or 9x9 with 1-9.
 
-Rule (decision #49): ten regions of ten orthogonally connected cells, one
-digit per region, all ten digits present. Modelled as exact counts plus a
+Rule (decision #49): N regions of N orthogonally connected cells, one
+digit per region, all N digits present. Modelled as exact counts plus a
 single-commodity flow per digit: one root cell sends nine units, every other
 cell of that digit absorbs one, and flow moves only between orthogonal
 neighbours that both hold the digit. A cut-off cell starves, so a split
@@ -20,23 +22,33 @@ from pathlib import Path
 
 from ortools.sat.python import cp_model
 
-N = 10
-CELLS = [(r, c) for r in range(N) for c in range(N)]
-EDGES = [
-    ((r, c), (r + dr, c + dc))
-    for (r, c) in CELLS
-    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-    if 0 <= r + dr < N and 0 <= c + dc < N
-]
+N = 10  # board side and digit count; set_board() changes it
+LO = 0  # lowest digit
+CELLS = EDGES = None
+
+
+def set_board(n, lo=0):
+    global N, LO, CELLS, EDGES
+    N, LO = n, lo
+    CELLS = [(r, c) for r in range(N) for c in range(N)]
+    EDGES = [
+        ((r, c), (r + dr, c + dc))
+        for (r, c) in CELLS
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        if 0 <= r + dr < N and 0 <= c + dc < N
+    ]
+
+
+set_board(N, LO)
 
 
 def model(givens):
     """The ISOFILL model with `givens` pinned; returns (model, cell vars)."""
     m = cp_model.CpModel()
-    x = {p: m.NewIntVar(0, N - 1, f"x{p}") for p in CELLS}
+    x = {p: m.NewIntVar(LO, LO + N - 1, f"x{p}") for p in CELLS}
     for p, v in givens.items():
         m.Add(x[p] == v)
-    for d in range(N):
+    for d in range(LO, LO + N):
         holds = {p: m.NewBoolVar(f"h{d}{p}") for p in CELLS}
         for p in CELLS:
             m.Add(x[p] == d).OnlyEnforceIf(holds[p])
@@ -67,6 +79,21 @@ def sample(seed):
     s.parameters.num_workers = 8
     assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
     return ["".join(str(s.Value(x[r, c])) for c in range(N)) for r in range(N)]
+
+
+def strip(grid, seed):
+    """Greedily drop givens from a full grid in a seeded random order, keeping
+    only those whose removal breaks uniqueness. Returns the clue list."""
+    import random
+
+    givens = {(r, c): int(grid[r][c]) for r, c in CELLS}
+    order = list(CELLS)
+    random.Random(seed).shuffle(order)
+    for p in order:
+        v = givens.pop(p)
+        if not unique(givens):
+            givens[p] = v
+    return sorted(givens)
 
 
 def unique(givens, limit=60):
@@ -129,13 +156,21 @@ def self_check():
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
-    elif sys.argv[1] == "sample":
-        # verify.py sample <seed>: a full grid as puzzle.json with every cell
-        # given, ready for app-strip.mjs --grid.
-        grid = sample(int(sys.argv[2]))
-        print(json.dumps({"grid": grid, "clues": CELLS}))
+    elif sys.argv[1] in ("sample", "strip"):
+        # verify.py sample <seed> [side] [minDigit]: a full grid as puzzle.json
+        # with every cell given, ready for app-strip.mjs --grid.
+        # verify.py strip <seed> [side] [minDigit]: the same grid stripped to a
+        # minimal unique clue set with CP-SAT (slower than the app strip; fine
+        # for a 9x9).
+        args = [int(a) for a in sys.argv[2:]]
+        seed = args[0]
+        set_board(*args[1:]) if len(args) > 1 else None
+        grid = sample(seed)
+        clues = strip(grid, seed) if sys.argv[1] == "strip" else CELLS
+        print(json.dumps({"grid": grid, "clues": clues, "minDigit": LO}))
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
+        set_board(len(doc["grid"]), doc.get("minDigit", 0))
         givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
         ok = unique(givens)
         print("unique" if ok else "not unique")

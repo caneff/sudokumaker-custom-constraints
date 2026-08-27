@@ -1,7 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! ISOFILL. Divide the grid into ten regions of ten orthogonally connected
-//! cells; every cell in a region holds the same digit; all ten digits appear.
-//! So each digit fills exactly ten cells.
+//! ISOFILL. Divide the grid into N regions of N orthogonally connected cells;
+//! every cell in a region holds the same digit; all N digits appear. So each
+//! digit fills exactly N cells. N is the digit count, which must equal the
+//! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9. The prose
+//! below says "ten" for the 10x10 case.
 //!
 //! One whole-grid component, five deductions per digit and one across digits:
 //!   Cap:   a digit already in ten cells leaves every other cell.
@@ -146,6 +148,7 @@ function * update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
+  if (!Number.isInteger(size)) throw new Error(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`)
   // One scan of the grid builds every digit's state (update runs on every
   // search node, so each cell is read once). Every digit then sees this
   // snapshot, not the removals earlier digits yield in the same call.

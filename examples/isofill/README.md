@@ -9,6 +9,15 @@ houses. Ten regions of ten cells cover the hundred cells, and all ten digits
 appear, so each digit is exactly one orthogonally connected blob of ten cells.
 Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 
+The same code serves any square board whose digit count equals its side: N
+regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+1
+regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
+above). `main.js` reads the side from `puzzle.spec.size.width`; the component
+reads the digit range from `helpers.digits` and throws when the cells do not
+split evenly among the digits. `puzzle-9x9.json` / `PUZZLE_LINK-9x9.txt` is
+the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
+the app proves it unique in 0.2 s).
+
 Every other example in this repo is a **local** constraint: the author draws
 groups and the main code builds one component per group. ISOFILL is **global**.
 There are no groups. The main code takes every cell id and registers one
@@ -55,6 +64,7 @@ exists to teach.
   swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
   builds another instance (`puzzle-44.json` for timing).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
+- `puzzle-9x9.json` / `PUZZLE_LINK-9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK-30.txt`, `PUZZLE_LINK-32.txt`, `PUZZLE_LINK-35-silent.txt`,
   `PUZZLE_LINK-44.txt` — the hard fixtures as
   stripped links (givens only, nothing entered), built by
