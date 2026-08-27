@@ -4,14 +4,21 @@
 # ~5 s with ±30% noise, too fast to show a per-call change.
 #
 #   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py scan 101 161
-#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build 135
+#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build 208
+#
+# scan-adv / build-adv: same, but the carve hides the informative ring clues
+# (1, 9, 2, 8) first so the mid-range clues stay shown. Over seeds 135,200-209
+# it lifted the median node count 68 -> 177 under the exact DP (#137), but the
+# seed spread is larger than the lever: random seed 208 (871 nodes, 300 ms in
+# the app) beat the best adversarial seed (200: 784 nodes, 100 ms). Use both.
 #
 # scan: for each seed, carve the board as build_size.py would and count the mock
 # search nodes (recovery-probe.mjs --search --only=ours). One line per seed;
 # about a minute each, the carve dominates. PROBE-TIMEOUT marks a board harder
 # than the probe's budget. Pick the hardest seed with over half the ring blank,
 # and confirm it stays under the app's 300 s limit before committing it.
-# build: write the pair for one seed; the committed pair is seed 135.
+# build: write the pair for one seed; the committed pair is seed 208 (seed 135
+# fell to 16 nodes / 0 ms after #137, below the app's readout floor).
 
 import json
 import os
@@ -41,11 +48,17 @@ def gen_json(seed, grid, clue, givens, active):
     }
 
 
-def scan(lo, hi):
+# ponytail: adversarial = hide the informative clues (1, 9, 2, 8) first so the
+# mid-range clues, which prune least, are what stays shown. One lever only.
+def adv_key(v):
+    return min(v, N + 1 - v)
+
+
+def scan(lo, hi, hide_key=None):
     out = HERE / ".scan"
     out.mkdir(exist_ok=True)
     for seed in range(lo, hi):
-        s, grid, clue, givens, active, _ = generate(SPEC, N, BH, BW, [seed])
+        s, grid, clue, givens, active, _ = generate(SPEC, N, BH, BW, [seed], hide_key)
         f = out / f"gen_9_{seed}.json"
         f.write_text(json.dumps(gen_json(s, grid, clue, givens, active), indent=1))
         try:
@@ -71,8 +84,10 @@ def scan(lo, hi):
         )
 
 
-def build(seed):
-    seed, grid, clue, givens, active, lines = generate(SPEC, N, BH, BW, [seed])
+def build(seed, hide_key=None):
+    seed, grid, clue, givens, active, lines = generate(
+        SPEC, N, BH, BW, [seed], hide_key
+    )
     doc = build_doc(SPEC, N, BH, BW, grid, clue, givens, active, lines)
     link = link_codec.encode_link(doc)
     check(SPEC, link, doc, N)
@@ -86,9 +101,10 @@ def build(seed):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["scan"] and len(sys.argv) == 4:
-        scan(int(sys.argv[2]), int(sys.argv[3]))
-    elif sys.argv[1:2] == ["build"] and len(sys.argv) == 3:
-        build(int(sys.argv[2]))
+    key = adv_key if sys.argv[1:2] in (["scan-adv"], ["build-adv"]) else None
+    if sys.argv[1:2] in (["scan"], ["scan-adv"]) and len(sys.argv) == 4:
+        scan(int(sys.argv[2]), int(sys.argv[3]), key)
+    elif sys.argv[1:2] in (["build"], ["build-adv"]) and len(sys.argv) == 3:
+        build(int(sys.argv[2]), key)
     else:
-        sys.exit("usage: build_timing.py scan <lo> <hi> | build <seed>")
+        sys.exit("usage: build_timing.py scan[-adv] <lo> <hi> | build[-adv] <seed>")

@@ -123,7 +123,7 @@ def unique(spec, lines, clue, active, givens, n, bh, bw):
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
-def generate(spec, n, bh, bw, seeds):
+def generate(spec, n, bh, bw, seeds, hide_key=None):
     lines = make_lines(n)
     best = None
     for seed in seeds:
@@ -154,6 +154,8 @@ def generate(spec, n, bh, bw, seeds):
     rng = random.Random(seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
     rng.shuffle(order)
+    if hide_key:  # stable: ties keep the shuffled order
+        order.sort(key=lambda k: hide_key(clue[k]))
     for k in order:
         active.discard(k)
         if not unique(spec, lines, clue, active, givens, n, bh, bw):
