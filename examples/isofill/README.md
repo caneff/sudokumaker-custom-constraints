@@ -21,15 +21,15 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count, reach, and capacity, and a `validate` leaf check (see below).
+  prunes by count, reach, capacity, and cut, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
 - `puzzle.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
-- `puzzle-44.json` — the same grid with 44 givens: a fixture the app is known
-  to close (unique in ~9.1 s with capacity, ~25.9 s without), kept for
-  comparing component variants. Not the shipped instance. The harness asserts
+- `puzzle-44.json` — the same grid with 44 givens: a fixture kept for
+  comparing component variants (it closed long before the 35-given instance
+  did: ~9.1 s with capacity, ~25.9 s without; 0 ms with cut). Not the shipped instance. The harness asserts
   the two grids stay identical.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
@@ -64,7 +64,7 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs four sound deductions per digit. Ten regions of ten cells, one
+`update` runs five sound deductions per digit. Ten regions of ten cells, one
 digit each, means every digit fills exactly ten cells:
 
 - **Cap** — once a digit occupies ten cells, remove it from every other cell's
@@ -83,6 +83,12 @@ digit each, means every digit fills exactly ten cells:
   lies inside it, so if the walk meets fewer than ten cells the region can
   never reach ten. The component empties a placed cell of that digit, as for a
   split, and the solver drops the branch. Free — the walk is already computed.
+- **Cut** — for each open cell the walk met, drop it and walk again. If the
+  walk now holds fewer than ten cells, or a placed cell falls out of it, the
+  region cannot exist without that cell, so it must hold the digit. Sound by
+  the same argument as reach and capacity, applied to the grid minus one cell.
+  Not free: one or two extra walks per open cell in the digit's walk — but
+  it is the rule that lets the app close the shipped instance (below).
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
 connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
@@ -94,7 +100,7 @@ grid **once** per call and builds every digit's placed, open, and allowed
 sets from that one scan. It runs on every search node, so a scan per digit
 (ten reads of each cell) cost real time: the one-pass scan halved the app's
 verdict on the 44-given fixture (5.7 s vs 11.2 s, same session). The rules
-are the same four; what changes is that every digit sees the grid as it was
+are the same (cut came later, on the same snapshot); what changes is that every digit sees the grid as it was
 at the start of the call, not the removals earlier digits yielded in the
 same call. That is sound (fuzz clean) and never weaker at the fixpoint: on
 a 5,000-state differential against the per-digit scan it was equal on 4,816
@@ -103,11 +109,12 @@ The harness asserts the read count.
 
 Reach is required, not a timing-gated stretch: without it the app never
 reaches a verdict. Capacity earned its place by timing: on the 44-given
-fixture it cuts the app's verdict from ~25.9 s to ~9.1 s. On the shipped
-35-given instance the app still reaches no verdict, so on that grid alone the
-deduction shows no gain; it is kept because the 44-given fixture is the only
-grid where a gain can be measured at all, and there it is 2.8×. See the next
-section and `../../docs/real-app-timing.md`.
+fixture it cut the app's verdict from ~25.9 s to ~9.1 s. Cut is the rule
+that closes the shipped instance: with cap, force, reach, and capacity alone
+the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
+~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
+44-given fixtures in 0 ms. See the next section and
+`../../docs/real-app-timing.md`.
 
 ## What the app checks
 
@@ -115,26 +122,27 @@ The shipped link stores the full solution as entered values (35 black givens,
 65 blue entries). Strip it before you time or play it:
 `uv run --with lzstring examples/_shared/probe_link.py strip examples/isofill/PUZZLE_LINK.txt /tmp/iso.txt`.
 
-On the stripped grid the app's "Find all solutions" does **not** reach a
-verdict (live app, build of 2026-08-26, `app-solve.mjs`): it stops at its own
-time limit (about a minute), with reach alone and with reach plus capacity.
-The count-floor-only component before reach was added returns "Found 10,000
-solutions" in 0.3 s on the same grid, so the pruning works — it turns a fast
-wrong answer into no answer — but not yet enough for the app to close the
-search. An earlier "unique in 2 s" figure was measured with 36 solution values
-still entered in the outer ring and was wrong.
+On the stripped grid the app's "Find all solutions" reads **"This is a unique
+solution" in 0.2 s** (live app v2026.08.14-d47fc4b, 2026-08-27, `app-solve.mjs`,
+3/3 reps, non-deterministic solve off). It did not get there in one step:
 
-The same grid with 44 givens (`puzzle-44.json`) is the yardstick: the app
-proves it unique in ~9.1 s with capacity, ~25.9 s without.
+- The count-floor-only component returned "Found 10,000 solutions" in 0.3 s.
+- Reach, then reach plus capacity, turned that fast wrong answer into no
+  answer: the app stopped at its own time limit (about a minute). A clue
+  ladder on the same grid showed 36, 37, and 39 givens time out too; 40
+  closes in ~35–41 s, 41 in 12 s, 44 in ~9.1 s (5.7 s with the one-pass scan).
+- Cut closes it at 35 givens in 0.2 s; the 41- and 44-given fixtures read
+  0 ms.
 
-**Final verdict on the shipped 35-given instance: the app does not prove it
-unique.** The kept deductions are cap, force, reach (with split), and
-capacity. A fifth, *homeless* (a digit with no placed cell must still have a
-connected ten-cell home), was tried and removed: sound, but no verdict change
-and no time change (#91; the commit stays in git history). What comes next
-is open fog on map #48. `verify.py` is the proof that the puzzle is unique: it
-models the rule from scratch (flow-based connectivity) and does not depend
-on the app.
+An earlier "unique in 2 s" figure was measured with 36 solution values still
+entered in the outer ring and was wrong.
+
+The kept deductions are cap, force, reach (with split), capacity, and cut.
+*Homeless* (a digit with no placed cell must still have a connected ten-cell
+home) was tried and removed: sound, but no verdict change and no time change
+(#91; the commit stays in git history). `verify.py` stays the independent
+proof that the puzzle is unique: it models the rule from scratch (flow-based
+connectivity) and does not depend on the app.
 
 ## Run the tests
 
@@ -146,7 +154,7 @@ node examples/isofill/soundness-harness.mjs
 # -> isofill bent fixture: 20000 tests, 0 violations
 # -> isofill shipped fixture: 20000 tests, 0 violations
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | one pass: true (100 reads)
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | one pass: true (100 reads)
 # -> PASS
 ```
 
@@ -156,7 +164,7 @@ partial fills of three valid ISOFILL solutions (one with row *r* holding digit
 shipped grid from `puzzle.json`) in which every cell still allows its true
 value, runs `update` to a fixpoint, and asserts every true value survived. It
 also builds one state for each deduction — cap, force, reach, split, split
-with all ten cells placed, capacity — and checks each fired, checks `update`
+with all ten cells placed, capacity, cut — and checks each fired, checks `update`
 reads each cell's candidates at most once per call,
 and checks `validate` accepts a full valid grid and rejects a count-valid but
 split one.
