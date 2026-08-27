@@ -5,18 +5,15 @@
 //
 //   node examples/isofill/soundness-harness.mjs
 //
-// Two fixtures, both valid ISOFILL solutions:
-//   rows — row r holds digit r (covers cap and force).
-//   bent — each pair of rows splits into two L-shaped regions, so the reach
-//          deduction walks around corners.
-//   silent35 — the grid of puzzle-35-silent.json, fuzzed with a seeder that
-//          never pins digit 2, so that digit stays silent (no placed cell) in
-//          every state and only the silent-digit rule prunes it.
+// The fixtures and seeders live in fixtures.mjs, shared with the cut-gate
+// differential test. silent35 is fuzzed with a seeder that never pins digit 2,
+// so that digit stays silent (no placed cell) in every state and only the
+// silent-digit rule prunes it.
 
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { readFileSync } from 'fs'
+import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { N, CELLS, ALL, rows, bent, gridTruth, makeSeeder, makeSilentSeeder } from './fixtures.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -26,43 +23,8 @@ installGlobals(0, 9)
 
 const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
 
-const N = 10
-const CELLS = Array.from({ length: N * N }, (_, i) => i)
-const ALL = Array.from({ length: N }, (_, d) => d)
-
-const rows = {}
-for (const c of CELLS) rows[c] = Math.floor(c / N)
-
-// Rows 2r,2r+1: digit 2r takes cols 0-5 of the top row and cols 0-3 of the
-// bottom row; digit 2r+1 takes the rest. Ten cells each, both connected.
-const bent = {}
-for (const c of CELLS) {
-  const r = Math.floor(c / N)
-  const x = c % N
-  const top = r % 2 === 0
-  const band = Math.floor(r / 2)
-  bent[c] = (top ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
-}
-
-// The same seeder, but digit `d` is never pinned, so no cell ever holds it as
-// a value: `d` stays silent and the silent-digit rule is the only one that can
-// prune it.
-function silentSeeder (d) {
-  return (c, v) => {
-    const s = seeder(c, v)
-    return s.length === 1 && s[0] === d ? ALL : s
-  }
-}
-
-// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (c, v) {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return ALL
-  const s = new Set([v])
-  for (const d of ALL) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
+const seeder = makeSeeder(rnd, pick)
+const silentSeeder = d => makeSilentSeeder(seeder, d)
 
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
@@ -71,18 +33,14 @@ function run (truth, seed) {
   return { p, v: violates(mod, inst, p, truth) }
 }
 
-// shipped — the grid in puzzle.json (also the grid of the 44-clue fixture).
-const grid = f => JSON.parse(readFileSync(join(HERE, f), 'utf8')).grid
-const shippedGrid = grid('puzzle.json')
-if (shippedGrid.join() !== grid('puzzle-44.json').join()) throw new Error('puzzle-44.json grid differs from puzzle.json')
-const shipped = {}
-shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
-// hard — the 32-given fixture's grid, the one budget was tuned on.
-const hard = {}
-grid('puzzle-32.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
-// silent35 — the grid whose 35-given fixture leaves digit 2 with no given.
-const silent35 = {}
-grid('puzzle-35-silent.json').forEach((row, r) => [...row].forEach((ch, x) => { silent35[r * N + x] = Number(ch) }))
+// shipped: the grid in puzzle.json (also the grid of the 44-clue fixture).
+const shipped = gridTruth(HERE, 'puzzle.json')
+const shipped44 = gridTruth(HERE, 'puzzle-44.json')
+if (CELLS.some(c => shipped[c] !== shipped44[c])) throw new Error('puzzle-44.json grid differs from puzzle.json')
+// hard: the 32-given grid, the one budget was tuned on.
+const hard = gridTruth(HERE, 'puzzle-32.json')
+// silent35: the grid whose 35-given fixture leaves digit 2 with no given.
+const silent35 = gridTruth(HERE, 'puzzle-35-silent.json')
 
 // Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {

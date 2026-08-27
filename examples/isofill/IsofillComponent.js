@@ -13,7 +13,8 @@
 //!   Capacity: if that walk meets fewer than ten cells the region can never
 //!          reach ten; a placed cell is emptied, as for a split.
 //!   Cut:   an open cell in that walk whose removal starves it below ten,
-//!          or strands a placed cell, must hold the digit.
+//!          or strands a placed cell, must hold the digit. The strand test
+//!          runs only when the placed cells sit in more than one blob.
 //!   Silent: a digit with no placed cell has no walk to start. Its region
 //!          still sits inside one connected component of the cells that allow
 //!          it, so every component under ten cells loses the digit; if none
@@ -201,6 +202,27 @@ function * update (instance, puzzle) {
       const depth = size - placed.length
       const targetStamp = ++instance.targetStamp
       for (const i of placed) instance.targets[i] = targetStamp
+      // Placed blobs: the connected components of the placed cells, walking
+      // only through placed cells. Two cells joined by such a path stay joined
+      // when an open cell goes, so with one blob the strand test below can
+      // never fire and only the starve test is worth running (`connected_values.md`
+      // §4.4: read the gate off the walk, and admit the test only when it can
+      // deduce something).
+      let blobs = 0
+      const seen = ++instance.stamp
+      const stack = instance.frontier[0]
+      for (const p of placed) {
+        if (instance.mask[p] === seen) continue
+        blobs++
+        instance.mask[p] = seen
+        let len = 1
+        stack[0] = p
+        while (len) {
+          for (const n of nbrs[stack[--len]]) {
+            if (instance.targets[n] === targetStamp && instance.mask[n] !== seen) { instance.mask[n] = seen; stack[len++] = n }
+          }
+        }
+      }
       for (const x of open) {
         if (!near.mask[x]) continue
         let cut
@@ -212,7 +234,7 @@ function * update (instance, puzzle) {
         } else {
           allowed[x] = 0
           cut = reach(instance, placed, depth, allowed, size).size < size
-          if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
+          if (!cut && blobs > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
           allowed[x] = 1
         }
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])

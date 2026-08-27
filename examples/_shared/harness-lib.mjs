@@ -29,12 +29,15 @@ export function installGlobals (minDigit, maxDigit) {
 }
 
 // Bind file reads to the example's own directory. `read` returns a file's text;
-// `load` evals a component file and returns the named functions from it.
+// `load` evals a component file and returns the named functions from it;
+// `loadSource` does the same for component text held in memory, which is how a
+// differential test runs an edited copy of a component beside the real one.
 export function makeIo (here) {
   const read = f => readFileSync(join(here, f), 'utf8')
-  const load = (file, names) =>
-    eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
-  return { read, load }
+  const loadSource = (src, names) =>
+    eval('(function(){' + src + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
+  const load = (file, names) => loadSource(read(file), names)
+  return { read, load, loadSource }
 }
 
 // Deterministic RNG. `rnd` returns a float in [0,1); `pick` chooses from an array.

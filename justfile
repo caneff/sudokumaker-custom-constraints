@@ -41,6 +41,7 @@ test:
     uv run --with lzstring examples/isofill/build_link.py
     uv run --with lzstring examples/isofill/build_link.test.py
     uv run --with lzstring examples/isofill/build_hard_links.py
+    node examples/isofill/cut-gate.test.mjs
     uv run --with lzstring examples/_shared/check_links.py
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
