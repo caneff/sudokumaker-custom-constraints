@@ -60,7 +60,9 @@ export function makePuzzle (truth, seed) {
     getCandidatesBitMask: c => { let m = 0; for (const d of cand.get(c)) m |= 1 << d; return m },
     getCellsAreFilled: cs => cs.every(c => cand.get(c).size === 1),
     removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
-    removeCandidatesFromCell: (s, c) => { const set = cand.get(c); for (const d of s) set.delete(d) }
+    // The app takes a DigitSet here and nothing else; a plain array passes in
+    // Node and silently removes nothing in the app (a rule went dead that way).
+    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = cand.get(c); for (const d of s) set.delete(d) }
   }
 }
 

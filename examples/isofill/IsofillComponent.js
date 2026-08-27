@@ -37,6 +37,15 @@ function setParams (instance, cells) {
   instance.targets = new Uint32Array(cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
+  // Per-call scratch, reused so update allocates almost nothing (GC was 12%
+  // of a call): one allowed and one walk mask per digit, BFS frontiers,
+  // distance rows for the tour bound, and the "every other digit" lists (the
+  // DigitSet the app receives is built fresh per yield).
+  instance.allowed = []
+  instance.near = []
+  instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
+  instance.dist = []
+  instance.others = []
 }
 
 // Orthogonal neighbours by index arithmetic; cells are row-major on a square.
@@ -59,41 +68,45 @@ function reach (instance, starts, depth, allowed, limit = Infinity, targets = nu
   const { nbrs, mask, targetStamp } = instance
   const stamp = ++instance.stamp
   let size = 0
-  let frontier = []
+  let [frontier, next] = instance.frontier
+  let len = 0
   for (const i of starts) {
     if (mask[i] === stamp) continue
-    mask[i] = stamp; size++; frontier.push(i)
+    mask[i] = stamp; size++; frontier[len++] = i
     if (targets && targets[i] === targetStamp) want--
   }
   if (targets && want <= 0) return { size, stamp, done: true }
-  for (let step = 0; step < depth && frontier.length && size < limit; step++) {
-    const next = []
-    for (const i of frontier) {
-      for (const n of nbrs[i]) {
+  for (let step = 0; step < depth && len && size < limit; step++) {
+    let nextLen = 0
+    for (let f = 0; f < len; f++) {
+      for (const n of nbrs[frontier[f]]) {
         if (allowed[n] && mask[n] !== stamp) {
-          mask[n] = stamp; size++; next.push(n)
+          mask[n] = stamp; size++; next[nextLen++] = n
           if (targets && targets[n] === targetStamp && --want === 0) return { size, stamp, done: true }
           if (size >= limit) return { size, stamp, done: false }
         }
       }
     }
-    frontier = next
+    [frontier, next, len] = [next, frontier, nextLen]
   }
   return { size, stamp, done: false }
 }
 
 // BFS distance from `start` to every cell through `allowed`; unreachable
 // cells read as 999, so any bound they enter fails.
-function distances (start, allowed, nbrs) {
-  const dist = new Int16Array(nbrs.length).fill(999)
+function distances (instance, start, allowed, dist) {
+  const { nbrs } = instance
+  dist.fill(999)
   dist[start] = 0
-  let frontier = [start]
-  for (let step = 1; frontier.length; step++) {
-    const next = []
-    for (const i of frontier) {
-      for (const n of nbrs[i]) if (allowed[n] && dist[n] === 999) { dist[n] = step; next.push(n) }
+  let [frontier, next] = instance.frontier
+  let len = 1
+  frontier[0] = start
+  for (let step = 1; len; step++) {
+    let nextLen = 0
+    for (let f = 0; f < len; f++) {
+      for (const n of nbrs[frontier[f]]) if (allowed[n] && dist[n] === 999) { dist[n] = step; next[nextLen++] = n }
     }
-    frontier = next
+    [frontier, next, len] = [next, frontier, nextLen]
   }
   return dist
 }
@@ -109,7 +122,14 @@ function * update (instance, puzzle) {
   const state = []
   state.digits = []
   for (let d = lo; d <= hi; d++) {
-    state[d] = { placed: [], open: [], allowed: new Array(cells.length).fill(false) }
+    const allowed = instance.allowed[d] || (instance.allowed[d] = new Uint8Array(cells.length))
+    allowed.fill(0)
+    state[d] = { placed: [], open: [], allowed }
+    if (!instance.others[d]) {
+      const others = []
+      for (let e = lo; e <= hi; e++) if (e !== d) others.push(e)
+      instance.others[d] = others
+    }
     state.digits.push(d)
   }
   for (let i = 0; i < cells.length; i++) {
@@ -117,18 +137,17 @@ function * update (instance, puzzle) {
     if (puzzle.hasValue(c)) {
       const s = state[puzzle.getValue(c)] // a value outside lo..hi throws: fail loud
       s.placed.push(i)
-      s.allowed[i] = true
+      s.allowed[i] = 1
     } else {
       for (const d of Array.from(puzzle.getCandidates(c))) {
         state[d].open.push(i)
-        state[d].allowed[i] = true
+        state[d].allowed[i] = 1
       }
     }
   }
   for (let d = lo; d <= hi; d++) {
     const { placed, open, allowed } = state[d]
-    const others = []
-    for (let e = lo; e <= hi; e++) if (e !== d) others.push(e)
+    const others = instance.others[d]
     if (placed.length === size) {
       for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
     } else if (placed.length + open.length === size) {
@@ -140,7 +159,7 @@ function * update (instance, puzzle) {
       // cells there is a dead branch; empty a placed cell so the solver sees it.
       if (walk.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
       // Own copy: later walks reuse instance.mask.
-      const near = { size: walk.size, mask: new Uint8Array(cells.length) }
+      const near = { size: walk.size, mask: instance.near[d] || (instance.near[d] = new Uint8Array(cells.length)) }
       for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
       // Tour bound: the region is a connected set holding every placed cell
       // and x, so walking round a spanning tree of it is a closed tour through
@@ -148,7 +167,7 @@ function * update (instance, puzzle) {
       // three of those points (BFS distances through `allowed`). Tighter than
       // the depth bound when the placed cells are spread out.
       if (placed.length > 1) {
-        const dist = placed.map(p => distances(p, allowed, nbrs))
+        const dist = placed.map((p, k) => distances(instance, p, allowed, instance.dist[k] || (instance.dist[k] = new Int16Array(cells.length))))
         let base = 0
         for (let i = 0; i < placed.length; i++) {
           for (let j = i + 1; j < placed.length; j++) {
@@ -187,10 +206,10 @@ function * update (instance, puzzle) {
           // A dead end: removing it removes only itself.
           cut = near.size - 1 < size
         } else {
-          allowed[x] = false
+          allowed[x] = 0
           cut = reach(instance, placed, depth, allowed, size).size < size
           if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
-          allowed[x] = true
+          allowed[x] = 1
         }
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
       }
