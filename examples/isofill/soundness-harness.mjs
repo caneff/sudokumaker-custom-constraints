@@ -75,14 +75,17 @@ function once (truth, seed) {
 }
 
 // ---- Fuzz: true values survive, on all fixtures ----
+// ponytail: 2,000 per fixture keeps `just check` at ~10 s now that cut
+// pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
+const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0
 for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
   let fails = 0
-  for (let iter = 0; iter < 20000; iter++) {
+  for (let iter = 0; iter < FUZZ; iter++) {
     const { v } = run(truth, seeder)
     if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
   }
-  console.log('isofill', name, 'fixture: 20000 tests,', fails, 'violations')
+  console.log('isofill', name, `fixture: ${FUZZ} tests,`, fails, 'violations')
   bad += fails
 }
 

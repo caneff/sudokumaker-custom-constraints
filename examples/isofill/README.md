@@ -150,9 +150,10 @@ Soundness (needs Node):
 
 ```
 node examples/isofill/soundness-harness.mjs
-# -> isofill rows fixture: 20000 tests, 0 violations
-# -> isofill bent fixture: 20000 tests, 0 violations
-# -> isofill shipped fixture: 20000 tests, 0 violations
+# -> isofill rows fixture: 2000 tests, 0 violations
+# -> isofill bent fixture: 2000 tests, 0 violations
+# -> isofill shipped fixture: 2000 tests, 0 violations
+# (FUZZ=20000 node ... for the deep run, ~2 min)
 # -> validate: true
 # -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | one pass: true (100 reads)
 # -> PASS
