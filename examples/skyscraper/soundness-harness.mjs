@@ -64,6 +64,54 @@ for (let iter = 0; iter < FUZZ; iter++) {
   if (v) { bad++; if (bad <= 5) console.log('violation', v, 'perm', perm) }
 }
 console.log('line component:', FUZZ, 'tests,', bad, 'violations,', fired, 'prune firings')
-const ok = bad === 0 && fired > 0
+
+// The component's DP runs in one buffer shared by every instance, so a line's
+// removals must be read out of it before the first yield. The solver may run
+// another line's update between two of ours; this replays that interleaving
+// and asserts each line still removes exactly what it removes on its own.
+const CA2 = 102
+const CB2 = 103
+const LINE2 = LINE.map(i => i + 10)
+const instA = {}
+mod.setParams(instA, CA, CB, LINE)
+const instB = {}
+mod.setParams(instB, CA2, CB2, LINE2)
+const state = q => [...q._cand].map(([c, s]) => c + ':' + [...s].sort().join('')).sort().join('|')
+const copyOf = q => { const r = makePuzzle({}, () => []); for (const [c, s] of q._cand) r._cand.set(c, new Set(s)); return r }
+
+let interleaveBad = 0
+const PAIRS = 500
+for (let iter = 0; iter < PAIRS; iter++) {
+  const permA = shuffled()
+  const permB = shuffled()
+  const truth = {
+    [CA]: visible(permA),
+    [CB]: visible([...permA].reverse()),
+    [CA2]: visible(permB),
+    [CB2]: visible([...permB].reverse())
+  }
+  for (const i of LINE) truth[i] = permA[i]
+  for (let i = 0; i < N; i++) truth[LINE2[i]] = permB[i]
+  const start = makePuzzle(truth, seeder)
+
+  // Serial: drain A fully, then B.
+  const serial = copyOf(start)
+  Array.from(mod.update(instA, serial))
+  Array.from(mod.update(instB, serial))
+  // Interleaved: take A's first change, run all of B, then finish A.
+  const mixed = copyOf(start)
+  const genA = mod.update(instA, mixed)
+  genA.next()
+  Array.from(mod.update(instB, mixed))
+  Array.from(genA)
+
+  if (state(mixed) !== state(serial)) {
+    interleaveBad++
+    if (interleaveBad <= 3) console.log('interleave diff\n mixed ', state(mixed), '\n serial', state(serial))
+  }
+}
+console.log('interleaved yields:', PAIRS, 'pairs,', interleaveBad, 'differences')
+
+const ok = bad === 0 && fired > 0 && interleaveBad === 0
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

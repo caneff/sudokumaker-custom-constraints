@@ -35,7 +35,9 @@ The left clue is `1 +` the left-to-right maxima before the peak; the right clue
 is `1 +` the right-to-left maxima after it. The prefix and the suffix are
 disjoint, so each is a small DP over the digits below `n` — the state at each
 cell is the count of buildings seen so far and the tallest so far — and the two
-DPs join at every cell that can still hold the peak.
+DPs join at every cell that can still hold the peak. Each DP layer is a bitmask
+of possible tallest-so-far digits per count, held in one reused buffer, so a
+layer transition is a handful of bit operations.
 
 - **Clues from the line:** a clue value is feasible only when some peak position
   realizes it on its side while the other side realizes some value the other
