@@ -162,3 +162,6 @@ blank (`given: false`) to make it interactive; mark it given to show it.
 
 `just time skyscraper --ring-clues` (candidate byte-equal to baseline, so
 only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.
+
+Earlier verdicts (#128, #133–#137) and their numbers: `docs/research/` and the
+commit history; #137 (exact line DP, kept) is `docs/research/137-exact-line-dp.md`.
