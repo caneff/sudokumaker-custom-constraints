@@ -102,7 +102,12 @@ cells:
   Each of those walks stops as soon as it has its answer — ten cells, or
   every placed cell seen — and a dead-end cell (one allowed neighbour) skips
   the walks: removing it removes only itself. Same rule, and the app's time
-  on the 32-given fixture fell 15.3 s → 5.7 s.
+  on the 32-given fixture fell 15.3 s → 5.7 s. Scratch buffers (allowed and
+  walk masks per digit, BFS frontiers, distance rows) live on the instance
+  and are reused per call, so `update` allocates almost nothing: 5.7 s → 4.1 s.
+  The `DigitSet` handed to `removeCandidatesFromCell` is the one thing built
+  fresh per yield — the app wants a real `DigitSet`, and the harness mock now
+  throws on anything else.
 - **Tour** — the region is a connected set holding every placed cell and
   the candidate cell, so a walk round its spanning tree is a closed tour
   through all of them: the region has at least 1 + half the perimeter of
@@ -155,7 +160,7 @@ the app reached no verdict at 35 givens (nor at 36, 37, or 39; 40 closed in
 ~35–41 s, 41 in 12 s); with cut it reads "unique" in 0.2 s, and the 41- and
 44-given fixtures in 0 ms. Budget pays on the stripped 32-given fixture
 (27.6 s → 24.8 s); its matching prune 24.9 s → 23.4 s; the tour bound on top
-24.9 s → 15.3 s; early-stopping cut walks 15.3 s → **5.7 s** (2026-08-27, 3/3) and, the reason it was written, on the shipped puzzle with a
+24.9 s → 15.3 s; early-stopping cut walks 15.3 s → 5.7 s; reused scratch buffers 5.7 s → **4.1 s** (2026-08-27, 3/3) and, the reason it was written, on the shipped puzzle with a
 player's correct two-candidate pencil marks, which steer the app's search
 into a bad branch: 12.4 s → 7.2 s. That marks run is evidence of robustness,
 not a timing (a run with marks present is never a timing,
