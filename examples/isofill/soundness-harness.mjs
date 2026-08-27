@@ -111,6 +111,12 @@ const capSplitOk = capSplit.getCandidates(99).size === 0
 const capacity = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
 const capacityOk = capacity.getCandidates(0).size === 0
 
+// ---- Cut: digit 0 placed at cell 0, allowed in row 0 and cell 10 (eleven
+// cells). Without cell 1 the walk holds two cells, so cell 1 must be 0;
+// without cell 10 it still holds ten, so cell 10 stays open ----
+const cut = once(bent, (c, v) => (c === 0 ? [0] : c <= 10 ? ALL : ALL.slice(1)))
+const cutOk = cut.getCandidates(1).size === 1 && cut.getCandidates(1).has(0) && cut.getCandidates(10).size > 1
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -130,8 +136,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
