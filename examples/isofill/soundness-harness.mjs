@@ -9,6 +9,9 @@
 //   rows — row r holds digit r (covers cap and force).
 //   bent — each pair of rows splits into two L-shaped regions, so the reach
 //          deduction walks around corners.
+//   silent35 — the grid of puzzle-35-silent.json, fuzzed with a seeder that
+//          never pins digit 2, so that digit stays silent (no placed cell) in
+//          every state and only the silent-digit rule prunes it.
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
@@ -41,6 +44,16 @@ for (const c of CELLS) {
   bent[c] = (top ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
 }
 
+// The same seeder, but digit `d` is never pinned, so no cell ever holds it as
+// a value: `d` stays silent and the silent-digit rule is the only one that can
+// prune it.
+function silentSeeder (d) {
+  return (c, v) => {
+    const s = seeder(c, v)
+    return s.length === 1 && s[0] === d ? ALL : s
+  }
+}
+
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 function seeder (c, v) {
   const mode = pick(['pin', 'full', 'subset'])
@@ -67,6 +80,9 @@ shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x]
 // hard — the 32-given fixture's grid, the one budget was tuned on.
 const hard = {}
 grid('puzzle-32.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
+// silent35 — the grid whose 35-given fixture leaves digit 2 with no given.
+const silent35 = {}
+grid('puzzle-35-silent.json').forEach((row, r) => [...row].forEach((ch, x) => { silent35[r * N + x] = Number(ch) }))
 
 // Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {
@@ -82,10 +98,10 @@ function once (truth, seed) {
 // pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
 const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0
-for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped], ['hard', hard]]) {
+for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder], ['shipped', shipped, seeder], ['hard', hard, seeder], ['silent35', silent35, silentSeeder(2)]]) {
   let fails = 0
   for (let iter = 0; iter < FUZZ; iter++) {
-    const { v } = run(truth, seeder)
+    const { v } = run(truth, seed)
     if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
   }
   console.log('isofill', name, `fixture: ${FUZZ} tests,`, fails, 'violations')
@@ -142,6 +158,44 @@ const tourOk = !tour.getCandidates(50).has(0) && tour.getCandidates(4).has(0)
 const prune = once(rows, (c, v) => (c < 2 * N ? [0, 1] : c < 3 * N ? [0, 1, 2] : c < 4 * N ? [2, 3] : c < 5 * N ? [2, 3, 4] : [v]))
 const pruneOk = CELLS.slice(2 * N, 3 * N).every(c => prune.getCandidates(c).size === 1 && prune.getCandidates(c).has(2))
 
+// ---- Silent digit: digits 0 and 1 have no placed cell anywhere. Their
+// candidate cells are a sixteen-cell blob B and a detached two-by-two corner
+// S, walled off by digit 2. A ten-cell region does not fit in four cells, so
+// S loses both digits and B keeps them. No other rule sees this: every walk
+// rule starts from a placed cell, and the budget matching is perfect with or
+// without the pair (S cell, 0) ----
+const S = [0, 1, 10, 11]
+const B = [3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17, 18, 19, 23, 24]
+const pinned = {}
+const put = (d, cs) => cs.forEach(c => { pinned[c] = d })
+put(2, [2, 12, 22, 21, 20, 30, 40, 50, 60, 70]) // the wall: an L that isolates S
+put(3, [25, 26, 27, 28, 29, 31, 32, 33, 34, 35])
+put(4, [36, 37, 38, 39, 41, 42, 43, 44, 45, 46])
+put(5, [47, 48, 49, 51, 52, 53, 54, 55, 56, 57])
+put(6, [58, 59, 61, 62, 63, 64, 65, 66, 67, 68])
+put(7, [69, 71, 72, 73, 74, 75, 76, 77, 78, 79])
+put(8, [80, 81, 82, 83, 84, 85, 86, 87, 88, 89])
+put(9, [90, 91, 92, 93, 94, 95, 96, 97, 98, 99])
+const silent = once(rows, c => (c in pinned ? [pinned[c]] : [0, 1]))
+const silentOk = S.every(c => !silent.getCandidates(c).has(0) && !silent.getCandidates(c).has(1)) &&
+  B.every(c => silent.getCandidates(c).has(0) && silent.getCandidates(c).has(1))
+
+// ---- Silent digit, dead board: same shape, but digit 2's comb cuts the open
+// cells into blobs of eight, six and six. No blob holds ten, so neither silent
+// digit has anywhere to go and the branch is dead: a cell empties ----
+const deadPinned = {}
+const deadPut = (d, cs) => cs.forEach(c => { deadPinned[c] = d })
+deadPut(2, [2, 12, 22, 21, 23, 24, 25, 26, 16, 6]) // the comb
+deadPut(3, [27, 28, 29, 37, 38, 39, 36, 35, 34, 33])
+deadPut(4, [31, 32, 41, 42, 43, 44, 45, 46, 47, 48])
+deadPut(5, [49, 59, 58, 57, 56, 55, 54, 53, 52, 51])
+deadPut(6, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69])
+deadPut(7, [70, 71, 72, 73, 74, 75, 76, 77, 78, 79])
+deadPut(8, [80, 81, 82, 83, 84, 85, 86, 87, 88, 89])
+deadPut(9, [90, 91, 92, 93, 94, 95, 96, 97, 98, 99])
+const silentDead = once(rows, c => (c in deadPinned ? [deadPinned[c]] : [0, 1]))
+const silentDeadOk = CELLS.some(c => silentDead.getCandidates(c).size === 0)
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -161,8 +215,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

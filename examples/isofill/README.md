@@ -21,7 +21,7 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count, reach, capacity, cut, tour, and budget, and a `validate` leaf check (see below).
+  prunes by count, reach, capacity, cut, tour, silent, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution.
@@ -38,16 +38,17 @@ exists to teach.
   the app ~27 s, so a rule change shows. Not the shipped instance. Now
   minimal under the current component (4.1 s; no given can go).
 - `puzzle-30.json`, `puzzle-35-silent.json` — the **silent-digit** fixtures,
-  built to attack the component where it is weakest: a digit with no given
-  at all gets no rule (reach, tour, cut, and the walk that limits budget all
-  need a placed cell), so the app finds its region by guessing. Both are
+  built to attack the component where it was weakest: a digit with no given
+  at all got no rule (reach, tour, cut, and the walk that limits budget all
+  need a placed cell), so the app found its region by guessing. The **silent**
+  deduction (below) closes that gap; #143 times it. Both are
   CP-SAT strips of one sampled grid (`verify.py sample 11`) that remove every
   given of one digit first, then the rest; `verify.py` proves each unique.
   `puzzle-30.json` (digit 3 silent, 30 givens) reads unique in **6.7 s** —
   the ranking fixture. `puzzle-35-silent.json` (digit 2 silent, 35 givens)
   gets **no verdict** inside the app's minute; give it one cell of digit 2
-  back and it closes in 0.1 s. That is the gap to close next: a deduction
-  for a digit with zero placed cells.
+  back and it closes in 0.1 s. Both times are from before the silent
+  deduction; #143 re-times them.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
@@ -86,7 +87,7 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs six sound deductions per digit and one across digits. Ten
+`update` runs seven sound deductions per digit and one across digits. Ten
 regions of ten cells, one digit each, means every digit fills exactly ten
 cells:
 
@@ -132,6 +133,18 @@ cells:
   the four-point version (min of the three 4-cycle orders) read 35.6 s on
   the 32-given fixture, against 15.3 s for triples — the loop over triples
   of placed cells per open cell cost more than it pruned.
+- **Silent** — a digit with no placed cell at all. Every walk above starts
+  from a placed cell, so none of them fires; the digit was the component's
+  blind spot (the two silent-digit fixtures above were built to show it).
+  The region is still ten connected cells, all of which allow the digit, so
+  it lies inside a single orthogonally connected component of the cells that
+  allow the digit. Split those cells into components: every component under
+  ten cells loses the digit, and if no component reaches ten the branch is
+  dead (the component empties a cell). Sound because the region is connected
+  and the cells that allow the digit over-approximate it. The surviving
+  components also become the digit's walk for budget below, so the matching
+  prune sees the restriction too. One flood fill per silent digit, over
+  cells the digit already allows.
 - **Budget** — the one rule that looks across digits. Every open cell needs
   a digit, and digit `d` can take at most `10 − placed` more cells, only
   cells inside its walk. Build the flow network source → digit (capacity
@@ -205,10 +218,16 @@ An earlier "unique in 2 s" figure was measured with 36 solution values still
 entered in the outer ring and was wrong.
 
 The kept deductions are cap, force, reach (with split), capacity, cut, tour,
-and budget with its matching prune.
-*Homeless* (a digit with no placed cell must still have a connected ten-cell
-home) was tried and removed: sound, but no verdict change and no time change
-(#91; the commit stays in git history). `verify.py` stays the independent
+silent, and budget with its matching prune.
+*Homeless* — an earlier, weaker form of silent that pruned only when exactly
+one component of ten or more cells survived — was tried and removed: sound,
+but no verdict change and no time change (#91; the commit stays in git
+history). Silent (#142) is the same idea, stronger in two ways: it prunes
+every component under ten cells even when several larger ones remain, and it
+hands the survivors to budget as the digit's walk. Cut, tour, and budget did
+not exist when homeless was measured, and the silent-digit fixtures did not
+either. #143 times silent on them; the rule earns its place there or it
+comes out again. `verify.py` stays the independent
 proof that the puzzle is unique: it models the rule from scratch (flow-based
 connectivity) and does not depend on the app.
 
@@ -221,20 +240,24 @@ node examples/isofill/soundness-harness.mjs
 # -> isofill rows fixture: 2000 tests, 0 violations
 # -> isofill bent fixture: 2000 tests, 0 violations
 # -> isofill shipped fixture: 2000 tests, 0 violations
+# -> isofill hard fixture: 2000 tests, 0 violations
+# -> isofill silent35 fixture: 2000 tests, 0 violations
 # (FUZZ=20000 node ... for the deep run, ~2 min)
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | tour fired: true | budget fired: true | budget prune fired: true | one pass: true (100 reads)
+# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | tour fired: true | budget fired: true | budget prune fired: true | silent fired: true | silent dead fired: true | one pass: true (100 reads)
 # -> PASS
 ```
 
 The harness mocks only the puzzle methods the component calls, seeds random
-partial fills of three valid ISOFILL solutions (one with row *r* holding digit
-*r*, one with bent L-shaped regions so reach walks around corners, and the
-shipped grid from `puzzle.json`) in which every cell still allows its true
-value, runs `update` to a fixpoint, and asserts every true value survived. It
+partial fills of five valid ISOFILL solutions (one with row *r* holding digit
+*r*, one with bent L-shaped regions so reach walks around corners, the shipped
+grid from `puzzle.json`, the hard grid from `puzzle-32.json`, and the grid of
+`puzzle-35-silent.json` — that last one seeded so digit 2 is never pinned, so
+it is silent in every state and the silent deduction runs on it every time) in
+which every cell still allows its true value, runs `update` to a fixpoint, and asserts every true value survived. It
 also builds one state for each deduction — cap, force, reach, split, split
-with all ten cells placed, capacity, cut, tour, budget, budget prune — and
-checks each fired, checks `update`
+with all ten cells placed, capacity, cut, tour, budget, budget prune, silent,
+silent on a dead board — and checks each fired, checks `update`
 reads each cell's candidates at most once per call,
 and checks `validate` accepts a full valid grid and rejects a count-valid but
 split one.
