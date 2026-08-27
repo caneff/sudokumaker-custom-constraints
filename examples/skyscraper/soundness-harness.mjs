@@ -5,6 +5,9 @@
 // to a fixpoint, and check the true values survived. A removed true value can
 // make a real puzzle unsolvable.
 //
+// It also asserts the DP is EXACT, not merely sound, against a brute-force
+// oracle at n=5 -- see the last block.
+//
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
@@ -112,6 +115,64 @@ for (let iter = 0; iter < PAIRS; iter++) {
 }
 console.log('interleaved yields:', PAIRS, 'pairs,', interleaveBad, 'differences')
 
-const ok = bad === 0 && fired > 0 && interleaveBad === 0
+// Soundness only asks that no true value is dropped, which a do-nothing
+// component passes. The DP claims more: tracking the digit subset makes it a
+// DECISION PROCEDURE for a line, so a value must survive EXACTLY when some full
+// line assignment consistent with the candidates and both clues uses it. At
+// n=5 that set is brute-forceable over all 120 permutations, so the check has a
+// real verdict: a DP that merges its states by position rather than by digit
+// subset keeps values the oracle rules out, and fails this on about two thirds
+// of the states below.
+const M = 5
+installGlobals(1, M)
+const PERMS = []
+const permute = (a, rest) => {
+  if (rest.length === 0) { PERMS.push(a); return }
+  for (const d of rest) permute([...a, d], rest.filter(x => x !== d))
+}
+permute([], [1, 2, 3, 4, 5])
+const smallLine = [...Array(M).keys()]
+const smallInst = {}
+mod.setParams(smallInst, CA, CB, smallLine)
+let exactBad = 0
+let exactRuns = 0
+const EXACT = 2000
+for (let iter = 0; iter < EXACT; iter++) {
+  const perm = PERMS[(rnd() * PERMS.length) | 0]
+  const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
+  for (const i of smallLine) truth[i] = perm[i]
+  const p = makePuzzle(truth, (c, v) => {
+    const s = new Set([v])
+    for (let d = 1; d <= M; d++) if (rnd() < 0.5) s.add(d)
+    return [...s]
+  })
+  const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
+  // Every line the STARTING candidates and both clues allow, by brute force.
+  const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
+  for (const q of PERMS) {
+    const a = visible(q)
+    const b = visible([...q].reverse())
+    if (!start.get(CA).has(a) || !start.get(CB).has(b)) continue
+    if (smallLine.some(i => !start.get(i).has(q[i]))) continue
+    oracle.get(CA).add(a)
+    oracle.get(CB).add(b)
+    for (const i of smallLine) oracle.get(i).add(q[i])
+  }
+  if (oracle.get(CA).size === 0) continue // no valid line: the DP may leave anything
+  exactRuns++
+  while (Array.from(mod.update(smallInst, p)).length > 0) { /* to fixpoint */ }
+  for (const [c, want] of oracle) {
+    const got = p._cand.get(c)
+    if (got.size !== want.size || [...want].some(d => !got.has(d))) {
+      exactBad++
+      if (exactBad <= 3) console.log('not exact at cell', c, 'kept', [...got].sort(), 'oracle', [...want].sort(), 'perm', perm)
+      break
+    }
+  }
+}
+installGlobals(1, N)
+console.log('exactness vs brute force (n=5):', exactRuns, 'states,', exactBad, 'disagreements')
+
+const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
