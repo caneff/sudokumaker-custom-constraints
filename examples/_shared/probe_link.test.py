@@ -7,13 +7,34 @@
 import pathlib
 import tempfile
 
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
 from probe_link import check_stripped, empty_interior, empty_link_file, strip_to_givens
 
 HERE = pathlib.Path(__file__).parent
-LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
+SRC = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
+ISO_SRC = HERE.parent / "isofill" / "PUZZLE_LINK.txt"
+
+
+def dirty(src, out):
+    """Write `src` back with a value in every non-given cell.
+
+    Every shipped link is given-only — check_links.py enforces it — so a probe
+    step has nothing to strip from one. These fixtures put the entered values
+    back, which is the board shape the probe steps exist to clean up.
+    """
+    doc = decode_puzzle(src.read_text().rstrip("\n"))
+    for i, c in enumerate(doc["puzzle"]["cells"]):
+        if not c.get("given"):
+            c["value"] = i % 9 + 1
+    out.write_text(encode_link(doc))
+    return out
+
 
 if __name__ == "__main__":
+    fixtures = tempfile.TemporaryDirectory()
+    LINK_FILE = dirty(SRC, pathlib.Path(fixtures.name) / "link.txt")
+    ISO = dirty(ISO_SRC, pathlib.Path(fixtures.name) / "iso.txt")
+
     doc = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
     w, h = doc["puzzle"]["width"], doc["puzzle"]["height"]
     before = doc["puzzle"]["cells"]
@@ -56,7 +77,6 @@ if __name__ == "__main__":
 
     # check_stripped: the enforcement. A shipped link (solution entered) is
     # refused; a stripped one passes; ring values pass only with ring_clues.
-    ISO = HERE.parent / "isofill" / "PUZZLE_LINK.txt"
     shipped = decode_puzzle(ISO.read_text().rstrip("\n"))
     try:
         check_stripped(shipped)

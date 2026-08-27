@@ -34,13 +34,13 @@ RULE = (
 def build(component_path, puzzle_path):
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
-    cells = []
-    for r in range(N):
-        for c in range(N):
-            cell = {"value": int(spec["grid"][r][c])}
-            if (r, c) in clues:
-                cell["given"] = True
-            cells.append(cell)
+    # a cell holds a value only when it is a clue: a non-given value ships as an
+    # entered digit and the recipient opens a solved board
+    cells = [
+        {"value": int(spec["grid"][r][c]), "given": True} if (r, c) in clues else {}
+        for r in range(N)
+        for c in range(N)
+    ]
     doc = {
         "formatVersion": "1.6.0",
         "puzzle": {
