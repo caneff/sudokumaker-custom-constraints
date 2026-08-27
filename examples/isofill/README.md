@@ -42,6 +42,10 @@ exists to teach.
   swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
   builds another instance (`puzzle-44.json` for timing).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
+- `PUZZLE_LINK-32.txt`, `PUZZLE_LINK-44.txt` — the hard fixtures as
+  stripped links (givens only, nothing entered), built by
+  `build_hard_links.py` on every `just check`. Open one to see the board the
+  timing table is talking about.
 
 ## Paste into SudokuMaker
 

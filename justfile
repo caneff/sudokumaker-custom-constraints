@@ -38,6 +38,7 @@ test:
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-44.json
     uv run --with lzstring examples/isofill/build_link.py
     uv run --with lzstring examples/isofill/build_link.test.py
+    uv run --with lzstring examples/isofill/build_hard_links.py
     uv run --with lzstring examples/_shared/check_links.py
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
