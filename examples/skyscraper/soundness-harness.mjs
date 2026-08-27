@@ -49,6 +49,8 @@ const CA = 100
 const CB = 101
 const LINE = [...Array(N).keys()]
 let bad = 0
+let fired = 0 // coverage: the prune removed something, so the DP actually ran
+const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
 for (let iter = 0; iter < FUZZ; iter++) {
   const perm = shuffled()
   const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
@@ -56,9 +58,12 @@ for (let iter = 0; iter < FUZZ; iter++) {
   const p = makePuzzle(truth, seeder)
   const inst = {}
   mod.setParams(inst, CA, CB, LINE)
+  const before = total(p)
   const v = violates(mod, inst, p, truth)
+  if (total(p) < before) fired++
   if (v) { bad++; if (bad <= 5) console.log('violation', v, 'perm', perm) }
 }
-console.log('line component:', FUZZ, 'tests,', bad, 'violations')
-console.log(bad === 0 ? 'PASS' : 'FAIL')
-process.exit(bad === 0 ? 0 : 1)
+console.log('line component:', FUZZ, 'tests,', bad, 'violations,', fired, 'prune firings')
+const ok = bad === 0 && fired > 0
+console.log(ok ? 'PASS' : 'FAIL')
+process.exit(ok ? 0 : 1)

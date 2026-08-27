@@ -18,9 +18,9 @@ times baseline and candidate 3 reps each, and prints one paste-ready row
 manual steps below are what it automates, and still apply to an example with
 no `build_link.py` yet.
 
-An example that registers more than one component (hit-counts,
-running-start, skyscraper each register a `Pair` component alongside the
-main one) declares which one `just time` follows: `build_link.py` sets
+An example that registers more than one component (hit-counts and
+running-start each register a `Pair` component alongside the main one)
+declares which one `just time` follows: `build_link.py` sets
 `TIMED_COMPONENT = "<ComponentName>"`, a sibling of the existing
 `CONSTRAINT_NAME` constant. Without that declaration, the driver falls back
 to the one registered component that has a same-named `.js` file in the

@@ -139,6 +139,8 @@ function prune (cands, Lc, Rc, peak) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
+  // The peak argument needs a full house: maxDigit present exactly once.
+  if (line.length !== helpers.digits.maxDigit) return
   const cands = line.map(c => new Set(puzzle.getCandidates(c)))
   const Lc = new Set(puzzle.getCandidates(clueA))
   const Rc = new Set(puzzle.getCandidates(clueB))

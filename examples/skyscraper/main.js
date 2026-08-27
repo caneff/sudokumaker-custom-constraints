@@ -13,13 +13,20 @@ function sameReversed (a, b) {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[a.length - 1 - i]) return false
   return true
 }
+const paired = new Set()
 for (let i = 0; i < groups.length; i++) {
   for (let j = i + 1; j < groups.length; j++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
     const name = `skyscraper line ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
     puzzle.addConstraintComponent(
       new SkyscraperLineComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
+    paired.add(i).add(j)
   }
+}
+// Every line needs both end clues; a lone clue would get no component and no
+// error, so fail loud instead.
+for (let i = 0; i < groups.length; i++) {
+  if (!paired.has(i)) throw new Error(`skyscraper: clue ${helpers.naming.getCellName(groups[i].clue)} has no opposite clue on its line`)
 }
 
 // Exactly one clue of 1 per side. A clue of 1 means the cell next to it is the
