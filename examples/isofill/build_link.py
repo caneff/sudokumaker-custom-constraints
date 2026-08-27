@@ -34,7 +34,6 @@ RULE = (
 def build(component_path, puzzle_path):
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
-<<<<<<< HEAD
     # a cell holds a value only when it is a clue: a non-given value ships as an
     # entered digit and the recipient opens a solved board
     cells = [
@@ -42,19 +41,6 @@ def build(component_path, puzzle_path):
         for r in range(N)
         for c in range(N)
     ]
-=======
-    cells = []
-    for r in range(N):
-        for c in range(N):
-            # a cell holds a value only when it is a given; anything else
-            # ships as an entered digit and the recipient opens a solved board
-            cell = (
-                {"value": int(spec["grid"][r][c]), "given": True}
-                if (r, c) in clues
-                else {}
-            )
-            cells.append(cell)
->>>>>>> 6539b7c (isofill: link stores values only in given cells — 65 empty cells, not 65 entered digits)
     doc = {
         "formatVersion": "1.6.0",
         "puzzle": {
@@ -67,6 +53,9 @@ def build(component_path, puzzle_path):
             "comment": RULE,
             "cells": cells,
             "constraints": [
+                # the built-in "Given digits" constraint every frame carries;
+                # without it the app lists no givens (found live, 2026-08-27)
+                {"type": 0},
                 {
                     "name": "ISOFILL",
                     "type": 1000,
@@ -89,7 +78,7 @@ def build(component_path, puzzle_path):
                     },
                     "input": {},
                     "style": {},
-                }
+                },
             ],
         },
     }
@@ -103,7 +92,8 @@ def check(link, doc, n_clues):
     assert (p["type"], p["width"], p["height"], p["minDigit"]) == ("custom", N, N, 0)
     assert len(p["cells"]) == N * N and not any("houses" in k for k in p)
     assert sum(1 for c in p["cells"] if c.get("given")) == n_clues
-    d = p["constraints"][0]["definition"]
+    assert p["constraints"][0] == {"type": 0}, "given-digits constraint missing"
+    d = p["constraints"][1]["definition"]
     assert d["input"] == [], "a global constraint has no groups"
     assert [c["name"] for c in d["components"]] == ["IsofillComponent"]
 
