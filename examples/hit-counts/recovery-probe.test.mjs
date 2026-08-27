@@ -6,14 +6,12 @@
 //
 //   node examples/hit-counts/recovery-probe.test.mjs
 
-import { execFileSync } from 'child_process'
-import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { runGoldenCases } from '../_shared/golden-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PROBE = join(HERE, 'recovery-probe.mjs')
-const GOLDEN = join(HERE, '.golden')
 
 const cases = [
   { args: ['gen_6.json'], golden: 'gen_6.txt' },
@@ -22,27 +20,6 @@ const cases = [
   { args: ['gen_6.json', '--search', '--only=on'], golden: 'search_on.txt' }
 ]
 
-// The search runs print a wall-clock time (ms) that is never identical
-// between runs; mask it out before the byte-identical comparison so the
-// golden asserts on what the extraction must preserve — node/solution
-// counts, output shape — not on timing noise.
-const maskMs = s => s.replace(/\d+ms/g, 'Nms')
-
-let failed = false
-for (const { args, golden } of cases) {
-  const expected = maskMs(readFileSync(join(GOLDEN, golden), 'utf8'))
-  const actual = maskMs(execFileSync('node', [PROBE, ...args], { encoding: 'utf8' }))
-  if (actual === expected) {
-    console.log(`PASS: ${args.join(' ')}`)
-  } else {
-    failed = true
-    console.log(`FAIL: ${args.join(' ')} — output drifted from ${golden}`)
-    console.log('--- expected ---')
-    console.log(expected)
-    console.log('--- actual ---')
-    console.log(actual)
-  }
-}
-
-if (failed) process.exit(1)
+const ok = runGoldenCases(PROBE, cases)
+if (!ok) process.exit(1)
 console.log('recovery-probe.test.mjs: all golden cases byte-identical')

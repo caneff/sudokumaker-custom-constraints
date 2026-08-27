@@ -34,6 +34,7 @@ import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
 } from '../_shared/recovery-lib.mjs'
+import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const file = process.argv[2] || 'gen_6.json'
@@ -46,32 +47,7 @@ installGlobals(0, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
 // ---- geometry (mirrors build_size.py) ----
-const W = n + 2
-const idx = (r, c) => r * W + c
-const interior = (r, c) => idx(r + 1, c + 1)
-
-function lineCells (side, i) {
-  const cells = []
-  if (side === 'L') for (let c = 0; c < n; c++) cells.push(interior(i, c))
-  if (side === 'R') for (let c = n - 1; c >= 0; c--) cells.push(interior(i, c))
-  if (side === 'T') for (let r = 0; r < n; r++) cells.push(interior(r, i))
-  if (side === 'B') for (let r = n - 1; r >= 0; r--) cells.push(interior(r, i))
-  return cells
-}
-function clueCell (side, i) {
-  if (side === 'L') return idx(i + 1, 0)
-  if (side === 'R') return idx(i + 1, W - 1)
-  if (side === 'T') return idx(0, i + 1)
-  return idx(W - 1, i + 1)
-}
-
-// Every clued line, keyed "L0".."B{n-1}", as { key, clue cell, line cells }.
-const keys = []
-for (let i = 0; i < n; i++) for (const s of ['L', 'R', 'T', 'B']) keys.push(s + i)
-const groups = keys.map(k => {
-  const side = k[0]; const i = +k.slice(1)
-  return { key: k, cells: [clueCell(side, i), ...lineCells(side, i)] }
-})
+const { interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
@@ -153,16 +129,6 @@ function matchingReverse () {
 // ---- Régin (GAC) all-different floor ----
 const FLOOR = (process.argv.find(a => a.startsWith('--floor=')) || '--floor=regin').split('=')[1]
 const floorGroup = makeAllDifferentFloor(st, { kind: FLOOR, maxDigit: n })
-const alldiffGroups = []
-for (let r = 0; r < n; r++) alldiffGroups.push(Array.from({ length: n }, (_, c) => interior(r, c)))
-for (let c = 0; c < n; c++) alldiffGroups.push(Array.from({ length: n }, (_, r) => interior(r, c)))
-for (let br = 0; br < n; br += bh) {
-  for (let bc = 0; bc < n; bc += bw) {
-    const cells = []
-    for (let dr = 0; dr < bh; dr++) for (let dc = 0; dc < bw; dc++) cells.push(interior(br + dr, bc + dc))
-    alldiffGroups.push(cells)
-  }
-}
 
 // ---- measure one run ----
 const hiddenKeys = keys.filter(k => !activeSet.has(k))
