@@ -24,6 +24,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 N = 10
+CONSTRAINT_NAME = "ISOFILL"
 RULE = (
     "ISOFILL: Divide the grid into 10 regions, each with 10 orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "
@@ -44,7 +45,7 @@ def build(component_path, puzzle_path):
     doc = {
         "formatVersion": "1.6.0",
         "puzzle": {
-            "name": "ISOFILL",
+            "name": CONSTRAINT_NAME,
             "author": "",
             "type": "custom",
             "width": N,
@@ -54,10 +55,10 @@ def build(component_path, puzzle_path):
             "cells": cells,
             "constraints": [
                 {
-                    "name": "ISOFILL",
+                    "name": CONSTRAINT_NAME,
                     "type": 1000,
                     "definition": {
-                        "name": "ISOFILL",
+                        "name": CONSTRAINT_NAME,
                         "input": [],
                         "backend": {
                             "type": "code",

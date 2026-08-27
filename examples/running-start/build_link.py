@@ -1,15 +1,32 @@
-# Rebuild the SudokuMaker puzzle link from the current source files.
+# Two jobs in one script.
 #
+# No args: rebuild PUZZLE_LINK.txt from scratch from the current source files.
 # The grid, clue ring, given flags, line groups, regions, cages, and cosmetic
 # lines never change for this example; they live in puzzle_template.json (a
 # document decoded once from a known-good link, with the code fields emptied).
 # Only the embedded code changes when you edit main.js or a component, so this
-# script injects the current files and re-encodes.
+# path injects the current files and re-encodes.
 #
 #   uv run --with lzstring examples/running-start/build_link.py
 #
 # Writes PUZZLE_LINK.txt next to this script.
+#
+# --component/--out: build a same-board comparison link (the contract in
+# docs/real-app-timing.md, shared with numbered-rooms/skyscraper/hit-counts):
+# the committed PUZZLE_LINK.txt with one named component's code swapped for a
+# candidate file. The board, givens, and every other constraint field stay
+# exactly as shipped -- only the requested component's code changes.
+#
+#   uv run --with lzstring examples/running-start/build_link.py \
+#     --component RunningStartComponent.js --out /tmp/candidate.txt
+#
+# --component names a file whose basename (minus .js) matches an existing
+# component registered on PUZZLE_LINK.txt's "Running Start Lines" constraint
+# (RunningStartComponent or RunningStartPairComponent); that component's code
+# becomes the given file's, minified. The backend and the sibling component
+# are untouched.
 
+import argparse
 import json
 import pathlib
 import sys
@@ -17,13 +34,27 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from frame import cosmetics
 from link_codec import decode_puzzle, encode_link
+from link_swap import check_and_write, swap_component_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
+CONSTRAINT_NAME = "Running Start Lines"
 
 
-def build():
+def build(component_path, out_path):
+    """Swap one named component's code into the committed PUZZLE_LINK.txt and
+    write the result to out_path. Same contract as numbered-rooms/skyscraper."""
+    component_path = pathlib.Path(component_path)
+    code = minify_js(component_path.read_text())
+    base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+    doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
+    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
+
+
+def build_from_template():
+    """Rebuild the whole link from puzzle_template.json, main.js, and both
+    component files -- the source of truth for PUZZLE_LINK.txt."""
     doc = json.loads((HERE / "puzzle_template.json").read_text())
     # the template was decoded from a finished board, so it carries the whole
     # solution and every hidden clue as non-given values. Same rule as
@@ -81,7 +112,7 @@ def check(link, doc):
     rs = next(
         c
         for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == "Running Start Lines"
+        if c.get("definition", {}).get("name") == CONSTRAINT_NAME
     )
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
@@ -92,7 +123,18 @@ def check(link, doc):
 
 
 if __name__ == "__main__":
-    link, doc = build()
-    check(link, doc)
-    (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
-    print(f"wrote PUZZLE_LINK.txt ({len(link)} chars)")
+    p = argparse.ArgumentParser()
+    p.add_argument("--component", help="swap this file into PUZZLE_LINK.txt")
+    p.add_argument("--out", help="where to write the swapped-in link")
+    args = p.parse_args()
+    if args.component is None and args.out is None:
+        # no args: rebuild PUZZLE_LINK.txt from source, the current default
+        link, doc = build_from_template()
+        check(link, doc)
+        (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
+        print(f"wrote PUZZLE_LINK.txt ({len(link)} chars)")
+    elif args.component is None or args.out is None:
+        p.error("--component and --out must be given together")
+    else:
+        build(args.component, args.out)
+        print(f"wrote {args.out}")
