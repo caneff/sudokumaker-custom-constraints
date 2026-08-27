@@ -45,7 +45,7 @@ def build(component_path, puzzle_path):
         "formatVersion": "1.6.0",
         "puzzle": {
             "name": "ISOFILL",
-            "author": "sudokumaker-custom-constraints",
+            "author": "",
             "type": "custom",
             "width": N,
             "height": N,

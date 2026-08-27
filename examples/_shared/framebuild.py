@@ -284,7 +284,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
         "formatVersion": "1.6.0",
         "puzzle": {
             "name": f"{spec.title} {n}x{n}",
-            "author": "generated",
+            "author": "",
             "comment": spec.comment_fn(n),
             # minDigit/maxDigit pin the digit range to n; the app otherwise
             # defaults a custom puzzle to 0..9 regardless of grid size.
