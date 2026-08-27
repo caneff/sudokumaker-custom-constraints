@@ -4,7 +4,9 @@
 tour, silent, and budget. What do other public solvers do for region, path, and
 shading connectivity, and is any of it stronger or cheaper than what we run?
 
-**Method.** Read source and handler docs, not blog posts. Every claim below is
+**Method.** Read source and handler docs, not blog posts. ISS was read from
+GitHub `main` over the web, not the local checkout at `~/src/iss-stuff` (`ed5688d`,
+2026-07-28); section numbers may differ between the two. Every claim below is
 tagged `[source]` (I read the code or the project's own algorithm doc),
 `[docs]` (project prose or a paper abstract), or `[unsure]` (my inference).
 Isofill's rules are as `examples/isofill/README.md` describes them, checked
@@ -243,7 +245,10 @@ connectivity, single liberty, 2×2 pools
    and it folds in the separate split walk at line 240. Highest expected value
    of anything here: a free strength upgrade to the rule every other rule reads.
    `[source: ISS connected_values.md §7.2]`
-2. **Perimeter non-crossing rule.** Walk the 36 perimeter cells cyclically and
+2. **Perimeter non-crossing rule — already built.** Branch `issue-149`
+   (`5a168c8`, "timed and kept") ports `ConnectedBorder` and generalises it to
+   ten regions, with the proof in the commit message; #149 is open and waits
+   for ship. Kept here for the record of what ISS says about it. Walk the 36 perimeter cells cyclically and
    reject any interleaving of two digits; strip the digit from cells in a gap
    flanked by another. One stack pass, **O(perimeter)** — 36 cells, free next to
    anything else in `update`. New deduction, sees pairs the 2×2 rule cannot.
