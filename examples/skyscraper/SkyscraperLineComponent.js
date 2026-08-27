@@ -141,28 +141,19 @@ function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
   // The peak argument needs a full house: maxDigit present exactly once.
   if (line.length !== helpers.digits.maxDigit) return
-  // The app re-runs every component until a pass removes nothing, so most
-  // calls see exactly the state the last call left. Remember the candidate
-  // masks of a state the DP could not shrink, and skip when they come back.
-  // Only a fixpoint state is stored: a state that yielded removals must prune
-  // again if a backtrack brings it back.
-  const sig = [clueA, clueB, ...line].map(c => puzzle.getCandidatesBitMask(c)).join(',')
-  if (sig === instance.fixpointSig) return
   const cands = line.map(c => new Set(puzzle.getCandidates(c)))
   const Lc = new Set(puzzle.getCandidates(clueA))
   const Rc = new Set(puzzle.getCandidates(clueB))
   if (Lc.size === 0 || Rc.size === 0) return // contradiction; the solver sees it on the clue
   const r = prune(cands, Lc, Rc, helpers.digits.maxDigit)
-  let removed = false
   const rmA = [...Lc].filter(d => !r.L.has(d))
-  if (rmA.length > 0) { removed = true; yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), clueA) }
+  if (rmA.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), clueA)
   const rmB = [...Rc].filter(d => !r.R.has(d))
-  if (rmB.length > 0) { removed = true; yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), clueB) }
+  if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), clueB)
   for (let i = 0; i < line.length; i++) {
     const rm = [...cands[i]].filter(d => !r.cells[i].has(d))
-    if (rm.length > 0) { removed = true; yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), line[i]) }
+    if (rm.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), line[i])
   }
-  if (!removed) instance.fixpointSig = sig
 }
 
 // Visible buildings reading `cells` in order: count the running maxima.

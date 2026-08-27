@@ -72,6 +72,13 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 (the original wrapper code on the identical board), built by each example's
 `build_original.py`. Empty each and time them.
 
+To count something inside the app (how often `update` runs, how often a
+branch fires), make a probe copy of the component that
+`console.log('[probe] calls=...')` every few hundred calls, build a link from
+it with `build_link.py --component`, and run `app-solve.mjs` on the emptied
+link: the driver relays every browser console line that starts with `[probe]`
+and drops the rest. Worked example: `docs/research/133-skip-unchanged.md`.
+
 ## app-strip.mjs: unattended greedy clue removal
 
 `examples/_shared/app-strip.mjs` uses the same app, and the same solve
