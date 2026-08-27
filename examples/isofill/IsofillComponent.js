@@ -17,8 +17,10 @@
 //!   Budget: every open cell needs a digit, and each digit can take at most
 //!          (10 - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
-//!          This is the one rule that sees across digits: a wrong region
-//!          for one digit starves the others' budgets.
+//!          Then the matching prune: a (cell, digit) pair that no perfect
+//!          matching uses loses that candidate (Régin). This is the one rule
+//!          that sees across digits: a wrong region for one digit starves
+//!          the others' budgets.
 //! validate is the exact leaf check: each digit one connected blob of ten.
 
 function getAffectedCells (cells) {
@@ -64,6 +66,22 @@ function reach (starts, depth, allowed, nbrs) {
   return { mask, size }
 }
 
+// BFS distance from `start` to every cell through `allowed`; unreachable
+// cells read as 999, so any bound they enter fails.
+function distances (start, allowed, nbrs) {
+  const dist = new Int16Array(nbrs.length).fill(999)
+  dist[start] = 0
+  let frontier = [start]
+  for (let step = 1; frontier.length; step++) {
+    const next = []
+    for (const i of frontier) {
+      for (const n of nbrs[i]) if (allowed[n] && dist[n] === 999) { dist[n] = step; next.push(n) }
+    }
+    frontier = next
+  }
+  return dist
+}
+
 function * update (instance, puzzle) {
   const { cells, nbrs } = instance
   const lo = helpers.digits.minDigit
@@ -105,6 +123,34 @@ function * update (instance, puzzle) {
       // Capacity: the whole region lies inside `near`, so fewer than `size`
       // cells there is a dead branch; empty a placed cell so the solver sees it.
       if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+      // Tour bound: the region is a connected set holding every placed cell
+      // and x, so walking round a spanning tree of it is a closed tour through
+      // them all; its cells number at least 1 + half the perimeter of any
+      // three of those points (BFS distances through `allowed`). Tighter than
+      // the depth bound when the placed cells are spread out.
+      if (placed.length > 1) {
+        const dist = placed.map(p => distances(p, allowed, nbrs))
+        let base = 0
+        for (let i = 0; i < placed.length; i++) {
+          for (let j = i + 1; j < placed.length; j++) {
+            for (let k = j + 1; k < placed.length; k++) {
+              base = Math.max(base, dist[i][placed[j]] + dist[i][placed[k]] + dist[j][placed[k]])
+            }
+          }
+        }
+        if (1 + Math.ceil(base / 2) > size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+        for (const x of open) {
+          if (!near.mask[x]) continue
+          let per = base
+          for (let i = 0; i < placed.length; i++) {
+            for (let j = i + 1; j < placed.length; j++) {
+              per = Math.max(per, dist[i][x] + dist[j][x] + dist[i][placed[j]])
+            }
+          }
+          if (1 + Math.ceil(per / 2) > size) { near.mask[x] = 0; near.size-- }
+        }
+        if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+      }
       state[d].near = near.mask // budget (below) limits this digit to its walk
       for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
       // Cut: an open cell whose removal starves the walk (< size cells) or
@@ -132,20 +178,30 @@ function * update (instance, puzzle) {
   // Budget: every open cell needs a digit, and digit d can take at most
   // (size - placed) more cells, all inside its walk. If no assignment covers
   // every open cell the branch is dead: empty that cell.
-  const dead = budgetDead(state, lo, hi, size)
+  const { dead, drops } = budget(state, lo, hi, size)
   if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[dead])
+  for (const [x, d] of drops) yield puzzle.removeCandidateFromCell(d, cells[x])
 }
 
 // Bipartite matching, open cells to digits, where digit d has (size - placed)
 // slots and offers them only to open cells inside its walk. Kuhn's augmenting
-// path per cell. Returns the first cell that no matching can cover, else -1.
-function budgetDead (state, lo, hi, size) {
+// path per cell. Open cells and slots count the same, so a full matching is
+// perfect: `dead` is the first cell no matching covers (else -1).
+// Then Régin's prune on a perfect matching: an unmatched pair (cell, digit)
+// lies in some other perfect matching only if cell and digit share a strongly
+// connected component of the residual graph (cell -> digit for an unmatched
+// pair, digit -> cell for a matched one). Every other pair is in no solution,
+// so `drops` lists them as [cell, digit].
+function budget (state, lo, hi, size) {
   const n = state[lo].allowed.length
   const isOpen = new Uint8Array(n)
   const options = [] // cell -> digits whose walk holds it
   const taken = [] // digit -> cells matched to it
+  const matched = new Int8Array(n).fill(-1) // cell -> digit
+  let slots = 0
   for (let d = lo; d <= hi; d++) {
     taken[d] = []
+    slots += size - state[d].placed.length
     const near = state[d].near
     for (const i of state[d].open) {
       isOpen[i] = 1
@@ -156,15 +212,61 @@ function budgetDead (state, lo, hi, size) {
     for (const d of options[x] || []) {
       if (seen[d]) continue
       seen[d] = 1
-      if (taken[d].length < size - state[d].placed.length) { taken[d].push(x); return true }
+      if (taken[d].length < size - state[d].placed.length) { taken[d].push(x); matched[x] = d; return true }
       for (let k = 0; k < taken[d].length; k++) {
-        if (augment(taken[d][k], seen)) { taken[d][k] = x; return true }
+        if (augment(taken[d][k], seen)) { taken[d][k] = x; matched[x] = d; return true }
       }
     }
     return false
   }
-  for (let x = 0; x < n; x++) if (isOpen[x] && !augment(x, new Uint8Array(hi + 1))) return x
-  return -1
+  let open = 0
+  for (let x = 0; x < n; x++) {
+    if (!isOpen[x]) continue
+    open++
+    if (!augment(x, new Uint8Array(hi + 1))) return { dead: x, drops: [] }
+  }
+  const drops = []
+  if (open !== slots) return { dead: -1, drops } // an emptied cell: not perfect, prune unsound
+  // Residual graph over cells 0..n-1 and digits n+d; Tarjan's SCC.
+  const adj = []
+  for (let v = 0; v < n + hi + 1; v++) adj[v] = []
+  for (let x = 0; x < n; x++) {
+    for (const d of options[x] || []) {
+      if (d === matched[x]) adj[n + d].push(x); else adj[x].push(n + d)
+    }
+  }
+  const comp = sccs(adj)
+  for (let x = 0; x < n; x++) {
+    for (const d of options[x] || []) {
+      if (d !== matched[x] && comp[x] !== comp[n + d]) drops.push([x, d])
+    }
+  }
+  return { dead: -1, drops }
+}
+
+// Tarjan's strongly connected components; returns a component id per node.
+function sccs (adj) {
+  const n = adj.length
+  const idx = new Int32Array(n).fill(-1)
+  const low = new Int32Array(n)
+  const comp = new Int32Array(n).fill(-1)
+  const stack = []
+  let next = 0
+  let count = 0
+  const visit = v => {
+    idx[v] = low[v] = next++
+    stack.push(v)
+    for (const w of adj[v]) {
+      if (idx[w] < 0) { visit(w); low[v] = Math.min(low[v], low[w]) } else if (comp[w] < 0) low[v] = Math.min(low[v], idx[w])
+    }
+    if (low[v] === idx[v]) {
+      let w
+      do { w = stack.pop(); comp[w] = count } while (w !== v)
+      count++
+    }
+  }
+  for (let v = 0; v < n; v++) if (idx[v] < 0) visit(v)
+  return comp
 }
 
 // Exact check on a full grid: every digit is one connected blob of `size` cells.

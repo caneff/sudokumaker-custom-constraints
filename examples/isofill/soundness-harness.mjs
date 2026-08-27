@@ -130,6 +130,18 @@ const cutOk = cut.getCandidates(1).size === 1 && cut.getCandidates(1).has(0) && 
 const budget = once(rows, (c, v) => (c < 2 * N ? [1, 2] : [v]))
 const budgetOk = CELLS.some(c => budget.getCandidates(c).size === 0)
 
+// ---- Tour bound: digit 0 placed at cells 0 and 9 (nine apart). Cell 50 is
+// five steps from cell 0, inside the depth bound (8), but a region holding
+// cells 0, 9 and 50 needs 1 + (5 + 14 + 9) / 2 = 15 cells; cell 4 needs 10 ----
+const tour = once(rows, (c, v) => (c === 0 || c === 9 ? [0] : ALL))
+const tourOk = !tour.getCandidates(50).has(0) && tour.getCandidates(4).has(0)
+
+// ---- Budget prune: rows 0-1 allow [0,1], row 2 [0,1,2], row 3 [2,3], row 4
+// [2,3,4], rows 5-9 fixed. Rows 0-1 use up digits 0 and 1, so row 2 must be
+// 2: no single digit is forced, but the matching prune drops 0 and 1 there ----
+const prune = once(rows, (c, v) => (c < 2 * N ? [0, 1] : c < 3 * N ? [0, 1, 2] : c < 4 * N ? [2, 3] : c < 5 * N ? [2, 3, 4] : [v]))
+const pruneOk = CELLS.slice(2 * N, 3 * N).every(c => prune.getCandidates(c).size === 1 && prune.getCandidates(c).has(2))
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -149,8 +161,8 @@ const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
 console.log('validate:', validateOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| budget fired:', budgetOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && budgetOk && onePassOk && validateOk
+const ok = bad === 0 && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
