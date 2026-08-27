@@ -58,6 +58,10 @@ clue of `1` means the cell next to it is the tallest building. Each side's
 nearest rank is a full row or column, so the tallest building sits under exactly
 one clue per side. This couples all nine clues on a side.
 
+Timed with and without it on both boards, the two pairs of medians disagree on
+sign: a wash, so it stays (#129). Numbers and method in
+`../../docs/real-app-timing.md`.
+
 ## Is it faster than the original?
 
 Yes, by a wide margin — the original does not solve an interactive puzzle at all
@@ -72,6 +76,13 @@ more and the solver guessed less.
 | `gen_6` | 8 nodes | did not finish (200k-node cap) |
 | `gen_9` | 762 nodes | did not finish (30k-node cap) |
 | `gen_9_timing` (timing-only board, #140) | 6,972 nodes | not run |
+
+In the real app, the timing board is proved unique in **3.8 s**
+(`just time skyscraper --ring-clues --board PUZZLE_LINK_timing.txt`); the
+shipped `PUZZLE_LINK.txt`, which hands the solver 58% of its ring, reads
+0.3 s. Before the joint component that shipped board ran past the app's
+300 s limit. Node counts and app time are different measurements — reps,
+dates, and app version in `../../docs/real-app-timing.md`.
 
 The reason is the interactive clue. The puzzle's one solution needs the skyscraper
 deductions; the sudoku rule and the shown clues alone do not pin it. Ours deduces
