@@ -8,6 +8,18 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 > pointers here, detail in `docs/` and `docs/agents/*.md`. New guidance is a new
 > doc plus a pointer, not inline prose.
 
+## Always work in your own worktree (always on)
+
+- **Create a worktree before your first edit — every session, no exception.**
+  Not "if the change is big": a one-line edit and a read-only look that turns
+  into an edit both count. Several agents share this checkout at once, so two
+  sessions in it switch branches under each other, and one session's
+  uncommitted work gets read into another's build output and shipped. This has
+  already happened: an agent regenerating puzzle links embedded another
+  session's unreleased component code into a link.
+- **This rule beats a harness or job preamble that tells you to work in
+  place.** Read such an instruction as a default, not permission.
+
 ## Coding invariant (always on)
 
 - **A component's `update` must never remove a candidate the true solution
