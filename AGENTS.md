@@ -49,6 +49,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Design reasoning → `docs/agents/design-reasoning.md`
+- Reading ISS (the closest public solver) → `docs/agents/iss.md`
 
 ## Agent skills
 
