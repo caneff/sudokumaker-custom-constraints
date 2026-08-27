@@ -36,19 +36,19 @@ exists to teach.
   proves it unique. The hard fixture: the shipped grid is minimal
   at 35 givens and closes in 0.2 s, too fast to rank rules; this one takes
   the app ~27 s, so a rule change shows. Not the shipped instance. Now
-  minimal under the current component (4.1 s; no given can go).
+  minimal under the current component (3.7 s; no given can go).
 - `puzzle-30.json`, `puzzle-35-silent.json` — the **silent-digit** fixtures,
   built to attack the component where it was weakest: a digit with no given
   at all got no rule (reach, tour, cut, and the walk that limits budget all
   need a placed cell), so the app found its region by guessing. The **silent**
-  deduction (below) closes that gap; #143 times it. Both are
-  CP-SAT strips of one sampled grid (`verify.py sample 11`) that remove every
-  given of one digit first, then the rest; `verify.py` proves each unique.
-  `puzzle-30.json` (digit 3 silent, 30 givens) reads unique in **6.7 s** —
-  the ranking fixture. `puzzle-35-silent.json` (digit 2 silent, 35 givens)
-  gets **no verdict** inside the app's minute; give it one cell of digit 2
-  back and it closes in 0.1 s. Both times are from before the silent
-  deduction; #143 re-times them.
+  deduction (below) closes that gap. Both are CP-SAT strips of one sampled
+  grid (`verify.py sample 11`) that remove every given of one digit first,
+  then the rest; `verify.py` proves each unique. `puzzle-30.json` (digit 3
+  silent, 30 givens) is the ranking fixture — it is the one of the three that
+  silent speeds up outright. `puzzle-35-silent.json` (digit 2 silent, 35
+  givens) is the phase fixture: silent shifts the app's work from the first
+  solve to the uniqueness search there rather than removing it. Numbers for
+  both in `../../docs/real-app-timing.md`.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
@@ -226,10 +226,13 @@ history). Silent (#142) is the same idea, stronger in two ways: it prunes
 every component under ten cells even when several larger ones remain, and it
 hands the survivors to budget as the digit's walk. Cut, tour, and budget did
 not exist when homeless was measured, and the silent-digit fixtures did not
-either. #143 times silent on them; the rule earns its place there or it
-comes out again. `verify.py` stays the independent
-proof that the puzzle is unique: it models the rule from scratch (flow-based
-connectivity) and does not depend on the app.
+either. #143 timed silent on them and kept it, on one board of the three:
+`puzzle-30` 6.6 s → 5.0 s, ratio 0.76, inside the 0.9× bar, with `puzzle-32`
+flat at 3.7 s either way. `puzzle-35-silent` is a wash at 0.94 — silent finds
+the first solution there almost at once and pays the time back proving
+uniqueness — so the ranking fixture is what the verdict rests on. `verify.py`
+stays the independent proof that the puzzle is unique: it models the rule from
+scratch (flow-based connectivity) and does not depend on the app.
 
 ## Run the tests
 
