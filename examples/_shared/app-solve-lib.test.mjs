@@ -37,6 +37,19 @@ import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib
   assert.strictEqual(r.verdict, '?')
 }
 
+// ---- a timeout after a first solve: first reports its time, unique and sum stay null ----
+// The uniqueness search never finished, so unique and sum are not times -- but
+// the solve phase already printed its "took", and a timeout row should not
+// hide that.
+{
+  const text = '✨ Solved took 6.8s\nStopped solving (time limit 300s)'
+  const r = parseReadout(text)
+  assert.strictEqual(r.first, 6800)
+  assert.strictEqual(r.unique, null)
+  assert.strictEqual(r.sum, null)
+  assert.strictEqual(r.verdict, 'timeout')
+}
+
 // ---- a not-unique verdict still reports both times ----
 {
   const text = '✨ Solved took 100ms\nThis puzzle has multiple solutions. took 50ms'
@@ -59,6 +72,18 @@ import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib
   assert.strictEqual(line, '  first nullms  unique nullms  sum nullms  [?]')
 }
 
+// ---- rep line for a timeout with a first-solve time names the time, not three nulls ----
+{
+  const line = repLine({ first: 6800, unique: null, sum: null, verdict: 'timeout' })
+  assert.strictEqual(line, '  first 6800ms, no verdict  [timeout]')
+}
+
+// ---- rep line for a timeout with no first-solve time either ----
+{
+  const line = repLine({ first: null, unique: null, sum: null, verdict: 'timeout' })
+  assert.strictEqual(line, '  no first solve, no verdict  [timeout]')
+}
+
 // ---- median line reports the median of each of the three numbers, over reps with a verdict ----
 {
   const rows = [
@@ -66,6 +91,21 @@ import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib
     { first: 200, unique: 20, sum: 220, verdict: 'unique' },
     { first: 300, unique: 30, sum: 330, verdict: 'unique' },
     { first: null, unique: null, sum: null, verdict: '?' }
+  ]
+  const line = medianLine(rows)
+  assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')
+}
+
+// ---- median line excludes a timeout row even though it now carries a first time ----
+// A timeout row's first time is real (it prints in repLine), but it must not
+// enter the median or the "over n/N" count -- the app never proved a verdict
+// on that rep, so the number is not comparable to a rep that finished.
+{
+  const rows = [
+    { first: 100, unique: 10, sum: 110, verdict: 'unique' },
+    { first: 200, unique: 20, sum: 220, verdict: 'unique' },
+    { first: 300, unique: 30, sum: 330, verdict: 'unique' },
+    { first: 6800, unique: null, sum: null, verdict: 'timeout' }
   ]
   const line = medianLine(rows)
   assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')

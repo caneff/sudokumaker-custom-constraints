@@ -5,7 +5,8 @@
 // a unique solution. took 0.4s" once the uniqueness search finishes.
 // "Found 10,000 solutions" is the app's cap: many solutions, search ended.
 // "Stopped solving/counting (time limit ...)" is the app's own timeout: no
-// verdict, and the "took" lines it printed are not a solve time.
+// verdict, though a "took" the app printed before stopping still names the
+// first-solve time.
 export function readVerdict (text) {
   if (/stopped (solving|counting)/i.test(text)) return 'timeout'
   if (/unique solution/i.test(text)) return 'unique'
@@ -14,14 +15,17 @@ export function readVerdict (text) {
 }
 
 // Split the two "took" readouts into first-solve time and uniqueness-search
-// time, plus their sum. No verdict means the search never finished, so a
-// partial "took" is not a time -- all three report null.
+// time, plus their sum. No verdict means the uniqueness search never
+// finished, so a partial "took" is not a time for unique/sum -- both report
+// null. A timeout still names the first-solve time when the app printed it,
+// so a [timeout] row does not hide whether the app found a first solution.
 export function parseReadout (text) {
   const verdict = readVerdict(text)
-  if (verdict === '?' || verdict === 'timeout') return { first: null, unique: null, sum: null, verdict }
+  if (verdict === '?') return { first: null, unique: null, sum: null, verdict }
   const ms = [...text.matchAll(/took\s+([\d.]+)\s*(ms|s)\b/gi)]
     .map(m => (m[2].toLowerCase() === 's' ? parseFloat(m[1]) * 1000 : parseFloat(m[1])))
   const first = ms.length > 0 ? Math.round(ms[0]) : null
+  if (verdict === 'timeout') return { first, unique: null, sum: null, verdict }
   const unique = ms.length > 1 ? Math.round(ms[1]) : null
   const sum = ms.length ? Math.round(ms.reduce((a, b) => a + b, 0)) : null
   return { first, unique, sum, verdict }
@@ -33,17 +37,25 @@ export const median = xs => {
 }
 
 export function repLine (r) {
+  if (r.verdict === 'timeout') {
+    return r.first != null
+      ? `  first ${r.first}ms, no verdict  [timeout]`
+      : '  no first solve, no verdict  [timeout]'
+  }
   return `  first ${r.first}ms  unique ${r.unique}ms  sum ${r.sum}ms  [${r.verdict}]`
 }
 
-// Medians of first, unique, and sum over the reps that returned a verdict.
-// A rep with no verdict already carries null first/unique/sum, so `median`
-// (which drops nulls) excludes it automatically.
+// Medians of first, unique, and sum over the reps that returned a verdict
+// ('unique' or 'not-unique'). A timeout rep now carries a real first-solve
+// time (see parseReadout), so it is excluded by verdict here, not by a null
+// check -- the app never proved that rep's uniqueness, so its numbers are
+// not comparable to a rep that finished.
 export function medianLine (rows) {
-  const n = rows.filter(r => r.first != null).length
-  const first = median(rows.map(r => r.first))
-  const unique = median(rows.map(r => r.unique))
-  const sum = median(rows.map(r => r.sum))
+  const verdicts = rows.filter(r => r.verdict === 'unique' || r.verdict === 'not-unique')
+  const n = verdicts.length
+  const first = median(verdicts.map(r => r.first))
+  const unique = median(verdicts.map(r => r.unique))
+  const sum = median(verdicts.map(r => r.sum))
   return `  MEDIAN first ${first}ms  unique ${unique}ms  sum ${sum}ms  over ${n}/${rows.length} reps`
 }
 
