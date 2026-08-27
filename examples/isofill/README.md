@@ -243,6 +243,21 @@ numbers and the probe that explains them are the #148 row in
 `docs/real-app-timing.md`; the rule and its two directed tests are in git
 history.
 
+*The blob gate on cut* — the cut rule walks twice per open cell, once to ask
+whether removing the cell starves the region below ten and once to ask whether
+it strands a placed cell. Count the digit's placed blobs (the connected
+components of its placed cells, walking only through placed cells) and the
+second walk is pointless when there is one blob: the path joining two placed
+cells runs through placed cells, and an open cell lies on no such path. This is
+ISS's gate on door forcing (`connected_values.md` §4.4) — read the predicate off
+the walk you were doing anyway. It was tried and removed (#150): exact, and it
+skips a third of the strand walks, but the three hard fixtures came back at
+0.96×, 1.00× and 0.98×, and only the first of those is bigger than the board's
+own run-to-run spread. Four percent on one board of three is well short of the
+0.9× bar a change has to clear. The numbers are the #150 row in
+`docs/real-app-timing.md`; the gate and its differential test are in git
+history.
+
 ## Run the tests
 
 Soundness (needs Node):
