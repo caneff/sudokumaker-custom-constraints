@@ -8,6 +8,3 @@ gen.json
 
 # local session state and worktrees
 .claude/
-
-# recorded SudokuMaker assets for offline Playwright runs (app-dom.mjs useRecordedApp)
-examples/_shared/sudokumaker.har

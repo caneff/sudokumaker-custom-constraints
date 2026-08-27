@@ -84,15 +84,25 @@ example: `docs/research/133-skip-unchanged.md`.
 
 ## Offline runs: the recorded app
 
-Both drivers serve the app from `examples/_shared/sudokumaker.har`
-(gitignored) through Playwright's `routeFromHAR`. The first run on a machine
-has no HAR, so it loads the live site and records it; every later run replays
-from disk and never touches the network. The puzzle rides in the `?puzzle=`
-query; on replay that document request is rewritten to `/` (the same app
-index), so one recording covers every puzzle. Replay
-pins the app version: after a SudokuMaker release, re-record with
-`SM_LIVE=1 node examples/_shared/app-solve.mjs ...` and check the version the
-readout prints.
+Both drivers serve the app from `examples/_shared/sudokumaker.har` through
+Playwright's `routeFromHAR`, so a run never touches the network. The file is
+**checked in** (3.7 MB, 30 requests, one host), which is what makes a timing
+reproducible: every machine and every rerun measures the same app build. The
+puzzle rides in the `?puzzle=` query; on replay that document request is
+rewritten to `/` (the same app index), so one recording covers every puzzle.
+
+Re-record after a SudokuMaker release, and only then — the recording pins the
+version every timing in the table below was measured against:
+
+```sh
+SM_LIVE=1 node examples/_shared/app-solve.mjs <link> 1   # loads live, rewrites the HAR
+```
+
+Check the version the readout prints, and say in the commit which build the
+new recording holds. `SM_OFFLINE=1` cuts the browser's network, which proves
+a replay is complete rather than quietly falling through to the live site.
+With no HAR on disk (a fresh clone that skipped it), the first run records one
+itself.
 
 ## app-strip.mjs: unattended greedy clue removal
 
