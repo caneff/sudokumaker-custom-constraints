@@ -26,6 +26,15 @@ COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
 
 def build():
     doc = json.loads((HERE / "puzzle_template.json").read_text())
+    # the template was decoded from a finished board, so it carries the whole
+    # solution and every hidden clue as non-given values. Same rule as
+    # framebuild.build_doc: a cell holds a value only when it is a given —
+    # anything else ships as an entered digit and the recipient opens a
+    # filled-in board.
+    for cell in doc["puzzle"]["cells"]:
+        if not cell.get("given"):
+            cell.pop("value", None)
+    doc["puzzle"]["author"] = ""
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
         if c.get("type") == 1000 and d.get("name") == "Running Start Lines":
