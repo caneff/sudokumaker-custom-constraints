@@ -14,10 +14,9 @@ import json
 import pathlib
 import sys
 
-from lzstring import LZString
-
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from frame import cosmetics
+from link_codec import decode_puzzle, encode_link
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -72,19 +71,12 @@ def build():
         "\n\nThe 1s in the corners only fill space for SudokuMaker's solver; "
         "delete them before publishing."
     )
-    payload = LZString.compressToEncodedURIComponent(json.dumps(doc))
-    return "https://sudokumaker.app/?puzzle=" + payload, doc
+    return encode_link(doc), doc
 
 
 def check(link, doc):
     # round-trips, and the injected code is really in there
-    import urllib.parse
-
-    back = json.loads(
-        LZString.decompressFromEncodedURIComponent(
-            urllib.parse.unquote(link.split("puzzle=")[-1])
-        )
-    )
+    back = decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
     rs = next(
         c
