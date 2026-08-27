@@ -82,6 +82,28 @@ line that starts with `[probe]` and drops the rest. To count anything else
 (how often a branch fires), patch the probe copy by hand the same way. Worked
 example: `docs/research/133-skip-unchanged.md`.
 
+## Offline runs: the recorded app
+
+Both drivers serve the app from `examples/_shared/sudokumaker.har` through
+Playwright's `routeFromHAR`, so a run never touches the network. The file is
+**checked in** (3.7 MB, 30 requests, one host), which is what makes a timing
+reproducible: every machine and every rerun measures the same app build. The
+puzzle rides in the `?puzzle=` query; on replay that document request is
+rewritten to `/` (the same app index), so one recording covers every puzzle.
+
+Re-record after a SudokuMaker release, and only then — the recording pins the
+version every timing in the table below was measured against:
+
+```sh
+SM_LIVE=1 node examples/_shared/app-solve.mjs <link> 1   # loads live, rewrites the HAR
+```
+
+Check the version the readout prints, and say in the commit which build the
+new recording holds. `SM_OFFLINE=1` cuts the browser's network, which proves
+a replay is complete rather than quietly falling through to the live site.
+With no HAR on disk (a fresh clone that skipped it), the first run records one
+itself.
+
 ## app-strip.mjs: unattended greedy clue removal
 
 `examples/_shared/app-strip.mjs` uses the same app, and the same solve
@@ -164,6 +186,7 @@ solve off. Same board within each row; only the constraint code differs.
 | ISOFILL (stripped, 35 givens) | **unique in 0.2 s** with cut (2026-08-27, 3/3, reps 0.2/0.2/0.2). Before cut: **no verdict** (app time limit, `[timeout]` 3/3, 2026-08-26) with reach, reach + capacity, reach + capacity + homeless, and the one-pass scan alike | "Found 10,000 solutions" in 0.3 s | cut kept (#101): the one rule that closes the search. Kept: cap, force, reach, capacity, cut, one-pass scan. Homeless removed (#91) |
 | ISOFILL clue ladder, no cut (stripped, 2026-08-27, 3 reps, #98) | 36/37/39 givens `[timeout]` 3/3; 40 givens 34.3 s or 41.4 s (one extra each); 41 givens 12.0 s | — | the search shrinks fast past 40 givens; with cut every rung reads 0–0.2 s |
 | ISOFILL hard grid (stripped, 32 givens, `puzzle-32.json`, 2026-08-27, 3 reps) | cut only **40.4 s**; walk with neighbour lists built once and a byte mask for `reach` **27.6 s**; + budget matching **24.8 s** (Kuhn; the same rule as a max flow read 26.8 s); + Régin prune on that matching 24.9 s → 23.4 s (same session); + tour bound (three-point closed-tour lower bound on region size, tightening the walk) **15.3 s** (2026-08-27, 3/3, ratio 0.61 against 24.9 s). Four-point tour bound tried and removed: 35.6 s. Cut walks that stop at ten cells / all placed cells, dead-end cells skipped, stamped mask: **5.7 s** (2026-08-27, 3/3, ratio 0.37 against 15.3 s; Node profile had `reach` at 46 % of a call, now 23 %). Scratch buffers reused across calls (no per-call allocation; GC was 12 %): **4.1 s** (2026-08-27, 3/3, ratio 0.72 against 5.7 s). Evidence, not a timing (marks present): the shipped 35-given puzzle with a player's correct 2-candidate marks (link 2) 15.2 s → 12.4 s → **7.2 s** | — | the 35-given shipped grid is minimal (every removal breaks uniqueness) and solves in 0.2 s, too fast to rank rules; this grid is a CP-SAT sample stripped in the app (`app-strip.mjs`), `verify.py` proves it unique. Trace: 94% of calls sat under one wrong guess of the digit with no given (4 at the corner), which only cross-digit budget refutes. Component-size rule tried and removed: 44.2 s (no gain) |
+| ISOFILL silent-digit fixtures (stripped, `puzzle-30.json` 30 givens / `puzzle-35-silent.json` 35 givens, 2026-08-27, 3 reps, recorded app offline) | `puzzle-30` (digit 3 has no given) **6.7 s**; `puzzle-35-silent` (digit 2 has no given) **no verdict** (`[timeout]`), and **0.1 s** once one cell of digit 2 is given back. Same session, same setup: `puzzle-32` 3.8 s (4.1 s live) | — | built to attack the component, not sampled: a CP-SAT greedy strip that removes every given of one digit first. A digit with zero placed cells gets no rule at all (reach, tour, cut, and the walk that bounds budget all start from a placed cell), so the app must guess its region. Eight random grids stripped normally all read ≤1.8 s; `puzzle-32` is now minimal under the current component |
 | ISOFILL (stripped, 44 givens, `puzzle-44.json`) | with cut **0 ms** (2026-08-27, 3/3; 41 givens also 0 ms); reach only ~25.9 s; reach + capacity **~9.1 s** (2026-08-26, 3/3 unique); + homeless ~9.1 s (reps 9.6/9.1/9.1 s, no change); one-pass scan **5.7 s vs 11.2 s** same-session pair (reps 5.6/5.7/6.2 vs 11.8/11.2/11.2), ratio 0.51 | — | capacity kept: 2.8× faster where the app closes at all (#90); homeless removed: no gain (#91); one-pass scan kept: 2× faster, same four rules on a per-call snapshot, no weaker at fixpoint (#97) |
 
 The stronger components pay off where the search is genuinely hard and the clues

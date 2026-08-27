@@ -39,7 +39,7 @@
 import { chromium } from 'playwright'
 import fs from 'fs'
 import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
-import { clickIcon, makeDeterministic } from './app-dom.mjs'
+import { clickIcon, makeDeterministic, useRecordedApp } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring. Everything else must be
@@ -91,16 +91,20 @@ async function runOnce (page) {
 }
 
 const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
 
+// A fresh context per rep: the app's service worker (recorded in the HAR)
+// takes over a reused context's second page and the Tools tab never renders.
+// Fresh state per rep also keeps the reps independent.
 const rows = []
 for (let k = 0; k < reps; k++) {
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
+  await useRecordedApp(context)
   const page = await context.newPage()
   // A component under measurement may console.log('[probe] ...') counters
   // (calls, skips); relay only those lines, the site's own logging stays out.
   page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
   rows.push(await runOnce(page))
-  await page.close()
+  await context.close() // flushes a HAR recording
 }
 await browser.close()
 
