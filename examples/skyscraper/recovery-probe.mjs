@@ -12,9 +12,9 @@
 // already runs.
 //
 // TWO wirings, same start state:
-//   - 'ours'     — main.js: one SkyscraperComponent per line (deduces a BLANK
-//                  clue and the line together), the pair coupling L + R <= n + 1,
-//                  and one ExactDigitCountComponent per side (one 1 per side).
+//   - 'ours'     — main.js: one SkyscraperLineComponent per line, reading BOTH
+//                  end clues and the line together (deduces blank clues), and
+//                  one ExactDigitCountComponent per side (one 1 per side).
 //   - 'original' — the wrapper ChinStrap shipped: one per-line component that does
 //                  NOTHING while its clue is blank, and once the clue is pinned
 //                  runs the built-in forward skyscraper prune. No pair, no side
@@ -23,13 +23,13 @@
 // MODELLING THE ORIGINAL. The real wrapper calls replaceComponent to swap in the
 // built-in SkyscraperComponent once the clue is pinned; this engine does not model
 // replaceComponent, and SudokuMaker's built-in is not in this repo. So we model the
-// original line as OUR component gated to fire only when the clue is pinned — at
-// which point our update skips its reverse pass and runs exactly the forward
-// "keep only line candidates that reach k visible" prune the built-in does. This
-// GIVES the original every per-line deduction ours has for a KNOWN clue. The only
-// differences left are the three features under test: blank-clue deduction, pair
-// coupling, and the one-1-per-side count. If the real built-in is WEAKER than our
-// forward pass, the original is slower still, so this comparison is conservative.
+// original line as a per-line component gated to fire only when the clue is
+// pinned, which then runs the forward "keep only line candidates that reach k
+// visible" prune the built-in does (`forwardPrune` below). This GIVES the
+// original every per-line deduction for a KNOWN clue. The only differences left
+// are the features under test: blank-clue deduction, two-clue coupling, and the
+// one-1-per-side count. If the real built-in is WEAKER than this forward pass,
+// the original is slower still, so the comparison is conservative.
 //
 // The generic engine (all-different floor, component loader, fixpoint, DFS search)
 // lives in ../_shared/recovery-lib.mjs. This file is the Skyscraper glue only.
@@ -52,7 +52,7 @@ const activeSet = new Set(active)
 const givens = gen.givens || {}
 
 // A skyscraper line and clue both range over 1..n (you always see at least the
-// first building, at most n). minDigit=1 also feeds the pair component's line run.
+// first building, at most n).
 installGlobals(1, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
@@ -78,9 +78,8 @@ function freshState () {
 }
 
 // ---- the two wirings ----
-const { read, load } = makeIo(HERE)
+const { read } = makeIo(HERE)
 const mainSrc = read('main.js')
-const skyMod = load('SkyscraperComponent.js', ['setParams', 'update'])
 
 // The built-in count constraint SudokuMaker ships: `value` appears exactly `count`
 // times among `cells`. Modelled here so main.js can construct it.
@@ -108,20 +107,68 @@ function buildOurs () {
     mainSrc,
     input: { groups },
     files: [
-      { file: 'SkyscraperComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperComponent' },
-      { file: 'SkyscraperPairComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperPairComponent' }
+      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
     ],
     builtins: [{ ctorName: 'ExactDigitCountComponent', mod: exactDigitCount }]
   })
 }
 
+// The built-in forward prune for a KNOWN clue k: the digits to drop from each
+// line cell, keeping only candidates on some path whose visible count is k.
+// State (j, m) = buildings visible so far, tallest so far; F[i] reaches forward,
+// C[i] holds the states after cell i from which the suffix can still finish at
+// k. Distinctness is ignored, so the sets only grow: the prune is sound.
+const KEY = (j, m) => j * 32 + m
+function forwardPrune (puzzle, line, k) {
+  const len = line.length
+  const cands = line.map(c => [...puzzle.getCandidates(c)])
+  const F = []
+  let cur = new Set([KEY(0, 0)])
+  for (let i = 0; i < len; i++) {
+    const next = new Set()
+    for (const key of cur) {
+      const j = (key / 32) | 0; const m = key % 32
+      for (const d of cands[i]) { if (d > m) next.add(KEY(j + 1, d)); else if (d < m) next.add(key) }
+    }
+    F.push(next); cur = next
+  }
+  // k unreachable: leave the line alone, as the built-in does; the solver finds
+  // the contradiction at the leaf.
+  if (![...cur].some(key => ((key / 32) | 0) === k)) return line.map(() => [])
+  const C = new Array(len)
+  C[len - 1] = new Set()
+  for (let m = 0; m <= n; m++) C[len - 1].add(KEY(k, m))
+  for (let i = len - 2; i >= 0; i--) {
+    C[i] = new Set()
+    for (let j = 0; j <= len; j++) {
+      for (let m = 0; m <= n; m++) {
+        for (const d of cands[i + 1]) {
+          if (d > m) { if (C[i + 1].has(KEY(j + 1, d))) { C[i].add(KEY(j, m)); break } } else if (d < m) { if (C[i + 1].has(KEY(j, m))) { C[i].add(KEY(j, m)); break } }
+        }
+      }
+    }
+  }
+  const bad = []
+  for (let i = 0; i < len; i++) {
+    const prev = i === 0 ? new Set([KEY(0, 0)]) : F[i - 1]
+    bad.push(cands[i].filter(d => {
+      for (const key of prev) {
+        const j = (key / 32) | 0; const m = key % 32
+        if (d > m) { if (C[i].has(KEY(j + 1, d))) return false } else if (d < m) { if (C[i].has(KEY(j, m))) return false }
+      }
+      return true
+    }))
+  }
+  return bad
+}
 // The original: one gated per-line component per clued line. Nothing fires while
-// the clue is blank; once pinned, our forward prune stands in for the built-in.
+// the clue is blank; once pinned, the forward prune stands in for the built-in.
 const gatedLine = {
-  setParams: skyMod.setParams,
+  setParams (inst, clue, line) { inst.clue = clue; inst.line = line },
   * update (inst, puzzle) {
     if (!puzzle.hasValue(inst.clue)) return
-    yield * skyMod.update(inst, puzzle)
+    const bad = forwardPrune(puzzle, inst.line, puzzle.getValue(inst.clue))
+    for (let i = 0; i < inst.line.length; i++) if (bad[i].length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad[i]), inst.line[i])
   }
 }
 function buildOriginal () {

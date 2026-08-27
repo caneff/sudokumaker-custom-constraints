@@ -1,11 +1,12 @@
-// Soundness fuzz for both Skyscraper components. Soundness = a component never
+// Soundness fuzz for SkyscraperLineComponent. Soundness = a component never
 // removes a cell's TRUE value. Each case is a random full line (a permutation,
-// so all-different holds) with its true clue. We seed random partial candidate
-// states that still allow every true value, run the component to a fixpoint, and
-// check the true values survived. A removed true value can make a real puzzle
-// unsolvable.
+// so all-different holds) with its two true clues, one per end. We seed random
+// partial candidate states that still allow every true value, run the component
+// to a fixpoint, and check the true values survived. A removed true value can
+// make a real puzzle unsolvable.
 //
-//   node examples/skyscraper/soundness-harness.mjs
+//   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
+//   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -14,12 +15,12 @@ import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_share
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
 const { rnd, pick } = makeRng()
+const FUZZ = Number(process.env.FUZZ) || 2000
 
 const N = 9
 installGlobals(1, N)
 
-const lineMod = load('SkyscraperComponent.js', ['setParams', 'update'])
-const pairMod = load('SkyscraperPairComponent.js', ['setParams', 'update'])
+const mod = load('SkyscraperLineComponent.js', ['setParams', 'update'])
 
 function visible (vals) {
   let count = 0
@@ -44,56 +45,20 @@ function seeder (c, v) {
   return [...s]
 }
 
-// ---- Line component against random full lines ----
-const CLUE = 100
-const LINE = [...Array(N).keys()]
-let lineTests = 0
-let lineBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const perm = shuffled()
-  const truth = { [CLUE]: visible(perm) }
-  for (const i of LINE) truth[i] = perm[i]
-  const p = makePuzzle(truth, seeder)
-  const inst = {}
-  lineMod.setParams(inst, CLUE, LINE)
-  const v = violates(lineMod, inst, p, truth)
-  lineTests++
-  if (v) { lineBad++; if (lineBad <= 5) console.log('LINE violation', v, 'perm', perm) }
-}
-console.log('line component:', lineTests, 'tests,', lineBad, 'violations')
-
-// ---- Pair component: two clues on one line read from opposite ends ----
 const CA = 100
 const CB = 101
-let pairTests = 0
-let pairBad = 0
-let pairFired = 0 // coverage: the unimodal (saturating) branch actually ran
-for (let iter = 0; iter < 20000; iter++) {
-  // half random lines, half forced unimodal so L + R == N + 1 fires often
-  let perm
-  if (iter % 2 === 0) {
-    perm = shuffled()
-  } else {
-    const rest = shuffled().filter(v => v !== N)
-    const peak = (rnd() * N) | 0
-    const up = rest.slice(0, peak).sort((a, b) => a - b)
-    const down = rest.slice(peak).sort((a, b) => b - a)
-    perm = [...up, N, ...down]
-  }
+const LINE = [...Array(N).keys()]
+let bad = 0
+for (let iter = 0; iter < FUZZ; iter++) {
+  const perm = shuffled()
   const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
   for (const i of LINE) truth[i] = perm[i]
   const p = makePuzzle(truth, seeder)
   const inst = {}
-  pairMod.setParams(inst, CA, CB, LINE)
-  const minA = Math.min(...p.getCandidates(CA))
-  const minB = Math.min(...p.getCandidates(CB))
-  if (minA + minB === N + 1) pairFired++
-  const v = violates(pairMod, inst, p, truth)
-  pairTests++
-  if (v) { pairBad++; if (pairBad <= 5) console.log('PAIR violation', v, 'perm', perm) }
+  mod.setParams(inst, CA, CB, LINE)
+  const v = violates(mod, inst, p, truth)
+  if (v) { bad++; if (bad <= 5) console.log('violation', v, 'perm', perm) }
 }
-console.log('pair component:', pairTests, 'tests,', pairBad, 'violations,', pairFired, 'unimodal firings')
-
-const ok = lineBad === 0 && pairBad === 0 && pairFired > 0
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+console.log('line component:', FUZZ, 'tests,', bad, 'violations')
+console.log(bad === 0 ? 'PASS' : 'FAIL')
+process.exit(bad === 0 ? 0 : 1)

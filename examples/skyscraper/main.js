@@ -1,18 +1,13 @@
 //! Skyscrapers with interactive outside clues. Each group is one clued line:
 //! cell 0 is the outside clue cell, the rest is the line read inward from the
-//! cell next to the clue. One self-contained component per line — the built-in
-//! SkyscraperComponent only fires once the clue holds a value and never reads
-//! the clue off the line, so it cannot help an interactive clue.
+//! cell next to the clue. The two groups that read one line from opposite ends
+//! share one SkyscraperLineComponent, which reads both clues and the whole line
+//! together — the built-in SkyscraperComponent only fires once the clue holds a
+//! value and never reads the clue off the line, so it cannot help an interactive
+//! clue.
 
 const groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
 
-for (const g of groups) {
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
-  puzzle.addConstraintComponent(new SkyscraperComponent(name, g.clue, g.line))
-}
-
-// Opposite-end coupling: two clues that read the same line reversed satisfy
-// L + R <= n + 1 (only the tallest building is visible from both ends).
 function sameReversed (a, b) {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++) if (a[i] !== b[a.length - 1 - i]) return false
@@ -21,9 +16,9 @@ function sameReversed (a, b) {
 for (let i = 0; i < groups.length; i++) {
   for (let j = i + 1; j < groups.length; j++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
-    const name = `skyscraper pair ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    const name = `skyscraper line ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
     puzzle.addConstraintComponent(
-      new SkyscraperPairComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
+      new SkyscraperLineComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
   }
 }
 

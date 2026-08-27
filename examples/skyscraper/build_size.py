@@ -23,7 +23,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import Spec, run
 
 HERE = pathlib.Path(__file__).parent
-COMPONENTS = ["SkyscraperComponent.js", "SkyscraperPairComponent.js"]
+COMPONENTS = ["SkyscraperLineComponent.js"]
 
 # One worked example per size: a line, then the left and right clue it gives.
 RULE_EXAMPLES = {

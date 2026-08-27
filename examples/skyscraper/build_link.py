@@ -4,13 +4,17 @@
 # only the requested component's code changes. See docs/real-app-timing.md.
 #
 #   uv run --with lzstring examples/skyscraper/build_link.py \
-#     --component SkyscraperComponent.js --out /tmp/candidate.txt
+#     --component SkyscraperLineComponent.js --out /tmp/candidate.txt
 #
 # --component names a file whose basename (minus .js) matches an existing
-# component registered on PUZZLE_LINK.txt's "Skyscraper Lines" constraint
-# (SkyscraperComponent or SkyscraperPairComponent); that component's code
-# becomes the given file's, minified. The backend and the sibling component
-# are untouched.
+# component registered on PUZZLE_LINK.txt's "Skyscraper Lines" constraint;
+# that component's code becomes the given file's, minified. The backend and
+# any sibling component are untouched.
+#
+# The committed PUZZLE_LINK.txt still registers the two components the
+# joint SkyscraperLineComponent replaced (SkyscraperComponent and
+# SkyscraperPairComponent); the links are regenerated in a follow-up, and
+# until then --component must use one of those registered names.
 
 import argparse
 import pathlib
@@ -23,7 +27,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Skyscraper Lines"
-TIMED_COMPONENT = "SkyscraperComponent"
+TIMED_COMPONENT = "SkyscraperLineComponent"
 
 
 def build(component_path, out_path):
