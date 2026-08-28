@@ -58,10 +58,14 @@ visible clue, its cell must be `given: true`. **[verified]**
 
 ## 6. Order-of-evaluation for `getCellsCanHaveRepeats` / `getCellsSeeEachOther`
 
-Several query methods only see constraint components defined **before** the
-current custom constraint in the constraint list. If your logic depends on
-"do these cells see each other," the answer can change with constraint order.
-**[docs]**
+Both walk the exclusion groups of the constraint components registered **so
+far**. The app sorts constraints by type priority (0 for all but
+Nonconsecutive, so document order) and registers them one by one; a query made
+in **main code** at register time sees only the constraints registered before
+yours. A query made in a component's `update` runs at solve time, after every
+constraint is registered, and sees them all: moving our constraint ahead of the
+built-in `Rows`/`Columns` houses did not change the answer (live, 2026-08-28,
+#189). Gate house rules in `update`, not in main code. **[verified]**
 
 ## 7. The whole puzzle is in the URL
 
