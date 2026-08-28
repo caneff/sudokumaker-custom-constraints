@@ -2,8 +2,8 @@
 
 Every example lives in its own dir under `examples/` (`_shared/` is not an
 example). `examples/_shared/check_layout.py` walks `examples/*/`, skips
-`_shared`, and checks every example against this page. It is not yet wired
-into `just check` — see #174.
+`_shared`, and checks every example against this page. `just check` runs it,
+so a missing required file or a bad link name fails the gate.
 
 ## Required files
 

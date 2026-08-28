@@ -97,6 +97,15 @@ Use these terms exactly. Do not drift to synonyms.
 - **searchable link** — a link whose interior is emptied so the solver must
   search from the givens and the outside-clue ring. A finished link only verifies
   a filled grid and times the same for every code variant.
+- **shipped link** — `PUZZLE_LINK.txt`, the one link a reader opens. See
+  `docs/example-layout.md`.
+- **variant link** — any other `PUZZLE_LINK_*.txt` in an example, named by the
+  link grammar. See `docs/example-layout.md`.
+- **`original/` baseline** — the code and links under an example's
+  `original/` subdir: the fixed comparison point for `just time`, kept only
+  where a comparison actually uses it. Not to be confused with the baseline
+  half of a same-board pair, which need not live under `original/`. See
+  `docs/example-layout.md`.
 
 ### Region-building terms (from `examples/isofill/`)
 
