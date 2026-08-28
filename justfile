@@ -33,16 +33,21 @@ test:
     uv run --with lzstring examples/running-start/build_link.test.py
     uv run --with lzstring examples/skyscraper/build_link.test.py
     uv run --with lzstring examples/_shared/time_example.test.py
+    uv run --with lzstring examples/isofill/build_link.py
+    uv run --with lzstring examples/isofill/build_link.test.py
+    uv run --with lzstring examples/isofill/build_hard_links.py
+    uv run --with lzstring examples/_shared/check_links.py
+
+# Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
+# Not part of check/test/CI; run by hand after a puzzle change. See
+# examples/isofill/README.md.
+verify-isofill:
     uv run --with ortools examples/isofill/verify.py
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-44.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-30.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-35-silent.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-9x9.json
-    uv run --with lzstring examples/isofill/build_link.py
-    uv run --with lzstring examples/isofill/build_link.test.py
-    uv run --with lzstring examples/isofill/build_hard_links.py
-    uv run --with lzstring examples/_shared/check_links.py
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
 soundness:
