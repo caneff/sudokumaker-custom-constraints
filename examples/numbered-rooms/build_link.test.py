@@ -73,4 +73,15 @@ if __name__ == "__main__":
         except ValueError:
             pass
 
+        # --global: input list emptied, groups gone, nothing else moved
+        g = decode_puzzle(build(candidate, out, global_mode=True))
+        lc = find_constraint(g, CONSTRAINT_NAME)
+        assert lc["definition"]["input"] == [] and lc["input"] == {}
+        lc["definition"]["input"] = find_constraint(base, CONSTRAINT_NAME)[
+            "definition"
+        ]["input"]
+        lc["input"] = find_constraint(base, CONSTRAINT_NAME)["input"]
+        assert blanked(g, CONSTRAINT_NAME) == blanked(base, CONSTRAINT_NAME)
+        print("ok --global")
+
     print("ok")
