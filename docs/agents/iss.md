@@ -49,6 +49,8 @@ not redo the read.
 | `handlers.js` `Skyscraper`, `HiddenSkyscraper`; `SOLVER_ENGINE.md` | per-call cost patterns | `docs/agents/per-call-cost.md` (#138) |
 | `connected_values.md` §4.4, §5.2, §5.3 | isofill rules | #150 (cut), #148 (cut), #149 (kept, `issue-149`) |
 | `connected_values.md` §7.2, §7.4, §8; `chaos_construction.md` | isofill survey | `docs/research/connectivity-techniques.md` |
-| `count_distinct.md`, `nfa.md`, `sum.md` | — | not yet read |
+| `Skyscraper`, `HiddenSkyscraper`, `Indexing`, `Lunchbox`, `FullRank`; `sudoku_builder.js` `XSum`; `sudoku_constraint.js` outside-clue defs | how outside-clue deductions are gated on house / full house, and ties | `docs/research/190-one-sided-clues-ties-non-house-lines.md` (#190) |
+| `count_distinct.md` §5, `sum.md` §4 | exclusion-group gating only | same doc, §7. Rest of both docs still unread. |
+| `nfa.md` | — | not yet read |
 
 Add a row when you read more.

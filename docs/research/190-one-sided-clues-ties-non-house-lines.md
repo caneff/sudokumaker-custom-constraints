@@ -377,14 +377,144 @@ depending on which reading we pick. Nothing in either solver decides it for us.
    pushes line-to-clue information; what it loses is pruning the clue from the
    *sum*. Expect the same trade in our variants, and expect a bare-line board to
    need more givens.
-5. **Ties: both solvers hard-code "a tie is hidden", in the bit arithmetic.**
-   #187's "strict by default behind a code flag" has no precedent to copy. It is
-   a new decision, and the flag is ours to define and test rather than to port.
+5. **Ties: both solvers hard-code "a tie is hidden", in the bit arithmetic — in
+   their *line* rules.** For the outside-clue handlers in sections 2–5 that is
+   true, and the strictness is unreachable. But ISS does have a tie flag
+   elsewhere: `FullRank.TIE_MODE`. See section 7 — that is the precedent for
+   #187's "strict by default behind a code flag", and it is worth porting the
+   *shape* of.
 6. **One-sided is genuinely unexplored ground.** Neither solver has an
    interactive clue, and ISS models a two-ended line as two independent
    one-ended handlers. Our joint two-clue DP
    (`docs/research/137-exact-line-dp.md`) is already past anything in either
    source, so a one-sided DP has to be designed and measured, not looked up.
+
+---
+
+## 7. Addendum: `FullRank.TIE_MODE` — ISS *does* have a tie flag
+
+Added on a second, independent read of the same ISS commit (`ed5688d`). The
+first pass listed `FullRank` as "not read beyond its exclusion checks" and
+concluded that a configurable tie policy has no precedent. **That conclusion was
+wrong.** `FullRank` is the precedent, and it is the only place in either source
+where ties are a first-class, author-declared question rather than an artefact
+of bit arithmetic.
+
+### The three modes
+
+`handlers.js:3254`:
+
+```js
+  static TIE_MODE = Object.freeze({
+    NONE: 0,
+    ONLY_UNCLUED: 1,
+    ANY: 2,
+  });
+```
+
+The mode is a **constructor argument with a default**, not a derived property —
+`constructor(numGridCells, clues, tieMode = FullRank.TIE_MODE.ONLY_UNCLUED)`
+(`handlers.js:3285`). It is set by a separate author-facing constraint,
+`FullRankTies`, read once for the whole puzzle at `sudoku_builder.js:46` and
+mapped at `sudoku_builder.js:1240`:
+
+```js
+const fullRankTieMode = (fullRankTiesConstraint) => {
+  const fullRankTies = fullRankTiesConstraint?.ties || null;
+  if (fullRankTies === 'none') {
+    return HandlerModule.FullRank.TIE_MODE.NONE;
+  } else if (fullRankTies === 'any') {
+    return HandlerModule.FullRank.TIE_MODE.ANY;
+  }
+  return HandlerModule.FullRank.TIE_MODE.ONLY_UNCLUED;
+};
+```
+
+### What each mode costs the propagator
+
+| mode | meaning | code |
+| --- | --- | --- |
+| `NONE` | no two entries may tie | an extra whole-grid pass, `_enforceUniqueRanks` (`:3375`), run only in this mode: `return this._tieMode === FullRank.TIE_MODE.NONE ? this._enforceUniqueRanks(grid) : true;` (`:3727`) |
+| `ONLY_UNCLUED` (default) | clued entries may not tie | in the per-clue pass, an entry that is neither provably `<`, `>`, nor `!=` the clued entry is a forced tie and fails at once (`:3538-3551`) |
+| `ANY` | ties are legal | strictness must become explicit state (below) |
+
+The `ANY` path is the instructive one. `handlers.js:3479`:
+
+```js
+    const permissiveClues = this._tieMode === FullRank.TIE_MODE.ANY;
+```
+
+and `:3498`:
+
+```js
+    const fixedBaseFlags = IS_SET_FLAG | (permissiveClues ? IS_NOT_EQUAL : 0);
+```
+
+with the comment at `:3538`:
+
+```js
+      // In non-permissive modes (i.e. not TIE_MODE.ANY), entries must not tie a
+      // clued entry. If an entry is set into this rank set but is neither
+      // provably <, >, nor provably != the clued entry, then it is a forced
+      // whole-entry tie candidate, which would imply the clued rank is tied.
+      if (!permissiveClues) {
+        if (flags === IS_SET_FLAG) {
+          return false;
+        }
+        flags |= IS_NOT_EQUAL;
+      }
+```
+
+Two prunings at `:3603-3604` are also skipped when permissive.
+
+Note the shape of the cost. Under the strict modes, "not less and not greater"
+implies "equal", so the handler needs only `IS_LESS_FLAG` and `IS_GREATER_FLAG`.
+Once ties are legal that inference dies, and the handler has to carry a third
+flag, `IS_NOT_EQUAL`, that the strict modes get for free — plus a `TODO` at
+`:3545` admitting it does not yet use that flag as well as it could.
+
+`_enforceUniqueRanks` is worth reading before we write a tie check of our own.
+It is a **leaf check, not a propagator**: it only rejects when the endpoints of
+two entries are fixed and *every* interior digit is fixed and equal
+(`:3449-3462`). ISS did not try to propagate the tie ban.
+
+### What this changes for #187
+
+1. **A tie policy belongs in the constraint definition, not in the propagator.**
+   ISS makes it a puzzle-level author constraint (`FullRankTies`) that flows into
+   the handler's constructor. Our equivalent is a group option or a component
+   constructor argument, decided once, not a runtime test.
+2. **Default to the strict-ish middle, not to either extreme.**
+   `ONLY_UNCLUED` is ISS's default: ties are allowed in general, but a *clued*
+   line may not tie. That is a narrower and cheaper rule than banning ties
+   outright, and it is the one that keeps the clue's meaning well defined.
+3. **Budget for the loose mode being the expensive one.** Allowing ties cost ISS
+   a whole extra flag bit and two disabled prunings. Expect the same asymmetry:
+   the strict reading is the fast one, and a "ties continue the run" option for
+   running start will propagate less, not more.
+4. **A tie ban can be a leaf check.** If propagating "no two lines tie" looks
+   expensive, `_enforceUniqueRanks` is the citable precedent for checking it only
+   on fully fixed entries.
+
+### Two smaller corrections to sections 1 and 5
+
+- **`Lunchbox` declares exclusivity rather than checking it.**
+  `exclusionCells()` returns all of its cells (`handlers.js:1577-1579`), so the
+  handler *tells* the engine its cells are mutually exclusive instead of asking.
+  Read alongside `_isHouse` (a length test), this means neither of `Lunchbox`'s
+  two house-shaped mechanisms is an exclusion check. Section 5's warning that
+  "length alone is not enough for us" is if anything understated.
+- **`Sum` gates in a graded way, not a boolean one.** It partitions its cells
+  into maximal mutually exclusive subsets at initialize —
+  `g.exclusionGroups = HandlerUtil.findExclusionGroups(g.cells, cellExclusions).groups;`
+  (`sum_handler.js:167`) — and runs combination filtering per group, reserving
+  the strongest path for a cage that is a single exclusion group with unit
+  coefficients (`_FLAG_CAGE`, `sum_handler.js:233-238`). `CountDistinct` does the
+  same to raise a bound once at initialize rather than to switch algorithms
+  (`handler_docs/count_distinct.md` section 5). Where one of our deductions is a
+  *bound* rather than an exact filter, this graded gate is preferable to the
+  all-or-nothing component swap that `XSum` uses: strength proportional to the
+  exclusion structure, with no cliff at the house boundary.
 
 ## What was passed on
 
@@ -396,4 +526,6 @@ depending on which reading we pick. Nothing in either solver decides it for us.
 | ISS `Indexing` | read in full; both its rules already exist in SudokuMaker's `Index`. |
 | ISS `XSum` builder decomposition (`Or` over X) | read; a search-space decomposition, not a propagator. Not applicable — SudokuMaker has no `Or` handler. |
 | ISS `handler_docs/sum.md`, `count_distinct.md` | skimmed for distinctness gating only (`sum.md` section 4 exclusion groups, `count_distinct.md` section 5 static bound). Full read still outstanding; `docs/agents/iss.md` still lists them unread. |
-| ISS `Rellik`, `SameValues`, `FullRank` | not read beyond their exclusion checks (section 1). |
+| ISS `Rellik`, `SameValues` | not read beyond their exclusion checks (section 1). |
+| ISS `FullRank` | read on the second pass. `TIE_MODE` is the tie-flag precedent (section 7); `_enforceUniqueRanks` is the leaf-check precedent. Pattern to port, code not ported. |
+| ISS `Sum` exclusion groups, `CountDistinct` static bound | read for gating shape (section 7, last bullet). The graded gate is a live option for our bound-shaped deductions. |
