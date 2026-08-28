@@ -48,6 +48,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - Testing + generation → `docs/testing-and-generation.md`
+- Example layout: required files, link grammar, board naming → `docs/example-layout.md`
 - Design reasoning → `docs/agents/design-reasoning.md`
 - Reading ISS (the closest public solver) → `docs/agents/iss.md`
 
