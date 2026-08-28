@@ -75,9 +75,9 @@ more and the solver guessed less.
 
 | puzzle | ours | original |
 | --- | --- | --- |
-| `gen_4` | 0 nodes | did not finish (200k-node cap) |
-| `gen_6` | 8 nodes | did not finish (200k-node cap) |
-| `gen_9` (shipped board, seed 610) | 45,731 nodes (~2 min; golden capped at 5k) | not run |
+| `gen_4x4` | 0 nodes | did not finish (200k-node cap) |
+| `gen_6x6` | 8 nodes | did not finish (200k-node cap) |
+| `gen_9x9` (shipped board, seed 610) | 45,731 nodes (~2 min; golden capped at 5k) | not run |
 
 In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **8.0 s**
 (`just time skyscraper --ring-clues`). It is the hardest unique board a
@@ -96,8 +96,8 @@ per-line deduction for a known clue. The gap is exactly the features it lacks:
 blank-clue deduction, two-clue coupling, and the one-1-per-side count. Run it:
 
 ```
-node examples/skyscraper/recovery-probe.mjs gen_6.json            # root recovery + soundness
-node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count nodes
+node examples/skyscraper/recovery-probe.mjs gen_6x6.json            # root recovery + soundness
+node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, count nodes
 ```
 
 ## Files
@@ -123,10 +123,10 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
-- `PUZZLE_LINK_10x10.txt` / `gen_10.json` — the 10x10 (2x5 boxes) board that timed the lifted cap.
+- `PUZZLE_LINK_10x10.txt` / `gen_10x10.json` — the 10x10 (2x5 boxes) board that timed the lifted cap.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
   built links. Open one to play the example.
-- `gen_<n>.json` — the grid, clues, shown clues, and givens for each built size.
+- `gen_<n>x<n>.json` — the grid, clues, shown clues, and givens for each built size.
 - `original/` and `build_original.py` — ChinStrap's original wrapper code, plus
   a re-encoder that rebuilds the same generated puzzle with it. `PUZZLE_LINK_original.txt`
   (9x9) and `PUZZLE_LINK_4x4_original.txt`/`PUZZLE_LINK_6x6_original.txt` are the
@@ -138,18 +138,6 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
   Defaults to `PUZZLE_LINK.txt`; `--board <file>` swaps against another
   committed link instead. See `docs/real-app-timing.md`.
-- `build_timing.py` — picks the shipped 9x9 board by hardness (#140):
-  `scan <lo> <hi>` carves one board per seed and prints its mock node count
-  (about a minute a seed); `build <seed>` writes `gen_9.json` and rebuilds the
-  `PUZZLE_LINK.txt` pair. `build 610` reproduces the committed files
-  (20/36 clues shown, 45,731 mock nodes, 8.0 s in the app; it was the one
-  PROBE-TIMEOUT in a 400-seed scan). Earlier picks: adversarial 427 (5,681
-  nodes, 2.0 s) and seed 135, which fell to 16 nodes and 0 ms after #137.
-  `scan-adv` / `build-adv` hide the informative clues (1, 9, 2, 8) first so
-  mid-range clues stay shown; it lifts the median node count, but the seed
-  spread is larger and mock nodes only roughly predict app time, so scan
-  wide with both and time the top few in the app.
-
 ## Paste into SudokuMaker
 
 Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
@@ -172,7 +160,7 @@ n ≤ 9 path, and the ratios land on both sides of 1, so the 9x9 is unchanged
 within the app's run-to-run swing. The 300ms row above is the earlier, easier
 board; `34991d9` shipped the harder one.
 
-The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10.json`, 2x5 boxes, 12 givens,
+The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10x10.json`, 2x5 boxes, 12 givens,
 20 shown clues) is the size that lifted the line cap from 9 to 16: with the
 cap the component yields nothing above 9 and the app finds no first solution
 inside its limit; with the DP it proves the board unique in 0.1 s, 3/3 reps.

@@ -25,8 +25,10 @@ CONSTRAINT_NAME = "Custom Numbered Rooms"
 if __name__ == "__main__":
     ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
 
-    backend_code = minify_js((HERE / "ORIGINAL_backend.js").read_text())
-    component_code = minify_js((HERE / "ORIGINAL_CustomIndexComponent.js").read_text())
+    backend_code = minify_js((HERE / "original" / "main.js").read_text())
+    component_code = minify_js(
+        (HERE / "original" / "CustomIndexComponent.js").read_text()
+    )
     assert backend_code and component_code, "original code empty"
 
     original = replace_constraint_code(

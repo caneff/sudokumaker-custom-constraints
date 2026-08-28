@@ -14,7 +14,7 @@ regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+
 regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
 above). `main.js` reads the side from `puzzle.spec.size.width`; the component
 reads the digit range from `helpers.digits` and throws when the cells do not
-split evenly among the digits. `puzzle-9x9.json` / `PUZZLE_LINK-9x9.txt` is
+split evenly among the digits. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
 the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
 the app proves it unique in 0.2 s).
 
@@ -36,39 +36,39 @@ exists to teach.
   set has exactly one solution. It is slow (CP-SAT), so it is not part of
   `just check` or CI. Run it by hand with `just verify-isofill` after a
   puzzle change.
-- `puzzle.json` — the shipped instance: the full solution grid and the list of
+- `gen.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
-- `puzzle-44.json` — the same grid with 44 givens: a fixture kept for
+- `gen_44g.json` — the same grid with 44 givens: a fixture kept for
   comparing component variants (it closed long before the 35-given instance
   did: ~9.1 s with capacity, ~25.9 s without; 0 ms with cut). Not the shipped instance. The harness asserts
   the two grids stay identical.
-- `puzzle-32.json` — a different grid (sampled with CP-SAT, stripped in the
+- `gen_32g.json` — a different grid (sampled with CP-SAT, stripped in the
   app with `../_shared/app-strip.mjs`) with 32 givens; `verify.py` (CP-SAT)
   proves it unique. The hard fixture: the shipped grid is minimal
   at 35 givens and closes in 0.2 s, too fast to rank rules; this one takes
   the app ~27 s, so a rule change shows. Not the shipped instance. Now
   minimal under the current component (3.7 s; no given can go).
-- `puzzle-30.json`, `puzzle-35-silent.json` — the **silent-digit** fixtures,
+- `gen_30g.json`, `gen_35g_silent.json` — the **silent-digit** fixtures,
   built to attack the component where it was weakest: a digit with no given
   at all got no rule (reach, tour, cut, and the walk that limits budget all
   need a placed cell), so the app found its region by guessing. The **silent**
   deduction (below) closes that gap. Both are CP-SAT strips of one sampled
   grid (`verify.py sample 11`) that remove every given of one digit first,
-  then the rest; `verify.py` proves each unique. `puzzle-30.json` (digit 3
+  then the rest; `verify.py` proves each unique. `gen_30g.json` (digit 3
   silent, 30 givens) is the ranking fixture — it is the one of the three that
-  silent speeds up outright. `puzzle-35-silent.json` (digit 2 silent, 35
+  silent speeds up outright. `gen_35g_silent.json` (digit 2 silent, 35
   givens) is the phase fixture: silent shifts the app's work from the first
   solve to the uniqueness search there rather than removing it. Numbers for
   both are the #143 rows in `## Timing` below.
-- `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
+- `build_link.py` — builds `PUZZLE_LINK.txt` from `gen.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
   swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
-  builds another instance (`puzzle-44.json` for timing).
+  builds another instance (`gen_44g.json` for timing).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
-- `puzzle-9x9.json` / `PUZZLE_LINK-9x9.txt` — the 9×9, digits 1–9 instance.
-- `PUZZLE_LINK-30.txt`, `PUZZLE_LINK-32.txt`, `PUZZLE_LINK-35-silent.txt`,
-  `PUZZLE_LINK-44.txt` — the hard fixtures as
+- `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
+- `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
+  `PUZZLE_LINK_44g.txt` — the hard fixtures as
   stripped links (givens only, nothing entered), built by
   `build_hard_links.py` on every `just check`. Open one to see the board the
   timing table is talking about.
@@ -323,8 +323,8 @@ node examples/isofill/soundness-harness.mjs
 The harness mocks only the puzzle methods the component calls, seeds random
 partial fills of five valid ISOFILL solutions (one with row *r* holding digit
 *r*, one with bent L-shaped regions so reach walks around corners, the shipped
-grid from `puzzle.json`, the hard grid from `puzzle-32.json`, and the grid of
-`puzzle-35-silent.json` — that last one seeded so digit 2 is never pinned, so
+grid from `gen.json`, the hard grid from `gen_32g.json`, and the grid of
+`gen_35g_silent.json` — that last one seeded so digit 2 is never pinned, so
 it is silent in every state and the silent deduction runs on it every time) in
 which every cell still allows its true value, runs `update` to a fixpoint, and asserts every true value survived. It
 also builds one state for each deduction — cap, force, reach, split, split
@@ -337,9 +337,9 @@ split one.
 Uniqueness (needs Python; `uv` fetches OR-Tools):
 
 ```
-uv run --with ortools examples/isofill/verify.py                                # self-check
-uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json   # -> unique
-uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-44.json # -> unique
+uv run --with ortools examples/isofill/verify.py                              # self-check
+uv run --with ortools examples/isofill/verify.py examples/isofill/gen.json     # -> unique
+uv run --with ortools examples/isofill/verify.py examples/isofill/gen_44g.json # -> unique
 ```
 
 `verify.py` models the rule as exact counts (ten cells per digit) plus a
@@ -356,7 +356,7 @@ share code. Change the rule, and change both in the same diff.
 
 ## Authoring a puzzle
 
-There is no generator. Write a full solution grid into `puzzle.json`, list the
+There is no generator. Write a full solution grid into `gen.json`, list the
 clue cells, and run `verify.py` on it. It must print `unique`. To carve clues,
 remove one at a time and re-run; keep any whose removal makes the puzzle
 ambiguous. `just check` re-verifies the shipped instance on every run.

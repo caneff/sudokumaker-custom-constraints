@@ -14,10 +14,10 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const PROBE = join(HERE, 'recovery-probe.mjs')
 
 const cases = [
-  { args: ['gen_6.json'], golden: 'gen_6.txt' },
-  { args: ['gen_9.json'], golden: 'gen_9.txt' },
-  { args: ['gen_6.json', '--search', '--only=off'], golden: 'search_off.txt' },
-  { args: ['gen_6.json', '--search', '--only=on'], golden: 'search_on.txt' }
+  { args: ['gen_6x6.json'], golden: 'gen_6x6.txt' },
+  { args: ['gen_9x9.json'], golden: 'gen_9x9.txt' },
+  { args: ['gen_6x6.json', '--search', '--only=off'], golden: 'search_off.txt' },
+  { args: ['gen_6x6.json', '--search', '--only=on'], golden: 'search_on.txt' }
 ]
 
 const ok = runGoldenCases(PROBE, cases)

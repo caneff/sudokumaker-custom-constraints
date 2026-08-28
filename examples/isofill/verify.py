@@ -1,9 +1,9 @@
 """ISOFILL uniqueness checker (OR-Tools CP-SAT).
 
     uv run --with ortools examples/isofill/verify.py            # self-check
-    uv run --with ortools examples/isofill/verify.py puzzle.json
+    uv run --with ortools examples/isofill/verify.py gen.json
 
-puzzle.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
+gen.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
 "minDigit": 0}. The clues name the given cells; their digits come from the
 grid. The board is N x N with N digits from minDigit (default 0): 10x10 with
 0-9, or 9x9 with 1-9.
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
     elif sys.argv[1] in ("sample", "strip"):
-        # verify.py sample <seed> [side] [minDigit]: a full grid as puzzle.json
+        # verify.py sample <seed> [side] [minDigit]: a full grid as gen.json
         # with every cell given, ready for app-strip.mjs --grid.
         # verify.py strip <seed> [side] [minDigit]: the same grid stripped to a
         # minimal unique clue set with CP-SAT (slower than the app strip; fine

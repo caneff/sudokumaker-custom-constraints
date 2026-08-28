@@ -12,9 +12,9 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
 #
 # Args: n box_height box_width   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script, except
-# that the 9x9 is the board the timing loop and build_link.py reuse, so it
-# lands as PUZZLE_LINK.txt (gen_9.json keeps its name).
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
+# except that the 9x9 is the board the timing loop and build_link.py reuse, so
+# it lands as PUZZLE_LINK.txt (gen_9x9.json keeps its name).
 #
 # A clue is the number of "hits" on a line: read inward, a cell is a hit when
 # its digit equals its distance from the clue. A hit count of 0 is a legal clue.

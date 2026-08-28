@@ -151,7 +151,7 @@ hit-counts deduction), the components with the naive clue bound (`off`), and the
 components plus the candidate matching bound (`on`).
 
 ```
-node examples/hit-counts/recovery-probe.mjs gen_9.json --floor=regin
+node examples/hit-counts/recovery-probe.mjs gen_9x9.json --floor=regin
 ```
 
 The components as a whole earn their keep — over the sudoku floor, which recovers
@@ -172,7 +172,7 @@ The `--search` mode closes the last gap — pruning inside search, where pinned
 cells turn line domains partial and the matching should bite most:
 
 ```
-node examples/hit-counts/recovery-probe.mjs gen_9.json --search --only=on
+node examples/hit-counts/recovery-probe.mjs gen_9x9.json --search --only=on
 ```
 
 It runs a full DFS that proves uniqueness (MRV branching, one solution) and counts

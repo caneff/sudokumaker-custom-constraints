@@ -1,8 +1,8 @@
 // Recovery probe: does the matching bound (issue #12) actually help SOLVE a real
 // puzzle, or is it just tighter in the abstract?
 //
-//   node examples/hit-counts/recovery-probe.mjs            # gen_6.json
-//   node examples/hit-counts/recovery-probe.mjs gen_9.json
+//   node examples/hit-counts/recovery-probe.mjs            # gen_6x6.json
+//   node examples/hit-counts/recovery-probe.mjs gen_9x9.json
 //
 // It runs the ACTUAL components — the same main.js wiring SudokuMaker runs — over
 // a generated puzzle's start state, to a propagation fixpoint. The one thing the
@@ -37,7 +37,7 @@ import {
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const file = process.argv[2] || 'gen_6.json'
+const file = process.argv[2] || 'gen_6x6.json'
 const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
 const { n, box: [bh, bw], grid, clue, active } = gen
 const activeSet = new Set(active)

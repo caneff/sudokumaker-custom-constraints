@@ -9,7 +9,7 @@
 //   rows — row r holds digit r (covers cap and force).
 //   bent — each pair of rows splits into two L-shaped regions, so the reach
 //          deduction walks around corners.
-//   silent35 — the grid of puzzle-35-silent.json, fuzzed with a seeder that
+//   silent35 — the grid of gen_35g_silent.json, fuzzed with a seeder that
 //          never pins digit 2, so that digit stays silent (no placed cell) in
 //          every state and only the silent-digit rule prunes it.
 
@@ -71,18 +71,18 @@ function run (truth, seed) {
   return { p, v: violates(mod, inst, p, truth) }
 }
 
-// shipped — the grid in puzzle.json (also the grid of the 44-clue fixture).
+// shipped — the grid in gen.json (also the grid of the 44-clue fixture).
 const grid = f => JSON.parse(readFileSync(join(HERE, f), 'utf8')).grid
-const shippedGrid = grid('puzzle.json')
-if (shippedGrid.join() !== grid('puzzle-44.json').join()) throw new Error('puzzle-44.json grid differs from puzzle.json')
+const shippedGrid = grid('gen.json')
+if (shippedGrid.join() !== grid('gen_44g.json').join()) throw new Error('gen_44g.json grid differs from gen.json')
 const shipped = {}
 shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
 // hard — the 32-given fixture's grid, the one budget was tuned on.
 const hard = {}
-grid('puzzle-32.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
+grid('gen_32g.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
 // silent35 — the grid whose 35-given fixture leaves digit 2 with no given.
 const silent35 = {}
-grid('puzzle-35-silent.json').forEach((row, r) => [...row].forEach((ch, x) => { silent35[r * N + x] = Number(ch) }))
+grid('gen_35g_silent.json').forEach((row, r) => [...row].forEach((ch, x) => { silent35[r * N + x] = Number(ch) }))
 
 // Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {

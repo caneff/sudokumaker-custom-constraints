@@ -1,4 +1,4 @@
-gen_6.json: n=6, box 2x3, 8/24 clues shown, 16 blank, 0 interior givens
+gen_6x6.json: n=6, box 2x3, 8/24 clues shown, 16 blank, 0 interior givens
   original: hidden 0/16, interior 6/36, removed 79 cands, 4 passes
   ours    : hidden 3/16, interior 7/36, removed 145 cands, 4 passes
   DELTA ours over original: hidden +3, interior +1, removed +66

@@ -94,8 +94,10 @@ def build():
     clued = fill_ring(base, values, groups)
     write_link(clued, HERE / "PUZZLE_LINK_clued.txt")
 
-    backend_code = minify_js((HERE / "ORIGINAL_backend.js").read_text())
-    component_code = minify_js((HERE / "ORIGINAL_CustomIndexComponent.js").read_text())
+    backend_code = minify_js((HERE / "original" / "main.js").read_text())
+    component_code = minify_js(
+        (HERE / "original" / "CustomIndexComponent.js").read_text()
+    )
     clued_original = replace_constraint_code(
         clued,
         CONSTRAINT_NAME,
