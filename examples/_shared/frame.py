@@ -9,6 +9,21 @@
 #   Grid Outer Border the black square around the interior, drawn on top.
 
 
+# A ring key names one clue cell of the frame: "T3"/"B3" sit above/below
+# interior column 3, "L2"/"R2" left/right of interior row 2.
+SIDES = {
+    "L": lambda i, W: (i + 1, 0),
+    "R": lambda i, W: (i + 1, W - 1),
+    "T": lambda i, W: (0, i + 1),
+    "B": lambda i, W: (W - 1, i + 1),
+}
+
+
+def ring_cell(key, W):
+    """The frame (row, column) of a ring key's clue cell, on a W-wide board."""
+    return SIDES[key[0]](int(key[1:]), W)
+
+
 def rect(x, y):
     return [
         {"x": x, "y": y},
