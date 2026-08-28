@@ -40,7 +40,8 @@ above 9 has ever been timed end-to-end. `MAXN` is therefore 9: a longer line
 gets no deduction rather than an unmeasured one.
 
 **Real app** (`--ring-clues`, non-deterministic solve off, median of 3,
-v2026.08.14-d47fc4b, 2026-08-27). Timing board `PUZZLE_LINK_timing.txt`:
+v2026.08.14-d47fc4b, 2026-08-27). Timing board `PUZZLE_LINK_timing.txt`
+(dropped in #178, along with the `build_timing.py` generator that made it):
 baseline **3600 ms** -> candidate **0 ms**. Shipped board `PUZZLE_LINK.txt`:
 baseline **300 ms** -> candidate **0 ms**. Per-rep, both boards read
 `first 0ms unique 0ms sum 0ms [unique]` 3/3 — the app's readout floor, i.e.

@@ -66,7 +66,7 @@ if __name__ == "__main__":
         # a component whose name is not registered on the constraint fails
         # loud, not silently -- e.g. the differently-named original wrapper
         try:
-            build(HERE / "ORIGINAL_CustomIndexComponent.js", out)
+            build(HERE / "original" / "CustomIndexComponent.js", out)
             raise AssertionError(
                 "expected a failure for an unregistered component name"
             )

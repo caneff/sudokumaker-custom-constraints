@@ -68,13 +68,14 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "*Component.js" in violations[0]
 
-    # a hyphenated, seed-bearing, non-square-size, or unknown-tag link name
-    # each fails, naming the bad file
+    # a hyphenated, seed-bearing, non-square-size, unknown-tag, or
+    # wrong-order-tag link name each fails, naming the bad file
     bad_names = [
         "PUZZLE_LINK-30.txt",
         "PUZZLE_LINK_seed104.txt",
         "PUZZLE_LINK_6x7.txt",
         "PUZZLE_LINK_timing.txt",
+        "PUZZLE_LINK_original_clued.txt",
     ]
     for bad_name in bad_names:
         with example(extra_links=[bad_name]) as (root, _):
@@ -82,12 +83,17 @@ if __name__ == "__main__":
             assert len(violations) == 1, (bad_name, violations)
             assert bad_name in violations[0], (bad_name, violations)
 
-    # valid size and tag variants pass
+    # valid size, givens-count, and tag variants pass, including chained
+    # tags in fixed order and a givens count ahead of a tag
     good_names = [
         "PUZZLE_LINK_6x6.txt",
         "PUZZLE_LINK_6x6_original.txt",
         "PUZZLE_LINK_clued.txt",
         "PUZZLE_LINK_silent.txt",
+        "PUZZLE_LINK_global.txt",
+        "PUZZLE_LINK_30g.txt",
+        "PUZZLE_LINK_35g_silent.txt",
+        "PUZZLE_LINK_clued_original.txt",
     ]
     with example(extra_links=good_names) as (root, _):
         violations = check_tree(root)

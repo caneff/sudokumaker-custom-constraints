@@ -4,7 +4,7 @@
 # build from scratch (the board fields come from the scaffold check in #50).
 # The side comes from the grid's row count and the lowest digit from the
 # optional "minDigit" key (default 0): 10x10 with 0-9, or 9x9 with 1-9.
-# The grid and clue set come from puzzle.json; the code comes from main.js and
+# The grid and clue set come from gen.json; the code comes from main.js and
 # IsofillComponent.js, so a component fix flows into the link on the next run.
 #
 #   uv run --with lzstring examples/isofill/build_link.py
@@ -13,7 +13,7 @@
 #
 # Writes PUZZLE_LINK.txt next to this script; --component / --out swap in a
 # candidate component file and write elsewhere; --puzzle builds another
-# instance, e.g. puzzle-44.json.
+# instance, e.g. gen_44g.json.
 
 import argparse
 import json
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--component", default=HERE / "IsofillComponent.js")
     p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
-    p.add_argument("--puzzle", default=HERE / "puzzle.json")
+    p.add_argument("--puzzle", default=HERE / "gen.json")
     args = p.parse_args()
     link, doc, n_clues = build(args.component, args.puzzle)
     check(link, doc, n_clues)

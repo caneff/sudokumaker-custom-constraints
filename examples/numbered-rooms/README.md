@@ -17,7 +17,7 @@ The shipped version split the work across a wrapper and the built-in
 `IndexComponent`:
 
 ```js
-// ORIGINAL_CustomIndexComponent.js
+// original/CustomIndexComponent.js
 if (puzzle.hasValue(cell)) {
   yield puzzle.replaceComponent(instance,
     new IndexComponent(instance.name, puzzle.getValue(cell), cells[0], cells))
@@ -83,8 +83,8 @@ per-line component below carries the whole example.
   the board size itself (global — no lines to draw).
 - `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with the
   constraint switched to global. Same solve, no drawn groups.
-- `ORIGINAL_*.js` — the shipped wrapper, kept for reference and used by
-  `build_original.py`.
+- `original/` — the shipped wrapper (`main.js`, `CustomIndexComponent.js`),
+  kept for reference and used by `build_original.py`.
 - `soundness-harness.mjs` — proves `update` removes no true value (405k fuzz
   tests) and that it prunes early: the clue narrows while it is still unsolved,
   which the shipped wrapper never did.
@@ -103,7 +103,7 @@ per-line component below carries the whole example.
   (0ms, one rep each) -- an ordinary, mostly-solved-by-logic puzzle does not
   show the capability gap; see "Timing in the real app" below.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
-  and the `ORIGINAL_*.js` files, changing only the constraint code.
+  and the `original/` files, changing only the constraint code.
 - `build_clued.py` — rebuilds both `PUZZLE_LINK_clued.txt` and
   `PUZZLE_LINK_clued_original.txt` from `PUZZLE_LINK.txt`, filling the 36
   clues from the board's own solution and checking that solution against the
@@ -124,7 +124,7 @@ per-line component below carries the whole example.
 
 ## Why the stronger component wins
 
-The reason is in the original code, not a benchmark. `ORIGINAL_CustomIndexComponent.js`
+The reason is in the original code, not a benchmark. `original/CustomIndexComponent.js`
 does nothing until the clue cell has a value:
 
 ```js

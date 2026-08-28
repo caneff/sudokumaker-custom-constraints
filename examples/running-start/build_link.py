@@ -2,7 +2,7 @@
 #
 # No args: rebuild PUZZLE_LINK.txt from scratch from the current source files.
 # The grid, clue ring, given flags, line groups, regions, cages, and cosmetic
-# lines never change for this example; they live in puzzle_template.json (a
+# lines never change for this example; they live in gen.json (a
 # document decoded once from a known-good link, with the code fields emptied).
 # Only the embedded code changes when you edit main.js or a component, so this
 # path injects the current files and re-encodes.
@@ -54,9 +54,9 @@ def build(component_path, out_path):
 
 
 def build_from_template():
-    """Rebuild the whole link from puzzle_template.json, main.js, and both
+    """Rebuild the whole link from gen.json, main.js, and both
     component files -- the source of truth for PUZZLE_LINK.txt."""
-    doc = json.loads((HERE / "puzzle_template.json").read_text())
+    doc = json.loads((HERE / "gen.json").read_text())
     # the template was decoded from a finished board, so it carries the whole
     # solution and every hidden clue as non-given values. Same rule as
     # framebuild.build_doc: a cell holds a value only when it is a given —

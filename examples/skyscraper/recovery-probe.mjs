@@ -1,9 +1,9 @@
 // Recovery/speed probe: is the interactive-outside Skyscraper constraint actually
 // faster to SOLVE than the original wrapper, or only tighter on paper?
 //
-//   node examples/skyscraper/recovery-probe.mjs                 # gen_6.json, root recovery
-//   node examples/skyscraper/recovery-probe.mjs gen_9.json
-//   node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count nodes
+//   node examples/skyscraper/recovery-probe.mjs                 # gen_6x6.json, root recovery
+//   node examples/skyscraper/recovery-probe.mjs gen_9x9.json
+//   node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, count nodes
 //
 // It runs the ACTUAL components — the same main.js wiring SudokuMaker runs — over a
 // generated puzzle's start state, on top of a Régin-strength (GAC) all-different
@@ -45,7 +45,7 @@ import {
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const file = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'gen_6.json'
+const file = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'gen_6x6.json'
 const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
 const { n, box: [bh, bw], grid, clue, active } = gen
 const activeSet = new Set(active)

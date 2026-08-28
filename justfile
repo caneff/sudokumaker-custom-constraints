@@ -4,7 +4,7 @@
 check: lint test soundness
 
 # Lint the Node code (StandardJS) and the Python generators (ruff check +
-# format check). The verbatim ORIGINAL_*/original/ snippets are excluded.
+# format check). The verbatim original/ snippets are excluded.
 lint:
     npx standard
     uvx ruff check examples
@@ -44,11 +44,11 @@ test:
 # examples/isofill/README.md.
 verify-isofill:
     uv run --with ortools examples/isofill/verify.py
-    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle.json
-    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-44.json
-    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-30.json
-    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-35-silent.json
-    uv run --with ortools examples/isofill/verify.py examples/isofill/puzzle-9x9.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_44g.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_30g.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_35g_silent.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_9x9.json
 
 # Soundness fuzz: every component keeps each cell's true value. The invariant.
 soundness:

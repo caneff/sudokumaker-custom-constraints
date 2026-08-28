@@ -10,17 +10,16 @@ SHARED = HERE.parent / "_shared"
 sys.path.insert(0, str(SHARED))
 from link_codec import decode_puzzle
 
-FIXTURES = [
-    "puzzle-30.json",
-    "puzzle-32.json",
-    "puzzle-35-silent.json",
-    "puzzle-44.json",
-    "puzzle-9x9.json",
-]
+FIXTURES = {
+    "gen_30g.json": "PUZZLE_LINK_30g.txt",
+    "gen_32g.json": "PUZZLE_LINK_32g.txt",
+    "gen_35g_silent.json": "PUZZLE_LINK_35g_silent.txt",
+    "gen_44g.json": "PUZZLE_LINK_44g.txt",
+    "gen_9x9.json": "PUZZLE_LINK_9x9.txt",
+}
 
-for name in FIXTURES:
-    stem = name.removesuffix(".json")
-    out = HERE / f"PUZZLE_LINK-{stem.removeprefix('puzzle-')}.txt"
+for name, out_name in FIXTURES.items():
+    out = HERE / out_name
     full = out.with_suffix(".full.tmp")
     uv = ["uv", "run", "--with", "lzstring"]
     subprocess.run(

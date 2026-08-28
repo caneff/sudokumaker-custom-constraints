@@ -174,7 +174,7 @@ removal, and a `timeout` rung's clue set is also written to
 Verified against `examples/isofill/PUZZLE_LINK.txt` (35 givens, every single
 removal known non-unique by construction): `minimum 35 givens` on three
 separate seeded runs (seeds 1, 3, 7), roughly 8 s per trial end to end. A
-100-given board (the `puzzle-32.json` grid with every cell given) confirms the other direction — early
+100-given board (the `gen_32g.json` grid with every cell given) confirms the other direction — early
 removals come back `unique` at 0 ms, straight off the app's own readout.
 
 ## Reproduce

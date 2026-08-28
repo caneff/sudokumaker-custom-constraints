@@ -8,10 +8,10 @@
 # interior givens and a minimal shown-clue set to a unique solution
 # (OR-Tools), then assembles the whole SudokuMaker document and encodes it.
 # `run(spec)` is the entry point: it parses argv, generates, builds the
-# document, checks the round trip, and writes the link and gen_<n>.json.
+# document, checks the round trip, and writes the link and gen_<n>x<n>.json.
 #
 # Args: n box_height box_width [seed_count]   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to the caller's script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to the caller's script.
 
 import json
 import pathlib
@@ -331,7 +331,7 @@ def run(spec):
     link = link_codec.encode_link(doc)
     check(spec, link, doc, n)
     (spec.dir / f"PUZZLE_LINK_{n}x{n}.txt").write_text(link + "\n")
-    with (spec.dir / f"gen_{n}.json").open("w") as f:
+    with (spec.dir / f"gen_{n}x{n}.json").open("w") as f:
         json.dump(
             {
                 "seed": seed,
@@ -345,4 +345,4 @@ def run(spec):
             f,
             indent=1,
         )
-    print(f"wrote PUZZLE_LINK_{n}x{n}.txt ({len(link)} chars) and gen_{n}.json")
+    print(f"wrote PUZZLE_LINK_{n}x{n}.txt ({len(link)} chars) and gen_{n}x{n}.json")

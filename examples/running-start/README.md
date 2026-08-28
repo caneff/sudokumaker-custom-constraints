@@ -38,7 +38,7 @@ deleted before publishing.
   `uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3`
   The three args are the grid size and the box height and width (`box_height *
   box_width == size`).
-- `puzzle_template.json` — the puzzle frame (grid, clue ring, groups, regions,
+- `gen.json` — the puzzle frame (grid, clue ring, groups, regions,
   cosmetics) with the code fields empty. `build_link.py` fills them in.
 
 ## Paste into SudokuMaker

@@ -1,2 +1,0 @@
-gen_9.json: n=9, box 3x3, 20/36 clues shown, 16 blank, 7 interior givens
-  ours    : 5001 search nodes, 0 solutions CAPPED

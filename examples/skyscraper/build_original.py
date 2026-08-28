@@ -1,4 +1,4 @@
-# Rebuild an already-generated puzzle's link pair from gen_<n>.json: the
+# Rebuild an already-generated puzzle's link pair from gen_<n>x<n>.json: the
 # improved link with the current main.js and component files, and the same
 # board with ChinStrap's ORIGINAL wrapper code, so the two can be compared on
 # the same grid, givens, and clues. No solving: it re-encodes. Run it after
@@ -30,7 +30,7 @@ CONSTRAINT_NAME = "Skyscraper Lines"
 
 
 def load_gen(n):
-    g = json.loads((HERE / f"gen_{n}.json").read_text())
+    g = json.loads((HERE / f"gen_{n}x{n}.json").read_text())
     bh, bw = g["box"]
     grid = g["grid"]
     lines = make_lines(n)

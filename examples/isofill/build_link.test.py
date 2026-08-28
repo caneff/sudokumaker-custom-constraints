@@ -26,7 +26,7 @@ if __name__ == "__main__":
         tmp = pathlib.Path(tmp)
 
         # the committed component round-trips to PUZZLE_LINK.txt byte-for-byte
-        link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / "puzzle.json")
+        link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / "gen.json")
         check(link, doc, n_clues)
         assert link == base_text, (
             "the committed component must reproduce PUZZLE_LINK.txt exactly"
@@ -39,7 +39,7 @@ if __name__ == "__main__":
             (HERE / "IsofillComponent.js").read_text() + "\n//! candidate edit\n"
         )
         out = tmp / "candidate.txt"
-        cand_link, cand_doc, cand_n_clues = build(candidate, HERE / "puzzle.json")
+        cand_link, cand_doc, cand_n_clues = build(candidate, HERE / "gen.json")
         check(cand_link, cand_doc, cand_n_clues)
         out.write_text(cand_link + "\n")
         assert decode_puzzle(out.read_text().strip()) == cand_doc, "did not write --out"
