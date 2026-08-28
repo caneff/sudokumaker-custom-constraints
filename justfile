@@ -16,26 +16,33 @@ fmt:
     uvx ruff check --fix examples
     uvx ruff format examples
 
-# Regression goldens for the recovery/speed probes.
+# Regression goldens for the recovery/speed probes, plus every example's own
+# tests, discovered by file name so a new example needs no edit here. See
+# docs/example-layout.md. Builders (build_*.py) do not run here — only files
+# named *.test.mjs / *.test.py. verify.py is excluded on purpose: it is a
+# slow CP-SAT proof, run by hand via `just verify-isofill` (see there).
 test:
+    #!/usr/bin/env bash
+    set -euo pipefail
     node examples/_shared/recovery-lib.test.mjs
     node examples/_shared/app-solve-lib.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
-    node examples/hit-counts/recovery-probe.test.mjs
-    node examples/skyscraper/recovery-probe.test.mjs
-    node examples/numbered-rooms/update-strength.test.mjs
     uv run --with lzstring examples/_shared/link_codec.test.py
     uv run --with lzstring examples/_shared/probe_link.test.py
     uv run --with lzstring examples/_shared/link_swap.test.py
-    uv run --with lzstring examples/numbered-rooms/build_link.test.py
-    uv run --with lzstring examples/numbered-rooms/build_clued.test.py
-    uv run --with lzstring examples/hit-counts/build_link.test.py
-    uv run --with lzstring examples/running-start/build_link.test.py
-    uv run --with lzstring examples/skyscraper/build_link.test.py
     uv run --with lzstring examples/_shared/time_example.test.py
-    uv run --with lzstring examples/isofill/build_link.py
-    uv run --with lzstring examples/isofill/build_link.test.py
-    uv run --with lzstring examples/isofill/build_hard_links.py
+    for dir in examples/*/; do
+        name=$(basename "$dir")
+        [ "$name" = "_shared" ] && continue
+        shopt -s nullglob
+        for f in "$dir"*.test.mjs; do
+            node "$f"
+        done
+        for f in "$dir"*.test.py; do
+            uv run --with lzstring "$f"
+        done
+        shopt -u nullglob
+    done
     uv run --with lzstring examples/_shared/check_links.py
     uv run examples/_shared/check_layout.test.py
 
@@ -50,14 +57,21 @@ verify-isofill:
     uv run --with ortools examples/isofill/verify.py examples/isofill/gen_35g_silent.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/gen_9x9.json
 
-# Soundness fuzz: every component keeps each cell's true value. The invariant.
+# Soundness fuzz: every component keeps each cell's true value. The
+# invariant. Discovered by file name, same convention as `test` above.
 soundness:
-    node examples/hit-counts/soundness-harness.mjs
-    node examples/isofill/soundness-harness.mjs
-    node examples/numbered-rooms/soundness-harness.mjs
-    node examples/numbered-rooms-lines/soundness-harness.mjs
-    node examples/running-start/soundness-harness.mjs
-    node examples/skyscraper/soundness-harness.mjs
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for dir in examples/*/; do
+        name=$(basename "$dir")
+        [ "$name" = "_shared" ] && continue
+        f="$dir"soundness-harness.mjs
+        if [ -f "$f" ]; then
+            node "$f"
+        else
+            echo "skip: $name has no soundness-harness.mjs"
+        fi
+    done
 
 # Real-app timing for one example: baseline (committed PUZZLE_LINK.txt) vs a
 # candidate built from the working-tree component, on the live site. Prints
