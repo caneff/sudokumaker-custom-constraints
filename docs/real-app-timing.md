@@ -22,9 +22,11 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   cuts, or the other way round. `just time` prints both rows.
 - **Bar (the two-row ship rule).** A change ships when it clears **≤ 0.9×** on
   one of the two rows and stays **≤ 1.1×** on the other, each median measured
-  over 3 reps with non-deterministic solve off. A row whose baseline is 0 ms
-  places no constraint — the logic pass finished the board, so there is
-  nothing left to search — and the other row decides. `just time` prints the
+  over 3 reps with non-deterministic solve off. A row where **both** sides
+  read 0 ms places no constraint — the logic pass finished the board, so
+  nothing was timed — and the other row decides. A 0 ms baseline the candidate
+  does *not* match is the opposite: the board used to need no search and now
+  does, which sinks the change. `just time` prints the
   `two-row rule: SHIP` / `NO SHIP` line; each row's own `PASS`/`FAIL` is that
   row's 0.9× result alone, not the gate.
 - **Record.** Paste both printed rows into the example's README, under a
@@ -37,9 +39,10 @@ the offline recording works.
 For an example with a `build_link.py` (hit-counts, isofill, numbered-rooms,
 running-start, skyscraper), `just time <example>` runs the whole loop below in
 one command: it builds a candidate link from the working-tree component,
-times baseline and candidate 3 reps each, and prints one paste-ready row
-(date, app version, board, both medians, ratio, PASS/FAIL at candidate <=
-0.9x baseline). Byte-equal candidate code prints a baseline-only row.
+times baseline and candidate 3 reps each in both modes, and prints one
+paste-ready row per mode (date, app version, board, both medians, ratio, and
+that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
+`two-row rule:` line. Byte-equal candidate code prints baseline-only rows.
 `--board <file>` times a different committed link in the example dir instead
 of `PUZZLE_LINK.txt`; only an example whose `build_link.py` takes `--board`
 accepts it, and the row's board column then names the file. The
@@ -125,7 +128,7 @@ puzzle rides in the `?puzzle=` query; on replay that document request is
 rewritten to `/` (the same app index), so one recording covers every puzzle.
 
 Re-record after a SudokuMaker release, and only then — the recording pins the
-version every timing in the table below was measured against:
+version every recorded timing was measured against:
 
 ```sh
 SM_LIVE=1 node examples/_shared/app-solve.mjs <link> 1   # loads live, rewrites the HAR

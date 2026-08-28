@@ -96,7 +96,7 @@ async function runOnce (page) {
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
-  if (marksRejected(text, { ringClues, afterLogical })) {
+  if (marksRejected(text, ringClues || afterLogical)) {
     throw new Error(`${linkFile}: the app judged "based on already entered values" -- not a timing; strip the link first`)
   }
   return { ...parseReadout(text), version: parseVersion(text) }

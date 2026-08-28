@@ -17,6 +17,7 @@ from time_example import (
     build_candidate,
     build_row,
     find_component_file,
+    row_ratio,
     run,
     ship_verdict,
 )
@@ -215,14 +216,19 @@ if __name__ == "__main__":
     # neither row clears 0.9x -> no ship, however flat the other row is
     assert ship_verdict([0.95, 0.95]) == "NO SHIP"
 
-    # a row the app solved in 0ms places no constraint: it cannot be the row
-    # that clears 0.9x, and it cannot regress. The other row decides.
+    # a row where BOTH sides read 0ms places no constraint: the app's logical
+    # pass finished the board, so nothing was timed. The other row decides.
     assert ship_verdict([0.72, None]) == "SHIP"
     assert ship_verdict([0.95, None]) == "NO SHIP"
     assert ship_verdict([None, None]) == "NO TIME"
 
-    # a 0ms baseline has no ratio -- the app's logical pass finished the board,
-    # so there is nothing left to time. Report it, never divide by zero.
+    # a 0ms baseline the candidate does NOT match is the regression this row
+    # exists to catch -- five of six ISOFILL fixtures sit at 0ms after-logical,
+    # so 0ms -> slow is the common way to break one. It must never ship, however
+    # well the other row reads.
+    assert ship_verdict([0.72, float("inf")]) == "NO SHIP"
+
+    # a 0ms baseline has no ratio. Report it, never divide by zero.
     row, verdict = build_row(
         "2026-08-26", "v2026.08.14-d47fc4b", "isofill after-logical", 0, 0
     )
@@ -230,5 +236,20 @@ if __name__ == "__main__":
     assert row == (
         "| 2026-08-26 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |"
     )
+
+    # 0ms baseline, candidate slower: a FAIL row with an infinite ratio, not a
+    # NO TIME row that quietly excuses it
+    row, verdict = build_row(
+        "2026-08-26", "v2026.08.14-d47fc4b", "isofill after-logical", 0, 5000
+    )
+    assert verdict == "FAIL"
+    assert row == (
+        "| 2026-08-26 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 5000ms | ∞ | FAIL |"
+    )
+
+    # the ratio the driver hands ship_verdict for each of those two cases
+    assert row_ratio(0, 0) is None
+    assert row_ratio(0, 5000) == float("inf")
+    assert row_ratio(1000, 800) == 0.8
 
     print("ok")
