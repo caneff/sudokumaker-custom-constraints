@@ -59,7 +59,7 @@ exists to teach.
   silent speeds up outright. `puzzle-35-silent.json` (digit 2 silent, 35
   givens) is the phase fixture: silent shifts the app's work from the first
   solve to the uniqueness search there rather than removing it. Numbers for
-  both in `../../docs/real-app-timing.md`.
+  both are the #143 rows in `## Timing` below.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `puzzle.json`, `main.js`, and
   the component file. Run it after changing any of them:
   `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
@@ -403,11 +403,11 @@ Both rows per fixture were hand-run, because `build_link.py` takes no
 The commands are the strip-then-`app-solve.mjs` pair in
 `docs/real-app-timing.md` § Reproduce, once per fixture link.
 
-### Earlier rows (2026-08-27, #143 / #148 / #150)
+### Earlier rows (2026-08-27, #143 / #148 / #150, cold only)
 
-| 2026-08-27 | — | isofill puzzle-30 (#143 silent) | 6.6 s | 5.0 s | 0.76 | KEPT; clears the 0.9× bar |
-| 2026-08-27 | — | isofill puzzle-35-silent (#143 silent) | 48.6 s | 45.6 s | 0.94 | wash; first solve 36.2 s→0.4 s, uniqueness search 12.4 s→45.2 s |
-| 2026-08-27 | — | isofill puzzle-32 (#143 silent) | 3.6 s | 3.7 s | 1.03 | flat; second pair 3.7 s→3.7 s |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-30 (#143 silent) | 6.6 s | 5.0 s | 0.76 | KEPT; clears the 0.9× bar |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-35-silent (#143 silent) | 48.6 s | 45.6 s | 0.94 | wash; first solve 36.2 s→0.4 s, uniqueness search 12.4 s→45.2 s |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-32 (#143 silent) | 3.6 s | 3.7 s | 1.03 | flat; second pair 3.7 s→3.7 s |
 | 2026-08-27 | — | isofill puzzle-30 (#148 crossing) | 5.2 s | 5.2 s | 1.00 | wash |
 | 2026-08-27 | — | isofill puzzle-32 (#148 crossing) | 3.7 s | 3.9 s | 1.05 | REMOVED; regression |
 | 2026-08-27 | — | isofill puzzle-35-silent (#148 crossing) | 46.6 s | 47.4 s | 1.02 | REMOVED; regression |
@@ -415,9 +415,10 @@ The commands are the strip-then-`app-solve.mjs` pair in
 | 2026-08-27 | — | isofill puzzle-32 (#150 blob gate) | 3.7 s | 3.7 s | 1.00 | wash |
 | 2026-08-27 | — | isofill puzzle-35-silent (#150 blob gate) | 46.5 s | 45.6 s | 0.98 | wash |
 
-App version is not stated in the #143/#148/#150 commit bodies, so the cell
-reads `—` rather than reusing the `v2026.08.14-d47fc4b` figure from the
-neighbouring #149 rows below.
+These predate the two-row rule, so they carry a cold row only. App version
+is not stated in the #148/#150 commit bodies ("recorded app offline"), so
+those cells read `—` rather than reusing the `v2026.08.14-d47fc4b` figure
+from the #143 and #149 rows.
 
 ### Earlier rows (2026-08-27, cold only)
 
