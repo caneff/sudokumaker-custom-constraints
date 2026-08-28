@@ -32,8 +32,7 @@ times baseline and candidate 3 reps each, and prints one paste-ready row
 (date, app version, board, both medians, ratio, PASS/FAIL at candidate <=
 0.9x baseline). Byte-equal candidate code prints a baseline-only row.
 `--board <file>` times a different committed link in the example dir instead
-of `PUZZLE_LINK.txt` (skyscraper's `PUZZLE_LINK_timing.txt`, the board for
-per-call verdicts); only an example whose `build_link.py` takes `--board`
+of `PUZZLE_LINK.txt`; only an example whose `build_link.py` takes `--board`
 accepts it, and the row's board column then names the file. The
 manual steps below are what it automates, and still apply to an example with
 no `build_link.py` yet.
