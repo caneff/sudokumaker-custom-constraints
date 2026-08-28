@@ -271,7 +271,10 @@ connectivity, single liberty, 2×2 pools
    forcing round removing 62–99.9% of rounds. Weak precedent against: `#133`
    measured a whole-component version on skyscraper and did not ship it.
    `[source: ISS chaos_construction.md §8, §4.4]`
-5. **Cross-digit confinement lookahead.** For an open cell `u` and digit `d`,
+5. **Cross-digit confinement lookahead — dropped (spec #165).** Too costly per
+   node, and it duplicates the app's own search: guess a cell, propagate one
+   step, look for a dead digit is what the DFS does at the next node. Do not
+   re-list it. For an open cell `u` and digit `d`,
    deny `u` and `u`'s open neighbours to every other digit and ask whether any
    of them is now confined; if so, `u ≠ d`. **O(V·V·(V+E))** naively — far too
    slow at every node without the memo the nurikabe solver uses. Listed last for
