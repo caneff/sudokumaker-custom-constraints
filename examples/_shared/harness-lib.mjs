@@ -1,12 +1,15 @@
-// Shared scaffold for the soundness fuzz harnesses. Soundness = a component
-// never removes a cell's TRUE value. Each example supplies its own seeding and
-// test cases; the parts every harness copies live here.
+// Shared scaffold for the fuzz harnesses. A soundness harness checks that a
+// component never removes a cell's TRUE value; an update-strength test checks
+// the other direction, that it never prunes LESS than a pinned earlier version.
+// Each example supplies its own seeding and test cases; the parts every harness
+// copies live here.
 //
 // A component reads two globals at update time: SudokuDigitSet.from(array) and
 // helpers.digits.{minDigit,maxDigit}. Call installGlobals once before running.
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { execFileSync } from 'child_process'
 
 // The app's DigitSet, as read from its bundle (docs/puzzle-api.md): a bitmask
 // where bit d is digit d. The algebra methods MUTATE and return this.
@@ -29,12 +32,51 @@ export function installGlobals (minDigit, maxDigit) {
 }
 
 // Bind file reads to the example's own directory. `read` returns a file's text;
-// `load` evals a component file and returns the named functions from it.
+// `load` evals a component file and returns the named functions from it;
+// `loadAt` does the same for the file as it stood at a git commit, which is how
+// a strength test holds a component to the floor it set.
 export function makeIo (here) {
   const read = f => readFileSync(join(here, f), 'utf8')
-  const load = (file, names) =>
-    eval('(function(){' + read(file) + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
-  return { read, load }
+  const evalNamed = (src, names) =>
+    eval('(function(){' + src + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
+  const load = (file, names) => evalNamed(read(file), names)
+  const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
+  const loadAt = (commit, file, names) =>
+    evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names)
+  return { read, load, loadAt }
+}
+
+// A random candidate set over lo..hi: pinned, the full range, or a random
+// subset. With `keep` given, that digit is in every set, so the state still
+// allows a known solution — a component whose rules only bite on consistent
+// states needs that. Pinned cells are what makes a rule fire, so the mix of
+// pinned and open cells matters more than the exact rates.
+export function randomCandidates (rnd, lo, hi, keep = null) {
+  const draw = () => lo + ((rnd() * (hi - lo + 1)) | 0)
+  const r = rnd()
+  if (r < 0.35) return [keep === null ? draw() : keep]
+  const s = new Set(keep === null ? [] : [keep])
+  if (r < 0.55) { for (let d = lo; d <= hi; d++) s.add(d) } else { for (let d = lo; d <= hi; d++) if (rnd() < 0.5) s.add(d) }
+  if (s.size === 0) s.add(draw())
+  return [...s]
+}
+
+// Run one starting state (cell -> candidate array) through two versions of a
+// component and report the candidates `cur` keeps that `ref` removed — the
+// cells where `cur` prunes less. `apply` sets a version's params and runs it.
+// Returns null for a dead state (some cell emptied by either side): that state
+// has no solution, so "weaker" means nothing there.
+export function compareStrength (cur, ref, apply, start) {
+  const cells = {}; for (const c of start.keys()) cells[c] = 0
+  const seed = c => start.get(c)
+  const pCur = makePuzzle(cells, seed); apply(cur, pCur)
+  const pRef = makePuzzle(cells, seed); apply(ref, pRef)
+  if ([...pCur._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)) return null
+  const weaker = []
+  for (const c of start.keys()) {
+    for (const d of pCur._cand.get(c)) if (!pRef._cand.get(c).has(d)) weaker.push({ cell: c, digit: d })
+  }
+  return weaker
 }
 
 // Deterministic RNG. `rnd` returns a float in [0,1); `pick` chooses from an array.
