@@ -1,0 +1,71 @@
+# Example layout
+
+Every example lives in its own dir under `examples/` (`_shared/` is not an
+example). `examples/_shared/check_layout.py` walks `examples/*/`, skips
+`_shared`, and checks every example against this page. It is not yet wired
+into `just check` — see #174.
+
+## Required files
+
+| File | Holds |
+| --- | --- |
+| `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
+| `main.js` | The SudokuMaker constraint definition (paste target) |
+| `*Component.js` (at least one) | The pasted constraint snippet(s) |
+| `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
+| `build_link.test.py` | Tests `build_link.py` |
+| `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
+| `update-strength.test.mjs` | Never-weaker fuzz; floor pinned at the commit that adds it |
+| `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
+| `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
+
+## Optional files
+
+Run when present, skipped with a note when absent:
+
+| File | Notes |
+| --- | --- |
+| `.golden/` | Regression goldens for the recovery/speed probes |
+| `recovery-probe.mjs` (+ test) | Recovery probe and its test |
+| `build_size.py` | Builds boards at other sizes |
+| `verify.py` | Uniqueness proof; runs once per `gen*.json` in the example |
+| any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed |
+
+## Link grammar
+
+```
+PUZZLE_LINK[_<size>][_<tag>].txt
+```
+
+- `<size>` is `NxN` (e.g. `6x6`).
+- `<tag>` is one of: `clued`, `original`, `silent`.
+- Parts join with `_`. No hyphens, no seeds, no other free text.
+- Links stay flat in the example dir — no `links/` subdir.
+- A link file holds one URL and nothing else. Seed, date, and solve time go
+  in the README or `OPTIMIZATION_LOG.md`, not the filename.
+
+Examples: `PUZZLE_LINK.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_clued.txt`,
+`PUZZLE_LINK_6x6_original.txt`.
+
+`PUZZLE_LINK.txt` is the **shipped link** — the one a reader opens. Any other
+`PUZZLE_LINK_*.txt` is a **variant link**.
+
+## Board naming
+
+- `gen.json` — the shipped board.
+- `gen_<size>.json` — a size variant, `<size>` equal to the paired link's
+  size token (e.g. `gen_6x6.json` pairs with `PUZZLE_LINK_6x6.txt`).
+- A generator may keep extra input files; they are inputs, not "the board."
+
+## The `original/` baseline
+
+Baseline code and links for `just time` comparisons live under an
+`original/` subdir, which mirrors the example's own layout for the baseline
+component. `_original` links pair with it. Keep an `original/` baseline only
+where `just time` actually compares against it — not as a general changelog.
+
+## Extension rule
+
+- `.js` — a snippet pasted into SudokuMaker. Harnesses and tests load it by
+  reading the file and `eval`-ing it; it never runs directly under Node.
+- `.mjs` — Node tooling: harnesses, probes, tests.

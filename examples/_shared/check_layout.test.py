@@ -1,0 +1,132 @@
+# check_layout walks an examples/-shaped directory and verifies every
+# example (any dir other than _shared) has the required file set and that
+# every PUZZLE_LINK*.txt name matches the link grammar. These fixtures build
+# small temp trees rather than reuse the real examples/, so a case (a
+# missing file, a bad link name) is exact and does not drift with the repo.
+#
+#   uv run examples/_shared/check_layout.test.py
+
+import contextlib
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+from check_layout import check_tree
+
+HERE = pathlib.Path(__file__).parent
+
+REQUIRED = [
+    "README.md",
+    "main.js",
+    "FooComponent.js",
+    "build_link.py",
+    "build_link.test.py",
+    "soundness-harness.mjs",
+    "update-strength.test.mjs",
+    "OPTIMIZATION_LOG.md",
+    "PUZZLE_LINK.txt",
+]
+
+
+@contextlib.contextmanager
+def example(files=REQUIRED, extra_links=(), name="widget"):
+    """A temp examples/-shaped tree with one example dir, `name`.
+
+    Yields (root, example_dir). `files` are the example's own files;
+    `extra_links` are extra PUZZLE_LINK*.txt names to add on top.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        d = root / name
+        d.mkdir()
+        for f in files:
+            (d / f).write_text("x")
+        for link in extra_links:
+            (d / link).write_text("x")
+        yield root, d
+
+
+if __name__ == "__main__":
+    # a complete example passes
+    with example() as (root, _):
+        violations = check_tree(root)
+        assert violations == [], f"complete example reported violations: {violations}"
+
+    # a missing required file fails and names it
+    missing = [f for f in REQUIRED if f != "OPTIMIZATION_LOG.md"]
+    with example(files=missing) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "widget" in violations[0]
+        assert "OPTIMIZATION_LOG.md" in violations[0]
+
+    # at least one *Component.js required — none present fails
+    missing = [f for f in REQUIRED if f != "FooComponent.js"]
+    with example(files=missing) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "*Component.js" in violations[0]
+
+    # a hyphenated, seed-bearing, non-square-size, or unknown-tag link name
+    # each fails, naming the bad file
+    bad_names = [
+        "PUZZLE_LINK-30.txt",
+        "PUZZLE_LINK_seed104.txt",
+        "PUZZLE_LINK_6x7.txt",
+        "PUZZLE_LINK_timing.txt",
+    ]
+    for bad_name in bad_names:
+        with example(extra_links=[bad_name]) as (root, _):
+            violations = check_tree(root)
+            assert len(violations) == 1, (bad_name, violations)
+            assert bad_name in violations[0], (bad_name, violations)
+
+    # valid size and tag variants pass
+    good_names = [
+        "PUZZLE_LINK_6x6.txt",
+        "PUZZLE_LINK_6x6_original.txt",
+        "PUZZLE_LINK_clued.txt",
+        "PUZZLE_LINK_silent.txt",
+    ]
+    with example(extra_links=good_names) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # _shared is skipped even though it has none of the required files
+    with example() as (root, _):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "helper.py").write_text("x")
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a nonexistent root produces one violation, not a crash
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp) / "does_not_exist"
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+
+    # run as a script: exit code and stdout are the enforced seam
+    with example(files=[f for f in REQUIRED if f != "OPTIMIZATION_LOG.md"]) as (
+        root,
+        _,
+    ):
+        result = subprocess.run(
+            [sys.executable, str(HERE / "check_layout.py"), str(root)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 1, result
+        assert "OPTIMIZATION_LOG.md" in result.stdout, result.stdout
+        assert "FAILED" in result.stdout, result.stdout
+
+    with example() as (root, _):
+        result = subprocess.run(
+            [sys.executable, str(HERE / "check_layout.py"), str(root)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result
+        assert "ok" in result.stdout, result.stdout
+
+    print("ok")
