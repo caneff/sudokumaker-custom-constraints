@@ -77,11 +77,11 @@ more and the solver guessed less.
 | --- | --- | --- |
 | `gen_4` | 0 nodes | did not finish (200k-node cap) |
 | `gen_6` | 8 nodes | did not finish (200k-node cap) |
-| `gen_9` (shipped board, adversarial seed 427) | 5,681 nodes | not run |
+| `gen_9` (shipped board, seed 610) | 45,731 nodes (~2 min; golden capped at 5k) | not run |
 
-In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **2.0 s**
+In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **8.0 s**
 (`just time skyscraper --ring-clues`). It is the hardest unique board a
-160-seed scan found (#140, #161), so it doubles as the timing board. The
+560-seed scan found (#140, #161), so it doubles as the timing board. The
 first shipped board handed the solver 58% of its ring and read 0.3 s; before
 the joint component it ran past the app's 300 s limit. Node counts and app time are different measurements — reps,
 dates, and app version in `../../docs/real-app-timing.md`.
@@ -141,9 +141,10 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
 - `build_timing.py` — picks the shipped 9x9 board by hardness (#140):
   `scan <lo> <hi>` carves one board per seed and prints its mock node count
   (about a minute a seed); `build <seed>` writes `gen_9.json` and rebuilds the
-  `PUZZLE_LINK.txt` pair. `build-adv 427` reproduces the committed files
-  (20/36 clues shown, 5,681 mock nodes, 2.0 s in the app). Seed 135, the
-  first hardness-picked board, fell to 16 nodes and 0 ms after #137.
+  `PUZZLE_LINK.txt` pair. `build 610` reproduces the committed files
+  (20/36 clues shown, 45,731 mock nodes, 8.0 s in the app; it was the one
+  PROBE-TIMEOUT in a 400-seed scan). Earlier picks: adversarial 427 (5,681
+  nodes, 2.0 s) and seed 135, which fell to 16 nodes and 0 ms after #137.
   `scan-adv` / `build-adv` hide the informative clues (1, 9, 2, 8) first so
   mid-range clues stay shown; it lifts the median node count, but the seed
   spread is larger and mock nodes only roughly predict app time, so scan

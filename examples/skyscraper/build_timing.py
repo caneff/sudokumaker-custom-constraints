@@ -4,14 +4,15 @@
 # hardness; its boards solve near the app's readout floor.
 #
 #   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py scan 101 161
-#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build-adv 427
+#   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build 610
 #
 # scan-adv / build-adv: same, but the carve hides the informative ring clues
-# (1, 9, 2, 8) first so the mid-range clues stay shown. Over 160 seeds it
-# lifted the median node count and found the hardest board (adv 427: 5681
-# nodes, 2000 ms in the app; best random, 328: 4846 nodes but 200 ms). The
-# seed spread is still larger than the lever, and mock nodes only roughly
-# predict app time, so scan wide with both modes and time the top few.
+# (1, 9, 2, 8) first so the mid-range clues stay shown. It lifts the median
+# node count, but over 560 seeds the hardest board was random (610: probe
+# timeout, 8 s in the app) and the runner-up adversarial (427: 5681 nodes,
+# 2 s), so the seed spread beats the lever. Mock
+# nodes only roughly predict app time (rnd 328: 4846 nodes, 0.2 s). So scan
+# wide with both modes, treat PROBE-TIMEOUT as a lead, and time the top few.
 #
 # scan: for each seed, carve the board as build_size.py would and count the mock
 # search nodes (recovery-probe.mjs --search --only=ours). One line per seed;
@@ -19,8 +20,8 @@
 # than the probe's budget. Pick the hardest seed with over half the ring blank,
 # and confirm it stays under the app's 300 s limit before committing it.
 # build: write gen_9.json for one seed and rebuild the PUZZLE_LINK.txt /
-# PUZZLE_LINK_original.txt pair from it (build_original.py); the committed pair is build-adv 427 (seed
-# 135 fell to 16 nodes / 0 ms after #137, below the app's readout floor).
+# PUZZLE_LINK_original.txt pair from it (build_original.py); the committed pair is seed 610, the one
+# PROBE-TIMEOUT in a 400-seed scan; earlier picks were adv 427 and 135.
 
 import json
 import os
