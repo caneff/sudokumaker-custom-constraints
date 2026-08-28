@@ -21,12 +21,11 @@ REQUIRED_FILES = [
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
-GIVENS = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
 # keep this relative order (PUZZLE_LINK_original_clued.txt is rejected).
 TAGS = ("clued", "original", "silent", "global")
 LINK_RE = re.compile(
-    rf"^PUZZLE_LINK(_({SIZE})x\2)?(_{GIVENS}g)?"
+    rf"^PUZZLE_LINK(_({SIZE})x\2)?(_\d+g)?"
     + "".join(f"(_{t})?" for t in TAGS)
     + r"\.txt$"
 )
