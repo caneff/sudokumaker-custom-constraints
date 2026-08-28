@@ -270,9 +270,8 @@ because their paths would have to cross and the crossing cell would belong to
 both (`ConnectedCrossing` in Interactive Sudoku Solver) — was tried and
 removed (#148): sound, and it fires, but no board got faster and two got
 slower, because the walk rules already refute nearly every checkerboard. The
-numbers and the probe that explains them are the #148 row in
-`docs/real-app-timing.md`; the rule and its two directed tests are in git
-history.
+numbers are the #148 rows in `## Timing` below; the rule and its two
+directed tests are in git history.
 
 *Perimeter* — kept (#149). It is the third rule tried from ISS's connectivity
 handler and the first that pays. Where crossing and the blob gate only saw
@@ -300,8 +299,8 @@ the walk you were doing anyway. It was tried and removed (#150): exact, and it
 skips a third of the strand walks, but the three hard fixtures came back at
 0.96×, 1.00× and 0.98×, and only the first of those is bigger than the board's
 own run-to-run spread. Four percent on one board of three is well short of the
-0.9× bar a change has to clear. The numbers are the #150 row in
-`docs/real-app-timing.md`; the gate and its differential test are in git
+0.9× bar a change has to clear. The numbers are the #150 rows in
+`## Timing` below; the gate and its differential test are in git
 history.
 
 ## Run the tests
@@ -403,6 +402,22 @@ Both rows per fixture were hand-run, because `build_link.py` takes no
 `--board` and `just time isofill` therefore reaches only the default board.
 The commands are the strip-then-`app-solve.mjs` pair in
 `docs/real-app-timing.md` § Reproduce, once per fixture link.
+
+### Earlier rows (2026-08-27, #143 / #148 / #150)
+
+| 2026-08-27 | — | isofill puzzle-30 (#143 silent) | 6.6 s | 5.0 s | 0.76 | KEPT; clears the 0.9× bar |
+| 2026-08-27 | — | isofill puzzle-35-silent (#143 silent) | 48.6 s | 45.6 s | 0.94 | wash; first solve 36.2 s→0.4 s, uniqueness search 12.4 s→45.2 s |
+| 2026-08-27 | — | isofill puzzle-32 (#143 silent) | 3.6 s | 3.7 s | 1.03 | flat; second pair 3.7 s→3.7 s |
+| 2026-08-27 | — | isofill puzzle-30 (#148 crossing) | 5.2 s | 5.2 s | 1.00 | wash |
+| 2026-08-27 | — | isofill puzzle-32 (#148 crossing) | 3.7 s | 3.9 s | 1.05 | REMOVED; regression |
+| 2026-08-27 | — | isofill puzzle-35-silent (#148 crossing) | 46.6 s | 47.4 s | 1.02 | REMOVED; regression |
+| 2026-08-27 | — | isofill puzzle-30 (#150 blob gate) | 5.2 s | 5.0 s | 0.96 | effect, repeatable, still short of the 0.9× bar |
+| 2026-08-27 | — | isofill puzzle-32 (#150 blob gate) | 3.7 s | 3.7 s | 1.00 | wash |
+| 2026-08-27 | — | isofill puzzle-35-silent (#150 blob gate) | 46.5 s | 45.6 s | 0.98 | wash |
+
+App version is not stated in the #143/#148/#150 commit bodies, so the cell
+reads `—` rather than reusing the `v2026.08.14-d47fc4b` figure from the
+neighbouring #149 rows below.
 
 ### Earlier rows (2026-08-27, cold only)
 
