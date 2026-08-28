@@ -11,7 +11,7 @@ the joint line component's own boards → the 8-arm timing board dropped in
 are not directly comparable to later ones — each row's caveat says which
 board and app build produced its numbers.
 
-| Variant | Kept / rejected | Numbers | Verdict | Board + timer caveat | Commit |
+| Variant | Kept / rejected | Hard-board numbers (first / unique / sum) | Clued-board result | Board + timer caveat | Commit |
 |---|---|---|---|---|---|
 | One-1-per-side / at-most-one-n-per-side count (#135) | Kept — wash, not a speed win | Timed with and without it on both the shipped and timing boards; a wash in both directions (no numbers recorded beyond "wash") | correctness rule, kept regardless | shipped 9x9 + timing board of the day, app v2026.08.14-d47fc4b | 3d45515 |
 | Bitmask DP in one scratch buffer (ISS-style prune) — replaces a `Set`-of-packed-keys DP layer with a `Uint16Array` bitmask layer and a backward-sweep removal pass (#134) | Kept | `just time skyscraper --ring-clues`, median of 3: timing board 45.0 s → 3.6 s (ratio 0.08); shipped board 2.5 s → 0.3 s (ratio 0.12). Mock: `FUZZ=20000` soundness fuzz 3.5 s → 0.23 s, same 19,951 prune firings | recovery-probe goldens byte-identical; 150,000-state differential fuzz at sizes 4–9 found no difference either direction | 8-arm timing board (dropped #178) + shipped board, app v2026.08.14-d47fc4b | 8b53d71 |

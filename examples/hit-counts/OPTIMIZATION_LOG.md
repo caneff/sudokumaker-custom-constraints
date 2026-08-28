@@ -10,7 +10,7 @@ does not need a second attempt.
 
 The matching bound is sound and strictly tighter than the naive
 `[forced, possible]` count, but the probe found under 1% of search nodes cut
-against a Régin-strength all-different floor, and the matching's own cost (77x
+against a Régin-strength all-different floor, and the matching's own cost (78x
 the naive scan) pushed real solve time up rather than down. Reverted; the
 naive bound shipped instead. General rule recorded in
 `docs/agents/design-reasoning.md` and `CODING_STANDARDS.md`: a deduction earns
