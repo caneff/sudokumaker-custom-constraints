@@ -33,7 +33,9 @@ exists to teach.
   prunes by count, reach, capacity, cut, tour, silent, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
-  set has exactly one solution.
+  set has exactly one solution. It is slow (CP-SAT), so it is not part of
+  `just check` or CI. Run it by hand with `just verify-isofill` after a
+  puzzle change.
 - `puzzle.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
 - `puzzle-44.json` — the same grid with 44 givens: a fixture kept for
