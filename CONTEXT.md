@@ -58,6 +58,21 @@ Use these terms exactly. Do not drift to synonyms.
   author flag.
 - **full house** — a house that holds every puzzle digit exactly once: a house
   whose length equals the digit count.
+- **line kind** — what a line's digits may do: **bare**, **house**, or **full
+  house**, in that order. A rule that needs one kind also holds on every kind
+  above it. A component learns the kind from the app once and keeps it for
+  its own lifetime. See `docs/line-contract.md`.
+- **line component** — the component for one group: one clue, one line. Both
+  variants of an example use the same one.
+- **pair component** — a component that sees both clues of one line. Global
+  only.
+- **side component** — a component that sees every clue on one side of the
+  frame. Global only.
+- **frame component** — a component that sees every clue and every line at
+  once. Global only; a named slot, filled per example only with a measured
+  win.
+- **ties flag** — the one constant per component file that decides whether
+  equal digits count along a line. Strict by default.
 - **helpers** — the API's utility namespaces: `naming`, `digits`, `cellIds`,
   `geometry`, `lines`. Reached as `helpers.*` or `puzzle.helpers.*`. See
   `docs/puzzle-api.md`.
