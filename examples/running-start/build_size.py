@@ -11,7 +11,7 @@
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3
 #
 # Args: n box_height box_width   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.
 
 import pathlib
 import sys

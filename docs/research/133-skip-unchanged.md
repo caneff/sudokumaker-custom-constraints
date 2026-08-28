@@ -20,7 +20,7 @@ skips and logged them through the driver's `[probe]` console relay
 | calls skipped (signature matched) | 3,996 (7%) |
 | `just time skyscraper --ring-clues`, run 1 (medians of 3 reps) | baseline 4.5 s, candidate 6.4 s |
 | `just time skyscraper --ring-clues`, run 2 (medians of 3 reps) | baseline 6.1 s, candidate 6.1 s |
-| mock probe gen_9 `--search`, 3 runs each | without 11.0/10.9/13.5 s, with 10.6/10.4/9.5 s |
+| mock probe gen_9x9 `--search`, 3 runs each | without 11.0/10.9/13.5 s, with 10.6/10.4/9.5 s |
 | soundness harness on the candidate | 0 violations at 2,000 and at `FUZZ=20000`; goldens byte-identical |
 
 The baseline itself moved 2.8 s (table row) → 4.5 s → 6.1 s across the day, so

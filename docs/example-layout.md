@@ -57,8 +57,11 @@ Examples: `PUZZLE_LINK.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_clued.txt`,
 ## Board naming
 
 - `gen.json` — the shipped board.
-- `gen_<size>.json` — a size variant, `<size>` equal to the paired link's
-  size token (e.g. `gen_6x6.json` pairs with `PUZZLE_LINK_6x6.txt`).
+- `gen_<token>.json` — a variant board, `<token>` equal to the paired link's
+  own suffix (everything after `PUZZLE_LINK`): a size (`gen_6x6.json` pairs
+  with `PUZZLE_LINK_6x6.txt`), a givens count (`gen_30g.json` pairs with
+  `PUZZLE_LINK_30g.txt`), or a size/givens/tag combination
+  (`gen_35g_silent.json` pairs with `PUZZLE_LINK_35g_silent.txt`).
 - A generator may keep extra input files; they are inputs, not "the board."
 
 ## The `original/` baseline

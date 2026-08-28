@@ -258,8 +258,8 @@ every component under ten cells even when several larger ones remain, and it
 hands the survivors to budget as the digit's walk. Cut, tour, and budget did
 not exist when homeless was measured, and the silent-digit fixtures did not
 either. #143 timed silent on them and kept it, on one board of the three:
-`puzzle-30` 6.6 s → 5.0 s, ratio 0.76, inside the 0.9× bar, with `puzzle-32`
-flat at 3.7 s either way. `puzzle-35-silent` is a wash at 0.94 — silent finds
+`gen_30g` 6.6 s → 5.0 s, ratio 0.76, inside the 0.9× bar, with `gen_32g`
+flat at 3.7 s either way. `gen_35g_silent` is a wash at 0.94 — silent finds
 the first solution there almost at once and pays the time back proving
 uniqueness — so the ranking fixture is what the verdict rests on. `verify.py`
 stays the independent proof that the puzzle is unique: it models the rule from
@@ -279,10 +279,10 @@ what `reach` and `cut` already see, this one fires on border cells the walk
 rules cannot decide, because a region can still route around the obstruction
 inside the grid: over the harness fuzz set, 4,037 of 10,000 states end at a
 strictly tighter fixpoint with the rule than without it. In the app it fired
-on 30% of `puzzle-32`'s update calls and 43% of `puzzle-35-silent`'s, against
-crossing's 0.7%. The timing follows the firing: `puzzle-35-silent`
+on 30% of `gen_32g`'s update calls and 43% of `gen_35g_silent`'s, against
+crossing's 0.7%. The timing follows the firing: `gen_35g_silent`
 48.8 s → 34.9 s, ratio **0.72**, well past the 0.9× bar and far outside that
-board's spread, and two more interleaved pairs read 0.76 and 0.73; `puzzle-30` flat to slightly better; `puzzle-32` flat on
+board's spread, and two more interleaved pairs read 0.76 and 0.73; `gen_30g` flat to slightly better; `gen_32g` flat on
 medians (4.0 s either way over seven interleaved baseline/candidate rounds),
 though five of those seven rounds leaned 5–13% slow, so read it as a wash the
 rule pays for many times over on the hard board. The numbers are the #149 rows
@@ -371,21 +371,21 @@ No code changed here, so every row is a BASELINE.
 
 | 2026-08-28 | v2026.08.14-d47fc4b | isofill | 1200ms | — | — | BASELINE |
 | 2026-08-28 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-30 | 4900ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-30 after-logical | 200ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-32 | 4100ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-32 after-logical | 0ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-35-silent | 33300ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-35-silent after-logical | 0ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-44 | 0ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-44 after-logical | 0ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-9x9 | 200ms | — | — | BASELINE |
-| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-9x9 after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_30g | 4900ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_30g after-logical | 200ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_32g | 4100ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_32g after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_35g_silent | 33300ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_35g_silent after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_44g | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_44g after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_9x9 | 200ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_9x9 after-logical | 0ms | — | — | BASELINE |
 
 **The after-logical row is 0 ms on five of the six fixtures.** The app's
 logical solver, with its full technique set, finishes those boards outright,
-so nothing is left to search. Only `puzzle-30` leaves work behind (200 ms),
-and `puzzle-44` reads 0 ms cold too — with 44 givens the finder never has to
+so nothing is left to search. Only `gen_30g` leaves work behind (200 ms),
+and `gen_44g` reads 0 ms cold too — with 44 givens the finder never has to
 search — so it is not a timing fixture in either mode.
 
 A 0 ms row is not a free pass. It places no constraint only while the
@@ -394,7 +394,7 @@ into a search scores an infinite ratio and sinks the change. That is the
 regression the after-logical row exists to catch on ISOFILL, since the cold
 row is the one that carries the speed-up.
 
-`puzzle-35-silent`'s cold row reads 33.3 s here against the 48.8 s recorded
+`gen_35g_silent`'s cold row reads 33.3 s here against the 48.8 s recorded
 on 2026-08-27 (below) — the same board and the same app build, a different
 machine. Read ratios, not milliseconds (`docs/real-app-timing.md`).
 
@@ -405,15 +405,15 @@ The commands are the strip-then-`app-solve.mjs` pair in
 
 ### Earlier rows (2026-08-27, #143 / #148 / #150, cold only)
 
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-30 (#143 silent) | 6.6 s | 5.0 s | 0.76 | KEPT; clears the 0.9× bar |
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-35-silent (#143 silent) | 48.6 s | 45.6 s | 0.94 | wash; first solve 36.2 s→0.4 s, uniqueness search 12.4 s→45.2 s |
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-32 (#143 silent) | 3.6 s | 3.7 s | 1.03 | flat; second pair 3.7 s→3.7 s |
-| 2026-08-27 | — | isofill puzzle-30 (#148 crossing) | 5.2 s | 5.2 s | 1.00 | wash |
-| 2026-08-27 | — | isofill puzzle-32 (#148 crossing) | 3.7 s | 3.9 s | 1.05 | REMOVED; regression |
-| 2026-08-27 | — | isofill puzzle-35-silent (#148 crossing) | 46.6 s | 47.4 s | 1.02 | REMOVED; regression |
-| 2026-08-27 | — | isofill puzzle-30 (#150 blob gate) | 5.2 s | 5.0 s | 0.96 | effect, repeatable, still short of the 0.9× bar |
-| 2026-08-27 | — | isofill puzzle-32 (#150 blob gate) | 3.7 s | 3.7 s | 1.00 | wash |
-| 2026-08-27 | — | isofill puzzle-35-silent (#150 blob gate) | 46.5 s | 45.6 s | 0.98 | wash |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_30g (#143 silent) | 6.6 s | 5.0 s | 0.76 | KEPT; clears the 0.9× bar |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_35g_silent (#143 silent) | 48.6 s | 45.6 s | 0.94 | wash; first solve 36.2 s→0.4 s, uniqueness search 12.4 s→45.2 s |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_32g (#143 silent) | 3.6 s | 3.7 s | 1.03 | flat; second pair 3.7 s→3.7 s |
+| 2026-08-27 | — | isofill gen_30g (#148 crossing) | 5.2 s | 5.2 s | 1.00 | wash |
+| 2026-08-27 | — | isofill gen_32g (#148 crossing) | 3.7 s | 3.9 s | 1.05 | REMOVED; regression |
+| 2026-08-27 | — | isofill gen_35g_silent (#148 crossing) | 46.6 s | 47.4 s | 1.02 | REMOVED; regression |
+| 2026-08-27 | — | isofill gen_30g (#150 blob gate) | 5.2 s | 5.0 s | 0.96 | effect, repeatable, still short of the 0.9× bar |
+| 2026-08-27 | — | isofill gen_32g (#150 blob gate) | 3.7 s | 3.7 s | 1.00 | wash |
+| 2026-08-27 | — | isofill gen_35g_silent (#150 blob gate) | 46.5 s | 45.6 s | 0.98 | wash |
 
 These predate the two-row rule, so they carry a cold row only. App version
 is not stated in the #148/#150 commit bodies ("recorded app offline"), so
@@ -423,9 +423,9 @@ from the #143 and #149 rows.
 ### Earlier rows (2026-08-27, cold only)
 
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill | 1500ms | — | — | BASELINE |
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-35-silent (#149 perimeter) | 48.8 s | 34.9 s | 0.72 | KEPT; pairs 0.72/0.76/0.73 |
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-30 (#149 perimeter) | 5.0 s | 4.8 s | 0.96 | wash |
-| 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-32 (#149 perimeter) | 4.0 s | 4.0 s | 1.00 | median of 7 interleaved rounds; 5 leaned 5–13% slow |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_35g_silent (#149 perimeter) | 48.8 s | 34.9 s | 0.72 | KEPT; pairs 0.72/0.76/0.73 |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_30g (#149 perimeter) | 5.0 s | 4.8 s | 0.96 | wash |
+| 2026-08-27 | v2026.08.14-d47fc4b | isofill gen_32g (#149 perimeter) | 4.0 s | 4.0 s | 1.00 | median of 7 interleaved rounds; 5 leaned 5–13% slow |
 
 These predate the two-row rule, so they carry a cold row only.
 
@@ -436,11 +436,11 @@ The three #149 rows are hand-run, because `build_link.py` takes no `--board`
 and `just time` therefore cannot reach the hard fixtures. Baseline and
 candidate links were built from the component at `17b4344` and from this
 branch, each stripped to its givens and timed 3 reps with `app-solve.mjs`
-against the recorded app. Only `puzzle-35-silent` clears the 0.9x bar, and it
+against the recorded app. Only `gen_35g_silent` clears the 0.9x bar, and it
 is the board the verdict rests on: three separate interleaved
 baseline/candidate pairs read 0.72, 0.76 and 0.73, a 14 s gap against a
-baseline that spread 4.9 s. `puzzle-32`'s row is the median of seven
+baseline that spread 4.9 s. `gen_32g`'s row is the median of seven
 interleaved rounds (baseline 3.7/4.2/3.8/4.3/4.0/4.3/3.7 s, candidate
 4.0/4.4/4.3/4.0/4.4/4.0/4.0 s). The rounds were interleaved because a straight
-A-then-B pass drifted: one later baseline block on `puzzle-32` read 5.0 s
+A-then-B pass drifted: one later baseline block on `gen_32g` read 5.0 s
 against an earlier 3.6 s on identical code.

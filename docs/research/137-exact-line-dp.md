@@ -19,12 +19,12 @@ whole probe run (`/usr/bin/time`), one run each, same machine and session.
 
 | Fixture | shipped nodes | exact nodes | shipped wall | exact wall |
 | --- | --- | --- | --- | --- |
-| `gen_4.json` | 0 | 0 | 0.02 s | 0.03 s |
-| `gen_6.json` | 8 | 4 | 0.03 s | 0.04 s |
-| `gen_9.json` | 762 | **0** | 0.98 s (2.21 s on the re-run) | 0.06 s |
-| `gen_9_timing.json` | 6972 | **16** | 13.00 s (13.18 s on the re-run) | 0.14 s |
+| `gen_4x4.json` | 0 | 0 | 0.02 s | 0.03 s |
+| `gen_6x6.json` | 8 | 4 | 0.03 s | 0.04 s |
+| `gen_9x9.json` | 762 | **0** | 0.98 s (2.21 s on the re-run) | 0.06 s |
+| `gen_9_timing.json` (dropped in #178, along with `build_timing.py`) | 6972 | **16** | 13.00 s (13.18 s on the re-run) | 0.14 s |
 
-`gen_9` now needs no search at all: propagation alone closes it.
+`gen_9x9` now needs no search at all: propagation alone closes it.
 
 **Per-call price.** The exact DP is about 1.8x more work per call —
 `FUZZ=20000 node soundness-harness.mjs` reads 0.23 s shipped against 0.41 s
@@ -48,8 +48,8 @@ baseline **300 ms** -> candidate **0 ms**. Per-rep, both boards read
 its own solver reaches a unique verdict without measurable search.
 
 **Verdict: shipped.** Well past the 0.9x bar on both boards, and the mock
-agrees. Recovery goldens moved in our favour (`gen_6` removed 145 candidates,
-was 79 + 66; `gen_9` 762 nodes -> 0) and were regenerated.
+agrees. Recovery goldens moved in our favour (`gen_6x6` removed 145
+candidates, was 79 + 66; `gen_9x9` 762 nodes -> 0) and were regenerated.
 
 **Exactness has a witness.** `soundness-harness.mjs` gained a brute-force
 oracle at n=5: over all 120 permutations it computes exactly which values some
