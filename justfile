@@ -24,6 +24,7 @@ fmt:
 test:
     #!/usr/bin/env bash
     set -euo pipefail
+    shopt -s nullglob
     node examples/_shared/recovery-lib.test.mjs
     node examples/_shared/app-solve-lib.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
@@ -34,14 +35,12 @@ test:
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue
-        shopt -s nullglob
         for f in "$dir"*.test.mjs; do
             node "$f"
         done
         for f in "$dir"*.test.py; do
             uv run --with lzstring "$f"
         done
-        shopt -u nullglob
     done
     uv run --with lzstring examples/_shared/check_links.py
     uv run examples/_shared/check_layout.test.py

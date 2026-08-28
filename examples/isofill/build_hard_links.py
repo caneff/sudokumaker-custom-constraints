@@ -1,5 +1,7 @@
 # Stripped (givens-only) links for the hard fixtures, so they can be opened
-# and played in SudokuMaker as they are timed. Rebuilt by `just check`.
+# and played in SudokuMaker as they are timed. Run by hand after a fixture
+# changes; examples/isofill/build_link.test.py guards that each committed
+# link still matches what this script would produce.
 #   uv run --with lzstring examples/isofill/build_hard_links.py
 import subprocess
 import sys
