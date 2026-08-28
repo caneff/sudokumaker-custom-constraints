@@ -46,11 +46,10 @@ function setParams (instance, clueA, clueB, line) {
 //
 // A DP layer is one entry per subset of the sub-peak digits, so the work per
 // call doubles with the board size: 12 us at n=9 against 353 us at n=16 (2,000
-// calls of the soundness fuzz's random states). Only sizes up to 9 have been
-// timed end-to-end in the app, and a deduction ships on a measured solve time,
-// not on strength, so a bigger line gets no deduction at all rather than an
-// unmeasured one. Raise this once a larger board is timed.
-const MAXN = 9
+// calls of the soundness fuzz's random states). 16 is the mask width; sizes
+// up to 10 are timed in the app (README, Timing): at 10x10 the DP proves the
+// board unique in 0.1 s where no deduction at all times the solver out.
+const MAXN = 16
 
 // One entry per subset of the sub-peak digits, per direction: a bitmask of the
 // visible counts that subset can be laid out with. The subset already fixes the

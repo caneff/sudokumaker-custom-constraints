@@ -123,6 +123,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6.json --search   # solve, count
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
+- `PUZZLE_LINK_10x10.txt` / `gen_10.json` — the 10x10 (2x5 boxes) board that timed the lifted cap.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
   built links. Open one to play the example.
 - `gen_<n>.json` — the grid, clues, shown clues, and givens for each built size.
@@ -159,6 +160,22 @@ blank (`given: false`) to make it interactive; mark it given to show it.
 ## Timing
 
 | 2026-08-27 | v2026.08.14-d47fc4b | skyscraper | 300ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2700ms | 3700ms | 1.37 | noise |
+| 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2700ms | 2300ms | 0.85 | noise |
+| 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2000ms | 1900ms | 0.95 | noise |
+| 2026-08-28 | v2026.08.14-d47fc4b | skyscraper 10x10 | timeout (no deduction, `MAXN = 9`) | 100ms (`MAXN = 16`) | — | KEEP |
+
+The three 9x9 rows are the cap lift (`MAXN` 9 to 16) timed against the
+shipped board: the constant sizes three scratch arrays and nothing on the
+n ≤ 9 path, and the ratios land on both sides of 1, so the 9x9 is unchanged
+within the app's run-to-run swing. The 300ms row above is the earlier, easier
+board; `34991d9` shipped the harder one.
+
+The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10.json`, 2x5 boxes, 12 givens,
+20 shown clues) is the size that lifted the line cap from 9 to 16: with the
+cap the component yields nothing above 9 and the app finds no first solution
+inside its limit; with the DP it proves the board unique in 0.1 s, 3/3 reps.
+The app accepts `maxDigit` 10 without complaint.
 
 `just time skyscraper --ring-clues` (candidate byte-equal to baseline, so
 only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.
