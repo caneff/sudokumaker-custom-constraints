@@ -1,7 +1,7 @@
-# The timing-only skyscraper board (#140): pick a seed by search hardness, then
-# build PUZZLE_LINK_timing.txt + gen_9_timing.json from it. build_size.py picks
-# its seed by fewest givens, which is not hardness; the shipped board solves in
-# ~5 s with ±30% noise, too fast to show a per-call change.
+# Pick the shipped 9x9 skyscraper board by search hardness (#140): the shipped
+# PUZZLE_LINK.txt is the hardest unique board found, so it doubles as the
+# timing board. build_size.py picks its seed by fewest givens, which is not
+# hardness; its boards solve near the app's readout floor.
 #
 #   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py scan 101 161
 #   uv run --with ortools --with lzstring examples/skyscraper/build_timing.py build-adv 427
@@ -18,7 +18,8 @@
 # about a minute each, the carve dominates. PROBE-TIMEOUT marks a board harder
 # than the probe's budget. Pick the hardest seed with over half the ring blank,
 # and confirm it stays under the app's 300 s limit before committing it.
-# build: write the pair for one seed; the committed pair is build-adv 427 (seed
+# build: write gen_9.json for one seed and rebuild the PUZZLE_LINK.txt /
+# PUZZLE_LINK_original.txt pair from it (build_original.py); the committed pair is build-adv 427 (seed
 # 135 fell to 16 nodes / 0 ms after #137, below the app's readout floor).
 
 import json
@@ -30,9 +31,8 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
-import link_codec
 from build_size import SPEC
-from framebuild import build_doc, check, generate
+from framebuild import generate
 
 N, BH, BW = 9, 3, 3
 
@@ -86,18 +86,13 @@ def scan(lo, hi, hide_key=None):
 
 
 def build(seed, hide_key=None):
-    seed, grid, clue, givens, active, lines = generate(
-        SPEC, N, BH, BW, [seed], hide_key
-    )
-    doc = build_doc(SPEC, N, BH, BW, grid, clue, givens, active, lines)
-    link = link_codec.encode_link(doc)
-    check(SPEC, link, doc, N)
-    (HERE / "PUZZLE_LINK_timing.txt").write_text(link + "\n")
-    (HERE / "gen_9_timing.json").write_text(
+    seed, grid, clue, givens, active, _ = generate(SPEC, N, BH, BW, [seed], hide_key)
+    (HERE / "gen_9.json").write_text(
         json.dumps(gen_json(seed, grid, clue, givens, active), indent=1)
     )
+    subprocess.run([sys.executable, str(HERE / "build_original.py"), "9"], check=True)
     print(
-        f"wrote PUZZLE_LINK_timing.txt and gen_9_timing.json (seed {seed}, shown {len(active)}/36)"
+        f"wrote gen_9.json and the PUZZLE_LINK pair (seed {seed}, shown {len(active)}/36)"
     )
 
 

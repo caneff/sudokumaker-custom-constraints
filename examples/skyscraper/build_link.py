@@ -10,7 +10,7 @@
 # component registered on the board's "Skyscraper Lines" constraint; that
 # component's code becomes the given file's, minified. The backend and any
 # sibling component are untouched. --board swaps against a different
-# committed link (e.g. PUZZLE_LINK_timing.txt) instead of PUZZLE_LINK.txt;
+# committed link (e.g. PUZZLE_LINK_6x6.txt) instead of PUZZLE_LINK.txt;
 # omitting it keeps the PUZZLE_LINK.txt default.
 
 import argparse

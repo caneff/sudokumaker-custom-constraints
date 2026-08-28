@@ -1,2 +1,2 @@
-gen_9.json: n=9, box 3x3, 21/36 clues shown, 15 blank, 3 interior givens
-  ours    : 0 search nodes, 1 solution
+gen_9.json: n=9, box 3x3, 20/36 clues shown, 16 blank, 6 interior givens
+  ours    : 5681 search nodes, 1 solution
