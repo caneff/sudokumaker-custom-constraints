@@ -46,6 +46,18 @@ Use these terms exactly. Do not drift to synonyms.
   section of `docs/component-contract.md`.
 - **group** — one author-drawn selection: `{ value: string, cells: CellId[] }`.
   The cells arrive in the reading order the rule needs; trust it (gotcha 3).
+  For an outside-clue rule the group is the **clue** cell first, then the
+  **line**.
+- **clue** — the first cell of an outside-clue group. It holds the clue value
+  and never counts as part of the line.
+- **line** — the ordered cells of a group after the clue. A line promises
+  nothing about its digits: any length, repeats allowed, digits may be absent.
+  `n` in a README or comment is the line length; the group has `n + 1` cells.
+- **house** — a line whose digits are all different. A component learns this
+  from the app (`puzzle.getCellsCanHaveRepeats`), never from a comment or an
+  author flag.
+- **full house** — a house that holds every puzzle digit exactly once: a house
+  whose length equals the digit count.
 - **helpers** — the API's utility namespaces: `naming`, `digits`, `cellIds`,
   `geometry`, `lines`. Reached as `helpers.*` or `puzzle.helpers.*`. See
   `docs/puzzle-api.md`.
