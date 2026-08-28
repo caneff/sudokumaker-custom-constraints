@@ -41,6 +41,12 @@ A subset fixes both how many cells are filled (its popcount) and the tallest so
 far (its highest digit), so a whole DP layer is one bitmask of counts per
 subset, held in one reused buffer indexed by subset.
 
+The rule needs a board whose digits start at 1. A clue is a visible count,
+which runs `1..n`, but a clue cell holds a board digit, so on a board starting
+at 0 the count `n` has no digit and an ascending line cannot be clued. The
+component stands down there rather than deduce from a rule that does not
+hold.
+
 - **Clues from the line:** a clue value is feasible only when some peak position
   realizes it on its side while the other side realizes some value the other
   clue still allows. The component removes every clue value no peak position

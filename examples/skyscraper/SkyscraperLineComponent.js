@@ -27,6 +27,13 @@
 //! path and survive. Because the DP tracks the exact digit set, the sweep is a
 //! decision procedure for the line: a value survives only if some full line
 //! assignment consistent with the candidates and both clues uses it.
+//!
+//! The rule holds only on a board whose digits start at 1. A clue is a visible
+//! count, which runs 1..length, but a clue cell holds a board digit, so on a
+//! board starting at 0 the count `length` has no digit at all: an ascending
+//! line cannot be clued, and a DP that ran would prune the digits that line
+//! needs. No encoding fixes this, so `update` and `validate` both stand down
+//! on such a board and the component is a no-op there.
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -39,12 +46,10 @@ function setParams (instance, clueA, clueB, line) {
   instance.line = line
 }
 
-// Line masks use bit d-minDigit, so a 16-cell line still fits a Uint16Array.
-// The app's masks use bit d, so every read of one shifts right by minDigit and
-// every write shifts back. A clue holds a visible count, which runs 1..length
-// whatever the board's digits are, so a clue mask shifts by one instead: bit j
-// means "the clue value j+1", and a clue's candidate mask doubles as a count
-// mask.
+// Digit masks use bit d-1, so a 16-cell line still fits a Uint16Array. The
+// app's masks use bit d, so every read of one shifts right and every write
+// shifts left. A visible count j is stored in the same encoding: bit j means
+// "the clue value j+1", so a clue's candidate mask doubles as a count mask.
 //
 // A DP layer is one entry per subset of the sub-peak digits, so the work per
 // call doubles with the board size: 12 us at n=9 against 353 us at n=16 (2,000
@@ -137,16 +142,16 @@ function sweepBackward (s, d) {
 // Reads the line's candidates, prunes, and returns the raw and surviving masks
 // per cell plus the surviving clue masks. The returned arrays are scratch: read
 // them before the next call.
-function prune (puzzle, line, Lc, Rc, lo, peak) {
+function prune (puzzle, line, Lc, Rc, peak) {
   const len = line.length
-  const m = peak - lo // the sub-peak digits lo..peak-1
+  const m = peak - 1 // the sub-peak digits 1..peak-1
   const s = dpFor(m)
   const peakBit = 1 << m
   const subMask = peakBit - 1
   const rev = i => len - 1 - i // cell i's position when the line is read right to left
   const cand = s.cand
   for (let i = 0; i < len; i++) {
-    const c = puzzle.getCandidatesBitMask(line[i]) >> lo
+    const c = puzzle.getCandidatesBitMask(line[i]) >> 1
     cand[i] = c
     s.sub[0][i] = c & subMask
     s.sub[1][rev(i)] = c & subMask
@@ -193,18 +198,14 @@ function prune (puzzle, line, Lc, Rc, lo, peak) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
-  const { minDigit: lo, maxDigit: peak } = helpers.digits
-  // The peak argument needs a full house: every digit once, maxDigit included.
-  // A line as long as maxDigit is not enough -- on a board starting at 0 the
-  // digit count is one more than maxDigit.
-  if (line.length !== peak - lo + 1 || line.length > MAXN) return
-  // A clue holds a visible count, not a board digit, so its mask shifts by one
-  // whatever minDigit is. A count the board's digits cannot spell is a count no
-  // clue cell can hold, and the DP is right to drop it.
+  const { minDigit, maxDigit: peak } = helpers.digits
+  if (minDigit !== 1) return // the digits must start at 1; see the head comment
+  // The peak argument needs a full house: maxDigit present exactly once.
+  if (line.length !== peak || peak > MAXN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
-  const r = prune(puzzle, line, Lc, Rc, lo, peak)
+  const r = prune(puzzle, line, Lc, Rc, peak)
   const rmA = Lc & ~r.L
   const rmB = Rc & ~r.R
   // Copy the line's removals out of the scratch buffer before yielding: the
@@ -220,14 +221,14 @@ function * update (instance, puzzle) {
   if (rmA !== 0) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rmA << 1), clueA)
   if (rmB !== 0) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rmB << 1), clueB)
   if (pending !== null) {
-    for (let i = 0; i < pending.length; i += 2) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1] << lo), pending[i])
+    for (let i = 0; i < pending.length; i += 2) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1] << 1), pending[i])
   }
 }
 
 // Visible buildings reading `cells` in order: count the running maxima.
 function visibleCount (puzzle, cells) {
   let count = 0
-  let max = helpers.digits.minDigit - 1
+  let max = 0
   for (const cell of cells) {
     const v = puzzle.getValue(cell)
     if (v > max) { count++; max = v }
@@ -237,6 +238,9 @@ function visibleCount (puzzle, cells) {
 
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
+  // Stand down with `update` on a board whose digits do not start at 1: the
+  // running max below starts at 0 and would miss a leading 0 building.
+  if (helpers.digits.minDigit !== 1) return true
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   return puzzle.getValue(clueA) === visibleCount(puzzle, line) &&
     puzzle.getValue(clueB) === visibleCount(puzzle, [...line].reverse())
