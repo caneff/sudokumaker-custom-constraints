@@ -55,6 +55,8 @@ verify-isofill:
     uv run --with ortools examples/isofill/verify.py examples/isofill/gen_30g.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/gen_35g_silent.json
     uv run --with ortools examples/isofill/verify.py examples/isofill/gen_9x9.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_28g.json
+    uv run --with ortools examples/isofill/verify.py examples/isofill/gen_24g.json
 
 # Soundness fuzz: every component keeps each cell's true value. The
 # invariant. Discovered by file name, same convention as `test` above.

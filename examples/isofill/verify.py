@@ -96,7 +96,7 @@ def strip(grid, seed):
     return sorted(givens)
 
 
-def unique(givens, limit=60):
+def unique(givens, limit=600):
     """True if exactly one ISOFILL grid matches the givens, False if more.
 
     Raises ValueError when none does and TimeoutError when a solve hits `limit`
