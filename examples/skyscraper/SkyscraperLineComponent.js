@@ -27,6 +27,13 @@
 //! path and survive. Because the DP tracks the exact digit set, the sweep is a
 //! decision procedure for the line: a value survives only if some full line
 //! assignment consistent with the candidates and both clues uses it.
+//!
+//! The rule holds only on a board whose digits start at 1. A clue is a visible
+//! count, which runs 1..length, but a clue cell holds a board digit, so on a
+//! board starting at 0 the count `length` has no digit at all: an ascending
+//! line cannot be clued, and a DP that ran would prune the digits that line
+//! needs. No encoding fixes this, so `update` and `validate` both stand down
+//! on such a board and the component is a no-op there.
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -191,7 +198,8 @@ function prune (puzzle, line, Lc, Rc, peak) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
-  const peak = helpers.digits.maxDigit
+  const { minDigit, maxDigit: peak } = helpers.digits
+  if (minDigit !== 1) return // the digits must start at 1; see the head comment
   // The peak argument needs a full house: maxDigit present exactly once.
   if (line.length !== peak || peak > MAXN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
@@ -230,6 +238,9 @@ function visibleCount (puzzle, cells) {
 
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
+  // Stand down with `update` on a board whose digits do not start at 1: the
+  // running max below starts at 0 and would miss a leading 0 building.
+  if (helpers.digits.minDigit !== 1) return true
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   return puzzle.getValue(clueA) === visibleCount(puzzle, line) &&
     puzzle.getValue(clueB) === visibleCount(puzzle, [...line].reverse())

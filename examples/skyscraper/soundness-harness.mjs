@@ -13,7 +13,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -23,7 +23,7 @@ const FUZZ = Number(process.env.FUZZ) || 2000
 const N = 9
 installGlobals(1, N)
 
-const mod = load('SkyscraperLineComponent.js', ['setParams', 'update'])
+const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
 
 function visible (vals) {
   let count = 0
@@ -173,6 +173,42 @@ for (let iter = 0; iter < EXACT; iter++) {
 installGlobals(1, N)
 console.log('exactness vs brute force (n=5):', exactRuns, 'states,', exactBad, 'disagreements')
 
-const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0
+// The component only holds on a board whose digits start at 1 -- the head
+// comment of SkyscraperLineComponent.js says why -- so on any other board it
+// must remove nothing at all.
+//
+// The line below is the shape that reaches the DP on a 0..9 board: nine cells,
+// as long as maxDigit, so the full-house guard lets it through, but ten digits
+// exist and the line is not a full house. It ascends 0..8, so its left clue is
+// the count 9 and its right clue the count 1. Both readings are checked, with
+// the clue cells unclued and with them pinned to those counts.
+installGlobals(0, 9)
+const zeroLine = [...Array(9).keys()]
+const zeroInst = {}
+mod.setParams(zeroInst, CA, CB, zeroLine)
+const unclued = [...Array(10).keys()]
+let zeroRemovals = 0
+for (const pinClues of [false, true]) {
+  const truth = { [CA]: 9, [CB]: 1 }
+  for (const i of zeroLine) truth[i] = i
+  const zp = makePuzzle(truth, c => (c === CA || c === CB ? (pinClues ? [truth[c]] : unclued) : [truth[c]]))
+  const before = total(zp)
+  fixpoint(mod, zeroInst, zp)
+  const gone = before - total(zp)
+  zeroRemovals += gone
+  if (gone) console.log('zero-based board,', pinClues ? 'clued' : 'unclued', 'removed', gone, 'candidates')
+}
+console.log('zero-based board:', zeroRemovals, 'candidates removed')
+
+// `validate` counts the visible buildings itself and its running max starts at
+// 0, so on this board it would miss the leading 0 and reject a filled line the
+// component never judged. It has to stand down with `update`.
+const filled = { [CA]: 9, [CB]: 1 }
+for (const i of zeroLine) filled[i] = i
+const zeroValidates = mod.validate(zeroInst, makePuzzle(filled, (c, v) => [v]))
+console.log('validate on a zero-based board:', zeroValidates ? 'stands down' : 'JUDGES THE LINE')
+installGlobals(1, N)
+
+const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 && zeroRemovals === 0 && zeroValidates
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
