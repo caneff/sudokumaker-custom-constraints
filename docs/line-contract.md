@@ -13,7 +13,7 @@ every kind above it.
 |-|-|-|
 | **bare** | repeat, be absent, any length | nothing — the default |
 | **house** | not repeat | `!puzzle.getCellsCanHaveRepeats(line)` |
-| **full house** | not repeat, and every puzzle digit is present once | house and `line.length === puzzle.spec.digitCount` |
+| **full house** | not repeat, and every digit the line can hold is present once | house and the union of live candidates across the line has exactly `line.length` digits |
 
 "Clued at both ends" is not a kind. It is a **pair** shape, owned by the global
 main code (below).
@@ -26,6 +26,8 @@ main code (below).
 - The digit range comes from `helpers.digits.minDigit` / `maxDigit`, never
   1–9. `puzzle.spec.digitCount` is the digit count.
 - A one-cell line reads as a house (the app says so; no special case).
+- A rule that needs the line's digit set to be `{1..n}` (hit-counts n-1,
+  side sum) checks that set itself; full house alone does not promise it.
 
 ## How a component gates
 
@@ -35,8 +37,11 @@ main code (below).
   (gotcha 6, verified #189).
 - **Query the line only**, never clue + line: a ring cell in the list flips the
   answer to `true`.
-- **Cache on the instance.** The first `update` sets `instance.kind`; later
-  calls read it. The app rebuilds every component on every edit, so a redrawn
+- **Cache on the instance.** Each `update` re-tests `instance.kind` until it
+  reaches full house, then later calls read it. (A length test against
+  `digitCount` does not work: hit-counts boards run `minDigit 0` for the clue
+  ring and a cage removes 0 from the inner grid during solving, so the line's
+  digit set only settles after the first `update`. Decided #193.) The app rebuilds every component on every edit, so a redrawn
   group gets a fresh instance and a fresh answer. Never cache in a file-level
   variable.
 - **One component, gated rules.** Each rule starts with its gate
