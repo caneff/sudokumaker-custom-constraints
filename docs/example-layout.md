@@ -28,7 +28,7 @@ Run when present, skipped with a note when absent:
 | `.golden/` | Regression goldens for the recovery/speed probes |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes |
-| `verify.py` | Uniqueness proof; runs once per `gen*.json` in the example |
+| `verify.py` | Uniqueness proof (slow CP-SAT); not run by `just test`, only by hand via `just verify-isofill` or the example's own recipe |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed |
 
 ## Link grammar
