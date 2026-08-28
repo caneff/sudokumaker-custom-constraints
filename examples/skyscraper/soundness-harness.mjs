@@ -23,7 +23,7 @@ const FUZZ = Number(process.env.FUZZ) || 2000
 const N = 9
 installGlobals(1, N)
 
-const mod = load('SkyscraperLineComponent.js', ['setParams', 'update'])
+const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
 
 function visible (vals) {
   let count = 0
@@ -173,6 +173,98 @@ for (let iter = 0; iter < EXACT; iter++) {
 installGlobals(1, N)
 console.log('exactness vs brute force (n=5):', exactRuns, 'states,', exactBad, 'disagreements')
 
-const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0
+// A line is a full house only when it holds every digit once, so the guard has
+// to compare the line's length to the DIGIT COUNT, not to maxDigit. On a board
+// with minDigit 0 the two differ: 0..9 is ten digits, so a nine-cell line is
+// not a full house and the component must leave it alone. The line below is
+// pinned to 0..8 -- a real line on such a board -- and every pinned value must
+// survive.
+installGlobals(0, 9)
+const shortLine = [...Array(9).keys()]
+const shortTruth = { [CA]: 9, [CB]: 1 }
+for (const i of shortLine) shortTruth[i] = i
+const shortP = makePuzzle(shortTruth, (c, v) => [v])
+const shortInst = {}
+mod.setParams(shortInst, CA, CB, shortLine)
+const guardV = violates(mod, shortInst, shortP, shortTruth)
+const guardBad = guardV ? 1 : 0
+if (guardV) console.log('short-line guard violation', guardV)
+console.log('short line on a 0-9 board:', guardBad, 'violations')
+
+// The same board, now with a line as long as the digit count: ten cells over
+// 0..9 is a full house, so the DP runs and every mask shifts by minDigit. A
+// clue holds a visible count, and this board's digits stop at 9, so a line
+// whose count reaches 10 has no clue the board can express -- those are not
+// states a real puzzle reaches, and the fuzz skips them.
+const ZN = 10
+// `visible` starts its running max at 0, which suits a 1..N board. Here a
+// building of height 0 is a real building and the first cell always sees it.
+const visibleFromZero = vals => {
+  let count = 0
+  let max = -1
+  for (const v of vals) if (v > max) { count++; max = v }
+  return count
+}
+const zeroLine = [...Array(ZN).keys()]
+const zeroInst = {}
+mod.setParams(zeroInst, CA, CB, zeroLine)
+const zeroSeed = (c, v) => {
+  const mode = pick(['pin', 'full', 'subset'])
+  if (mode === 'pin') return [v]
+  if (mode === 'full') return [...Array(ZN).keys()]
+  const set = new Set([v])
+  for (let d = 0; d < ZN; d++) if (rnd() < 0.5) set.add(d)
+  return [...set]
+}
+let zeroBad = 0
+let zeroFired = 0
+let zeroRuns = 0
+for (let iter = 0; iter < FUZZ; iter++) {
+  const perm = [...Array(ZN).keys()]
+  for (let i = ZN - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [perm[i], perm[j]] = [perm[j], perm[i]] }
+  const a = visibleFromZero(perm)
+  const b = visibleFromZero([...perm].reverse())
+  if (a > 9 || b > 9) continue // no clue digit on a 0..9 board carries a count of 10
+  zeroRuns++
+  const truth = { [CA]: a, [CB]: b }
+  for (const i of zeroLine) truth[i] = perm[i]
+  const zp = makePuzzle(truth, zeroSeed)
+  const before = total(zp)
+  const v = violates(mod, zeroInst, zp, truth)
+  if (total(zp) < before) zeroFired++
+  if (v) { zeroBad++; if (zeroBad <= 5) console.log('zero-based violation', v, 'perm', perm) }
+}
+console.log('full house on a 0-9 board:', zeroRuns, 'tests,', zeroBad, 'violations,', zeroFired, 'prune firings')
+
+// `validate` is the correctness backstop and counts the visible buildings
+// itself, so its running max has to start below the lowest digit. On a board
+// starting at 0 the first cell is visible whatever it holds: this line's true
+// clues are 2 and 3, and a max that starts at 0 misses the leading 0 and
+// rejects a true solution.
+const vPerm = [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
+const vTruth = { [CA]: visibleFromZero(vPerm), [CB]: visibleFromZero([...vPerm].reverse()) }
+for (const i of zeroLine) vTruth[i] = vPerm[i]
+const validP = makePuzzle(vTruth, (c, v) => [v])
+const validateOk = mod.validate(zeroInst, validP)
+console.log('validate on a filled 0-9 line:', validateOk ? 'accepts the true solution' : 'REJECTS the true solution')
+
+// A line longer than the mask width must be refused whatever the board's
+// lowest digit is: a seventeen-cell line needs a visible count of 17, which no
+// Uint16Array state can hold.
+installGlobals(0, 16)
+const wideLine = [...Array(17).keys()]
+const wideTruth = { [CA]: 17, [CB]: 1 }
+for (const i of wideLine) wideTruth[i] = i
+const wideP = makePuzzle(wideTruth, (c, v) => [v])
+const wideInst = {}
+mod.setParams(wideInst, CA, CB, wideLine)
+const wideV = violates(mod, wideInst, wideP, wideTruth)
+const wideBad = wideV ? 1 : 0
+if (wideV) console.log('over-wide line violation', wideV)
+console.log('seventeen-cell line:', wideBad, 'violations')
+
+installGlobals(1, N)
+
+const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 && guardBad === 0 && zeroBad === 0 && zeroFired > 0 && zeroRuns > 0 && wideBad === 0 && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
