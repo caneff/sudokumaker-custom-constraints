@@ -24,8 +24,8 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 | `puzzle.getRegion(cell)` | number | 0-based region id; `-1` out of bounds. **[docs]** |
 | `puzzle.getRegionCells(regionId)` | CellId[] | Cells of a region. **[docs]** |
 | `puzzle.getCellsSeenByCell(cell)` | Set | Cells that must differ from `cell`. Only sees constraints defined earlier. **[docs]** |
-| `puzzle.getCellsSeeEachOther(cells)` | boolean | Do all listed cells mutually see each other. **[docs]** |
-| `puzzle.getCellsCanHaveRepeats(cells)` | boolean | May the cells repeat a digit. **[docs]** |
+| `puzzle.getCellsSeeEachOther(cells)` | boolean | Every pair of listed cells is in each other's exclusion group (`getCellsSeenByCell`). True for one cell. **[verified]** (bundle) |
+| `puzzle.getCellsCanHaveRepeats(cells)` | boolean | `cells` is an array or iterable of cell ids. True when the list repeats a cell id, else `!getCellsSeeEachOther(cells)`. Live 2026-08-28: inner row on a board with row/column houses → `false`; any two cells of it → `false`; the same row with a ring cell in the list → `true`; every row/column on the isofill 10x10 (no houses) → `true`, also under numbered-rooms' global main.js. Called from `update`, it sees every house whatever the constraint order (gotchas #6). Proof rig: #189. **[verified]** |
 
 ## Writing changes (yield these from `update`)
 
