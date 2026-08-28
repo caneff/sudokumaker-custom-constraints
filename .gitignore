@@ -1,9 +1,9 @@
 node_modules/
 __pycache__/
 *.pyc
-# local scratch: puzzle solution dumps for the harness
+# local scratch: puzzle solution dumps for the harness. gen.json is NOT
+# scratch -- docs/example-layout.md makes it every example's shipped board.
 fresh_sol.json
-gen.json
 .venv/
 
 # local session state and worktrees

@@ -24,7 +24,7 @@ from ortools.sat.python import cp_model
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
-from frame import cosmetics
+from frame import cosmetics, ring_cell
 from minify import minify_js
 
 
@@ -79,7 +79,10 @@ def make_lines(n):
     return lines
 
 
-def unique(spec, lines, clue, active, givens, n, bh, bw):
+def unique(post_clue, lines, clue, active, givens, n, bh, bw):
+    """True when the interior has exactly one solution. `post_clue` is a
+    Spec's cp_sat_clue_fn; unique() needs nothing else off the Spec, so a
+    caller with its own line geometry can reuse it (numbered-rooms-lines)."""
     m = cp_model.CpModel()
     x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
     for i in range(n):
@@ -97,7 +100,7 @@ def unique(spec, lines, clue, active, givens, n, bh, bw):
     # and so the CP-SAT search path, the same on every run.
     for k in sorted(active):
         cells = lines[k]
-        spec.cp_sat_clue_fn(m, x, cells, clue[k], n, f"{k[0]}{k[1]}")
+        post_clue(m, x, cells, clue[k], n, f"{k[0]}{k[1]}")
     # Pinned to one worker with a fixed seed: CP-SAT's parallel portfolio search
     # is not reproducible run-to-run (the workers race, and which one reports
     # first depends on thread timing). Deterministic so regenerate + `git diff`
@@ -137,14 +140,14 @@ def generate(spec, n, bh, bw, seeds, hide_key=None):
         givens = {}
         cells_all = [(r, c) for r in range(n) for c in range(n)]
         rng.shuffle(cells_all)
-        if not unique(spec, lines, clue, active, givens, n, bh, bw):
+        if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
-                if unique(spec, lines, clue, active, givens, n, bh, bw):
+                if unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
                     break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
-            if not unique(spec, lines, clue, active, givens, n, bh, bw):
+            if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
                 givens[cell] = v
         cnt = len(givens)
         print(f"  seed {seed}: interior givens = {cnt}")
@@ -158,9 +161,9 @@ def generate(spec, n, bh, bw, seeds, hide_key=None):
         order.sort(key=lambda k: hide_key(clue[k]))
     for k in order:
         active.discard(k)
-        if not unique(spec, lines, clue, active, givens, n, bh, bw):
+        if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
             active.add(k)
-    assert unique(spec, lines, clue, active, givens, n, bh, bw) is True
+    assert unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw) is True
     print(
         f"CHOSEN seed {seed}: interior givens={len(givens)}, clues shown={len(active)}, "
         f"clues interactive (hidden)={4 * n - len(active)}"
@@ -195,16 +198,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
     # EMPTY cell. Never store the hidden value — a non-given value ships as an
     # entered digit, so the recipient opens the link with every clue typed in.
     def ring_index(key):
-        s, i = key
-        if s == "L":
-            return idx(i + 1, 0)
-        if s == "R":
-            return idx(i + 1, W - 1)
-        if s == "T":
-            return idx(0, i + 1)
-        if s == "B":
-            return idx(W - 1, i + 1)
-        return None
+        return idx(*ring_cell(f"{key[0]}{key[1]}", W))
 
     for key in lines:
         ci = ring_index(key)
