@@ -68,10 +68,20 @@ exists to teach.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
-  `PUZZLE_LINK_44g.txt` — the hard fixtures as
+  `PUZZLE_LINK_44g.txt`, `PUZZLE_LINK_28g.txt`, `PUZZLE_LINK_24g.txt` — the
+  hard fixtures as
   stripped links (givens only, nothing entered), built by
   `build_hard_links.py` on every `just check`. Open one to see the board the
   timing table is talking about.
+- `gen_28g.json` (28 givens), `gen_24g.json` (24 givens) — the two slowest of
+  a twenty-grid batch (#166): sample a random full grid with `verify.py
+  sample <seed>`, strip it in the app with `app-strip.mjs` under the current
+  shipped component, time the result once cold. `gen_28g.json` (seed 9) is
+  the only one of the twenty that clears 10 s cold (~28-30 s); `gen_24g.json`
+  (seed 21) is the runner-up (~2.6-2.8 s). See the batch table under
+  `## Timing` below. `verify.py` proves both unique — CP-SAT takes 2-4
+  minutes on these (measured 222 s and 162 s), well inside the 600 s default
+  limit `unique()` now carries (raised from 60 s for exactly this).
 
 ## Paste into SudokuMaker
 
@@ -363,6 +373,64 @@ ambiguous. `just check` re-verifies the shipped instance on every run.
 
 ## Timing
 
+### Twenty-grid strip batch (#166, 2026-08-28)
+
+Twenty fresh grids, sampled and stripped once each to find boards the app
+struggles with, so a future rule change has something to show a real time
+difference on. Seeds 1, 7, and 11-20 were already spent by earlier work
+(1 -> `gen_32g.json`, 7 -> `gen_9x9.json`, 11-20 explored and discarded as
+too fast — commit 72d76c9), so this batch used the next twenty unused seeds:
+2-6, 8-10, 21-32. Each grid: `verify.py sample <seed>` for a full 100-given
+grid, `app-strip.mjs` to greedily strip it under the current shipped
+component (a live-app uniqueness oracle, not CP-SAT), then one cold
+`app-solve.mjs` rep on the stripped link. Batch is run once; this table is
+the record so it is never re-run.
+
+| seed | givens after strip | cold (1 rep) |
+| --- | --- | --- |
+| 2 | 32 | 200 ms |
+| 3 | 29 | 100 ms |
+| 4 | 31 | 200 ms |
+| 5 | 32 | 600 ms |
+| 6 | 32 | 1800 ms |
+| 8 | 13 | 100 ms |
+| 9 | 28 | **29600 ms** |
+| 10 | 24 | 600 ms |
+| 21 | 24 | 2800 ms |
+| 22 | 31 | 200 ms |
+| 23 | 29 | 400 ms |
+| 24 | 33 | 1600 ms |
+| 25 | 30 | 100 ms |
+| 26 | 29 | 800 ms |
+| 27 | 34 | 300 ms |
+| 28 | 33 | 400 ms |
+| 29 | 33 | 2000 ms |
+| 30 | 32 | 100 ms |
+| 31 | 38 | 0 ms |
+| 32 | 29 | 200 ms |
+
+Only seed 9 clears 10 s cold. The two slowest — seed 9 (29.6 s, 28 givens)
+and seed 21 (2.8 s, 24 givens) — ship as `gen_28g.json` and `gen_24g.json`
+(the layout convention's given-count naming, in place of the issue's literal
+`puzzle-hard-*.json` — see the note in the PR body). Rebuilding their links
+and re-timing them cold reads 27.8 s and 2.6 s respectively (`app-solve.mjs`,
+live app v2026.08.14-d47fc4b, 2026-08-28) — the same order of magnitude, the
+spread `docs/real-app-timing.md` warns is normal run to run. `verify.py`
+proves both unique (222 s and 162 s of CP-SAT search, comfortably inside the
+600 s default `unique()` now carries).
+
+Seed 31 (38 givens, 0 ms cold) reads like `gen_44g.json` below: at that many
+givens the finder never has to search, so it's not evidence of a fast read
+error, just a board too easy to be a timing fixture.
+
+Neither new fixture is harder than what the example already ships:
+`gen_28g.json`'s ~28-30 s sits below `gen_35g_silent.json`'s 33.3 s, and
+`gen_24g.json`'s ~2.6-2.8 s sits between `gen.json`'s 1.2 s and `gen_30g.json`'s
+4.9 s. A random twenty-grid sample found nothing beyond the existing hardest
+fixture; a grid built to attack a specific weak spot (as `gen_30g.json` and
+`gen_35g_silent.json` were, for the silent digit) is the way to go harder —
+that's the later, hand-shaped-grid ticket the issue calls out, not this one.
+
 ### Two-row baselines, every fixture (2026-08-28)
 
 Each fixture gets a **cold** row (from the stripped board) and an
@@ -381,8 +449,17 @@ No code changed here, so every row is a BASELINE.
 | 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_44g after-logical | 0ms | — | — | BASELINE |
 | 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_9x9 | 200ms | — | — | BASELINE |
 | 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_9x9 after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_28g | 26800ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_28g after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_24g | 2400ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill gen_24g after-logical | 0ms | — | — | BASELINE |
 
-**The after-logical row is 0 ms on five of the six fixtures.** The app's
+`gen_28g` and `gen_24g` (#166) join this table with their own two rows —
+3 reps, non-deterministic solve off, same as the rest — rather than getting
+a separate one-rep table of their own; the batch table above records the
+single exploratory reading that picked them out of twenty candidates.
+
+**The after-logical row is 0 ms on seven of the eight fixtures.** The app's
 logical solver, with its full technique set, finishes those boards outright,
 so nothing is left to search. Only `gen_30g` leaves work behind (200 ms),
 and `gen_44g` reads 0 ms cold too — with 44 givens the finder never has to
