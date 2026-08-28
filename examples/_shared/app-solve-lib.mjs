@@ -66,3 +66,14 @@ export function parseVersion (text) {
   const m = text.match(/\bv\d{4}\.\d{2}\.\d{2}-[0-9a-f]+\b/)
   return m ? m[0] : null
 }
+
+// The app appends "(based on already entered values and pencil marks.)" to
+// its verdict when it solved from a board that already held values or marks.
+// That number times a verification of a part-filled grid, not a search, so it
+// is not a timing. Two modes put those marks there on purpose and keep it:
+// `ringClues`, for an edge-clue puzzle whose clues live as ring values, and
+// `afterLogical`, for marks the app's own logical solver made earlier in the
+// same driver run.
+export function marksRejected (text, { ringClues = false, afterLogical = false }) {
+  return /based on already entered values/i.test(text) && !ringClues && !afterLogical
+}

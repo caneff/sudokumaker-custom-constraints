@@ -15,10 +15,19 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   component's `update`.
 - **Tool.** Run `just time <example>` (add `--ring-clues` for an example whose
   clues live in the ring: numbered-rooms, skyscraper).
-- **Bar.** The candidate passes when its median is at most 90% of the
-  baseline's median (candidate ≤ 0.9× baseline), each measured over 3 reps,
-  non-deterministic solve off.
-- **Record.** Paste the printed row into the example's README, under a
+- **Two rows per fixture.** Every fixture is timed twice: **cold**, from the
+  stripped board, and **after-logical**, from the state a player reaches once
+  the app's own logical solver has run. A deduction can pay off from an empty
+  board and be worthless once the app's logic pass has already made those
+  cuts, or the other way round. `just time` prints both rows.
+- **Bar (the two-row ship rule).** A change ships when it clears **≤ 0.9×** on
+  one of the two rows and stays **≤ 1.1×** on the other, each median measured
+  over 3 reps with non-deterministic solve off. A row whose baseline is 0 ms
+  places no constraint — the logic pass finished the board, so there is
+  nothing left to search — and the other row decides. `just time` prints the
+  `two-row rule: SHIP` / `NO SHIP` line; each row's own `PASS`/`FAIL` is that
+  row's 0.9× result alone, not the gate.
+- **Record.** Paste both printed rows into the example's README, under a
   `## Timing` section.
 
 The rest of this doc is the mechanics behind that command: how the driver
@@ -53,6 +62,11 @@ candidates" button (the `ShowCandidates` icon), and reads the time the app
 prints. That button searches the whole tree to prove uniqueness, so it runs the
 custom component's `update` on every node — the work we want to time. Reading
 the app's own readout, not a self-computed clock, keeps it honest.
+
+With `--after-logical` the driver first clicks the app's own logical solver
+(the `AutoStep` icon) and waits for the board to stop changing, then clicks the
+same button and reads the same readout. The printed row has the shape of the
+cold row; the header line names the mode.
 
 The app prints **two** readouts, one per phase: "✨ Solved — took 2.3s" when it
 finds the first solution, then "This is a unique solution. took 0.4s" when the
@@ -189,6 +203,10 @@ uv run --with lzstring examples/_shared/probe_link.py strip \
   /tmp/iso_orig_full.txt /tmp/iso_orig_strip.txt
 node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3
 node examples/_shared/app-solve.mjs /tmp/iso_orig_strip.txt 3
+
+# The after-logical row for the same board: the app's logic pass first, then
+# the timed search.
+node examples/_shared/app-solve.mjs /tmp/iso_strip.txt 3 ShowCandidates --after-logical
 ```
 
 Past results live with the change that produced them: each example README's
@@ -216,6 +234,10 @@ the method, not a running log.
   solution (based on already entered values and pencil marks)". Strip first.
   `app-solve.mjs` enforces it: any entered (blue) digit on the board, or that
   phrase in the verdict, is an error unless `--ring-clues` is passed.
+  **The one exception:** marks the app's own logical solver made inside the
+  same driver run, under `--after-logical`. The driver still checks the board
+  it *loaded* is stripped, before the logic pass runs, so the only marks the
+  timed search can meet are the ones that pass put there.
   `app-solve.mjs` reports `[timeout]` when the app stops at its own limit and
   `[not-unique]` on "Found N solutions"; both carry null times.
 - **Pick the strip mode by where the clues live.** `strip` keeps givens only.

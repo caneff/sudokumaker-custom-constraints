@@ -17,6 +17,12 @@
 //   npx playwright install chromium
 //   node examples/_shared/app-solve.mjs <link_file> [reps] [icon_name]
 //
+// --after-logical first clicks the app's own logical solver (Icon AutoStep)
+// and waits for it to settle, then times the search from there. That is the
+// state a player reaches before any search, and a deduction can pay off there
+// and not from an empty board, or the other way round. Every fixture gets
+// both rows -- see the two-row ship rule in docs/real-app-timing.md.
+//
 // Before each solve it turns OFF "Non-deterministic solve" (Solver settings ->
 // Solutions finder -> Advanced settings), so the solver walks a fixed order and
 // the timing is repeatable. With that toggle on, the same board swings 10x-20x
@@ -38,18 +44,21 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseReadout, parseVersion, median, repLine, medianLine } from './app-solve-lib.mjs'
-import { clickIcon, makeDeterministic, useRecordedApp } from './app-dom.mjs'
+import { parseReadout, parseVersion, median, repLine, medianLine, marksRejected } from './app-solve-lib.mjs'
+import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring. Everything else must be
 // stripped to its givens or the run is refused (see checkStripped).
 const ringClues = process.argv.includes('--ring-clues')
-const args = process.argv.slice(2).filter(a => a !== '--ring-clues')
+// --after-logical: run the app's logical solver to its fixpoint before the
+// timed search, so the row measures the search a player still faces.
+const afterLogical = process.argv.includes('--after-logical')
+const args = process.argv.slice(2).filter(a => a !== '--ring-clues' && a !== '--after-logical')
 const linkFile = args[0]
 const reps = parseInt(args[1] || '7', 10)
 const iconName = args[2] || 'ShowCandidates'
-if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues]')
+if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 // The app draws givens black and entered values blue. A grid with entered
@@ -72,6 +81,9 @@ async function runOnce (page) {
   await page.waitForTimeout(1200)
   await checkStripped(page)
   await makeDeterministic(page)
+  // The stripped-board check above already ran, so the only marks the search
+  // can meet are the ones this pass makes.
+  if (afterLogical) await solveLogically(page)
   const clicked = await clickIcon(page, iconName)
   if (!clicked) throw new Error('solve button not found: Icon ' + iconName)
   // Wait for the VERDICT, not the first "took": the solve phase prints its
@@ -84,7 +96,7 @@ async function runOnce (page) {
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
-  if (/based on already entered values/i.test(text) && !ringClues) {
+  if (marksRejected(text, { ringClues, afterLogical })) {
     throw new Error(`${linkFile}: the app judged "based on already entered values" -- not a timing; strip the link first`)
   }
   return { ...parseReadout(text), version: parseVersion(text) }
@@ -108,7 +120,8 @@ for (let k = 0; k < reps; k++) {
 }
 await browser.close()
 
-console.log(`${linkFile}  (${iconName}, non-deterministic OFF, ${reps} reps)`)
+const mode = afterLogical ? 'after-logical' : 'cold'
+console.log(`${linkFile}  (${iconName}, ${mode}, non-deterministic OFF, ${reps} reps)`)
 for (const r of rows) console.log(repLine(r))
 console.log(medianLine(rows))
 

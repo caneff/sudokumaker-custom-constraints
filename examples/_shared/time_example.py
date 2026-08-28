@@ -3,10 +3,11 @@
 # the baseline, and the example's build_link.py rebuilds a candidate from the
 # working-tree component. Both are emptied (probe_link.py) and timed
 # (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
-# paste-ready row: date, app version, board, baseline median, candidate
-# median, ratio, PASS/FAIL. When the candidate's constraint code is
-# byte-equal to the baseline's, times the baseline only and prints a
-# baseline row.
+# paste-ready row per mode -- cold, then after the app's own logical pass --
+# with date, app version, board, baseline median, candidate median, ratio and
+# that row's PASS/FAIL at 0.9x, then a SHIP line applying the two-row rule
+# across both. When the candidate's constraint code is byte-equal to the
+# baseline's, times the baseline only and prints baseline rows.
 #
 #   uv run --with lzstring examples/_shared/time_example.py <example>
 #
@@ -31,6 +32,10 @@ from probe_link import empty_link_file
 APP_SOLVE = HERE / "app-solve.mjs"
 JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)
 REPS = 3
+
+# Every fixture gets both rows (docs/real-app-timing.md): from an empty board,
+# and from the state a player reaches after the app's own logical pass.
+MODES = (("", False), (" after-logical", True))
 
 
 def registered_components(doc):
@@ -124,11 +129,14 @@ def build_candidate(example_dir, component_file, out_path, board=None):
     )
 
 
-def run_app_solve(link_path, ring_clues=False):
-    """Run the real-app timing driver and return its {median, version}."""
+def run_app_solve(link_path, ring_clues=False, after_logical=False):
+    """Run the real-app timing driver and return its {median, version}.
+    after_logical runs the app's logical solver to its fixpoint first."""
     cmd = ["node", str(APP_SOLVE), str(link_path), str(REPS)]
     if ring_clues:
         cmd.append("--ring-clues")
+    if after_logical:
+        cmd.append("--after-logical")
     result = subprocess.run(
         cmd,
         capture_output=True,
@@ -152,10 +160,15 @@ def run_app_solve(link_path, ring_clues=False):
 def build_row(date, version, board, baseline_ms, candidate_ms=None):
     """The paste-ready row and its verdict. candidate_ms=None means
     byte-equal code: baseline-only row, verdict BASELINE. PASS means
-    candidate_ms <= 0.9 x baseline_ms."""
+    candidate_ms <= 0.9 x baseline_ms on this row alone; the two-row ship
+    rule is ship_verdict's job. A 0ms baseline has no ratio -- the board left
+    nothing to search -- and reports NO TIME."""
     if candidate_ms is None:
         row = f"| {date} | {version} | {board} | {baseline_ms}ms | — | — | BASELINE |"
         return row, "BASELINE"
+    if baseline_ms == 0:
+        row = f"| {date} | {version} | {board} | 0ms | {candidate_ms}ms | — | NO TIME |"
+        return row, "NO TIME"
     ratio = candidate_ms / baseline_ms
     verdict = "PASS" if ratio <= 0.9 else "FAIL"
     row = (
@@ -165,8 +178,22 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     return row, verdict
 
 
+def ship_verdict(ratios):
+    """The two-row rule (docs/real-app-timing.md): a change ships when it
+    clears 0.9x on one of the two rows and stays within 1.1x on the other.
+    A None ratio is a row the app finished in 0ms; it places no constraint,
+    so the other row decides. All None means nothing was timed."""
+    real = [r for r in ratios if r is not None]
+    if not real:
+        return "NO TIME"
+    return "SHIP" if min(real) <= 0.9 and max(real) <= 1.1 else "NO SHIP"
+
+
 def run(example_dir, ring_clues=False, board=None):
-    """Time one example end to end and return (row, verdict). Raises
+    """Time one example end to end in both modes and return
+    ([(row, verdict), ...], ship) -- one entry per row (cold, then
+    after-logical) and the two-row rule's verdict, or None when the code is
+    byte-equal and there is nothing to judge. Raises
     FileNotFoundError naming the file when the board link or build_link.py
     is missing. Links are stripped to their givens before timing; ring_clues
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
@@ -196,24 +223,26 @@ def run(example_dir, ring_clues=False, board=None):
 
         baseline_probe = tmp / "baseline_probe.txt"
         empty_link_file(baseline_link, baseline_probe, mode)
-        baseline_result = run_app_solve(baseline_probe, ring_clues)
+        candidate_probe = tmp / "candidate_probe.txt"
+        if not byte_equal:
+            empty_link_file(candidate_link, candidate_probe, mode)
 
         date = datetime.date.today().isoformat()
-        version = baseline_result["version"]
+        rows = []
+        ratios = []
+        for suffix, after_logical in MODES:
+            label = board_label + suffix
+            base = run_app_solve(baseline_probe, ring_clues, after_logical)
+            if byte_equal:
+                rows.append(build_row(date, base["version"], label, base["median"]))
+                continue
+            cand = run_app_solve(candidate_probe, ring_clues, after_logical)
+            rows.append(
+                build_row(date, base["version"], label, base["median"], cand["median"])
+            )
+            ratios.append(cand["median"] / base["median"] if base["median"] else None)
 
-        if byte_equal:
-            return build_row(date, version, board_label, baseline_result["median"])
-
-        candidate_probe = tmp / "candidate_probe.txt"
-        empty_link_file(candidate_link, candidate_probe, mode)
-        candidate_result = run_app_solve(candidate_probe, ring_clues)
-        return build_row(
-            date,
-            version,
-            board_label,
-            baseline_result["median"],
-            candidate_result["median"],
-        )
+        return rows, (ship_verdict(ratios) if ratios else None)
 
 
 if __name__ == "__main__":
@@ -224,7 +253,10 @@ if __name__ == "__main__":
         "--board", help="link file in the example dir, instead of PUZZLE_LINK.txt"
     )
     a = p.parse_args()
-    row, _verdict = run(
+    rows, ship = run(
         ROOT / "examples" / a.example, ring_clues=a.ring_clues, board=a.board
     )
-    print(row)
+    for row, _verdict in rows:
+        print(row)
+    if ship:
+        print(f"two-row rule: {ship}")
