@@ -132,10 +132,9 @@ import { parseReadout, parseVersion, repLine, medianLine, marksRejected } from '
 // (marks the app's own logical solver made in this same run).
 {
   const marks = ' This is a unique solution (based on already entered values and pencil marks.)'
-  assert.strictEqual(marksRejected(marks, {}), true)
-  assert.strictEqual(marksRejected(marks, { afterLogical: true }), false)
-  assert.strictEqual(marksRejected(marks, { ringClues: true }), false)
-  assert.strictEqual(marksRejected('This is a unique solution. took 0.4s', {}), false)
+  assert.strictEqual(marksRejected(marks, false), true)
+  assert.strictEqual(marksRejected(marks, true), false)
+  assert.strictEqual(marksRejected('This is a unique solution. took 0.4s', false), false)
 }
 
 console.log('app-solve-lib.test.mjs: all seams pass')

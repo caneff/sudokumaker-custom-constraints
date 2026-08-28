@@ -383,26 +383,24 @@ No code changed here, so every row is a BASELINE.
 
 **The after-logical row is 0 ms on five of the six fixtures.** The app's
 logical solver, with its full technique set, finishes those boards outright,
-so nothing is left to search and the row constrains nothing. Only
-`puzzle-30` leaves work behind (200 ms). `puzzle-44` reads 0 ms cold too —
-with 44 givens the finder never has to search — so it is not a timing fixture
-in either mode. On ISOFILL as it ships today the cold row is the row a change
-is judged on; the after-logical row is there to catch the opposite case, a
-deduction that only helps once the app's own logic has run.
+so nothing is left to search. Only `puzzle-30` leaves work behind (200 ms),
+and `puzzle-44` reads 0 ms cold too — with 44 givens the finder never has to
+search — so it is not a timing fixture in either mode.
+
+A 0 ms row is not a free pass. It places no constraint only while the
+candidate also reads 0 ms; a candidate that turns one of these boards back
+into a search scores an infinite ratio and sinks the change. That is the
+regression the after-logical row exists to catch on ISOFILL, since the cold
+row is the one that carries the speed-up.
 
 `puzzle-35-silent`'s cold row reads 33.3 s here against the 48.8 s recorded
 on 2026-08-27 (below) — the same board and the same app build, a different
 machine. Read ratios, not milliseconds (`docs/real-app-timing.md`).
 
 Both rows per fixture were hand-run, because `build_link.py` takes no
-`--board` and `just time isofill` therefore reaches only the default board:
-
-```sh
-uv run --with lzstring examples/_shared/probe_link.py strip \
-  examples/isofill/PUZZLE_LINK-30.txt /tmp/iso30.txt
-node examples/_shared/app-solve.mjs /tmp/iso30.txt 3
-node examples/_shared/app-solve.mjs /tmp/iso30.txt 3 ShowCandidates --after-logical
-```
+`--board` and `just time isofill` therefore reaches only the default board.
+The commands are the strip-then-`app-solve.mjs` pair in
+`docs/real-app-timing.md` § Reproduce, once per fixture link.
 
 ### Earlier rows (2026-08-27, cold only)
 

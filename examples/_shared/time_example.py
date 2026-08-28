@@ -33,9 +33,9 @@ APP_SOLVE = HERE / "app-solve.mjs"
 JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)
 REPS = 3
 
-# Every fixture gets both rows (docs/real-app-timing.md): from an empty board,
-# and from the state a player reaches after the app's own logical pass.
-MODES = (("", False), (" after-logical", True))
+# Every fixture gets both rows (docs/real-app-timing.md): cold, from an empty
+# board, then from the state a player reaches after the app's own logical pass.
+AFTER_LOGICAL_MODES = (False, True)
 
 
 def registered_components(doc):
@@ -161,15 +161,18 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     """The paste-ready row and its verdict. candidate_ms=None means
     byte-equal code: baseline-only row, verdict BASELINE. PASS means
     candidate_ms <= 0.9 x baseline_ms on this row alone; the two-row ship
-    rule is ship_verdict's job. A 0ms baseline has no ratio -- the board left
-    nothing to search -- and reports NO TIME."""
+    rule is ship_verdict's job. A 0ms baseline has no ratio: NO TIME when the
+    candidate is 0ms too, FAIL when it is not."""
     if candidate_ms is None:
         row = f"| {date} | {version} | {board} | {baseline_ms}ms | — | — | BASELINE |"
         return row, "BASELINE"
-    if baseline_ms == 0:
-        row = f"| {date} | {version} | {board} | 0ms | {candidate_ms}ms | — | NO TIME |"
+    ratio = row_ratio(baseline_ms, candidate_ms)
+    if ratio is None:
+        row = f"| {date} | {version} | {board} | 0ms | 0ms | — | NO TIME |"
         return row, "NO TIME"
-    ratio = candidate_ms / baseline_ms
+    if ratio == INF:
+        row = f"| {date} | {version} | {board} | 0ms | {candidate_ms}ms | ∞ | FAIL |"
+        return row, "FAIL"
     verdict = "PASS" if ratio <= 0.9 else "FAIL"
     row = (
         f"| {date} | {version} | {board} | {baseline_ms}ms | {candidate_ms}ms | "
@@ -178,11 +181,25 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     return row, verdict
 
 
+INF = float("inf")
+
+
+def row_ratio(baseline_ms, candidate_ms):
+    """One row's candidate/baseline ratio. A 0ms baseline has no ratio: None
+    when the candidate is 0ms too (nothing was timed on this row), INF when it
+    is not -- the app used to finish this board without searching and now does
+    not, which is the regression the row exists to catch, not a free pass."""
+    if baseline_ms:
+        return candidate_ms / baseline_ms
+    return None if candidate_ms == 0 else INF
+
+
 def ship_verdict(ratios):
     """The two-row rule (docs/real-app-timing.md): a change ships when it
     clears 0.9x on one of the two rows and stays within 1.1x on the other.
-    A None ratio is a row the app finished in 0ms; it places no constraint,
-    so the other row decides. All None means nothing was timed."""
+    A None ratio (see row_ratio) places no constraint, so the other row
+    decides; INF is past 1.1x and sinks the change. All None means nothing
+    was timed."""
     real = [r for r in ratios if r is not None]
     if not real:
         return "NO TIME"
@@ -230,8 +247,8 @@ def run(example_dir, ring_clues=False, board=None):
         date = datetime.date.today().isoformat()
         rows = []
         ratios = []
-        for suffix, after_logical in MODES:
-            label = board_label + suffix
+        for after_logical in AFTER_LOGICAL_MODES:
+            label = board_label + (" after-logical" if after_logical else "")
             base = run_app_solve(baseline_probe, ring_clues, after_logical)
             if byte_equal:
                 rows.append(build_row(date, base["version"], label, base["median"]))
@@ -240,7 +257,7 @@ def run(example_dir, ring_clues=False, board=None):
             rows.append(
                 build_row(date, base["version"], label, base["median"], cand["median"])
             )
-            ratios.append(cand["median"] / base["median"] if base["median"] else None)
+            ratios.append(row_ratio(base["median"], cand["median"]))
 
         return rows, (ship_verdict(ratios) if ratios else None)
 
