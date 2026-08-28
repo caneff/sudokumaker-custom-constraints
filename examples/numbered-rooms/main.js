@@ -25,6 +25,9 @@ function frameGroups () {
 
 for (const { cells } of input.groups || frameGroups()) {
   const [clue, ...line] = cells
+  // A group still being drawn has only its clue; nothing to enforce yet, and
+  // an empty line would read an undefined cell and throw in the editor.
+  if (line.length === 0) continue
   const name = helpers.naming.getCellsDescription(cells)
   // The component's clue≠index rule needs the line to be one row or column
   // (its cells hold distinct digits). Fail loud on any other group rather than
