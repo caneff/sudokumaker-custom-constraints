@@ -49,6 +49,7 @@ soundness:
     node examples/hit-counts/soundness-harness.mjs
     node examples/isofill/soundness-harness.mjs
     node examples/numbered-rooms/soundness-harness.mjs
+    node examples/numbered-rooms-lines/soundness-harness.mjs
     node examples/running-start/soundness-harness.mjs
     node examples/skyscraper/soundness-harness.mjs
 
