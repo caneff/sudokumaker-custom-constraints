@@ -18,29 +18,31 @@ FIXTURES = {
     "gen_9x9.json": "PUZZLE_LINK_9x9.txt",
 }
 
-for name, out_name in FIXTURES.items():
-    out = HERE / out_name
-    full = out.with_suffix(".full.tmp")
-    uv = ["uv", "run", "--with", "lzstring"]
-    subprocess.run(
-        [
-            *uv,
-            str(HERE / "build_link.py"),
-            "--puzzle",
-            str(HERE / name),
-            "--out",
-            str(full),
-        ],
-        check=True,
-    )
-    subprocess.run(
-        [*uv, str(SHARED / "probe_link.py"), "strip", str(full), str(out)], check=True
-    )
-    full.unlink()
-    # A hard-fixture link never ships the solution: every non-given cell is {}.
-    doc = decode_puzzle(out.read_text().strip())
-    bad = [c for c in doc["puzzle"]["cells"] if not c.get("given") and c]
-    assert not bad, f"{out.name}: {len(bad)} non-given cells hold data"
-    print(
-        f"{out.name}: {sum(1 for c in doc['puzzle']['cells'] if c.get('given'))} givens, rest empty"
-    )
+if __name__ == "__main__":
+    for name, out_name in FIXTURES.items():
+        out = HERE / out_name
+        full = out.with_suffix(".full.tmp")
+        uv = ["uv", "run", "--with", "lzstring"]
+        subprocess.run(
+            [
+                *uv,
+                str(HERE / "build_link.py"),
+                "--puzzle",
+                str(HERE / name),
+                "--out",
+                str(full),
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [*uv, str(SHARED / "probe_link.py"), "strip", str(full), str(out)],
+            check=True,
+        )
+        full.unlink()
+        # A hard-fixture link never ships the solution: every non-given cell is {}.
+        doc = decode_puzzle(out.read_text().strip())
+        bad = [c for c in doc["puzzle"]["cells"] if not c.get("given") and c]
+        assert not bad, f"{out.name}: {len(bad)} non-given cells hold data"
+        print(
+            f"{out.name}: {sum(1 for c in doc['puzzle']['cells'] if c.get('given'))} givens, rest empty"
+        )

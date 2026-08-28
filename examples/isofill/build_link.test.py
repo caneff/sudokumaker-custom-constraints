@@ -4,6 +4,12 @@
 # sibling component to leave untouched (contrast the local-groups examples).
 # Mirrors examples/skyscraper/build_link.test.py.
 #
+# Also covers build_hard_links.py's FIXTURES: each hard-fixture link
+# (PUZZLE_LINK_30g.txt and friends) must reproduce build+strip of its own
+# gen_*.json, and must carry no stray non-given value. This guard used to run
+# only when build_hard_links.py executed as a script under `just test`; it
+# moved here so `just test` can drop builders and still catch drift.
+#
 #   uv run --with lzstring examples/isofill/build_link.test.py
 
 import pathlib
@@ -14,9 +20,11 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+from build_hard_links import FIXTURES
 from build_link import CONSTRAINT_NAME, build, check
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
+from probe_link import strip_to_givens
 
 if __name__ == "__main__":
     base_text = (HERE / "PUZZLE_LINK.txt").read_text().strip()
@@ -59,5 +67,19 @@ if __name__ == "__main__":
             find_constraint(cand_doc, CONSTRAINT_NAME)["definition"]["backend"]["code"]
             == find_constraint(base, CONSTRAINT_NAME)["definition"]["backend"]["code"]
         )
+
+    # each hard-fixture link matches build+strip of its own gen_*.json, and
+    # carries no stray non-given value (mirrors build_hard_links.py)
+    for gen_name, link_name in FIXTURES.items():
+        committed = (HERE / link_name).read_text().strip()
+        link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / gen_name)
+        check(link, doc, n_clues)
+        stripped = strip_to_givens(decode_puzzle(link))
+        stripped_text = encode_link(stripped)
+        assert stripped_text == committed, (
+            f"{link_name} does not match build+strip of {gen_name}"
+        )
+        bad = [c for c in stripped["puzzle"]["cells"] if not c.get("given") and c]
+        assert not bad, f"{link_name}: {len(bad)} non-given cells hold data"
 
     print("ok")
