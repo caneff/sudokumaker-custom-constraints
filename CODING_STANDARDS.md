@@ -50,8 +50,10 @@ load-bearing detail lives in `docs/`, and each rule points there.
 - **Trigger:** a deduction added to or removed from a component's `update`.
 - **Tool:** `just time <example>` (`--ring-clues` for an example whose clues
   sit in the ring: Numbered Rooms, Skyscraper).
-- **Bar:** candidate ≤ 0.9× baseline, 3 reps, non-deterministic solve off.
-- **Record:** paste the printed row into the example's README, `## Timing`.
+- **Bar:** the two-row rule — every fixture gets a cold row and an
+  after-logical row, and a change ships at ≤ 0.9× on either row and ≤ 1.1× on
+  the other, 3 reps, non-deterministic solve off.
+- **Record:** paste both printed rows into the example's README, `## Timing`.
 - Full method, stripping rules, and caveats: `docs/real-app-timing.md`.
 
 ## Tests assert an observable outcome

@@ -362,13 +362,59 @@ ambiguous. `just check` re-verifies the shipped instance on every run.
 
 ## Timing
 
+### Two-row baselines, every fixture (2026-08-28)
+
+Each fixture gets a **cold** row (from the stripped board) and an
+**after-logical** row (from the state the app's own logical solver reaches).
+No code changed here, so every row is a BASELINE.
+
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill | 1200ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-30 | 4900ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-30 after-logical | 200ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-32 | 4100ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-32 after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-35-silent | 33300ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-35-silent after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-44 | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-44 after-logical | 0ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-9x9 | 200ms | — | — | BASELINE |
+| 2026-08-28 | v2026.08.14-d47fc4b | isofill puzzle-9x9 after-logical | 0ms | — | — | BASELINE |
+
+**The after-logical row is 0 ms on five of the six fixtures.** The app's
+logical solver, with its full technique set, finishes those boards outright,
+so nothing is left to search and the row constrains nothing. Only
+`puzzle-30` leaves work behind (200 ms). `puzzle-44` reads 0 ms cold too —
+with 44 givens the finder never has to search — so it is not a timing fixture
+in either mode. On ISOFILL as it ships today the cold row is the row a change
+is judged on; the after-logical row is there to catch the opposite case, a
+deduction that only helps once the app's own logic has run.
+
+`puzzle-35-silent`'s cold row reads 33.3 s here against the 48.8 s recorded
+on 2026-08-27 (below) — the same board and the same app build, a different
+machine. Read ratios, not milliseconds (`docs/real-app-timing.md`).
+
+Both rows per fixture were hand-run, because `build_link.py` takes no
+`--board` and `just time isofill` therefore reaches only the default board:
+
+```sh
+uv run --with lzstring examples/_shared/probe_link.py strip \
+  examples/isofill/PUZZLE_LINK-30.txt /tmp/iso30.txt
+node examples/_shared/app-solve.mjs /tmp/iso30.txt 3
+node examples/_shared/app-solve.mjs /tmp/iso30.txt 3 ShowCandidates --after-logical
+```
+
+### Earlier rows (2026-08-27, cold only)
+
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill | 1500ms | — | — | BASELINE |
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-35-silent (#149 perimeter) | 48.8 s | 34.9 s | 0.72 | KEPT; pairs 0.72/0.76/0.73 |
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-30 (#149 perimeter) | 5.0 s | 4.8 s | 0.96 | wash |
 | 2026-08-27 | v2026.08.14-d47fc4b | isofill puzzle-32 (#149 perimeter) | 4.0 s | 4.0 s | 1.00 | median of 7 interleaved rounds; 5 leaned 5–13% slow |
 
-`just time isofill` (candidate byte-equal to baseline, so only a BASELINE row
-prints). See `docs/real-app-timing.md` for the protocol.
+These predate the two-row rule, so they carry a cold row only.
+
+`just time isofill` (candidate byte-equal to baseline, so only BASELINE rows
+print). See `docs/real-app-timing.md` for the protocol.
 
 The three #149 rows are hand-run, because `build_link.py` takes no `--board`
 and `just time` therefore cannot reach the hard fixtures. Baseline and

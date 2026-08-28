@@ -13,7 +13,13 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from time_example import build_candidate, build_row, find_component_file, run
+from time_example import (
+    build_candidate,
+    build_row,
+    find_component_file,
+    run,
+    ship_verdict,
+)
 
 
 def _doc(names):
@@ -193,5 +199,36 @@ if __name__ == "__main__":
             raise AssertionError("expected an ambiguous-match failure")
         except ValueError:
             pass
+
+    # The two-row ship rule: a change ships when it clears 0.9x on one of the
+    # two rows (cold, after-logical) and does not regress past 1.1x on the
+    # other. Order of the rows does not matter.
+    assert ship_verdict([0.72, 1.05]) == "SHIP"
+    assert ship_verdict([1.05, 0.72]) == "SHIP"
+
+    # both bars are inclusive
+    assert ship_verdict([0.90, 1.10]) == "SHIP"
+
+    # cleared 0.9x on one row but regressed past 1.1x on the other -> no ship
+    assert ship_verdict([0.72, 1.15]) == "NO SHIP"
+
+    # neither row clears 0.9x -> no ship, however flat the other row is
+    assert ship_verdict([0.95, 0.95]) == "NO SHIP"
+
+    # a row the app solved in 0ms places no constraint: it cannot be the row
+    # that clears 0.9x, and it cannot regress. The other row decides.
+    assert ship_verdict([0.72, None]) == "SHIP"
+    assert ship_verdict([0.95, None]) == "NO SHIP"
+    assert ship_verdict([None, None]) == "NO TIME"
+
+    # a 0ms baseline has no ratio -- the app's logical pass finished the board,
+    # so there is nothing left to time. Report it, never divide by zero.
+    row, verdict = build_row(
+        "2026-08-26", "v2026.08.14-d47fc4b", "isofill after-logical", 0, 0
+    )
+    assert verdict == "NO TIME"
+    assert row == (
+        "| 2026-08-26 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |"
+    )
 
     print("ok")

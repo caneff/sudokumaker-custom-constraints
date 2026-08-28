@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, repLine, medianLine, marksRejected } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -109,6 +109,33 @@ import { parseReadout, parseVersion, repLine, medianLine } from './app-solve-lib
   ]
   const line = medianLine(rows)
   assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')
+}
+
+// ---- after the app's own logical pass: the verdict carries a parenthetical ----
+// With --after-logical the driver runs the app's logical solver first, so the
+// board holds values and marks when the timed search starts and the app says
+// so inside the verdict sentence. The readout is otherwise the cold one: two
+// "took"s and a unique verdict.
+{
+  const text = '\u2728 Solved\ntook 1.2s\n This is a unique solution (based on already entered values and pencil marks.)\ntook 0.4s'
+  const r = parseReadout(text)
+  assert.strictEqual(r.first, 1200)
+  assert.strictEqual(r.unique, 400)
+  assert.strictEqual(r.sum, 1600)
+  assert.strictEqual(r.verdict, 'unique')
+}
+
+// ---- the marks rule and its one exception ----
+// A run with marks present is never a timing, so the phrase is an error --
+// except in the two modes that put the marks there on purpose: --ring-clues
+// (an edge-clue puzzle stores its clues as ring values) and --after-logical
+// (marks the app's own logical solver made in this same run).
+{
+  const marks = ' This is a unique solution (based on already entered values and pencil marks.)'
+  assert.strictEqual(marksRejected(marks, {}), true)
+  assert.strictEqual(marksRejected(marks, { afterLogical: true }), false)
+  assert.strictEqual(marksRejected(marks, { ringClues: true }), false)
+  assert.strictEqual(marksRejected('This is a unique solution. took 0.4s', {}), false)
 }
 
 console.log('app-solve-lib.test.mjs: all seams pass')
