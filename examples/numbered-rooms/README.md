@@ -78,6 +78,11 @@ per-line component below carries the whole example.
   ring is shown.
 - `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
+  `main.js` runs in either mode: with a `groups` input it uses the drawn
+  lines (local); with the input list empty it builds all 4n frame lines from
+  the board size itself (global — no lines to draw).
+- `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with the
+  constraint switched to global. Same solve, no drawn groups.
 - `ORIGINAL_*.js` — the shipped wrapper, kept for reference and used by
   `build_original.py`.
 - `soundness-harness.mjs` — proves `update` removes no true value (405k fuzz
@@ -109,6 +114,7 @@ per-line component below carries the whole example.
   `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
   Add `--backend main.js` to swap the main code in as well (the committed
   link carries both, and `build_link.test.py` checks both round-trip).
+  Add `--global` to drop the drawn groups and make the constraint global.
   See `docs/real-app-timing.md`.
 
 ## Run
