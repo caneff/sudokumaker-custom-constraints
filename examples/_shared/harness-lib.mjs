@@ -87,10 +87,35 @@ export function makeRng (seed = 12345) {
   return { rnd, pick }
 }
 
+// A line of digits for a soundness fuzz pool, per docs/line-contract.md's
+// three line kinds. The example's own clue function derives the truth clue
+// from the returned digits; this only builds the line.
+//   bare     — `n` random digits from 1..D, any length, may repeat.
+//   house    — `n` distinct digits from 1..D, in random order (`n` must be <= D).
+//   fullHouse — every digit 1..D exactly once, in random order (`n` is unused).
+export function makeLine (rnd, kind, n, D) {
+  const all = []; for (let d = 1; d <= D; d++) all.push(d)
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
+  if (kind === 'fullHouse') return shuffle(all)
+  if (kind === 'house') {
+    if (n > D) throw new RangeError(`house of ${n} distinct digits needs digitCount >= n (D=${D})`)
+    return shuffle(all).slice(0, n)
+  }
+  if (kind === 'bare') {
+    const line = []; for (let i = 0; i < n; i++) line.push(1 + ((rnd() * D) | 0))
+    return line
+  }
+  throw new RangeError(`unknown line kind: ${kind}`)
+}
+
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
 // candidate set that always contains its true value. `seed(cell, value)` returns
-// the starting candidate array.
-export function makePuzzle (truth, seed) {
+// the starting candidate array. `kind` ('bare', 'house', or 'fullHouse',
+// default 'bare') and `digitCount` answer `getCellsCanHaveRepeats` and
+// `spec.digitCount` as the app would for a line of that declared kind — never
+// inferred from the digits actually seeded, so a test cannot pass by accident
+// (docs/line-contract.md).
+export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
   const cand = new Map()
   for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
   return {
@@ -104,7 +129,9 @@ export function makePuzzle (truth, seed) {
     removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
     // The app takes a DigitSet here and nothing else; a plain array passes in
     // Node and silently removes nothing in the app (a rule went dead that way).
-    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = cand.get(c); for (const d of s) set.delete(d) }
+    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = cand.get(c); for (const d of s) set.delete(d) },
+    getCellsCanHaveRepeats: () => kind === 'bare',
+    spec: { digitCount }
   }
 }
 
