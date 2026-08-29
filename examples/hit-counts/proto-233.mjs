@@ -8,6 +8,9 @@
 //             signature check that skips the solve when the assignment's own
 //             inputs have not moved
 //   C'-pair — C' with HitCountsPairComponent dropped from the wiring
+//   D       — the joint row + pair DP (#246), one component per line-pair, in
+//             place of the per-line components and the pair
+//   C'+D    — D stacked on C'
 //
 //   node examples/hit-counts/proto-233.mjs [gen_9x9.json] [--only=C] [--cap=N]
 //
@@ -82,6 +85,24 @@ function sideInstances (mod) {
   return out
 }
 
+// ---- D: the joint row + pair DP, one instance per line-pair (#246) ----
+const jointMod = load('proto-233/HitCountsJointComponent.js', ['setParams', 'update', 'initialize'])
+function jointInstances () {
+  const out = []
+  for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
+    for (let i = 0; i < n; i++) {
+      const inst = { name: `hit counts joint ${sa}${i}` }
+      jointMod.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
+      inst.__mod = jointMod
+      out.push(inst)
+    }
+  }
+  return out
+}
+
+// The side sums, the one shipped component D and C' between them do not cover.
+const sideSums = () => buildShipped().filter(c => c.target !== undefined)
+
 // ---- A: the #13 early reject, as a propagator (see the header) ----
 const hcScan = load('HitCountsComponent.js', ['scan']).scan
 function earlyReject () {
@@ -127,7 +148,10 @@ const VARIANTS = [
   ['A+C', () => [...buildShipped(), ...sideInstances(sideMod)], earlyReject],
   ["C'", () => [...buildShipped(), ...sideInstances(fastMod)], null],
   // The pair instances are the ones that took a second clue cell.
-  ["C'-pair", () => [...buildShipped().filter(c => c.clueB === undefined), ...sideInstances(fastMod)], null]
+  ["C'-pair", () => [...buildShipped().filter(c => c.clueB === undefined), ...sideInstances(fastMod)], null],
+  // D replaces the per-line components and the pair for every line it covers.
+  ['D', () => [...sideSums(), ...jointInstances()], null],
+  ["C'+D", () => [...sideSums(), ...jointInstances(), ...sideInstances(fastMod)], null]
 ]
 
 console.log(`${file}: n=${n}, ${active.length}/${keys.length} clues shown, ${Object.keys(givens).length} interior givens, cap ${NODE_CAP}`)
