@@ -9,3 +9,6 @@ fresh_sol.json
 # local session state and worktrees
 .claude/
 examples/skyscraper/.scan/
+
+# code-review sub-agent report fallback; must never block git worktree remove
+.scratch/
