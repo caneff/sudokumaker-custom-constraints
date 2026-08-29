@@ -29,6 +29,15 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   does, which sinks the change. `just time` prints the
   `two-row rule: SHIP` / `NO SHIP` line; each row's own `PASS`/`FAIL` is that
   row's 0.9× result alone, not the gate.
+- **Bar for a gate change.** A change that adds or moves a gate in front of
+  an existing rule and adds no deduction cannot reach 0.9× — on the shipped
+  board every line is a house, so the rule runs as before. Such a change ships
+  at **≤ 1.1× on both rows**, 3 reps, non-deterministic solve off; "unchanged"
+  is the pass (#197).
+- **Local fixture.** Each example's bent-path local link
+  (`PUZZLE_LINK_local.txt`, built by `build_size.py --paths`) is the board for
+  timing a rule that runs on a bare line: `just time <example> --board
+  PUZZLE_LINK_local.txt`, one local row in the README (#197).
 - **Record.** Paste both printed rows into the example's README, under a
   `## Timing` section.
 
