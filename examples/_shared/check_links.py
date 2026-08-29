@@ -26,24 +26,18 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 # Links built before RULES_PREFIX existed and not yet regenerated. Tracked in
 # #217 — remove an entry here only after regenerating that link and
 # confirming its comment now carries the prefix. Do not add new entries.
+#
+# The three numbered-rooms sized links (4x4/6x6/9x9) stay: regenerating them
+# with the current build_size.py embeds the current main.js backend (grown
+# from 448 to 1098 chars since commit f93e9fd added local/global mode) instead
+# of the one the shipped link carries — more than the comment would change, so
+# they were left as-is. Fixing them needs a rebuild-from-frame path like
+# skyscraper's build_original.py (re-encode from gen_<n>x<n>.json without a
+# fresh CP-SAT search), which numbered-rooms does not have yet.
 PREFIX_DEBT = {
-    "examples/hit-counts/PUZZLE_LINK.txt",
-    "examples/hit-counts/PUZZLE_LINK_6x6.txt",
-    "examples/numbered-rooms/PUZZLE_LINK.txt",
     "examples/numbered-rooms/PUZZLE_LINK_4x4.txt",
     "examples/numbered-rooms/PUZZLE_LINK_6x6.txt",
     "examples/numbered-rooms/PUZZLE_LINK_9x9.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_clued.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_clued_original.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_global.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_original.txt",
-    "examples/running-start/PUZZLE_LINK.txt",
-    "examples/running-start/PUZZLE_LINK_4x4.txt",
-    "examples/running-start/PUZZLE_LINK_6x6.txt",
-    "examples/skyscraper/PUZZLE_LINK_4x4.txt",
-    "examples/skyscraper/PUZZLE_LINK_4x4_original.txt",
-    "examples/skyscraper/PUZZLE_LINK_6x6.txt",
-    "examples/skyscraper/PUZZLE_LINK_6x6_original.txt",
 }
 
 
