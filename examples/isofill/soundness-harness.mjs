@@ -7,8 +7,8 @@
 //
 // Two fixtures, both valid ISOFILL solutions:
 //   rows — row r holds digit r (covers cap and force).
-//   bent — each pair of rows splits into two L-shaped regions, so the reach
-//          deduction walks around corners.
+//   bent — each pair of rows splits into two L-shaped regions, so the seed
+//          walk goes around corners.
 //   silent35 — the grid of gen_35g_silent.json, fuzzed with a seeder that
 //          never pins digit 2, so that digit stays silent (no placed cell) in
 //          every state and only the silent-digit rule prunes it.
@@ -24,7 +24,7 @@ const { rnd, pick } = makeRng()
 
 installGlobals(0, 9)
 
-const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate', 'seedWalk'])
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -116,22 +116,52 @@ const capOk = !cap.v && CELLS.slice(N).every(c => !cap.p.getCandidates(c).has(0)
 const force = run(rows, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
 const forceOk = !force.v && CELLS.slice(0, N).every(c => force.p.getCandidates(c).size === 1)
 
-// ---- Reach: only cell 0 is placed (digit 0), so cell 99 (18 steps away) loses 0 ----
-const reach = run(bent, (c, v) => (c === 0 ? [v] : ALL))
-const reachOk = !reach.v && !reach.p.getCandidates(99).has(0) && reach.p.getCandidates(9).has(0)
+// ---- Outside the walk: only cell 0 is placed (digit 0), so cell 99 (18
+// steps away, far past the budget of nine) loses 0 ----
+const outside = run(bent, (c, v) => (c === 0 ? [v] : ALL))
+const outsideOk = !outside.v && !outside.p.getCandidates(99).has(0) && outside.p.getCandidates(9).has(0)
 
-// ---- Split: cells 0 and 99 both placed as 0 can never join; the stranded cell empties ----
-const split = once(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
-const splitOk = split.getCandidates(0).size === 0 || split.getCandidates(99).size === 0
+// ---- Stranded: cells 0 and 99 both placed as 0 can never join, so the walk
+// misses one of them and a placed cell empties ----
+const stranded = once(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
+const strandedOk = stranded.getCandidates(0).size === 0
 
-// ---- Split at cap: ten placed 0s (cells 0-8 and 99) can never join either ----
-const capSplit = once(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
-const capSplitOk = capSplit.getCandidates(99).size === 0
+// ---- Stranded at cap: ten placed 0s (cells 0-8 and 99) can never join
+// either, and at cap the walk has no budget at all ----
+const capStranded = once(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
+const capStrandedOk = capStranded.getCandidates(0).size === 0
 
-// ---- Capacity: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
+// ---- Starved: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
 // cells in all) can never grow to ten; the placed cell empties ----
-const capacity = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
-const capacityOk = capacity.getCandidates(0).size === 0
+const starved = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
+const starvedOk = starved.getCandidates(0).size === 0
+
+// ---- Seed walk, budget boundary: digit 0 placed at cells 0 and 19. The
+// shortest path between them crosses nine open cells, one more than the
+// budget of ten minus two placed, so the walk never meets cell 19: dead ----
+const farDead = once(bent, (c, v) => (c === 0 || c === 19 ? [0] : ALL))
+const farDeadOk = farDead.getCandidates(0).size === 0
+
+// ---- Seed walk, the other side of that boundary: cells 0 and 18 are eight
+// open cells apart, exactly the budget, so both placed cells survive ----
+const farLive = once(bent, (c, v) => (c === 0 || c === 18 ? [0] : ALL))
+const farLiveOk = farLive.getCandidates(0).has(0) && farLive.getCandidates(18).has(0)
+
+// ---- Tighter than the old walk: digit 1 placed at cells 7, 14 and 17, digit
+// 0 at cell 12, which walls off row 1 to the left of 14. The seed is cell 7
+// and the budget is seven open cells. Linking 7 to 14 costs two of them
+// (cells 16 and 15), so the six cells from 14 down and back along row 2 to
+// cell 10 come to eight in all and cell 10 falls outside the walk. The old
+// walk started from every placed cell at no cost, so it reached cell 10 in
+// six steps from 14 and kept the candidate ----
+const linked = once(bent, (c, v) => ([7, 14, 17].includes(c) ? [1] : c === 12 ? [0] : ALL))
+const linkedOk = !linked.getCandidates(10).has(1)
+
+// ---- Seed walk, walled off: digit 0 is placed at cell 0 and at cell 55,
+// whose four neighbours all hold digit 1. No path of cells allowing 0 joins
+// them, so the walk cannot meet cell 55 whatever the budget: dead ----
+const walled = once(bent, (c, v) => (c === 0 || c === 55 ? [0] : [45, 54, 56, 65].includes(c) ? [1] : ALL))
+const walledOk = walled.getCandidates(0).size === 0
 
 // ---- Cut: digit 0 placed at cell 0, allowed in row 0 and cell 10 (eleven
 // cells). Without cell 1 the walk holds two cells, so cell 1 must be 0;
@@ -215,6 +245,70 @@ const flankKept = ALL.filter(d => d !== 1)
 const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
   !flank.getCandidates(2).has(1) && flank.getCandidates(11).has(1)
 
+// ---- Differential: the seed walk never holds a cell the old reach walk
+// missed. The reference below is that removed walk -- BFS from every placed
+// cell of the digit, at most (size - placed) steps through the cells that
+// allow it. The seed walk starts from one placed cell instead and charges
+// only open cells, so it is a subset, and on some states a proper one ----
+function nbrs10 (i) {
+  const out = []
+  if (i % N > 0) out.push(i - 1)
+  if (i % N < N - 1) out.push(i + 1)
+  if (i >= N) out.push(i - N)
+  if (i + N < N * N) out.push(i + N)
+  return out
+}
+
+function oldWalk (placed, allowed) {
+  const seen = new Uint8Array(N * N)
+  let frontier = []
+  for (const i of placed) { seen[i] = 1; frontier.push(i) }
+  for (let step = 0; step < N - placed.length && frontier.length; step++) {
+    const next = []
+    for (const f of frontier) for (const n of nbrs10(f)) if (allowed[n] && !seen[n]) { seen[n] = 1; next.push(n) }
+    frontier = next
+  }
+  return seen
+}
+
+const diffInst = {}
+mod.setParams(diffInst, CELLS)
+let diffWalks = 0
+let diffSmaller = 0
+let diffEscaped = 0
+let diffMissized = 0
+for (const truth of [rows, bent, hard, shipped]) {
+  for (let iter = 0; iter < FUZZ; iter++) {
+    const p = makePuzzle(truth, seeder)
+    const value = new Int8Array(N * N).fill(-1)
+    const allowedOf = ALL.map(() => new Uint8Array(N * N))
+    const placedOf = ALL.map(() => [])
+    for (const c of CELLS) {
+      const cand = [...p.getCandidates(c)]
+      if (cand.length === 1) { value[c] = cand[0]; allowedOf[cand[0]][c] = 1; placedOf[cand[0]].push(c) } else for (const d of cand) allowedOf[d][c] = 1
+    }
+    for (const d of ALL) {
+      const placed = placedOf[d].sort((a, b) => a - b)
+      if (placed.length === 0) continue
+      const walk = mod.seedWalk(diffInst, placed[0], N - placed.length, allowedOf[d], value, d)
+      const old = oldWalk(placed, allowedOf[d])
+      let newSize = 0
+      let oldSize = 0
+      for (const c of CELLS) {
+        if (old[c]) oldSize++
+        if (diffInst.mask[c] !== walk.stamp) continue
+        newSize++
+        if (!old[c]) diffEscaped++
+      }
+      if (newSize !== walk.size) diffMissized++ // the reported size must match the mask
+      diffWalks++
+      if (newSize < oldSize) diffSmaller++
+    }
+  }
+}
+const diffOk = diffEscaped === 0 && diffMissized === 0 && diffSmaller > 0
+console.log('isofill seed-walk differential:', diffWalks, 'walks,', diffEscaped, 'escaped the old walk,', diffMissized, 'with a size that misses the mask,', diffSmaller, 'strictly smaller')
+
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -273,8 +367,8 @@ console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
 
 console.log('validate:', validateOk)
 console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| reach fired:', reachOk, '| split fired:', splitOk, '| split at cap:', capSplitOk, '| capacity fired:', capacityOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| differential:', diffOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && reachOk && splitOk && capSplitOk && capacityOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && diffOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

@@ -13,7 +13,10 @@
 #
 # Writes PUZZLE_LINK.txt next to this script; --component / --out swap in a
 # candidate component file and write elsewhere; --puzzle builds another
-# instance, e.g. gen_44g.json.
+# instance, e.g. gen_44g.json. --board names a committed link instead: the
+# candidate component's code is swapped into that link and nothing else
+# changes, which is how `just time isofill --board PUZZLE_LINK_30g.txt` times
+# a fixture other than the default board.
 
 import argparse
 import json
@@ -22,6 +25,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from link_codec import decode_puzzle, encode_link
+from link_swap import check_and_write, swap_component_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -106,13 +110,30 @@ def check(link, doc, n_clues):
     assert [c["name"] for c in d["components"]] == ["IsofillComponent"]
 
 
+def build_on_board(component_path, out_path, board_path):
+    """Swap the component's code into a committed link, changing nothing else.
+
+    This is how `just time isofill --board <link>` reaches a fixture other
+    than the default board: the grid and clues stay exactly as committed.
+    """
+    base = decode_puzzle(pathlib.Path(board_path).read_text().strip())
+    code = minify_js(pathlib.Path(component_path).read_text())
+    doc = swap_component_code(base, CONSTRAINT_NAME, TIMED_COMPONENT, code)
+    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--component", default=HERE / "IsofillComponent.js")
     p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
     p.add_argument("--puzzle", default=HERE / "gen.json")
+    p.add_argument("--board", help="committed link to swap the component into")
     args = p.parse_args()
-    link, doc, n_clues = build(args.component, args.puzzle)
-    check(link, doc, n_clues)
-    pathlib.Path(args.out).write_text(link + "\n")
-    print(f"wrote {args.out} ({len(link)} chars, {n_clues} givens)")
+    if args.board:
+        link = build_on_board(args.component, args.out, args.board)
+        print(f"wrote {args.out} ({len(link)} chars, from {args.board})")
+    else:
+        link, doc, n_clues = build(args.component, args.puzzle)
+        check(link, doc, n_clues)
+        pathlib.Path(args.out).write_text(link + "\n")
+        print(f"wrote {args.out} ({len(link)} chars, {n_clues} givens)")

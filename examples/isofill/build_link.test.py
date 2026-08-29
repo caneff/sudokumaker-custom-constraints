@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_hard_links import FIXTURES
-from build_link import CONSTRAINT_NAME, build, check
+from build_link import CONSTRAINT_NAME, build, build_on_board, check
 from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from probe_link import strip_to_givens
@@ -66,6 +66,27 @@ if __name__ == "__main__":
             find_constraint(cand_doc, CONSTRAINT_NAME)["definition"]["backend"]["code"]
             == find_constraint(base, CONSTRAINT_NAME)["definition"]["backend"]["code"]
         )
+
+        # --board swaps the candidate's code into another committed link and
+        # leaves that board's grid and clues alone -- the path `just time
+        # isofill --board PUZZLE_LINK_30g.txt` takes
+        board = HERE / "PUZZLE_LINK_30g.txt"
+        board_doc = decode_puzzle(board.read_text().strip())
+        board_out = tmp / "board.txt"
+        board_link = build_on_board(candidate, board_out, board)
+        swapped = decode_puzzle(board_link)
+        assert swapped != board_doc, "--board did not swap the component code"
+        assert blanked(swapped, CONSTRAINT_NAME) == blanked(
+            board_doc, CONSTRAINT_NAME
+        ), "--board changed more than the component's code"
+        assert (
+            find_constraint(swapped, CONSTRAINT_NAME)["definition"]["components"][0][
+                "code"
+            ]
+            == find_constraint(cand_doc, CONSTRAINT_NAME)["definition"]["components"][
+                0
+            ]["code"]
+        ), "--board must carry the candidate component's code"
 
     # each hard-fixture link matches build+strip of its own gen_*.json
     for gen_name, link_name in FIXTURES.items():
