@@ -133,9 +133,12 @@ cells:
   subset on every fuzz state — so cut, tour, and budget all read a smaller cell
   set. Cell neighbours come from index arithmetic on the row-major list.
 - **Cut** — for each open cell the walk met, drop it and walk again. If the
-  walk now holds fewer than ten cells, or a placed cell falls out of it, the
-  region cannot exist without that cell, so it must hold the digit. Sound by
-  the same argument as the seed walk, applied to the grid minus one cell.
+  walk now holds fewer than ten cells (**starve**), or a placed cell falls out
+  of it (**strand**), the region cannot exist without that cell, so it must
+  hold the digit. Sound by the same argument as the seed walk, applied to the
+  grid minus one cell. Both halves ship: each was timed alone, and every
+  variant that drops one is worse — starve alone times the app out (#169,
+  below).
   Not free: one or two extra walks per open cell in the digit's walk — but
   it is the rule that lets the app close the shipped instance (below).
   Each of those walks stops as soon as it has its answer — ten cells, or
@@ -329,7 +332,7 @@ node examples/isofill/soundness-harness.mjs
 # -> isofill silent35 fixture: 2000 tests, 0 violations
 # (FUZZ=20000 node ... for the deep run, ~2 min)
 # -> validate: true
-# -> cap fired: true | force fired: true | reach fired: true | split fired: true | split at cap: true | capacity fired: true | cut fired: true | tour fired: true | budget fired: true | budget prune fired: true | silent fired: true | silent dead fired: true | one pass: true (100 reads)
+# -> cap fired: true | force fired: true | ... | cut starve fired: true | cut strand fired: true | tour fired: true | budget fired: true | budget prune fired: true | silent fired: true | silent dead fired: true | one pass: true (100 reads)
 # -> PASS
 ```
 
@@ -524,6 +527,117 @@ fixture placing no constraint -- with 44 givens the finder never searches.
 The walk does the same amount of work per call as the one it replaced -- one
 BFS per placed digit -- so the whole gain is the smaller cell set that cut,
 tour and budget then read.
+
+### Cut split: starve and strand, each alone (#169, 2026-08-29)
+
+Cut runs two tests on every open cell of a digit's walk. **Starve**: without
+the cell, fewer than ten cells are reachable from the placed cells (a
+multi-source walk from all of them, not the seed walk). **Strand**: without the
+cell, a walk from the seed never meets some placed cell. ISS prototyped the same general rule, measured it, and
+dropped it: sound and firing often, it cut nodes 43% on an x-sums board but
+*tripled* the node count on the canonical Chaos Construction puzzle, because
+it steered their branching heuristic into a worse tree (ISS
+`chaos_construction.md` §7.4, quoted in `docs/research/connectivity-techniques.md`
+§2.2). This experiment asks whether SudokuMaker's search behaves the same way,
+one half at a time.
+
+**Picking the fixture.** Cut firings per `update` call, read off the live app.
+`count_calls.py` counts calls but knows nothing about cut, so the counts below
+come from a hand-patched copy of the component that logs both numbers on one
+line, the way `docs/real-app-timing.md` says to count a branch. The patch is
+three edits to a copy of `IsofillComponent.js`: `let _probeUpd = 0` and
+`let _probeCut = 0` at the top; as the first line of `update`,
+
+```js
+if (++_probeUpd % 200 === 0) console.log(`[probe] cut=${_probeCut} in ${_probeUpd} calls`)
+```
+
+and `_probeCut++` beside the cut rule's `yield`. Then, per fixture:
+
+```sh
+uv run --with lzstring examples/_shared/count_calls.py isofill \
+    <patched copy>/IsofillComponent.js --board PUZZLE_LINK_28g.txt
+```
+
+| board | cut firings | update calls | per call |
+| --- | --- | --- | --- |
+| `PUZZLE_LINK.txt` | 11503 | 8000 | 1.44 |
+| `PUZZLE_LINK_24g.txt` | 43804 | 37200 | 1.18 |
+| `PUZZLE_LINK_28g.txt` | 106175 | 56600 | **1.88** |
+| `PUZZLE_LINK_30g.txt` | 14735 | 14200 | 1.04 |
+| `PUZZLE_LINK_32g.txt` | 5824 | 3400 | 1.71 |
+| `PUZZLE_LINK_35g_silent.txt` | 43345 | 46800 | 0.93 |
+| `PUZZLE_LINK_9x9.txt` | 746 | 600 | 1.24 |
+| `PUZZLE_LINK_44g.txt` | — | under 200 | the finder never searches |
+
+Each count is one app run; the probe logs every 200 calls, so both numbers on
+a row are read at the same mark. `gen_28g` fires cut most per node, at 1.88,
+and it is also one of the two hard fixtures from #166 — so the experiment runs
+on it and on the other hard fixture, `gen_24g`.
+
+**The four variants.** Each half behind its own constant in the component
+(`const CUT_STARVE` / `const CUT_STRAND`), `just time isofill --board <link>`,
+3 reps, non-deterministic solve off. Baseline is the committed component, which
+runs both halves. The rows the tool printed are copied as printed; the
+`[timeout]` and `∞` cells are hand-written, because a run where no rep ever
+gets a verdict has no median and `just time` prints no row at all.
+
+| date | app | board | baseline | candidate | ratio | row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, both | 3500ms | 3500ms | 1.00 | control |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, both, after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, starve only | 3500ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, starve only, after-logical | 0ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, strand only | 3400ms | 4400ms | 1.29 | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, strand only, after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, neither | 3500ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 28g, neither, after-logical | 0ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, both | 1600ms | 1600ms | 1.00 | control |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, both, after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, starve only | 1600ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, starve only, after-logical | 0ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, strand only | 1700ms | 4200ms | 2.47 | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, strand only, after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, neither | 1600ms | [timeout] | ∞ | FAIL |
+| 2026-08-29 | v2026.08.14-d47fc4b | 24g, neither, after-logical | 0ms | [timeout] | ∞ | FAIL |
+
+`[timeout]` is the driver waiting out its 300 s limit for the app's verdict
+with none printed, on every one of the 3 reps, so the row has no median and
+`time_example.py` stops rather than print a number it does not have. Those
+four cold rows were re-run one at a time to read the failure: on `gen_28g`
+the app reaches a first solution (18.8 s with starve only, 49.0 s with
+neither) and never finishes the uniqueness search; on `gen_24g` it does not
+even reach a first solution. Against a 1.6 s and a 3.5 s baseline that is at
+least an 85× and a 190× regression.
+
+**Verdict: SHIP both halves — the rule stays exactly as it is.** Every variant
+that drops a half is worse, and no variant clears the 0.9× bar on either row,
+so the two-row rule keeps the shipped rule. The two halves are not
+interchangeable: starve alone is *worse than strand alone*, and worse than
+useless — it times out where the whole rule takes seconds. Strand alone is the
+cheaper loss (1.29× and 2.47×), which says most of cut's value on these boards
+is keeping a digit's blobs joinable, not counting the cells left. Neither half
+carries the rule on its own.
+
+**This answers ISS's warning.** ISS dropped the general cut rule because it
+made their heuristic pick a worse tree. SudokuMaker's search does the
+opposite: cut is what keeps these boards inside the app's own time limit at
+all. Their verdict does not transfer (`docs/agents/iss.md`, "ISS's verdicts do
+not transfer"), and the question is settled here — do not re-run it.
+
+**Reproducing.** The shipped component carries no flags: both halves always
+run, and adding switches that are always true would be dead code. To re-run
+the experiment, add `const CUT_STARVE = true` and `const CUT_STRAND = true`
+near the top of `IsofillComponent.js`, guard the cut loop with
+`if (CUT_STARVE || CUT_STRAND)`, gate the starve walk on `CUT_STARVE` and the
+strand walk on `CUT_STRAND`, and flip them. Two harness boards isolate the halves: `cutStarve`
+has one placed cell, so the strand test (which needs two) never runs there, and
+on `cutStrand` the multi-source walk without the cut cell still reaches fifteen
+cells, so starve cannot fire. `just check` proves each board fires — it cannot
+prove which half fired it, since the shipped component runs both. That half was
+checked by hand, with the switches patched in: `CUT_STARVE = false` printed
+`cut starve fired: false | cut strand fired: true`, and `CUT_STRAND = false`
+printed the mirror image.
 
 ### Earlier rows (2026-08-27, #143 / #148 / #150, cold only)
 
