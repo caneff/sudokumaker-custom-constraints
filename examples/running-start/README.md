@@ -16,8 +16,11 @@ deleted before publishing.
 
 ## Files
 
-- `main.js` — the backend segment. One component per line, plus a pair
-  component for any two clues on opposite ends of one line.
+- `main.js` — the local backend segment: one line component per drawn group.
+- `main-global.js` — the global backend segment: builds all 4n frame lines
+  from the board size, then registers the same line component plus the
+  opposite-pair component below (it needs both ends of a line, which only a
+  full frame has). `PUZZLE_LINK.txt` and the sized variants ship this file.
 - `RunningStartComponent.js` — the per-line component. Both directions of
   propagation plus the final check.
 - `RunningStartPairComponent.js` — couples two clues on opposite ends of one
@@ -26,14 +29,14 @@ deleted before publishing.
 - `generate.py` — fresh grid, derived clues, uniqueness proof (OR-Tools).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link for the seed-104 grid. Open it
   to play the example.
-- `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main.js` and the component
-  files. Run it after changing any of them:
+- `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main-global.js` and the
+  component files. Run it after changing any of them:
   `uv run --with lzstring examples/running-start/build_link.py`.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt` — smaller Running Start puzzles.
 - `build_size.py` — builds the whole document from scratch for any grid size,
   no template needed. It generates a grid, derives every line's clue, carves a
-  unique puzzle (OR-Tools), and encodes the link. It shares `main.js` and the
-  component files, so a fix there flows to every size on the next run:
+  unique puzzle (OR-Tools), and encodes the link. It shares `main-global.js`
+  and the component files, so a fix there flows to every size on the next run:
   `uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2`
   `uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3`
   The three args are the grid size and the box height and width (`box_height *
@@ -43,11 +46,15 @@ deleted before publishing.
 
 ## Paste into SudokuMaker
 
-Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add two component
-segments: `RunningStartComponent` and `RunningStartPairComponent`. Each group is
-one line: cell 0 the outside clue, the rest the line read inward. When a puzzle
-clues both ends of a line, the backend adds one pair component for that line.
+To draw your own lines, add a custom local constraint and paste `main.js` as
+the main code, plus the `RunningStartComponent` segment. Each group is one
+line: cell 0 the outside clue, the rest the line read inward.
+
+To use the whole grid as an interactive-outside frame instead (see
+`../../docs/patterns.md`), add a custom global constraint and paste
+`main-global.js` as the main code, plus both component segments:
+`RunningStartComponent` and `RunningStartPairComponent`. main-global.js adds
+one pair component for every line clued on both ends.
 
 ## Why one self-contained component
 

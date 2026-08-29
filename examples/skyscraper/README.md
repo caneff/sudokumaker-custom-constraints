@@ -61,7 +61,7 @@ only when some full line assignment consistent with the candidates and both
 clues uses it. The true line is a permutation, so every one of its steps is a
 transition the DP takes and no true value is ever removed.
 
-**One `1` per side.** `main.js` adds a built-in
+**One `1` per side.** `main-global.js` adds a built-in
 `ExactDigitCountComponent(name, 1, 1, sideClues)` for each of the four sides. A
 clue of `1` means the cell next to it is the tallest building. Each side's
 nearest rank is a full row or column, so the tallest building sits under exactly
@@ -108,8 +108,12 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 
 ## Files
 
-- `main.js` — the backend segment. One line component per pair of opposite
-  clues, and one count component per side.
+- `main.js` — the local backend segment: one line component per pair of
+  opposite drawn clues.
+- `main-global.js` — the global backend segment: builds all 4n frame lines
+  from the board size, then registers the same paired line component plus
+  the one-1-per-side count component below (it needs a whole side, which
+  only a full frame has).
 - `SkyscraperLineComponent.js` — the line component: both clues, the whole
   line, and the final check.
 - `soundness-harness.mjs` — Node soundness fuzz for the line component.
@@ -122,8 +126,8 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 - `build_size.py` — builds the whole document for any grid size: a grid, the
   derived clues, a minimal set of interior givens and shown clues carved to a
   unique solution (OR-Tools), and the encoded link. Blank clues are the
-  interactive ones. It shares `main.js` and the component files, so a fix there
-  flows to every size on the next run:
+  interactive ones. It shares `main-global.js` and the component files, so a
+  fix there flows to every size on the next run:
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 4 2 2`
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 6 2 3`
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
@@ -146,11 +150,14 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   committed link instead. See `docs/real-app-timing.md`.
 ## Paste into SudokuMaker
 
-Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add one component
-segment: `SkyscraperLineComponent`. Each group is one
-line: cell 0 the outside clue, the rest the line read inward. Leave a clue cell
-blank (`given: false`) to make it interactive; mark it given to show it.
+To draw your own lines, add a custom local constraint and paste `main.js` as
+the main code, plus the `SkyscraperLineComponent` segment. Each group is one
+line: cell 0 the outside clue, the rest the line read inward. Leave a clue
+cell blank (`given: false`) to make it interactive; mark it given to show it.
+
+To use the whole grid as an interactive-outside frame instead (see
+`../../docs/patterns.md`), add a custom global constraint and paste
+`main-global.js` as the main code, plus `SkyscraperLineComponent`.
 
 ## Timing
 

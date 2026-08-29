@@ -9,23 +9,39 @@
 # Writes PUZZLE_LINK_<n>x<n>.txt and PUZZLE_LINK_<n>x<n>_original.txt next to
 # this script (PUZZLE_LINK.txt / PUZZLE_LINK_original.txt for n=9, the
 # plain-named pair) and checks that the only difference between the two is
-# the custom constraint's code. The original wrapper renames its component and
-# swaps the backend too, so it uses replace_constraint_code directly rather
-# than build_link.py's same-name-only --component contract.
+# the custom constraint's own configuration. The original wrapper renames its
+# component and swaps the backend too, so it uses replace_constraint_code
+# directly rather than build_link.py's same-name-only --component contract.
+# It also reads `input.groups` directly (never rewritten to build the frame
+# itself, unlike main-global.js), so the original variant gets the explicit
+# frame groups back via framebuild.frame_groups -- same board, same lines,
+# just handed to the wrapper the way it expects them.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-from framebuild import build_doc, check, load_gen
-from link_codec import encode_link
-from link_swap import check_and_write, replace_constraint_code
+from framebuild import build_doc, check, frame_groups, load_gen
+from link_codec import decode_puzzle, encode_link
+from link_swap import blanked, find_constraint, replace_constraint_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
 CONSTRAINT_NAME = "Skyscraper Lines"
+
+
+def frame_only(doc):
+    """doc with the constraint's own configuration (code and input) cleared,
+    so the improved (global, no input) and original (legacy, explicit
+    groups) variants compare equal everywhere except that -- the same board,
+    givens, and clues either way."""
+    d = blanked(doc, CONSTRAINT_NAME)
+    lc = find_constraint(d, CONSTRAINT_NAME)
+    lc["definition"]["input"], lc["input"] = [], {}
+    return d
+
 
 if __name__ == "__main__":
     n = int(sys.argv[1])
@@ -55,9 +71,19 @@ if __name__ == "__main__":
             }
         ],
     )
+    olc = find_constraint(original, CONSTRAINT_NAME)
+    olc["definition"]["input"] = [
+        {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
+    ]
+    olc["input"] = {"groups": frame_groups(n, lines)}
 
+    assert frame_only(improved) == frame_only(original), (
+        "frames differ beyond the constraint's own code/input"
+    )
     out_name = (
         "PUZZLE_LINK_original.txt" if n == 9 else f"PUZZLE_LINK_{n}x{n}_original.txt"
     )
-    link = check_and_write(improved, original, CONSTRAINT_NAME, HERE / out_name)
+    link = encode_link(original)
+    assert decode_puzzle(link) == original, "link does not round-trip"
+    (HERE / out_name).write_text(link + "\n")
     print(f"wrote {out_name} ({len(link)} chars) — same puzzle, original wrapper code")

@@ -19,6 +19,7 @@ HERE = pathlib.Path(__file__).parent
 REQUIRED = [
     "README.md",
     "main.js",
+    "main-global.js",
     "FooComponent.js",
     "build_link.py",
     "build_link.test.py",
@@ -30,18 +31,21 @@ REQUIRED = [
 
 
 @contextlib.contextmanager
-def example(files=REQUIRED, extra_links=(), name="widget"):
+def example(files=REQUIRED, extra_links=(), name="widget", contents=None):
     """A temp examples/-shaped tree with one example dir, `name`.
 
     Yields (root, example_dir). `files` are the example's own files;
-    `extra_links` are extra PUZZLE_LINK*.txt names to add on top.
+    `extra_links` are extra PUZZLE_LINK*.txt names to add on top. `contents`
+    overrides one file's text (default "x") -- used by the lane tests to put
+    a real marker in main.js or main-global.js.
     """
+    contents = contents or {}
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         d = root / name
         d.mkdir()
         for f in files:
-            (d / f).write_text("x")
+            (d / f).write_text(contents.get(f, "x"))
         for link in extra_links:
             (d / link).write_text("x")
         yield root, d
@@ -67,6 +71,38 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1, violations
         assert "*Component.js" in violations[0]
+
+    # missing main-global.js fails and names it
+    missing = [f for f in REQUIRED if f != "main-global.js"]
+    with example(files=missing) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "widget" in violations[0]
+        assert "main-global.js" in violations[0]
+
+    # a no-local-global-split example (isofill, numbered-rooms-lines) needs
+    # no main-global.js
+    for name in ("isofill", "numbered-rooms-lines"):
+        with example(files=missing, name=name) as (root, _):
+            violations = check_tree(root)
+            assert violations == [], (name, violations)
+
+    # main.js building frame lines (reading the board via getCellAt) is a
+    # lane violation -- frame building belongs to main-global.js only
+    with example(contents={"main.js": "puzzle.getCellAt(0, 0)"}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "main.js" in violations[0] and "frame" in violations[0]
+
+    # main-global.js reading input.groups is a lane violation -- the drawn
+    # groups belong to main.js only
+    with example(contents={"main-global.js": "input.groups.map(g => g)"}) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "main-global.js" in violations[0] and "input.groups" in violations[0]
 
     # a hyphenated, seed-bearing, non-square-size, unknown-tag, or
     # wrong-order-tag link name each fails, naming the bad file
