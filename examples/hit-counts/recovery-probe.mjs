@@ -4,8 +4,9 @@
 //   node examples/hit-counts/recovery-probe.mjs            # gen_6x6.json
 //   node examples/hit-counts/recovery-probe.mjs gen_9x9.json
 //
-// It runs the ACTUAL components — the same main.js wiring SudokuMaker runs — over
-// a generated puzzle's start state, to a propagation fixpoint. The one thing the
+// It runs the ACTUAL components — the same main-global.js wiring SudokuMaker
+// runs on the shipped (frame) board — over a generated puzzle's start state,
+// to a propagation fixpoint. The one thing the
 // real solver adds that these files do not is the built-in all-different, so we
 // stand in a Régin-strength (GAC) all-different over every row, column, and box.
 // That is the honest floor: the matching bound must earn its keep ON TOP of an
@@ -34,7 +35,7 @@ import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
 } from '../_shared/recovery-lib.mjs'
-import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { frameGeometry, frameMock } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const file = process.argv[2] || 'gen_6x6.json'
@@ -47,7 +48,7 @@ installGlobals(0, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
 // ---- geometry (mirrors build_size.py) ----
-const { interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
+const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
@@ -67,14 +68,19 @@ function freshState () {
   }
 }
 
-// ---- load the real components + the real main.js wiring ----
+// ---- load the real components + the real main-global.js wiring ----
+// main-global.js builds the frame itself (no groups input), so it needs the
+// puzzle mock's getCellAt/spec.size.width -- frameMock ties those to the
+// same W/idx this probe already uses, so main-global.js's own frame-building
+// produces the identical `groups` list computed above.
 const { read } = makeIo(HERE)
-const mainSrc = read('main.js')
+const mainSrc = read('main-global.js')
 function buildComps () {
   return loadComponents({
     here: HERE,
     mainSrc,
-    input: { groups },
+    input: {},
+    puzzleExtra: frameMock(W, idx),
     files: [
       { file: 'HitCountsComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsComponent' },
       { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },

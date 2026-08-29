@@ -1,11 +1,11 @@
 # Two jobs in one script.
 #
 # No args: rebuild PUZZLE_LINK.txt from scratch from the current source files.
-# The grid, clue ring, given flags, line groups, regions, cages, and cosmetic
-# lines never change for this example; they live in gen.json (a
-# document decoded once from a known-good link, with the code fields emptied).
-# Only the embedded code changes when you edit main.js or a component, so this
-# path injects the current files and re-encodes.
+# The grid, clue ring, given flags, regions, cages, and cosmetic lines never
+# change for this example; they live in gen.json (a document decoded once
+# from a known-good link, with the code fields emptied). Only the embedded
+# code changes when you edit main-global.js or a component, so this path
+# injects the current files and re-encodes.
 #
 #   uv run --with lzstring examples/running-start/build_link.py
 #
@@ -54,8 +54,10 @@ def build(component_path, out_path):
 
 
 def build_from_template():
-    """Rebuild the whole link from gen.json, main.js, and both
-    component files -- the source of truth for PUZZLE_LINK.txt."""
+    """Rebuild the whole link from gen.json, main-global.js, and both
+    component files -- the source of truth for PUZZLE_LINK.txt. The shipped
+    board draws no groups: main-global.js builds all 4n frame lines itself
+    (#235), so the constraint's input is emptied here too."""
     doc = json.loads((HERE / "gen.json").read_text())
     # the template was decoded from a finished board, so it carries the whole
     # solution and every hidden clue as non-given values. Same rule as
@@ -69,7 +71,7 @@ def build_from_template():
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
         if c.get("type") == 1000 and d.get("name") == "Running Start Lines":
-            d["backend"]["code"] = minify_js((HERE / "main.js").read_text())
+            d["backend"]["code"] = minify_js((HERE / "main-global.js").read_text())
             d["components"] = [
                 {
                     "type": "code",
@@ -78,6 +80,8 @@ def build_from_template():
                 }
                 for f in COMPONENTS
             ]
+            d["input"] = []
+            c["input"] = {}
             break
     else:
         raise SystemExit("template is missing the 'Running Start Lines' constraint")
@@ -119,9 +123,9 @@ def check(link, doc):
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
     assert rs["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main.js").read_text()
+        (HERE / "main-global.js").read_text()
     )
-    assert len(rs["input"]["groups"]) == 36, "expected 36 line groups"
+    assert rs["input"] == {}, "the global board reads no drawn groups"
 
 
 if __name__ == "__main__":

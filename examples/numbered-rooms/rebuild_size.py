@@ -1,19 +1,20 @@
 # Rebuild a sized Numbered Rooms link (PUZZLE_LINK_<n>x<n>.txt) from its
 # committed gen_<n>x<n>.json, with no fresh CP-SAT search: the grid, givens,
 # and shown clues come straight from the recorded seed (framebuild.load_gen +
-# build_doc); only the constraint code (main.js, NumberedRoomsComponent.js)
-# and the comment always match whatever is in the repo right now, so a sized
-# link never carries a component snapshot from whenever its search last ran
-# (#217). Mirrors skyscraper/build_original.py, minus the "original"-wrapper
-# swap that script also does -- numbered-rooms has its own build_original.py
-# for that, on a different (hand-built) board.
+# build_doc); only the constraint's own configuration (code, input -- main.js
+# vs main-global.js, #235) and the comment always match whatever is in the
+# repo right now, so a sized link never carries a component snapshot from
+# whenever its search last ran (#217). Mirrors skyscraper/build_original.py,
+# minus the "original"-wrapper swap that script also does -- numbered-rooms
+# has its own build_original.py for that, on a different (hand-built) board.
 #
 #   uv run --with ortools --with lzstring examples/numbered-rooms/rebuild_size.py 4
 #   uv run --with ortools --with lzstring examples/numbered-rooms/rebuild_size.py 6
 #   uv run --with ortools --with lzstring examples/numbered-rooms/rebuild_size.py 9
 #
 # Checks the rebuilt link decodes to the same grid, givens, and shown clues as
-# the one it replaces -- only the constraint code and comment may differ.
+# the one it replaces -- only the constraint's own code/input and the comment
+# may differ.
 
 import pathlib
 import sys
@@ -22,16 +23,18 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from build_size import SPEC
 from framebuild import build_doc, check, load_gen
 from link_codec import decode_puzzle, encode_link
-from link_swap import blanked
+from link_swap import blanked, find_constraint
 
 HERE = pathlib.Path(__file__).parent
 
 
 def frame_only(doc, constraint_name):
-    """doc with the named constraint's code and the puzzle comment cleared,
-    so two variants that differ only in code/comment compare equal -- the
-    same board, givens, and shown clues either way."""
+    """doc with the named constraint's own configuration (code and input)
+    and the puzzle comment cleared, so two variants that differ only there
+    compare equal -- the same board, givens, and shown clues either way."""
     d = blanked(doc, constraint_name)
+    lc = find_constraint(d, constraint_name)
+    lc["definition"]["input"], lc["input"] = [], {}
     d["puzzle"]["comment"] = ""
     return d
 

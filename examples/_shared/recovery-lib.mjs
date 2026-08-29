@@ -91,12 +91,16 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //     is the constructor name main.js expects in scope (e.g.
 //     'HitCountsComponent').
 //   mainSrc: the text of main.js.
-//   input: the object main.js reads as `input` (its groups/geometry).
+//   input: the object main.js reads as `input` (its groups/geometry). Empty
+//     for main-global.js, which builds its own frame instead of reading it.
 //   builtins: in-memory modules for the built-in components main.js constructs
 //     but that ship with SudokuMaker, not as example files — each is
 //     { ctorName, mod } where mod supplies setParams/update (e.g.
 //     ExactDigitCountComponent). They join the file-backed ctors in scope.
-export function loadComponents ({ here, files, mainSrc, input, builtins = [] }) {
+//   puzzleExtra: extra methods the registrar answers as `puzzle` alongside
+//     addConstraintComponent — main-global.js's frame-building needs
+//     getCellAt and spec.size.width (see frame-geometry.mjs's frameMock).
+export function loadComponents ({ here, files, mainSrc, input, builtins = [], puzzleExtra = {} }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
@@ -105,7 +109,7 @@ export function loadComponents ({ here, files, mainSrc, input, builtins = [] }) 
     return inst
   }
   const comps = []
-  const registrar = { addConstraintComponent: inst => comps.push(inst) }
+  const registrar = { addConstraintComponent: inst => comps.push(inst), ...puzzleExtra }
   const fromFiles = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
   const ctors = [...fromFiles, ...builtins]
   const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func

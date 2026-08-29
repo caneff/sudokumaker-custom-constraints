@@ -19,6 +19,14 @@ REQUIRED_FILES = [
     "PUZZLE_LINK.txt",
 ]
 
+# An example whose constraint has no local/global duality ships main.js
+# alone: isofill is a whole-grid constraint with no drawn groups at all
+# (spec #232, Out of Scope), and numbered-rooms-lines is a single,
+# drawn-only variant pending its fold into numbered-rooms (spec #232
+# decision 26, a separate ticket). Every other example needs both files
+# (#194, #235).
+NO_LOCAL_GLOBAL_SPLIT = {"isofill", "numbered-rooms-lines"}
+
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
@@ -29,6 +37,24 @@ LINK_RE = re.compile(
     + "".join(f"(_{t})?" for t in TAGS)
     + r"\.txt$"
 )
+
+
+def check_lanes(example_dir):
+    """`main.js` (the local, drawn-groups paste target) must never build the
+    frame itself; `main-global.js` (the whole-grid paste target) must never
+    read the drawn groups. See docs/example-layout.md."""
+    name = example_dir.name
+    violations = []
+
+    main_js = example_dir / "main.js"
+    if main_js.is_file() and "getCellAt(" in main_js.read_text():
+        violations.append(f"{name}: main.js builds frame lines (calls getCellAt)")
+
+    main_global_js = example_dir / "main-global.js"
+    if main_global_js.is_file() and "input.groups" in main_global_js.read_text():
+        violations.append(f"{name}: main-global.js reads input.groups")
+
+    return violations
 
 
 def check_example(example_dir):
@@ -43,6 +69,14 @@ def check_example(example_dir):
 
     if not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
+
+    if (
+        name not in NO_LOCAL_GLOBAL_SPLIT
+        and not (example_dir / "main-global.js").is_file()
+    ):
+        violations.append(f"{name}: missing required file main-global.js")
+
+    violations.extend(check_lanes(example_dir))
 
     violations.extend(
         f"{name}: link name {link.name} does not match "

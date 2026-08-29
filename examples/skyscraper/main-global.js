@@ -1,0 +1,71 @@
+//! Skyscrapers with interactive outside clues, GLOBAL variant. No groups are
+//! drawn: build all 4n frame lines from the board size -- interior n = W-2
+//! ringed by one clue cell per side. `puzzle.getCellAt(row, col)` =
+//! row*W+col [verified 2026-08-28 via a [probe] log in the app]. Then
+//! register the same paired line component as main.js, plus the one
+//! component that only makes sense across a whole side of the frame: the
+//! one-1-per-side count.
+//!
+//! The two groups that read one line from opposite ends share one
+//! SkyscraperLineComponent, which reads both clues and the whole line
+//! together — the built-in SkyscraperComponent only fires once the clue
+//! holds a value and never reads the clue off the line, so it cannot help an
+//! interactive clue.
+function frameGroups () {
+  const W = puzzle.spec.size.width
+  const n = W - 2
+  const at = (r, c) => puzzle.getCellAt(r, c)
+  const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
+  const groups = []
+  for (let i = 1; i <= n; i++) {
+    groups.push({ cells: [at(i, 0), ...range(1, n).map(c => at(i, c))] }) // L
+    groups.push({ cells: [at(i, W - 1), ...range(n, 1).map(c => at(i, c))] }) // R
+    groups.push({ cells: [at(0, i), ...range(1, n).map(r => at(r, i))] }) // T
+    groups.push({ cells: [at(W - 1, i), ...range(n, 1).map(r => at(r, i))] }) // B
+  }
+  return groups
+}
+
+const groups = frameGroups().map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
+
+function sameReversed (a, b) {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[a.length - 1 - i]) return false
+  return true
+}
+const paired = new Set()
+for (let i = 0; i < groups.length; i++) {
+  for (let j = i + 1; j < groups.length; j++) {
+    if (!sameReversed(groups[i].line, groups[j].line)) continue
+    const name = `skyscraper line ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    puzzle.addConstraintComponent(
+      new SkyscraperLineComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
+    paired.add(i).add(j)
+  }
+}
+// Every line needs both end clues; a lone clue would get no component and no
+// error, so fail loud instead.
+for (let i = 0; i < groups.length; i++) {
+  if (!paired.has(i)) throw new Error(`skyscraper: clue ${helpers.naming.getCellName(groups[i].clue)} has no opposite clue on its line`)
+}
+
+// Exactly one clue of 1 per side. A clue of 1 means the cell next to it is the
+// tallest building. Each side's nearest rank is a house (a full row or column),
+// so the tallest building sits under exactly one clue on that side. The built-in
+// count constraint states it directly, coupling all the clues on a side.
+const W = groups[0].line.length + 2 // board is the n x n grid plus a clue ring
+function side (ci) {
+  if (ci < W) return 'T'
+  if (ci >= W * (W - 1)) return 'B'
+  if (ci % W === 0) return 'L'
+  return 'R'
+}
+const sides = {}
+for (const g of groups) {
+  const s = side(g.clue)
+  if (!sides[s]) sides[s] = []
+  sides[s].push(g.clue)
+}
+for (const s of Object.keys(sides)) {
+  puzzle.addConstraintComponent(new ExactDigitCountComponent(`one 1 on side ${s}`, 1, 1, sides[s]))
+}

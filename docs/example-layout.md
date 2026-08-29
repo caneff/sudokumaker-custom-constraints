@@ -20,6 +20,12 @@ so a missing required file or a bad link name fails the gate.
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
 
+`main-global.js` is required on every example except one with no local/global
+duality: `isofill` (a whole-grid constraint, no drawn groups at all) and
+`numbered-rooms-lines` (a single, drawn-only variant pending its fold into
+`numbered-rooms`) ship `main.js` alone. `examples/_shared/check_layout.py`
+holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
+
 ## Optional files
 
 Run when present, skipped with a note when absent:

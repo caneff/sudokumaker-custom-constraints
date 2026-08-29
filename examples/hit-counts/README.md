@@ -18,7 +18,11 @@ no ordering. That makes Hit Counts simpler than Running Start.
 
 ## Files
 
-- `main.js` — the backend segment. One component per clued line.
+- `main.js` — the local backend segment: one line component per drawn group.
+- `main-global.js` — the global backend segment: builds all 4n frame lines
+  from the board size, then registers the line component plus the
+  opposite-pair and side-sum components below (they need both ends of a
+  line, or a whole side, which only a full frame has).
 - `HitCountsComponent.js` — the per-line component. It bounds the clue from the
   line and forces or forbids hits when the clue's range demands it.
 - `SideSumComponent.js` — the per-side component. The `n` clues on one side sum
@@ -59,7 +63,7 @@ sits there exactly once. Every column gives one hit, so the left clues sum to
 
 This couples every clue on a side: knowing `n - 1` of them fixes the last, and
 partial knowledge tightens the rest. `SideSumComponent` propagates it by bounds.
-`main.js` groups the clues by side using the step between a line's first two
+`main-global.js` groups the clues by side using the step between a line's first two
 cells (`+1` left, `-1` right, `+W` top, `-W` bottom): same step, same side. It
 fires only on a full side of `n` clues — the sum is `n` exactly only when every
 line on the side is present, which the frame guarantees.
@@ -92,8 +96,8 @@ The cut has real teeth at the cap. When `A + B` is forced to `cap`, every cell
 that can still hit must hit. So each such cell is pinned to just `{j + 1, n - j}`
 (a single value at the odd-`n` center); a cell that can hit neither is a forced
 miss and is left alone. That fires from the two clues alone, before any interior
-digit is known — a deduction no single-line component can reach. `main.js` pairs
-two clues whose lines are the exact reverse of each other.
+digit is known — a deduction no single-line component can reach. `main-global.js`
+pairs two clues whose lines are the exact reverse of each other.
 
 Unlike the side sum, this coupling is not a tautology: it constrains the
 interior digits directly, not just the hidden clues.
@@ -114,10 +118,14 @@ holding its own distance.
 
 ## Paste into SudokuMaker
 
-Build the interactive-outside frame (see `../../docs/patterns.md`), add a custom
-local constraint, and paste `main.js` as the main code. Add three component
-segments, `HitCountsComponent`, `SideSumComponent`, and `HitCountsPairComponent`.
-Each group is one line: cell 0 the outside clue, the rest the line read inward.
+To draw your own lines, add a custom local constraint and paste `main.js` as
+the main code, plus the `HitCountsComponent` segment. Each group is one line:
+cell 0 the outside clue, the rest the line read inward.
+
+To use the whole grid as an interactive-outside frame instead (see
+`../../docs/patterns.md`), add a custom global constraint and paste
+`main-global.js` as the main code, plus all three component segments:
+`HitCountsComponent`, `SideSumComponent`, and `HitCountsPairComponent`.
 
 ## What the component deduces
 
@@ -143,7 +151,7 @@ these puzzles, so the component keeps the naive bound. `recovery-probe.mjs` is h
 we found that out; it is worth keeping as the way to test the next candidate
 deduction.
 
-The probe runs the real components — the same `main.js` wiring the app runs — to a
+The probe runs the real components — the same `main-global.js` wiring the app runs — to a
 propagation fixpoint, with a Régin-strength (GAC) all-different over every row,
 column, and box as the floor. It runs three ways and diffs what propagation
 recovers: the floor alone (no hit-counts components — the baseline before any

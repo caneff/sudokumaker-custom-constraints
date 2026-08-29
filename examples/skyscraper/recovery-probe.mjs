@@ -5,14 +5,14 @@
 //   node examples/skyscraper/recovery-probe.mjs gen_9x9.json
 //   node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, count nodes
 //
-// It runs the ACTUAL components — the same main.js wiring SudokuMaker runs — over a
-// generated puzzle's start state, on top of a Régin-strength (GAC) all-different
-// floor over every row, column, and box. That floor is the honest baseline: any
-// skyscraper deduction must earn its keep ON TOP of the all-different SudokuMaker
-// already runs.
+// It runs the ACTUAL components — the same main-global.js wiring SudokuMaker
+// runs on the shipped (frame) board — over a generated puzzle's start state, on
+// top of a Régin-strength (GAC) all-different floor over every row, column, and
+// box. That floor is the honest baseline: any skyscraper deduction must earn its
+// keep ON TOP of the all-different SudokuMaker already runs.
 //
 // TWO wirings, same start state:
-//   - 'ours'     — main.js: one SkyscraperLineComponent per line, reading BOTH
+//   - 'ours'     — main-global.js: one SkyscraperLineComponent per line, reading BOTH
 //                  end clues and the line together (deduces blank clues), and
 //                  one ExactDigitCountComponent per side (one 1 per side).
 //   - 'original' — the wrapper ChinStrap shipped: one per-line component that does
@@ -42,7 +42,7 @@ import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
 } from '../_shared/recovery-lib.mjs'
-import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { frameGeometry, frameMock } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const file = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'gen_6x6.json'
@@ -57,7 +57,7 @@ installGlobals(1, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
 // ---- geometry (mirrors build_size.py and the Hit Counts probe) ----
-const { interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
+const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
@@ -79,10 +79,14 @@ function freshState () {
 
 // ---- the two wirings ----
 const { read } = makeIo(HERE)
-const mainSrc = read('main.js')
+// main-global.js builds the frame itself (no groups input), so it needs the
+// puzzle mock's getCellAt/spec.size.width -- frameMock ties those to the same
+// W/idx this probe already uses, so main-global.js's own frame-building
+// produces the identical `groups` list computed above.
+const mainSrc = read('main-global.js')
 
 // The built-in count constraint SudokuMaker ships: `value` appears exactly `count`
-// times among `cells`. Modelled here so main.js can construct it.
+// times among `cells`. Modelled here so main-global.js can construct it.
 const exactDigitCount = {
   setParams (inst, value, count, cells) { inst.value = value; inst.count = count; inst.cells = cells },
   * update (inst, puzzle) {
@@ -105,7 +109,8 @@ function buildOurs () {
   return loadComponents({
     here: HERE,
     mainSrc,
-    input: { groups },
+    input: {},
+    puzzleExtra: frameMock(W, idx),
     files: [
       { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
     ],

@@ -79,6 +79,34 @@ def make_lines(n):
     return lines
 
 
+def frame_groups(n, lines):
+    """The 4n drawn-group shape (clue cell, then line cells inward) for the n
+    x n frame `build_doc` builds. `build_doc` itself no longer embeds this --
+    main-global.js builds the frame at solve time instead (#235) -- but a
+    legacy wrapper that still reads `input.groups` directly (skyscraper's and
+    numbered-rooms's original/main.js) needs it to keep working on the same
+    board. Same cell order as build_doc's old embedding, and as the JS
+    frameGroups() every main-global.js carries."""
+    W = n + 2
+
+    def idx(r, c):
+        return r * W + c
+
+    def group(key):
+        ci = idx(*ring_cell(f"{key[0]}{key[1]}", W))
+        line = [idx(r + 1, c + 1) for (r, c) in lines[key]]
+        return {"cells": [ci, *line], "value": ""}
+
+    groups = []
+    for r in range(n):
+        groups.append(group(("L", r)))
+        groups.append(group(("R", r)))
+    for c in range(n):
+        groups.append(group(("T", c)))
+        groups.append(group(("B", c)))
+    return groups
+
+
 def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     """True when the interior has exactly one solution. `post_clue` is a
     Spec's cp_sat_clue_fn; unique() needs nothing else off the Spec, so a
@@ -219,21 +247,9 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
     ]
     cage_style = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
 
-    # line groups: clue cell then line read inward
-    def group(key):
-        ci = ring_index(key)
-        line = [idx(r + 1, c + 1) for (r, c) in lines[key]]
-        return {"cells": [ci, *line], "value": ""}
-
-    groups = []
-    for r in range(n):
-        groups.append(group(("L", r)))
-        groups.append(group(("R", r)))
-    for c in range(n):
-        groups.append(group(("T", c)))
-        groups.append(group(("B", c)))
-
-    backend_code = minify_js((spec.dir / "main.js").read_text())
+    # No drawn groups: this is the global board, so main-global.js builds all
+    # 4n frame lines itself from the grid at solve time (docs/example-layout.md).
+    backend_code = minify_js((spec.dir / "main-global.js").read_text())
     components = [
         {"type": "code", "name": f[:-3], "code": minify_js((spec.dir / f).read_text())}
         for f in spec.components
@@ -257,13 +273,11 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
             "type": 1000,
             "definition": {
                 "name": spec.lines_name,
-                "input": [
-                    {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
-                ],
+                "input": [],
                 "backend": {"type": "code", "code": backend_code},
                 "components": components,
             },
-            "input": {"groups": groups},
+            "input": {},
             "style": {},
         },
         {
@@ -308,9 +322,9 @@ def check(spec, link, doc, n):
         for c in doc["puzzle"]["constraints"]
         if c.get("definition", {}).get("name") == spec.lines_name
     )
-    assert len(lc["input"]["groups"]) == 4 * n, f"expected {4 * n} groups"
+    assert lc["input"] == {}, "the global board reads no drawn groups"
     assert lc["definition"]["backend"]["code"] == minify_js(
-        (spec.dir / "main.js").read_text()
+        (spec.dir / "main-global.js").read_text()
     )
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit

@@ -1,10 +1,13 @@
-//! Skyscrapers with interactive outside clues. Each group is one clued line:
-//! cell 0 is the outside clue cell, the rest is the line read inward from the
-//! cell next to the clue. The two groups that read one line from opposite ends
-//! share one SkyscraperLineComponent, which reads both clues and the whole line
-//! together — the built-in SkyscraperComponent only fires once the clue holds a
-//! value and never reads the clue off the line, so it cannot help an interactive
-//! clue.
+//! Skyscrapers with interactive outside clues, LOCAL variant. Each group is
+//! one clued line: cell 0 is the outside clue cell, the rest is the line
+//! read inward from the cell next to the clue. The two groups that read one
+//! line from opposite ends share one SkyscraperLineComponent, which reads
+//! both clues and the whole line together — the built-in SkyscraperComponent
+//! only fires once the clue holds a value and never reads the clue off the
+//! line, so it cannot help an interactive clue.
+//!
+//! The one-1-per-side count needs a whole side of clues, which only exists
+//! once every frame line is drawn — see main-global.js.
 
 const groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
 
@@ -27,25 +30,4 @@ for (let i = 0; i < groups.length; i++) {
 // error, so fail loud instead.
 for (let i = 0; i < groups.length; i++) {
   if (!paired.has(i)) throw new Error(`skyscraper: clue ${helpers.naming.getCellName(groups[i].clue)} has no opposite clue on its line`)
-}
-
-// Exactly one clue of 1 per side. A clue of 1 means the cell next to it is the
-// tallest building. Each side's nearest rank is a house (a full row or column),
-// so the tallest building sits under exactly one clue on that side. The built-in
-// count constraint states it directly, coupling all the clues on a side.
-const W = groups[0].line.length + 2 // board is the n x n grid plus a clue ring
-function side (ci) {
-  if (ci < W) return 'T'
-  if (ci >= W * (W - 1)) return 'B'
-  if (ci % W === 0) return 'L'
-  return 'R'
-}
-const sides = {}
-for (const g of groups) {
-  const s = side(g.clue)
-  if (!sides[s]) sides[s] = []
-  sides[s].push(g.clue)
-}
-for (const s of Object.keys(sides)) {
-  puzzle.addConstraintComponent(new ExactDigitCountComponent(`one 1 on side ${s}`, 1, 1, sides[s]))
 }

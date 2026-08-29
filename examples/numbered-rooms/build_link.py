@@ -12,8 +12,10 @@
 # backend and any other component are untouched.
 #
 # --global drops the drawn groups and makes the constraint global: the
-# definition's input list becomes [] and main.js builds the 4n frame lines
-# itself. Omit it to keep the drawn (local) groups.
+# definition's input list becomes [] and the backend switches to
+# main-global.js, which builds the 4n frame lines itself. Pass --backend to
+# swap in a different file instead. Omit --global to keep the drawn (local)
+# groups and main.js.
 
 import argparse
 import copy
@@ -37,11 +39,14 @@ TIMED_COMPONENT = "NumberedRoomsComponent"
 
 def build(component_path, out_path, backend_path=None, global_mode=False):
     """Swap in the component's code; with backend_path, the main code too.
-    global_mode strips the groups so the main code builds the frame itself."""
+    global_mode strips the groups and, absent an explicit backend_path,
+    swaps in main-global.js -- the file that builds the frame itself."""
     component_path = pathlib.Path(component_path)
     code = minify_js(component_path.read_text())
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
+    if global_mode and backend_path is None:
+        backend_path = HERE / "main-global.js"
     if backend_path is not None:
         backend = minify_js(pathlib.Path(backend_path).read_text())
         doc = replace_constraint_code(doc, CONSTRAINT_NAME, backend_code=backend)

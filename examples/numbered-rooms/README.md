@@ -80,13 +80,14 @@ per-line component below carries the whole example.
   (`rebuild_size.py`, args: `n`) loads `gen_<n>x<n>.json` and calls the shared
   frame's `build_doc` directly, so the link's grid, givens, and shown clues
   stay exactly what the seed produced and only the embedded code changes.
-- `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
+- `main.js`, `main-global.js`, `NumberedRoomsComponent.js` — paste
+  `NumberedRoomsComponent.js` plus one main file into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
-  `main.js` runs in either mode: with a `groups` input it uses the drawn
-  lines (local); with the input list empty it builds all 4n frame lines from
-  the board size itself (global — no lines to draw).
-- `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with the
-  constraint switched to global. Same solve, no drawn groups.
+  `main.js` (local) reads the drawn `groups` input; `main-global.js`
+  (global) builds all 4n frame lines from the board size itself instead —
+  no lines to draw.
+- `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with
+  `main-global.js` as the backend and no drawn groups. Same solve.
 - `original/` — the shipped wrapper (`main.js`, `CustomIndexComponent.js`),
   kept for reference and used by `build_original.py`.
 - `soundness-harness.mjs` — proves `update` removes no true value (405k fuzz
@@ -118,7 +119,8 @@ per-line component below carries the whole example.
   `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
   Add `--backend main.js` to swap the main code in as well (the committed
   link carries both, and `build_link.test.py` checks both round-trip).
-  Add `--global` to drop the drawn groups and make the constraint global.
+  Add `--global` to drop the drawn groups and switch the backend to
+  main-global.js.
   See `docs/real-app-timing.md`.
 
 ## Run
