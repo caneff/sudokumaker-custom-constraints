@@ -94,6 +94,13 @@ unsoundness. We measured the opposite: cut is what closes the shipped instance
 different boards. Worth knowing the rule is heuristic-fragile, not worth
 re-litigating.
 
+**Settled (#169).** Each half of cut — starve and strand — was timed alone on
+the fixture where cut fires most per node, and both halves ship: every variant
+that drops a half is worse, and starve alone runs the app past its own time
+limit on a board the whole rule closes in 3.5 s. ISS's warning does not
+describe SudokuMaker's search. Rows in `examples/isofill/README.md` § Cut
+split; do not re-run this.
+
 Note the phrase "computable in one articulation-point pass" — see §4.3 below.
 
 ### 2.3 The border rule — new to us `[source]`

@@ -163,11 +163,23 @@ const linkedOk = !linked.getCandidates(10).has(1)
 const walled = once(bent, (c, v) => (c === 0 || c === 55 ? [0] : [45, 54, 56, 65].includes(c) ? [1] : ALL))
 const walledOk = walled.getCandidates(0).size === 0
 
-// ---- Cut: digit 0 placed at cell 0, allowed in row 0 and cell 10 (eleven
-// cells). Without cell 1 the walk holds two cells, so cell 1 must be 0;
-// without cell 10 it still holds ten, so cell 10 stays open ----
-const cut = once(bent, (c, v) => (c === 0 ? [0] : c <= 10 ? ALL : ALL.slice(1)))
-const cutOk = cut.getCandidates(1).size === 1 && cut.getCandidates(1).has(0) && cut.getCandidates(10).size > 1
+// ---- Cut, the starve half alone: digit 0 placed at cell 0, allowed in row 0
+// and cell 10 (eleven cells). Without cell 1 the walk holds two cells, so cell
+// 1 must be 0; without cell 10 it still holds ten, so cell 10 stays open. One
+// placed cell means the strand test never runs here, so starve carries the
+// board on its own ----
+const cutStarve = once(bent, (c, v) => (c === 0 ? [0] : c <= 10 ? ALL : ALL.slice(1)))
+const cutStarveOk = cutStarve.getCandidates(1).size === 1 && cutStarve.getCandidates(1).has(0) && cutStarve.getCandidates(10).size > 1
+
+// ---- Cut, the strand half alone: digit 0 placed at cells 0 and 2, allowed in
+// row 0 and in the six cells of column 0 below it. Cell 1 is the only cell
+// joining the two placed cells, so without it cell 2 is stranded and cell 1
+// must be 0. Without cell 1 the walk from the placed cells still reaches
+// fifteen cells, so the starve test alone would leave cell 1 open. Cell 5 is on
+// the walk and is no cut either way ----
+const strandOpen = [1, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60]
+const cutStrand = once(bent, (c, v) => (c === 0 || c === 2 ? [0] : strandOpen.includes(c) ? ALL : ALL.slice(1)))
+const cutStrandOk = cutStrand.getCandidates(1).size === 1 && cutStrand.getCandidates(1).has(0) && cutStrand.getCandidates(5).size > 1
 
 // ---- Budget: rows 0-1 (twenty cells) allow only digits 1 and 2 while every
 // other row is fixed, so digit 2 is complete and digit 1 can take ten cells:
@@ -367,8 +379,8 @@ console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
 
 console.log('validate:', validateOk)
 console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| differential:', diffOk, '| cut fired:', cutOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| differential:', diffOk, '| cut starve fired:', cutStarveOk, '| cut strand fired:', cutStrandOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && diffOk && cutOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && diffOk && cutStarveOk && cutStrandOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

@@ -5,6 +5,8 @@
 #
 #   uv run --with lzstring examples/_shared/count_calls.py skyscraper \
 #       examples/skyscraper/SkyscraperLineComponent.js [--ring-clues]
+#   uv run --with lzstring examples/_shared/count_calls.py isofill \
+#       /tmp/probe/IsofillComponent.js --board PUZZLE_LINK_28g.txt
 #
 # Makes a probe copy of the component whose `update` logs
 # `[probe] calls=N` every 500 calls, builds the example's same-board link from
@@ -12,6 +14,7 @@
 # runs app-solve.mjs once; the driver relays the `[probe]` lines. Prints the
 # final count and the app's time. See docs/real-app-timing.md.
 
+import argparse
 import pathlib
 import subprocess
 import sys
@@ -28,7 +31,7 @@ COUNTER = (
 )
 
 
-def main(example, component, ring_clues):
+def main(example, component, ring_clues, board=None):
     component = pathlib.Path(component)
     src = component.read_text()
     if HOOK not in src:
@@ -38,7 +41,7 @@ def main(example, component, ring_clues):
         probe = tmp / component.name  # build_link.py swaps by basename
         probe.write_text(src.replace(HOOK, COUNTER, 1))
         link = tmp / "probe.txt"
-        build_candidate(EXAMPLES / example, probe, link)
+        build_candidate(EXAMPLES / example, probe, link, board=board)
         emptied = tmp / "probe_empty.txt"
         empty_link_file(link, emptied, "empty" if ring_clues else "strip")
         cmd = ["node", str(APP_SOLVE), str(emptied), "1"]
@@ -51,13 +54,22 @@ def main(example, component, ring_clues):
             f"app-solve.mjs gave no [probe] lines:\n{out.stdout[-800:]}{out.stderr[-800:]}"
         )
     took = [ln for ln in out.stdout.splitlines() if "median" in ln]
+    # One line per `[probe] <name>=` series, each at its own last mark.
+    series = {ln.split("=")[0]: ln for ln in probes}
+    where = f" on {board}" if board else ""
     print(
-        f"{component.name}: {probes[-1]} (last 500-call mark); {took[-1] if took else ''}"
+        f"{component.name}{where}: {'; '.join(series.values())} "
+        f"(each at its own last mark); {took[-1] if took else ''}"
     )
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if a != "--ring-clues"]
-    if len(args) != 2:
-        sys.exit("usage: count_calls.py <example> <component.js> [--ring-clues]")
-    main(args[0], args[1], "--ring-clues" in sys.argv)
+    p = argparse.ArgumentParser()
+    p.add_argument("example")
+    p.add_argument("component")
+    p.add_argument("--ring-clues", action="store_true")
+    p.add_argument(
+        "--board", help="link file in the example dir, instead of PUZZLE_LINK.txt"
+    )
+    a = p.parse_args()
+    main(a.example, a.component, a.ring_clues, a.board)
