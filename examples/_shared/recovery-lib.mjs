@@ -97,10 +97,12 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //     but that ship with SudokuMaker, not as example files — each is
 //     { ctorName, mod } where mod supplies setParams/update (e.g.
 //     ExactDigitCountComponent). They join the file-backed ctors in scope.
-//   puzzleExtra: extra methods the registrar answers as `puzzle` alongside
-//     addConstraintComponent — main-global.js's frame-building needs
-//     getCellAt and spec.size.width (see frame-geometry.mjs's frameMock).
-export function loadComponents ({ here, files, mainSrc, input, builtins = [], puzzleExtra = {} }) {
+//   frame: { W, idx }, from frame-geometry.mjs's frameGeometry() — when
+//     given, the registrar also answers getCellAt(r, c) = idx(r, c) and
+//     spec.size.width = W, the two calls main-global.js's own frame-building
+//     makes, so a probe can run that code instead of handing it a pre-built
+//     `groups` list.
+export function loadComponents ({ here, files, mainSrc, input, builtins = [], frame = null }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
@@ -109,7 +111,8 @@ export function loadComponents ({ here, files, mainSrc, input, builtins = [], pu
     return inst
   }
   const comps = []
-  const registrar = { addConstraintComponent: inst => comps.push(inst), ...puzzleExtra }
+  const frameMethods = frame ? { getCellAt: frame.idx, spec: { size: { width: frame.W } } } : {}
+  const registrar = { addConstraintComponent: inst => comps.push(inst), ...frameMethods }
   const fromFiles = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
   const ctors = [...fromFiles, ...builtins]
   const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func

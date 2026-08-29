@@ -28,6 +28,17 @@ def blanked(doc, constraint_name):
     return d
 
 
+def frame_only(doc, constraint_name):
+    """doc with the named constraint's own configuration -- code and input
+    (explicit drawn groups vs none) -- cleared, so a local-groups variant and
+    a global (frame-built) variant of the same board compare equal
+    everywhere else: the same grid, givens, and clues either way."""
+    d = blanked(doc, constraint_name)
+    lc = find_constraint(d, constraint_name)
+    lc["definition"]["input"], lc["input"] = [], {}
+    return d
+
+
 def replace_constraint_code(
     doc, constraint_name, *, backend_code=None, components=None
 ):
