@@ -272,12 +272,21 @@ connectivity, single liberty, 2×2 pools
    walk by depth. Expect it to be a fast filter that handles most firings, with
    the re-walk kept for the rest, not a clean swap. `[unsure — my analysis;
    ISS calls the same rule "one articulation-point pass"]`
+   **Measured and not built (#170).** Cut is 36-45% of `update` on the hard
+   fixtures, under the 50% bar spec #165 parked this behind, and the caveat
+   above holds: the budget-limited re-walk stays for the depth-starve cells
+   whatever the pass finds. `examples/isofill/README.md` § Cut profile has the
+   number and the re-open condition.
 4. **Per-digit dirty tracking.** Skip a digit's walk rules when its count of
    possible cells is unchanged since the last call. **O(1)** test per digit,
    needs the count cached across calls. ISS reports the analogous gate on the
    forcing round removing 62–99.9% of rounds. Weak precedent against: `#133`
    measured a whole-component version on skyscraper and did not ship it.
    `[source: ISS chaos_construction.md §8, §4.4]`
+   **Parked behind the same number (#170).** Same bet as item 3: pay a test
+   to skip work inside the per-digit block, worth it only when that block is
+   most of a call. The re-open condition, in two parts, is in
+   `examples/isofill/README.md` § Cut profile.
 5. **Cross-digit confinement lookahead — dropped (spec #165).** Too costly per
    node, and it duplicates the app's own search: guess a cell, propagate one
    step, look for a dead digit is what the DFS does at the next node. Do not
