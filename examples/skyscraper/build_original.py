@@ -12,19 +12,19 @@
 # the custom constraint's own configuration. The original wrapper renames its
 # component and swaps the backend too, so it uses replace_constraint_code
 # directly rather than build_link.py's same-name-only --component contract.
-# It also reads `input.groups` directly (never rewritten to build the frame
-# itself, unlike main-global.js), so the original variant gets the explicit
-# frame groups back via framebuild.frame_groups -- same board, same lines,
-# just handed to the wrapper the way it expects them.
+# It also reads `input.groups` directly, so the original variant gets the
+# explicit frame groups built here -- same board, same lines, just handed to
+# the wrapper the way it expects them.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-from framebuild import build_doc, check, frame_groups, load_gen
+from frame import ring_cell
+from framebuild import build_doc, check, load_gen
 from link_codec import decode_puzzle, encode_link
-from link_swap import blanked, find_constraint, replace_constraint_code
+from link_swap import find_constraint, frame_only, replace_constraint_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -32,15 +32,29 @@ ORIG = HERE / "original"
 CONSTRAINT_NAME = "Skyscraper Lines"
 
 
-def frame_only(doc):
-    """doc with the constraint's own configuration (code and input) cleared,
-    so the improved (global, no input) and original (legacy, explicit
-    groups) variants compare equal everywhere except that -- the same board,
-    givens, and clues either way."""
-    d = blanked(doc, CONSTRAINT_NAME)
-    lc = find_constraint(d, CONSTRAINT_NAME)
-    lc["definition"]["input"], lc["input"] = [], {}
-    return d
+def frame_groups(n, lines):
+    """The 4n drawn-group shape (clue cell, then line cells inward) for the
+    n x n frame `build_doc` builds -- the shape the original wrapper's
+    `input.groups` needs, on the same board main-global.js builds itself.
+    Same cell order as the JS frameGroups() every main-global.js carries."""
+    W = n + 2
+
+    def idx(r, c):
+        return r * W + c
+
+    def group(key):
+        ci = idx(*ring_cell(f"{key[0]}{key[1]}", W))
+        line = [idx(r + 1, c + 1) for (r, c) in lines[key]]
+        return {"cells": [ci, *line], "value": ""}
+
+    groups = []
+    for r in range(n):
+        groups.append(group(("L", r)))
+        groups.append(group(("R", r)))
+    for c in range(n):
+        groups.append(group(("T", c)))
+        groups.append(group(("B", c)))
+    return groups
 
 
 if __name__ == "__main__":
@@ -77,9 +91,9 @@ if __name__ == "__main__":
     ]
     olc["input"] = {"groups": frame_groups(n, lines)}
 
-    assert frame_only(improved) == frame_only(original), (
-        "frames differ beyond the constraint's own code/input"
-    )
+    assert frame_only(improved, CONSTRAINT_NAME) == frame_only(
+        original, CONSTRAINT_NAME
+    ), "frames differ beyond the constraint's own code/input"
     out_name = (
         "PUZZLE_LINK_original.txt" if n == 9 else f"PUZZLE_LINK_{n}x{n}_original.txt"
     )

@@ -42,7 +42,7 @@ import {
   makeCandidateState, makeAllDifferentFloor, loadComponents,
   runToFixpoint, search, countLost, reportLine
 } from '../_shared/recovery-lib.mjs'
-import { frameGeometry, frameMock } from '../_shared/frame-geometry.mjs'
+import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const file = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'gen_6x6.json'
@@ -80,9 +80,9 @@ function freshState () {
 // ---- the two wirings ----
 const { read } = makeIo(HERE)
 // main-global.js builds the frame itself (no groups input), so it needs the
-// puzzle mock's getCellAt/spec.size.width -- frameMock ties those to the same
-// W/idx this probe already uses, so main-global.js's own frame-building
-// produces the identical `groups` list computed above.
+// puzzle mock's getCellAt/spec.size.width -- `frame: { W, idx }` ties those
+// to the same W/idx this probe already uses, so main-global.js's own
+// frame-building produces the identical `groups` list computed above.
 const mainSrc = read('main-global.js')
 
 // The built-in count constraint SudokuMaker ships: `value` appears exactly `count`
@@ -110,7 +110,7 @@ function buildOurs () {
     here: HERE,
     mainSrc,
     input: {},
-    puzzleExtra: frameMock(W, idx),
+    frame: { W, idx },
     files: [
       { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
     ],

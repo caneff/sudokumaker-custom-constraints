@@ -48,11 +48,3 @@ export function frameGeometry (n, [bh, bw]) {
 
   return { W, idx, interior, lineCells, clueCell, keys, groups, alldiffGroups }
 }
-
-// The puzzle methods main-global.js's own frame-building calls: getCellAt(r,
-// c) and spec.size.width. Pass as `puzzleExtra` to recovery-lib.mjs's
-// loadComponents so a probe can run the real frame-building code instead of
-// handing it a pre-built `groups` list.
-export function frameMock (W, idx) {
-  return { getCellAt: idx, spec: { size: { width: W } } }
-}

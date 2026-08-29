@@ -23,18 +23,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from build_size import SPEC
 from framebuild import build_doc, check, load_gen
 from link_codec import decode_puzzle, encode_link
-from link_swap import blanked, find_constraint
+from link_swap import frame_only
 
 HERE = pathlib.Path(__file__).parent
 
 
-def frame_only(doc, constraint_name):
-    """doc with the named constraint's own configuration (code and input)
-    and the puzzle comment cleared, so two variants that differ only there
-    compare equal -- the same board, givens, and shown clues either way."""
-    d = blanked(doc, constraint_name)
-    lc = find_constraint(d, constraint_name)
-    lc["definition"]["input"], lc["input"] = [], {}
+def frame_and_comment_only(doc, constraint_name):
+    """`frame_only`, plus the puzzle comment cleared, so two variants that
+    differ only in code/input/comment compare equal -- the same board,
+    givens, and shown clues either way."""
+    d = frame_only(doc, constraint_name)
     d["puzzle"]["comment"] = ""
     return d
 
@@ -49,7 +47,9 @@ if __name__ == "__main__":
     link = encode_link(doc)
     check(SPEC, link, doc, n)
 
-    assert frame_only(before, SPEC.lines_name) == frame_only(doc, SPEC.lines_name), (
+    assert frame_and_comment_only(before, SPEC.lines_name) == frame_and_comment_only(
+        doc, SPEC.lines_name
+    ), (
         "grid, givens, or shown clues changed -- rebuild-from-frame must only "
         "change the constraint code and comment"
     )
