@@ -96,7 +96,9 @@ the running cap if it clears the timing bar (#206).
 ## Harness
 
 `harness-lib.mjs` adds `getCellsCanHaveRepeats(cells)` and `spec.digitCount`
-to the mock, answered from the case's kind. One shared `makeLine(kind, n)`
-builds a bare line (random digits, any length), a house (distinct digits,
-`n < digitCount`), or a full house (a permutation). Every example's soundness
-harness fuzzes all three kinds.
+to the mock, answered from the case's kind (via `makePuzzle(..., { kind,
+digitCount })`), never inferred from the digits. One shared
+`makeLine(rnd, kind, n, D)` builds a bare line (random digits, any length,
+may repeat), a house (`n` distinct digits, `n < D`), or a full house (a
+permutation of `1..D`). Every example's soundness harness fuzzes all three
+kinds.
