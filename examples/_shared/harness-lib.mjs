@@ -98,7 +98,7 @@ export function makeLine (rnd, kind, n, D) {
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
   if (kind === 'fullHouse') return shuffle(all)
   if (kind === 'house') {
-    if (n > D) throw new RangeError(`house of ${n} distinct digits needs digitCount >= n (D=${D})`)
+    if (n >= D) throw new RangeError(`a house needs n < digitCount (n=${n}, D=${D})`)
     return shuffle(all).slice(0, n)
   }
   if (kind === 'bare') {
