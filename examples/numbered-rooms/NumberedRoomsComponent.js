@@ -22,54 +22,46 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// One pass over bitmasks (bit d = digit d), the shape ISS's ValueIndexing uses.
-// A 1-based index k is feasible when it is a live candidate of the indexer
-// line[0], points at a real inside cell (1..m), and its target line[k-1] has a
-// digit the clue can match. "Match" carries the one sudoku fact the line gives:
-//   k = 1  — the target IS the indexer, which holds k, so the clue must be 1;
-//   k > 1  — the target and the indexer are two cells of one row/column, so
-//            the target (and the clue) cannot be k.
-// Assumes the line is one row/column, which is what the rule means; the main
-// code trusts the author's group for that. Every read is of the pre-pass
-// masks, so the k = 1 case needs no second pass: the indexer's own mask is
-// read before this pass prunes it.
+// Candidate sets are bitmasks: bit d set = digit d possible (bit 0 unused).
+// One pass, all reads from the pre-pass masks, so no step depends on another.
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const m = line.length
-  const clueM = puzzle.getCandidatesBitMask(clue)
-  const idxM = puzzle.getCandidatesBitMask(line[0])
+  const clueM = puzzle.getCandidatesBitMask(clue) // what the clue can still be
+  const idxM = puzzle.getCandidatesBitMask(line[0]) // what the index k can still be
   const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)
 
-  let K = 0 // feasible indices, as a digit mask
-  let reach = 0 // clue digits some feasible index can realize
-  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
-    if (!(idxM & bit)) continue
-    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM
+  // Step 1: try every index k. Keep k if line[k-1] shares a digit with the clue.
+  let K = 0 // indices that still work, as a mask
+  let reach = 0 // clue digits that some working index can produce
+  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) { // bit = 1 << k
+    if (!(idxM & bit)) continue // k is not a candidate of line[0]
+    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM // digits target and clue share
+    // Line is one house. k = 1: target IS line[0], which holds k, so clue = k.
+    // k > 1: target sits in the same house as line[0] = k, so target != k.
     t = k === 1 ? t & bit : t & ~bit
     if (t) { K |= bit; reach |= t }
   }
 
-  // Prune the indexer to the feasible indices (this also drops out-of-range
-  // values) and the clue to the digits a feasible target can realize. With no
-  // feasible index both empty, and the solver sees the contradiction now.
+  // Step 2: line[0] keeps only working indices; clue keeps only reachable digits.
+  // No working index -> both go empty and the solver sees the contradiction.
   if (idxM & ~K) yield drop(idxM & ~K, line[0])
   if (clueM & ~reach) yield drop(clueM & ~reach, clue)
   if (!K) return
 
-  // Clue solved to c: c sits in exactly one cell of the line (one house), and
-  // that cell is the target, so c can only live at a feasible index. Drop c
-  // from every cell at a dead index — the converse of the loop above.
-  if ((clueM & (clueM - 1)) === 0) {
+  // Step 3: clue solved to c (mask has one bit). c appears once in the line,
+  // at the target, so remove c from every cell at a non-working index.
+  if ((clueM & (clueM - 1)) === 0) { // x & (x-1) clears the lowest bit; zero = one bit set
     for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
       if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) yield drop(clueM, line[k - 1])
     }
   }
 
-  // Only one index left: in every solution the index is that k, so the target
-  // equals the clue. `reach` is then exactly the target digits the clue can
-  // match, so narrow the target to it. (The clue side is done above.)
+  // Step 4: one index k left, so the target is known: it must equal the clue.
+  // reach is then exactly the digits the target and clue share; keep only those.
   if ((K & (K - 1)) === 0) {
-    const target = line[31 - Math.clz32(K) - 1] // clz32 is exact; Math.log2 is not by spec
+    // 31 - clz32(K) is the set bit's position, i.e. k (clz32 is exact; Math.log2 is not by spec)
+    const target = line[31 - Math.clz32(K) - 1]
     const rm = puzzle.getCandidatesBitMask(target) & ~reach
     if (rm) yield drop(rm, target)
   }
