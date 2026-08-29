@@ -79,15 +79,19 @@ Components, and who registers them:
 | side component | every clue on one side | — | yes |
 | frame component | every clue and line at once | — | slot only |
 
-The line component is byte-identical in both variants. The frame component is
+The line component is byte-identical in both variants. A global-only
+component that subsumes the line component replaces it in global: skyscraper's
+two-clue DP is a whole-line solver, so its `main-global.js` registers the DP
+per line and no line component (#206). The frame component is
 a named slot: an example fills it only with a deduction that clears the timing
 bar (`docs/real-app-timing.md`).
 
 Skyscraper's local variant ships with the running cap only (sound on a bare
 line): one scan of forced and possible visibles gives the clue bounds, the
 first-cell cap, and the no-more / all-must-be-visible prunes (#196). The
-two-clue DP is a pair shape, global only, gated on full house; a one-sided DP
-is a later strength ticket (#206).
+two-clue DP is a pair shape, global only, gated on full house. A one-sided
+(position, tallest so far, count) DP — sound on every kind, no gate — replaces
+the running cap if it clears the timing bar (#206).
 
 ## Harness
 
