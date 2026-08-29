@@ -69,13 +69,17 @@ per-line component below carries the whole example.
 
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_9x9.txt` —
   share-ready boards of each size, built by `build_size.py` on the shared
-  interactive-outside frame (`gen_<n>.json` records each seed):
+  interactive-outside frame (`gen_<n>x<n>.json` records each seed):
   `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3`
   (args: `n box_height box_width`). Every one is unique with no interior
   givens — the real app's verdict on each is "unique" — and only the shown
-  clues are stored; the rest of the board is empty. The constraint code they
-  embed mentions nothing from this repo. Not timing boards: over half the
-  ring is shown.
+  clues are stored; the rest of the board is empty. Not timing boards: over
+  half the ring is shown. After a `main.js` or `NumberedRoomsComponent.js`
+  change, re-encode from the recorded seed instead of a fresh search:
+  `uv run --with ortools --with lzstring examples/numbered-rooms/rebuild_size.py 9`
+  (`rebuild_size.py`, args: `n`) loads `gen_<n>x<n>.json` and calls the shared
+  frame's `build_doc` directly, so the link's grid, givens, and shown clues
+  stay exactly what the seed produced and only the embedded code changes.
 - `main.js`, `NumberedRoomsComponent.js` — paste these two into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
   `main.js` runs in either mode: with a `groups` input it uses the drawn

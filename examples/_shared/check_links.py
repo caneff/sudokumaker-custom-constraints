@@ -23,23 +23,6 @@ EXEMPT = "_clued"
 # check_links.py runs with just `--with lzstring`.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
-# Links built before RULES_PREFIX existed and not yet regenerated. Tracked in
-# #217 — remove an entry here only after regenerating that link and
-# confirming its comment now carries the prefix. Do not add new entries.
-#
-# The three numbered-rooms sized links (4x4/6x6/9x9) stay: regenerating them
-# with the current build_size.py embeds the current main.js backend (grown
-# from 448 to 1098 chars since commit f93e9fd added local/global mode) instead
-# of the one the shipped link carries — more than the comment would change, so
-# they were left as-is. Fixing them needs a rebuild-from-frame path like
-# skyscraper's build_original.py (re-encode from gen_<n>x<n>.json without a
-# fresh CP-SAT search), which numbered-rooms does not have yet.
-PREFIX_DEBT = {
-    "examples/numbered-rooms/PUZZLE_LINK_4x4.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_6x6.txt",
-    "examples/numbered-rooms/PUZZLE_LINK_9x9.txt",
-}
-
 
 def main():
     bad = 0
@@ -56,9 +39,7 @@ def main():
             if entered:
                 bad += 1
                 print(f"FAIL {rel}: {len(entered)} entered values")
-        if rel not in PREFIX_DEBT and not puzzle.get("comment", "").startswith(
-            RULES_PREFIX
-        ):
+        if not puzzle.get("comment", "").startswith(RULES_PREFIX):
             bad += 1
             print(f"FAIL {rel}: comment missing rules prefix")
     print(f"{'FAILED' if bad else 'ok'} — {bad} link problem(s)")
