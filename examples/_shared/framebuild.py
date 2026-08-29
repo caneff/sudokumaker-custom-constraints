@@ -316,6 +316,22 @@ def check(spec, link, doc, n):
     assert doc["puzzle"]["minDigit"] == spec.min_digit
 
 
+def load_gen(dir_, n):
+    """Read back gen_<n>x<n>.json (written by run(), below) into the same
+    shape build_doc() takes: a rebuild-from-frame script re-encodes a
+    committed board without running generate() again."""
+    g = json.loads((dir_ / f"gen_{n}x{n}.json").read_text())
+    bh, bw = g["box"]
+    grid = g["grid"]
+    lines = make_lines(n)
+    clue = {(k[0], int(k[1:])): v for k, v in g["clue"].items()}
+    active = {(k[0], int(k[1:])) for k in g["active"]}
+    givens = {
+        (int(r), int(c)): v for k, v in g["givens"].items() for r, c in [k.split(",")]
+    }
+    return bh, bw, grid, clue, givens, active, lines
+
+
 def run(spec):
     n, bh, bw = (int(a) for a in sys.argv[1:4])
     assert bh * bw == n, "box_height * box_width must equal n"

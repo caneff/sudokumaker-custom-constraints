@@ -13,13 +13,12 @@
 # swaps the backend too, so it uses replace_constraint_code directly rather
 # than build_link.py's same-name-only --component contract.
 
-import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-from framebuild import build_doc, check, make_lines
+from framebuild import build_doc, check, load_gen
 from link_codec import encode_link
 from link_swap import check_and_write, replace_constraint_code
 from minify import minify_js
@@ -28,23 +27,9 @@ HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
 CONSTRAINT_NAME = "Skyscraper Lines"
 
-
-def load_gen(n):
-    g = json.loads((HERE / f"gen_{n}x{n}.json").read_text())
-    bh, bw = g["box"]
-    grid = g["grid"]
-    lines = make_lines(n)
-    clue = {(k[0], int(k[1:])): v for k, v in g["clue"].items()}
-    active = {(k[0], int(k[1:])) for k in g["active"]}
-    givens = {
-        (int(r), int(c)): v for k, v in g["givens"].items() for r, c in [k.split(",")]
-    }
-    return bh, bw, grid, clue, givens, active, lines
-
-
 if __name__ == "__main__":
     n = int(sys.argv[1])
-    bh, bw, grid, clue, givens, active, lines = load_gen(n)
+    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n)
     improved = build_doc(build_size.SPEC, n, bh, bw, grid, clue, givens, active, lines)
     improved_link = encode_link(improved)
     check(build_size.SPEC, improved_link, improved, n)

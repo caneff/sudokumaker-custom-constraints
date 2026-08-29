@@ -8,7 +8,7 @@
 #   uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3
 #
 # Args: n box_height box_width [seed_count]   (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>.json next to this script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.
 #
 # The rule: the first cell of a line (nearest the clue) holds an index k; the
 # clue equals the digit in the k-th cell of the line. Hidden clues are the
