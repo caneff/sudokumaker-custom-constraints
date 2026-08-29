@@ -30,6 +30,7 @@
       "IsofillComponent",
       "HitCountsPairComponent",
       "SideSumComponent",
+      "SideHitMatchingComponent",
       "NumberedRoomsComponent",
       "NumberedRoomsLinesComponent",
       "NumberedRoomsPairComponent",
