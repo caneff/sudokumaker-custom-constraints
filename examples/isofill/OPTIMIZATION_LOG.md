@@ -28,19 +28,19 @@ so a row's caveat says which fixture and app build produced its numbers.
 | Perimeter non-interleaving rule (no four border cells read `a, b, a, b` in cyclic order; split-arc and flank deductions) (#149) | Kept — first connectivity-survey rule that pays | `gen_35g_silent` 48.8 s → 34.9 s (ratio **0.72**, well past the 0.9× bar, outside the board's own spread — two more interleaved pairs read 0.76 and 0.73); `gen_30g` 5.0 s → 4.8 s (ratio 0.96, wash); `gen_32g` 4.0 s → 4.0 s (ratio 1.00, median of 7 interleaved rounds — 5 of 7 leaned 5–13% slow, read as a wash the rule pays for many times over on the hard board) | over the harness fuzz set, 4,037 of 10,000 states end at a strictly tighter fixpoint with the rule than without; app firing rate 30% of `gen_32g`'s `update` calls and 43% of `gen_35g_silent`'s, against crossing's 0.7% | three stripped fixtures, app v2026.08.14-d47fc4b, 2026-08-27 | 332a960 |
 | Blob-count gate on the cut rule (count a digit's placed-cell connected components; skip the second "strands a placed cell" walk when there is exactly one blob) (#150) | Rejected — exact, but short of the bar | `gen_30g` 5.2 s → 5.0 s (ratio 0.96, an effect, but under the board's own run-to-run spread); `gen_32g` 3.7 s → 3.7 s (ratio 1.00, wash); `gen_35g_silent` 46.5 s → 45.6 s (ratio 0.98, wash) | exact (skips a third of the strand walks) but only one of three boards clears the spread, none clears the 0.9× bar | three stripped fixtures, app version not recorded in the commit body ("recorded app offline"), 2026-08-27 | bb62a0f (added), 17b4344 (removed — timing record kept) |
 | Seed walk replacing `reach`, capacity and the split walk (one 0-1 BFS per placed digit from its lowest-index placed cell: placed cells cost nothing, open cells that allow the digit cost one step, budget `10 - placed`; the walk's cell set is `near` for cut and budget) (#168) | Kept - the largest win on the log | Live app, cold, stripped, 3 reps, `just time isofill`: `gen_28g` 25.6 s -> 3.4 s (**0.13**); `gen_35g_silent` 32.3 s -> 2.4 s (**0.07**); `gen_32g` 3.4 s -> 0.3 s (**0.09**); `gen_30g` 4.5 s -> 0.9 s (**0.20**); shipped board 1.1 s -> 0.7 s (0.64); `gen_24g` 2.4 s -> 1.6 s (0.67); `gen_9x9` 0.2 s -> 0.1 s (0.50); `gen_44g` 0 ms both sides, no constraint | after-logical rows 0 ms on both sides everywhere but `gen_30g` (200 ms -> 0 ms), so no row fails the 1.1x side of the two-row rule; fuzz 6x2,000 with 0 violations, and a 79,158-walk differential in which the seed walk never holds a cell the old walk missed and is strictly smaller on 34,039 | all eight stripped fixtures, app v2026.08.14-d47fc4b, 2026-08-29 | this commit |
+| Tarjan articulation filter in front of cut's per-open-cell re-walks (one lowpoint DFS answering the strand test and the under-ten test for every cell at once) (#170) | Not built — cut is under the gate the spec set | Harness mock, search snapshots of the two hard fixtures, `cut-profile.mjs`: cut is **44%** of `update` on both `gen_28g` and `gen_24g` at 600 snapshots (36-45% over eighteen rows across three seeds and three snapshot counts; 41-45% on the twelve least noisy). The gate was 50% | not timed in the app — nothing was built to time | `gen_28g` + `gen_24g` snapshots, harness mock, 2026-08-29 | this commit |
 
 ## Planned / not yet tried
 
-Issues #169 and #170 (parent #165) are planned attempts on the `cut`
-rule, not yet built or timed (#168 shipped; its row is in the table above):
+Nothing on the `cut` rule is queued. Both attempts that were listed here are
+settled and are not to be re-run (parent #165):
 
-- **#169 — split cut into starve/strand.** Time the two halves of cut's test
-  separately (without the cell: does the walk drop below ten cells; does a
-  placed cell become unreachable) to learn whether either half alone hurts
-  the search, as a similar split did for another solver.
-- **#170 — profile cut's share of `update`.** Only if cut is over half of
-  `update`'s wall time, build a Tarjan lowpoint DFS answering the strand and
-  under-ten tests for every open cell in one pass.
+- **#169 — split cut into starve/strand.** Done. Both halves ship; each half
+  alone is worse and starve alone times the app out. `README.md` § Cut split.
+- **#170 — profile cut's share of `update`.** Done, and the Tarjan pass it
+  gated is not built: cut is 36-45% of a call, under the 50% bar. The row is
+  in the table above and the re-open condition is in `README.md` § Cut
+  profile, next to the one for per-digit dirty tracking.
 
 ## Win bar (for any future attempt against the current baseline)
 

@@ -32,6 +32,11 @@ exists to teach.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
   prunes by count, the seed walk, cut, tour, silent, perimeter, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
+- `cut-profile.mjs` — cut's share of `update` wall time, over search
+  snapshots of the hard fixtures (see `## Timing`, "Cut profile"). Run it
+  before any change that trades a per-open-cell walk for a whole-grid pass.
+  `cut-profile.test.mjs` is its check: the source patch it applies matches two
+  anchor lines, and that is how it breaks silently.
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution. It is slow (CP-SAT), so it is not part of
   `just check` or CI. Run it by hand with `just verify-isofill` after a
@@ -638,6 +643,75 @@ prove which half fired it, since the shipped component runs both. That half was
 checked by hand, with the switches patched in: `CUT_STARVE = false` printed
 `cut starve fired: false | cut strand fired: true`, and `CUT_STRAND = false`
 printed the mirror image.
+
+### Cut profile: cut is 36-45% of `update` (#170, 2026-08-29)
+
+Cut is the only rule that walks the grid more than once per digit: one or two
+budget-limited walks per open cell of the digit's seed walk, against one walk
+per digit for everything else. The survey's next idea was to replace those
+re-walks with a single Tarjan lowpoint DFS, which answers the strand test and
+the under-ten test for every cell at once
+(`docs/research/connectivity-techniques.md` §5, item 3). The spec parked that
+behind a number: build it only if cut is over half of `update`'s wall time.
+
+**How it was measured.** `examples/isofill/cut-profile.mjs`, on the two hard
+fixtures from #166. It replays a search over a fixture -- propagate to a
+fixpoint with the real component, pin a random candidate in a random open
+cell, backtrack on a dead node -- and keeps every state `update` was called
+on as a search snapshot. It then patches the component's source so the cut
+loop adds its own wall time to a counter, and clocks whole `update` calls
+around it, in the harness mock, not the app. One instance serves every call,
+as in the app, so no call is charged with the component's lazy scratch
+allocation; one warm-up pass is discarded.
+
+```sh
+node examples/isofill/cut-profile.mjs                     # both fixtures, 60 snapshots
+node examples/isofill/cut-profile.mjs gen_28g 600 5       # board, snapshots, reps
+node examples/isofill/cut-profile.mjs gen_28g 200 5 777   # and a seed
+```
+
+| fixture | snapshots | update calls | update ms | cut ms | cut share |
+| --- | --- | --- | --- | --- | --- |
+| `gen_28g` | 600 | 3000 | 508 | 221 | **44%** |
+| `gen_24g` | 600 | 3000 | 516 | 228 | **44%** |
+
+Those two rows are one run of the second command above. Over seeds 12345, 777
+and 424242 at 60, 200 and 600 snapshots, eighteen rows in all, the share runs
+**36% to 45%**, and the twelve rows at 200 and 600 snapshots -- the ones with
+the least noise per row -- all sit between 41% and 45%. Two costs land inside
+the cut figure rather than outside it, so the true share is a little lower
+than that: one `performance.now()` pair per digit per call, and the removals
+cut yields inside its own loop.
+
+Two things the number is not. It is the mock's clock, not the app's -- the
+app's own overhead per node sits outside `update` and would only make cut a
+smaller fraction of a node. And it is the whole cut rule, both halves
+together; #169 already settled that neither half can be dropped.
+
+**Verdict: no Tarjan pass.** At 44% cut is not the majority of a call, so a
+filter that removed every re-walk could not take more than 44% off `update`,
+and it removes only some of them: the re-walk is budget-limited, so a cell
+whose removal starves the walk by depth rather than by disconnecting it is a
+cut the articulation pass cannot see, and the re-walk has to stay behind it
+for those cells. Two passes over the grid to delete part of 44% is not the
+next lever here. The margin is thinner than the bar suggests, so the number
+is worth re-reading rather than assuming: **re-open condition** -- a later
+profile run of `cut-profile.mjs` on the then-current hard fixtures reads cut
+over 50%.
+
+**Per-digit dirty tracking stays parked, behind the same number.** The idea
+(ISS `chaos_construction.md` §8) is to skip a digit's walk rules when its
+count of candidate cells has not changed since the last call. It is the same
+bet as the Tarjan pass -- pay a test to skip work inside the per-digit
+block -- so it is worth building only when that block is most of a call.
+**Re-open condition, both parts required:** (1) `cut-profile.mjs`, extended
+to time the whole per-digit block rather than the cut loop alone, reads that
+block over 50% of `update` on the then-current hard fixtures; and (2) a
+count of consecutive search snapshots shows most digits unchanged between
+calls, since a gate that rarely fires only adds cost. Part (2) is not
+measured yet. The weak precedent against is #133, which measured a
+whole-component signature skip on skyscraper and did not ship it; per-digit
+is the finer question that measurement did not answer.
 
 ### Earlier rows (2026-08-27, #143 / #148 / #150, cold only)
 
