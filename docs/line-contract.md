@@ -60,10 +60,15 @@ Expect the loose mode to prune less (precedent: ISS `FullRank.TIE_MODE`,
 
 Each example ships two puzzle links from one component set:
 
-- **local** — the author draws groups; main code registers one **line
+- **local** — `main.js`: the author draws groups; it registers one **line
   component** per group, one end only, no assumption about the line.
-- **global** — no groups; main code builds every frame line from the grid and
-  registers the line component on each, plus the global-only components.
+- **global** — `main-global.js`: no groups; it builds every frame line from
+  the grid and registers the line component on each, plus the global-only
+  components.
+
+Two files, no "groups present?" switch in one file (#194): each paste carries
+only its own variant, and a layout check can hold `main.js` off frame building
+and `main-global.js` off `input.groups`.
 
 Components, and who registers them:
 
