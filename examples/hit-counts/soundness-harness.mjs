@@ -12,7 +12,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -37,12 +37,12 @@ function seeder (lo, hi) {
 }
 
 const CLUE = 100
-const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
 const hits = perm => perm.reduce((k, x, i) => k + (x === i + 1 ? 1 : 0), 0)
 
-// A pool of lines: many random permutations plus the two forced extremes.
+// A pool of lines: many full-house permutations (docs/line-contract.md) plus
+// the two forced extremes.
 const lines = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [2, 3, 4, 5, 6, 7, 8, 9, 1]] // identity (9), derangement (0)
-for (let i = 0; i < 400; i++) lines.push(shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]))
+for (let i = 0; i < 400; i++) lines.push(makeLine(rnd, 'fullHouse', 9, 9))
 
 let tests = 0
 let bad = 0
