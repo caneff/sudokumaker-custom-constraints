@@ -10,7 +10,8 @@ into `just check` — see #174.
 | File | Holds |
 | --- | --- |
 | `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
-| `main.js` | The SudokuMaker constraint definition (paste target) |
+| `main.js` | The SudokuMaker constraint definition for the **local** link (paste target); registers the line component per drawn group |
+| `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194) |
 | `*Component.js` (at least one) | The pasted constraint snippet(s) |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
