@@ -84,8 +84,10 @@ a named slot: an example fills it only with a deduction that clears the timing
 bar (`docs/real-app-timing.md`).
 
 Skyscraper's local variant ships with the running cap only (sound on a bare
-line); the peak rule gates on full house; a one-sided DP is a later strength
-ticket.
+line): one scan of forced and possible visibles gives the clue bounds, the
+first-cell cap, and the no-more / all-must-be-visible prunes (#196). The
+two-clue DP is a pair shape, global only, gated on full house; a one-sided DP
+is a later strength ticket (#206).
 
 ## Harness
 
