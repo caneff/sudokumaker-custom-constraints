@@ -116,19 +116,18 @@ Use these terms exactly. Do not drift to synonyms.
   cells it will take.
 - **blob** — a maximal connected set of placed cells of one digit. A region has
   one blob when finished; several before.
-- **walk** — a breadth-first search from a digit's placed cells through cells
-  that still allow the digit, limited by how many open cells the region can
+- **walk** — the **seed walk**: a 0-1 breadth-first search from a digit's seed
+  cell, where a placed cell costs nothing to enter and an open cell that allows
+  the digit costs one step, with a budget of the open cells the region can
   still take. The over-approximation of the region that every other rule reads.
-- **reach** — the rule that drops the digit from a cell the walk never meets.
-- **capacity** — the rule that kills the branch when the walk holds fewer than
-  ten cells.
+  It drops the digit from every cell it never meets; a walk under ten cells, or
+  one that misses a placed cell, kills the branch.
 - **cut** — the rule that places the digit in an open cell the region cannot do
   without. Two tests: **starve** (without the cell the walk holds fewer than
   ten) and **strand** (without the cell a placed cell is unreachable).
 - **door** — an open cell next to a blob that still allows the digit. One door
   is the cheap case of cut.
-- **seed** — the one placed cell a walk starts from when placed cells cost
-  nothing and open cells cost one step.
+- **seed** — the digit's lowest-index placed cell, where its walk starts.
 - **silent digit** — a digit with no placed cell. Gets no walk; handled by
   the connected components of the cells that allow it.
 - **budget** — the rule that matches open cells to digits' remaining slots and

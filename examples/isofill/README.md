@@ -30,7 +30,7 @@ exists to teach.
   row by row with `helpers.cellIds.getIdFromCoordsSafe` and registers a single
   `IsofillComponent` over them.
 - `IsofillComponent.js` — the component code. One whole-grid `update` that
-  prunes by count, reach, capacity, cut, tour, silent, and budget, and a `validate` leaf check (see below).
+  prunes by count, the seed walk, cut, tour, silent, perimeter, and budget, and a `validate` leaf check (see below).
 - `soundness-harness.mjs` — Node soundness harness (see below).
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution. It is slow (CP-SAT), so it is not part of
@@ -117,22 +117,25 @@ cells:
   candidates.
 - **Force** — when a digit has exactly ten cells that can still hold it, place
   it in all ten.
-- **Reach** — walk outward from the digit's placed cells, stepping only into
-  orthogonal neighbours that still allow the digit, at most `10 − placed`
-  steps. A cell the walk never meets loses the candidate. Sound because a
-  ten-cell region with `k` placed cells has at most `10 − k` open cells, so
-  every region cell is within that many steps of a placed one. When two placed
-  cells of one digit cannot join within nine steps the region is split; the
-  component empties the stranded cell's candidates so the solver sees the dead
-  branch. Cell neighbours come from index arithmetic on the row-major list.
-- **Capacity** — the same walk, read the other way: every cell of the region
-  lies inside it, so if the walk meets fewer than ten cells the region can
-  never reach ten. The component empties a placed cell of that digit, as for a
-  split, and the solver drops the branch. Free — the walk is already computed.
+- **Seed walk** — one 0-1 breadth-first search per placed digit, from its
+  lowest-index placed cell (the *seed*). A cell already holding the digit costs
+  nothing to enter; an open cell that still allows the digit costs one step;
+  the budget is `10 − placed`, the open cells the region has left. A cell the
+  walk never meets loses the candidate. Sound because the region is connected
+  and holds the seed, so a path inside the region from the seed to any region
+  cell crosses at most `10 − placed` open cells. Three readings of one walk:
+  cells outside it lose the digit; a walk of fewer than ten cells cannot hold a
+  ten-cell region; and a placed cell the walk never meets cannot join the
+  region. The last two are dead branches, and the component empties a placed
+  cell of that digit so the solver drops the branch. Charging only open cells,
+  and starting from one cell rather than the whole placed set, makes this walk
+  a strict subset of the older reach walk it replaced — the harness asserts the
+  subset on every fuzz state — so cut, tour, and budget all read a smaller cell
+  set. Cell neighbours come from index arithmetic on the row-major list.
 - **Cut** — for each open cell the walk met, drop it and walk again. If the
   walk now holds fewer than ten cells, or a placed cell falls out of it, the
   region cannot exist without that cell, so it must hold the digit. Sound by
-  the same argument as reach and capacity, applied to the grid minus one cell.
+  the same argument as the seed walk, applied to the grid minus one cell.
   Not free: one or two extra walks per open cell in the digit's walk — but
   it is the rule that lets the app close the shipped instance (below).
   Each of those walks stops as soon as it has its answer — ten cells, or
@@ -258,7 +261,7 @@ solution" in 0.2 s** (live app v2026.08.14-d47fc4b, 2026-08-27, `app-solve.mjs`,
 An earlier "unique in 2 s" figure was measured with 36 solution values still
 entered in the outer ring and was wrong.
 
-The kept deductions are cap, force, reach (with split), capacity, cut, tour,
+The kept deductions are cap, force, the seed walk, cut, tour,
 silent, perimeter, and budget with its matching prune.
 *Homeless* — an earlier, weaker form of silent that pruned only when exactly
 one component of ten or more cells survived — was tried and removed: sound,
@@ -475,10 +478,52 @@ row is the one that carries the speed-up.
 on 2026-08-27 (below) — the same board and the same app build, a different
 machine. Read ratios, not milliseconds (`docs/real-app-timing.md`).
 
-Both rows per fixture were hand-run, because `build_link.py` takes no
-`--board` and `just time isofill` therefore reaches only the default board.
-The commands are the strip-then-`app-solve.mjs` pair in
-`docs/real-app-timing.md` § Reproduce, once per fixture link.
+Both rows per fixture were hand-run, because `build_link.py` took no
+`--board` at the time and `just time isofill` therefore reached only the
+default board. The commands are the strip-then-`app-solve.mjs` pair in
+`docs/real-app-timing.md` § Reproduce, once per fixture link. #168 added
+`--board` to this example's `build_link.py`, so the rows below come straight
+from `just time isofill --board <link>`.
+
+### Seed walk replaces reach, capacity and the split walk (#168, 2026-08-29)
+
+Every fixture, `just time isofill [--board <link>]`, 3 reps, non-deterministic
+solve off. Baseline is the committed component; candidate is the seed walk.
+
+| date | app | board | baseline | candidate | ratio | row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill | 1100ms | 700ms | 0.64 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_24g.txt) | 2400ms | 1600ms | 0.67 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_24g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_28g.txt) | 25600ms | 3400ms | 0.13 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_28g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_30g.txt) | 4500ms | 900ms | 0.20 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_30g.txt) after-logical | 200ms | 0ms | 0.00 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_32g.txt) | 3400ms | 300ms | 0.09 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_32g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_35g_silent.txt) | 32300ms | 2400ms | 0.07 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_35g_silent.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_44g.txt) | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_44g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_9x9.txt) | 200ms | 100ms | 0.50 | PASS |
+| 2026-08-29 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_9x9.txt) after-logical | 0ms | 0ms | — | NO TIME |
+
+**Verdict: SHIP, on seven of the eight fixtures; `gen_44g` reads NO TIME.**
+Every cold row clears the 0.9x bar and none of them clears it narrowly: the
+worst is 0.67x and four are at or under 0.2x. `gen_28g` drops from 25.6 s to
+3.4 s and `gen_35g_silent` from 32.3 s to 2.4 s, so the two boards the twenty-grid
+batch was run to find are no longer the slow ones.
+
+The after-logical rows read 0 ms on both sides everywhere but `gen_30g`, so
+they place no constraint (`docs/real-app-timing.md`); `gen_30g`'s goes 200 ms
+to 0 ms, which is the regression check passing, not a speed-up worth a
+figure. `gen_44g` reads 0 ms on both rows on both sides, which is the whole
+fixture placing no constraint -- with 44 givens the finder never searches.
+
+The walk does the same amount of work per call as the one it replaced -- one
+BFS per placed digit -- so the whole gain is the smaller cell set that cut,
+tour and budget then read.
 
 ### Earlier rows (2026-08-27, #143 / #148 / #150, cold only)
 

@@ -8,12 +8,13 @@
 //! One whole-grid component, five deductions per digit and one across digits:
 //!   Cap:   a digit already in ten cells leaves every other cell.
 //!   Force: a digit with exactly ten cells still open takes all of them.
-//!   Reach: walk from the digit's placed cells through cells that still allow
-//!          it, at most (10 - placed) steps; cells beyond the walk lose it.
-//!          A placed cell the walk never meets is a split: it is emptied so
-//!          the solver sees the dead branch (decision #66).
-//!   Capacity: if that walk meets fewer than ten cells the region can never
-//!          reach ten; a placed cell is emptied, as for a split.
+//!   Seed walk: a 0-1 BFS from the digit's lowest-index placed cell. A cell
+//!          already holding the digit costs nothing to enter, an open cell
+//!          that still allows it costs one step, and the budget is the open
+//!          cells the region has left, (10 - placed). Cells outside the walk
+//!          lose the digit. A placed cell the walk never meets, or a walk
+//!          under ten cells, is a dead branch: a placed cell is emptied so
+//!          the solver sees it (decision #66).
 //!   Cut:   an open cell in that walk whose removal starves it below ten,
 //!          or strands a placed cell, must hold the digit.
 //!   Silent: a digit with no placed cell has no walk to start. Its region
@@ -47,7 +48,7 @@ function setParams (instance, cells) {
   // Neighbour lists once, not per visit: update runs on every search node and
   // the cut rule walks the grid hundreds of times per call.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  instance.mask = new Uint32Array(cells.length) // stamped visit mask, see reach
+  instance.mask = new Uint32Array(cells.length) // stamped visit mask, see seedWalk
   instance.targets = new Uint32Array(cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
@@ -124,6 +125,42 @@ function reach (instance, starts, depth, allowed, limit = Infinity, targets = nu
   return { size, stamp, done: false }
 }
 
+// The seed walk: a 0-1 BFS from `start`, one placed cell of digit `d`. A cell
+// already holding `d` costs nothing to enter, an open cell that allows `d`
+// costs one step, and `budget` is how many open cells the region has left.
+// Every cell of the region is inside the walk: the region is connected and
+// holds `start`, so a path inside it from `start` to any region cell crosses
+// at most `budget` open cells. Returns { size, stamp }, with
+// `instance.mask[i] === stamp` marking a visited cell until the next walk.
+// Buffers live on `instance`, so a walk allocates nothing.
+function seedWalk (instance, start, budget, allowed, value, d) {
+  const { nbrs, mask } = instance
+  const stamp = ++instance.stamp
+  let size = 1
+  let [frontier, next] = instance.frontier
+  let len = 1
+  mask[start] = stamp
+  frontier[0] = start
+  for (let step = 0; len; step++) {
+    // Free closure: placed cells of this digit cost nothing, so they join the
+    // current step. The loop reads cells it appends, which is the point.
+    for (let f = 0; f < len; f++) {
+      for (const n of nbrs[frontier[f]]) {
+        if (value[n] === d && mask[n] !== stamp) { mask[n] = stamp; size++; frontier[len++] = n }
+      }
+    }
+    if (step >= budget) break
+    let nextLen = 0
+    for (let f = 0; f < len; f++) {
+      for (const n of nbrs[frontier[f]]) {
+        if (allowed[n] && value[n] < 0 && mask[n] !== stamp) { mask[n] = stamp; size++; next[nextLen++] = n }
+      }
+    }
+    [frontier, next, len] = [next, frontier, nextLen]
+  }
+  return { size, stamp }
+}
+
 // BFS distance from `start` to every cell through `allowed`; unreachable
 // cells read as 999, so any bound they enter fails.
 function distances (instance, start, allowed, dist) {
@@ -185,16 +222,21 @@ function * update (instance, puzzle) {
   for (let d = lo; d <= hi; d++) {
     const { placed, open, allowed } = state[d]
     const others = instance.others[d]
+    let walk = null
+    if (placed.length > 0) {
+      walk = seedWalk(instance, placed[0], size - placed.length, allowed, value, d)
+      // The region holds every placed cell and lies inside the walk. So a
+      // placed cell the walk misses, or a walk under `size` cells, is a dead
+      // branch: empty a placed cell and the solver drops it.
+      let dead = walk.size < size
+      for (const i of placed) if (instance.mask[i] !== walk.stamp) { dead = true; break }
+      if (dead) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+    }
     if (placed.length === size) {
       for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
     } else if (placed.length + open.length === size) {
       for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
     } else if (placed.length > 0) {
-      // Any region cell is within (size - placed) steps of the placed set.
-      const walk = reach(instance, placed, size - placed.length, allowed)
-      // Capacity: the whole region lies inside the walk, so fewer than `size`
-      // cells there is a dead branch; empty a placed cell so the solver sees it.
-      if (walk.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
       // Own copy: later walks reuse instance.mask.
       const near = { size: walk.size, mask: instance.near[d] || (instance.near[d] = new Uint8Array(cells.length)) }
       for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
@@ -269,11 +311,6 @@ function * update (instance, puzzle) {
       if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); continue }
       for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
       state[d].near = near // budget (below) limits this digit to the components that fit
-    }
-    if (placed.length > 1) {
-      // Any two cells of a size-cell region are within (size - 1) steps.
-      const joined = reach(instance, [placed[0]], size - 1, allowed)
-      for (const i of placed) if (instance.mask[i] !== joined.stamp) yield puzzle.removeCandidateFromCell(d, cells[i])
     }
   }
   // Budget: every open cell needs a digit, and digit d can take at most
