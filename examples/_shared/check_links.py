@@ -33,6 +33,8 @@ PREFIX_DEBT = {
     "examples/numbered-rooms/PUZZLE_LINK_4x4.txt",
     "examples/numbered-rooms/PUZZLE_LINK_6x6.txt",
     "examples/numbered-rooms/PUZZLE_LINK_9x9.txt",
+    "examples/numbered-rooms/PUZZLE_LINK_clued.txt",
+    "examples/numbered-rooms/PUZZLE_LINK_clued_original.txt",
     "examples/numbered-rooms/PUZZLE_LINK_global.txt",
     "examples/numbered-rooms/PUZZLE_LINK_original.txt",
     "examples/running-start/PUZZLE_LINK.txt",
@@ -48,21 +50,24 @@ PREFIX_DEBT = {
 def main():
     bad = 0
     for f in sorted(ROOT.glob("*/PUZZLE_LINK*.txt")):
-        if EXEMPT in f.name:
-            continue
         puzzle = decode_puzzle(f.read_text().strip())["puzzle"]
-        cells = puzzle["cells"]
-        entered = [c for c in cells if "value" in c and not c.get("given")]
-        if entered:
-            bad += 1
-            print(f"FAIL {f.relative_to(ROOT.parent)}: {len(entered)} entered values")
         rel = str(f.relative_to(ROOT.parent))
+        # The clued twins fill all 36 outside clues on purpose — that is what
+        # the name means, and app-solve.mjs reads them with --ring-clues. The
+        # entered-values check does not apply to them; the prefix check still
+        # does.
+        if EXEMPT not in f.name:
+            cells = puzzle["cells"]
+            entered = [c for c in cells if "value" in c and not c.get("given")]
+            if entered:
+                bad += 1
+                print(f"FAIL {rel}: {len(entered)} entered values")
         if rel not in PREFIX_DEBT and not puzzle.get("comment", "").startswith(
             RULES_PREFIX
         ):
             bad += 1
             print(f"FAIL {rel}: comment missing rules prefix")
-    print(f"{'FAILED' if bad else 'ok'} — {bad} link(s) ship entered values")
+    print(f"{'FAILED' if bad else 'ok'} — {bad} link problem(s)")
     return 1 if bad else 0
 
 
