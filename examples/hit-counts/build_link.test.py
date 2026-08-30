@@ -32,8 +32,8 @@ from minify import minify_js
 # Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
-SWAPPED = "HitCountsComponent"
-SIBLINGS = ["SideSumComponent", "HitCountsPairComponent"]
+SWAPPED = "HitCountsJointComponent"
+SIBLINGS = ["HitCountsComponent", "SideSumComponent"]
 
 
 def hits(values):

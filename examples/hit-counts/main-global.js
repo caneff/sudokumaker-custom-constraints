@@ -3,9 +3,8 @@
 // No groups are drawn: build all 4n frame lines from the board size --
 // interior n = W-2 ringed by one clue cell per side. `puzzle.getCellAt(row,
 // col)` = row*W+col [verified 2026-08-28 via a [probe] log in the app].
-// Then register the same line component as main.js, plus the two components
-// that only make sense across the whole frame: the opposite-pair coupling
-// and the per-side sum.
+// Then register the same joint line component as main.js, plus the per-side
+// sum, which only makes sense across the whole frame.
 //
 // The interior's rows and columns ARE the frame's lines: a left clue and a
 // right clue read one row from opposite ends, a top and a bottom clue one
@@ -28,30 +27,19 @@ const sides = [
   { name: 'top', across: rows, groups: along(i => ({ clue: at(0, i), line: cols[i - 1] })) },
   { name: 'bottom', across: rows, groups: along(i => ({ clue: at(W - 1, i), line: reversed(cols[i - 1]) })) }
 ]
-const groups = []
-for (let i = 0; i < n; i++) for (const side of sides) groups.push(side.groups[i])
 
-for (const g of groups) {
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
-  puzzle.addConstraintComponent(new HitCountsComponent(name, g.clue, g.line))
-}
-
-//! Opposite pair: two clues whose lines are the exact reverse of each other sit on
-//! opposite ends of one line. Add a HitCountsPairComponent that couples them.
-//! groups[i].line reads inward from clue i (clue i counts its left hits); clue j
-//! reads the same line reversed.
-function sameReversed (a, b) {
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[a.length - 1 - i]) return false
-  return true
-}
-
-for (let i = 0; i < groups.length; i++) {
-  for (let j = i + 1; j < groups.length; j++) {
-    if (!sameReversed(groups[i].line, groups[j].line)) continue
-    const name = `hit counts pair ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
-    puzzle.addConstraintComponent(
-      new HitCountsPairComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
+//! Opposite pair: the two clues at the ends of one line get ONE
+//! HitCountsJointComponent, which reads the line, both clues, and the hit
+//! conflicts between a position and its mirror. Left and right clue the same
+//! row, top and bottom the same column, so the pairs come off the sides by
+//! index -- the line is the one read inward from clue A.
+const [left, right, top, bottom] = sides
+for (const [sa, sb] of [[left, right], [top, bottom]]) {
+  for (let i = 0; i < n; i++) {
+    const a = sa.groups[i]
+    const b = sb.groups[i]
+    const name = `hit counts joint ${helpers.naming.getCellName(a.clue)}/${helpers.naming.getCellName(b.clue)}`
+    puzzle.addConstraintComponent(new HitCountsJointComponent(name, a.clue, b.clue, a.line))
   }
 }
 
