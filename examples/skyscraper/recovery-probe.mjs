@@ -14,7 +14,7 @@
 // TWO wirings, same start state:
 //   - 'ours'     — main-global.js: one SkyscraperLineComponent per line, reading BOTH
 //                  end clues and the line together (deduces blank clues), and
-//                  one ExactDigitCountComponent per side (one 1 per side).
+//                  one SkyscraperSideComponent per side (one 1 per side).
 //   - 'original' — the wrapper ChinStrap shipped: one per-line component that does
 //                  NOTHING while its clue is blank, and once the clue is pinned
 //                  runs the built-in forward skyscraper prune. No pair, no side
@@ -61,7 +61,9 @@ const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometr
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
-const st = makeCandidateState()
+// The all-different groups are the board's houses: both components gate on the
+// line kind, which the mock answers off this list (docs/line-contract.md).
+const st = makeCandidateState({ houses: alldiffGroups })
 
 function freshState () {
   st.cand = new Map()
@@ -85,26 +87,6 @@ const { read } = makeIo(HERE)
 // frame-building produces the identical `groups` list computed above.
 const mainSrc = read('main-global.js')
 
-// The built-in count constraint SudokuMaker ships: `value` appears exactly `count`
-// times among `cells`. Modelled here so main-global.js can construct it.
-const exactDigitCount = {
-  setParams (inst, value, count, cells) { inst.value = value; inst.count = count; inst.cells = cells },
-  * update (inst, puzzle) {
-    const { value, count, cells } = inst
-    const isVal = c => puzzle.hasValue(c) && puzzle.getValue(c) === value
-    const pinned = cells.filter(isVal).length
-    const canHave = cells.filter(c => puzzle.getCandidates(c).has(value))
-    if (pinned === count) {
-      for (const c of canHave) if (!isVal(c)) yield puzzle.removeCandidateFromCell(value, c)
-    } else if (canHave.length === count) {
-      for (const c of canHave) {
-        const rm = [...puzzle.getCandidates(c)].filter(d => d !== value)
-        if (rm.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), c)
-      }
-    }
-  }
-}
-
 function buildOurs () {
   return loadComponents({
     here: HERE,
@@ -112,9 +94,9 @@ function buildOurs () {
     input: {},
     frame: { W, idx },
     files: [
-      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
-    ],
-    builtins: [{ ctorName: 'ExactDigitCountComponent', mod: exactDigitCount }]
+      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' },
+      { file: 'SkyscraperSideComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperSideComponent' }
+    ]
   })
 }
 

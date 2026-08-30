@@ -84,6 +84,14 @@ Use these terms exactly. Do not drift to synonyms.
   readings would put the same digit in both cells.
 - **side component** — a component that sees every clue on one side of the
   frame. Global only.
+- **nearest rank** — the first cells of one side's lines, taken together: the
+  row or column of the grid that side's clues read first. On a frame it is a
+  house of its own, which is what a side rule about the cell next to each clue
+  gates on.
+- **running cap** — Skyscrapers' local line component: one scan of a line's
+  forced and possible visible buildings, giving the clue bounds, the first-cell
+  cap, and the no-more / all-must-be-visible prunes. Sound on a bare line, so
+  it is what an author's own drawn line gets.
 - **frame component** — a component that sees every clue and every line at
   once. Global only; a named slot, filled per example only with a measured
   win.

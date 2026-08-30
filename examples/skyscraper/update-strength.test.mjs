@@ -8,8 +8,9 @@
 // reference commit's update left, cell for cell. The DP is exact, so a state
 // drawn at random is nearly always contradictory and both versions empty a
 // cell, leaving nothing to compare; states are drawn around a real permutation
-// instead, the way soundness-harness.mjs draws them. The component only runs
-// when the line length equals maxDigit, so each size installs its own digits.
+// instead, the way soundness-harness.mjs draws them. The component gates on a
+// full house of {1..n} (docs/line-contract.md), so every state declares that
+// kind, and each size installs its own digits.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -60,7 +61,7 @@ for (const m of [4, 6, 9]) {
     start.set(CA, randomCandidates(rnd, 1, m, visible(perm)))
     start.set(CB, randomCandidates(rnd, 1, m, visible([...perm].reverse())))
     for (const c of LINE) start.set(c, randomCandidates(rnd, 1, m, perm[c]))
-    const w = compareStrength(cur, ref, apply, start)
+    const w = compareStrength(cur, ref, apply, start, { kind: 'fullHouse', digitCount: m })
     if (w === null) continue
     states++
     weaker += w.length

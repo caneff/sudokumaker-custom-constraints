@@ -28,12 +28,12 @@
 //! decision procedure for the line: a value survives only if some full line
 //! assignment consistent with the candidates and both clues uses it.
 //!
-//! The rule holds only on a board whose digits start at 1. A clue is a visible
-//! count, which runs 1..length, but a clue cell holds a board digit, so on a
-//! board starting at 0 the count `length` has no digit at all: an ascending
-//! line cannot be clued, and a DP that ran would prune the digits that line
-//! needs. No encoding fixes this, so `update` and `validate` both stand down
-//! on such a board and the component is a no-op there.
+//! The permutation is the whole premise, so `update` and `validate` both ask
+//! for it at solve time (docs/line-contract.md): the line must be a house
+//! whose live candidates union to exactly {1..length}. That one test carries
+//! everything the DP assumes -- the peak digit is the line's length, no cell
+//! holds 0, and no digit appears twice -- and it is asked of the app, never
+//! inferred from the board's minDigit or from the line's length.
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -196,12 +196,31 @@ function prune (puzzle, line, Lc, Rc, peak) {
   return { cand, keep, L: keepL, R: keepR }
 }
 
+// The gate: the line is a house and its live candidates union to exactly
+// {1..length}, so it holds every digit 1..length once -- a full house of the
+// digit set the DP needs (docs/line-contract.md). Asked at solve time, because
+// main code runs before the built-in row and column houses are registered
+// (gotcha 6) and a board that starts its digits at 0 keeps a 0 on the line
+// until something else takes it away. Query the line alone: a ring cell in the
+// list flips getCellsCanHaveRepeats to true. A house never repeats again and a
+// shrinking union never regains a digit, so the answer is cached once it turns
+// true -- and only then, or a line still carrying a 0 would lock the gate shut
+// for good.
+function gateOpen (instance, puzzle) {
+  if (instance.gateOpen) return true
+  const line = instance.line
+  if (puzzle.getCellsCanHaveRepeats(line)) return false
+  let mask = 0
+  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
+  if (mask !== (1 << (line.length + 1)) - 2) return false // bits 1..length set, bit 0 clear
+  instance.gateOpen = true
+  return true
+}
+
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
-  const { minDigit, maxDigit: peak } = helpers.digits
-  if (minDigit !== 1) return // the digits must start at 1; see the head comment
-  // The peak argument needs a full house: maxDigit present exactly once.
-  if (line.length !== peak || peak > MAXN) return
+  const peak = line.length // the gate proves the line holds 1..length once each
+  if (peak > MAXN || !gateOpen(instance, puzzle)) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
@@ -238,9 +257,9 @@ function visibleCount (puzzle, cells) {
 
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
-  // Stand down with `update` on a board whose digits do not start at 1: the
-  // running max below starts at 0 and would miss a leading 0 building.
-  if (helpers.digits.minDigit !== 1) return true
+  // Judge only a line `update` gates in: the running max below starts at 0, so
+  // a board whose digits start at 0 would read a leading 0 as no building.
+  if (!gateOpen(instance, puzzle)) return true
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   return puzzle.getValue(clueA) === visibleCount(puzzle, line) &&
     puzzle.getValue(clueB) === visibleCount(puzzle, [...line].reverse())

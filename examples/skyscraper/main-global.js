@@ -1,16 +1,16 @@
 //! Skyscrapers with interactive outside clues, GLOBAL variant. No groups are
 //! drawn: build all 4n frame lines from the board size -- interior n = W-2
 //! ringed by one clue cell per side. `puzzle.getCellAt(row, col)` =
-//! row*W+col [verified 2026-08-28 via a [probe] log in the app]. Then
-//! register the same paired line component as main.js, plus the one
-//! component that only makes sense across a whole side of the frame: the
-//! one-1-per-side count.
+//! row*W+col [verified 2026-08-28 via a [probe] log in the app].
 //!
-//! The two groups that read one line from opposite ends share one
-//! SkyscraperLineComponent, which reads both clues and the whole line
-//! together — the built-in SkyscraperComponent only fires once the clue
-//! holds a value and never reads the clue off the line, so it cannot help an
-//! interactive clue.
+//! A frame line is clued at both ends, which is what the two-clue DP in
+//! SkyscraperLineComponent reads: the line, both clues, and every way the
+//! digits can lie between them. The DP is a decision procedure for one line, so
+//! it subsumes the running cap the local variant registers per drawn group and
+//! global registers it alone per line (docs/line-contract.md).
+//!
+//! On top of that goes the one component that only makes sense across a whole
+//! side of the frame: the one-1-per-side count.
 function frameGroups () {
   const W = puzzle.spec.size.width
   const n = W - 2
@@ -18,15 +18,15 @@ function frameGroups () {
   const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
   const groups = []
   for (let i = 1; i <= n; i++) {
-    groups.push({ cells: [at(i, 0), ...range(1, n).map(c => at(i, c))] }) // L
-    groups.push({ cells: [at(i, W - 1), ...range(n, 1).map(c => at(i, c))] }) // R
-    groups.push({ cells: [at(0, i), ...range(1, n).map(r => at(r, i))] }) // T
-    groups.push({ cells: [at(W - 1, i), ...range(n, 1).map(r => at(r, i))] }) // B
+    groups.push({ side: 'L', cells: [at(i, 0), ...range(1, n).map(c => at(i, c))] })
+    groups.push({ side: 'R', cells: [at(i, W - 1), ...range(n, 1).map(c => at(i, c))] })
+    groups.push({ side: 'T', cells: [at(0, i), ...range(1, n).map(r => at(r, i))] })
+    groups.push({ side: 'B', cells: [at(W - 1, i), ...range(n, 1).map(r => at(r, i))] })
   }
   return groups
 }
 
-const groups = frameGroups().map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
+const groups = frameGroups().map(g => ({ side: g.side, clue: g.cells[0], line: g.cells.slice(1) }))
 
 function sameReversed (a, b) {
   if (a.length !== b.length) return false
@@ -49,23 +49,16 @@ for (let i = 0; i < groups.length; i++) {
   if (!paired.has(i)) throw new Error(`skyscraper: clue ${helpers.naming.getCellName(groups[i].clue)} has no opposite clue on its line`)
 }
 
-// Exactly one clue of 1 per side. A clue of 1 means the cell next to it is the
-// tallest building. Each side's nearest rank is a house (a full row or column),
-// so the tallest building sits under exactly one clue on that side. The built-in
-// count constraint states it directly, coupling all the clues on a side.
-const W = groups[0].line.length + 2 // board is the n x n grid plus a clue ring
-function side (ci) {
-  if (ci < W) return 'T'
-  if (ci >= W * (W - 1)) return 'B'
-  if (ci % W === 0) return 'L'
-  return 'R'
-}
+// Exactly one clue of 1 per side. The component gets the side's clues and the
+// side's lines, clue by clue, and checks for itself that each line and the
+// nearest rank -- the lines' own first cells -- is a full house of {1..n}
+// (docs/line-contract.md); it prunes nothing until they all prove out.
 const sides = {}
 for (const g of groups) {
-  const s = side(g.clue)
-  if (!sides[s]) sides[s] = []
-  sides[s].push(g.clue)
+  if (!sides[g.side]) sides[g.side] = []
+  sides[g.side].push(g)
 }
 for (const s of Object.keys(sides)) {
-  puzzle.addConstraintComponent(new ExactDigitCountComponent(`one 1 on side ${s}`, 1, 1, sides[s]))
+  puzzle.addConstraintComponent(new SkyscraperSideComponent(
+    `one 1 on side ${s}`, sides[s].map(g => g.clue), sides[s].map(g => g.line)))
 }
