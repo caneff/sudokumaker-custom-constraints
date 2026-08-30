@@ -76,6 +76,12 @@ Use these terms exactly. Do not drift to synonyms.
 - **pair component** — a component that sees both clues of one line. Hit Counts
   registers one per line in both variants; other examples pair only in the
   global variant.
+- **side hit matching** — a side component that reads a whole side of the
+  frame by position instead of by line: it assigns the side's `n` positions
+  to its `n` lines as a bipartite matching, each line's capacity set by its
+  clue (or its candidate range while the clue is blank). Reading by position
+  lets it *force* a hit into a cell where a line component can only forbid
+  one.
 - **mirrored pair** — on an outside-clue line of length `n`, the two positions
   `j` and `n - 1 - j`. Reading hits as a matching between digits and positions,
   a mirrored pair shares its two hit digits and shares them with nothing else,

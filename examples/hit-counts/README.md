@@ -462,30 +462,37 @@ component's count-only cap cannot reach.
 
 ## Timing
 
-No row recorded. Both paths fail on the **baseline** probe, before the candidate
-link is ever timed, so this is not a property of any component change:
+**#116 is fixed.** Side hit matching (C′) plus the joint line DP (D) prune the
+search enough that the shipped 9x9 now returns a verdict in seconds, not the
+~65.8 s (or no verdict at all) the per-line and pair components left it at.
+Run with `--ring-clues`: the outside clues sit as non-given values in the
+ring, which the entered-values guard (#231) otherwise refuses.
 
-- `just time hit-counts` — the entered-values guard used to refuse the
-  baseline with "1 entered values on the board": it counted non-black
-  `svg text`, and the cage's white `00` label tripped it even though the link
-  decodes to 35 givens and 0 entered values. That was **#231**, fixed: the
-  guard now reads cell digits by their board position, so it gets past the
-  guard, then raises "app-solve.mjs got no timed reps" -- the app's search
-  never closes on this given-only 9x9. That is **#116** (#157 records both
-  halves).
+```
+just time hit-counts --ring-clues
+```
 
-The local board hit the same two, in the same order:
+| date | app version | board | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-30 | v2026.08.14-d47fc4b | hit-counts | 6900ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | hit-counts after-logical | 6900ms | — | — | BASELINE |
 
-- `just time hit-counts --board PUZZLE_LINK_local.txt` — after #231, gets
-  past the guard (38 givens, 0 entered values; `PUZZLE_LINK_local.txt`
-  carries the same white `00` cage label as the shipped board) and then
-  raises "app-solve.mjs got no timed reps": the app's search does not close
-  on this board either. That is the same symptom as **#116**, on a different
-  board — #116 is filed against the given-only 9x9 frame board (27 shown
-  clues, 4 givens), not this one.
+Both rows print `BASELINE`, not a ratio: the working-tree
+`HitCountsJointComponent.js` is byte-equal to the code already baked into
+`PUZZLE_LINK.txt`, so there is no candidate edit to compare against — C′ and D
+are already the shipped components, not a change in flight. The gate this row
+answers is the one from the spec (#248): the prototype measured 14,708 mock
+nodes (was 39,549) and an app time of 6.0 s cold / 6.1 s after-logical (was no
+verdict / 65.8 s), 0.40× / 0.41× on the two-row rule, against the old per-line
+and pair components. This run reproduces that order of magnitude on the
+shipped link itself — 6.9 s both cold and after-logical — which is the finite
+verdict user story 1 (#248) asks for. A future edit to
+`HitCountsJointComponent.js` re-triggers the real candidate-vs-baseline row
+through the same command.
 
-Both failures are on the **baseline** probe, so no local row can be recorded
-and none has been invented. The gate row this example owes (`≤ 1.1×` on the
-cold and after-logical rows, 3 reps, #236) and the local row for its bare-line
-rules (#237) are both blocked until #231 and #116 are fixed. See
-`docs/real-app-timing.md` for the protocol.
+The local board (`PUZZLE_LINK_local.txt`) still has no row: `just time
+hit-counts --board PUZZLE_LINK_local.txt --ring-clues` still raises
+"app-solve.mjs got no timed reps" — its bent paths give the app's search
+nothing like the frame's structure to prune on, so C′ and D do not help
+there. Recording that row is out of scope for this ticket (#251), which asks
+only for the shipped 9x9 frame board's gate.
