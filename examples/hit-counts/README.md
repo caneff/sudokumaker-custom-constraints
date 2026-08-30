@@ -429,25 +429,24 @@ component's count-only cap cannot reach.
 No row recorded. Both paths fail on the **baseline** probe, before the candidate
 link is ever timed, so this is not a property of any component change:
 
-- `just time hit-counts` — `app-solve.mjs` refuses the baseline with "1 entered
-  values on the board". The link decodes to 35 givens and 0 entered values; the
-  guard counts non-black `svg text`, and the cage's white `00` label trips it.
-  That is **#231**.
-- `just time hit-counts --ring-clues` — gets past the refusal and then raises
-  "app-solve.mjs got no timed reps": the app's search never closes on this
-  given-only 9x9. That is **#116** (#157 records both halves).
+- `just time hit-counts` — the entered-values guard used to refuse the
+  baseline with "1 entered values on the board": it counted non-black
+  `svg text`, and the cage's white `00` label tripped it even though the link
+  decodes to 35 givens and 0 entered values. That was **#231**, fixed: the
+  guard now reads cell digits by their board position, so it gets past the
+  guard, then raises "app-solve.mjs got no timed reps" -- the app's search
+  never closes on this given-only 9x9. That is **#116** (#157 records both
+  halves).
 
-The local board fails on the same two, in the same order:
+The local board hit the same two, in the same order:
 
-- `just time hit-counts --board PUZZLE_LINK_local.txt` — refused with "1
-  entered values on the board". The link decodes to 38 givens, 0 entered
-  values, and `PUZZLE_LINK_local.txt` carries the same white `00` cage label
-  as the shipped board. That is **#231**.
-- `just time hit-counts --board PUZZLE_LINK_local.txt --ring-clues` — gets
-  past the refusal and then raises "app-solve.mjs got no timed reps": the
-  app's search does not close on this board either. That is the same symptom
-  as **#116**, on a different board — #116 is filed against the given-only
-  9x9 frame board (27 shown clues, 4 givens), not this one.
+- `just time hit-counts --board PUZZLE_LINK_local.txt` — after #231, gets
+  past the guard (38 givens, 0 entered values; `PUZZLE_LINK_local.txt`
+  carries the same white `00` cage label as the shipped board) and then
+  raises "app-solve.mjs got no timed reps": the app's search does not close
+  on this board either. That is the same symptom as **#116**, on a different
+  board — #116 is filed against the given-only 9x9 frame board (27 shown
+  clues, 4 givens), not this one.
 
 Both failures are on the **baseline** probe, so no local row can be recorded
 and none has been invented. The gate row this example owes (`≤ 1.1×` on the
