@@ -11,7 +11,7 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 6 2 3
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
 #   uv run --with ortools --with lzstring \
-#       examples/hit-counts/build_size.py 9 3 3 6 --paths
+#       examples/hit-counts/build_size.py 9 3 3 3 --paths
 #
 # Args: n box_height box_width [seed_count] [--paths]
 #       (box_height * box_width == n)

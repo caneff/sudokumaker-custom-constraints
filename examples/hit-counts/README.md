@@ -199,6 +199,10 @@ board is carved to a single solution and proved unique the same way. The paths
 ship as `input.groups` on the `main.js` lane — the local variant — so the app
 hands each drawn group to one `HitCountsComponent` and nothing builds a frame.
 
+Its rules text carries one extra sentence the global board does not — the
+line is drawn, so it is not a house and a digit may repeat along it
+(`framebuild.LOCAL_RULES_SUFFIX`, shared by every example's local link).
+
 The committed board is seed 103: 2 interior givens, 32 shown clues, 4
 interactive.
 
@@ -356,7 +360,9 @@ The local board fails on the same two, in the same order:
   as the shipped board. That is **#231**.
 - `just time hit-counts --board PUZZLE_LINK_local.txt --ring-clues` — gets
   past the refusal and then raises "app-solve.mjs got no timed reps": the
-  app's search does not close on this board either. That is **#116**.
+  app's search does not close on this board either. That is the same symptom
+  as **#116**, on a different board — #116 is filed against the given-only
+  9x9 frame board (27 shown clues, 4 givens), not this one.
 
 Both failures are on the **baseline** probe, so no local row can be recorded
 and none has been invented. The gate row this example owes (`≤ 1.1×` on the

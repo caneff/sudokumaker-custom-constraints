@@ -38,8 +38,15 @@ SIBLINGS = ["SideSumComponent", "HitCountsPairComponent"]
 
 def hits(values):
     """The Hit Counts clue for one line of digits: cells whose digit equals
-    their 1-based distance from the clue. Must stay the rule build_size.hits
-    models and HitCountsComponent enforces."""
+    their 1-based distance from the clue.
+
+    A fourth statement of the rule, restated here rather than imported: this
+    test runs under `just test` with lzstring alone, and build_size.hits sits
+    behind framebuild's ortools import. It must agree with build_size.hits,
+    add_hit_count, and HitCountsComponent -- change the rule, change all four
+    (CODING_STANDARDS.md, "The rule has one home"). Same trade as
+    check_links.RULES_PREFIX.
+    """
     return sum(1 for i, v in enumerate(values) if v == i + 1)
 
 

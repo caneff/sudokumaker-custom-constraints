@@ -46,6 +46,15 @@ class Spec:
 # Every generated link opens with this sentence (project rule).
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
+# The local link's rules text closes with this: its lines are drawn paths, not
+# rows and columns, so a solver must not read them as houses (spec #232, user
+# story 9). One sentence for every example, since the fact is the variant's,
+# not the rule's.
+LOCAL_RULES_SUFFIX = (
+    " Each clue sits at the end of a drawn line, read inward. A line is not a "
+    "row, a column, or any other house: a digit may repeat along it."
+)
+
 
 # ---- grid generation ------------------------------------------------------
 
@@ -128,7 +137,7 @@ def _in_grid(corner, d, k, n):
     return 0 <= r < n and 0 <= c < n
 
 
-def repeated_digit_paths(grid, lines):
+def repeating_lines(grid, lines):
     """The keys whose line holds the same digit twice, read off the solution."""
     return [
         key
@@ -184,25 +193,21 @@ def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
-def generate(
-    spec, n, bh, bw, seeds, hide_key=None, lines_fn=None, require_repeat=False
-):
+def generate(spec, n, bh, bw, seeds, hide_key=None, paths=False):
     """Search `seeds` for the leanest board and return the chosen one.
 
-    `lines_fn(rng, n)` supplies the line geometry, defaulting to the straight
-    frame lines. It is drawn from its own random stream, so a generator that
-    ignores its rng (make_lines) leaves every other draw untouched. With
-    `require_repeat` a seed whose lines carry no repeated digit is skipped:
-    a bent-path board that happens to repeat nothing proves nothing about
-    bare lines.
+    `paths` builds the local board: bent paths in place of the straight frame
+    lines, and a seed whose lines carry no repeated digit is skipped, because
+    a bent-path board that happens to repeat nothing proves nothing about bare
+    lines. The geometry is drawn from its own random stream, so the frame-line
+    case (which ignores its rng) makes every other draw exactly as before.
     """
-    lines_fn = lines_fn or (lambda rng, n: make_lines(n))
     best = None
     for seed in seeds:
-        lines = lines_fn(random.Random(seed * 13), n)
+        lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
         rng = random.Random(seed)
         grid = make_grid(rng, n, bh, bw)
-        if require_repeat and not repeated_digit_paths(grid, lines):
+        if paths and not repeating_lines(grid, lines):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
         clue = {
@@ -226,6 +231,7 @@ def generate(
         print(f"  seed {seed}: interior givens = {cnt}")
         if best is None or cnt < best[0]:
             best = (cnt, seed, grid, clue, dict(givens), set(active), lines)
+    assert best is not None, "no seed produced a board to carve"
     cnt, seed, grid, clue, givens, active, lines = best
     rng = random.Random(seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
@@ -237,11 +243,11 @@ def generate(
         if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
             active.add(k)
     assert unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw) is True
-    if require_repeat:
+    if paths:
         # The property the board exists to carry. Asserted here so a
         # regeneration that loses it fails loud instead of shipping a board
         # whose every line is a house in disguise.
-        repeats = repeated_digit_paths(grid, lines)
+        repeats = repeating_lines(grid, lines)
         assert repeats, "no line carries a repeated digit"
         print(f"  lines with a repeated digit: {len(repeats)} of {len(lines)}")
     print(
@@ -383,7 +389,9 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=False):
         "puzzle": {
             "name": f"{spec.title} {n}x{n}",
             "author": "",
-            "comment": RULES_PREFIX + spec.comment_fn(n),
+            "comment": RULES_PREFIX
+            + spec.comment_fn(n)
+            + (LOCAL_RULES_SUFFIX if local else ""),
             # minDigit/maxDigit pin the digit range to n; the app otherwise
             # defaults a custom puzzle to 0..9 regardless of grid size.
             "type": "custom",
@@ -459,13 +467,7 @@ def run(spec, paths=False):
     assert bh * bw == n, "box_height * box_width must equal n"
     seeds = range(101, 141) if len(sys.argv) < 5 else range(101, 101 + int(sys.argv[4]))
     seed, grid, clue, givens, active, lines = generate(
-        spec,
-        n,
-        bh,
-        bw,
-        seeds,
-        lines_fn=make_paths if paths else None,
-        require_repeat=paths,
+        spec, n, bh, bw, seeds, paths=paths
     )
     doc = build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=paths)
     link = link_codec.encode_link(doc)
