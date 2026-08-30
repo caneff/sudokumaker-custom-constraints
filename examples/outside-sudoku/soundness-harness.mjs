@@ -17,12 +17,12 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, randomCandidates, violates } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { rnd } = makeRng()
 
 const mod = load('OutsideSudokuComponent.js', ['setParams', 'update'])
 
@@ -44,17 +44,6 @@ function * validTuples (clue, line, w, D) {
   }
 }
 
-function seeder (D) {
-  return (c, v) => {
-    const mode = pick(['pin', 'full', 'subset'])
-    if (mode === 'pin') return [v]
-    if (mode === 'full') return Array.from({ length: D }, (_, i) => i + 1)
-    const s = new Set([v])
-    for (let d = 1; d <= D; d++) if (rnd() < 0.5) s.add(d)
-    return [...s]
-  }
-}
-
 // Board geometry, line direction, line length and digit count per case. The
 // mid-box start (from: 1) checks a window that straddles a box boundary.
 const CASES = [
@@ -73,7 +62,8 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
   const geo = gridGeometry(N, bh, bw)
   const line = down ? geo.columnLine(0, from, m) : geo.rowLine(0, from, m)
   const w = Math.min(down ? bh : bw, m)
-  const seed = seeder(D)
+  // pinned, full, or a random subset — always keeping the cell's true value
+  const seed = (c, v) => randomCandidates(rnd, 1, D, v)
   for (const truth of validTuples(geo.clue, line, w, D)) {
     for (let rep = 0; rep < 8; rep++) {
       const p = makePuzzle(truth, seed)

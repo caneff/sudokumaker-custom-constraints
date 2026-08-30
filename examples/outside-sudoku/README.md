@@ -8,14 +8,19 @@ the same shape.
 ## The rule
 
 A line reads inward from an outside clue cell. The clue digit must appear in
-the line's **window**: the cells of the line that lie in the box the line
-starts in.
+the line's **window**: its first `w` cells.
 
     clue ∈ { value(line[0]), …, value(line[w - 1]) }
 
-`w` is the box's extent in the line's direction, capped by the line length:
-3 along a row or a column of a 9x9, 3 across and 2 down on a 6x6, 2 on a 4x4.
-The component reads `w` off the board and never assumes 3.
+`w` is the extent of the box the line starts in, measured along the line's
+direction, capped by the line length: 3 along a row or a column of a 9x9,
+3 across and 2 down on a 6x6, 2 on a 4x4. The component reads `w` off the
+board and never assumes 3.
+
+A line that starts at the grid edge — every frame line, and so every line on
+the shipped board — has exactly its own first box as its window. A line an
+author draws from mid-box gets a window of the same `w` cells, which runs on
+into the next box.
 
 The rule says nothing else. The digit may appear outside the window too, and
 it may appear in the window more than once, so the rule holds on a line of any
@@ -62,6 +67,7 @@ line as its window. That is weaker than the rule, never unsound.
 | `update-strength.test.mjs` | Never-weaker fuzz against the three deductions |
 | `backends.test.mjs` | What each backend registers, and how `main.js` fails |
 | `build_link.py` (+ test) | Swap a candidate component into the shipped board |
+| `verify.py` | CP-SAT proof that the shipped board has one solution |
 | `PUZZLE_LINK.txt` | The shipped board (see below) |
 
 ## The two backends
@@ -84,7 +90,14 @@ drawn groups.
   clues shown; the other 15 are empty cells the solver fills in.
 - Uniqueness is proved by OR-Tools CP-SAT, which models the same membership
   rule the component enforces (clue equals at least one of the first three
-  cells).
+  cells). `verify.py` re-runs that proof against the committed link, so the
+  claim is checkable from the tree:
+
+      uv run --with lzstring --with ortools examples/outside-sudoku/verify.py
+
+  It is the rule's third home, beside the component and the soundness harness
+  (`CODING_STANDARDS.md`, "The rule has one home"). It is slow, so `just check`
+  does not run it; run it after changing the board or the rule.
 - Every non-given cell decodes as `{}` — no solution digit and no hidden clue
   ships pre-typed.
 

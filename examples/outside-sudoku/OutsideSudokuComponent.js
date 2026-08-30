@@ -1,13 +1,15 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Outside Sudoku. A line reads inward from an outside clue cell. The clue
-//! digit must appear in the line's WINDOW: the cells of the line that lie in
-//! the box the line starts in.
+//! digit must appear in the line's WINDOW: its first w cells.
 //!
 //!     O in { value(line[0]), ..., value(line[w - 1]) }
 //!
-//! w is the box's extent in the line's direction (3 along a row or column of a
-//! 9x9, 3 across and 2 down on a 6x6, 2 on a 4x4), capped by the line length.
-//! The component reads it off the board, never assuming 3.
+//! w is the extent of the box the line starts in, measured along the line's
+//! direction (3 along a row or column of a 9x9, 3 across and 2 down on a 6x6,
+//! 2 on a 4x4), capped by the line length. The component reads it off the
+//! board, never assuming 3. A line that starts at the grid edge — every frame
+//! line — therefore has its own first box as its window; one an author draws
+//! from mid-box has a window of the same w cells, crossing into the next box.
 //!
 //! The rule is a pure membership test: no index, no order, no DP. It holds on
 //! a line of any kind — a bare line may repeat the clue digit inside the
@@ -22,7 +24,8 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// The window length: how many cells of line[0]'s box lie along the line. Read
+// The window length: the extent of line[0]'s box along the line's direction —
+// how many of that box's cells share line[0]'s row (or column). Read
 // once per component and cached — board geometry cannot change under a live
 // component, and the app rebuilds every component when the author edits.
 // A line whose first cell has no region (region -1, e.g. a ring cell) gets the

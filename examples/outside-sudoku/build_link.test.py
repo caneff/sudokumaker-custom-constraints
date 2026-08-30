@@ -13,27 +13,35 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import CONSTRAINT_NAME, build
+from frame import ring_cell
 from link_codec import decode_puzzle
 from link_swap import blanked, find_constraint
 
 N = 9  # the shipped board's interior
 W = N + 2
 
+# The interior cells of each frame line, nearest the clue first, keyed by ring
+# key. framebuild.make_lines says the same thing, but importing framebuild
+# pulls in ortools, which `just test` does not install.
+LINES = {f"L{i}": [(i, c) for c in range(N)] for i in range(N)}
+LINES |= {f"R{i}": [(i, c) for c in range(N - 1, -1, -1)] for i in range(N)}
+LINES |= {f"T{i}": [(r, i) for r in range(N)] for i in range(N)}
+LINES |= {f"B{i}": [(r, i) for r in range(N - 1, -1, -1)] for i in range(N)}
+
 
 def frame_groups():
-    """The 4n frame lines of a W-wide board, clue cell first then the line
-    inward -- the group order main.js reads (docs/example-layout.md)."""
+    """The 4n frame lines of the shipped board, clue cell first then the line
+    inward -- the group order main.js reads (docs/example-layout.md). The ring
+    cell of each key comes from the shared frame geometry."""
 
-    def at(r, c):
-        return r * W + c
+    def board(r, c):  # interior (r, c) sits at board (r+1, c+1)
+        return (r + 1) * W + c + 1
 
-    groups = []
-    for i in range(1, N + 1):
-        groups.append([at(i, 0)] + [at(i, c) for c in range(1, N + 1)])
-        groups.append([at(i, W - 1)] + [at(i, c) for c in range(N, 0, -1)])
-        groups.append([at(0, i)] + [at(r, i) for r in range(1, N + 1)])
-        groups.append([at(W - 1, i)] + [at(r, i) for r in range(N, 0, -1)])
-    return groups
+    return [
+        [W * ring_cell(key, W)[0] + ring_cell(key, W)[1]]
+        + [board(r, c) for r, c in cells]
+        for key, cells in LINES.items()
+    ]
 
 
 if __name__ == "__main__":

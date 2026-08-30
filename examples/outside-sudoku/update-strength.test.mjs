@@ -44,10 +44,12 @@ installGlobals(1, 9)
 // ---- 2. the window is the box's extent, even when the line starts mid-box
 // The line runs columns 1..8 of row 0, so its first box holds only two of its
 // cells — but the window is still three cells, the box's extent along a row.
+// Digit 3 lives in the third cell alone: a window cut short at the box edge
+// would drop it from the clue.
 {
   const line = g.rowLine(0, 1, 8)
   const cands = new Map([[g.clue, [1, 2, 3, 4, 5, 6, 7, 8, 9]]])
-  for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [1, 2, 3] : [9])
+  for (const [i, c] of line.entries()) cands.set(c, i < 2 ? [1, 2] : i === 2 ? [3] : [9])
   const after = run(line, cands)
   assert.deepStrictEqual(after.get(g.clue), [1, 2, 3], 'window is 3 cells from line[0], not 2')
 }

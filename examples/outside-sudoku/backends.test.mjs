@@ -40,7 +40,7 @@ function runBackend (file, puzzle, input) {
   // The app runs a backend segment as a bare script with these names in
   // scope; a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', 'OutsideSudokuComponent', src(file)) // eslint-disable-line no-new-func
-  fn(input, puzzle, helpers, function (...args) { return OutsideSudokuComponent(...args) })
+  fn(input, puzzle, helpers, OutsideSudokuComponent)
 }
 
 // ---- main.js: one component per drawn group
