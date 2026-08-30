@@ -6,9 +6,9 @@ before it, read inward from the clue. The clue cell is part of the puzzle: many
 clues start blank, and the solver reads them off the line. That is what
 "interactive" means here.
 
-For example, a row `142356789` gives a left clue of **4** — you see 1, 4, 6, 9 —
-and a right clue of **1**, the 9 alone. The 4x4 and 6x6 puzzles carry the same
-rule at their size.
+For example, a line reading `238145679` inward from its clue gives a clue of
+**4** — you see 2, 3, 8, 9. Read the other way, `976541832` gives **1**, the 9
+alone. The 4x4 and 6x6 puzzles carry the same rule at their size.
 
 ## Why replace the built-in
 
@@ -31,7 +31,8 @@ component must not lean on `replaceComponent`.
 
 The example ships two links from the same files (`../../docs/line-contract.md`):
 
-- **local** (`main.js`, `PUZZLE_LINK_local.txt`) — the author draws the groups.
+- **local** (`main.js`, `PUZZLE_LINK_6x6_local.txt` and
+  `PUZZLE_LINK_local.txt`) — the author draws the groups.
   A group is one clue and one line of any shape, clued at one end only, and it
   gets a `SkyscraperRunningCapComponent`: the running cap, sound on a line whose
   digits repeat.
@@ -188,10 +189,13 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   never carries a stale snapshot:
   `uv run --with ortools --with lzstring examples/skyscraper/rebuild_size.py 9`
   (`--paths` for the local board).
-- `PUZZLE_LINK_local.txt` / `gen_local.json` — the shipped local board: 36 bent
-  paths, 35 of them repeating a digit, drawn as groups.
-  `PUZZLE_LINK_6x6_local.txt` / `gen_6x6_local.json` are the 6x6 twin, the one
-  the app finishes, so it carries the local timing row.
+- `PUZZLE_LINK_local.txt` / `gen_local.json` — the 9x9 local board: 36 bent
+  paths, 35 of them repeating a digit, drawn as groups. It is carved to CP-SAT
+  minimality (6 interior givens), which puts it past what SudokuMaker's own
+  search closes — a stress board, proven unique by OR-Tools, not a board to sit
+  down with. `PUZZLE_LINK_6x6_local.txt` / `gen_6x6_local.json` are the 6x6
+  twin: the local board the app finishes, so it is the one to play and the one
+  that carries the local timing row.
 - `PUZZLE_LINK_10x10.txt` / `gen_10x10.json` — the 10x10 (2x5 boxes) board that timed the lifted cap.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
   built links. Open one to play the example.
@@ -265,7 +269,7 @@ compare it against and the candidate is byte-equal to the baseline: baseline
 rows only, which is what `docs/real-app-timing.md` says such a run prints.
 
 The 9x9 local board (`PUZZLE_LINK_local.txt`) has **no row**, and none has been
-invented. `just time skyscraper --ring-clues --board PUZZLE_LINK_local.txt`
+invented. It is a stress board, not a playable one. `just time skyscraper --ring-clues --board PUZZLE_LINK_local.txt`
 raises "app-solve.mjs got no timed reps" on the **baseline** probe: the app
 finds no first solution inside its 300 s limit. The board is carved to CP-SAT
 minimality — 6 interior givens, 17 interactive clues — and the running cap alone

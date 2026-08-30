@@ -38,9 +38,12 @@ const ALLOW_TIES = false
 const TIE = ALLOW_TIES ? 1 : 0
 
 // Digit and count masks are the app's: bit d means digit d. A count of j is a
-// clue value, so it lives in the same encoding. 30 keeps every mask below the
-// sign bit; a longer line stands the component down rather than wrap a shift.
-const MAXLEN = 30
+// clue value, so it lives in the same encoding. The widest shift below is
+// `1 << (count + 1)` for a count up to the line length, and `1 << (maxDigit +
+// 2)` for the first-cell cap, so a cap of 24 leaves both well inside a 32-bit
+// int. A longer line, or a board with more digits than this, stands the
+// component down rather than wrap a shift.
+const MAXLEN = 24
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -109,7 +112,9 @@ function scanLine (puzzle, line) {
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const len = line.length
-  if (len === 0 || len > MAXLEN) return // a clue with no line, or too long to mask
+  const { maxDigit } = helpers.digits
+  // a clue with no line, or a line or digit range too wide to mask
+  if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return
   const s = scanLine(puzzle, line)
   if (s === null) return
   const clueCand = puzzle.getCandidatesBitMask(clue)
@@ -129,7 +134,7 @@ function * update (instance, puzzle) {
   if (!ALLOW_TIES) {
     // The visible buildings rise strictly from the first one, so a clue of k
     // leaves k - 1 taller storeys above the first cell.
-    drop(line[0], s.cand[0] & atLeast(helpers.digits.maxDigit - kLo + 2))
+    drop(line[0], s.cand[0] & atLeast(maxDigit - kLo + 2))
   }
   if (s.forcedCount === kHi) {
     // No room for another visible building: every cell not already forced must

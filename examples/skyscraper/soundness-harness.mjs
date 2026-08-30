@@ -81,6 +81,30 @@ function fuzzCap (label, { allowTies, kind, n, iters }) {
   return { bad, fired }
 }
 
+// `validate` is the component's last word on a filled line, and it reads the
+// same tie flag `update` does. A filled line, its true clue, and that clue off
+// by one: the first must pass and the second must fail, under both readings.
+let capValidateBad = 0
+for (const allowTies of [false, true]) {
+  const capMod = loadCap(allowTies)
+  for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
+    const digits = makeLine(rnd, kind, n, N)
+    const cells = digits.map((_, i) => i)
+    const clue = visibleWith(allowTies, digits)
+    const inst = {}
+    capMod.setParams(inst, CAP_CLUE, cells)
+    const filledWith = k => {
+      const truth = { [CAP_CLUE]: k }
+      for (let i = 0; i < n; i++) truth[i] = digits[i]
+      return makePuzzle(truth, (c, v) => [v], { kind, digitCount: N })
+    }
+    const wrong = clue === 1 ? clue + 1 : clue - 1
+    if (!capMod.validate(inst, filledWith(clue))) { capValidateBad++; console.log('validate rejected the true clue', clue, 'on', digits.join('')) }
+    if (capMod.validate(inst, filledWith(wrong))) { capValidateBad++; console.log('validate accepted the clue', wrong, 'on', digits.join(''), 'whose count is', clue) }
+  }
+}
+console.log('running cap validate:', capValidateBad, 'wrong verdicts')
+
 let capBad = 0
 let capSilent = 0
 for (const allowTies of [false, true]) {
@@ -383,7 +407,7 @@ const sideBare = fuzzSide('side component, bare      ', 'bare', 5000)
 installGlobals(1, N)
 
 const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
-  capBad === 0 && capSilent === 0 &&
+  capBad === 0 && capSilent === 0 && capValidateBad === 0 &&
   bareRemovals === 0 && bareRepeats > 0 &&
   zeroRemovals === 0 && zeroValidates && shutWhileZeroLive && opensAfterZeroGoes &&
   sideFull.bad === 0 && sideFull.fired > 0 && sideBare.fired === 0

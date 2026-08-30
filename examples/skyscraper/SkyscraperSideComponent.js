@@ -19,8 +19,10 @@
 //! There is no tie flag here. A full house holds each digit once, so no two
 //! buildings on a line are ever the same height.
 
+// The gate reads every line cell, so a digit leaving a line has to wake this
+// component -- otherwise the gate opens and nothing asks again.
 function getAffectedCells (clues, lines) {
-  return clues
+  return [...clues, ...lines.flat()]
 }
 
 function setParams (instance, clues, lines) {
@@ -40,9 +42,11 @@ function fullHouseOfOneToN (puzzle, cells) {
 }
 
 // Asked at solve time, because main code runs before the built-in row and
-// column houses are registered (gotcha 6). A house never repeats again and a
-// shrinking union never regains a digit, so the answer is cached once it turns
-// true, and only then.
+// column houses are registered (gotcha 6) and a board that starts its digits at
+// 0 keeps a 0 on a line until something else takes it away. A house never
+// repeats again and a shrinking union never regains a digit, so the answer is
+// cached once it turns true -- and only then, or a line still carrying a 0
+// would lock the gate shut for good.
 function gateOpen (instance, puzzle) {
   if (instance.gateOpen) return true
   const { clues, lines, rank } = instance
