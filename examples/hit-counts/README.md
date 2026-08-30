@@ -462,37 +462,23 @@ component's count-only cap cannot reach.
 
 ## Timing
 
-**#116 is fixed.** Side hit matching (C′) plus the joint line DP (D) prune the
-search enough that the shipped 9x9 now returns a verdict in seconds, not the
-~65.8 s (or no verdict at all) the per-line and pair components left it at.
-Run with `--ring-clues`: the outside clues sit as non-given values in the
-ring, which the entered-values guard (#231) otherwise refuses.
-
 ```
-just time hit-counts --ring-clues
+just time hit-counts
 ```
 
 | date | app version | board | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2026-08-30 | v2026.08.14-d47fc4b | hit-counts | 6900ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | hit-counts | 7000ms | — | — | BASELINE |
 | 2026-08-30 | v2026.08.14-d47fc4b | hit-counts after-logical | 6900ms | — | — | BASELINE |
 
-Both rows print `BASELINE`, not a ratio: the working-tree
-`HitCountsJointComponent.js` is byte-equal to the code already baked into
-`PUZZLE_LINK.txt`, so there is no candidate edit to compare against — C′ and D
-are already the shipped components, not a change in flight. The gate this row
-answers is the one from the spec (#248): the prototype measured 14,708 mock
-nodes (was 39,549) and an app time of 6.0 s cold / 6.1 s after-logical (was no
-verdict / 65.8 s), 0.40× / 0.41× on the two-row rule, against the old per-line
-and pair components. This run reproduces that order of magnitude on the
-shipped link itself — 6.9 s both cold and after-logical — which is the finite
-verdict user story 1 (#248) asks for. A future edit to
-`HitCountsJointComponent.js` re-triggers the real candidate-vs-baseline row
-through the same command.
+**#116 is fixed:** the shipped 9x9 (35 givens, 0 entered values) now returns a
+verdict in seconds, where the old per-line and pair components gave no verdict
+at all. Both rows print `BASELINE`, not a ratio, because the working-tree
+`HitCountsJointComponent.js` is byte-equal to the code `PUZZLE_LINK.txt`
+already ships — C′ and D landed in #249/#250, so this command has no
+candidate edit to gate. See `docs/real-app-timing.md` for what a `BASELINE`
+row means and #248 for the prototype's 0.40×/0.41× measurement against the
+old components.
 
-The local board (`PUZZLE_LINK_local.txt`) still has no row: `just time
-hit-counts --board PUZZLE_LINK_local.txt --ring-clues` still raises
-"app-solve.mjs got no timed reps" — its bent paths give the app's search
-nothing like the frame's structure to prune on, so C′ and D do not help
-there. Recording that row is out of scope for this ticket (#251), which asks
-only for the shipped 9x9 frame board's gate.
+The local board (`PUZZLE_LINK_local.txt`) has no row yet; out of scope for
+this ticket (#251), which asks only for the shipped 9x9's gate.
