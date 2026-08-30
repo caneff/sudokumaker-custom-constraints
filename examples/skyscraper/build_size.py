@@ -39,11 +39,13 @@ COMPONENTS = [
     "SkyscraperSideComponent.js",
 ]
 
-# One worked example per size: a line, then the left and right clue it gives.
+# One worked example per size, read inward from the clue -- a local board's
+# lines bend and carry one clue, so the example must not talk about rows or
+# about a clue at the far end.
 RULE_EXAMPLES = {
-    4: "a row with 1324 gives a left clue of 3 (1, 3, 4 are visible) and a right clue of 1 (only the 4)",
-    6: "a row with 142356 gives a left clue of 3 (1, 4, 6) and a right clue of 1 (only the 6)",
-    9: "a row with 142356789 gives a left clue of 4 (1, 4, 6, 9) and a right clue of 1 (only the 9)",
+    4: "a line reading 1324 inward from its clue gives a clue of 3 (1, 3 and 4 are visible); read the other way, 4231 gives a clue of 1 (the 4 alone)",
+    6: "a line reading 251346 inward from its clue gives a clue of 3 (2, 5 and 6 are visible); read the other way, 643152 gives a clue of 1 (the 6 alone)",
+    9: "a line reading 238145679 inward from its clue gives a clue of 4 (2, 3, 8 and 9 are visible); read the other way, 976541832 gives a clue of 1 (the 9 alone)",
 }
 
 

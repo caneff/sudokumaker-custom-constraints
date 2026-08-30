@@ -12,13 +12,16 @@
 #   uv run --with ortools --with lzstring examples/skyscraper/rebuild_size.py 10
 #   uv run --with ortools --with lzstring \
 #       examples/skyscraper/rebuild_size.py 9 --paths
+#   uv run --with ortools --with lzstring \
+#       examples/skyscraper/rebuild_size.py 6 --paths
 #
 # The 9x9 is the board the timing loop and build_link.py reuse, so it lives as
 # PUZZLE_LINK.txt, not PUZZLE_LINK_9x9.txt.
 #
-# --paths rebuilds the local board (bent paths, drawn groups, the main.js lane)
-# from gen_local.json instead, so a component edit reaches PUZZLE_LINK_local.txt
-# too, on the same board build_size.py --paths searched out.
+# --paths rebuilds a local board (bent paths, drawn groups, the main.js lane)
+# instead, so a component edit reaches the local links too, on the same boards
+# build_size.py --paths searched out. The 9x9 local pair is the plain-named
+# PUZZLE_LINK_local.txt / gen_local.json; every other size keeps its NxN.
 #
 # Checks the rebuilt link decodes to the same grid, givens, and shown clues as
 # the one it replaces -- only the constraint's own code/input and the comment
@@ -52,8 +55,8 @@ if __name__ == "__main__":
     if paths:
         sys.argv.remove("--paths")
     n = int(sys.argv[1])
-    assert not paths or n == 9, "the local board is the 9x9 only"
-    tag = "local" if paths else f"{n}x{n}"
+    # the 9x9 local pair is plain-named; every other local board keeps its NxN
+    tag = ("local" if n == 9 else f"{n}x{n}_local") if paths else f"{n}x{n}"
     out = HERE / (
         "PUZZLE_LINK.txt" if n == 9 and not paths else f"PUZZLE_LINK_{tag}.txt"
     )

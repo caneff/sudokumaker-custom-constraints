@@ -42,11 +42,10 @@ export function makeIo (here) {
   const evalNamed = (src, names) =>
     eval('(function(){' + src + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
   const load = (file, names) => evalNamed(read(file), names)
-  const loadSource = (src, names) => evalNamed(src, names)
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
   const loadAt = (commit, file, names) =>
     evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names)
-  return { read, load, loadAt, loadSource }
+  return { read, load, loadAt, loadSource: evalNamed }
 }
 
 // A random candidate set over lo..hi: pinned, the full range, or a random
