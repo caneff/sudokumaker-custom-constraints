@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseReadout, parseVersion, repLine, medianLine, marksRejected } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -142,3 +142,32 @@ console.log('app-solve-lib.test.mjs: all seams pass')
 // ---- app version from the footer ----
 assert.strictEqual(parseVersion('SudokuMaker v2026.08.14-d47fc4b  Solved took 1s'), 'v2026.08.14-d47fc4b')
 assert.strictEqual(parseVersion('no footer here'), null)
+
+// ---- entered-value count reads cell digits, not every colored SVG text ----
+// A cell's digit (given or entered) is an <svg text> whose immediate parent
+// <g> sits at a cell center: `translate(<25+50*col> <25+50*row>) scale(25)`
+// (see app-strip.mjs's cellFill). A constraint's own decoration -- e.g. Hit
+// Counts' ring total, a white "00" -- renders at some other transform, so it
+// must not count as an entered value even though its fill is not black.
+// Fixture: 35 black given digits at cell transforms, plus one white "00"
+// decoration at a fractional transform, matching the real Hit Counts board
+// from #231.
+{
+  const givenOnly = [
+    ...Array.from({ length: 35 }, (_, i) => ({ fill: '#000', transform: `translate(${25 + 50 * (i % 9)} ${25 + 50 * Math.floor(i / 9)}) scale(25)` })),
+    { fill: 'rgb(255, 255, 255)', transform: 'translate(1.045 1.036) scale(0.02)' }
+  ]
+  assert.strictEqual(countEnteredValues(givenOnly), 0)
+}
+
+// ---- a real entered value at a cell transform is still counted ----
+// A ring-clue puzzle's entered digits render blue, at the same cell-center
+// transform as a given -- this must still count so the guard still refuses
+// a link that carries a real played value.
+{
+  const withEntered = [
+    { fill: '#000', transform: 'translate(25 25) scale(25)' },
+    { fill: 'rgb(82, 116, 234)', transform: 'translate(75 25) scale(25)' }
+  ]
+  assert.strictEqual(countEnteredValues(withEntered), 1)
+}

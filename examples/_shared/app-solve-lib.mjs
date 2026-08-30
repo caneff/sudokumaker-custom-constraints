@@ -77,3 +77,24 @@ export function parseVersion (text) {
 export function marksRejected (text, marksExpected) {
   return /based on already entered values/i.test(text) && !marksExpected
 }
+
+// A cell's own digit -- given or entered -- renders as an <svg text> whose
+// closest ancestor <g> carrying a `transform` sits at that cell's center:
+// `translate(<25+50*col> <25+50*row>) scale(25)` (see app-strip.mjs's
+// cellFill; some boards wrap the text in an untransformed styling <g> first,
+// so this must walk up to the nearest transformed one, not just the direct
+// parent). A constraint's own decoration can also draw a non-black <svg
+// text> -- Hit Counts draws a white ring total this way -- but at some other
+// transform, so counting every non-black text on the board (#231) treats
+// that decoration as an entered value on a board that has none. This filters
+// to real cell digits first.
+const CELL_TRANSFORM = /^translate\(-?\d+(?:\.\d+)? -?\d+(?:\.\d+)?\) scale\(25\)$/
+const isBlack = fill => /^(#000|black|rgb\(0, 0, 0\))$/i.test(fill)
+
+// Count entered (non-given) cell values. `cells` is [{ fill, transform }],
+// one per <svg text> found on the page: `fill` is that text's own fill, and
+// `transform` is the `transform` attribute of its closest ancestor <g> that
+// has one (or null/undefined when there is no such ancestor).
+export function countEnteredValues (cells) {
+  return cells.filter(c => CELL_TRANSFORM.test(c.transform || '') && !isBlack(c.fill)).length
+}
