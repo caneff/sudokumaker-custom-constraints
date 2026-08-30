@@ -205,6 +205,10 @@ function jointFixpoint (comps, p) {
 }
 
 // ---- 3b. A forced side hit the per-line scan misses, deterministic ----
+// The same side `soundness-harness.mjs` builds for its gate probe, written out
+// again because the two runs are separate processes — change one copy, change
+// the other.
+//
 // A 4x4 left side: four rows, each clued 1, so the four clues host the four
 // positions between them, one line each. Position i is live on line L while
 // digit i + 1 is still a candidate at line L's cell i. Here position 0 is live

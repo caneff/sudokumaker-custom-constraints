@@ -9,9 +9,15 @@
 // every valid assignment uses, the true one included. Both removals therefore
 // only ever take candidates no solution needs.
 //
-// The regrouping itself needs each position to be a house of 1..n, which
-// `gateOpen` checks on the cells rather than trusting the caller
-// (docs/line-contract.md). Until it holds the component prunes nothing.
+// The regrouping itself needs each position to be a house of 1..n, which the
+// component checks on the cells rather than trusting the caller
+// (docs/line-contract.md). Until it holds, nothing is pruned. Only half of that
+// test is cached: whether the cells see each other is structural and settles
+// once, but the digit set is re-read on every call. A shrinking union is what
+// opens the gate, and a backtrack grows unions back — this component forces
+// placements, so a gate held open over a restored 0 would put a digit in a cell
+// that need not hold it. Re-reading is free: the masks are the ones the change
+// check already fetches.
 
 //! Side hit matching. Read one side by position instead of by line. Position i
 //! of a side is the cells that sit i+1 steps in from each of the side's n clues;
@@ -38,29 +44,20 @@ function setParams (instance, clues, lines) {
     : lines[0].map((_, i) => lines.map(line => line[i]))
 }
 
-// The gate: n clues, n lines of n cells, and every position a house whose live
-// digits are exactly {1..n} -- n cells, n digits, no repeats, so digit i+1 sits
-// at position i exactly once, which is the fact the assignment is built on.
-// Asked at solve time, because main code runs before the built-in row/column
-// houses are registered (gotcha 6) and a hit-counts board only loses the 0 off
-// its inner grid once the cage bites during solving. A house never repeats
-// again and a shrinking union never regains a digit, so the answer is cached
-// once it turns true.
-// The size bound is the reachability search below, which holds one bitmask of
-// 2n + 1 nodes in a 31-bit integer.
-function gateOpen (instance, puzzle) {
-  if (instance.gateOpen) return true
+// Half the gate: n clues, n lines of n cells, and every position a house. The
+// house test is asked at solve time, because main code runs before the built-in
+// row/column houses are registered (gotcha 6), and it is cached once it turns
+// true -- cells that see each other go on seeing each other. The size bound is
+// the reachability search below, which holds one bitmask of 2n + 1 nodes in a
+// 31-bit integer.
+function housesKnown (instance, puzzle) {
+  if (instance.housesKnown) return true
   const { clues, lines, positions } = instance
   const n = lines.length
   if (n < 1 || n > 15 || clues.length !== n) return false
   for (const line of lines) if (line.length !== n) return false
-  for (const at of positions) {
-    if (puzzle.getCellsCanHaveRepeats(at)) return false
-    let mask = 0
-    for (const c of at) mask |= puzzle.getCandidatesBitMask(c)
-    if (mask !== (1 << (n + 1)) - 2) return false // bits 1..n set, bit 0 clear
-  }
-  instance.gateOpen = true
+  for (const at of positions) if (puzzle.getCellsCanHaveRepeats(at)) return false
+  instance.housesKnown = true
   return true
 }
 
@@ -106,7 +103,7 @@ function maxflow (g, s, t) {
 //   live[i][L]  edge (position i, line L) is available
 //   lo[L], hi[L]  how many positions line L may host
 function solveFlow (live, lo, hi, n) {
-  const POS = i => i
+  // Node numbering: position i is i, line L is n + L, then the four terminals.
   const LINE = L => n + L
   const T = 2 * n
   const S = 2 * n + 1
@@ -121,12 +118,12 @@ function solveFlow (live, lo, hi, n) {
   const edge = []
   for (let i = 0; i < n; i++) {
     const row = new Array(n).fill(-1)
-    for (let L = 0; L < n; L++) if (live[i][L]) row[L] = addEdge(g, POS(i), LINE(L), 1)
+    for (let L = 0; L < n; L++) if (live[i][L]) row[L] = addEdge(g, i, LINE(L), 1)
     edge.push(row)
   }
   for (let L = 0; L < n; L++) addEdge(g, LINE(L), T, hi[L] - lo[L])
   addEdge(g, T, S, n + loSum) // the circulation's return edge; n is its ceiling
-  for (let i = 0; i < n; i++) addEdge(g, SS, POS(i), 1) // supply: each position is hosted once
+  for (let i = 0; i < n; i++) addEdge(g, SS, i, 1) // supply: each position is hosted once
   if (loSum > 0) addEdge(g, SS, T, loSum)
   addEdge(g, S, TT, n)
   for (let L = 0; L < n; L++) if (lo[L] > 0) addEdge(g, LINE(L), TT, lo[L])
@@ -188,7 +185,7 @@ function fixedEdges (live, flow, load, lo, hi, n) {
 // Read the side's state, solve the assignment, and return the candidate changes.
 // A clue counts positions, so it never exceeds n; candidates above n are read
 // off before the range is taken.
-function sideDeductions (puzzle, clues, lines) {
+function sideDeductions (puzzle, clues, lines, live) {
   const n = lines.length
   const lo = []
   const hi = []
@@ -198,55 +195,66 @@ function sideDeductions (puzzle, clues, lines) {
     lo.push(31 - Math.clz32(mask & -mask))
     hi.push(31 - Math.clz32(mask))
   }
-  const live = []
-  for (let i = 0; i < n; i++) {
-    const row = []
-    for (let L = 0; L < n; L++) row.push(((puzzle.getCandidatesBitMask(lines[L][i]) >> (i + 1)) & 1) === 1)
-    live.push(row)
-  }
   const solved = solveFlow(live, lo, hi, n)
   if (solved === null) return null
   const { flow, load } = solved
   const fixed = fixedEdges(live, flow, load, lo, hi, n)
-  const drop = []
-  const pin = []
+  const forbid = [] // [cell, digit the cell cannot hold]
+  const force = [] // [cell, the one digit the cell must hold]
   for (let i = 0; i < n; i++) {
     for (let L = 0; L < n; L++) {
       if (!live[i][L] || !fixed(i, L)) continue
-      if (flow[i][L] === 0) drop.push([lines[L][i], i + 1])
-      else pin.push([lines[L][i], i + 1])
+      if (flow[i][L] === 0) forbid.push([lines[L][i], i + 1])
+      else force.push([lines[L][i], i + 1])
     }
   }
-  return { drop, pin }
+  return { forbid, force }
 }
 
-// The side sees 4n cells on a 9x9 board and the solver calls update after every
-// change to any of them, but the assignment reads only two things: whether digit
-// i + 1 is still a candidate at position i of each line, and what each clue
-// still allows. Hash exactly those and record the hash of the state this
-// component itself produced; an entry hash equal to it means the assignment
-// cannot have changed, so there is nothing to find. A backtrack restores
-// candidates and changes the hash, so the deductions are made again on the way
-// back down.
-function signature (puzzle, clues, lines) {
+// Read every line cell once and fold the masks three ways: the live edges the
+// assignment needs, the digits still live at each position, and a hash of
+// exactly those bits plus the clue masks. Returns null when some position no
+// longer holds all of 1..n, which is the half of the gate that can come and go.
+//
+// The hash is the change check. The side sees 4n cells on a 9x9 board and the
+// solver calls update after every change to any of them, but the assignment
+// reads only whether digit i + 1 is still a candidate at position i of each
+// line and what each clue still allows. `update` records the hash of the state
+// it left behind; an entry hash equal to it means the assignment cannot have
+// moved, so there is nothing to find. A backtrack restores candidates and
+// changes the hash, so the deductions are made again on the way back down.
+// (The prototype measured the narrowing at about a third of the deduction's
+// whole win in the app, 25.5 s to 20.3 s -- #233, the real-app measurement
+// docs/agents/per-call-cost.md asks for before a skip-unchanged check ships.)
+function readSide (puzzle, instance) {
+  const { clues, lines } = instance
+  const n = lines.length
+  const live = []
+  for (let i = 0; i < n; i++) live.push(new Array(n).fill(false))
+  const union = new Array(n).fill(0)
   let h = 0
-  for (let L = 0; L < lines.length; L++) {
+  for (let L = 0; L < n; L++) {
     let bits = 0
-    for (let i = 0; i < lines[L].length; i++) {
-      if ((puzzle.getCandidatesBitMask(lines[L][i]) >> (i + 1)) & 1) bits |= 1 << i
+    for (let i = 0; i < n; i++) {
+      const mask = puzzle.getCandidatesBitMask(lines[L][i])
+      union[i] |= mask
+      if ((mask >> (i + 1)) & 1) { live[i][L] = true; bits |= 1 << i }
     }
     h = (Math.imul(h, 31) + bits) | 0
     h = (Math.imul(h, 31) + puzzle.getCandidatesBitMask(clues[L])) | 0
   }
-  return h
+  for (let i = 0; i < n; i++) {
+    if (union[i] !== (1 << (n + 1)) - 2) return null // bits 1..n set, bit 0 clear
+  }
+  return { live, sig: h }
 }
 
 function * update (instance, puzzle) {
-  if (!gateOpen(instance, puzzle)) return
+  if (!housesKnown(instance, puzzle)) return
   const { clues, lines } = instance
-  const sig = signature(puzzle, clues, lines)
-  if (sig === instance.sig) return
-  const found = sideDeductions(puzzle, clues, lines)
+  const read = readSide(puzzle, instance)
+  if (read === null || read.sig === instance.sig) return
+  const found = sideDeductions(puzzle, clues, lines, read.live)
   if (found === null) {
     // No assignment of positions to lines survives: this branch is dead. Empty a
     // clue cell, the same contradiction signal the per-line rule already raises.
@@ -254,12 +262,16 @@ function * update (instance, puzzle) {
     if (all.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(all), clues[0])
     return
   }
-  for (const [cell, digit] of found.drop) yield puzzle.removeCandidateFromCell(digit, cell)
-  for (const [cell, keep] of found.pin) {
+  for (const [cell, digit] of found.forbid) yield puzzle.removeCandidateFromCell(digit, cell)
+  for (const [cell, keep] of found.force) {
     const rm = Array.from(puzzle.getCandidates(cell)).filter(d => d !== keep)
     if (rm.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), cell)
   }
-  instance.sig = signature(puzzle, clues, lines)
+  // The removals above can take a digit's last home at some position, which
+  // reads as a dead state rather than a side to skip: null the hash so the next
+  // call looks again instead of matching a number this one never produced.
+  const after = readSide(puzzle, instance)
+  instance.sig = after === null ? null : after.sig
 }
 
 // Run once at creation: given clues can settle part of the side at load.
