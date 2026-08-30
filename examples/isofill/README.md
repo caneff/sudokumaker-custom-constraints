@@ -74,9 +74,8 @@ exists to teach.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
   `PUZZLE_LINK_44g.txt`, `PUZZLE_LINK_28g.txt`, `PUZZLE_LINK_24g.txt`,
-  `PUZZLE_LINK_25g.txt`, `PUZZLE_LINK_26g.txt` — the
-  hard fixtures as
-  stripped links (givens only, nothing entered), built by
+  `PUZZLE_LINK_25g.txt`, `PUZZLE_LINK_26g.txt` — the hard fixtures as stripped
+  links (givens only, nothing entered), built by
   `build_hard_links.py` on every `just check`. Open one to see the board the
   timing table is talking about.
 - `gen_28g.json` (28 givens), `gen_24g.json` (24 givens) — the two slowest of
@@ -476,6 +475,9 @@ No code changed here, so every row is a BASELINE.
 3 reps, non-deterministic solve off, same as the rest — rather than getting
 a separate one-rep table of their own; the batch table above records the
 single exploratory reading that picked them out of twenty candidates.
+`gen_25g` and `gen_26g` (#243) get the same two-row treatment, in the
+"Re-strip + seed-33-52 batch" section below rather than repeated here, since
+that section already carries the batch table that picked them out.
 
 **The after-logical row is 0 ms on seven of the eight fixtures.** The app's
 logical solver, with its full technique set, finishes those boards outright,
@@ -774,7 +776,11 @@ sample <seed>` (batch only — the re-strip pass reads the grid straight out of
 each fixture's own `gen_*.json`) for a full 100-given grid, `app-strip.mjs` to
 greedily strip it under the current shipped component, one cold
 `app-solve.mjs` rep. Both tables are run once; this is the record so neither
-is re-run.
+is re-run. Strip-order seed: the seeds-33-52 batch reuses each grid's own
+sample seed (e.g. seed 44 strips in the order seed 44 shuffles); the re-strip
+pass, having no sample seed of its own, uses 1001-1008 in fixture order
+(`gen`, `gen_9x9`, `gen_24g`, `gen_28g`, `gen_30g`, `gen_32g`,
+`gen_35g_silent`, `gen_44g`).
 
 #### Re-strip, the 8 existing fixtures
 
@@ -794,8 +800,8 @@ fixture is not guaranteed to find a smaller clue set than the one already
 committed — four of the eight land at *more* givens than they ship with
 today (`gen` 35→36, `gen_9x9` 27→28, `gen_24g` 24→27, `gen_28g` 28→30). Only
 `gen_30g` clears 10 s: its own grid, re-stripped, drops from 30 to 25 givens
-and goes from 4.9 s (the committed board, `## Timing` above) to 11.7 s cold —
-ships as `gen_25g.json`.
+and goes from 0.9 s (the committed board's current baseline, `#168` above) to
+11.7 s cold — ships as `gen_25g.json`.
 
 #### Seeds 33-52, fresh batch
 
@@ -840,7 +846,9 @@ time isofill --board <link>`:
 | 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_26g.txt) after-logical | 0ms | — | — | BASELINE |
 
 Both after-logical rows read 0 ms — the app's logical solver finishes both
-boards outright, same pattern as six of the eight original fixtures above.
+boards outright, same pattern as all eight original fixtures show under the
+current component (`#168` above; the earlier 2026-08-28 table predates the
+seed walk, when only seven of eight read 0 ms after-logical).
 The single-rep batch-table readings above (11700 ms, 22300 ms) land close to
 the 3-rep BASELINE medians (12400 ms, 22600 ms) — the run-to-run spread
 `docs/real-app-timing.md` calls normal, not a sign the one-rep batch reading
