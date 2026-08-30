@@ -73,7 +73,8 @@ exists to teach.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
-  `PUZZLE_LINK_44g.txt`, `PUZZLE_LINK_28g.txt`, `PUZZLE_LINK_24g.txt` — the
+  `PUZZLE_LINK_44g.txt`, `PUZZLE_LINK_28g.txt`, `PUZZLE_LINK_24g.txt`,
+  `PUZZLE_LINK_25g.txt`, `PUZZLE_LINK_26g.txt` — the
   hard fixtures as
   stripped links (givens only, nothing entered), built by
   `build_hard_links.py` on every `just check`. Open one to see the board the
@@ -87,6 +88,12 @@ exists to teach.
   `## Timing` below. `verify.py` proves both unique — CP-SAT takes 2-4
   minutes on these (measured 222 s and 162 s), well inside the 600 s default
   limit `unique()` now carries (raised from 60 s for exactly this).
+- `gen_25g.json` (25 givens), `gen_26g.json` (26 givens) — a #243 re-strip and
+  a #243 seed-batch grid, the two boards out of 28 sampled that clear 10 s
+  cold under the current (seed-walk, cut, tour, silent) component: `gen_25g.json`
+  is `gen_30g.json`'s own grid re-stripped (11.7 s), `gen_26g.json` is seed 44
+  fresh out of the 33-52 range (22.3 s). See `## Timing` below for both
+  batch tables. `verify.py` proves both unique.
 
 ## Paste into SudokuMaker
 
@@ -754,3 +761,87 @@ interleaved rounds (baseline 3.7/4.2/3.8/4.3/4.0/4.3/3.7 s, candidate
 4.0/4.4/4.3/4.0/4.4/4.0/4.0 s). The rounds were interleaved because a straight
 A-then-B pass drifted: one later baseline block on `gen_32g` read 5.0 s
 against an earlier 3.6 s on identical code.
+
+### Re-strip + seed-33-52 batch (#243, 2026-08-30)
+
+The seed walk (#168) made every fixture fast (`gen_28g` 3.4 s, `gen_35g_silent`
+2.4 s), and the Tarjan filter #170 declined to build had nothing to show a
+real time difference on. Same two passes #166 used, under the component this
+example ships today: re-strip each of the 8 existing fixtures from its own
+full grid, and sample+strip a fresh batch of twenty (seeds 33-52 — the next
+twenty unused after #166 spent 2-6, 8-10, 21-32). Each grid: `verify.py
+sample <seed>` (batch only — the re-strip pass reads the grid straight out of
+each fixture's own `gen_*.json`) for a full 100-given grid, `app-strip.mjs` to
+greedily strip it under the current shipped component, one cold
+`app-solve.mjs` rep. Both tables are run once; this is the record so neither
+is re-run.
+
+#### Re-strip, the 8 existing fixtures
+
+| fixture | givens before | givens after re-strip | cold (1 rep) |
+| --- | --- | --- | --- |
+| `gen` | 35 | 36 | 0 ms |
+| `gen_9x9` | 27 | 28 | 0 ms |
+| `gen_24g` | 24 | 27 | 200 ms |
+| `gen_28g` | 28 | 30 | 500 ms |
+| `gen_30g` | 30 | **25** | **11700 ms** |
+| `gen_32g` | 32 | 31 | 100 ms |
+| `gen_35g_silent` | 35 | 26 | 100 ms |
+| `gen_44g` | 44 | 35 | 0 ms |
+
+Greedy strip order is seeded and random, not exhaustive, so re-stripping a
+fixture is not guaranteed to find a smaller clue set than the one already
+committed — four of the eight land at *more* givens than they ship with
+today (`gen` 35→36, `gen_9x9` 27→28, `gen_24g` 24→27, `gen_28g` 28→30). Only
+`gen_30g` clears 10 s: its own grid, re-stripped, drops from 30 to 25 givens
+and goes from 4.9 s (the committed board, `## Timing` above) to 11.7 s cold —
+ships as `gen_25g.json`.
+
+#### Seeds 33-52, fresh batch
+
+| seed | givens after strip | cold (1 rep) |
+| --- | --- | --- |
+| 33 | 30 | 300 ms |
+| 34 | 21 | 400 ms |
+| 35 | 27 | 100 ms |
+| 36 | 19 | 4800 ms |
+| 37 | 30 | 500 ms |
+| 38 | 28 | 400 ms |
+| 39 | 30 | 100 ms |
+| 40 | 30 | 100 ms |
+| 41 | 26 | 100 ms |
+| 42 | 22 | 2100 ms |
+| 43 | 33 | 100 ms |
+| 44 | 26 | **22300 ms** |
+| 45 | 30 | 100 ms |
+| 46 | 16 | 200 ms |
+| 47 | 37 | 200 ms |
+| 48 | 27 | 7500 ms |
+| 49 | 33 | 5600 ms |
+| 50 | 29 | 300 ms |
+| 51 | 40 | 0 ms |
+| 52 | 31 | 0 ms |
+
+Only seed 44 clears 10 s (22.3 s, 26 givens) — ships as `gen_26g.json`. Two
+boards clear 10 s across the full 28-grid batch, so the #165 hand-shaped
+follow-up the ticket calls for on a null result does not apply here.
+
+`gen_25g` (11.7 s) and `gen_26g` (22.3 s) both sit below `gen_35g_silent`'s
+33.3 s (the current hardest fixture) — a random/re-strip sample again found
+nothing beyond what the existing hand-built silent-digit fixtures give, same
+conclusion as #166.
+
+Both new fixtures join the two-row baseline table, 3 reps each, via `just
+time isofill --board <link>`:
+
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_25g.txt) | 12400ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_25g.txt) after-logical | 0ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_26g.txt) | 22600ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_26g.txt) after-logical | 0ms | — | — | BASELINE |
+
+Both after-logical rows read 0 ms — the app's logical solver finishes both
+boards outright, same pattern as six of the eight original fixtures above.
+The single-rep batch-table readings above (11700 ms, 22300 ms) land close to
+the 3-rep BASELINE medians (12400 ms, 22600 ms) — the run-to-run spread
+`docs/real-app-timing.md` calls normal, not a sign the one-rep batch reading
+was unrepresentative.
