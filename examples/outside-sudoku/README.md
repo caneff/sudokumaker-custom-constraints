@@ -183,9 +183,42 @@ the rebuild all reach a test with `lzstring` alone.
 
 ## Timing
 
-Not measured yet — the real-app timing row lands with #262. The component ships
-with the three deductions above and no speed work; `OPTIMIZATION_LOG.md`
-records what has been considered.
+```
+just time outside-sudoku --ring-clues
+```
+
+| date | app version | board | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-30 | v2026.08.14-d47fc4b | outside-sudoku | 900ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
+
+Both rows print `BASELINE`, not a ratio: the working-tree
+`OutsideSudokuComponent.js` is byte-equal to the code `PUZZLE_LINK.txt`
+already ships, so `just time` has no candidate to compare against the
+committed link. `OPTIMIZATION_LOG.md` has the same numbers and records what
+speed work has been considered; see "No `original/` baseline" below for why
+there is no second row.
+
+### No `original/` baseline
+
+Numbered Rooms, Running Start, and Skyscraper each ship an `original/`
+wrapper — real code, pulled verbatim from a ChinStrap "Outside Clues
+Interactable" puzzle in the community catalog (`docs/catalog.md`), that does
+nothing while its clue cell is blank and, once the clue is filled, swaps
+itself for a builtin SudokuMaker class already encoding that rule. The
+catalog has no such Outside Sudoku template: `docs/catalog.md`'s spreadsheet
+lists interactable templates for Numbered Rooms, Running Start, and
+Skyscraper, but none for a plain outside-clue membership rule (checked
+2026-08-30 against the live spreadsheet CSV). `docs/builtin-components.md`
+does list `RequiredDigitsComponent(name, values, cells)`, which could in
+principle stand in for the builtin half of such a wrapper — but no author has
+built and shipped that wrapper, so it would be code this repo writes and
+maintains, not a verbatim baseline. Keep an `original/` baseline "only where
+`just time` actually compares against it" (`docs/example-layout.md`), and
+inventing the comparison target defeats that: this example has no
+`original/` dir and no `_original` link. `OPTIMIZATION_LOG.md` logs the
+`RequiredDigitsComponent` wrapper as a considered-not-built idea for a future
+ticket.
 
 ## Not covered
 
