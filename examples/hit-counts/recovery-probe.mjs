@@ -85,7 +85,8 @@ function buildComps () {
     frame: { W, idx },
     files: [
       { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
-      { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' }
+      { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
+      { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'SideHitMatchingComponent' }
     ]
   })
 }

@@ -43,6 +43,7 @@ COMPONENTS = [
     "HitCountsJointComponent.js",
     "HitCountsComponent.js",
     "SideSumComponent.js",
+    "SideHitMatchingComponent.js",
 ]
 
 
