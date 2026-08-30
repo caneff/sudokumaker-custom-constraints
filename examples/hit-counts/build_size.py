@@ -10,11 +10,20 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 4 2 2
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 6 2 3
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
+#   uv run --with ortools --with lzstring \
+#       examples/hit-counts/build_size.py 9 3 3 6 --paths
 #
-# Args: n box_height box_width   (box_height * box_width == n)
+# Args: n box_height box_width [seed_count] [--paths]
+#       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
 # it lands as PUZZLE_LINK.txt (gen_9x9.json keeps its name).
+#
+# --paths builds the LOCAL board instead: bent paths in place of the straight
+# frame lines, shipped as drawn groups on the main.js lane, so a rule that runs
+# on a bare line has a board to play and to time
+# (`just time hit-counts --board PUZZLE_LINK_local.txt`). The 9x9 lands as
+# PUZZLE_LINK_local.txt with gen_local.json beside it.
 #
 # A clue is the number of "hits" on a line: read inward, a cell is a hit when
 # its digit equals its distance from the clue. A hit count of 0 is a legal clue.
@@ -85,8 +94,16 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
+    paths = "--paths" in sys.argv
+    if paths:
+        sys.argv.remove("--paths")
     n = int(sys.argv[1])
-    run(SPEC)
+    run(SPEC, paths=paths)
     if n == 9:
-        (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-        print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")
+        if paths:
+            (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
+            (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
+            print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
+        else:
+            (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
+            print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")

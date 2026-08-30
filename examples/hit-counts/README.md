@@ -45,15 +45,21 @@ no ordering. That makes Hit Counts simpler than Running Start.
   `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 6 2 3`
   `uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3`
   The three args are the grid size and the box height and width (`box_height *
-  box_width == size`).
+  box_width == size`). `--paths` builds the local board instead — see
+  "The local board" below.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
-  the built SudokuMaker links. Open one to play the example. The 9x9 takes the
-  plain name because `build_link.py` and the timing loop reuse that board.
+  the built global SudokuMaker links. Open one to play the example. The 9x9
+  takes the plain name because `build_link.py` and the timing loop reuse that
+  board.
+- `PUZZLE_LINK_local.txt`, `gen_local.json` — the local board: the same 9x9
+  frame, but every line is a drawn bent path. See "The local board".
 - `rebuild_size.py` — re-encodes a shipped link from its committed
-  `gen_<n>x<n>.json` with the component code and backend as they stand in the
-  repo now, on the same board and givens (no fresh CP-SAT search). Run it after
-  any component edit, or the shipped links keep an old snapshot:
+  `gen_<n>x<n>.json` (or `gen_local.json`, with `--paths`) with the component
+  code and backend as they stand in the repo now, on the same board and givens
+  (no fresh CP-SAT search). Run it after any component edit, or the shipped
+  links keep an old snapshot:
   `uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9`
+  `uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9 --paths`
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
@@ -165,6 +171,36 @@ so the document does two things:
 Together they let only the outside clue ring hold 0. The component treats a clue
 of 0 the same as any other count: a pinned clue of 0 forbids every cell from
 holding its own distance.
+
+## The local board
+
+`PUZZLE_LINK.txt` is a frame board: every line is a whole row or column, so
+every line is a full house and the rules that need one always fire. That hides
+every bare-line bug. `PUZZLE_LINK_local.txt` is the board that does not:
+
+```
+uv run --with ortools --with lzstring \
+    examples/hit-counts/build_size.py 9 3 3 3 --paths
+```
+
+`--paths` swaps the straight frame lines for **bent paths**, one per ring clue.
+A path is an L: two or more cells straight in from the clue, then a turn and
+the rest across, nine cells in all. Both legs are non-empty, so a path spans
+more than one row and more than one column; its cells do not all see each
+other, the app reads the line as bare through `getCellsCanHaveRepeats`, and
+digits repeat along it. On the committed board 35 of the 36 paths really do
+repeat a digit — `build_link.test.py` asserts at least one does, so a
+regeneration cannot quietly lose the property.
+
+Everything else matches the global builder: each clue is the true hit count of
+its path read off the generated solution, the CP-SAT proof models that same
+count on the path's own cells with **no** all-different among them, and the
+board is carved to a single solution and proved unique the same way. The paths
+ship as `input.groups` on the `main.js` lane — the local variant — so the app
+hands each drawn group to one `HitCountsComponent` and nothing builds a frame.
+
+The committed board is seed 103: 2 interior givens, 32 shown clues, 4
+interactive.
 
 ## Paste into SudokuMaker
 
@@ -312,6 +348,18 @@ link is ever timed, so this is not a property of any component change:
   "app-solve.mjs got no timed reps": the app's search never closes on this
   given-only 9x9. That is **#116** (#157 records both halves).
 
-The gate row this example owes (`≤ 1.1×` on the cold and after-logical rows,
-3 reps, #236) is blocked until #231 and #116 are fixed. See
+The local board fails on the same two, in the same order:
+
+- `just time hit-counts --board PUZZLE_LINK_local.txt` — refused with "1
+  entered values on the board". The link decodes to 38 givens, 0 entered
+  values, and `PUZZLE_LINK_local.txt` carries the same white `00` cage label
+  as the shipped board. That is **#231**.
+- `just time hit-counts --board PUZZLE_LINK_local.txt --ring-clues` — gets
+  past the refusal and then raises "app-solve.mjs got no timed reps": the
+  app's search does not close on this board either. That is **#116**.
+
+Both failures are on the **baseline** probe, so no local row can be recorded
+and none has been invented. The gate row this example owes (`≤ 1.1×` on the
+cold and after-logical rows, 3 reps, #236) and the local row for its bare-line
+rules (#237) are both blocked until #231 and #116 are fixed. See
 `docs/real-app-timing.md` for the protocol.

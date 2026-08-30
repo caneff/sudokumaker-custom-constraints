@@ -9,9 +9,15 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 4
 #   uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 6
 #   uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9
+#   uv run --with ortools --with lzstring \
+#       examples/hit-counts/rebuild_size.py 9 --paths
 #
 # The 9x9 is the board the timing loop and build_link.py reuse, so it lives as
 # PUZZLE_LINK.txt, not PUZZLE_LINK_9x9.txt.
+#
+# --paths rebuilds the local board (bent paths, drawn groups, the main.js lane)
+# from gen_local.json instead, so a component edit reaches PUZZLE_LINK_local.txt
+# too, on the same board build_size.py --paths searched out.
 #
 # Checks the rebuilt link decodes to the same grid, givens, and shown clues as
 # the one it replaces -- only the constraint's own code/input and the comment
@@ -40,14 +46,19 @@ def frame_and_comment_only(doc, constraint_name):
 
 
 if __name__ == "__main__":
+    paths = "--paths" in sys.argv
+    if paths:
+        sys.argv.remove("--paths")
     n = int(sys.argv[1])
-    out = HERE / ("PUZZLE_LINK.txt" if n == 9 else f"PUZZLE_LINK_{n}x{n}.txt")
+    plain_9x9 = n == 9 and not paths
+    tag = ("local" if n == 9 else f"{n}x{n}_local") if paths else f"{n}x{n}"
+    out = HERE / ("PUZZLE_LINK.txt" if plain_9x9 else f"PUZZLE_LINK_{tag}.txt")
     before = decode_puzzle(out.read_text().strip())
 
-    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n)
-    doc = build_doc(SPEC, n, bh, bw, grid, clue, givens, active, lines)
+    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
+    doc = build_doc(SPEC, n, bh, bw, grid, clue, givens, active, lines, local=paths)
     link = encode_link(doc)
-    check(SPEC, link, doc, n)
+    check(SPEC, link, doc, n, local=paths)
 
     assert frame_and_comment_only(before, SPEC.lines_name) == frame_and_comment_only(
         doc, SPEC.lines_name

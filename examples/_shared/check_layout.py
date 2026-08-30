@@ -31,7 +31,7 @@ NO_LOCAL_GLOBAL_SPLIT = {"isofill", "numbered-rooms-lines"}
 SIZE = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
 # keep this relative order (PUZZLE_LINK_original_clued.txt is rejected).
-TAGS = ("clued", "original", "silent", "global")
+TAGS = ("clued", "original", "silent", "local", "global")
 LINK_RE = re.compile(
     rf"^PUZZLE_LINK(_({SIZE})x\2)?(_\d+g)?"
     + "".join(f"(_{t})?" for t in TAGS)
