@@ -32,6 +32,7 @@
       "SideSumComponent",
       "SideHitMatchingComponent",
       "NumberedRoomsComponent",
+      "OutsideSudokuComponent",
       "NumberedRoomsLinesComponent",
       "NumberedRoomsPairComponent",
       "RunningStartComponent",
