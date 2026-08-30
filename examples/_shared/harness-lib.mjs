@@ -33,6 +33,8 @@ export function installGlobals (minDigit, maxDigit) {
 
 // Bind file reads to the example's own directory. `read` returns a file's text;
 // `load` evals a component file and returns the named functions from it;
+// `loadSource` does the same for source a caller already holds, which is how a
+// harness runs one component twice with a flag at the top of the file flipped;
 // `loadAt` does the same for the file as it stood at a git commit, which is how
 // a strength test holds a component to the floor it set.
 export function makeIo (here) {
@@ -40,10 +42,11 @@ export function makeIo (here) {
   const evalNamed = (src, names) =>
     eval('(function(){' + src + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
   const load = (file, names) => evalNamed(read(file), names)
+  const loadSource = (src, names) => evalNamed(src, names)
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
   const loadAt = (commit, file, names) =>
     evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names)
-  return { read, load, loadAt }
+  return { read, load, loadAt, loadSource }
 }
 
 // A random candidate set over lo..hi: pinned, the full range, or a random

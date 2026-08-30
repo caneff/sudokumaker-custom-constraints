@@ -27,6 +27,20 @@ clues and the whole line together, plus a per-side count. It follows the same
 shape as `../running-start/`; see `../../docs/gotchas.md` on why a custom
 component must not lean on `replaceComponent`.
 
+## Two variants, one component set
+
+The example ships two links from the same files (`../../docs/line-contract.md`):
+
+- **local** (`main.js`, `PUZZLE_LINK_local.txt`) — the author draws the groups.
+  A group is one clue and one line of any shape, clued at one end only, and it
+  gets a `SkyscraperRunningCapComponent`: the running cap, sound on a line whose
+  digits repeat.
+- **global** (`main-global.js`, `PUZZLE_LINK.txt`) — no groups. The backend
+  builds all 4n frame lines from the board size and registers the two-clue DP
+  alone per line, plus the one-1-per-side component. The DP is a decision
+  procedure for a whole line, so it subsumes the running cap and global does not
+  run one beside it.
+
 ## What the components deduce
 
 **`SkyscraperLineComponent.js` — one per line, both clues at once.** A line is
@@ -41,11 +55,13 @@ A subset fixes both how many cells are filled (its popcount) and the tallest so
 far (its highest digit), so a whole DP layer is one bitmask of counts per
 subset, held in one reused buffer indexed by subset.
 
-The rule needs a board whose digits start at 1. A clue is a visible count,
-which runs `1..n`, but a clue cell holds a board digit, so on a board starting
-at 0 the count `n` has no digit and an ascending line cannot be clued. The
-component stands down there rather than deduce from a rule that does not
-hold.
+The permutation is the whole premise, so `update` and `validate` both ask for
+it at solve time: the line must be a house whose live candidates union to
+exactly `{1..length}`. That one gate carries everything the DP assumes — the
+peak digit is the line's length, no cell holds 0, and no digit appears twice —
+and the component asks the app for it rather than reading it off `minDigit` or
+off the line's length. It re-asks until the gate opens, so a board that keeps a
+0 on the line until a cage takes it away is not locked out for good.
 
 - **Clues from the line:** a clue value is feasible only when some peak position
   realizes it on its side while the other side realizes some value the other
@@ -61,14 +77,39 @@ only when some full line assignment consistent with the candidates and both
 clues uses it. The true line is a permutation, so every one of its steps is a
 transition the DP takes and no true value is ever removed.
 
-**One `1` per side.** `main-global.js` adds a built-in
-`ExactDigitCountComponent(name, 1, 1, sideClues)` for each of the four sides. A
-clue of `1` means the cell next to it is the tallest building. Each side's
-nearest rank is a full row or column, so the tallest building sits under exactly
-one clue per side. This couples all nine clues on a side.
+**`SkyscraperRunningCapComponent.js` — one per drawn group, one clue.** The
+local line component, and the only rule that runs on a line an author drew. One
+scan reads each cell's smallest and largest candidate and carries two running
+maxima: the smallest running max any completion can put before a cell, and the
+largest. A cell is a *forced* visible when even its smallest candidate tops the
+largest possible running max before it, and a *possible* visible when its
+largest candidate tops the smallest. The true line is one of the completions the
+scan brackets, so its visible count lies between the two counts, and four rules
+follow: the clue sits between the forced count and the possible count; the first
+cell is at most `maxDigit - (k - 1)`, because the visible buildings rise strictly
+from it; once the forced count reaches the clue's largest value no other cell may
+become visible; and once the possible count falls to the clue's smallest value
+every cell that can be visible has to be. None of that needs a house, a full
+house, or digits starting at 1.
 
-Timed with and without it on both boards, the two pairs of medians disagree on
-sign: a wash, so it stays (#129). Numbers and method in
+`const ALLOW_TIES = false` at the top of the file decides what a tie means: with
+`false` a building level with the tallest so far is hidden, with `true` it
+counts as visible. Flip the constant in the pasted segment, and say the same
+thing in the puzzle's rules text.
+
+**`SkyscraperSideComponent.js` — one per side, exactly one `1`.** A clue of `1`
+means the building next to it hides every other one on its line, which happens
+exactly when it is the tallest there. The first cells of one side's lines are
+the *nearest rank*, a house of its own, so the tallest building of the whole
+side stands on exactly one of them: exactly one of the side's clues is a `1`,
+which couples all n clues on a side. The proof needs both halves and the
+component checks both in `update` — every line of the side must be a full house
+of `{1..n}`, and so must the nearest rank, which it reads off the lines' own
+first cells. Take either half away and the count is wrong: on lines that may
+repeat, two sides can both start with their own tallest building.
+
+Timed with and without the per-side count on both boards, the two pairs of
+medians disagree on sign: a wash, so it stays (#129). Numbers and method in
 `../../docs/real-app-timing.md`.
 
 ## Is it faster than the original?
@@ -108,14 +149,19 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 
 ## Files
 
-- `main.js` — the local backend segment: one line component per pair of
-  opposite drawn clues.
+- `main.js` — the local backend segment: one running-cap component per drawn
+  group. A group of one cell is a clue an author has started and not finished,
+  so it is skipped.
 - `main-global.js` — the global backend segment: builds all 4n frame lines
-  from the board size, then registers the same paired line component plus
-  the one-1-per-side count component below (it needs a whole side, which
-  only a full frame has).
-- `SkyscraperLineComponent.js` — the line component: both clues, the whole
-  line, and the final check.
+  from the board size, then registers the two-clue DP per line plus the
+  one-1-per-side component (it needs a whole side, which only a full frame
+  has).
+- `SkyscraperLineComponent.js` — the two-clue DP: both clues, the whole
+  line, and the final check. Global only.
+- `SkyscraperRunningCapComponent.js` — the running cap: one clue, one drawn
+  line of any shape. Local only.
+- `SkyscraperSideComponent.js` — exactly one `1` among a side's clues.
+  Global only.
 - `soundness-harness.mjs` — Node soundness fuzz for the line component.
   Soundness = the component never removes a cell's true value. Run it:
   `node examples/skyscraper/soundness-harness.mjs` (`FUZZ=20000` for the deep
@@ -133,6 +179,19 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3`
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
+  `--paths` builds the local board instead: bent paths in place of the straight
+  frame lines, shipped as drawn groups on the `main.js` lane, so the running cap
+  has a board to play and to time:
+  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3 3 --paths`
+- `rebuild_size.py` — re-encodes a committed board from its `gen_*.json` with
+  the current component and backend code, no fresh search, so a shipped link
+  never carries a stale snapshot:
+  `uv run --with ortools --with lzstring examples/skyscraper/rebuild_size.py 9`
+  (`--paths` for the local board).
+- `PUZZLE_LINK_local.txt` / `gen_local.json` — the shipped local board: 36 bent
+  paths, 35 of them repeating a digit, drawn as groups.
+  `PUZZLE_LINK_6x6_local.txt` / `gen_6x6_local.json` are the 6x6 twin, the one
+  the app finishes, so it carries the local timing row.
 - `PUZZLE_LINK_10x10.txt` / `gen_10x10.json` — the 10x10 (2x5 boxes) board that timed the lifted cap.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
   built links. Open one to play the example.
@@ -151,13 +210,15 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 ## Paste into SudokuMaker
 
 To draw your own lines, add a custom local constraint and paste `main.js` as
-the main code, plus the `SkyscraperLineComponent` segment. Each group is one
-line: cell 0 the outside clue, the rest the line read inward. Leave a clue
+the main code, plus the `SkyscraperRunningCapComponent` segment. Each group is
+one line: cell 0 the outside clue, the rest the line read inward. The line may
+bend and may repeat a digit, and it needs no clue at its far end. Leave a clue
 cell blank (`given: false`) to make it interactive; mark it given to show it.
 
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
-`main-global.js` as the main code, plus `SkyscraperLineComponent`.
+`main-global.js` as the main code, plus the `SkyscraperLineComponent` and
+`SkyscraperSideComponent` segments.
 
 ## Timing
 
@@ -179,8 +240,41 @@ cap the component yields nothing above 9 and the app finds no first solution
 inside its limit; with the DP it proves the board unique in 0.1 s, 3/3 reps.
 The app accepts `maxDigit` 10 without complaint.
 
-`just time skyscraper --ring-clues` (candidate byte-equal to baseline, so
-only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.
+### The gate change (#240)
+
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (previous PUZZLE_LINK.txt) | 8200ms | 8300ms | 1.01 | gate: PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (previous PUZZLE_LINK.txt) after-logical | 0ms | 0ms | — | NO TIME |
+
+Moving the DP's stand-downs into a full-house gate adds no deduction, so the
+gate bar applies: **≤ 1.1x on both rows** (`docs/real-app-timing.md`, #197).
+The cold row lands at 1.01x and the after-logical row times nothing on either
+side, so it places no constraint. `just time` prints `two-row rule: NO SHIP`
+because that line reads the 0.9x deduction rule, not the gate rule.
+
+Baseline is the previously committed 9x9 link, timed via `--board`: the shipped
+`PUZZLE_LINK.txt` now carries the gated component, so timing against it would
+compare the change with itself.
+
+### The local board (#240)
+
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) | 1700ms | — | — | BASELINE |
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) after-logical | 600ms | — | — | BASELINE |
+
+The running cap is a new component on a new board, so there is nothing to
+compare it against and the candidate is byte-equal to the baseline: baseline
+rows only, which is what `docs/real-app-timing.md` says such a run prints.
+
+The 9x9 local board (`PUZZLE_LINK_local.txt`) has **no row**, and none has been
+invented. `just time skyscraper --ring-clues --board PUZZLE_LINK_local.txt`
+raises "app-solve.mjs got no timed reps" on the **baseline** probe: the app
+finds no first solution inside its 300 s limit. The board is carved to CP-SAT
+minimality — 6 interior givens, 17 interactive clues — and the running cap alone
+does not close it. That is the same symptom as **#116** on a different board.
+The 6x6 local twin exists for exactly this reason and carries the row above.
+
+`just time skyscraper --ring-clues` on the shipped board (candidate byte-equal
+to baseline, so only a BASELINE row prints) read 7400ms cold, 0ms
+after-logical on the same day. See `docs/real-app-timing.md` for the protocol.
 
 Earlier verdicts (#128, #133–#137) and their numbers: `docs/research/` and the
 commit history; #137 (exact line DP, kept) is `docs/research/137-exact-line-dp.md`.

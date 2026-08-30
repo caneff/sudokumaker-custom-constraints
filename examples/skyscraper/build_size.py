@@ -10,12 +10,21 @@
 #   uv run --with ortools --with lzstring examples/skyscraper/build_size.py 4 2 2
 #   uv run --with ortools --with lzstring examples/skyscraper/build_size.py 6 2 3
 #   uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3
+#   uv run --with ortools --with lzstring \
+#       examples/skyscraper/build_size.py 9 3 3 3 --paths
 #
-# Args: n box_height box_width   (box_height * box_width == n)
+# Args: n box_height box_width [seed_count] [--paths]
+#       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the plain-named pair build_link.py and
 # build_original.py reuse, so it lands as PUZZLE_LINK.txt (gen_9x9.json keeps
 # its name).
+#
+# --paths builds the LOCAL board instead: bent paths in place of the straight
+# frame lines, shipped as drawn groups on the main.js lane, so the running cap
+# -- the rule that runs on a bare line -- has a board to play and to time
+# (`just time skyscraper --board PUZZLE_LINK_local.txt --ring-clues`). The 9x9
+# lands as PUZZLE_LINK_local.txt with gen_local.json beside it.
 
 import pathlib
 import sys
@@ -24,7 +33,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import Spec, run
 
 HERE = pathlib.Path(__file__).parent
-COMPONENTS = ["SkyscraperLineComponent.js"]
+COMPONENTS = [
+    "SkyscraperLineComponent.js",
+    "SkyscraperRunningCapComponent.js",
+    "SkyscraperSideComponent.js",
+]
 
 # One worked example per size: a line, then the left and right clue it gives.
 RULE_EXAMPLES = {
@@ -65,9 +78,13 @@ def sky(v):
 
 
 def add_visibility(m, x, cells, kk, n, tag):
-    # exactly kk cells are left-to-right maxima along `cells`
+    # exactly kk cells top every cell before them along `cells`.
+    # `g` is "taller than", so its negation is "no taller" -- a tie is hidden,
+    # which is what SkyscraperRunningCapComponent's ALLOW_TIES = false says. A
+    # drawn path may hold the same digit twice, so `<=` here and `<` are not
+    # the same constraint.
     vis = []
-    for i in range(n):
+    for i in range(len(cells)):
         b = m.NewBoolVar(f"v{tag}_{i}")
         if i == 0:
             m.Add(b == 1)  # the first building is always visible
@@ -76,7 +93,7 @@ def add_visibility(m, x, cells, kk, n, tag):
             for j in range(i):
                 g = m.NewBoolVar(f"g{tag}_{i}_{j}")
                 m.Add(x[cells[i]] > x[cells[j]]).OnlyEnforceIf(g)
-                m.Add(x[cells[i]] < x[cells[j]]).OnlyEnforceIf(g.Not())
+                m.Add(x[cells[i]] <= x[cells[j]]).OnlyEnforceIf(g.Not())
                 greater.append(g)
             m.AddBoolAnd(greater).OnlyEnforceIf(b)
             m.AddBoolOr([g.Not() for g in greater]).OnlyEnforceIf(b.Not())
@@ -96,8 +113,16 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
+    paths = "--paths" in sys.argv
+    if paths:
+        sys.argv.remove("--paths")
     n = int(sys.argv[1])
-    run(SPEC)
+    run(SPEC, paths=paths)
     if n == 9:
-        (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-        print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")
+        if paths:
+            (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
+            (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
+            print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
+        else:
+            (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
+            print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")

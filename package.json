@@ -26,6 +26,8 @@
       "puzzle",
       "SudokuMaker",
       "SkyscraperLineComponent",
+      "SkyscraperRunningCapComponent",
+      "SkyscraperSideComponent",
       "HitCountsJointComponent",
       "HitCountsComponent",
       "IsofillComponent",
@@ -36,7 +38,6 @@
       "NumberedRoomsPairComponent",
       "RunningStartComponent",
       "RunningStartPairComponent",
-      "ExactDigitCountComponent",
       "CustomSkyscraperLineComponent",
       "CustomIndexComponent"
     ]

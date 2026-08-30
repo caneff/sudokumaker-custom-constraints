@@ -95,6 +95,11 @@ the running cap if it clears the timing bar (#206).
 
 ## Harness
 
+A component with an `ALLOW_TIES` constant is fuzzed under both readings:
+`makeIo(here).loadSource(src, names)` evaluates source the harness has already
+edited, so a run flips the constant the way an author would in the pasted
+segment.
+
 `harness-lib.mjs` adds `getCellsCanHaveRepeats(cells)` and `spec.digitCount`
 to the mock, answered from the case's kind (via `makePuzzle(..., { kind,
 digitCount })`), never inferred from the digits. One shared

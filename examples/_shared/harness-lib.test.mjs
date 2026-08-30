@@ -2,7 +2,9 @@
 //   node examples/_shared/harness-lib.test.mjs
 
 import assert from 'assert'
-import { makeLine, makePuzzle, makeRng } from './harness-lib.mjs'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+import { makeIo, makeLine, makePuzzle, makeRng } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
 
@@ -65,6 +67,16 @@ const { rnd } = makeRng()
   const truth = { 0: 1 }
   const p = makePuzzle(truth, (c, v) => [v])
   assert.strictEqual(p.getCellsCanHaveRepeats([0]), true)
+}
+
+// ---- makeIo().loadSource: eval source a caller already holds and edited ----
+// A harness runs one component twice with a flag at the top of the file
+// flipped, which means evaluating edited source rather than a file on disk.
+{
+  const { loadSource } = makeIo(dirname(fileURLToPath(import.meta.url)))
+  const src = 'const FLAG = false\nfunction reading () { return FLAG }'
+  assert.strictEqual(loadSource(src, ['reading']).reading(), false)
+  assert.strictEqual(loadSource(src.replace('= false', '= true'), ['reading']).reading(), true)
 }
 
 console.log('harness-lib.test.mjs: all seams pass')
