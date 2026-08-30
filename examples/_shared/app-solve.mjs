@@ -44,7 +44,7 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseReadout, parseVersion, median, repLine, medianLine, marksRejected } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, median, repLine, medianLine, marksRejected, countEnteredValues } from './app-solve-lib.mjs'
 import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
@@ -61,15 +61,23 @@ const iconName = args[2] || 'ShowCandidates'
 if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
-// The app draws givens black and entered values blue. A grid with entered
-// values makes the solver verify instead of search, and the app says so in
-// its verdict ("based on already entered values"). Refuse before solving.
+// The app draws givens black and entered values blue, at each cell's own
+// <svg text>. A grid with entered values makes the solver verify instead of
+// search, and the app says so in its verdict ("based on already entered
+// values"). Refuse before solving. countEnteredValues (app-solve-lib.mjs)
+// tells a real cell digit apart from a constraint's own non-black decoration
+// text (e.g. Hit Counts' white ring total, #231) by the transform of its
+// closest transformed ancestor <g>, so only board cells are checked, not
+// everything under an <svg>.
 async function checkStripped (page) {
-  const entered = await page.evaluate(() =>
-    [...document.querySelectorAll('svg text')].filter(t => {
+  const cells = await page.evaluate(() =>
+    [...document.querySelectorAll('svg text')].map(t => {
       const fill = t.getAttribute('fill') || window.getComputedStyle(t).fill
-      return !/^(#000|black|rgb\(0, 0, 0\))$/.test(fill)
-    }).length)
+      const cellGroup = t.closest('g[transform]')
+      const transform = cellGroup ? cellGroup.getAttribute('transform') : null
+      return { fill, transform }
+    }))
+  const entered = countEnteredValues(cells)
   if (entered > 0 && !ringClues) {
     throw new Error(`${linkFile}: ${entered} entered values on the board; strip it first ` +
       '(probe_link.py strip), or pass --ring-clues for an edge-clue puzzle')
