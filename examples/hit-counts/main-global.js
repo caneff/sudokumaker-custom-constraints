@@ -7,26 +7,29 @@
 // that only make sense across the whole frame: the opposite-pair coupling
 // and the per-side sum.
 //
-// Two Hit Counts clues on opposite ends of one line couple through
-// A + B <= n (+1 when n is odd): a left hit and a right hit share a cell only at
-// the exact center. At that cap every cell is a hit, so each cell pins to two
-// values — a strong cut from the clues alone (see HitCountsPairComponent).
-function frameGroups () {
-  const W = puzzle.spec.size.width
-  const n = W - 2
-  const at = (r, c) => puzzle.getCellAt(r, c)
-  const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
-  const groups = []
-  for (let i = 1; i <= n; i++) {
-    groups.push({ cells: [at(i, 0), ...range(1, n).map(c => at(i, c))] }) // L
-    groups.push({ cells: [at(i, W - 1), ...range(n, 1).map(c => at(i, c))] }) // R
-    groups.push({ cells: [at(0, i), ...range(1, n).map(r => at(r, i))] }) // T
-    groups.push({ cells: [at(W - 1, i), ...range(n, 1).map(r => at(r, i))] }) // B
-  }
-  return groups
-}
+// The interior's rows and columns ARE the frame's lines: a left clue and a
+// right clue read one row from opposite ends, a top and a bottom clue one
+// column. Build the rows and columns once, then hand each side both its own
+// clued lines and the n lines that cross it -- the side sum's proof runs over
+// the crossing lines, not the clued ones.
+const W = puzzle.spec.size.width
+const n = W - 2
+const at = (r, c) => puzzle.getCellAt(r, c)
+const along = f => Array.from({ length: n }, (_, k) => f(k + 1))
+const rows = along(i => along(c => at(i, c)))
+const cols = along(i => along(r => at(r, i)))
+const reversed = line => line.slice().reverse()
 
-const groups = frameGroups().map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
+// Each side, clue cell first, its line read inward from the cell next to the
+// clue -- the group order every line component expects (gotcha 3).
+const sides = [
+  { name: 'left', across: cols, groups: along(i => ({ clue: at(i, 0), line: rows[i - 1] })) },
+  { name: 'right', across: cols, groups: along(i => ({ clue: at(i, W - 1), line: reversed(rows[i - 1]) })) },
+  { name: 'top', across: rows, groups: along(i => ({ clue: at(0, i), line: cols[i - 1] })) },
+  { name: 'bottom', across: rows, groups: along(i => ({ clue: at(W - 1, i), line: reversed(cols[i - 1]) })) }
+]
+const groups = []
+for (let i = 0; i < n; i++) for (const side of sides) groups.push(side.groups[i])
 
 for (const g of groups) {
   const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
@@ -52,20 +55,15 @@ for (let i = 0; i < groups.length; i++) {
   }
 }
 
-//! Side sum: the n clues on one side sum to exactly n. Group the clues by the
-//! step between a line's first two cells (+1 left, -1 right, +W top, -W bottom):
-//! same step === same side. Only fire on a full side of n clues, where the sum
-//! is exactly n; a partial side would make the sum an unsound bound.
+//! Side sum: the n clues on one side sum to exactly n. Regroup the side's hits
+//! by the crossing line each one lands on: a line that holds 1..n once each has
+//! its own value at home exactly once, so it gives one hit, n in all. The
+//! component gets those n crossing lines and checks each of them itself
+//! (docs/line-contract.md); it prunes nothing until they all prove out.
 //! n is the line length (a line is a full row/column), not helpers.digits.maxDigit,
 //! which the app can set past n when minDigit is 0.
-const n = groups.length > 0 ? groups[0].line.length : 0
-const bySide = new Map()
-for (const g of groups) {
-  const step = g.line.length >= 2 ? g.line[1] - g.line[0] : g.line[0] - g.clue
-  if (!bySide.has(step)) bySide.set(step, [])
-  bySide.get(step).push(g.clue)
-}
-for (const [step, clueCells] of bySide) {
-  if (clueCells.length !== n) continue
-  puzzle.addConstraintComponent(new SideSumComponent(`side sum step ${step}`, clueCells, n))
+for (const side of sides) {
+  const clueCells = side.groups.map(g => g.clue)
+  puzzle.addConstraintComponent(
+    new SideSumComponent(`side sum ${side.name}`, clueCells, n, side.across))
 }

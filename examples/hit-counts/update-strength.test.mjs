@@ -36,13 +36,28 @@ const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
     Array.from(mod.initialize(inst, p))
     fixpoint(mod, inst, p)
   }
+  // The no-n-1 rule is behind a gate now: it fires only on a line the component
+  // can prove is a full house of {1..9} (docs/line-contract.md). That is the
+  // state to compare on, so the seed declares the full house and every digit
+  // 1..9 is left live somewhere on the line.
+  const OPTS = { kind: 'fullHouse', digitCount: 9 }
+  const coverLine = start => {
+    const live = new Set()
+    for (const c of LINE) for (const d of start.get(c)) live.add(d)
+    for (let d = 1; d <= 9; d++) {
+      if (live.has(d)) continue
+      const c = LINE[(rnd() * LINE.length) | 0]
+      start.set(c, [...new Set([...start.get(c), d])])
+    }
+  }
   let states = 0
   let weaker = 0
   for (let rep = 0; rep < 20000; rep++) {
     const start = new Map()
     start.set(CLUE, randomSet(0, 9))
     for (const c of LINE) start.set(c, randomSet(1, 9))
-    const w = compareStrength(cur, ref, apply, start)
+    coverLine(start)
+    const w = compareStrength(cur, ref, apply, start, OPTS)
     if (w === null) continue
     states++
     weaker += w.length
@@ -60,10 +75,15 @@ const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
   const ref = loadAt(REF_COMMIT, 'SideSumComponent.js', NAMES)
   const N = 9
   const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
+  // The side sum fires only while all N perpendicular lines are full houses of
+  // {1..N} (docs/line-contract.md), so the comparison hands it N such lines:
+  // a Latin square, every cell pinned to its own digit.
+  const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
+  const OPTS = { kind: 'fullHouse', digitCount: N }
   installGlobals(0, 9)
   const apply = (mod, p) => {
     const inst = {}
-    mod.setParams(inst, SIDE, N)
+    mod.setParams(inst, SIDE, N, PERP)
     fixpoint(mod, inst, p)
   }
   let states = 0
@@ -73,7 +93,8 @@ const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
     // Nine clues that must sum to nine: seeding from 0..9 leaves almost every
     // state dead, so the side test draws small clue values.
     for (const c of SIDE) start.set(c, randomSet(0, 3))
-    const w = compareStrength(cur, ref, apply, start)
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) start.set(PERP[i][j], [((i + j) % N) + 1])
+    const w = compareStrength(cur, ref, apply, start, OPTS)
     if (w === null) continue
     states++
     weaker += w.length
