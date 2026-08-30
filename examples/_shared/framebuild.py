@@ -79,6 +79,64 @@ def make_lines(n):
     return lines
 
 
+# The clue's own interior cell, the step inward from it, and the two steps
+# across, per ring side. A ring key names one clue cell: "T3"/"B3" sit
+# above/below interior column 3, "L2"/"R2" left/right of interior row 2.
+_SIDES = {
+    "L": lambda i, n: ((i, 0), (0, 1), [(1, 0), (-1, 0)]),
+    "R": lambda i, n: ((i, n - 1), (0, -1), [(1, 0), (-1, 0)]),
+    "T": lambda i, n: ((0, i), (1, 0), [(0, 1), (0, -1)]),
+    "B": lambda i, n: ((n - 1, i), (-1, 0), [(0, 1), (0, -1)]),
+}
+
+
+def make_paths(rng, n):
+    """One bent path per ring key, in the shape make_lines returns.
+
+    A path is an L: `a` cells straight in from the clue, then a turn and
+    `n - a` cells across, `n` cells in all. With `a` between 2 and n - 1 both
+    legs are non-empty, so the path spans more than one row and more than one
+    column. Its cells therefore do not all see each other, the app reads the
+    line as bare, and digits may repeat along it -- which is the whole point:
+    a frame line is a full house and hides every bare-line bug.
+    """
+    paths = {}
+    for side in "LRTB":
+        for i in range(n):
+            start, inward, across = _SIDES[side](i, n)
+            legs = [
+                (a, d)
+                for a in range(2, n)
+                for d in across
+                if _in_grid(_step(start, inward, a - 1), d, n - a, n)
+            ]
+            a, d = rng.choice(legs)
+            corner = _step(start, inward, a - 1)
+            paths[(side, i)] = [_step(start, inward, k) for k in range(a)] + [
+                _step(corner, d, k) for k in range(1, n - a + 1)
+            ]
+    return paths
+
+
+def _step(cell, d, k):
+    return (cell[0] + d[0] * k, cell[1] + d[1] * k)
+
+
+def _in_grid(corner, d, k, n):
+    """True when `k` further steps of `d` from `corner` all stay on the grid."""
+    r, c = _step(corner, d, k)
+    return 0 <= r < n and 0 <= c < n
+
+
+def repeated_digit_paths(grid, lines):
+    """The keys whose line holds the same digit twice, read off the solution."""
+    return [
+        key
+        for key, cells in lines.items()
+        if len({grid[r][c] for r, c in cells}) < len(cells)
+    ]
+
+
 def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     """True when the interior has exactly one solution. `post_clue` is a
     Spec's cp_sat_clue_fn; unique() needs nothing else off the Spec, so a
@@ -126,12 +184,27 @@ def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
-def generate(spec, n, bh, bw, seeds, hide_key=None):
-    lines = make_lines(n)
+def generate(
+    spec, n, bh, bw, seeds, hide_key=None, lines_fn=None, require_repeat=False
+):
+    """Search `seeds` for the leanest board and return the chosen one.
+
+    `lines_fn(rng, n)` supplies the line geometry, defaulting to the straight
+    frame lines. It is drawn from its own random stream, so a generator that
+    ignores its rng (make_lines) leaves every other draw untouched. With
+    `require_repeat` a seed whose lines carry no repeated digit is skipped:
+    a bent-path board that happens to repeat nothing proves nothing about
+    bare lines.
+    """
+    lines_fn = lines_fn or (lambda rng, n: make_lines(n))
     best = None
     for seed in seeds:
+        lines = lines_fn(random.Random(seed * 13), n)
         rng = random.Random(seed)
         grid = make_grid(rng, n, bh, bw)
+        if require_repeat and not repeated_digit_paths(grid, lines):
+            print(f"  seed {seed}: skipped, no line repeats a digit")
+            continue
         clue = {
             k: spec.clue_fn([grid[r][c] for (r, c) in cells])
             for k, cells in lines.items()
@@ -152,8 +225,8 @@ def generate(spec, n, bh, bw, seeds, hide_key=None):
         cnt = len(givens)
         print(f"  seed {seed}: interior givens = {cnt}")
         if best is None or cnt < best[0]:
-            best = (cnt, seed, grid, clue, dict(givens), set(active))
-    cnt, seed, grid, clue, givens, active = best
+            best = (cnt, seed, grid, clue, dict(givens), set(active), lines)
+    cnt, seed, grid, clue, givens, active, lines = best
     rng = random.Random(seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
     rng.shuffle(order)
@@ -164,6 +237,13 @@ def generate(spec, n, bh, bw, seeds, hide_key=None):
         if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):
             active.add(k)
     assert unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw) is True
+    if require_repeat:
+        # The property the board exists to carry. Asserted here so a
+        # regeneration that loses it fails loud instead of shipping a board
+        # whose every line is a house in disguise.
+        repeats = repeated_digit_paths(grid, lines)
+        assert repeats, "no line carries a repeated digit"
+        print(f"  lines with a repeated digit: {len(repeats)} of {len(lines)}")
     print(
         f"CHOSEN seed {seed}: interior givens={len(givens)}, clues shown={len(active)}, "
         f"clues interactive (hidden)={4 * n - len(active)}"
@@ -174,7 +254,14 @@ def generate(spec, n, bh, bw, seeds, hide_key=None):
 # ---- document assembly ----------------------------------------------------
 
 
-def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
+def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=False):
+    """Assemble the whole SudokuMaker document.
+
+    `local` picks the variant (docs/line-contract.md): the global board runs
+    main-global.js and ships no groups, so the backend builds every frame line
+    itself; the local board runs main.js and ships each line as a drawn group,
+    clue cell first.
+    """
     W = n + 2
     idx = lambda r, c: r * W + c
     # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
@@ -219,9 +306,34 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
     ]
     cage_style = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
 
-    # No drawn groups: this is the global board, so main-global.js builds all
-    # 4n frame lines itself from the grid at solve time (docs/example-layout.md).
-    backend_code = minify_js((spec.dir / "main-global.js").read_text())
+    # Global: no drawn groups, so main-global.js builds all 4n frame lines
+    # itself from the grid at solve time. Local: each line ships as a group
+    # whose cells are the clue then the line inward, which is the order
+    # main.js reads (docs/example-layout.md).
+    backend_code = minify_js(
+        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
+    )
+    definition_input = (
+        [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
+        if local
+        else []
+    )
+    constraint_input = (
+        {
+            "groups": [
+                {
+                    "cells": [
+                        ring_index(key),
+                        *(idx(r + 1, c + 1) for r, c in lines[key]),
+                    ],
+                    "value": "",
+                }
+                for key in sorted(lines)
+            ]
+        }
+        if local
+        else {}
+    )
     components = [
         {"type": "code", "name": f[:-3], "code": minify_js((spec.dir / f).read_text())}
         for f in spec.components
@@ -245,11 +357,11 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
             "type": 1000,
             "definition": {
                 "name": spec.lines_name,
-                "input": [],
+                "input": definition_input,
                 "backend": {"type": "code", "code": backend_code},
                 "components": components,
             },
-            "input": {},
+            "input": constraint_input,
             "style": {},
         },
         {
@@ -286,30 +398,48 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines):
     }
 
 
-def check(spec, link, doc, n):
+def check(spec, link, doc, n, local=False):
     back = link_codec.decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
+    assert doc["puzzle"]["comment"].startswith(RULES_PREFIX), (
+        "the rules text must open with the required sentence"
+    )
+    # A cell holds a value only when it is a given: a non-given value ships as
+    # an entered digit, and the recipient opens a board already filled in.
+    assert not [
+        c for c in doc["puzzle"]["cells"] if "value" in c and not c.get("given")
+    ], "a non-given cell carries a value"
     lc = next(
         c
         for c in doc["puzzle"]["constraints"]
         if c.get("definition", {}).get("name") == spec.lines_name
     )
-    assert lc["input"] == {}, "the global board reads no drawn groups"
+    if local:
+        assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
+    else:
+        assert lc["input"] == {}, "the global board reads no drawn groups"
     assert lc["definition"]["backend"]["code"] == minify_js(
-        (spec.dir / "main-global.js").read_text()
+        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
     )
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit
 
 
-def load_gen(dir_, n):
-    """Read back gen_<n>x<n>.json (written by run(), below) into the same
+def load_gen(dir_, n, tag=None):
+    """Read back a gen_<tag>.json (written by run(), below) into the same
     shape build_doc() takes: a rebuild-from-frame script re-encodes a
-    committed board without running generate() again."""
-    g = json.loads((dir_ / f"gen_{n}x{n}.json").read_text())
+    committed board without running generate() again. `tag` names the file,
+    defaulting to the `<n>x<n>` global board. A local board records its
+    generated path geometry under "paths"; a global one has none, and its
+    lines are the straight frame lines n implies."""
+    g = json.loads((dir_ / f"gen_{tag or f'{n}x{n}'}.json").read_text())
     bh, bw = g["box"]
     grid = g["grid"]
-    lines = make_lines(n)
+    lines = (
+        {(k[0], int(k[1:])): [tuple(c) for c in v] for k, v in g["paths"].items()}
+        if "paths" in g
+        else make_lines(n)
+    )
     clue = {(k[0], int(k[1:])): v for k, v in g["clue"].items()}
     active = {(k[0], int(k[1:])) for k in g["active"]}
     givens = {
@@ -318,27 +448,46 @@ def load_gen(dir_, n):
     return bh, bw, grid, clue, givens, active, lines
 
 
-def run(spec):
+def run(spec, paths=False):
+    """Generate a board, build its link, and write the link and gen JSON.
+
+    `paths` builds the LOCAL variant: bent paths instead of straight frame
+    lines, shipped as drawn groups on the main.js lane, written as
+    PUZZLE_LINK_<n>x<n>_local.txt and gen_<n>x<n>_local.json.
+    """
     n, bh, bw = (int(a) for a in sys.argv[1:4])
     assert bh * bw == n, "box_height * box_width must equal n"
     seeds = range(101, 141) if len(sys.argv) < 5 else range(101, 101 + int(sys.argv[4]))
-    seed, grid, clue, givens, active, lines = generate(spec, n, bh, bw, seeds)
-    doc = build_doc(spec, n, bh, bw, grid, clue, givens, active, lines)
+    seed, grid, clue, givens, active, lines = generate(
+        spec,
+        n,
+        bh,
+        bw,
+        seeds,
+        lines_fn=make_paths if paths else None,
+        require_repeat=paths,
+    )
+    doc = build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=paths)
     link = link_codec.encode_link(doc)
-    check(spec, link, doc, n)
-    (spec.dir / f"PUZZLE_LINK_{n}x{n}.txt").write_text(link + "\n")
-    with (spec.dir / f"gen_{n}x{n}.json").open("w") as f:
-        json.dump(
-            {
-                "seed": seed,
-                "n": n,
-                "box": [bh, bw],
-                "grid": grid,
-                "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
-                "active": [f"{s}{i}" for (s, i) in sorted(active)],
-                "givens": {f"{r},{c}": v for (r, c), v in givens.items()},
-            },
-            f,
-            indent=1,
-        )
-    print(f"wrote PUZZLE_LINK_{n}x{n}.txt ({len(link)} chars) and gen_{n}x{n}.json")
+    check(spec, link, doc, n, local=paths)
+    tag = f"{n}x{n}_local" if paths else f"{n}x{n}"
+    (spec.dir / f"PUZZLE_LINK_{tag}.txt").write_text(link + "\n")
+    board = {
+        "seed": seed,
+        "n": n,
+        "box": [bh, bw],
+        "grid": grid,
+        "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
+        "active": [f"{s}{i}" for (s, i) in sorted(active)],
+        "givens": {f"{r},{c}": v for (r, c), v in givens.items()},
+    }
+    if paths:
+        # The geometry is generated, not derivable from n, so the board file
+        # carries it: build_link.test.py reads the paths back to check the
+        # link's drawn groups and the repeated digit.
+        board["paths"] = {
+            f"{s}{i}": [list(c) for c in lines[(s, i)]] for (s, i) in sorted(lines)
+        }
+    with (spec.dir / f"gen_{tag}.json").open("w") as f:
+        json.dump(board, f, indent=1)
+    print(f"wrote PUZZLE_LINK_{tag}.txt ({len(link)} chars) and gen_{tag}.json")

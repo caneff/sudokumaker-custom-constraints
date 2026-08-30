@@ -112,6 +112,7 @@ if __name__ == "__main__":
         "PUZZLE_LINK_6x7.txt",
         "PUZZLE_LINK_timing.txt",
         "PUZZLE_LINK_original_clued.txt",
+        "PUZZLE_LINK_global_local.txt",
     ]
     for bad_name in bad_names:
         with example(extra_links=[bad_name]) as (root, _):
@@ -127,6 +128,8 @@ if __name__ == "__main__":
         "PUZZLE_LINK_clued.txt",
         "PUZZLE_LINK_silent.txt",
         "PUZZLE_LINK_global.txt",
+        "PUZZLE_LINK_local.txt",
+        "PUZZLE_LINK_6x6_local.txt",
         "PUZZLE_LINK_30g.txt",
         "PUZZLE_LINK_35g_silent.txt",
         "PUZZLE_LINK_clued_original.txt",

@@ -46,7 +46,8 @@ PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt
 
 - `<size>` is `NxN` (e.g. `6x6`).
 - `<givens>g` is a given count, e.g. `30g`.
-- `<tag>` is zero or more of `clued`, `original`, `silent`, `global`, and
+- `<tag>` is zero or more of `clued`, `original`, `silent`, `local`,
+  `global`, and
   present tags must chain in that fixed order — `PUZZLE_LINK_clued_original.txt`
   is valid, `PUZZLE_LINK_original_clued.txt` is not.
 - Parts join with `_`. No hyphens, no seeds, no other free text.
@@ -56,7 +57,8 @@ PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt
 
 Examples: `PUZZLE_LINK.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_clued.txt`,
 `PUZZLE_LINK_6x6_original.txt`, `PUZZLE_LINK_30g.txt`,
-`PUZZLE_LINK_35g_silent.txt`, `PUZZLE_LINK_clued_original.txt`.
+`PUZZLE_LINK_35g_silent.txt`, `PUZZLE_LINK_clued_original.txt`,
+`PUZZLE_LINK_local.txt`.
 
 `PUZZLE_LINK.txt` is the **shipped link** — the one a reader opens. Any other
 `PUZZLE_LINK_*.txt` is a **variant link**.
