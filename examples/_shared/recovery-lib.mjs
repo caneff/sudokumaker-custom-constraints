@@ -16,7 +16,14 @@ import { makeIo } from './harness-lib.mjs'
 // `state.cand` is meant to be reassigned wholesale (fresh seed, or restored
 // from a clone on backtrack) — every accessor below reads it live off
 // `state`, so a reassignment is visible everywhere without re-wiring.
-export function makeCandidateState () {
+//
+// `houses` are the cell groups whose digits are all different — the probe's
+// stand-in for the app's built-in row/column/box constraints, which is what
+// `getCellsCanHaveRepeats` reads. Pass the probe's all-different groups
+// whenever a component gates on the line kind (docs/line-contract.md);
+// leave it out and every line answers "bare", which stands every gate down.
+export function makeCandidateState ({ houses = [] } = {}) {
+  const houseSets = houses.map(h => new Set(h))
   const state = {
     cand: new Map(),
     total () { let s = 0; for (const set of state.cand.values()) s += set.size; return s },
@@ -28,6 +35,9 @@ export function makeCandidateState () {
       getCandidates: c => state.cand.get(c),
       getCandidatesBitMask: c => { let m = 0; for (const d of state.cand.get(c)) m |= 1 << d; return m },
       getCellsAreFilled: cs => cs.every(c => state.cand.get(c).size === 1),
+      // The app's rule (docs/puzzle-api.md): false exactly when the cells all
+      // see each other, which here means one house holds every one of them.
+      getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
       removeCandidateFromCell: (d, c) => { state.cand.get(c).delete(d) },
       removeCandidatesFromCell: (s, c) => { const set = state.cand.get(c); for (const d of s) set.delete(d) }
     }

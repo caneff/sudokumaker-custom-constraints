@@ -24,9 +24,14 @@ no ordering. That makes Hit Counts simpler than Running Start.
   opposite-pair and side-sum components below (they need both ends of a
   line, or a whole side, which only a full frame has).
 - `HitCountsComponent.js` — the per-line component. It bounds the clue from the
-  line and forces or forbids hits when the clue's range demands it.
+  line and forces or forbids hits when the clue's range demands it. Those bounds
+  hold on any line an author draws. Its one rule that needs more — a clue can
+  never be `n - 1` — sits behind a gate the component checks at solve time (see
+  "Line kinds and gates" below).
 - `SideSumComponent.js` — the per-side component. The `n` clues on one side sum
-  to exactly `n`; it propagates that sum across the side's clue cells.
+  to exactly `n`; it propagates that sum across the side's clue cells. It takes
+  the `n` perpendicular lines its proof rests on and fires only while each one
+  is a full house of `{1..n}`.
 - `HitCountsPairComponent.js` — the opposite-pair component. It couples the two
   clues on the ends of one line through `A + B <= n` (`+ 1` when `n` is odd), and
   at that cap pins every cell to two values.
@@ -44,6 +49,11 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (the 9x9) —
   the built SudokuMaker links. Open one to play the example. The 9x9 takes the
   plain name because `build_link.py` and the timing loop reuse that board.
+- `rebuild_size.py` — re-encodes a shipped link from its committed
+  `gen_<n>x<n>.json` with the component code and backend as they stand in the
+  repo now, on the same board and givens (no fresh CP-SAT search). Run it after
+  any component edit, or the shipped links keep an old snapshot:
+  `uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9`
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
@@ -63,10 +73,50 @@ sits there exactly once. Every column gives one hit, so the left clues sum to
 
 This couples every clue on a side: knowing `n - 1` of them fixes the last, and
 partial knowledge tightens the rest. `SideSumComponent` propagates it by bounds.
-`main-global.js` groups the clues by side using the step between a line's first two
-cells (`+1` left, `-1` right, `+W` top, `-W` bottom): same step, same side. It
-fires only on a full side of `n` clues — the sum is `n` exactly only when every
-line on the side is present, which the frame guarantees.
+`main-global.js` builds the interior's rows and columns once and names the four
+sides off them, so each side comes with its `n` clue cells and a full frame is
+what makes the sum exactly `n`.
+
+The proof leans on the **crossing** lines, not the clued ones: it is column `j`
+holding digit `j` exactly once that gives the one hit per column. So each side
+hands the component the `n` lines that cross it — the columns for a side of
+rows, the rows for a side of columns — and the component checks every one of
+them is a full house of `{1..n}` before it prunes anything. Where that is not
+provable it stays silent.
+
+## Line kinds and gates
+
+A rule may assume nothing about a line beyond what the component can prove at
+solve time (`docs/line-contract.md`). Hit Counts splits this way:
+
+| Rule | Needs | Where |
+|-|-|-|
+| reverse clue bound `[forced, possible]` | nothing — a bare line | line component |
+| forward "no more hits" / "all must hit" | nothing — a bare line | line component |
+| a clue is never `n - 1` | a full house of `{1..n}` | line component |
+| pair cap `A + B <= n (+1)` | nothing — a bare line, both ends | global |
+| side sum `= n` | `n` perpendicular full houses of `{1..n}` | global |
+
+The count bounds read each cell alone, so they hold on a line with repeats, gaps,
+or any length. The `n - 1` rule does not: it is the pigeonhole on a line that
+holds `1..n` once each, and on a hand-drawn line of `[1,2,3,4,5,6,7,8,1]` the
+true clue IS `8`. The component therefore asks the app — `getCellsCanHaveRepeats`
+on the line alone — and counts the live candidates across the line.
+
+Two facts make the check awkward, and both are why it runs in `update` rather
+than in the main code or once at load:
+
+- Main code runs before the built-in row and column houses are registered, so a
+  question asked there reads every line as bare (gotcha 6).
+- These boards run `minDigit 0` so the clue ring can hold a `0`, with a
+  look-and-say cage keeping `0` off the inner grid. Until that cage bites, `0`
+  is still a live candidate on every line cell, so the line is not yet a full
+  house of `{1..n}`. The kind is re-tested each `update` until it proves a full
+  house, then cached on the instance.
+
+A digit set of `{0..8}` is the case that makes the count alone insufficient: nine
+different digits over nine cells passes any full-house test, yet such a line can
+hit `n - 1` times. So the rule tests the digit set itself.
 
 ## Opposite pair — a cut from the two clues alone
 
@@ -232,10 +282,18 @@ node examples/hit-counts/soundness-harness.mjs
 # -> line + side-sum + pair components, 0 violations, clue values 0..9, "PASS"
 ```
 
-The harness fuzzes random permutations of `1..9` read in a random direction, so
-the clue ranges over `0..9`. It seeds partial states that keep each cell's true
-value, runs the component to a fixpoint, and checks no true value was removed. It
-forces in the identity line (clue 9) and a derangement (clue 0) on every run. The
+The harness seeds partial states that keep each cell's true value, runs the
+component to a fixpoint, and checks no true value was removed. It fuzzes the line
+component on all three line kinds — bare, house, and full house — plus a
+nine-cell house of `{0..8}`, and each of those three pools carries a line whose
+true clue really is `n - 1`, so an ungated rule loses that true value and the run
+goes red. It forces in the identity line (clue 9) and a derangement (clue 0) on
+every full-house run. Two deterministic checks cover the gate itself: one drops
+`0` off the line between two `update` calls and asserts the same instance holds
+`n - 1` while `0` is live and takes it afterwards, and one checks `validate`
+accepts a clue of `n - 1` on a bare line and rejects it on a full house. The
+side-sum section runs twice, on full-house perpendiculars (where it must prune)
+and on bare ones (where it must remove nothing). The
 pair section drives a line at the `A + B == cap` extreme and counts how often the
 per-cell branch fires; a second pair loop fuzzes random permutations, whose
 can't-hit cells exercise the dynamic cap; and a deterministic guard checks the
@@ -243,8 +301,17 @@ pin branch never empties a forced-miss cell.
 
 ## Timing
 
-`just time hit-counts` failed: `app-solve.mjs` refused the baseline probe with
-"1 entered values on the board; strip it first (probe_link.py strip), or pass
---ring-clues for an edge-clue puzzle." The committed `PUZZLE_LINK.txt` does
-not strip clean through the tool's default `strip` mode. No row recorded —
-see `docs/real-app-timing.md` for the protocol once this is fixed.
+No row recorded. Both paths fail on the **baseline** probe, before the candidate
+link is ever timed, so this is not a property of any component change:
+
+- `just time hit-counts` — `app-solve.mjs` refuses the baseline with "1 entered
+  values on the board". The link decodes to 35 givens and 0 entered values; the
+  guard counts non-black `svg text`, and the cage's white `00` label trips it.
+  That is **#231**.
+- `just time hit-counts --ring-clues` — gets past the refusal and then raises
+  "app-solve.mjs got no timed reps": the app's search never closes on this
+  given-only 9x9. That is **#116** (#157 records both halves).
+
+The gate row this example owes (`≤ 1.1×` on the cold and after-logical rows,
+3 reps, #236) is blocked until #231 and #116 are fixed. See
+`docs/real-app-timing.md` for the protocol.

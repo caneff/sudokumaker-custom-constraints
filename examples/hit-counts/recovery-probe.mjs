@@ -52,7 +52,9 @@ const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometr
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
-const st = makeCandidateState()
+// The all-different groups are the board's houses: the line components gate on
+// them through getCellsCanHaveRepeats (docs/line-contract.md).
+const st = makeCandidateState({ houses: alldiffGroups })
 
 function freshState () {
   st.cand = new Map()

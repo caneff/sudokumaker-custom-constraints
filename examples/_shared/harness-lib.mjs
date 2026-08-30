@@ -65,12 +65,14 @@ export function randomCandidates (rnd, lo, hi, keep = null) {
 // component and report the candidates `cur` keeps that `ref` removed — the
 // cells where `cur` prunes less. `apply` sets a version's params and runs it.
 // Returns null for a dead state (some cell emptied by either side): that state
-// has no solution, so "weaker" means nothing there.
-export function compareStrength (cur, ref, apply, start) {
+// has no solution, so "weaker" means nothing there. `opts` is passed to
+// `makePuzzle`: a gated component only prunes on a state whose declared kind
+// opens its gate, so compare it on one (docs/line-contract.md).
+export function compareStrength (cur, ref, apply, start, opts = {}) {
   const cells = {}; for (const c of start.keys()) cells[c] = 0
   const seed = c => start.get(c)
-  const pCur = makePuzzle(cells, seed); apply(cur, pCur)
-  const pRef = makePuzzle(cells, seed); apply(ref, pRef)
+  const pCur = makePuzzle(cells, seed, opts); apply(cur, pCur)
+  const pRef = makePuzzle(cells, seed, opts); apply(ref, pRef)
   if ([...pCur._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)) return null
   const weaker = []
   for (const c of start.keys()) {

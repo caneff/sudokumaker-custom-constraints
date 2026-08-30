@@ -3,7 +3,8 @@
 //! cell is a hit when its digit equals its distance from the clue. So line[i]
 //! (0-based) is a hit when line[i] === i + 1, and k is the number of hits. The
 //! cells are independent, so k is a plain count of booleans; k can be 0. A line
-//! is a permutation, so k is never n - 1: fixing n - 1 cells forces the nth.
+//! that holds 1..n once each can never have n - 1 hits: fixing n - 1 cells
+//! forces the nth.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -12,6 +13,44 @@ function getAffectedCells (clue, line) {
 function setParams (instance, clue, line) {
   instance.clue = clue
   instance.line = line
+}
+
+// Line kinds, ordered (docs/line-contract.md): a rule that needs one kind also
+// holds on every kind above it. The count bounds below are sound on a bare
+// line; the no-n-1 rule needs a full house whose digit set is {1..n}.
+const BARE = 0
+const HOUSE = 1
+const FULL_HOUSE = 2
+
+// The line's kind, asked at solve time and re-tested until it settles. Two
+// reasons it cannot be asked once: main code runs before the built-in
+// row/column houses are registered and would read every line as bare (gotcha
+// 6), and a hit-counts board runs minDigit 0 for its clue ring with a cage that
+// takes 0 off the inner grid during solving, so the line's digit set only
+// settles after the first update. Query the line alone -- a ring cell in the
+// list flips getCellsCanHaveRepeats to true.
+// `instance.oneToN` rides along: the union of the line's live candidates is
+// exactly {1..n}, the extra fact the no-n-1 rule needs. That is the answer the
+// early return reads, not the kind: a line of nine cells holding {0..8} counts
+// as a full house while its digit set is still wrong, and caching on the kind
+// there would hold the gate shut for good once the cage removed the 0. A house
+// never repeats again and a shrinking union never regains a digit, so once
+// `oneToN` is true nothing needs asking again.
+function lineKind (instance, puzzle) {
+  if (instance.oneToN) return FULL_HOUSE
+  const line = instance.line
+  if (puzzle.getCellsCanHaveRepeats(line)) { instance.kind = BARE; return BARE }
+  let mask = 0
+  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
+  let live = 0
+  for (let m = mask; m; m &= m - 1) live++
+  instance.oneToN = mask === (1 << (line.length + 1)) - 2 // bits 1..n set, bit 0 clear
+  instance.kind = live === line.length ? FULL_HOUSE : HOUSE
+  return instance.kind
+}
+
+function fullHouseOfOneToN (instance, puzzle) {
+  return lineKind(instance, puzzle) === FULL_HOUSE && instance.oneToN
 }
 
 function hitCount (puzzle, line) {
@@ -40,8 +79,21 @@ function scan (puzzle, line) {
   return { forced, possible, free }
 }
 
+// A line that holds 1..n once each can never have exactly n - 1 hits: fix n - 1
+// cells on their target and the last value has only its home left, forcing an
+// nth hit. So n - 1 is never a legal clue there. This bites on a hidden clue and
+// flows through to the side-sum and pair via the shared cell.
+function * noNMinusOne (instance, puzzle) {
+  const n = instance.line.length
+  if (n < 2 || !fullHouseOfOneToN(instance, puzzle)) return
+  if (Array.from(puzzle.getCandidates(instance.clue)).includes(n - 1)) {
+    yield puzzle.removeCandidateFromCell(n - 1, instance.clue)
+  }
+}
+
 function * update (instance, puzzle) {
   const { clue, line } = instance
+  yield * noNMinusOne(instance, puzzle)
   const { forced, possible, free } = scan(puzzle, line)
 
   // ---- Reverse: the clue is the hit count, so it lies in [forced, possible] ----
@@ -69,20 +121,17 @@ function * update (instance, puzzle) {
   }
 }
 
-// A line is a permutation, so it can never have exactly n - 1 hits: fix n - 1
-// cells on their target and the last value has only its home left, forcing an
-// nth hit. So n - 1 is never a legal clue. Drop it once at load; this bites on a
-// hidden clue and flows through to the side-sum and pair via the shared cell.
+// Take the n - 1 clue at load, when the line already proves itself a full house
+// of {1..n}. While a cage has yet to remove the 0 the gate is shut here and
+// `update` takes the clue on the pass that opens it.
 function * initialize (instance, puzzle) {
-  const n = instance.line.length
-  if (n >= 2 && Array.from(puzzle.getCandidates(instance.clue)).includes(n - 1)) {
-    yield puzzle.removeCandidateFromCell(n - 1, instance.clue)
-  }
+  yield * noNMinusOne(instance, puzzle)
 }
 
 function validate (instance, puzzle) {
   const { clue, line } = instance
-  if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1) return false
+  if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1 &&
+      line.length >= 2 && fullHouseOfOneToN(instance, puzzle)) return false
   if (!puzzle.getCellsAreFilled([clue, ...line])) return true
   return puzzle.getValue(clue) === hitCount(puzzle, line)
 }
