@@ -40,9 +40,9 @@ from framebuild import Spec, run
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
+    "HitCountsJointComponent.js",
     "HitCountsComponent.js",
     "SideSumComponent.js",
-    "HitCountsPairComponent.js",
 ]
 
 

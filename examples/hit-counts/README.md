@@ -18,23 +18,29 @@ no ordering. That makes Hit Counts simpler than Running Start.
 
 ## Files
 
-- `main.js` — the local backend segment: one line component per drawn group.
+- `main.js` — the local backend segment: one joint component per pair of drawn
+  groups that cover the same line from opposite ends, and the per-line component
+  for every group with no such partner.
 - `main-global.js` — the global backend segment: builds all 4n frame lines
-  from the board size, then registers the line component plus the
-  opposite-pair and side-sum components below (they need both ends of a
-  line, or a whole side, which only a full frame has).
-- `HitCountsComponent.js` — the per-line component. It bounds the clue from the
-  line and forces or forbids hits when the clue's range demands it. Those bounds
-  hold on any line an author draws. Its one rule that needs more — a clue can
-  never be `n - 1` — sits behind a gate the component checks at solve time (see
-  "Line kinds and gates" below).
+  from the board size, then registers the joint component per line plus the
+  side-sum component below (which needs a whole side, so only a full frame
+  has it).
+- `HitCountsJointComponent.js` — one component for a whole line and both its
+  clues, used wherever a line is clued at both ends. It reads the hits as a
+  matching between digits and positions and prunes cells and clues against the
+  `(A, B)` hit counts the line can still reach. Its two rules that need more
+  than a bare line — the mirrored-pair exclusion and "a clue is never `n - 1`" —
+  sit behind gates the component checks at solve time (see "Line kinds and
+  gates" below).
+- `HitCountsComponent.js` — the per-line component, for a line clued at one end
+  only: a drawn path, or half a frame an author is still drawing. It bounds the
+  clue from the line and forces or forbids hits when the clue's range demands
+  it. Those bounds hold on any line an author draws; its `n - 1` rule sits
+  behind the same gate.
 - `SideSumComponent.js` — the per-side component. The `n` clues on one side sum
   to exactly `n`; it propagates that sum across the side's clue cells. It takes
   the `n` perpendicular lines its proof rests on and fires only while each one
   is a full house of `{1..n}`.
-- `HitCountsPairComponent.js` — the opposite-pair component. It couples the two
-  clues on the ends of one line through `A + B <= n` (`+ 1` when `n` is odd), and
-  at that cap pins every cell to two values.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `recovery-probe.mjs` — measures whether the matching bound actually helps solve a
   real generated puzzle (see "Does the tighter bound help?" below).
@@ -63,7 +69,10 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
-  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsComponent.js --out /tmp/candidate.txt`
+  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsJointComponent.js --out /tmp/candidate.txt`
+- `rebuild_size.py` — re-encodes a shipped link from its committed
+  `gen_<n>x<n>.json` with the component code as it stands in the repo, with no
+  fresh CP-SAT search: same board, current code.
 - `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
   Running Start (the interactive-outside frame cosmetics and the link-shrinking
   pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.
@@ -99,15 +108,19 @@ solve time (`docs/line-contract.md`). Hit Counts splits this way:
 |-|-|-|
 | reverse clue bound `[forced, possible]` | nothing — a bare line | line component |
 | forward "no more hits" / "all must hit" | nothing — a bare line | line component |
-| a clue is never `n - 1` | a full house of `{1..n}` | line component |
-| pair cap `A + B <= n (+1)` | nothing — a bare line, both ends | global |
-| side sum `= n` | `n` perpendicular full houses of `{1..n}` | global |
+| the hit sweep: cells and clues against the reachable `(A, B)` | nothing — a bare line | joint component |
+| a mirrored pair never gives one A hit and one B hit | a house | joint component |
+| a clue is never `n - 1` | a full house of `{1..n}` | both line components |
+| side sum `= n` | `n` perpendicular full houses of `{1..n}` | side component |
 
-The count bounds read each cell alone, so they hold on a line with repeats, gaps,
-or any length. The `n - 1` rule does not: it is the pigeonhole on a line that
-holds `1..n` once each, and on a hand-drawn line of `[1,2,3,4,5,6,7,8,1]` the
-true clue IS `8`. The component therefore asks the app — `getCellsCanHaveRepeats`
-on the line alone — and counts the live candidates across the line.
+The count bounds read each cell alone and the sweep enforces the hit matching
+and each cell's own candidates, so both hold on a line with repeats, gaps, or
+any length. The other two rules do not. The
+mirrored-pair exclusion says one digit cannot sit in two cells, which is a house.
+The `n - 1` rule is the pigeonhole on a line that holds `1..n` once each, and on
+a hand-drawn line of `[1,2,3,4,5,6,7,8,1]` the true clue IS `8`. The component
+therefore asks the app — `getCellsCanHaveRepeats` on the line alone — and counts
+the live candidates across the line.
 
 Two facts make the check awkward, and both are why it runs in `update` rather
 than in the main code or once at load:
@@ -117,46 +130,79 @@ than in the main code or once at load:
 - These boards run `minDigit 0` so the clue ring can hold a `0`, with a
   look-and-say cage keeping `0` off the inner grid. Until that cage bites, `0`
   is still a live candidate on every line cell, so the line is not yet a full
-  house of `{1..n}`. The kind is re-tested each `update` until it proves a full
-  house, then cached on the instance.
+  house of `{1..n}`. The kind is re-tested each `update` until the digit set
+  proves out, then cached on the instance.
 
 A digit set of `{0..8}` is the case that makes the count alone insufficient: nine
 different digits over nine cells passes any full-house test, yet such a line can
-hit `n - 1` times. So the rule tests the digit set itself.
+hit `n - 1` times. So the rule tests the digit set itself — and the answer is
+cached on that test, not on the kind, which would hold the gate shut for good
+once the cage removed the `0`.
 
-## Opposite pair — a cut from the two clues alone
+A `0` on a line is also an ordinary miss for the sweep: it is neither of the
+position's two target digits, so it keeps the "hit for neither" case open like
+any other digit.
 
-Two clues on opposite ends of one line couple. Read a cell at 0-based index `j`
-on a line of length `n`. It is a **left hit** when its value is `j + 1` (its
-distance from the left clue) and a **right hit** when its value is `n - j` (its
-distance from the right clue). Those two values are equal only at the exact
-center (`n` odd, `j = (n-1)/2`, value `(n+1)/2`). So the left-hit cells and the
-right-hit cells are disjoint apart from that one shared center cell. The left
-clue `A` counts the first set, the right clue `B` the second, so
+## The joint line — both clues at once
 
-    A + B <= n        (n even)
-    A + B <= n + 1    (n odd, the center can be a hit from both sides).
+Two clues on opposite ends of one line couple, and the coupling is much stronger
+than a bound on `A + B`. Number the line's positions `j = 0 … n-1` from clue A.
+Position `j` is a hit for A when it holds digit `j + 1`, and a hit for B when it
+holds digit `n - j`. So **digit `d` can hit in exactly two places**: position
+`d - 1` for A, position `n - d` for B.
 
-Each clue caps the other: `A <= cap - B` and `B <= cap - A`.
+Read that as a graph — positions on one side, digits on the other, one edge per
+possible hit. Every node has degree at most 2, so the graph is a union of paths
+and cycles. Follow the edges from position `j`: its A-edge takes digit `j + 1`,
+whose B-edge sits at position `n - 1 - j`, whose A-edge takes digit `n - j`,
+whose B-edge returns to `j`. The graph therefore splits into `⌊n/2⌋`
+four-cycles, each joining a position to its **mirror** `n - 1 - j`, plus the
+centre position alone when `n` is odd.
 
-The cap is not fixed. It starts at `n` (or `n + 1`) and **drops as the interior
-fills in**: once a cell has lost both its left-hit value `j + 1` and its
-right-hit value `n - j`, it can never be a hit either way, so it no longer counts
-toward the cap. `HitCountsPairComponent` recomputes
+The mirrored pairs share no digit and no position, so they are independent, and
+the `(A, B)` hit counts the whole line can reach are the **convolution** of one
+small set per pair.
 
-    cap = number of cells that can still hit  (the center counted twice)
+Each mirrored pair allows five outcomes. Each of its two positions takes one of
+three cases: hit for A (`L`), hit for B (`R`), or neither (`M`). A case is open
+only while the cell still holds that candidate. On a house, two of the nine
+combinations are impossible — `(L, R)` and `(R, L)` both put the same digit in
+both cells — and what survives contributes `(0,0)`, `(1,0)`, `(0,1)`, `(2,0)` or
+`(0,2)`. The centre contributes `(1,1)` when it holds its own digit and `(0,0)`
+when it does not.
 
-on every pass, so interior progress feeds straight back into tighter clue bounds.
+Note what the exclusion says: **a mirrored pair can never give one A hit and one
+B hit.** A cap on `A + B` counts positions and knows nothing about digits, so it
+cannot see this at all.
 
-The cut has real teeth at the cap. When `A + B` is forced to `cap`, every cell
-that can still hit must hit. So each such cell is pinned to just `{j + 1, n - j}`
-(a single value at the odd-`n` center); a cell that can hit neither is a forced
-miss and is left alone. That fires from the two clues alone, before any interior
-digit is known — a deduction no single-line component can reach. `main-global.js`
-pairs two clues whose lines are the exact reverse of each other.
+`HitCountsJointComponent` runs the standard forward and backward sweep over
+those sets:
 
-Unlike the side sum, this coupling is not a tautology: it constrains the
-interior digits directly, not just the hidden clues.
+- `F[u]` — the `(A, B)` sums reachable from the pairs before `u`.
+- `H[u]` — the sums from which the pairs from `u` on can still land inside the
+  **clue box**, the `(a, b)` with `a` a candidate of clue A and `b` of clue B.
+- A case of one position is impossible when no combination containing it joins
+  an `F[u]` state to an `H[u+1]` state. Then `L` impossible drops digit `j + 1`
+  from the cell, `R` impossible drops digit `n - j`, and `M` impossible pins the
+  cell to `{j + 1, n - j}`.
+- The clues keep only the values that appear in `F[end]` inside the box.
+- An empty intersection means the branch is dead, and the component empties clue
+  A as the contradiction signal.
+
+The mirrored-pair exclusion is one of two rules that read outside the line's own
+candidates, so it is gated: the component asks `getCellsCanHaveRepeats` about
+the line, and on a bare line `(L, R)` and `(R, L)` stay open while the rest of
+the sweep still holds.
+
+The sweep does not subsume everything. A clue can never equal `n - 1` — fix
+`n - 1` cells on target and the last value has only its home left, forcing an
+`n`th hit — and that is a permutation fact the hit matching alone cannot see, so
+the component keeps it as a rule of its own for both clues. It is the second
+gated rule, and it needs more than a house: the line's live digits must be
+exactly `1..n`, which the component checks itself (see
+`../../docs/line-contract.md`). Both gates are re-tested on every `update`
+until they open, because the app's exclusion groups grow as it builds the
+puzzle.
 
 ## The clue of 0
 
@@ -198,6 +244,9 @@ count on the path's own cells with **no** all-different among them, and the
 board is carved to a single solution and proved unique the same way. The paths
 ship as `input.groups` on the `main.js` lane — the local variant — so the app
 hands each drawn group to one `HitCountsComponent` and nothing builds a frame.
+A path has a clue at one end only, and no two paths cover the same cells in
+opposite directions, so none of them pairs: the joint component is a frame-board
+rule, and this board is the per-line component's.
 
 Its rules text carries one extra sentence the global board does not — the
 line is drawn, so it is not a house and a digit may repeat along it
@@ -209,19 +258,27 @@ interactive.
 ## Paste into SudokuMaker
 
 To draw your own lines, add a custom local constraint and paste `main.js` as
-the main code, plus the `HitCountsComponent` segment. Each group is one line:
-cell 0 the outside clue, the rest the line read inward.
+the main code, plus the `HitCountsJointComponent` and `HitCountsComponent`
+segments. Each group is one line: cell 0 the outside clue, the rest the line
+read inward. Draw both ends of a line and it gets the joint component, which is
+much the stronger of the two; draw one end, or a bent path, and it gets the
+per-line component.
 
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
-`main-global.js` as the main code, plus all three component segments:
-`HitCountsComponent`, `SideSumComponent`, and `HitCountsPairComponent`.
+`main-global.js` as the main code, plus the component segments:
+`HitCountsJointComponent` and `SideSumComponent`.
 
 ## What the component deduces
 
+Everything in "The joint line" above: the reachable `(A, B)` hit counts, the
+cases each position can still take, and the clue values that survive. The
+subsection below is about a different bound — the one the recovery probe
+measures and the component does not use.
+
 Let `forced` be the cells already pinned to their own distance (a hit no matter
 what) and `possible` be the cells whose distance is still a candidate (a hit is
-still open). The true number of hits lies in `[forced, possible]`.
+still open). The naive bound says the hit count lies in `[forced, possible]`.
 
 ### A tighter bound we measured and did not ship
 
@@ -253,16 +310,17 @@ node examples/hit-counts/recovery-probe.mjs gen_9x9.json --floor=regin
 ```
 
 The components as a whole earn their keep — over the sudoku floor, which recovers
-no hidden clue on its own, they recover 4 hidden clues on `gen_6` and 10 on
-`gen_9`. But the matching refinement adds **zero** on top of the naive bound:
+no hidden clue on its own, they recover 7 of the 9 hidden clues on `gen_9` and
+remove 205 candidates the floor leaves standing. But the matching refinement
+adds **zero** on top:
 
 - `gen_6` — the matching never even fires: the interior starts empty, so every
   line's candidates stay wide and the matching bound equals the naive one on all
   24 lines. Nothing to bite.
-- `gen_9` — the matching *does* fire (tighter than naive on ~14 of 36 lines), yet
+- `gen_9` — the matching *does* fire (tighter than naive on 14 of 36 lines), yet
   the recovered clues and cells are identical with it on or off. The all-different
-  floor plus the side-sum and pair components already reach the same fixpoint, so
-  the tighter clue bound is redundant.
+  floor plus the joint and side-sum components already reach the same fixpoint,
+  so the tighter clue bound is redundant.
 
 The result holds under a weaker singles-only floor too (`--floor=singles`).
 
@@ -274,10 +332,13 @@ node examples/hit-counts/recovery-probe.mjs gen_9x9.json --search --only=on
 ```
 
 It runs a full DFS that proves uniqueness (MRV branching, one solution) and counts
-the nodes explored, matching off vs on. The matching cuts almost nothing:
+the nodes explored, matching off vs on:
 
-- `gen_6` — 261 nodes off, 259 on (2 fewer, 0.8%);
-- `gen_9` — 38620 nodes off, 38578 on (42 fewer, 0.1%).
+- `gen_6` — 856 nodes off, 790 on (66 fewer, 7.7%);
+- `gen_9` — 15,922 nodes off.
+
+Those are the counts the goldens pin. `OPTIMIZATION_LOG.md` records what the
+joint line DP bought against the wiring before it.
 
 Nodes are only a proxy; the goal is a solver that is *faster*. The matching runs
 an `O(n · 2ⁿ)` pass per line per propagation — about 78x the naive `O(n)` scan on
@@ -292,23 +353,25 @@ barely prunes search. Whether it costs real time is still open. Any real value
 would have to come from the interior-facing deduction — the matching-driven cell
 eliminations tracked as a follow-up — and that path is even heavier per call, so
 it must clear the same bar: real-app timing, not mock-probe nodes, before
-committing. (Each `--search` run on `n = 9` takes a few minutes; run one mode at
+committing. (A `--search` run on `n = 9` takes about a minute; run one mode at
 a time with `--only`.)
 
-- **No n − 1 clue** — a line is a permutation, so it can never have exactly
-  `n − 1` hits: fix `n − 1` cells on their target and the last value has only its
-  home position left, forcing an nth hit. So `n − 1` is never a legal clue. The
-  component drops it from every clue cell at load, which narrows the hidden clues
-  and feeds the side-sum and pair through the shared cell.
+### The rules, in one list
 
-- **Reverse, clue from line** — the clue is the hit count, so drop every clue
-  candidate below `forced` or above `possible`.
-- **Forward, forbid hits** — if the clue's largest candidate equals `forced`, no
-  more cells may hit, so remove the target digit from every free cell.
-- **Forward, force hits** — if the clue's smallest candidate needs every free
-  cell to hit, pin each free cell to its target digit.
-- **validate** — once clue and line are filled, the count of hits must equal the
-  clue.
+- **No n − 1 clue** — a line whose digits are exactly `1..n` can never have
+  exactly `n − 1` hits: fix `n − 1` cells on their target and the last value has
+  only its home position left, forcing an nth hit. The component drops `n − 1`
+  from both clue cells as soon as the line's digits settle, which narrows the
+  hidden clues and feeds the side sum through the shared cell.
+- **Clue from line** — a clue keeps only the values that appear in an `(A, B)`
+  pair the line can still reach.
+- **Line from clues** — a position loses its A digit, or its B digit, or every
+  other digit, when the matching case behind it joins no reachable forward state
+  to a reachable backward one.
+- **Dead branch** — when no reachable `(A, B)` lies inside the clue box, the
+  component empties clue A as the contradiction signal.
+- **validate** — once both clues and the whole line are filled, each clue must
+  equal its own hit count exactly.
 
 The all-different rule on each line is left to the built-in row/column check;
 this component only reasons about hits.
@@ -319,25 +382,47 @@ Soundness (needs Node):
 
 ```
 node examples/hit-counts/soundness-harness.mjs
-# -> line + side-sum + pair components, 0 violations, clue values 0..9, "PASS"
+# -> joint + side-sum components, 0 violations, "PASS"
 ```
 
 The harness seeds partial states that keep each cell's true value, runs the
-component to a fixpoint, and checks no true value was removed. It fuzzes the line
-component on all three line kinds — bare, house, and full house — plus a
-nine-cell house of `{0..8}`, and each of those three pools carries a line whose
-true clue really is `n - 1`, so an ungated rule loses that true value and the run
-goes red. It forces in the identity line (clue 9) and a derangement (clue 0) on
-every full-house run. Two deterministic checks cover the gate itself: one drops
-`0` off the line between two `update` calls and asserts the same instance holds
-`n - 1` while `0` is live and takes it afterwards, and one checks `validate`
-accepts a clue of `n - 1` on a bare line and rejects it on a full house. The
-side-sum section runs twice, on full-house perpendiculars (where it must prune)
-and on bare ones (where it must remove nothing). The
-pair section drives a line at the `A + B == cap` extreme and counts how often the
-per-cell branch fires; a second pair loop fuzzes random permutations, whose
-can't-hit cells exercise the dynamic cap; and a deterministic guard checks the
-pin branch never empties a forced-miss cell.
+component to a fixpoint, and checks no true value was removed. It fuzzes both
+line components on all three line kinds — bare, house, and full house — plus a
+nine-cell house of `{0..8}`, and each of those pools carries a line whose true
+clue really is `n - 1`, so an ungated rule loses that true value and the run goes
+red. It forces in the identity line (clue 9) and a derangement (clue 0) on every
+full-house run.
+
+A second pass runs the component over real grids: each `gen_*.json` grid plus
+band/stack shuffles of it, which keep a grid valid while moving every hit. There
+both clues of a line are true together, which is what the component actually
+reads on a board. Digit relabelling is not a safe shuffle here: a hit compares a
+digit to a position, so relabelling changes the rule, not just the grid.
+
+A third pass names the mirrored-pair exclusion rather than counting any removal:
+it runs one state twice, declared a full house and declared bare, and counts the
+states where the house run pruned strictly more. The clue seeds drop `n - 1`
+first, so the other gated rule cannot account for the difference.
+
+Three deterministic checks cover the gates themselves: one drops `0` off the line
+between two `update` calls and asserts the same instance holds `n - 1` while `0`
+is live and takes it afterwards; one does the same for a full house whose digit
+set is `{0..n-1}`, which must not lock the gate shut for good; and one checks
+`validate` accepts a clue of `n - 1` on a bare line and rejects it on a full
+house. The side-sum section runs twice, on full-house perpendiculars (where it
+must prune) and on bare ones (where it must remove nothing).
+
+Strength (needs Node):
+
+```
+node examples/hit-counts/update-strength.test.mjs
+```
+
+The joint component's floor is the per-line and pair components it replaced, run
+together at the commit that last shipped them: on random states it must never
+leave a candidate they removed. One deterministic case pins the inference it adds
+— a mirrored pair that can never give one A hit and one B hit, which the pair
+component's count-only cap cannot reach.
 
 ## Timing
 

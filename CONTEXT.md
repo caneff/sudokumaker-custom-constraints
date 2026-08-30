@@ -73,8 +73,15 @@ Use these terms exactly. Do not drift to synonyms.
   its own lifetime. See `docs/line-contract.md`.
 - **line component** — the component for one group: one clue, one line. Both
   variants of an example use the same one.
-- **pair component** — a component that sees both clues of one line. Global
-  only.
+- **pair component** — a component that sees both clues of one line. Hit Counts
+  registers one per line in both variants; other examples pair only in the
+  global variant.
+- **mirrored pair** — on an outside-clue line of length `n`, the two positions
+  `j` and `n - 1 - j`. Reading hits as a matching between digits and positions,
+  a mirrored pair shares its two hit digits and shares them with nothing else,
+  so the line's reachable hit counts are a convolution over its mirrored pairs.
+  On a house a mirrored pair can never give one hit for each clue: both
+  readings would put the same digit in both cells.
 - **side component** — a component that sees every clue on one side of the
   frame. Global only.
 - **frame component** — a component that sees every clue and every line at

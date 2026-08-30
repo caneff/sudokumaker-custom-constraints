@@ -84,9 +84,8 @@ function buildComps () {
     input: {},
     frame: { W, idx },
     files: [
-      { file: 'HitCountsComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsComponent' },
-      { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
-      { file: 'HitCountsPairComponent.js', names: ['setParams', 'update'], ctorName: 'HitCountsPairComponent' }
+      { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
+      { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' }
     ]
   })
 }
@@ -169,13 +168,25 @@ function report (label, mode) {
 // the raw start state, then after the floor alone reaches a fixpoint. Zero at both
 // means the feature never fires here, so a zero recovery delta is expected, not a
 // bug in the probe.
+// The naive bound the matching is compared against: a cell is a forced hit once
+// it is pinned to its target digit, and a possible hit while that digit is still
+// a candidate, so the hit count lies in [forced, possible].
+function naiveBounds (line) {
+  let forced = 0
+  let possible = 0
+  for (let i = 0; i < line.length; i++) {
+    const cands = st.cand.get(line[i])
+    if (!cands.has(i + 1)) continue
+    possible++
+    if (cands.size === 1) forced++
+  }
+  return { forced, possible }
+}
 function tighterLines () {
-  const { load } = makeIo(HERE)
-  const hc = load('HitCountsComponent.js', ['scan'])
   let count = 0
   for (const g of groups) {
     const line = g.cells.slice(1)
-    const naive = hc.scan(st.puzzle, line)
+    const naive = naiveBounds(line)
     const mb = matchingBounds(line)
     if (mb && (mb.min > naive.forced || mb.max < naive.possible)) count++
   }
