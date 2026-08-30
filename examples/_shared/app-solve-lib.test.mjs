@@ -144,14 +144,14 @@ assert.strictEqual(parseVersion('SudokuMaker v2026.08.14-d47fc4b  Solved took 1s
 assert.strictEqual(parseVersion('no footer here'), null)
 
 // ---- entered-value count reads cell digits, not every colored SVG text ----
-// A cell's digit (given or entered) is an <svg text> whose immediate parent
-// <g> sits at a cell center: `translate(<25+50*col> <25+50*row>) scale(25)`
-// (see app-strip.mjs's cellFill). A constraint's own decoration -- e.g. Hit
-// Counts' ring total, a white "00" -- renders at some other transform, so it
-// must not count as an entered value even though its fill is not black.
-// Fixture: 35 black given digits at cell transforms, plus one white "00"
-// decoration at a fractional transform, matching the real Hit Counts board
-// from #231.
+// A cell's digit (given or entered) is an <svg text> whose closest
+// transformed ancestor <g> sits at a cell center: `translate(<25+50*col>
+// <25+50*row>) scale(25)` (see app-strip.mjs's cellFill). A constraint's own
+// decoration -- e.g. Hit Counts' ring total, a white "00" -- renders at some
+// other transform, so it must not count as an entered value even though its
+// fill is not black. Fixture: 35 black given digits at cell transforms, plus
+// one white "00" decoration at a fractional transform, matching the real Hit
+// Counts board from #231.
 {
   const givenOnly = [
     ...Array.from({ length: 35 }, (_, i) => ({ fill: '#000', transform: `translate(${25 + 50 * (i % 9)} ${25 + 50 * Math.floor(i / 9)}) scale(25)` })),

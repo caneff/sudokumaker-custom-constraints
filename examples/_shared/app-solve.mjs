@@ -64,11 +64,9 @@ const link = fs.readFileSync(linkFile, 'utf8').trim()
 // The app draws givens black and entered values blue, at each cell's own
 // <svg text>. A grid with entered values makes the solver verify instead of
 // search, and the app says so in its verdict ("based on already entered
-// values"). Refuse before solving. countEnteredValues (app-solve-lib.mjs)
-// tells a real cell digit apart from a constraint's own non-black decoration
-// text (e.g. Hit Counts' white ring total, #231) by the transform of its
-// closest transformed ancestor <g>, so only board cells are checked, not
-// everything under an <svg>.
+// values"). Refuse before solving. See countEnteredValues (app-solve-lib.mjs)
+// for how a real cell digit is told apart from a constraint's own decoration
+// text.
 async function checkStripped (page) {
   const cells = await page.evaluate(() =>
     [...document.querySelectorAll('svg text')].map(t => {
