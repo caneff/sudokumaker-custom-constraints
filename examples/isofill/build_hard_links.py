@@ -20,6 +20,8 @@ FIXTURES = {
     "gen_9x9.json": "PUZZLE_LINK_9x9.txt",
     "gen_28g.json": "PUZZLE_LINK_28g.txt",
     "gen_24g.json": "PUZZLE_LINK_24g.txt",
+    "gen_25g.json": "PUZZLE_LINK_25g.txt",
+    "gen_26g.json": "PUZZLE_LINK_26g.txt",
 }
 
 if __name__ == "__main__":
