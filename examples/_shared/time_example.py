@@ -103,9 +103,9 @@ def find_component_file(example_dir, base_doc):
 
 def build_candidate(example_dir, component_file, out_path, board=None):
     """Build the candidate link via the example's build_link.py. `board`
-    (None = the example's PUZZLE_LINK.txt) is passed as --board, which only
-    the isofill and skyscraper build_link.py take; any other example fails loud
-    here rather than inside build_link.py's argument parser."""
+    (None = the example's PUZZLE_LINK.txt) is passed as --board, which not
+    every example's build_link.py takes; one that does not fails loud here
+    rather than inside build_link.py's argument parser."""
     if board and "--board" not in (example_dir / "build_link.py").read_text():
         raise SystemExit(f"{example_dir.name}/build_link.py has no --board flag")
     cmd = [

@@ -50,9 +50,11 @@ if __name__ == "__main__":
     if paths:
         sys.argv.remove("--paths")
     n = int(sys.argv[1])
-    plain_9x9 = n == 9 and not paths
-    tag = ("local" if n == 9 else f"{n}x{n}_local") if paths else f"{n}x{n}"
-    out = HERE / ("PUZZLE_LINK.txt" if plain_9x9 else f"PUZZLE_LINK_{tag}.txt")
+    assert not paths or n == 9, "the local board is the 9x9 only"
+    tag = "local" if paths else f"{n}x{n}"
+    out = HERE / (
+        "PUZZLE_LINK.txt" if n == 9 and not paths else f"PUZZLE_LINK_{tag}.txt"
+    )
     before = decode_puzzle(out.read_text().strip())
 
     bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
