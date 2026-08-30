@@ -67,8 +67,12 @@ line as its window. That is weaker than the rule, never unsound.
 | `update-strength.test.mjs` | Never-weaker fuzz against the three deductions |
 | `backends.test.mjs` | What each backend registers, and how `main.js` fails |
 | `build_link.py` (+ test) | Swap a candidate component into the shipped board |
-| `verify.py` | CP-SAT proof that the shipped board has one solution |
+| `outside_rule.py` | The window rule in Python: both window measures and the CP-SAT membership post |
+| `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9 |
+| `rebuild_size.py` | Re-encode a sized link from its recorded seed, no fresh search |
+| `verify.py` | CP-SAT proof that a board has one solution |
 | `PUZZLE_LINK.txt` | The shipped board (see below) |
+| `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The sized boards and their seed data |
 
 ## The two backends
 
@@ -95,26 +99,75 @@ drawn groups.
 
       uv run --with lzstring --with ortools examples/outside-sudoku/verify.py
 
-  It is the rule's third home, beside the component and the soundness harness
-  (`CODING_STANDARDS.md`, "The rule has one home"). It is slow, so `just check`
-  does not run it; run it after changing the board or the rule.
+  The rule states itself three times — the component, the soundness harness,
+  and `outside_rule.py` for the Python side, which the generator and
+  `verify.py` share (`CODING_STANDARDS.md`, "The rule has one home"). A change
+  to the rule changes all three. `verify.py` is slow, so `just check` does not
+  run it; run it after changing the board or the rule.
 - Every non-given cell decodes as `{}` — no solution digit and no hidden clue
-  ships pre-typed.
+  ships pre-typed. `build_size.test.py` checks the same of every sized board.
 
 ### Regenerating
 
-The committed generator (`build_size.py` + `rebuild_size.py`, boards at 4x4,
-6x6 and 9x9) lands with #261; this board was built from a one-off script over
-`examples/_shared/framebuild.py`. Until then, to re-encode the link after a
-component change, swap the component into the committed board:
+To re-encode the shipped link after a component change, swap the component
+into the committed board:
 
     uv run --with lzstring examples/outside-sudoku/build_link.py \
       --component examples/outside-sudoku/OutsideSudokuComponent.js \
       --out examples/outside-sudoku/PUZZLE_LINK.txt
 
-One note for #261: `framebuild.Spec.clue_fn` sees only the line's digits, not
-its direction, so a 6x6 board (window 3 across, 2 down) needs the direction
-passed in or the clue derived per side.
+## The sized boards
+
+`build_size.py` generates a fresh board of any size on the same frame, in the
+**global** variant (no drawn groups: `main-global.js` builds the 4n frame lines
+itself). Three sizes ship, each carved to a unique solution by OR-Tools:
+
+| Board | Seed | Interior givens | Clues shown of 4n | Window |
+| --- | --- | --- | --- | --- |
+| `PUZZLE_LINK_4x4.txt` | 102 | 1 | 5 of 16 | 2 either way |
+| `PUZZLE_LINK_6x6.txt` | 123 | 3 | 13 of 24 | 3 across, 2 down |
+| `PUZZLE_LINK_9x9.txt` | 123 | 10 | 23 of 36 | 3 either way |
+
+    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 4 2 2
+    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 6 2 3
+    uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 9 3 3
+
+The carve loop drops a given, then a shown clue, whenever the board stays
+unique without it, so the ring stays sparse: every clue left blank is one the
+solver deduces. Uniqueness is a **failed second-solution search** — CP-SAT
+finds one solution, is told to avoid it, and finds no other. `verify.py`
+re-runs that proof against any committed link, so the claim is checkable from
+the tree:
+
+    uv run --with lzstring --with ortools examples/outside-sudoku/verify.py \
+      examples/outside-sudoku/PUZZLE_LINK_6x6.txt
+
+After a component change, re-encode a sized link from its recorded seed rather
+than searching again — the clue of a line is a pure function of the line, so
+the same board comes back out:
+
+    uv run --with lzstring examples/outside-sudoku/rebuild_size.py 6
+
+`build_size.test.py` holds that to a byte: each committed link must equal what
+`rebuild_size.rebuild(n)` produces from `gen_<n>x<n>.json`.
+
+### Which window digit is the clue
+
+The generator's clue is the **largest digit of the window**. Any window digit
+would satisfy the rule; picking one deterministically is what lets a rebuild
+re-derive the clues with no search. The solver is never told the clue is the
+largest — the component, the CP-SAT model and the harness all enforce plain
+membership.
+
+### How a clue function sees the direction
+
+A window is 3 across but 2 down on a 6x6, so the line's digits alone do not
+fix its length. `framebuild.Spec.clue_fn` therefore takes `(values, cells)`:
+`cells` are the line's cells, nearest the clue first, and both of this
+example's clue functions read the direction off `cells[0]` and `cells[1]`.
+The box shape comes from `build_size.spec_for(bh, bw)`, which builds a Spec for
+the size being generated. Clue functions on other examples ignore the second
+argument.
 
 ## Run
 
@@ -122,8 +175,11 @@ passed in or the clue derived per side.
     node examples/outside-sudoku/update-strength.test.mjs
     node examples/outside-sudoku/backends.test.mjs
     uv run --with lzstring examples/outside-sudoku/build_link.test.py
+    uv run --with lzstring examples/outside-sudoku/build_size.test.py
 
-All of these run under `just check`.
+All of these run under `just check`. None needs OR-Tools: `framebuild` imports
+the solver inside its search, so the clue functions, the document assembly and
+the rebuild all reach a test with `lzstring` alone.
 
 ## Timing
 

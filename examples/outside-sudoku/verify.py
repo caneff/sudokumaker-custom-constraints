@@ -1,13 +1,18 @@
-# Prove the shipped board has exactly one solution, with OR-Tools CP-SAT.
+# Prove a board has exactly one solution, with OR-Tools CP-SAT. Defaults to
+# the shipped board; name a link file to check a variant.
 #
 #   uv run --with lzstring --with ortools examples/outside-sudoku/verify.py
+#   uv run --with lzstring --with ortools examples/outside-sudoku/verify.py \
+#       examples/outside-sudoku/PUZZLE_LINK_6x6.txt
 #
-# This is the third home of the window rule, beside OutsideSudokuComponent.js
+# This is the Python home of the window rule, beside OutsideSudokuComponent.js
 # and soundness-harness.mjs (CODING_STANDARDS.md, "The rule has one home").
-# The three cannot share code, so they drift silently unless a change touches
-# all three; this one reads the shipped link itself -- givens, shown clues,
-# drawn groups and box regions all come out of PUZZLE_LINK.txt -- so it checks
-# the artifact a reader opens, not a side file that can fall out of step.
+# The JS and the Python cannot share code, so they drift silently unless a
+# change touches both; the Python side states the rule once, in
+# outside_rule.py, which the generator uses too. This script reads the link
+# itself -- givens, shown clues, drawn groups and box regions all come out of
+# the file -- so it checks the artifact a reader opens, not a side file that
+# can fall out of step.
 #
 # Slow (a full CP-SAT solve plus a second-solution search), so `just test` does
 # not run it. Run it by hand after changing the board or the rule.
@@ -22,25 +27,29 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import CONSTRAINT_NAME
+from frame import ring_cell
+from framebuild import make_lines
 from link_codec import decode_puzzle
 from link_swap import find_constraint
+from outside_rule import post_membership, window_length_by_region
 
 
-def window_length(line, region, row, column):
-    """The window: the first w cells of the line, w being the extent of
-    line[0]'s box along the line's direction. The same rule
-    OutsideSudokuComponent.windowLength reads off the board."""
-    head = line[0]
-    if region[head] < 0:
-        return len(line)
-    along_row = len(line) == 1 or row[line[1]] == row[head]
-    same = (
-        (lambda c: row[c] == row[head])
-        if along_row
-        else (lambda c: column[c] == column[head])
-    )
-    extent = sum(1 for c, r in enumerate(region) if r == region[head] and same(c))
-    return min(extent, len(line))
+def clue_groups(link, W, n):
+    """Every clue's cells -- clue cell first, then the line inward -- however
+    the board carries them.
+
+    The local board ships each line as a drawn group and main.js reads it. The
+    global board ships none: main-global.js builds the 4n frame lines from the
+    board size, and so does this, off the same frame geometry the generator
+    draws (framebuild.make_lines, frame.ring_cell)."""
+    groups = find_constraint(link, CONSTRAINT_NAME)["input"].get("groups")
+    if groups is not None:
+        return [g["cells"] for g in groups]
+    groups = []
+    for (side, i), cells in make_lines(n).items():
+        cr, cc = ring_cell(f"{side}{i}", W)
+        groups.append([cr * W + cc] + [(r + 1) * W + c + 1 for r, c in cells])
+    return groups
 
 
 def solve(model, x, forbid=None):
@@ -65,8 +74,9 @@ def solve(model, x, forbid=None):
     return {cell: solver.Value(var) for cell, var in x.items()}
 
 
-def main():
-    link = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+def main(argv):
+    path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
+    link = decode_puzzle(path.read_text().strip())
     doc = link["puzzle"]
     W = doc["width"]
     n = W - 2
@@ -89,25 +99,19 @@ def main():
             m.Add(x[i] == cells[i]["value"])
 
     shown = 0
-    for group in find_constraint(link, CONSTRAINT_NAME)["input"]["groups"]:
-        clue, *line = group["cells"]
+    for group in clue_groups(link, W, n):
+        clue, *line = group
         # A hidden clue cell is empty: the solver fills it, and any window
         # digit would do, so it constrains nothing. Only the shown clues count.
         if not cells[clue].get("given"):
             continue
         shown += 1
         value = cells[clue]["value"]
-        w = window_length(line, region, row, column)
-        lits = []
-        for i in line[:w]:
-            b = m.NewBoolVar(f"h{clue}_{i}")
-            m.Add(x[i] == value).OnlyEnforceIf(b)
-            m.Add(x[i] != value).OnlyEnforceIf(b.Not())
-            lits.append(b)
-        m.AddBoolOr(lits)
+        w = window_length_by_region(line, region, row, column)
+        post_membership(m, x, line[:w], value, str(clue))
 
     givens = sum(1 for i in interior if cells[i].get("given"))
-    print(f"{n}x{n}: {givens} interior givens, {shown} shown clues")
+    print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
 
     first = solve(m, x)
     assert first is not None, "the shipped board has no solution"
@@ -116,4 +120,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)

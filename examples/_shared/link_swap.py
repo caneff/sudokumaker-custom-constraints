@@ -39,6 +39,16 @@ def frame_only(doc, constraint_name):
     return d
 
 
+def frame_and_comment_only(doc, constraint_name):
+    """`frame_only`, plus the puzzle comment cleared, so two variants that
+    differ only in code, input or comment compare equal -- the same board,
+    givens and shown clues either way. The guard a rebuild-from-seed script
+    puts on its output."""
+    d = frame_only(doc, constraint_name)
+    d["puzzle"]["comment"] = ""
+    return d
+
+
 def replace_constraint_code(
     doc, constraint_name, *, backend_code=None, components=None
 ):

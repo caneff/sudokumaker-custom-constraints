@@ -54,7 +54,7 @@ def comment_text(n):
     )
 
 
-def hits(v):
+def hits(v, _cells):
     # cells whose digit equals their 1-based distance from the clue
     return sum(1 for i, x in enumerate(v) if x == i + 1)
 

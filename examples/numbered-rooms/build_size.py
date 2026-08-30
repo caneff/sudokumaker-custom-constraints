@@ -32,7 +32,7 @@ def comment_text(n):
     )
 
 
-def numbered_room(v):
+def numbered_room(v, _cells):
     return v[v[0] - 1]
 
 

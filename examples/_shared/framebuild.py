@@ -20,8 +20,6 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ortools.sat.python import cp_model
-
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
 from frame import cosmetics, ring_cell
@@ -35,7 +33,10 @@ class Spec:
     lines_name: str  # name of the custom "...Lines" constraint, e.g. "Skyscraper Lines"
     components: list[str]  # component filenames, read from `dir`
     min_digit: int  # puzzle's minDigit
-    clue_fn: Callable  # clue_fn(values) -> the true clue for one line of digits
+    # clue_fn(values, cells) -> the true clue for one line. `cells` are the
+    # line's (row, column) pairs, nearest the clue first: a rule whose clue
+    # depends on the line's direction (outside-sudoku's window) reads it there.
+    clue_fn: Callable
     cp_sat_clue_fn: Callable  # cp_sat_clue_fn(m, x, cells, kk, n, tag): posts the CP-SAT clue constraint
     comment_fn: Callable  # comment_fn(n) -> the puzzle's rule text
     extra_cages: Callable | None = (
@@ -150,6 +151,12 @@ def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     """True when the interior has exactly one solution. `post_clue` is a
     Spec's cp_sat_clue_fn; unique() needs nothing else off the Spec, so a
     caller with its own line geometry can reuse it (numbered-rooms-lines)."""
+    # Imported here, not at module scope: the search is the only part of this
+    # file that needs a solver, so document assembly (build_doc, check,
+    # load_gen) and a caller's Spec stay importable with lzstring alone --
+    # which is all `just test` installs.
+    from ortools.sat.python import cp_model
+
     m = cp_model.CpModel()
     x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
     for i in range(n):
@@ -211,7 +218,7 @@ def generate(spec, n, bh, bw, seeds, hide_key=None, paths=False):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
         clue = {
-            k: spec.clue_fn([grid[r][c] for (r, c) in cells])
+            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells)
             for k, cells in lines.items()
         }
         active = set(lines.keys())  # every line clued while carving givens

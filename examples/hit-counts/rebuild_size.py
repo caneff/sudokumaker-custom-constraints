@@ -31,18 +31,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import SPEC
 from framebuild import build_doc, check, load_gen
 from link_codec import decode_puzzle, encode_link
-from link_swap import frame_only
+from link_swap import frame_and_comment_only
 
 HERE = pathlib.Path(__file__).parent
-
-
-def frame_and_comment_only(doc, constraint_name):
-    """`frame_only`, plus the puzzle comment cleared, so two variants that
-    differ only in code/input/comment compare equal -- the same board,
-    givens, and shown clues either way."""
-    d = frame_only(doc, constraint_name)
-    d["puzzle"]["comment"] = ""
-    return d
 
 
 if __name__ == "__main__":

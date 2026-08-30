@@ -68,7 +68,7 @@ def rule_text(n):
     return f"{rule}\n\n{CORNER_NOTE}"
 
 
-def sky(v):
+def sky(v, _cells):
     # visible buildings: count left-to-right maxima
     count = 0
     mx = 0

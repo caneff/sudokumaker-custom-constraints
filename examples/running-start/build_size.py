@@ -48,7 +48,7 @@ def rule_text(n):
     return f"{rule}\n\n{CORNER_NOTE}"
 
 
-def rs(v):
+def rs(v, _cells):
     # length of the first strictly ascending run, read inward
     k = 1
     for i in range(1, len(v)):
