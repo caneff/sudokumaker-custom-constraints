@@ -204,6 +204,73 @@ function jointFixpoint (comps, p) {
   console.log('hit-counts mirrored pair: joint removes 2 candidates, the pair component 0')
 }
 
+// ---- 3b. A forced side hit the per-line scan misses, deterministic ----
+// A 4x4 left side: four rows, each clued 1, so the four clues host the four
+// positions between them, one line each. Position i is live on line L while
+// digit i + 1 is still a candidate at line L's cell i. Here position 0 is live
+// on lines 0 and 1, position 1 on lines 1 and 2, position 2 on lines 2 and 3,
+// and position 3 on line 3 alone. So the assignment of positions to lines has
+// exactly one answer: line 3 takes position 3, which leaves position 2 to line
+// 2, position 1 to line 1 and position 0 to line 0. Every cell on that diagonal
+// is pinned to its target, and every other live edge dies.
+//
+// The per-line scan reaches only the first of those. Line 0 has one possible
+// hit for a clue of 1, so it forces that cell on its own; lines 1, 2 and 3 each
+// have two possible hits for one clued hit and cannot choose between them. The
+// side does choose.
+{
+  installGlobals(0, 4)
+  const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
+  const line = load('HitCountsComponent.js', ['setParams', 'update', 'initialize'])
+  const CLUES = [400, 401, 402, 403]
+  const cell = (r, c) => r * 4 + c
+  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => cell(r, c)))
+  // Row r's cell in column c drops digit c + 1 exactly where the shape above
+  // wants that edge dead. Every column still shows all of 1..4, which is the
+  // fact that makes position c the home of digit c + 1 exactly once.
+  const CANDS = [
+    [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
+    [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
+    [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
+    [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
+  ]
+  const start = new Map()
+  for (const c of CLUES) start.set(c, [1])
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) start.set(cell(r, c), CANDS[r][c])
+  const state = () => {
+    const cells = {}
+    for (const c of start.keys()) cells[c] = 0
+    return makePuzzle(cells, c => start.get(c), { kind: 'fullHouse', digitCount: 4 })
+  }
+  const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
+
+  const ps = state()
+  const is = {}
+  side.setParams(is, CLUES, LINES)
+  fixpoint(side, is, ps)
+
+  const pl = state()
+  for (let r = 0; r < 4; r++) {
+    const inst = {}
+    line.setParams(inst, CLUES[r], LINES[r])
+    Array.from(line.initialize(inst, pl))
+    fixpoint(line, inst, pl)
+  }
+
+  for (let i = 0; i < 4; i++) {
+    assert.deepStrictEqual(show(ps, cell(i, i)), [i + 1], `the side pins line ${i} at position ${i}`)
+  }
+  assert.deepStrictEqual(show(ps, cell(1, 0)), [2, 3, 4], 'the side kills the spare edge on line 1')
+  assert.deepStrictEqual(show(ps, cell(2, 1)), [1, 3, 4], 'the side kills the spare edge on line 2')
+  assert.deepStrictEqual(show(ps, cell(3, 2)), [1, 2, 4], 'the side kills the spare edge on line 3')
+  assert.deepStrictEqual(show(pl, cell(0, 0)), [1], 'the per-line scan forces line 0 on its own')
+  for (let i = 1; i < 4; i++) {
+    assert.deepStrictEqual(show(pl, cell(i, i)), CANDS[i][i],
+      `the per-line scan cannot choose position ${i} on line ${i}`)
+  }
+  console.log('hit-counts side matching: the side pins 4 cells, the per-line scan 1')
+}
+
 // ---- 4. SideSumComponent: nine clues on a side summing to nine ----
 {
   const NAMES = ['setParams', 'update']

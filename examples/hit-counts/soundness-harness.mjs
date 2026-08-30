@@ -17,11 +17,17 @@
 // A second pass runs the component over real grids, where both clues of a line
 // are true together, and a third names the mirrored-pair exclusion by running
 // one state as a house and again as bare.
+//
+// The side hit matching reads a whole side at once, so its corpus is whole
+// grids only. It forces hits as well as forbidding them, which is why it gets
+// its own gate probe: while the clue ring's 0 is still live on the inner grid a
+// position is not a house of 1..n, and a component that pruned there would take
+// true values out.
 
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, violates } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -33,6 +39,7 @@ installGlobals(0, 9)
 const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'initialize', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 'validate'])
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
+const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update'])
 
 // A random candidate seed keeping the true value. `hi` bounds the range: line
 // cells use 1..n, a clue cell uses 0..n (it can be 0).
@@ -301,6 +308,90 @@ function validateAt (kind) {
 const validateOk = validateAt('bare') === true && validateAt('fullHouse') === false
 console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 
+// ---- Side hit matching: a whole side of a real grid ----
+// The component reads all n clues of a side at once, so its corpus is whole
+// grids, not single lines: the three shipped sizes and band/stack shuffles of
+// them, every cell seeded with a random candidate superset that keeps its true
+// value. It forces hits as well as forbidding them, so an assignment bug takes
+// a true value straight out.
+let sTests = 0
+let sBad = 0
+let sFired = 0
+for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen_9x9.json']) {
+  const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
+  const { n, box: [bh, bw] } = gen
+  const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])
+  const clueCells = new Set(keys.map(k => clueCell(k[0], +k.slice(1))))
+  for (let iter = 0; iter < ITERS; iter++) {
+    const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
+    const truth = {}
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
+    for (const k of keys) {
+      const side = k[0]; const i = +k.slice(1)
+      truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+    }
+    const lineSeed = seeder(1, n)
+    const clueSeed = seeder(0, n)
+    const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { kind: 'fullHouse', digitCount: n })
+    const total = () => [...Object.keys(truth)].reduce((s, c) => s + p.getCandidates(+c).size, 0)
+    const before = total()
+    for (const side of ['L', 'R', 'T', 'B']) {
+      const clues = []
+      const lines = []
+      for (let i = 0; i < n; i++) { clues.push(clueCell(side, i)); lines.push(lineCells(side, i)) }
+      const inst = {}
+      matchMod.setParams(inst, clues, lines)
+      const v = violates(matchMod, inst, p, truth)
+      sTests++
+      if (v) { sBad++; if (sBad <= 5) console.log('SIDE-MATCH violation', file, side, v) }
+    }
+    if (total() < before) sFired++
+  }
+}
+console.log('side hit matching, whole grids:', sTests, 'tests,', sBad, 'violations,', sFired, 'states pruned')
+
+// ---- Side hit matching: the gate, and 0 as an ordinary miss ----
+// The assignment needs each position to be a house holding 1..n exactly once.
+// A hit-counts board runs minDigit 0 for its clue ring, so until the cage takes
+// the 0 off the inner grid a position holds {0..n} and the component must stay
+// silent. Once 0 goes the SAME instance must notice and prune.
+//
+// The side below is the one shape that pins the matching outright: four rows
+// clued 1, position 0 live on lines 0 and 1, position 1 on lines 1 and 2,
+// position 2 on lines 2 and 3, position 3 on line 3 alone. Only one assignment
+// survives, so every cell of the diagonal is forced. A 0 read as anything but
+// an ordinary miss would change that answer.
+const GRID_CLUES = [400, 401, 402, 403]
+const gcell = (r, c) => r * 4 + c
+const GRID_LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => gcell(r, c)))
+const GRID_CANDS = [
+  [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
+  [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
+  [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
+  [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
+]
+// The grid those candidates admit: row r is a permutation of 1..4, each column
+// too, and every line hits exactly once. So the truth really does complete this
+// state, which is what makes a lost candidate a violation.
+const GRID_TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
+function sideGateProbe (withZero) {
+  const truth = {}
+  for (const c of GRID_CLUES) truth[c] = 1
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
+  const p = makePuzzle(truth, c => (c >= 400 ? [1] : GRID_CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
+    { kind: 'fullHouse', digitCount: 4 })
+  const inst = {}
+  matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
+  return { p, inst, v: violates(matchMod, inst, p, truth) }
+}
+const zeroLive = sideGateProbe(true)
+const gateShut = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size > 1)
+for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) zeroLive.p._cand.get(gcell(r, c)).delete(0) // the cage bites
+fixpoint(matchMod, zeroLive.inst, zeroLive.p)
+const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size === 1)
+const sideGateOk = gateShut && gateOpened && !zeroLive.v && !sideGateProbe(false).v
+console.log('side hit matching, minDigit 0 gate:', sideGateOk ? 'OK' : `FAIL (shut ${gateShut}, reopened ${gateOpened})`)
+
 // ---- Side-sum component: n clues on a side sum to exactly n ----
 // The proof regroups the side's hits by the perpendicular line each lands on:
 // every such line holds its own digit exactly once, so it contributes one hit,
@@ -356,10 +447,10 @@ const sideBare = fuzzSide('side-sum, bare perpendiculars      ', {
 const ok = full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
   lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
-  gBad === 0 && exBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
+  gBad === 0 && exBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
-  gFired > 0 && exFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
-  retestOk && wrongSetOk && validateOk &&
+  gFired > 0 && exFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
+  retestOk && wrongSetOk && validateOk && sideGateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

@@ -23,8 +23,8 @@ no ordering. That makes Hit Counts simpler than Running Start.
   for every group with no such partner.
 - `main-global.js` — the global backend segment: builds all 4n frame lines
   from the board size, then registers the joint component per line plus the
-  side-sum component below (which needs a whole side, so only a full frame
-  has it).
+  side-sum and side-hit-matching components below (both need a whole side, so
+  only a full frame has them).
 - `HitCountsJointComponent.js` — one component for a whole line and both its
   clues, used wherever a line is clued at both ends. It reads the hits as a
   matching between digits and positions and prunes cells and clues against the
@@ -41,6 +41,11 @@ no ordering. That makes Hit Counts simpler than Running Start.
   to exactly `n`; it propagates that sum across the side's clue cells. It takes
   the `n` perpendicular lines its proof rests on and fires only while each one
   is a full house of `{1..n}`.
+- `SideHitMatchingComponent.js` — the other per-side component. It reads the
+  side by position instead of by line and assigns the `n` positions to the `n`
+  lines, which lets it *force* a hit into a cell where the line rules can only
+  forbid one (see "Side hit matching" below). It builds each position's cell
+  list itself and fires only while every position is a house of `{1..n}`.
 - `soundness-harness.mjs` — Node soundness test (see below).
 - `recovery-probe.mjs` — measures whether the matching bound actually helps solve a
   real generated puzzle (see "Does the tighter bound help?" below).
@@ -99,6 +104,36 @@ rows, the rows for a side of columns — and the component checks every one of
 them is a full house of `{1..n}` before it prunes anything. Where that is not
 provable it stays silent.
 
+## Side hit matching — the same regrouping, assigned
+
+The side sum counts the hits column by column and stops there. Assign them
+instead. Call the cells that sit `i + 1` steps in from each of the side's `n`
+clues **position `i`**. Those are the same `n` cells the sum's proof used — a
+column for a side of rows — so digit `i + 1` sits in exactly one of them, and
+that one cell tells you which line **hosts** position `i`. Line `L` hosts
+exactly `clue(L)` positions.
+
+So the side is a bipartite assignment: positions on one side, lines on the
+other. Edge `(i, L)` is live while digit `i + 1` is still a candidate in line
+`L`'s cell at position `i`, and line `L` may take between the least and the
+greatest value its clue still allows. `SideHitMatchingComponent` solves that
+assignment as a flow and filters it Régin's way — an edge no valid assignment
+uses loses its digit, and an edge **every** valid assignment uses pins its cell
+to the target.
+
+That second half is the new inference. The line rules only ever forbid a hit or,
+when the clue's own count leaves no choice, force every remaining candidate hit
+on that one line. The side can force a hit that no single line can pick out: two
+lines each with two possible hits and one clued hit apiece decide nothing on
+their own, and the side decides both as soon as a third line's only home is
+taken. `update-strength.test.mjs` pins that case.
+
+The component sees `4n` cells on the 9x9 board and the solver calls `update`
+after every change to any of them, so it hashes exactly what the assignment
+reads — one bit per line per position, plus each clue's candidate mask — and
+returns at once when nothing it reads has moved. The prototype measured that
+narrowing at about a third of the deduction's whole win (#233).
+
 ## Line kinds and gates
 
 A rule may assume nothing about a line beyond what the component can prove at
@@ -111,7 +146,8 @@ solve time (`docs/line-contract.md`). Hit Counts splits this way:
 | the hit sweep: cells and clues against the reachable `(A, B)` | nothing — a bare line | joint component |
 | a mirrored pair never gives one A hit and one B hit | a house | joint component |
 | a clue is never `n - 1` | a full house of `{1..n}` | both line components |
-| side sum `= n` | `n` perpendicular full houses of `{1..n}` | side component |
+| side sum `= n` | `n` perpendicular full houses of `{1..n}` | side-sum component |
+| the position-to-line assignment | every position a house of `{1..n}` | side-hit-matching component |
 
 The count bounds read each cell alone and the sweep enforces the hit matching
 and each cell's own candidates, so both hold on a line with repeats, gaps, or
@@ -267,7 +303,7 @@ per-line component.
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
 `main-global.js` as the main code, plus the component segments:
-`HitCountsJointComponent` and `SideSumComponent`.
+`HitCountsJointComponent`, `SideSumComponent` and `SideHitMatchingComponent`.
 
 ## What the component deduces
 
@@ -334,8 +370,8 @@ node examples/hit-counts/recovery-probe.mjs gen_9x9.json --search --only=on
 It runs a full DFS that proves uniqueness (MRV branching, one solution) and counts
 the nodes explored, matching off vs on:
 
-- `gen_6` — 856 nodes off, 790 on (66 fewer, 7.7%);
-- `gen_9` — 15,922 nodes off.
+- `gen_6` — 840 nodes off, 774 on (66 fewer, 7.9%);
+- `gen_9` — 14,708 nodes off.
 
 Those are the counts the goldens pin. `OPTIMIZATION_LOG.md` records what the
 joint line DP bought against the wiring before it.
