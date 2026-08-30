@@ -37,6 +37,11 @@ exists to teach.
   before any change that trades a per-open-cell walk for a whole-grid pass.
   `cut-profile.test.mjs` is its check: the source patch it applies matches two
   anchor lines, and that is how it breaks silently.
+- `cut-filter.test.mjs` — the differential behind the cut filter (#258): the
+  component as it ships against the same component with the filter's verdict
+  ignored, over 3,000 states drawn around a solution. The two must yield the
+  identical removal sequence, since the filter may only remove work. It
+  patches the source by anchor line, the way `cut-profile.mjs` does.
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
   set has exactly one solution. It is slow (CP-SAT), so it is not part of
   `just check` or CI. Run it by hand with `just verify-isofill` after a
@@ -708,6 +713,13 @@ is worth re-reading rather than assuming: **re-open condition** -- a later
 profile run of `cut-profile.mjs` on the then-current hard fixtures reads cut
 over 50%.
 
+**Superseded by #258.** The owner overrode this gate rather than waiting for
+the re-open condition, and the filter was built and kept: it takes 13-16% off
+the two hard boards #243 added. The reasoning above still reads true — the
+filter clears about seven open cells in ten and the re-walk stays behind it
+for the rest — but "not the next lever here" was wrong. The rows and the
+verdict are in the #258 section at the end of this file.
+
 **Per-digit dirty tracking stays parked, behind the same number.** The idea
 (ISS `chaos_construction.md` §8) is to skip a digit's walk rules when its
 count of candidate cells has not changed since the last call. It is the same
@@ -853,3 +865,82 @@ The single-rep batch-table readings above (11700 ms, 22300 ms) land close to
 the 3-rep BASELINE medians (12400 ms, 22600 ms) — the run-to-run spread
 `docs/real-app-timing.md` calls normal, not a sign the one-rep batch reading
 was unrepresentative.
+
+### Tarjan cut filter: dominator passes in front of the re-walks (#258, 2026-08-30)
+
+#170 measured cut at 36-45% of `update` and declined to build the filter at
+its own 50% gate (the section above). The owner overrode that gate, and #243
+had since shipped two boards the profile predates — `gen_25g` at 12.4 s and
+`gen_26g` at 22.6 s cold — which give the change something to show on.
+
+**What it does.** Cut asks two questions of every open cell in a digit's walk:
+does removing the cell leave fewer than ten cells within the budget of the
+placed cells (starve), and does it put a placed cell out of reach of the seed
+(strand). Both are reachability questions on two fixed walks, so the filter
+walks each one **once** per digit and reads a dominator tree off the
+shortest-path DAG. A cell y keeps a path of its own length when the removed
+cell does not dominate y, so the starve walk keeps at least (cells reached)
+minus (cells the removed cell dominates), and no placed cell is stranded when
+the removed cell dominates none of them. Cells that clear both need no walk of
+their own; the exact per-cell re-walks stay for the rest, as #170 said they
+would have to — the bound is a lower bound, not the test.
+
+**Dominators, not lowpoints.** #170 and #258 both call this "a Tarjan lowpoint
+DFS", and the shipped pass is not one. Lowpoints find articulation points,
+which answer pure connectivity, and neither of cut's tests is pure
+connectivity: both are budget-limited, so a cell that disconnects nothing can
+still push cells past the budget and starve the walk. The dominator tree of
+the distance-bounded DAG is the analogue that survives the budget. Tarjan's
+lowpoint algorithm is on this file already — `sccs`, under the budget rule.
+Only the name in the tickets is wrong: the design they describe — one pass per
+walk, both tests answered at once, the re-walk kept behind it — is what ships.
+
+**It clears about seven cells in ten.** Over the 3,000-state differential:
+979,561 cells cleared by the filter against 378,349 left to the re-walk. In
+the harness mock, over 600 search snapshots of the #170 profile fixtures,
+whole-`update` wall time goes to **0.78x** on `gen_28g` and **0.82x** on
+`gen_24g` against the committed component.
+
+| date | app | board | baseline | candidate | ratio | row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill | 700ms | 600ms | 0.86 | PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_25g.txt) | 12500ms | 10700ms | 0.86 | PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_25g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_26g.txt) | 22400ms | 18800ms | 0.84 | PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | isofill (PUZZLE_LINK_26g.txt) after-logical | 0ms | 0ms | — | NO TIME |
+
+**Verdict: KEEP.** `just time` printed `two-row rule: SHIP` on all three
+boards. Every cold row clears the 0.9x bar and no after-logical row turns
+0 ms into a search.
+
+The table is the last of three passes, the one run against the source that
+ships: the boards were re-timed after a rename of the filter's scratch fields,
+and again after the code review, both times behaviour-identical edits the
+differential re-proved. The three passes read 0.86x, 1.00x, 0.86x on the
+shipped board (plus 0.86x on a fourth, tie-breaking reading), 0.85x, 0.87x,
+0.86x on `gen_25g`, and 0.86x, 0.84x, 0.84x on `gen_26g`. Only the shipped
+board disagrees with itself, which is what a 700 ms board looks like against
+a readout that prints in 100 ms steps.
+
+That one outlier would not have sunk the change in any case. The bar that
+governs the shipped board is the **gate-change bar** (#197,
+`docs/real-app-timing.md`): "a change that adds or moves a gate in front of an
+existing rule and adds no deduction cannot reach 0.9x... such a change ships
+at 1.1x or under on both rows; 'unchanged' is the pass." The filter adds no
+deduction, and the differential proves it removes not one candidate more or
+less, so on a board that was already fast, unchanged is the pass.
+
+**Why the app gains less than the mock.** The mock times `update` alone, so a
+31-34% saving inside it comes through whole. The app's own per-node work sits
+outside `update` and dilutes the same saving to 13-16% of a solve. #170's
+arithmetic — a filter can only take a fraction of a 44% share — is why the
+change lands at 0.84x rather than anything nearer half.
+
+**The removals never move.** `cut-filter.test.mjs` runs the shipped component
+against the same component with the filter's verdict ignored, over 3,000
+states drawn around a solution on six fixtures, and asserts the identical
+removal sequence — the filter may only remove work. It asserts both directions
+of the split too: the filter must clear cells, and the re-walk must still run.
+Soundness: 6 x 2,000 tests with 0 violations on `just soundness`, and 6 x
+20,000 on the deep run.

@@ -16,7 +16,9 @@
 //!          under ten cells, is a dead branch: a placed cell is emptied so
 //!          the solver sees it (decision #66).
 //!   Cut:   an open cell in that walk whose removal starves it below ten,
-//!          or strands a placed cell, must hold the digit.
+//!          or strands a placed cell, must hold the digit. Two dominator
+//!          passes clear most open cells before the per-cell walks that
+//!          answer this exactly (see cutFilter).
 //!   Silent: a digit with no placed cell has no walk to start. Its region
 //!          still sits inside one connected component of the cells that allow
 //!          it, so every component under ten cells loses the digit; if none
@@ -61,6 +63,16 @@ function setParams (instance, cells) {
   instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
   instance.dist = []
   instance.others = []
+  // Cut filter scratch: the two shortest-path DAGs cut's tests walk (one from
+  // all placed cells, one from the seed), their dominator trees, the subtree
+  // counts read off them, and the per-cell verdict. See cutFilter.
+  instance.distStarve = new Int16Array(cells.length)
+  instance.distStrand = new Int16Array(cells.length)
+  instance.domOrder = new Int16Array(cells.length)
+  instance.idom = new Int16Array(cells.length)
+  instance.ddep = new Int16Array(cells.length)
+  instance.domCount = new Int16Array(cells.length)
+  instance.skip = new Uint8Array(cells.length)
   // The border cells in cyclic order, and the scratch the perimeter rule walks
   // them with: the placed positions and their digits. Its arc-id row is sized
   // from the digit range, which only update reads.
@@ -180,6 +192,97 @@ function distances (instance, start, allowed, dist) {
   return dist
 }
 
+// BFS from `starts` through `allowed`, no further than `maxDist` steps, and
+// the dominator tree of the shortest-path DAG it builds. A cell y keeps a path
+// of its own length from some start when the removed cell does not dominate y,
+// which is what the cut filter reads. Fills `dist` (-1 where unreached),
+// `domOrder` (the cells in BFS order), `idom` (the dominator, -1 for a cell no
+// other cell dominates) and `ddep` (its depth in that tree); returns how many
+// cells the walk reached.
+function domTree (instance, starts, maxDist, allowed, dist) {
+  const { nbrs, domOrder, idom, ddep } = instance
+  dist.fill(-1)
+  let len = 0
+  for (const s of starts) if (dist[s] < 0) { dist[s] = 0; domOrder[len++] = s }
+  for (let head = 0; head < len; head++) {
+    const u = domOrder[head]
+    if (dist[u] >= maxDist) continue
+    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
+  }
+  // A cell's dominator is the deepest cell dominating all its DAG predecessors,
+  // so fold them pairwise, walking the deeper one up the tree built so far. A
+  // start has no predecessor and no dominator.
+  for (let k = 0; k < len; k++) {
+    const v = domOrder[k]
+    if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
+    let a = -2
+    for (const p of nbrs[v]) {
+      if (!allowed[p] || dist[p] !== dist[v] - 1) continue
+      if (a === -2) { a = p; continue }
+      let b = p
+      while (a !== b) {
+        if (ddep[a] >= ddep[b]) a = idom[a]; else b = idom[b]
+        if (a < 0 || b < 0) { a = -1; b = -1 }
+      }
+    }
+    idom[v] = a
+    ddep[v] = a < 0 ? 1 : ddep[a] + 1
+  }
+  return len
+}
+
+// Roll `domCount` up the dominator tree of the walk `domTree` just left
+// behind, so each cell's entry counts itself and everything it dominates. BFS
+// order puts a cell after its dominator, so one backward pass does it.
+function subtreeSums (instance, len) {
+  const { domCount, domOrder, idom } = instance
+  for (let k = len - 1; k >= 0; k--) {
+    const v = domOrder[k]
+    if (idom[v] >= 0) domCount[idom[v]] += domCount[v]
+  }
+}
+
+// The cut filter (#258): answer both of cut's tests for every open cell at
+// once, so the cells it clears need no walk of their own.
+//
+// Cut asks, of each open cell x in the digit's walk, whether removing x leaves
+// fewer than `size` cells within `depth` steps of the placed cells (starve) or
+// puts some placed cell out of reach of the seed within `size - 1` steps
+// (strand). Both are reachability questions on the same two walks, so one BFS
+// each plus its dominator tree bounds them for every x together: a cell y stays
+// reachable at its own distance without x whenever x does not dominate y. So
+// the starve walk keeps at least (cells reached) - (cells x dominates), and no
+// placed cell is stranded when x dominates none of them.
+//
+// The bound is a lower bound, not the test: a cell y that x dominates may still
+// be reachable by a longer path inside the budget. So the filter only ever
+// clears a cell, and every cell it does not clear falls through to the exact
+// re-walks. Returns the per-cell verdict, 1 where cut is proved false.
+function cutFilter (instance, placed, open, allowed, size, depth) {
+  const { skip, domCount, domOrder, distStarve, distStrand } = instance
+  // Starve: how many cells each cell dominates in the walk from all placed
+  // cells. A cell outside that walk changes nothing by leaving it. This
+  // verdict is read before the strand walk below overwrites the tree.
+  const reached = domTree(instance, placed, depth, allowed, distStarve)
+  domCount.fill(0)
+  for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
+  subtreeSums(instance, reached)
+  for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= size ? 1 : 0
+  if (placed.length < 2) return skip // one placed cell strands nothing
+  // Strand: how many placed cells each cell dominates in the walk from the
+  // seed. A placed cell the seed does not reach inside the budget already
+  // fails the test with nothing removed, so the filter clears no cell there.
+  const seen = domTree(instance, [placed[0]], size - 1, allowed, distStrand)
+  domCount.fill(0)
+  for (const i of placed) {
+    if (distStrand[i] < 0) { skip.fill(0); return skip }
+    domCount[i] = 1
+  }
+  subtreeSums(instance, seen)
+  for (const x of open) if (domCount[x] > 0) skip[x] = 0
+  return skip
+}
+
 function * update (instance, puzzle) {
   const { cells, nbrs } = instance
   const lo = helpers.digits.minDigit
@@ -276,6 +379,7 @@ function * update (instance, puzzle) {
       const depth = size - placed.length
       const targetStamp = ++instance.targetStamp
       for (const i of placed) instance.targets[i] = targetStamp
+      const skip = cutFilter(instance, placed, open, allowed, size, depth)
       for (const x of open) {
         if (!near.mask[x]) continue
         let cut
@@ -285,6 +389,7 @@ function * update (instance, puzzle) {
           // A dead end: removing it removes only itself.
           cut = near.size - 1 < size
         } else {
+          if (skip[x]) continue // the filter cleared this cell: no cut
           allowed[x] = 0
           cut = reach(instance, placed, depth, allowed, size).size < size
           if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done

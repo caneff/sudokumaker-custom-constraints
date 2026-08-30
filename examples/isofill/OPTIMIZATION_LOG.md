@@ -29,18 +29,24 @@ so a row's caveat says which fixture and app build produced its numbers.
 | Blob-count gate on the cut rule (count a digit's placed-cell connected components; skip the second "strands a placed cell" walk when there is exactly one blob) (#150) | Rejected — exact, but short of the bar | `gen_30g` 5.2 s → 5.0 s (ratio 0.96, an effect, but under the board's own run-to-run spread); `gen_32g` 3.7 s → 3.7 s (ratio 1.00, wash); `gen_35g_silent` 46.5 s → 45.6 s (ratio 0.98, wash) | exact (skips a third of the strand walks) but only one of three boards clears the spread, none clears the 0.9× bar | three stripped fixtures, app version not recorded in the commit body ("recorded app offline"), 2026-08-27 | bb62a0f (added), 17b4344 (removed — timing record kept) |
 | Seed walk replacing `reach`, capacity and the split walk (one 0-1 BFS per placed digit from its lowest-index placed cell: placed cells cost nothing, open cells that allow the digit cost one step, budget `10 - placed`; the walk's cell set is `near` for cut and budget) (#168) | Kept - the largest win on the log | Live app, cold, stripped, 3 reps, `just time isofill`: `gen_28g` 25.6 s -> 3.4 s (**0.13**); `gen_35g_silent` 32.3 s -> 2.4 s (**0.07**); `gen_32g` 3.4 s -> 0.3 s (**0.09**); `gen_30g` 4.5 s -> 0.9 s (**0.20**); shipped board 1.1 s -> 0.7 s (0.64); `gen_24g` 2.4 s -> 1.6 s (0.67); `gen_9x9` 0.2 s -> 0.1 s (0.50); `gen_44g` 0 ms both sides, no constraint | after-logical rows 0 ms on both sides everywhere but `gen_30g` (200 ms -> 0 ms), so no row fails the 1.1x side of the two-row rule; fuzz 6x2,000 with 0 violations, and a 79,158-walk differential in which the seed walk never holds a cell the old walk missed and is strictly smaller on 34,039 | all eight stripped fixtures, app v2026.08.14-d47fc4b, 2026-08-29 | this commit |
 | Tarjan articulation filter in front of cut's per-open-cell re-walks (one lowpoint DFS answering the strand test and the under-ten test for every cell at once) (#170) | Not built — cut is under the gate the spec set | Harness mock, search snapshots of the two hard fixtures, `cut-profile.mjs`: cut is **44%** of `update` on both `gen_28g` and `gen_24g` at 600 snapshots (36-45% over eighteen rows across three seeds and three snapshot counts; 41-45% on the twelve least noisy). The gate was 50% | not timed in the app — nothing was built to time | `gen_28g` + `gen_24g` snapshots, harness mock, 2026-08-29 | this commit |
+| Tarjan cut filter: two dominator passes per placed digit (one BFS from the placed cells, one from the seed) clearing the open cells whose removal cannot starve or strand the walk, in front of the per-open-cell re-walks, which stay for the rest (#258) | Kept | Live app, cold, stripped, 3 reps, `just time isofill --board <link>`: `gen_25g` 12.5 s -> 10.7 s (**0.86**); `gen_26g` 22.4 s -> 18.8 s (**0.84**); shipped board 700 ms -> 600 ms (**0.86**; that board read 1.00 on one of four passes, which is a 700 ms board against a 100 ms readout) | after-logical rows 0 ms both sides on all three boards, so none fails the 1.1x side; 3,000-state differential yields the identical removal sequence with the filter's verdict ignored (979,561 cells cleared, 378,349 left to the re-walk); fuzz 6x2,000 and 6x20,000 with 0 violations | shipped board + the two #243 fixtures, app v2026.08.14-d47fc4b, 2026-08-30 | this commit |
 
 ## Planned / not yet tried
 
-Nothing on the `cut` rule is queued. Both attempts that were listed here are
+Nothing on the `cut` rule is queued. All three attempts listed here are
 settled and are not to be re-run (parent #165):
 
 - **#169 — split cut into starve/strand.** Done. Both halves ship; each half
   alone is worse and starve alone times the app out. `README.md` § Cut split.
-- **#170 — profile cut's share of `update`.** Done, and the Tarjan pass it
-  gated is not built: cut is 36-45% of a call, under the 50% bar. The row is
-  in the table above and the re-open condition is in `README.md` § Cut
-  profile, next to the one for per-digit dirty tracking.
+- **#170 — profile cut's share of `update`.** Done: cut is 36-45% of a call,
+  under the 50% bar the spec set, so #170 built nothing.
+- **#258 — the Tarjan filter #170 gated.** Built anyway, on the owner's
+  override of that gate, and kept: 0.84x and 0.87x on the two #243 boards.
+  `README.md` § Tarjan cut filter.
+
+Per-digit dirty tracking stays parked behind its own two-part re-open
+condition in `README.md` § Cut profile; #258 settles the Tarjan question
+only.
 
 ## Win bar (for any future attempt against the current baseline)
 
