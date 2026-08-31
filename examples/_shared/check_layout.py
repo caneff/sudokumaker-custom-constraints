@@ -4,7 +4,9 @@
 # decodes every shipped PUZZLE_LINK*.txt and checks the two mechanical
 # pre-share criteria from docs/share-checklist.md: the link opens clean (no
 # entered values on non-given cells) and the rules text carries the sudoku
-# prefix, except an example in NO_RULES_PREFIX (isofill is not sudoku).
+# prefix, except an example in NO_RULES_PREFIX (isofill is not sudoku). It
+# also checks that every link ships exactly the components its own embedded
+# backend registers, so a link cannot go stale behind its builder.
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
@@ -115,6 +117,54 @@ def check_share_ready(example_dir, link):
     return violations
 
 
+def check_components(example_dir, link):
+    """Decode `link` and return one violation string per custom constraint
+    whose shipped component set differs from the set its own embedded backend
+    registers.
+
+    A component the backend never instantiates is dead weight, and the
+    recipient reads its source as part of the rule; a component the backend
+    instantiates but the link omits fails inside the app, where the author
+    never sees it. `framebuild.check` asserts this when it builds a link, but
+    a committed link goes stale on its own: the builder's component list
+    changes, the link is not regenerated, and nothing notices (#287, #289,
+    #290, #291).
+
+    A lexical check, like the one in `framebuild.check`: it reads
+    `new <Name>Component` off the backend source, so a class reached through
+    an alias, or named some other way, is invisible to it. Comment lines are
+    dropped first, or a kept `//!` note that mentions a component would read
+    as a registration.
+    """
+    name = example_dir.name
+
+    try:
+        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+    except Exception:
+        return []  # check_share_ready reports the decode failure
+
+    violations = []
+    for constraint in puzzle.get("constraints", []):
+        definition = constraint.get("definition")
+        if not definition:
+            continue
+        shipped = {c["name"] for c in definition.get("components", [])}
+        # A definition with no code backend registers nothing; its component
+        # list is then empty too, so the two sets still match.
+        backend = definition.get("backend", {}).get("code", "")
+        code = "\n".join(
+            line for line in backend.splitlines() if not line.lstrip().startswith("//")
+        )
+        registered = set(re.findall(r"new ([A-Za-z0-9_]+Component)\b", code))
+        if shipped != registered:
+            violations.append(
+                f"{name}: {link.name} constraint {definition['name']!r} ships "
+                f"{sorted(shipped)}, its backend registers {sorted(registered)}"
+            )
+
+    return violations
+
+
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
@@ -151,6 +201,7 @@ def check_example(example_dir):
                 f"(size=NxN, tags in fixed order {list(TAGS)})"
             )
         violations.extend(check_share_ready(example_dir, link))
+        violations.extend(check_components(example_dir, link))
 
     return violations
 

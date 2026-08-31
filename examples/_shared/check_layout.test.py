@@ -19,18 +19,47 @@ from link_codec import encode_link
 HERE = pathlib.Path(__file__).parent
 
 
-def _link(entered=False, prefix=True):
-    """A minimal encoded puzzle link: one given cell, the rest empty.
+def _link(
+    entered=False, prefix=True, ships=("FooComponent",), registers=None, note=None
+):
+    """A minimal encoded puzzle link: one given cell, the rest empty, and one
+    custom constraint whose backend registers the components it ships.
 
     `entered` puts a value on a non-given cell (the link does not open
     clean); `prefix` controls whether the comment carries RULES_PREFIX (the
-    rules-prefix check fails when False).
+    rules-prefix check fails when False). `ships` names the components the
+    constraint carries and `registers` (default: the same names) the ones its
+    backend instantiates, so a case can make the two sets disagree. `note`
+    prepends a comment line to the backend, which must not read as a
+    registration.
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if entered:
         cells[1] = {"value": 2}
     comment = (RULES_PREFIX if prefix else "") + "test rules"
-    doc = {"puzzle": {"width": 3, "height": 3, "cells": cells, "comment": comment}}
+    registers = ships if registers is None else registers
+    lines = [f"puzzle.addConstraintComponent(new {n}('a'))" for n in registers]
+    if note:
+        lines.insert(0, f"// {note}")
+    backend = "\n".join(lines)
+    constraint = {
+        "name": "Widget Lines",
+        "type": 1000,
+        "definition": {
+            "name": "Widget Lines",
+            "backend": {"type": "code", "code": backend},
+            "components": [{"type": "code", "name": n, "code": "x"} for n in ships],
+        },
+    }
+    doc = {
+        "puzzle": {
+            "width": 3,
+            "height": 3,
+            "cells": cells,
+            "comment": comment,
+            "constraints": [constraint],
+        }
+    }
     return encode_link(doc)
 
 
@@ -216,6 +245,34 @@ if __name__ == "__main__":
         name="isofill",
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
     ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a link shipping a component its backend never registers fails: dead
+    # weight the recipient reads as part of the rule (#291)
+    stale = _link(ships=("FooComponent", "BarComponent"), registers=("FooComponent",))
+    with example(contents={"PUZZLE_LINK.txt": stale}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "BarComponent" in violations[0]
+
+    # the other direction fails too: a backend registering a component the
+    # link left out throws inside the app, where the author never sees it
+    short = _link(ships=("FooComponent",), registers=("FooComponent", "BarComponent"))
+    with example(contents={"PUZZLE_LINK.txt": short}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "BarComponent" in violations[0]
+
+    # a comment naming a component is not a registration -- minify keeps
+    # `//!` notes in the shipped backend, and one of those must not read as
+    # a `new BarComponent` the link is missing
+    commented = _link(
+        ships=("FooComponent",), note="a paired end gets a new BarComponent"
+    )
+    with example(contents={"PUZZLE_LINK.txt": commented}) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 

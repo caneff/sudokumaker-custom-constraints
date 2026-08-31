@@ -63,6 +63,7 @@ Run when present, skipped with a note when absent:
 | `.golden/` | Regression goldens for the recovery/speed probes |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes |
+| `rebuild_size.py` | Re-encodes a committed board's link from its `gen_*.json` — current component code, no fresh CP-SAT search |
 | `verify.py` | Uniqueness proof (slow CP-SAT); not run by `just test`, only by hand via `just verify-isofill` or the example's own recipe |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed |
 
@@ -98,6 +99,13 @@ purpose) and the comment starts with "Normal sudoku rules apply on the
 inner grid" — except an example in `NO_RULES_PREFIX` (isofill is not
 sudoku, and its rules text must not mention sudoku). See
 `docs/share-checklist.md` for the full pre-share list.
+
+It also checks each link's component set against the backend embedded in
+that same link: a link ships exactly the components its backend registers.
+The builder asserts this when it writes a link (`framebuild.check`), but a
+committed link goes stale on its own — the builder's list changes and the
+link is never regenerated (#287, #289, #290, #291). Regenerate the stale
+link from its committed `gen_*.json` with the example's `rebuild_size.py`.
 
 ## Board naming
 
