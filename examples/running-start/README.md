@@ -190,8 +190,20 @@ branch.
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start after-logical | 500ms | 500ms | 1.00 | FAIL |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt) | 21500ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt) after-logical | 1600ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | running-start (cell-id coercion, #276) | 2000ms | 1600ms | 0.80 | gate: PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | running-start (cell-id coercion, #276) after-logical | 500ms | 400ms | 0.80 | gate: PASS |
 
-The 2026-08-31 pair is the ties change (#239), a gate change: it adds no
+The last pair is #276, which makes `main-global.js` coerce every cell id it
+derives from the board size with `| 0`. A cell id built that way is numerically
+equal to the id a drawn group carries and compares `===` to it, but the app's
+solver reads candidates through it about 1.3× slower until it is a plain
+integer again. The fix adds no deduction, so the bar is **≤ 1.1× on both rows**;
+both rows come in at 0.80×, well inside it. The probes that found this are in
+`examples/numbered-rooms/README.md` under "What it actually was (#276)".
+Baseline is the committed link before the coercion, candidate the same board
+with it, 3 reps, arms interleaved.
+
+The 1800/1800 pair is the ties change (#239), a gate change: it adds no
 deduction, so the bar is ≤ 1.1× on both rows and "unchanged" is the pass
 (`docs/real-app-timing.md`, "Bar for a gate change"). Both rows read 1.00×
 against the link as it shipped at `0baac1c` — unchanged, which is the pass.

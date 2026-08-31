@@ -260,16 +260,14 @@ reading them as drawn groups.
 just time numbered-rooms --ring-clues
 ```
 
-**The global lane is slower on this board, past the 1.1× bar.** Both lanes
+**The global lane was slower on this board, past the 1.1× bar.** Both lanes
 timed the same day, 3 reps each, three runs apiece — the local lane at
 1800–1900 ms cold and 1500–1600 ms after-logical, the global lane at
 2200–2400 ms and 2000–2100 ms. That is about **1.2× cold and 1.3×
 after-logical**, and `docs/real-app-timing.md` puts a change with no new
-deduction at ≤ 1.1× on both rows. The rows above are what the board costs
-now, not a pass.
+deduction at ≤ 1.1× on both rows.
 
-Two candidate causes were measured and ruled out, so what is left is the
-backend code itself:
+Two candidate causes were measured and ruled out at the time:
 
 | Probe | Cold | After-logical |
 | --- | --- | --- |
@@ -277,11 +275,50 @@ backend code itself:
 | global lane, the 36 drawn groups added back to the document | 2200ms | 2000ms |
 
 Neither moves the number, so it is neither the order the 4n components are
-registered in nor the presence of the groups in the document. The deductions
-are identical either way — the same component runs on the same 36 lines — so
-this is the app's own cost for a backend that builds its lines with
-`puzzle.getCellAt`, not a weaker constraint. Consistency of the example set
-was the call (#268); the number is recorded here rather than argued away.
+registered in nor the presence of the groups in the document.
+
+### What it actually was (#276)
+
+The conclusion drawn above — that the rest was "the app's own cost for a
+backend that builds its lines with `puzzle.getCellAt`" — **is wrong, and the
+cost was ours.** A `[probe]` log inside the app shows the two lanes register a
+byte-identical sequence of lines: same cell ids, same order, same component.
+The gap was never a weaker constraint, and never `getCellAt`.
+
+What it was: a cell id **derived from the board size** is numerically equal to
+the id a drawn group carries and compares `===` to it, but the app's solver
+reads candidates through it about 1.3× slower. Coercing each id back to a plain
+integer with `| 0` closes the whole gap. Every probe below ran on one document
+differing only in its backend, arms interleaved so machine drift landed on both:
+
+| Probe | Cold |
+| --- | --- |
+| drawn groups (the fast lane) | 2100ms |
+| `getCellAt`, unchanged | 2700–2800ms |
+| `getCellAt`, registered in the drawn lane's order | 2800ms |
+| drawn groups, registered in the frame order | 2100ms |
+| our own `r + c*W`, no `getCellAt` at all | 2800ms |
+| `getCellAt`, arrays rebuilt but values untouched | 2800ms |
+| `getCellAt` + `\| 0` | 2100ms |
+
+Rows 3 and 4 confirm the order probe above: order is not it. Row 6 rebuilds the
+arrays without coercing and stays slow, so the cost travels with the **value**,
+not the array shape. Row 5 uses our own arithmetic and no `getCellAt` at all and
+is equally slow, so `getCellAt` is innocent — the board size is the source. The
+cost is a property of how the JS engine represents the number, which is
+invisible from inside JS; `| 0` is what makes it a plain integer again.
+
+`main-global.js` now coerces, and the board recovers past the local lane's old
+rows:
+
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms | 2500ms | 1900ms | 0.76 | PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 2100ms | 1700ms | 0.81 | PASS |
+
+Baseline is the committed link as it shipped before the coercion; candidate is
+the same board with it. 3 reps, arms interleaved, non-deterministic solve off.
+The same one-line fix went into all five global backends —
+`examples/_shared/global-backends.test.mjs` holds it there, and each example's
+own `## Timing` section carries its row.
 
 ### The local board (#238)
 

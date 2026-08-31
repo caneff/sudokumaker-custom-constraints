@@ -531,8 +531,22 @@ just time hit-counts
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts | 6300ms | 6500ms | 1.03 | FAIL |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts after-logical | 6300ms | 5600ms | 0.89 | PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_local.txt) | — | — | — | DNF (300s timeout, 3/3 reps) |
+| 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) | 7200ms | 7200ms | 1.00 | gate: PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) after-logical | 6100ms | 6100ms | 1.00 | gate: PASS |
 
-The 2026-08-31 pair gates the permutation sweep (#16): the two-row rule ships a
+The last pair is #276, which makes `main-global.js` coerce every cell id it
+derives from the board size with `| 0`. A cell id built that way is numerically
+equal to the id a drawn group carries and compares `===` to it, but the app's
+solver reads candidates through it more slowly until it is a plain integer
+again. The fix adds no deduction, so the bar is **≤ 1.1× on both rows** and
+"unchanged" is the pass. On this board it is exactly unchanged: the permutation
+sweep dominates the per-call cost here, so the coercion has little left to
+save. `examples/numbered-rooms/README.md`, "What it actually was (#276)", has
+the probes and the board where the effect is plain. Baseline is the committed
+link before the coercion, candidate the same board with it, 3 reps, arms
+interleaved.
+
+The 6300/6500 pair gates the permutation sweep (#16): the two-row rule ships a
 change at ≤ 0.9× on one row and ≤ 1.1× on the other, and this clears both. The
 rows split the way a deduction that trades per-call cost for search should. Cold,
 the sweep is a little slower — it costs more per call, and the board still has

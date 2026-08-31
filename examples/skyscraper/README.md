@@ -267,6 +267,22 @@ Baseline is the previously committed 9x9 link, timed via `--board`: the shipped
 `PUZZLE_LINK.txt` now carries the gated component, so timing against it would
 compare the change with itself.
 
+### The cell-id coercion (#276)
+
+| 2026-08-31 | v2026.08.14-d47fc4b | skyscraper | 7800ms | 7200ms | 0.92 | gate: PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+
+`main-global.js` now coerces every cell id it derives from the board size with
+`| 0`. A cell id built that way is numerically equal to the id a drawn group
+carries and compares `===` to it, but the app's solver reads candidates through
+it more slowly until it is a plain integer again. The fix adds no deduction, so
+the gate bar applies: **≤ 1.1x on both rows**. The cold row lands at 0.92x and
+the after-logical row times nothing on either side, so it places no constraint.
+The probes that found this, and the full before-and-after, are in
+`examples/numbered-rooms/README.md` under "What it actually was (#276)".
+Baseline is the committed link before the coercion, candidate the same board
+with it, 3 reps, arms interleaved.
+
 ### The local board (#240)
 
 | 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) | 1700ms | — | — | BASELINE |

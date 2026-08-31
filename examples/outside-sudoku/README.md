@@ -225,6 +225,18 @@ just time outside-sudoku --ring-clues
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku | 500ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) | 500ms | 500ms | 1.00 | gate: PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) after-logical | 300ms | 300ms | 1.00 | gate: PASS |
+
+The last pair is #276, which makes `main-global.js` coerce every cell id it
+derives from the board size with `| 0`. It adds no deduction, so the bar is
+**≤ 1.1× on both rows** and "unchanged" is the pass
+(`docs/real-app-timing.md`, "Bar for a gate change"). This board is closed
+almost without searching, so it has too little search left to show the gain
+the fix gives a harder board; numbered-rooms is where the effect is visible,
+and its README carries the probes that found it. Baseline is the committed
+link before the coercion, candidate the same board with it, 3 reps, arms
+interleaved.
 
 Both rows print `BASELINE`, not a ratio: the working-tree
 `OutsideSudokuComponent.js` is byte-equal to the code `PUZZLE_LINK.txt`
