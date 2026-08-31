@@ -18,7 +18,7 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 | `puzzle.getCandidates(cell)` | DigitSet | Remaining candidates, as a **fresh copy** each call (`new DigitSet(mask)` in the bundle). Wrap in `Array.from`, or use the mask algebra below. **[verified]** |
 | `puzzle.getCandidatesBitMask(cell)` | number | The raw candidate bitmask (bit `d` = digit `d`). Cheapest read; Numbered Rooms uses it. **[verified]** (bundle) |
 | `puzzle.getCellsAreFilled(cells)` | boolean | True when every listed cell is solved. **[verified]** |
-| `puzzle.getCellAt(col, row)` | CellId | 0-based coordinates to cell id. **[docs]** |
+| `puzzle.getCellAt(col, row)` | CellId | 0-based coordinates to cell id: `col + row * width`, and `undefined` off the board (`getIdFromCoordsSafe` in the bundle). **Coerce the result with `\| 0` before you hand it to a component** — an id derived from the board size, by this call or by your own arithmetic on `puzzle.spec.size.width`, costs the app's solver ~1.3x per candidate read until it is a plain integer again (#276). **[verified]** (bundle + live probe 2026-08-31) |
 | `puzzle.getX(cell)` / `getY(cell)` | number | 0-based column / row of a cell. **[docs]** |
 | `puzzle.getRow(cell)` / `getColumn(cell)` | number | 0-based row / column; `-1` for negative ids. **[docs]** |
 | `puzzle.getRegion(cell)` | number | 0-based region id; `-1` out of bounds. **[docs]** |

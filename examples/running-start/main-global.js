@@ -1,14 +1,21 @@
 // Running Start — main (backend) code segment, GLOBAL variant.
 //
 // No groups are drawn: build all 4n frame lines from the board size --
-// interior n = W-2 ringed by one clue cell per side. `puzzle.getCellAt(row,
-// col)` = row*W+col [verified 2026-08-28 via a [probe] log in the app].
+// interior n = W-2 ringed by one clue cell per side. `puzzle.getCellAt(a, b)`
+// = a + b*W (docs/puzzle-api.md), so `at(r, c)` below names the transpose of
+// the cell its arguments read as. The frame is symmetric under transpose, so
+// the 4n lines and their clue pairings come out identical either way -- only
+// the L/R/T/B labels swap.
 // Then register the same line component as main.js, plus the pair
 // component, which only makes sense once both ends of a line exist.
 function frameGroups () {
   const W = puzzle.spec.size.width
   const n = W - 2
-  const at = (r, c) => puzzle.getCellAt(r, c)
+  // `| 0` is load-bearing, not decoration: an id derived from the board size
+  // costs the app's solver ~1.3x per candidate read until it is coerced back
+  // to a plain integer (#276; numbered-rooms README, "The lane swap"). Every
+  // coordinate here is in range, so getCellAt never returns undefined.
+  const at = (r, c) => puzzle.getCellAt(r, c) | 0
   const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
   const groups = []
   for (let i = 1; i <= n; i++) {

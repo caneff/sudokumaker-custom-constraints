@@ -16,13 +16,15 @@ import { frameGeometry } from '../_shared/frame-geometry.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const src = f => readFileSync(join(HERE, f), 'utf8')
 
-// A board W cells wide: cell id = row * W + col, the app's row-major layout.
+// A board W cells wide: cell id = col + row * W, so `getCellAt(a, b)` is
+// `a + b * W` (docs/puzzle-api.md). The frame is symmetric under transpose, so
+// the 4n lines match frameGeometry's either way; only the labels swap.
 function mockPuzzle (W) {
   const registered = []
   return {
     registered,
     spec: { size: { width: W, height: W } },
-    getCellAt: (r, c) => r * W + c,
+    getCellAt: (a, b) => a + b * W,
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
     addConstraintComponent: comp => registered.push(comp)

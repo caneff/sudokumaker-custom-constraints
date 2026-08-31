@@ -29,6 +29,7 @@ test:
     node examples/_shared/app-solve-lib.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
     node examples/_shared/harness-lib.test.mjs
+    node examples/_shared/global-backends.test.mjs
     uv run --with lzstring examples/_shared/link_codec.test.py
     uv run --with lzstring examples/_shared/probe_link.test.py
     uv run --with lzstring examples/_shared/link_swap.test.py
