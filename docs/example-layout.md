@@ -116,6 +116,13 @@ link from its committed `gen_*.json` with the example's `rebuild_size.py`.
   `PUZZLE_LINK_30g.txt`), or a size/givens/tag combination
   (`gen_35g_silent.json` pairs with `PUZZLE_LINK_35g_silent.txt`).
 - A generator may keep extra input files; they are inputs, not "the board."
+- The pairing runs both ways where a link is generated: `check_layout.py`
+  flags a `gen*.json` with no matching link, and a link with no matching
+  `gen*.json`, same as above. Two kinds of link are exempt from needing one
+  back: a `_clued`/`_original` twin (`build_clued.py`/`build_original.py`
+  re-encode an already-generated board with different wrapper code or extra
+  clues, never their own fresh gen JSON), and numbered-rooms' hand-made
+  `PUZZLE_LINK.txt`, which its own README says no generator produces at all.
 
 ## The `original/` baseline
 

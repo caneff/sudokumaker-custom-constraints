@@ -27,6 +27,13 @@ from rebuild_size import link_path, rebuild
 SIZES = [(4, 2, 2), (6, 2, 3), (9, 3, 3)]
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 
+
+def gen_path(n):
+    """The recorded seed for size n: the 9x9 global board is the plain-named
+    pair, so it is gen.json, not gen_9x9.json (#294)."""
+    return HERE / ("gen.json" if n == 9 else f"gen_{n}x{n}.json")
+
+
 # One row line and one column line of each shipped size, as framebuild draws
 # them: interior (row, column) pairs, nearest the clue first.
 ROW_9 = [(4, c) for c in range(9)]
@@ -82,7 +89,7 @@ def test_rebuild_reproduces_every_shipped_link_byte_for_byte():
 
 def test_every_recorded_clue_is_its_window_s_largest_digit():
     for n, bh, bw in SIZES:
-        gen = json.loads((HERE / f"gen_{n}x{n}.json").read_text())
+        gen = json.loads(gen_path(n).read_text())
         grid, lines = gen["grid"], make_lines(n)
         for key, cells in lines.items():
             values = [grid[r][c] for r, c in cells]
@@ -115,7 +122,7 @@ def test_every_shipped_link_is_share_ready():
         assert not [c for c in doc["cells"] if "value" in c and not c.get("given")]
         # Sparse ring: the board shows only the clues its uniqueness proof
         # needed, so some of the 4n clue cells stay empty for the solver.
-        shown = len(json.loads((HERE / f"gen_{n}x{n}.json").read_text())["active"])
+        shown = len(json.loads(gen_path(n).read_text())["active"])
         assert shown < 4 * n, f"{n}x{n} shows every clue -- the ring must stay sparse"
 
 

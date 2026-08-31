@@ -16,10 +16,10 @@ const PROBE = join(HERE, 'recovery-probe.mjs')
 
 const cases = [
   { args: ['gen_6x6.json'], golden: 'gen_6x6.txt' },
-  { args: ['gen_9x9.json'], golden: 'gen_9x9.txt' },
+  { args: ['gen.json'], golden: 'gen.txt' },
   { args: ['gen_6x6.json', '--search', '--only=off'], golden: 'search_off.txt' },
   { args: ['gen_6x6.json', '--search', '--only=on'], golden: 'search_on.txt' },
-  { args: ['gen_9x9.json', '--search', '--only=off'], golden: 'search_9x9_off.txt' }
+  { args: ['gen.json', '--search', '--only=off'], golden: 'search_gen_off.txt' }
 ]
 
 const ok = runGoldenCases(PROBE, cases)

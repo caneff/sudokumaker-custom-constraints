@@ -74,19 +74,23 @@ REQUIRED = [
     "update-strength.test.mjs",
     "OPTIMIZATION_LOG.md",
     "PUZZLE_LINK.txt",
+    "gen.json",
     "PUZZLE_LINK_local.txt",
     "gen_local.json",
 ]
 
 
 @contextlib.contextmanager
-def example(files=REQUIRED, extra_links=(), name="widget", contents=None):
+def example(
+    files=REQUIRED, extra_links=(), extra_gens=(), name="widget", contents=None
+):
     """A temp examples/-shaped tree with one example dir, `name`.
 
     Yields (root, example_dir). `files` are the example's own files;
-    `extra_links` are extra PUZZLE_LINK*.txt names to add on top. `contents`
-    overrides one file's text (default "x") -- used by the lane tests to put
-    a real marker in main.js or main-global.js.
+    `extra_links` are extra PUZZLE_LINK*.txt names to add on top, `extra_gens`
+    extra gen*.json names (for a test that must keep every generated link
+    paired). `contents` overrides one file's text (default "x") -- used by
+    the lane tests to put a real marker in main.js or main-global.js.
     """
     contents = contents or {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -98,6 +102,8 @@ def example(files=REQUIRED, extra_links=(), name="widget", contents=None):
             (d / f).write_text(contents.get(f, default))
         for link in extra_links:
             (d / link).write_text(contents.get(link, _link()))
+        for gen in extra_gens:
+            (d / gen).write_text(contents.get(gen, "x"))
         yield root, d
 
 
@@ -136,19 +142,72 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a split example ships a local board: both halves of the pair are
-    # required, and each is named on its own (#268)
-    for local_file in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+    # required, and each is named on its own (#268). Dropping one half also
+    # leaves the other unpaired (#294), so two violations fire, not one --
+    # the missing-required-file one, and the pairing one for the survivor.
+    missing_local_cases = {
+        "PUZZLE_LINK_local.txt": "gen_local.json has no matching PUZZLE_LINK_local.txt",
+        "gen_local.json": "PUZZLE_LINK_local.txt has no matching gen_local.json",
+    }
+    for local_file, pairing_text in missing_local_cases.items():
         missing = [f for f in REQUIRED if f != local_file]
         with example(files=missing) as (root, _):
             violations = check_tree(root)
-            assert len(violations) == 1, violations
-            assert "widget" in violations[0]
-            assert local_file in violations[0]
+            assert len(violations) == 2, violations
+            assert any(
+                "widget" in v and f"missing required file {local_file}" in v
+                for v in violations
+            ), violations
+            assert any("widget" in v and pairing_text in v for v in violations), (
+                violations
+            )
 
-        # the no-local-global-split example needs neither
-        with example(files=missing, name="isofill") as (root, _):
+    # the no-local-global-split example needs neither half of the local pair,
+    # and ships neither in reality -- dropping both leaves nothing unpaired
+    iso_missing = [
+        f for f in REQUIRED if f not in ("PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=iso_missing, name="isofill") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a gen*.json with no matching link is unpaired: the naming-follows-the-
+    # rename bug this check exists to catch (#294)
+    with example(extra_gens=["gen_9x9.json"]) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "gen_9x9.json" in violations[0], violations
+        assert "PUZZLE_LINK_9x9.txt" in violations[0], violations
+
+    # the reverse: a well-named, generated-style link with no gen*.json is
+    # unpaired too
+    with example(extra_links=["PUZZLE_LINK_6x6.txt"]) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK_6x6.txt" in violations[0], violations
+        assert "gen_6x6.json" in violations[0], violations
+
+    # a clued/original twin is hand-derived, straight from another committed
+    # link (build_clued.py/build_original.py) -- it needs no gen JSON of its
+    # own, chained tags included
+    for twin in ("PUZZLE_LINK_original.txt", "PUZZLE_LINK_clued_original.txt"):
+        with example(extra_links=[twin]) as (root, _):
             violations = check_tree(root)
             assert violations == [], violations
+
+    # numbered-rooms/PUZZLE_LINK.txt is hand-made with no generator at all
+    # (its own README, "Not covered") -- the one named exception
+    missing = [f for f in REQUIRED if f != "gen.json"]
+    with example(files=missing, name="numbered-rooms") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # any other example's plain PUZZLE_LINK.txt still needs its gen.json
+    with example(files=missing) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "widget" in violations[0], violations
+        assert "gen.json" in violations[0], violations
 
     # numbered-rooms-lines was folded into numbered-rooms (#238): the
     # directory must not come back, complete file set or not
@@ -209,7 +268,17 @@ if __name__ == "__main__":
         "PUZZLE_LINK_35g_silent.txt",
         "PUZZLE_LINK_clued_original.txt",
     ]
-    with example(extra_links=good_names) as (root, _):
+    # each non-hand-derived name above needs its own gen*.json to stay paired
+    # (#294); the clued/original/local ones either are hand-derived twins or
+    # already have theirs from REQUIRED
+    good_gens = [
+        "gen_6x6.json",
+        "gen_silent.json",
+        "gen_6x6_local.json",
+        "gen_30g.json",
+        "gen_35g_silent.json",
+    ]
+    with example(extra_links=good_names, extra_gens=good_gens) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 

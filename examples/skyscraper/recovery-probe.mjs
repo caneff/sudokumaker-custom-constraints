@@ -2,7 +2,7 @@
 // faster to SOLVE than the original wrapper, or only tighter on paper?
 //
 //   node examples/skyscraper/recovery-probe.mjs                 # gen_6x6.json, root recovery
-//   node examples/skyscraper/recovery-probe.mjs gen_9x9.json
+//   node examples/skyscraper/recovery-probe.mjs gen.json
 //   node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, count nodes
 //
 // It runs the ACTUAL components — the same main-global.js wiring SudokuMaker

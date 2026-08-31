@@ -1,4 +1,5 @@
-# Rebuild an already-generated puzzle's link pair from gen_<n>x<n>.json: the
+# Rebuild an already-generated puzzle's link pair from its gen JSON (gen.json
+# for n=9, the plain-named pair; gen_<n>x<n>.json for every other size): the
 # improved link with the current main.js and component files, and the same
 # board with ChinStrap's ORIGINAL wrapper code, so the two can be compared on
 # the same grid, givens, and clues. No solving: it re-encodes. Run it after
@@ -59,7 +60,9 @@ def frame_groups(n, lines):
 
 if __name__ == "__main__":
     n = int(sys.argv[1])
-    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n)
+    # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
+    tag = "" if n == 9 else f"{n}x{n}"
+    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
     improved = build_doc(build_size.SPEC, n, bh, bw, grid, clue, givens, active, lines)
     improved_link = encode_link(improved)
     check(build_size.SPEC, improved_link, improved, n)

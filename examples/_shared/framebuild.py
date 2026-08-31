@@ -511,10 +511,12 @@ def load_gen(dir_, n, tag=None):
     """Read back a gen_<tag>.json (written by run(), below) into the same
     shape build_doc() takes: a rebuild-from-frame script re-encodes a
     committed board without running generate() again. `tag` names the file,
-    defaulting to the `<n>x<n>` global board. A local board records its
-    generated path geometry under "paths"; a global one has none, and its
-    lines are the straight frame lines n implies."""
-    g = json.loads((dir_ / f"gen_{tag or f'{n}x{n}'}.json").read_text())
+    defaulting to the `<n>x<n>` global board; pass `""` for the plain-named
+    `gen.json` (the 9x9 board that ships as the plain PUZZLE_LINK.txt). A
+    local board records its generated path geometry under "paths"; a global
+    one has none, and its lines are the straight frame lines n implies."""
+    name = "gen.json" if tag == "" else f"gen_{tag or f'{n}x{n}'}.json"
+    g = json.loads((dir_ / name).read_text())
     bh, bw = g["box"]
     grid = g["grid"]
     lines = (

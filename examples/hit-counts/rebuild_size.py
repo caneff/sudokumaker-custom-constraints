@@ -42,7 +42,8 @@ if __name__ == "__main__":
         sys.argv.remove("--paths")
     n = int(sys.argv[1])
     assert not paths or n == 9, "the local board is the 9x9 only"
-    tag = "local" if paths else f"{n}x{n}"
+    # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
+    tag = "local" if paths else ("" if n == 9 else f"{n}x{n}")
     out = HERE / (
         "PUZZLE_LINK.txt" if n == 9 and not paths else f"PUZZLE_LINK_{tag}.txt"
     )

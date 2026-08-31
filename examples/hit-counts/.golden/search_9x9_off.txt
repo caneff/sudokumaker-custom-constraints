@@ -1,2 +1,0 @@
-gen_9x9.json: n=9, box 3x3, 27/36 clues shown, 9 hidden, 4 interior givens (floor: regin)
-  matching OFF: 2033 search nodes, 1 solution

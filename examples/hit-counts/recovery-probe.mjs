@@ -2,7 +2,7 @@
 // puzzle, or is it just tighter in the abstract?
 //
 //   node examples/hit-counts/recovery-probe.mjs            # gen_6x6.json
-//   node examples/hit-counts/recovery-probe.mjs gen_9x9.json
+//   node examples/hit-counts/recovery-probe.mjs gen.json
 //
 // It runs the ACTUAL components — the same main-global.js wiring SudokuMaker
 // runs on the shipped (frame) board — over a generated puzzle's start state,

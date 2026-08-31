@@ -44,7 +44,8 @@ def link_path(n, local=False):
 def rebuild(n, local=False):
     """The link for the committed gen JSON of this board, re-encoded against
     the component and main code in the tree right now."""
-    tag = "local" if local else None
+    # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
+    tag = "local" if local else ("" if n == 9 else None)
     bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
     spec = spec_for(bh, bw)
     # bent=False: this example's local board draws the straight frame lines,

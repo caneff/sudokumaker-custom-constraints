@@ -55,6 +55,22 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 # must say so (#271). Same pattern as NO_LOCAL_GLOBAL_SPLIT above.
 NO_RULES_PREFIX = {"isofill"}
 
+# `build_original.py` / `build_clued.py` build a hand-derived twin: the same
+# board as another committed link, re-encoded with different wrapper code or
+# extra clues. That board already has its own gen entry under an untagged
+# name -- skyscraper's PUZZLE_LINK_6x6_original.txt reads gen_6x6.json (the
+# 6x6 size's own entry, not a "6x6_original" one), and its untagged twin
+# PUZZLE_LINK_original.txt reads gen.json the same way -- or, for
+# numbered-rooms' PUZZLE_LINK.txt, no gen JSON at all (NO_GENERATOR_LINKS
+# below). Either way, a link whose suffix carries either tag never gets its
+# own separate gen*.json (#294).
+NO_GENERATOR_TAGS = {"clued", "original"}
+
+# A link with no generator at all: numbered-rooms/PUZZLE_LINK.txt is
+# hand-made, its own README's "Not covered" section says so -- no gen.json
+# has ever paired with it (#294).
+NO_GENERATOR_LINKS = {("numbered-rooms", "PUZZLE_LINK.txt")}
+
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
@@ -81,6 +97,51 @@ def check_lanes(example_dir):
     main_global_js = example_dir / "main-global.js"
     if main_global_js.is_file() and "input.groups" in main_global_js.read_text():
         violations.append(f"{name}: main-global.js reads input.groups")
+
+    return violations
+
+
+def _link_suffix(filename, prefix, ext):
+    """The part of a `gen*.json`/`PUZZLE_LINK*.txt` name between `prefix` and
+    `ext`, minus one leading underscore -- "" for the plain-named file."""
+    return filename[len(prefix) : -len(ext)].lstrip("_")
+
+
+def check_gen_link_pairing(example_dir):
+    """Return one violation string per gen*.json / PUZZLE_LINK*.txt name that
+    does not pair with the other of the same suffix (docs/example-layout.md,
+    "Board naming"): `gen.json` pairs with `PUZZLE_LINK.txt`, `gen_6x6.json`
+    with `PUZZLE_LINK_6x6.txt`, and so on. A gen JSON always needs its link;
+    a link needs a gen JSON back only where one is generated -- not a
+    build_original.py/build_clued.py twin (NO_GENERATOR_TAGS) or a hand-made
+    exception (NO_GENERATOR_LINKS) (#294)."""
+    name = example_dir.name
+    violations = []
+
+    for gen in sorted(example_dir.glob("gen*.json")):
+        suffix = _link_suffix(gen.name, "gen", ".json")
+        link_name = f"PUZZLE_LINK_{suffix}.txt" if suffix else "PUZZLE_LINK.txt"
+        if not (example_dir / link_name).is_file():
+            violations.append(f"{name}: {gen.name} has no matching {link_name}")
+
+    for link in sorted(example_dir.glob("PUZZLE_LINK*.txt")):
+        # A malformed link name is reported by the LINK_RE check below; its
+        # "suffix" is not well-formed either, so pairing does not pile on.
+        if not LINK_RE.match(link.name):
+            continue
+        suffix = _link_suffix(link.name, "PUZZLE_LINK", ".txt")
+        if set(suffix.split("_")) & NO_GENERATOR_TAGS:
+            continue
+        if (name, link.name) in NO_GENERATOR_LINKS:
+            continue
+        gen_name = f"gen_{suffix}.json" if suffix else "gen.json"
+        if not (example_dir / gen_name).is_file():
+            violations.append(
+                f"{name}: {link.name} has no matching {gen_name} -- most "
+                "likely the gen JSON is missing or misnamed and should match "
+                "this link's own suffix; if this link is genuinely hand-made "
+                "instead, record it in check_layout.py's NO_GENERATOR_LINKS"
+            )
 
     return violations
 
@@ -190,6 +251,7 @@ def check_example(example_dir):
         )
 
     violations.extend(check_lanes(example_dir))
+    violations.extend(check_gen_link_pairing(example_dir))
 
     for link in sorted(example_dir.glob("PUZZLE_LINK*.txt")):
         if not LINK_RE.match(link.name):

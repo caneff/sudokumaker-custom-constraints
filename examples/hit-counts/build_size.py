@@ -17,7 +17,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
-# it lands as PUZZLE_LINK.txt (gen_9x9.json keeps its name).
+# it lands as PUZZLE_LINK.txt and gen.json.
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
 # frame lines, shipped as drawn groups on the main.js lane, so a rule that runs
@@ -113,4 +113,5 @@ if __name__ == "__main__":
             print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
         else:
             (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-            print("renamed to PUZZLE_LINK.txt (the plain-named 9x9 pair)")
+            (HERE / "gen_9x9.json").rename(HERE / "gen.json")
+            print("renamed to PUZZLE_LINK.txt and gen.json (the plain-named 9x9 pair)")

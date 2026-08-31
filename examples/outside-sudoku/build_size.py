@@ -13,7 +13,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the shipped board, so it lands as
-# PUZZLE_LINK.txt (gen_9x9.json keeps its name).
+# PUZZLE_LINK.txt and gen.json.
 #
 # --local builds the LOCAL board instead: the same frame lines shipped as drawn
 # groups on the main.js lane, written as PUZZLE_LINK_local.txt with
@@ -93,4 +93,5 @@ if __name__ == "__main__":
             print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
         else:
             (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-            print("renamed to PUZZLE_LINK.txt (the shipped board)")
+            (HERE / "gen_9x9.json").rename(HERE / "gen.json")
+            print("renamed to PUZZLE_LINK.txt and gen.json (the shipped board)")

@@ -183,7 +183,7 @@ const ITERS = 4000
 let gTests = 0
 let gBad = 0
 let gFired = 0
-for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen_9x9.json']) {
+for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
   const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
   const { n, box: [bh, bw] } = gen
   const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])
@@ -358,7 +358,7 @@ console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 let sTests = 0
 let sBad = 0
 let sFired = 0
-for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen_9x9.json']) {
+for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
   const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
   const { n, box: [bh, bw] } = gen
   const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])

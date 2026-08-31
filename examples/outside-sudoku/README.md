@@ -71,7 +71,7 @@ line as its window. That is weaker than the rule, never unsound.
 | `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9 |
 | `rebuild_size.py` | Re-encode a sized link from its recorded seed, no fresh search |
 | `verify.py` | CP-SAT proof that a board has one solution |
-| `PUZZLE_LINK.txt`, `gen_9x9.json` | The shipped board, on the global lane (see below) |
+| `PUZZLE_LINK.txt`, `gen.json` | The shipped board, on the global lane (see below) |
 | `PUZZLE_LINK_local.txt`, `gen_local.json` | The same frame, on the local lane |
 | `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The smaller boards and their seed data |
 
@@ -94,7 +94,7 @@ column end. It runs the **global** backend and draws no groups, as every
 example's bare `PUZZLE_LINK.txt` does (`docs/example-layout.md`, "Which lane a
 link runs", #268).
 
-- Seed 123 of `framebuild.generate`, recorded in `gen_9x9.json`: 10 interior
+- Seed 123 of `framebuild.generate`, recorded in `gen.json`: 10 interior
   givens, 23 of the 36 ring clues shown; the other 13 are empty cells the
   solver fills in.
 - Uniqueness is proved by OR-Tools CP-SAT, which models the same membership
