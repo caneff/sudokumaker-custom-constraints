@@ -15,6 +15,7 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from component_scan import registered_components
 from link_codec import decode_puzzle
 
 REQUIRED_FILES = [
@@ -152,10 +153,7 @@ def check_components(example_dir, link):
         # A definition with no code backend registers nothing; its component
         # list is then empty too, so the two sets still match.
         backend = definition.get("backend", {}).get("code", "")
-        code = "\n".join(
-            line for line in backend.splitlines() if not line.lstrip().startswith("//")
-        )
-        registered = set(re.findall(r"new ([A-Za-z0-9_]+Component)\b", code))
+        registered = registered_components(backend)
         if shipped != registered:
             violations.append(
                 f"{name}: {link.name} constraint {definition['name']!r} ships "

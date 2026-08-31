@@ -34,6 +34,8 @@ test:
     uv run --with lzstring examples/_shared/probe_link.test.py
     uv run --with lzstring examples/_shared/link_swap.test.py
     uv run --with lzstring examples/_shared/time_example.test.py
+    uv run --with lzstring examples/_shared/component_scan.test.py
+    uv run --with lzstring examples/_shared/framebuild.test.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue

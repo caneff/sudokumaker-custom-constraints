@@ -16,13 +16,13 @@
 import json
 import pathlib
 import random
-import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
+from component_scan import registered_components
 from frame import cosmetics, ring_cell
 from minify import minify_js
 
@@ -488,21 +488,21 @@ def check(spec, link, doc, n, local=False):
     assert names == [stem(f) for f in want], (
         f"the link carries the wrong lane's components (local={local}): {names}"
     )
-    # Whichever list a lane names, the backend must not register a component
-    # the link leaves out: that one fails inside the app, where the author
-    # never sees it. A lexical check -- it reads `new <Name>Component` off the
-    # backend source, so a class reached through an alias, or named some other
-    # way, is invisible to it. Comment lines are dropped first, or a `//!` note
-    # that mentions a component would read as a registration.
-    code = "\n".join(
-        ln for ln in backend.splitlines() if not ln.lstrip().startswith("//")
-    )
-    unshipped = sorted(
-        set(re.findall(r"new ([A-Za-z0-9_]+Component)\b", code)) - set(names)
-    )
+    # A lane's own link must ship exactly what its backend registers, in both
+    # directions: the backend must not register a component the link leaves
+    # out (that one fails inside the app, where the author never sees it),
+    # and the link must not carry a name the backend never registers (that
+    # one is dead weight the recipient still reads as part of the rule --
+    # #287, #289, #290, #291). `registered_components` is a lexical check: it
+    # reads `new <Name>Component` off the backend source, so a class reached
+    # through an alias, or named some other way, is invisible to it.
+    registered = registered_components(backend)
+    unshipped = sorted(registered - set(names))
     assert not unshipped, (
         f"the backend registers components the link omits: {unshipped}"
     )
+    dead = sorted(set(names) - registered)
+    assert not dead, f"the link ships components the backend never registers: {dead}"
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit
 
