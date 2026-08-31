@@ -4,11 +4,11 @@
 #    difference from the committed PUZZLE_LINK.txt is the swapped-in
 #    component's code. Prior art: the check in build_original.py, and
 #    examples/_shared/probe_link.test.py.
-# 2. The committed local link, PUZZLE_LINK_local.txt, built by
-#    `build_size.py 9 3 3 --paths`: it must ship the bent paths as drawn groups
-#    on the main.js lane, derive every clue from the solution in gen_local.json,
-#    and carry at least one path whose digits repeat -- the property that makes
-#    it a bare-line board rather than a frame board in disguise (#238).
+# 2. The committed local links, built by `build_size.py <n> --paths`: each must
+#    ship the bent paths as drawn groups on the main.js lane, derive every clue
+#    from the solution in its gen JSON, and carry at least one path whose digits
+#    repeat -- the property that makes it a bare-line board rather than a frame
+#    board in disguise (#238).
 #
 #   uv run --with lzstring examples/numbered-rooms/build_link.test.py
 
@@ -45,9 +45,9 @@ def numbered_room(values):
     return values[values[0] - 1]
 
 
-def check_local_link():
-    """The committed local board: drawn bent paths, clues off the solution."""
-    spec = json.loads((HERE / "gen_local.json").read_text())
+def check_local_link(tag):
+    """A committed local board: drawn bent paths, clues off the solution."""
+    spec = json.loads((HERE / f"gen_{tag}.json").read_text())
     n, (bh, bw) = spec["n"], spec["box"]
     grid = spec["grid"]
     paths = {k: [tuple(c) for c in v] for k, v in spec["paths"].items()}
@@ -56,7 +56,7 @@ def check_local_link():
     def idx(r, c):
         return r * W + c
 
-    doc = decode_puzzle((HERE / "PUZZLE_LINK_local.txt").read_text().strip())
+    doc = decode_puzzle((HERE / f"PUZZLE_LINK_{tag}.txt").read_text().strip())
     p = doc["puzzle"]
     assert p["comment"].startswith(RULES_PREFIX), "rules text must open with the prefix"
     assert (p["minDigit"], p["maxDigit"]) == (1, n)
@@ -187,5 +187,7 @@ if __name__ == "__main__":
         assert blanked(g, CONSTRAINT_NAME) == blanked(base, CONSTRAINT_NAME)
         print("ok --global")
 
-    check_local_link()
+    # the 9x9 stress board and the 6x6 twin that carries the local timing row
+    for tag in ("local", "6x6_local"):
+        check_local_link(tag)
     print("ok")

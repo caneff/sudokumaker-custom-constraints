@@ -102,12 +102,18 @@ per-line component below carries the whole example.
   no lines to draw.
 - `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with
   `main-global.js` as the backend and no drawn groups. Same solve.
-- `PUZZLE_LINK_local.txt`, `gen_local.json` — the **local** board: 36 bent
+- `PUZZLE_LINK_local.txt`, `gen_local.json` — the 9x9 **local** board: 36 bent
   paths in place of the frame lines, each shipped as a drawn group on the
   `main.js` lane, so the three rules that hold on a bare line have a board to
-  play and to time. Every path repeats a digit, so none of them is a house and
-  the two house rules stand down. Built by
+  play. All 36 paths repeat a digit, so none is a house and the two house rules
+  stand down. Carved to CP-SAT minimality (1 interior given, 16 interactive
+  clues), which puts it past what SudokuMaker's own search closes — a stress
+  board, proven unique by OR-Tools, not a board to sit down with. Built by
   `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3 3 --paths`.
+- `PUZZLE_LINK_6x6_local.txt`, `gen_6x6_local.json` — the 6x6 local twin
+  (24 bent paths, 22 of them repeating a digit, 0 interior givens): the local
+  board the app finishes, so it is the one to play and the one that carries the
+  local timing row. Same command with `6 2 3`.
 - `original/` — the shipped wrapper (`main.js`, `CustomIndexComponent.js`),
   kept for reference and used by `build_original.py`.
 - `soundness-harness.mjs` — proves `update` removes no true value across a
@@ -234,7 +240,30 @@ FAIL because `just time` applies the deduction rule (≤ 0.9× on one row). A ga
 change is judged at **≤ 1.1× on both rows** (spec #232), which 1.00 and 1.00
 clear.
 
+### The local board (#238)
+
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms (PUZZLE_LINK_6x6_local.txt) | 100ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms (PUZZLE_LINK_6x6_local.txt) after-logical | 0ms | — | — | BASELINE |
+
+```sh
+just time numbered-rooms --board PUZZLE_LINK_6x6_local.txt --ring-clues
+```
+
+A new board with no earlier code to compare against, so the candidate is
+byte-equal to the baseline and only baseline rows print — what
+`docs/real-app-timing.md` says such a run gives. The three bare-line rules
+close this board almost without searching.
+
+The 9x9 local board has **no row**, and none has been invented: the same
+command with `--board PUZZLE_LINK_local.txt` raises "app-solve.mjs got no timed
+reps", because the app finds no verdict on it inside its limit. Skyscraper's
+9x9 local board behaves the same way and for the same reason — CP-SAT
+minimality carves past what SudokuMaker's search closes. The 6x6 twin exists
+for exactly this.
+
 ## Not covered
 
-Numbered Rooms has no generator; `PUZZLE_LINK.txt` is a single hand-made puzzle,
-now the committed source of truth. There is no fresh puzzle to regenerate.
+`PUZZLE_LINK.txt` is hand-made and is the committed source of truth: no
+generator produces it, so there is no fresh version of that board to make. The
+sized and local boards do have one — `build_size.py`, on the shared frame — and
+`rebuild_size.py` re-encodes any of them with the current code.
