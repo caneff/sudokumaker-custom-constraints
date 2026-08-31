@@ -20,20 +20,30 @@ HERE = pathlib.Path(__file__).parent
 
 
 def _link(
-    entered=False, prefix=True, ships=("FooComponent",), registers=None, note=None
+    entered=False,
+    prefix=True,
+    ships=("FooComponent",),
+    registers=None,
+    note=None,
+    full_ring=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
 
     `entered` puts a value on a non-given cell (the link does not open
-    clean); `prefix` controls whether the comment carries RULES_PREFIX (the
-    rules-prefix check fails when False). `ships` names the components the
+    clean); `full_ring` makes every cell a given, which on this 3x3 board
+    fills the whole outside ring while leaving nothing entered, so the ring
+    check is exercised on its own. `prefix` controls whether the comment
+    carries RULES_PREFIX (the rules-prefix check fails when False). `ships`
+    names the components the
     constraint carries and `registers` (default: the same names) the ones its
     backend instantiates, so a case can make the two sets disagree. `note`
     prepends a comment line to the backend, which must not read as a
     registration.
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
+    if full_ring:
+        cells = [{"given": True, "value": 1} for _ in range(9)]
     if entered:
         cells[1] = {"value": 2}
     comment = (RULES_PREFIX if prefix else "") + "test rules"
@@ -295,6 +305,23 @@ if __name__ == "__main__":
     with example(
         extra_links=["PUZZLE_LINK_clued.txt"],
         contents={"PUZZLE_LINK_clued.txt": _link(entered=True)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a link that fills every ring cell fails -- it hands the solver every
+    # outside clue (docs/share-checklist.md, criterion 3)
+    with example(contents={"PUZZLE_LINK.txt": _link(full_ring=True)}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "ring cells" in violations[0]
+
+    # a _clued link is exempt from the ring check too -- filling every clue is
+    # what that name means
+    with example(
+        extra_links=["PUZZLE_LINK_clued.txt"],
+        contents={"PUZZLE_LINK_clued.txt": _link(full_ring=True)},
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations

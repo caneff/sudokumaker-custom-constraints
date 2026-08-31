@@ -71,6 +71,10 @@ Document shape (top level): `formatVersion`, `puzzle`. Inside `puzzle`:
 `name`, `author`, `comment`, `type`, `width`, `height`, `cells` (one
 `{ value?, given? }` per board cell, row-major), and `constraints` (a list).
 
+`minDigit` and `maxDigit` appear on most boards but neither is guaranteed —
+isofill's links carry `minDigit` and no `maxDigit`. Read both with a default;
+a bare `puzzle["maxDigit"]` raises on a link that is otherwise fine.
+
 ## Constraint list — the types we have seen
 
 | `type` | Meaning |
@@ -79,6 +83,7 @@ Document shape (top level): `formatVersion`, `puzzle`. Inside `puzzle`:
 | `1` | Regions map (`regions`: one region id per cell, `-1` = none). |
 | `101` | Cell decoration (circles); `cells` + `style`. Purely cosmetic. |
 | `301` | Named cages / houses (used here as hidden `rowcol` helpers). |
+| `304` | Named cage rule; `name` + `cages`. Hit Counts ships one as "Disallow 0 in the main grid". |
 | `1000` | **Custom constraint** — `definition` (main code + components), `input.groups`. |
 | `2000` | Cosmetic line drawings; `lines` (arrays of `{x, y}` points) + `style`. |
 
