@@ -1,10 +1,11 @@
 # check_layout walks an examples/-shaped directory and verifies every
-# example (any dir other than _shared) has the required file set and that
-# every PUZZLE_LINK*.txt name matches the link grammar. These fixtures build
-# small temp trees rather than reuse the real examples/, so a case (a
-# missing file, a bad link name) is exact and does not drift with the repo.
+# example (any dir other than _shared) has the required file set, that
+# every PUZZLE_LINK*.txt name matches the link grammar, and that every link
+# decodes clean (docs/share-checklist.md). These fixtures build small temp
+# trees rather than reuse the real examples/, so a case (a missing file, a
+# bad link name, a dirty link) is exact and does not drift with the repo.
 #
-#   uv run examples/_shared/check_layout.test.py
+#   uv run --with lzstring examples/_shared/check_layout.test.py
 
 import contextlib
 import pathlib
@@ -12,9 +13,26 @@ import subprocess
 import sys
 import tempfile
 
-from check_layout import check_tree
+from check_layout import RULES_PREFIX, check_tree
+from link_codec import encode_link
 
 HERE = pathlib.Path(__file__).parent
+
+
+def _link(entered=False, prefix=True):
+    """A minimal encoded puzzle link: one given cell, the rest empty.
+
+    `entered` puts a value on a non-given cell (the link does not open
+    clean); `prefix` controls whether the comment carries RULES_PREFIX (the
+    rules-prefix check fails when False).
+    """
+    cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
+    if entered:
+        cells[1] = {"value": 2}
+    comment = (RULES_PREFIX if prefix else "") + "test rules"
+    doc = {"puzzle": {"width": 3, "height": 3, "cells": cells, "comment": comment}}
+    return encode_link(doc)
+
 
 REQUIRED = [
     "README.md",
@@ -45,9 +63,10 @@ def example(files=REQUIRED, extra_links=(), name="widget", contents=None):
         d = root / name
         d.mkdir()
         for f in files:
-            (d / f).write_text(contents.get(f, "x"))
+            default = _link() if f == "PUZZLE_LINK.txt" else "x"
+            (d / f).write_text(contents.get(f, default))
         for link in extra_links:
-            (d / link).write_text("x")
+            (d / link).write_text(contents.get(link, _link()))
         yield root, d
 
 
@@ -143,6 +162,50 @@ if __name__ == "__main__":
     with example(extra_links=good_names) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
+
+    # a well-named link with an entered value on a non-given cell fails --
+    # the link does not open clean (docs/share-checklist.md)
+    with example(contents={"PUZZLE_LINK.txt": _link(entered=True)}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "entered value" in violations[0]
+
+    # a _clued link is exempt from the entered-value check -- it fills the
+    # outside-clue ring on purpose
+    with example(
+        extra_links=["PUZZLE_LINK_clued.txt"],
+        contents={"PUZZLE_LINK_clued.txt": _link(entered=True)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a link whose comment is missing the rules prefix fails
+    with example(contents={"PUZZLE_LINK.txt": _link(prefix=False)}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "rules prefix" in violations[0]
+
+    # isofill is NOT exempt from the rules-prefix check -- its own
+    # build_link.py already puts RULES_PREFIX in the rule text, so a missing
+    # prefix there is a real regression, not an expected shape
+    missing = [f for f in REQUIRED if f != "main-global.js"]
+    with example(
+        files=missing,
+        name="isofill",
+        contents={"PUZZLE_LINK.txt": _link(prefix=False)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "rules prefix" in violations[0]
+
+    # a link file that fails to decode is reported, not a crash
+    with example(contents={"PUZZLE_LINK.txt": "not a real link"}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "failed to decode" in violations[0]
 
     # _shared is skipped even though it has none of the required files
     with example() as (root, _):

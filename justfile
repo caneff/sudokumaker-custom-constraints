@@ -43,9 +43,8 @@ test:
             uv run --with lzstring "$f"
         done
     done
-    uv run --with lzstring examples/_shared/check_links.py
-    uv run examples/_shared/check_layout.test.py
-    uv run examples/_shared/check_layout.py
+    uv run --with lzstring examples/_shared/check_layout.test.py
+    uv run --with lzstring examples/_shared/check_layout.py
 
 # Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
 # Not part of check/test/CI; run by hand after a puzzle change. See

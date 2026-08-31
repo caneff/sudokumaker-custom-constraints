@@ -1,12 +1,19 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
-# a new example with no justfile edit. See docs/example-layout.md.
+# a new example with no justfile edit. See docs/example-layout.md. It also
+# decodes every shipped PUZZLE_LINK*.txt and checks the two mechanical
+# pre-share criteria from docs/share-checklist.md: the link opens clean (no
+# entered values on non-given cells) and the rules text carries the sudoku
+# prefix.
 #
-#   uv run examples/_shared/check_layout.py [root]
+#   uv run --with lzstring examples/_shared/check_layout.py [root]
 
 import pathlib
 import re
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from link_codec import decode_puzzle
 
 REQUIRED_FILES = [
     "README.md",
@@ -29,6 +36,14 @@ NO_LOCAL_GLOBAL_SPLIT = {"isofill"}
 # the directory must not come back -- a second one would drift from the
 # first the way numbered-rooms-lines drifted from numbered-rooms (#238).
 MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
+
+# Must match framebuild.RULES_PREFIX. Duplicated (not imported) so this
+# check does not pull in ortools -- framebuild.py imports it at module load,
+# and check_layout.py runs with just `--with lzstring`. Every example's own
+# builder adds it (isofill's build_link.py does too), so there is no
+# exemption list here -- unlike NO_LOCAL_GLOBAL_SPLIT above, nothing is
+# exempt from carrying the prefix.
+RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
@@ -60,6 +75,37 @@ def check_lanes(example_dir):
     return violations
 
 
+def check_share_ready(example_dir, link):
+    """Decode `link` (a PUZZLE_LINK*.txt path) and return one violation
+    string per pre-share criterion it fails: the link opens clean, and the
+    rules text carries the sudoku prefix (docs/share-checklist.md)."""
+    name = example_dir.name
+    violations = []
+
+    try:
+        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+    except Exception as e:
+        return [f"{name}: {link.name} failed to decode: {e}"]
+
+    # The clued twins fill all 36 outside clues on purpose -- that is what
+    # the name means, and app-solve.mjs reads them with --ring-clues. The
+    # entered-values check does not apply to them; the prefix check still
+    # does.
+    clued = f"_{TAGS[0]}" in link.name
+    entered = sum(
+        1 for cell in puzzle["cells"] if "value" in cell and not cell.get("given")
+    )
+    if entered and not clued:
+        violations.append(
+            f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
+        )
+
+    if not puzzle.get("comment", "").startswith(RULES_PREFIX):
+        violations.append(f"{name}: {link.name} comment missing rules prefix")
+
+    return violations
+
+
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
@@ -87,13 +133,14 @@ def check_example(example_dir):
 
     violations.extend(check_lanes(example_dir))
 
-    violations.extend(
-        f"{name}: link name {link.name} does not match "
-        f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
-        f"(size=NxN, tags in fixed order {list(TAGS)})"
-        for link in sorted(example_dir.glob("PUZZLE_LINK*.txt"))
-        if not LINK_RE.match(link.name)
-    )
+    for link in sorted(example_dir.glob("PUZZLE_LINK*.txt")):
+        if not LINK_RE.match(link.name):
+            violations.append(
+                f"{name}: link name {link.name} does not match "
+                f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
+                f"(size=NxN, tags in fixed order {list(TAGS)})"
+            )
+        violations.extend(check_share_ready(example_dir, link))
 
     return violations
 

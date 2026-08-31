@@ -18,7 +18,7 @@ ISO_SRC = HERE.parent / "isofill" / "PUZZLE_LINK.txt"
 def dirty(src, out):
     """Write `src` back with a value in every non-given cell.
 
-    Every shipped link is given-only — check_links.py enforces it — so a probe
+    Every shipped link is given-only — check_layout.py enforces it — so a probe
     step has nothing to strip from one. These fixtures put the entered values
     back, which is the board shape the probe steps exist to clean up.
     """

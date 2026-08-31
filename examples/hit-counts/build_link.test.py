@@ -45,7 +45,7 @@ def hits(values):
     behind framebuild's ortools import. It must agree with build_size.hits,
     add_hit_count, and HitCountsComponent -- change the rule, change all four
     (CODING_STANDARDS.md, "The rule has one home"). Same trade as
-    check_links.RULES_PREFIX.
+    check_layout.RULES_PREFIX.
     """
     return sum(1 for i, v in enumerate(values) if v == i + 1)
 
