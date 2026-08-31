@@ -2,27 +2,26 @@
 //! ISOFILL. Divide the grid into N regions of N orthogonally connected cells;
 //! every cell in a region holds the same digit; all N digits appear. So each
 //! digit fills exactly N cells. N is the digit count, which must equal the
-//! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9. The prose
-//! below says "ten" for the 10x10 case.
+//! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9.
 //!
-//! One whole-grid component, five deductions per digit and one across digits:
-//!   Cap:   a digit already in ten cells leaves every other cell.
-//!   Force: a digit with exactly ten cells still open takes all of them.
+//! One whole-grid component, five deductions per digit and two across digits:
+//!   Cap:   a digit already in N cells leaves every other cell.
+//!   Force: a digit with exactly N cells still open takes all of them.
 //!   Seed walk: a 0-1 BFS from the digit's lowest-index placed cell. A cell
 //!          already holding the digit costs nothing to enter, an open cell
 //!          that still allows it costs one step, and the budget is the open
-//!          cells the region has left, (10 - placed). Cells outside the walk
+//!          cells the region has left, (N - placed). Cells outside the walk
 //!          lose the digit. A placed cell the walk never meets, or a walk
-//!          under ten cells, is a dead branch: a placed cell is emptied so
-//!          the solver sees it (decision #66).
-//!   Cut:   an open cell in that walk whose removal starves it below ten,
+//!          under N cells, is a dead branch: a placed cell is emptied so
+//!          the solver sees it.
+//!   Cut:   an open cell in that walk whose removal starves it below N,
 //!          or strands a placed cell, must hold the digit. Two dominator
 //!          passes clear most open cells before the per-cell walks that
 //!          answer this exactly (see cutFilter).
 //!   Silent: a digit with no placed cell has no walk to start. Its region
 //!          still sits inside one connected component of the cells that allow
-//!          it, so every component under ten cells loses the digit; if none
-//!          reaches ten the branch is dead.
+//!          it, so every component under N cells loses the digit; if none
+//!          reaches N the branch is dead.
 //!   Perimeter: two disjoint connected regions cannot interleave round the
 //!          border, so four border cells never read a,b,a,b in cyclic order.
 //!          A digit whose placed border cells fall in two arcs separated by
@@ -32,13 +31,13 @@
 //!          border; the split-arc pass is one lap per digit holding two or
 //!          more border cells, over the compacted list of placed cells.
 //!   Budget: every open cell needs a digit, and each digit can take at most
-//!          (10 - placed) more cells, only inside its walk. If no assignment
+//!          (N - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
 //!          Then the matching prune: a (cell, digit) pair that no perfect
-//!          matching uses loses that candidate (Régin). This is the one rule
-//!          that sees across digits: a wrong region for one digit starves
-//!          the others' budgets.
-//! validate is the exact leaf check: each digit one connected blob of ten.
+//!          matching uses loses that candidate (Régin). This rule weighs
+//!          every digit at once: a wrong region for one digit starves the
+//!          others' budgets.
+//! validate is the exact leaf check: each digit one connected blob of N.
 
 function getAffectedCells (cells) {
   return cells
@@ -326,6 +325,7 @@ function * update (instance, puzzle) {
     const { placed, open, allowed } = state[d]
     const others = instance.others[d]
     let walk = null
+    //! Seed walk: bound d's region to what one placed cell can still reach.
     if (placed.length > 0) {
       walk = seedWalk(instance, placed[0], size - placed.length, allowed, value, d)
       // The region holds every placed cell and lies inside the walk. So a
@@ -336,8 +336,10 @@ function * update (instance, puzzle) {
       if (dead) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
     }
     if (placed.length === size) {
+      //! Cap: d already fills all size cells, so every open cell loses it.
       for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
     } else if (placed.length + open.length === size) {
+      //! Force: exactly size cells can hold d, so every open one takes d.
       for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
     } else if (placed.length > 0) {
       // Own copy: later walks reuse instance.mask.
@@ -373,9 +375,10 @@ function * update (instance, puzzle) {
       }
       state[d].near = near.mask // budget (below) limits this digit to its walk
       for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
-      // Cut: an open cell whose removal starves the walk (< size cells) or
-      // strands a placed cell must hold the digit (ticket #101). Each walk
-      // stops as soon as it has its answer: `size` cells, or every placed cell.
+      //! Cut: an open cell whose removal breaks the region must hold d.
+      // "Breaks" is either test: the walk starves below `size` cells, or a
+      // placed cell is stranded (ticket #101). Each walk stops as soon as it
+      // has its answer: `size` cells, or every placed cell.
       const depth = size - placed.length
       const targetStamp = ++instance.targetStamp
       for (const i of placed) instance.targets[i] = targetStamp
@@ -398,10 +401,11 @@ function * update (instance, puzzle) {
         if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
       }
     } else if (open.length > 0) {
-      // Silent: a digit with no placed cell gets no walk above, because every
-      // walk starts from one. Its region still lies inside a single
-      // orthogonally connected component of the cells that allow it, so a
-      // component smaller than `size` can hold no region (ticket #142).
+      //! Silent: d has no seed, so it needs one component of size cells or more.
+      // Every walk above starts from a placed cell, so a digit with none gets
+      // none. Its region still lies inside a single orthogonally connected
+      // component of the cells that allow it, so a component smaller than
+      // `size` can hold no region (ticket #142).
       const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
       near.fill(0)
       const small = []
@@ -443,6 +447,8 @@ function * update (instance, puzzle) {
 //     directions hold digit a loses every digit b placed elsewhere on the
 //     border, since a, b, a, b is what the cycle would then read. A digit
 //     placed only in the interior witnesses no such arc and is left alone.
+//! Perimeter: two regions cannot interleave, so no four border cells in cyclic
+//! order read a, b, a, b.
 function * perimeterRule (instance, puzzle, lo, hi) {
   const { cells, border, value, at, dig } = instance
   const arcOf = instance.arcOf || (instance.arcOf = new Int8Array(hi + 1)) // arc id per digit
@@ -495,6 +501,8 @@ function * perimeterRule (instance, puzzle, lo, hi) {
 // connected component of the residual graph (cell -> digit for an unmatched
 // pair, digit -> cell for a matched one). Every other pair is in no solution,
 // so `drops` lists them as [cell, digit].
+//! Budget: match open cells to the digits' free slots. No full matching is a
+//! dead branch; a pair no matching can use loses that candidate.
 function budget (state, lo, hi, size) {
   const n = state[lo].allowed.length
   const isOpen = new Uint8Array(n)

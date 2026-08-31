@@ -125,7 +125,7 @@ arithmetic and so needs row-major order.
 
 ## What the component deduces
 
-`update` runs seven sound deductions per digit and one across digits. Ten
+`update` runs five sound deductions per digit and two across digits. Ten
 regions of ten cells, one digit each, means every digit fills exactly ten
 cells:
 
@@ -208,7 +208,7 @@ cells:
   partition the grid, so the rule runs per digit pair instead of on one
   transition count. One lap of the 36 border cells for the flank pass, and one
   lap per digit that holds two or more border cells for the split-arc pass.
-- **Budget** — the one rule that looks across digits. Every open cell needs
+- **Budget** — the rule that weighs every digit at once. Every open cell needs
   a digit, and digit `d` can take at most `10 − placed` more cells, only
   cells inside its walk. Build the flow network source → digit (capacity
   `10 − placed`) → open cell (capacity 1, if the cell is in the digit's
@@ -391,7 +391,9 @@ share code. Change the rule, and change both in the same diff.
 There is no generator. Write a full solution grid into `gen.json`, list the
 clue cells, and run `verify.py` on it. It must print `unique`. To carve clues,
 remove one at a time and re-run; keep any whose removal makes the puzzle
-ambiguous. `just check` re-verifies the shipped instance on every run.
+ambiguous. `just check` does not re-run this proof — the CP-SAT solve is slow,
+so it runs by hand through `just verify-isofill`. The proof of the shipped
+instance stays valid as long as its board and clue set do not change.
 
 ## Timing
 
