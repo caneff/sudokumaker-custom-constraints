@@ -56,6 +56,16 @@ the default; the author flips the constant in the segment. No author input.
 Expect the loose mode to prune less (precedent: ISS `FullRank.TIE_MODE`,
 `docs/research/190-one-sided-clues-ties-non-house-lines.md` §7).
 
+The flag says what a tie **means**. The line's kind then says how hard a rule
+may **push**: on a house no two cells hold the same digit, so a `<=` a rule
+would otherwise have to settle for tightens to `<` whichever way the flag
+reads. Take that tightening where the strength matters — running-start gives
+up 3.4× on its shipped frame board without it (#239,
+`examples/running-start/OPTIMIZATION_LOG.md`) — and ask
+`getCellsCanHaveRepeats` in `update` for it, like any other gate. A rule that
+only reads the flag, never the kind, is still fine: the flag alone is always
+sound.
+
 ## Local and global variants
 
 Each example ships two puzzle links from one component set:

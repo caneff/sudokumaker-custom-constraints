@@ -6,7 +6,8 @@
 //
 // On random states the current update must leave a subset of what the pinned
 // reference commit's update left, cell for cell. Both components are covered:
-// the single line clue and the opposite-clue pair.
+// the single line clue and the opposite-clue pair. Every state declares a
+// house, the kind the floor commit is sound on -- see REF_COMMIT below.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -17,6 +18,15 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the components as they stand at the commit that pins this test.
+//
+// Every state below declares a HOUSE. The floor commit compares neighbours
+// strictly everywhere, which is sound on a house (no two cells hold the same
+// digit) and unsound on a drawn line that may repeat -- the bug #239 fixed. So
+// a house is where the floor means something: it holds the ties work to losing
+// no strength at all on the frame lines every shipped board is built from,
+// while leaving the component free to push less hard on a bare line, which is
+// the whole point of the fix. Soundness on the other kinds is the soundness
+// harness's job, not this file's.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const curLine = load('RunningStartComponent.js', NAMES)
@@ -44,7 +54,7 @@ function fuzzLine (cur, ref, clues, setUp, label) {
       const start = new Map()
       for (const c of clues) start.set(c, randomSet(1, m))
       for (const c of LINE) start.set(c, randomSet(1, m))
-      const w = compareStrength(cur, ref, apply, start)
+      const w = compareStrength(cur, ref, apply, start, { kind: 'house', digitCount: m })
       if (w === null) continue
       states++
       weaker += w.length

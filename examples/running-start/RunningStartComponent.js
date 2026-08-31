@@ -3,8 +3,10 @@
 //! ascending run is k cells long. So line[0..k-1] ascend, then (unless k is
 //! the whole line) line[k] breaks the run.
 //!
-//! Nothing here needs the line to be a house or a full house: it runs on every
-//! line kind with no gate (docs/line-contract.md).
+//! Every rule here is sound on every line kind. The line's kind only decides
+//! how hard each one may push: on a house two neighbours can never be equal,
+//! so both the climb and the break tighten to strict comparisons there
+//! (docs/line-contract.md).
 
 // Ties, per docs/line-contract.md. false: the run climbs strictly, so an equal
 // neighbour ends it. true: an equal neighbour continues the run, and only a
@@ -25,15 +27,24 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Does a digit `d` carry the run on from a previous cell of value `prev`?
-function climbs (prev, d) {
-  return RUN_STRICT ? d > prev : d >= prev
+// Is the line a house? Asked at solve time and re-tested until it settles: it
+// cannot be asked once at register time, because main code runs before the
+// built-in row/column houses exist and would read every line as bare (gotcha
+// 6). Query the line alone -- a clue cell in the list flips
+// getCellsCanHaveRepeats to true. A house never repeats again, so the true
+// answer caches on the instance.
+function isHouse (instance, puzzle) {
+  if (instance.house) return true
+  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)
+  return instance.house
 }
 
 function runningStart (puzzle, line) {
   let count = 1
   for (let i = 1; i < line.length; i++) {
-    if (climbs(puzzle.getValue(line[i - 1]), puzzle.getValue(line[i]))) count++
+    const prev = puzzle.getValue(line[i - 1])
+    const d = puzzle.getValue(line[i])
+    if (ALLOW_TIES ? d >= prev : d > prev) count++
     else break
   }
   return count
@@ -70,7 +81,7 @@ function * below (puzzle, a, b, strict) {
 // end value, so from maxEnd[k-1]. Rejecting k only when even the largest
 // reachable predecessor cannot be broken keeps this sound — it never drops a
 // true clue.
-function feasibleClues (puzzle, line) {
+function feasibleClues (puzzle, line, climbStrict, breakStrict) {
   const n = line.length
   const feasible = new Set()
   let prevMin = -Infinity
@@ -78,7 +89,7 @@ function feasibleClues (puzzle, line) {
     let mn = Infinity
     let mx = -Infinity
     for (const d of puzzle.getCandidates(line[j])) {
-      if (climbs(prevMin, d)) {
+      if (climbStrict ? d > prevMin : d >= prevMin) {
         if (d < mn) mn = d
         if (d > mx) mx = d
       }
@@ -91,7 +102,7 @@ function feasibleClues (puzzle, line) {
     } else {
       let minNext = Infinity
       for (const d of puzzle.getCandidates(line[k])) if (d < minNext) minNext = d
-      if (!climbs(mx, minNext)) feasible.add(k) // the run can break below the largest reachable end
+      if (breakStrict ? minNext < mx : minNext <= mx) feasible.add(k)
     }
   }
   return feasible
@@ -103,12 +114,22 @@ function * update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
 
+  // How hard each half may push. On a house no two cells hold the same digit,
+  // so `>=` collapses to `>` and `<=` collapses to `<`: both comparisons go
+  // strict there whichever way ALLOW_TIES reads. On a drawn line that may
+  // repeat, only the reading the flag names is sound. Recovering the strict
+  // break on a house is not cosmetic -- the shipped frame board solves 3.4x
+  // slower without it (README, ## Timing).
+  const house = isHouse(instance, puzzle)
+  const climbStrict = RUN_STRICT || house
+  const breakStrict = !RUN_STRICT || house
+
   // ---- Reverse: keep only clue values the line can still realize ----
   // Candidate-aware, so filled cells anywhere on the line count. Stronger than a
   // min/max interval: it also drops interior values whose required break is
   // impossible, not just values outside the reachable run-length range.
   if (!puzzle.hasValue(clue)) {
-    const feasible = feasibleClues(puzzle, line)
+    const feasible = feasibleClues(puzzle, line, climbStrict, breakStrict)
     const bad = []
     for (let d = lo; d <= hi; d++) if (!feasible.has(d)) bad.push(d)
     if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
@@ -118,12 +139,12 @@ function * update (instance, puzzle) {
   // Cells line[0..kmin-1] climb for every feasible clue value, so this run has
   // length at least kmin. The neighbour chain follows on any line. The per-cell
   // window does not: it counts j cells strictly below line[j], which only holds
-  // while the run climbs strictly. With ties allowed the whole prefix may be
-  // one repeated digit, so the window would cut digits the line needs.
+  // while the run climbs strictly. Where it does not, the whole prefix may be
+  // one repeated digit and the window would cut digits the line needs.
   const kmin = Math.min(...Array.from(puzzle.getCandidates(clue)))
   for (let j = 0; j < kmin && j < n; j++) {
-    if (j >= 1) yield * below(puzzle, line[j - 1], line[j], RUN_STRICT)
-    if (!RUN_STRICT) continue
+    if (j >= 1) yield * below(puzzle, line[j - 1], line[j], climbStrict)
+    if (!climbStrict) continue
     // line[j] needs j cells below it and kmin-1-j above. Using kmin (the
     // smallest feasible length) gives the loosest ceiling, so a value it drops
     // is impossible for every feasible clue.
@@ -135,11 +156,9 @@ function * update (instance, puzzle) {
   }
 
   // ---- Forward: clue pinned -> the break after the prefix's last cell ----
-  // The break is the climb's negation: `line[k] <= line[k-1]` ends a strict
-  // run, and only `line[k] < line[k-1]` ends one that carries ties.
   if (puzzle.hasValue(clue)) {
     const k = puzzle.getValue(clue) // k === kmin here, so the window above already ran
-    if (k < n) yield * below(puzzle, line[k], line[k - 1], !RUN_STRICT)
+    if (k < n) yield * below(puzzle, line[k], line[k - 1], breakStrict)
   }
 }
 

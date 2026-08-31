@@ -21,10 +21,14 @@
 #     --component RunningStartComponent.js --out /tmp/candidate.txt
 #
 # --component names a file whose basename (minus .js) matches an existing
-# component registered on PUZZLE_LINK.txt's "Running Start Lines" constraint
+# component registered on the board's "Running Start Lines" constraint
 # (RunningStartComponent or RunningStartPairComponent); that component's code
 # becomes the given file's, minified. The backend and the sibling component
 # are untouched.
+#
+# --board swaps against a different committed link in this directory, which is
+# how `just time running-start --board PUZZLE_LINK_local.txt` reaches the local
+# bent-path board.
 
 import argparse
 import json
@@ -46,12 +50,17 @@ CONSTRAINT_NAME = "Running Start Lines"
 TIMED_COMPONENT = "RunningStartComponent"
 
 
-def build(component_path, out_path):
-    """Swap one named component's code into the committed PUZZLE_LINK.txt and
-    write the result to out_path. Same contract as numbered-rooms/skyscraper."""
+def build(component_path, out_path, board_path=None):
+    """Swap one named component's code into a committed board link and write
+    the result to out_path. Same contract as numbered-rooms/skyscraper.
+
+    `board_path` defaults to PUZZLE_LINK.txt; naming another committed link is
+    how `just time running-start --board PUZZLE_LINK_local.txt` reaches the
+    local board, whose bent paths are the fixture for a bare-line rule."""
     component_path = pathlib.Path(component_path)
     code = minify_js(component_path.read_text())
-    base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+    board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
+    base = decode_puzzle(board_path.read_text().strip())
     doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
 
@@ -128,8 +137,9 @@ def check(link, doc):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--component", help="swap this file into PUZZLE_LINK.txt")
+    p.add_argument("--component", help="swap this file into the board link")
     p.add_argument("--out", help="where to write the swapped-in link")
+    p.add_argument("--board", help="a committed link other than PUZZLE_LINK.txt")
     args = p.parse_args()
     if args.component is None and args.out is None:
         # no args: rebuild PUZZLE_LINK.txt from source, the current default
@@ -140,5 +150,5 @@ if __name__ == "__main__":
     elif args.component is None or args.out is None:
         p.error("--component and --out must be given together")
     else:
-        build(args.component, args.out)
+        build(args.component, args.out, board_path=args.board)
         print(f"wrote {args.out}")
