@@ -6,80 +6,245 @@
 //
 //   node examples/running-start/soundness-harness.mjs
 //
-// The line test uses the real seed-104 puzzle (seed104_solution.json). The pair test
-// uses a synthetic mountain line, because no line in this puzzle reaches the
-// A + B === n + 1 case that drives the pair's unimodal branch.
+// Both components carry an `ALLOW_TIES` constant (docs/line-contract.md), so
+// every pool runs twice: once with a tie ending the run, once with a tie
+// continuing it. The line component claims soundness on every line kind, so
+// each reading meets bare, house, and full-house lines, plus a bare pool whose
+// lines tie right after the run — the state the descent rule reads.
+//
+// The pair test also uses a synthetic mountain line, because no line in the
+// seed-104 puzzle reaches the A + B === n + 1 case that drives the pair's
+// unimodal branch.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { read, load } = makeIo(HERE)
+const { read, loadSource } = makeIo(HERE)
 const { rnd, pick } = makeRng()
 
-installGlobals(1, 9)
+const N = 9
+installGlobals(1, N)
 
-const lineMod = load('RunningStartComponent.js', ['setParams', 'update'])
-const pairMod = load('RunningStartPairComponent.js', ['setParams', 'update'])
+// The components as they would read with the constant set either way. The app
+// pastes each file as its own segment, so a flag is a source edit, not a
+// parameter: the harness makes the same edit.
+const TIES_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
+function loader (file, names) {
+  const src = read(file)
+  if (!TIES_FLAG.test(src)) throw new Error(`${file} has no 'const ALLOW_TIES = ...' line to flip`)
+  return allowTies => loadSource(src.replace(TIES_FLAG, `const ALLOW_TIES = ${allowTies}`), names)
+}
+const loadLine = loader('RunningStartComponent.js', ['setParams', 'update', 'validate'])
+const loadPair = loader('RunningStartPairComponent.js', ['setParams', 'update'])
+
+// The truth clue for one line of digits: the length of the first run read
+// inward. A tie ends the run when ties are hidden and continues it when they
+// are allowed. A third statement of the rule (CODING_STANDARDS.md, "The rule
+// has one home") — it must agree with the component and with build_size.rs.
+function runWith (allowTies, vals) {
+  let k = 1
+  for (let i = 1; i < vals.length; i++) {
+    if (allowTies ? vals[i] >= vals[i - 1] : vals[i] > vals[i - 1]) k++
+    else break
+  }
+  return k
+}
 
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 function seeder (c, v) {
   const mode = pick(['pin', 'full', 'subset'])
   if (mode === 'pin') return [v]
-  if (mode === 'full') return [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  if (mode === 'full') return [...Array(N).keys()].map(i => i + 1)
   const s = new Set([v])
-  for (let d = 1; d <= 9; d++) if (rnd() < 0.5) s.add(d)
+  for (let d = 1; d <= N; d++) if (rnd() < 0.5) s.add(d)
   return [...s]
 }
 
-// ---- Line component against the real puzzle ----
-const sol = JSON.parse(read('seed104_solution.json'))
-let lineTests = 0
-let lineBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const [clue, line] = sol.groups[iter % sol.groups.length]
-  const all = [clue, ...line]
-  const truth = {}
-  for (const c of all) truth[c] = sol.val[c]
-  const p = makePuzzle(truth, seeder)
-  const inst = {}
-  lineMod.setParams(inst, clue, line)
-  const v = violates(lineMod, inst, p, truth)
-  lineTests++
-  if (v) { lineBad++; if (lineBad <= 5) console.log('LINE violation', v, 'clue', clue) }
-}
-console.log('line component:', lineTests, 'tests,', lineBad, 'violations')
+const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
 
-// ---- Pair component against a synthetic mountain line ----
-// line[0..8] strictly up to the peak (9 at index 3) then strictly down.
-// From the left the increasing run is 2<4<7<9 -> A = 4. From the right the
-// increasing-inward run is 1<3<5<6<8<9 -> B = 6. A + B = 10 = n + 1.
-const mountain = [2, 4, 7, 9, 8, 6, 5, 3, 1]
+// A bare line that ties right after its ascending run: an ascending run, the
+// last digit again, then random filler. This is the state the two descent
+// rules read, and the one a pool of uniform random digits almost never draws.
+function makeTieLine (n) {
+  const line = []
+  let v = 1 + ((rnd() * 3) | 0)
+  const run = 1 + ((rnd() * 4) | 0)
+  for (let i = 0; i < run; i++) { line.push(v); v += 1 + ((rnd() * 2) | 0) }
+  line.push(line[line.length - 1]) // the tie
+  while (line.length < n) line.push(1 + ((rnd() * N) | 0))
+  return line.slice(0, n)
+}
+
+// ---- Line component: three kinds, both readings, plus the tie pool ----
+
+const LINE_CLUE = 200
+
+function fuzzLine (label, { allowTies, kind, n, iters, digitsOf }) {
+  const mod = loadLine(allowTies)
+  const cells = Array.from({ length: n }, (_, i) => i)
+  let bad = 0
+  let fired = 0
+  for (let iter = 0; iter < iters; iter++) {
+    const digits = digitsOf ? digitsOf(n) : makeLine(rnd, kind, n, N)
+    const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
+    for (let i = 0; i < n; i++) truth[i] = digits[i]
+    const p = makePuzzle(truth, seeder, { kind, digitCount: N })
+    const inst = {}
+    mod.setParams(inst, LINE_CLUE, cells)
+    const before = total(p)
+    const v = violates(mod, inst, p, truth)
+    if (total(p) < before) fired++
+    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
+  }
+  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
+  return { bad, fired }
+}
+
+let lineBad = 0
+let lineSilent = 0
+for (const allowTies of [false, true]) {
+  const tag = allowTies ? 'ties continue' : 'ties end     '
+  // A bare line is shorter than the digit count and may repeat; a house is six
+  // distinct digits out of nine; a full house is a permutation of 1..9.
+  const pools = [
+    ['bare', 7, null],
+    ['house', 6, null],
+    ['fullHouse', N, null],
+    ['bare', 7, makeTieLine]
+  ]
+  for (const [kind, n, digitsOf] of pools) {
+    const name = digitsOf ? 'bare, tied' : kind
+    const r = fuzzLine(`line, ${name.padEnd(10)} ${tag}`, { allowTies, kind, n, iters: 20000, digitsOf })
+    lineBad += r.bad
+    if (r.fired === 0) lineSilent++
+  }
+}
+// The same component against the real seed-104 puzzle, whose lines are the
+// frame rows and columns of a shipped board: full houses drawn from a grid a
+// generator actually proved unique, not from makeLine.
+const sol = JSON.parse(read('seed104_solution.json'))
+let realBad = 0
+for (const allowTies of [false, true]) {
+  const mod = loadLine(allowTies)
+  let bad = 0
+  for (let iter = 0; iter < 20000; iter++) {
+    const [clue, line] = sol.groups[iter % sol.groups.length]
+    const truth = {}
+    for (const c of [clue, ...line]) truth[c] = sol.val[c]
+    const p = makePuzzle(truth, seeder, { kind: 'fullHouse', digitCount: N })
+    const inst = {}
+    mod.setParams(inst, clue, line)
+    const v = violates(mod, inst, p, truth)
+    if (v) { bad++; if (bad <= 5) console.log('seed-104 violation', v, 'clue', clue) }
+  }
+  console.log(`line, seed 104   ${allowTies ? 'ties continue' : 'ties end     '}:`, 20000, 'tests,', bad, 'violations')
+  realBad += bad
+}
+
+console.log('line component:', lineBad + realBad, 'violations,', lineSilent, 'pools that never pruned')
+
+// ---- `validate` and `update` agree on a tie ----
+//
+// On a line pinned to its digits, `feasibleClues` is exact: exactly one clue
+// value survives, and it is the one `validate` accepts. Running that over the
+// tie pool under both readings holds the two halves of the component to the
+// same rule — the case where a tie right after the run decides the answer.
+let agreeBad = 0
+let agreeRuns = 0
+for (const allowTies of [false, true]) {
+  const mod = loadLine(allowTies)
+  const n = 7
+  const cells = Array.from({ length: n }, (_, i) => i)
+  const inst = {}
+  mod.setParams(inst, LINE_CLUE, cells)
+  for (let iter = 0; iter < 2000; iter++) {
+    const digits = makeTieLine(n)
+    const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
+    for (let i = 0; i < n; i++) truth[i] = digits[i]
+    const openClue = [...Array(N).keys()].map(i => i + 1)
+    const p = makePuzzle(truth, (c, v) => (c === LINE_CLUE ? openClue : [v]), { kind: 'bare', digitCount: N })
+    fixpoint(mod, inst, p)
+    const kept = [...p._cand.get(LINE_CLUE)]
+    const accepted = openClue.filter(k => {
+      const filled = { ...truth, [LINE_CLUE]: k }
+      return mod.validate(inst, makePuzzle(filled, (c, v) => [v], { kind: 'bare', digitCount: N }))
+    })
+    agreeRuns++
+    if (kept.length !== accepted.length || accepted.some(k => !kept.includes(k))) {
+      agreeBad++
+      if (agreeBad <= 5) console.log('update/validate disagree on', digits.join(''), 'update kept', kept, 'validate accepts', accepted)
+    }
+  }
+}
+console.log('update/validate agreement on tied lines:', agreeRuns, 'lines,', agreeBad, 'disagreements')
+
+// ---- Pair component ----
+//
+// The pair reads both ends of one line. With ties hidden the two runs share at
+// most the peak on any line, so A + B <= n + 1 holds everywhere. With ties
+// allowed a repeated digit can sit in both runs at once, so the rule needs a
+// house — the component asks for one in `update`, and must go quiet on a bare
+// line rather than prune what the line needs.
+
 const CA = 100
 const CB = 101
-const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-const trueA = 4
-const trueB = 6
-let pairTests = 0
-let pairBad = 0
-let pairFired = 0 // coverage: the unimodal branch actually ran
-for (let iter = 0; iter < 20000; iter++) {
-  const truth = { [CA]: trueA, [CB]: trueB }
-  for (const i of LINE) truth[i] = mountain[i]
-  const p = makePuzzle(truth, seeder)
-  const inst = {}
-  pairMod.setParams(inst, CA, CB, LINE)
-  // did the branch fire? it fires iff min(A)+min(B) === n+1
-  const minA = Math.min(...p.getCandidates(CA))
-  const minB = Math.min(...p.getCandidates(CB))
-  if (minA + minB === LINE.length + 1) pairFired++
-  const v = violates(pairMod, inst, p, truth)
-  pairTests++
-  if (v) { pairBad++; if (pairBad <= 5) console.log('PAIR violation', v) }
-}
-console.log('pair component:', pairTests, 'tests,', pairBad, 'violations,', pairFired, 'unimodal firings')
 
-const ok = lineBad === 0 && pairBad === 0 && pairFired > 0
+// line[0..8] strictly up to the peak (9 at index 3) then strictly down. From
+// the left the run is 2<4<7<9 -> A = 4, from the right 1<3<5<6<8<9 -> B = 6,
+// so A + B = 10 = n + 1 and the unimodal branch fires.
+const mountain = [2, 4, 7, 9, 8, 6, 5, 3, 1]
+
+function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
+  const mod = loadPair(allowTies)
+  let bad = 0
+  let fired = 0
+  let unimodal = 0
+  for (let iter = 0; iter < iters; iter++) {
+    const digits = digitsOf()
+    const line = digits.map((_, i) => i)
+    const truth = { [CA]: runWith(allowTies, digits), [CB]: runWith(allowTies, [...digits].reverse()) }
+    for (let i = 0; i < digits.length; i++) truth[i] = digits[i]
+    const p = makePuzzle(truth, seeder, { kind, digitCount: N })
+    const inst = {}
+    mod.setParams(inst, CA, CB, line)
+    if (Math.min(...p.getCandidates(CA)) + Math.min(...p.getCandidates(CB)) === line.length + 1) unimodal++
+    const before = total(p)
+    const v = violates(mod, inst, p, truth)
+    if (total(p) < before) fired++
+    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
+  }
+  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned,', unimodal, 'unimodal firings')
+  return { bad, fired, unimodal }
+}
+
+let pairBad = 0
+let pairUnimodal = 0
+const pairFiredOn = {}
+for (const allowTies of [false, true]) {
+  const tag = allowTies ? 'ties continue' : 'ties end     '
+  const mountainRun = fuzzPair(`pair, mountain   ${tag}`, {
+    allowTies, kind: 'fullHouse', digitsOf: () => mountain, iters: 20000
+  })
+  const houseRun = fuzzPair(`pair, house      ${tag}`, {
+    allowTies, kind: 'house', digitsOf: () => makeLine(rnd, 'house', 6, N), iters: 10000
+  })
+  const bareRun = fuzzPair(`pair, bare, tied ${tag}`, {
+    allowTies, kind: 'bare', digitsOf: () => makeTieLine(7), iters: 10000
+  })
+  pairBad += mountainRun.bad + houseRun.bad + bareRun.bad
+  pairUnimodal += mountainRun.unimodal
+  pairFiredOn[allowTies ? 'tiesBare' : 'strictBare'] = bareRun.fired
+}
+console.log('pair component:', pairBad, 'violations,', pairUnimodal, 'unimodal firings')
+
+// The pair's house gate, stated as behaviour: with ties allowed it must prune
+// nothing on a bare line, and with ties hidden it must still prune there.
+console.log('pair on a bare line: ties hidden pruned', pairFiredOn.strictBare, 'states, ties allowed pruned', pairFiredOn.tiesBare)
+
+const ok = lineBad === 0 && realBad === 0 && lineSilent === 0 && agreeBad === 0 && agreeRuns > 0 &&
+  pairBad === 0 && pairUnimodal > 0 &&
+  pairFiredOn.strictBare > 0 && pairFiredOn.tiesBare === 0
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

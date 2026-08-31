@@ -6,9 +6,29 @@ of the first ascending sequence in that direction.
 For example, a row with `142356789` gives a left clue of **2** (1, 4) and a
 right clue of **1** (9). Reading from the left, `1 < 4`, then `3` drops below
 `4`, so the run is the two cells `1 4`. Reading from the right, `9` drops to `8`
-at once, so the run is the single cell `9`. The first cell always counts. In a
-sudoku line all digits differ, so "not ascending" always means a strict drop.
+at once, so the run is the single cell `9`. The first cell always counts.
 The 4x4 and 6x6 puzzles carry the same rule with a size-appropriate example.
+
+## Ties
+
+Two equal digits next to each other are the one case the sentence above does
+not settle, and a drawn line can hold them: a bent path is not a house, so its
+digits may repeat. `const ALLOW_TIES` at the top of both component files
+decides which reading the segment enforces (`docs/line-contract.md`):
+
+| `ALLOW_TIES` | The run | Ends at | Shipped |
+| --- | --- | --- | --- |
+| `false` | climbs strictly (`<`) | `line[k] <= line[k-1]` | yes |
+| `true` | may hold level (`<=`) | `line[k] < line[k-1]` | no |
+
+Flip the constant in the pasted segment to change the reading, and change the
+puzzle's rules text with it — `build_size.rule_text` carries the sentence that
+states it. Two rules only hold under the strict reading and stand down under
+the other: the per-cell floor/ceil window (it counts `j` cells strictly below
+`line[j]`, which a level run does not supply) and the pair component's
+`A + B <= n + 1` (a run of equal digits belongs to both end runs at once), so
+the pair asks for a house before it prunes. Both components are fuzzed under
+both readings; see "Run the tests".
 
 Each puzzle's in-app rule text is prefixed `Running Start:` and ends with a note
 that the corner `1`s only fill space for SudokuMaker's solver and should be
@@ -33,6 +53,19 @@ deleted before publishing.
   component files. Run it after changing any of them:
   `uv run --with lzstring examples/running-start/build_link.py`.
 - `PUZZLE_LINK_4x4.txt`, `PUZZLE_LINK_6x6.txt` — smaller Running Start puzzles.
+- `PUZZLE_LINK_local.txt` — the **local** board: 36 bent paths drawn as groups,
+  running `main.js`. Every path turns a corner, so the app reads it as a bare
+  line and its digits may repeat — the board that exercises the rules a drawn
+  line gets. Built by
+  `uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths`,
+  with its geometry recorded in `gen_local.json`.
+- `rebuild_size.py` — re-encodes a committed board (`gen_4x4.json`,
+  `gen_6x6.json`, `gen_local.json`) with the current component code and rule
+  text, no fresh CP-SAT search, so a sized link never ships a stale component
+  snapshot:
+  `uv run --with ortools --with lzstring examples/running-start/rebuild_size.py 4`.
+  The shipped 9x9 global board is not a framebuild board, so `build_link.py`
+  rebuilds that one.
 - `build_size.py` — builds the whole document from scratch for any grid size,
   no template needed. It generates a grid, derives every line's clue, carves a
   unique puzzle (OR-Tools), and encodes the link. It shares `main-global.js`
@@ -72,23 +105,29 @@ all sound:
 
 - **Reverse, feasible clue set** — `feasibleClues` walks the line once and keeps
   only the clue values the live candidates can still realize. A value `k` needs
-  an increasing prefix of length `k` and, unless `k` is the whole line, a
-  descent at position `k`. The walk tracks the smallest and largest end value an
-  increasing prefix can reach; it drops `k` only when even the largest reachable
-  predecessor cannot be beaten, so it never removes a true clue. This is
+  a climbing prefix of length `k` and, unless `k` is the whole line, a break at
+  position `k`. The walk tracks the smallest and largest end value a climbing
+  prefix can reach; it drops `k` only when even the largest reachable
+  predecessor cannot be broken, so it never removes a true clue. This is
   stronger than a min/max interval — it also removes interior values whose
-  descent is impossible, and a filled cell anywhere on the line counts.
+  break is impossible, and a filled cell anywhere on the line counts.
 - **Forward, guaranteed prefix** — if the clue's smallest remaining candidate is
-  `kmin`, the first `kmin` cells must strictly increase. Enforce the pairwise
-  `<` chain and, for each cell `line[j]` with `j < kmin`, the window
-  `[1+j, 9−(kmin−1−j)]`: it needs `j` cells below and `kmin−1−j` above. This runs
-  before the clue is pinned and is tighter than the neighbour-only chain, which
-  only looks one step.
+  `kmin`, the first `kmin` cells must climb. Enforce the pairwise chain and,
+  under the strict reading only, the window `[1+j, 9−(kmin−1−j)]` on each cell
+  `line[j]` with `j < kmin`: it needs `j` cells below and `kmin−1−j` above. This
+  runs before the clue is pinned and is tighter than the neighbour-only chain,
+  which only looks one step.
 - **Forward, pinned** — a known clue `k` is the guaranteed prefix above (with
-  `kmin == k`) plus the descent `line[k] < line[k−1]`.
+  `kmin == k`) plus the break at `line[k]`. The break is the climb's negation,
+  so a strict run ends on `line[k] <= line[k−1]` — an equal neighbour is enough,
+  and demanding a strict drop there is what used to cut digits a drawn line
+  needed (#195).
 - **Cross-line pair** — two clues on opposite ends of one line share a
   permutation: the left increasing run and the right increasing-inward run can
-  share at most one cell (the peak), so `A + B <= n + 1`. The pair component
+  share at most one cell (the peak), so `A + B <= n + 1`. Under the loose
+  reading a run of equal digits sits in both, so the component asks
+  `getCellsCanHaveRepeats` for a house first and goes quiet on a bare line. The
+  pair component
   caps each clue at `n + 1` minus the other's smallest remaining value. When
   `A + B` is forced to exactly `n + 1`, the line is unimodal — strictly up to
   the shared peak, then strictly down — so it propagates both monotone runs and
@@ -112,11 +151,23 @@ python generate.py
 # -> chosen seed, interior givens, clues kept, "FINAL unique OK"
 ```
 
-`soundness-harness.mjs` reads the seed-104 solution from `seed104_solution.json` (a
-committed dump of the puzzle's `cells` values and the constraint's
-`input.groups` in `[clueCell, lineCells]` form). The pair test also fuzzes a
-synthetic mountain line, because no line in this puzzle reaches the
-`A + B == n + 1` case that drives the pair's unimodal branch.
+`soundness-harness.mjs` runs every pool twice, once per reading of
+`ALLOW_TIES`, editing the constant in the source the way an author edits the
+pasted segment. The line component meets bare, house, and full-house lines
+(`makeLine`, `docs/line-contract.md`), plus a bare pool whose lines tie right
+after the run — the state the break rule reads, and one a uniform random pool
+almost never draws. A further pool reads the seed-104 solution from
+`seed104_solution.json` (a committed dump of the puzzle's `cells` values and
+the constraint's `input.groups` in `[clueCell, lineCells]` form), so the
+component also meets the frame lines of a shipped board.
+
+Two checks beyond soundness: `update` and `validate` must agree on a tied line
+(on a line pinned to its digits the surviving clue candidates must be exactly
+the clue values `validate` accepts), and the pair component must prune on a
+bare line under the strict reading and prune nothing there under the loose one.
+The pair test also fuzzes a synthetic mountain line, because no line in the
+seed-104 puzzle reaches the `A + B == n + 1` case that drives its unimodal
+branch.
 
 ## Timing
 

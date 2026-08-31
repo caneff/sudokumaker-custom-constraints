@@ -19,6 +19,25 @@
 //! (the two increasing runs share at most the peak). When A + B == n + 1 the line
 //! is unimodal: strictly up to the peak, then strictly down.
 
+// Ties, per docs/line-contract.md, and it must match the constant in
+// RunningStartComponent.js: false means an equal neighbour ends the run, true
+// means it continues it. The cap below counts on the two runs sharing at most
+// one cell. With ties hidden they do so on any line. With ties allowed a run of
+// equal digits belongs to both runs at once -- so `A + B <= n + 1` fails on a
+// line whose digits may repeat, and the whole component then needs a house.
+const ALLOW_TIES = false
+
+// The line's kind, asked at solve time and re-tested until it settles. It
+// cannot be asked once at register time: main code runs before the built-in
+// row/column houses exist and would read every line as bare (gotcha 6). Query
+// the line alone -- a clue cell in the list flips getCellsCanHaveRepeats to
+// true. A house never repeats again, so the true answer caches.
+function isHouse (instance, puzzle) {
+  if (instance.house) return true
+  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)
+  return instance.house
+}
+
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
 }
@@ -61,6 +80,7 @@ function * incRun (puzzle, cells) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
+  if (ALLOW_TIES && !isHouse(instance, puzzle)) return
   const cap = n + 1
   const ca = Array.from(puzzle.getCandidates(clueA))
   const cb = Array.from(puzzle.getCandidates(clueB))

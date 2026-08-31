@@ -9,9 +9,17 @@
 #
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3
+#   uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths
 #
-# Args: n box_height box_width   (box_height * box_width == n)
+# Args: n box_height box_width [seed_count] [--paths]
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.
+#
+# --paths builds the LOCAL board instead: bent paths in place of the straight
+# frame lines, shipped as drawn groups on the main.js lane. A path spans more
+# than one row and more than one column, so the app reads it as a bare line and
+# its digits may repeat -- the shape the local variant exists to prove
+# (docs/line-contract.md). At n = 9 the pair is renamed to the plain
+# PUZZLE_LINK_local.txt and gen_local.json.
 
 import pathlib
 import sys
@@ -37,10 +45,14 @@ CORNER_NOTE = (
 
 
 def rule_text(n):
+    # The tie sentence states what `ALLOW_TIES = false` means in the component
+    # (docs/line-contract.md): the sequence climbs strictly, so two equal
+    # neighbours end it. Flip the constant and this sentence changes with it.
     rule = (
         "Running Start: Outside cells on clues must contain a digit, and that "
         "digit indicates the length of the first ascending sequence in that "
-        "direction."
+        "direction. The sequence ascends strictly: two equal digits next to "
+        "each other end it."
     )
     ex = RULE_EXAMPLES.get(n)
     if ex:
@@ -80,4 +92,12 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
-    run(SPEC)
+    paths = "--paths" in sys.argv
+    if paths:
+        sys.argv.remove("--paths")
+    n = int(sys.argv[1])
+    run(SPEC, paths=paths)
+    if n == 9 and paths:
+        (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
+        (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
+        print("renamed to PUZZLE_LINK_local.txt and gen_local.json")

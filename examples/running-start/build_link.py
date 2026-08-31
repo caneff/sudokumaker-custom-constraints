@@ -32,7 +32,10 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from build_size import rule_text
 from frame import cosmetics
+from framebuild import RULES_PREFIX
 from link_codec import decode_puzzle, encode_link
 from link_swap import check_and_write, swap_component_code
 from minify import minify_js
@@ -99,15 +102,10 @@ def build_from_template():
     # match the rule wording used by the 4x4/6x6 builder
     doc["puzzle"]["minDigit"] = 1
     doc["puzzle"]["maxDigit"] = 9
-    doc["puzzle"]["comment"] = (
-        "Normal sudoku rules apply on the inner grid. "
-        "Running Start: Outside cells on clues must contain a digit, and that "
-        "digit indicates the length of the first ascending sequence in that "
-        "direction. For example, a row with 142356789 gives a left clue of 2 "
-        "(1, 4) and a right clue of 1 (9)."
-        "\n\nThe 1s in the corners only fill space for SudokuMaker's solver; "
-        "delete them before publishing."
-    )
+    # The rule text has one home: build_size.rule_text, which the 4x4, the 6x6
+    # and the local board also use. Read it here rather than restate it, so a
+    # wording change (the tie sentence, say) reaches every link at once.
+    doc["puzzle"]["comment"] = RULES_PREFIX + rule_text(9)
     return encode_link(doc), doc
 
 
