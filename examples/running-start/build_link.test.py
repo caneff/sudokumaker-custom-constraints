@@ -68,6 +68,7 @@ def check_local_link():
         return r * W + c
 
     p = decode_puzzle((HERE / "PUZZLE_LINK_local.txt").read_text().strip())["puzzle"]
+    cells_of_link = p["cells"]
     assert p["comment"].startswith(RULES_PREFIX), "rules text must open with the prefix"
     # a cell holds a value only when it is a given -- never the solution, never
     # a hidden clue
@@ -93,6 +94,23 @@ def check_local_link():
     # every clue is derived from the solution, not invented
     for key, cells in paths.items():
         assert spec["clue"][key] == running_start([grid[r][c] for r, c in cells]), key
+
+    # and the clues the LINK actually ships are those clues. Without this the
+    # three checks around it read gen_local.json alone, and a link built with
+    # the wrong ring values would pass them all. Only the shown clues carry a
+    # value; the rest are the interactive ones the solver reads off the line.
+    shown = 0
+    for key, value in spec["clue"].items():
+        cell = cells_of_link[idx(*ring_cell(key, W))]
+        if "value" not in cell:
+            continue
+        assert cell.get("given"), f"{key} ships as an entered digit, not a given"
+        assert cell["value"] == value, f"{key} ships {cell['value']}, clue is {value}"
+        shown += 1
+    assert 0 < shown < len(spec["clue"]), (
+        f"{shown} of {len(spec['clue'])} clues shown -- a board with every ring "
+        "cell filled leaves the solver nothing to read off a line"
+    )
 
     # every path bends: its cells are not one row, one column, or one box, so
     # the app cannot prove the digits distinct and the line reads as bare

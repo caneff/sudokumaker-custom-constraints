@@ -19,15 +19,20 @@
 //! (the two increasing runs share at most the peak). When A + B == n + 1 the line
 //! is unimodal: strictly up to the peak, then strictly down.
 
-// Ties, per docs/line-contract.md, and it must match the constant in
-// RunningStartComponent.js: false means an equal neighbour ends the run, true
-// means it continues it. The cap below counts on the two runs sharing at most
-// one cell. With ties hidden they do so on any line. With ties allowed a run of
-// equal digits belongs to both runs at once -- so `A + B <= n + 1` fails on a
-// line whose digits may repeat, and the whole component then needs a house.
-const ALLOW_TIES = false
+// This component carries no ALLOW_TIES constant of its own, and reads the run
+// as ascending whichever way RunningStartComponent's flag is set, because it
+// only ever prunes on a house (below) -- where two cells cannot be equal, so
+// the two readings of the rule coincide. That is deliberate: a constant here
+// would have to be kept in step with the one in the other file by hand, and a
+// pair left on `false` beside a line set to `true` would go on enforcing
+// `A + B <= n + 1` where a run of equal digits sits in both end runs at once
+// and the cap does not hold.
+//
+// Nothing is lost. main-global.js is the only file that registers this
+// component (a pair needs both ends of a line, which only a full frame has),
+// and every frame line is a house.
 
-// The line's kind, asked at solve time and re-tested until it settles. It
+// Is the line a house? Asked at solve time and re-tested until it settles. It
 // cannot be asked once at register time: main code runs before the built-in
 // row/column houses exist and would read every line as bare (gotcha 6). Query
 // the line alone -- a clue cell in the list flips getCellsCanHaveRepeats to
@@ -80,7 +85,7 @@ function * incRun (puzzle, cells) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
-  if (ALLOW_TIES && !isHouse(instance, puzzle)) return
+  if (!isHouse(instance, puzzle)) return
   const cap = n + 1
   const ca = Array.from(puzzle.getCandidates(clueA))
   const cb = Array.from(puzzle.getCandidates(clueB))

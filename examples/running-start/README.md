@@ -13,7 +13,7 @@ The 4x4 and 6x6 puzzles carry the same rule with a size-appropriate example.
 
 Two equal digits next to each other are the one case the sentence above does
 not settle, and a drawn line can hold them: a bent path is not a house, so its
-digits may repeat. `const ALLOW_TIES` at the top of both component files
+digits may repeat. `const ALLOW_TIES` at the top of `RunningStartComponent.js`
 decides which reading the segment enforces (`docs/line-contract.md`):
 
 | `ALLOW_TIES` | The run | Ends at | Shipped |
@@ -23,7 +23,12 @@ decides which reading the segment enforces (`docs/line-contract.md`):
 
 Flip the constant in the pasted segment to change the reading, and change the
 puzzle's rules text with it — `build_size.rule_text` carries the sentence that
-states it. Both components are fuzzed under both readings; see "Run the tests".
+states it. There is one constant, not two: the pair component reads the run as
+ascending either way, because it only ever prunes on a house, where the two
+readings coincide. A second constant would have to be kept in step by hand, and
+a pair left on `false` beside a line set to `true` would go on enforcing a cap
+that no longer holds. Both components are fuzzed under both readings; see "Run
+the tests".
 
 The kind of line the clue sits on then decides how hard each rule may push. On
 a **house** no two cells hold the same digit, so `>=` collapses to `<` and
@@ -31,11 +36,11 @@ a **house** no two cells hold the same digit, so `>=` collapses to `<` and
 reads, and the component asks `getCellsCanHaveRepeats` in `update` to find
 out. That is not a nicety — the shipped frame board solves 3.4× slower if the
 strict break is given up on every line (see `OPTIMIZATION_LOG.md`). On a
-**bare** line only the reading the flag names is sound, and two rules stand
-down under the loose one: the per-cell floor/ceil window (it counts `j` cells
-strictly below `line[j]`, which a level run does not supply) and the pair
-component's `A + B <= n + 1` (a run of equal digits belongs to both end runs at
-once).
+**bare** line only the reading the flag names is sound, and the per-cell
+floor/ceil window stands down under the loose one (it counts `j` cells strictly
+below `line[j]`, which a level run does not supply). The pair component's
+`A + B <= n + 1` needs a house outright — a run of equal digits belongs to both
+end runs at once — so it prunes on a house and goes quiet everywhere else.
 
 Each puzzle's in-app rule text is prefixed `Running Start:` and ends with a note
 that the corner `1`s only fill space for SudokuMaker's solver and should be
@@ -132,9 +137,10 @@ all sound:
   two cells cannot be equal in the first place.
 - **Cross-line pair** — two clues on opposite ends of one line share a
   permutation: the left increasing run and the right increasing-inward run can
-  share at most one cell (the peak), so `A + B <= n + 1`. Under the loose
-  reading a run of equal digits sits in both, so the component asks
-  `getCellsCanHaveRepeats` for a house first and goes quiet on a bare line. The
+  share at most one cell (the peak), so `A + B <= n + 1`. A run of equal digits
+  would sit in both, so the component asks `getCellsCanHaveRepeats` for a house
+  first and goes quiet on a bare line — no loss, since `main-global.js` is the
+  only file that registers it and every frame line is a house. The
   pair component
   caps each clue at `n + 1` minus the other's smallest remaining value. When
   `A + B` is forced to exactly `n + 1`, the line is unimodal — strictly up to
@@ -180,21 +186,27 @@ branch.
 ## Timing
 
 | 2026-08-27 | v2026.08.14-d47fc4b | running-start | 1800ms | — | — | BASELINE |
-| 2026-08-31 | v2026.08.14-d47fc4b | running-start | 2000ms | 1800ms | 0.90 | PASS |
-| 2026-08-31 | v2026.08.14-d47fc4b | running-start after-logical | 400ms | 400ms | 1.00 | FAIL |
+| 2026-08-31 | v2026.08.14-d47fc4b | running-start | 1800ms | 1800ms | 1.00 | FAIL |
+| 2026-08-31 | v2026.08.14-d47fc4b | running-start after-logical | 500ms | 500ms | 1.00 | FAIL |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt) | 21500ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt) after-logical | 1600ms | — | — | BASELINE |
 
 The 2026-08-31 pair is the ties change (#239), a gate change: it adds no
-deduction, so the bar is ≤ 1.1× on both rows and "unchanged" is the pass.
-Baseline is the link as it shipped at `0baac1c`. Both rows clear it (0.90×,
-1.00×) — the strict break the fix would otherwise have given up is kept behind
-the house test, and without that test the cold row reads 3.37×.
+deduction, so the bar is ≤ 1.1× on both rows and "unchanged" is the pass
+(`docs/real-app-timing.md`, "Bar for a gate change"). Both rows read 1.00×
+against the link as it shipped at `0baac1c` — unchanged, which is the pass.
+**The `FAIL` in both rows is `just time`'s own per-row verdict, which is the
+0.9× result alone; it is not the gate this change is held to, and the change
+ships.** The strict break the fix would otherwise have given up is kept behind
+the house test — without that test the cold row reads 3.37×.
 
 The last two rows are the local bent-path board, the fixture for the rules a
 bare line gets: `just time running-start --board PUZZLE_LINK_local.txt`,
-candidate byte-equal to baseline, so only BASELINE rows print. It is a slow
-board — 36 bent paths, no line a house, so nothing but the clues constrains a
-path — which is what makes it worth timing a bare-line rule on.
+candidate byte-equal to baseline, so only BASELINE rows print. There is no
+before-and-after pair to print for it: the board is new with #239, and the
+component it replaced is unsound on a bare line, so it has no honest solve time
+on this board to compare against. It is a slow board — 36 bent paths, no line a
+house, so nothing but the clues constrains a path — which is what makes it
+worth timing a bare-line rule on, and the row is the floor a later one moves.
 
 See `docs/real-app-timing.md` for the protocol.

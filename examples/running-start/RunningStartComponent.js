@@ -13,10 +13,6 @@
 // strict drop ends it. The author flips the constant in the segment; the rules
 // text must say the same thing.
 const ALLOW_TIES = false
-// The run climbs by `<` when a tie ends it and by `<=` when a tie continues
-// it. The break is the negation, so it reads the other way round: `<=` ends a
-// strict run, and only `<` ends a run that carries ties.
-const RUN_STRICT = !ALLOW_TIES
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -114,15 +110,17 @@ function * update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
 
-  // How hard each half may push. On a house no two cells hold the same digit,
-  // so `>=` collapses to `>` and `<=` collapses to `<`: both comparisons go
-  // strict there whichever way ALLOW_TIES reads. On a drawn line that may
-  // repeat, only the reading the flag names is sound. Recovering the strict
-  // break on a house is not cosmetic -- the shipped frame board solves 3.4x
-  // slower without it (README, ## Timing).
+  // How hard each half may push. The climb is `<` when a tie ends the run and
+  // `<=` when a tie carries it on; the break is the negation, so it reads the
+  // other way round. On a house that distinction vanishes -- no two cells hold
+  // the same digit, so `<=` implies `<` -- and both comparisons go strict
+  // whichever way ALLOW_TIES reads. On a drawn line that may repeat, only the
+  // reading the flag names is sound. Recovering the strict break on a house is
+  // not cosmetic: the shipped frame board solves 3.4x slower without it
+  // (OPTIMIZATION_LOG.md).
   const house = isHouse(instance, puzzle)
-  const climbStrict = RUN_STRICT || house
-  const breakStrict = !RUN_STRICT || house
+  const climbStrict = !ALLOW_TIES || house
+  const breakStrict = ALLOW_TIES || house
 
   // ---- Reverse: keep only clue values the line can still realize ----
   // Candidate-aware, so filled cells anywhere on the line count. Stronger than a

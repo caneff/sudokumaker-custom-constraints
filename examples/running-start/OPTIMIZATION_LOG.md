@@ -7,7 +7,7 @@ here does not need a second attempt.
 | Variant | Kept / rejected | Hard-board numbers (first / unique / sum) | Clued-board result | Board + timer caveat | Commit |
 |---|---|---|---|---|---|
 | Ties fix, strict break given up everywhere | rejected | cold 1900 → 6400ms (3.37×), after-logical 400 → 600ms (1.50×) | — | `just time running-start`, 3 reps, baseline = the link at `0baac1c` | not landed |
-| Ties fix, strict break kept behind the house test | kept | cold 2000 → 1800ms (0.90×), after-logical 400 → 400ms (1.00×) | — | same run | #239 |
+| Ties fix, strict break kept behind the house test | kept | cold 1800 → 1800ms (1.00×), after-logical 500 → 500ms (1.00×) | — | same run | #239 |
 
 The tie reading (`ALLOW_TIES = false`) ends a run on an equal neighbour, so the
 break is only `line[k] <= line[k-1]`. Enforcing that literally on every line is

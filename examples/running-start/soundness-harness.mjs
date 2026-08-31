@@ -6,11 +6,12 @@
 //
 //   node examples/running-start/soundness-harness.mjs
 //
-// Both components carry an `ALLOW_TIES` constant (docs/line-contract.md), so
-// every pool runs twice: once with a tie ending the run, once with a tie
-// continuing it. The line component claims soundness on every line kind, so
-// each reading meets bare, house, and full-house lines, plus a bare pool whose
-// lines tie right after the run — the state the descent rule reads.
+// The line component carries an `ALLOW_TIES` constant (docs/line-contract.md),
+// so every pool runs twice: once with a tie ending the run, once with a tie
+// continuing it. It claims soundness on every line kind, so each reading meets
+// bare, house, and full-house lines, plus a bare pool whose lines tie right
+// after the run — the state the break rule reads. The pair has no flag of its
+// own; its pools still derive their truth clues under both readings.
 //
 // The pair test also uses a synthetic mountain line, because no line in the
 // seed-104 puzzle reaches the A + B === n + 1 case that drives the pair's
@@ -21,7 +22,7 @@ import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { read, loadSource } = makeIo(HERE)
+const { read, load, loadSource } = makeIo(HERE)
 const { rnd, pick } = makeRng()
 
 const N = 9
@@ -37,7 +38,10 @@ function loader (file, names) {
   return allowTies => loadSource(src.replace(TIES_FLAG, `const ALLOW_TIES = ${allowTies}`), names)
 }
 const loadLine = loader('RunningStartComponent.js', ['setParams', 'update', 'validate'])
-const loadPair = loader('RunningStartPairComponent.js', ['setParams', 'update'])
+// The pair carries no flag of its own -- it only prunes on a house, where the
+// two readings coincide -- so it loads once, and every pair pool below runs it
+// against truth clues derived under both readings all the same.
+const pairMod = load('RunningStartPairComponent.js', ['setParams', 'update'])
 
 // The truth clue for one line of digits: the length of the first run read
 // inward. A tie ends the run when ties are hidden and continues it when they
@@ -197,7 +201,7 @@ const CB = 101
 const mountain = [2, 4, 7, 9, 8, 6, 5, 3, 1]
 
 function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
-  const mod = loadPair(allowTies)
+  const mod = pairMod
   let bad = 0
   let fired = 0
   let unimodal = 0
@@ -221,7 +225,8 @@ function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
 
 let pairBad = 0
 let pairUnimodal = 0
-const pairFiredOn = {}
+let pairHouseFired = 0
+let pairBareFired = 0
 for (const allowTies of [false, true]) {
   const tag = allowTies ? 'ties continue' : 'ties end     '
   const mountainRun = fuzzPair(`pair, mountain   ${tag}`, {
@@ -235,16 +240,19 @@ for (const allowTies of [false, true]) {
   })
   pairBad += mountainRun.bad + houseRun.bad + bareRun.bad
   pairUnimodal += mountainRun.unimodal
-  pairFiredOn[allowTies ? 'tiesBare' : 'strictBare'] = bareRun.fired
+  pairHouseFired += mountainRun.fired + houseRun.fired
+  pairBareFired += bareRun.fired
 }
 console.log('pair component:', pairBad, 'violations,', pairUnimodal, 'unimodal firings')
 
-// The pair's house gate, stated as behaviour: with ties allowed it must prune
-// nothing on a bare line, and with ties hidden it must still prune there.
-console.log('pair on a bare line: ties hidden pruned', pairFiredOn.strictBare, 'states, ties allowed pruned', pairFiredOn.tiesBare)
+// The pair's house gate, stated as behaviour rather than read off the source:
+// it must prune on a house and prune nothing at all on a bare line, under
+// either reading of the run. Dropping the gate turns the bare figure positive
+// and the violation count with it.
+console.log('pair gate: pruned', pairHouseFired, 'house states,', pairBareFired, 'bare states')
 
 const ok = lineBad === 0 && realBad === 0 && lineSilent === 0 && agreeBad === 0 && agreeRuns > 0 &&
   pairBad === 0 && pairUnimodal > 0 &&
-  pairFiredOn.strictBare > 0 && pairFiredOn.tiesBare === 0
+  pairHouseFired > 0 && pairBareFired === 0
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
