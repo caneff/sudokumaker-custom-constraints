@@ -26,13 +26,15 @@ const NAMES = ['setParams', 'update']
 const cur = load('SkyscraperLineComponent.js', NAMES)
 const ref = loadAt(REF_COMMIT, 'SkyscraperLineComponent.js', NAMES)
 
-// The running cap's own floor, pinned at the commit that added it
-// (docs/example-layout.md). It runs on a line an author drew, so its states are
-// bare: any length, digits may repeat, one clue at one end.
-const CAP_REF_COMMIT = 'c776ab7'
-const CAP_FILE = 'SkyscraperRunningCapComponent.js'
-const capCur = load(CAP_FILE, NAMES)
-const capRef = loadAt(CAP_REF_COMMIT, CAP_FILE, NAMES)
+// The local line component's own floor (docs/example-layout.md). It runs on a
+// line an author drew, so its states are bare: any length, digits may repeat,
+// one clue at one end. The file carried a different name at the pinned commit,
+// so the floor names its own path.
+const ONE_SIDED_REF_COMMIT = 'c776ab7'
+const ONE_SIDED_REF_FILE = 'SkyscraperRunningCapComponent.js'
+const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
+const oneSidedCur = load(ONE_SIDED_FILE, NAMES)
+const oneSidedRef = loadAt(ONE_SIDED_REF_COMMIT, ONE_SIDED_REF_FILE, NAMES)
 
 const { rnd } = makeRng(31415)
 
@@ -78,34 +80,34 @@ for (const m of [4, 6, 9]) {
 }
 console.log('skyscraper line:', states, 'states,', weaker, 'weaker cells')
 
-// The running cap, on bare lines of assorted lengths. A state is built around a
+// The one-sided DP, on bare lines of assorted lengths. A state is built around a
 // real line and its true clue, so it always has a solution and never dies.
-const CAP_CLUE = 200
-let capStates = 0
-let capWeaker = 0
+const ONE_SIDED_CLUE = 200
+let oneSidedStates = 0
+let oneSidedWeaker = 0
 for (const m of [4, 6, 9]) {
   installGlobals(1, m)
   const LINE = Array.from({ length: m }, (_, i) => i)
   const apply = (mod, p) => {
     const inst = {}
-    mod.setParams(inst, CAP_CLUE, LINE)
+    mod.setParams(inst, ONE_SIDED_CLUE, LINE)
     fixpoint(mod, inst, p)
   }
   for (let rep = 0; rep < REPS; rep++) {
     const digits = Array.from({ length: m }, () => 1 + ((rnd() * m) | 0))
     const start = new Map()
-    start.set(CAP_CLUE, randomCandidates(rnd, 1, m, visible(digits)))
+    start.set(ONE_SIDED_CLUE, randomCandidates(rnd, 1, m, visible(digits)))
     for (const c of LINE) start.set(c, randomCandidates(rnd, 1, m, digits[c]))
-    const w = compareStrength(capCur, capRef, apply, start, { kind: 'bare', digitCount: m })
+    const w = compareStrength(oneSidedCur, oneSidedRef, apply, start, { kind: 'bare', digitCount: m })
     if (w === null) continue
-    capStates++
-    capWeaker += w.length
-    if (w.length > 0 && capWeaker <= 5) console.log('cap weaker at', w[0], 'start', [...start])
+    oneSidedStates++
+    oneSidedWeaker += w.length
+    if (w.length > 0 && oneSidedWeaker <= 5) console.log('cap weaker at', w[0], 'start', [...start])
   }
 }
-console.log('skyscraper running cap:', capStates, 'states,', capWeaker, 'weaker cells')
-assert.strictEqual(capStates, 3 * REPS, 'a state built around a real line must never die')
-assert.strictEqual(capWeaker, 0)
+console.log('skyscraper one-sided:', oneSidedStates, 'states,', oneSidedWeaker, 'weaker cells')
+assert.strictEqual(oneSidedStates, 3 * REPS, 'a state built around a real line must never die')
+assert.strictEqual(oneSidedWeaker, 0)
 // Every state keeps a real permutation, so no state may die: a dead one would
 // mean a version emptied a cell the solution needs.
 assert.strictEqual(states, 3 * REPS, 'a state built around a permutation must never die')

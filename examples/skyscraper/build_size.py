@@ -21,7 +21,7 @@
 # its name).
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
-# frame lines, shipped as drawn groups on the main.js lane, so the running cap
+# frame lines, shipped as drawn groups on the main.js lane, so the one-sided DP
 # -- the rule that runs on a bare line -- has a board to play and to time
 # (`just time skyscraper --board PUZZLE_LINK_local.txt --ring-clues`). The 9x9
 # lands as PUZZLE_LINK_local.txt with gen_local.json beside it.
@@ -35,7 +35,7 @@ from framebuild import Spec, run
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
     "SkyscraperLineComponent.js",
-    "SkyscraperRunningCapComponent.js",
+    "SkyscraperOneSidedComponent.js",
     "SkyscraperSideComponent.js",
 ]
 
@@ -82,7 +82,7 @@ def sky(v, _cells):
 def add_visibility(m, x, cells, kk, n, tag):
     # exactly kk cells top every cell before them along `cells`.
     # `g` is "taller than", so its negation is "no taller" -- a tie is hidden,
-    # which is what SkyscraperRunningCapComponent's ALLOW_TIES = false says. A
+    # which is what SkyscraperOneSidedComponent's ALLOW_TIES = false says. A
     # drawn path may hold the same digit twice, so `<=` here and `<` are not
     # the same constraint.
     vis = []

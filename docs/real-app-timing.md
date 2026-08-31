@@ -67,6 +67,15 @@ to the one registered component that has a same-named `.js` file in the
 example directory, and still fails loud — `FileNotFoundError` for zero
 matches, `ValueError` for several — rather than guess which edit to time.
 
+`--component <ComponentName>` overrides that declaration for one run. An
+example whose boards register different components has no single right answer
+to declare: skyscraper's global board runs the two-clue DP and its local
+boards run the one-sided DP, so timing a local board names it —
+`just time skyscraper --ring-clues --board PUZZLE_LINK_6x6_local.txt
+--component SkyscraperOneSidedComponent`. The name is checked against the
+board's registered components and its working-tree file, and fails the same
+loud way.
+
 ## How it works
 
 `app-solve.mjs` loads the link, clicks the "Find all solutions and valid

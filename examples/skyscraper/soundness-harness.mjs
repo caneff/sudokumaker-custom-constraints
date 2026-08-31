@@ -1,12 +1,11 @@
-// Soundness fuzz for SkyscraperLineComponent. Soundness = a component never
-// removes a cell's TRUE value. Each case is a random full line (a permutation,
-// so all-different holds) with its two true clues, one per end. We seed random
-// partial candidate states that still allow every true value, run the component
-// to a fixpoint, and check the true values survived. A removed true value can
-// make a real puzzle unsolvable.
+// Soundness fuzz for every skyscraper component. Soundness = a component never
+// removes a cell's TRUE value. Each case is a random line with its true clues,
+// one per clued end. We seed random partial candidate states that still allow
+// every true value, run the component to a fixpoint, and check the true values
+// survived. A removed true value can make a real puzzle unsolvable.
 //
-// It also asserts the DP is EXACT, not merely sound, against a brute-force
-// oracle at n=5 -- see the last block.
+// Both DPs claim more than soundness -- each is a decision procedure for the
+// line it reads -- so each is also held to a brute-force oracle at n=5.
 //
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
@@ -26,23 +25,23 @@ installGlobals(1, N)
 const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
 
 // ---------------------------------------------------------------------------
-// The running cap: the LOCAL line component, one clue at one end of a drawn
+// The one-sided DP: the LOCAL line component, one clue at one end of a drawn
 // line. It claims soundness on every line kind (docs/line-contract.md), so it
 // meets all three, and twice over: the ALLOW_TIES constant at the top of the
 // file decides whether a building tied with the tallest so far is hidden
 // (false) or counted (true), and both readings must be sound.
 // ---------------------------------------------------------------------------
 
-const CAP_FILE = 'SkyscraperRunningCapComponent.js'
-const CAP_SRC = read(CAP_FILE)
-const CAP_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
-if (!CAP_FLAG.test(CAP_SRC)) throw new Error(`${CAP_FILE} has no 'const ALLOW_TIES = ...' line to flip`)
+const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
+const ONE_SIDED_SRC = read(ONE_SIDED_FILE)
+const TIES_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
+if (!TIES_FLAG.test(ONE_SIDED_SRC)) throw new Error(`${ONE_SIDED_FILE} has no 'const ALLOW_TIES = ...' line to flip`)
 
 // The component as it would read with the constant set either way. The app
 // pastes the file as its own segment, so a flag is a source edit, not a
 // parameter: the harness makes the same edit.
-function loadCap (allowTies) {
-  return loadSource(CAP_SRC.replace(CAP_FLAG, `const ALLOW_TIES = ${allowTies}`), ['setParams', 'update', 'validate'])
+function loadOneSided (allowTies) {
+  return loadSource(ONE_SIDED_SRC.replace(TIES_FLAG, `const ALLOW_TIES = ${allowTies}`), ['setParams', 'update', 'validate'])
 }
 
 // The truth clue for one line of digits: buildings visible reading it inward.
@@ -58,23 +57,36 @@ function visibleWith (allowTies, vals) {
   return count
 }
 
-const CAP_CLUE = 200
-const capTotal = p => { let n = 0; for (const set of p._cand.values()) n += set.size; return n }
-function fuzzCap (label, { allowTies, kind, n, iters }) {
-  const capMod = loadCap(allowTies)
+const ONE_SIDED_CLUE = 200
+
+// The first cell where the candidates left standing differ from the oracle's,
+// or null when every cell agrees. Both exactness checks below compare the same
+// way and only differ in what they enumerate, so the comparison lives here once.
+function disagreement (p, oracle) {
+  for (const [c, want] of oracle) {
+    const got = p._cand.get(c)
+    if (got.size !== want.size || [...want].some(d => !got.has(d))) {
+      return { cell: c, kept: [...got].sort(), want: [...want].sort() }
+    }
+  }
+  return null
+}
+const oneSidedTotal = p => { let n = 0; for (const set of p._cand.values()) n += set.size; return n }
+function fuzzOneSided (label, { allowTies, kind, n, iters }) {
+  const oneSidedMod = loadOneSided(allowTies)
   const cells = Array.from({ length: n }, (_, i) => i)
   let bad = 0
   let fired = 0
   for (let iter = 0; iter < iters; iter++) {
     const digits = makeLine(rnd, kind, n, N)
-    const truth = { [CAP_CLUE]: visibleWith(allowTies, digits) }
+    const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
     for (let i = 0; i < n; i++) truth[i] = digits[i]
     const p = makePuzzle(truth, seeder, { kind, digitCount: N })
     const inst = {}
-    capMod.setParams(inst, CAP_CLUE, cells)
-    const before = capTotal(p)
-    const v = violates(capMod, inst, p, truth)
-    if (capTotal(p) < before) fired++
+    oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+    const before = oneSidedTotal(p)
+    const v = violates(oneSidedMod, inst, p, truth)
+    if (oneSidedTotal(p) < before) fired++
     if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
   }
   console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
@@ -84,40 +96,92 @@ function fuzzCap (label, { allowTies, kind, n, iters }) {
 // `validate` is the component's last word on a filled line, and it reads the
 // same tie flag `update` does. A filled line, its true clue, and that clue off
 // by one: the first must pass and the second must fail, under both readings.
-let capValidateBad = 0
+let oneSidedValidateBad = 0
 for (const allowTies of [false, true]) {
-  const capMod = loadCap(allowTies)
+  const oneSidedMod = loadOneSided(allowTies)
   for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
     const digits = makeLine(rnd, kind, n, N)
     const cells = digits.map((_, i) => i)
     const clue = visibleWith(allowTies, digits)
     const inst = {}
-    capMod.setParams(inst, CAP_CLUE, cells)
+    oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
     const filledWith = k => {
-      const truth = { [CAP_CLUE]: k }
+      const truth = { [ONE_SIDED_CLUE]: k }
       for (let i = 0; i < n; i++) truth[i] = digits[i]
       return makePuzzle(truth, (c, v) => [v], { kind, digitCount: N })
     }
     const wrong = clue === 1 ? clue + 1 : clue - 1
-    if (!capMod.validate(inst, filledWith(clue))) { capValidateBad++; console.log('validate rejected the true clue', clue, 'on', digits.join('')) }
-    if (capMod.validate(inst, filledWith(wrong))) { capValidateBad++; console.log('validate accepted the clue', wrong, 'on', digits.join(''), 'whose count is', clue) }
+    if (!oneSidedMod.validate(inst, filledWith(clue))) { oneSidedValidateBad++; console.log('validate rejected the true clue', clue, 'on', digits.join('')) }
+    if (oneSidedMod.validate(inst, filledWith(wrong))) { oneSidedValidateBad++; console.log('validate accepted the clue', wrong, 'on', digits.join(''), 'whose count is', clue) }
   }
 }
-console.log('running cap validate:', capValidateBad, 'wrong verdicts')
+console.log('one-sided validate:', oneSidedValidateBad, 'wrong verdicts')
 
-let capBad = 0
-let capSilent = 0
+let oneSidedBad = 0
+let oneSidedSilent = 0
 for (const allowTies of [false, true]) {
   const tag = allowTies ? 'ties visible' : 'ties hidden '
   // A bare line is shorter than the digit count and may repeat; a house is
   // six distinct digits out of nine; a full house is a permutation of 1..9.
   for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
-    const r = fuzzCap(`running cap, ${kind.padEnd(9)} ${tag}`, { allowTies, kind, n, iters: 20000 })
-    capBad += r.bad
-    if (r.fired === 0) capSilent++
+    const r = fuzzOneSided(`one-sided, ${kind.padEnd(9)} ${tag}`, { allowTies, kind, n, iters: 20000 })
+    oneSidedBad += r.bad
+    if (r.fired === 0) oneSidedSilent++
   }
 }
-console.log('running cap:', capBad, 'violations,', capSilent, 'pools that never pruned')
+console.log('one-sided:', oneSidedBad, 'violations,', oneSidedSilent, 'pools that never pruned')
+
+// Soundness only asks that no true value is dropped, which a do-nothing
+// component passes. The one-sided rule claims more: a drawn line's cells are
+// tied to nothing but their own candidates, so a DECISION PROCEDURE for one
+// clue and one line must keep a value EXACTLY when some fill of the line
+// consistent with the candidates and the clue uses it. At n=5 over 5 digits
+// that is 3,125 fills, so brute force gives the check a real verdict.
+const EXACT_N = 5
+let oneSidedExactBad = 0
+let oneSidedExactRuns = 0
+for (const allowTies of [false, true]) {
+  const oneSidedMod = loadOneSided(allowTies)
+  installGlobals(1, EXACT_N)
+  const cells = [...Array(EXACT_N).keys()]
+  const inst = {}
+  oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+  for (let iter = 0; iter < 1000; iter++) {
+    const digits = makeLine(rnd, 'bare', EXACT_N, EXACT_N)
+    const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
+    for (let i = 0; i < EXACT_N; i++) truth[i] = digits[i]
+    const p = makePuzzle(truth, (c, v) => {
+      const s = new Set([v])
+      for (let d = 1; d <= EXACT_N; d++) if (rnd() < 0.5) s.add(d)
+      return [...s]
+    }, { kind: 'bare', digitCount: EXACT_N })
+    const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
+    // Every fill the starting candidates and the clue allow, by brute force.
+    const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
+    const fill = new Array(EXACT_N)
+    const walk = i => {
+      if (i === EXACT_N) {
+        const k = visibleWith(allowTies, fill)
+        if (!start.get(ONE_SIDED_CLUE).has(k)) return
+        oracle.get(ONE_SIDED_CLUE).add(k)
+        for (let j = 0; j < EXACT_N; j++) oracle.get(j).add(fill[j])
+        return
+      }
+      for (const d of start.get(i)) { fill[i] = d; walk(i + 1) }
+    }
+    walk(0)
+    if (oracle.get(ONE_SIDED_CLUE).size === 0) continue // no valid fill: anything may stay
+    oneSidedExactRuns++
+    fixpoint(oneSidedMod, inst, p)
+    const d = disagreement(p, oracle)
+    if (d !== null) {
+      oneSidedExactBad++
+      if (oneSidedExactBad <= 3) console.log('one-sided not exact at cell', d.cell, 'kept', d.kept, 'oracle', d.want, 'line', digits.join(''))
+    }
+  }
+  installGlobals(1, N)
+}
+console.log('one-sided exactness vs brute force (n=5):', oneSidedExactRuns, 'states,', oneSidedExactBad, 'disagreements')
 
 function visible (vals) {
   let count = 0
@@ -258,13 +322,10 @@ for (let iter = 0; iter < EXACT; iter++) {
   if (oracle.get(CA).size === 0) continue // no valid line: the DP may leave anything
   exactRuns++
   while (Array.from(mod.update(smallInst, p)).length > 0) { /* to fixpoint */ }
-  for (const [c, want] of oracle) {
-    const got = p._cand.get(c)
-    if (got.size !== want.size || [...want].some(d => !got.has(d))) {
-      exactBad++
-      if (exactBad <= 3) console.log('not exact at cell', c, 'kept', [...got].sort(), 'oracle', [...want].sort(), 'perm', perm)
-      break
-    }
+  const d = disagreement(p, oracle)
+  if (d !== null) {
+    exactBad++
+    if (exactBad <= 3) console.log('not exact at cell', d.cell, 'kept', d.kept, 'oracle', d.want, 'perm', perm)
   }
 }
 installGlobals(1, N)
@@ -407,7 +468,8 @@ const sideBare = fuzzSide('side component, bare      ', 'bare', 5000)
 installGlobals(1, N)
 
 const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
-  capBad === 0 && capSilent === 0 && capValidateBad === 0 &&
+  oneSidedBad === 0 && oneSidedSilent === 0 && oneSidedValidateBad === 0 &&
+  oneSidedExactBad === 0 && oneSidedExactRuns > 0 &&
   bareRemovals === 0 && bareRepeats > 0 &&
   zeroRemovals === 0 && zeroValidates && shutWhileZeroLive && opensAfterZeroGoes &&
   sideFull.bad === 0 && sideFull.fired > 0 && sideBare.fired === 0

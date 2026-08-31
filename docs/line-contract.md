@@ -86,12 +86,11 @@ per line and no line component (#206). The frame component is
 a named slot: an example fills it only with a deduction that clears the timing
 bar (`docs/real-app-timing.md`).
 
-Skyscraper's local variant ships with the running cap only (sound on a bare
-line): one scan of forced and possible visibles gives the clue bounds, the
-first-cell cap, and the no-more / all-must-be-visible prunes (#196). The
-two-clue DP is a pair shape, global only, gated on full house. A one-sided
-(position, tallest so far, count) DP — sound on every kind, no gate — replaces
-the running cap if it clears the timing bar (#206).
+Skyscraper's local variant ships the one-sided DP: a sweep over `(position,
+tallest so far, visible count)`, sound on every kind, no gate, and exact for a
+line whose cells are tied to nothing but their own candidates. It replaced the
+running cap of #196 once it cleared the timing bar (#206, #241). The two-clue
+DP is a pair shape, global only, gated on full house.
 
 ## Harness
 

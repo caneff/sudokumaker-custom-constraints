@@ -34,13 +34,13 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
 - **local** (`main.js`, `PUZZLE_LINK_6x6_local.txt` and
   `PUZZLE_LINK_local.txt`) — the author draws the groups.
   A group is one clue and one line of any shape, clued at one end only, and it
-  gets a `SkyscraperRunningCapComponent`: the running cap, sound on a line whose
-  digits repeat.
+  gets a `SkyscraperOneSidedComponent`: the one-sided DP, sound on a line
+  whose digits repeat.
 - **global** (`main-global.js`, `PUZZLE_LINK.txt`) — no groups. The backend
   builds all 4n frame lines from the board size and registers the two-clue DP
   alone per line, plus the one-1-per-side component. The DP is a decision
-  procedure for a whole line, so it subsumes the running cap and global does not
-  run one beside it.
+  procedure for a whole line, so it subsumes the one-sided DP and global does
+  not run one beside it.
 
 ## What the components deduce
 
@@ -78,20 +78,22 @@ only when some full line assignment consistent with the candidates and both
 clues uses it. The true line is a permutation, so every one of its steps is a
 transition the DP takes and no true value is ever removed.
 
-**`SkyscraperRunningCapComponent.js` — one per drawn group, one clue.** The
-local line component, and the only rule that runs on a line an author drew. One
-scan reads each cell's smallest and largest candidate and carries two running
-maxima: the smallest running max any completion can put before a cell, and the
-largest. A cell is a *forced* visible when even its smallest candidate tops the
-largest possible running max before it, and a *possible* visible when its
-largest candidate tops the smallest. The true line is one of the completions the
-scan brackets, so its visible count lies between the two counts, and four rules
-follow: the clue sits between the forced count and the possible count; the first
-cell is at most `maxDigit - (k - 1)`, because the visible buildings rise strictly
-from it; once the forced count reaches the clue's largest value no other cell may
-become visible; and once the possible count falls to the clue's smallest value
-every cell that can be visible has to be. None of that needs a house, a full
-house, or digits starting at 1.
+**`SkyscraperOneSidedComponent.js` — one per drawn group, one clue.** The
+local line component, and the only rule that runs on a line an author drew. A DP
+over `(position, tallest so far, visible count)`. What a cell may hold depends
+on the prefix through nothing but those two numbers, so with the position they
+are the whole state. A forward sweep finds the states a prefix can reach; a
+backward sweep, seeded at the far end with the clue's own candidates, finds the
+states a completion can still finish from; a digit stays where the two meet.
+One 32-bit mask of visible counts per `(position, tallest)` is a whole layer,
+and the clue keeps exactly the counts the finished line can reach.
+
+The state is exact for a line whose cells are tied to nothing but their own
+candidates, which is every line an author draws, so the sweep is a **decision
+procedure**: a value survives only when some fill consistent with the candidates
+and the clue uses it. The true line is one of those fills, so no true value is
+ever removed. None of that needs a house, a full house, or digits starting at 1,
+so it runs on every line kind with no gate.
 
 `const ALLOW_TIES = false` at the top of the file decides what a tie means: with
 `false` a building level with the tallest so far is hidden, with `true` it
@@ -159,7 +161,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   has).
 - `SkyscraperLineComponent.js` — the two-clue DP: both clues, the whole
   line, and the final check. Global only.
-- `SkyscraperRunningCapComponent.js` — the running cap: one clue, one drawn
+- `SkyscraperOneSidedComponent.js` — the one-sided DP: one clue, one drawn
   line of any shape. Local only.
 - `SkyscraperSideComponent.js` — exactly one `1` among a side's clues.
   Global only.
@@ -181,8 +183,8 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   The three args are the grid size, the box height, and the box width
   (`box_height * box_width == size`). An optional fourth arg caps the seed count.
   `--paths` builds the local board instead: bent paths in place of the straight
-  frame lines, shipped as drawn groups on the `main.js` lane, so the running cap
-  has a board to play and to time:
+  frame lines, shipped as drawn groups on the `main.js` lane, so the one-sided
+  DP has a board to play and to time:
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3 3 --paths`
 - `rebuild_size.py` — re-encodes a committed board from its `gen_*.json` with
   the current component and backend code, no fresh search, so a shipped link
@@ -214,7 +216,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 ## Paste into SudokuMaker
 
 To draw your own lines, add a custom local constraint and paste `main.js` as
-the main code, plus the `SkyscraperRunningCapComponent` segment. Each group is
+the main code, plus the `SkyscraperOneSidedComponent` segment. Each group is
 one line: cell 0 the outside clue, the rest the line read inward. The line may
 bend and may repeat a digit, and it needs no clue at its far end. Leave a clue
 cell blank (`given: false`) to make it interactive; mark it given to show it.
@@ -264,17 +266,50 @@ compare the change with itself.
 | 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) | 1700ms | — | — | BASELINE |
 | 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) after-logical | 600ms | — | — | BASELINE |
 
-The running cap is a new component on a new board, so there is nothing to
-compare it against and the candidate is byte-equal to the baseline: baseline
+The running cap was a new component on a new board, so there was nothing to
+compare it against and the candidate was byte-equal to the baseline: baseline
 rows only, which is what `docs/real-app-timing.md` says such a run prints.
+Those two rows are the baseline the one-sided DP below beat.
 
-The 9x9 local board (`PUZZLE_LINK_local.txt`) has **no row**, and none has been
-invented. It is a stress board, not a playable one. `just time skyscraper --ring-clues --board PUZZLE_LINK_local.txt`
-raises "app-solve.mjs got no timed reps" on the **baseline** probe: the app
-finds no first solution inside its 300 s limit. The board is carved to CP-SAT
-minimality — 6 interior givens, 17 interactive clues — and the running cap alone
-does not close it. That is the same symptom as **#116** on a different board.
-The 6x6 local twin exists for exactly this reason and carries the row above.
+The 9x9 local board (`PUZZLE_LINK_local.txt`) has **no ratio row**, and none has
+been invented. `just time skyscraper --ring-clues --board PUZZLE_LINK_local.txt
+--component SkyscraperOneSidedComponent` raises "app-solve.mjs got no timed
+reps" on the **baseline** probe: with the running cap the app finds no first
+solution inside its 300 s limit. The board is carved to CP-SAT minimality —
+6 interior givens, 17 interactive clues — and the running cap alone does not
+close it. That is the same symptom as **#116** on a different board. The 6x6
+local twin exists for exactly this reason and carries the rows above. What the
+one-sided DP does on the 9x9 board is a capability row, below.
+
+### The one-sided DP (#241)
+
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) | 1600ms | 0ms | 0.00 | PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_6x6_local.txt) after-logical | 600ms | 0ms | 0.00 | PASS |
+| 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (PUZZLE_LINK_local.txt) | no first solve in 300s (running cap) | 5100ms (one-sided DP) | — | KEEP |
+
+`two-row rule: SHIP`. The DP replaced the running cap in the local line
+component: on the 6x6 local board the app finishes without searching at all,
+both rows at 0ms against a searching baseline. Command:
+
+```sh
+just time skyscraper --ring-clues --board PUZZLE_LINK_6x6_local.txt \
+  --component SkyscraperOneSidedComponent
+```
+
+`--component` names the component to follow, because skyscraper's global board
+registers the two-clue DP and its local boards register this one; without it
+the driver follows `build_link.py`'s `TIMED_COMPONENT` and would time an edit
+the local board does not run (`docs/real-app-timing.md`).
+
+The baseline in both ratio rows is the link as it stood before this change, on
+the same board, when the component was still named `SkyscraperRunningCapComponent`.
+Every link has since been rebuilt from its `gen_*.json` seed and carries the DP
+under its new name, so the command above now compares the change with itself.
+
+The third row is capability, not a ratio: on the 9x9 local stress board the
+running cap gets no first solution inside the app's 300 s limit, and the DP
+proves the board unique in 5.1 s, 3/3 reps (`first 4700ms  unique 400ms`).
+Read alongside the `MAXN` row above, which is the same kind of row.
 
 `just time skyscraper --ring-clues` on the shipped board (candidate byte-equal
 to baseline, so only a BASELINE row prints) read 7400ms cold, 0ms

@@ -6,7 +6,7 @@
 //! A frame line is clued at both ends, which is what the two-clue DP in
 //! SkyscraperLineComponent reads: the line, both clues, and every way the
 //! digits can lie between them. The DP is a decision procedure for one line, so
-//! it subsumes the running cap the local variant registers per drawn group and
+//! it subsumes the one-sided DP the local variant registers per drawn group and
 //! global registers it alone per line (docs/line-contract.md).
 //!
 //! On top of that goes the one component that only makes sense across a whole

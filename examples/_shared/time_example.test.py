@@ -309,6 +309,48 @@ if __name__ == "__main__":
         except ValueError:
             pass
 
+    # --component overrides TIMED_COMPONENT: an example whose declared
+    # component is not the one a given board registers names the other one on
+    # the command line. Skyscraper's local board runs the one-sided line
+    # component while TIMED_COMPONENT names the two-clue DP.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "overridden"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text(
+            'TIMED_COMPONENT = "WidgetComponent"\n'
+        )
+        (example_dir / "WidgetComponent.js").write_text("// widget\n")
+        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
+        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
+        result = find_component_file(example_dir, doc, component="WidgetPairComponent")
+        assert result == example_dir / "WidgetPairComponent.js"
+
+    # --component naming something the board does not register -> loud
+    # ValueError, the same check the declared constant gets
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "override-unregistered"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
+        (example_dir / "GadgetComponent.js").write_text("// gadget\n")
+        doc = _doc(["WidgetComponent"])
+        try:
+            find_component_file(example_dir, doc, component="GadgetComponent")
+            raise AssertionError("expected an unregistered-component failure")
+        except ValueError:
+            pass
+
+    # --component with no working-tree file -> loud FileNotFoundError
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "override-missing-file"
+        example_dir.mkdir()
+        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
+        doc = _doc(["WidgetComponent"])
+        try:
+            find_component_file(example_dir, doc, component="WidgetComponent")
+            raise AssertionError("expected a missing-component-file failure")
+        except FileNotFoundError:
+            pass
+
     # The two-row ship rule: a change ships when it clears 0.9x on one of the
     # two rows (cold, after-logical) and does not regress past 1.1x on the
     # other. Order of the rows does not matter.

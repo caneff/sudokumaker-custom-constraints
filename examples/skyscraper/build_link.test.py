@@ -35,7 +35,7 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 def visible(values):
     """The Skyscrapers clue for one line of digits: buildings that top every
     building before them, reading inward. A tie is hidden, which is what
-    SkyscraperRunningCapComponent's ALLOW_TIES = false says.
+    SkyscraperOneSidedComponent's ALLOW_TIES = false says.
 
     A fourth statement of the rule, restated here rather than imported: this
     test runs under `just test` with lzstring alone, and build_size.sky sits

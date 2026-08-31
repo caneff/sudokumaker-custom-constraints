@@ -61,11 +61,16 @@ def read_timed_component(example_dir):
     return m.group(1) if m else None
 
 
-def find_component_file(example_dir, base_doc):
+def find_component_file(example_dir, base_doc, component=None):
     """The working-tree component file the timing loop follows.
 
-    If build_link.py declares TIMED_COMPONENT = "<Name>", that name settles
-    it: <example_dir>/<Name>.js, or a loud failure naming the problem
+    `component` (the --component flag) names the component outright and wins
+    over everything else: an example that registers different components on
+    different boards has no single right answer for its build_link.py to
+    declare, so the caller says which board's component to time.
+
+    Otherwise, if build_link.py declares TIMED_COMPONENT = "<Name>", that name
+    settles it: <example_dir>/<Name>.js, or a loud failure naming the problem
     (missing file, or a name not registered on the base doc).
 
     Otherwise, the one registered component with a same-named .js file on
@@ -73,17 +78,18 @@ def find_component_file(example_dir, base_doc):
     several would time the wrong edit (CODING_STANDARDS: fail loud)."""
     names = sorted(registered_components(base_doc))
 
-    declared = read_timed_component(example_dir)
+    declared = component if component is not None else read_timed_component(example_dir)
     if declared is not None:
+        source = "--component" if component is not None else "TIMED_COMPONENT"
         if declared not in names:
             raise ValueError(
-                f"{example_dir.name}'s TIMED_COMPONENT ({declared!r}) is not "
+                f"{example_dir.name}'s {source} ({declared!r}) is not "
                 f"a registered component ({', '.join(names)})"
             )
         component_file = example_dir / f"{declared}.js"
         if not component_file.exists():
             raise FileNotFoundError(
-                f"{example_dir.name}'s TIMED_COMPONENT ({declared!r}) has no "
+                f"{example_dir.name}'s {source} ({declared!r}) has no "
                 f"working-tree file at {component_file}"
             )
         return component_file
@@ -311,7 +317,7 @@ def ship_verdict(ratios):
     return "SHIP" if min(real) <= 0.9 and max(real) <= 1.1 else "NO SHIP"
 
 
-def run(example_dir, ring_clues=False, board=None):
+def run(example_dir, ring_clues=False, board=None, component=None):
     """Time one example end to end in both modes and return
     ([(row, verdict), ...], ship) -- one entry per row (cold, then
     after-logical) and the two-row rule's verdict, or None when the code is
@@ -320,7 +326,10 @@ def run(example_dir, ring_clues=False, board=None):
     is missing. Links are stripped to their givens before timing; ring_clues
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
-    PUZZLE_LINK.txt to time; the printed row's board label then names it."""
+    PUZZLE_LINK.txt to time; the printed row's board label then names it.
+    `component` names the registered component to follow, over build_link.py's
+    TIMED_COMPONENT -- which board registers which component is the caller's
+    to say."""
     mode = "empty" if ring_clues else "strip"
     baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
     if not baseline_link.exists():
@@ -330,7 +339,7 @@ def run(example_dir, ring_clues=False, board=None):
         raise FileNotFoundError(f"missing {build_link_py}")
 
     base_doc = decode_puzzle(baseline_link.read_text().strip())
-    component_file = find_component_file(example_dir, base_doc)
+    component_file = find_component_file(example_dir, base_doc, component=component)
     board_label = f"{example_dir.name} ({board})" if board else example_dir.name
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -372,9 +381,16 @@ if __name__ == "__main__":
     p.add_argument(
         "--board", help="link file in the example dir, instead of PUZZLE_LINK.txt"
     )
+    p.add_argument(
+        "--component",
+        help="registered component to time, instead of build_link.py's TIMED_COMPONENT",
+    )
     a = p.parse_args()
     rows, ship = run(
-        ROOT / "examples" / a.example, ring_clues=a.ring_clues, board=a.board
+        ROOT / "examples" / a.example,
+        ring_clues=a.ring_clues,
+        board=a.board,
+        component=a.component,
     )
     for row, _verdict in rows:
         print(row)
