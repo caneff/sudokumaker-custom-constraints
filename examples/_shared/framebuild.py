@@ -16,9 +16,10 @@
 import json
 import pathlib
 import random
+import re
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
@@ -31,7 +32,7 @@ class Spec:
     dir: pathlib.Path  # example directory: scripts, components, and outputs live here
     title: str  # puzzle title, e.g. "Skyscrapers Interactive" (the "NxN" is appended)
     lines_name: str  # name of the custom "...Lines" constraint, e.g. "Skyscraper Lines"
-    components: list[str]  # component filenames every lane ships, read from `dir`
+    components: list[str]  # component filenames the global lane ships, read from `dir`
     min_digit: int  # puzzle's minDigit
     # clue_fn(values, cells) -> the true clue for one line. `cells` are the
     # line's (row, column) pairs, nearest the clue first: a rule whose clue
@@ -42,15 +43,25 @@ class Spec:
     extra_cages: Callable | None = (
         None  # extra_cages(interior) -> extra constraints, spliced after {"type": 0}
     )
-    # Component filenames only the local lane ships. A component the global
-    # backend never instantiates is dead weight in a global link, and the
-    # recipient reads it as part of the rule; name it here instead.
-    local_only_components: list[str] = field(default_factory=list)
+    # What the local lane ships, when main.js registers a different set from
+    # main-global.js. None means "the same list", which is what most examples
+    # want. Name a lane's set here when its backend registers only part of the
+    # other's: a component the lane's own backend never instantiates is dead
+    # weight in that lane's link, and the recipient reads it as part of the
+    # rule.
+    local_components: list[str] | None = None
 
 
 def component_files(spec, local):
     """The component filenames one lane's link carries."""
-    return spec.components + (spec.local_only_components if local else [])
+    if local and spec.local_components is not None:
+        return spec.local_components
+    return spec.components
+
+
+def stem(filename):
+    """A component file's registered name: `FooComponent.js` -> `FooComponent`."""
+    return filename[: -len(".js")]
 
 
 # Every generated link opens with this sentence (project rule).
@@ -376,7 +387,7 @@ def build_doc(
     )
     constraint_input = {"groups": frame_groups(n, lines)} if local else {}
     components = [
-        {"type": "code", "name": f[:-3], "code": minify_js((spec.dir / f).read_text())}
+        {"type": "code", "name": stem(f), "code": minify_js((spec.dir / f).read_text())}
         for f in component_files(spec, local)
     ]
 
@@ -461,18 +472,36 @@ def check(spec, link, doc, n, local=False):
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
     else:
         assert lc["input"] == {}, "the global board reads no drawn groups"
-    assert lc["definition"]["backend"]["code"] == minify_js(
+    backend = minify_js(
         (spec.dir / ("main.js" if local else "main-global.js")).read_text()
     )
+    assert lc["definition"]["backend"]["code"] == backend
     # Read the lane off `local` here, not off component_files(): an assertion
     # built from the same call the builder used would still pass if that call
     # stopped reading the lane at all.
     names = [c["name"] for c in lc["definition"]["components"]]
-    missing = [f[:-3] for f in spec.components if f[:-3] not in names]
-    assert not missing, f"the link is missing components: {missing}"
-    strays = [f[:-3] for f in spec.local_only_components if (f[:-3] in names) != local]
-    assert not strays, (
-        f"local-only components on the wrong lane (local={local}): {strays}"
+    want = (
+        spec.local_components
+        if local and spec.local_components is not None
+        else spec.components
+    )
+    assert names == [stem(f) for f in want], (
+        f"the link carries the wrong lane's components (local={local}): {names}"
+    )
+    # Whichever list a lane names, the backend must not register a component
+    # the link leaves out: that one fails inside the app, where the author
+    # never sees it. A lexical check -- it reads `new <Name>Component` off the
+    # backend source, so a class reached through an alias, or named some other
+    # way, is invisible to it. Comment lines are dropped first, or a `//!` note
+    # that mentions a component would read as a registration.
+    code = "\n".join(
+        ln for ln in backend.splitlines() if not ln.lstrip().startswith("//")
+    )
+    unshipped = sorted(
+        set(re.findall(r"new ([A-Za-z0-9_]+Component)\b", code)) - set(names)
+    )
+    assert not unshipped, (
+        f"the backend registers components the link omits: {unshipped}"
     )
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit

@@ -42,9 +42,11 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
   procedure for a whole line, so it subsumes the one-sided DP and global does
   not run one beside it.
 
-So a global link ships the two-clue DP and the side count, and only a local
-link adds `SkyscraperOneSidedComponent.js`: `build_size.py` names the split as
-`COMPONENTS` and `LOCAL_ONLY_COMPONENTS`, and `framebuild.check` asserts it.
+Each link ships what its own backend registers, and nothing else: a global
+link carries the two-clue DP and the side count, a local link carries the
+one-sided DP alone. `build_size.py` names the two sets as `COMPONENTS` and
+`LOCAL_COMPONENTS`, and `framebuild.check` asserts both that the link matches
+its lane and that no backend registers a component the link left out.
 
 ## What the components deduce
 
