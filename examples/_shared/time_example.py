@@ -26,7 +26,9 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
+from link_swap import find_constraint, replace_constraint_code
+from minify import minify_js
 from probe_link import empty_link_file
 
 APP_SOLVE = HERE / "app-solve.mjs"
@@ -99,6 +101,109 @@ def find_component_file(example_dir, base_doc):
             "follows only one"
         )
     return example_dir / f"{matches[0]}.js"
+
+
+def find_component_constraint(doc, component_name):
+    """The name of the constraint that registers component_name."""
+    for c in doc["puzzle"]["constraints"]:
+        names = [comp["name"] for comp in c.get("definition", {}).get("components", [])]
+        if component_name in names:
+            return c["definition"]["name"]
+    raise ValueError(f"no constraint registers a component named {component_name!r}")
+
+
+def registered_backend(doc, constraint_name):
+    """The named constraint's backend code, or None if it has none."""
+    return (
+        find_constraint(doc, constraint_name)["definition"]
+        .get("backend", {})
+        .get("code")
+    )
+
+
+# The two paste-target files an example's constraint can ship as its backend
+# (docs/example-layout.md): main.js for the local (drawn-groups) link,
+# main-global.js for the global (whole-grid) one. Which one a given board
+# ships is a per-example choice with no fixed rule -- isofill and
+# numbered-rooms default to main.js, skyscraper/hit-counts/running-start to
+# main-global.js -- so it is detected, never assumed.
+BACKEND_FILES = ("main.js", "main-global.js")
+
+
+def head_content(path):
+    """path's last-committed (git HEAD) content, ignoring any working-tree
+    edit -- resolve_backend_file's ground truth for "which file built the
+    committed link", immune to the very edit it is trying to detect."""
+    result = subprocess.run(
+        ["git", "show", f"HEAD:./{path.name}"],
+        cwd=path.parent,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout
+
+
+def resolve_backend_file(example_dir, base_doc, constraint_name):
+    """Which of BACKEND_FILES the committed PUZZLE_LINK.txt's constraint_name
+    backend was built from, as a working-tree path -- the file
+    build_candidate_doc must re-minify to time a backend-only change. None
+    when the constraint has no code backend, or example_dir has neither
+    file. Raises when a file exists but none of them matches -- a silent
+    guess would time the wrong backend variant."""
+    committed_backend = registered_backend(base_doc, constraint_name)
+    if committed_backend is None:
+        return None
+    candidates = [
+        example_dir / name for name in BACKEND_FILES if (example_dir / name).exists()
+    ]
+    if not candidates:
+        return None
+    matches = [f for f in candidates if minify_js(head_content(f)) == committed_backend]
+    if not matches:
+        raise ValueError(
+            f"{example_dir.name}: no backend file "
+            f"({', '.join(BACKEND_FILES)}) matches the committed "
+            f"{constraint_name!r} backend"
+        )
+    if len(matches) > 1:
+        raise ValueError(
+            f"{example_dir.name}: more than one backend file matches the "
+            f"committed {constraint_name!r} backend "
+            f"({', '.join(f.name for f in matches)})"
+        )
+    return matches[0]
+
+
+def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=None):
+    """Build the candidate link (build_candidate), overlay the working-tree
+    backend if it differs, and return byte_equal: True only when neither the
+    timed component nor the constraint's backend differs from base_doc.
+
+    A build_link.py's --component swap touches only the named component's
+    code -- the backend stays whatever PUZZLE_LINK.txt already shipped, even
+    when the working-tree backend file has changed. This overlays
+    resolve_backend_file's minified working-tree content onto the candidate
+    (link_swap.replace_constraint_code) before the byte-equal decision, so
+    both the decision and the timed candidate at out_path cover the backend,
+    not just components."""
+    build_candidate(example_dir, component_file, out_path, board=board)
+    candidate_doc = decode_puzzle(out_path.read_text().strip())
+
+    constraint_name = find_component_constraint(base_doc, component_file.stem)
+    backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
+    if backend_file is not None:
+        backend_code = minify_js(backend_file.read_text())
+        candidate_doc = replace_constraint_code(
+            candidate_doc, constraint_name, backend_code=backend_code
+        )
+        out_path.write_text(encode_link(candidate_doc) + "\n")
+
+    return registered_components(candidate_doc) == registered_components(
+        base_doc
+    ) and registered_backend(candidate_doc, constraint_name) == registered_backend(
+        base_doc, constraint_name
+    )
 
 
 def build_candidate(example_dir, component_file, out_path, board=None):
@@ -232,10 +337,8 @@ def run(example_dir, ring_clues=False, board=None):
         tmp = pathlib.Path(tmp)
 
         candidate_link = tmp / "candidate.txt"
-        build_candidate(example_dir, component_file, candidate_link, board=board)
-        candidate_doc = decode_puzzle(candidate_link.read_text().strip())
-        byte_equal = registered_components(candidate_doc) == registered_components(
-            base_doc
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc, board=board
         )
 
         baseline_probe = tmp / "baseline_probe.txt"

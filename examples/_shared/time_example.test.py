@@ -7,20 +7,128 @@
 #   uv run --with lzstring examples/_shared/time_example.test.py
 
 import pathlib
+import subprocess
 import sys
 import tempfile
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
+from link_codec import decode_puzzle, encode_link
+from minify import minify_js
 from time_example import (
     build_candidate,
+    build_candidate_doc,
     build_row,
     find_component_file,
     row_ratio,
     run,
     ship_verdict,
 )
+
+STUB_BUILD_LINK_PY = f"""\
+import argparse
+import pathlib
+import sys
+
+sys.path.insert(0, {str(HERE)!r})
+from link_codec import decode_puzzle
+from link_swap import check_and_write, swap_component_code
+from minify import minify_js
+
+HERE = pathlib.Path(__file__).parent
+CONSTRAINT_NAME = "Widget Lines"
+
+
+def build(component_path, out_path, board=None):
+    component_path = pathlib.Path(component_path)
+    board_path = pathlib.Path(board) if board else HERE / "PUZZLE_LINK.txt"
+    code = minify_js(component_path.read_text())
+    base = decode_puzzle(board_path.read_text().strip())
+    doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
+    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--component", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--board")
+    a = p.parse_args()
+    build(a.component, a.out, board=a.board)
+"""
+
+
+def _widget_doc(backend_code, component_code):
+    """A minimal decode_puzzle()-shaped doc: one constraint ("Widget Lines")
+    with a code backend and one component, real enough to round-trip through
+    encode_link/decode_puzzle the way a build_link.py stub needs."""
+    return {
+        "puzzle": {
+            "constraints": [
+                {
+                    "definition": {
+                        "name": "Widget Lines",
+                        "backend": {"type": "code", "code": backend_code},
+                        "components": [
+                            {
+                                "type": "code",
+                                "name": "WidgetComponent",
+                                "code": component_code,
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
+    }
+
+
+def _git_commit_all(example_dir):
+    """Commit every file in example_dir as its own tiny repo -- resolve_backend_file
+    reads a backend file's *last-committed* content (git HEAD), so a fixture
+    needs real git history: a plain temp file has none, and a working-tree
+    edit made after this call is exactly what a test then exercises."""
+    subprocess.run(["git", "init", "-q"], cwd=example_dir, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=example_dir, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "commit",
+            "-q",
+            "-m",
+            "init",
+        ],
+        cwd=example_dir,
+        check=True,
+    )
+
+
+def _make_widget_example(
+    example_dir, backend_src, component_src, backend_file="main.js", extra_files=None
+):
+    """A working example_dir for build_candidate_doc: PUZZLE_LINK.txt built
+    from _widget_doc's minified backend/component, a build_link.py stub that
+    swaps only the component (mirrors skyscraper/hit-counts/running-start --
+    never the backend), a WidgetComponent.js source file, and backend_file
+    ("main.js" or "main-global.js") holding the backend source. extra_files
+    adds further committed files -- the other lane's file, for the
+    local/global duality cases. Everything is committed, so a caller's
+    later edit is a real working-tree change against git HEAD."""
+    example_dir.mkdir()
+    base_doc = _widget_doc(minify_js(backend_src), minify_js(component_src))
+    (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+    (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+    (example_dir / "WidgetComponent.js").write_text(component_src)
+    (example_dir / backend_file).write_text(backend_src)
+    for name, content in (extra_files or {}).items():
+        (example_dir / name).write_text(content)
+    _git_commit_all(example_dir)
+    return base_doc
 
 
 def _doc(names):
@@ -251,5 +359,138 @@ if __name__ == "__main__":
     assert row_ratio(0, 0) is None
     assert row_ratio(0, 5000) == float("inf")
     assert row_ratio(1000, 800) == 0.8
+
+    # #151: build_candidate_doc's byte-equal decision must cover the
+    # constraint's backend, not only registered component code --
+    # build_link.py stubs here mirror skyscraper/hit-counts/running-start,
+    # which never touch the backend on a --component swap. Assertions read
+    # the written candidate_link, the file `just time` actually probes and
+    # times, not a value the function merely returns internally.
+
+    # main.js-only change, component untouched -> not byte-equal, and the
+    # written candidate carries the working-tree backend, not the committed one
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "backend-changed"
+        base_doc = _make_widget_example(
+            example_dir, "console.log('old')\n", "function update(){return 1}\n"
+        )
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        (example_dir / "main.js").write_text("console.log('new')\n")
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc
+        )
+        assert not byte_equal, "a main.js-only change must not read byte-equal"
+        candidate_doc = decode_puzzle(candidate_link.read_text().strip())
+        got_backend = candidate_doc["puzzle"]["constraints"][0]["definition"][
+            "backend"
+        ]["code"]
+        assert "new" in got_backend and "old" not in got_backend
+
+    # truly byte-equal working tree (backend and component both match what
+    # is already committed) -> byte_equal stays True
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "unchanged"
+        base_doc = _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc
+        )
+        assert byte_equal, "an unchanged working tree must still read byte-equal"
+
+    # component-only change, backend unchanged -> unchanged behaviour: not
+    # byte-equal, backend stays the committed one
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "component-changed"
+        base_doc = _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        component_file.write_text("function update(){return 2}\n")
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc
+        )
+        assert not byte_equal, "a component-only change must not read byte-equal"
+        candidate_doc = decode_puzzle(candidate_link.read_text().strip())
+        got_backend = candidate_doc["puzzle"]["constraints"][0]["definition"][
+            "backend"
+        ]["code"]
+        assert "same" in got_backend
+
+    # local/global duality (docs/example-layout.md): a board whose committed
+    # backend is main-global.js, with an untouched main.js sitting alongside
+    # it (the file the board does NOT ship) -- editing the unused lane must
+    # not register as a change. This is the #151 follow-up bug: naively
+    # always overlaying main.js would silently swap in the wrong lane here.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "global-lane-untouched"
+        base_doc = _make_widget_example(
+            example_dir,
+            "console.log('global backend')\n",
+            "function update(){return 1}\n",
+            backend_file="main-global.js",
+            extra_files={"main.js": "console.log('local backend, unused')\n"},
+        )
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        (example_dir / "main.js").write_text("console.log('edited, but not shipped')\n")
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc
+        )
+        assert byte_equal, (
+            "editing the lane the board does not ship must not register as a change"
+        )
+
+    # same duality fixture, but the lane the board DOES ship (main-global.js)
+    # is the one edited -> detected, and the written candidate carries it
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "global-lane-changed"
+        base_doc = _make_widget_example(
+            example_dir,
+            "console.log('global backend')\n",
+            "function update(){return 1}\n",
+            backend_file="main-global.js",
+            extra_files={"main.js": "console.log('local backend, unused')\n"},
+        )
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        (example_dir / "main-global.js").write_text(
+            "console.log('changed global backend')\n"
+        )
+        byte_equal = build_candidate_doc(
+            example_dir, component_file, candidate_link, base_doc
+        )
+        assert not byte_equal, "editing the shipped lane must register as a change"
+        candidate_doc = decode_puzzle(candidate_link.read_text().strip())
+        got_backend = candidate_doc["puzzle"]["constraints"][0]["definition"][
+            "backend"
+        ]["code"]
+        assert "changed" in got_backend
+
+    # neither backend file's committed content matches the committed link's
+    # backend -> loud ValueError, never a silent guess
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "mismatched-backend"
+        example_dir.mkdir()
+        base_doc = _widget_doc(
+            "SOMETHING NEITHER FILE HAS",
+            minify_js("function update(){return 1}\n"),
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
+        (example_dir / "main.js").write_text("console.log('does not match')\n")
+        _git_commit_all(example_dir)
+        candidate_link = pathlib.Path(tmp) / "candidate.txt"
+        component_file = example_dir / "WidgetComponent.js"
+        try:
+            build_candidate_doc(example_dir, component_file, candidate_link, base_doc)
+            raise AssertionError("expected a no-backend-match failure")
+        except ValueError:
+            pass
 
     print("ok")
