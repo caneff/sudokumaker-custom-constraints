@@ -31,7 +31,8 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
 - **Every generated link's rules text starts with "Normal sudoku rules apply on
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
-  that sets `comment` itself must add the sentence.
+  that sets `comment` itself must add the sentence. Exception: isofill is not
+  sudoku and skips the line.
 
 ## Commands
 
@@ -49,6 +50,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming → `docs/example-layout.md`
+- Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`
 - Design reasoning → `docs/agents/design-reasoning.md`
 - Reading ISS (the closest public solver) → `docs/agents/iss.md`
 
