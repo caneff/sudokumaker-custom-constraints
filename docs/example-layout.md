@@ -95,7 +95,9 @@ lzstring`, for the `lzstring` codec dependency) and gates the two mechanical
 pre-share criteria: the link opens clean (no entered values on non-given
 cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the
-inner grid." See `docs/share-checklist.md` for the full pre-share list.
+inner grid" — except an example in `NO_RULES_PREFIX` (isofill is not
+sudoku, and its rules text must not mention sudoku). See
+`docs/share-checklist.md` for the full pre-share list.
 
 ## Board naming
 

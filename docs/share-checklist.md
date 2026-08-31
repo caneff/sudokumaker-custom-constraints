@@ -15,7 +15,8 @@ and checks:
   digits, no hidden clues stored as entered values. A miss here ships a
   board with the answer already typed in.
 - **Rules text carries the sudoku prefix.** The comment starts with "Normal
-  sudoku rules apply on the inner grid."
+  sudoku rules apply on the inner grid" — except isofill, which is not
+  sudoku and skips the line.
 
 ## 1. Uniqueness is proven on the shipped board
 

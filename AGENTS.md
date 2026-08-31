@@ -31,8 +31,8 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
 - **Every generated link's rules text starts with "Normal sudoku rules apply on
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
-  that sets `comment` itself must add the sentence — isofill's own
-  `build_link.py` does. `check_layout.py` gates this on every shipped link.
+  that sets `comment` itself must add the sentence. Exception: isofill is not
+  sudoku and skips the line.
 
 ## Commands
 

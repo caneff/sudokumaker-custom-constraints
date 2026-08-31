@@ -208,9 +208,8 @@ if __name__ == "__main__":
         assert "PUZZLE_LINK.txt" in violations[0]
         assert "rules prefix" in violations[0]
 
-    # isofill is NOT exempt from the rules-prefix check -- its own
-    # build_link.py already puts RULES_PREFIX in the rule text, so a missing
-    # prefix there is a real regression, not an expected shape
+    # isofill is exempt from the rules-prefix check -- it is not sudoku, and
+    # its rules text must not mention sudoku (#271)
     missing = [f for f in REQUIRED if f != "main-global.js"]
     with example(
         files=missing,
@@ -218,8 +217,7 @@ if __name__ == "__main__":
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
     ) as (root, _):
         violations = check_tree(root)
-        assert len(violations) == 1, violations
-        assert "rules prefix" in violations[0]
+        assert violations == [], violations
 
     # a link file that fails to decode is reported, not a crash
     with example(contents={"PUZZLE_LINK.txt": "not a real link"}) as (root, _):

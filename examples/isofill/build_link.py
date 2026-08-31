@@ -32,7 +32,6 @@ HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "ISOFILL"
 TIMED_COMPONENT = "IsofillComponent"
 RULE = (
-    "Normal sudoku rules apply on the inner grid. "
     "ISOFILL: Divide the grid into {n} regions, each with {n} orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "
     "All of the digits {lo}-{hi} must appear in the grid."

@@ -4,7 +4,7 @@
 # decodes every shipped PUZZLE_LINK*.txt and checks the two mechanical
 # pre-share criteria from docs/share-checklist.md: the link opens clean (no
 # entered values on non-given cells) and the rules text carries the sudoku
-# prefix.
+# prefix, except an example in NO_RULES_PREFIX (isofill is not sudoku).
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
@@ -44,11 +44,13 @@ MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
 
 # Must match framebuild.RULES_PREFIX. Duplicated (not imported) so this
 # check does not pull in ortools -- framebuild.py imports it at module load,
-# and check_layout.py runs with just `--with lzstring`. Every example's own
-# builder adds it (isofill's build_link.py does too), so there is no
-# exemption list here -- unlike NO_LOCAL_GLOBAL_SPLIT above, nothing is
-# exempt from carrying the prefix.
+# and check_layout.py runs with just `--with lzstring`.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+
+# An example whose rules are not sudoku rules, so its link comment must not
+# carry RULES_PREFIX. isofill is not sudoku (spec #232) and its rules text
+# must say so (#271). Same pattern as NO_LOCAL_GLOBAL_SPLIT above.
+NO_RULES_PREFIX = {"isofill"}
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
@@ -105,7 +107,9 @@ def check_share_ready(example_dir, link):
             f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
         )
 
-    if not puzzle.get("comment", "").startswith(RULES_PREFIX):
+    if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(
+        RULES_PREFIX
+    ):
         violations.append(f"{name}: {link.name} comment missing rules prefix")
 
     return violations
