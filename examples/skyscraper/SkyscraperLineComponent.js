@@ -29,11 +29,11 @@
 //! assignment consistent with the candidates and both clues uses it.
 //!
 //! The permutation is the whole premise, so `update` and `validate` both ask
-//! for it at solve time (docs/line-contract.md): the line must be a house
-//! whose live candidates union to exactly {1..length}. That one test carries
+//! the app for it at solve time: the line must be a house whose live
+//! candidates union to exactly {1..length}. That one test carries
 //! everything the DP assumes -- the peak digit is the line's length, no cell
-//! holds 0, and no digit appears twice -- and it is asked of the app, never
-//! inferred from the board's minDigit or from the line's length.
+//! holds 0, and no digit appears twice -- and none of it is inferred from the
+//! board's minDigit or from the line's length.
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -46,16 +46,18 @@ function setParams (instance, clueA, clueB, line) {
   instance.line = line
 }
 
-// Digit masks use bit d-1, so a 16-cell line still fits a Uint16Array. The
-// app's masks use bit d, so every read of one shifts right and every write
-// shifts left. A visible count j is stored in the same encoding: bit j means
-// "the clue value j+1", so a clue's candidate mask doubles as a count mask.
+//! Masks here put digit d on bit d-1, one bit below the app's, so every read
+//! of an app mask shifts right and every write shifts left. A visible count j
+//! rides in the same encoding as the clue value j+1, so a clue's candidate
+//! mask doubles as a mask of visible counts. MAXN is the mask width: a longer
+//! line stands the component down rather than wrap a shift.
 //
-// A DP layer is one entry per subset of the sub-peak digits, so the work per
-// call doubles with the board size: 12 us at n=9 against 353 us at n=16 (2,000
-// calls of the soundness fuzz's random states). 16 is the mask width; sizes
-// up to 10 are timed in the app (README, Timing): at 10x10 the DP proves the
-// board unique in 0.1 s where no deduction at all times the solver out.
+// Bit d-1 also keeps a 16-cell line inside a Uint16Array. A DP layer is one
+// entry per subset of the sub-peak digits, so the work per call doubles with
+// the board size: 12 us at n=9 against 353 us at n=16 (2,000 calls of the
+// soundness fuzz's random states). 16 is the mask width; sizes up to 10 are
+// timed in the app (README, Timing): at 10x10 the DP proves the board unique
+// in 0.1 s where no deduction at all times the solver out.
 const MAXN = 16
 
 // One entry per subset of the sub-peak digits, per direction: a bitmask of the
@@ -87,9 +89,10 @@ function dpFor (m) {
   return dp
 }
 
-// Forward sweep: which (subset, visible count) states a prefix can reach.
-// Placing digit b at position popcount(subset) is a new maximum exactly when b
-// tops every digit already used, i.e. when subset < b.
+//! Forward sweep, run once from each end inward: which (subset, visible
+//! count) states a prefix can reach. Laying digit b at position
+//! popcount(subset) is a new maximum exactly when b tops every digit already
+//! used, which is what `mask < b` tests.
 function sweepForward (s, d) {
   const { m, size, pc } = s
   const sub = s.sub[d]
@@ -109,10 +112,10 @@ function sweepForward (s, d) {
   }
 }
 
-// Backward sweep: intersect the reachable states with the ones a peak and the
-// far side can still complete. `feas` starts holding the near clue's mask at
-// every subset the join accepted; this walks it back to the empty subset and
-// records, per position, the digits that sit on a surviving path.
+//! Backward sweep: keep only the reachable states a peak and the far side can
+//! still complete. `feas` arrives holding the near clue's mask at every subset
+//! the join accepted; this walks it back to the empty subset and records, per
+//! position, the digits that sit on a surviving path.
 function sweepBackward (s, d) {
   const { m, size, pc } = s
   const sub = s.sub[d]
@@ -159,9 +162,10 @@ function prune (puzzle, line, Lc, Rc, peak) {
   sweepForward(s, 0)
   sweepForward(s, 1)
 
-  // Join the two sides at every peak position. The prefix and the suffix
-  // partition the sub-peak digits exactly, so a subset on the left pairs with
-  // its complement on the right and the join is exact, not a count match.
+  //! The join, over every peak position: prefix and suffix partition the
+  //! sub-peak digits exactly, so a subset on the left pairs with its
+  //! complement on the right. A position survives when it can still hold the
+  //! peak and both sides reach it with a count their own clue allows.
   const R0 = s.reach[0]
   const R1 = s.reach[1]
   const F0 = s.feas[0]
@@ -196,16 +200,16 @@ function prune (puzzle, line, Lc, Rc, peak) {
   return { cand, keep, L: keepL, R: keepR }
 }
 
-// The gate: the line is a house and its live candidates union to exactly
-// {1..length}, so it holds every digit 1..length once -- a full house of the
-// digit set the DP needs (docs/line-contract.md). Asked at solve time, because
-// main code runs before the built-in row and column houses are registered
-// (gotcha 6) and a board that starts its digits at 0 keeps a 0 on the line
-// until something else takes it away. Query the line alone: a ring cell in the
-// list flips getCellsCanHaveRepeats to true. A house never repeats again and a
-// shrinking union never regains a digit, so the answer is cached once it turns
-// true -- and only then, or a line still carrying a 0 would lock the gate shut
-// for good.
+//! The gate: the line is a house and its live candidates union to exactly
+//! {1..length}, so it holds every digit 1..length once -- the full house the
+//! DP needs. Until that proves out the component removes nothing.
+// The gate is asked at solve time, because main code runs before the built-in
+// row and column houses are registered (gotcha 6) and a board that starts its
+// digits at 0 keeps a 0 on the line until something else takes it away. Query
+// the line alone: a ring cell in the list flips getCellsCanHaveRepeats to true.
+// A house never repeats again and a shrinking union never regains a digit, so
+// the answer is cached once it turns true -- and only then, or a line still
+// carrying a 0 would lock the gate shut for good.
 function gateOpen (instance, puzzle) {
   if (instance.gateOpen) return true
   const line = instance.line
@@ -227,8 +231,9 @@ function * update (instance, puzzle) {
   const r = prune(puzzle, line, Lc, Rc, peak)
   const rmA = Lc & ~r.L
   const rmB = Rc & ~r.R
-  // Copy the line's removals out of the scratch buffer before yielding: the
-  // solver may run another line's update between two of our yields.
+  //! Copy the line's removals out of the scratch buffers before yielding: a
+  //! yield hands the solver control, and it may run another line's update,
+  //! which reuses those buffers.
   let pending = null
   for (let i = 0; i < line.length; i++) {
     const rm = r.cand[i] & ~r.keep[i]

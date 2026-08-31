@@ -35,9 +35,13 @@ from framebuild import Spec, run
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
     "SkyscraperLineComponent.js",
-    "SkyscraperOneSidedComponent.js",
     "SkyscraperSideComponent.js",
 ]
+# The one-sided DP is the local lane's alone. main.js registers it once per
+# drawn group; main-global.js never can -- it throws on a frame line with only
+# one clue, and the two-clue DP it registers instead subsumes the one-sided
+# rule on every line it sees.
+LOCAL_ONLY_COMPONENTS = ["SkyscraperOneSidedComponent.js"]
 
 # One worked example per size, read inward from the clue -- a local board's
 # lines bend and carry one clue, so the example must not talk about rows or
@@ -108,6 +112,7 @@ SPEC = Spec(
     title="Skyscrapers Interactive",
     lines_name="Skyscraper Lines",
     components=COMPONENTS,
+    local_only_components=LOCAL_ONLY_COMPONENTS,
     min_digit=1,
     clue_fn=sky,
     cp_sat_clue_fn=add_visibility,

@@ -1,10 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Skyscrapers, ONE outside clue at ONE end of a drawn line. The clue counts
 //! the visible buildings reading inward -- a building is visible when it tops
-//! every building before it. This is the component the local variant registers
-//! per drawn group (docs/line-contract.md), so it assumes nothing about the
-//! line: digits may repeat, the line may be any length, and there may be no
-//! clue at the far end at all.
+//! every building before it. One instance runs on one drawn group, and it
+//! assumes nothing about that group: digits may repeat along it, it may be any
+//! length, and there may be no clue at its far end at all.
 //!
 //! A DP over (position, tallest so far, visible count) decides the line. The
 //! tallest so far and the count are all a prefix leaves behind -- what a cell
@@ -23,19 +22,23 @@
 //! needs the line to be a house, a full house, or a board whose digits start
 //! at 1, so it runs on every line kind with no gate.
 
-// Ties, per docs/line-contract.md. false: a building tied with the tallest so
-// far is hidden. true: it counts as visible. The author flips the constant in
-// the segment; the rules text must say the same thing.
+//! What a tie means, since a line may repeat a digit. false: a building the
+//! same height as the tallest so far is hidden. true: it counts as visible.
+//! An author flips it here, and the puzzle's rules text must say the same
+//! thing it says.
 const ALLOW_TIES = false
-// `d + TIE > max` reads "a building of height d is visible over a running max
-// of `max`": strict when a tie is hidden, `>=` when a tie counts.
+//! `d + TIE > max` reads "a building of height d is visible over a running max
+//! of `max`": strict when a tie is hidden, `>=` when a tie counts.
 const TIE = ALLOW_TIES ? 1 : 0
 
-// Digit and count masks are the app's: bit d means digit d. A count of j is a
-// clue value, so it lives in the same encoding. The widest shift is
-// `1 << count` for a count up to the line length, so a cap of 24 leaves every
-// mask well inside a 32-bit int. A longer line, or a board with more digits
-// than this, stands the component down rather than wrap a shift.
+//! Digit and count masks are the app's: bit d means digit d. A count of j is a
+//! clue value, so it lives in the same encoding and a clue's candidate mask
+//! doubles as a mask of visible counts. MAXLEN caps the line length and the
+//! digit range: past it the component stands down rather than wrap a shift.
+// The widest shift is `1 << count` for a count up to the line length, so a cap
+// of 24 leaves every mask well inside a 32-bit int. A longer line, or a board
+// with more digits than this, stands the component down rather than wrap a
+// shift.
 const MAXLEN = 24
 // A DP layer holds one count mask per value of the tallest so far: the digits
 // maxDigit - minDigit + 1 of them, plus "nothing built yet".
@@ -90,7 +93,8 @@ function * update (instance, puzzle) {
     cand[i] = c
   }
 
-  // Forward: which (tallest, count) states a prefix of the line can reach.
+  //! Forward sweep from the clue inward: which (tallest so far, visible count)
+  //! states a prefix of the line can reach.
   fwd[0] = 1 // nothing built, nothing visible
   for (let i = 0; i < len; i++) {
     const base = i * tallest
@@ -110,10 +114,10 @@ function * update (instance, puzzle) {
     }
   }
 
-  // Backward: from the far end, where the clue's own candidates are the counts
-  // a finished line may show, walk back to the start. `bwd[i][t]` holds the
-  // counts a prefix may already have used; a digit is kept at cell i where some
-  // reachable state there leads into a count the rest of the line can finish.
+  //! Backward sweep from the far end, seeded with the clue's own candidates --
+  //! the counts a finished line may show. `bwd[i][t]` holds the counts a prefix
+  //! may already have used; a digit is kept at cell i where some reachable
+  //! state there leads into a count the rest of the line can finish.
   const last = len * tallest
   for (let t = 0; t < tallest; t++) bwd[last + t] = clueCand
   for (let i = len - 1; i >= 0; i--) {
@@ -141,10 +145,10 @@ function * update (instance, puzzle) {
     keep[i] = kept
   }
 
-  // Collect every removal before yielding: the scratch above is shared, and a
-  // yield hands the solver control, which may run another line's update. Most
-  // calls remove nothing, so the list is built only when there is something in
-  // it.
+  //! Collect every removal before yielding: the scratch above is shared, and a
+  //! yield hands the solver control, which may run another line's update.
+  // Most calls remove nothing, so the list is built only when there is
+  // something in it.
   let pending = null
   const drop = (cell, mask) => {
     if (mask === 0) return

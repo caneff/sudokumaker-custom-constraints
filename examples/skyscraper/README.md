@@ -42,6 +42,10 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
   procedure for a whole line, so it subsumes the one-sided DP and global does
   not run one beside it.
 
+So a global link ships the two-clue DP and the side count, and only a local
+link adds `SkyscraperOneSidedComponent.js`: `build_size.py` names the split as
+`COMPONENTS` and `LOCAL_ONLY_COMPONENTS`, and `framebuild.check` asserts it.
+
 ## What the components deduce
 
 **`SkyscraperLineComponent.js` — one per line, both clues at once.** A line is
@@ -129,7 +133,7 @@ more and the solver guessed less.
 | `gen_6x6` | 8 nodes | did not finish (200k-node cap) |
 | `gen_9x9` (shipped board, seed 610) | 45,731 nodes (~2 min; golden capped at 5k) | not run |
 
-In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **8.0 s**
+In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **7.4 s**
 (`just time skyscraper --ring-clues`). It is the hardest unique board a
 560-seed scan found (#140, #161), so it doubles as the timing board. The
 first shipped board handed the solver 58% of its ring and read 0.3 s; before

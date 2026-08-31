@@ -34,7 +34,10 @@ the rest of the text.)
 ## 3. The clue set is curated
 
 The ring stays mostly blank unless you chose otherwise. The givens count is
-sane for the size.
+sane for the size. On a board whose shown clues are carved to CP-SAT
+minimality — drop any one and the solution stops being unique — "mostly blank"
+means "no unnecessary clue": read the criterion against the recorded carve,
+not against a target count.
 
 ## 4. The shipped component reads well
 

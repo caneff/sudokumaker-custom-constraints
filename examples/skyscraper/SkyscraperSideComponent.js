@@ -7,11 +7,11 @@
 //! the side's n clues is a 1 -- the rule this component states over the clue
 //! cells, coupling clues no single line ever sees together.
 //!
-//! The proof needs both halves and the component checks both in `update`
-//! (docs/line-contract.md): every line of the side must be a full house of
-//! {1..n}, so the tallest digit a line can hold is n and a clue of 1 means its
-//! first cell holds n; and the nearest rank must be a full house of {1..n} too,
-//! so exactly one first cell holds n. Take either half away and the count is
+//! The proof needs both halves, and `update` asks the app for both at solve
+//! time: every line of the side must be a full house of {1..n}, so the tallest
+//! digit a line can hold is n and a clue of 1 means its first cell holds n;
+//! and the nearest rank must be a full house of {1..n} too, so exactly one
+//! first cell holds n. Take either half away and the count is
 //! wrong: on lines that may repeat, two sides can both start with their own
 //! tallest building. The rank is the lines' own first cells, so the caller
 //! hands over the lines and the component reads the rank off them.
@@ -31,9 +31,9 @@ function setParams (instance, clues, lines) {
   instance.rank = lines.map(line => line[0])
 }
 
-// A full house whose live candidates union to exactly {1..cells.length}: the
-// cells never repeat a digit and hold every digit up to their own count once.
-// Query the cells alone -- a clue cell in the list flips the repeats answer.
+//! A full house of {1..cells.length}: the cells never repeat a digit and their
+//! live candidates union to exactly the digits 1..n, so no cell can hold a 0.
+//! Query the cells alone -- a clue cell in the list flips the repeats answer.
 function fullHouseOfOneToN (puzzle, cells) {
   if (puzzle.getCellsCanHaveRepeats(cells)) return false
   let mask = 0
@@ -41,6 +41,9 @@ function fullHouseOfOneToN (puzzle, cells) {
   return mask === (1 << (cells.length + 1)) - 2 // bits 1..n set, bit 0 clear
 }
 
+//! The gate: every line of the side, and the nearest rank they start on, must
+//! be a full house of {1..n}. Until all of them are, the component removes
+//! nothing.
 // Asked at solve time, because main code runs before the built-in row and
 // column houses are registered (gotcha 6) and a board that starts its digits at
 // 0 keeps a 0 on a line until something else takes it away. A house never
