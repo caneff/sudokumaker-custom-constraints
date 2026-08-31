@@ -21,6 +21,7 @@ from time_example import (
     build_candidate_doc,
     build_row,
     find_component_file,
+    parse_app_solve_output,
     row_ratio,
     run,
     ship_verdict,
@@ -534,5 +535,45 @@ if __name__ == "__main__":
             raise AssertionError("expected a no-backend-match failure")
         except ValueError:
             pass
+
+    # all reps timed out: the failure names the fixed 300s per-rep timeout
+    # and the rep counts
+    stdout = (
+        "some app-solve.mjs log lines\n"
+        'JSON: {"median": null, "version": "v2026.08.14-d47fc4b", '
+        '"repsRun": 3, "repsTimedOut": 3}\n'
+    )
+    try:
+        parse_app_solve_output("PUZZLE_LINK_local.txt", stdout)
+        raise AssertionError("expected an all-reps-timed-out failure")
+    except RuntimeError as e:
+        assert str(e) == (
+            "app-solve.mjs: PUZZLE_LINK_local.txt: all 3 reps hit the 300s "
+            "per-rep timeout (3 timed out)"
+        )
+
+    # mixed outcome (median present) still returns the data -- unaffected
+    stdout = (
+        'JSON: {"median": 220, "version": "v2026.08.14-d47fc4b", '
+        '"repsRun": 3, "repsTimedOut": 1}\n'
+    )
+    data = parse_app_solve_output("PUZZLE_LINK.txt", stdout)
+    assert data["median"] == 220
+    assert data["repsTimedOut"] == 1
+
+    # no JSON line at all -- unchanged loud failure
+    try:
+        parse_app_solve_output("PUZZLE_LINK.txt", "no json here\n")
+        raise AssertionError("expected a no-JSON-line failure")
+    except RuntimeError as e:
+        assert "printed no JSON line" in str(e)
+
+    # unreadable app version -- unchanged loud failure
+    stdout = 'JSON: {"median": 100, "version": null, "repsRun": 3, "repsTimedOut": 0}\n'
+    try:
+        parse_app_solve_output("PUZZLE_LINK.txt", stdout)
+        raise AssertionError("expected a could-not-read-version failure")
+    except RuntimeError as e:
+        assert "could not read the app version" in str(e)
 
     print("ok")

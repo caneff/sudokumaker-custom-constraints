@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -135,6 +135,54 @@ import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEn
   assert.strictEqual(marksRejected(marks, false), true)
   assert.strictEqual(marksRejected(marks, true), false)
   assert.strictEqual(marksRejected('This is a unique solution. took 0.4s', false), false)
+}
+
+// ---- solveSummary: every rep times out, median null, both counts named ----
+// The JSON line's aggregate carries the rep counts alongside the median, so
+// the driver can name the timeout rather than reading a bare null.
+{
+  const rows = [
+    { first: 6800, unique: null, sum: null, verdict: 'timeout' },
+    { first: 7100, unique: null, sum: null, verdict: 'timeout' },
+    { first: 6950, unique: null, sum: null, verdict: 'timeout' }
+  ]
+  const s = solveSummary(rows)
+  assert.strictEqual(s.median, null)
+  assert.strictEqual(s.repsRun, 3)
+  assert.strictEqual(s.repsTimedOut, 3)
+}
+
+// ---- solveSummary: a rep with no verdict at all ('?', the driver's own
+// 300s wait ran out with no recognized text -- not even the app's own
+// "stopped solving" message) counts toward repsTimedOut too, same as an
+// explicit [timeout] verdict. Both leave sum null, and both are reps that
+// never produced a comparable time within the fixed per-rep wait -- a rep
+// counted in the null median must be reflected in the count, or the
+// timeout message can claim "all N reps timed out (M < N timed out)". ----
+{
+  const rows = [
+    { first: null, unique: null, sum: null, verdict: '?' },
+    { first: 6800, unique: null, sum: null, verdict: 'timeout' },
+    { first: null, unique: null, sum: null, verdict: '?' }
+  ]
+  const s = solveSummary(rows)
+  assert.strictEqual(s.median, null)
+  assert.strictEqual(s.repsRun, 3)
+  assert.strictEqual(s.repsTimedOut, 3)
+}
+
+// ---- solveSummary: mixed outcome keeps median-over-finishers, still names
+// the timeout count for the reps that did not ----
+{
+  const rows = [
+    { first: 100, unique: 10, sum: 110, verdict: 'unique' },
+    { first: 200, unique: 20, sum: 220, verdict: 'unique' },
+    { first: 6800, unique: null, sum: null, verdict: 'timeout' }
+  ]
+  const s = solveSummary(rows)
+  assert.strictEqual(s.median, 220)
+  assert.strictEqual(s.repsRun, 3)
+  assert.strictEqual(s.repsTimedOut, 1)
 }
 
 console.log('app-solve-lib.test.mjs: all seams pass')

@@ -59,6 +59,21 @@ export function medianLine (rows) {
   return `  MEDIAN first ${first}ms  unique ${unique}ms  sum ${sum}ms  over ${n}/${rows.length} reps`
 }
 
+// The JSON line's aggregate for time_example.py: the median sum over reps
+// with a verdict (medianLine's number, unlabeled), plus how many reps ran and
+// how many hit the driver's fixed 300s per-rep wait -- a rep whose sum is
+// null, whether the app printed its own "stopped solving" ([timeout]) or
+// never showed a recognized verdict at all (?). Counting by null sum, not by
+// verdict, keeps this in lockstep with median: every rep behind a null
+// median is one of these, so repsTimedOut always equals repsRun there.
+export function solveSummary (rows) {
+  return {
+    median: median(rows.map(r => r.sum)),
+    repsRun: rows.length,
+    repsTimedOut: rows.filter(r => r.sum === null).length
+  }
+}
+
 // The app footer prints its own version, e.g. "v2026.08.14-d47fc4b". The
 // timing driver (time_example.py) puts it in every printed row so a stale
 // number is traceable to the app build that produced it.

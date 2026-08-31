@@ -240,6 +240,37 @@ def build_candidate(example_dir, component_file, out_path, board=None):
     )
 
 
+def timeout_message(link_path, reps_run, reps_timed_out):
+    """The all-reps-timed-out failure: names app-solve.mjs's fixed 300s
+    per-rep wait (its page.waitForFunction timeout) and the rep counts, so a
+    reader learns the app never finished a solve without opening the
+    harness."""
+    return (
+        f"app-solve.mjs: {link_path}: all {reps_run} reps hit the 300s "
+        f"per-rep timeout ({reps_timed_out} timed out)"
+    )
+
+
+def parse_app_solve_output(link_path, stdout):
+    """Parse app-solve.mjs's JSON line and return its {median, version,
+    repsRun, repsTimedOut}. Raises loud, naming link_path: no JSON line, every
+    rep timed out (median null -- see timeout_message), or the app version
+    could not be read."""
+    m = JSON_LINE.search(stdout)
+    if not m:
+        raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{stdout}")
+    data = json.loads(m.group(1))
+    if data["median"] is None:
+        raise RuntimeError(
+            timeout_message(link_path, data["repsRun"], data["repsTimedOut"])
+        )
+    if data["version"] is None:
+        raise RuntimeError(
+            f"app-solve.mjs could not read the app version for {link_path}"
+        )
+    return data
+
+
 def run_app_solve(link_path, ring_clues=False, after_logical=False):
     """Run the real-app timing driver and return its {median, version}.
     after_logical runs the app's logical solver to its fixpoint first."""
@@ -255,17 +286,7 @@ def run_app_solve(link_path, ring_clues=False, after_logical=False):
     )
     if result.returncode != 0:
         raise RuntimeError(f"app-solve.mjs failed on {link_path}:\n{result.stderr}")
-    m = JSON_LINE.search(result.stdout)
-    if not m:
-        raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{result.stdout}")
-    data = json.loads(m.group(1))
-    if data["median"] is None:
-        raise RuntimeError(f"app-solve.mjs got no timed reps for {link_path}")
-    if data["version"] is None:
-        raise RuntimeError(
-            f"app-solve.mjs could not read the app version for {link_path}"
-        )
-    return data
+    return parse_app_solve_output(link_path, result.stdout)
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None):

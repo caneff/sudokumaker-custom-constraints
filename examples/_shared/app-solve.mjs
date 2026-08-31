@@ -44,7 +44,7 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseReadout, parseVersion, median, repLine, medianLine, marksRejected, countEnteredValues } from './app-solve-lib.mjs'
+import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 // --ring-clues: allow entered values, for edge-clue puzzles whose clues are
@@ -132,7 +132,8 @@ for (const r of rows) console.log(repLine(r))
 console.log(medianLine(rows))
 
 // One machine-readable line for time_example.py: the median of `sum` (first
-// solve + uniqueness search, the whole run that exercises `update`), plus the
-// app version so every printed row names the build it measured.
+// solve + uniqueness search, the whole run that exercises `update`), the app
+// version so every printed row names the build it measured, and the rep
+// counts (solveSummary) so the driver can name a null median's timeout.
 const version = rows.map(r => r.version).find(Boolean) ?? null
-console.log('JSON: ' + JSON.stringify({ median: median(rows.map(r => r.sum)), version }))
+console.log('JSON: ' + JSON.stringify({ ...solveSummary(rows), version }))

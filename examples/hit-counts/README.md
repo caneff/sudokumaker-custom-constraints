@@ -530,6 +530,7 @@ just time hit-counts
 | 2026-08-30 | v2026.08.14-d47fc4b | hit-counts after-logical | 6900ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts | 6300ms | 6500ms | 1.03 | FAIL |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts after-logical | 6300ms | 5600ms | 0.89 | PASS |
+| 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_local.txt) | — | — | — | DNF (300s timeout, 3/3 reps) |
 
 The 2026-08-31 pair gates the permutation sweep (#16): the two-row rule ships a
 change at ≤ 0.9× on one row and ≤ 1.1× on the other, and this clears both. The
@@ -575,5 +576,8 @@ had no candidate edit to gate. See `docs/real-app-timing.md` for what a
 `BASELINE` row means and #248 for the prototype's 0.40×/0.41× measurement
 against the old components.
 
-The local board (`PUZZLE_LINK_local.txt`) has no row yet; out of scope for
-this ticket (#251), which asks only for the shipped 9x9's gate.
+The local board (`PUZZLE_LINK_local.txt`) is a DNF: its 36 bent paths are not
+full houses, so the components' strong deductions rarely fire and the app's
+own search runs past the 300s per-rep timeout on every rep (`just time
+hit-counts --board PUZZLE_LINK_local.txt`). Closing that gap is #116
+(retitled to cover the local board), not this ticket.
