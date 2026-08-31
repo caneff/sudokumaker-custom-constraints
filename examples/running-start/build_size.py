@@ -29,6 +29,10 @@ from framebuild import Spec, run
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
+# main.js registers the line component alone, per drawn group; the pair
+# component is main-global.js's only -- it reads two lines' clues off the
+# shared frame, which a drawn group on its own does not carry.
+LOCAL_COMPONENTS = ["RunningStartComponent.js"]
 
 # One worked example per size: a line, then the left and right clue it gives.
 RULE_EXAMPLES = {
@@ -85,6 +89,7 @@ SPEC = Spec(
     title="Running Start",
     lines_name="Running Start Lines",
     components=COMPONENTS,
+    local_components=LOCAL_COMPONENTS,
     min_digit=1,
     clue_fn=rs,
     cp_sat_clue_fn=add_running_start,

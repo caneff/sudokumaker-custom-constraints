@@ -45,6 +45,11 @@ COMPONENTS = [
     "SideSumComponent.js",
     "SideHitMatchingComponent.js",
 ]
+# main.js registers the joint component per paired ends and the single-line
+# component per unpaired group; the side components are main-global.js's
+# alone -- they need a whole side's clues, which only exists once every frame
+# line is drawn.
+LOCAL_COMPONENTS = ["HitCountsJointComponent.js", "HitCountsComponent.js"]
 
 
 def comment_text(n):
@@ -88,6 +93,7 @@ SPEC = Spec(
     title="Hit Counts",
     lines_name="Hit Counts Lines",
     components=COMPONENTS,
+    local_components=LOCAL_COMPONENTS,
     min_digit=0,
     clue_fn=hits,
     cp_sat_clue_fn=add_hit_count,
