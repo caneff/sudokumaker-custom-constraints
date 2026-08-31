@@ -76,6 +76,7 @@ def no_zero_cage(interior):
     return [
         {
             "type": 304,
+            "name": "Disallow 0 in the main grid",
             "cages": [{"value": "00", "cells": interior}],
             "style": {"cage": {"color": "#ffffff00"}, "text": {"color": "#ffffff00"}},
         }
