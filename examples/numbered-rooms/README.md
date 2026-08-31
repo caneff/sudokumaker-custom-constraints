@@ -229,7 +229,8 @@ difference inside that baseline's run-to-run spread does not count.
 The three rows below were measured **before #268**, when `PUZZLE_LINK.txt` was
 the local-lane board. The same command returns different numbers now that the
 plain name is the global-lane board — see "The lane swap (#268)" for the
-current rows and the difference between the two lanes.
+difference between the two lanes, and "What it actually was (#276)" for the
+current rows.
 
 | 2026-08-27 | v2026.08.14-d47fc4b | numbered-rooms (pre-#268, local lane) | 2300ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms (pre-#268, local lane) | 1700ms | 1700ms | 1.00 | FAIL |
@@ -275,13 +276,15 @@ Two candidate causes were measured and ruled out at the time:
 | global lane, the 36 drawn groups added back to the document | 2200ms | 2000ms |
 
 Neither moves the number, so it is neither the order the 4n components are
-registered in nor the presence of the groups in the document.
+registered in nor the presence of the groups in the document. #268 concluded
+from that that the rest was the app's own cost for a backend that builds its
+lines with `puzzle.getCellAt`, and shipped the number rather than argue it
+away.
 
 ### What it actually was (#276)
 
-The conclusion drawn above — that the rest was "the app's own cost for a
-backend that builds its lines with `puzzle.getCellAt`" — **is wrong, and the
-cost was ours.** A `[probe]` log inside the app shows the two lanes register a
+**That conclusion is wrong, and the cost was ours.** A `[probe]` log inside
+the app shows the two lanes register a
 byte-identical sequence of lines: same cell ids, same order, same component.
 The gap was never a weaker constraint, and never `getCellAt`.
 
@@ -308,14 +311,18 @@ is equally slow, so `getCellAt` is innocent — the board size is the source. Th
 cost is a property of how the JS engine represents the number, which is
 invisible from inside JS; `| 0` is what makes it a plain integer again.
 
-`main-global.js` now coerces, and the board recovers past the local lane's old
-rows:
+`main-global.js` now coerces, and the board comes back to about what the local
+lane cost:
 
 | 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms | 2500ms | 1900ms | 0.76 | PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 2100ms | 1700ms | 0.81 | PASS |
 
 Baseline is the committed link as it shipped before the coercion; candidate is
 the same board with it. 3 reps, arms interleaved, non-deterministic solve off.
+Against the local lane's own old rows (1800–1900 cold, 1500–1600
+after-logical) the cold row is level and the after-logical row is still a
+little behind, so this closes the lane gap rather than beating it — measured
+on a different day, so read the ratio above, not the difference between runs.
 The same one-line fix went into all five global backends —
 `examples/_shared/global-backends.test.mjs` holds it there, and each example's
 own `## Timing` section carries its row.

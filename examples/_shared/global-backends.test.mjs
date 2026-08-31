@@ -27,21 +27,29 @@ import { dirname, join } from 'path'
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 
-const EXAMPLES = dirname(fileURLToPath(import.meta.url)).replace(/_shared$/, '')
+const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 // A board W cells wide. Cell id = col + row * W, the app's own layout
 // (`getIdFromCoords(e){return e.x+e.y*this.width}` in the shipped bundle), so
-// `getCellAt(a, b)` is `a + b * W`.
+// `getCellAt(a, b)` is `a + b * W`. Off the board it returns undefined, as
+// `getIdFromCoordsSafe` does -- and it counts those calls, because the
+// coercion cannot report them: `undefined | 0` is 0, an in-range cell. So the
+// backend's "every coordinate is in range" is checked here, not assumed.
 function mockPuzzle (W) {
   const registered = []
-  return {
+  const p = {
     registered,
+    offBoard: 0,
     spec: { size: { width: W, height: W } },
-    getCellAt: (a, b) => new Number(a + b * W), // eslint-disable-line no-new-wrappers -- the point of the test
+    getCellAt: (a, b) => {
+      if (a < 0 || b < 0 || a >= W || b >= W) { p.offBoard++; return undefined }
+      return new Number(a + b * W) // eslint-disable-line no-new-wrappers -- the point of the test
+    },
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
     addConstraintComponent: comp => registered.push(comp)
   }
+  return p
 }
 
 const helpers = {
@@ -52,10 +60,20 @@ const helpers = {
 }
 
 // Walk everything a component was constructed with and report any cell id that
-// is not a plain number.
-function boxedIdsIn (value, path = '') {
-  if (Array.isArray(value)) return value.flatMap((v, i) => boxedIdsIn(v, `${path}[${i}]`))
-  if (value instanceof Number) return [path]
+// is not a plain number, and any that is off the board. The second check is
+// what keeps the coercion honest: `getCellAt` returns undefined off the board
+// and `undefined | 0` is 0 -- a real cell -- so a backend that strayed
+// off-grid would coerce a miss into a silent, wrong cell 0 rather than fail
+// loud (CODING_STANDARDS.md).
+function badIdsIn (value, W, path = '') {
+  if (Array.isArray(value)) return value.flatMap((v, i) => badIdsIn(v, W, `${path}[${i}]`))
+  if (value instanceof Number) return [`${path}: boxed, not coerced`]
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 && value < W * W ? [] : [`${path}: off the board (${value})`]
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value).flatMap(([k, v]) => badIdsIn(v, W, `${path}.${k}`))
+  }
   return []
 }
 
@@ -76,15 +94,19 @@ for (const name of dirs) {
     Object.defineProperty(Recorder, 'name', { value: n })
     return Recorder
   })
-  const p = mockPuzzle(11) // n = 9, the shipped board size
+  const W = 11 // n = 9, the shipped board size
+  const p = mockPuzzle(W)
   // The app runs a backend segment as a bare script with these names in scope;
   // a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', ...ctorNames, src) // eslint-disable-line no-new-func
   fn(undefined, p, helpers, ...ctors)
 
   assert.ok(p.registered.length > 0, `${name}: registered nothing`)
-  const boxed = p.registered.flatMap((c, i) => boxedIdsIn(c.args, `${name} component ${i} arg`))
-  assert.deepStrictEqual(boxed, [], `${name}/main-global.js must coerce app cell ids to plain integers`)
+  assert.strictEqual(p.offBoard, 0,
+    `${name}/main-global.js asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
+  const bad = p.registered.flatMap((c, i) => badIdsIn(c.args, W, `${name} component ${i} arg`))
+  assert.deepStrictEqual(bad.slice(0, 5), [],
+    `${name}/main-global.js must hand components plain in-range integer cell ids (${bad.length} bad)`)
 }
 
 console.log(`PASS (${dirs.length} global backends)`)

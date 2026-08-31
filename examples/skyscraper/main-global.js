@@ -18,9 +18,10 @@ function frameGroups () {
   const W = puzzle.spec.size.width
   const n = W - 2
   // `| 0` is load-bearing, not decoration: an id derived from the board size
-  // costs the app's solver ~1.3x per candidate read until it is coerced back
-  // to a plain integer (#276; numbered-rooms README, "The lane swap"). Every
-  // coordinate here is in range, so getCellAt never returns undefined.
+  // costs the app's solver ~1.3x per candidate read until it is a plain
+  // integer again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate
+  // here is in range, so getCellAt never returns undefined -- and it must
+  // stay that way, because `undefined | 0` is 0, a real cell.
   const at = (r, c) => puzzle.getCellAt(r, c) | 0
   const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
   const groups = []
