@@ -49,23 +49,23 @@ the single-region case is
 
 ### 2.1 The 0-1 BFS — strictly stronger reach, same cost `[source]`
 
-`connected_values.md` §7.2 runs "one bucketed 0-1 BFS **from the seed blob** —
+`connected_values.md` §7.2 runs "one bucketed 0-1 BFS **from the seed island** —
 decided steps free, undecided steps costing one — capped at the budget", and
 says outright:
 
-> Distance from the seed blob (not the nearest decided cell) is the sound and
+> Distance from the seed island (not the nearest decided cell) is the sound and
 > strictly stronger bound: joining means connecting to the whole region, seed
-> blob included.
+> island included.
 
 Our reach is the weaker one. `IsofillComponent.js` calls
 `reach(instance, placed, size - placed.length, allowed)`: multi-source from
 **every** placed cell, every step costing one. That hands each placed cell a
 free start even when that cell is nine unplaced steps from the rest of its own
-digit. The 0-1 version charges for reaching a far blob first, then travels free
+digit. The 0-1 version charges for reaching a far island first, then travels free
 inside it.
 
 Soundness is the same argument we already use: a region cell's path to the seed
-blob runs through region cells; the unplaced ones on that path are distinct and
+island runs through region cells; the unplaced ones on that path are distinct and
 there are at most `10 − placed` of them in the whole region.
 
 The 0-1 BFS also subsumes our split check (line 240 of the component: a second
@@ -75,8 +75,8 @@ placed cell the 0-1 BFS misses is a dead branch, and it misses more of them.
 ### 2.2 Door forcing and the articulation rule we already ship `[source]`
 
 §7.4 of `connected_values.md` and §7.4 of `chaos_construction.md` give the
-**door** rule: a blob's undecided neighbours are its doors; with a known region
-size, a blob with exactly one door forces that door. This is the cheap special
+**door** rule: a island's undecided neighbours are its doors; with a known region
+size, a island with exactly one door forces that door. This is the cheap special
 case of our cut rule, read off a walk already happening.
 
 `chaos_construction.md` §7.4 then reports the general case — ours:
@@ -241,12 +241,12 @@ connectivity, single liberty, 2×2 pools
 | Steiner / tour lower bound on region size | tour |
 | Régin SCC matching prune | budget |
 | 2×2 crossing (yin-yang) | tried, removed (#148) |
-| blob gate on door forcing | tried, removed (#150) |
+| island gate on door forcing | tried, removed (#150) |
 
 ## 6. What to try next
 
-1. **0-1 BFS from one seed blob, replacing the multi-source reach.** Placed
-   cells free, open cells cost one, budget `10 − placed`, seeded at one blob.
+1. **0-1 BFS from one seed island, replacing the multi-source reach.** Placed
+   cells free, open cells cost one, budget `10 − placed`, seeded at one island.
    Strictly stronger than what we run, at the same cost — one bucketed BFS,
    **O(V+E)**, no extra allocation. It also tightens `near`, which feeds budget,
    and it folds in the separate split walk at line 240. Highest expected value
@@ -302,5 +302,5 @@ connectivity, single liberty, 2×2 pools
 One smaller gate, not ranked because #150 already failed near it: ISS skips the
 bottleneck pass for regions with `fixedCount + 2 > s`, because a single free
 cell is already forced by reach. For us that is "skip cut when `placed = 9`" —
-exact and free, but so was the blob gate, which read 0.96×/1.00×/0.98× and was
+exact and free, but so was the island gate, which read 0.96×/1.00×/0.98× and was
 cut. `[source: ISS connected_values.md §7.4]`
