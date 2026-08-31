@@ -33,7 +33,7 @@ from minify import minify_js
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 SWAPPED = "HitCountsJointComponent"
-SIBLINGS = ["HitCountsComponent", "SideSumComponent", "SideHitMatchingComponent"]
+SIBLINGS = ["SideSumComponent", "SideHitMatchingComponent"]
 
 
 def hits(values):

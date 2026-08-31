@@ -9,13 +9,12 @@
 #
 # --component names a file whose basename (minus .js) matches an existing
 # component registered on PUZZLE_LINK.txt's "Hit Counts Lines" constraint
-# (HitCountsJointComponent, HitCountsComponent, SideSumComponent or
-# SideHitMatchingComponent); that component's code becomes the given file's,
-# minified. The backend and the
-# sibling components are untouched. --board swaps against a different committed
-# link instead of PUZZLE_LINK.txt, which is how
-# `just time hit-counts --board PUZZLE_LINK_local.txt` reaches the local board;
-# omitting it keeps the PUZZLE_LINK.txt default.
+# (HitCountsJointComponent, SideSumComponent or SideHitMatchingComponent);
+# that component's code becomes the given file's, minified. The backend and
+# the sibling components are untouched. --board swaps against a different
+# committed link instead of PUZZLE_LINK.txt, which is how
+# `just time hit-counts --board PUZZLE_LINK_local.txt` reaches the local
+# board; omitting it keeps the PUZZLE_LINK.txt default.
 
 import argparse
 import pathlib
