@@ -6,8 +6,9 @@ regions of N cells, one per digit. Fillomino has variable region sizes, an
 unknown number of regions, per-region connectivity, and the separation rule.
 
 **Answer.** A working prototype: `docs/research/fillomino_cpsat.py`. It samples
-a full 9x9 grid in about 0.1–0.5 s and proves a minimal clue set unique in
-0.5–18 s. It stays far inside the 600 s limit `unique()` uses.
+a full 9x9 grid in about 0.1–1 s and proves a minimal clue set unique in
+0.3–69 s across twelve seeds. Every proof stayed inside the 600 s limit
+`unique()` uses, with roughly 8x to spare at the worst.
 
 This is research, not the shipped generator. It lives under `docs/research/`
 and nothing in `examples/` imports it.
@@ -153,19 +154,33 @@ removal.
 | 5 | 0.36 s | 22.9 s | 32 | 0.72 s | 0.90 s |
 | 6 | 0.11 s | 79.4 s | 34 | 2.92 s | 5.08 s |
 | 7 | 0.10 s | 12.6 s | 33 | 0.54 s | 0.54 s |
-| 8 | 0.46 s | 267.8 s | 30 | **17.97 s** | 12.43 s |
+| 8 | 0.46 s | 267.8 s | 30 | 17.97 s | 12.43 s |
+| 9 | 0.42 s | 351.8 s | 35 | 41.41 s | 33.59 s |
+| 10 | 0.05 s | 670.0 s | 34 | 16.54 s | 21.12 s |
+| 11 | 1.07 s | 291.0 s | 32 | 40.32 s | 1.88 s |
+| 12 | 0.06 s | 118.5 s | 36 | 4.32 s | 6.92 s |
+| 13 | 0.25 s | 580.4 s | 32 | **68.85 s** | 3.13 s |
+| 14 | 0.14 s | 562.6 s | 29 | 21.94 s | **50.58 s** |
 
 "Find a second solution" drops one clue from the minimal set and times the
 `not unique` verdict — the other half of `unique()`, and the half with no early
 exit.
 
-**Does it stay inside 600 s?** Yes, with two orders of magnitude of room. The
-worst single 9x9 proof measured was 18.0 s, on the sparsest clue set (30 clues,
-seed 8); the median is under 1 s. Cost tracks clue count, not seed: every proof
-over 2 s came from a clue set of 30–34, and none approached the limit.
+**Does it stay inside 600 s?** Yes on all twelve, but the margin is one order of
+magnitude, not two. The worst single 9x9 proof was **68.9 s** (seed 13); the
+median is 10.4 s.
 
-`strip` is the expensive call, not `unique` — 81 proofs in a row, up to 268 s.
-That is a generator-side cost, run once, and it still fits one 600 s budget.
+The spread is not explained by clue count. Seeds 5 and 11 both keep 32 clues and
+read 0.72 s and 40.3 s — a factor of 56 on the same clue budget. So a shipped
+generator must keep the timeout and treat a `TimeoutError` as *no verdict*, not
+as unique. Twelve seeds is not enough to claim a bound; it is enough to say no
+sampled 9x9 came within 8x of the limit.
+
+`strip` is where the wall time actually goes: 81 proofs in a row, 12.6 s to
+**670 s**. Seeds 10, 13 and 14 each ran a strip longer than one 600 s budget.
+Each individual proof inside it still had its own 600 s, so nothing timed out —
+but the shipped generator should expect strip to be a minutes-to-tens-of-minutes
+job on a 9x9, not a seconds one.
 
 **Sampling diversity is the weak spot.** `randomize_search` moves the seed, but
 seeds 1 and 2 return heavily striped grids (alternating 1/2 and 2/3 rows) that
