@@ -1,10 +1,9 @@
 //! Skyscrapers with interactive outside clues, GLOBAL variant. No groups are
 //! drawn: build all 4n frame lines from the board size -- interior n = W-2
 //! ringed by one clue cell per side. `puzzle.getCellAt(a, b)` is the cell at
-//! column a, row b, so `at(r, c)` below names the transpose of the cell its
-//! arguments read as. The frame is symmetric under transpose: the 4n lines and
-//! their clue pairings come out identical either way, only the L/R/T/B labels
-//! swap.
+//! column a, row b, so `at(r, c)` hands it the arguments the other way round:
+//! it reads row r, column c, the cell its own name says. The L/R/T/B labels
+//! below are the real sides.
 //!
 //! A frame line is clued at both ends, which is what the two-clue DP in
 //! SkyscraperLineComponent reads: the line, both clues, and every way the
@@ -22,7 +21,7 @@ function frameGroups () {
   // integer again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate
   // here is in range, so getCellAt never returns undefined -- and it must
   // stay that way, because `undefined | 0` is 0, a real cell.
-  const at = (r, c) => puzzle.getCellAt(r, c) | 0
+  const at = (r, c) => puzzle.getCellAt(c, r) | 0
   const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
   const groups = []
   for (let i = 1; i <= n; i++) {

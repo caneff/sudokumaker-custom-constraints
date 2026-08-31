@@ -1,5 +1,7 @@
 // Every global backend must coerce the cell ids it gets from the app to plain
-// integers before it registers a component (#276).
+// integers before it registers a component (#276), and must build the frame it
+// says it builds: the 4n lines of the shared frameGeometry, and a side label
+// that names the side its clues actually sit on (#295).
 //
 //   node examples/_shared/global-backends.test.mjs
 //
@@ -26,6 +28,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import assert from 'assert'
+import { frameGeometry } from './frame-geometry.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -77,6 +80,31 @@ function badIdsIn (value, W, path = '') {
   return []
 }
 
+const SIDES = ['L', 'R', 'T', 'B']
+const LABELS = { left: 'L', right: 'R', top: 'T', bottom: 'B' }
+
+// The side a component's name claims, or null when it names no side. Backends
+// that name a component after its cells ("12,13,14") claim nothing.
+function labelledSide (name) {
+  const word = /\b(left|right|top|bottom)\b/i.exec(name)
+  if (word) return LABELS[word[1].toLowerCase()]
+  const letter = /\bside ([LRTB])\b/.exec(name)
+  return letter ? letter[1] : null
+}
+
+// Every array of n in-range cell ids reachable from a component's arguments.
+// A bare number argument is not a cell group: a component takes a length or a
+// digit that way, and a length is indistinguishable from a cell id.
+function cellGroupsIn (value, W) {
+  if (!value || typeof value !== 'object') return []
+  if (Array.isArray(value)) {
+    const cells = value.every(v => Number.isInteger(v) && v >= 0 && v < W * W)
+    if (cells && value.length === W - 2) return [value]
+    return value.flatMap(v => cellGroupsIn(v, W))
+  }
+  return Object.values(value).flatMap(v => cellGroupsIn(v, W))
+}
+
 const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
   .filter(d => d.isDirectory() && d.name !== '_shared')
   .map(d => d.name)
@@ -107,6 +135,42 @@ for (const name of dirs) {
   const bad = p.registered.flatMap((c, i) => badIdsIn(c.args, W, `${name} component ${i} arg`))
   assert.deepStrictEqual(bad.slice(0, 5), [],
     `${name}/main-global.js must hand components plain in-range integer cell ids (${bad.length} bad)`)
+
+  // The frame it built, against the one truthful copy of the geometry. Every
+  // cell group a backend hands a component is either a line (all interior) or a
+  // side's clues (all ring), so the two are told apart by their cells, not by
+  // the component's argument order -- which differs per example.
+  const n = W - 2
+  const geom = frameGeometry(n, [3, 3])
+  const ring = new Map()
+  for (const side of SIDES) ring.set(side, Array.from({ length: n }, (_, i) => geom.clueCell(side, i)))
+  const ringCells = new Set([...ring.values()].flat())
+  const groups = p.registered.flatMap(c => cellGroupsIn(c.args, W))
+
+  // 1. The line set: every line the backend registers is a frame line, and it
+  // registers all 4n of them. A square frame is symmetric under transpose, so
+  // this set is the same whichever way round the coordinates are read -- it
+  // pins the frame, not the reading (#295).
+  const lines = groups.filter(g => g.every(id => !ringCells.has(id)))
+  assert.deepStrictEqual(
+    [...new Set(lines.map(g => g.join(',')))].sort(),
+    [...new Set(geom.groups.map(g => g.cells.slice(1).join(',')))].sort(),
+    `${name}/main-global.js must register the 4n frame lines of frameGeometry`)
+
+  // 2. The labels: a component named for a side holds that side's clues. This
+  // is the check that pins the reading, since a transposed `getCellAt` puts
+  // the top ring under the name "left" (#295). It reaches only a backend that
+  // names a side -- where every component is named after its own cells, a
+  // transposed frame carries the same names and nothing here can see it.
+  for (const c of p.registered) {
+    const side = typeof c.args[0] === 'string' ? labelledSide(c.args[0]) : null
+    if (!side) continue
+    const clues = cellGroupsIn(c.args, W).filter(g => g.every(id => ringCells.has(id)))
+    for (const g of clues) {
+      assert.deepStrictEqual([...g].sort((a, b) => a - b), ring.get(side),
+        `${name}/main-global.js: "${c.args[0]}" does not hold side ${side}'s clue cells`)
+    }
+  }
 }
 
 console.log(`PASS (${dirs.length} global backends)`)

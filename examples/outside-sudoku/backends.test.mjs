@@ -17,8 +17,8 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const src = f => readFileSync(join(HERE, f), 'utf8')
 
 // A board W cells wide: cell id = col + row * W, so `getCellAt(a, b)` is
-// `a + b * W` (docs/puzzle-api.md). The frame is symmetric under transpose, so
-// the 4n lines match frameGeometry's either way; only the labels swap.
+// `a + b * W` (docs/puzzle-api.md) -- the cell at column a, row b, the same
+// coordinates frameGeometry indexes the other way round.
 function mockPuzzle (W) {
   const registered = []
   return {
