@@ -237,8 +237,8 @@ board is a house, so both house rules still fire and the board's deductions are
 exactly what they were; the only new work per `update` is the
 `getCellsCanHaveRepeats` call, and it is free at this resolution. The rows read
 FAIL because `just time` applies the deduction rule (≤ 0.9× on one row). A gate
-change is judged at **≤ 1.1× on both rows** (spec #232), which 1.00 and 1.00
-clear.
+change is judged at **≤ 1.1× on both rows** (`docs/real-app-timing.md`, "Bar
+for a gate change"), which 1.00 and 1.00 clear.
 
 ### The local board (#238)
 

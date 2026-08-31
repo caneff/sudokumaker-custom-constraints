@@ -33,6 +33,9 @@ from framebuild import Spec, run
 HERE = pathlib.Path(__file__).parent
 
 
+# One rules text for both variants, so it says "line" and never "row or
+# column": a local board's lines bend, and framebuild appends the sentence that
+# says a drawn line is not a house. Same call as skyscraper's RULE_EXAMPLES.
 def comment_text(n):
     return (
         "Numbered Rooms. Each outside clue reads inward along its line. The "

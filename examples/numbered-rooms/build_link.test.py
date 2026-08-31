@@ -27,7 +27,9 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from minify import minify_js
 
-# Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
+# Must match framebuild.RULES_PREFIX. Written out rather than imported for the
+# same reason as the rule below: an assertion that imports what it checks
+# against cannot disagree with it.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 
@@ -35,9 +37,10 @@ def numbered_room(values):
     """The Numbered Rooms clue for one line of digits: the first cell holds a
     1-based index k, and the clue is the digit in the k-th cell.
 
-    A fourth statement of the rule, restated here rather than imported: this
-    test runs under `just test` with lzstring alone, and build_size.numbered_room
-    sits behind framebuild's ortools import. It must agree with
+    A fourth statement of the rule, restated here rather than imported from
+    build_size: this is what proves the committed board's clues really follow
+    the rule, and importing build_size.numbered_room would only prove they
+    follow whatever build_size says today. It must agree with
     build_size.numbered_room, add_numbered_room, and NumberedRoomsComponent --
     change the rule, change all four (CODING_STANDARDS.md, "The rule has one
     home").
