@@ -14,6 +14,10 @@ and checks:
 - **The link opens clean.** Every non-given cell is `{}` — no solution
   digits, no hidden clues stored as entered values. A miss here ships a
   board with the answer already typed in.
+- **The ring is not filled end to end.** A board whose every outer-ring cell
+  holds something hands the solver every outside clue. A `_clued` link is
+  exempt — filling them all is what that name means. This is criterion 3's
+  mechanical floor, not the whole of it.
 - **Rules text carries the sudoku prefix.** The comment starts with "Normal
   sudoku rules apply on the inner grid" — except isofill, which is not
   sudoku and skips the line.
@@ -33,8 +37,10 @@ the rest of the text.)
 
 ## 3. The clue set is curated
 
-The ring stays mostly blank unless you chose otherwise. The givens count is
-sane for the size. On a board whose shown clues are carved to CP-SAT
+The ring stays mostly blank unless you chose otherwise — the gate above only
+catches a ring filled *completely*, so a ring at 39 of 40 still needs your
+eye. The givens count is sane for the size. On a board whose shown clues are
+carved to CP-SAT
 minimality — drop any one and the solution stops being unique — "mostly blank"
 means "no unnecessary clue": read the criterion against the recorded carve,
 not against a target count.

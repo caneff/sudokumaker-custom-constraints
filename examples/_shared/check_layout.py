@@ -1,10 +1,12 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
-# decodes every shipped PUZZLE_LINK*.txt and checks the two mechanical
+# decodes every shipped PUZZLE_LINK*.txt and checks the three mechanical
 # pre-share criteria from docs/share-checklist.md: the link opens clean (no
-# entered values on non-given cells) and the rules text carries the sudoku
-# prefix, except an example in NO_RULES_PREFIX (isofill is not sudoku). It
+# entered values on non-given cells), the outside ring is not filled end to
+# end, and the rules text carries the sudoku prefix, except an example in
+# NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt from the
+# first two -- filling every clue is what that name means. It
 # also checks that every link ships exactly the components its own embedded
 # backend registers, so a link cannot go stale behind its builder.
 #
@@ -146,10 +148,33 @@ def check_gen_link_pairing(example_dir):
     return violations
 
 
+def _ring_state(puzzle):
+    """`(filled, total)` for the board's outer ring -- row and column 0 and the
+    last. `(0, 0)` when the cells do not fill `width` x `height`, where the ring
+    would be a guess."""
+    w, h = puzzle.get("width"), puzzle.get("height")
+    cells = puzzle["cells"]
+    if not isinstance(w, int) or not isinstance(h, int) or len(cells) != w * h:
+        return 0, 0
+    ring = [
+        i
+        for i in range(w * h)
+        for row, col in [divmod(i, w)]
+        if row in (0, h - 1) or col in (0, w - 1)
+    ]
+    return sum(1 for i in ring if cells[i]), len(ring)
+
+
 def check_share_ready(example_dir, link):
     """Decode `link` (a PUZZLE_LINK*.txt path) and return one violation
-    string per pre-share criterion it fails: the link opens clean, and the
-    rules text carries the sudoku prefix (docs/share-checklist.md)."""
+    string per pre-share criterion it fails: the link opens clean, the ring is
+    not filled end to end, and the rules text carries the sudoku prefix
+    (docs/share-checklist.md).
+
+    The ring criterion is criterion 3's mechanical half: a ring with every cell
+    filled hands the solver every outside clue, which is the recurring share
+    mistake. It is a floor, not the whole criterion -- "no unnecessary clue"
+    still needs a human against the recorded carve."""
     name = example_dir.name
     violations = []
 
@@ -169,6 +194,13 @@ def check_share_ready(example_dir, link):
     if entered and not clued:
         violations.append(
             f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
+        )
+
+    ring_filled, ring_total = _ring_state(puzzle)
+    if ring_total and ring_filled == ring_total and not clued:
+        violations.append(
+            f"{name}: {link.name} fills all {ring_total} ring cells -- curate "
+            f"the clue set, or name the link _clued if every clue is meant"
         )
 
     if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(
