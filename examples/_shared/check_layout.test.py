@@ -45,6 +45,8 @@ REQUIRED = [
     "update-strength.test.mjs",
     "OPTIMIZATION_LOG.md",
     "PUZZLE_LINK.txt",
+    "PUZZLE_LINK_local.txt",
+    "gen_local.json",
 ]
 
 
@@ -104,6 +106,21 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
+    # a split example ships a local board: both halves of the pair are
+    # required, and each is named on its own (#268)
+    for local_file in ("PUZZLE_LINK_local.txt", "gen_local.json"):
+        missing = [f for f in REQUIRED if f != local_file]
+        with example(files=missing) as (root, _):
+            violations = check_tree(root)
+            assert len(violations) == 1, violations
+            assert "widget" in violations[0]
+            assert local_file in violations[0]
+
+        # the no-local-global-split example needs neither
+        with example(files=missing, name="isofill") as (root, _):
+            violations = check_tree(root)
+            assert violations == [], violations
+
     # numbered-rooms-lines was folded into numbered-rooms (#238): the
     # directory must not come back, complete file set or not
     with example(name="numbered-rooms-lines") as (root, _):
@@ -138,6 +155,11 @@ if __name__ == "__main__":
         "PUZZLE_LINK_timing.txt",
         "PUZZLE_LINK_original_clued.txt",
         "PUZZLE_LINK_global_local.txt",
+        # the `global` tag is gone: PUZZLE_LINK.txt is the global-lane board
+        # in every split example, so a _global link has nothing left to name
+        # (#268)
+        "PUZZLE_LINK_global.txt",
+        "PUZZLE_LINK_6x6_global.txt",
     ]
     for bad_name in bad_names:
         with example(extra_links=[bad_name]) as (root, _):
@@ -152,7 +174,6 @@ if __name__ == "__main__":
         "PUZZLE_LINK_6x6_original.txt",
         "PUZZLE_LINK_clued.txt",
         "PUZZLE_LINK_silent.txt",
-        "PUZZLE_LINK_global.txt",
         "PUZZLE_LINK_local.txt",
         "PUZZLE_LINK_6x6_local.txt",
         "PUZZLE_LINK_30g.txt",

@@ -105,7 +105,59 @@ def check_local_link(tag):
     assert repeats, "no path carries a repeated digit"
 
 
+def check_shipped_link():
+    """The shipped board runs the GLOBAL lane: main-global.js as the backend
+    and no drawn groups, so the backend builds the 4n frame lines itself
+    (docs/example-layout.md, "Which lane a link runs")."""
+    doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+    lc = find_constraint(doc, CONSTRAINT_NAME)
+    assert lc["definition"]["backend"]["code"] == minify_js(
+        (HERE / "main-global.js").read_text()
+    ), "PUZZLE_LINK.txt must run main-global.js"
+    assert lc["definition"]["input"] == [] and lc["input"] == {}, (
+        "the global board reads no drawn groups"
+    )
+
+
+def check_wrapper_links():
+    """`PUZZLE_LINK.txt` ships no groups, so build_original.py builds the
+    ones the original wrapper reads. Each `_original` link must therefore
+    carry exactly the 36 frame lines, clue cell first -- a wrong or drifted
+    set would make the ~100x comparison a different puzzle, silently.
+
+    The expected set is written out here rather than imported from
+    build_original: an assertion that imports what it checks against cannot
+    disagree with it (see numbered_room above).
+    """
+    n = 9
+    W = n + 2
+    lines = {f"L{i}": [(i, c) for c in range(n)] for i in range(n)}
+    lines |= {f"R{i}": [(i, c) for c in range(n - 1, -1, -1)] for i in range(n)}
+    lines |= {f"T{i}": [(r, i) for r in range(n)] for i in range(n)}
+    lines |= {f"B{i}": [(r, i) for r in range(n - 1, -1, -1)] for i in range(n)}
+    want = {
+        tuple(
+            [W * ring_cell(key, W)[0] + ring_cell(key, W)[1]]
+            + [(r + 1) * W + c + 1 for r, c in cells]
+        )
+        for key, cells in lines.items()
+    }
+
+    for name in ("PUZZLE_LINK_original.txt", "PUZZLE_LINK_clued_original.txt"):
+        doc = decode_puzzle((HERE / name).read_text().strip())
+        lc = find_constraint(doc, CONSTRAINT_NAME)
+        assert lc["definition"]["backend"]["code"] == minify_js(
+            (HERE / "original" / "main.js").read_text()
+        ), f"{name} must run the original wrapper's main.js"
+        groups = lc["input"]["groups"]
+        assert {tuple(g["cells"]) for g in groups} == want, (
+            f"{name}: the drawn groups must be the 36 frame lines, clue first"
+        )
+
+
 if __name__ == "__main__":
+    check_shipped_link()
+    check_wrapper_links()
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -147,9 +199,12 @@ if __name__ == "__main__":
             "the committed component must round-trip to PUZZLE_LINK.txt"
         )
         same = decode_puzzle(
-            build(HERE / "NumberedRoomsComponent.js", out, HERE / "main.js")
+            build(HERE / "NumberedRoomsComponent.js", out, HERE / "main-global.js")
         )
-        assert same == base, "the committed main.js must round-trip to PUZZLE_LINK.txt"
+        assert same == base, (
+            "PUZZLE_LINK.txt runs the global lane, so the committed "
+            "main-global.js must round-trip to it"
+        )
 
         # --board swaps against a link other than PUZZLE_LINK.txt, which is how
         # `just time numbered-rooms --board PUZZLE_LINK_local.txt` reaches the
@@ -178,17 +233,6 @@ if __name__ == "__main__":
             )
         except ValueError:
             pass
-
-        # --global: input list emptied, groups gone, nothing else moved
-        g = decode_puzzle(build(candidate, out, global_mode=True))
-        lc = find_constraint(g, CONSTRAINT_NAME)
-        assert lc["definition"]["input"] == [] and lc["input"] == {}
-        lc["definition"]["input"] = find_constraint(base, CONSTRAINT_NAME)[
-            "definition"
-        ]["input"]
-        lc["input"] = find_constraint(base, CONSTRAINT_NAME)["input"]
-        assert blanked(g, CONSTRAINT_NAME) == blanked(base, CONSTRAINT_NAME)
-        print("ok --global")
 
     # the 9x9 stress board and the 6x6 twin that carries the local timing row
     for tag in ("local", "6x6_local"):

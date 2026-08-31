@@ -26,10 +26,15 @@ REQUIRED_FILES = [
     "PUZZLE_LINK.txt",
 ]
 
+# The local lane's own files. PUZZLE_LINK.txt is the GLOBAL-lane board in
+# every split example, so the local lane needs a board of its own: the link
+# plus the gen JSON that records it (#268).
+REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
+
 # An example whose constraint has no local/global duality ships main.js
-# alone: isofill is a whole-grid constraint with no drawn groups at all
-# (spec #232, Out of Scope). Every other example needs both files
-# (#194, #235).
+# alone, and no local board: isofill is a whole-grid constraint with no drawn
+# groups at all (spec #232, Out of Scope). Every other example needs both
+# lanes (#194, #235, #268).
 NO_LOCAL_GLOBAL_SPLIT = {"isofill"}
 
 # An example folded into another and deleted. One rule has one example, so
@@ -49,7 +54,7 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 SIZE = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
 # keep this relative order (PUZZLE_LINK_original_clued.txt is rejected).
-TAGS = ("clued", "original", "silent", "local", "global")
+TAGS = ("clued", "original", "silent", "local")
 LINK_RE = re.compile(
     rf"^PUZZLE_LINK(_({SIZE})x\2)?(_\d+g)?"
     + "".join(f"(_{t})?" for t in TAGS)
@@ -125,11 +130,12 @@ def check_example(example_dir):
     if not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
-    if (
-        name not in NO_LOCAL_GLOBAL_SPLIT
-        and not (example_dir / "main-global.js").is_file()
-    ):
-        violations.append(f"{name}: missing required file main-global.js")
+    if name not in NO_LOCAL_GLOBAL_SPLIT:
+        violations.extend(
+            f"{name}: missing required file {required}"
+            for required in ["main-global.js", *REQUIRED_LOCAL_FILES]
+            if not (example_dir / required).is_file()
+        )
 
     violations.extend(check_lanes(example_dir))
 

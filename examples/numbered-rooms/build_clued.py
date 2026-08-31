@@ -18,9 +18,9 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from link_codec import decode_puzzle, encode_link
-from link_swap import check_and_write, find_constraint, replace_constraint_code
-from minify import minify_js
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from build_original import build_original, frame_groups, write
+from link_codec import decode_puzzle
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -56,7 +56,7 @@ def verify_solution(doc, values):
         digits = [values[i] for i in group]
         assert len(set(digits)) == len(digits), f"repeated digit in {group}: {digits}"
 
-    for g in find_constraint(doc, CONSTRAINT_NAME)["input"]["groups"]:
+    for g in frame_groups():
         clue, line = g["cells"][0], g["cells"][1:]
         k = values[line[0]]
         assert values[line[k - 1]] == values[clue], (
@@ -77,38 +77,19 @@ def fill_ring(doc, values, groups):
     return doc
 
 
-def write_link(doc, out_path):
-    link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
-
-
 def build():
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     values = [int(d) for d in SOLUTION]
     assert len(values) == len(base["puzzle"]["cells"]), "SOLUTION is the wrong size"
     verify_solution(base, values)
 
-    groups = find_constraint(base, CONSTRAINT_NAME)["input"]["groups"]
-    clued = fill_ring(base, values, groups)
-    write_link(clued, HERE / "PUZZLE_LINK_clued.txt")
+    clued = fill_ring(base, values, frame_groups())
+    write(clued, HERE / "PUZZLE_LINK_clued.txt")
 
-    backend_code = minify_js((HERE / "original" / "main.js").read_text())
-    component_code = minify_js(
-        (HERE / "original" / "CustomIndexComponent.js").read_text()
-    )
-    clued_original = replace_constraint_code(
-        clued,
-        CONSTRAINT_NAME,
-        backend_code=backend_code,
-        components=[
-            {"type": "code", "name": "CustomIndexComponent", "code": component_code}
-        ],
-    )
-    check_and_write(
-        clued, clued_original, CONSTRAINT_NAME, HERE / "PUZZLE_LINK_clued_original.txt"
-    )
+    # The clued board runs the same global lane its parent does; its original
+    # twin gets the drawn frame groups the wrapper reads (build_original.py).
+    clued_original = build_original(clued)
+    write(clued_original, HERE / "PUZZLE_LINK_clued_original.txt")
     return clued, clued_original
 
 

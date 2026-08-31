@@ -19,11 +19,32 @@ so a missing required file or a bad link name fails the gate.
 | `update-strength.test.mjs` | Never-weaker fuzz; floor pinned at the commit that adds it |
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
+| `PUZZLE_LINK_local.txt` | The local-lane board |
+| `gen_local.json` | The board data behind `PUZZLE_LINK_local.txt` |
 
-`main-global.js` is required on every example except one with no local/global
-duality: `isofill` (a whole-grid constraint, no drawn groups at all) ships
-`main.js` alone. `examples/_shared/check_layout.py` holds this list as
-`NO_LOCAL_GLOBAL_SPLIT`.
+`main-global.js`, `PUZZLE_LINK_local.txt` and `gen_local.json` are required on
+every example except one with no local/global duality: `isofill` (a whole-grid
+constraint, no drawn groups at all) ships `main.js` alone.
+`examples/_shared/check_layout.py` holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
+
+## Which lane a link runs (#268)
+
+Every split example says the same thing by the same file names:
+
+- **`PUZZLE_LINK.txt` runs the global lane** — `main-global.js`, no drawn
+  groups, the backend builds the lines itself. It is the board a reader opens
+  and the board the gate timing row is measured on.
+- **`PUZZLE_LINK_local.txt` runs the local lane** — `main.js`, one drawn group
+  per line, recorded in `gen_local.json`.
+
+There is no `global` tag: the bare name already means the global lane, so a
+`PUZZLE_LINK_global.txt` names nothing and `check_layout.py` rejects it.
+
+Which lines the local board draws is the example's own call. A rule that holds
+on any line ships **bent paths**, so the bare-line rules have a board to play
+(`build_size.py --paths`). A rule that needs a straight line — outside-sudoku's
+window is a box extent along the line's direction, and a bent path has no
+direction — ships the frame lines drawn instead, and its README says why.
 
 ## One rule, one example
 
@@ -53,8 +74,7 @@ PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt
 
 - `<size>` is `NxN` (e.g. `6x6`).
 - `<givens>g` is a given count, e.g. `30g`.
-- `<tag>` is zero or more of `clued`, `original`, `silent`, `local`,
-  `global`, and
+- `<tag>` is zero or more of `clued`, `original`, `silent`, `local`, and
   present tags must chain in that fixed order — `PUZZLE_LINK_clued_original.txt`
   is valid, `PUZZLE_LINK_original_clued.txt` is not.
 - Parts join with `_`. No hyphens, no seeds, no other free text.

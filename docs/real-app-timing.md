@@ -34,10 +34,12 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   board every line is a house, so the rule runs as before. Such a change ships
   at **≤ 1.1× on both rows**, 3 reps, non-deterministic solve off; "unchanged"
   is the pass (#197).
-- **Local fixture.** Each example's bent-path local link
-  (`PUZZLE_LINK_local.txt`, built by `build_size.py --paths`) is the board for
-  timing a rule that runs on a bare line: `just time <example> --board
-  PUZZLE_LINK_local.txt`, one local row in the README (#197).
+- **Local fixture.** Each example's local link (`PUZZLE_LINK_local.txt`) gets
+  one local row in the README: `just time <example> --board
+  PUZZLE_LINK_local.txt` (#197). On most examples that board is bent paths
+  (`build_size.py --paths`), the board for timing a rule that runs on a bare
+  line; on outside-sudoku, whose rule needs a straight line, it is the frame
+  lines drawn as groups (`build_size.py --local`, #268).
 - **Record.** Paste both printed rows into the example's README, under a
   `## Timing` section.
 

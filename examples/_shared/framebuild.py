@@ -47,10 +47,11 @@ class Spec:
 # Every generated link opens with this sentence (project rule).
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
-# The local link's rules text closes with this: its lines are drawn paths, not
-# rows and columns, so a solver must not read them as houses (spec #232, user
-# story 9). One sentence for every example, since the fact is the variant's,
-# not the rule's.
+# A bent-path link's rules text closes with this: its lines are drawn paths,
+# not rows and columns, so a solver must not read them as houses (spec #232,
+# user story 9). One sentence for every example, since the fact is the
+# variant's, not the rule's. A local board whose drawn lines ARE the frame
+# lines does not get it -- there the lines are houses (#268).
 LOCAL_RULES_SUFFIX = (
     " Each clue sits at the end of a drawn line, read inward. A line is not a "
     "row, a column, or any other house: a digit may repeat along it."
@@ -267,14 +268,47 @@ def generate(spec, n, bh, bw, seeds, hide_key=None, paths=False):
 # ---- document assembly ----------------------------------------------------
 
 
-def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=False):
+def frame_groups(n, lines):
+    """The drawn groups for `lines` on an n x n interior: each group is the
+    clue's ring cell, then that line's cells inward, which is the order
+    `main.js` reads (docs/example-layout.md).
+
+    A local board's `input.groups`, and the same input a wrapper that reads
+    `input.groups` needs on a board whose own lane draws none -- see
+    numbered-rooms/build_original.py.
+    """
+    W = n + 2
+
+    def idx(r, c):
+        return r * W + c
+
+    return [
+        {
+            "cells": [
+                idx(*ring_cell(f"{key[0]}{key[1]}", W)),
+                *(idx(r + 1, c + 1) for r, c in lines[key]),
+            ],
+            "value": "",
+        }
+        for key in sorted(lines)
+    ]
+
+
+def build_doc(
+    spec, n, bh, bw, grid, clue, givens, active, lines, local=False, bent=None
+):
     """Assemble the whole SudokuMaker document.
 
     `local` picks the variant (docs/line-contract.md): the global board runs
     main-global.js and ships no groups, so the backend builds every frame line
     itself; the local board runs main.js and ships each line as a drawn group,
     clue cell first.
+
+    `bent` says whether those drawn lines bend, which only the rules text
+    cares about; it defaults to `local`, the bent-path board every example
+    but outside-sudoku ships (#268).
     """
+    bent = local if bent is None else bent
     W = n + 2
     idx = lambda r, c: r * W + c
     # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
@@ -331,22 +365,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=False):
         if local
         else []
     )
-    constraint_input = (
-        {
-            "groups": [
-                {
-                    "cells": [
-                        ring_index(key),
-                        *(idx(r + 1, c + 1) for r, c in lines[key]),
-                    ],
-                    "value": "",
-                }
-                for key in sorted(lines)
-            ]
-        }
-        if local
-        else {}
-    )
+    constraint_input = {"groups": frame_groups(n, lines)} if local else {}
     components = [
         {"type": "code", "name": f[:-3], "code": minify_js((spec.dir / f).read_text())}
         for f in spec.components
@@ -398,7 +417,7 @@ def build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=False):
             "author": "",
             "comment": RULES_PREFIX
             + spec.comment_fn(n)
-            + (LOCAL_RULES_SUFFIX if local else ""),
+            + (LOCAL_RULES_SUFFIX if bent else ""),
             # minDigit/maxDigit pin the digit range to n; the app otherwise
             # defaults a custom puzzle to 0..9 regardless of grid size.
             "type": "custom",
@@ -463,23 +482,29 @@ def load_gen(dir_, n, tag=None):
     return bh, bw, grid, clue, givens, active, lines
 
 
-def run(spec, paths=False):
+def run(spec, paths=False, local=None):
     """Generate a board, build its link, and write the link and gen JSON.
 
-    `paths` builds the LOCAL variant: bent paths instead of straight frame
-    lines, shipped as drawn groups on the main.js lane, written as
+    `paths` builds the local board out of bent paths instead of straight frame
+    lines. `local` picks the lane, and defaults to `paths`: an example whose
+    rule needs a straight line (outside-sudoku's window has a direction, and a
+    bent path has none) passes `local=True` on its own to draw the frame lines
+    as groups (#268). Either way the board is written as
     PUZZLE_LINK_<n>x<n>_local.txt and gen_<n>x<n>_local.json.
     """
+    local = paths if local is None else local
     n, bh, bw = (int(a) for a in sys.argv[1:4])
     assert bh * bw == n, "box_height * box_width must equal n"
     seeds = range(101, 141) if len(sys.argv) < 5 else range(101, 101 + int(sys.argv[4]))
     seed, grid, clue, givens, active, lines = generate(
         spec, n, bh, bw, seeds, paths=paths
     )
-    doc = build_doc(spec, n, bh, bw, grid, clue, givens, active, lines, local=paths)
+    doc = build_doc(
+        spec, n, bh, bw, grid, clue, givens, active, lines, local=local, bent=paths
+    )
     link = link_codec.encode_link(doc)
-    check(spec, link, doc, n, local=paths)
-    tag = f"{n}x{n}_local" if paths else f"{n}x{n}"
+    check(spec, link, doc, n, local=local)
+    tag = f"{n}x{n}_local" if local else f"{n}x{n}"
     (spec.dir / f"PUZZLE_LINK_{tag}.txt").write_text(link + "\n")
     board = {
         "seed": seed,

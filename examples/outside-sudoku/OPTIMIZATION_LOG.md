@@ -6,15 +6,19 @@ does not need a second attempt. Background: `docs/real-app-timing.md` (the
 method), issue #259 (the spec), issue #260 (this component).
 
 The first real-app timing row landed with #262: `just time outside-sudoku
---ring-clues` on the shipped board prints BASELINE on both rows (900ms cold,
-300ms after-logical) — see README, `## Timing`, for the full rows and why
-there is no `original/` baseline to compare against. No deduction has yet
-been shown to pay for itself against a real alternative; the table below
-records what has been considered.
+--ring-clues` on the shipped board prints BASELINE on both rows — see README,
+`## Timing`, for the full rows and why there is no `original/` baseline to
+compare against. No deduction has yet been shown to pay for itself against a
+real alternative; the table below records what has been considered.
+
+#268 renamed the boards without changing a line of component code. The board
+timed at 900ms / 300ms below is now `PUZZLE_LINK_local.txt`, and it still
+times 900ms / 300ms; the shipped `PUZZLE_LINK.txt` is the 9x9 global-lane
+board, at 500ms / 300ms. Both are BASELINE rows on the same component.
 
 | Variant | Kept / rejected | Real-app numbers | Board + timer caveat | Commit |
 |---|---|---|---|---|
-| Three deductions in one pass, off `getCandidatesBitMask` (clue pruning, forced placement, dead branch) | Kept — the shipped baseline | 900ms cold, 300ms after-logical (#262, BASELINE only — no candidate diff) | 9x9 shipped board, `--ring-clues` | this log's commit |
+| Three deductions in one pass, off `getCandidatesBitMask` (clue pruning, forced placement, dead branch) | Kept — the shipped baseline | 900ms cold, 300ms after-logical (#262, BASELINE only — no candidate diff) | the seed-101 board, `--ring-clues`; shipped then as `PUZZLE_LINK.txt`, now as `PUZZLE_LINK_local.txt` | this log's commit |
 | Window length cached on the instance after the first `update` | Kept | not measured; the alternative re-reads `getRegionCells` on every pass, which is a per-call cost the app pays on every propagation (`docs/agents/per-call-cost.md`) | — | this log's commit |
 | A separate branch for the dead-branch deduction (clue solved, no window cell admits it) | Rejected — dead code | the clue's digit is absent from the window union, so the clue-pruning step already empties the clue. A second branch yields a removal on an empty cell and nothing else. | — | this log's commit |
 

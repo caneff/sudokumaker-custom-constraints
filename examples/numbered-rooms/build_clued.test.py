@@ -13,15 +13,15 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_clued import CONSTRAINT_NAME, build
+from build_original import frame_groups
 from link_codec import decode_puzzle
-from link_swap import blanked, find_constraint
+from link_swap import find_constraint, frame_only
 
 if __name__ == "__main__":
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     clued, clued_original = build()
 
-    groups = find_constraint(base, CONSTRAINT_NAME)["input"]["groups"]
-    ring = {g["cells"][0] for g in groups}
+    ring = {g["cells"][0] for g in frame_groups()}
     assert len(ring) == 36, f"expected 36 clue cells, found {len(ring)}"
 
     base_cells = base["puzzle"]["cells"]
@@ -47,12 +47,21 @@ if __name__ == "__main__":
     )
 
     # the original-wrapper twin differs from the clued link only in the
-    # constraint code -- same board, same 36 filled clues, same interior.
-    # blanked() empties the code fields, so an equal result here means
+    # constraint's own code and input -- same board, same 36 filled clues,
+    # same interior. frame_only() empties both, so an equal result here means
     # everything else (cells, backend/component names, styling) matches; the
-    # original wrapper renames its component and swaps the backend too (see
-    # build_original.py), so the code fields themselves must differ.
-    assert blanked(clued, CONSTRAINT_NAME) == blanked(clued_original, CONSTRAINT_NAME)
+    # original wrapper renames its component, swaps the backend, and reads the
+    # drawn groups the global lane does not ship (see build_original.py), so
+    # the code and the input themselves must differ.
+    assert frame_only(clued, CONSTRAINT_NAME) == frame_only(
+        clued_original, CONSTRAINT_NAME
+    )
+    assert (
+        len(find_constraint(clued_original, CONSTRAINT_NAME)["input"]["groups"]) == 36
+    ), "the original wrapper's twin must ship the 36 drawn frame lines"
+    assert find_constraint(clued, CONSTRAINT_NAME)["input"] == {}, (
+        "the clued board runs the global lane, so it draws no groups"
+    )
     assert (
         find_constraint(clued, CONSTRAINT_NAME)["definition"]["components"]
         != find_constraint(clued_original, CONSTRAINT_NAME)["definition"]["components"]

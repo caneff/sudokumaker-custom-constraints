@@ -71,27 +71,32 @@ line as its window. That is weaker than the rule, never unsound.
 | `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9 |
 | `rebuild_size.py` | Re-encode a sized link from its recorded seed, no fresh search |
 | `verify.py` | CP-SAT proof that a board has one solution |
-| `PUZZLE_LINK.txt` | The shipped board (see below) |
-| `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The sized boards and their seed data |
+| `PUZZLE_LINK.txt`, `gen_9x9.json` | The shipped board, on the global lane (see below) |
+| `PUZZLE_LINK_local.txt`, `gen_local.json` | The same frame, on the local lane |
+| `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The smaller boards and their seed data |
 
 ## The two backends
 
-- **Local** (`main.js`): the author draws one group per clue, clue cell first,
-  then the line nearest-first. A group still being drawn (clue only, no line)
-  is skipped. A line that is not one row or column **throws**: the window is a
-  box extent in the line's *direction*, and a bent path has no direction.
-- **Global** (`main-global.js`): reads no groups. It builds all `4n` frame
-  lines from `puzzle.spec.size.width` and registers one component per line.
+- **Local** (`main.js`, `PUZZLE_LINK_local.txt`): the author draws one group
+  per clue, clue cell first, then the line nearest-first. A group still being
+  drawn (clue only, no line) is skipped. A line that is not one row or column
+  **throws**: the window is a box extent in the line's *direction*, and a bent
+  path has no direction.
+- **Global** (`main-global.js`, `PUZZLE_LINK.txt`): reads no groups. It builds
+  all `4n` frame lines from `puzzle.spec.size.width` and registers one
+  component per line.
 
 ## The shipped board
 
 `PUZZLE_LINK.txt` is a 9x9 Outside Sudoku on the shared interactive-outside
 frame: an 11x11 board, the 9x9 interior ringed by one clue cell per row and
-column end. It runs the **local** backend, with all 36 frame lines shipped as
-drawn groups.
+column end. It runs the **global** backend and draws no groups, as every
+example's bare `PUZZLE_LINK.txt` does (`docs/example-layout.md`, "Which lane a
+link runs", #268).
 
-- Seed 101 of `framebuild.generate`, 11 interior givens, 21 of the 36 ring
-  clues shown; the other 15 are empty cells the solver fills in.
+- Seed 123 of `framebuild.generate`, recorded in `gen_9x9.json`: 10 interior
+  givens, 23 of the 36 ring clues shown; the other 13 are empty cells the
+  solver fills in.
 - Uniqueness is proved by OR-Tools CP-SAT, which models the same membership
   rule the component enforces (clue equals at least one of the first three
   cells). `verify.py` re-runs that proof against the committed link, so the
@@ -116,6 +121,32 @@ into the committed board:
       --component examples/outside-sudoku/OutsideSudokuComponent.js \
       --out examples/outside-sudoku/PUZZLE_LINK.txt
 
+## The local board
+
+`PUZZLE_LINK_local.txt` is the local lane's board: the same 11x11 frame with
+all 36 lines shipped as **drawn groups**, so `main.js` registers one component
+per group. Seed 101, recorded in `gen_local.json`: 11 interior givens and 21 of
+the 36 clues shown. It carries the local timing row.
+
+    uv run --with ortools --with lzstring \
+      examples/outside-sudoku/build_size.py 9 3 3 1 --local
+    uv run --with lzstring examples/outside-sudoku/rebuild_size.py 9 --local
+
+### Why its lines are straight, not bent (#268)
+
+Every other example's local board draws **bent paths**, which is what makes a
+line stop being a house and gives the bare-line deductions a board to play.
+This rule cannot use one. The window is the box extent measured **along the
+line's direction**, and a bent path has no single direction — so `main.js`
+throws on a group that is not one row or one column, and a bent-path board
+would not open at all. The local board therefore draws the frame lines, and
+its rules text keeps quiet about houses: on this board every drawn line really
+is a row or a column.
+
+What the local board still proves is the lane: `main.js` reading the author's
+groups reaches the same 36 components `main-global.js` builds from the grid,
+on the same rule and the same board shape.
+
 ## The sized boards
 
 `build_size.py` generates a fresh board of any size on the same frame, in the
@@ -126,7 +157,8 @@ itself). Three sizes ship, each carved to a unique solution by OR-Tools:
 | --- | --- | --- | --- | --- |
 | `PUZZLE_LINK_4x4.txt` | 102 | 1 | 5 of 16 | 2 either way |
 | `PUZZLE_LINK_6x6.txt` | 123 | 3 | 13 of 24 | 3 across, 2 down |
-| `PUZZLE_LINK_9x9.txt` | 123 | 10 | 23 of 36 | 3 either way |
+| `PUZZLE_LINK.txt` (the 9x9) | 123 | 10 | 23 of 36 | 3 either way |
+| `PUZZLE_LINK_local.txt` (9x9, local lane) | 101 | 11 | 21 of 36 | 3 either way |
 
     uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 4 2 2
     uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 6 2 3
@@ -149,7 +181,9 @@ the same board comes back out:
     uv run --with lzstring examples/outside-sudoku/rebuild_size.py 6
 
 `build_size.test.py` holds that to a byte: each committed link must equal what
-`rebuild_size.rebuild(n)` produces from `gen_<n>x<n>.json`.
+`rebuild_size.rebuild(n)` produces from its gen JSON, the local board
+included. The 9x9 global board is the shipped one, so `build_size.py 9 3 3`
+and `rebuild_size.py 9` write `PUZZLE_LINK.txt`, not `PUZZLE_LINK_9x9.txt`.
 
 ### Which window digit is the clue
 
@@ -189,8 +223,8 @@ just time outside-sudoku --ring-clues
 
 | date | app version | board | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2026-08-30 | v2026.08.14-d47fc4b | outside-sudoku | 900ms | — | — | BASELINE |
-| 2026-08-30 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku | 500ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
 
 Both rows print `BASELINE`, not a ratio: the working-tree
 `OutsideSudokuComponent.js` is byte-equal to the code `PUZZLE_LINK.txt`
@@ -198,6 +232,23 @@ already ships, so `just time` has no candidate to compare against the
 committed link. `OPTIMIZATION_LOG.md` has the same numbers and records what
 speed work has been considered; see "No `original/` baseline" below for why
 there is no second row.
+
+### The local board (#268)
+
+```sh
+just time outside-sudoku --board PUZZLE_LINK_local.txt --ring-clues
+```
+
+| date | app version | board | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (PUZZLE_LINK_local.txt) | 900ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (PUZZLE_LINK_local.txt) after-logical | 300ms | — | — | BASELINE |
+
+This is the board that used to ship as `PUZZLE_LINK.txt`, and it times exactly
+what it timed then (900 ms / 300 ms on 2026-08-30): the board did not change,
+only its name and which lane it wires up. The two boards are not comparable
+to each other — they are different boards, seed 101 and seed 123 — so neither
+row is a ratio against the other.
 
 ### No `original/` baseline
 

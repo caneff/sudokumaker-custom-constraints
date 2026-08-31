@@ -100,8 +100,6 @@ per-line component below carries the whole example.
   `main.js` (local) reads the drawn `groups` input; `main-global.js`
   (global) builds all 4n frame lines from the board size itself instead —
   no lines to draw.
-- `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with
-  `main-global.js` as the backend and no drawn groups. Same solve.
 - `PUZZLE_LINK_local.txt`, `gen_local.json` — the 9x9 **local** board: 36 bent
   paths in place of the frame lines, each shipped as a drawn group on the
   `main.js` lane, so the three rules that hold on a bare line have a board to
@@ -124,18 +122,22 @@ per-line component below carries the whole example.
   example: a hard board with **blank outside clues** (the solver deduces all 36),
   8 arrow bulbs, and one interior given, so the solver must search. Earlier
   fixtures had 24 and then 13 arrows; fewer arrows leave more of the work to
-  this component.
+  this component. It runs the **global** lane — `main-global.js`, no drawn
+  groups — as every example's bare `PUZZLE_LINK.txt` does
+  (`docs/example-layout.md`, #268).
 - `PUZZLE_LINK_original.txt` — the same board with the original wrapper code, for
-  a same-board timing comparison.
+  a same-board timing comparison. The wrapper reads `input.groups`, so this one
+  ships the 36 frame lines as drawn groups; `build_original.py` builds them.
 - `PUZZLE_LINK_clued.txt` — the same 8-arrow board with all 36 outside clues
   filled from the puzzle's solution (interior unchanged, still blank but for
   the one given): the ordinary, ready-to-play version of the puzzle.
 - `PUZZLE_LINK_clued_original.txt` — the clued board with the original wrapper
-  code, for a same-board timing comparison. Both solve instantly and uniquely
-  (0ms, one rep each) -- an ordinary, mostly-solved-by-logic puzzle does not
-  show the capability gap; see "Timing in the real app" below.
+  code and its drawn groups, for a same-board timing comparison. Both solve
+  instantly and uniquely (0ms, one rep each) -- an ordinary,
+  mostly-solved-by-logic puzzle does not show the capability gap; see "Timing
+  in the real app" below.
 - `build_original.py` — rebuilds `PUZZLE_LINK_original.txt` from `PUZZLE_LINK.txt`
-  and the `original/` files, changing only the constraint code.
+  and the `original/` files, changing only the constraint's own code and input.
 - `build_clued.py` — rebuilds both `PUZZLE_LINK_clued.txt` and
   `PUZZLE_LINK_clued_original.txt` from `PUZZLE_LINK.txt`, filling the 36
   clues from the board's own solution and checking that solution against the
@@ -144,11 +146,10 @@ per-line component below carries the whole example.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one named component's code
   swapped for a candidate file, board and clues unchanged:
   `uv run --with lzstring examples/numbered-rooms/build_link.py --component NumberedRoomsComponent.js --out /tmp/candidate.txt`.
-  Add `--backend main.js` to swap the main code in as well (the committed
-  link carries both, and `build_link.test.py` checks both round-trip).
-  Add `--global` to drop the drawn groups and switch the backend to
-  main-global.js.
-  See `docs/real-app-timing.md`.
+  Add `--backend main-global.js` to swap the main code in as well (the
+  committed link carries both, and `build_link.test.py` checks both
+  round-trip). Add `--board PUZZLE_LINK_local.txt` to swap against the local
+  board instead. See `docs/real-app-timing.md`.
 
 ## One example, one component (#238)
 
@@ -225,9 +226,14 @@ difference inside that baseline's run-to-run spread does not count.
 
 ## Timing
 
-| 2026-08-27 | v2026.08.14-d47fc4b | numbered-rooms | 2300ms | — | — | BASELINE |
-| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms | 1700ms | 1700ms | 1.00 | FAIL |
-| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 1500ms | 1500ms | 1.00 | FAIL |
+The three rows below were measured **before #268**, when `PUZZLE_LINK.txt` was
+the local-lane board. The same command returns different numbers now that the
+plain name is the global-lane board — see "The lane swap (#268)" for the
+current rows and the difference between the two lanes.
+
+| 2026-08-27 | v2026.08.14-d47fc4b | numbered-rooms (pre-#268, local lane) | 2300ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms (pre-#268, local lane) | 1700ms | 1700ms | 1.00 | FAIL |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms (pre-#268, local lane) after-logical | 1500ms | 1500ms | 1.00 | FAIL |
 
 `just time numbered-rooms --ring-clues`. See `docs/real-app-timing.md` for the
 protocol.
@@ -239,6 +245,43 @@ exactly what they were; the only new work per `update` is the
 FAIL because `just time` applies the deduction rule (≤ 0.9× on one row). A gate
 change is judged at **≤ 1.1× on both rows** (`docs/real-app-timing.md`, "Bar
 for a gate change"), which 1.00 and 1.00 clear.
+
+### The lane swap (#268)
+
+`PUZZLE_LINK.txt` now runs the global lane. Same board, same givens, same
+clues, same `NumberedRoomsComponent` — the only change is that
+`main-global.js` builds the 36 frame lines from the grid instead of `main.js`
+reading them as drawn groups.
+
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms | 2200ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 2100ms | — | — | BASELINE |
+
+```sh
+just time numbered-rooms --ring-clues
+```
+
+**The global lane is slower on this board, past the 1.1× bar.** Both lanes
+timed the same day, 3 reps each, three runs apiece — the local lane at
+1800–1900 ms cold and 1500–1600 ms after-logical, the global lane at
+2200–2400 ms and 2000–2100 ms. That is about **1.2× cold and 1.3×
+after-logical**, and `docs/real-app-timing.md` puts a change with no new
+deduction at ≤ 1.1× on both rows. The rows above are what the board costs
+now, not a pass.
+
+Two candidate causes were measured and ruled out, so what is left is the
+backend code itself:
+
+| Probe | Cold | After-logical |
+| --- | --- | --- |
+| global lane, lines registered in the drawn board's order | 2300ms | 1900ms |
+| global lane, the 36 drawn groups added back to the document | 2200ms | 2000ms |
+
+Neither moves the number, so it is neither the order the 4n components are
+registered in nor the presence of the groups in the document. The deductions
+are identical either way — the same component runs on the same 36 lines — so
+this is the app's own cost for a backend that builds its lines with
+`puzzle.getCellAt`, not a weaker constraint. Consistency of the example set
+was the call (#268); the number is recorded here rather than argued away.
 
 ### The local board (#238)
 
