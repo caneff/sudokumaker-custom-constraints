@@ -21,11 +21,14 @@ REQUIRED_FILES = [
 
 # An example whose constraint has no local/global duality ships main.js
 # alone: isofill is a whole-grid constraint with no drawn groups at all
-# (spec #232, Out of Scope), and numbered-rooms-lines is a single,
-# drawn-only variant pending its fold into numbered-rooms (spec #232
-# decision 26, a separate ticket). Every other example needs both files
+# (spec #232, Out of Scope). Every other example needs both files
 # (#194, #235).
-NO_LOCAL_GLOBAL_SPLIT = {"isofill", "numbered-rooms-lines"}
+NO_LOCAL_GLOBAL_SPLIT = {"isofill"}
+
+# An example folded into another and deleted. One rule has one example, so
+# the directory must not come back -- a second one would drift from the
+# first the way numbered-rooms-lines drifted from numbered-rooms (#238).
+MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
@@ -60,6 +63,12 @@ def check_lanes(example_dir):
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
+
+    if name in MERGED_AWAY:
+        return [
+            f"{name}: folded into {MERGED_AWAY[name]} (#238); "
+            "this directory must not exist"
+        ]
 
     violations = [
         f"{name}: missing required file {required}"

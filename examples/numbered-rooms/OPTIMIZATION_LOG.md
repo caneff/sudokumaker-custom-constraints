@@ -23,6 +23,7 @@ directly comparable to later ones.
 | Clue≠index rule in the loop + bitmask single pass + empty-K contradiction (#87) | Kept | median of 5 reps — first 1600 ms, unique 1500 ms, sum 3100 ms; reps 3000–3100 ms. `just time` 3-rep row: baseline 19400 ms, candidate 3000 ms, ratio 0.15 | verdict unique, 100 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | 46e2d58 |
 | **Solved-clue position prune** (clue solved to c ⇒ drop c from every line cell at a dead index) — **new baseline** | Kept | median of 5 reps — first 1000 ms, unique 900 ms, sum 1900 ms; reps 1900–2100 ms. Same-session #87 baseline: sum 2600 ms, reps 2400–2600 ms (the machine was faster than on the #87 row's day — compare within the session, ratio ~0.73). `just time` 3-rep row: baseline 2400 ms, candidate 1800 ms, ratio 0.75 | verdict unique, 0 ms | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-26 | this row's commit |
 | Public-share simplification: fold the empty-K branch into the generic prunes (now empties the clue too), one `drop` helper, repo pointers out of the pasted segment | Kept — same deductions, no timing change | `just time` 3-rep row: 1900 ms, on the baseline | verdict unique | 8-arrow board, app v2026.08.14-d47fc4b, 2026-08-26 | this row's commit |
+| Line-kind gate (#238): the two house rules ask `getCellsCanHaveRepeats` in `update` instead of assuming a house | Kept — a gate change, judged at ≤ 1.1× on both rows | `just time` 3-rep rows: cold 1700 → 1700 ms (1.00), after-logical 1500 → 1500 ms (1.00) | verdict unique | 8-arrow board, app v2026.08.14-d47fc4b, non-deterministic solve off, 2026-08-31 | this row's commit |
 
 The #87 row answers the "distinct-line" rejection above: the rule was never
 the cost, the extra pass was. Folded into the one feasibility loop as a match
@@ -46,8 +47,9 @@ the soundness harness.
 
 The solved-clue row is the converse of the feasibility loop: the loop uses
 "cell lacks c ⇒ index dead"; the prune uses "index dead ⇒ cell lacks c", which
-holds because the line is one house so c sits in exactly one of its cells.
-The soundness harness now generates only distinct-digit lines for that reason.
+holds only when c sits in exactly one cell of the line — so the rule is gated
+on the line being a house, and the soundness harness fuzzes a bare line to
+prove it stands down there.
 
 ## Win bar (for any future attempt against the current baseline)
 

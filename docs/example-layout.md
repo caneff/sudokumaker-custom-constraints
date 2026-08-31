@@ -21,10 +21,17 @@ so a missing required file or a bad link name fails the gate.
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
 
 `main-global.js` is required on every example except one with no local/global
-duality: `isofill` (a whole-grid constraint, no drawn groups at all) and
-`numbered-rooms-lines` (a single, drawn-only variant pending its fold into
-`numbered-rooms`) ship `main.js` alone. `examples/_shared/check_layout.py`
-holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
+duality: `isofill` (a whole-grid constraint, no drawn groups at all) ships
+`main.js` alone. `examples/_shared/check_layout.py` holds this list as
+`NO_LOCAL_GLOBAL_SPLIT`.
+
+## One rule, one example
+
+A rule gets one example directory, with the local and global variants above.
+A second directory for the same rule drifts from the first: `numbered-rooms`
+and `numbered-rooms-lines` grew two components for one rule, and only one of
+them was sound on a drawn line. `check_layout.py` holds the folded-away names
+as `MERGED_AWAY` and fails if such a directory comes back (#238).
 
 ## Optional files
 

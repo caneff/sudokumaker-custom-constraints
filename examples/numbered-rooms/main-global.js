@@ -2,8 +2,8 @@
 // all 4n frame lines from the board size — interior n = W-2 ringed by one
 // clue cell per side. `puzzle.getCellAt(row, col)` = row*W+col [verified
 // 2026-08-28 via a [probe] log in the app]. Every frame line is one row or
-// column by construction, so no house check is needed here (main.js keeps
-// it, for a drawn group of any shape).
+// column, so the component's house rules all fire — but it asks the app for
+// that at solve time, not here (docs/line-contract.md).
 function frameGroups () {
   const W = puzzle.spec.size.width
   const n = W - 2

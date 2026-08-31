@@ -150,7 +150,7 @@ def repeating_lines(grid, lines):
 def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     """True when the interior has exactly one solution. `post_clue` is a
     Spec's cp_sat_clue_fn; unique() needs nothing else off the Spec, so a
-    caller with its own line geometry can reuse it (numbered-rooms-lines)."""
+    caller with its own line geometry can reuse it."""
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
     # load_gen) and a caller's Spec stay importable with lzstring alone --

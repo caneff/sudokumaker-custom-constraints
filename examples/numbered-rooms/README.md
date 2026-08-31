@@ -10,6 +10,20 @@ A line reads inward from an outside clue cell. The first inside cell holds a
     line[k - 1] === clue,   with k = value(line[0]).
 
 The clue is a **cell** (its digit is part of the solution), not a fixed number.
+An index of 0, or any index past the end of the line, is out of range.
+
+The line is any group the author draws: a frame row or column, a diagonal, a
+bent path. `NumberedRoomsComponent` asks the app at solve time whether the line
+is a house and gates the two rules that need distinct digits on the answer
+(`docs/line-contract.md`):
+
+| Rule | Needs |
+| --- | --- |
+| in-range feasible indices only | any line |
+| `k = 1` ⇒ the clue is 1 (the target *is* the indexer) | any line |
+| one index left ⇒ the target equals the clue | any line |
+| `k > 1` ⇒ the target is not `k` | a house |
+| clue solved to `c` ⇒ `c` leaves every cell at a dead index | a house |
 
 ## What was slow and weak
 
@@ -88,11 +102,18 @@ per-line component below carries the whole example.
   no lines to draw.
 - `PUZZLE_LINK_global.txt` — the same board as `PUZZLE_LINK.txt` with
   `main-global.js` as the backend and no drawn groups. Same solve.
+- `PUZZLE_LINK_local.txt`, `gen_local.json` — the **local** board: 36 bent
+  paths in place of the frame lines, each shipped as a drawn group on the
+  `main.js` lane, so the three rules that hold on a bare line have a board to
+  play and to time. Every path repeats a digit, so none of them is a house and
+  the two house rules stand down. Built by
+  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3 3 --paths`.
 - `original/` — the shipped wrapper (`main.js`, `CustomIndexComponent.js`),
   kept for reference and used by `build_original.py`.
-- `soundness-harness.mjs` — proves `update` removes no true value (405k fuzz
-  tests) and that it prunes early: the clue narrows while it is still unsolved,
-  which the shipped wrapper never did.
+- `soundness-harness.mjs` — proves `update` removes no true value across a
+  fuzz of all three line kinds plus a `minDigit 0` board, and that it prunes
+  early: the clue narrows while it is still unsolved, which the shipped
+  wrapper never did.
 - `PUZZLE_LINK.txt` — the ready-to-open puzzle and the source of truth for this
   example: a hard board with **blank outside clues** (the solver deduces all 36),
   8 arrow bulbs, and one interior given, so the solver must search. Earlier
@@ -122,6 +143,30 @@ per-line component below carries the whole example.
   Add `--global` to drop the drawn groups and switch the backend to
   main-global.js.
   See `docs/real-app-timing.md`.
+
+## One example, one component (#238)
+
+`examples/numbered-rooms-lines` was a second directory for the same rule, with
+its own component and a `distinct` flag that main code set from the group's
+shape. It is deleted. `NumberedRoomsComponent` reads the kind off the app
+instead, so one component covers the frame lines and any path an author draws,
+and `main.js` no longer throws on a group that is not one row or column.
+
+Two link families survive the merge, by an explicit call:
+
+- **`original/` and the `_original` links stay.** They are this example's
+  capability evidence: the ~100× row below and the win bar in
+  `OPTIMIZATION_LOG.md` both compare against the wrapper on the same board.
+  `docs/example-layout.md` keeps an `original/` baseline where a timing
+  comparison actually uses it, and this one does.
+- **The `_clued` links stay.** `PUZZLE_LINK_clued.txt` is the second half of
+  the win bar — a candidate must leave it verdicting `unique` — and it is the
+  ordinary, ready-to-play version of the shipped puzzle.
+
+Nothing from `numbered-rooms-lines` was worth carrying over: its board is
+replaced by `PUZZLE_LINK_local.txt`, its generator by `build_size.py --paths`,
+and its `distinct=false` behaviour by the bare-line rules, which
+`update-strength.test.mjs` pins to that component's last commit.
 
 ## Run
 
@@ -175,9 +220,19 @@ difference inside that baseline's run-to-run spread does not count.
 ## Timing
 
 | 2026-08-27 | v2026.08.14-d47fc4b | numbered-rooms | 2300ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms | 1700ms | 1700ms | 1.00 | FAIL |
+| 2026-08-31 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 1500ms | 1500ms | 1.00 | FAIL |
 
-`just time numbered-rooms --ring-clues` (candidate byte-equal to baseline, so
-only a BASELINE row prints). See `docs/real-app-timing.md` for the protocol.
+`just time numbered-rooms --ring-clues`. See `docs/real-app-timing.md` for the
+protocol.
+
+The two 2026-08-31 rows are the gate change of #238. Every frame line on this
+board is a house, so both house rules still fire and the board's deductions are
+exactly what they were; the only new work per `update` is the
+`getCellsCanHaveRepeats` call, and it is free at this resolution. The rows read
+FAIL because `just time` applies the deduction rule (≤ 0.9× on one row). A gate
+change is judged at **≤ 1.1× on both rows** (spec #232), which 1.00 and 1.00
+clear.
 
 ## Not covered
 

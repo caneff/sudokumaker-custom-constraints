@@ -80,12 +80,18 @@ if __name__ == "__main__":
         assert "widget" in violations[0]
         assert "main-global.js" in violations[0]
 
-    # a no-local-global-split example (isofill, numbered-rooms-lines) needs
-    # no main-global.js
-    for name in ("isofill", "numbered-rooms-lines"):
-        with example(files=missing, name=name) as (root, _):
-            violations = check_tree(root)
-            assert violations == [], (name, violations)
+    # a no-local-global-split example (isofill) needs no main-global.js
+    with example(files=missing, name="isofill") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # numbered-rooms-lines was folded into numbered-rooms (#238): the
+    # directory must not come back, complete file set or not
+    with example(name="numbered-rooms-lines") as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "numbered-rooms-lines" in violations[0], violations
+        assert "numbered-rooms" in violations[0], violations
 
     # main.js building frame lines (reading the board via getCellAt) is a
     # lane violation -- frame building belongs to main-global.js only

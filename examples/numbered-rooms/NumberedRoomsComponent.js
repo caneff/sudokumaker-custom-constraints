@@ -1,10 +1,13 @@
 /* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! Numbered Rooms (escape-the-grid variant). A line reads inward from an
-//! outside clue cell. Let O be the clue cell and line[0..m-1] the inside cells,
-//! nearest the clue first. The first inside cell line[0] holds a 1-based index
-//! k; the clue equals the digit in the k-th inside cell:
+//! Numbered Rooms (escape-the-grid). A line reads inward from an outside clue
+//! cell — a frame row or column, or any path an author draws. Let O be the clue
+//! cell and line[0..m-1] the inside cells, nearest the clue first. The first
+//! inside cell line[0] holds a 1-based index k; the clue equals the digit in the
+//! k-th inside cell:
 //!
 //!     line[k - 1] === O,   with k = value(line[0]).
+//!
+//! An index of 0, or any index past the end of the line, is out of range.
 //!
 //! The clue is a CELL, not a constant, so the built-in IndexComponent (which
 //! needs a fixed value to index) cannot enforce this. This component does it
@@ -12,6 +15,10 @@
 //! to the still-feasible targets, equates the target with the clue once one
 //! index remains, and once the clue is solved drops its digit from every line
 //! cell at a dead index — all from the first pass.
+//!
+//! Two of those rules need the line's cells to hold distinct digits, which only
+//! a house gives. They ask at solve time, so a drawn path that repeats a digit
+//! keeps the three rules that hold on any line and nothing more.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -22,11 +29,30 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Candidate sets are bitmasks: bit d set = digit d possible (bit 0 unused).
+// Line kinds, ordered (docs/line-contract.md). Numbered Rooms has no
+// full-house rule, so HOUSE is as high as this component looks.
+const BARE = 0
+const HOUSE = 1
+
+// The line's kind, asked at solve time and re-asked while it is still bare.
+// It cannot be asked once in main code: that runs before the built-in
+// row/column houses are registered and would read every line as bare (gotcha
+// 6). Query the line alone — a clue cell in the list flips
+// getCellsCanHaveRepeats to true. A house never repeats again, so the answer
+// is cached the moment it comes back HOUSE.
+function lineKind (instance, puzzle) {
+  if (instance.kind !== HOUSE) {
+    instance.kind = puzzle.getCellsCanHaveRepeats(instance.line) ? BARE : HOUSE
+  }
+  return instance.kind
+}
+
+// Candidate sets are bitmasks: bit d set = digit d possible.
 // One pass, all reads from the pre-pass masks, so no step depends on another.
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const m = line.length
+  const house = lineKind(instance, puzzle) === HOUSE
   const clueM = puzzle.getCandidatesBitMask(clue) // what the clue can still be
   const idxM = puzzle.getCandidatesBitMask(line[0]) // what the index k can still be
   const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)
@@ -37,21 +63,24 @@ function * update (instance, puzzle) {
   for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) { // bit = 1 << k
     if (!(idxM & bit)) continue // k is not a candidate of line[0]
     let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM // digits target and clue share
-    // Line is one house. k = 1: target IS line[0], which holds k, so clue = k.
-    // k > 1: target sits in the same house as line[0] = k, so target != k.
-    t = k === 1 ? t & bit : t & ~bit
+    // k = 1: the target IS line[0], which holds k, so the clue must be 1. True
+    // on any line. k > 1: target and indexer are two cells of the line, so on a
+    // house they differ and the target cannot be k; on a bare line it may be.
+    t = k === 1 ? t & bit : house ? t & ~bit : t
     if (t) { K |= bit; reach |= t }
   }
 
-  // Step 2: line[0] keeps only working indices; clue keeps only reachable digits.
-  // No working index -> both go empty and the solver sees the contradiction.
+  // Step 2: line[0] keeps only working indices (which drops 0 and every index
+  // past the end of the line); the clue keeps only reachable digits. No working
+  // index -> both go empty and the solver sees the contradiction.
   if (idxM & ~K) yield drop(idxM & ~K, line[0])
   if (clueM & ~reach) yield drop(clueM & ~reach, clue)
   if (!K) return
 
-  // Step 3: clue solved to c (mask has one bit). c appears once in the line,
-  // at the target, so remove c from every cell at a non-working index.
-  if ((clueM & (clueM - 1)) === 0) { // x & (x-1) clears the lowest bit; zero = one bit set
+  // Step 3: clue solved to c (mask has one bit). On a house c appears once in
+  // the line, at the target, so remove c from every cell at a non-working
+  // index. On a bare line c may sit at a dead index too, so this stands down.
+  if (house && (clueM & (clueM - 1)) === 0) { // x & (x-1) clears the lowest bit; zero = one bit set
     for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
       if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) yield drop(clueM, line[k - 1])
     }
