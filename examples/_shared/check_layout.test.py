@@ -65,7 +65,7 @@ def example(files=REQUIRED, extra_links=(), name="widget", contents=None):
         d = root / name
         d.mkdir()
         for f in files:
-            default = _link() if f == "PUZZLE_LINK.txt" else "x"
+            default = _link() if f.startswith("PUZZLE_LINK") else "x"
             (d / f).write_text(contents.get(f, default))
         for link in extra_links:
             (d / link).write_text(contents.get(link, _link()))
