@@ -31,7 +31,10 @@ import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, violat
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { load } = makeIo(HERE)
+const { load, loadAt } = makeIo(HERE)
+// The joint component with the case sweep alone, before the permutation sweep.
+// It is the floor that sweep's coverage counter measures against.
+const CASE_SWEEP_COMMIT = '4cc09eb'
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
@@ -251,6 +254,44 @@ for (let iter = 0; iter < 20000; iter++) {
   if (asHouse.left < asBare.left) exFired++
 }
 console.log('mirrored-pair exclusion:', exTests, 'tests,', exBad, 'violations,', exFired, 'states where the house run pruned more')
+
+// ---- the permutation sweep fires, and takes no true value with it ----
+// The counters above show the joint component pruned; this one names the
+// permutation sweep, by running the same state through the component as it stands
+// and through the case sweep it replaced on a full house of 1..n. Every state is
+// seeded around a real permutation and its two true clues, so a state where the
+// matching removed a true value is a soundness bug, not a strength win.
+const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'initialize', 'validate'])
+let permTests = 0
+let permFired = 0
+let permBad = 0
+for (let iter = 0; iter < 20000; iter++) {
+  const n = 4 + ((rnd() * 6) | 0) // 4..9
+  const perm = makeLine(rnd, 'fullHouse', n, n)
+  const cells = Array.from({ length: n }, (_, j) => j)
+  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+  for (let j = 0; j < n; j++) truth[j] = perm[j]
+  const lineSeed = seeder(1, n)
+  const clueSeed = seeder(0, n)
+  const draw = new Map()
+  for (const c of Object.keys(truth)) {
+    const isClue = +c === A || +c === B
+    draw.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
+  }
+  const run = component => {
+    const p = makePuzzle(truth, c => draw.get(c), { kind: 'fullHouse', digitCount: n })
+    const inst = {}
+    component.setParams(inst, A, B, cells)
+    const v = violates(component, inst, p, truth)
+    return { v, left: [...p._cand.values()].reduce((s, x) => s + x.size, 0) }
+  }
+  const now = run(joint)
+  const before = run(caseSweep)
+  permTests++
+  if (now.v) { permBad++; if (permBad <= 5) console.log('PERMUTATION SWEEP violation, n =', n, now.v) }
+  if (now.left < before.left) permFired++
+}
+console.log('permutation sweep:', permTests, 'tests,', permBad, 'violations,', permFired, 'states where the permutation sweep pruned more')
 
 // ---- the gate re-opens once the cage removes 0 ----
 // On a hit-counts board 0 is live on the inner grid at the first update and a
@@ -484,9 +525,9 @@ const sideBare = fuzzSide('side-sum, bare perpendiculars      ', {
 const ok = full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
   lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
-  gBad === 0 && exBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
+  gBad === 0 && exBad === 0 && permBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
-  gFired > 0 && exFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
+  gFired > 0 && exFired > 0 && permFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
   retestOk && wrongSetOk && validateOk && sideGateOk && sideValidateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
 console.log(ok ? 'PASS' : 'FAIL')

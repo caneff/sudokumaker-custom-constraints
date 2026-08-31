@@ -8,10 +8,17 @@
 // candidate is removed only when NO combination in those supersets keeps it, so
 // the true solution's own case is never the one removed.
 //
+// The permutation sweep is sound for the same reason and one step further: on a
+// line that holds 1..n once each, every filling IS a permutation, so the sets it
+// builds are the reachable (A, B) counts themselves rather than a superset. The
+// true solution is one of those permutations, so its digit at every position and
+// its own (A, B) pair are always among the survivors.
+//
 // Two rules read outside the line's own candidates, and each carries its gate.
 // The mirrored-pair exclusion needs a house: on a bare line, where a digit may
 // repeat, both (L, R) and (R, L) stay open. The "no n-1 clue" rule needs the
 // line's live digits to be exactly 1..n, which a house alone does not promise.
+// The permutation sweep needs that same full house of 1..n.
 
 //! Joint hit counts. One component for a whole line and both its clues.
 //! Position j (0-based from clue A) hits for A when it holds digit j+1 and for B
@@ -24,6 +31,11 @@
 //! hit: both readings would put the same digit in both cells. A forward and a
 //! backward sweep over those sets say which case each position can still take —
 //! hit for A, hit for B, or neither — and the clue candidates that survive.
+//! On a line that holds 1..n once each the same two sweeps run over whole
+//! permutations instead of cases: the state is the set of digits already placed,
+//! and a (position, digit) pair survives only when some permutation through it
+//! lands both clues on a candidate they still hold. That reads the misses as well
+//! as the hits, so it also removes a digit no permutation can put there.
 
 const CASE_L = 0
 const CASE_R = 1
@@ -93,16 +105,19 @@ function unitCombos (cm, j, k, n, house) {
   return out
 }
 
-// The DP reads three bits per cell, both clue masks, and the line kind. Hash
-// exactly those, so a change anywhere else on the line costs one pass over the
-// cells and no solve. The kind is in the hash because it can climb while no
-// candidate moves, and a higher kind opens a stronger rule.
-function signature (puzzle, instance) {
+// The case sweep reads three bits per cell, both clue masks, and the line kind;
+// the permutation sweep reads every candidate. Hash exactly what the sweep about to
+// run reads, so a change it cannot see costs one pass over the cells and no
+// solve. The kind is in the hash because it can climb while no candidate moves,
+// and a higher kind opens a stronger rule -- which is also what picks the sweep,
+// so one hash cannot be mistaken for the other.
+function signature (puzzle, instance, exact) {
   const { clueA, clueB, line, n } = instance
   const kind = (instance.kind || 0) * 2 + (instance.oneToN ? 1 : 0)
   let h = (Math.imul(puzzle.getCandidatesBitMask(clueA), 31) + puzzle.getCandidatesBitMask(clueB)) | 0
   for (let j = 0; j < n; j++) {
-    h = (Math.imul(h, 31) + caseBits(puzzle.getCandidatesBitMask(line[j]), j, n)) | 0
+    const m = puzzle.getCandidatesBitMask(line[j])
+    h = (Math.imul(h, 31) + (exact ? m : caseBits(m, j, n))) | 0
   }
   return (Math.imul(h, 31) + kind) | 0
 }
@@ -136,6 +151,145 @@ function lineKind (instance, puzzle) {
   return instance.kind
 }
 
+// The permutation sweep holds two tables of 2^n * (n + 1) counts and walks them
+// three times, so its cost climbs as n * 2^n: one step up in n is twice the
+// work. It has been timed on the shipped boards and pays there; past nine cells
+// nothing has measured it, so a longer line keeps the case sweep rather than
+// take a cost no board has priced. See examples/hit-counts/OPTIMIZATION_LOG.md.
+const PERM_MAX = 9
+
+// Every buffer the sweep needs, sized by n alone, built once per instance and
+// cleared per call: a solve calls `update` far more often than it changes n, and
+// `docs/agents/per-call-cost.md` asks the hot path to allocate nothing.
+function permScratch (instance, n) {
+  const size = (1 << n) * (n + 1)
+  if (instance.F && instance.F.length === size) {
+    instance.F.fill(0)
+    instance.H.fill(0)
+    instance.reach.fill(0)
+    instance.keep.fill(0)
+    return
+  }
+  instance.F = new Int32Array(size)
+  instance.H = new Int32Array(size)
+  instance.reach = new Uint8Array(1 << n)
+  instance.dig = new Int32Array(n) // filled per call from the cells' own masks
+  instance.keep = new Int32Array(n)
+  const pc = new Uint8Array(1 << n)
+  for (let m = 1; m < pc.length; m++) pc[m] = pc[m >> 1] + (m & 1)
+  instance.pc = pc
+}
+
+// The permutation sweep, for a line that holds 1..n once each. A state is the
+// set of digits already placed; its size names the position to fill next, so the
+// two sweeps below walk the same states in opposite directions.
+//   F[mask][a] — the B counts a prefix can reach with A count a, having used
+//     exactly the digits in `mask`.
+//   H[mask][a] — the B counts that, added to a prefix already holding (a, b),
+//     let the rest of the line finish on a pair both clues still hold.
+// Digit d at position i is possible when some state meets its own future: the
+// prefix reaches (a, b) and the suffix after d finishes from there. Anything no
+// state supports is a digit no permutation can put in that cell.
+// The three loops below step a digit the same way -- read the low bit, name the
+// digit, work out whether it hits for A, for B, and where it lands. That is
+// written out three times rather than called, because a call in a loop this hot
+// costs more than the repetition; change one and change all three.
+function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
+  const { clueA, clueB, line, n } = instance
+  const W = n + 1
+  const last = (1 << n) - 1
+  permScratch(instance, n)
+  const { F, H, pc, reach, dig, keep } = instance
+
+  // Each position's open digits as bits 0..n-1, bit d-1 for digit d.
+  for (let j = 0; j < n; j++) dig[j] = (cm[j] >> 1) & last
+
+  // `reach` marks the states a prefix can actually build. Most subsets of the
+  // digits are not among them once a few cells are pinned, and the two sweeps
+  // below walk only the ones that are.
+  F[0] = 1
+  reach[0] = 1
+  for (let mask = 0; mask < last; mask++) {
+    if (reach[mask] === 0) continue
+    const i = pc[mask]
+    const base = mask * W
+    for (let open = dig[i] & ~mask; open; open &= open - 1) {
+      const bit = open & -open
+      const d = 32 - Math.clz32(bit)
+      const da = d === i + 1 ? 1 : 0
+      const db = d === n - i ? 1 : 0
+      const to = (mask | bit) * W + da
+      let hit = 0
+      for (let a = 0; a + da <= n; a++) {
+        const v = F[base + a]
+        if (v !== 0) { F[to + a] |= v << db; hit = 1 }
+      }
+      if (hit) reach[mask | bit] = 1
+    }
+  }
+
+  const tail = last * W
+  for (let a = 0; a <= n; a++) H[tail + a] = ((maskA >> a) & 1) ? maskB : 0
+  for (let mask = last - 1; mask >= 0; mask--) {
+    if (reach[mask] === 0) continue
+    const i = pc[mask]
+    const base = mask * W
+    for (let open = dig[i] & ~mask; open; open &= open - 1) {
+      const bit = open & -open
+      const d = 32 - Math.clz32(bit)
+      const da = d === i + 1 ? 1 : 0
+      const db = d === n - i ? 1 : 0
+      const to = (mask | bit) * W + da
+      for (let a = 0; a + da <= n; a++) H[base + a] |= H[to + a] >>> db
+    }
+  }
+
+  // No permutation of the line lands both clues on a candidate: the branch is
+  // dead. Empty a clue cell, the contradiction signal the case sweep raises too.
+  if ((H[0] & 1) === 0) {
+    const cands = Array.from(puzzle.getCandidates(clueA))
+    if (cands.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(cands), clueA)
+    return
+  }
+
+  let keepA = 0
+  let keepB = 0
+  for (let a = 0; a <= n; a++) {
+    if (((maskA >> a) & 1) === 0) continue
+    const both = F[tail + a] & maskB
+    if (both === 0) continue
+    keepA |= 1 << a
+    keepB |= both
+  }
+
+  // A digit proved possible stays out of the search below, so a position with
+  // few live digits costs a few tests and a pinned one costs none.
+  for (let mask = 0; mask < last; mask++) {
+    if (reach[mask] === 0) continue
+    const i = pc[mask]
+    const base = mask * W
+    for (let open = dig[i] & ~mask & ~keep[i]; open; open &= open - 1) {
+      const bit = open & -open
+      const d = 32 - Math.clz32(bit)
+      const da = d === i + 1 ? 1 : 0
+      const db = d === n - i ? 1 : 0
+      const to = (mask | bit) * W + da
+      for (let a = 0; a + da <= n; a++) {
+        if ((F[base + a] & (H[to + a] >>> db)) !== 0) { keep[i] |= bit; break }
+      }
+    }
+  }
+
+  const rmA = maskA & ~keepA
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
+  const rmB = maskB & ~keepB
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
+  for (let j = 0; j < n; j++) {
+    const rm = dig[j] & ~keep[j]
+    if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm << 1)), line[j])
+  }
+}
+
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n, units } = instance
   const all = (1 << (n + 1)) - 1
@@ -156,8 +310,17 @@ function * update (instance, puzzle) {
     return
   }
 
-  const sig = signature(puzzle, instance)
+  // On a line that holds 1..n once each the permutation sweep answers everything
+  // the case sweep answers and more -- every case it keeps is realised by a real
+  // permutation -- so the line takes one sweep or the other, never both.
+  const exact = kind === FULL_HOUSE && instance.oneToN && n <= PERM_MAX
+  const sig = signature(puzzle, instance, exact)
   if (sig === instance.sig) return
+  if (exact) {
+    yield * permutationPrune(instance, puzzle, cm, maskA, maskB)
+    instance.sig = signature(puzzle, instance, exact)
+    return
+  }
 
   const U = units.length
   const combos = []
@@ -259,7 +422,7 @@ function * update (instance, puzzle) {
     rm &= cm[j]
     if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm)), line[j])
   }
-  instance.sig = signature(puzzle, instance)
+  instance.sig = signature(puzzle, instance, exact)
 }
 
 function bits (mask) {

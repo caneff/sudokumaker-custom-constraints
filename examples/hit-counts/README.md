@@ -28,10 +28,11 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `HitCountsJointComponent.js` — one component for a whole line and both its
   clues, used wherever a line is clued at both ends. It reads the hits as a
   matching between digits and positions and prunes cells and clues against the
-  `(A, B)` hit counts the line can still reach. Its two rules that need more
-  than a bare line — the mirrored-pair exclusion and "a clue is never `n - 1`" —
-  sit behind gates the component checks at solve time (see "Line kinds and
-  gates" below).
+  `(A, B)` hit counts the line can still reach. On a line that holds `1..n` once
+  each it runs that sweep over whole permutations instead, which reads the misses
+  as well as the hits. Its rules that need more than a bare line — that sweep,
+  the mirrored-pair exclusion and "a clue is never `n - 1`" — sit behind gates
+  the component checks at solve time (see "Line kinds and gates" below).
 - `HitCountsComponent.js` — the per-line component, for a line clued at one end
   only: a drawn path, or half a frame an author is still drawing. It bounds the
   clue from the line and forces or forbids hits when the clue's range demands
@@ -145,6 +146,7 @@ solve time (`docs/line-contract.md`). Hit Counts splits this way:
 | forward "no more hits" / "all must hit" | nothing — a bare line | line component |
 | the hit sweep: cells and clues against the reachable `(A, B)` | nothing — a bare line | joint component |
 | a mirrored pair never gives one A hit and one B hit | a house | joint component |
+| the permutation sweep: cells and clues against the reachable `(A, B)` over whole permutations | a full house of `{1..n}` | joint component |
 | a clue is never `n - 1` | a full house of `{1..n}` | both line components |
 | side sum `= n` | `n` perpendicular full houses of `{1..n}` | side-sum component |
 | the position-to-line assignment | every position a house of `{1..n}` | side-hit-matching component |
@@ -229,6 +231,50 @@ The mirrored-pair exclusion is one of two rules that read outside the line's own
 candidates, so it is gated: the component asks `getCellsCanHaveRepeats` about
 the line, and on a bare line `(L, R)` and `(R, L)` stay open while the rest of
 the sweep still holds.
+
+### The permutation sweep, on a line that holds `1..n` once each
+
+The case sweep asks of each position only whether it can hit for A, hit for B,
+or miss. It never asks whether the misses can be filled with the digits that are
+left, so it keeps cases no filling of the line reaches. On a line that holds
+`1..n` once each every filling **is** a permutation, and the same two sweeps can
+run over permutations instead of cases:
+
+- A state is the set of digits already placed. Its size names the position to
+  fill next, so one number does the work of two.
+- `F[mask][a]` — the B counts a prefix can reach with A count `a`, having used
+  exactly the digits in `mask`.
+- `H[mask][a]` — the B counts that, added to a prefix already holding `(a, b)`,
+  let the rest of the line finish inside the clue box.
+- Digit `d` at position `i` survives when some state meets its own future: the
+  prefix reaches `(a, b)` and the suffix after `d` finishes from there. A digit
+  no state supports is a digit no permutation can put in that cell — which is a
+  removal the case sweep cannot make, because it never tracked which digit a
+  miss would need.
+
+That answers everything the case sweep answers and more, since every case it
+keeps is realised by a real permutation. So a line takes one sweep or the other,
+never both: the gate is the same full house of `{1..n}` the `n - 1` rule needs,
+and a line that fails it keeps the case sweep. Both sweeps cost `O(n * 2^n)`
+tables in `n`, so the component runs the matching only up to nine cells, the
+length the shipped boards use and the only length it has been timed on.
+
+`HitCountsComponent`, the one-ended component, keeps its naive per-cell scan and
+gets no sweep of its own. It takes a line only where no clue sits at the far end,
+which on the shipped boards means a drawn bent path — and a bent path crosses
+rows and columns, so it repeats digits and is a bare line. The gate could never
+open there, so the sweep would be code no board runs. Give that component a
+straight full-house line at one end and it becomes worth writing; nothing ships
+one today.
+
+The example that separates the two: `n = 4`, clue A pinned to 2, with digit 4
+live in every cell and digits 1, 2 and 3 each with one home. A permutation is
+then named by which cell takes the 4. Put it at position 0, 1 or 2 and the other
+two digits land on their own targets for two A hits; put it at position 3 and all
+three land at home for four. So clue A = 2 forbids digit 4 at position 3. The
+board's own all-different keeps it — `(1, 2, 3, 4)` is a permutation — and so
+does the case sweep, which counts two A hits from the mirrored pair `(0, 3)` and
+none from `(1, 2)` without asking what digits those misses would need.
 
 The sweep does not subsume everything. A clue can never equal `n - 1` — fix
 `n - 1` cells on target and the last value has only its home left, forcing an
@@ -440,6 +486,14 @@ it runs one state twice, declared a full house and declared bare, and counts the
 states where the house run pruned strictly more. The clue seeds drop `n - 1`
 first, so the other gated rule cannot account for the difference.
 
+A fourth does the same for the permutation sweep, against the case sweep it
+replaced on a full house: the same state through the component as it stands and
+through the code at the commit before it, counting the states where the matching
+pruned more. It fires on about nine states in ten. Every state there is seeded
+around a real permutation and its two true clues, so a state where the matching
+removed a true value is a soundness failure, not a strength win, and the run
+goes red.
+
 Three deterministic checks cover the gates themselves: one drops `0` off the line
 between two `update` calls and asserts the same instance holds `n - 1` while `0`
 is live and takes it afterwards; one does the same for a full house whose digit
@@ -456,9 +510,13 @@ node examples/hit-counts/update-strength.test.mjs
 
 The joint component's floor is the per-line and pair components it replaced, run
 together at the commit that last shipped them: on random states it must never
-leave a candidate they removed. One deterministic case pins the inference it adds
-— a mirrored pair that can never give one A hit and one B hit, which the pair
-component's count-only cap cannot reach.
+leave a candidate they removed. Two deterministic cases pin the inferences it
+adds. The first is the mirrored pair that can never give one A hit and one B hit,
+which the pair component's count-only cap cannot reach; it runs on a line with a
+live `0`, five digits over four cells, so the permutation sweep stands down and the
+exclusion is what the case reaches. The second is the permutation sweep's own: the
+`n = 4` line above, where the sweep drops a digit that the case sweep at the
+previous commit keeps.
 
 ## Timing
 
@@ -470,15 +528,52 @@ just time hit-counts
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-30 | v2026.08.14-d47fc4b | hit-counts | 7000ms | — | — | BASELINE |
 | 2026-08-30 | v2026.08.14-d47fc4b | hit-counts after-logical | 6900ms | — | — | BASELINE |
+| 2026-08-31 | v2026.08.14-d47fc4b | hit-counts | 6300ms | 6500ms | 1.03 | FAIL |
+| 2026-08-31 | v2026.08.14-d47fc4b | hit-counts after-logical | 6300ms | 5600ms | 0.89 | PASS |
+
+The 2026-08-31 pair gates the permutation sweep (#16): the two-row rule ships a
+change at ≤ 0.9× on one row and ≤ 1.1× on the other, and this clears both. The
+rows split the way a deduction that trades per-call cost for search should. Cold,
+the sweep is a little slower — it costs more per call, and the board still has
+enough search left that the cut does not repay it. After the app's own logical
+solver has run, what is left is search, and there the sweep is 0.89×.
+
+**The verdict is marginal, and the row above is a median, not a single run.**
+Seven runs stand behind it, because the first two disagreed. The after-logical
+ratio sits right on the 0.9 bar: five of the seven cleared it, two did not, and
+the ones that did not read 0.90 and 0.91. Anyone re-timing this should expect the
+same, and should not read a single `NO SHIP` as a regression.
+
+| run | cold | after-logical | verdict |
+| --- | --- | --- | --- |
+| 1 | 6500 → 6900 (1.06) | 6400 → 5800 (0.91) | NO SHIP |
+| 2 | 6900 → 6900 (1.00) | 6500 → 5800 (0.89) | SHIP |
+| 3 | 6400 → 6900 (1.08) | 6600 → 5700 (0.86) | SHIP |
+| 4 | 6400 → 6900 (1.08) | 6600 → 5800 (0.88) | SHIP |
+| 5 | 6200 → 6500 (1.05) | 6100 → 5500 (0.90) | NO SHIP |
+| 6 | 6300 → 6500 (1.03) | 6300 → 5600 (0.89) | SHIP |
+| 7 | 6300 → 6500 (1.03) | 6300 → 5600 (0.89) | SHIP |
+
+Median over the seven: 1.05× cold, 0.89× after-logical. What moves between runs
+is the **baseline**, not the candidate: the baseline wandered from 6100ms to
+6900ms while the candidate tracked it a fixed distance below, which is a machine
+warming up under a readout that prints in 100ms steps. Runs 6 and 7 are byte-for
+-byte identical, so by then the machine had settled; run 6 is the row in the
+table above.
+
+Runs 1–3 timed the sweep with its length cap at twelve cells and runs 4–7 the
+nine it ships with; runs 5–7 also carry the review's rename and the buffers
+hoisted out of the per-call path. The cap moved because nothing has measured a
+line longer than the shipped boards.
 
 **#116 is fixed:** the shipped 9x9 (35 givens, 0 entered values) now returns a
 verdict in seconds, where the old per-line and pair components gave no verdict
-at all. Both rows print `BASELINE`, not a ratio, because the working-tree
-`HitCountsJointComponent.js` is byte-equal to the code `PUZZLE_LINK.txt`
-already ships — C′ and D landed in #249/#250, so this command has no
-candidate edit to gate. See `docs/real-app-timing.md` for what a `BASELINE`
-row means and #248 for the prototype's 0.40×/0.41× measurement against the
-old components.
+at all. The 2026-08-30 rows print `BASELINE`, not a ratio, because on that day
+the working-tree `HitCountsJointComponent.js` was byte-equal to the code
+`PUZZLE_LINK.txt` already shipped — C′ and D landed in #249/#250, so the command
+had no candidate edit to gate. See `docs/real-app-timing.md` for what a
+`BASELINE` row means and #248 for the prototype's 0.40×/0.41× measurement
+against the old components.
 
 The local board (`PUZZLE_LINK_local.txt`) has no row yet; out of scope for
 this ticket (#251), which asks only for the shipped 9x9's gate.

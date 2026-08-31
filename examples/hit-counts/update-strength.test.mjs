@@ -9,9 +9,11 @@
 // those two run together at the commit that last shipped them: on random states
 // the joint update must leave a subset of what they left, cell for cell. A line
 // clued at one end keeps the per-line component, compared against itself. So is
-// the side sum. One deterministic case pins the inference the joint component
-// adds — a mirrored pair can never give one A hit and one B hit — which the
-// pair component's count-only cap cannot reach.
+// the side sum. Two deterministic cases pin the inferences the joint component
+// adds: a mirrored pair can never give one A hit and one B hit, which the pair
+// component's count-only cap cannot reach; and on a line holding 1..n once each
+// the permutation sweep drops a digit no permutation can put in the cell, which
+// the case sweep keeps.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -27,6 +29,8 @@ const REF_COMMIT = 'db93523'
 // commit that last shipped them, gates and all — the strength the joint
 // component has to match.
 const REPLACED_COMMIT = '7b3f9af'
+// The joint component with the case sweep alone, before the permutation sweep.
+const CASE_SWEEP_COMMIT = '4cc09eb'
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
@@ -165,6 +169,12 @@ function jointFixpoint (comps, p) {
 // (1, 2) that pair must give exactly one B hit and no A hit. So neither
 // position 0 nor position 3 may take its A digit: digit 1 goes from position 0
 // and digit 4 from position 3.
+//
+// Position 0 also keeps a live 0, which is the state of a real hit-counts board
+// before the cage takes the 0 off the inner grid. Five live digits over four
+// cells is a house and not a full house of 1..4, so the permutation sweep stands
+// down and this case reaches the exclusion, which is what it is here to name.
+// The 0 is one more digit that hits neither way, so it leaves the cases alone.
 {
   installGlobals(0, 4)
   const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
@@ -174,7 +184,7 @@ function jointFixpoint (comps, p) {
   const LINE = [20, 21, 22, 23]
   const start = new Map([
     [CA, [1]], [CB, [1]],
-    [20, [1, 2, 4]], [21, [2, 4]], [22, [1, 3]], [23, [1, 2, 4]]
+    [20, [0, 1, 2, 4]], [21, [2, 4]], [22, [1, 3]], [23, [1, 2, 4]]
   ])
   const state = () => {
     const cells = {}
@@ -193,7 +203,7 @@ function jointFixpoint (comps, p) {
   fixpoint(pairRef, ip, pp)
 
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
-  assert.deepStrictEqual(show(pj, 20), [2, 4], 'joint drops the A hit at position 0')
+  assert.deepStrictEqual(show(pj, 20), [0, 2, 4], 'joint drops the A hit at position 0')
   assert.deepStrictEqual(show(pj, 23), [1, 2], 'joint drops the A hit at position 3')
   assert.deepStrictEqual(show(pj, 21), [2, 4], 'position 1 keeps both cases')
   assert.deepStrictEqual(show(pj, 22), [1, 3], 'position 2 keeps both cases')
@@ -273,6 +283,58 @@ function jointFixpoint (comps, p) {
       `the per-line scan cannot choose position ${i} on line ${i}`)
   }
   console.log('hit-counts side matching: the side pins 4 cells, the per-line scan 1')
+}
+
+// ---- 3c. The permutation sweep, deterministic ----
+// The case sweep asks only whether a position can hit for A, hit for B, or
+// miss. It never asks whether the misses can be filled with the digits that are
+// left. The permutation sweep does: it runs the same forward/backward sweep over
+// permutations of the line, so a case survives only when some permutation
+// realises it.
+//
+// n = 4, clue A pinned to 2. Digit 4 is live in every cell; digits 1, 2 and 3
+// have one home each (positions 0, 1 and 2), so a permutation is named by which
+// cell takes the 4. Put the 4 at position 0, 1 or 2 and the other two of
+// {1, 2, 3} land on their own targets, giving exactly two A hits. Put it at
+// position 3 and all three land at home, giving four. So clue A = 2 forbids
+// digit 4 at position 3 — and clue B, which reads the same line from the far
+// end, can only be 0 or 2.
+//
+// Neither half of that is reachable alone. All-different keeps 4 at position 3:
+// (1, 2, 3, 4) is a permutation. The case sweep keeps it too, because it counts
+// two A hits from the mirrored pair (0, 3) and none from (1, 2) without asking
+// which digits those misses would need.
+{
+  installGlobals(0, 4)
+  const NAMES = ['setParams', 'update']
+  const cur = load('HitCountsJointComponent.js', NAMES)
+  const ref = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', NAMES)
+  const CA = 400
+  const CB = 401
+  const LINE = [30, 31, 32, 33]
+  const start = new Map([
+    [CA, [2]], [CB, [0, 1, 2, 3, 4]],
+    [30, [1, 4]], [31, [2, 4]], [32, [3, 4]], [33, [1, 2, 3, 4]]
+  ])
+  const run = mod => {
+    const cells = {}
+    for (const c of start.keys()) cells[c] = 0
+    const p = makePuzzle(cells, c => start.get(c), { kind: 'fullHouse', digitCount: 4 })
+    const inst = {}
+    mod.setParams(inst, CA, CB, LINE)
+    fixpoint(mod, inst, p)
+    return c => [...p._cand.get(c)].sort((x, y) => x - y)
+  }
+  const now = run(cur)
+  const before = run(ref)
+
+  assert.deepStrictEqual(now(33), [1, 2, 3], 'the matching drops the A hit at position 3')
+  assert.deepStrictEqual(now(CB), [0, 2], 'the matching leaves clue B only the counts a permutation reaches')
+  assert.deepStrictEqual(now(30), [1, 4], 'position 0 keeps both digits')
+  assert.deepStrictEqual(now(31), [2, 4], 'position 1 keeps both digits')
+  assert.deepStrictEqual(now(32), [3, 4], 'position 2 keeps both digits')
+  assert.deepStrictEqual(before(33), [1, 2, 3, 4], 'the case sweep alone leaves the A hit at position 3')
+  console.log('hit-counts permutation sweep: the sweep drops 1 cell candidate the case sweep keeps')
 }
 
 // ---- 4. SideSumComponent: nine clues on a side summing to nine ----
