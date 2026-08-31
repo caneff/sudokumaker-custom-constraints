@@ -46,7 +46,7 @@ uv run --with lzstring docs/research/fillomino-baseline/build_link.py
 ## What the baseline deduces
 
 One whole-grid `update`, about 90 lines. It floods each **placed island** (a
-connected blob of equal digits) and, per island:
+connected island of equal digits) and, per island:
 
 - stops the branch when the island is larger than its digit;
 - seals the island's border against its own digit once the island is complete

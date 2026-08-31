@@ -6,7 +6,7 @@ must appear in the grid.
 
 The board is a 10×10 custom grid with digits 0–9 and **no** row, column, or box
 houses. Ten regions of ten cells cover the hundred cells, and all ten digits
-appear, so each digit is exactly one orthogonally connected blob of ten cells.
+appear, so each digit is exactly one orthogonally connected island of ten cells.
 Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 
 The same code serves any square board whose digit count equals its side: N
@@ -225,7 +225,7 @@ cells:
   the candidate. One Tarjan pass over ~110 nodes per call.
 
 `validate` is the exact leaf check: on a full grid, each digit must be one
-connected blob of ten. The solver may not call it (`../../docs/gotchas.md`,
+connected island of ten. The solver may not call it (`../../docs/gotchas.md`,
 gotcha 2); the deductions above do the work, `validate` states the rule.
 
 All of it reads each cell's candidates as a `DigitSet` (wrap it in
@@ -306,7 +306,7 @@ numbers are the #148 rows in `## Timing` below; the rule and its two
 directed tests are in git history.
 
 *Perimeter* — kept (#149). It is the third rule tried from ISS's connectivity
-handler and the first that pays. Where crossing and the blob gate only saw
+handler and the first that pays. Where crossing and the island gate only saw
 what `reach` and `cut` already see, this one fires on border cells the walk
 rules cannot decide, because a region can still route around the obstruction
 inside the grid: over the harness fuzz set, 4,037 of 10,000 states end at a
@@ -320,11 +320,11 @@ though five of those seven rounds leaned 5–13% slow, so read it as a wash the
 rule pays for many times over on the hard board. The numbers are the #149 rows
 in `## Timing` below and the #149 commit body.
 
-*The blob gate on cut* — the cut rule walks twice per open cell, once to ask
+*The island gate on cut* — the cut rule walks twice per open cell, once to ask
 whether removing the cell starves the region below ten and once to ask whether
-it strands a placed cell. Count the digit's placed blobs (the connected
+it strands a placed cell. Count the digit's placed islands (the connected
 components of its placed cells, walking only through placed cells) and the
-second walk is pointless when there is one blob: the path joining two placed
+second walk is pointless when there is one island: the path joining two placed
 cells runs through placed cells, and an open cell lies on no such path. This is
 ISS's gate on door forcing (`connected_values.md` §4.4) — read the predicate off
 the walk you were doing anyway. It was tried and removed (#150): exact, and it
@@ -637,7 +637,7 @@ so the two-row rule keeps the shipped rule. The two halves are not
 interchangeable: starve alone is *worse than strand alone*, and worse than
 useless — it times out where the whole rule takes seconds. Strand alone is the
 cheaper loss (1.29× and 2.47×), which says most of cut's value on these boards
-is keeping a digit's blobs joinable, not counting the cells left. Neither half
+is keeping a digit's islands joinable, not counting the cells left. Neither half
 carries the rule on its own.
 
 **This answers ISS's warning.** ISS dropped the general cut rule because it
@@ -744,9 +744,9 @@ is the finer question that measurement did not answer.
 | 2026-08-27 | — | isofill gen_30g (#148 crossing) | 5.2 s | 5.2 s | 1.00 | wash |
 | 2026-08-27 | — | isofill gen_32g (#148 crossing) | 3.7 s | 3.9 s | 1.05 | REMOVED; regression |
 | 2026-08-27 | — | isofill gen_35g_silent (#148 crossing) | 46.6 s | 47.4 s | 1.02 | REMOVED; regression |
-| 2026-08-27 | — | isofill gen_30g (#150 blob gate) | 5.2 s | 5.0 s | 0.96 | effect, repeatable, still short of the 0.9× bar |
-| 2026-08-27 | — | isofill gen_32g (#150 blob gate) | 3.7 s | 3.7 s | 1.00 | wash |
-| 2026-08-27 | — | isofill gen_35g_silent (#150 blob gate) | 46.5 s | 45.6 s | 0.98 | wash |
+| 2026-08-27 | — | isofill gen_30g (#150 island gate) | 5.2 s | 5.0 s | 0.96 | effect, repeatable, still short of the 0.9× bar |
+| 2026-08-27 | — | isofill gen_32g (#150 island gate) | 3.7 s | 3.7 s | 1.00 | wash |
+| 2026-08-27 | — | isofill gen_35g_silent (#150 island gate) | 46.5 s | 45.6 s | 0.98 | wash |
 
 These predate the two-row rule, so they carry a cold row only. App version
 is not stated in the #148/#150 commit bodies ("recorded app offline"), so

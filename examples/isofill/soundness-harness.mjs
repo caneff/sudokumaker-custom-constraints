@@ -201,7 +201,7 @@ const prune = once(rows, (c, v) => (c < 2 * N ? [0, 1] : c < 3 * N ? [0, 1, 2] :
 const pruneOk = CELLS.slice(2 * N, 3 * N).every(c => prune.getCandidates(c).size === 1 && prune.getCandidates(c).has(2))
 
 // ---- Silent digit: digits 0 and 1 have no placed cell anywhere. Their
-// candidate cells are a sixteen-cell blob B and a detached two-by-two corner
+// candidate cells are a sixteen-cell island B and a detached two-by-two corner
 // S, walled off by digit 2. A ten-cell region does not fit in four cells, so
 // S loses both digits and B keeps them. No other rule sees this: every walk
 // rule starts from a placed cell, and the budget matching is perfect with or
@@ -223,7 +223,7 @@ const silentOk = S.every(c => !silent.getCandidates(c).has(0) && !silent.getCand
   B.every(c => silent.getCandidates(c).has(0) && silent.getCandidates(c).has(1))
 
 // ---- Silent digit, dead board: same shape, but digit 2's comb cuts the open
-// cells into blobs of eight, six and six. No blob holds ten, so neither silent
+// cells into islands of eight, six and six. No island holds ten, so neither silent
 // digit has anywhere to go and the branch is dead: a cell empties ----
 const deadPinned = {}
 const deadPut = (d, cs) => cs.forEach(c => { deadPinned[c] = d })
