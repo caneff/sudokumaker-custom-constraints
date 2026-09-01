@@ -1,7 +1,7 @@
 gen.json: n=9, box 3x3, 27/36 clues shown, 9 hidden, 4 interior givens (floor: regin)
   matching tighter than naive: 13/36 lines at start, 14/36 after the regin floor
-  floor only  : hidden 0/9, interior 4/81, removed 76 cands, 2 passes
-  matching OFF: hidden 7/9, interior 5/81, removed 281 cands, 2 passes
-  matching ON : hidden 7/9, interior 5/81, removed 281 cands, 2 passes
+  floor only  : hidden 0/9, interior 4/81, removed 76 cands, settled
+  matching OFF: hidden 7/9, interior 5/81, removed 281 cands, settled
+  matching ON : hidden 7/9, interior 5/81, removed 281 cands, settled
   DELTA components over floor (off - floor): hidden +7, interior +1, removed +205
   DELTA matching over naive  (on - off):    hidden +0, interior +0, removed +0

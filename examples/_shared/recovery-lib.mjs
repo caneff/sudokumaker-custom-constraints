@@ -209,7 +209,11 @@ export function countLost (state, truthPairs) {
 
 // Format one recovery-report line. `extra` is a caller-formatted prefix
 // (e.g. "hidden 4/11, interior 0/36, ") for measures specific to the example;
-// removed/passes/lost are the generic measures every recovery run has.
+// removed/lost are the generic measures every recovery run has. `passes` is
+// runToFixpoint's return value (a pass count, or -1 if it never settled) —
+// the line states only whether the fixpoint settled, not the count, because
+// the count depends on the order components run in (issue #301).
 export function reportLine (label, { extra = '', removed, passes, lost }) {
-  return `  ${label}: ${extra}removed ${removed} cands, ${passes} passes${lost ? `, TRUE-VALUE LOST x${lost}` : ''}`
+  const settledText = passes === -1 ? 'NEVER SETTLED' : 'settled'
+  return `  ${label}: ${extra}removed ${removed} cands, ${settledText}${lost ? `, TRUE-VALUE LOST x${lost}` : ''}`
 }

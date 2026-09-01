@@ -2,7 +2,7 @@
 // example's components. Run: node examples/_shared/recovery-lib.test.mjs
 
 import assert from 'assert'
-import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search } from './recovery-lib.mjs'
+import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
 
 // ---- the GAC floor prunes a group to only values some perfect matching allows ----
 // A 3-cell all-different group with values 1..3: cell 0 is pinned to 1, cell
@@ -67,6 +67,20 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search } from
   const floor = makeAllDifferentFloor(state, { kind: 'regin', maxDigit: 2 })
   const passes = runToFixpoint(state, [], [[0]], floor, { init: false })
   assert.strictEqual(passes, 1, 'a single group of one cell settles in one pass')
+}
+
+// ---- reportLine prints settled / NEVER SETTLED, not a pass count ----
+// The pass count is order-dependent noise (issue #301); the line states only
+// whether the fixpoint settled.
+{
+  const settled = reportLine('label', { removed: 3, passes: 4, lost: 0 })
+  assert.strictEqual(settled, '  label: removed 3 cands, settled')
+  const neverSettled = reportLine('label', { removed: 3, passes: -1, lost: 0 })
+  assert.strictEqual(neverSettled, '  label: removed 3 cands, NEVER SETTLED')
+  // the marker sits between `removed N cands` and the TRUE-VALUE LOST
+  // suffix, after the caller's extra prefix
+  const full = reportLine('label', { extra: 'hidden 1/2, ', removed: 3, passes: -1, lost: 2 })
+  assert.strictEqual(full, '  label: hidden 1/2, removed 3 cands, NEVER SETTLED, TRUE-VALUE LOST x2')
 }
 
 console.log('recovery-lib.test.mjs: all seams pass')

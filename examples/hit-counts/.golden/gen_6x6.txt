@@ -1,7 +1,7 @@
 gen_6x6.json: n=6, box 2x3, 14/24 clues shown, 10 hidden, 0 interior givens (floor: regin)
   matching tighter than naive: 0/24 lines at start, 0/24 after the regin floor
-  floor only  : hidden 0/10, interior 0/36, removed 0 cands, 1 passes
-  matching OFF: hidden 0/10, interior 0/36, removed 69 cands, 2 passes
-  matching ON : hidden 0/10, interior 0/36, removed 69 cands, 2 passes
+  floor only  : hidden 0/10, interior 0/36, removed 0 cands, settled
+  matching OFF: hidden 0/10, interior 0/36, removed 69 cands, settled
+  matching ON : hidden 0/10, interior 0/36, removed 69 cands, settled
   DELTA components over floor (off - floor): hidden +0, interior +0, removed +69
   DELTA matching over naive  (on - off):    hidden +0, interior +0, removed +0
