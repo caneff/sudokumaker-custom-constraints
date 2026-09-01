@@ -16,7 +16,11 @@
 # original variant gets the explicit frame groups built here -- the same 4n
 # lines main-global.js builds itself, handed to the wrapper the way it expects
 # them.
+#
+# --out names a directory to write into instead; omitting it keeps the
+# default of writing next to this script.
 
+import argparse
 import pathlib
 import sys
 
@@ -82,7 +86,19 @@ def write(doc, out_path):
     return link
 
 
-if __name__ == "__main__":
+def build(out_dir=HERE):
+    """Rebuild PUZZLE_LINK_original.txt into `out_dir`. Reads PUZZLE_LINK.txt
+    and the original wrapper code from beside this script regardless of
+    `out_dir`; only the written link moves."""
     ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    link = write(build_original(ours), HERE / "PUZZLE_LINK_original.txt")
+    return write(build_original(ours), out_dir / "PUZZLE_LINK_original.txt")
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "--out", help="directory to write into (default: next to this script)"
+    )
+    args = p.parse_args()
+    link = build(pathlib.Path(args.out) if args.out else HERE)
     print(f"wrote PUZZLE_LINK_original.txt ({len(link)} chars)")

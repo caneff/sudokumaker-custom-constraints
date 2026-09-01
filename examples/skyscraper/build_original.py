@@ -5,7 +5,7 @@
 # the same grid, givens, and clues. No solving: it re-encodes. Run it after
 # every component change so the shipped link carries the code in the repo.
 #
-#   uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9
+#   uv run --with lzstring examples/skyscraper/build_original.py 9
 #
 # Writes PUZZLE_LINK_<n>x<n>.txt and PUZZLE_LINK_<n>x<n>_original.txt next to
 # this script (PUZZLE_LINK.txt / PUZZLE_LINK_original.txt for n=9, the
@@ -16,7 +16,11 @@
 # It also reads `input.groups` directly, so the original variant gets the
 # explicit frame groups built here -- same board, same lines, just handed to
 # the wrapper the way it expects them.
+#
+# --out names a directory to write into instead; omitting it keeps the
+# default of writing next to this script.
 
+import argparse
 import pathlib
 import sys
 
@@ -58,8 +62,10 @@ def frame_groups(n, lines):
     return groups
 
 
-if __name__ == "__main__":
-    n = int(sys.argv[1])
+def build(n, out_dir=HERE):
+    """Rebuild the link pair for size `n` into `out_dir`. Reads the gen JSON
+    and original wrapper code from beside this script regardless of
+    `out_dir`; only the two written links move."""
     # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
     tag = "" if n == 9 else f"{n}x{n}"
     bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
@@ -67,7 +73,7 @@ if __name__ == "__main__":
     improved_link = encode_link(improved)
     check(build_size.SPEC, improved_link, improved, n)
     improved_name = "PUZZLE_LINK.txt" if n == 9 else f"PUZZLE_LINK_{n}x{n}.txt"
-    (HERE / improved_name).write_text(improved_link + "\n")
+    (out_dir / improved_name).write_text(improved_link + "\n")
     print(
         f"wrote {improved_name} ({len(improved_link)} chars) — current component code"
     )
@@ -102,5 +108,15 @@ if __name__ == "__main__":
     )
     link = encode_link(original)
     assert decode_puzzle(link) == original, "link does not round-trip"
-    (HERE / out_name).write_text(link + "\n")
+    (out_dir / out_name).write_text(link + "\n")
     print(f"wrote {out_name} ({len(link)} chars) — same puzzle, original wrapper code")
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("n", type=int)
+    p.add_argument(
+        "--out", help="directory to write into (default: next to this script)"
+    )
+    args = p.parse_args()
+    build(args.n, pathlib.Path(args.out) if args.out else HERE)
