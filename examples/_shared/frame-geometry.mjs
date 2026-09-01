@@ -37,11 +37,12 @@ export function frameGeometry (nw, [bh, bw], nh = nw) {
     return idx(H - 1, i + 1)
   }
 
-  // Every clued line, keyed "L0".."B{nw-1}", as { key, clue cell, line cells }.
-  // The keys group by side — every L, then every R, then every T, then every B
-  // — because the sides no longer have a common count. Key order is not a
-  // contract: the frame is compared as a set of lines (#295), so a caller that
-  // depends on the sequence is depending on an accident.
+  // Every clued line, as { key, clue cell, line cells }. A key is its side
+  // plus its index: "L0".."L{nh-1}" and the same for R, "T0".."T{nw-1}" and
+  // the same for B. The keys group by side — every L, then every R, then every
+  // T, then every B — because the sides have different counts. Key order is
+  // not a contract: the frame is compared as a set of lines (#295), so a
+  // caller that depends on the sequence is depending on an accident.
   const keys = []
   for (const s of ['L', 'R']) for (let i = 0; i < nh; i++) keys.push(s + i)
   for (const s of ['T', 'B']) for (let i = 0; i < nw; i++) keys.push(s + i)

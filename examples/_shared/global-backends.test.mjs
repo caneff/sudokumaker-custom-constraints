@@ -163,7 +163,9 @@ function checkBackend (name, src, W, H) {
   // transpose, so on a square board this set is the same whichever way round
   // the coordinates are read and it pins the frame, not the reading (#295). A
   // rectangular board breaks that symmetry: a backend that reads one dimension
-  // twice builds the wrong lines and fails right here (#299).
+  // twice builds the wrong lines and this check catches it on its own (#299).
+  // The off-board count above usually reports the same backend first, since
+  // reading one dimension twice also walks off the short side.
   const lines = groups.filter(g => g.every(id => !ringCells.has(id)))
   assert.deepStrictEqual(
     [...new Set(lines.map(g => g.join(',')))].sort(),

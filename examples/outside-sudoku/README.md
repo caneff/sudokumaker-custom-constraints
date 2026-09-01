@@ -83,8 +83,9 @@ line as its window. That is weaker than the rule, never unsound.
   **throws**: the window is a box extent in the line's *direction*, and a bent
   path has no direction.
 - **Global** (`main-global.js`, `PUZZLE_LINK.txt`): reads no groups. It builds
-  all `4n` frame lines from `puzzle.spec.size.width` and registers one
-  component per line.
+  every frame line from `puzzle.spec.size.width` and
+  `puzzle.spec.size.height` — `2(W-2) + 2(H-2)` of them, `4n` on a square
+  board — and registers one component per line.
 
 ## The shipped board
 
