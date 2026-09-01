@@ -32,20 +32,22 @@ import { frameGeometry } from './frame-geometry.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-// A board W cells wide. Cell id = col + row * W, the app's own layout
-// (`getIdFromCoords(e){return e.x+e.y*this.width}` in the shipped bundle), so
-// `getCellAt(a, b)` is `a + b * W`. Off the board it returns undefined, as
-// `getIdFromCoordsSafe` does -- and it counts those calls, because the
-// coercion cannot report them: `undefined | 0` is 0, an in-range cell. So the
-// backend's "every coordinate is in range" is checked here, not assumed.
-function mockPuzzle (W) {
+// A board W cells wide and H cells tall. Cell id = col + row * W, the app's
+// own layout (`getIdFromCoords(e){return e.x+e.y*this.width}` in the shipped
+// bundle), so `getCellAt(a, b)` is `a + b * W`. Off the board it returns
+// undefined, as `getIdFromCoordsSafe` does -- and it counts those calls,
+// because the coercion cannot report them: `undefined | 0` is 0, an in-range
+// cell. So the backend's "every coordinate is in range" is checked here, not
+// assumed. The column bound is the width and the row bound is the height, so a
+// backend that reads one dimension twice walks off a rectangular board.
+function mockPuzzle (W, H) {
   const registered = []
   const p = {
     registered,
     offBoard: 0,
-    spec: { size: { width: W, height: W } },
+    spec: { size: { width: W, height: H } },
     getCellAt: (a, b) => {
-      if (a < 0 || b < 0 || a >= W || b >= W) { p.offBoard++; return undefined }
+      if (a < 0 || b < 0 || a >= W || b >= H) { p.offBoard++; return undefined }
       return new Number(a + b * W) // eslint-disable-line no-new-wrappers -- the point of the test
     },
     getRow: c => Math.floor(c / W),
@@ -68,14 +70,14 @@ const helpers = {
 // and `undefined | 0` is 0 -- a real cell -- so a backend that strayed
 // off-grid would coerce a miss into a silent, wrong cell 0 rather than fail
 // loud (CODING_STANDARDS.md).
-function badIdsIn (value, W, path = '') {
-  if (Array.isArray(value)) return value.flatMap((v, i) => badIdsIn(v, W, `${path}[${i}]`))
+function badIdsIn (value, cells, path = '') {
+  if (Array.isArray(value)) return value.flatMap((v, i) => badIdsIn(v, cells, `${path}[${i}]`))
   if (value instanceof Number) return [`${path}: boxed, not coerced`]
   if (typeof value === 'number') {
-    return Number.isInteger(value) && value >= 0 && value < W * W ? [] : [`${path}: off the board (${value})`]
+    return Number.isInteger(value) && value >= 0 && value < cells ? [] : [`${path}: off the board (${value})`]
   }
   if (value && typeof value === 'object') {
-    return Object.entries(value).flatMap(([k, v]) => badIdsIn(v, W, `${path}.${k}`))
+    return Object.entries(value).flatMap(([k, v]) => badIdsIn(v, cells, `${path}.${k}`))
   }
   return []
 }
@@ -92,17 +94,20 @@ function labelledSide (name) {
   return letter ? letter[1] : null
 }
 
-// Every array of n in-range cell ids reachable from a component's arguments.
-// A bare number argument is not a cell group: a component takes a length or a
-// digit that way, and a length is indistinguishable from a cell id.
-function cellGroupsIn (value, W) {
+// Every array of in-range cell ids reachable from a component's arguments
+// whose length is one of the frame's group lengths. A bare number argument is
+// not a cell group: a component takes a length or a digit that way, and a
+// length is indistinguishable from a cell id. On a rectangular board a line
+// across the board and a line down it have different lengths, so `lengths`
+// holds both.
+function cellGroupsIn (value, cells, lengths) {
   if (!value || typeof value !== 'object') return []
   if (Array.isArray(value)) {
-    const cells = value.every(v => Number.isInteger(v) && v >= 0 && v < W * W)
-    if (cells && value.length === W - 2) return [value]
-    return value.flatMap(v => cellGroupsIn(v, W))
+    const ids = value.every(v => Number.isInteger(v) && v >= 0 && v < cells)
+    if (ids && lengths.has(value.length)) return [value]
+    return value.flatMap(v => cellGroupsIn(v, cells, lengths))
   }
-  return Object.values(value).flatMap(v => cellGroupsIn(v, W))
+  return Object.values(value).flatMap(v => cellGroupsIn(v, cells, lengths))
 }
 
 const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
@@ -113,8 +118,9 @@ const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
 
 assert.ok(dirs.length > 0, 'found no global backends to check')
 
-for (const name of dirs) {
-  const src = readFileSync(join(EXAMPLES, name, 'main-global.js'), 'utf8')
+// Run one backend against a board W wide and H tall, and check the frame it
+// builds against the one truthful copy of the geometry.
+function checkBackend (name, src, W, H) {
   // The component constructors the backend calls, recorded rather than run.
   const ctorNames = [...new Set([...src.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
   const ctors = ctorNames.map(n => {
@@ -122,55 +128,73 @@ for (const name of dirs) {
     Object.defineProperty(Recorder, 'name', { value: n })
     return Recorder
   })
-  const W = 11 // n = 9, the shipped board size
-  const p = mockPuzzle(W)
+  const p = mockPuzzle(W, H)
   // The app runs a backend segment as a bare script with these names in scope;
   // a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', ...ctorNames, src) // eslint-disable-line no-new-func
   fn(undefined, p, helpers, ...ctors)
 
-  assert.ok(p.registered.length > 0, `${name}: registered nothing`)
+  const where = `${name}/main-global.js on ${W}x${H}`
+  assert.ok(p.registered.length > 0, `${where}: registered nothing`)
   assert.strictEqual(p.offBoard, 0,
-    `${name}/main-global.js asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
-  const bad = p.registered.flatMap((c, i) => badIdsIn(c.args, W, `${name} component ${i} arg`))
+    `${where} asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
+  const cells = W * H
+  const bad = p.registered.flatMap((c, i) => badIdsIn(c.args, cells, `${name} component ${i} arg`))
   assert.deepStrictEqual(bad.slice(0, 5), [],
-    `${name}/main-global.js must hand components plain in-range integer cell ids (${bad.length} bad)`)
+    `${where} must hand components plain in-range integer cell ids (${bad.length} bad)`)
 
-  // The frame it built, against the one truthful copy of the geometry. Every
-  // cell group a backend hands a component is either a line (all interior) or a
-  // side's clues (all ring), so the two are told apart by their cells, not by
-  // the component's argument order -- which differs per example.
-  const n = W - 2
-  const geom = frameGeometry(n, [3, 3])
+  // Every cell group a backend hands a component is either a line (all
+  // interior) or a side's clues (all ring), so the two are told apart by their
+  // cells, not by the component's argument order -- which differs per example.
+  const nw = W - 2
+  const nh = H - 2
+  const geom = frameGeometry(nw, [3, 3], nh)
   const ring = new Map()
-  for (const side of SIDES) ring.set(side, Array.from({ length: n }, (_, i) => geom.clueCell(side, i)))
+  for (const side of SIDES) {
+    const count = side === 'L' || side === 'R' ? nh : nw
+    ring.set(side, Array.from({ length: count }, (_, i) => geom.clueCell(side, i)))
+  }
   const ringCells = new Set([...ring.values()].flat())
-  const groups = p.registered.flatMap(c => cellGroupsIn(c.args, W))
+  const lengths = new Set([nw, nh])
+  const groups = p.registered.flatMap(c => cellGroupsIn(c.args, cells, lengths))
 
   // 1. The line set: every line the backend registers is a frame line, and it
-  // registers all 4n of them. A square frame is symmetric under transpose, so
-  // this set is the same whichever way round the coordinates are read -- it
-  // pins the frame, not the reading (#295).
+  // registers all 2 * nw + 2 * nh of them. A square frame is symmetric under
+  // transpose, so on a square board this set is the same whichever way round
+  // the coordinates are read and it pins the frame, not the reading (#295). A
+  // rectangular board breaks that symmetry: a backend that reads one dimension
+  // twice builds the wrong lines and fails right here (#299).
   const lines = groups.filter(g => g.every(id => !ringCells.has(id)))
   assert.deepStrictEqual(
     [...new Set(lines.map(g => g.join(',')))].sort(),
     [...new Set(geom.groups.map(g => g.cells.slice(1).join(',')))].sort(),
-    `${name}/main-global.js must register the 4n frame lines of frameGeometry`)
+    `${where} must register the frame lines of frameGeometry`)
 
   // 2. The labels: a component named for a side holds that side's clues. This
-  // is the check that pins the reading, since a transposed `getCellAt` puts
-  // the top ring under the name "left" (#295). It reaches only a backend that
-  // names a side -- where every component is named after its own cells, a
-  // transposed frame carries the same names and nothing here can see it.
+  // is the check that pins the reading on a square board, since a transposed
+  // `getCellAt` puts the top ring under the name "left" (#295). It reaches only
+  // a backend that names a side -- where every component is named after its own
+  // cells, a transposed frame carries the same names and nothing here can see
+  // it.
   for (const c of p.registered) {
     const side = typeof c.args[0] === 'string' ? labelledSide(c.args[0]) : null
     if (!side) continue
-    const clues = cellGroupsIn(c.args, W).filter(g => g.every(id => ringCells.has(id)))
+    const clues = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => ringCells.has(id)))
     for (const g of clues) {
       assert.deepStrictEqual([...g].sort((a, b) => a - b), ring.get(side),
-        `${name}/main-global.js: "${c.args[0]}" does not hold side ${side}'s clue cells`)
+        `${where}: "${c.args[0]}" does not hold side ${side}'s clue cells`)
     }
   }
 }
 
-console.log(`PASS (${dirs.length} global backends)`)
+// 11x11 is the shipped board size. 11x8 is the same width with a shorter
+// board: it ships in no example, and it is here to give the line-set check an
+// asymmetric frame to bite on.
+const BOARDS = [[11, 11], [11, 8]]
+
+for (const name of dirs) {
+  const src = readFileSync(join(EXAMPLES, name, 'main-global.js'), 'utf8')
+  for (const [W, H] of BOARDS) checkBackend(name, src, W, H)
+}
+
+console.log(`PASS (${dirs.length} global backends, ${BOARDS.length} board shapes)`)

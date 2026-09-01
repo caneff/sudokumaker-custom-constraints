@@ -48,7 +48,7 @@ installGlobals(0, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
 // ---- geometry (mirrors build_size.py) ----
-const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
+const { W, H, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
@@ -72,7 +72,7 @@ function freshState () {
 
 // ---- load the real components + the real main-global.js wiring ----
 // main-global.js builds the frame itself (no groups input), so it needs the
-// puzzle mock's getCellAt/spec.size.width -- `frame: { W, idx }` ties those
+// puzzle mock's getCellAt/spec.size -- `frame: { W, H, idx }` ties those
 // to the same W/idx this probe already uses, so main-global.js's own
 // frame-building produces the identical `groups` list computed above.
 const { read } = makeIo(HERE)
@@ -82,7 +82,7 @@ function buildComps () {
     here: HERE,
     mainSrc,
     input: {},
-    frame: { W, idx },
+    frame: { W, H, idx },
     files: [
       { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
       { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },

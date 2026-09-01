@@ -54,9 +54,9 @@ Use these terms exactly. Do not drift to synonyms.
   nothing about its digits: any length, repeats allowed, digits may be absent.
   `n` in a README or comment is the line length; the group has `n + 1` cells.
 - **frame line** — a line that is one whole row or column of the grid, clued
-  at one end. The global variant builds all `4n` of them itself. A frame line
-  is always a full house, which is why a board made only of them cannot test a
-  bare-line rule.
+  at one end. The global variant builds all of them itself, from the board's
+  width and height. A frame line is always a full house, which is why a board
+  made only of them cannot test a bare-line rule.
 - **path** — a line that bends: it turns at least once, so it spans more than
   one row and more than one column and its cells do not all see each other.
   Digits may repeat along it, and the app reads it as bare. The local board of
@@ -178,6 +178,17 @@ These shape every constraint; breaking one costs an afternoon. Detail in
   (gotcha 1)
 - **The whole puzzle is in the URL.** Long component code can truncate the
   puzzle — silent data loss. Keep component code lean. (gotcha 7)
+- **The app supports rectangular boards; this suite ships only square ones.**
+  `spec.size.width` and `spec.size.height` are independent numbers the app uses
+  independently (`docs/puzzle-api.md`), so a global backend reads the width
+  where it means width and the height where it means height. Every example
+  board here happens to be square, which hides a swapped reading — the shared
+  backends test builds a rectangular mock board so it cannot.
+- **Frame key order is not a contract.** `frameGeometry`
+  (`examples/_shared/frame-geometry.mjs`) groups its keys by side, but a frame
+  is compared as a *set* of lines, never as a sequence
+  (`examples/_shared/global-backends.test.mjs`). A caller that depends on the
+  order is depending on an accident.
 
 ## Where to look
 

@@ -57,7 +57,7 @@ installGlobals(1, n)
 globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
 
 // ---- geometry (mirrors build_size.py and the Hit Counts probe) ----
-const { W, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
+const { W, H, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
 
 // ---- the shared candidate state ----
 const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
@@ -82,7 +82,7 @@ function freshState () {
 // ---- the two wirings ----
 const { read } = makeIo(HERE)
 // main-global.js builds the frame itself (no groups input), so it needs the
-// puzzle mock's getCellAt/spec.size.width -- `frame: { W, idx }` ties those
+// puzzle mock's getCellAt/spec.size -- `frame: { W, H, idx }` ties those
 // to the same W/idx this probe already uses, so main-global.js's own
 // frame-building produces the identical `groups` list computed above.
 const mainSrc = read('main-global.js')
@@ -92,7 +92,7 @@ function buildOurs () {
     here: HERE,
     mainSrc,
     input: {},
-    frame: { W, idx },
+    frame: { W, H, idx },
     files: [
       { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' },
       { file: 'SkyscraperSideComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperSideComponent' }

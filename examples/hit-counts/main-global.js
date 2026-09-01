@@ -1,7 +1,10 @@
 // Hit Counts — main (backend) code segment, GLOBAL variant.
 //
-// No groups are drawn: build all 4n frame lines from the board size --
-// interior n = W-2 ringed by one clue cell per side. `puzzle.getCellAt(a, b)`
+// No groups are drawn: build every frame line from the board size -- an
+// interior nw = W-2 wide and nh = H-2 tall, ringed by one clue cell per row and
+// per column. A left or right clue reads one interior row, so it has nw cells
+// and there are nh such lines; a top or bottom clue reads one interior column,
+// so it has nh cells and there are nw of them. `puzzle.getCellAt(a, b)`
 // is the cell at column a, row b (docs/puzzle-api.md), so `at(r, c)` hands it
 // the arguments the other way round: it reads row r, column c, the cell its
 // own name says. The side names below are the real sides.
@@ -14,25 +17,27 @@
 // clued lines and the n lines that cross it -- the side sum's proof runs over
 // the crossing lines, not the clued ones.
 const W = puzzle.spec.size.width
-const n = W - 2
+const H = puzzle.spec.size.height
+const nw = W - 2
+const nh = H - 2
 // `| 0` is load-bearing, not decoration: an id derived from the board size
 // costs the app's solver ~1.3x per candidate read until it is a plain integer
 // again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate here is in
 // range, so getCellAt never returns undefined -- and it must stay that way,
 // because `undefined | 0` is 0, a real cell.
 const at = (r, c) => puzzle.getCellAt(c, r) | 0
-const along = f => Array.from({ length: n }, (_, k) => f(k + 1))
-const rows = along(i => along(c => at(i, c)))
-const cols = along(i => along(r => at(r, i)))
+const along = (len, f) => Array.from({ length: len }, (_, k) => f(k + 1))
+const rows = along(nh, i => along(nw, c => at(i, c)))
+const cols = along(nw, i => along(nh, r => at(r, i)))
 const reversed = line => line.slice().reverse()
 
 // Each side, clue cell first, its line read inward from the cell next to the
 // clue -- the group order every line component expects (gotcha 3).
 const sides = [
-  { name: 'left', across: cols, groups: along(i => ({ clue: at(i, 0), line: rows[i - 1] })) },
-  { name: 'right', across: cols, groups: along(i => ({ clue: at(i, W - 1), line: reversed(rows[i - 1]) })) },
-  { name: 'top', across: rows, groups: along(i => ({ clue: at(0, i), line: cols[i - 1] })) },
-  { name: 'bottom', across: rows, groups: along(i => ({ clue: at(W - 1, i), line: reversed(cols[i - 1]) })) }
+  { name: 'left', across: cols, groups: along(nh, i => ({ clue: at(i, 0), line: rows[i - 1] })) },
+  { name: 'right', across: cols, groups: along(nh, i => ({ clue: at(i, W - 1), line: reversed(rows[i - 1]) })) },
+  { name: 'top', across: rows, groups: along(nw, i => ({ clue: at(0, i), line: cols[i - 1] })) },
+  { name: 'bottom', across: rows, groups: along(nw, i => ({ clue: at(H - 1, i), line: reversed(cols[i - 1]) })) }
 ]
 
 //! Opposite pair: the two clues at the ends of one line get ONE
@@ -42,7 +47,7 @@ const sides = [
 //! index -- the line is the one read inward from clue A.
 const [left, right, top, bottom] = sides
 for (const [sa, sb] of [[left, right], [top, bottom]]) {
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < sa.groups.length; i++) {
     const a = sa.groups[i]
     const b = sb.groups[i]
     const name = `hit counts joint ${helpers.naming.getCellName(a.clue)}/${helpers.naming.getCellName(b.clue)}`
@@ -66,7 +71,7 @@ for (const [sa, sb] of [[left, right], [top, bottom]]) {
 for (const side of sides) {
   const clueCells = side.groups.map(g => g.clue)
   puzzle.addConstraintComponent(
-    new SideSumComponent(`side sum ${side.name}`, clueCells, n, side.across))
+    new SideSumComponent(`side sum ${side.name}`, clueCells, side.across.length, side.across))
   puzzle.addConstraintComponent(
     new SideHitMatchingComponent(`side hit matching ${side.name}`, clueCells, side.groups.map(g => g.line)))
 }

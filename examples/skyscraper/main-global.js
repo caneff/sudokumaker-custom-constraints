@@ -1,6 +1,9 @@
 //! Skyscrapers with interactive outside clues, GLOBAL variant. No groups are
-//! drawn: build all 4n frame lines from the board size -- interior n = W-2
-//! ringed by one clue cell per side. `puzzle.getCellAt(a, b)` is the cell at
+//! drawn: build every frame line from the board size -- an interior nw = W-2
+//! wide and nh = H-2 tall, ringed by one clue cell per row and per column. A
+//! left or right clue reads one interior row, so it has nw cells and there are
+//! nh such lines; a top or bottom clue reads one interior column, so it has nh
+//! cells and there are nw of them. `puzzle.getCellAt(a, b)` is the cell at
 //! column a, row b, so `at(r, c)` hands it the arguments the other way round:
 //! it reads row r, column c, the cell its own name says. The L/R/T/B labels
 //! below are the real sides.
@@ -15,20 +18,28 @@
 //! side of the frame: the one-1-per-side count.
 function frameGroups () {
   const W = puzzle.spec.size.width
-  const n = W - 2
+  const H = puzzle.spec.size.height
+  const nw = W - 2
+  const nh = H - 2
   // `| 0` is load-bearing, not decoration: an id derived from the board size
   // costs the app's solver ~1.3x per candidate read until it is a plain
   // integer again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate
   // here is in range, so getCellAt never returns undefined -- and it must
   // stay that way, because `undefined | 0` is 0, a real cell.
   const at = (r, c) => puzzle.getCellAt(c, r) | 0
-  const range = (from, to) => Array.from({ length: n }, (_, k) => from + (to > from ? k : -k))
+  const range = (from, to) => Array.from({ length: Math.abs(to - from) + 1 }, (_, k) => from + (to > from ? k : -k))
   const groups = []
-  for (let i = 1; i <= n; i++) {
-    groups.push({ side: 'L', cells: [at(i, 0), ...range(1, n).map(c => at(i, c))] })
-    groups.push({ side: 'R', cells: [at(i, W - 1), ...range(n, 1).map(c => at(i, c))] })
-    groups.push({ side: 'T', cells: [at(0, i), ...range(1, n).map(r => at(r, i))] })
-    groups.push({ side: 'B', cells: [at(W - 1, i), ...range(n, 1).map(r => at(r, i))] })
+  // Clue rank i: a left and a right clue while the interior has an i-th row, a
+  // top and a bottom clue while it has an i-th column.
+  for (let i = 1; i <= Math.max(nh, nw); i++) {
+    if (i <= nh) {
+      groups.push({ side: 'L', cells: [at(i, 0), ...range(1, nw).map(c => at(i, c))] })
+      groups.push({ side: 'R', cells: [at(i, W - 1), ...range(nw, 1).map(c => at(i, c))] })
+    }
+    if (i <= nw) {
+      groups.push({ side: 'T', cells: [at(0, i), ...range(1, nh).map(r => at(r, i))] })
+      groups.push({ side: 'B', cells: [at(H - 1, i), ...range(nh, 1).map(r => at(r, i))] })
+    }
   }
   return groups
 }
