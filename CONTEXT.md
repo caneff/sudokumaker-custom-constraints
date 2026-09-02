@@ -164,6 +164,11 @@ Use these terms exactly. Do not drift to synonyms.
   kills the branch when no full matching exists.
 - **tour** — a lower bound on region size from the distances between three
   placed cells.
+- **growth test** — fillomino's rule for a region with no placed cell: for an
+  open cell and a candidate digit `k`, the cell plus every adjacent island of
+  `k` must grow into a connected set of exactly `k` cells. Too many cells
+  drops `k`, too few reachable drops `k`, exactly `k` reachable places `k` in
+  all of them.
 
 ## Invariants
 
