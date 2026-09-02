@@ -43,7 +43,7 @@ test:
             node "$f"
         done
         for f in "$dir"*.test.py; do
-            uv run --with lzstring "$f"
+            uv run --with lzstring --with ortools "$f"
         done
     done
     uv run --with lzstring examples/_shared/check_layout.test.py
