@@ -181,6 +181,18 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
+    # fillomino is the second no-local-global-split example: a global
+    # constraint with no drawn groups, so it ships main.js alone and no local
+    # board (#305).
+    fillomino_files = [
+        f
+        for f in REQUIRED
+        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=fillomino_files, name="fillomino") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
     # a gen*.json with no matching link is unpaired: the naming-follows-the-
     # rename bug this check exists to catch (#294)
     with example(extra_gens=["gen_9x9.json"]) as (root, _):
@@ -339,6 +351,16 @@ if __name__ == "__main__":
     with example(
         files=missing,
         name="isofill",
+        contents={"PUZZLE_LINK.txt": _link(prefix=False)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # fillomino is exempt from the rules-prefix check too -- fillomino is not
+    # sudoku, so its rules text must not carry the sudoku sentence (#305)
+    with example(
+        files=fillomino_files,
+        name="fillomino",
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
     ) as (root, _):
         violations = check_tree(root)

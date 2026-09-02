@@ -38,9 +38,9 @@ REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 
 # An example whose constraint has no local/global duality ships main.js
 # alone, and no local board: isofill is a whole-grid constraint with no drawn
-# groups at all (spec #232, Out of Scope). Every other example needs both
-# lanes (#194, #235, #268).
-NO_LOCAL_GLOBAL_SPLIT = {"isofill"}
+# groups at all (spec #232, Out of Scope), and fillomino is the same shape
+# (spec #303). Every other example needs both lanes (#194, #235, #268).
+NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino"}
 
 # An example folded into another and deleted. One rule has one example, so
 # the directory must not come back -- a second one would drift from the
@@ -54,8 +54,9 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 # An example whose rules are not sudoku rules, so its link comment must not
 # carry RULES_PREFIX. isofill is not sudoku (spec #232) and its rules text
-# must say so (#271). Same pattern as NO_LOCAL_GLOBAL_SPLIT above.
-NO_RULES_PREFIX = {"isofill"}
+# must say so (#271); fillomino is not sudoku either (spec #303). Same
+# pattern as NO_LOCAL_GLOBAL_SPLIT above.
+NO_RULES_PREFIX = {"isofill", "fillomino"}
 
 # `build_original.py` / `build_clued.py` build a hand-derived twin: the same
 # board as another committed link, re-encoded with different wrapper code or

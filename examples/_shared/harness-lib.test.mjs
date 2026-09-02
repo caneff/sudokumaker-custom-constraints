@@ -4,7 +4,7 @@
 import assert from 'assert'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { makeIo, makeLine, makePuzzle, makeRng } from './harness-lib.mjs'
+import { DigitSet, installGlobals, makeIo, makeLine, makePuzzle, makeRng } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
 
@@ -78,5 +78,49 @@ const { rnd } = makeRng()
   assert.strictEqual(loadSource(src, ['reading']).reading(), false)
   assert.strictEqual(loadSource(src.replace('= false', '= true'), ['reading']).reading(), true)
 }
+
+// ---- makePuzzle: getValue answers undefined on an unsolved cell ----
+// docs/puzzle-api.md: getValue is the SOLVED digit, undefined if not solved.
+// A component that floods `getValue(cell) === digit` without a hasValue guard
+// reads a mock that hands back the first candidate as a board full of placed
+// cells, and passes in Node while doing something else in the app.
+{
+  const p = makePuzzle({ 0: 1, 1: 2 }, (c, v) => (c === 0 ? [v] : [1, 2, 3]))
+  assert.strictEqual(p.hasValue(0), true)
+  assert.strictEqual(p.getValue(0), 1)
+  assert.strictEqual(p.hasValue(1), false)
+  assert.strictEqual(p.getValue(1), undefined)
+}
+
+// ---- makePuzzle: the whole-grid calls a region-building component makes ----
+// A vendored baseline reads the grid through the app's own names rather than
+// index arithmetic, so the mock answers them: orthogonal neighbours on the
+// square the cells form, the two multi-cell change calls, and stop.
+{
+  const truth = {}
+  for (let c = 0; c < 9; c++) truth[c] = 1
+  const p = makePuzzle(truth, () => [1, 2, 3])
+
+  // 3x3, row-major: the centre has four neighbours, a corner two.
+  assert.deepStrictEqual(p.getCellsOrthogonallyAdjacentToCell(4).sort(), [1, 3, 5, 7])
+  assert.deepStrictEqual(p.getCellsOrthogonallyAdjacentToCell(0).sort(), [1, 3])
+  assert.deepStrictEqual(p.getCellsOrthogonallyAdjacentToCell(8).sort(), [5, 7])
+
+  p.removeCandidateFromCells(2, [0, 1])
+  assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3])
+  assert.deepStrictEqual([...p.getCandidates(2)].sort(), [1, 2, 3])
+
+  p.filterCandidatesInCells(DigitSet.from([3]), [2])
+  assert.deepStrictEqual([...p.getCandidates(2)], [3])
+
+  // stop says the branch has no solution; the mock makes that visible the
+  // one way every reader already looks for, an emptied cell.
+  p.stop('no room')
+  assert.ok([...Array(9).keys()].every(c => p.getCandidates(c).size === 0))
+}
+
+// ---- installGlobals: the naming helper a component calls for a message ----
+installGlobals(1, 9)
+assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]), 'string')
 
 console.log('harness-lib.test.mjs: all seams pass')

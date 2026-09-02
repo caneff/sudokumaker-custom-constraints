@@ -33,6 +33,7 @@
       "HitCountsJointComponent",
       "HitCountsComponent",
       "IsofillComponent",
+      "FillominoComponent",
       "SideSumComponent",
       "SideHitMatchingComponent",
       "NumberedRoomsComponent",
