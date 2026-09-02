@@ -93,7 +93,13 @@ uv run --with lzstring examples/fillomino/build_link.py
 
 ## Timing
 
-No row yet. The shipped 6x6 board is the baseline's own board, and that board
+The app opens `PUZZLE_LINK.txt` and reaches a verdict on it: **unique**.
+
+| Date | App version | Board | Cold | After logical |
+| --- | --- | --- | --- | --- |
+| 2026-09-02 | v2026.08.14-d47fc4b | fillomino (6x6, 12 givens) | 0 ms | 0 ms |
+
+**These numbers rank nothing.** The shipped 6x6 board is the baseline's own board, and that board
 **cannot rank anything** — 100 ms cold and 0 ms after logical is the app
 reporting that the puzzle falls over immediately, and a component change moves
 neither number. Boards that rank a fillomino component are the generator's job
