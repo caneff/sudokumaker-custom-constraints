@@ -197,6 +197,17 @@ separate seeded runs (seeds 1, 3, 7), roughly 8 s per trial end to end. A
 100-given board (the `gen_32g.json` grid with every cell given) confirms the other direction — early
 removals come back `unique` at 0 ms, straight off the app's own readout.
 
+**A digit above 9 needs the on-screen pad, not the keyboard** — SudokuMaker
+has no hotkey past 9 (#293). `app-dom.mjs`'s `openWidePad`/`enterDigit`
+(called by `restoreGiven` for every digit) open the pad and click through it
+instead. The pad has two screens (1-9, then 10-12 behind its "..." pager,
+`Icon VerticalDots`), and once the pad is open, keyboard hotkeys 1-9 stop
+working while the second screen shows — pressing "2" then does nothing at
+all, found live with a fillomino 9x9-digits-1-12 board (#307) and fixed by
+paging back before every keypress, not just every click. Verified against a
+9x9 cap-12 sampled grid stripped from 81 to 27 givens with no restore
+failures, mixing digits 1-9 and 10-12 throughout the run.
+
 ## Reproduce
 
 Install the browser once, build the probe links, then run:

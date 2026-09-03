@@ -75,6 +75,60 @@ export async function makeDeterministic (page) {
   await page.waitForTimeout(300)
 }
 
+// Open the on-screen digit pad and reselect "Given digits" as the active
+// editing element. Needed once, before the first digit above 9 is entered
+// (#307, the 9x9-digits-1-12 fixtures -- SudokuMaker has no keyboard hotkey
+// past 9, #293): opening the pad (Icon DigitBox) drops "Given digits" as the
+// selected element, so a pad click would otherwise land as an entered
+// (played) value instead of a given -- verified empirically by comparing the
+// clicked cell's fill (#000 for a given, the entered-value blue otherwise).
+export async function openWidePad (page) {
+  if (!await clickIcon(page, 'DigitBox')) throw new Error('DigitBox icon not found')
+  await page.waitForTimeout(300)
+  if (!await clickText(page, 'Given digits')) throw new Error('"Given digits" element not found')
+  await page.waitForTimeout(300)
+}
+
+// Enter `digit` into the already-selected cell as a GIVEN. 1-9 uses the
+// keyboard hotkey; above 9 there is none, so this clicks the on-screen pad
+// instead. Once the pad is open (openWidePad has run), the keyboard hotkeys
+// address whichever of the pad's two screens is currently showing -- 1-9 on
+// its first screen, 10-12 on its second, and pressing "2" while the second
+// screen shows does nothing at all (verified empirically, #307) -- so this
+// pages to the right screen (the "..." button, Icon VerticalDots) before
+// either a click or a keypress, whenever the pad is open. With no pad open
+// (a cap <= 9 run, openWidePad never called) 1-9 just presses the key.
+export async function enterDigit (page, digit) {
+  const padOpen = await page.evaluate(() => !!document.querySelector('div.grid'))
+  if (digit <= 9 && !padOpen) {
+    await page.keyboard.press(String(digit))
+    return
+  }
+  const shown = await page.evaluate(() =>
+    [...document.querySelectorAll('div.grid button span')].map(s => s.textContent))
+  if (!shown.includes(String(digit))) {
+    const paged = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll('div.grid button')].find(b => b.querySelector('svg.Icon.VerticalDots'))
+      if (!btn) return false
+      btn.click()
+      return true
+    })
+    if (!paged) throw new Error('digit pad pager (Icon VerticalDots) not found')
+    await page.waitForTimeout(150)
+  }
+  if (digit <= 9) {
+    await page.keyboard.press(String(digit))
+    return
+  }
+  const clicked = await page.evaluate((d) => {
+    const btn = [...document.querySelectorAll('div.grid button')].find(b => b.querySelector('span')?.textContent === d)
+    if (!btn) return false
+    btn.click()
+    return true
+  }, String(digit))
+  if (!clicked) throw new Error(`digit pad button "${digit}" not found`)
+}
+
 // How long solveLogically waits for the app's logic pass to stop changing the
 // board. The app's own solve limit is 300 s, so a pass that outlives this has
 // stalled, not merely taken a while.

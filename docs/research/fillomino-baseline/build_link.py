@@ -39,9 +39,15 @@ RULE = (
 )
 
 
-def build(component_path, puzzle_path):
+def build(component_path, puzzle_path, cap=None):
+    """`cap`, when given, ships explicit minDigit/maxDigit (1..cap) on the
+    puzzle doc so a region can run past the board side (#293 confirmed the
+    app accepts this) -- the fixture set (#307) needs a 9x9 with digits
+    1-12. Left at the default None, the doc carries no such keys and this
+    reproduces the baseline's own 6x6 board byte-for-byte, unchanged."""
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     n = spec["size"]
+    hi = cap if cap is not None else n
     givens = {(r, c): v for r, c, v in spec["givens"]}
     # a cell holds a value only when it is a given: a non-given value ships as
     # an entered digit and the recipient opens a board with digits typed in
@@ -58,7 +64,8 @@ def build(component_path, puzzle_path):
             "type": "custom",
             "width": n,
             "height": n,
-            "comment": RULE.format(hi=n),
+            **({"minDigit": 1, "maxDigit": hi} if cap is not None else {}),
+            "comment": RULE.format(hi=hi),
             "cells": cells,
             "constraints": [
                 # the built-in "Given digits" constraint every frame carries;
@@ -123,12 +130,13 @@ if __name__ == "__main__":
     p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
     p.add_argument("--puzzle", default=HERE / "gen.json")
     p.add_argument("--board", help="committed link to swap the component into")
+    p.add_argument("--cap", type=int, help="digit cap; ships minDigit/maxDigit")
     args = p.parse_args()
     if args.board:
         link = build_on_board(args.component, args.out, args.board)
         print(f"wrote {args.out} ({len(link)} chars, from {args.board})")
     else:
-        link, doc, n_givens = build(args.component, args.puzzle)
+        link, doc, n_givens = build(args.component, args.puzzle, cap=args.cap)
         check(link, doc, n_givens)
         pathlib.Path(args.out).write_text(link + "\n")
         print(f"wrote {args.out} ({len(link)} chars, {n_givens} givens)")

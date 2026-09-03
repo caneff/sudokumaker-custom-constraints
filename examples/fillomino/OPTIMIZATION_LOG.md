@@ -5,12 +5,15 @@ two-row rule in `CODING_STANDARDS.md`: `just time fillomino` prints a cold row
 and an after-logical row, and a change ships at ≤ 0.9× on either row and ≤ 1.1×
 on the other.
 
-**Nothing is timed yet, and no row here is a measurement.** The shipped 6x6
-board is the vendored baseline's own board, which the baseline's README already
-records as unable to rank anything: 100 ms cold, 0 ms after logical. A board
-that ranks a fillomino component does not exist yet — that is the generator
-(#306) and the frozen fixture set (#307). Rung 2 (#308) and rung 3 (#309) each
-merge with fixture rows against the baseline and against the rung before them.
+**Nothing is timed against this component yet, and no row here is a
+measurement of it.** The shipped 6x6 board is the vendored baseline's own
+board, which the baseline's README already records as unable to rank
+anything: 100 ms cold, 0 ms after logical. The frozen fixture set that can
+rank a fillomino component now exists (#307,
+`docs/research/fillomino-baseline/README.md` — five boards, 28-35 givens,
+each proved unique) with the baseline's own rows recorded there. Rung 2
+(#308) and rung 3 (#309) each merge with this component's own rows against
+those fixtures, against the baseline and against the rung before them.
 
 | Date | Change | Kept | Why |
 | --- | --- | --- | --- |
