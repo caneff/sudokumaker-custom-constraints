@@ -16,6 +16,9 @@ comparisons, is in this example's README under `## Timing`.
 | 2026-09-02 | Rung 1: island scan, overflow, seal, walk, starve, force, doors (#305) | yes | The floor. No fixture ranked it at the time; the cost choices below were made from the bound, not the clock. |
 | 2026-09-03 | Rung 2: the growth test at full scope — the merge rules per (open cell, candidate digit) pair (#308) | no | Rejected by the clock against rung 1: 1.00× to 4.86× on the frozen fixtures, worst on the digits-1-12 boards, where the walk budget is widest. |
 | 2026-09-03 | Rung 2: the growth test at #308's named fallback scope — the merge rules at the doors, plus the per-digit component bound (#308) | yes, on a mixed clock | 10 of the 19 fixtures SHIP against rung 1 and 9 do not; all 19 SHIP against the vendored baseline. Read across the set, cold time falls 0.82× and the median fixture 0.68×. The full rows and the reading are in the README's `## Timing`. |
+| 2026-09-03 | Rung 2.5: dirty components — the bound diffs a per-cell allowed-digit row against the row the last pass finished on and re-floods only the changed cells and their neighbours (#312) | yes | Fixpoint-identical by assertion, both directions. Cuts the bound from 81% on top of the island rules to 20%, 0.66× the component's local time. The panel rows are in the README's `## Timing`. |
+| 2026-09-03 | Rung 2.5: bound at quiescence — island rules to a standstill, then one bound pass (#312) | no | Fixpoint-identical and 1.30× slower. Buys no bound passes (3.05 → 3.18 per state) because the island rules already quiesce in about one pass, and pays for a confirming island pass at every quiet point (3.05 → 5.49). |
+| 2026-09-03 | Rung 2.5: k-bounded floods with safe marks — stop a flood at `k` cells (#312) | no | Fixpoint-identical and 1.00× — with dirty components the floods are already small, and stopping early moves work rather than removing it. Fifteen lines and one ordering trap (the safe mark must be read before the visited stamp) for no signal. |
 
 ## Rung 2's own cost choices
 
@@ -31,15 +34,15 @@ comparisons, is in this example's README under `## Timing`.
   door plus every island of the digit it touches — with no separate neighbour
   scan.
 - **The component bound is the one rule bounded by the board, not by the
-  digit.** One flood over all 81 cells per digit, on every call, and each
-  component is walked to its end rather than stopped at `k` cells — stopping
-  early would leave its far cells unstamped and the next seed would read one of
-  them as a component of its own. This is what the three real regressions
-  against rung 1 are paying for, and why they cluster on the digits-1-12
-  boards. It stays because it is the only rule that reaches a silent region,
-  the deduction #308 asks rung 2 to show. Gating it — flood only the digits
-  whose allowed set changed since the last call — is the next measurement, and
-  needs per-digit change tracking the component does not carry today.
+  digit.** It stays because it is the only rule that reaches a silent region,
+  the deduction #308 asks rung 2 to show, and #308's three real regressions
+  against rung 1 were what it cost. **#312 made it cheap** rather than skipping
+  it: it now re-floods only the cells whose allowed-digit code changed since
+  the last pass, and their neighbours, and it reads each cell's code once per
+  pass instead of once per (cell, digit) pair. Byte-identical fixpoint, 81% on
+  top of the island rules down to 20%. Each component is still walked to its
+  end rather than stopped at `k` cells — that bound was built and measured at
+  1.00× (see PROGRESS).
 - **Rung 1's own merge-overflow at a door stays where it is.** Rung 2's merge
   overflow is the same deduction on the same set, so the two now share one
   `placedFlood`: rung 2's loop reads the flood's size and rung 1's separate
@@ -52,7 +55,8 @@ Recorded so a later measurement can overturn them by name.
 - **Neighbour lists built once in `setParams`.** `update` runs on every search
   node; index arithmetic per visit was the alternative.
 - **One stamped mask for every walk and flood**, pooled on the instance and
-  never cleared — the stamp does that. Scratch rows (`members`, `merge`, the
+  never cleared — the stamp does that. #312 added three more pooled rows for
+  the bound (`code`, `prev`, `seeds`) on the same principle. Scratch rows (`members`, `merge`, the
   two frontiers) are allocated once, so a call allocates almost nothing.
 - **Every walk stops at `k + 1` cells.** No rung-1 rule reads a walk past its
   digit, and in fillomino no region exceeds `D`, so a walk is bounded by the

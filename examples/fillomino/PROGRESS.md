@@ -539,3 +539,179 @@ the merge rules that repair its strength hole, and the bitmask read. Cut:
   ticket, so the vs-baseline pass was stopped at 8 of 19 rather than produce
   rows that were stale on arrival. The vs-rung-1 pass finished, 19 of 19. The
   README's timing record is marked interim and names #312 as its successor.
+
+## #312: rung 2.5 -- cutting the component bound's cost
+
+Bar: every optimization leaves the fixpoint BYTE-IDENTICAL to rung 2 as
+shipped (`ac20771`). The seam is the fixpoint-floor assertion #308 left in
+`update-strength.test.mjs`, run both directions.
+
+### The screen before the live clock
+
+Each candidate was built and screened on a local bench first --
+component-only wall time to a fixpoint over the 19 frozen fixture grids, 120
+states each (2280 states), with a fixpoint diff against `ac20771` on every one
+of them. The bench is a scratch script, not committed; it exists to keep the
+live clock (roughly two minutes a board) for candidates that have a mechanism.
+
+| # | Optimization | Fixpoint diffs / 2280 | Local vs rung 2 | Verdict |
+| --- | --- | --- | --- | --- |
+| 1 | Bound at quiescence | 0 | **1.30x** | dropped on the screen |
+| 2 | Dirty components | 0 | **0.66x** | kept, taken to the panel |
+| 3 | k-bounded floods + safe marks | 0 | 1.00x | dropped on the screen |
+| 4 | Bitboard flood | not built | — | no slice left to attack |
+
+### 1. Bound at quiescence -- dropped, the schedule has no slack
+
+Built: `update` runs the island-indexed rules to a standstill, fires the bound
+only at the quiet point, and loops while the bound keeps changing something.
+It is fixpoint-identical (0 diffs over 2280 states) -- the loop stops on the
+same predicate the solver's own repeat-until-quiet loop stops on -- and it is
+**slower**, 1.30x.
+
+Counting passes per state says why:
+
+| | island passes | bound passes |
+| --- | --- | --- |
+| rung 2 as shipped | 3.05 | 3.05 |
+| bound at quiescence | 5.49 | 3.18 |
+
+The premise was that the bound rides along on island passes that have nothing
+left to do. It does not: the island rules already quiesce inside about one
+pass, so deferring the bound buys **no bound passes at all** (3.05 -> 3.18,
+slightly worse) and pays for a confirming island pass at every quiet point
+(3.05 -> 5.49). Nothing on the live clock could rescue that, so it was dropped
+without spending the panel on it.
+
+### 2. Dirty components -- kept
+
+`code[i]` is cell i's allowed-digit bitmask (the digit it holds, or its
+candidates), read once per cell per pass instead of once per (cell, digit)
+pair, and diffed against `prev`, the row the last completed pass finished on.
+A component all of whose cells and bordering cells read the same code as last
+time IS last time's component and last time's verdict already stands, so only
+the changed cells and their neighbours seed a flood. First pass: `prev` is all
+-1 and every cell seeds one, exactly as before.
+
+**Why a snapshot and not a dirty flag.** The solver gives no backtrack signal.
+A flag set on our own prunes goes stale the moment the search restores a
+candidate; a diff against the previous pass's codes cannot. `prev` is written
+only after the last yield, so a pass the solver abandons half-way leaves the
+older snapshot in place and the next pass reads a superset of what moved.
+
+The per-cell row also collapses the bound's puzzle reads: 12 digits x 81 cells
+of `allows` calls (a `hasValue` plus a `getCandidatesBitMask` each) become 81
+reads and an array-and-bit test per visit. That is the bitboard idea's cheap
+half, and it arrives for free -- the snapshot the dirty test needs IS the row.
+
+Cost, measured as the bound's share on top of the island rules alone (the same
+component with the bound cut out, 1.74x rung 1 on this bench):
+
+| | component vs island-rules-only | bound's share |
+| --- | --- | --- |
+| rung 2 as shipped | 1.81x | 81% on top |
+| + dirty components | 1.20x | 20% on top |
+
+Seams: fixpoint floor green both directions (200 states); 0 diffs over the
+bench's 2280 states; soundness fuzz 0 violations; `compareStrength` unchanged
+at 0 weaker / 21084 stronger.
+
+A new check comes with it: **the reused instance** (400 states). One instance
+is driven over a run of unrelated states and each has to settle exactly where a
+fresh instance settles it. That is the hazard the cache introduces and the one
+the floor assertion cannot see -- the floor builds a fresh instance per state.
+
+### 3. k-bounded floods -- dropped, no signal
+
+Built on top of #2: the flood stops the moment it holds `k` cells or reaches a
+cell already known to sit in a component of `k` or more, and marks everything
+it touched safe so a later seed skips it. Fixpoint-identical, and **1.00x**
+(0.999 over 2280 states) -- no measurable gain.
+
+Why: with dirty components the floods are already small, and the saving is a
+wash even on a fully dirty pass. Stopping early does not remove work, it moves
+it -- the cells walked away from seed their own floods, which pay a neighbour
+scan each to reach a safe cell. Against that it costs about fifteen lines and
+one real ordering hazard: the safe mark has to be read BEFORE the visited
+stamp, or a flood reads the far half of a component an earlier flood walked
+away from as a short component of its own and prunes it. The first cut got
+that wrong and the strength gate caught it (21084 stronger cells -> 2011, and
+states dying). Correct, unmeasurable, and a trap to read at 3am: dropped.
+
+### 4. Bitboards -- not built, and why not
+
+The ticket admits a bitboard flood only if 1-3 leave fixtures failing. They do
+(see the panel below), but a bitboard flood cannot be the answer: after #2 the
+bound is 20% on top of the island rules, i.e. about 17% of the component's
+time, and the per-(cell, digit) puzzle reads it would have removed are already
+gone with the `code` row. The cost that is left is the island-indexed merge
+rules, which #308 measured at 1.74-1.79x rung 1 on their own and proved cannot
+be dropped without going weaker than the vendored baseline. That is a rung-3
+question about the merge rules' scope, not a bound-cost question.
+
+### pass: #312 panel: rung 2.5 (dirty components) vs rung 1
+started 2026-09-03 19:14:56
+- cap12-seed14:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 3700ms | 6800ms | 1.84 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- cap12-seed4:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 4300ms | 6100ms | 1.42 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- cap9-seed3:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2300ms | 2500ms | 1.09 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 3500ms | 3600ms | 1.03 | FAIL |
+  two-row rule: NO SHIP
+- cap9-seed5:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) | 5200ms | 100ms | 0.02 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) after-logical | 1300ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+- cap12-seed16:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) | 2700ms | 1100ms | 0.41 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- cap12-seed8:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) | 3800ms | 4400ms | 1.16 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- cap12-seed5:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) | 6200ms | 3400ms | 0.55 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) after-logical | 6400ms | 6200ms | 0.97 | FAIL |
+  two-row rule: SHIP
+finished 2026-09-03 19:28:25
+
+Panel verdict: **7 boards, 3 SHIP**, the same three rung 2 shipped. Every loss
+shrank and none flipped -- cold, against #308's rows on the same boards:
+cap12-seed14 2.09x -> 1.84x, cap12-seed4 1.64x -> 1.42x, cap9-seed3 1.35x ->
+1.09x (after-logical 1.29x -> 1.03x), cap12-seed8 1.24x -> 1.16x; the wins hold
+at 0.02x, 0.41x and 0.55x.
+
+### pass: #312 ceiling probe: the merge rules with the bound REMOVED, vs rung 1
+- cap12-seed14:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 3800ms | 4500ms | 1.18 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+
+**This is what settles the ticket's fourth optimization.** The component with
+the component bound deleted outright -- the merge rules and rung 1 alone --
+still reads **1.18x cold** on cap12-seed14, over the 1.1x bar. That is the
+ceiling every bound-cost optimization is chasing, and it is on the wrong side
+of the gate. No cheaper bound, bitboard or otherwise, can ship that board; the
+cost that is left belongs to the island-indexed merge rules. The second board
+of this probe was not run once the first answered the question.
+
+## #312 ship: what landed
+
+**Kept:** dirty components (with the per-cell `code` row it needs, which also
+collapses the bound's puzzle reads from 12 x 81 to 81 per pass).
+**Dropped:** bound at quiescence, k-bounded floods, bitboards.
+
+Seams at ship: `just check` green; soundness fuzz 0 violations; strength gate
+0 weaker / 21084 stronger, unchanged from rung 2; fixpoint floor green both
+directions against `ac20771`; the new reused-instance check green over 400
+states.
+
+The target -- all seven panel boards SHIP -- was **not** reached, and the
+ceiling probe above says it is not reachable from the bound. #310 runs the full
+19-fixture sweep on this code as the final shipped-code record.

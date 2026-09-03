@@ -8,9 +8,11 @@
 //! ISLANDS -- a maximal connected set of placed cells of one digit. Two
 //! adjacent cells holding k lie in one region, so an island of digit k with p
 //! cells sits wholly inside one region, and that region needs k - p more
-//! cells. Nothing is carried between calls: the solver gives no backtrack
-//! signal, so state kept across calls would be a correctness risk, not a
-//! speed win.
+//! cells. One thing IS carried between calls: the component bound's
+//! allowed-digit row (#312), and it is carried as a SNAPSHOT to diff against,
+//! never as a dirty flag. The solver gives no backtrack signal, so a flag set
+//! on our own prunes goes stale the moment the search restores a candidate;
+//! comparing this call's codes against the last call's cannot.
 //!
 //! Rung 1 of the ladder, per island:
 //!   Overflow: an island of more than k cells holding k is a dead branch.
@@ -41,7 +43,9 @@
 //!                   one of them, so every cell of a component under k cells
 //!                   loses k. This is the only rule that reaches a SILENT
 //!                   REGION -- a region with no placed cell in it -- because
-//!                   every other rule starts from an island.
+//!                   every other rule starts from an island. Rung 2.5 (#312)
+//!                   re-floods only the components a changed cell touches,
+//!                   which leaves what it deduces byte-identical.
 //!
 //! Scope, and why it is not the whole board. #308's rung 2 asks for the growth
 //! test at FULL scope: the merge rules per (open cell, candidate digit) pair,

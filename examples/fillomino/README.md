@@ -55,6 +55,42 @@ And once per digit, over the whole board:
   a region with no placed cell in it — because every other rule starts from an
   island.
 
+### The bound made cheap, not smaller — rung 2.5, #312
+
+The bound is the one rule bounded by the **board** rather than by the digit,
+and #308's ablation proved its answers cannot be trimmed: every capped, gated
+and merge-less variant either threw the wins away or changed the fixpoint.
+So #312 left the answers alone and cut the cost, under one bar — the fixpoint
+stays **byte-identical**, asserted both directions against rung 2 as shipped.
+
+What ships is **dirty components**. `code[i]` is cell `i`'s allowed-digit
+bitmask — the digit it holds, or its candidates — read once per cell per pass
+instead of once per `(cell, digit)` pair, and diffed against `prev`, the row
+the last completed pass finished on. A component whose cells and whose
+bordering cells all read the same code as last time *is* last time's component
+and last time's verdict already stands, so only the changed cells and their
+neighbours seed a flood. On the first pass `prev` is all `-1` and every cell
+seeds one, exactly as before.
+
+A **snapshot, never a dirty flag**: the solver gives no backtrack signal, so a
+flag set on our own prunes goes stale the moment the search restores a
+candidate, where a diff against the previous pass's codes cannot. `prev` is
+written only after the last yield, so a pass the solver abandons half-way
+leaves the older snapshot in place and the next pass reads a superset of what
+moved. `update-strength.test.mjs` carries the check that hazard needs: one
+instance driven over 400 unrelated states has to settle each exactly where a
+fresh instance does.
+
+Measured as the bound's share on top of the same component with the bound cut
+out: **81% → 20%**, and 0.66× the component's local time. Two other
+optimizations were built to the same bar, proved fixpoint-identical, and
+dropped on the clock — **bound at quiescence** (1.30×: the island rules already
+quiesce in about one pass, so deferring the bound buys no bound passes and pays
+for a confirming island pass at every quiet point) and **k-bounded floods**
+(1.00×: with dirty components the floods are already small, and stopping early
+moves work rather than removing it). The numbers and the pass counts are in
+`PROGRESS.md`; **bitboards were not built**, and `## Timing` says why.
+
 ### Why the growth test is not at full scope
 
 #308 asks for the growth test per **(open cell, candidate digit)** pair, every
@@ -178,7 +214,12 @@ uv run --with lzstring examples/fillomino/build_link.py
   says why, with the measured numbers. It also carries the **fixpoint floor**:
   the component must settle on exactly the candidates rung 2 as shipped
   (`ac20771`) settles on, both directions, over 200 states. That is the seam
-  #312 works against — a cheaper bound may not change what the bound deduces.
+  #312 worked against — a cheaper bound may not change what the bound deduces.
+  Last, the **reused instance** (#312, 400 states): the bound carries a
+  snapshot between calls, so one instance driven over a run of unrelated states
+  must settle each exactly where a fresh instance does. That is the hazard the
+  snapshot introduces and the one the fixpoint floor cannot see — the floor
+  builds a fresh instance per state.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
 
@@ -200,13 +241,58 @@ with one component swapped in, so both sides solve the same grid.
 
 ### The timing record is INTERIM
 
-Both tables below time the code this ticket ships. They are **not the final
-record**: #312 (rung 2.5, bound-cost optimizations, fixpoint-identical) re-times
-all 19 fixtures immediately after this ticket, and its sweep supersedes both.
-The vs-rung-1 pass here is complete, 19 of 19. The vs-baseline pass was stopped
-at 8 of 19 once #312 landed on the plan — finishing it would have produced rows
-that were stale on arrival. The 8 collected rows stand as an interim record and
-the remaining 11 come with #312.
+The two #308 tables below time rung 2 as it shipped at `ac20771`, not the code
+in the tree. They are **not the final record**: the shipped component is now
+rung 2.5, and the full 19-fixture sweep of it runs once, at **#310**, as the
+final shipped-code record. #312 timed a **7-board panel** instead (its own
+table, first) — the owner's decision was that all 19 stay frozen for the
+offline strength gate and the uniqueness record while routine timing runs on
+the panel. The #308 vs-rung-1 pass below is complete, 19 of 19; its vs-baseline
+pass was stopped at 8 of 19 rather than produce rows that were stale on
+arrival.
+
+### Rung 2.5 against rung 1 — the #312 panel
+
+Baseline column: rung 1 (#305). Candidate column: rung 2.5, dirty components.
+The panel is the three worst rung-2 losses, the two biggest rung-2 wins, and
+the two slowest boards of the original five-fixture freeze. **7 boards, 3
+SHIP.**
+
+| Date | App version | Board | Baseline | Candidate | Ratio | Row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 3700ms | 6800ms | 1.84 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 4300ms | 6100ms | 1.42 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2300ms | 2500ms | 1.09 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 3500ms | 3600ms | 1.03 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) | 5200ms | 100ms | 0.02 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) after-logical | 1300ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) | 2700ms | 1100ms | 0.41 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) | 3800ms | 4400ms | 1.16 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) | 6200ms | 3400ms | 0.55 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) after-logical | 6400ms | 6200ms | 0.97 | FAIL |
+
+**Every loss shrank; none flipped.** Against the same boards under rung 2
+(#308's rows below), cold: cap12-seed14 2.09× → 1.84×, cap12-seed4 1.64× →
+1.42×, cap9-seed3 1.35× → 1.09× and its after-logical row 1.29× → 1.03×,
+cap12-seed8 1.24× → 1.16×. cap9-seed3 crosses out of a real regression and
+into the band where three reps cannot separate one from noise. The wins hold
+(0.02×, 0.41×, 0.55×). The SHIP count does not move: the same three ship.
+
+**#312's target was all seven, and it is out of reach from the bound.** The
+ticket's fourth optimization — a bitboard flood — was not built, because the
+board that decides it was measured with the bound **removed entirely**:
+cap12-seed14 still reads **1.18× cold**, over the 1.1× bar. Deleting the rule
+outright does not ship that board, so no way of making the rule cheaper can.
+What is left to attack is the island-indexed merge rules, which #308 measured
+at 1.74–1.79× rung 1 on their own and proved cannot be dropped without going
+weaker than the vendored baseline. That is a rung-3 question about their
+scope, not a bound-cost question.
+
+### The #308 tables — rung 2 as it shipped at `ac20771`
 
 ### Rung 2 against the vendored baseline — interim, 8 of 19 timed
 
