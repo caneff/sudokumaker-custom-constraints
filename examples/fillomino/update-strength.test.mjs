@@ -39,7 +39,8 @@ import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, compareStr
 const HERE = dirname(fileURLToPath(import.meta.url))
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
 
-const cur = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
+const io = makeIo(HERE)
+const cur = io.load('FillominoComponent.js', ['setParams', 'update'])
 const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'update'])
 
 const N = 6
@@ -125,6 +126,30 @@ assert.strictEqual(weaker, 0)
 // states, against rung 2's 21084). The directed demo below is what only the
 // growth test passes.
 assert.ok(stronger > 0, 'the component must remove a candidate the baseline keeps on some state')
+
+// The fixpoint floor for #312 (rung 2.5, bound-cost optimizations). Those may
+// make the bound cheaper; they may not change what it deduces. The floor is
+// rung 2 exactly as it shipped, read out of git, and the check runs both
+// directions -- a faster bound that prunes one candidate less, or one more, is
+// a different component and fails here.
+const SHIPPED = 'ac20771'
+const shippedRung2 = io.loadAt(SHIPPED, 'FillominoComponent.js', ['setParams', 'update'])
+const { rnd: frnd } = makeRng(4242)
+let floorStates = 0
+for (const truth of [shipped, varied]) {
+  for (let rep = 0; rep < 100; rep++) {
+    const start = new Map()
+    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, N, truth[c]))
+    const lost = quiet(() => compareStrength(cur, shippedRung2, apply, start))
+    if (lost === null) continue
+    floorStates++
+    assert.deepStrictEqual(lost, [], `the component prunes less than rung 2 as shipped (${SHIPPED})`)
+    assert.deepStrictEqual(quiet(() => compareStrength(shippedRung2, cur, apply, start)), [],
+      `the component prunes more than rung 2 as shipped (${SHIPPED})`)
+  }
+}
+assert.strictEqual(floorStates, 200, 'a state built around a solution must never die')
+console.log('fillomino fixpoint floor:', floorStates, 'states, same fixpoint as', SHIPPED)
 
 // The silent-region win, directed (transfer doc §6). No cell is placed, so
 // every baseline rule is idle -- they all start from a placed island. r0c0's

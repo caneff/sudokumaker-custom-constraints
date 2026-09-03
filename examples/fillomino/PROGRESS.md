@@ -409,3 +409,133 @@ is in update-strength.test.mjs.
 **Keep:** the full bound, the merge rules, the bitmask read. **Drop:** every
 capped, gated and merge-less variant. The guard is a coin flip -- it is proved
 identical at the fixpoint and buys 4% locally, nothing measurable live.
+
+### pass: #308 ship sweep: rung 2 shipped vs rung 1, started 2026-09-03 17:47:03
+- fixture-9x9-cap12-seed10 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung1.txt) | 8500ms | 4000ms | 0.47 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed11 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung1.txt) | 4300ms | 4200ms | 0.98 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung1.txt) after-logical | 3700ms | 3700ms | 1.00 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed13 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung1.txt) | 3700ms | 2600ms | 0.70 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung1.txt) after-logical | 200ms | 300ms | 1.50 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed14 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 3300ms | 6900ms | 2.09 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed16 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) | 2500ms | 1100ms | 0.44 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed17 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung1.txt) | 4900ms | 5300ms | 1.08 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed18 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung1.txt) | 5900ms | 6100ms | 1.03 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung1.txt) after-logical | 5900ms | 5900ms | 1.00 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed20 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung1.txt) | 7100ms | 5100ms | 0.72 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed3 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung1.txt) | 6200ms | 2300ms | 0.37 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed4 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 3600ms | 5900ms | 1.64 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed5 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) | 5500ms | 3500ms | 0.64 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung1.txt) after-logical | 5800ms | 5900ms | 1.02 | FAIL |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed8 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) | 3400ms | 4200ms | 1.24 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed9 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung1.txt) | 8400ms | 4900ms | 0.58 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung1.txt) after-logical | 8400ms | 4800ms | 0.57 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap9-seed1 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung1.txt) | 3700ms | 1800ms | 0.49 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung1.txt) after-logical | 2000ms | 2300ms | 1.15 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed10 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung1.txt) | 6800ms | 3600ms | 0.53 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung1.txt) after-logical | 100ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap9-seed18 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung1.txt) | 6700ms | 7300ms | 1.09 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung1.txt) after-logical | 4000ms | 4400ms | 1.10 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed20 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung1.txt) | 4700ms | 2400ms | 0.51 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap9-seed3 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2000ms | 2700ms | 1.35 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 3100ms | 4000ms | 1.29 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed5 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) | 5200ms | 200ms | 0.04 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) after-logical | 1300ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+### pass: #308 ship sweep: rung 2 shipped vs rung 1 finished 2026-09-03 18:25:23
+
+### pass: #308 ship sweep: rung 2 shipped vs vendored baseline, started 2026-09-03 18:25:23
+- fixture-9x9-cap12-seed10 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-base.txt) | 24500ms | 4200ms | 0.17 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-base.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed11 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-base.txt) | 24400ms | 4500ms | 0.18 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-base.txt) after-logical | 21900ms | 3900ms | 0.18 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed13 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-base.txt) | 17800ms | 2800ms | 0.16 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-base.txt) after-logical | 800ms | 300ms | 0.38 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed14 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-base.txt) | 24200ms | 6900ms | 0.29 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-base.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed16 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-base.txt) | 21400ms | 1100ms | 0.05 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-base.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed17 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-base.txt) | 23800ms | 5500ms | 0.23 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-base.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed18 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-base.txt) | 25500ms | 6200ms | 0.24 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-base.txt) after-logical | 23800ms | 6200ms | 0.26 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed20 vs base:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-base.txt) | 27800ms | 5400ms | 0.19 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-base.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+
+## #308 ship: what the owner picked, and what was cut
+
+Decision after the ablation above: ship rung 2 whole -- the component bound,
+the merge rules that repair its strength hole, and the bitmask read. Cut:
+
+- **The guard is deleted.** It was built, proved sound, and asserted identical
+  at the fixpoint, and it skipped 9-13% of the bound's seeds and none of its
+  floods -- 1.03x on the local bench, nothing separable in the app. A gate that
+  guards nothing is code to read at 3am. Its identical-fixpoint assertion is
+  kept, re-anchored to the shipped component at `ac20771`, as the seam #312
+  works against.
+- **The full re-sweep is cut short.** #312 (rung 2.5, bound-cost
+  optimizations, fixpoint-identical) re-times all 19 fixtures right after this
+  ticket, so the vs-baseline pass was stopped at 8 of 19 rather than produce
+  rows that were stale on arrival. The vs-rung-1 pass finished, 19 of 19. The
+  README's timing record is marked interim and names #312 as its successor.
