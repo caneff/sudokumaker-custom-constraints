@@ -103,6 +103,6 @@ The app opens `PUZZLE_LINK.txt` and reaches a verdict on it: **unique**.
 **cannot rank anything** — 100 ms cold and 0 ms after logical is the app
 reporting that the puzzle falls over immediately, and a component change moves
 neither number. The frozen fixture set that ranks a fillomino component now
-exists (#307, five boards, 28-35 givens, the baseline's own rows recorded);
+exists (#307, 19 boards, 28-35 givens, the baseline's own rows recorded);
 the rung-by-rung timing table against them lands with #308/#309. See
 `docs/research/fillomino-baseline/README.md`.

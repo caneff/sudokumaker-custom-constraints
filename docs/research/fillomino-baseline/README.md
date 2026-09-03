@@ -100,21 +100,18 @@ recorded number. Every row below is the log-free variant.
 ## Fixtures (#307)
 
 The frozen fixture set every later speed and strength claim measures against,
-per #283's resolved recipe. **These boards never change.**
+per #283's resolved recipe, widened by an owner follow-up to #307 that
+overrides the ticket's "four or five" with every board above a slowness
+cutoff. **These boards never change.**
 
 **Method.** 20 seeds per digit range (`examples/fillomino/generate.py
 sample`), each grown to a full 9x9 grid, all 81 cells started as givens, then
 stripped greedily under **this directory's baseline component
 (`FillominoComponentNoLog.js`, the log-free variant) driving the live app**
 via `examples/_shared/app-strip.mjs` -- our own component was not in the app
-at any point during the strip. Each stripped board was timed one cold rep;
-the five slowest across both ranges (two 9x9-digits-1-9, three
-9x9-digits-1-12) were kept. Every kept clue set was then proved to have
-exactly one solution by the CP-SAT model
-(`examples/fillomino/generate.py unique`) -- a timeout would not have counted
-as a verdict, but none of the five timed out; each proved unique on the
-first attempt. Full batch log:
-`examples/fillomino/PROGRESS.md` (40 boards, no strip failures).
+at any point during the strip. Each stripped board was timed one cold rep.
+Full batch log: `examples/fillomino/PROGRESS.md` (40 boards, no strip
+failures, no app-strip timeouts).
 
 A 9x9-digits-1-12 board ships explicit `minDigit`/`maxDigit` on its puzzle
 doc (`build_link.py --cap`, #293); stripping it needed the on-screen digit
@@ -122,34 +119,95 @@ pad for givens 10-12, since SudokuMaker has no keyboard hotkey past 9 --
 see `docs/real-app-timing.md`'s `app-strip.mjs` section for the pad-paging
 bug that turned up and was fixed doing this.
 
+**The cutoff: cold >= 20000 ms.** Sorting all 40 boards' one-cold-rep times
+finds one clear gap: the ninth-slowest 9x9-digits-1-9 board reads 11100 ms,
+then the next board up reads 21000 ms -- a **9900 ms gap**, the widest gap
+anywhere in the 40-board distribution by more than 3x (the next-widest gap,
+between 6900 ms and 10000 ms, is 3100 ms). Every board on the far side of
+that gap reads 21000-30200 ms; every board on the near side reads at most
+11100 ms. 20000 ms sits in the gap, so the cutoff is not sensitive to its
+exact placement -- 15000 or 25000 would keep the same 19 boards. Below the
+gap, boards read anywhere from 100 ms to 11100 ms with no comparable
+separation, so the cutoff does not extend further down.
+
+19 of the 40 boards clear the cutoff (6 of 20 on 9x9-digits-1-9, 13 of 20 on
+9x9-digits-1-12 -- the wider digit range produces disproportionately more
+slow boards, matching #283's expectation that digit range is the axis that
+makes the rules' walk budget grow). Every one was proved to have exactly one
+solution by the CP-SAT model (`examples/fillomino/generate.py unique`) -- a
+timeout would not have counted as a verdict and the board would have been
+dropped, but none of the 19 timed out; each proved unique on the first
+attempt, verified twice independently (once during the freeze, once again
+against the committed files afterward).
+
 **The fixtures.** `fixtures/<name>.json` is the frozen instance
 (`{"grid": [...], "clues": [[r, c], ...], "cap": N}`); `fixtures/<name>.txt`
-is the built link (log-free baseline component, same board).
+is the built link (log-free baseline component, same board). 19 fixtures,
+both digit ranges represented (6 on 9x9-digits-1-9, 13 on
+9x9-digits-1-12):
 
 | Fixture | Board | Givens |
 | --- | --- | --- |
 | `fixture-9x9-cap9-seed18` | 9x9, digits 1-9 | 28 |
+| `fixture-9x9-cap9-seed1` | 9x9, digits 1-9 | 29 |
+| `fixture-9x9-cap9-seed3` | 9x9, digits 1-9 | 29 |
+| `fixture-9x9-cap9-seed5` | 9x9, digits 1-9 | 30 |
+| `fixture-9x9-cap9-seed20` | 9x9, digits 1-9 | 30 |
 | `fixture-9x9-cap9-seed10` | 9x9, digits 1-9 | 32 |
-| `fixture-9x9-cap12-seed5` | 9x9, digits 1-12 | 35 |
+| `fixture-9x9-cap12-seed16` | 9x9, digits 1-12 | 28 |
+| `fixture-9x9-cap12-seed17` | 9x9, digits 1-12 | 28 |
 | `fixture-9x9-cap12-seed18` | 9x9, digits 1-12 | 29 |
+| `fixture-9x9-cap12-seed11` | 9x9, digits 1-12 | 30 |
+| `fixture-9x9-cap12-seed13` | 9x9, digits 1-12 | 30 |
+| `fixture-9x9-cap12-seed9` | 9x9, digits 1-12 | 30 |
+| `fixture-9x9-cap12-seed14` | 9x9, digits 1-12 | 32 |
 | `fixture-9x9-cap12-seed8` | 9x9, digits 1-12 | 32 |
+| `fixture-9x9-cap12-seed4` | 9x9, digits 1-12 | 33 |
+| `fixture-9x9-cap12-seed10` | 9x9, digits 1-12 | 34 |
+| `fixture-9x9-cap12-seed20` | 9x9, digits 1-12 | 34 |
+| `fixture-9x9-cap12-seed3` | 9x9, digits 1-12 | 35 |
+| `fixture-9x9-cap12-seed5` | 9x9, digits 1-12 | 35 |
 
-**Minimum-givens headline: 28**, `fixture-9x9-cap9-seed18` -- the fewest
-givens the baseline needs anywhere in the frozen set to still reach a unique
-verdict. This is the baseline's own number, not a claim about our
-component; #310 re-runs the same strip under the shipped component and
-records its own minimum for the strength comparison.
+**Minimum-givens headline: 28** -- a three-way tie, `fixture-9x9-cap9-seed18`
+(digits 1-9) and `fixture-9x9-cap12-seed16`/`fixture-9x9-cap12-seed17`
+(digits 1-12) -- the fewest givens the baseline needs anywhere in the frozen
+set to still reach a unique verdict. This is the baseline's own number, not
+a claim about our component; #310 re-runs the same strip under the shipped
+component and records its own minimum for the strength comparison. Widening
+the set from 5 to 19 fixtures did not move this number -- the original
+5-fixture set already contained the digits-1-9 half of the tie.
 
 **Baseline timing, log-free variant, 3 reps each, non-deterministic solve
 off:**
 
 | Date | App version | Board | Cold | After logical |
 | --- | --- | --- | --- | --- |
-| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed18 (28 givens) | 26400 ms | 15400 ms |
 | 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed10 (32 givens) | 24700 ms | 200 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed5 (30 givens) | 25200 ms | 3500 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed20 (30 givens) | 21300 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed3 (29 givens) | 24400 ms | 31100 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed1 (29 givens) | 23600 ms | 17000 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap9-seed18 (28 givens) | 26400 ms | 15400 ms |
 | 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed5 (35 givens) | 29300 ms | 30200 ms |
-| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed18 (29 givens) | 25500 ms | 25000 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed3 (35 givens) | 28100 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed20 (34 givens) | 27500 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed10 (34 givens) | 25400 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed4 (33 givens) | 28000 ms | 0 ms |
 | 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed8 (32 givens) | 29400 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed14 (32 givens) | 25900 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed9 (30 givens) | 29100 ms | 28800 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed11 (30 givens) | 24200 ms | 23200 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed13 (30 givens) | 18700 ms | 800 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed18 (29 givens) | 25500 ms | 25000 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed17 (28 givens) | 24600 ms | 0 ms |
+| 2026-09-02 | v2026.08.14-d47fc4b | fixture-9x9-cap12-seed16 (28 givens) | 22700 ms | 0 ms |
+
+(`fixture-9x9-cap12-seed13`'s final cold row, 18700 ms, reads under the
+20000 ms selection cutoff -- expected: the cutoff was applied to the earlier
+one-cold-rep batch measurement, 21000 ms for this board, and a 3-rep median
+against a fresh browser session naturally lands a little differently. It
+stays in the set: the cutoff selects boards, it is not itself a per-fixture
+pass bar.)
 
 Time a fixture again with `just time`'s manual steps (`docs/real-app-timing.md`)
 against `fixtures/<name>.txt` and `FillominoComponentNoLog.js` -- there is no

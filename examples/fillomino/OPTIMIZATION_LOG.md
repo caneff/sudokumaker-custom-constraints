@@ -10,7 +10,7 @@ measurement of it.** The shipped 6x6 board is the vendored baseline's own
 board, which the baseline's README already records as unable to rank
 anything: 100 ms cold, 0 ms after logical. The frozen fixture set that can
 rank a fillomino component now exists (#307,
-`docs/research/fillomino-baseline/README.md` — five boards, 28-35 givens,
+`docs/research/fillomino-baseline/README.md` — 19 boards, 28-35 givens,
 each proved unique) with the baseline's own rows recorded there. Rung 2
 (#308) and rung 3 (#309) each merge with this component's own rows against
 those fixtures, against the baseline and against the rung before them.
