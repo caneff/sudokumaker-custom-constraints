@@ -1,14 +1,14 @@
-// Strength gate for FillominoComponent.update, half one: on any state, the
-// component never keeps a candidate the vendored baseline removed. Soundness
+// Strength gate for FillominoComponent.update, both halves: on any state the
+// component never keeps a candidate the vendored baseline removed (half one),
+// and on some state it removes one the baseline keeps (half two). Soundness
 // (never remove a true value) lives in soundness-harness.mjs; this file checks
 // the other direction, against a real reference.
 //
 //   node examples/fillomino/update-strength.test.mjs
 //
 // The reference is the community catalog's fillomino constraint, vendored
-// verbatim at docs/research/fillomino-baseline/ (#281). Half two of the gate
-// -- more candidates removed on some state -- binds from rung 2, the growth
-// test (#303, #308), and is not asserted here.
+// verbatim at docs/research/fillomino-baseline/ (#281). Half two binds from
+// rung 2, the growth test (#303, #308).
 //
 // The rules read placed digits and walk regions, so a state drawn at random is
 // contradictory and prunes nothing worth comparing. States are drawn around a
@@ -92,24 +92,48 @@ const quiet = fn => {
 
 let states = 0
 let weaker = 0
+let stronger = 0
 for (const [name, truth] of [['shipped', shipped], ['varied', varied]]) {
   let fixtureWeaker = 0
+  let fixtureStronger = 0
   for (let rep = 0; rep < REPS; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, truth[c]))
     const w = quiet(() => compareStrength(cur, ref, apply, start))
     if (w === null) continue
+    // Half two, the same comparison read the other way round: the candidates
+    // the baseline keeps and we remove.
+    const st = quiet(() => compareStrength(ref, cur, apply, start))
     states++
     fixtureWeaker += w.length
+    fixtureStronger += st.length
     if (w.length > 0 && fixtureWeaker <= 5) console.log(name, 'weaker at', w[0])
   }
-  console.log('fillomino', name, 'fixture:', REPS, 'states,', fixtureWeaker, 'weaker cells')
+  console.log('fillomino', name, 'fixture:', REPS, 'states,', fixtureWeaker, 'weaker cells,', fixtureStronger, 'stronger cells')
   weaker += fixtureWeaker
+  stronger += fixtureStronger
 }
-console.log('fillomino never-weaker:', states, 'states,', weaker, 'weaker cells')
+console.log('fillomino strength gate:', states, 'states,', weaker, 'weaker cells,', stronger, 'stronger cells')
 // Every state keeps a real solution, so no state may die: a dead one would
 // mean a version emptied a cell the solution needs, or called stop on a live
 // branch.
 assert.strictEqual(states, 2 * REPS, 'a state built around a solution must never die')
 assert.strictEqual(weaker, 0)
+// Half two: rung 2 out-deduces the baseline, it does not merely match it
+// (#303, #308). The count alone does not separate the rungs -- rung 1 already
+// removed candidates the baseline keeps on this fuzz (7352 cells over the 600
+// states, against rung 2's 21084). The directed demo below is what only the
+// growth test passes.
+assert.ok(stronger > 0, 'the component must remove a candidate the baseline keeps on some state')
+
+// The silent-region win, directed (transfer doc §6). No cell is placed, so
+// every baseline rule is idle -- they all start from a placed island. r0c0's
+// two neighbours drop 6, which leaves r0c0 as the only cell around it that
+// allows 6: one cell for a region of six. The growth test drops 6 from r0c0;
+// the baseline keeps it.
+const NO_SIX = [1, 2, 3, 4, 5]
+const silentStart = new Map(CELLS.map(c => [c, c === 1 || c === 6 ? NO_SIX : [1, 2, 3, 4, 5, 6]]))
+const silentWin = quiet(() => compareStrength(ref, cur, apply, silentStart))
+assert.deepStrictEqual(silentWin, [{ cell: 0, digit: 6 }], 'the clue-less region deduction the baseline misses')
+console.log('fillomino silent-region demo: baseline keeps 6 at r0c0, the growth test drops it')
 console.log('PASS')

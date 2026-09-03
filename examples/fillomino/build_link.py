@@ -37,9 +37,16 @@ RULE = (
 
 
 def build(component_path, puzzle_path):
+    """The puzzle spec's `cap` key, when it has one, ships explicit
+    minDigit/maxDigit (1..cap) on the puzzle doc so a region can run past the
+    board side (#293) -- the frozen fixture set (#307) has 9x9 boards with
+    digits 1-12. Without the key the doc carries neither, and a board plays
+    digits 1..side as it always did."""
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     clues = {tuple(p) for p in spec["clues"]}
     n = len(spec["grid"])
+    cap = spec.get("cap")
+    hi = cap if cap is not None else n
     # a cell holds a value only when it is a clue: a non-given value ships as
     # an entered digit and the recipient opens a board with digits typed in
     cells = [
@@ -55,7 +62,8 @@ def build(component_path, puzzle_path):
             "type": "custom",
             "width": n,
             "height": n,
-            "comment": RULE.format(hi=n),
+            **({"minDigit": 1, "maxDigit": cap} if cap is not None else {}),
+            "comment": RULE.format(hi=hi),
             "cells": cells,
             "constraints": [
                 # the built-in "Given digits" constraint every frame carries;

@@ -118,6 +118,15 @@ if (!(doorCell.size === 1 && doorCell.has(4))) { console.log('fillomino door: th
 const merge = once(shipped, c => (c === 0 || c === 2 ? [2] : ALL))
 if (merge.getCandidates(1).has(2)) { console.log('fillomino merge overflow: a door joining two islands kept the digit'); bad++ }
 
+// ---- Growth test (transfer doc §6): the silent-region win. No cell on the
+// board is placed, so every rung-1 rule is idle -- they all start from a
+// placed island. r0c0 keeps every digit; its two neighbours drop 6. The cells
+// that allow 6 around r0c0 are r0c0 alone, one cell for a region of six, so
+// r0c0 cannot hold 6. ----
+const NO_SIX = ALL.filter(d => d !== 6)
+const silent = once(shipped, c => (c === 1 || c === 6 ? NO_SIX : ALL))
+if (silent.getCandidates(0).has(6)) { console.log('fillomino growth test: a clue-less region kept an unreachable digit'); bad++ }
+
 // ---- validate (transfer doc §9): the leaf check. Every same-digit component
 // of a full grid must hold as many cells as its digit. ----
 function judge (truth) {

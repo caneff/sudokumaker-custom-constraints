@@ -28,11 +28,46 @@
 //!             that cell holds k; and a door that touches islands of k adding
 //!             up past k cells cannot hold k.
 //!
+//! Rung 2, the growth test (§6), at the scope the clock allowed:
+//!   Merge:          at a DOOR, M is the door plus every island of the digit
+//!                   it touches. If the door held k they would all be one
+//!                   region.
+//!   Merge overflow: |M| > k, so the door does not hold k.
+//!   Merge starve:   the 0-1 walk out of M with budget k - |M| covers the
+//!                   whole region, so a walk under k cells means no such
+//!                   region exists and the door does not hold k.
+//!   Component bound: once per digit, the cells that allow k split into
+//!                   orthogonally connected components; a k-region lies inside
+//!                   one of them, so every cell of a component under k cells
+//!                   loses k. This is the only rule that reaches a SILENT
+//!                   REGION -- a region with no placed cell in it -- because
+//!                   every other rule starts from an island.
+//!
+//! Scope, and why it is not the whole board. #308's rung 2 asks for the growth
+//! test at FULL scope: the merge rules per (open cell, candidate digit) pair,
+//! every open cell. That was built and timed first, and the clock refused it --
+//! against rung 1 it ran 1.0x to 4.9x on the frozen fixtures, worst on the
+//! digits-1-12 boards. #308's named fallback is this: frontier-only scope (the
+//! doors) plus the per-digit component bound. It keeps the silent-region win,
+//! since the component bound needs no placed cell, and it costs one flood per
+//! digit instead of one bounded walk per (cell, digit) pair. The measured rows
+//! are in this example's README.
+//!
+//! Merge force -- "a walk of exactly k cells IS the region, so every open cell
+//! it covers holds k" -- is NOT here. The transfer doc's §6 box states it, but
+//! it is unsound whenever the walk starts at an open cell: the walk's budget
+//! k - |M| already assumes the cell holds k, so the conclusion is conditional
+//! on the very thing under test. The smallest counterexample is k = 1, where M
+//! is the cell alone, the walk covers exactly one cell, and the rule would
+//! place a 1 in every open cell that still allows one. Rung 1's force is the
+//! sound reading of the same shape: its walk starts from a PLACED island, so
+//! the region is known to exist.
+//!
 //! validate: one flood over a full grid; every same-digit component's cell
 //! count must equal its digit.
 //!
 //! Rule statements and soundness arguments: docs/research/
-//! fillomino-isofill-transfer.md, sections 0-3 and 9.
+//! fillomino-isofill-transfer.md, sections 0-3, 6 and 9.
 
 function getAffectedCells (cells) {
   return cells
@@ -240,10 +275,24 @@ function * update (instance, puzzle) {
       }
     }
 
-    // Merge overflow (§3): a door and every island of k it touches all land in
-    // one region, so a door whose merge runs past k cells cannot hold k.
+    // The growth test at a door (§6). The merged set M is the door plus every
+    // island of k it touches: if the door held k, Lemma A puts them all in one
+    // region.
     for (const x of doors) {
-      if (placedFlood(instance, puzzle, x, digit, digit, merge) > digit) {
+      const m = placedFlood(instance, puzzle, x, digit, digit, merge)
+
+      // Merge overflow (§3, §6): M alone is already wider than the region it
+      // would be, so the door cannot hold k.
+      if (m > digit) {
+        yield puzzle.removeCandidateFromCell(digit, cells[x])
+        continue
+      }
+
+      // Merge starve (§6): the region would be a connected k-cell set holding
+      // M and lying inside the cells that allow k, so the 0-1 walk out of M
+      // with budget k - |M| covers it. A walk under k cells means no such
+      // region exists, so the door does not hold k.
+      if (walk(instance, puzzle, merge, m, digit, digit - m).size < digit) {
         yield puzzle.removeCandidateFromCell(digit, cells[x])
       }
     }
@@ -255,6 +304,48 @@ function * update (instance, puzzle) {
       yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(otherDigits(instance, digit)), cells[live[0]])
     }
   }
+
+  // The component bound (§6(i)), once per digit. Let A(k) be the cells that
+  // allow k -- open cells with k among their candidates, plus cells already
+  // holding k. Every k-region is connected and lies inside A(k), so it lies
+  // inside one orthogonally connected component of A(k), and a component of
+  // fewer than k cells cannot hold one. This is the only rule that reaches a
+  // SILENT REGION, a region with no placed cell in it: every rule above starts
+  // from an island.
+  for (let digit = helpers.digits.minDigit; digit <= helpers.digits.maxDigit; digit++) {
+    const stamp = ++instance.stamp
+    for (let seed = 0; seed < cells.length; seed++) {
+      if (mask[seed] === stamp || !allows(puzzle, cells[seed], digit)) continue
+      // one whole component of A(k). It is walked to the end even once it is
+      // wide enough: stopping early would leave its far cells unstamped, and
+      // the next seed would read one of them as a component of its own.
+      mask[seed] = stamp
+      members[0] = seed
+      let head = 0
+      let len = 1
+      while (head < len) {
+        for (const nb of nbrs[members[head++]]) {
+          if (mask[nb] !== stamp && allows(puzzle, cells[nb], digit)) {
+            mask[nb] = stamp
+            members[len++] = nb
+          }
+        }
+      }
+      if (len >= digit) continue
+      for (let i = 0; i < len; i++) {
+        // A short component holding a placed k is a dead branch, not a prune:
+        // that island can never reach k cells. Emptying the placed cell is how
+        // the solver reads it.
+        yield puzzle.removeCandidateFromCell(digit, cells[members[i]])
+      }
+    }
+  }
+}
+
+// A cell allows `digit` when it already holds it, or is open and still lists
+// it -- the set A(k) of the component bound (§6).
+function allows (puzzle, cell, digit) {
+  return puzzle.hasValue(cell) ? puzzle.getValue(cell) === digit : puzzle.getCandidates(cell).has(digit)
 }
 
 // The digits other than `digit`, cached per digit. The digit range only reads
