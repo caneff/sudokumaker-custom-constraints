@@ -345,7 +345,9 @@ function * update (instance, puzzle) {
 // A cell allows `digit` when it already holds it, or is open and still lists
 // it -- the set A(k) of the component bound (§6).
 function allows (puzzle, cell, digit) {
-  return puzzle.hasValue(cell) ? puzzle.getValue(cell) === digit : puzzle.getCandidates(cell).has(digit)
+  // getCandidatesBitMask, not getCandidates: the latter allocates a fresh
+  // DigitSet per call, and the bound runs this once per (cell, digit) pair.
+  return puzzle.hasValue(cell) ? puzzle.getValue(cell) === digit : (puzzle.getCandidatesBitMask(cell) & (1 << digit)) !== 0
 }
 
 // The digits other than `digit`, cached per digit. The digit range only reads

@@ -258,3 +258,154 @@ CP-SAT, no timeout. Final 3-rep timing rows and the frozen files are in
   two-row rule: SHIP
 ### pass: rung 2 vs base finished 2026-09-03 13:23:56
 ## #308 sweep COMPLETE 2026-09-03 13:23:56
+
+### pass: guard probe, 3 worst vs rung 1, started 2026-09-03 14:06:03
+- fixture-9x9-cap12-seed14 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 4200ms | 10800ms | 2.57 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed4 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 4900ms | 8800ms | 1.80 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed3 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2700ms | 3700ms | 1.37 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 4000ms | 5500ms | 1.38 | FAIL |
+  two-row rule: NO SHIP
+### pass: guard probe, 3 worst vs rung 1 finished 2026-09-03 14:12:33
+
+### pass: guard + bitmask allows probe, 3 worst vs rung 1, started 2026-09-03 14:13:27
+- fixture-9x9-cap12-seed14 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 4400ms | 9200ms | 2.09 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed4 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 4600ms | 7400ms | 1.61 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed3 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2800ms | 3500ms | 1.25 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 4300ms | 5200ms | 1.21 | FAIL |
+  two-row rule: NO SHIP
+### pass: guard + bitmask allows probe, 3 worst vs rung 1 finished 2026-09-03 14:19:53
+
+### #308 follow-up: the conditional component bound -- probe verdict
+
+The guard is built and green (soundness 0 violations, strength gate both
+halves, guarded and unguarded settle on the same candidates over 200 states),
+but it does not buy the time back. Measured skip rate on states fuzzed around
+the 19 frozen grids: 9-13% of the bound's seeds are skipped, and the flooded
+cell count is unchanged -- a skipped seed almost always sits in a component
+that some unsafe seed floods anyway. A local guarded-vs-unguarded bench over
+all 19 fixture grids reads 1.03x (no change), and the three worst fixtures
+re-timed in the live app confirm it:
+
+| Fixture | rung 2 (#308) | + guard | + guard + bitmask `allows` |
+| --- | --- | --- | --- |
+| 9x9-cap12-seed14 cold | 2.13x | 2.57x | 2.09x |
+| 9x9-cap12-seed4 cold | 1.89x | 1.80x | 1.61x |
+| 9x9-cap9-seed3 cold | 1.52x | 1.37x | 1.25x |
+| 9x9-cap9-seed3 after-logical | 1.32x | 1.38x | 1.21x |
+
+All three still NO SHIP. The full 19-fixture sweep was not run: the target
+(every fixture SHIP) is unreachable from here, so the sweep would only spend
+the clock to restate it. Owner asked to stop and ask with the numbers rather
+than commit.
+
+### pass: ablation: bound capped at digit 6 vs rung 1, started 2026-09-03 14:49:25
+- fixture-9x9-cap12-seed14 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) | 4700ms | 5900ms | 1.26 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+- fixture-9x9-cap12-seed4 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) | 5400ms | 6000ms | 1.11 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+### pass: ablation: bound capped at digit 6 vs rung 1 finished 2026-09-03 14:53:39
+
+### pass: ablation: bound capped at 6, third worst plus two winners, started 2026-09-03 14:53:53
+- fixture-9x9-cap9-seed3 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) | 2900ms | 3900ms | 1.34 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung1.txt) after-logical | 4400ms | 6200ms | 1.41 | FAIL |
+  two-row rule: NO SHIP
+- fixture-9x9-cap9-seed5 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) | 6800ms | 6300ms | 0.93 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) after-logical | 1800ms | 1300ms | 0.72 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed16 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) | 3500ms | 3900ms | 1.11 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+### pass: ablation: bound capped at 6, third worst plus two winners finished 2026-09-03 15:00:26
+
+### pass: ablation: full bound + guard + bitmask, two winners, started 2026-09-03 15:00:42
+- fixture-9x9-cap9-seed5 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) | 6600ms | 200ms | 0.03 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung1.txt) after-logical | 1800ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+- fixture-9x9-cap12-seed16 vs rung1:
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) | 3400ms | 1400ms | 0.41 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung1.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+### pass: ablation: full bound + guard + bitmask, two winners finished 2026-09-03 15:04:21
+
+## #308 follow-up: rung-2 ablation (owner option 3)
+
+Floor is rung 1 as committed (4e20a24). Every variant carries the bitmask
+`allows` micro-opt (`getCandidatesBitMask`, no DigitSet allocation per read).
+Value is measured as candidates the variant removes and rung 1 keeps, at a
+fixpoint, on two fuzzes: the strength test's 600 6x6 states, and 760 states
+fuzzed around the 19 frozen 9x9 grids. "Prunes lost" is the same comparison
+the other way -- candidates rung 1 removes and the variant keeps. Local bench
+is component-only wall time over the 19 grids, 120 states each; it overstates
+the live ratio because it excludes the app's own solver.
+
+| Variant | extra prunes 6x6 / 9x9 | lost | seams | local | live cold vs rung 1 |
+| --- | --- | --- | --- | --- | --- |
+| rung 1 (floor) | 0 / 0 | 0 | pass | 1.00x | 1.00x |
+| A frontier growth test, no bound | 0 / 0 | 0 | **silent-region assert fails** | 1.79x | not timed |
+| B bound <= 2 | 777 / 2802 | 0 | **silent-region assert fails** | 1.87x | not timed |
+| B bound <= 4 | 3785 / 13127 | 0 | **silent-region assert fails** | 2.16x | not timed |
+| B bound <= 6 | 13732 / 31313 | 0 | pass | 2.39x | 1.26 / 1.11 / 1.34 / 0.93 / 1.11 |
+| B bound <= 8 | 13732 / 53236 | 0 | pass | 2.59x | not timed (dominated) |
+| C bound only when open >= 0.25 | 13504 / 95167 | 0 | **changes the fixpoint (228)** | 2.95x | out |
+| C bound only when open >= 0.50 | 9546 / 90744 | 0 | **changes the fixpoint (4186)** | 2.82x | out |
+| D bound, merge rules dropped | 13225 / 94582 | 1175 | **113 weaker than the baseline** | 2.04x | out |
+| **rung 2 full + guard + bitmask** | **13732 / 95191** | **0** | **pass** | **2.97x** | **2.09 / 1.61 / 1.25 / 0.03 / 0.41** |
+
+Live column order: cap12-seed14, cap12-seed4, cap9-seed3 (the three worst),
+cap9-seed5, cap12-seed16 (two winners). The guard measured on its own: 2.97x
+with it, 3.09x without, on the local bench; 2.04x vs 2.22x once the merge
+rules are dropped; no separable live effect. Its identical-fixpoint assertion
+is in update-strength.test.mjs.
+
+### What the ablation says
+
+**The parts are not separable.**
+
+- **The frontier growth test adds nothing on its own.** Variant A removes
+  exactly rung 1's 7352 candidates against the vendored baseline -- zero extra,
+  on 1360 fuzzed states across both board sizes -- for 1.79x the component's
+  time. Every extra prune rung 2 makes comes from the component bound.
+- **But it cannot be dropped either.** Variant D (bound, merge rules dropped)
+  goes 113 cells WEAKER than the vendored baseline and fails the strength
+  gate's half one. The merge rules add no prune of their own; they repair a
+  hole the bound opens. The rule set is not monotone -- a bound prune can wipe
+  out the last door and suppress rung 1's one-door force -- and this is a real
+  fixpoint difference, not the harness's 20-pass cap (400 passes: same 700).
+- **Capping the bound by digit is a bad trade.** The bound's value rises with
+  the digit -- prunes by digit on the 9x9 fuzz peak at 9 and stay high through
+  12 (`{1:300, 2:3174, 3:4597, 4:6283, 5:8734, 6:9581, 7:10966, 8:10721,
+  9:13425, 10:9626, 11:8501, 12:9283}`), the opposite of the guess that small
+  digits carry the silent-region wins. Capping at 6 does shrink the worst
+  losses (2.09x -> 1.26x, 1.61x -> 1.11x) but it throws the wins away:
+  cap9-seed5 0.03x -> 0.93x, cap12-seed16 0.41x -> 1.11x, a win turned into a
+  loss. Read across the set that is worse, not better.
+- **The open-fraction gate is out on its own terms.** It changes the fixpoint
+  (228 candidates at 0.25, 4186 at 0.50), which is the bar the owner set.
+- **The bitmask read is free and worth keeping** wherever the bound ships:
+  2.13x -> 2.09x, 1.89x -> 1.61x, 1.52x -> 1.25x on the three worst.
+
+**Keep:** the full bound, the merge rules, the bitmask read. **Drop:** every
+capped, gated and merge-less variant. The guard is a coin flip -- it is proved
+identical at the fixpoint and buys 4% locally, nothing measurable live.
