@@ -88,6 +88,13 @@ function setParams (instance, cells) {
   instance.members = new Int16Array(cells.length)
   instance.merge = new Int16Array(cells.length)
   instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
+  // The component bound's rows. `code` is this call's allowed-digit bitmask
+  // per cell, `prev` the one the last bound pass finished on, and `seeds` the
+  // cells the bound has to re-flood. -1 is no code any cell can carry, so the
+  // first call reads every cell as changed.
+  instance.code = new Int32Array(cells.length)
+  instance.prev = new Int32Array(cells.length).fill(-1)
+  instance.seeds = new Int16Array(cells.length)
   // The digits other than k, per k, for the force yield. Built on first use:
   // the digit range only reads right at update time.
   instance.others = null
@@ -312,10 +319,45 @@ function * update (instance, puzzle) {
   // fewer than k cells cannot hold one. This is the only rule that reaches a
   // SILENT REGION, a region with no placed cell in it: every rule above starts
   // from an island.
+  //
+  // DIRTY COMPONENTS (#312). The bound is the one rule bounded by the board,
+  // so it does not re-flood what cannot have moved. `code[i]` is cell i's
+  // allowed-digit bitmask -- the digit it holds, or its candidates -- read
+  // once per cell per pass rather than once per (cell, digit) pair, and
+  // diffed against `prev`, the row the last completed pass finished on. A
+  // component whose cells and whose bordering cells all read the same code as
+  // last time IS last time's component, and last time's verdict already
+  // stands; so only the cells that changed, and their neighbours, seed a
+  // flood. On the first pass `prev` is all -1 and every cell seeds one.
+  //
+  // The diff, not a dirty flag, is what makes this safe under BACKTRACKING.
+  // The solver gives no backtrack signal, so a flag set on our own prunes
+  // would go stale the moment the search restores a candidate; comparing this
+  // pass's codes against the last pass's cannot. `prev` is written only after
+  // the last yield, so a pass the solver abandons half-way leaves the older
+  // snapshot in place and the next pass reads a superset of what moved.
+  const { code, prev, seeds } = instance
+  const seedStamp = ++instance.stamp
+  let nSeeds = 0
+  for (let i = 0; i < cells.length; i++) {
+    const c = puzzle.hasValue(cells[i]) ? 1 << puzzle.getValue(cells[i]) : puzzle.getCandidatesBitMask(cells[i])
+    code[i] = c
+    if (c === prev[i]) continue
+    // a changed cell can only merge or split the components of its own closed
+    // neighbourhood, so those are the cells that have to seed again
+    if (mask[i] !== seedStamp) { mask[i] = seedStamp; seeds[nSeeds++] = i }
+    for (const nb of nbrs[i]) {
+      if (mask[nb] !== seedStamp) { mask[nb] = seedStamp; seeds[nSeeds++] = nb }
+    }
+  }
+  if (nSeeds === 0) return
+
   for (let digit = helpers.digits.minDigit; digit <= helpers.digits.maxDigit; digit++) {
+    const bit = 1 << digit
     const stamp = ++instance.stamp
-    for (let seed = 0; seed < cells.length; seed++) {
-      if (mask[seed] === stamp || !allows(puzzle, cells[seed], digit)) continue
+    for (let s = 0; s < nSeeds; s++) {
+      const seed = seeds[s]
+      if (mask[seed] === stamp || (code[seed] & bit) === 0) continue
       // one whole component of A(k). It is walked to the end even once it is
       // wide enough: stopping early would leave its far cells unstamped, and
       // the next seed would read one of them as a component of its own.
@@ -325,7 +367,7 @@ function * update (instance, puzzle) {
       let len = 1
       while (head < len) {
         for (const nb of nbrs[members[head++]]) {
-          if (mask[nb] !== stamp && allows(puzzle, cells[nb], digit)) {
+          if (mask[nb] !== stamp && (code[nb] & bit) !== 0) {
             mask[nb] = stamp
             members[len++] = nb
           }
@@ -336,18 +378,12 @@ function * update (instance, puzzle) {
         // A short component holding a placed k is a dead branch, not a prune:
         // that island can never reach k cells. Emptying the placed cell is how
         // the solver reads it.
+        code[members[i]] &= ~bit
         yield puzzle.removeCandidateFromCell(digit, cells[members[i]])
       }
     }
   }
-}
-
-// A cell allows `digit` when it already holds it, or is open and still lists
-// it -- the set A(k) of the component bound (§6).
-function allows (puzzle, cell, digit) {
-  // getCandidatesBitMask, not getCandidates: the latter allocates a fresh
-  // DigitSet per call, and the bound runs this once per (cell, digit) pair.
-  return puzzle.hasValue(cell) ? puzzle.getValue(cell) === digit : (puzzle.getCandidatesBitMask(cell) & (1 << digit)) !== 0
+  prev.set(code)
 }
 
 // The digits other than `digit`, cached per digit. The digit range only reads

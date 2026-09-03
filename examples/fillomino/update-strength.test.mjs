@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
@@ -150,6 +150,35 @@ for (const truth of [shipped, varied]) {
 }
 assert.strictEqual(floorStates, 200, 'a state built around a solution must never die')
 console.log('fillomino fixpoint floor:', floorStates, 'states, same fixpoint as', SHIPPED)
+
+// The reused instance (#312). The component bound caches the allowed-digit
+// row it last finished on and re-floods only what moved since -- the one thing
+// the component carries between calls. The solver never says it backtracked,
+// so the same instance sees states that jump around: a candidate it watched
+// disappear comes back. Drive ONE instance over a run of unrelated states and
+// each has to settle exactly where a fresh instance settles it.
+const reused = { cells: CELLS }
+cur.setParams(reused, CELLS)
+const { rnd: brnd } = makeRng(31337)
+const settle = (inst, start) => {
+  const cells = {}; for (const c of CELLS) cells[c] = 0
+  const p = makePuzzle(cells, c => start.get(c))
+  quiet(() => fixpoint(cur, inst, p))
+  return CELLS.map(c => [...p._cand.get(c)].sort((a, b) => a - b).join(''))
+}
+let reuseStates = 0
+for (const truth of [shipped, varied, shipped, varied]) {
+  for (let rep = 0; rep < 100; rep++) {
+    const start = new Map()
+    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, N, truth[c]))
+    const fresh = { cells: CELLS }
+    cur.setParams(fresh, CELLS)
+    assert.deepStrictEqual(settle(reused, start), settle(fresh, start),
+      'a reused instance settled a state somewhere a fresh one does not')
+    reuseStates++
+  }
+}
+console.log('fillomino reused instance:', reuseStates, 'states, same fixpoint as a fresh one')
 
 // The silent-region win, directed (transfer doc §6). No cell is placed, so
 // every baseline rule is idle -- they all start from a placed island. r0c0's
