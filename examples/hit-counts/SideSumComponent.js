@@ -21,22 +21,26 @@ function setParams (instance, cells, target, lines) {
 // is {1..n} -- exactly one hit each, so the side sums to n, which is what the
 // target must be. Asked at solve time, because main code runs before the
 // built-in row/column houses are registered (gotcha 6) and a hit-counts board
-// only loses the 0 off its inner grid once the cage bites during solving. A
-// house never repeats again and a shrinking union never regains a digit, so the
-// answer is cached once it turns true.
+// only loses the 0 off its inner grid once the cage bites during solving. The
+// answer is never cached: the app shares one component object across every
+// search node, so a gate latched open deep in a branch stays open after the
+// backtrack to a parent state whose perpendiculars have regained a 0 (#336).
 // The digit-set test is the same one HitCountsComponent's lineKind makes: the
 // app pastes each component as its own segment, so the two cannot share code.
 function gateOpen (instance, puzzle) {
-  if (instance.gateOpen) return true
   const { cells, target, lines } = instance
   if (!lines || lines.length !== cells.length || target !== lines.length) return false
+  // The repeats answer is structural -- a house is registered once and a
+  // backtrack cannot un-register it -- so it is cached once every line is one.
+  if (!instance.noRepeats) {
+    for (const line of lines) if (puzzle.getCellsCanHaveRepeats(line)) return false
+    instance.noRepeats = true
+  }
   for (const line of lines) {
-    if (puzzle.getCellsCanHaveRepeats(line)) return false
     let mask = 0
     for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
     if (mask !== (1 << (line.length + 1)) - 2) return false // bits 1..n set, bit 0 clear
   }
-  instance.gateOpen = true
   return true
 }
 

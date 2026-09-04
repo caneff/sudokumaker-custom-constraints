@@ -327,6 +327,27 @@ Array.from(joint.update(wrong.inst, wrong.p))
 const wrongSetOk = heldOnWrongSet && !wrong.p.getCandidates(A).has(3)
 console.log('{0..n-1} full house re-test:', wrongSetOk ? 'OK' : `FAIL (held ${heldOnWrongSet})`)
 
+// ---- one instance across a backtrack: no cached fact may latch (#336) ----
+// The app shares one component object across every search node, so a fact
+// written on `instance` deep in a branch is still there when the search returns
+// to the parent state -- where a union that was {1..n} has regained digits.
+// n = 4 here and the true line is (1,2,3,9): clue A is 3 = n - 1, legal because
+// the line is not a permutation of 1..4. Latch `oneToN` in the deep state and
+// the no-n-1 rule takes that true value out of the parent.
+const LATCH = [0, 1, 2, 3]
+const lTruth = { [A]: 3, [B]: 0, 0: 1, 1: 2, 2: 3, 3: 9 }
+const latchState = fill => makePuzzle(lTruth, c => (c === A || c === B ? [0, 1, 2, 3, 4] : fill), { kind: 'fullHouse', digitCount: 9 })
+function latchProbe (component, params) {
+  const inst = {}
+  component.setParams(inst, ...params)
+  Array.from(component.update(inst, latchState([1, 2, 3, 4]))) // deep node: the union is exactly {1..4}
+  return violates(component, inst, latchState([1, 2, 3, 4, 5, 6, 7, 8, 9]), lTruth) // the parent it backtracks to
+}
+const latchJoint = latchProbe(joint, [A, B, LATCH])
+const latchLine = latchProbe(mod, [A, LATCH])
+const latchOk = latchJoint === null && latchLine === null
+console.log('backtrack re-test:', latchOk ? 'OK' : `FAIL (joint ${JSON.stringify(latchJoint)}, line ${JSON.stringify(latchLine)})`)
+
 // ---- validate gates on the same fact ----
 // A clue of n - 1 is illegal only on a full house of {1..n}. On a bare line it
 // is a legal state and validate must accept it.
@@ -522,13 +543,35 @@ const sideBare = fuzzSide('side-sum, bare perpendiculars      ', {
   iters: 20000
 })
 
+// ---- side-sum: one instance across a backtrack (#336) ----
+// The gate is not cached, for the reason the line gate is not: the app shares
+// one component object across every search node, so a gate latched open deep in
+// a branch is still open in the parent state the search returns to -- where the
+// perpendiculars have regained their 0 and the side need not sum to N at all.
+const sideLatchInst = {}
+sideMod.setParams(sideLatchInst, SIDE, N, PERP)
+function sideSumState (vals, fill, clueSeed) {
+  const truth = {}
+  for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
+  return { truth, p: makePuzzle(truth, (c, v) => (c >= 1000 ? fill(v) : clueSeed(c, v)), { kind: 'fullHouse', digitCount: 9 }) }
+}
+const deepSide = sideSumState(composition(), v => [v], (c, v) => [v]) // perpendiculars pinned to 1..9: the gate opens
+Array.from(sideMod.update(sideLatchInst, deepSide.p))
+// The parent: a 0 live on every perpendicular, so the side need not sum to N --
+// and it does not, summing to 11. Eight clues are pinned to 1, so a gate still
+// open forces the ninth to 1 and takes its true 3 away.
+const backSide = sideSumState([3, 1, 1, 1, 1, 1, 1, 1, 1], v => [0, v], (c, v) => (c === SIDE[0] ? [0, 3] : [v]))
+const sideLatchBad = violates(sideMod, sideLatchInst, backSide.p, backSide.truth)
+console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
+
 const ok = full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
   lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
   gBad === 0 && exBad === 0 && permBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
   gFired > 0 && exFired > 0 && permFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
-  retestOk && wrongSetOk && validateOk && sideGateOk && sideValidateOk &&
+  retestOk && wrongSetOk && latchOk && sideLatchBad === null && validateOk && sideGateOk && sideValidateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

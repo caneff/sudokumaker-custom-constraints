@@ -408,6 +408,21 @@ fixpoint(mod, liveZeroInst, withZero)
 const opensAfterZeroGoes = total(withZero) < afterZeroGone
 console.log('0 live on the first update:', shutWhileZeroLive ? 'gate shut' : 'GATE OPEN',
   '/ after the 0 goes:', opensAfterZeroGoes ? 'gate opens' : 'STAYS SHUT')
+
+// One instance across a backtrack (#336). The app shares the component object
+// across every search node, so a gate cached open deep in a branch is still
+// open after the search returns to a parent state where the line has regained
+// its 0. Same zero-based board as above, judged by an instance that saw a
+// {1..9} line first.
+const latchInst = {}
+mod.setParams(latchInst, CA, CB, zeroLine)
+const deepOpen = makePuzzle(liveTruth, (c, v) => (c === CA || c === CB ? [v] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), zeroOpts)
+fixpoint(mod, latchInst, deepOpen) // a {1..9} line: the gate opens here
+const backTruth = { [CA]: 9, [CB]: 1 }
+for (const i of zeroLine) backTruth[i] = i
+const backP = makePuzzle(backTruth, (c, v) => (c === CA || c === CB ? unclued : [v]), zeroOpts)
+const lineLatchBad = violates(mod, latchInst, backP, backTruth)
+console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(lineLatchBad)}`)
 installGlobals(1, N)
 
 // ---------------------------------------------------------------------------
@@ -467,11 +482,35 @@ const sideFull = fuzzSide('side component, full house', 'fullHouse', 5000)
 const sideBare = fuzzSide('side component, bare      ', 'bare', 5000)
 installGlobals(1, N)
 
+// The side gate across a backtrack (#336), same shape. Deep node: every line
+// holds {1..5}, so the gate opens. Parent: a six-digit board where each line
+// can still hold {1..6}, so two lines can each start with their own tallest
+// building and two clues are legally 1 -- rows 0 and 1 below both read 1. A
+// latched gate pins the side's single 1 on the first clue and takes the true
+// 1 off the second.
+installGlobals(1, 6)
+const sideRows = [[6, 1, 2, 3, 4], [5, 1, 2, 3, 4], [4, 6, 1, 2, 3], [3, 6, 1, 2, 4], [2, 6, 1, 3, 4]]
+const sideClues = Array.from({ length: S }, (_, r) => SIDE_CLUE + r)
+const sideLines = Array.from({ length: S }, (_, r) => Array.from({ length: S }, (_, c) => r * S + c))
+const sideTruth = {}
+for (let r = 0; r < S; r++) {
+  sideTruth[sideClues[r]] = visible(sideRows[r])
+  for (let c = 0; c < S; c++) sideTruth[sideLines[r][c]] = sideRows[r][c]
+}
+const sideState = fill => makePuzzle(sideTruth, (c, v) => (c === sideClues[0] ? [1] : c >= SIDE_CLUE ? [1, 2, 3, 4, 5, 6] : fill), { kind: 'fullHouse', digitCount: 6 })
+const sideLatchInst = {}
+sideMod.setParams(sideLatchInst, sideClues, sideLines)
+fixpoint(sideMod, sideLatchInst, sideState([1, 2, 3, 4, 5])) // deep node: the gate opens here
+const sideLatchBad = violates(sideMod, sideLatchInst, sideState([1, 2, 3, 4, 5, 6]), sideTruth)
+console.log('side gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
+installGlobals(1, N)
+
 const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
   oneSidedBad === 0 && oneSidedSilent === 0 && oneSidedValidateBad === 0 &&
   oneSidedExactBad === 0 && oneSidedExactRuns > 0 &&
   bareRemovals === 0 && bareRepeats > 0 &&
   zeroRemovals === 0 && zeroValidates && shutWhileZeroLive && opensAfterZeroGoes &&
+  lineLatchBad === null && sideLatchBad === null &&
   sideFull.bad === 0 && sideFull.fired > 0 && sideBare.fired === 0
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

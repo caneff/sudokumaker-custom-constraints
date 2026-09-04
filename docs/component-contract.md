@@ -117,6 +117,16 @@ Two consequences:
   the pruning is gone. Have the sweep report whether it stopped and write the
   memo only when it did not (#316, #329).
 
+- **Never cache a fact derived from candidates.** A gate that reads live
+  candidates — "the line's union is exactly {1..n}" — is true of one search
+  node, not of the solve. Latch it and it stays true after the backtrack to a
+  parent state where the union has regained digits, and the rule behind it
+  fires on a line it does not hold for: unsound, and silently so (#336). Only a
+  fact geometry fixes may be cached, `getCellsCanHaveRepeats` being the one we
+  rely on — houses are registered once and a backtrack cannot un-register one.
+  A memo keyed on the state itself (`instance.sig`) is the other safe shape: it
+  describes the state it was written for, so a match is a genuine repeat.
+
 ## Local vs global
 
 - A **local** constraint gives the author group-drawing tools. The main code
