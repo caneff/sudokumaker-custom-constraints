@@ -8,8 +8,10 @@ do see the rules text and the component source embedded in the link blob.
 violations, never-weaker floor, lint, link grammar, and the two checks below.
 The criteria after them are the part the gate does not test.
 
-`examples/_shared/check_layout.py` decodes every shipped `PUZZLE_LINK*.txt`
-and checks:
+`examples/_shared/check_layout.py` decodes every committed link in an example
+— the shipped `PUZZLE_LINK*.txt` boards and any other link `.txt` beside them
+(fillomino's frozen timing fixtures and hunt records), sniffed by content — and
+checks:
 
 - **The link opens clean.** Every non-given cell is `{}` — no solution
   digits, no hidden clues stored as entered values. A miss here ships a

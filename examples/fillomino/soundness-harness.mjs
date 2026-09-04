@@ -1,0 +1,177 @@
+// Soundness fuzz for the fillomino component. Soundness = a component never
+// removes a cell's TRUE value. We seed random partial states in which every
+// cell still allows its true value, run the component to a fixpoint, and check
+// the true value survived.
+//
+//   node examples/fillomino/soundness-harness.mjs
+//
+// Two fuzz fixtures:
+//   shipped — the grid of gen.json, the board the example ships (size follows
+//             whatever gen.json holds).
+//   varied  — a second, fixed 6x6 grid, a different mix of region sizes.
+// The directed checks below run on their own fixed 6x6 grid (`directed`),
+// independent of gen.json — they hardcode cell indices and a 1-6 digit range
+// tied to that grid's specific region layout, not to whatever ships.
+
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import { readFileSync } from 'fs'
+import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const { load } = makeIo(HERE)
+const { rnd, pick } = makeRng()
+
+const mod = load('FillominoComponent.js', ['setParams', 'update', 'validate'])
+
+const gridOf = rows => {
+  const n = rows.length
+  const truth = {}
+  rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
+  return { truth, n }
+}
+
+// shipped — the grid of gen.json, the board the example ships.
+const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
+// varied — a second valid solution: many 1s, 2s and 3s and one 4-region.
+const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
+
+// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
+function seeder (ALL) {
+  return (c, v) => {
+    const mode = pick(['pin', 'full', 'subset'])
+    if (mode === 'pin') return [v]
+    if (mode === 'full') return ALL
+    const s = new Set([v])
+    for (const d of ALL) if (rnd() < 0.5) s.add(d)
+    return [...s]
+  }
+}
+
+function run (truth, seed, CELLS) {
+  const p = makePuzzle(truth, seed)
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  return { p, v: violates(mod, inst, p, truth) }
+}
+
+// Run update once (one call is enough for a directed check) and return the puzzle.
+function once (truth, seed, CELLS) {
+  const p = makePuzzle(truth, seed)
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  Array.from(mod.update(inst, p))
+  return p
+}
+
+let bad = 0
+
+// ---- Fuzz: true values survive, on both fixtures ----
+const FUZZ = Number(process.env.FUZZ) || 20000
+for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
+  installGlobals(1, n)
+  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const ALL = Array.from({ length: n }, (_, d) => d + 1)
+  const seed = seeder(ALL)
+  let fails = 0
+  for (let iter = 0; iter < FUZZ; iter++) {
+    const { v } = run(truth, seed, CELLS)
+    if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
+  }
+  console.log('fillomino', name, `fixture: ${FUZZ} tests,`, fails, 'violations')
+  bad += fails
+}
+
+// ---- Directed checks below: their own fixed 6x6 grid, not gen.json ----
+const N = 6
+installGlobals(1, N)
+const CELLS = Array.from({ length: N * N }, (_, i) => i)
+const ALL = Array.from({ length: N }, (_, d) => d + 1)
+const { truth: directed } = gridOf(['554444', '553221', '353352', '335552', '225144', '133344'])
+const once6 = (seed) => once(directed, seed, CELLS)
+const empty = p => CELLS.some(c => p.getCandidates(c).size === 0)
+
+// ---- Seal (transfer doc §1): r5c0 holds 1, an island of one cell, so it is a
+// finished region. Both its orthogonal neighbours lose the candidate 1. ----
+const seal = once6(c => (c === 30 ? [1] : ALL))
+const sealOk = ![24, 31].some(c => seal.getCandidates(c).has(1))
+if (!sealOk) { console.log('fillomino seal: r5c0 did not seal its border'); bad++ }
+
+// ---- Overflow (transfer doc §1): r0c0 and r0c1 both hold 1, one island of
+// two cells for a region of one. A dead branch: a cell is emptied so the
+// solver sees it. ----
+const overflow = once6(c => (c === 0 || c === 1 ? [1] : ALL))
+if (!empty(overflow)) { console.log('fillomino overflow: a 2-cell island of 1 was not killed'); bad++ }
+
+// ---- Starve (transfer doc §3, reading b): r0c0 holds 5, and both its
+// neighbours hold another digit. The walk out of that island covers one cell,
+// under the five its region needs, so the branch is dead. ----
+const starve = once6(c => (c === 0 ? [5] : c === 1 ? [1] : c === 6 ? [2] : ALL))
+if (starve.getCandidates(0).size !== 0) { console.log('fillomino starve: a boxed-in 5 was not killed'); bad++ }
+
+// ---- Force (transfer doc §2): r0c0 holds 2 and r0c1 holds 3, so the walk out
+// of the 2 reaches r1c0 and nothing more. Two cells for a region of two: the
+// walk IS the region, so r1c0 holds 2. ----
+const force = once6(c => (c === 0 ? [2] : c === 1 ? [3] : ALL))
+const forced = force.getCandidates(6)
+if (!(forced.size === 1 && forced.has(2))) { console.log('fillomino force: a walk of exactly 2 did not place its digit'); bad++ }
+
+// ---- One door (transfer doc §3): r0c0 holds 4 and r0c1 holds 1, so r1c0 is
+// the only open cell beside that island still allowing 4. The region has to
+// grow, and that is the only way out, so r1c0 holds 4. The walk does not
+// settle this one: it runs well past four cells. ----
+const door = once6(c => (c === 0 ? [4] : c === 1 ? [1] : ALL))
+const doorCell = door.getCandidates(6)
+if (!(doorCell.size === 1 && doorCell.has(4))) { console.log('fillomino door: the only way out of an island was not forced'); bad++ }
+
+// ---- Merge overflow (transfer doc §3): r0c0 and r0c2 both hold 2, two
+// islands of one cell. r0c1 touches both, so a 2 there would make one region
+// of three cells for a digit of two. ----
+const merge = once6(c => (c === 0 || c === 2 ? [2] : ALL))
+if (merge.getCandidates(1).has(2)) { console.log('fillomino merge overflow: a door joining two islands kept the digit'); bad++ }
+
+// ---- Growth test (transfer doc §6): the silent-region win. No cell on the
+// board is placed, so every rung-1 rule is idle -- they all start from a
+// placed island. r0c0 keeps every digit; its two neighbours drop 6. The cells
+// that allow 6 around r0c0 are r0c0 alone, one cell for a region of six, so
+// r0c0 cannot hold 6. ----
+const NO_SIX = ALL.filter(d => d !== 6)
+const silent = once6(c => (c === 1 || c === 6 ? NO_SIX : ALL))
+if (silent.getCandidates(0).has(6)) { console.log('fillomino growth test: a clue-less region kept an unreachable digit'); bad++ }
+
+// ---- Cut starve (transfer doc §4): r0c0 holds 5, and the only other cells
+// that still allow 5 are r0c1, r1c0, r1c1, r2c1 and r3c1 -- a fork at
+// r0c1/r1c0 that closes again at r1c1 and then runs on alone. The walk out of
+// that island covers six cells for a region of five, so the force is idle;
+// the island has two doors, so the one-door rule is idle too. Drop r1c1 from
+// the walk and it starves at three cells, drop r2c1 and it starves at four:
+// neither can be outside the region, so both hold 5. No other rule here
+// reaches either cell.
+const NO_FIVE = ALL.filter(d => d !== 5)
+const CORRIDOR = new Set([1, 6, 7, 13, 19])
+const cut = once6(c => (c === 0 ? [5] : CORRIDOR.has(c) ? ALL : NO_FIVE))
+for (const c of [7, 13]) {
+  const got = cut.getCandidates(c)
+  if (!(got.size === 1 && got.has(5))) { console.log('fillomino cut starve: cell', c, 'is a cell the region cannot do without and was not placed'); bad++ }
+}
+
+// ---- validate (transfer doc §9): the leaf check. Every same-digit component
+// of a full grid must hold as many cells as its digit. ----
+function judge (truth) {
+  const p = makePuzzle(truth, (c, v) => [v])
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  return mod.validate(inst, p)
+}
+if (!judge(directed)) { console.log('fillomino validate: rejected a real solution'); bad++ }
+// r0c0 turned from 5 to 1: the 1 stands alone and passes, but its 5-region is
+// now four cells for a digit of five.
+if (judge({ ...directed, 0: 1 })) { console.log('fillomino validate: accepted a broken grid'); bad++ }
+// A partly filled grid is not judged yet.
+const partial = makePuzzle(directed, (c, v) => (c === 0 ? ALL : [v]))
+const partialInst = {}
+mod.setParams(partialInst, CELLS)
+if (!mod.validate(partialInst, partial)) { console.log('fillomino validate: judged an unfilled grid'); bad++ }
+
+console.log('fillomino soundness-harness:', bad, 'failures')
+process.exit(bad ? 1 : 0)

@@ -12,12 +12,15 @@
     "standard": "^17.1.2"
   },
   "standard": {
-    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet) and the component constructors main.js references; each component file disables no-unused-vars for its API functions. `ignore` holds only the verbatim original/ comparison files, which must stay exactly as their author wrote them.",
+    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet) and the component constructors main.js references; each component file disables no-unused-vars for its API functions. `ignore` holds verbatim third-party files, which must stay exactly as their author wrote them, plus FillominoComponentNoLog.js -- the same code minus its one console.log line (#307's log-free timing variant), kept in the vendor's own style so the comparison stays apples-to-apples.",
     "ignore": [
       "examples/numbered-rooms/original/main.js",
       "examples/numbered-rooms/original/CustomIndexComponent.js",
       "examples/skyscraper/original/CustomSkyscraperLineComponent.js",
-      "examples/skyscraper/original/main.js"
+      "examples/skyscraper/original/main.js",
+      "docs/research/fillomino-baseline/main.js",
+      "docs/research/fillomino-baseline/FillominoComponent.js",
+      "docs/research/fillomino-baseline/FillominoComponentNoLog.js"
     ],
     "globals": [
       "SudokuDigitSet",
@@ -31,6 +34,7 @@
       "HitCountsJointComponent",
       "HitCountsComponent",
       "IsofillComponent",
+      "FillominoComponent",
       "SideSumComponent",
       "SideHitMatchingComponent",
       "NumberedRoomsComponent",

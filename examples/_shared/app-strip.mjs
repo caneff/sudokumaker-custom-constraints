@@ -55,7 +55,7 @@ import { chromium } from 'playwright'
 import fs from 'fs'
 import path from 'path'
 import { parseReadout } from './app-solve-lib.mjs'
-import { clickText, clickIcon, makeDeterministic, useRecordedApp } from './app-dom.mjs'
+import { clickText, clickIcon, makeDeterministic, useRecordedApp, openWidePad, enterDigit } from './app-dom.mjs'
 import { parseArgs, seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
 
 const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
@@ -142,7 +142,7 @@ async function trySolveWithout (page, row, col) {
 
 async function restoreGiven (page, row, col, digit) {
   await selectCell(page, row, col)
-  await page.keyboard.press(String(digit))
+  await enterDigit(page, digit)
   await page.waitForTimeout(150)
   const restored = await cellFill(page, row, col)
   if (!restored || restored.content !== String(digit) || restored.fill !== '#000') {
@@ -157,6 +157,7 @@ await useRecordedApp(page.context())
 await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
 await page.waitForTimeout(1500)
 await makeDeterministic(page)
+if (grid.some(row => row.some(v => v > 9))) await openWidePad(page)
 
 const order = seededShuffle(startClues, seed)
 const kept = order.slice()

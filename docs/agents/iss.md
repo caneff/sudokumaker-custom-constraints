@@ -22,7 +22,7 @@ not redo the read.
 
 1. **Read the whole doc, not the section that matches your ticket.** The
    isofill pass read `connected_values.md` §4–5 and ticketed three rules
-   (#148, #149, #150). §7.2 (0-1 BFS from the seed blob, strictly stronger
+   (#148, #149, #150). §7.2 (0-1 BFS from the seed island, strictly stronger
    than multi-source reach) and §8 (dirty-region tracking) sat in the same
    file and were found again later by a fresh survey
    (`docs/research/connectivity-techniques.md`).

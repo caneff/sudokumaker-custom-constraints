@@ -1,0 +1,557 @@
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+//! Fillomino. Divide the grid into orthogonally connected regions; every cell
+//! of a region of k cells holds the digit k; two regions of the same size may
+//! not touch orthogonally. No houses. Digits run 1..D, so no region is wider
+//! than D cells.
+//!
+//! One whole-grid component. Every call makes one grid scan that finds the
+//! ISLANDS -- a maximal connected set of placed cells of one digit. Two
+//! adjacent cells holding k lie in one region, so an island of digit k with p
+//! cells sits wholly inside one region, and that region needs k - p more
+//! cells. One thing IS carried between calls: the component bound's
+//! allowed-digit row (#312), and it is carried as a SNAPSHOT to diff against,
+//! never as a dirty flag. The solver gives no backtrack signal, so a flag set
+//! on our own prunes goes stale the moment the search restores a candidate;
+//! comparing this call's codes against the last call's cannot.
+//!
+//! Rung 1 of the ladder, per island:
+//!   Overflow: an island of more than k cells holding k is a dead branch.
+//!   Seal:     an island of k cells holding k is a finished region, so every
+//!             open cell touching it loses k.
+//!   Walk:     a 0-1 walk out of the island. A cell already holding k costs
+//!             nothing to enter, an open cell that still allows k costs one
+//!             step, and the budget is the k - p open cells the region can
+//!             still take. The walk is a superset of the region.
+//!   Starve:   a walk under k cells is a dead branch.
+//!   Force:    a walk of exactly k cells IS the region, so every open cell in
+//!             it holds k.
+//!   Doors:    a door is an open cell beside the island that still allows k.
+//!             The region has to grow through one, so one door left means
+//!             that cell holds k; and a door that touches islands of k adding
+//!             up past k cells cannot hold k.
+//!
+//! Rung 2, the growth test (§6), at the scope the clock allowed:
+//!   Merge:          at a DOOR, M is the door plus every island of the digit
+//!                   it touches. If the door held k they would all be one
+//!                   region.
+//!   Merge overflow: |M| > k, so the door does not hold k.
+//!   Merge starve:   the 0-1 walk out of M with budget k - |M| covers the
+//!                   whole region, so a walk under k cells means no such
+//!                   region exists and the door does not hold k.
+//!   Component bound: once per digit, the cells that allow k split into
+//!                   orthogonally connected components; a k-region lies inside
+//!                   one of them, so every cell of a component under k cells
+//!                   loses k. This is the only rule that reaches a SILENT
+//!                   REGION -- a region with no placed cell in it -- because
+//!                   every other rule starts from an island. Rung 2.5 (#312)
+//!                   re-floods only the components a changed cell touches,
+//!                   which leaves what it deduces byte-identical.
+//!
+//! Rung 3, cut starve (§4):
+//!   Cut starve: an open cell of the walk whose removal starves the walk under
+//!               k cells cannot be outside the region, so it holds k. A
+//!               dominator-tree filter (cutFilter, transferred from ISOFILL
+//!               unchanged) answers most cells at once, and only the rest pay
+//!               for a walk of their own. ISOFILL's strand half does not come
+//!               along: two islands of one digit need not share a region.
+//!
+//! Scope, and why it is not the whole board. #308's rung 2 asks for the growth
+//! test at FULL scope: the merge rules per (open cell, candidate digit) pair,
+//! every open cell. That was built and timed first, and the clock refused it --
+//! against rung 1 it ran 1.0x to 4.9x on the frozen fixtures, worst on the
+//! digits-1-12 boards. #308's named fallback is this: frontier-only scope (the
+//! doors) plus the per-digit component bound. It keeps the silent-region win,
+//! since the component bound needs no placed cell, and it costs one flood per
+//! digit instead of one bounded walk per (cell, digit) pair. The measured rows
+//! are in this example's README.
+//!
+//! Merge force -- "a walk of exactly k cells IS the region, so every open cell
+//! it covers holds k" -- is NOT here. The transfer doc's §6 box states it, but
+//! it is unsound whenever the walk starts at an open cell: the walk's budget
+//! k - |M| already assumes the cell holds k, so the conclusion is conditional
+//! on the very thing under test. The smallest counterexample is k = 1, where M
+//! is the cell alone, the walk covers exactly one cell, and the rule would
+//! place a 1 in every open cell that still allows one. Rung 1's force is the
+//! sound reading of the same shape: its walk starts from a PLACED island, so
+//! the region is known to exist.
+//!
+//! validate: one flood over a full grid; every same-digit component's cell
+//! count must equal its digit.
+//!
+//! Rule statements and soundness arguments: docs/research/
+//! fillomino-isofill-transfer.md, sections 0-3, 6 and 9.
+
+function getAffectedCells (cells) {
+  return cells
+}
+
+function setParams (instance, cells) {
+  instance.cells = cells
+  instance.side = Math.round(Math.sqrt(cells.length))
+  // Neighbour lists once, not per visit: update runs on every search node.
+  instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
+  // Per-call scratch, reused so a call allocates almost nothing. `islandId`
+  // is the scan's cell -> island id row; `mask` is the stamped walk mask,
+  // shared by every walk and flood and never cleared -- the stamp does that.
+  instance.islandId = new Int16Array(cells.length)
+  instance.mask = new Int32Array(cells.length)
+  instance.stamp = 0
+  instance.queue = new Int16Array(cells.length)
+  instance.members = new Int16Array(cells.length)
+  instance.merge = new Int16Array(cells.length)
+  instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
+  // The component bound's rows. `code` is this call's allowed-digit bitmask
+  // per cell, `prev` the one the last bound pass finished on, and `seeds` the
+  // cells the bound has to re-flood. -1 is no code any cell can carry, so the
+  // first call reads every cell as changed.
+  instance.code = new Int32Array(cells.length)
+  instance.prev = new Int32Array(cells.length).fill(-1)
+  instance.seeds = new Int16Array(cells.length)
+  // Cut starve's scratch (#309): the digit's allowed row, the shortest-path
+  // DAG the filter walks, its dominator tree, the subtree counts read off it,
+  // and the per-cell verdict. See cutFilter.
+  instance.allowed = new Uint8Array(cells.length)
+  instance.distStarve = new Int16Array(cells.length)
+  instance.domOrder = new Int16Array(cells.length)
+  instance.idom = new Int16Array(cells.length)
+  instance.ddep = new Int16Array(cells.length)
+  instance.domCount = new Int16Array(cells.length)
+  instance.skip = new Uint8Array(cells.length)
+  // The digits other than k, per k, for the force yield. Built on first use:
+  // the digit range only reads right at update time.
+  instance.others = null
+}
+
+// Orthogonal neighbours by index arithmetic; cells are row-major on a square.
+function neighbours (i, side) {
+  const out = []
+  if (i % side > 0) out.push(i - 1)
+  if (i % side < side - 1) out.push(i + 1)
+  if (i >= side) out.push(i - side)
+  if (i + side < side * side) out.push(i + side)
+  return out
+}
+
+// One grid scan: flood every placed cell into its island. Returns the island
+// list, each entry the digit, one seed cell and the cell count;
+// `instance.islandId[i]` is the island of cell i, or -1 where the cell is open.
+function scan (instance, puzzle) {
+  const { cells, nbrs, islandId, queue } = instance
+  islandId.fill(-1)
+  const islands = []
+  for (let i = 0; i < cells.length; i++) {
+    if (islandId[i] !== -1 || !puzzle.hasValue(cells[i])) continue
+    const digit = puzzle.getValue(cells[i])
+    const id = islands.length
+    islandId[i] = id
+    queue[0] = i
+    let head = 0
+    let len = 1
+    while (head < len) {
+      for (const nb of nbrs[queue[head++]]) {
+        if (islandId[nb] === -1 && puzzle.hasValue(cells[nb]) && puzzle.getValue(cells[nb]) === digit) {
+          islandId[nb] = id
+          queue[len++] = nb
+        }
+      }
+    }
+    islands.push({ digit, seed: i, size: len })
+  }
+  return islands
+}
+
+// Flood from `seed` through the cells that hold `digit`, writing the cells
+// into `out` and returning how many. `seed` itself always joins, open or not.
+// The flood stops once it holds more than `limit` cells: no rule reads a
+// placed set wider than its digit, and stopping keeps the buffer small.
+function placedFlood (instance, puzzle, seed, digit, limit, out) {
+  const { cells, nbrs, mask } = instance
+  const stamp = ++instance.stamp
+  mask[seed] = stamp
+  out[0] = seed
+  let head = 0
+  let len = 1
+  while (head < len && len <= limit) {
+    for (const nb of nbrs[out[head++]]) {
+      if (mask[nb] === stamp) continue
+      if (puzzle.hasValue(cells[nb]) && puzzle.getValue(cells[nb]) === digit) {
+        mask[nb] = stamp
+        out[len++] = nb
+      }
+    }
+  }
+  return len
+}
+
+// A free closure: from `layer[from..len)`, sweep at no cost through the cells
+// that already hold `digit`, appending them to the same layer. The loop
+// re-reads what it appends, so a whole further island joins in one pass.
+// Returns the new length.
+function freeClosure (instance, puzzle, layer, from, len, digit, stamp) {
+  const { cells, nbrs, mask } = instance
+  for (let j = from; j < len; j++) {
+    for (const nb of nbrs[layer[j]]) {
+      if (mask[nb] === stamp) continue
+      if (puzzle.hasValue(cells[nb]) && puzzle.getValue(cells[nb]) === digit) {
+        mask[nb] = stamp
+        layer[len++] = nb
+      }
+    }
+  }
+  return len
+}
+
+// The walk (§0, §3): a 0-1 breadth-first search out of one island. A cell
+// already holding the digit costs nothing to enter, an open cell that still
+// allows it costs one step, and `budget` is the k - p open cells the region
+// can still take. Every cell of the region lies inside the walk, so the walk
+// is a superset of the region -- the direction every rule below needs. Marks
+// visited cells with `instance.mask[i] === stamp` and returns `{ size, stamp }`.
+// It stops once the walk holds more than `digit` cells: no rung-1 rule reads
+// a walk past that.
+function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
+  const { cells, nbrs, mask } = instance
+  const stamp = ++instance.stamp
+  let [frontier, next] = instance.frontier
+  let len = 0
+  for (let i = 0; i < count; i++) { mask[members[i]] = stamp; frontier[len++] = members[i] }
+  let size = len
+
+  for (let step = 0; step < budget && len && size <= digit; step++) {
+    let nextLen = 0
+    // one paid step: into the open cells that still allow the digit
+    for (let f = 0; f < len; f++) {
+      for (const nb of nbrs[frontier[f]]) {
+        if (mask[nb] === stamp || nb === exclude) continue
+        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
+          mask[nb] = stamp
+          next[nextLen++] = nb
+        }
+      }
+    }
+    nextLen = freeClosure(instance, puzzle, next, 0, nextLen, digit, stamp)
+    size += nextLen
+    const swap = frontier
+    frontier = next
+    next = swap
+    len = nextLen
+  }
+  return { size, stamp }
+}
+
+// Breadth-first search from `starts` through `allowed`, no further than
+// `maxDist` steps, and the dominator tree of the shortest-path DAG it builds.
+// A cell y keeps a path of its own length from some start when the removed
+// cell does not dominate y, which is what the cut filter reads. Fills `dist`
+// (-1 where unreached), `domOrder` (the cells in BFS order), `idom` (the
+// dominator, -1 for a cell no other cell dominates) and `ddep` (its depth in
+// that tree); returns how many cells the walk reached. Transferred from
+// ISOFILL unchanged (transfer doc §4): it is a statement about reachability
+// alone and never reads a digit or a region count.
+function domTree (instance, starts, nStarts, maxDist, allowed, dist) {
+  const { nbrs, domOrder, idom, ddep } = instance
+  dist.fill(-1)
+  let len = 0
+  for (let i = 0; i < nStarts; i++) {
+    const s = starts[i]
+    if (dist[s] < 0) { dist[s] = 0; domOrder[len++] = s }
+  }
+  for (let head = 0; head < len; head++) {
+    const u = domOrder[head]
+    if (dist[u] >= maxDist) continue
+    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
+  }
+  // A cell's dominator is the deepest cell dominating all its DAG
+  // predecessors, so fold them pairwise, walking the deeper one up the tree
+  // built so far. A start has no predecessor and no dominator.
+  for (let k = 0; k < len; k++) {
+    const v = domOrder[k]
+    if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
+    let a = -2
+    for (const p of nbrs[v]) {
+      if (!allowed[p] || dist[p] !== dist[v] - 1) continue
+      if (a === -2) { a = p; continue }
+      let b = p
+      while (a !== b) {
+        if (ddep[a] >= ddep[b]) a = idom[a]; else b = idom[b]
+        if (a < 0 || b < 0) { a = -1; b = -1 }
+      }
+    }
+    idom[v] = a
+    ddep[v] = a < 0 ? 1 : ddep[a] + 1
+  }
+  return len
+}
+
+// Roll `domCount` up the dominator tree `domTree` just left behind, so each
+// cell's entry counts itself and everything it dominates. BFS order puts a
+// cell after its dominator, so one backward pass does it.
+function subtreeSums (instance, len) {
+  const { domCount, domOrder, idom } = instance
+  for (let k = len - 1; k >= 0; k--) {
+    const v = domOrder[k]
+    if (idom[v] >= 0) domCount[idom[v]] += domCount[v]
+  }
+}
+
+// The cut filter (#309, ISOFILL's #258): answer cut starve for every open cell
+// of the walk at once, so the cells it clears need no walk of their own.
+//
+// Cut starve asks, of each open cell y in walk(I), whether dropping y leaves
+// the walk under `digit` cells. That is a reachability question on one walk,
+// so one BFS plus its dominator tree bounds it for every y together: a cell z
+// stays reachable at its own distance without y whenever y does not dominate
+// z, so the walk without y keeps at least (cells reached) - (cells y
+// dominates).
+//
+// The BFS here is the UNIT-step one, not the walk's 0-1 one -- a dominator
+// tree needs layers a step apart. Every path costs at least as much in unit
+// steps as in 0-1 steps, so the unit walk is a subset of the 0-1 walk and its
+// count is a lower bound on it. That is the direction the filter needs: the
+// bound only ever CLEARS a cell, and every cell it does not clear falls
+// through to the exact re-walk. ISOFILL's strand half is not here -- transfer
+// doc §4 kills it, since two islands of one digit need not share a region.
+//
+// Writes the verdict into `instance.skip`, 1 where cut is proved false.
+function cutFilter (instance, starts, nStarts, open, allowed, digit, budget) {
+  const { skip, domCount, domOrder, distStarve } = instance
+  const reached = domTree(instance, starts, nStarts, budget, allowed, distStarve)
+  domCount.fill(0)
+  for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
+  subtreeSums(instance, reached)
+  // a cell the walk never reached changes nothing by leaving it
+  for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= digit ? 1 : 0
+}
+
+function * update (instance, puzzle) {
+  const { cells, nbrs, mask, members, merge } = instance
+
+  // `update` yields as it goes, so by the time a later island is reached an
+  // earlier deduction may have placed a digit right beside it. Every rule
+  // below therefore reads the island's live extent, re-flooded from the
+  // scan's seed cell, rather than the extent the scan recorded. A placed cell
+  // never re-opens, so the seed is still placed and still holds the digit.
+  for (const { digit, seed } of scan(instance, puzzle)) {
+    const count = placedFlood(instance, puzzle, seed, digit, digit, members)
+
+    // Overflow (§1): every cell of the island is in one region of k cells, so
+    // an island wider than k cannot be. Kill the branch the way the solver
+    // reads it -- empty a placed cell.
+    if (count > digit) {
+      yield puzzle.removeCandidateFromCell(digit, cells[seed])
+      return
+    }
+
+    // Seal (§1): a full island is a finished region, so nothing beside it may
+    // hold the digit -- that cell would join the region and make it k + 1.
+    if (count === digit) {
+      for (let i = 0; i < count; i++) {
+        for (const nb of nbrs[members[i]]) {
+          if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
+            yield puzzle.removeCandidateFromCell(digit, cells[nb])
+          }
+        }
+      }
+      continue
+    }
+
+    // The walk out of an unfinished island, budget k - p.
+    const { size, stamp } = walk(instance, puzzle, members, count, digit, digit - count)
+
+    // Starve (§3, reading b): the region sits inside the walk and holds k
+    // cells, so a walk under k cells is a dead branch.
+    if (size < digit) {
+      yield puzzle.removeCandidateFromCell(digit, cells[seed])
+      return
+    }
+
+    // Force (§2): the region is inside the walk and both hold k cells, so the
+    // two sets are equal -- every open cell of the walk holds k.
+    if (size === digit) {
+      const others = otherDigits(instance, digit)
+      for (let i = 0; i < cells.length; i++) {
+        if (mask[i] === stamp && !puzzle.hasValue(cells[i])) {
+          yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
+        }
+      }
+      continue
+    }
+
+    // Cut starve (§4), rung 3. The region R sits inside the walk and holds k
+    // cells. Take an open cell y of the walk and run the walk again without
+    // it: if that covers fewer than k cells then R cannot avoid y, since R
+    // would otherwise be a subset of a set under k cells. So y is in R and
+    // holds k. ISOFILL's strand half does not come along -- two islands of one
+    // digit need not share a region (§4).
+    //
+    // Every test below reads ONE snapshot -- this island's extent, this walk,
+    // this allowed row -- so the cuts are collected and yielded together at
+    // the end. Yielding inside the loop would place a k beside the island and
+    // leave every later test, and the door rules further down, reading an
+    // island that is a deduction out of date.
+    const { allowed, skip } = instance
+    for (let i = 0; i < cells.length; i++) {
+      allowed[i] = puzzle.hasValue(cells[i])
+        ? (puzzle.getValue(cells[i]) === digit ? 1 : 0)
+        : (puzzle.getCandidates(cells[i]).has(digit) ? 1 : 0)
+    }
+    const openWalk = []
+    for (let i = 0; i < cells.length; i++) {
+      if (mask[i] === stamp && !puzzle.hasValue(cells[i])) openWalk.push(i)
+    }
+    cutFilter(instance, members, count, openWalk, allowed, digit, digit - count)
+    const cuts = []
+    for (const y of openWalk) {
+      if (skip[y]) continue
+      if (walk(instance, puzzle, members, count, digit, digit - count, y).size < digit) cuts.push(y)
+    }
+    if (cuts.length > 0) {
+      const others = otherDigits(instance, digit)
+      for (const y of cuts) {
+        yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[y])
+      }
+      // the island just grew; the door rules below want a live one, and the
+      // next call re-scans for it
+      continue
+    }
+
+    // The doors: the open cells beside the island that still allow k. The
+    // island is short of its region, so the region grows through a door.
+    const doors = []
+    for (let i = 0; i < count; i++) {
+      for (const nb of nbrs[members[i]]) {
+        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit) && !doors.includes(nb)) {
+          doors.push(nb)
+        }
+      }
+    }
+
+    // The growth test at a door (§6). The merged set M is the door plus every
+    // island of k it touches: if the door held k, Lemma A puts them all in one
+    // region.
+    for (const x of doors) {
+      const m = placedFlood(instance, puzzle, x, digit, digit, merge)
+
+      // Merge overflow (§3, §6): M alone is already wider than the region it
+      // would be, so the door cannot hold k.
+      if (m > digit) {
+        yield puzzle.removeCandidateFromCell(digit, cells[x])
+        continue
+      }
+
+      // Merge starve (§6): the region would be a connected k-cell set holding
+      // M and lying inside the cells that allow k, so the 0-1 walk out of M
+      // with budget k - |M| covers it. A walk under k cells means no such
+      // region exists, so the door does not hold k.
+      if (walk(instance, puzzle, merge, m, digit, digit - m).size < digit) {
+        yield puzzle.removeCandidateFromCell(digit, cells[x])
+      }
+    }
+
+    // One door (§3): the region must take a cell beside the island, and only
+    // one is left that can be it.
+    const live = doors.filter(x => !puzzle.hasValue(cells[x]) && puzzle.getCandidates(cells[x]).has(digit))
+    if (live.length === 1) {
+      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(otherDigits(instance, digit)), cells[live[0]])
+    }
+  }
+
+  // The component bound (§6(i)), once per digit. Let A(k) be the cells that
+  // allow k -- open cells with k among their candidates, plus cells already
+  // holding k. Every k-region is connected and lies inside A(k), so it lies
+  // inside one orthogonally connected component of A(k), and a component of
+  // fewer than k cells cannot hold one. This is the only rule that reaches a
+  // SILENT REGION, a region with no placed cell in it: every rule above starts
+  // from an island.
+  //
+  // DIRTY COMPONENTS (#312). The bound is the one rule bounded by the board,
+  // so it does not re-flood what cannot have moved. `code[i]` is cell i's
+  // allowed-digit bitmask -- the digit it holds, or its candidates -- read
+  // once per cell per pass rather than once per (cell, digit) pair, and
+  // diffed against `prev`, the row the last completed pass finished on. A
+  // component whose cells and whose bordering cells all read the same code as
+  // last time IS last time's component, and last time's verdict already
+  // stands; so only the cells that changed, and their neighbours, seed a
+  // flood. On the first pass `prev` is all -1 and every cell seeds one.
+  //
+  // The diff, not a dirty flag, is what makes this safe under BACKTRACKING.
+  // The solver gives no backtrack signal, so a flag set on our own prunes
+  // would go stale the moment the search restores a candidate; comparing this
+  // pass's codes against the last pass's cannot. `prev` is written only after
+  // the last yield, so a pass the solver abandons half-way leaves the older
+  // snapshot in place and the next pass reads a superset of what moved.
+  const { code, prev, seeds } = instance
+  const seedStamp = ++instance.stamp
+  let nSeeds = 0
+  for (let i = 0; i < cells.length; i++) {
+    const c = puzzle.hasValue(cells[i]) ? 1 << puzzle.getValue(cells[i]) : puzzle.getCandidatesBitMask(cells[i])
+    code[i] = c
+    if (c === prev[i]) continue
+    // a changed cell can only merge or split the components of its own closed
+    // neighbourhood, so those are the cells that have to seed again
+    if (mask[i] !== seedStamp) { mask[i] = seedStamp; seeds[nSeeds++] = i }
+    for (const nb of nbrs[i]) {
+      if (mask[nb] !== seedStamp) { mask[nb] = seedStamp; seeds[nSeeds++] = nb }
+    }
+  }
+  if (nSeeds === 0) return
+
+  for (let digit = helpers.digits.minDigit; digit <= helpers.digits.maxDigit; digit++) {
+    const bit = 1 << digit
+    const stamp = ++instance.stamp
+    for (let s = 0; s < nSeeds; s++) {
+      const seed = seeds[s]
+      if (mask[seed] === stamp || (code[seed] & bit) === 0) continue
+      // one whole component of A(k). It is walked to the end even once it is
+      // wide enough: stopping early would leave its far cells unstamped, and
+      // the next seed would read one of them as a component of its own.
+      mask[seed] = stamp
+      members[0] = seed
+      let head = 0
+      let len = 1
+      while (head < len) {
+        for (const nb of nbrs[members[head++]]) {
+          if (mask[nb] !== stamp && (code[nb] & bit) !== 0) {
+            mask[nb] = stamp
+            members[len++] = nb
+          }
+        }
+      }
+      if (len >= digit) continue
+      for (let i = 0; i < len; i++) {
+        // A short component holding a placed k is a dead branch, not a prune:
+        // that island can never reach k cells. Emptying the placed cell is how
+        // the solver reads it.
+        code[members[i]] &= ~bit
+        yield puzzle.removeCandidateFromCell(digit, cells[members[i]])
+      }
+    }
+  }
+  prev.set(code)
+}
+
+// The digits other than `digit`, cached per digit. The digit range only reads
+// right at update time, so the cache is built on first use.
+function otherDigits (instance, digit) {
+  if (instance.others === null) instance.others = []
+  let out = instance.others[digit]
+  if (out === undefined) {
+    out = []
+    for (let d = helpers.digits.minDigit; d <= helpers.digits.maxDigit; d++) {
+      if (d !== digit) out.push(d)
+    }
+    instance.others[digit] = out
+  }
+  return out
+}
+
+// The leaf check (§9): on a full grid, flood every maximal connected
+// same-digit component; the rule holds exactly when each component's cell
+// count equals its digit. The separation rule needs no check of its own --
+// two regions of size k touching would be one component of at least 2k cells,
+// whose count is not k, so this rejects them already.
+function validate (instance, puzzle) {
+  const { cells } = instance
+  if (!puzzle.getCellsAreFilled(cells)) return true
+  return scan(instance, puzzle).every(({ digit, size }) => size === digit)
+}

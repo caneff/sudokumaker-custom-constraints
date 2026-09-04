@@ -37,7 +37,7 @@
 //!          matching uses loses that candidate (Régin). This rule weighs
 //!          every digit at once: a wrong region for one digit starves the
 //!          others' budgets.
-//! validate is the exact leaf check: each digit one connected blob of N.
+//! validate is the exact leaf check: each digit one connected island of N.
 
 function getAffectedCells (cells) {
   return cells
@@ -629,7 +629,7 @@ function sccs (adj) {
   return comp
 }
 
-// Exact check on a full grid: every digit is one connected blob of `size` cells.
+// Exact check on a full grid: every digit is one connected island of `size` cells.
 function validate (instance, puzzle) {
   const { cells, nbrs } = instance
   if (!puzzle.getCellsAreFilled(cells)) return true

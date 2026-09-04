@@ -25,11 +25,16 @@ export class DigitSet {
   * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
 }
 
-// Set the two globals a component reads. minDigit/maxDigit differ per example
-// (Hit Counts allows a 0 clue, Running Start does not).
+// Set the globals a component reads. minDigit/maxDigit differ per example
+// (Hit Counts allows a 0 clue, Running Start does not). `naming.getCageName`
+// only builds a message string, so the text is free -- a component that
+// yields a stop reads it, nothing asserts on it.
 export function installGlobals (minDigit, maxDigit) {
   globalThis.SudokuDigitSet = DigitSet
-  globalThis.helpers = { digits: { minDigit, maxDigit } }
+  globalThis.helpers = {
+    digits: { minDigit, maxDigit },
+    naming: { getCageName: (name, cells) => `the ${name} at ${cells[0]}` }
+  }
 }
 
 // Bind file reads to the example's own directory. `read` returns a file's text;
@@ -135,7 +140,8 @@ export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
     // time is enough here: every component yields the stop it just built.
     stop: (message = '', cells = []) => { p._stopped = message || 'stopped'; return { message, cells } },
     hasValue: c => cand.get(c).size === 1,
-    getValue: c => [...cand.get(c)][0],
+    // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
+    getValue: c => (cand.get(c).size === 1 ? [...cand.get(c)][0] : undefined),
     // A fresh DigitSet per call, as in the app — mutating it is safe.
     getCandidates: c => DigitSet.from(cand.get(c)),
     getCandidatesBitMask: c => { let m = 0; for (const d of cand.get(c)) m |= 1 << d; return m },
@@ -144,6 +150,22 @@ export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
     // The app takes a DigitSet here and nothing else; a plain array passes in
     // Node and silently removes nothing in the app (a rule went dead that way).
     removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = cand.get(c); for (const d of s) set.delete(d) },
+    // The whole-grid calls a region-building component makes. Neighbours come
+    // from the square the cells form, row-major, the way the app numbers a
+    // custom board.
+    getCellsOrthogonallyAdjacentToCell: c => {
+      const n = cand.size
+      const side = Math.round(Math.sqrt(n))
+      if (side * side !== n) throw new RangeError('orthogonal neighbours need a square board')
+      const out = []
+      if (c % side > 0) out.push(c - 1)
+      if (c % side < side - 1) out.push(c + 1)
+      if (c >= side) out.push(c - side)
+      if (c + side < n) out.push(c + side)
+      return out
+    },
+    removeCandidateFromCells: (d, cs) => { for (const c of cs) cand.get(c).delete(d) },
+    filterCandidatesInCells: (s, cs) => { for (const c of cs) for (const d of cand.get(c)) if (!s.has(d)) cand.get(c).delete(d) },
     getCellsCanHaveRepeats: () => kind === 'bare',
     spec: { digitCount }
   }

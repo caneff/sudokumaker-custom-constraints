@@ -181,6 +181,18 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
+    # fillomino is the second no-local-global-split example: a global
+    # constraint with no drawn groups, so it ships main.js alone and no local
+    # board (#305).
+    fillomino_files = [
+        f
+        for f in REQUIRED
+        if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=fillomino_files, name="fillomino") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
     # a gen*.json with no matching link is unpaired: the naming-follows-the-
     # rename bug this check exists to catch (#294)
     with example(extra_gens=["gen_9x9.json"]) as (root, _):
@@ -344,6 +356,16 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
+    # fillomino is exempt from the rules-prefix check too -- fillomino is not
+    # sudoku, so its rules text must not carry the sudoku sentence (#305)
+    with example(
+        files=fillomino_files,
+        name="fillomino",
+        contents={"PUZZLE_LINK.txt": _link(prefix=False)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
     # a link shipping a component its backend never registers fails: dead
     # weight the recipient reads as part of the rule (#291)
     stale = _link(ships=("FooComponent", "BarComponent"), registers=("FooComponent",))
@@ -414,5 +436,30 @@ if __name__ == "__main__":
         )
         assert result.returncode == 0, result
         assert "ok" in result.stdout, result.stdout
+
+    # a committed link that is NOT a PUZZLE_LINK*.txt -- a frozen timing
+    # fixture, a hunt record -- is still a link, so the share criteria bind it
+    fixture = "timing-fixture-9x9-cap9-seed3-rung25.txt"
+    with example(extra_links=[fixture], contents={fixture: _link(entered=True)}) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert fixture in violations[0], violations
+        assert "entered value" in violations[0], violations
+
+    # ...but the link-NAME grammar does not: a fixture names itself for what it
+    # records, and only PUZZLE_LINK*.txt has a grammar to break
+    with example(extra_links=[fixture]) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # a committed .txt that is not a link at all is left alone -- no decode,
+    # no criteria, no name complaint
+    with example(
+        extra_links=["hunt-cold-times.tsv.txt"],
+        contents={"hunt-cold-times.tsv.txt": "board\tms\ncap9-seed3\t1000\n"},
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
 
     print("ok")

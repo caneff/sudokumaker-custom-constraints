@@ -137,33 +137,60 @@ Use these terms exactly. Do not drift to synonyms.
   half of a same-board pair, which need not live under `original/`. See
   `docs/example-layout.md`.
 
-### Region-building terms (from `examples/isofill/`)
+### Region-building terms (shared by `examples/isofill/` and fillomino)
 
-- **region** — the ten orthogonally connected cells that hold one digit. The
-  thing a region-building constraint discovers.
+ISOFILL fixes every region at ten cells; fillomino lets the digit set the size.
+The terms below are written size-generic, so both constraints use one
+vocabulary. Where a term belongs to only one of them, the entry says so.
+
+- **region** — a maximal orthogonally connected set of cells that hold one
+  digit. The thing a region-building constraint discovers. In ISOFILL every
+  region holds ten cells; in fillomino a region's size equals its digit.
 - **placed cell** — a cell whose only candidate is the digit. **open cell** — a
   cell with more than one candidate. A region is placed cells plus the open
   cells it will take.
-- **blob** — a maximal connected set of placed cells of one digit. A region has
-  one blob when finished; several before.
-- **walk** — the **seed walk**: a 0-1 breadth-first search from a digit's seed
-  cell, where a placed cell costs nothing to enter and an open cell that allows
-  the digit costs one step, with a budget of the open cells the region can
-  still take. The over-approximation of the region that every other rule reads.
-  It drops the digit from every cell it never meets; a walk under ten cells, or
-  one that misses a placed cell, kills the branch.
+- **island** — a maximal connected set of placed cells of one digit. A region
+  has one island when finished; several before. In fillomino an island of digit
+  `k` with `p` cells lies wholly inside one region (adjacent equal digits cannot
+  be separate regions) and that region needs exactly `k - p` more cells.
+- **walk** — a 0-1 breadth-first search from an island, where a placed cell of
+  the digit costs nothing to enter and an open cell that allows the digit costs
+  one step, with a budget of the open cells the region can still take. The
+  over-approximation of the region that every island-indexed rule reads. It
+  drops the digit from every cell it never meets; a walk too small to hold the
+  region kills the branch. ISOFILL calls its version the **seed walk** and
+  starts it at the digit's seed.
 - **cut** — the rule that places the digit in an open cell the region cannot do
-  without. Two tests: **starve** (without the cell the walk holds fewer than
-  ten) and **strand** (without the cell a placed cell is unreachable).
-- **door** — an open cell next to a blob that still allows the digit. One door
-  is the cheap case of cut.
-- **seed** — the digit's lowest-index placed cell, where its walk starts.
-- **silent digit** — a digit with no placed cell. Gets no walk; handled by
-  the connected components of the cells that allow it.
-- **budget** — the rule that matches open cells to digits' remaining slots and
-  kills the branch when no full matching exists.
-- **tour** — a lower bound on region size from the distances between three
-  placed cells.
+  without. Two tests: **starve** (without the cell the walk holds too few) and
+  **strand** (without the cell a placed cell is unreachable). Only starve
+  survives in fillomino: two islands of one digit need not share a region, so
+  nothing may be stranded.
+- **door** — an open cell next to an island that still allows the digit. One
+  door is the cheap case of cut.
+- **seed** (ISOFILL) — the digit's lowest-index placed cell, where its walk
+  starts.
+- **silent digit** (ISOFILL) — a digit with no placed cell. Gets no walk;
+  handled by the connected components of the cells that allow it.
+- **silent region** (fillomino) — a region with no placed cell at all. The
+  component holds no object for one. It is named only by the (open cell,
+  candidate digit) pairs the growth test asks about.
+- **growth test** (fillomino) — the rule with no ISOFILL ancestor, indexed per
+  (open cell, candidate digit) rather than per island. Grow from the cell
+  through cells that still allow the digit; a reach too small to hold the
+  region drops the candidate. It ships at **frontier-only** scope: the open
+  cells asked about are the doors, not every open cell (#308's named fallback,
+  taken because full scope failed the clock), paired with the per-digit
+  **component bound**, which is what reaches a silent region. There is no
+  forcing half. "A reach that stops at exactly the region size forces every
+  cell it covers" is sound only from a *placed* island — that is rung 1's
+  force — and unsound from an open cell, because the walk's budget already
+  assumes the cell holds the digit; `FillominoComponent.js` states the `k = 1`
+  counterexample and does not build the rule.
+- **budget** — the rule that matches open cells to regions' remaining slots and
+  kills the branch when no full matching exists. ISOFILL matches per digit;
+  fillomino matches per island.
+- **tour** (ISOFILL) — a lower bound on region size from the distances between
+  three placed cells.
 
 ## Invariants
 
