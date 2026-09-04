@@ -1,0 +1,7086 @@
+{
+  "formatVersion": "1.6.0",
+  "puzzle": {
+    "name": "Touch grass (class 4, candidate map)",
+    "author": "ChinStrap",
+    "type": "custom",
+    "width": 20,
+    "height": 20,
+    "maxDigit": 6,
+    "cells": [
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 6
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 58
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 54
+      },
+      {
+        "candidates": 110
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 58
+      },
+      {
+        "candidates": 110
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 28
+      },
+      {
+        "candidates": 12
+      },
+      {
+        "candidates": 12
+      },
+      {
+        "candidates": 120
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 28
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 112
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 124
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 124
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 96
+      },
+      {
+        "candidates": 106
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 86
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 54
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 60
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 108
+      },
+      {
+        "candidates": 76
+      },
+      {
+        "candidates": 88
+      },
+      {
+        "candidates": 6
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 124
+      },
+      {
+        "candidates": 124
+      },
+      {
+        "candidates": 108
+      },
+      {
+        "candidates": 62
+      },
+      {
+        "candidates": 10
+      },
+      {
+        "candidates": 28
+      },
+      {
+        "candidates": 24
+      },
+      {
+        "candidates": 98
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 116
+      },
+      {
+        "candidates": 116
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 30
+      },
+      {
+        "candidates": 12
+      },
+      {
+        "candidates": 36
+      },
+      {
+        "candidates": 20
+      },
+      {
+        "candidates": 98
+      },
+      {
+        "candidates": 98
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 86
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 106
+      },
+      {
+        "candidates": 14
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 122
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "candidates": 118
+      },
+      {
+        "candidates": 94
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      }
+    ],
+    "constraints": [
+      {
+        "name": "Red grid",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 7,
+              "y": 5
+            },
+            {
+              "x": 8,
+              "y": 5
+            },
+            {
+              "x": 9,
+              "y": 5
+            },
+            {
+              "x": 10,
+              "y": 5
+            },
+            {
+              "x": 11,
+              "y": 5
+            },
+            {
+              "x": 12,
+              "y": 5
+            },
+            {
+              "x": 13,
+              "y": 5
+            }
+          ],
+          [
+            {
+              "x": 9,
+              "y": 2
+            },
+            {
+              "x": 9,
+              "y": 3
+            },
+            {
+              "x": 9,
+              "y": 4
+            },
+            {
+              "x": 9,
+              "y": 5
+            },
+            {
+              "x": 9,
+              "y": 6
+            },
+            {
+              "x": 9,
+              "y": 7
+            },
+            {
+              "x": 10,
+              "y": 7
+            },
+            {
+              "x": 11,
+              "y": 7
+            },
+            {
+              "x": 11,
+              "y": 6
+            },
+            {
+              "x": 11,
+              "y": 5
+            },
+            {
+              "x": 11,
+              "y": 4
+            },
+            {
+              "x": 11,
+              "y": 3
+            },
+            {
+              "x": 10,
+              "y": 3
+            },
+            {
+              "x": 9,
+              "y": 3
+            }
+          ],
+          [
+            {
+              "x": 9,
+              "y": 3
+            },
+            {
+              "x": 8,
+              "y": 3
+            },
+            {
+              "x": 8,
+              "y": 4
+            },
+            {
+              "x": 8,
+              "y": 5
+            },
+            {
+              "x": 8,
+              "y": 6
+            },
+            {
+              "x": 8,
+              "y": 7
+            },
+            {
+              "x": 9,
+              "y": 7
+            },
+            {
+              "x": 9,
+              "y": 8
+            }
+          ],
+          [
+            {
+              "x": 11,
+              "y": 8
+            },
+            {
+              "x": 11,
+              "y": 7
+            },
+            {
+              "x": 12,
+              "y": 7
+            },
+            {
+              "x": 12,
+              "y": 6
+            },
+            {
+              "x": 12,
+              "y": 5
+            },
+            {
+              "x": 12,
+              "y": 4
+            },
+            {
+              "x": 12,
+              "y": 3
+            },
+            {
+              "x": 11,
+              "y": 3
+            },
+            {
+              "x": 11,
+              "y": 2
+            }
+          ],
+          [
+            {
+              "x": 12,
+              "y": 8
+            },
+            {
+              "x": 12,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 3
+            },
+            {
+              "x": 12,
+              "y": 3
+            },
+            {
+              "x": 12,
+              "y": 2
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 8
+            },
+            {
+              "x": 8,
+              "y": 7
+            },
+            {
+              "x": 7,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 8,
+              "y": 3
+            },
+            {
+              "x": 7,
+              "y": 3
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.02,
+          "color": "#dcc0c0ff"
+        }
+      },
+      {
+        "name": "Red regions",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 10,
+              "y": 8
+            },
+            {
+              "x": 10,
+              "y": 7
+            },
+            {
+              "x": 10,
+              "y": 6
+            },
+            {
+              "x": 11,
+              "y": 6
+            },
+            {
+              "x": 12,
+              "y": 6
+            },
+            {
+              "x": 13,
+              "y": 6
+            }
+          ],
+          [
+            {
+              "x": 7,
+              "y": 6
+            },
+            {
+              "x": 8,
+              "y": 6
+            },
+            {
+              "x": 9,
+              "y": 6
+            },
+            {
+              "x": 10,
+              "y": 6
+            },
+            {
+              "x": 10,
+              "y": 5
+            },
+            {
+              "x": 10,
+              "y": 4
+            },
+            {
+              "x": 10,
+              "y": 3
+            },
+            {
+              "x": 10,
+              "y": 2
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 4
+            },
+            {
+              "x": 12,
+              "y": 4
+            },
+            {
+              "x": 11,
+              "y": 4
+            },
+            {
+              "x": 10,
+              "y": 4
+            },
+            {
+              "x": 9,
+              "y": 4
+            },
+            {
+              "x": 8,
+              "y": 4
+            },
+            {
+              "x": 7,
+              "y": 4
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.06,
+          "color": "#f7a7a7ff"
+        }
+      },
+      {
+        "name": "Blue grid",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 13,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 8
+            },
+            {
+              "x": 13,
+              "y": 9
+            },
+            {
+              "x": 13,
+              "y": 10
+            },
+            {
+              "x": 13,
+              "y": 11
+            },
+            {
+              "x": 13,
+              "y": 12
+            },
+            {
+              "x": 13,
+              "y": 13
+            }
+          ],
+          [
+            {
+              "x": 14,
+              "y": 13
+            },
+            {
+              "x": 14,
+              "y": 12
+            },
+            {
+              "x": 13,
+              "y": 12
+            },
+            {
+              "x": 12,
+              "y": 12
+            }
+          ],
+          [
+            {
+              "x": 16,
+              "y": 13
+            },
+            {
+              "x": 16,
+              "y": 12
+            },
+            {
+              "x": 15,
+              "y": 12
+            },
+            {
+              "x": 14,
+              "y": 12
+            },
+            {
+              "x": 14,
+              "y": 11
+            },
+            {
+              "x": 14,
+              "y": 10
+            },
+            {
+              "x": 13,
+              "y": 10
+            },
+            {
+              "x": 12,
+              "y": 10
+            }
+          ],
+          [
+            {
+              "x": 18,
+              "y": 12
+            },
+            {
+              "x": 17,
+              "y": 12
+            },
+            {
+              "x": 16,
+              "y": 12
+            },
+            {
+              "x": 16,
+              "y": 11
+            },
+            {
+              "x": 16,
+              "y": 10
+            },
+            {
+              "x": 15,
+              "y": 10
+            },
+            {
+              "x": 14,
+              "y": 10
+            },
+            {
+              "x": 14,
+              "y": 9
+            },
+            {
+              "x": 14,
+              "y": 8
+            },
+            {
+              "x": 13,
+              "y": 8
+            },
+            {
+              "x": 12,
+              "y": 8
+            }
+          ],
+          [
+            {
+              "x": 17,
+              "y": 13
+            },
+            {
+              "x": 17,
+              "y": 12
+            },
+            {
+              "x": 17,
+              "y": 11
+            },
+            {
+              "x": 17,
+              "y": 10
+            },
+            {
+              "x": 16,
+              "y": 10
+            },
+            {
+              "x": 16,
+              "y": 9
+            },
+            {
+              "x": 16,
+              "y": 8
+            },
+            {
+              "x": 15,
+              "y": 8
+            },
+            {
+              "x": 14,
+              "y": 8
+            },
+            {
+              "x": 14,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 18,
+              "y": 10
+            },
+            {
+              "x": 17,
+              "y": 10
+            },
+            {
+              "x": 17,
+              "y": 9
+            },
+            {
+              "x": 17,
+              "y": 8
+            },
+            {
+              "x": 16,
+              "y": 8
+            },
+            {
+              "x": 16,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 18,
+              "y": 8
+            },
+            {
+              "x": 17,
+              "y": 8
+            },
+            {
+              "x": 17,
+              "y": 7
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.02,
+          "color": "#e0e2f0ff"
+        }
+      },
+      {
+        "name": "Blue regions",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 12,
+              "y": 9
+            },
+            {
+              "x": 13,
+              "y": 9
+            },
+            {
+              "x": 14,
+              "y": 9
+            },
+            {
+              "x": 15,
+              "y": 9
+            },
+            {
+              "x": 16,
+              "y": 9
+            },
+            {
+              "x": 17,
+              "y": 9
+            },
+            {
+              "x": 18,
+              "y": 9
+            }
+          ],
+          [
+            {
+              "x": 15,
+              "y": 13
+            },
+            {
+              "x": 15,
+              "y": 12
+            },
+            {
+              "x": 15,
+              "y": 11
+            },
+            {
+              "x": 15,
+              "y": 10
+            },
+            {
+              "x": 15,
+              "y": 9
+            },
+            {
+              "x": 15,
+              "y": 8
+            },
+            {
+              "x": 15,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 18,
+              "y": 11
+            },
+            {
+              "x": 17,
+              "y": 11
+            },
+            {
+              "x": 16,
+              "y": 11
+            },
+            {
+              "x": 15,
+              "y": 11
+            },
+            {
+              "x": 14,
+              "y": 11
+            },
+            {
+              "x": 13,
+              "y": 11
+            },
+            {
+              "x": 12,
+              "y": 11
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.06,
+          "color": "#a1a8efff"
+        }
+      },
+      {
+        "name": "Green grid",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 12,
+              "y": 18
+            },
+            {
+              "x": 12,
+              "y": 17
+            },
+            {
+              "x": 13,
+              "y": 17
+            }
+          ],
+          [
+            {
+              "x": 12,
+              "y": 12
+            },
+            {
+              "x": 12,
+              "y": 13
+            },
+            {
+              "x": 12,
+              "y": 14
+            },
+            {
+              "x": 12,
+              "y": 15
+            },
+            {
+              "x": 12,
+              "y": 16
+            },
+            {
+              "x": 12,
+              "y": 17
+            },
+            {
+              "x": 11,
+              "y": 17
+            },
+            {
+              "x": 11,
+              "y": 18
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 13
+            },
+            {
+              "x": 12,
+              "y": 13
+            },
+            {
+              "x": 11,
+              "y": 13
+            },
+            {
+              "x": 11,
+              "y": 14
+            },
+            {
+              "x": 11,
+              "y": 15
+            },
+            {
+              "x": 11,
+              "y": 16
+            },
+            {
+              "x": 11,
+              "y": 17
+            },
+            {
+              "x": 10,
+              "y": 17
+            },
+            {
+              "x": 9,
+              "y": 17
+            },
+            {
+              "x": 9,
+              "y": 18
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 15
+            },
+            {
+              "x": 12,
+              "y": 15
+            },
+            {
+              "x": 11,
+              "y": 15
+            },
+            {
+              "x": 10,
+              "y": 15
+            },
+            {
+              "x": 9,
+              "y": 15
+            },
+            {
+              "x": 9,
+              "y": 16
+            },
+            {
+              "x": 9,
+              "y": 17
+            },
+            {
+              "x": 8,
+              "y": 17
+            },
+            {
+              "x": 8,
+              "y": 18
+            }
+          ],
+          [
+            {
+              "x": 11,
+              "y": 12
+            },
+            {
+              "x": 11,
+              "y": 13
+            },
+            {
+              "x": 10,
+              "y": 13
+            },
+            {
+              "x": 9,
+              "y": 13
+            },
+            {
+              "x": 9,
+              "y": 14
+            },
+            {
+              "x": 9,
+              "y": 15
+            },
+            {
+              "x": 8,
+              "y": 15
+            },
+            {
+              "x": 8,
+              "y": 16
+            },
+            {
+              "x": 8,
+              "y": 17
+            },
+            {
+              "x": 7,
+              "y": 17
+            }
+          ],
+          [
+            {
+              "x": 9,
+              "y": 12
+            },
+            {
+              "x": 9,
+              "y": 13
+            },
+            {
+              "x": 8,
+              "y": 13
+            },
+            {
+              "x": 8,
+              "y": 14
+            },
+            {
+              "x": 8,
+              "y": 15
+            },
+            {
+              "x": 7,
+              "y": 15
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 12
+            },
+            {
+              "x": 8,
+              "y": 13
+            },
+            {
+              "x": 7,
+              "y": 13
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.02,
+          "color": "#dae6d3ff"
+        }
+      },
+      {
+        "name": "Green regions",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 10,
+              "y": 12
+            },
+            {
+              "x": 10,
+              "y": 13
+            },
+            {
+              "x": 10,
+              "y": 14
+            },
+            {
+              "x": 10,
+              "y": 15
+            },
+            {
+              "x": 10,
+              "y": 16
+            },
+            {
+              "x": 10,
+              "y": 17
+            },
+            {
+              "x": 10,
+              "y": 18
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 16
+            },
+            {
+              "x": 12,
+              "y": 16
+            },
+            {
+              "x": 11,
+              "y": 16
+            },
+            {
+              "x": 10,
+              "y": 16
+            },
+            {
+              "x": 9,
+              "y": 16
+            },
+            {
+              "x": 8,
+              "y": 16
+            },
+            {
+              "x": 7,
+              "y": 16
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 14
+            },
+            {
+              "x": 12,
+              "y": 14
+            },
+            {
+              "x": 11,
+              "y": 14
+            },
+            {
+              "x": 10,
+              "y": 14
+            },
+            {
+              "x": 9,
+              "y": 14
+            },
+            {
+              "x": 8,
+              "y": 14
+            },
+            {
+              "x": 7,
+              "y": 14
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.06,
+          "color": "#b1f17bff"
+        }
+      },
+      {
+        "name": "Purple grid",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 3,
+              "y": 7
+            },
+            {
+              "x": 3,
+              "y": 8
+            },
+            {
+              "x": 3,
+              "y": 9
+            },
+            {
+              "x": 3,
+              "y": 10
+            },
+            {
+              "x": 3,
+              "y": 11
+            },
+            {
+              "x": 3,
+              "y": 12
+            },
+            {
+              "x": 3,
+              "y": 13
+            }
+          ],
+          [
+            {
+              "x": 4,
+              "y": 13
+            },
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 3,
+              "y": 12
+            },
+            {
+              "x": 2,
+              "y": 12
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 8
+            },
+            {
+              "x": 3,
+              "y": 8
+            },
+            {
+              "x": 4,
+              "y": 8
+            },
+            {
+              "x": 4,
+              "y": 9
+            },
+            {
+              "x": 4,
+              "y": 10
+            },
+            {
+              "x": 3,
+              "y": 10
+            },
+            {
+              "x": 2,
+              "y": 10
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 8
+            },
+            {
+              "x": 7,
+              "y": 8
+            },
+            {
+              "x": 7,
+              "y": 9
+            },
+            {
+              "x": 7,
+              "y": 10
+            },
+            {
+              "x": 8,
+              "y": 10
+            }
+          ],
+          [
+            {
+              "x": 4,
+              "y": 7
+            },
+            {
+              "x": 4,
+              "y": 8
+            },
+            {
+              "x": 5,
+              "y": 8
+            },
+            {
+              "x": 6,
+              "y": 8
+            },
+            {
+              "x": 7,
+              "y": 8
+            },
+            {
+              "x": 7,
+              "y": 7
+            }
+          ],
+          [
+            {
+              "x": 6,
+              "y": 7
+            },
+            {
+              "x": 6,
+              "y": 8
+            },
+            {
+              "x": 6,
+              "y": 9
+            },
+            {
+              "x": 6,
+              "y": 10
+            },
+            {
+              "x": 5,
+              "y": 10
+            },
+            {
+              "x": 4,
+              "y": 10
+            },
+            {
+              "x": 4,
+              "y": 11
+            },
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 5,
+              "y": 12
+            },
+            {
+              "x": 6,
+              "y": 12
+            },
+            {
+              "x": 6,
+              "y": 11
+            },
+            {
+              "x": 6,
+              "y": 10
+            }
+          ],
+          [
+            {
+              "x": 6,
+              "y": 10
+            },
+            {
+              "x": 7,
+              "y": 10
+            },
+            {
+              "x": 7,
+              "y": 11
+            },
+            {
+              "x": 7,
+              "y": 12
+            },
+            {
+              "x": 6,
+              "y": 12
+            },
+            {
+              "x": 6,
+              "y": 13
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 12
+            },
+            {
+              "x": 7,
+              "y": 12
+            },
+            {
+              "x": 7,
+              "y": 13
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.02,
+          "color": "#e0dae2ff"
+        }
+      },
+      {
+        "name": "Purple regions",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 3,
+              "y": 11
+            },
+            {
+              "x": 4,
+              "y": 11
+            },
+            {
+              "x": 5,
+              "y": 11
+            },
+            {
+              "x": 5,
+              "y": 12
+            },
+            {
+              "x": 5,
+              "y": 13
+            },
+            {
+              "x": 6,
+              "y": 13
+            },
+            {
+              "x": 7,
+              "y": 13
+            },
+            {
+              "x": 8,
+              "y": 13
+            },
+            {
+              "x": 8,
+              "y": 12
+            },
+            {
+              "x": 8,
+              "y": 11
+            },
+            {
+              "x": 7,
+              "y": 11
+            },
+            {
+              "x": 6,
+              "y": 11
+            },
+            {
+              "x": 5,
+              "y": 11
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 11
+            },
+            {
+              "x": 2,
+              "y": 11
+            },
+            {
+              "x": 2,
+              "y": 12
+            },
+            {
+              "x": 2,
+              "y": 13
+            },
+            {
+              "x": 3,
+              "y": 13
+            },
+            {
+              "x": 4,
+              "y": 13
+            },
+            {
+              "x": 5,
+              "y": 13
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11
+            },
+            {
+              "x": 5,
+              "y": 10
+            },
+            {
+              "x": 5,
+              "y": 9
+            },
+            {
+              "x": 6,
+              "y": 9
+            },
+            {
+              "x": 7,
+              "y": 9
+            },
+            {
+              "x": 8,
+              "y": 9
+            },
+            {
+              "x": 8,
+              "y": 10
+            },
+            {
+              "x": 8,
+              "y": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 9
+            },
+            {
+              "x": 8,
+              "y": 8
+            },
+            {
+              "x": 8,
+              "y": 7
+            },
+            {
+              "x": 7,
+              "y": 7
+            },
+            {
+              "x": 6,
+              "y": 7
+            },
+            {
+              "x": 5,
+              "y": 7
+            },
+            {
+              "x": 5,
+              "y": 8
+            },
+            {
+              "x": 5,
+              "y": 9
+            },
+            {
+              "x": 4,
+              "y": 9
+            },
+            {
+              "x": 3,
+              "y": 9
+            },
+            {
+              "x": 2,
+              "y": 9
+            },
+            {
+              "x": 2,
+              "y": 10
+            },
+            {
+              "x": 2,
+              "y": 11
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 9
+            },
+            {
+              "x": 2,
+              "y": 8
+            },
+            {
+              "x": 2,
+              "y": 7
+            },
+            {
+              "x": 3,
+              "y": 7
+            },
+            {
+              "x": 4,
+              "y": 7
+            },
+            {
+              "x": 5,
+              "y": 7
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.06,
+          "color": "#b89fc9ff"
+        }
+      },
+      {
+        "name": "Green outside",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 12.5,
+              "y": 11.5
+            },
+            {
+              "x": 13.5,
+              "y": 11.5
+            },
+            {
+              "x": 13.5,
+              "y": 12.5
+            },
+            {
+              "x": 13.5,
+              "y": 13.5
+            },
+            {
+              "x": 13.5,
+              "y": 14.5
+            },
+            {
+              "x": 13.5,
+              "y": 15.5
+            },
+            {
+              "x": 13.5,
+              "y": 16.5
+            },
+            {
+              "x": 13.5,
+              "y": 17.5
+            },
+            {
+              "x": 13.5,
+              "y": 18.5
+            },
+            {
+              "x": 12.5,
+              "y": 18.5
+            },
+            {
+              "x": 11.5,
+              "y": 18.5
+            },
+            {
+              "x": 10.5,
+              "y": 18.5
+            },
+            {
+              "x": 9.5,
+              "y": 18.5
+            },
+            {
+              "x": 8.5,
+              "y": 18.5
+            },
+            {
+              "x": 7.5,
+              "y": 18.5
+            },
+            {
+              "x": 6.5,
+              "y": 18.5
+            },
+            {
+              "x": 6.5,
+              "y": 17.5
+            },
+            {
+              "x": 6.5,
+              "y": 16.5
+            },
+            {
+              "x": 6.5,
+              "y": 15.5
+            },
+            {
+              "x": 6.5,
+              "y": 14.5
+            },
+            {
+              "x": 6.5,
+              "y": 13.5
+            },
+            {
+              "x": 6.5,
+              "y": 12.5
+            },
+            {
+              "x": 6.5,
+              "y": 11.5
+            },
+            {
+              "x": 7.5,
+              "y": 11.5
+            },
+            {
+              "x": 8.5,
+              "y": 11.5
+            },
+            {
+              "x": 9.5,
+              "y": 11.5
+            },
+            {
+              "x": 10.5,
+              "y": 11.5
+            },
+            {
+              "x": 11.5,
+              "y": 11.5
+            },
+            {
+              "x": 12.5,
+              "y": 11.5
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 1,
+          "color": "#b1f17b88"
+        }
+      },
+      {
+        "name": "Purple outside",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 1.5,
+              "y": 13.5
+            },
+            {
+              "x": 2.5,
+              "y": 13.5
+            },
+            {
+              "x": 3.5,
+              "y": 13.5
+            },
+            {
+              "x": 4.5,
+              "y": 13.5
+            },
+            {
+              "x": 5.5,
+              "y": 13.5
+            },
+            {
+              "x": 6.5,
+              "y": 13.5
+            },
+            {
+              "x": 7.5,
+              "y": 13.5
+            },
+            {
+              "x": 8.5,
+              "y": 13.5
+            },
+            {
+              "x": 8.5,
+              "y": 12.5
+            },
+            {
+              "x": 8.5,
+              "y": 11.5
+            },
+            {
+              "x": 8.5,
+              "y": 10.5
+            },
+            {
+              "x": 8.5,
+              "y": 9.5
+            },
+            {
+              "x": 8.5,
+              "y": 8.5
+            },
+            {
+              "x": 8.5,
+              "y": 7.5
+            },
+            {
+              "x": 8.5,
+              "y": 6.5
+            },
+            {
+              "x": 7.5,
+              "y": 6.5
+            },
+            {
+              "x": 6.5,
+              "y": 6.5
+            },
+            {
+              "x": 5.5,
+              "y": 6.5
+            },
+            {
+              "x": 4.5,
+              "y": 6.5
+            },
+            {
+              "x": 3.5,
+              "y": 6.5
+            },
+            {
+              "x": 2.5,
+              "y": 6.5
+            },
+            {
+              "x": 1.5,
+              "y": 6.5
+            },
+            {
+              "x": 1.5,
+              "y": 7.5
+            },
+            {
+              "x": 1.5,
+              "y": 8.5
+            },
+            {
+              "x": 1.5,
+              "y": 9.5
+            },
+            {
+              "x": 1.5,
+              "y": 10.5
+            },
+            {
+              "x": 1.5,
+              "y": 11.5
+            },
+            {
+              "x": 1.5,
+              "y": 12.5
+            },
+            {
+              "x": 1.5,
+              "y": 13.5
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 1,
+          "color": "#b89fc962"
+        }
+      },
+      {
+        "name": "Blue outside",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 16.5,
+              "y": 6.5
+            },
+            {
+              "x": 17.5,
+              "y": 6.5
+            },
+            {
+              "x": 18.5,
+              "y": 6.5
+            },
+            {
+              "x": 18.5,
+              "y": 7.5
+            },
+            {
+              "x": 18.5,
+              "y": 8.5
+            },
+            {
+              "x": 18.5,
+              "y": 9.5
+            },
+            {
+              "x": 18.5,
+              "y": 10.5
+            },
+            {
+              "x": 18.5,
+              "y": 11.5
+            },
+            {
+              "x": 18.5,
+              "y": 12.5
+            },
+            {
+              "x": 18.5,
+              "y": 13.5
+            },
+            {
+              "x": 17.5,
+              "y": 13.5
+            },
+            {
+              "x": 16.5,
+              "y": 13.5
+            },
+            {
+              "x": 15.5,
+              "y": 13.5
+            },
+            {
+              "x": 14.5,
+              "y": 13.5
+            },
+            {
+              "x": 13.5,
+              "y": 13.5
+            },
+            {
+              "x": 12.5,
+              "y": 13.5
+            },
+            {
+              "x": 11.5,
+              "y": 13.5
+            },
+            {
+              "x": 11.5,
+              "y": 12.5
+            },
+            {
+              "x": 11.5,
+              "y": 11.5
+            },
+            {
+              "x": 11.5,
+              "y": 10.5
+            },
+            {
+              "x": 11.5,
+              "y": 9.5
+            },
+            {
+              "x": 11.5,
+              "y": 8.5
+            },
+            {
+              "x": 11.5,
+              "y": 7.5
+            },
+            {
+              "x": 11.5,
+              "y": 6.5
+            },
+            {
+              "x": 12.5,
+              "y": 6.5
+            },
+            {
+              "x": 13.5,
+              "y": 6.5
+            },
+            {
+              "x": 14.5,
+              "y": 6.5
+            },
+            {
+              "x": 15.5,
+              "y": 6.5
+            },
+            {
+              "x": 16.5,
+              "y": 6.5
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 1,
+          "color": "#a1a8ef80"
+        }
+      },
+      {
+        "name": "Red outside",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 13.5,
+              "y": 2.5
+            },
+            {
+              "x": 13.5,
+              "y": 3.5
+            },
+            {
+              "x": 13.5,
+              "y": 4.5
+            },
+            {
+              "x": 13.5,
+              "y": 5.5
+            },
+            {
+              "x": 13.5,
+              "y": 6.5
+            },
+            {
+              "x": 13.5,
+              "y": 7.5
+            },
+            {
+              "x": 13.5,
+              "y": 8.5
+            },
+            {
+              "x": 12.5,
+              "y": 8.5
+            },
+            {
+              "x": 11.5,
+              "y": 8.5
+            },
+            {
+              "x": 10.5,
+              "y": 8.5
+            },
+            {
+              "x": 9.5,
+              "y": 8.5
+            },
+            {
+              "x": 8.5,
+              "y": 8.5
+            },
+            {
+              "x": 7.5,
+              "y": 8.5
+            },
+            {
+              "x": 6.5,
+              "y": 8.5
+            },
+            {
+              "x": 6.5,
+              "y": 7.5
+            },
+            {
+              "x": 6.5,
+              "y": 6.5
+            },
+            {
+              "x": 6.5,
+              "y": 5.5
+            },
+            {
+              "x": 6.5,
+              "y": 4.5
+            },
+            {
+              "x": 6.5,
+              "y": 3.5
+            },
+            {
+              "x": 6.5,
+              "y": 2.5
+            },
+            {
+              "x": 6.5,
+              "y": 1.5
+            },
+            {
+              "x": 7.5,
+              "y": 1.5
+            },
+            {
+              "x": 8.5,
+              "y": 1.5
+            },
+            {
+              "x": 9.5,
+              "y": 1.5
+            },
+            {
+              "x": 10.5,
+              "y": 1.5
+            },
+            {
+              "x": 11.5,
+              "y": 1.5
+            },
+            {
+              "x": 12.5,
+              "y": 1.5
+            },
+            {
+              "x": 13.5,
+              "y": 1.5
+            },
+            {
+              "x": 13.5,
+              "y": 2.5
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 1,
+          "color": "#f7a7a79b"
+        }
+      },
+      {
+        "name": "White buffer",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 19.5,
+              "y": 18.5
+            },
+            {
+              "x": 19.5,
+              "y": 19.5
+            },
+            {
+              "x": 19.5,
+              "y": 20.5
+            },
+            {
+              "x": 18.5,
+              "y": 20.5
+            },
+            {
+              "x": 17.5,
+              "y": 20.5
+            },
+            {
+              "x": 16.5,
+              "y": 20.5
+            },
+            {
+              "x": 15.5,
+              "y": 20.5
+            },
+            {
+              "x": 14.5,
+              "y": 20.5
+            },
+            {
+              "x": 13.5,
+              "y": 20.5
+            },
+            {
+              "x": 12.5,
+              "y": 20.5
+            },
+            {
+              "x": 11.5,
+              "y": 20.5
+            },
+            {
+              "x": 10.5,
+              "y": 20.5
+            },
+            {
+              "x": 9.5,
+              "y": 20.5
+            },
+            {
+              "x": 8.5,
+              "y": 20.5
+            },
+            {
+              "x": 7.5,
+              "y": 20.5
+            },
+            {
+              "x": 6.5,
+              "y": 20.5
+            },
+            {
+              "x": 5.5,
+              "y": 20.5
+            },
+            {
+              "x": 4.5,
+              "y": 20.5
+            },
+            {
+              "x": 3.5,
+              "y": 20.5
+            },
+            {
+              "x": 2.5,
+              "y": 20.5
+            },
+            {
+              "x": 1.5,
+              "y": 20.5
+            },
+            {
+              "x": 0.5,
+              "y": 20.5
+            },
+            {
+              "x": 0.5,
+              "y": 19.5
+            },
+            {
+              "x": 0.5,
+              "y": 18.5
+            },
+            {
+              "x": 0.5,
+              "y": 17.5
+            },
+            {
+              "x": 0.5,
+              "y": 16.5
+            },
+            {
+              "x": 0.5,
+              "y": 15.5
+            },
+            {
+              "x": 0.5,
+              "y": 14.5
+            },
+            {
+              "x": 0.5,
+              "y": 13.5
+            },
+            {
+              "x": 0.5,
+              "y": 12.5
+            },
+            {
+              "x": 0.5,
+              "y": 11.5
+            },
+            {
+              "x": 0.5,
+              "y": 10.5
+            },
+            {
+              "x": 0.5,
+              "y": 9.5
+            },
+            {
+              "x": 0.5,
+              "y": 8.5
+            },
+            {
+              "x": 0.5,
+              "y": 7.5
+            },
+            {
+              "x": 0.5,
+              "y": 6.5
+            },
+            {
+              "x": 0.5,
+              "y": 5.5
+            },
+            {
+              "x": 0.5,
+              "y": 4.5
+            },
+            {
+              "x": 0.5,
+              "y": 3.5
+            },
+            {
+              "x": 0.5,
+              "y": 2.5
+            },
+            {
+              "x": 0.5,
+              "y": 1.5
+            },
+            {
+              "x": 0.5,
+              "y": 0.5
+            },
+            {
+              "x": 1.5,
+              "y": 0.5
+            },
+            {
+              "x": 2.5,
+              "y": 0.5
+            },
+            {
+              "x": 3.5,
+              "y": 0.5
+            },
+            {
+              "x": 4.5,
+              "y": 0.5
+            },
+            {
+              "x": 5.5,
+              "y": 0.5
+            },
+            {
+              "x": 6.5,
+              "y": 0.5
+            },
+            {
+              "x": 7.5,
+              "y": 0.5
+            },
+            {
+              "x": 8.5,
+              "y": 0.5
+            },
+            {
+              "x": 9.5,
+              "y": 0.5
+            },
+            {
+              "x": 10.5,
+              "y": 0.5
+            },
+            {
+              "x": 11.5,
+              "y": 0.5
+            },
+            {
+              "x": 12.5,
+              "y": 0.5
+            },
+            {
+              "x": 13.5,
+              "y": 0.5
+            },
+            {
+              "x": 14.5,
+              "y": 0.5
+            },
+            {
+              "x": 15.5,
+              "y": 0.5
+            },
+            {
+              "x": 16.5,
+              "y": 0.5
+            },
+            {
+              "x": 17.5,
+              "y": 0.5
+            },
+            {
+              "x": 18.5,
+              "y": 0.5
+            },
+            {
+              "x": 19.5,
+              "y": 0.5
+            },
+            {
+              "x": 19.5,
+              "y": 1.5
+            },
+            {
+              "x": 19.5,
+              "y": 2.5
+            },
+            {
+              "x": 19.5,
+              "y": 3.5
+            },
+            {
+              "x": 19.5,
+              "y": 4.5
+            },
+            {
+              "x": 19.5,
+              "y": 5.5
+            },
+            {
+              "x": 19.5,
+              "y": 6.5
+            },
+            {
+              "x": 19.5,
+              "y": 7.5
+            },
+            {
+              "x": 19.5,
+              "y": 8.5
+            },
+            {
+              "x": 19.5,
+              "y": 9.5
+            },
+            {
+              "x": 19.5,
+              "y": 10.5
+            },
+            {
+              "x": 19.5,
+              "y": 11.5
+            },
+            {
+              "x": 19.5,
+              "y": 12.5
+            },
+            {
+              "x": 19.5,
+              "y": 13.5
+            },
+            {
+              "x": 19.5,
+              "y": 14.5
+            },
+            {
+              "x": 19.5,
+              "y": 15.5
+            },
+            {
+              "x": 19.5,
+              "y": 16.5
+            },
+            {
+              "x": 19.5,
+              "y": 17.5
+            },
+            {
+              "x": 19.5,
+              "y": 18.5
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.5,
+          "color": "#ffffffff",
+          "layer": "default"
+        }
+      },
+      {
+        "name": "Green frame",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 12,
+              "y": 12
+            },
+            {
+              "x": 13,
+              "y": 12
+            },
+            {
+              "x": 13,
+              "y": 13
+            },
+            {
+              "x": 13,
+              "y": 14
+            },
+            {
+              "x": 13,
+              "y": 15
+            },
+            {
+              "x": 13,
+              "y": 16
+            },
+            {
+              "x": 13,
+              "y": 17
+            },
+            {
+              "x": 13,
+              "y": 18
+            },
+            {
+              "x": 12,
+              "y": 18
+            },
+            {
+              "x": 11,
+              "y": 18
+            },
+            {
+              "x": 10,
+              "y": 18
+            },
+            {
+              "x": 9,
+              "y": 18
+            },
+            {
+              "x": 8,
+              "y": 18
+            },
+            {
+              "x": 7,
+              "y": 18
+            },
+            {
+              "x": 7,
+              "y": 17
+            },
+            {
+              "x": 7,
+              "y": 16
+            },
+            {
+              "x": 7,
+              "y": 15
+            },
+            {
+              "x": 7,
+              "y": 14
+            },
+            {
+              "x": 7,
+              "y": 13
+            },
+            {
+              "x": 7,
+              "y": 12
+            },
+            {
+              "x": 8,
+              "y": 12
+            },
+            {
+              "x": 9,
+              "y": 12
+            },
+            {
+              "x": 10,
+              "y": 12
+            },
+            {
+              "x": 11,
+              "y": 12
+            },
+            {
+              "x": 12,
+              "y": 12
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.15,
+          "color": "#b1f17bff"
+        }
+      },
+      {
+        "name": "Purple frame",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 7,
+              "y": 7
+            },
+            {
+              "x": 8,
+              "y": 7
+            },
+            {
+              "x": 8,
+              "y": 8
+            },
+            {
+              "x": 8,
+              "y": 9
+            },
+            {
+              "x": 8,
+              "y": 10
+            },
+            {
+              "x": 8,
+              "y": 11
+            },
+            {
+              "x": 8,
+              "y": 12
+            },
+            {
+              "x": 8,
+              "y": 13
+            },
+            {
+              "x": 7,
+              "y": 13
+            },
+            {
+              "x": 6,
+              "y": 13
+            },
+            {
+              "x": 5,
+              "y": 13
+            },
+            {
+              "x": 4,
+              "y": 13
+            },
+            {
+              "x": 3,
+              "y": 13
+            },
+            {
+              "x": 2,
+              "y": 13
+            },
+            {
+              "x": 2,
+              "y": 12
+            },
+            {
+              "x": 2,
+              "y": 11
+            },
+            {
+              "x": 2,
+              "y": 10
+            },
+            {
+              "x": 2,
+              "y": 9
+            },
+            {
+              "x": 2,
+              "y": 8
+            },
+            {
+              "x": 2,
+              "y": 7
+            },
+            {
+              "x": 3,
+              "y": 7
+            },
+            {
+              "x": 4,
+              "y": 7
+            },
+            {
+              "x": 5,
+              "y": 7
+            },
+            {
+              "x": 6,
+              "y": 7
+            },
+            {
+              "x": 7,
+              "y": 7
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.15,
+          "color": "#b89fc9ff"
+        }
+      },
+      {
+        "name": "Blue frame",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 12,
+              "y": 10
+            },
+            {
+              "x": 12,
+              "y": 11
+            },
+            {
+              "x": 12,
+              "y": 12
+            },
+            {
+              "x": 12,
+              "y": 13
+            },
+            {
+              "x": 13,
+              "y": 13
+            },
+            {
+              "x": 14,
+              "y": 13
+            },
+            {
+              "x": 15,
+              "y": 13
+            },
+            {
+              "x": 16,
+              "y": 13
+            },
+            {
+              "x": 17,
+              "y": 13
+            },
+            {
+              "x": 18,
+              "y": 13
+            },
+            {
+              "x": 18,
+              "y": 12
+            },
+            {
+              "x": 18,
+              "y": 11
+            },
+            {
+              "x": 18,
+              "y": 10
+            },
+            {
+              "x": 18,
+              "y": 9
+            },
+            {
+              "x": 18,
+              "y": 8
+            },
+            {
+              "x": 18,
+              "y": 7
+            },
+            {
+              "x": 17,
+              "y": 7
+            },
+            {
+              "x": 16,
+              "y": 7
+            },
+            {
+              "x": 15,
+              "y": 7
+            },
+            {
+              "x": 14,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 7
+            },
+            {
+              "x": 12,
+              "y": 7
+            },
+            {
+              "x": 12,
+              "y": 8
+            },
+            {
+              "x": 12,
+              "y": 9
+            },
+            {
+              "x": 12,
+              "y": 10
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.15,
+          "color": "#a1a8efff"
+        }
+      },
+      {
+        "name": "Red frame",
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 7,
+              "y": 2
+            },
+            {
+              "x": 7,
+              "y": 3
+            },
+            {
+              "x": 7,
+              "y": 4
+            },
+            {
+              "x": 7,
+              "y": 5
+            },
+            {
+              "x": 7,
+              "y": 6
+            },
+            {
+              "x": 7,
+              "y": 7
+            },
+            {
+              "x": 7,
+              "y": 8
+            },
+            {
+              "x": 8,
+              "y": 8
+            },
+            {
+              "x": 9,
+              "y": 8
+            },
+            {
+              "x": 10,
+              "y": 8
+            },
+            {
+              "x": 11,
+              "y": 8
+            },
+            {
+              "x": 12,
+              "y": 8
+            },
+            {
+              "x": 13,
+              "y": 8
+            },
+            {
+              "x": 13,
+              "y": 7
+            },
+            {
+              "x": 13,
+              "y": 6
+            },
+            {
+              "x": 13,
+              "y": 5
+            },
+            {
+              "x": 13,
+              "y": 4
+            },
+            {
+              "x": 13,
+              "y": 3
+            },
+            {
+              "x": 13,
+              "y": 2
+            },
+            {
+              "x": 12,
+              "y": 2
+            },
+            {
+              "x": 11,
+              "y": 2
+            },
+            {
+              "x": 10,
+              "y": 2
+            },
+            {
+              "x": 9,
+              "y": 2
+            },
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 7,
+              "y": 2
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.15,
+          "color": "#f7a7a7ff"
+        }
+      },
+      {
+        "type": 1,
+        "regions": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "name": "Clue Labels",
+        "type": 2002,
+        "params": [
+          {
+            "type": "text",
+            "text": "👟Running start",
+            "size": 0.42,
+            "angle": 0,
+            "strokeWidth": 0.02,
+            "stroke": "#ffffff",
+            "fill": "#000000"
+          },
+          {
+            "type": "text",
+            "text": "🏢Skyscrapers",
+            "size": 0.42,
+            "angle": 0,
+            "strokeWidth": 0.02,
+            "stroke": "#ffffff",
+            "fill": "#000000"
+          },
+          {
+            "type": "text",
+            "text": "🚪Numbered Rooms",
+            "size": 0.42,
+            "angle": 0,
+            "strokeWidth": 0.02,
+            "stroke": "#ffffff",
+            "fill": "#000000"
+          },
+          {
+            "type": "text",
+            "text": "🏞️Outside ",
+            "size": 0.42,
+            "angle": 0,
+            "strokeWidth": 0.02,
+            "stroke": "#ffffff",
+            "fill": "#000000"
+          }
+        ],
+        "symbols": [
+          [
+            7.5,
+            0.5,
+            0,
+            "foreground"
+          ],
+          [
+            2.5,
+            5.5,
+            1,
+            "foreground"
+          ],
+          [
+            7.5,
+            19.5,
+            2,
+            "foreground"
+          ],
+          [
+            17.5,
+            5.5,
+            3,
+            "foreground"
+          ]
+        ]
+      },
+      {
+        "type": 2000,
+        "lines": [
+          [
+            {
+              "x": 8,
+              "y": 13
+            },
+            {
+              "x": 7.5,
+              "y": 12.5
+            },
+            {
+              "x": 7,
+              "y": 12
+            }
+          ],
+          [
+            {
+              "x": 13,
+              "y": 12
+            },
+            {
+              "x": 12.5,
+              "y": 12.5
+            },
+            {
+              "x": 12,
+              "y": 13
+            }
+          ],
+          [
+            {
+              "x": 12,
+              "y": 7
+            },
+            {
+              "x": 12.5,
+              "y": 7.5
+            },
+            {
+              "x": 13,
+              "y": 8
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 7
+            },
+            {
+              "x": 7.5,
+              "y": 7.5
+            },
+            {
+              "x": 7,
+              "y": 8
+            }
+          ],
+          [
+            {
+              "x": 10,
+              "y": 1
+            },
+            {
+              "x": 10.5,
+              "y": 1.5
+            },
+            {
+              "x": 11,
+              "y": 2
+            }
+          ]
+        ],
+        "style": {
+          "thickness": 0.15,
+          "color": "#42a825ff"
+        }
+      },
+      {
+        "type": 2002,
+        "params": [
+          {
+            "type": "rectangle",
+            "width": 1,
+            "height": 1,
+            "angle": 0,
+            "strokeWidth": 0.02,
+            "stroke": "#000000",
+            "fill": "#ffffff"
+          }
+        ],
+        "symbols": [
+          [
+            13.5,
+            8.5,
+            0,
+            "foreground"
+          ],
+          [
+            13.5,
+            1.5,
+            0,
+            "foreground"
+          ],
+          [
+            6.5,
+            1.5,
+            0,
+            "foreground"
+          ],
+          [
+            6.5,
+            8.5,
+            0,
+            "foreground"
+          ],
+          [
+            6.5,
+            11.5,
+            0,
+            "foreground"
+          ],
+          [
+            13.5,
+            11.5,
+            0,
+            "foreground"
+          ],
+          [
+            13.5,
+            18.5,
+            0,
+            "foreground"
+          ],
+          [
+            6.5,
+            18.5,
+            0,
+            "foreground"
+          ],
+          [
+            8.5,
+            13.5,
+            0,
+            "foreground"
+          ],
+          [
+            11.5,
+            13.5,
+            0,
+            "foreground"
+          ],
+          [
+            18.5,
+            13.5,
+            0,
+            "foreground"
+          ],
+          [
+            18.5,
+            6.5,
+            0,
+            "foreground"
+          ],
+          [
+            11.5,
+            6.5,
+            0,
+            "foreground"
+          ],
+          [
+            8.5,
+            6.5,
+            0,
+            "foreground"
+          ],
+          [
+            1.5,
+            6.5,
+            0,
+            "foreground"
+          ],
+          [
+            1.5,
+            13.5,
+            0,
+            "foreground"
+          ]
+        ]
+      },
+      {
+        "name": "Regions (Red)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one box of the Red 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Red box ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                47,
+                48,
+                49,
+                67,
+                68,
+                69
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                50,
+                51,
+                52,
+                70,
+                71,
+                72
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                87,
+                88,
+                89,
+                107,
+                108,
+                109
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                90,
+                91,
+                92,
+                110,
+                111,
+                112
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                127,
+                128,
+                129,
+                147,
+                148,
+                149
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                130,
+                131,
+                132,
+                150,
+                151,
+                152
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Columns (Red)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one column of the Red 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Red column ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                47,
+                67,
+                87,
+                107,
+                127,
+                147
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                48,
+                68,
+                88,
+                108,
+                128,
+                148
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                49,
+                69,
+                89,
+                109,
+                129,
+                149
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                50,
+                70,
+                90,
+                110,
+                130,
+                150
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                51,
+                71,
+                91,
+                111,
+                131,
+                151
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                52,
+                72,
+                92,
+                112,
+                132,
+                152
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Rows (Red)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one row of the Red 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Red row ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                47,
+                48,
+                49,
+                50,
+                51,
+                52
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                67,
+                68,
+                69,
+                70,
+                71,
+                72
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                87,
+                88,
+                89,
+                90,
+                91,
+                92
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                107,
+                108,
+                109,
+                110,
+                111,
+                112
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                127,
+                128,
+                129,
+                130,
+                131,
+                132
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                147,
+                148,
+                149,
+                150,
+                151,
+                152
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Regions (Blue)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one box of the Blue 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Blue box ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                152,
+                153,
+                154,
+                172,
+                173,
+                174
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                155,
+                156,
+                157,
+                175,
+                176,
+                177
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                192,
+                193,
+                194,
+                212,
+                213,
+                214
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                195,
+                196,
+                197,
+                215,
+                216,
+                217
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                232,
+                233,
+                234,
+                252,
+                253,
+                254
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                235,
+                236,
+                237,
+                255,
+                256,
+                257
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Columns (Blue)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one column of the Blue 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Blue column ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                152,
+                172,
+                192,
+                212,
+                232,
+                252
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                153,
+                173,
+                193,
+                213,
+                233,
+                253
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                154,
+                174,
+                194,
+                214,
+                234,
+                254
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                155,
+                175,
+                195,
+                215,
+                235,
+                255
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                156,
+                176,
+                196,
+                216,
+                236,
+                256
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                157,
+                177,
+                197,
+                217,
+                237,
+                257
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Rows (Blue)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one row of the Blue 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Blue row ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                152,
+                153,
+                154,
+                155,
+                156,
+                157
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                172,
+                173,
+                174,
+                175,
+                176,
+                177
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                192,
+                193,
+                194,
+                195,
+                196,
+                197
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                212,
+                213,
+                214,
+                215,
+                216,
+                217
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                232,
+                233,
+                234,
+                235,
+                236,
+                237
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                252,
+                253,
+                254,
+                255,
+                256,
+                257
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Regions (Purple)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one box of the Purple 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Purple box ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                142,
+                143,
+                144,
+                162,
+                163,
+                164
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                145,
+                146,
+                147,
+                165,
+                166,
+                167
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                182,
+                183,
+                184,
+                202,
+                203,
+                204
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                185,
+                186,
+                187,
+                205,
+                206,
+                207
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                222,
+                223,
+                224,
+                242,
+                243,
+                244
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                225,
+                226,
+                227,
+                245,
+                246,
+                247
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Columns (Purple)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one column of the Purple 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Purple column ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                142,
+                162,
+                182,
+                202,
+                222,
+                242
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                143,
+                163,
+                183,
+                203,
+                223,
+                243
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                144,
+                164,
+                184,
+                204,
+                224,
+                244
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                145,
+                165,
+                185,
+                205,
+                225,
+                245
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                146,
+                166,
+                186,
+                206,
+                226,
+                246
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                147,
+                167,
+                187,
+                207,
+                227,
+                247
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Rows (Purple)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one row of the Purple 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Purple row ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                142,
+                143,
+                144,
+                145,
+                146,
+                147
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                162,
+                163,
+                164,
+                165,
+                166,
+                167
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                182,
+                183,
+                184,
+                185,
+                186,
+                187
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                202,
+                203,
+                204,
+                205,
+                206,
+                207
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                222,
+                223,
+                224,
+                225,
+                226,
+                227
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                242,
+                243,
+                244,
+                245,
+                246,
+                247
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Regions (Green)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one box of the Green 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Green box ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                247,
+                248,
+                249,
+                267,
+                268,
+                269
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                250,
+                251,
+                252,
+                270,
+                271,
+                272
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                287,
+                288,
+                289,
+                307,
+                308,
+                309
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                290,
+                291,
+                292,
+                310,
+                311,
+                312
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                327,
+                328,
+                329,
+                347,
+                348,
+                349
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                330,
+                331,
+                332,
+                350,
+                351,
+                352
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Columns (Green)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one column of the Green 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Green column ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                247,
+                267,
+                287,
+                307,
+                327,
+                347
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                248,
+                268,
+                288,
+                308,
+                328,
+                348
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                249,
+                269,
+                289,
+                309,
+                329,
+                349
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                250,
+                270,
+                290,
+                310,
+                330,
+                350
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                251,
+                271,
+                291,
+                311,
+                331,
+                351
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                252,
+                272,
+                292,
+                312,
+                332,
+                352
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Rows (Green)",
+        "type": 1000,
+        "definition": {
+          "name": "Extra groups",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one row of the Green 6x6, in reading order. Named so\n// solver messages say which house failed instead of 'nameless constraint'.\nfor (const i in input.groups) {\n  puzzle.addConstraintComponent(new HouseComponent(`Green row ${+i + 1}`, input.groups[i].cells))\n}\n"
+          },
+          "components": []
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                247,
+                248,
+                249,
+                250,
+                251,
+                252
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                267,
+                268,
+                269,
+                270,
+                271,
+                272
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                287,
+                288,
+                289,
+                290,
+                291,
+                292
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                307,
+                308,
+                309,
+                310,
+                311,
+                312
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                327,
+                328,
+                329,
+                330,
+                331,
+                332
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                347,
+                348,
+                349,
+                350,
+                351,
+                352
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Numbered Rooms (Green)",
+        "type": 1000,
+        "definition": {
+          "name": "Numbered Rooms",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "for (const { cells } of input.groups) {\n  const [clue, ...line] = cells\n  if (line.length === 0) continue\n  const dir = puzzle.getRow(clue) === puzzle.getRow(line[0])\n    ? (puzzle.getColumn(line[0]) > puzzle.getColumn(clue) ? 'right' : 'left')\n    : (puzzle.getRow(line[0]) > puzzle.getRow(clue) ? 'down' : 'up')\n  const name = `Green Numbered Rooms, clue ${helpers.naming.getCellsDescription([clue])} reading ${dir}`\n  puzzle.addConstraintComponent(new NumberedRoomsComponent(name, clue, line))\n}\n"
+          },
+          "components": [
+            {
+              "type": "code",
+              "name": "NumberedRoomsComponent",
+              "code": "/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */\n// Numbered Rooms (escape-the-grid). A line reads inward from an outside clue\n// cell — a frame row or column, or any path an author draws. Let O be the clue\n// cell and line[0..m-1] the inside cells, nearest the clue first. The first\n// inside cell line[0] holds a 1-based index k; the clue equals the digit in the\n// k-th inside cell:\n// \n// line[k - 1] === O,   with k = value(line[0]).\n// \n// An index of 0, or any index past the end of the line, is out of range.\n// \n// The clue is a CELL, not a constant, so the built-in IndexComponent (which\n// needs a fixed value to index) cannot enforce this. This component does it\n// directly: each update pass prunes the indexer line[0], prunes the clue down\n// to the still-feasible targets, equates the target with the clue once one\n// index remains, and once the clue is solved drops its digit from every line\n// cell at a dead index — all from the first pass.\n// \n// Two of those rules need the line's cells to hold distinct digits, which only\n// a house gives. They ask at solve time, so a drawn path that repeats a digit\n// keeps the three rules that hold on any line and nothing more.\nfunction getAffectedCells (clue, line) {\n  return [clue, ...line]\n}\nfunction setParams (instance, clue, line) {\n  instance.clue = clue\n  instance.line = line\n}\nconst BARE = 0\nconst HOUSE = 1\nfunction lineKind (instance, puzzle) {\n  if (instance.kind !== HOUSE) {\n    instance.kind = puzzle.getCellsCanHaveRepeats(instance.line) ? BARE : HOUSE\n  }\n  return instance.kind\n}\nfunction * update (instance, puzzle) {\n  const { clue, line } = instance\n  const m = line.length\n  const house = lineKind(instance, puzzle) === HOUSE\n  const clueM = puzzle.getCandidatesBitMask(clue)\n  const idxM = puzzle.getCandidatesBitMask(line[0])\n  const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)\n  let K = 0\n  let reach = 0\n  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {\n    if (!(idxM & bit)) continue\n    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM\n    t = k === 1 ? t & bit : house ? t & ~bit : t\n    if (t) { K |= bit; reach |= t }\n  }\n  if (idxM & ~K) yield drop(idxM & ~K, line[0])\n  if (clueM & ~reach) yield drop(clueM & ~reach, clue)\n  if (!K) return\n  if (house && (clueM & (clueM - 1)) === 0) {\n    for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {\n      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) yield drop(clueM, line[k - 1])\n    }\n  }\n  if ((K & (K - 1)) === 0) {\n    const target = line[31 - Math.clz32(K) - 1]\n    const rm = puzzle.getCandidatesBitMask(target) & ~reach\n    if (rm) yield drop(rm, target)\n  }\n}\nfunction validate (instance, puzzle) {\n  const { clue, line } = instance\n  if (!puzzle.getCellsAreFilled([clue, ...line])) return true\n  const k = puzzle.getValue(line[0])\n  if (k < 1 || k > line.length) return false\n  return puzzle.getValue(line[k - 1]) === puzzle.getValue(clue)\n}\n"
+            }
+          ]
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                246,
+                247,
+                248,
+                249,
+                250,
+                251,
+                252
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                253,
+                252,
+                251,
+                250,
+                249,
+                248,
+                247
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                266,
+                267,
+                268,
+                269,
+                270,
+                271,
+                272
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                273,
+                272,
+                271,
+                270,
+                269,
+                268,
+                267
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                286,
+                287,
+                288,
+                289,
+                290,
+                291,
+                292
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                293,
+                292,
+                291,
+                290,
+                289,
+                288,
+                287
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                306,
+                307,
+                308,
+                309,
+                310,
+                311,
+                312
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                313,
+                312,
+                311,
+                310,
+                309,
+                308,
+                307
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                326,
+                327,
+                328,
+                329,
+                330,
+                331,
+                332
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                333,
+                332,
+                331,
+                330,
+                329,
+                328,
+                327
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                346,
+                347,
+                348,
+                349,
+                350,
+                351,
+                352
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                353,
+                352,
+                351,
+                350,
+                349,
+                348,
+                347
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                227,
+                247,
+                267,
+                287,
+                307,
+                327,
+                347
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                367,
+                347,
+                327,
+                307,
+                287,
+                267,
+                247
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                228,
+                248,
+                268,
+                288,
+                308,
+                328,
+                348
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                368,
+                348,
+                328,
+                308,
+                288,
+                268,
+                248
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                229,
+                249,
+                269,
+                289,
+                309,
+                329,
+                349
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                369,
+                349,
+                329,
+                309,
+                289,
+                269,
+                249
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                230,
+                250,
+                270,
+                290,
+                310,
+                330,
+                350
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                370,
+                350,
+                330,
+                310,
+                290,
+                270,
+                250
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                231,
+                251,
+                271,
+                291,
+                311,
+                331,
+                351
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                371,
+                351,
+                331,
+                311,
+                291,
+                271,
+                251
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                232,
+                252,
+                272,
+                292,
+                312,
+                332,
+                352
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                372,
+                352,
+                332,
+                312,
+                292,
+                272,
+                252
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Skyscrapers (Purple)",
+        "type": 1000,
+        "definition": {
+          "name": "Skyscraper Lines",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Skyscrapers with interactive outside clues, LOCAL variant. Each group the\n// author draws is one clued line: cell 0 is the outside clue cell, the rest is\n// the line read inward from the cell next to the clue. Every group gets one\n// SkyscraperOneSidedComponent, the one-sided DP: it reads that one clue and\n// that one line and assumes nothing else about it -- the line may bend, repeat\n// a digit, and have no clue at its far end.\n// \n// A group of one cell is a clue an author has started and not finished, so it\n// is skipped rather than thrown on: the editor rebuilds every component on\n// every edit, mid-draw included.\n// \n// Two other skyscraper rules -- reading both end clues of one line at once,\n// and counting the single clue of 1 a whole side must have -- need a shape\n// only a full clued frame has, so neither runs on drawn groups.\nconst groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))\nfor (const g of groups) {\n  if (g.line.length === 0) continue\n  const dir = puzzle.getRow(g.clue) === puzzle.getRow(g.line[0])\n    ? (puzzle.getColumn(g.line[0]) > puzzle.getColumn(g.clue) ? 'right' : 'left')\n    : (puzzle.getRow(g.line[0]) > puzzle.getRow(g.clue) ? 'down' : 'up')\n  const name = `Purple Skyscraper, clue ${helpers.naming.getCellsDescription([g.clue])} reading ${dir}`\n  puzzle.addConstraintComponent(new SkyscraperOneSidedComponent(name, g.clue, g.line))\n}\n"
+          },
+          "components": [
+            {
+              "type": "code",
+              "name": "SkyscraperOneSidedComponent",
+              "code": "/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */\n// Skyscrapers, ONE outside clue at ONE end of a drawn line. The clue counts\n// the visible buildings reading inward -- a building is visible when it tops\n// every building before it. One instance runs on one drawn group, and it\n// assumes nothing about that group: digits may repeat along it, it may be any\n// length, and there may be no clue at its far end at all.\n// \n// A DP over (position, tallest so far, visible count) decides the line. The\n// tallest so far and the count are all a prefix leaves behind -- what a cell\n// may hold depends on the prefix through nothing else -- so those two, with\n// the position, are the whole state. A forward sweep finds the reachable\n// states; a backward sweep, seeded with the clue's own candidates at the far\n// end, finds the states a completion can still finish from; a digit survives\n// where the two meet. One 32-bit mask of visible counts per (position,\n// tallest) is a whole layer.\n// \n// Soundness: the true line is one of the fills the sweeps enumerate, so every\n// true digit and the true clue sit on a kept path. Because the state is exact\n// for a line whose cells are tied to nothing but their own candidates, the\n// sweep is a DECISION PROCEDURE for a drawn line: a value survives only if\n// some fill consistent with the candidates and the clue uses it. Nothing here\n// needs the line to be a house, a full house, or a board whose digits start\n// at 1, so it runs on every line kind with no gate.\n// What a tie means, since a line may repeat a digit. false: a building the\n// same height as the tallest so far is hidden. true: it counts as visible.\n// An author flips it here, and the puzzle's rules text must say the same\n// thing it says.\nconst ALLOW_TIES = false\n// `d + TIE > max` reads \"a building of height d is visible over a running max\n// of `max`\": strict when a tie is hidden, `>=` when a tie counts.\nconst TIE = ALLOW_TIES ? 1 : 0\n// Digit and count masks are the app's: bit d means digit d. A count of j is a\n// clue value, so it lives in the same encoding and a clue's candidate mask\n// doubles as a mask of visible counts. MAXLEN caps the line length and the\n// digit range: past it the component stands down rather than wrap a shift.\nconst MAXLEN = 24\nconst MAXTALL = MAXLEN + 2\nconst CAP = (MAXLEN + 1) * MAXTALL\nfunction getAffectedCells (clue, line) {\n  return [clue, ...line]\n}\nfunction setParams (instance, clue, line) {\n  instance.clue = clue\n  instance.line = line\n}\nlet scratch = null\nfunction scratchFor () {\n  if (scratch === null) {\n    scratch = {\n      fwd: new Int32Array(CAP),\n      bwd: new Int32Array(CAP),\n      cand: new Int32Array(MAXLEN),\n      keep: new Int32Array(MAXLEN)\n    }\n  }\n  return scratch\n}\nfunction * update (instance, puzzle) {\n  const { clue, line } = instance\n  const len = line.length\n  const { minDigit, maxDigit } = helpers.digits\n  if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return\n  const tallest = maxDigit - minDigit + 2\n  const clueCand = puzzle.getCandidatesBitMask(clue)\n  if (clueCand === 0) return\n  const { fwd, bwd, cand, keep } = scratchFor()\n  const layers = (len + 1) * tallest\n  fwd.fill(0, 0, layers)\n  bwd.fill(0, 0, layers)\n  const inRange = (-1 << minDigit) & ~(-2 << maxDigit)\n  for (let i = 0; i < len; i++) {\n    const c = puzzle.getCandidatesBitMask(line[i]) & inRange\n    if (c === 0) return\n    cand[i] = c\n  }\n  // Forward sweep from the clue inward: which (tallest so far, visible count)\n  // states a prefix of the line can reach.\n  fwd[0] = 1\n  for (let i = 0; i < len; i++) {\n    const base = i * tallest\n    const next = base + tallest\n    for (let t = 0; t < tallest; t++) {\n      const counts = fwd[base + t]\n      if (counts === 0) continue\n      const max = t + minDigit - 1\n      let avail = cand[i]\n      while (avail !== 0) {\n        const bit = avail & -avail\n        avail ^= bit\n        const d = 31 - Math.clz32(bit)\n        const nt = d - minDigit + 1\n        fwd[next + (nt > t ? nt : t)] |= d + TIE > max ? counts << 1 : counts\n      }\n    }\n  }\n  // Backward sweep from the far end, seeded with the clue's own candidates --\n  // the counts a finished line may show. `bwd[i][t]` holds the counts a prefix\n  // may already have used; a digit is kept at cell i where some reachable\n  // state there leads into a count the rest of the line can finish.\n  const last = len * tallest\n  for (let t = 0; t < tallest; t++) bwd[last + t] = clueCand\n  for (let i = len - 1; i >= 0; i--) {\n    const base = i * tallest\n    const next = base + tallest\n    let kept = 0\n    for (let t = 0; t < tallest; t++) {\n      const counts = fwd[base + t]\n      if (counts === 0) continue\n      const max = t + minDigit - 1\n      let feasible = 0\n      let avail = cand[i]\n      while (avail !== 0) {\n        const bit = avail & -avail\n        avail ^= bit\n        const d = 31 - Math.clz32(bit)\n        const nt = d - minDigit + 1\n        const ahead = bwd[next + (nt > t ? nt : t)]\n        const back = d + TIE > max ? ahead >> 1 : ahead\n        feasible |= back\n        if ((back & counts) !== 0) kept |= bit\n      }\n      bwd[base + t] = feasible\n    }\n    keep[i] = kept\n  }\n  // Collect every removal before yielding: the scratch above is shared, and a\n  // yield hands the solver control, which may run another line's update.\n  let pending = null\n  const drop = (cell, mask) => {\n    if (mask === 0) return\n    if (pending === null) pending = []\n    pending.push(cell, mask)\n  }\n  let reached = 0\n  for (let t = 0; t < tallest; t++) reached |= fwd[last + t]\n  drop(clue, clueCand & ~reached)\n  for (let i = 0; i < len; i++) drop(line[i], cand[i] & ~keep[i])\n  if (pending !== null) {\n    for (let i = 0; i < pending.length; i += 2) {\n      yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1]), pending[i])\n    }\n  }\n}\nfunction visibleCount (puzzle, cells) {\n  let count = 0\n  let max = -1\n  for (const cell of cells) {\n    const v = puzzle.getValue(cell)\n    if (v + TIE > max) count++\n    if (v > max) max = v\n  }\n  return count\n}\nfunction validate (instance, puzzle) {\n  const { clue, line } = instance\n  if (line.length === 0) return true\n  if (!puzzle.getCellsAreFilled([clue, ...line])) return true\n  return puzzle.getValue(clue) === visibleCount(puzzle, line)\n}\n"
+            }
+          ]
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                148,
+                147,
+                146,
+                145,
+                144,
+                143,
+                142
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                168,
+                167,
+                166,
+                165,
+                164,
+                163,
+                162
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                181,
+                182,
+                183,
+                184,
+                185,
+                186,
+                187
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                188,
+                187,
+                186,
+                185,
+                184,
+                183,
+                182
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                201,
+                202,
+                203,
+                204,
+                205,
+                206,
+                207
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                208,
+                207,
+                206,
+                205,
+                204,
+                203,
+                202
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                228,
+                227,
+                226,
+                225,
+                224,
+                223,
+                222
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                241,
+                242,
+                243,
+                244,
+                245,
+                246,
+                247
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                248,
+                247,
+                246,
+                245,
+                244,
+                243,
+                242
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                122,
+                142,
+                162,
+                182,
+                202,
+                222,
+                242
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                262,
+                242,
+                222,
+                202,
+                182,
+                162,
+                142
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                123,
+                143,
+                163,
+                183,
+                203,
+                223,
+                243
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                263,
+                243,
+                223,
+                203,
+                183,
+                163,
+                143
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                124,
+                144,
+                164,
+                184,
+                204,
+                224,
+                244
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                264,
+                244,
+                224,
+                204,
+                184,
+                164,
+                144
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                125,
+                145,
+                165,
+                185,
+                205,
+                225,
+                245
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                265,
+                245,
+                225,
+                205,
+                185,
+                165,
+                145
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                126,
+                146,
+                166,
+                186,
+                206,
+                226,
+                246
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                266,
+                246,
+                226,
+                206,
+                186,
+                166,
+                146
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                127,
+                147,
+                167,
+                187,
+                207,
+                227,
+                247
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                267,
+                247,
+                227,
+                207,
+                187,
+                167,
+                147
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Running Start (Red)",
+        "type": 1000,
+        "definition": {
+          "name": "Running Start Lines",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// Each group is one clued line: cell 0 is the outside clue, the rest is the\n// line read inward from the cell next to the clue.\nconst groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))\nfor (const g of groups) {\n  const dir = puzzle.getRow(g.clue) === puzzle.getRow(g.line[0])\n    ? (puzzle.getColumn(g.line[0]) > puzzle.getColumn(g.clue) ? 'right' : 'left')\n    : (puzzle.getRow(g.line[0]) > puzzle.getRow(g.clue) ? 'down' : 'up')\n  const name = `Red Running Start, clue ${helpers.naming.getCellsDescription([g.clue])} reading ${dir}`\n  puzzle.addConstraintComponent(new RunningStartComponent(name, g.clue, g.line))\n}\n"
+          },
+          "components": [
+            {
+              "type": "code",
+              "name": "RunningStartComponent",
+              "code": "/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */\n// Running Start. An outside clue k on a line means: read inward, the first\n// ascending run is k cells long. So line[0..k-1] ascend, then (unless k is\n// the whole line) line[k] breaks the run.\n// \n// Every rule here is sound on every line kind. The line's kind only decides\n// how hard each one may push: on a house two neighbours can never be equal,\n// so both the climb and the break tighten to strict comparisons there\n// (docs/line-contract.md).\nconst ALLOW_TIES = false\nfunction getAffectedCells (clue, line) {\n  return [clue, ...line]\n}\nfunction setParams (instance, clue, line) {\n  instance.clue = clue\n  instance.line = line\n}\nfunction isHouse (instance, puzzle) {\n  if (instance.house) return true\n  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)\n  return instance.house\n}\nfunction runningStart (puzzle, line) {\n  let count = 1\n  for (let i = 1; i < line.length; i++) {\n    const prev = puzzle.getValue(line[i - 1])\n    const d = puzzle.getValue(line[i])\n    if (ALLOW_TIES ? d >= prev : d > prev) count++\n    else break\n  }\n  return count\n}\nfunction * below (puzzle, a, b, strict) {\n  const ca = Array.from(puzzle.getCandidates(a))\n  const cb = Array.from(puzzle.getCandidates(b))\n  const maxB = Math.max(...cb)\n  const minA = Math.min(...ca)\n  const rmA = ca.filter(d => (strict ? d >= maxB : d > maxB))\n  const rmB = cb.filter(d => (strict ? d <= minA : d < minA))\n  if (rmA.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), a)\n  if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), b)\n}\nfunction feasibleClues (puzzle, line, climbStrict, breakStrict) {\n  const n = line.length\n  const feasible = new Set()\n  let prevMin = -Infinity\n  for (let j = 0; j < n; j++) {\n    let mn = Infinity\n    let mx = -Infinity\n    for (const d of puzzle.getCandidates(line[j])) {\n      if (climbStrict ? d > prevMin : d >= prevMin) {\n        if (d < mn) mn = d\n        if (d > mx) mx = d\n      }\n    }\n    if (mn === Infinity) break\n    prevMin = mn\n    const k = j + 1\n    if (k === n) {\n      feasible.add(k)\n    } else {\n      let minNext = Infinity\n      for (const d of puzzle.getCandidates(line[k])) if (d < minNext) minNext = d\n      if (breakStrict ? minNext < mx : minNext <= mx) feasible.add(k)\n    }\n  }\n  return feasible\n}\nfunction * update (instance, puzzle) {\n  const { clue, line } = instance\n  const n = line.length\n  const lo = helpers.digits.minDigit\n  const hi = helpers.digits.maxDigit\n  const house = isHouse(instance, puzzle)\n  const climbStrict = !ALLOW_TIES || house\n  const breakStrict = ALLOW_TIES || house\n  if (!puzzle.hasValue(clue)) {\n    const feasible = feasibleClues(puzzle, line, climbStrict, breakStrict)\n    const bad = []\n    for (let d = lo; d <= hi; d++) if (!feasible.has(d)) bad.push(d)\n    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)\n  }\n  const kmin = Math.min(...Array.from(puzzle.getCandidates(clue)))\n  for (let j = 0; j < kmin && j < n; j++) {\n    if (j >= 1) yield * below(puzzle, line[j - 1], line[j], climbStrict)\n    if (!climbStrict) continue\n    const floor = lo + j\n    const ceil = hi - (kmin - 1 - j)\n    const bad = []\n    for (let d = lo; d <= hi; d++) if (d < floor || d > ceil) bad.push(d)\n    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), line[j])\n  }\n  if (puzzle.hasValue(clue)) {\n    const k = puzzle.getValue(clue)\n    if (k < n) yield * below(puzzle, line[k], line[k - 1], breakStrict)\n  }\n}\nfunction validate (instance, puzzle) {\n  const { clue, line } = instance\n  if (!puzzle.getCellsAreFilled([clue, ...line])) return true\n  return puzzle.getValue(clue) === runningStart(puzzle, line)\n}\n"
+            }
+          ]
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                53,
+                52,
+                51,
+                50,
+                49,
+                48,
+                47
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                73,
+                72,
+                71,
+                70,
+                69,
+                68,
+                67
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                93,
+                92,
+                91,
+                90,
+                89,
+                88,
+                87
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                113,
+                112,
+                111,
+                110,
+                109,
+                108,
+                107
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                133,
+                132,
+                131,
+                130,
+                129,
+                128,
+                127
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                153,
+                152,
+                151,
+                150,
+                149,
+                148,
+                147
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                27,
+                47,
+                67,
+                87,
+                107,
+                127,
+                147
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                167,
+                147,
+                127,
+                107,
+                87,
+                67,
+                47
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                28,
+                48,
+                68,
+                88,
+                108,
+                128,
+                148
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                168,
+                148,
+                128,
+                108,
+                88,
+                68,
+                48
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                29,
+                49,
+                69,
+                89,
+                109,
+                129,
+                149
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                169,
+                149,
+                129,
+                109,
+                89,
+                69,
+                49
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                30,
+                50,
+                70,
+                90,
+                110,
+                130,
+                150
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                170,
+                150,
+                130,
+                110,
+                90,
+                70,
+                50
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                31,
+                51,
+                71,
+                91,
+                111,
+                131,
+                151
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                171,
+                151,
+                131,
+                111,
+                91,
+                71,
+                51
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                32,
+                52,
+                72,
+                92,
+                112,
+                132,
+                152
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                172,
+                152,
+                132,
+                112,
+                92,
+                72,
+                52
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Outside Sudoku (Blue)",
+        "type": 1000,
+        "definition": {
+          "name": "Custom Outside Sudoku",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "for (const { cells } of input.groups) {\n  const [clue, ...line] = cells\n  if (line.length === 0) continue\n  const dir = puzzle.getRow(clue) === puzzle.getRow(line[0])\n    ? (puzzle.getColumn(line[0]) > puzzle.getColumn(clue) ? 'right' : 'left')\n    : (puzzle.getRow(line[0]) > puzzle.getRow(clue) ? 'down' : 'up')\n  const name = `Blue Outside Sudoku, clue ${helpers.naming.getCellsDescription([clue])} reading ${dir}`\n  const oneHouse = line.every(c => puzzle.getRow(c) === puzzle.getRow(line[0])) ||\n    line.every(c => puzzle.getColumn(c) === puzzle.getColumn(line[0]))\n  if (!oneHouse) throw new Error(`Outside Sudoku: ${name} is not one row or column`)\n  puzzle.addConstraintComponent(new OutsideSudokuComponent(name, clue, line))\n}\n"
+          },
+          "components": [
+            {
+              "type": "code",
+              "name": "OutsideSudokuComponent",
+              "code": "/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */\n// Outside Sudoku. A line reads inward from an outside clue cell. The clue\n// digit must appear in the line's WINDOW: its first w cells.\n// \n// O in { value(line[0]), ..., value(line[w - 1]) }\n// \n// w is the extent of the box the line starts in, measured along the line's\n// direction (3 along a row or column of a 9x9, 3 across and 2 down on a 6x6,\n// 2 on a 4x4), capped by the line length. The component reads it off the\n// board, never assuming 3. A line that starts at the grid edge — every frame\n// line — therefore has its own first box as its window; one an author draws\n// from mid-box has a window of the same w cells, crossing into the next box.\n// \n// The rule is a pure membership test: no index, no order, no DP. It holds on\n// a line of any kind — a bare line may repeat the clue digit inside the\n// window and the rule is still satisfied — so the component needs no gate.\nfunction getAffectedCells (clue, line) {\n  return [clue, ...line]\n}\nfunction setParams (instance, clue, line) {\n  instance.clue = clue\n  instance.line = line\n}\nfunction windowLength (instance, puzzle) {\n  if (instance.w !== undefined) return instance.w\n  const { line } = instance\n  const head = line[0]\n  const region = puzzle.getRegion(head)\n  let w = line.length\n  if (region >= 0) {\n    const alongRow = line.length === 1 || puzzle.getRow(line[1]) === puzzle.getRow(head)\n    const same = alongRow\n      ? c => puzzle.getRow(c) === puzzle.getRow(head)\n      : c => puzzle.getColumn(c) === puzzle.getColumn(head)\n    let extent = 0\n    for (const c of puzzle.getRegionCells(region)) if (same(c)) extent++\n    w = Math.min(extent, line.length)\n  }\n  instance.w = w\n  return w\n}\nfunction * update (instance, puzzle) {\n  const { clue, line } = instance\n  const w = windowLength(instance, puzzle)\n  const clueM = puzzle.getCandidatesBitMask(clue)\n  let union = 0\n  for (let i = 0; i < w; i++) union |= puzzle.getCandidatesBitMask(line[i])\n  if (clueM & ~union) {\n    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM & ~union), clue)\n  }\n  if (clueM === 0 || (clueM & (clueM - 1))) return\n  let holders = 0\n  let only = -1\n  for (let i = 0; i < w; i++) {\n    if (puzzle.getCandidatesBitMask(line[i]) & clueM) { holders++; only = i }\n  }\n  if (holders === 1) {\n    const rm = puzzle.getCandidatesBitMask(line[only]) & ~clueM\n    if (rm) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rm), line[only])\n  }\n}\nfunction validate (instance, puzzle) {\n  const { clue, line } = instance\n  if (!puzzle.getCellsAreFilled([clue, ...line])) return true\n  const w = windowLength(instance, puzzle)\n  const c = puzzle.getValue(clue)\n  for (let i = 0; i < w; i++) if (puzzle.getValue(line[i]) === c) return true\n  return false\n}\n"
+            }
+          ]
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                151,
+                152,
+                153,
+                154
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                158,
+                157,
+                156,
+                155
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                171,
+                172,
+                173,
+                174
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                178,
+                177,
+                176,
+                175
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                191,
+                192,
+                193,
+                194
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                198,
+                197,
+                196,
+                195
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                211,
+                212,
+                213,
+                214
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                218,
+                217,
+                216,
+                215
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                231,
+                232,
+                233,
+                234
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                238,
+                237,
+                236,
+                235
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                251,
+                252,
+                253,
+                254
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                258,
+                257,
+                256,
+                255
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                132,
+                152,
+                172,
+                192
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                272,
+                252,
+                232,
+                212
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                133,
+                153,
+                173,
+                193
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                273,
+                253,
+                233,
+                213
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                134,
+                154,
+                174,
+                194
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                274,
+                254,
+                234,
+                214
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                135,
+                155,
+                175,
+                195
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                275,
+                255,
+                235,
+                215
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                136,
+                156,
+                176,
+                196
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                276,
+                256,
+                236,
+                216
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                137,
+                157,
+                177,
+                197
+              ],
+              "value": ""
+            },
+            {
+              "cells": [
+                277,
+                257,
+                237,
+                217
+              ],
+              "value": ""
+            }
+          ]
+        },
+        "style": {}
+      },
+      {
+        "name": "Named messages (patch)",
+        "type": 1000,
+        "definition": {
+          "name": "Named messages",
+          "input": [],
+          "backend": {
+            "type": "code",
+            "code": "// Message patch, no solving logic. helpers.naming is the same object the app's\n// own messages go through, so wrapping getCellsDescription appends the house\n// (\"Red box 5\") to any cell list that sits inside one — including app-built\n// messages like \"R7C8 and R8C9 must both be 1\", which name no constraint.\n// Idempotent: the editor reruns this on every edit, so a flag stops re-wrapping.\nconst naming = helpers.naming\nif (!naming._houseSuffixPatched) {\n  naming._houseSuffixPatched = true\n  const orig = naming.getCellsDescription.bind(naming)\n  const W = 20\n  const grids = [['Red', 2, 7], ['Blue', 7, 12], ['Purple', 7, 2], ['Green', 12, 7]]\n  // Boxes are 3 wide, 2 tall; box index in reading order matches the\n  // \"<Color> box N\" names the Regions components register.\n  const houseOf = cells => {\n    if (cells.length < 2) return null\n    for (const [color, r0, c0] of grids) {\n      const local = cells.map(id => [Math.floor(id / W) - r0, (id % W) - c0])\n      if (!local.every(([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6)) continue\n      if (local.every(([r]) => r === local[0][0])) return color + ' row ' + (local[0][0] + 1)\n      if (local.every(([, c]) => c === local[0][1])) return color + ' column ' + (local[0][1] + 1)\n      const box = ([r, c]) => Math.floor(r / 2) * 2 + Math.floor(c / 3)\n      if (local.every(x => box(x) === box(local[0]))) return color + ' box ' + (box(local[0]) + 1)\n      return color + ' grid'\n    }\n    return null\n  }\n  naming.getCellsDescription = cells => {\n    const base = orig(cells)\n    try {\n      const house = houseOf(Array.from(cells))\n      return house ? base + ' (' + house + ')' : base\n    } catch {\n      return base\n    }\n  }\n}\n"
+          },
+          "components": []
+        },
+        "input": {},
+        "style": {}
+      },
+      {
+        "type": 0
+      }
+    ]
+  }
+}
