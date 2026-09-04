@@ -31,11 +31,11 @@ function setParams (instance, clues, lines) {
   instance.rank = lines.map(line => line[0])
 }
 
-//! A full house of {1..cells.length}: the cells never repeat a digit and their
-//! live candidates union to exactly the digits 1..n, so no cell can hold a 0.
-//! Query the cells alone -- a clue cell in the list flips the repeats answer.
-function fullHouseOfOneToN (puzzle, cells) {
-  if (puzzle.getCellsCanHaveRepeats(cells)) return false
+//! Half of "a full house of {1..cells.length}": the cells' live candidates
+//! union to exactly the digits 1..n, so no cell can hold a 0. The other half,
+//! that the cells never repeat a digit, is asked once in the gate below --
+//! query the cells alone there, a clue cell in the list flips that answer.
+function unionIsOneToN (puzzle, cells) {
   let mask = 0
   for (const cell of cells) mask |= puzzle.getCandidatesBitMask(cell)
   return mask === (1 << (cells.length + 1)) - 2 // bits 1..n set, bit 0 clear
@@ -46,19 +46,22 @@ function fullHouseOfOneToN (puzzle, cells) {
 //! nothing.
 // Asked at solve time, because main code runs before the built-in row and
 // column houses are registered (gotcha 6) and a board that starts its digits at
-// 0 keeps a 0 on a line until something else takes it away. A house never
-// repeats again and a shrinking union never regains a digit, so the answer is
-// cached once it turns true -- and only then, or a line still carrying a 0
-// would lock the gate shut for good.
+// 0 keeps a 0 on a line until something else takes it away. The answer is never
+// cached: the app shares one component object across every search node, so a
+// gate latched open deep in a branch stays open after the backtrack to a parent
+// state whose lines have regained the digits that shut it (#336).
 function gateOpen (instance, puzzle) {
-  if (instance.gateOpen) return true
   const { clues, lines, rank } = instance
   const n = clues.length
   if (lines.length !== n || !lines.every(line => line.length === n)) return false
-  if (!lines.every(line => fullHouseOfOneToN(puzzle, line))) return false
-  if (!fullHouseOfOneToN(puzzle, rank)) return false
-  instance.gateOpen = true
-  return true
+  // The repeats answer is structural -- a house is registered once and a
+  // backtrack cannot un-register it -- so it alone is cached.
+  if (!instance.noRepeats) {
+    if (lines.some(line => puzzle.getCellsCanHaveRepeats(line))) return false
+    if (puzzle.getCellsCanHaveRepeats(rank)) return false
+    instance.noRepeats = true
+  }
+  return lines.every(line => unionIsOneToN(puzzle, line)) && unionIsOneToN(puzzle, rank)
 }
 
 function * update (instance, puzzle) {

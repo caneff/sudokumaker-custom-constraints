@@ -252,6 +252,20 @@ cap the component yields nothing above 9 and the app finds no first solution
 inside its limit; with the DP it proves the board unique in 0.1 s, 3/3 reps.
 The app accepts `maxDigit` 10 without complaint.
 
+### The uncached gate (#336)
+
+| 2026-09-04 | v2026.08.14-d47fc4b | skyscraper | 8600ms | 9200ms | 1.07 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+
+`gateOpen` used to cache its whole answer, including "the line's candidates
+union to {1..n}" — a fact about one search node, on an object every search node
+shares. The latch survived the backtrack to a state where the line had regained
+a 0, and the DP then read that line as a permutation of 1..n. Both gates here
+now re-ask the union every call and cache only the structural
+`getCellsCanHaveRepeats` half. It adds no deduction, so the bar is **≤ 1.1× on
+both rows**; the after-logical row times nothing on this board, so the cold row
+decides. Two runs: 1.10 and the recorded 1.07.
+
 ### The gate change (#240)
 
 | 2026-08-30 | v2026.08.14-d47fc4b | skyscraper (previous PUZZLE_LINK.txt) | 8200ms | 8300ms | 1.01 | gate: PASS |

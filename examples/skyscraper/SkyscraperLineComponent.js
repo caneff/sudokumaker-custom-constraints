@@ -207,18 +207,21 @@ function prune (puzzle, line, Lc, Rc, peak) {
 // row and column houses are registered (gotcha 6) and a board that starts its
 // digits at 0 keeps a 0 on the line until something else takes it away. Query
 // the line alone: a ring cell in the list flips getCellsCanHaveRepeats to true.
-// A house never repeats again and a shrinking union never regains a digit, so
-// the answer is cached once it turns true -- and only then, or a line still
-// carrying a 0 would lock the gate shut for good.
+// The answer is never cached: the app shares one component object across every
+// search node, so a gate latched open deep in a branch stays open after the
+// backtrack to a parent state whose line has regained the digits that shut it
+// (#336). Re-asking costs one pass over the line's masks.
 function gateOpen (instance, puzzle) {
-  if (instance.gateOpen) return true
   const line = instance.line
-  if (puzzle.getCellsCanHaveRepeats(line)) return false
+  // The repeats answer is structural -- a house is registered once and a
+  // backtrack cannot un-register it -- so it alone is cached.
+  if (!instance.noRepeats) {
+    if (puzzle.getCellsCanHaveRepeats(line)) return false
+    instance.noRepeats = true
+  }
   let mask = 0
   for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-  if (mask !== (1 << (line.length + 1)) - 2) return false // bits 1..length set, bit 0 clear
-  instance.gateOpen = true
-  return true
+  return mask === (1 << (line.length + 1)) - 2 // bits 1..length set, bit 0 clear
 }
 
 function * update (instance, puzzle) {

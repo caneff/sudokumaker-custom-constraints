@@ -83,5 +83,6 @@ Decode with `decompressFromEncodedURIComponent`. See `patterns.md`. **[verified]
 Component objects are not cloned per search node, and `stop()` fails only the
 cloned state. Anything you write on `instance` survives the backtrack that
 clears the stop — so a memo written on a stopped path silently disables the
-dead-branch signal. See `component-contract.md`, "`instance` lives for the
+dead-branch signal, and a gate cached from live candidates stays open in a
+parent state that no longer earns it (#336). Cache only what geometry fixes. See `component-contract.md`, "`instance` lives for the
 whole solve, not one search node". **[verified]**

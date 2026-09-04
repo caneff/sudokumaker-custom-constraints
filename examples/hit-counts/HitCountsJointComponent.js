@@ -151,18 +151,20 @@ function signature (puzzle, instance, exact) {
 // settles after the first update. Query the line alone -- a ring cell in the
 // list flips getCellsCanHaveRepeats to true.
 // `instance.oneToN` rides along: the union of the line's live candidates is
-// exactly {1..n}, the extra fact the no-n-1 rule needs. That is the answer the
-// early return reads, not the kind: a line of nine cells holding {0..8} counts
-// as a full house while its digit set is still wrong, and caching on the kind
-// there would hold the gate shut for good once the cage removed the 0. A house
-// never repeats again and a shrinking union never regains a digit, so once
-// `oneToN` is true nothing needs asking again.
+// exactly {1..n}, the extra fact the no-n-1 rule needs. Both are read fresh
+// every call and neither is cached. The app shares one component object across
+// every search node, so a fact latched deep in a branch survives the backtrack
+// to a parent state where the union has regained digits -- and the no-n-1 rule
+// then fires on a line that is not a permutation of 1..n (#336).
 // The same test lives in HitCountsComponent and SideSumComponent: the app
 // pastes each component as its own segment, so the copies cannot share code.
 function lineKind (instance, puzzle) {
-  if (instance.oneToN) return FULL_HOUSE
   const line = instance.line
-  if (puzzle.getCellsCanHaveRepeats(line)) { instance.kind = BARE; return BARE }
+  instance.oneToN = false
+  if (!instance.noRepeats) {
+    if (puzzle.getCellsCanHaveRepeats(line)) { instance.kind = BARE; return BARE }
+    instance.noRepeats = true // structural: a house is registered once and a backtrack cannot un-register it
+  }
   let mask = 0
   for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
   let live = 0

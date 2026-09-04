@@ -552,6 +552,17 @@ just time hit-counts
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) after-logical | 6100ms | 6100ms | 1.00 | gate: PASS |
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) | 12000ms | 12300ms | 1.02 | gate: PASS |
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) after-logical | 8400ms | 9000ms | 1.07 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (uncached `oneToN`, #336) | 9000ms | 8900ms | 0.99 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (uncached `oneToN`, #336) after-logical | 7400ms | 7600ms | 1.03 | gate: PASS |
+
+The #336 pair stops `lineKind` caching `instance.oneToN`. The union of a
+line's live candidates is a fact about one search node, and the component
+object is shared across all of them, so the latch survived the backtrack to a
+state where the union was wider — and `noNMinusOne` then removed n - 1 from a
+line that is not a permutation of 1..n. The cache is not gone entirely: the
+`getCellsCanHaveRepeats` answer is structural and is still asked once, which is
+what keeps the rows flat. Recomputing that call too costs 1.66×/1.60× — the
+app's house query, not the union pass, is the expensive half.
 
 The #329 pair drops the `instance.sig` write on a `permutationPrune` that
 stopped, so a state the sweep declared dead is swept again rather than skipped
