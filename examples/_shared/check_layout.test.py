@@ -439,7 +439,6 @@ if __name__ == "__main__":
 
     # a committed link that is NOT a PUZZLE_LINK*.txt -- a frozen timing
     # fixture, a hunt record -- is still a link, so the share criteria bind it
-    # (#303 review: 50 such files sat outside the old glob)
     fixture = "timing-fixture-9x9-cap9-seed3-rung25.txt"
     with example(extra_links=[fixture], contents={fixture: _link(entered=True)}) as (
         root,

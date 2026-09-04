@@ -1,16 +1,22 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
-# decodes EVERY committed link -- the shipped PUZZLE_LINK*.txt boards and the
-# other link .txt files an example commits beside them (fillomino's frozen
-# timing fixtures and its hunt records, 50 of them) -- and checks the three
-# mechanical pre-share criteria from docs/share-checklist.md: the link opens
-# clean (no entered values on non-given cells), the outside ring is not filled
-# end to end, and the rules text carries the sudoku prefix, except an example
-# in NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt from the
-# first two -- filling every clue is what that name means. It also checks that
-# every link ships exactly the components its own embedded backend registers,
-# so a link cannot go stale behind its builder.
+# decodes every committed link IN AN EXAMPLE -- the shipped PUZZLE_LINK*.txt
+# boards and the other link .txt files an example commits beside them
+# (fillomino's frozen timing fixtures and its hunt records) -- and checks the
+# three mechanical pre-share criteria from docs/share-checklist.md: the link
+# opens clean (no entered values on non-given cells), the outside ring is not
+# filled end to end, and the rules text carries the sudoku prefix, except an
+# example in NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt
+# from the first two -- filling every clue is what that name means. It also
+# checks that every link ships exactly the components its own embedded
+# backend registers, so a link cannot go stale behind its builder.
+#
+# Links committed outside examples/ (docs/research/fillomino-baseline/'s
+# PUZZLE_LINK.txt and its 19 timing fixtures) are out of scope for this sweep
+# -- they are not an example directory and carry no builder to check
+# components against. They still get a manual decode pass when touched; see
+# examples/fillomino/README.md's fixture-reuse justification.
 #
 # The link-NAME grammar binds only PUZZLE_LINK*.txt: a fixture or a hunt record
 # is not a shipped board and names itself for what it records. The share
@@ -179,7 +185,7 @@ def committed_links(example_dir):
         try:
             if f.read_text().lstrip().startswith(LINK_PREFIX):
                 sniffed.append(f)
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             continue
     return named + sniffed
 

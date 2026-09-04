@@ -11,8 +11,7 @@ byte-for-byte as their author wrote them, plus that baseline's
 `FillominoComponentNoLog.js`, the same vendored code minus its one
 `console.log`, kept in the vendor's style so the timing comparison stays
 apples-to-apples. `package.json`'s `standard.ignore` is the list.
-Thin on purpose: the
-load-bearing detail lives in `docs/`, and each rule points there.
+Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points there.
 
 ## Soundness is the invariant
 

@@ -259,8 +259,8 @@ sample → CP-SAT proof → the shipped component solving this clue set offline 
 the link decode, and fails if any two of them disagree.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
-link in the example (all 51: this board, the 19 frozen fixture triples, the
-hunt records):
+link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
+`-base` frozen fixtures, the hunt records):
 
 - **Opens clean** ✓ — 53 non-given cells, every one `{}`. `pipeline.test.py`
   asserts it cell by cell as well.
@@ -455,7 +455,9 @@ fixtures) and the rung 3 column is #309's sweep (the `-rung25.txt` fixtures).
 That reuse is legitimate on three counts — the two sweeps ran on the same day
 against the same app version (2026-09-03, v2026.08.14-d47fc4b); `-base`,
 `-rung1` and `-rung25` for one seed are *byte-identical boards* with one
-component swapped in, asserted by decoding all 19 fixture triples; and neither
+component swapped in, asserted by decoding the 9 seeds that carry a baseline
+fixture (cap12 seeds 3, 10, 11, 13, 14, 16, 17, 18, 20) — the same 9 whose
+`-rung1`/`-rung25` rows this table reuses; and neither
 component has changed since its sweep ran, which is the condition
 `docs/real-app-timing.md` puts on reusing a row.
 
@@ -485,8 +487,10 @@ median fixture's cold row is **0.004x**. Six of the eight now read 0 ms or
 **Eleven fixtures are untimed against the baseline at this app version** — the
 same eleven #308's own table names: cap9-seed1, cap9-seed3, cap9-seed5,
 cap9-seed10, cap9-seed18, cap9-seed20, cap12-seed3, cap12-seed4, cap12-seed5,
-cap12-seed8 and cap12-seed9. The pre-bitmask code cleared all 19 against this
-baseline; that table is in this file's history at `8acf3d7`. Rung 3 beats
+cap12-seed8 and cap12-seed9. cap12-seed3 does carry a `-base` fixture (one of
+the 9 above), but its row was never taken at this app version, so it stays
+on the untimed list with the other ten. The pre-bitmask code cleared all 19
+against this baseline; that table is in this file's history at `8acf3d7`. Rung 3 beats
 rung 2.5 on all 19 (below) and rung 2.5 traces back to rung 2, so nothing here
 suggests the eleven would read differently — but they are not measured against
 the baseline at this version, and this table does not claim them.

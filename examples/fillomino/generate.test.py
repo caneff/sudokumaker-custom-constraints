@@ -54,8 +54,8 @@ def test_dropped_grid_logs_seed_and_clue_set():
 
 
 def test_unique_cli_logs_the_clue_set_it_dropped():
-    # The `unique` CLI drops a timed-out grid -- it must name the clue set on
-    # the way out, not exit on a bare traceback.
+    # The `unique` CLI drops a timed-out grid and exits 2, naming the clue
+    # set it dropped on stderr.
     gen = HERE / "gen.json"
     r = subprocess.run(
         [sys.executable, str(HERE / "generate.py"), "unique", str(gen), "0.001"],
