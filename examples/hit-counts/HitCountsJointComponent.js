@@ -77,31 +77,52 @@ function caseBits (mask, j, n) {
   return bits
 }
 
-// One unit's combinations, flat: caseJ, caseK, dA, dB per entry. k < 0 is the
-// centre, whose single hit counts for both clues at once.
-function unitCombos (cm, j, k, n, house) {
+// The centre cell's combinations: its single hit counts for both clues at once,
+// so CASE_L there is one hit for each.
+function centreCombos (c) {
   const out = []
-  if (k < 0) {
-    const c = caseBits(cm[j], j, n)
-    if (c & 1) out.push(CASE_L, -1, 1, 1)
-    if (c & 4) out.push(CASE_M, -1, 0, 0)
-    return out
+  if (c & 1) out.push(CASE_L, -1, 1, 1)
+  if (c & 4) out.push(CASE_M, -1, 0, 0)
+  return out
+}
+
+// One unit's combinations, flat: caseJ, caseK, dA, dB per entry. k < 0 is the
+// centre.
+function unitCombos (cm, j, k, n, house) {
+  if (k < 0) return centreCombos(caseBits(cm[j], j, n))
+  return pairCombos(caseBits(cm[j], j, n), caseBits(cm[k], k, n), house)
+}
+
+// A mirrored pair's cases, six numbers each: the case bit the j end must hold,
+// the bit the k end must hold, then the entry to emit — caseJ, caseK, dA, dB.
+const PAIR_CASES = [
+  4, 4, CASE_M, CASE_M, 0, 0,
+  1, 4, CASE_L, CASE_M, 1, 0,
+  4, 1, CASE_M, CASE_L, 1, 0,
+  2, 4, CASE_R, CASE_M, 0, 1,
+  4, 2, CASE_M, CASE_R, 0, 1,
+  1, 1, CASE_L, CASE_L, 2, 0,
+  2, 2, CASE_R, CASE_R, 0, 2
+]
+// Position j hits for A with digit j+1; its mirror hits for B with digit
+// n-k = j+1. One digit, two cells — impossible on a house, allowed otherwise.
+const PAIR_CASES_OFF_HOUSE = [
+  1, 2, CASE_L, CASE_R, 1, 1,
+  2, 1, CASE_R, CASE_L, 1, 1
+]
+
+// Emit every case in `table` both ends can still take.
+function pushCases (out, table, a, b) {
+  for (let t = 0; t < table.length; t += 6) {
+    if ((a & table[t]) && (b & table[t + 1])) out.push(table[t + 2], table[t + 3], table[t + 4], table[t + 5])
   }
-  const a = caseBits(cm[j], j, n)
-  const b = caseBits(cm[k], k, n)
-  if ((a & 4) && (b & 4)) out.push(CASE_M, CASE_M, 0, 0)
-  if ((a & 1) && (b & 4)) out.push(CASE_L, CASE_M, 1, 0)
-  if ((a & 4) && (b & 1)) out.push(CASE_M, CASE_L, 1, 0)
-  if ((a & 2) && (b & 4)) out.push(CASE_R, CASE_M, 0, 1)
-  if ((a & 4) && (b & 2)) out.push(CASE_M, CASE_R, 0, 1)
-  if ((a & 1) && (b & 1)) out.push(CASE_L, CASE_L, 2, 0)
-  if ((a & 2) && (b & 2)) out.push(CASE_R, CASE_R, 0, 2)
-  // Position j hits for A with digit j+1; its mirror hits for B with digit
-  // n-k = j+1. One digit, two cells — impossible on a house, allowed otherwise.
-  if (!house) {
-    if ((a & 1) && (b & 2)) out.push(CASE_L, CASE_R, 1, 1)
-    if ((a & 2) && (b & 1)) out.push(CASE_R, CASE_L, 1, 1)
-  }
+}
+
+// A mirrored pair's combinations, from the case bits of each end.
+function pairCombos (a, b, house) {
+  const out = []
+  pushCases(out, PAIR_CASES, a, b)
+  if (!house) pushCases(out, PAIR_CASES_OFF_HOUSE, a, b)
   return out
 }
 
@@ -180,33 +201,12 @@ function permScratch (instance, n) {
   instance.pc = pc
 }
 
-// The permutation sweep, for a line that holds 1..n once each. A state is the
-// set of digits already placed; its size names the position to fill next, so the
-// two sweeps below walk the same states in opposite directions.
-//   F[mask][a] — the B counts a prefix can reach with A count a, having used
-//     exactly the digits in `mask`.
-//   H[mask][a] — the B counts that, added to a prefix already holding (a, b),
-//     let the rest of the line finish on a pair both clues still hold.
-// Digit d at position i is possible when some state meets its own future: the
-// prefix reaches (a, b) and the suffix after d finishes from there. Anything no
-// state supports is a digit no permutation can put in that cell.
-// The three loops below step a digit the same way -- read the low bit, name the
-// digit, work out whether it hits for A, for B, and where it lands. That is
-// written out three times rather than called, because a call in a loop this hot
-// costs more than the repetition; change one and change all three.
-function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
-  const { clueA, clueB, line, n } = instance
-  const W = n + 1
-  const last = (1 << n) - 1
-  permScratch(instance, n)
-  const { F, H, pc, reach, dig, keep } = instance
-
-  // Each position's open digits as bits 0..n-1, bit d-1 for digit d.
-  for (let j = 0; j < n; j++) dig[j] = (cm[j] >> 1) & last
-
-  // `reach` marks the states a prefix can actually build. Most subsets of the
-  // digits are not among them once a few cells are pinned, and the two sweeps
-  // below walk only the ones that are.
+// Forward sweep: `F[mask][a]` gains the B counts a prefix using exactly the
+// digits in `mask` can reach with A count a. `reach` marks the states a prefix
+// can actually build -- most subsets of the digits are not among them once a
+// few cells are pinned, and the two sweeps after this one walk only the ones
+// that are.
+function permForward (F, reach, dig, pc, n, W, last) {
   F[0] = 1
   reach[0] = 1
   for (let mask = 0; mask < last; mask++) {
@@ -227,7 +227,12 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
       if (hit) reach[mask | bit] = 1
     }
   }
+}
 
+// Backward sweep: `H[mask][a]` gains the B counts that, added to a prefix
+// holding (a, b), let the rest of the line finish on a pair both clues hold.
+// The last state is seeded with the clue box itself.
+function permBackward (H, reach, dig, pc, n, W, last, maskA, maskB) {
   const tail = last * W
   for (let a = 0; a <= n; a++) H[tail + a] = ((maskA >> a) & 1) ? maskB : 0
   for (let mask = last - 1; mask >= 0; mask--) {
@@ -243,15 +248,10 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
       for (let a = 0; a + da <= n; a++) H[base + a] |= H[to + a] >>> db
     }
   }
+}
 
-  // No permutation of the line lands both clues on a candidate: the branch is
-  // dead. Empty a clue cell, the contradiction signal the case sweep raises too.
-  if ((H[0] & 1) === 0) {
-    const cands = Array.from(puzzle.getCandidates(clueA))
-    if (cands.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(cands), clueA)
-    return
-  }
-
+// Clue candidates: the (A, B) pairs a full permutation reaches inside the box.
+function permKeepClues (F, tail, maskA, maskB, n) {
   let keepA = 0
   let keepB = 0
   for (let a = 0; a <= n; a++) {
@@ -261,9 +261,14 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
     keepA |= 1 << a
     keepB |= both
   }
+  return { keepA, keepB }
+}
 
-  // A digit proved possible stays out of the search below, so a position with
-  // few live digits costs a few tests and a pinned one costs none.
+// Final sweep: `keep[i]` gains digit d where some state meets its own future --
+// the prefix reaches (a, b) and the suffix after d finishes from there. A digit
+// proved possible stays out of the search, so a position with few live digits
+// costs a few tests and a pinned one costs none.
+function permKeepDigits (F, H, keep, reach, dig, pc, n, W, last) {
   for (let mask = 0; mask < last; mask++) {
     if (reach[mask] === 0) continue
     const i = pc[mask]
@@ -279,6 +284,45 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
       }
     }
   }
+}
+
+// The permutation sweep, for a line that holds 1..n once each. A state is the
+// set of digits already placed; its size names the position to fill next, so
+// `permForward` and `permBackward` walk the same states in opposite directions.
+//   F[mask][a] — the B counts a prefix can reach with A count a, having used
+//     exactly the digits in `mask`.
+//   H[mask][a] — the B counts that, added to a prefix already holding (a, b),
+//     let the rest of the line finish on a pair both clues still hold.
+// Digit d at position i is possible when some state meets its own future: the
+// prefix reaches (a, b) and the suffix after d finishes from there. Anything no
+// state supports is a digit no permutation can put in that cell.
+// The three sweeps step a digit the same way -- read the low bit, name the
+// digit, work out whether it hits for A, for B, and where it lands. That inner
+// step is written out three times rather than shared, because a call in a loop
+// this hot costs more than the repetition; change one and change all three.
+function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
+  const { clueA, clueB, line, n } = instance
+  const W = n + 1
+  const last = (1 << n) - 1
+  permScratch(instance, n)
+  const { F, H, pc, reach, dig, keep } = instance
+
+  // Each position's open digits as bits 0..n-1, bit d-1 for digit d.
+  for (let j = 0; j < n; j++) dig[j] = (cm[j] >> 1) & last
+
+  permForward(F, reach, dig, pc, n, W, last)
+  const tail = last * W
+  permBackward(H, reach, dig, pc, n, W, last, maskA, maskB)
+
+  // No permutation of the line lands both clues on a candidate: the branch is
+  // dead. Stop with the reason, the same signal the case sweep raises too.
+  if ((H[0] & 1) === 0) {
+    yield puzzle.stop(`no ordering of the line satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
+    return
+  }
+
+  const { keepA, keepB } = permKeepClues(F, tail, maskA, maskB, n)
+  permKeepDigits(F, H, keep, reach, dig, pc, n, W, last)
 
   const rmA = maskA & ~keepA
   if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
@@ -290,8 +334,22 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   }
 }
 
+// A line that holds 1..n once each can never have exactly n - 1 hits: fix
+// n - 1 cells on target and the last value has only its home left, forcing an
+// nth hit. The hit matching does not see this, so it is its own rule. Returns
+// true when it fired: yielding makes both clue masks stale, so `update` leaves
+// the sweep to the next pass.
+function * noNMinusOne (instance, puzzle, maskA, maskB, kind) {
+  const { clueA, clueB, n } = instance
+  if (kind !== FULL_HOUSE || !instance.oneToN || n < 2) return false
+  if ((((maskA | maskB) >> (n - 1)) & 1) === 0) return false
+  if ((maskA >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueA)
+  if ((maskB >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueB)
+  return true
+}
+
 function * update (instance, puzzle) {
-  const { clueA, clueB, line, n, units } = instance
+  const { clueA, clueB, line, n } = instance
   const all = (1 << (n + 1)) - 1
   const maskA = puzzle.getCandidatesBitMask(clueA) & all
   const maskB = puzzle.getCandidatesBitMask(clueB) & all
@@ -300,15 +358,7 @@ function * update (instance, puzzle) {
   for (let j = 0; j < n; j++) cm.push(puzzle.getCandidatesBitMask(line[j]))
   const kind = lineKind(instance, puzzle)
 
-  // A line that holds 1..n once each can never have exactly n - 1 hits: fix
-  // n - 1 cells on target and the last value has only its home left, forcing an
-  // nth hit. The hit matching does not see this, so it is its own rule. Yielding
-  // makes both clue masks stale, so leave the sweep to the next pass.
-  if (kind === FULL_HOUSE && instance.oneToN && n >= 2 && ((maskA | maskB) >> (n - 1)) & 1) {
-    if ((maskA >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueA)
-    if ((maskB >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueB)
-    return
-  }
+  if (yield * noNMinusOne(instance, puzzle, maskA, maskB, kind)) return
 
   // On a line that holds 1..n once each the permutation sweep answers everything
   // the case sweep answers and more -- every case it keeps is realised by a real
@@ -322,13 +372,16 @@ function * update (instance, puzzle) {
     return
   }
 
-  const U = units.length
-  const combos = []
-  const house = kind >= HOUSE
-  for (let u = 0; u < U; u++) combos.push(unitCombos(cm, units[u][0], units[u][1], n, house))
+  // A sweep that stopped leaves no memo: the dead-branch signal has to fire
+  // again on the next call, and a memo would let a later state with the same
+  // signature return early and never raise it.
+  const stopped = yield * caseSweep(instance, puzzle, cm, maskA, maskB, kind, all)
+  if (!stopped) instance.sig = signature(puzzle, instance, exact)
+}
 
-  // F[u][a] — bitmask of the B counts reachable with A count a, over the units
-  // before u. F[0] is the single state (0, 0).
+// F[u][a] — bitmask of the B counts reachable with A count a, over the units
+// before u. F[0] is the single state (0, 0).
+function caseForward (combos, U, n, all) {
   const F = new Array(U + 1)
   F[0] = new Array(n + 1).fill(0)
   F[0][0] = 1
@@ -345,12 +398,13 @@ function * update (instance, puzzle) {
     }
     F[u + 1] = nx
   }
+  return F
+}
 
-  // H[u][a] — the states from which the units from u on can still finish inside
-  // the clue box. H[U] is the box itself.
+// H[u][a] — the states from which the units from u on can still finish inside
+// the clue box `box`, which is H[U] itself.
+function caseBackward (combos, U, n, box) {
   const H = new Array(U + 1)
-  const box = new Array(n + 1).fill(0)
-  for (let a = 0; a <= n; a++) if ((maskA >> a) & 1) box[a] = maskB
   H[U] = box
   for (let u = U - 1; u >= 0; u--) {
     const pv = new Array(n + 1).fill(0)
@@ -364,16 +418,12 @@ function * update (instance, puzzle) {
     }
     H[u] = pv
   }
+  return H
+}
 
-  // No (A, B) the line can reach lies in the box: the branch is dead. Empty a
-  // clue cell, the contradiction signal the per-line rule already raises.
-  if ((H[0][0] & 1) === 0) {
-    const cands = Array.from(puzzle.getCandidates(clueA))
-    if (cands.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(cands), clueA)
-    return
-  }
-
-  // Which cases each position can still take.
+// Which cases each position can still take: a combination survives where the
+// units before it reach a state the units after it can finish from.
+function openCases (combos, units, F, H, U, n) {
   const open = new Array(n).fill(0)
   for (let u = 0; u < U; u++) {
     const co = combos[u]
@@ -393,36 +443,70 @@ function * update (instance, puzzle) {
       if (k >= 0) open[k] |= 1 << co[t + 1]
     }
   }
+  return open
+}
 
-  // Clue candidates: keep the values that appear in a reachable pair in the box.
+// Clue candidates: keep the values that appear in a reachable pair in the box.
+function caseKeepClues (S, box, n) {
   let keepA = 0
   let keepB = 0
-  const S = F[U]
   for (let a = 0; a <= n; a++) {
     const both = S[a] & box[a]
     if (both === 0) continue
     keepA |= 1 << a
     keepB |= both
   }
+  return { keepA, keepB }
+}
+
+// The digits an impossible case takes with it at position j.
+function caseCellDrop (o, j, n) {
+  const lBit = 1 << (j + 1)
+  const rBit = 1 << (n - j)
+  let rm = 0
+  // At the centre the two targets are one digit, held by CASE_L alone.
+  if ((o & (1 << CASE_L)) === 0) rm |= lBit
+  if (rBit !== lBit && (o & (1 << CASE_R)) === 0) rm |= rBit
+  if ((o & (1 << CASE_M)) === 0) rm |= ~(lBit | rBit)
+  return rm
+}
+
+// The case sweep: a forward and a backward pass over the mirrored units, each
+// unit contributing the (case, hit) combinations its two cells still allow.
+// Weaker than the permutation sweep but it runs on any line kind. Returns true
+// when it stopped on a dead branch, which is what keeps `update` from memoising
+// the state it stopped on.
+function * caseSweep (instance, puzzle, cm, maskA, maskB, kind, all) {
+  const { clueA, clueB, line, n, units } = instance
+  const U = units.length
+  const house = kind >= HOUSE
+  const combos = []
+  for (let u = 0; u < U; u++) combos.push(unitCombos(cm, units[u][0], units[u][1], n, house))
+
+  const F = caseForward(combos, U, n, all)
+  const box = new Array(n + 1).fill(0)
+  for (let a = 0; a <= n; a++) if ((maskA >> a) & 1) box[a] = maskB
+  const H = caseBackward(combos, U, n, box)
+
+  // No (A, B) the line can reach lies in the box: the branch is dead. Stop
+  // with the reason, the same signal the per-line rule already raises.
+  if ((H[0][0] & 1) === 0) {
+    yield puzzle.stop(`no hit count the line can reach satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
+    return true
+  }
+
+  const open = openCases(combos, units, F, H, U, n)
+  const { keepA, keepB } = caseKeepClues(F[U], box, n)
   const rmA = maskA & ~keepA
   if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
   const rmB = maskB & ~keepB
   if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
 
-  // Cell candidates: an impossible case takes its digits with it.
   for (let j = 0; j < n; j++) {
-    const lBit = 1 << (j + 1)
-    const rBit = 1 << (n - j)
-    const o = open[j]
-    let rm = 0
-    // At the centre the two targets are one digit, held by CASE_L alone.
-    if ((o & (1 << CASE_L)) === 0) rm |= lBit
-    if (rBit !== lBit && (o & (1 << CASE_R)) === 0) rm |= rBit
-    if ((o & (1 << CASE_M)) === 0) rm |= ~(lBit | rBit)
-    rm &= cm[j]
+    const rm = caseCellDrop(open[j], j, n) & cm[j]
     if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm)), line[j])
   }
-  instance.sig = signature(puzzle, instance, exact)
+  return false
 }
 
 function bits (mask) {

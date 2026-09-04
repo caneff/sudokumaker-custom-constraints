@@ -374,4 +374,25 @@ function jointFixpoint (comps, p) {
   assert.strictEqual(weaker, 0)
 }
 
+// ---- A stopped sweep leaves no memo ----
+// `update` memoises the signature it last swept so an unchanged state costs one
+// pass and no solve. A state the sweep STOPPED on must not be memoised: the
+// search clears the stop on backtrack but the memo would survive, and the
+// non-exact signature reads only three case bits per cell, so a later live
+// state can hash the same and skip the sweep that would declare it dead.
+{
+  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  installGlobals(0, 9)
+  // A bare line of two cells, both {1,2}, with both clues pinned to 2. Two hits
+  // at each end at once is impossible, so the case sweep stops.
+  const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
+  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { kind: 'bare' })
+  const inst = {}
+  cur.setParams(inst, 0, 1, [2, 3])
+  Array.from(cur.update(inst, p))
+  console.log('hit-counts stopped sweep:', p._stopped === null ? 'did not stop' : 'stopped,', 'sig', inst.sig)
+  assert.ok(p._stopped !== null, 'the case sweep must stop on a line no arrangement satisfies')
+  assert.strictEqual(inst.sig, undefined, 'a stopped sweep must not memoise the state it stopped on')
+}
+
 console.log('PASS')

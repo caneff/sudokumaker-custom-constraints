@@ -26,6 +26,7 @@ export function makeCandidateState ({ houses = [] } = {}) {
   const houseSets = houses.map(h => new Set(h))
   const state = {
     cand: new Map(),
+    stopped: false, // a component declared the branch dead via puzzle.stop()
     total () { let s = 0; for (const set of state.cand.values()) s += set.size; return s },
     anyEmpty () { for (const set of state.cand.values()) if (set.size === 0) return true; return false },
     clone () { const m = new Map(); for (const [k, v] of state.cand) m.set(k, new Set(v)); return m },
@@ -39,7 +40,8 @@ export function makeCandidateState ({ houses = [] } = {}) {
       // see each other, which here means one house holds every one of them.
       getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
       removeCandidateFromCell: (d, c) => { state.cand.get(c).delete(d) },
-      removeCandidatesFromCell: (s, c) => { const set = state.cand.get(c); for (const d of s) set.delete(d) }
+      removeCandidatesFromCell: (s, c) => { const set = state.cand.get(c); for (const d of s) set.delete(d) },
+      stop: (message = '', cells = []) => { state.stopped = true; return { message, cells } }
     }
   }
   return state
@@ -143,6 +145,7 @@ export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init =
   for (let pass = 0; pass < maxPasses; pass++) {
     const before = state.total()
     for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle)) // apply
+    if (state.stopped) return pass + 1 // the branch is dead; no point propagating on
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
     if (state.total() === before) return pass + 1
@@ -155,7 +158,7 @@ export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init =
 // leaves an infeasible group untouched rather than emptying a cell, so a
 // caller doing search must test matchability itself.
 export function dead (state, alldiffGroups) {
-  if (state.anyEmpty()) return true
+  if (state.stopped || state.anyEmpty()) return true
   for (const g of alldiffGroups) if (maxMatch(g, c => state.cand.get(c)) !== g.length) return true
   return false
 }
@@ -191,6 +194,7 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       runToFixpoint(state, comps, alldiffGroups, floorGroup, { init: false, extra })
       if (!dead(state, alldiffGroups)) dfs()
       state.cand = saved
+      state.stopped = false
       if (capped || done) return
     }
   }

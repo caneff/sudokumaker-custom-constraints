@@ -35,7 +35,7 @@ for (let i = 0; i < groups.length; i++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
     paired.add(i)
     paired.add(j)
-    const name = `hit counts joint ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    const name = `the hit-count clues at ${helpers.naming.getCellName(groups[i].clue)} and ${helpers.naming.getCellName(groups[j].clue)}`
     puzzle.addConstraintComponent(
       new HitCountsJointComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
     break
@@ -45,6 +45,6 @@ for (let i = 0; i < groups.length; i++) {
 for (let i = 0; i < groups.length; i++) {
   if (paired.has(i)) continue
   const g = groups[i]
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
+  const name = `the hit-count clue at ${helpers.naming.getCellName(g.clue)}`
   puzzle.addConstraintComponent(new HitCountsComponent(name, g.clue, g.line))
 }

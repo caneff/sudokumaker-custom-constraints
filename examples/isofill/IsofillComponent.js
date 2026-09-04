@@ -282,15 +282,13 @@ function cutFilter (instance, placed, open, allowed, size, depth) {
   return skip
 }
 
-function * update (instance, puzzle) {
-  const { cells, nbrs } = instance
-  const lo = helpers.digits.minDigit
-  const hi = helpers.digits.maxDigit
-  const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
-  if (!Number.isInteger(size)) throw new Error(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`)
-  // One scan of the grid builds every digit's state (update runs on every
-  // search node, so each cell is read once). Every digit then sees this
-  // snapshot, not the removals earlier digits yield in the same call.
+// One scan of the grid builds every digit's state (update runs on every search
+// node, so each cell is read once). Every digit then sees this snapshot, not
+// the removals earlier digits yield in the same call. `state[d]` holds d's
+// placed cells, its open cells, and a per-cell mask of the cells that allow it;
+// `state.digits` is the digit range itself.
+function scanBoard (instance, puzzle, lo, hi) {
+  const { cells } = instance
   const state = []
   state.digits = []
   for (let d = lo; d <= hi; d++) {
@@ -321,107 +319,158 @@ function * update (instance, puzzle) {
       }
     }
   }
-  for (let d = lo; d <= hi; d++) {
-    const { placed, open, allowed } = state[d]
-    const others = instance.others[d]
-    let walk = null
-    //! Seed walk: bound d's region to what one placed cell can still reach.
-    if (placed.length > 0) {
-      walk = seedWalk(instance, placed[0], size - placed.length, allowed, value, d)
-      // The region holds every placed cell and lies inside the walk. So a
-      // placed cell the walk misses, or a walk under `size` cells, is a dead
-      // branch: empty a placed cell and the solver drops it.
-      let dead = walk.size < size
-      for (const i of placed) if (instance.mask[i] !== walk.stamp) { dead = true; break }
-      if (dead) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
-    }
-    if (placed.length === size) {
-      //! Cap: d already fills all size cells, so every open cell loses it.
-      for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
-    } else if (placed.length + open.length === size) {
-      //! Force: exactly size cells can hold d, so every open one takes d.
-      for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
-    } else if (placed.length > 0) {
-      // Own copy: later walks reuse instance.mask.
-      const near = { size: walk.size, mask: instance.near[d] || (instance.near[d] = new Uint8Array(cells.length)) }
-      for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
-      // Tour bound: the region is a connected set holding every placed cell
-      // and x, so walking round a spanning tree of it is a closed tour through
-      // them all; its cells number at least 1 + half the perimeter of any
-      // three of those points (BFS distances through `allowed`). Tighter than
-      // the depth bound when the placed cells are spread out.
-      if (placed.length > 1) {
-        const dist = placed.map((p, k) => distances(instance, p, allowed, instance.dist[k] || (instance.dist[k] = new Int16Array(cells.length))))
-        let base = 0
-        for (let i = 0; i < placed.length; i++) {
-          for (let j = i + 1; j < placed.length; j++) {
-            for (let k = j + 1; k < placed.length; k++) {
-              base = Math.max(base, dist[i][placed[j]] + dist[i][placed[k]] + dist[j][placed[k]])
-            }
-          }
-        }
-        if (1 + Math.ceil(base / 2) > size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
-        for (const x of open) {
-          if (!near.mask[x]) continue
-          let per = base
-          for (let i = 0; i < placed.length; i++) {
-            for (let j = i + 1; j < placed.length; j++) {
-              per = Math.max(per, dist[i][x] + dist[j][x] + dist[i][placed[j]])
-            }
-          }
-          if (1 + Math.ceil(per / 2) > size) { near.mask[x] = 0; near.size-- }
-        }
-        if (near.size < size) { yield puzzle.removeCandidateFromCell(d, cells[placed[0]]); continue }
+  return state
+}
+
+//! Seed walk: bound d's region to what one placed cell can still reach.
+// The region holds every placed cell and lies inside the walk. So a placed cell
+// the walk misses, or a walk under `size` cells, is a dead branch: empty a
+// placed cell and the solver drops it.
+function seedIsDead (instance, placed, walk, size) {
+  if (walk.size < size) return true
+  for (const i of placed) if (instance.mask[i] !== walk.stamp) return true
+  return false
+}
+
+// Tour bound: the region is a connected set holding every placed cell and x, so
+// walking round a spanning tree of it is a closed tour through them all; its
+// cells number at least 1 + half the perimeter of any three of those points
+// (BFS distances through `allowed`). Tighter than the depth bound when the
+// placed cells are spread out. Clears the cells the bound rules out of `near`,
+// and returns true when it rules out the digit itself.
+function tourBoundIsDead (instance, placed, open, allowed, near, size) {
+  const dist = placed.map((p, k) => distances(instance, p, allowed, instance.dist[k] || (instance.dist[k] = new Int16Array(instance.cells.length))))
+  let base = 0
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      for (let k = j + 1; k < placed.length; k++) {
+        base = Math.max(base, dist[i][placed[j]] + dist[i][placed[k]] + dist[j][placed[k]])
       }
-      state[d].near = near.mask // budget (below) limits this digit to its walk
-      for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
-      //! Cut: an open cell whose removal breaks the region must hold d.
-      // "Breaks" is either test: the walk starves below `size` cells, or a
-      // placed cell is stranded (ticket #101). Each walk stops as soon as it
-      // has its answer: `size` cells, or every placed cell.
-      const depth = size - placed.length
-      const targetStamp = ++instance.targetStamp
-      for (const i of placed) instance.targets[i] = targetStamp
-      const skip = cutFilter(instance, placed, open, allowed, size, depth)
-      for (const x of open) {
-        if (!near.mask[x]) continue
-        let cut
-        let ways = 0
-        for (const n of nbrs[x]) if (allowed[n]) ways++
-        if (ways <= 1) {
-          // A dead end: removing it removes only itself.
-          cut = near.size - 1 < size
-        } else {
-          if (skip[x]) continue // the filter cleared this cell: no cut
-          allowed[x] = 0
-          cut = reach(instance, placed, depth, allowed, size).size < size
-          if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
-          allowed[x] = 1
-        }
-        if (cut) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
-      }
-    } else if (open.length > 0) {
-      //! Silent: d has no seed, so it needs one component of size cells or more.
-      // Every walk above starts from a placed cell, so a digit with none gets
-      // none. Its region still lies inside a single orthogonally connected
-      // component of the cells that allow it, so a component smaller than
-      // `size` can hold no region (ticket #142).
-      const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
-      near.fill(0)
-      const small = []
-      let big = false
-      for (const start of open) {
-        if (near[start]) continue
-        const comp = reach(instance, [start], Infinity, allowed)
-        for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) small.push(i) }
-        if (comp.size >= size) big = true
-      }
-      // No component fits the region: a dead branch, so empty a cell.
-      if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); continue }
-      for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
-      state[d].near = near // budget (below) limits this digit to the components that fit
     }
   }
+  if (1 + Math.ceil(base / 2) > size) return true
+  for (const x of open) {
+    if (!near.mask[x]) continue
+    let per = base
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        per = Math.max(per, dist[i][x] + dist[j][x] + dist[i][placed[j]])
+      }
+    }
+    if (1 + Math.ceil(per / 2) > size) { near.mask[x] = 0; near.size-- }
+  }
+  return near.size < size
+}
+
+// Does removing open cell x break d's region? Either test: the walk starves
+// below `size` cells, or a placed cell is stranded (ticket #101). Each walk
+// stops as soon as it has its answer: `size` cells, or every placed cell.
+function cutsRegion (instance, x, placed, allowed, near, size, depth, skip) {
+  let ways = 0
+  for (const n of instance.nbrs[x]) if (allowed[n]) ways++
+  // A dead end: removing it removes only itself.
+  if (ways <= 1) return near.size - 1 < size
+  if (skip[x]) return false // the filter cleared this cell: no cut
+  allowed[x] = 0
+  let cut = reach(instance, placed, depth, allowed, size).size < size
+  if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
+  allowed[x] = 1
+  return cut
+}
+
+//! Cut: an open cell whose removal breaks the region must hold d.
+function * cutRule (instance, puzzle, state, d, size, near) {
+  const { cells } = instance
+  const { placed, open, allowed } = state[d]
+  const others = instance.others[d]
+  const depth = size - placed.length
+  const targetStamp = ++instance.targetStamp
+  for (const i of placed) instance.targets[i] = targetStamp
+  const skip = cutFilter(instance, placed, open, allowed, size, depth)
+  for (const x of open) {
+    if (!near.mask[x]) continue
+    if (cutsRegion(instance, x, placed, allowed, near, size, depth, skip)) {
+      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
+    }
+  }
+}
+
+//! Tour bound and cut filter, for a digit with a seed and room left to grow.
+function * seededRule (instance, puzzle, state, d, size, walk) {
+  const { cells } = instance
+  const { placed, open, allowed } = state[d]
+  // Own copy: later walks reuse instance.mask.
+  const near = { size: walk.size, mask: instance.near[d] || (instance.near[d] = new Uint8Array(cells.length)) }
+  for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
+  if (placed.length > 1 && tourBoundIsDead(instance, placed, open, allowed, near, size)) {
+    yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
+    return
+  }
+  state[d].near = near.mask // budget limits this digit to its walk
+  for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
+  yield * cutRule(instance, puzzle, state, d, size, near)
+}
+
+//! Silent: d has no seed, so it needs one component of size cells or more.
+// Every walk above starts from a placed cell, so a digit with none gets none.
+// Its region still lies inside a single orthogonally connected component of the
+// cells that allow it, so a component smaller than `size` can hold no region
+// (ticket #142).
+function * noSeedRule (instance, puzzle, state, d, size) {
+  const { cells } = instance
+  const { open, allowed } = state[d]
+  const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
+  near.fill(0)
+  const small = []
+  let big = false
+  for (const start of open) {
+    if (near[start]) continue
+    const comp = reach(instance, [start], Infinity, allowed)
+    for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) small.push(i) }
+    if (comp.size >= size) big = true
+  }
+  // No component fits the region: a dead branch, so empty a cell.
+  if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); return }
+  for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
+  state[d].near = near // budget limits this digit to the components that fit
+}
+
+// Everything one digit's own region says, in order: the seed walk that bounds
+// it, then whichever of cap, force, the seeded rules or the no-seed component
+// search applies.
+function * digitRule (instance, puzzle, state, d, size) {
+  const { cells } = instance
+  const { placed, open, allowed } = state[d]
+  let walk = null
+  if (placed.length > 0) {
+    walk = seedWalk(instance, placed[0], size - placed.length, allowed, instance.value, d)
+    if (seedIsDead(instance, placed, walk, size)) {
+      yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
+      return
+    }
+  }
+  if (placed.length === size) {
+    //! Cap: d already fills all size cells, so every open cell loses it.
+    for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
+  } else if (placed.length + open.length === size) {
+    //! Force: exactly size cells can hold d, so every open one takes d.
+    const others = instance.others[d]
+    for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
+  } else if (placed.length > 0) {
+    yield * seededRule(instance, puzzle, state, d, size, walk)
+  } else if (open.length > 0) {
+    yield * noSeedRule(instance, puzzle, state, d, size)
+  }
+}
+
+function * update (instance, puzzle) {
+  const { cells } = instance
+  const lo = helpers.digits.minDigit
+  const hi = helpers.digits.maxDigit
+  const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
+  if (!Number.isInteger(size)) throw new Error(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`)
+  const state = scanBoard(instance, puzzle, lo, hi)
+  for (let d = lo; d <= hi; d++) yield * digitRule(instance, puzzle, state, d, size)
   // Budget: every open cell needs a digit, and digit d can take at most
   // (size - placed) more cells, all inside its walk. If no assignment covers
   // every open cell the branch is dead: empty that cell.

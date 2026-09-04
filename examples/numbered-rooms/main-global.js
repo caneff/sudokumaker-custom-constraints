@@ -40,6 +40,6 @@ function frameGroups () {
 
 for (const { cells } of frameGroups()) {
   const [clue, ...line] = cells
-  const name = helpers.naming.getCellsDescription(cells)
+  const name = `the numbered-rooms clue at ${helpers.naming.getCellName(clue)}`
   puzzle.addConstraintComponent(new NumberedRoomsComponent(name, clue, line))
 }

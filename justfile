@@ -21,6 +21,10 @@ fmt:
 # docs/example-layout.md. Builders (build_*.py) do not run here — only files
 # named *.test.mjs / *.test.py. verify.py is excluded on purpose: it is a
 # slow CP-SAT proof, run by hand via `just verify-isofill` (see there).
+#
+# ortools rides along with lzstring so a test can prove uniqueness the way the
+# generators do. Keep such a test to a 4x4 or a single 9x9 solve: a full carve
+# is minutes, and this gate has to stay fast enough to run before every commit.
 test:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -35,7 +39,8 @@ test:
     uv run --with lzstring examples/_shared/link_swap.test.py
     uv run --with lzstring examples/_shared/time_example.test.py
     uv run --with lzstring examples/_shared/component_scan.test.py
-    uv run --with lzstring examples/_shared/framebuild.test.py
+    uv run --with lzstring examples/_shared/count_calls.test.py
+    uv run --with lzstring --with ortools examples/_shared/framebuild.test.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue

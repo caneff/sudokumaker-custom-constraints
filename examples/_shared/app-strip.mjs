@@ -56,17 +56,9 @@ import fs from 'fs'
 import path from 'path'
 import { parseReadout } from './app-solve-lib.mjs'
 import { clickText, clickIcon, makeDeterministic, useRecordedApp, openWidePad, enterDigit } from './app-dom.mjs'
-import { seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
+import { parseArgs, seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
 
-const args = process.argv.slice(2)
-const gridFlagIdx = args.indexOf('--grid')
-const gridFile = gridFlagIdx >= 0 ? args[gridFlagIdx + 1] : null
-const positional = args.filter((a, i) => i !== gridFlagIdx && i !== gridFlagIdx + 1)
-const [linkFile, outFile, seedArg] = positional
-const seed = seedArg ? parseInt(seedArg, 10) : 1
-if (!linkFile || !outFile || !gridFile) {
-  throw new Error('usage: app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>')
-}
+const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
 
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 const spec = JSON.parse(fs.readFileSync(gridFile, 'utf8'))

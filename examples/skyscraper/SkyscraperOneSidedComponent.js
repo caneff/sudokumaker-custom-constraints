@@ -70,31 +70,9 @@ function scratchFor () {
   return scratch
 }
 
-function * update (instance, puzzle) {
-  const { clue, line } = instance
-  const len = line.length
-  const { minDigit, maxDigit } = helpers.digits
-  // a clue with no line, or a line or digit range too wide to mask
-  if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return
-  // Tallest-so-far index: 0 is "nothing built yet", digit d is d - minDigit + 1.
-  const tallest = maxDigit - minDigit + 2
-  const clueCand = puzzle.getCandidatesBitMask(clue)
-  if (clueCand === 0) return // contradiction; the solver sees it on the clue cell
-  const { fwd, bwd, cand, keep } = scratchFor()
-  const layers = (len + 1) * tallest
-  fwd.fill(0, 0, layers)
-  bwd.fill(0, 0, layers)
-  // Only digits the board can hold drive the DP; a candidate outside that
-  // range is left where it is rather than read as a building.
-  const inRange = (-1 << minDigit) & ~(-2 << maxDigit)
-  for (let i = 0; i < len; i++) {
-    const c = puzzle.getCandidatesBitMask(line[i]) & inRange
-    if (c === 0) return // no legal digit here; the solver sees it on the cell
-    cand[i] = c
-  }
-
-  //! Forward sweep from the clue inward: which (tallest so far, visible count)
-  //! states a prefix of the line can reach.
+//! Forward sweep from the clue inward: which (tallest so far, visible count)
+//! states a prefix of the line can reach.
+function forwardSweep (fwd, cand, len, tallest, minDigit) {
   fwd[0] = 1 // nothing built, nothing visible
   for (let i = 0; i < len; i++) {
     const base = i * tallest
@@ -113,11 +91,14 @@ function * update (instance, puzzle) {
       }
     }
   }
+}
 
-  //! Backward sweep from the far end, seeded with the clue's own candidates --
-  //! the counts a finished line may show. `bwd[i][t]` holds the counts a prefix
-  //! may already have used; a digit is kept at cell i where some reachable
-  //! state there leads into a count the rest of the line can finish.
+//! Backward sweep from the far end, seeded with the clue's own candidates --
+//! the counts a finished line may show. `bwd[i][t]` holds the counts a prefix
+//! may already have used; a digit is kept at cell i where some reachable
+//! state there leads into a count the rest of the line can finish. `keep[i]`
+//! collects those digits.
+function backwardSweep (fwd, bwd, cand, keep, len, tallest, minDigit, clueCand) {
   const last = len * tallest
   for (let t = 0; t < tallest; t++) bwd[last + t] = clueCand
   for (let i = len - 1; i >= 0; i--) {
@@ -144,22 +125,62 @@ function * update (instance, puzzle) {
     }
     keep[i] = kept
   }
+}
 
-  //! Collect every removal before yielding: the scratch above is shared, and a
-  //! yield hands the solver control, which may run another line's update.
-  // Most calls remove nothing, so the list is built only when there is
-  // something in it.
+//! Collect every removal before yielding: the scratch is shared, and a yield
+//! hands the solver control, which may run another line's update. The list is
+//! (cell, mask) pairs, or null when there is nothing to remove -- most calls
+//! remove nothing, so it is built only when there is something in it.
+function collectRemovals (clue, line, len, clueDrop, cand, keep) {
   let pending = null
   const drop = (cell, mask) => {
     if (mask === 0) return
     if (pending === null) pending = []
     pending.push(cell, mask)
   }
+  drop(clue, clueDrop)
+  for (let i = 0; i < len; i++) drop(line[i], cand[i] & ~keep[i])
+  return pending
+}
+
+function * update (instance, puzzle) {
+  const { clue, line } = instance
+  const len = line.length
+  const { minDigit, maxDigit } = helpers.digits
+  // a clue with no line, or a line or digit range too wide to mask
+  if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return
+  // Tallest-so-far index: 0 is "nothing built yet", digit d is d - minDigit + 1.
+  const tallest = maxDigit - minDigit + 2
+  const clueCand = puzzle.getCandidatesBitMask(clue)
+  if (clueCand === 0) return // contradiction; the solver sees it on the clue cell
+  const { fwd, bwd, cand, keep } = scratchFor()
+  const layers = (len + 1) * tallest
+  fwd.fill(0, 0, layers)
+  bwd.fill(0, 0, layers)
+  // Only digits the board can hold drive the DP; a candidate outside that
+  // range is left where it is rather than read as a building.
+  const inRange = (-1 << minDigit) & ~(-2 << maxDigit)
+  for (let i = 0; i < len; i++) {
+    const c = puzzle.getCandidatesBitMask(line[i]) & inRange
+    if (c === 0) return // no legal digit here; the solver sees it on the cell
+    cand[i] = c
+  }
+
+  forwardSweep(fwd, cand, len, tallest, minDigit)
+
+  const last = len * tallest
+  backwardSweep(fwd, bwd, cand, keep, len, tallest, minDigit, clueCand)
+
   // The clue shows a count the whole line can reach.
   let reached = 0
   for (let t = 0; t < tallest; t++) reached |= fwd[last + t]
-  drop(clue, clueCand & ~reached)
-  for (let i = 0; i < len; i++) drop(line[i], cand[i] & ~keep[i])
+  // No arrangement of the line shows any count the clue allows: the branch is
+  // dead.
+  if ((clueCand & reached) === 0) {
+    yield puzzle.stop(`no arrangement of the line shows the count ${instance.name} asks for`, [clue, ...line])
+    return
+  }
+  const pending = collectRemovals(clue, line, len, clueCand & ~reached, cand, keep)
   if (pending !== null) {
     for (let i = 0; i < pending.length; i += 2) {
       yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1]), pending[i])

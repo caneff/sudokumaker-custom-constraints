@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -185,8 +185,6 @@ import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEn
   assert.strictEqual(s.repsTimedOut, 1)
 }
 
-console.log('app-solve-lib.test.mjs: all seams pass')
-
 // ---- app version from the footer ----
 assert.strictEqual(parseVersion('SudokuMaker v2026.08.14-d47fc4b  Solved took 1s'), 'v2026.08.14-d47fc4b')
 assert.strictEqual(parseVersion('no footer here'), null)
@@ -219,3 +217,55 @@ assert.strictEqual(parseVersion('no footer here'), null)
   ]
   assert.strictEqual(countEnteredValues(withEntered), 1)
 }
+
+// ---- parseArgs: the driver's command line ----
+{
+  // link file alone: 7 reps and the uniqueness-proving icon by default, both
+  // flags off
+  assert.deepStrictEqual(parseArgs(['link.txt']), {
+    linkFile: 'link.txt',
+    reps: 7,
+    iconName: 'ShowCandidates',
+    ringClues: false,
+    afterLogical: false
+  })
+
+  // all three positionals given
+  assert.deepStrictEqual(parseArgs(['link.txt', '3', 'CheckSolution']), {
+    linkFile: 'link.txt',
+    reps: 3,
+    iconName: 'CheckSolution',
+    ringClues: false,
+    afterLogical: false
+  })
+
+  // a flag never becomes a positional, wherever it sits -- this is the one
+  // that matters: `app-solve.mjs link.txt --ring-clues 3` must time 3 reps of
+  // link.txt, not 7 reps with '--ring-clues' read as the rep count
+  assert.deepStrictEqual(parseArgs(['link.txt', '--ring-clues', '3']), {
+    linkFile: 'link.txt',
+    reps: 3,
+    iconName: 'ShowCandidates',
+    ringClues: true,
+    afterLogical: false
+  })
+  assert.deepStrictEqual(parseArgs(['--after-logical', 'link.txt', '3']), {
+    linkFile: 'link.txt',
+    reps: 3,
+    iconName: 'ShowCandidates',
+    ringClues: false,
+    afterLogical: true
+  })
+
+  // both flags together, the shape time_example.py's driver call uses
+  const both = parseArgs(['link.txt', '5', '--ring-clues', '--after-logical'])
+  assert.strictEqual(both.ringClues, true)
+  assert.strictEqual(both.afterLogical, true)
+  assert.strictEqual(both.reps, 5)
+
+  // no link file is a usage error, flags alone included
+  assert.throws(() => parseArgs([]), /usage: app-solve.mjs/)
+  assert.throws(() => parseArgs(['--ring-clues']), /usage: app-solve.mjs/)
+}
+
+console.log('app-solve-lib.test.mjs: all seams pass')

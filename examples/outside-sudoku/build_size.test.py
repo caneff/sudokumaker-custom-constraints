@@ -3,9 +3,9 @@
 #
 #   uv run --with lzstring examples/outside-sudoku/build_size.test.py
 #
-# No ortools: framebuild imports the solver only inside its search, so the
-# clue functions, the document assembly, and the rebuild all reach this test
-# with lzstring alone (which is all `just check` installs).
+# No solver: framebuild imports one only inside its search, so the clue
+# functions, the document assembly, and the rebuild all run here without a
+# CP-SAT model.
 
 import json
 import pathlib

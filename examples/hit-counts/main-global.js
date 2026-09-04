@@ -50,7 +50,7 @@ for (const [sa, sb] of [[left, right], [top, bottom]]) {
   for (let i = 0; i < sa.groups.length; i++) {
     const a = sa.groups[i]
     const b = sb.groups[i]
-    const name = `hit counts joint ${helpers.naming.getCellName(a.clue)}/${helpers.naming.getCellName(b.clue)}`
+    const name = `the hit-count clues at ${helpers.naming.getCellName(a.clue)} and ${helpers.naming.getCellName(b.clue)}`
     puzzle.addConstraintComponent(new HitCountsJointComponent(name, a.clue, b.clue, a.line))
   }
 }
@@ -71,7 +71,7 @@ for (const [sa, sb] of [[left, right], [top, bottom]]) {
 for (const side of sides) {
   const clueCells = side.groups.map(g => g.clue)
   puzzle.addConstraintComponent(
-    new SideSumComponent(`side sum ${side.name}`, clueCells, side.across.length, side.across))
+    new SideSumComponent(`the clue sum on the ${side.name} side`, clueCells, side.across.length, side.across))
   puzzle.addConstraintComponent(
-    new SideHitMatchingComponent(`side hit matching ${side.name}`, clueCells, side.groups.map(g => g.line)))
+    new SideHitMatchingComponent(`the hit matching on the ${side.name} side`, clueCells, side.groups.map(g => g.line)))
 }

@@ -113,10 +113,10 @@ const { rnd } = makeRng()
   p.filterCandidatesInCells(DigitSet.from([3]), [2])
   assert.deepStrictEqual([...p.getCandidates(2)], [3])
 
-  // stop says the branch has no solution; the mock makes that visible the
-  // one way every reader already looks for, an emptied cell.
+  // stop says the branch has no solution; the mock records it where
+  // fixpoint and the strength compare look for it.
   p.stop('no room')
-  assert.ok([...Array(9).keys()].every(c => p.getCandidates(c).size === 0))
+  assert.strictEqual(p._stopped, 'no room')
 }
 
 // ---- installGlobals: the naming helper a component calls for a message ----

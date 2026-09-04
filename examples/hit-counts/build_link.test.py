@@ -5,12 +5,11 @@
 #    and that swapping one of the three Hit Counts Lines components leaves the
 #    other two and the backend untouched. --board times a link other than
 #    PUZZLE_LINK.txt. Mirrors examples/skyscraper/build_link.test.py.
-# 2. The committed local link, PUZZLE_LINK_local.txt, built by
-#    `build_size.py 9 3 3 --paths`: it must ship the bent paths as drawn
-#    groups on the main.js lane, derive every clue from the solution in
-#    gen_local.json, and carry at least one path whose digits repeat -- the
-#    property that makes it a bare-line board rather than a frame board in
-#    disguise (#237).
+# 2. The committed local links, built by `build_size.py <n> ... --paths`: each
+#    must ship the bent paths as drawn groups on the main.js lane, derive
+#    every clue from the solution in its gen JSON, and carry at least one path
+#    whose digits repeat -- the property that makes it a bare-line board
+#    rather than a frame board in disguise (#237, #302).
 #
 #   uv run --with lzstring examples/hit-counts/build_link.test.py
 
@@ -29,7 +28,8 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from minify import minify_js
 
-# Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
+# Must match framebuild.RULES_PREFIX; restated so this test never imports
+# the builder it is checking.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 SWAPPED = "HitCountsJointComponent"
@@ -40,9 +40,9 @@ def hits(values):
     """The Hit Counts clue for one line of digits: cells whose digit equals
     their 1-based distance from the clue.
 
-    A fourth statement of the rule, restated here rather than imported: this
-    test runs under `just test` with lzstring alone, and build_size.hits sits
-    behind framebuild's ortools import. It must agree with build_size.hits,
+    A fourth statement of the rule, restated here rather than imported: a
+    test that read the rule off the generator would agree with it by
+    construction and catch no drift. It must agree with build_size.hits,
     add_hit_count, and HitCountsComponent -- change the rule, change all four
     (CODING_STANDARDS.md, "The rule has one home"). Same trade as
     check_layout.RULES_PREFIX.
@@ -50,9 +50,9 @@ def hits(values):
     return sum(1 for i, v in enumerate(values) if v == i + 1)
 
 
-def check_local_link():
-    """The committed local board: drawn bent paths, clues off the solution."""
-    spec = json.loads((HERE / "gen_local.json").read_text())
+def check_local_link(tag):
+    """A committed local board: drawn bent paths, clues off the solution."""
+    spec = json.loads((HERE / f"gen_{tag}.json").read_text())
     n, (bh, bw) = spec["n"], spec["box"]
     grid = spec["grid"]
     paths = {k: [tuple(c) for c in v] for k, v in spec["paths"].items()}
@@ -61,7 +61,7 @@ def check_local_link():
     def idx(r, c):
         return r * W + c
 
-    p = decode_puzzle((HERE / "PUZZLE_LINK_local.txt").read_text().strip())["puzzle"]
+    p = decode_puzzle((HERE / f"PUZZLE_LINK_{tag}.txt").read_text().strip())["puzzle"]
     assert p["comment"].startswith(RULES_PREFIX), "rules text must open with the prefix"
     assert (p["minDigit"], p["maxDigit"]) == (0, n), "hit-counts runs minDigit 0"
     # a cell holds a value only when it is a given -- never the solution, never
@@ -82,7 +82,7 @@ def check_local_link():
         for key, cells in paths.items()
     }
     assert {tuple(g["cells"]) for g in groups} == want, (
-        "the drawn groups must be exactly the paths in gen_local.json"
+        f"the drawn groups must be exactly the paths in gen_{tag}.json"
     )
 
     # every clue is derived from the solution, not invented
@@ -182,5 +182,8 @@ if __name__ == "__main__":
         except ValueError:
             pass
 
-    check_local_link()
+    # the 9x9 stress board (accepted DNF) and the 6x6 twin that carries the
+    # local timing row
+    for tag in ("local", "6x6_local"):
+        check_local_link(tag)
     print("ok")

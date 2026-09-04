@@ -1,11 +1,14 @@
 # time_example.py: the offline seams — the paste-ready row builder plus its
-# PASS/FAIL verdict, and the loud-fail behavior for a missing PUZZLE_LINK.txt
-# or build_link.py. Fake medians only; no live browser. The CLI's real run
-# against numbered-rooms is a manual check recorded in the PR, not here — see
-# docs/real-app-timing.md.
+# PASS/FAIL verdict, the loud-fail behavior for a missing PUZZLE_LINK.txt or
+# build_link.py, and run()'s own orchestration with the browser call faked out
+# (time_example.run_app_solve reassigned to a canned-median stub, which is the
+# only thing in run() that needs the live site). Fake medians only; no live
+# browser. The CLI's real run against numbered-rooms is a manual check
+# recorded in the PR, not here — see docs/real-app-timing.md.
 #
 #   uv run --with lzstring examples/_shared/time_example.test.py
 
+import contextlib
 import pathlib
 import subprocess
 import sys
@@ -14,6 +17,7 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
+import time_example
 from link_codec import decode_puzzle, encode_link
 from minify import minify_js
 from time_example import (
@@ -63,9 +67,22 @@ if __name__ == "__main__":
 def _widget_doc(backend_code, component_code):
     """A minimal decode_puzzle()-shaped doc: one constraint ("Widget Lines")
     with a code backend and one component, real enough to round-trip through
-    encode_link/decode_puzzle the way a build_link.py stub needs."""
+    encode_link/decode_puzzle the way a build_link.py stub needs.
+
+    It carries a 4x4 board too -- one ring clue, one interior given, one
+    entered interior digit -- because the timing driver strips a link to its
+    givens before probing it (probe_link.py), and a doc with no `cells` never
+    reaches that step.
+    """
+    cells = [{} for _ in range(16)]
+    cells[1] = {"value": 3}  # a ring clue: kept by `empty`, cleared by `strip`
+    cells[5] = {"value": 1, "given": True}  # an interior given: always kept
+    cells[6] = {"value": 4}  # an entered interior digit: always cleared
     return {
         "puzzle": {
+            "width": 4,
+            "height": 4,
+            "cells": cells,
             "constraints": [
                 {
                     "definition": {
@@ -80,7 +97,7 @@ def _widget_doc(backend_code, component_code):
                         ],
                     }
                 }
-            ]
+            ],
         }
     }
 
@@ -575,5 +592,92 @@ if __name__ == "__main__":
         raise AssertionError("expected a could-not-read-version failure")
     except RuntimeError as e:
         assert "could not read the app version" in str(e)
+
+    # ---- run()'s success path, with the one live-app call faked out.
+    # `fake_solve` records how it was called, so these cases assert on the
+    # driver arguments run() derives (which link, ring-clues, after-logical)
+    # as well as on the rows it builds from the medians it gets back.
+    @contextlib.contextmanager
+    def fake_solve(medians):
+        """Replace run_app_solve with a stub returning `medians` in order.
+        Yields the list of (link_name, ring_clues, after_logical) calls."""
+        calls = []
+        real = time_example.run_app_solve
+        pending = list(medians)
+
+        def stub(link_path, ring_clues=False, after_logical=False):
+            calls.append((pathlib.Path(link_path).name, ring_clues, after_logical))
+            return {"median": pending.pop(0), "version": "v2026.08.14-d47fc4b"}
+
+        time_example.run_app_solve = stub
+        try:
+            yield calls
+        finally:
+            time_example.run_app_solve = real
+
+    # a component edit that halves the solve time: two rows (cold, then
+    # after-logical), both PASS, and the two-row rule ships it
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "faster"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
+        with fake_solve([1000, 500, 800, 400]) as calls:
+            rows, ship = run(example_dir)
+        assert [r[1] for r in rows] == ["PASS", "PASS"]
+        assert ship == "SHIP"
+        assert "| widget-faster |" not in rows[0][0]
+        assert rows[0][0].endswith("| 1000ms | 500ms | 0.50 | PASS |")
+        assert "faster after-logical" in rows[1][0], "the second row is the logical one"
+        # baseline and candidate are timed against separate links, cold first
+        # then after-logical, and neither run asks for the ring
+        assert calls == [
+            ("baseline_probe.txt", False, False),
+            ("candidate_probe.txt", False, False),
+            ("baseline_probe.txt", False, True),
+            ("candidate_probe.txt", False, True),
+        ]
+
+    # a slower candidate: 1.0x on the cold row is inside 1.1x but never
+    # reaches 0.9x, so the two-row rule refuses it
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "slower"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
+        with fake_solve([1000, 1000, 1000, 1500]):
+            rows, ship = run(example_dir)
+        assert [r[1] for r in rows] == ["FAIL", "FAIL"]
+        assert ship == "NO SHIP"
+
+    # a byte-equal working tree has no candidate to judge: baseline-only rows
+    # and no verdict, and the driver is never asked to time a candidate link
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "unchanged"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        with fake_solve([1000, 900]) as calls:
+            rows, ship = run(example_dir)
+        assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
+        assert ship is None, "nothing to judge means no ship verdict"
+        assert [c[0] for c in calls] == ["baseline_probe.txt"] * 2
+
+    # ring_clues reaches the driver, and board= names the row's board label
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "ringed"
+        base_doc = _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        (example_dir / "PUZZLE_LINK_alt.txt").write_text(encode_link(base_doc) + "\n")
+        _git_commit_all(example_dir)
+        with fake_solve([1000, 900]) as calls:
+            rows, _ship = run(example_dir, ring_clues=True, board="PUZZLE_LINK_alt.txt")
+        assert all(ring for _name, ring, _al in calls), (
+            "ring_clues must reach the driver"
+        )
+        assert "ringed (PUZZLE_LINK_alt.txt)" in rows[0][0]
 
     print("ok")

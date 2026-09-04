@@ -72,10 +72,13 @@ function * update (instance, puzzle) {
 
   // Step 2: line[0] keeps only working indices (which drops 0 and every index
   // past the end of the line); the clue keeps only reachable digits. No working
-  // index -> both go empty and the solver sees the contradiction.
+  // index -> the branch is dead; stop with the reason.
+  if (!K) {
+    yield puzzle.stop(`no index lets the line reach the clue of ${instance.name}`, [clue, line[0]])
+    return
+  }
   if (idxM & ~K) yield drop(idxM & ~K, line[0])
   if (clueM & ~reach) yield drop(clueM & ~reach, clue)
-  if (!K) return
 
   // Step 3: clue solved to c (mask has one bit). On a house c appears once in
   // the line, at the target, so remove c from every cell at a non-working
