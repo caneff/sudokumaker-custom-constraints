@@ -55,3 +55,63 @@ gradient** — the first run accepted nothing at all from that start.
 | `qr_stats.py` | CP-SAT branch/conflict counts (search metric, fast) |
 | `qr_find.py` | the hill-climb; appends to `PROGRESS_328.md` as it runs |
 | `build_board.py` | now takes `--puzzle p.json` at any size; the 6x6 default still builds byte-identically to #324's board |
+
+## 4. Live-app validation: the metric could not be validated, because the app
+## cannot solve a 9x9 quad-rank board at all
+
+Every 9x9 board built here timed out in the real app at 300s
+(`v2026.08.14-d47fc4b`, non-deterministic solve off), across the whole range of
+digit givens:
+
+| board | givens | CP-SAT | app (300s cap) |
+|---|---:|---:|---|
+| 13 clues | 12 | 0 branches, 0.1s | timeout 3/3 |
+| 13 clues | 16 | — | timeout |
+| 13 clues | 20 | — | timeout |
+| 13 clues | 28 | — | timeout |
+| 13 clues | 36 | — | timeout |
+| 13 clues | 44 | 0.01s | timeout |
+
+44 givens is more than half the grid handed over, and CP-SAT proves uniqueness
+in 0.01s. The offline probe in `qr-metric.mjs`, running the REAL component,
+finishes it in **0 search nodes** -- propagation alone.
+
+**It is not the harness or the board size.** The identical 44-given board with
+the quad-rank clues stripped out solves in **300ms**.
+
+**It is not a broken constraint.** `binds_check.mjs` on a fully-given 9x9:
+the true grid gives "This puzzle has a solution. The solution is unique!", and
+a different valid sudoku under the same clues gives "This puzzle has no
+solutions."
+
+**The cliff is exactly the uniqueness boundary.** At 44 givens, varying only
+the clue count:
+
+| clues | unique? (CP-SAT) | app |
+|---:|---|---|
+| 1 | multiple | 300ms |
+| 2 | multiple | 400ms |
+| 4 | multiple | 800ms |
+| 8 | **unique** | **timeout** |
+
+While a second solution exists the app finds one and stops. The moment it has
+to *prove* there is no second solution, it must exhaust a search in which quad
+rank gives it almost nothing: `update` fires once on top-left cells only, and
+`validate` rejects only at a complete grid.
+
+### Gotcha found: `getAffectedCells` cannot be narrowed
+
+The obvious cost suspect is that each clue returns all 81 cells from
+`getAffectedCells`, so every clue watches the whole grid. Narrowing it to the
+window's four cells does make the 8-clue/44-given board finish in 300ms -- but
+the app then reports it **not-unique**, on a board CP-SAT proves unique. The
+constraint is under-enforced. A window's rank depends on all 64 windows, so the
+wide watch set is load-bearing; it is the cost, and it is not removable this way.
+
+### What this means
+
+The metric question cannot be answered as the ticket frames it. There is no app
+signal to correlate a metric against while no 9x9 board is solvable, so
+"validate it against the live app" has no data to work with. The search tool
+exists and runs, but steering it by CP-SAT branches is unjustified until the app
+can finish a board.

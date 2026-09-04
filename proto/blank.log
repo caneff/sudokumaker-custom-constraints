@@ -1,0 +1,32 @@
+feasible: 5x9 at R1C1 (area 45), 24 windows available -- minimizing
+Quad Rank 9x9 - 16 clues, no givens, 5x9 blank block at R1C1
+
+# marks the blank block: no clued window touches any of it.
+Numbers sit on the top-left cell of the window they rank.
+
++-----------+-----------+-----------+
+|  #  #  # |  #  #  # |  #  #  # |
+|  #  #  # |  #  #  # |  #  #  # |
+|  #  #  # |  #  #  # |  #  #  # |
++-----------+-----------+-----------+
+|  #  #  # |  #  #  # |  #  #  # |
+|  #  #  # |  #  #  # |  #  #  # |
+|  .  .  . | 12  .  . | 16 24  . |
++-----------+-----------+-----------+
+|  .  . 41 | 35 63 53 | 11  .  . |
+| 58  9 32 | 44 15 25 | 36  5  . |
+|  .  .  . |  .  .  . |  .  .  . |
++-----------+-----------+-----------+
+
+Solution:
+298647153
+614352987
+573819462
+852463791
+341975826
+769281345
+136598274
+925734618
+487126539
+
+rectangles tested: 45
