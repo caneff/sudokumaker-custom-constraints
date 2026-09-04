@@ -125,9 +125,8 @@ the window top-lefts form the (n-1)x(n-1) subgrid, so:
 rank = 1 + (n-2)(TL-1) + [grid[n][n] < TL] + tiebreak,   tiebreak in 0..count-1
 ```
 
-Read backwards, a rank clue names the top-left cell's digit. Verified for 6x6 in
-this session against the oracle: 200 grids x 25 windows = 5,000 windows, **zero
-violations**, and the rank -> TL map on 6x6 is:
+Read backwards, a rank clue names the top-left cell's digit. The rank -> TL map
+on 6x6 is:
 
 | TL digit | achievable ranks |
 | --- | --- |
@@ -136,13 +135,32 @@ violations**, and the rank -> TL map on 6x6 is:
 | 3 | 9-13 |
 | 4 | 13-17 |
 | 5 | 17-21 |
-| 6 | 22-25 |
+| 6 | 21-25 |
 
-So on 6x6, **21 of the 25 possible ranks pin the clued window's top-left cell to
-exactly one digit**, and the other four (5, 9, 13, 17) narrow it to two. That is
-the deduction to build the SudokuMaker `update` around: it fires on the first
-pass, before anything else is known, and costs a table lookup. Guard: it is
-sound only when `rows == cols == numValues` (our 6x6 qualifies).
+So on 6x6, **20 of the 25 possible ranks pin the clued window's top-left cell to
+exactly one digit**, and the other five (5, 9, 13, 17, 21) narrow it to two.
+That is the deduction to build the SudokuMaker `update` around: it fires on the
+first pass, before anything else is known, and costs a table lookup. Guard: it
+is sound only when `rows == cols == numValues` (our 6x6 qualifies).
+
+> **Corrected in [#324](https://github.com/caneff/sudokumaker-custom-constraints/issues/324).** This section first read `6 | 22-25`, and so
+> claimed 21 of 25 ranks pin. Rank 21 also admits a top-left of **6**, and the
+> 200-grid sample behind the original table simply did not contain the case.
+> Shipping `22-25` would have removed digit 6 from a rank-21 window's top-left
+> cell -- an unsound removal that silently deletes the true solution.
+>
+> The law is structural, not statistical. A window with top-left `d` has rank in
+> `[(n-2)(d-1)+1, (n-2)(d-1)+(n-1)]`: the `(n-1)^2` windows' top-left cells form
+> the top-left `(n-1)x(n-1)` sub-board, where one digit appears `n-1` times and
+> the rest `n-2` times, the whole-count digit being the one at `grid[n-1][n-1]`.
+> So a rank-21 window has top-left 6 exactly when `grid[5][5] == 6`. Over 3,000
+> grids those two counts matched exactly (308 = 308).
+>
+> Re-verified: 3,000 spread 6x6 grids x 25 windows = 75,000 tests, **0
+> violations**, and an exhaustive sweep of all 288 4x4 solutions (2,592 windows,
+> 0 violations) in which the predicted digit sets are *exactly* the observed
+> ones -- so the bound is the tightest one a rank alone supports, not merely a
+> safe one.
 
 **(b) Tie clues are strong, not a nuisance.** `value(A) > value(B) => rank(A) >
 rank(B)`; the contrapositive both ways gives **same rank <=> digit-identical
@@ -320,7 +338,7 @@ windows **scattered** (no two touching). Example (`bench/population/sat-g0-k5.qr
 | Solution space 6.7e21 | **28,200,960** — small enough to enumerate. `grids.js` already knows the exact count. A minimal-subset hunt and a uniqueness check are both far cheaper than anything that project ever measured |
 | "5-8 clues is loose, 18+ is tight" | **Untested at 6x6 and does not transfer.** The ratio that matters is clues-to-windows: 5/64 vs 5/25. Five 6x6 clues constrain proportionally ~2.5x more. Expect the usable opener range to sit lower in absolute count |
 | ~11s comparator NFA compile, `pack`, the 1000-cell budget, the 114-clue ceiling | ISS encoding artifacts. **Irrelevant** — we build neither the NFA nor an ISS model |
-| Leading-digit formula and its soundness guard `rows == cols == numValues` | **Holds on 6x6**, verified this session: 200 grids, 5,000 windows, 0 violations. Stronger in relative terms — 21 of 25 ranks pin the TL cell to exactly one digit |
+| Leading-digit formula and its soundness guard `rows == cols == numValues` | **Holds on 6x6** — 3,000 grids, 75,000 windows, 0 violations (#324; the original 200-grid figure here read 21 of 25). **20 of 25** ranks pin the TL cell to exactly one digit, the other five narrow it to two |
 | Ties are an occasional feature | **Ties are common on 6x6.** In 200 sampled 6x6 solutions, 112 contained at least one tied window pair (758 tied windows of 5,000). Smaller digit alphabet, fewer windows, far more collisions. Tie handling is a main case here, not an edge case — and `duplicateRanks`-style reporting matters more |
 | CP-SAT sat-side 58-83%, medians 9-18s | Should improve substantially: 24 comparison bools per clue instead of 63, and a solution space 15 orders of magnitude smaller. **But it is unmeasured** — do not quote 9x9 percentages in our tickets |
 | Emergent broke proves in ~130ms, independent of clue count | The mechanism (a refutation only needs the ordinal contradiction) is size-independent; expect it to hold or improve |
