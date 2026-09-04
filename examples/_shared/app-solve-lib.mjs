@@ -7,6 +7,37 @@
 // "Stopped solving/counting (time limit ...)" is the app's own timeout: no
 // verdict, though a "took" the app printed before stopping still names the
 // first-solve time.
+// The driver's command line:
+// `<link_file> [reps] [icon_name] [--ring-clues] [--after-logical]`.
+//
+// --ring-clues allows entered values, for edge-clue puzzles whose clues are
+// stored as non-given values in the outer ring; without it a link that is not
+// stripped to its givens is refused (see checkStripped in app-solve.mjs).
+// --after-logical runs the app's logical solver to its fixpoint before the
+// timed search, so the row measures the search a player still faces. Both
+// flags may sit anywhere on the line, so they are removed before the
+// positionals are read off. Split out here because it is the one branchy part
+// of app-solve.mjs a browser is not needed to exercise (#315).
+export function parseArgs (argv) {
+  const flags = ['--ring-clues', '--after-logical']
+  const args = argv.filter(a => !flags.includes(a))
+  const linkFile = args[0]
+  if (!linkFile) {
+    throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]')
+  }
+  return {
+    linkFile,
+    // 7 reps: the solve time swings more than 10x run to run, so the default
+    // has to be wide enough for a median to mean something.
+    reps: parseInt(args[1] || '7', 10),
+    // ShowCandidates is "Find all solutions and valid candidates" -- the full
+    // search that proves uniqueness, and the only one worth timing by default.
+    iconName: args[2] || 'ShowCandidates',
+    ringClues: argv.includes('--ring-clues'),
+    afterLogical: argv.includes('--after-logical')
+  }
+}
+
 export function readVerdict (text) {
   if (/stopped (solving|counting)/i.test(text)) return 'timeout'
   if (/unique solution/i.test(text)) return 'unique'

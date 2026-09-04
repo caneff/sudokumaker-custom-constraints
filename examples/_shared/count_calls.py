@@ -13,6 +13,12 @@
 # it (build_link.py --component), empties the link so the solver searches, and
 # runs app-solve.mjs once; the driver relays the `[probe]` lines. Prints the
 # final count and the app's time. See docs/real-app-timing.md.
+#
+# The two pure halves -- `probe_source` (splice the counter in) and
+# `summarize` (the report line) -- are tested directly in count_calls.test.py.
+# `main` is tested there too, with `build_candidate`, `empty_link_file` and
+# `subprocess.run` stubbed: what it orchestrates is a real Chromium against
+# the live sudokumaker.app, so a run with the real three stays manual.
 
 import argparse
 import pathlib
@@ -31,15 +37,50 @@ COUNTER = (
 )
 
 
+def probe_source(src):
+    """The component source with a call counter spliced into its `update`.
+
+    Raises ValueError when the source has no `update` generator to hook --
+    the caller turns that into an exit, so a renamed signature fails loud
+    instead of timing an unhooked component and reporting nothing.
+    """
+    if HOOK not in src:
+        raise ValueError(f"no `{HOOK}` to hook")
+    return src.replace(HOOK, COUNTER, 1)
+
+
+def summarize(stdout, component_name, board=None):
+    """The one-line report for a driver run's stdout.
+
+    Raises ValueError when the run logged no `[probe]` line at all: an
+    unhooked or crashed run must not print a report reading as a zero count.
+    """
+    probes = [ln for ln in stdout.splitlines() if ln.startswith("[probe]")]
+    if not probes:
+        raise ValueError("app-solve.mjs gave no [probe] lines")
+    took = [ln for ln in stdout.splitlines() if "median" in ln]
+    # One line per `[probe] <name>=` series, each at its own last mark.
+    series = {ln.split("=")[0]: ln for ln in probes}
+    where = f" on {board}" if board else ""
+    line = (
+        f"{component_name}{where}: {'; '.join(series.values())} "
+        "(each at its own last mark)"
+    )
+    # A run can log probe marks and no median (the app never finished). Say
+    # nothing rather than end the report on a dangling separator.
+    return f"{line}; {took[-1]}" if took else line
+
+
 def main(example, component, ring_clues, board=None):
     component = pathlib.Path(component)
-    src = component.read_text()
-    if HOOK not in src:
-        sys.exit(f"{component}: no `{HOOK}` to hook")
+    try:
+        hooked = probe_source(component.read_text())
+    except ValueError as e:
+        sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         probe = tmp / component.name  # build_link.py swaps by basename
-        probe.write_text(src.replace(HOOK, COUNTER, 1))
+        probe.write_text(hooked)
         link = tmp / "probe.txt"
         build_candidate(EXAMPLES / example, probe, link, board=board)
         emptied = tmp / "probe_empty.txt"
@@ -48,19 +89,12 @@ def main(example, component, ring_clues, board=None):
         if ring_clues:
             cmd.append("--ring-clues")
         out = subprocess.run(cmd, capture_output=True, text=True)
-    probes = [ln for ln in out.stdout.splitlines() if ln.startswith("[probe]")]
-    if out.returncode != 0 or not probes:
-        sys.exit(
-            f"app-solve.mjs gave no [probe] lines:\n{out.stdout[-800:]}{out.stderr[-800:]}"
-        )
-    took = [ln for ln in out.stdout.splitlines() if "median" in ln]
-    # One line per `[probe] <name>=` series, each at its own last mark.
-    series = {ln.split("=")[0]: ln for ln in probes}
-    where = f" on {board}" if board else ""
-    print(
-        f"{component.name}{where}: {'; '.join(series.values())} "
-        f"(each at its own last mark); {took[-1] if took else ''}"
-    )
+    if out.returncode != 0:
+        sys.exit(f"app-solve.mjs failed:\n{out.stdout[-800:]}{out.stderr[-800:]}")
+    try:
+        print(summarize(out.stdout, component.name, board))
+    except ValueError as e:
+        sys.exit(f"{e}:\n{out.stdout[-800:]}{out.stderr[-800:]}")
 
 
 if __name__ == "__main__":

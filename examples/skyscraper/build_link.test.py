@@ -28,7 +28,8 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from minify import minify_js
 
-# Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
+# Must match framebuild.RULES_PREFIX; restated so this test never imports
+# the builder it is checking.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 
@@ -37,9 +38,9 @@ def visible(values):
     building before them, reading inward. A tie is hidden, which is what
     SkyscraperOneSidedComponent's ALLOW_TIES = false says.
 
-    A fourth statement of the rule, restated here rather than imported: this
-    test runs under `just test` with lzstring alone, and build_size.sky sits
-    behind framebuild's ortools import. It must agree with build_size.sky,
+    A fourth statement of the rule, restated here rather than imported: a
+    test that read the rule off the generator would agree with it by
+    construction and catch no drift. It must agree with build_size.sky,
     add_visibility, and the components -- change the rule, change all four
     (CODING_STANDARDS.md, "The rule has one home").
     """

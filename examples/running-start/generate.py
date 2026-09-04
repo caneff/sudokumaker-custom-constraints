@@ -1,8 +1,15 @@
+# The original Running Start generator: a 9x9 grid, every line clued, carved
+# to minimal interior givens and then to a minimal shown-clue set, proved
+# unique with OR-Tools. Superseded for new boards by build_size.py (which
+# drives the shared framebuild machinery at any size); kept because the
+# shipped 9x9 board came from here.
+#
+#   uv run --with ortools examples/running-start/generate.py OUT.json
+
 import json
 import random
+import sys
 from pathlib import Path
-
-from ortools.sat.python import cp_model
 
 
 def base(r, c):
@@ -40,6 +47,10 @@ def rs(v):
 
 
 def unique(clue, active, givens):
+    # Imported here, not at module scope, so make_grid/rs/lines stay
+    # importable without a solver. Same rule as framebuild.unique.
+    from ortools.sat.python import cp_model
+
     m = cp_model.CpModel()
     x = {(r, c): m.NewIntVar(1, 9, f"x{r}{c}") for r in range(9) for c in range(9)}
     for i in range(9):
@@ -78,51 +89,62 @@ def unique(clue, active, givens):
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
-best = None
-for seed in range(101, 113):
-    rng = random.Random(seed)
-    grid = make_grid(rng)
-    clue = {k: rs([grid[r][c] for (r, c) in cells]) for k, cells in lines.items()}
-    active = set(lines.keys())  # keep ALL clues (rule load-bearing)
-    givens = {}
-    # add minimal interior givens until unique (with all clues)
-    cells_all = [(r, c) for r in range(9) for c in range(9)]
-    rng.shuffle(cells_all)
-    if not unique(clue, active, givens):
-        for cell in cells_all:
-            givens[cell] = grid[cell[0]][cell[1]]
-            if unique(clue, active, givens):
-                break
-    # carve givens (all clues kept) to minimize
-    for cell in list(givens.keys()):
-        v = givens.pop(cell)
+def main(out):
+    """Search seeds 101..112 for the board with the fewest interior givens,
+    carve its clue set to a minimum, and write the board to `out`."""
+    best = None
+    for seed in range(101, 113):
+        rng = random.Random(seed)
+        grid = make_grid(rng)
+        clue = {k: rs([grid[r][c] for (r, c) in cells]) for k, cells in lines.items()}
+        active = set(lines.keys())  # keep ALL clues (rule load-bearing)
+        givens = {}
+        # add minimal interior givens until unique (with all clues)
+        cells_all = [(r, c) for r in range(9) for c in range(9)]
+        rng.shuffle(cells_all)
         if not unique(clue, active, givens):
-            givens[cell] = v
-    n = len(givens)
-    print(f"seed {seed}: interior givens = {n}")
-    if best is None or n < best[0]:
-        best = (n, seed, grid, clue, dict(givens), set(active))
+            for cell in cells_all:
+                givens[cell] = grid[cell[0]][cell[1]]
+                if unique(clue, active, givens):
+                    break
+        # carve givens (all clues kept) to minimize
+        for cell in list(givens.keys()):
+            v = givens.pop(cell)
+            if not unique(clue, active, givens):
+                givens[cell] = v
+        n = len(givens)
+        print(f"seed {seed}: interior givens = {n}")
+        if best is None or n < best[0]:
+            best = (n, seed, grid, clue, dict(givens), set(active))
 
-n, seed, grid, clue, givens, active = best
-# light clue carve: drop clues that aren't needed given the (minimal) givens
-rng = random.Random(seed * 7)
-order = list(active)
-rng.shuffle(order)
-for k in order:
-    active.discard(k)
-    if not unique(clue, active, givens):
-        active.add(k)
-assert unique(clue, active, givens) is True
-print(f"CHOSEN seed {seed}: interior givens={len(givens)}, clues kept={len(active)}")
-with Path("/home/caneff/.claude/jobs/f0b00c4b/tmp/gen.json").open("w") as f:
-    json.dump(
-        {
-            "seed": seed,
-            "grid": grid,
-            "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
-            "active": [f"{s}{i}" for (s, i) in active],
-            "givens": {f"{r},{c}": v for (r, c), v in givens.items()},
-        },
-        f,
+    n, seed, grid, clue, givens, active = best
+    # light clue carve: drop clues that aren't needed given the (minimal) givens
+    rng = random.Random(seed * 7)
+    order = list(active)
+    rng.shuffle(order)
+    for k in order:
+        active.discard(k)
+        if not unique(clue, active, givens):
+            active.add(k)
+    assert unique(clue, active, givens) is True
+    print(
+        f"CHOSEN seed {seed}: interior givens={len(givens)}, clues kept={len(active)}"
     )
-print("wrote gen.json")
+    with out.open("w") as f:
+        json.dump(
+            {
+                "seed": seed,
+                "grid": grid,
+                "clue": {f"{s}{i}": clue[(s, i)] for (s, i) in clue},
+                "active": [f"{s}{i}" for (s, i) in active],
+                "givens": {f"{r},{c}": v for (r, c), v in givens.items()},
+            },
+            f,
+        )
+    print(f"wrote {out}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("usage: generate.py OUT.json")
+    main(Path(sys.argv[1]))

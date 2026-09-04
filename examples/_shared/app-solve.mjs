@@ -44,21 +44,10 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
 
-// --ring-clues: allow entered values, for edge-clue puzzles whose clues are
-// stored as non-given values in the outer ring. Everything else must be
-// stripped to its givens or the run is refused (see checkStripped).
-const ringClues = process.argv.includes('--ring-clues')
-// --after-logical: run the app's logical solver to its fixpoint before the
-// timed search, so the row measures the search a player still faces.
-const afterLogical = process.argv.includes('--after-logical')
-const args = process.argv.slice(2).filter(a => a !== '--ring-clues' && a !== '--after-logical')
-const linkFile = args[0]
-const reps = parseInt(args[1] || '7', 10)
-const iconName = args[2] || 'ShowCandidates'
-if (!linkFile) throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]')
+const { linkFile, reps, iconName, ringClues, afterLogical } = parseArgs(process.argv.slice(2))
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 // The app draws givens black and entered values blue, at each cell's own
