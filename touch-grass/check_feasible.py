@@ -25,10 +25,13 @@ for kind in ("Regions", "Columns", "Rows"):
             house_groups.append(g["cells"])
 
 FAMILIES = []
-for name, rule in (("Numbered Rooms (Blue)", "nr"), ("Skyscrapers (Red)", "sky"),
-                   ("Running Start (Purple)", "rs"), ("Outside Sudoku (Green)", "out")):
-    if name in by_name:
-        FAMILIES.append((rule, by_name[name]))
+for prefix, rule in (("Numbered Rooms (", "nr"), ("Skyscrapers (", "sky"),
+                     ("Running Start (", "rs"), ("Outside Sudoku (", "out")):
+    for name, c in by_name.items():
+        if name and name.startswith(prefix):
+            FAMILIES.append((rule, c))
+if len(FAMILIES) != 4:
+    raise SystemExit(f"expected 4 clue families, found {len(FAMILIES)}")
 
 need = set()
 for cs in house_groups:
