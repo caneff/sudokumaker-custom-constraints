@@ -61,19 +61,18 @@ Two things it deliberately does not do:
 | cap9-seed10 | unique | 110 | 205 | 1800 |
 | cap9-seed18 | unique | 1760 | 2206 | 100 |
 | cap9-seed20 | unique | 21 | 54 | 200 |
-| cap9-seed3 | **capped** | >200000 | — | 1000 |
+| cap9-seed3 | unique | 15516324 | 18375274 | 1000 |
 | cap9-seed5 | unique | 2219 | 3337 | 100 |
 
-**18 of 19 agree with the app: `unique`.** The nineteenth, cap9-seed3, spends
-the 200,000-node budget and scores `capped` — no verdict, not a disagreement,
-and the honest reading is that this search cannot close a board the app closes
-in a second. Raising the budget does not rescue it: at 5,000,000 nodes the
-search was still running after 40 minutes and was stopped, so all that is
-known is that this board is beyond it. See "Where the scorer is weaker than
-the app" below.
+**All 19 agree with the app: `unique`.** Eighteen of them under the default
+200,000-node budget. The nineteenth, cap9-seed3, spends that budget and scores
+`capped` — no verdict — and needs `--node-cap 20000000` to close: 15,516,324
+nodes, 25.5 minutes. The app closes the same board in a second. See "Where the
+scorer is weaker than the app" below.
 
 **Spearman's rho between offline nodes and the app's recorded cold times:
-0.599 over all 19.** Positive and useful for ranking, well short of a proxy.
+0.599 over all 19** (cap9-seed3 at its true 15,516,324; it ranks top either
+way, so the capped run gives the same rho). Positive and useful for ranking, well short of a proxy.
 Two reasons not to read more into it: twelve of the recorded times are 0 ms or
 100 ms, which is the app's timer resolution and not a measurement, and the app
 solves with its own search order, which is not this one.
@@ -82,8 +81,8 @@ solves with its own search order, which is not this one.
 
 The offline search branches on the smallest candidate set, lowest cell index
 first, with no restarts, no learning and no randomisation. The app's solver has
-its own search. On cap9-seed3 that gap is wide enough to matter: the app
-closes it, this search does not inside its budget.
+its own search. On cap9-seed3 that gap is four orders of magnitude: 15.5 million
+nodes and 25 minutes here against about a second there.
 
 That is a limit on the scorer as an ORACLE, not on the scorer as a RANKER —
 and ranking is the job. A board the offline search finds hard is a board worth
