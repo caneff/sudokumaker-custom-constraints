@@ -229,6 +229,12 @@ function * update (instance, puzzle) {
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
   const r = prune(puzzle, line, Lc, Rc, peak)
+  // A clue with no surviving value means no arrangement satisfies the pair:
+  // the branch is dead (this used to surface as an emptied clue cell).
+  if (r.L === 0 || r.R === 0) {
+    yield puzzle.stop(`no arrangement of heights satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
+    return
+  }
   const rmA = Lc & ~r.L
   const rmB = Rc & ~r.R
   //! Copy the line's removals out of the scratch buffers before yielding: a

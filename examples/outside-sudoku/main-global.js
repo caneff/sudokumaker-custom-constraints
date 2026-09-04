@@ -38,6 +38,6 @@ function frameGroups () {
 
 for (const { cells } of frameGroups()) {
   const [clue, ...line] = cells
-  const name = helpers.naming.getCellsDescription(cells)
+  const name = `the outside-sudoku clue at ${helpers.naming.getCellName(clue)}`
   puzzle.addConstraintComponent(new OutsideSudokuComponent(name, clue, line))
 }

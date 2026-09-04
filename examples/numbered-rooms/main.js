@@ -13,6 +13,6 @@ for (const { cells } of input.groups) {
   // A group still being drawn has only its clue; nothing to enforce yet, and
   // an empty line would read an undefined cell and throw in the editor.
   if (line.length === 0) continue
-  const name = helpers.naming.getCellsDescription(cells)
+  const name = `the numbered-rooms clue at ${helpers.naming.getCellName(clue)}`
   puzzle.addConstraintComponent(new NumberedRoomsComponent(name, clue, line))
 }

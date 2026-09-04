@@ -256,10 +256,9 @@ function * update (instance, puzzle) {
   if (read === null || read.sig === instance.sig) return
   const found = sideDeductions(puzzle, clues, lines, read.live)
   if (found === null) {
-    // No assignment of positions to lines survives: this branch is dead. Empty a
-    // clue cell, the same contradiction signal the per-line rule already raises.
-    const all = Array.from(puzzle.getCandidates(clues[0]))
-    if (all.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(all), clues[0])
+    // No assignment of positions to lines survives: this branch is dead. Stop
+    // with the reason, the same signal the per-line rule already raises.
+    yield puzzle.stop(`no assignment of hit positions to lines satisfies ${instance.name}`, clues)
     return
   }
   for (const [cell, digit] of found.forbid) yield puzzle.removeCandidateFromCell(digit, cell)

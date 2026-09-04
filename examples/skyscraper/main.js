@@ -17,6 +17,6 @@ const groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1)
 
 for (const g of groups) {
   if (g.line.length === 0) continue
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
+  const name = `the skyscraper clue at ${helpers.naming.getCellName(g.clue)}`
   puzzle.addConstraintComponent(new SkyscraperOneSidedComponent(name, g.clue, g.line))
 }

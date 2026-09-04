@@ -55,7 +55,7 @@ const paired = new Set()
 for (let i = 0; i < groups.length; i++) {
   for (let j = i + 1; j < groups.length; j++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
-    const name = `skyscraper line ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    const name = `the skyscraper clues at ${helpers.naming.getCellName(groups[i].clue)} and ${helpers.naming.getCellName(groups[j].clue)}`
     puzzle.addConstraintComponent(
       new SkyscraperLineComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
     paired.add(i).add(j)
