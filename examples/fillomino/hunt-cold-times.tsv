@@ -1,0 +1,24 @@
+# Recorded app cold times (ms) for the 19 frozen fixtures under the shipped
+# component, copied from README.md's rung 3 record (#309's sweep, app
+# v2026.08.14-d47fc4b). Read by `hunt.mjs score --times` to report how the
+# offline ranking lines up with the app's. Data, not a claim: the app's own
+# table stays the record.
+timing-fixture-9x9-cap12-seed10-rung25.txt	100
+timing-fixture-9x9-cap12-seed11-rung25.txt	1000
+timing-fixture-9x9-cap12-seed13-rung25.txt	100
+timing-fixture-9x9-cap12-seed14-rung25.txt	100
+timing-fixture-9x9-cap12-seed16-rung25.txt	0
+timing-fixture-9x9-cap12-seed17-rung25.txt	0
+timing-fixture-9x9-cap12-seed18-rung25.txt	400
+timing-fixture-9x9-cap12-seed20-rung25.txt	0
+timing-fixture-9x9-cap12-seed3-rung25.txt	100
+timing-fixture-9x9-cap12-seed4-rung25.txt	100
+timing-fixture-9x9-cap12-seed5-rung25.txt	300
+timing-fixture-9x9-cap12-seed8-rung25.txt	0
+timing-fixture-9x9-cap12-seed9-rung25.txt	100
+timing-fixture-9x9-cap9-seed1-rung25.txt	500
+timing-fixture-9x9-cap9-seed10-rung25.txt	1800
+timing-fixture-9x9-cap9-seed18-rung25.txt	100
+timing-fixture-9x9-cap9-seed20-rung25.txt	200
+timing-fixture-9x9-cap9-seed3-rung25.txt	1000
+timing-fixture-9x9-cap9-seed5-rung25.txt	100
