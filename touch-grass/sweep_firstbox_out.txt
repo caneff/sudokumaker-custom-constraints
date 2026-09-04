@@ -1,0 +1,5 @@
+HIT: {'Red': 'nr', 'Blue': 'sky', 'Purple': 'out', 'Green': 'rs'} OPTIMAL
+HIT: {'Red': 'nr', 'Blue': 'out', 'Purple': 'sky', 'Green': 'rs'} OPTIMAL
+HIT: {'Red': 'rs', 'Blue': 'sky', 'Purple': 'out', 'Green': 'nr'} OPTIMAL
+HIT: {'Red': 'rs', 'Blue': 'out', 'Purple': 'sky', 'Green': 'nr'} OPTIMAL
+4 of 24 feasible; done
