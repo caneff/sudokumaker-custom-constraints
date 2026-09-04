@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { execFileSync } from 'child_process'
+import { Script } from 'vm'
 
 // The app's DigitSet, as read from its bundle (docs/puzzle-api.md): a bitmask
 // where bit d is digit d. The algebra methods MUTATE and return this.
@@ -39,12 +40,14 @@ export function installGlobals (minDigit, maxDigit) {
 // a strength test holds a component to the floor it set.
 export function makeIo (here) {
   const read = f => readFileSync(join(here, f), 'utf8')
-  const evalNamed = (src, names) =>
-    eval('(function(){' + src + '\n return {' + names.join(',') + '};})()') // eslint-disable-line no-eval
-  const load = (file, names) => evalNamed(read(file), names)
+  // vm.Script instead of eval so V8 coverage (c8) attributes the component's
+  // execution to its own file, not to this harness.
+  const evalNamed = (src, names, filename = 'loadSource.js') =>
+    new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
+  const load = (file, names) => evalNamed(read(file), names, join(here, file))
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
   const loadAt = (commit, file, names) =>
-    evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names)
+    evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names, `${join(here, file)}@${commit}`)
   return { read, load, loadAt, loadSource: evalNamed }
 }
 
