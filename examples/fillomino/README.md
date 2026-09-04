@@ -220,17 +220,66 @@ planned. See #284 for each parked rule and its admission bar.
 
 ## The board
 
-`gen.json` holds the shipped 6x6 board: the sample fillomino from the puzz.link
-rules page, the same board the vendored baseline ships, so the strength gate
-and any timing comparison run on one grid. Twelve givens; CP-SAT proves the
-clue set has exactly one solution (`docs/research/fillomino_cpsat.py`, the
-research prototype — a shipped generator and its own proof are #306).
+`gen.json` holds the shipped instance (#310): a 9x9, digits 1-9 board, 28
+givens. Sampled by `generate.py sample 3`, stripped in the live app under the
+**shipped** component (`app-strip.mjs`), and picked as the slowest board the
+app still closes out of a hunt that ran a blind 18-seed live batch, a 300-board
+offline hunt (#317's scorer) across both digit ranges, and an offline
+hill-climb of the two live-stripped outliers — none of the offline-hunted or
+climbed boards beat the live strip's own two hardest boards, and one of the
+two (this one) beat the other in a live 3-rep timing. Full record:
+`PROGRESS.md`.
+
+CP-SAT proves the clue set has exactly one solution, no timeout:
+
+```
+uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
+unique
+```
+
+(5.4s.) `update-strength.test.mjs` reads this same `gen.json` for its
+`shipped`-grid check, so that test's own fuzz now runs against the shipped
+instance's grid too.
 
 Rebuild the link:
 
 ```
 uv run --with lzstring examples/fillomino/build_link.py
 ```
+
+## Paste into SudokuMaker
+
+Make a custom board (any square side) with digits 1 through the cap. Add a
+custom **global** constraint — no group input — and paste `main.js` as the
+main code. Add one component segment named `FillominoComponent` with the
+component file's contents. Enter the givens.
+
+## Generator
+
+`generate.py` (OR-Tools CP-SAT), grown from the research prototype
+(`docs/research/fillomino_cpsat.py`, #280/#288):
+
+```
+uv run --with ortools examples/fillomino/generate.py               # self-check
+uv run --with ortools examples/fillomino/generate.py sample 7      # seed 7, 9x9, digits 1-9
+uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # seed 7, side 9, cap 12
+uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
+```
+
+Knobs on `sample(seed, side=None, cap=None, pins=4, max_tries=50)`: `side`
+and `cap` default to 9 and to `side`; `cap` above `side` widens the digit
+range without changing the board size (one pin is then forced above `side`
+so the wide cap actually gets used). `pins` random cells are seeded with a
+random digit before each solve — diversity against CP-SAT's own
+`randomize_search`, which alone still hands back dull striped grids on some
+seeds. A pin combination with no solution, or that solves to a striped grid,
+is dropped and retried with a fresh sub-seed, up to `max_tries`. `unique`
+wraps the same model's `solutions()` capped at 2 and raises `TimeoutError`
+past its `limit` (600s default) rather than returning a verdict — a timeout
+is never read as proof.
+
+`app-strip.mjs` strips a sampled grid's 81 (or `side`²) givens down to a
+minimal clue set in the live app; the generator itself carries no strip step.
 
 ## Tests
 
@@ -265,25 +314,41 @@ uv run --with lzstring examples/fillomino/build_link.py
 
 The app opens `PUZZLE_LINK.txt` and reaches a verdict on it: **unique**.
 
-| Date | App version | Board | Cold | After logical |
+| Date | App version | Board | Cold (median of 3) | After logical (median of 3) |
 | --- | --- | --- | --- | --- |
-| 2026-09-02 | v2026.08.14-d47fc4b | fillomino (6x6, 12 givens) | 0 ms | 0 ms |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9, digits 1-9, 28 givens) | **7700 ms** | 0 ms |
 
-**Those numbers rank nothing.** The shipped 6x6 board is the baseline's own
-board, and the baseline's README records it at 100 ms cold, 0 ms after logical
-— the app reporting that the puzzle falls over immediately, where a component
-change moves neither number. Everything below is timed on the frozen fixture
-set instead (#307, 19 boards, 28-35 givens, each proved unique;
-`docs/research/fillomino-baseline/README.md`). Each board is the fixture link
-with one component swapped in, so both sides solve the same grid.
+**How this board was found (#310).** A blind 18-seed live-app strip under
+this shipped component, a 300-board offline hunt across both digit ranges
+(#317's scorer, CP-SAT-sampled and offline-stripped), and an offline
+hill-climb of the two live-stripped outliers — full record in `PROGRESS.md`.
+The live strip's own harder boards beat everything the offline hunt or the
+climb found; two cap12 finalists from the offline hunt timed out live and
+were dropped (a timeout is never a verdict). The shipped board is the one
+that beat its closest rival (6600 ms) in a live 3-rep timing, out of the two
+boards the app still closes fastest among the hardest the hunt found.
+
+Everything below this point predates the shipped instance and ranks the
+**component's rungs against each other and against the vendored baseline**,
+not this specific board — it is timed on the frozen fixture set instead
+(#307, 19 boards, 28-35 givens, each proved unique;
+`docs/research/fillomino-baseline/README.md`). Each board there is the
+fixture link with one component swapped in, so both sides solve the same
+grid.
 
 ### Which table is the record
 
-The **rung 3 table below is the candidate final record**: all 19 fixtures, on
-the code in the tree. #310 can reuse every row of it whose component has not
-changed since, rather than sweep again. The tables under it are history —
-#312's 7-board panel and #308's two passes time rung 2.5 and rung 2 against
-what came before them, not the shipped code.
+The **rung 3 table below is the strength/speed record for the ladder itself**:
+all 19 frozen fixtures, on the code in the tree, rung 3 vs rung 2.5. Every row
+in it is **#309's original sweep, reused as-is** — the component has not
+changed since that sweep ran, so #310 added no fresh rows here (per
+`docs/real-app-timing.md`, a row is only re-timed when the code it measures
+changed). The single **fresh** row #310 adds is the shipped-instance row at
+the top of this section (7700 ms / 0 ms, 9x9 digits 1-9, 28 givens) — a
+different board from any of the 19 frozen fixtures, timed for the first time
+this ticket. The tables under the rung 3 table are further history — #312's
+7-board panel and #308's two passes time rung 2.5 and rung 2 against what
+came before them, not the shipped code.
 
 ### Rung 3 against rung 2.5 — the pay-for-itself gate
 

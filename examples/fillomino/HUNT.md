@@ -198,3 +198,29 @@ CP-SAT proof.
 
 None of these is a shipped board — `PUZZLE_LINK.txt` and the frozen fixture
 set are untouched. They are the evidence for the loop.
+
+## When the hunt outruns the app (#310)
+
+Shipping the example's own instance ran the loop for real: a 300-board
+offline hunt (150 cap9 + 150 cap12), ranked, and the top two boards per range
+sent to `finalists`. The two cap9 finalists were live-app duds relative to a
+separate 18-seed blind live-strip batch's own two outliers — offline score
+is a ranker, not a universal yardstick across search strategies, exactly as
+this file already says. The two **cap12** finalists (offline scores 18573 and
+18229, comparable to several boards elsewhere in this file that the app
+closes in well under a second) both **timed out live** — the app's own solve
+cap, no verdict either way, on the first rep. Per the standing rule, a
+timeout is not evidence of hardness; it is evidence of nothing, and the
+board is dropped, not shipped.
+
+The lesson is not "the offline scorer is broken" — it agrees with the app on
+all 19 frozen fixtures (above) — it is that the scorer and the app's own
+solver diverge enough, on some boards, that a score in the range that means
+"comfortably closes" for most boards can mean "the app cannot finish it" for
+others. The hunt's own top-ranked candidates are not automatically safer bets
+than a board found by simpler means. In the end, the shipped instance
+(`PUZZLE_LINK.txt`) came from neither the offline hunt nor the hill-climb: it
+is one of the two outliers from the blind 18-seed live-strip calibration
+batch that predates #317 — the live app's own strip order, run without any
+offline pre-ranking, found the hardest board that still closes. Full record
+in `PROGRESS.md`'s `#310` section.

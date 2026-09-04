@@ -869,3 +869,76 @@ Seams at ship: `just check` green; soundness fuzz 0 violations over 40000
 states plus a directed cut-starve check; strength gate 0 weaker / 23432
 stronger against the vendored baseline; fixpoint floor 0 weaker than `ac20771`
 and 856 stronger; reused-instance check green over 400 states.
+
+## #310: strip, prove, link, README
+
+### Blind batch, 18 boards (9x9 digits 1-9, shipped component)
+
+Ticket's ~20-seed batch, seeds 1-20, stripped under the **shipped** component
+(rung 3, `43ee72e`) in the live app via `app-strip.mjs` -- run started
+2026-09-03 20:46, one board every ~2 minutes now that the finished component
+does most of the work itself. Givens per seed: 1:26, 2:30, 3:28, 4:33, 5:32,
+6:33, 7:32, 8:32, 9:29, 10:30, 11:34, 12:31, 13:33, 14:33, 15:28, 16:30,
+17:28, 18:35. Owner instruction (msg `dae76b43fb26`, "cut the blind batch
+short") stopped the run after seed 18 finished, before seed 19 started --
+seeds 19-20 were never run. This 18-board record stays as calibration, per
+the owner's follow-up, not as the shipped candidate.
+
+### Offline hunt (#317), 300 boards (150 cap9 + 150 cap12)
+
+Per the owner's "scorer-first" instruction once #317 landed (`a89a29b`):
+CP-SAT-sampled seeds 101-250 on each of 9x9 digits 1-9 and 9x9 digits 1-12,
+offline-stripped and scored with `hunt.mjs strip` (the shipped component as
+the propagator, not CP-SAT, not the live app). 283 of 300 scored a verdict;
+17 hit a 25s per-board timeout (sample or strip) and were skipped, logged as
+`SAMPLE-TIMEOUT`/`STRIP-TIMEOUT` in `hunt/scores.tsv` (not committed --
+scratch). Top offline score: 19496 nodes (cap9 seed246). Full table in
+`hunt/scores.tsv` during the run; not committed, per HUNT.md's own convention
+of keeping curated artifacts, not the bulk scan.
+
+**The offline hunt's own top candidates did not win.** Re-scoring the blind
+batch's two 5+ second outliers (seed3, seed15 -- the app-strip trial readouts
+that stood out in the 18-board batch) through the same offline scorer:
+seed3 scores **151442 nodes**, seed15 **83192 nodes** -- both 4-8x every
+offline-hunted candidate. The live app's own strip order (seeded by
+`app-strip.mjs`'s per-seed shuffle) found harder boards than 300 fresh
+CP-SAT samples stripped offline did. Hill-climbing seed3 offline
+(`hunt.mjs climb`, `--free 10 --iters 12 --restarts 2 --seed 21`) could not
+beat it either: climb re-strips the seed board with its own offline order
+before mutating, which lands on a much weaker rebaseline (3525 nodes, not
+151442) -- its best mutant reached 17630 nodes, still an order of magnitude
+under the original live-stripped board. Kept as `hunt/climb/seed3.jsonl` +
+`seed3-best.json`, not committed -- evidence the loop ran, not a stronger
+board.
+
+### Finalists timed live, `app-solve.mjs`
+
+Four boards to the app: the two blind-batch outliers (seed3, seed15) and the
+top offline-hunt board per range (cap12 seed235: 37 givens, cap12 seed120: 36
+givens -- the offline hunt's cap9 top candidates score below seed3/seed15 by
+a wide enough margin they were not worth an app rep).
+
+| Board | Givens | Offline nodes | App verdict (1 rep) |
+| --- | ---: | ---: | --- |
+| seed3 | 28 | 151442 | unique, 6800ms |
+| seed15 | 28 | 83192 | unique, 6900ms |
+| cap12 seed235 | 37 | 18573 | **timeout** |
+| cap12 seed120 | 36 | 18229 | **timeout** |
+
+Both cap12 finalists hit the app's own solve cap with no verdict -- dropped,
+per the standing rule that a timeout is never read as a proof of anything,
+hard or easy. Neither grid nor clue set is kept.
+
+Three-rep medians on the two survivors, non-deterministic solve off,
+app v2026.08.14-d47fc4b:
+
+| Board | Cold (median of 3) | After-logical (median of 3) |
+| --- | ---: | ---: |
+| seed3 | **8400ms** | 0ms |
+| seed15 | 6600ms | -- (not run; seed3 already ahead) |
+
+**seed3 ships.** 28 givens, 8400ms cold, 0ms after-logical (the app's own
+logic pass finishes it before any search). CP-SAT proves it unique in 5.4s,
+no timeout (`generate.py unique`). This becomes the example's `gen.json` /
+`PUZZLE_LINK.txt`, replacing the 6x6 puzz.link demo board rung 1 shipped
+with.

@@ -32,7 +32,8 @@ TIMED_COMPONENT = "FillominoComponent"
 RULE = (
     "Fillomino: Place a digit from 1-{hi} in every cell. Orthogonally "
     "connected cells with the same digit are regions; the number of cells in "
-    "a region has to equal its digit."
+    "a region has to equal its digit. Two regions of the same size may not "
+    "touch orthogonally."
 )
 
 

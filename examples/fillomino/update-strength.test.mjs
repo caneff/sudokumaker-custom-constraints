@@ -43,18 +43,16 @@ const io = makeIo(HERE)
 const cur = io.load('FillominoComponent.js', ['setParams', 'update'])
 const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'update'])
 
-const N = 6
-installGlobals(1, N)
-
 const { rnd } = makeRng(9001)
 const REPS = 300
 
-const CELLS = Array.from({ length: N * N }, (_, i) => i)
-
+// Each fixture is square but not necessarily the same size as the other, so
+// N/CELLS/the digit range are derived per fixture, not shared globally.
 const gridOf = rows => {
+  const n = rows.length
   const truth = {}
-  rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * N + x] = Number(ch) }))
-  return truth
+  rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
+  return { truth, n }
 }
 const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
 const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
@@ -65,7 +63,7 @@ const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; r
 // `initialize` off `instance.cells`; ours does it in `setParams`. The baseline
 // is stopped after each change so its next island comes off a fresh scan --
 // see HOW THE REFERENCE IS DRIVEN above.
-const apply = (mod, p) => {
+const apply = (mod, p, CELLS) => {
   const inst = { cells: CELLS }
   if (mod.setParams) {
     mod.setParams(inst, CELLS)
@@ -94,17 +92,20 @@ const quiet = fn => {
 let states = 0
 let weaker = 0
 let stronger = 0
-for (const [name, truth] of [['shipped', shipped], ['varied', varied]]) {
+for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]) {
+  installGlobals(1, N)
+  const CELLS = Array.from({ length: N * N }, (_, i) => i)
+  const applyN = (mod, p) => apply(mod, p, CELLS)
   let fixtureWeaker = 0
   let fixtureStronger = 0
   for (let rep = 0; rep < REPS; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, truth[c]))
-    const w = quiet(() => compareStrength(cur, ref, apply, start))
+    const w = quiet(() => compareStrength(cur, ref, applyN, start))
     if (w === null) continue
     // Half two, the same comparison read the other way round: the candidates
     // the baseline keeps and we remove.
-    const st = quiet(() => compareStrength(ref, cur, apply, start))
+    const st = quiet(() => compareStrength(ref, cur, applyN, start))
     states++
     fixtureWeaker += w.length
     fixtureStronger += st.length
@@ -136,15 +137,18 @@ const shippedRung2 = io.loadAt(SHIPPED, 'FillominoComponent.js', ['setParams', '
 const { rnd: frnd } = makeRng(4242)
 let floorStates = 0
 let pastRung2 = 0
-for (const truth of [shipped, varied]) {
+for (const { truth, n } of [shipped, varied]) {
+  installGlobals(1, n)
+  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const applyN = (mod, p) => apply(mod, p, CELLS)
   for (let rep = 0; rep < 100; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, N, truth[c]))
-    const lost = quiet(() => compareStrength(cur, shippedRung2, apply, start))
+    for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, n, truth[c]))
+    const lost = quiet(() => compareStrength(cur, shippedRung2, applyN, start))
     if (lost === null) continue
     floorStates++
     assert.deepStrictEqual(lost, [], `the component prunes less than rung 2 as shipped (${SHIPPED})`)
-    pastRung2 += quiet(() => compareStrength(shippedRung2, cur, apply, start)).length
+    pastRung2 += quiet(() => compareStrength(shippedRung2, cur, applyN, start)).length
   }
 }
 assert.strictEqual(floorStates, 200, 'a state built around a solution must never die')
@@ -156,53 +160,64 @@ console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', S
 // the component carries between calls. The solver never says it backtracked,
 // so the same instance sees states that jump around: a candidate it watched
 // disappear comes back. Drive ONE instance over a run of unrelated states and
-// each has to settle exactly where a fresh instance settles it.
-const reused = { cells: CELLS }
-cur.setParams(reused, CELLS)
+// each has to settle exactly where a fresh instance settles it. Run once per
+// fixture -- a reused instance is bound to one cells array, so it cannot jump
+// between differently-sized boards the way the earlier checks jump between
+// fixtures.
 const { rnd: brnd } = makeRng(31337)
-const settle = (inst, start) => {
+const settle = (inst, start, CELLS) => {
   const cells = {}; for (const c of CELLS) cells[c] = 0
   const p = makePuzzle(cells, c => start.get(c))
   quiet(() => fixpoint(cur, inst, p))
   return CELLS.map(c => [...p._cand.get(c)].sort((a, b) => a - b).join(''))
 }
 let reuseStates = 0
-for (const truth of [shipped, varied, shipped, varied]) {
-  for (let rep = 0; rep < 100; rep++) {
+for (const { truth, n } of [shipped, varied]) {
+  installGlobals(1, n)
+  const CELLS = Array.from({ length: n * n }, (_, i) => i)
+  const reused = { cells: CELLS }
+  cur.setParams(reused, CELLS)
+  for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, N, truth[c]))
+    for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, n, truth[c]))
     const fresh = { cells: CELLS }
     cur.setParams(fresh, CELLS)
-    assert.deepStrictEqual(settle(reused, start), settle(fresh, start),
+    assert.deepStrictEqual(settle(reused, start, CELLS), settle(fresh, start, CELLS),
       'a reused instance settled a state somewhere a fresh one does not')
     reuseStates++
   }
 }
 console.log('fillomino reused instance:', reuseStates, 'states, same fixpoint as a fresh one')
 
-// The silent-region win, directed (transfer doc §6). No cell is placed, so
-// every baseline rule is idle -- they all start from a placed island. r0c0's
-// two neighbours drop 6, which leaves r0c0 as the only cell around it that
-// allows 6: one cell for a region of six. The growth test drops 6 from r0c0;
-// the baseline keeps it.
+// The silent-region win and cut-starve demos are hand-built on their own
+// fixed 6x6 board (transfer doc §6, §4) -- unrelated to gen.json's shape.
+installGlobals(1, 6)
+const CELLS6 = Array.from({ length: 36 }, (_, i) => i)
+const applyOn6 = (mod, p) => apply(mod, p, CELLS6)
+
+// The silent-region win, directed. No cell is placed, so every baseline rule
+// is idle -- they all start from a placed island. r0c0's two neighbours drop
+// 6, which leaves r0c0 as the only cell around it that allows 6: one cell for
+// a region of six. The growth test drops 6 from r0c0; the baseline keeps it.
 const NO_SIX = [1, 2, 3, 4, 5]
-const silentStart = new Map(CELLS.map(c => [c, c === 1 || c === 6 ? NO_SIX : [1, 2, 3, 4, 5, 6]]))
-const silentWin = quiet(() => compareStrength(ref, cur, apply, silentStart))
+const silentStart = new Map(CELLS6.map(c => [c, c === 1 || c === 6 ? NO_SIX : [1, 2, 3, 4, 5, 6]]))
+const silentWin = quiet(() => compareStrength(ref, cur, applyOn6, silentStart))
 assert.deepStrictEqual(silentWin, [{ cell: 0, digit: 6 }], 'the clue-less region deduction the baseline misses')
 console.log('fillomino silent-region demo: baseline keeps 6 at r0c0, the growth test drops it')
 
-// Cut starve, directed (transfer doc §4). r0c0 holds 5 and the only other
-// cells that still allow 5 are r0c1, r1c0, r1c1, r2c1 and r3c1 -- a fork at
-// r0c1/r1c0 that closes again at r1c1 and then runs on alone. The walk out of
-// the island covers six cells for a region of five, so the force is idle, and
-// the island has two doors, so the one-door rule is idle too; the merge rules
-// and the component bound find nothing. Drop r1c1 from the walk and it starves
-// at three cells, drop r2c1 and it starves at four: both are in the region, so
-// both hold 5. Nothing in rung 2 reaches either, at a fixpoint or otherwise.
+// Cut starve, directed. r0c0 holds 5 and the only other cells that still
+// allow 5 are r0c1, r1c0, r1c1, r2c1 and r3c1 -- a fork at r0c1/r1c0 that
+// closes again at r1c1 and then runs on alone. The walk out of the island
+// covers six cells for a region of five, so the force is idle, and the
+// island has two doors, so the one-door rule is idle too; the merge rules
+// and the component bound find nothing. Drop r1c1 from the walk and it
+// starves at three cells, drop r2c1 and it starves at four: both are in the
+// region, so both hold 5. Nothing in rung 2 reaches either, at a fixpoint or
+// otherwise.
 const NO_FIVE = [1, 2, 3, 4, 6]
 const CORRIDOR = new Set([1, 6, 7, 13, 19])
-const cutStart = new Map(CELLS.map(c => [c, c === 0 ? [5] : CORRIDOR.has(c) ? [1, 2, 3, 4, 5, 6] : NO_FIVE]))
-const cutWin = quiet(() => compareStrength(shippedRung2, cur, apply, cutStart))
+const cutStart = new Map(CELLS6.map(c => [c, c === 0 ? [5] : CORRIDOR.has(c) ? [1, 2, 3, 4, 5, 6] : NO_FIVE]))
+const cutWin = quiet(() => compareStrength(shippedRung2, cur, applyOn6, cutStart))
 assert.deepStrictEqual(cutWin, [7, 13].flatMap(cell => [1, 2, 3, 4, 6].map(digit => ({ cell, digit }))),
   'the two cut-starve cells rung 2 misses')
 console.log('fillomino cut-starve demo: rung 2 leaves r1c1 and r2c1 open, cut starve places the 5 in both')
