@@ -77,3 +77,11 @@ which is silent data loss. Keep component code lean. **[docs]**
 
 The `?puzzle=` payload is `LZString.compressToEncodedURIComponent(JSON.stringify(document))`.
 Decode with `decompressFromEncodedURIComponent`. See `patterns.md`. **[verified]**
+
+## 9. `instance` is shared across the whole search
+
+Component objects are not cloned per search node, and `stop()` fails only the
+cloned state. Anything you write on `instance` survives the backtrack that
+clears the stop — so a memo written on a stopped path silently disables the
+dead-branch signal. See `component-contract.md`, "`instance` lives for the
+whole solve, not one search node". **[verified]**

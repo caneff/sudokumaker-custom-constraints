@@ -550,8 +550,21 @@ just time hit-counts
 | 2026-09-03 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_6x6_local.txt) after-logical | 200ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) | 7200ms | 7200ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) after-logical | 6100ms | 6100ms | 1.00 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) | 12000ms | 12300ms | 1.02 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) after-logical | 8400ms | 9000ms | 1.07 | gate: PASS |
 
-The last pair is #276, which makes `main-global.js` coerce every cell id it
+The #329 pair drops the `instance.sig` write on a `permutationPrune` that
+stopped, so a state the sweep declared dead is swept again rather than skipped
+by the memo the backtrack left behind. It adds no deduction, so it cannot reach
+0.9× and takes the **≤ 1.1× on both rows** bar `docs/real-app-timing.md` sets
+for a change of that shape. Four runs of the two-arm loop, in order:
+1.05/1.14, 1.02/1.09, 1.05/1.10, and the recorded 1.02/1.07 — the first three
+timed the same fix before its two sweeps were folded onto one epilogue. The
+after-logical row sits close to the bar and one early run missed it, which is
+noise of the same size as the spread in the baseline column alone
+(8100–12000ms across the four).
+
+The #276 pair makes `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. A cell id built that way is numerically
 equal to the id a drawn group carries and compares `===` to it, but the app's
 solver reads candidates through it more slowly until it is a plain integer

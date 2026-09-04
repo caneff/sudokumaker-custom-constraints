@@ -395,4 +395,23 @@ function jointFixpoint (comps, p) {
   assert.strictEqual(inst.sig, undefined, 'a stopped sweep must not memoise the state it stopped on')
 }
 
+// The same, for the permutation sweep: a full house holding 1..n once each
+// takes that sweep instead of the case sweep, and its stop must leave no memo
+// either.
+{
+  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  installGlobals(0, 9)
+  // Two house cells, both {1,2}: the line is 1,2 or 2,1, so the hit counts are
+  // (2,0) or (0,2). Both clues pinned to 2 asks for (2,2), which no ordering
+  // reaches.
+  const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
+  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { kind: 'house' })
+  const inst = {}
+  cur.setParams(inst, 0, 1, [2, 3])
+  Array.from(cur.update(inst, p))
+  console.log('hit-counts stopped permutation sweep:', p._stopped === null ? 'did not stop' : 'stopped,', 'sig', inst.sig)
+  assert.ok(p._stopped !== null, 'the permutation sweep must stop on a line no ordering satisfies')
+  assert.strictEqual(inst.sig, undefined, 'a stopped permutation sweep must not memoise the state it stopped on')
+}
+
 console.log('PASS')

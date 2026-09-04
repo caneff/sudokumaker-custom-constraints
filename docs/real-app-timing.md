@@ -33,7 +33,8 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   an existing rule and adds no deduction cannot reach 0.9× — on the shipped
   board every line is a house, so the rule runs as before. Such a change ships
   at **≤ 1.1× on both rows**, 3 reps, non-deterministic solve off; "unchanged"
-  is the pass (#197).
+  is the pass (#197). The same bar covers any change that adds no deduction and
+  so cannot reach 0.9× — dropping a memo, say, which strictly adds work (#329).
 - **Local fixture.** Each example's local link (`PUZZLE_LINK_local.txt`) gets
   one local row in the README: `just time <example> --board
   PUZZLE_LINK_local.txt` (#197). On most examples that board is bent paths
