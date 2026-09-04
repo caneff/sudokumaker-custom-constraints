@@ -371,14 +371,11 @@ function * update (instance, puzzle) {
   if (sig === instance.sig) return
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
-  // signature return early and never raise it.
-  if (exact) {
-    const stopped = yield * permutationPrune(instance, puzzle, cm, maskA, maskB)
-    if (!stopped) instance.sig = signature(puzzle, instance, exact)
-    return
-  }
-
-  const stopped = yield * caseSweep(instance, puzzle, cm, maskA, maskB, kind, all)
+  // signature return early and never raise it. Both sweeps share the one
+  // epilogue so neither can drift back to memoising a state it stopped on.
+  const stopped = yield * (exact
+    ? permutationPrune(instance, puzzle, cm, maskA, maskB)
+    : caseSweep(instance, puzzle, cm, maskA, maskB, kind, all))
   if (!stopped) instance.sig = signature(puzzle, instance, exact)
 }
 
