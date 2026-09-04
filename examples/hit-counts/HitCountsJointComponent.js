@@ -245,10 +245,9 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   }
 
   // No permutation of the line lands both clues on a candidate: the branch is
-  // dead. Empty a clue cell, the contradiction signal the case sweep raises too.
+  // dead. Stop with the reason, the same signal the case sweep raises too.
   if ((H[0] & 1) === 0) {
-    const cands = Array.from(puzzle.getCandidates(clueA))
-    if (cands.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(cands), clueA)
+    yield puzzle.stop(`no ordering of the line satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return
   }
 
@@ -365,11 +364,10 @@ function * update (instance, puzzle) {
     H[u] = pv
   }
 
-  // No (A, B) the line can reach lies in the box: the branch is dead. Empty a
-  // clue cell, the contradiction signal the per-line rule already raises.
+  // No (A, B) the line can reach lies in the box: the branch is dead. Stop
+  // with the reason, the same signal the per-line rule already raises.
   if ((H[0][0] & 1) === 0) {
-    const cands = Array.from(puzzle.getCandidates(clueA))
-    if (cands.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(cands), clueA)
+    yield puzzle.stop(`no hit count the line can reach satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return
   }
 

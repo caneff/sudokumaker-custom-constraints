@@ -41,7 +41,7 @@ function frameGroups () {
 const groups = frameGroups().map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
 
 for (const g of groups) {
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
+  const name = `the running-start clue at ${helpers.naming.getCellName(g.clue)}`
   puzzle.addConstraintComponent(new RunningStartComponent(name, g.clue, g.line))
 }
 
@@ -56,7 +56,7 @@ function sameReversed (a, b) {
 for (let i = 0; i < groups.length; i++) {
   for (let j = i + 1; j < groups.length; j++) {
     if (!sameReversed(groups[i].line, groups[j].line)) continue
-    const name = `running start pair ${helpers.naming.getCellName(groups[i].clue)}/${helpers.naming.getCellName(groups[j].clue)}`
+    const name = `the running-start clues at ${helpers.naming.getCellName(groups[i].clue)} and ${helpers.naming.getCellName(groups[j].clue)}`
     // Pass groups[i].line: clue i reads it as the increasing prefix, clue j reads
     // its reverse, i.e. a strictly decreasing suffix of the same line.
     puzzle.addConstraintComponent(

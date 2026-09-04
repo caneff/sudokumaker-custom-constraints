@@ -13,6 +13,6 @@
 const groups = input.groups.map(g => ({ clue: g.cells[0], line: g.cells.slice(1) }))
 
 for (const g of groups) {
-  const name = helpers.naming.getCellsDescription([g.clue, ...g.line])
+  const name = `the running-start clue at ${helpers.naming.getCellName(g.clue)}`
   puzzle.addConstraintComponent(new RunningStartComponent(name, g.clue, g.line))
 }

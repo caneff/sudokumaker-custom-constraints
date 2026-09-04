@@ -31,7 +31,7 @@ function mockPuzzle (W) {
   }
 }
 
-const helpers = { naming: { getCellsDescription: cells => cells.join(',') } }
+const helpers = { naming: { getCellsDescription: cells => cells.join(','), getCellName: cell => String(cell) } }
 
 // The component constructor the backends call: records its arguments.
 function OutsideSudokuComponent (name, clue, line) {

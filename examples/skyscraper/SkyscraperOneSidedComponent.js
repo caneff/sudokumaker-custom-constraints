@@ -158,6 +158,12 @@ function * update (instance, puzzle) {
   // The clue shows a count the whole line can reach.
   let reached = 0
   for (let t = 0; t < tallest; t++) reached |= fwd[last + t]
+  // No arrangement of the line shows any count the clue allows: the branch is
+  // dead (this used to surface as an emptied clue cell).
+  if ((clueCand & reached) === 0) {
+    yield puzzle.stop(`no arrangement of the line shows the count ${instance.name} asks for`, [clue, ...line])
+    return
+  }
   drop(clue, clueCand & ~reached)
   for (let i = 0; i < len; i++) drop(line[i], cand[i] & ~keep[i])
   if (pending !== null) {

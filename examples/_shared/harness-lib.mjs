@@ -75,6 +75,9 @@ export function compareStrength (cur, ref, apply, start, opts = {}) {
   const seed = c => start.get(c)
   const pCur = makePuzzle(cells, seed, opts); apply(cur, pCur)
   const pRef = makePuzzle(cells, seed, opts); apply(ref, pRef)
+  // A stop() is the same dead-state signal as an emptied cell (older pinned
+  // versions empty a cell where current code stops).
+  if (pCur._stopped !== null || pRef._stopped !== null) return null
   if ([...pCur._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)) return null
   const weaker = []
   for (const c of start.keys()) {
@@ -122,8 +125,12 @@ export function makeLine (rnd, kind, n, D) {
 export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
   const cand = new Map()
   for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
-  return {
+  const p = {
     _cand: cand,
+    _stopped: null,
+    // The app's stop() aborts the branch as a contradiction. Recording at call
+    // time is enough here: every component yields the stop it just built.
+    stop: (message = '', cells = []) => { p._stopped = message || 'stopped'; return { message, cells } },
     hasValue: c => cand.get(c).size === 1,
     getValue: c => [...cand.get(c)][0],
     // A fresh DigitSet per call, as in the app — mutating it is safe.
@@ -137,6 +144,7 @@ export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
     getCellsCanHaveRepeats: () => kind === 'bare',
     spec: { digitCount }
   }
+  return p
 }
 
 // Run a component's update until a pass removes nothing (bounded at 20 passes).
@@ -145,14 +153,18 @@ export function fixpoint (mod, inst, p) {
   for (let pass = 0; pass < 20; pass++) {
     const before = total()
     Array.from(mod.update(inst, p)) // drain
+    if (p._stopped !== null) break // the branch was declared dead; stop propagating
     if (total() === before) break
   }
 }
 
 // Run to a fixpoint, then report a cell that lost its true value or went
-// empty. Returns null when the true values all survive.
+// empty. Returns null when the true values all survive. A stop() is a
+// violation outright: it kills the whole branch, and every harness state
+// still contains the true solution, so no branch here is ever dead.
 export function violates (mod, inst, p, truth) {
   fixpoint(mod, inst, p)
+  if (p._stopped !== null) return { stopped: p._stopped }
   for (const [c, v] of Object.entries(truth)) {
     if (!p._cand.get(+c).has(v)) return { cell: +c, lost: v }
     if (p._cand.get(+c).size === 0) return { cell: +c, empty: true }
