@@ -1,0 +1,20 @@
+=== DEDUCTION cold, 3 reps ===
+  first 24900ms  unique 4200ms  sum 29100ms  [not-unique]
+  first 24900ms  unique 3900ms  sum 28800ms  [not-unique]
+  MEDIAN first 24900ms  unique 3900ms  sum 28800ms  over 3/3 reps
+JSON: {"median":28800,"repsRun":3,"repsTimedOut":0,"version":"v2026.08.14-d47fc4b"}
+=== DEDUCTION after-logical, 3 reps ===
+  first 22200ms  unique 3400ms  sum 25600ms  [not-unique]
+  first 27700ms  unique 4000ms  sum 31700ms  [not-unique]
+  MEDIAN first 22200ms  unique 3800ms  sum 25700ms  over 3/3 reps
+JSON: {"median":25700,"repsRun":3,"repsTimedOut":0,"version":"v2026.08.14-d47fc4b"}
+=== BASELINE cold, 3 reps ===
+  no first solve, no verdict  [timeout]
+  no first solve, no verdict  [timeout]
+  MEDIAN first nullms  unique nullms  sum nullms  over 0/3 reps
+JSON: {"median":null,"repsRun":3,"repsTimedOut":3,"version":"v2026.08.14-d47fc4b"}
+=== BASELINE after-logical, 3 reps ===
+  no first solve, no verdict  [timeout]
+  no first solve, no verdict  [timeout]
+  MEDIAN first nullms  unique nullms  sum nullms  over 0/3 reps
+JSON: {"median":null,"repsRun":3,"repsTimedOut":3,"version":"v2026.08.14-d47fc4b"}
