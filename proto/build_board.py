@@ -6,31 +6,45 @@
 # what a timing needs.
 #
 #   uv run --with lzstring proto/build_board.py <out.txt> [--no-deduction]
+#   uv run --with lzstring proto/build_board.py <out.txt> --puzzle p.json
 #
 # --no-deduction writes the same board with the leading-digit removals taken
 # out of `update`, the baseline the two-row ship rule compares against.
+# --puzzle takes a {grid, clues: [[r, c, rank], ...], givens: [[r, c], ...]}
+# file (0-based, the shape qr_find.py writes) at any size, instead of the 6x6
+# board baked in below. Board size comes from the grid.
 
 import json
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "examples/_shared"))
+sys.path.insert(
+    0, str(pathlib.Path(__file__).resolve().parents[1] / "examples/_shared")
+)
 from link_codec import encode_link  # noqa: E402
 
-N = 6
-BOX = (2, 3)
+BOXES = {4: (2, 2), 6: (2, 3), 9: (3, 3)}
 
-# A 6x6 solution and the clues read off it (rank, top-left row/col, 1-based).
-# Both come from proto/pick_board.mjs, which runs the ported oracle.
-GRID = json.loads(pathlib.Path(__file__).with_name("board.json").read_text())
-SOLUTION = GRID["grid"]
-CLUES = GRID["clues"]
-GIVENS = GRID["givens"]
+
+def load_board(argv):
+    """(N, box, solution, clues, givens, name). clues are 1-based {r, c, rank}."""
+    if "--puzzle" in argv:
+        p = json.loads(pathlib.Path(argv[argv.index("--puzzle") + 1]).read_text())
+        n = len(p["grid"])
+        clues = [{"r": r + 1, "c": c + 1, "rank": k} for r, c, k in p["clues"]]
+        return n, BOXES[n], p["grid"], clues, [tuple(g) for g in p["givens"]], f"Quad Rank {n}x{n}"
+    # The 6x6 timing board from #324: solution and clues both read off the
+    # oracle by proto/pick_board.mjs.
+    b = json.loads(pathlib.Path(__file__).with_name("board.json").read_text())
+    return 6, BOXES[6], b["grid"], b["clues"], b["givens"], "Quad Rank 6x6 (timing board)"
+
+
+N, BOX, SOLUTION, CLUES, GIVENS, NAME = load_board(sys.argv)
 
 RULES = (
     "Normal sudoku rules apply on the inner grid. Quad Rank: read every "
     "overlapping 2x2 window's four digits top-left, top-right, bottom-left, "
-    "bottom-right and concatenate them into a four-digit number. Rank all 25 "
+    f"bottom-right and concatenate them into a four-digit number. Rank all {(N - 1) ** 2} "
     "windows by that number, smallest first; tied windows share the lower rank "
     "and the ranks after a tie are skipped. A circled number on a window gives "
     "that window's rank."
@@ -38,7 +52,8 @@ RULES = (
 
 COMPONENT = pathlib.Path(__file__).with_name("QuadRankComponent.js").read_text()
 
-BACKEND = """\
+BACKEND = (
+    """\
 //! One QuadRankComponent per drawn group: cells are the window read
 //! TL/TR/BL/BR, and the group's value is the clued rank. A group whose value is
 //! not a rank in range is a clue the author has not finished, so it is skipped
@@ -54,7 +69,9 @@ for (const g of input.groups) {
   const name = `the quad rank clue at ${helpers.naming.getCellName(g.cells[0])}`
   puzzle.addConstraintComponent(new QuadRankComponent(name, g.cells, rank, allCells, n))
 }
-""" % N
+"""
+    % N
+)
 
 
 def regions():
@@ -80,7 +97,7 @@ def build(out_path, deduction=True):
         )
 
     cells = [{} for _ in range(N * N)]
-    for (r, c) in GIVENS:
+    for r, c in GIVENS:
         cells[r * N + c] = {"value": SOLUTION[r][c], "given": True}
 
     groups = []
@@ -94,7 +111,7 @@ def build(out_path, deduction=True):
     doc = {
         "formatVersion": "1.6.0",
         "puzzle": {
-            "name": "Quad Rank 6x6 (timing board)",
+            "name": NAME,
             "author": "",
             "comment": RULES,
             "type": "custom",
@@ -112,7 +129,11 @@ def build(out_path, deduction=True):
                     "definition": {
                         "name": "Quad Rank",
                         "input": [
-                            {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
+                            {
+                                "id": "groups",
+                                "label": "Groups",
+                                "params": {"type": "raw"},
+                            }
                         ],
                         "backend": {"type": "code", "code": BACKEND},
                         "components": [
@@ -135,4 +156,4 @@ def build(out_path, deduction=True):
 
 if __name__ == "__main__":
     build(sys.argv[1], deduction="--no-deduction" not in sys.argv)
-    print(f"wrote {sys.argv[1]}: {len(CLUES)} clues, {len(GIVENS)} givens")
+    print(f"wrote {sys.argv[1]}: {N}x{N}, {len(CLUES)} clues, {len(GIVENS)} givens")

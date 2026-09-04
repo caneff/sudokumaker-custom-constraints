@@ -12,3 +12,6 @@ examples/skyscraper/.scan/
 
 # code-review sub-agent report fallback; must never block git worktree remove
 .scratch/
+
+# #328 finder scratch
+proto/find_*.log
