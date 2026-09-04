@@ -5,6 +5,10 @@
 #    component's code, and that swapping one of the two Running Start Lines
 #    components leaves the other component and the backend untouched. Mirrors
 #    examples/skyscraper/build_link.test.py.
+# 1b. build_from_template + check: the no-args rebuild path. It must
+#    reproduce the committed PUZZLE_LINK.txt byte for byte from gen.json and
+#    the current source files, ship no entered digits, and fail loud when the
+#    document it is handed is not the one that was built.
 # 2. The committed local link, PUZZLE_LINK_local.txt, built by
 #    `build_size.py 9 3 3 --paths`: it must ship the bent paths as drawn groups
 #    on the main.js lane, derive every clue from the solution in
@@ -23,13 +27,14 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import CONSTRAINT_NAME, build
+from build_link import CONSTRAINT_NAME, build, build_from_template, check
 from frame import ring_cell
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from minify import minify_js
 
-# Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
+# Must match framebuild.RULES_PREFIX; restated so this test never imports
+# the builder it is checking.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 SWAPPED = "RunningStartComponent"
@@ -40,9 +45,9 @@ def running_start(values):
     """The Running Start clue for one line of digits: the length of the first
     ascending run read inward, with a tie ending the run.
 
-    A fourth statement of the rule, restated here rather than imported: this
-    test runs under `just test` with lzstring alone, and build_size.rs sits
-    behind framebuild's ortools import. It must agree with build_size.rs,
+    A fourth statement of the rule, restated here rather than imported: a
+    test that read the rule off the generator would agree with it by
+    construction and catch no drift. It must agree with build_size.rs,
     add_running_start, and RunningStartComponent -- change the rule, change all
     four (CODING_STANDARDS.md, "The rule has one home"). The tie reading is the
     component's shipped `ALLOW_TIES = false`.
@@ -130,8 +135,56 @@ def check_local_link():
     assert repeats, "no path carries a repeated digit"
 
 
+def check_template_rebuild():
+    """The no-args rebuild: source files in, the committed link out."""
+    link, doc = build_from_template()
+    check(link, doc)  # the same check the CLI runs before writing the file
+
+    committed = (HERE / "PUZZLE_LINK.txt").read_text().strip()
+    assert link == committed, (
+        "build_link.py with no args must reproduce the committed "
+        "PUZZLE_LINK.txt -- regenerate it, or the shipped link has drifted "
+        "from main-global.js / the components / gen.json"
+    )
+
+    p = doc["puzzle"]
+    assert p["comment"].startswith(RULES_PREFIX), "rules text must open with the prefix"
+    assert (p["minDigit"], p["maxDigit"]) == (1, 9)
+    assert p["author"] == "", "the template's author must not ship"
+    # a cell holds a value only when it is a given: the template was decoded
+    # from a finished board, so every solution digit and hidden clue has to be
+    # stripped or the recipient opens a filled-in grid
+    assert not [c for c in p["cells"] if "value" in c and not c.get("given")]
+    # the ring is not fully specified: the interactive clues are what the
+    # solver reads off each line
+    assert [c for c in p["cells"] if c.get("given")], "the board ships some givens"
+    # the generated cosmetics replace the template's hand-drawn ones
+    assert [c for c in p["constraints"] if c.get("type") == 2000]
+
+    # check() fails loud on a doc the link does not encode
+    wrong = json.loads(json.dumps(doc))
+    wrong["puzzle"]["comment"] = "not what was encoded"
+    try:
+        check(link, wrong)
+        raise AssertionError("check accepted a doc the link does not decode to")
+    except AssertionError as e:
+        assert "does not decode" in str(e), e
+
+    # and on a board whose constraint lost a component
+    dropped = json.loads(json.dumps(doc))
+    for c in dropped["puzzle"]["constraints"]:
+        if c.get("definition", {}).get("name") == CONSTRAINT_NAME:
+            del c["definition"]["components"][-1]
+    try:
+        check(encode_link(dropped), dropped)
+        raise AssertionError("check accepted a constraint missing a component")
+    except AssertionError as e:
+        assert "components wrong" in str(e), e
+
+
 if __name__ == "__main__":
     check_local_link()
+    check_template_rebuild()
 
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
 

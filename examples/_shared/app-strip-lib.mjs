@@ -3,6 +3,25 @@
 // runs under node:assert without a browser; the Playwright driver imports it
 // alongside readVerdict/parseReadout from app-solve-lib.mjs.
 
+// The driver's command line: `<link_file> <out.json> [seed] --grid <puzzle.json>`.
+// `--grid` may sit anywhere among the positionals, so it and its value are
+// removed before the positionals are read off. A missing link file, out file
+// or grid file is a usage error, not a run with a null path. Split out here
+// because it is the one branchy part of app-strip.mjs a browser is not needed
+// to exercise (#315).
+export function parseArgs (argv) {
+  const i = argv.indexOf('--grid')
+  const gridFile = i >= 0 ? argv[i + 1] : null
+  const positional = i >= 0 ? argv.filter((_, j) => j !== i && j !== i + 1) : argv
+  const [linkFile, outFile, seedArg] = positional
+  if (!linkFile || !outFile || !gridFile) {
+    throw new Error('usage: app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>')
+  }
+  // No seed given means seed 1: a run is reproducible by default, and the
+  // removal order only varies when a seed is asked for.
+  return { linkFile, outFile, gridFile, seed: seedArg ? parseInt(seedArg, 10) : 1 }
+}
+
 // A small deterministic PRNG (mulberry32) so a "seeded-random" removal order
 // is reproducible across runs without pulling in a dependency. Module-local:
 // only seededShuffle needs it.

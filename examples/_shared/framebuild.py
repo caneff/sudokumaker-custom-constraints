@@ -174,8 +174,7 @@ def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     caller with its own line geometry can reuse it."""
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
-    # load_gen) and a caller's Spec stay importable with lzstring alone --
-    # which is all `just test` installs.
+    # load_gen) and a caller's Spec stay importable without one.
     from ortools.sat.python import cp_model
 
     m = cp_model.CpModel()

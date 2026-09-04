@@ -28,7 +28,8 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
 from minify import minify_js
 
-# Must match framebuild.RULES_PREFIX; duplicated so this test needs no ortools.
+# Must match framebuild.RULES_PREFIX; restated so this test never imports
+# the builder it is checking.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 SWAPPED = "HitCountsJointComponent"
@@ -39,9 +40,9 @@ def hits(values):
     """The Hit Counts clue for one line of digits: cells whose digit equals
     their 1-based distance from the clue.
 
-    A fourth statement of the rule, restated here rather than imported: this
-    test runs under `just test` with lzstring alone, and build_size.hits sits
-    behind framebuild's ortools import. It must agree with build_size.hits,
+    A fourth statement of the rule, restated here rather than imported: a
+    test that read the rule off the generator would agree with it by
+    construction and catch no drift. It must agree with build_size.hits,
     add_hit_count, and HitCountsComponent -- change the rule, change all four
     (CODING_STANDARDS.md, "The rule has one home"). Same trade as
     check_layout.RULES_PREFIX.

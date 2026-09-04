@@ -161,8 +161,8 @@ node soundness-harness.mjs
 Generation and uniqueness (needs Python with ortools):
 
 ```
-python generate.py
-# -> chosen seed, interior givens, clues kept, "FINAL unique OK"
+uv run --with ortools generate.py gen_fresh.json
+# -> per-seed given counts, the chosen seed, and the file written
 ```
 
 `soundness-harness.mjs` runs every pool twice, once per reading of
