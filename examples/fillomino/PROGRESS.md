@@ -715,3 +715,157 @@ states.
 The target -- all seven panel boards SHIP -- was **not** reached, and the
 ceiling probe above says it is not reachable from the bound. #310 runs the full
 19-fixture sweep on this code as the final shipped-code record.
+
+# #309 — rung 3, cut starve with the dominator filter
+
+## pass: rung 3 vs rung 2.5, all 19 frozen fixtures
+The `-rung25.txt` boards are the frozen fixtures with the rung-2.5 component
+(`730aec5`) swapped in, built with `build_link.py --board ... --component`;
+`just time --board` then times the working-tree rung 3 against them.
+
+started 2026-09-03 19:56:48
+- timing-fixture-9x9-cap12-seed10-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed10-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung25.txt) | 3800ms | 100ms | 0.03 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 19:58:22
+- timing-fixture-9x9-cap12-seed11-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed11-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung25.txt) | 4200ms | 1000ms | 0.24 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung25.txt) after-logical | 3800ms | 700ms | 0.18 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:00:15
+- timing-fixture-9x9-cap12-seed13-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed13-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung25.txt) | 2600ms | 100ms | 0.04 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung25.txt) after-logical | 300ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:01:48
+- timing-fixture-9x9-cap12-seed14-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed14-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung25.txt) | 6700ms | 100ms | 0.01 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:03:31
+- timing-fixture-9x9-cap12-seed16-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed16-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung25.txt) | 1100ms | 0ms | 0.00 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:04:54
+- timing-fixture-9x9-cap12-seed17-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed17-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung25.txt) | 5400ms | 0ms | 0.00 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:06:33
+- timing-fixture-9x9-cap12-seed18-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed18-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung25.txt) | 6200ms | 400ms | 0.06 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung25.txt) after-logical | 6200ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:08:38
+- timing-fixture-9x9-cap12-seed20-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed20-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung25.txt) | 5000ms | 0ms | 0.00 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:10:13
+- timing-fixture-9x9-cap12-seed3-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed3-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung25.txt) | 2300ms | 100ms | 0.04 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:11:45
+- timing-fixture-9x9-cap12-seed4-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed4-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung25.txt) | 6300ms | 100ms | 0.02 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:13:27
+- timing-fixture-9x9-cap12-seed5-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed5-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung25.txt) | 3500ms | 300ms | 0.09 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung25.txt) after-logical | 6100ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:15:19
+- timing-fixture-9x9-cap12-seed8-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed8-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung25.txt) | 4800ms | 0ms | 0.00 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:16:56
+- timing-fixture-9x9-cap12-seed9-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap12-seed9-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung25.txt) | 4900ms | 100ms | 0.02 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung25.txt) after-logical | 4900ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:18:48
+- timing-fixture-9x9-cap9-seed1-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed1-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung25.txt) | 1800ms | 500ms | 0.28 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung25.txt) after-logical | 2300ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:20:26
+- timing-fixture-9x9-cap9-seed10-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed10-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung25.txt) | 3200ms | 1800ms | 0.56 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:21:59
+- timing-fixture-9x9-cap9-seed18-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed18-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung25.txt) | 7100ms | 100ms | 0.01 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung25.txt) after-logical | 4400ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:23:59
+- timing-fixture-9x9-cap9-seed20-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed20-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung25.txt) | 2400ms | 200ms | 0.08 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: SHIP
+  done 2026-09-03 20:25:26
+- timing-fixture-9x9-cap9-seed3-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed3-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung25.txt) | 2600ms | 1000ms | 0.38 | PASS |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung25.txt) after-logical | 4000ms | 0ms | 0.00 | PASS |
+  two-row rule: SHIP
+  done 2026-09-03 20:27:14
+- timing-fixture-9x9-cap9-seed5-rung25.txt:
+  uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed5-rung25.txt
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) | 100ms | 200ms | 2.00 | FAIL |
+  | 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+  two-row rule: NO SHIP
+  done 2026-09-03 20:28:36
+finished 2026-09-03 20:28:36
+
+## cap9-seed5, re-run twice
+=== rerun cap9-seed5 2026-09-03 20:28:59
+uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed5-rung25.txt
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) | 100ms | 100ms | 1.00 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+=== rerun2
+uv run --with lzstring examples/_shared/time_example.py fillomino --board timing-fixture-9x9-cap9-seed5-rung25.txt
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) | 100ms | 100ms | 1.00 | FAIL |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+=== RERUN-DONE
+
+Verdict: **19 boards, 18 SHIP.** Cold time over the 19 falls 74.0s -> 6.1s
+(0.08x), median cold row 0.04x. cap9-seed5 is the one NO SHIP and is a
+measurement-floor row, not a regression: rung 2.5 already finishes it in 100ms
+and its after-logical row is 0ms both sides, so there is nothing left to win.
+The first sweep read 200ms there, one tick of the app's 100ms readout; two
+re-runs both read 100ms (1.00x). Ruled a pass under `docs/real-app-timing.md`
+#197, "unchanged is the pass", by the ticket owner.
+
+Uniqueness spot-check on the rung-3 code, cap12-seed14 (the board rung 2.5
+could never ship): the app reads `[unique]` in 100ms against rung 2.5's
+6700ms.
+
+Seams at ship: `just check` green; soundness fuzz 0 violations over 40000
+states plus a directed cut-starve check; strength gate 0 weaker / 23432
+stronger against the vendored baseline; fixpoint floor 0 weaker than `ac20771`
+and 856 stronger; reused-instance check green over 400 states.

@@ -47,6 +47,14 @@
 //!                   re-floods only the components a changed cell touches,
 //!                   which leaves what it deduces byte-identical.
 //!
+//! Rung 3, cut starve (§4):
+//!   Cut starve: an open cell of the walk whose removal starves the walk under
+//!               k cells cannot be outside the region, so it holds k. A
+//!               dominator-tree filter (cutFilter, transferred from ISOFILL
+//!               unchanged) answers most cells at once, and only the rest pay
+//!               for a walk of their own. ISOFILL's strand half does not come
+//!               along: two islands of one digit need not share a region.
+//!
 //! Scope, and why it is not the whole board. #308's rung 2 asks for the growth
 //! test at FULL scope: the merge rules per (open cell, candidate digit) pair,
 //! every open cell. That was built and timed first, and the clock refused it --
@@ -99,6 +107,16 @@ function setParams (instance, cells) {
   instance.code = new Int32Array(cells.length)
   instance.prev = new Int32Array(cells.length).fill(-1)
   instance.seeds = new Int16Array(cells.length)
+  // Cut starve's scratch (#309): the digit's allowed row, the shortest-path
+  // DAG the filter walks, its dominator tree, the subtree counts read off it,
+  // and the per-cell verdict. See cutFilter.
+  instance.allowed = new Uint8Array(cells.length)
+  instance.distStarve = new Int16Array(cells.length)
+  instance.domOrder = new Int16Array(cells.length)
+  instance.idom = new Int16Array(cells.length)
+  instance.ddep = new Int16Array(cells.length)
+  instance.domCount = new Int16Array(cells.length)
+  instance.skip = new Uint8Array(cells.length)
   // The digits other than k, per k, for the force yield. Built on first use:
   // the digit range only reads right at update time.
   instance.others = null
@@ -191,7 +209,7 @@ function freeClosure (instance, puzzle, layer, from, len, digit, stamp) {
 // visited cells with `instance.mask[i] === stamp` and returns `{ size, stamp }`.
 // It stops once the walk holds more than `digit` cells: no rung-1 rule reads
 // a walk past that.
-function walk (instance, puzzle, members, count, digit, budget) {
+function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
   const { cells, nbrs, mask } = instance
   const stamp = ++instance.stamp
   let [frontier, next] = instance.frontier
@@ -204,7 +222,7 @@ function walk (instance, puzzle, members, count, digit, budget) {
     // one paid step: into the open cells that still allow the digit
     for (let f = 0; f < len; f++) {
       for (const nb of nbrs[frontier[f]]) {
-        if (mask[nb] === stamp) continue
+        if (mask[nb] === stamp || nb === exclude) continue
         if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
           mask[nb] = stamp
           next[nextLen++] = nb
@@ -219,6 +237,90 @@ function walk (instance, puzzle, members, count, digit, budget) {
     len = nextLen
   }
   return { size, stamp }
+}
+
+// Breadth-first search from `starts` through `allowed`, no further than
+// `maxDist` steps, and the dominator tree of the shortest-path DAG it builds.
+// A cell y keeps a path of its own length from some start when the removed
+// cell does not dominate y, which is what the cut filter reads. Fills `dist`
+// (-1 where unreached), `domOrder` (the cells in BFS order), `idom` (the
+// dominator, -1 for a cell no other cell dominates) and `ddep` (its depth in
+// that tree); returns how many cells the walk reached. Transferred from
+// ISOFILL unchanged (transfer doc §4): it is a statement about reachability
+// alone and never reads a digit or a region count.
+function domTree (instance, starts, nStarts, maxDist, allowed, dist) {
+  const { nbrs, domOrder, idom, ddep } = instance
+  dist.fill(-1)
+  let len = 0
+  for (let i = 0; i < nStarts; i++) {
+    const s = starts[i]
+    if (dist[s] < 0) { dist[s] = 0; domOrder[len++] = s }
+  }
+  for (let head = 0; head < len; head++) {
+    const u = domOrder[head]
+    if (dist[u] >= maxDist) continue
+    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
+  }
+  // A cell's dominator is the deepest cell dominating all its DAG
+  // predecessors, so fold them pairwise, walking the deeper one up the tree
+  // built so far. A start has no predecessor and no dominator.
+  for (let k = 0; k < len; k++) {
+    const v = domOrder[k]
+    if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
+    let a = -2
+    for (const p of nbrs[v]) {
+      if (!allowed[p] || dist[p] !== dist[v] - 1) continue
+      if (a === -2) { a = p; continue }
+      let b = p
+      while (a !== b) {
+        if (ddep[a] >= ddep[b]) a = idom[a]; else b = idom[b]
+        if (a < 0 || b < 0) { a = -1; b = -1 }
+      }
+    }
+    idom[v] = a
+    ddep[v] = a < 0 ? 1 : ddep[a] + 1
+  }
+  return len
+}
+
+// Roll `domCount` up the dominator tree `domTree` just left behind, so each
+// cell's entry counts itself and everything it dominates. BFS order puts a
+// cell after its dominator, so one backward pass does it.
+function subtreeSums (instance, len) {
+  const { domCount, domOrder, idom } = instance
+  for (let k = len - 1; k >= 0; k--) {
+    const v = domOrder[k]
+    if (idom[v] >= 0) domCount[idom[v]] += domCount[v]
+  }
+}
+
+// The cut filter (#309, ISOFILL's #258): answer cut starve for every open cell
+// of the walk at once, so the cells it clears need no walk of their own.
+//
+// Cut starve asks, of each open cell y in walk(I), whether dropping y leaves
+// the walk under `digit` cells. That is a reachability question on one walk,
+// so one BFS plus its dominator tree bounds it for every y together: a cell z
+// stays reachable at its own distance without y whenever y does not dominate
+// z, so the walk without y keeps at least (cells reached) - (cells y
+// dominates).
+//
+// The BFS here is the UNIT-step one, not the walk's 0-1 one -- a dominator
+// tree needs layers a step apart. Every path costs at least as much in unit
+// steps as in 0-1 steps, so the unit walk is a subset of the 0-1 walk and its
+// count is a lower bound on it. That is the direction the filter needs: the
+// bound only ever CLEARS a cell, and every cell it does not clear falls
+// through to the exact re-walk. ISOFILL's strand half is not here -- transfer
+// doc §4 kills it, since two islands of one digit need not share a region.
+//
+// Writes the verdict into `instance.skip`, 1 where cut is proved false.
+function cutFilter (instance, starts, nStarts, open, allowed, digit, budget) {
+  const { skip, domCount, domOrder, distStarve } = instance
+  const reached = domTree(instance, starts, nStarts, budget, allowed, distStarve)
+  domCount.fill(0)
+  for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
+  subtreeSums(instance, reached)
+  // a cell the walk never reached changes nothing by leaving it
+  for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= digit ? 1 : 0
 }
 
 function * update (instance, puzzle) {
@@ -272,6 +374,44 @@ function * update (instance, puzzle) {
           yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
         }
       }
+      continue
+    }
+
+    // Cut starve (§4), rung 3. The region R sits inside the walk and holds k
+    // cells. Take an open cell y of the walk and run the walk again without
+    // it: if that covers fewer than k cells then R cannot avoid y, since R
+    // would otherwise be a subset of a set under k cells. So y is in R and
+    // holds k. ISOFILL's strand half does not come along -- two islands of one
+    // digit need not share a region (§4).
+    //
+    // Every test below reads ONE snapshot -- this island's extent, this walk,
+    // this allowed row -- so the cuts are collected and yielded together at
+    // the end. Yielding inside the loop would place a k beside the island and
+    // leave every later test, and the door rules further down, reading an
+    // island that is a deduction out of date.
+    const { allowed, skip } = instance
+    for (let i = 0; i < cells.length; i++) {
+      allowed[i] = puzzle.hasValue(cells[i])
+        ? (puzzle.getValue(cells[i]) === digit ? 1 : 0)
+        : (puzzle.getCandidates(cells[i]).has(digit) ? 1 : 0)
+    }
+    const openWalk = []
+    for (let i = 0; i < cells.length; i++) {
+      if (mask[i] === stamp && !puzzle.hasValue(cells[i])) openWalk.push(i)
+    }
+    cutFilter(instance, members, count, openWalk, allowed, digit, digit - count)
+    const cuts = []
+    for (const y of openWalk) {
+      if (skip[y]) continue
+      if (walk(instance, puzzle, members, count, digit, digit - count, y).size < digit) cuts.push(y)
+    }
+    if (cuts.length > 0) {
+      const others = otherDigits(instance, digit)
+      for (const y of cuts) {
+        yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[y])
+      }
+      // the island just grew; the door rules below want a live one, and the
+      // next call re-scans for it
       continue
     }
 

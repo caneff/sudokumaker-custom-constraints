@@ -127,6 +127,22 @@ const NO_SIX = ALL.filter(d => d !== 6)
 const silent = once(shipped, c => (c === 1 || c === 6 ? NO_SIX : ALL))
 if (silent.getCandidates(0).has(6)) { console.log('fillomino growth test: a clue-less region kept an unreachable digit'); bad++ }
 
+// ---- Cut starve (transfer doc §4): r0c0 holds 5, and the only other cells
+// that still allow 5 are r0c1, r1c0, r1c1, r2c1 and r3c1 -- a fork at
+// r0c1/r1c0 that closes again at r1c1 and then runs on alone. The walk out of
+// that island covers six cells for a region of five, so the force is idle;
+// the island has two doors, so the one-door rule is idle too. Drop r1c1 from
+// the walk and it starves at three cells, drop r2c1 and it starves at four:
+// neither can be outside the region, so both hold 5. No other rule here
+// reaches either cell.
+const NO_FIVE = ALL.filter(d => d !== 5)
+const CORRIDOR = new Set([1, 6, 7, 13, 19])
+const cut = once(shipped, c => (c === 0 ? [5] : CORRIDOR.has(c) ? ALL : NO_FIVE))
+for (const c of [7, 13]) {
+  const got = cut.getCandidates(c)
+  if (!(got.size === 1 && got.has(5))) { console.log('fillomino cut starve: cell', c, 'is a cell the region cannot do without and was not placed'); bad++ }
+}
+
 // ---- validate (transfer doc §9): the leaf check. Every same-digit component
 // of a full grid must hold as many cells as its digit. ----
 function judge (truth) {

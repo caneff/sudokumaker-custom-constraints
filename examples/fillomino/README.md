@@ -8,8 +8,9 @@ checker exempts it (`NO_RULES_PREFIX`). It is also a whole-grid constraint with
 no drawn groups, so it ships `main.js` alone and no local board
 (`NO_LOCAL_GLOBAL_SPLIT`).
 
-Spec #303, on map #277. Tickets #305 (the example scaffold and **rung 1**) and
-#308 (**rung 2**, the growth test). Rung 3 (cut starve, #309) comes after.
+Spec #303, on map #277. Tickets #305 (the example scaffold and **rung 1**),
+#308 (**rung 2**, the growth test), #312 (**rung 2.5**, the bound made cheap)
+and #309 (**rung 3**, cut starve). The ladder is complete.
 
 ## What the component deduces
 
@@ -54,6 +55,40 @@ And once per digit, over the whole board:
   `k` cells loses `k`. This is the only rule that reaches a **silent region** —
   a region with no placed cell in it — because every other rule starts from an
   island.
+
+And per island again, once the walk is known — rung 3, #309:
+
+- **Cut starve** — take an open cell of the walk and run the walk again
+  without it. If that covers fewer than `k` cells the region cannot avoid the
+  cell, since the region would otherwise be a subset of a set under `k` cells.
+  So the cell is in the region and holds `k`. A dominator-tree filter clears
+  most cells before any re-walk (below). ISOFILL's *strand* half does not come
+  along: two islands of one digit need not share a region (transfer doc §4).
+
+### The dominator filter — rung 3, #309
+
+`cutFilter` transfers from ISOFILL (`IsofillComponent.js`, #258) unchanged: it
+is a statement about reachability alone and never reads a digit or a region
+count. One breadth-first search from the island plus the dominator tree of the
+shortest-path DAG it builds answers every open cell at once — a cell stays
+reachable at its own distance without `y` whenever `y` does not dominate it, so
+the walk without `y` keeps at least (cells reached) − (cells `y` dominates).
+The bound only ever *clears* a cell; whatever it does not clear pays for a
+re-walk of its own.
+
+One thing had to be said differently here. The filter's BFS is the **unit-step**
+one, not the walk's 0-1 one, because a dominator tree needs layers a step
+apart. Every path costs at least as much in unit steps as in 0-1 steps, so the
+unit walk is a subset of the 0-1 walk and its count is a lower bound on it —
+which is the direction the filter needs. A looser bound clears fewer cells and
+costs a walk; a bound the wrong way round would clear a cell that cuts.
+
+Every test in the pass reads **one** snapshot — that island's extent, that
+walk, that allowed row — so the cuts are collected and yielded together at the
+end, and the island's rules stop there for the call. Yielding inside the loop
+would place a `k` beside the island and leave every later test, and the door
+rules below, reading an island a deduction out of date. That is the same trap
+the vendored baseline falls into (see *Reading a live island* below).
 
 ### The bound made cheap, not smaller — rung 2.5, #312
 
@@ -179,10 +214,9 @@ about one state in ten of this example's fuzz.
 
 ### Not built yet
 
-Cut starve with the dominator filter is rung 3. Tour, cut strand, perimeter
-flank, budget covering, and the walk's outside and missed-placed readings are dead under
-fillomino's two-fold indexing and are not planned. See #284 for each parked
-rule and its admission bar.
+Tour, cut strand, perimeter flank, budget covering, and the walk's outside and
+missed-placed readings are dead under fillomino's two-fold indexing and are not
+planned. See #284 for each parked rule and its admission bar.
 
 ## The board
 
@@ -207,14 +241,18 @@ uv run --with lzstring examples/fillomino/build_link.py
   the component never keeps a candidate the vendored baseline removed, and on
   some state it removes one the baseline keeps. The count alone does not
   separate the rungs (rung 1 already removed 7352 cells the baseline keeps over
-  the 600 fuzzed states, against rung 2's 21084), so half two also carries the
+  the 600 fuzzed states, rung 2 21084 and rung 3 23432), so half two also carries the
   directed **silent-region demo**: a state with no placed cell anywhere, where
   every baseline rule is idle and the growth test still drops a digit. The
   reference is driven one change per call so every island it reads is freshly scanned; the test header
   says why, with the measured numbers. It also carries the **fixpoint floor**:
   the component must settle on exactly the candidates rung 2 as shipped
   (`ac20771`) settles on, both directions, over 200 states. That is the seam
-  #312 worked against — a cheaper bound may not change what the bound deduces.
+  #312 worked against. Rung 3 adds a deduction, so the floor is now one
+  direction — never a candidate less than `ac20771`, ever — paired with its
+  own directed **cut-starve demo**: an island whose walk forks and closes
+  again, where the force, the one-door rule, the merge rules and the component
+  bound are all idle and cut starve still places two digits.
   Last, the **reused instance** (#312, 400 states): the bound carries a
   snapshot between calls, so one instance driven over a run of unrelated states
   must settle each exactly where a fresh instance does. That is the hazard the
@@ -239,17 +277,74 @@ set instead (#307, 19 boards, 28-35 givens, each proved unique;
 `docs/research/fillomino-baseline/README.md`). Each board is the fixture link
 with one component swapped in, so both sides solve the same grid.
 
-### The timing record is INTERIM
+### Which table is the record
 
-The two #308 tables below time rung 2 as it shipped at `ac20771`, not the code
-in the tree. They are **not the final record**: the shipped component is now
-rung 2.5, and the full 19-fixture sweep of it runs once, at **#310**, as the
-final shipped-code record. #312 timed a **7-board panel** instead (its own
-table, first) — the owner's decision was that all 19 stay frozen for the
-offline strength gate and the uniqueness record while routine timing runs on
-the panel. The #308 vs-rung-1 pass below is complete, 19 of 19; its vs-baseline
-pass was stopped at 8 of 19 rather than produce rows that were stale on
-arrival.
+The **rung 3 table below is the candidate final record**: all 19 fixtures, on
+the code in the tree. #310 can reuse every row of it whose component has not
+changed since, rather than sweep again. The tables under it are history —
+#312's 7-board panel and #308's two passes time rung 2.5 and rung 2 against
+what came before them, not the shipped code.
+
+### Rung 3 against rung 2.5 — the pay-for-itself gate
+
+Baseline column: rung 2.5 (#312). Candidate column: rung 3, cut starve behind
+the dominator filter. **19 fixtures, 18 SHIP.**
+
+Read across the set: cold time over all 19 falls from **74.0 s to 6.1 s
+(0.08x)**, and the median fixture's cold row is **0.04x**. Twelve boards drop to
+0 ms or 100 ms — the app's logic pass now finishes them, search and all. The
+board rung 2.5 could never ship, cap12-seed14 (1.84x against rung 1, and 1.18x
+even with the component bound deleted outright), goes 6700 ms to 100 ms, and
+the app still reads `unique` on it.
+
+| Date | App version | Board | Baseline | Candidate | Ratio | Row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung25.txt) | 3800ms | 100ms | 0.03 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed10-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung25.txt) | 4200ms | 1000ms | 0.24 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed11-rung25.txt) after-logical | 3800ms | 700ms | 0.18 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung25.txt) | 2600ms | 100ms | 0.04 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed13-rung25.txt) after-logical | 300ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung25.txt) | 6700ms | 100ms | 0.01 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed14-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung25.txt) | 1100ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed16-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung25.txt) | 5400ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed17-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung25.txt) | 6200ms | 400ms | 0.06 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed18-rung25.txt) after-logical | 6200ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung25.txt) | 5000ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed20-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung25.txt) | 2300ms | 100ms | 0.04 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed3-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung25.txt) | 6300ms | 100ms | 0.02 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed4-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung25.txt) | 3500ms | 300ms | 0.09 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed5-rung25.txt) after-logical | 6100ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung25.txt) | 4800ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed8-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung25.txt) | 4900ms | 100ms | 0.02 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap12-seed9-rung25.txt) after-logical | 4900ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung25.txt) | 1800ms | 500ms | 0.28 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed1-rung25.txt) after-logical | 2300ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung25.txt) | 3200ms | 1800ms | 0.56 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed10-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung25.txt) | 7100ms | 100ms | 0.01 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed18-rung25.txt) after-logical | 4400ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung25.txt) | 2400ms | 200ms | 0.08 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed20-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung25.txt) | 2600ms | 1000ms | 0.38 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed3-rung25.txt) after-logical | 4000ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) | 100ms | 100ms | 1.00 | FLOOR |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (timing-fixture-9x9-cap9-seed5-rung25.txt) after-logical | 0ms | 0ms | — | NO TIME |
+
+**cap9-seed5 is a measurement-floor row, not a failure.** Rung 2.5 already
+finishes that board in 100 ms and its after-logical row is 0 ms on both sides,
+so there is no time left on it to win: rung 3 reads the same 100 ms, 1.00x. It
+cannot reach 0.9x for the same reason `docs/real-app-timing.md` exempts a gate
+change — "unchanged is the pass" (#197). The first sweep read 200 ms there, one
+tick of the app's 100 ms readout; two re-runs both read 100 ms, and the row
+above is the re-run.
 
 ### Rung 2.5 against rung 1 — the #312 panel
 
@@ -394,6 +489,9 @@ every one of rung 2's extra deductions comes from, and no cheaper version of it
 survived measurement. Making that flood cheaper without changing what it deduces
 is #312.
 
-Rung 2 is never weaker: on this example's strength fuzz it removes 21084
-candidates the baseline keeps over 600 states, against rung 1's 7352, and 0
-that the baseline removes and it keeps.
+No rung is ever weaker than the one under it. On this example's strength fuzz
+the shipped component removes 23432 candidates the vendored baseline keeps over
+600 states — against rung 2's 21084 and rung 1's 7352 — and 0 that the baseline
+removes and it keeps. Against rung 2 itself, over the fixpoint floor's 200
+states, cut starve removes 856 candidates rung 2 settles on and gives none
+back.

@@ -127,15 +127,15 @@ assert.strictEqual(weaker, 0)
 // growth test passes.
 assert.ok(stronger > 0, 'the component must remove a candidate the baseline keeps on some state')
 
-// The fixpoint floor for #312 (rung 2.5, bound-cost optimizations). Those may
-// make the bound cheaper; they may not change what it deduces. The floor is
-// rung 2 exactly as it shipped, read out of git, and the check runs both
-// directions -- a faster bound that prunes one candidate less, or one more, is
-// a different component and fails here.
+// The fixpoint floor: rung 2 exactly as it shipped, read out of git. Every
+// rung above it has to stand on it -- never one candidate less, anywhere --
+// and has to be worth its name: it must reach something rung 2 does not. The
+// directed demo at the end of this file names the deduction that does it.
 const SHIPPED = 'ac20771'
 const shippedRung2 = io.loadAt(SHIPPED, 'FillominoComponent.js', ['setParams', 'update'])
 const { rnd: frnd } = makeRng(4242)
 let floorStates = 0
+let pastRung2 = 0
 for (const truth of [shipped, varied]) {
   for (let rep = 0; rep < 100; rep++) {
     const start = new Map()
@@ -144,12 +144,12 @@ for (const truth of [shipped, varied]) {
     if (lost === null) continue
     floorStates++
     assert.deepStrictEqual(lost, [], `the component prunes less than rung 2 as shipped (${SHIPPED})`)
-    assert.deepStrictEqual(quiet(() => compareStrength(shippedRung2, cur, apply, start)), [],
-      `the component prunes more than rung 2 as shipped (${SHIPPED})`)
+    pastRung2 += quiet(() => compareStrength(shippedRung2, cur, apply, start)).length
   }
 }
 assert.strictEqual(floorStates, 200, 'a state built around a solution must never die')
-console.log('fillomino fixpoint floor:', floorStates, 'states, same fixpoint as', SHIPPED)
+assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
+console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
 // The reused instance (#312). The component bound caches the allowed-digit
 // row it last finished on and re-floods only what moved since -- the one thing
@@ -190,4 +190,20 @@ const silentStart = new Map(CELLS.map(c => [c, c === 1 || c === 6 ? NO_SIX : [1,
 const silentWin = quiet(() => compareStrength(ref, cur, apply, silentStart))
 assert.deepStrictEqual(silentWin, [{ cell: 0, digit: 6 }], 'the clue-less region deduction the baseline misses')
 console.log('fillomino silent-region demo: baseline keeps 6 at r0c0, the growth test drops it')
+
+// Cut starve, directed (transfer doc §4). r0c0 holds 5 and the only other
+// cells that still allow 5 are r0c1, r1c0, r1c1, r2c1 and r3c1 -- a fork at
+// r0c1/r1c0 that closes again at r1c1 and then runs on alone. The walk out of
+// the island covers six cells for a region of five, so the force is idle, and
+// the island has two doors, so the one-door rule is idle too; the merge rules
+// and the component bound find nothing. Drop r1c1 from the walk and it starves
+// at three cells, drop r2c1 and it starves at four: both are in the region, so
+// both hold 5. Nothing in rung 2 reaches either, at a fixpoint or otherwise.
+const NO_FIVE = [1, 2, 3, 4, 6]
+const CORRIDOR = new Set([1, 6, 7, 13, 19])
+const cutStart = new Map(CELLS.map(c => [c, c === 0 ? [5] : CORRIDOR.has(c) ? [1, 2, 3, 4, 5, 6] : NO_FIVE]))
+const cutWin = quiet(() => compareStrength(shippedRung2, cur, apply, cutStart))
+assert.deepStrictEqual(cutWin, [7, 13].flatMap(cell => [1, 2, 3, 4, 6].map(digit => ({ cell, digit }))),
+  'the two cut-starve cells rung 2 misses')
+console.log('fillomino cut-starve demo: rung 2 leaves r1c1 and r2c1 open, cut starve places the 5 in both')
 console.log('PASS')
