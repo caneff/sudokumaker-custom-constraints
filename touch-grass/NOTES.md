@@ -86,3 +86,26 @@ cells to entered values on export, so a strip pass must clear both
 lost but every method and result is described above; rebuild them against the
 exact groups in `board_out.json`, with rule semantics from the examples'
 generators (`build_size.py` / `generate.py` / `outside_rule.py`).
+
+## Later variants (same session, after recovery)
+
+- `board_firstbox.json` / `PUZZLE_LINK_touch_grass_firstbox.txt` — first-box
+  Outside windows (3 rows / 2 cols). Infeasible with the original placement;
+  only 4 of 24 assignments survive (Outside + Skyscrapers on the side grids,
+  NR + RS top/bottom, all four mirror-equivalent). Built as NR red, Sky blue,
+  Out purple, RS green: 33 forced cells vs the main board's 23.
+- Window-3 placement classes (16 feasible assignments = 4 mirror classes):
+  current board 23 forced; {Sky,Out} axes swapped → 1 forced; the two
+  classes with RS on red → **0 forced**. Maps in `forced_w3_classes_out.txt`.
+- `board_class4*.json` + links — class 4 (RS red, Out blue window-3, Sky
+  purple, NR green; 0 forced): clean board, candidate map (212 cells, 0
+  forced), an "inner outside" fork (blue clues only on the 4 ring cells
+  inside red/green; 16 unconstrained ring cells grassed as given 1s, 8 stay
+  empty serving other rules), and that fork's candidate map (196 cells).
+- Whisper-loop idea (loop around the cross, diff ≥ 3, orthogonal,
+  non-touching): abandoned for now. The uniform grass 1s mean the loop can
+  never use two consecutive grass cells and every grass touch pins both loop
+  neighbors to ≥ 4 — the clean class-4 link above is the prepared surface if
+  revisited.
+- `probe_candidates.py` — generic per-cell candidate prober (any board here,
+  families matched by rule prefix). `check_feasible.py` — generic feasibility.
