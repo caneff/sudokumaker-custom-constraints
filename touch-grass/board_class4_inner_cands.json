@@ -494,10 +494,22 @@
       {
         "candidates": 62
       },
-      {},
-      {},
-      {},
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -561,7 +573,10 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -621,7 +636,10 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -662,9 +680,9 @@
         "given": true,
         "value": 1
       },
-      {},
       {
-        "candidates": 126
+        "given": true,
+        "value": 1
       },
       {
         "candidates": 126
@@ -681,7 +699,13 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "candidates": 126
+      },
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -722,7 +746,10 @@
         "given": true,
         "value": 1
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "candidates": 122
       },
@@ -741,7 +768,10 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -801,7 +831,10 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -861,7 +894,10 @@
       {
         "candidates": 126
       },
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
@@ -910,10 +946,22 @@
       {
         "candidates": 86
       },
-      {},
-      {},
-      {},
-      {},
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
+      {
+        "given": true,
+        "value": 1
+      },
       {
         "given": true,
         "value": 1
