@@ -326,15 +326,30 @@ count on the path's own cells with **no** all-different among them, and the
 board is carved to a single solution and proved unique the same way. The paths
 ship as `input.groups` on the `main.js` lane — the local variant — so the app
 hands each drawn group to one `HitCountsComponent` and nothing builds a frame.
-A path has a clue at one end only, and no two paths cover the same cells in
-opposite directions, so none of them pairs: the joint component is a frame-board
-rule, and this board is the per-line component's.
+A path has a clue at one end only. On the committed seed, `R2` and `T2` trace
+the identical nine-cell route in opposite directions, so that one pair does
+get a joint component -- gated to its non-house mode, since a bent path is
+never a house. Every other path is unpaired and runs the per-line component
+alone.
+
+A second local board ships at 6x6 (`PUZZLE_LINK_6x6_local.txt`,
+`gen_6x6_local.json`), built the same way:
+
+```
+uv run --with ortools --with lzstring \
+    examples/hit-counts/build_size.py 6 2 3 --paths
+```
+
+Same bent-path shape, same CP-SAT model, same test coverage
+(`build_link.test.py`) -- the point of the smaller board is that the app
+finishes it inside the rep cap, which the 9x9 does not. See "Timing" below.
 
 Its rules text carries one extra sentence the global board does not — the
 line is drawn, so it is not a house and a digit may repeat along it
 (`framebuild.LOCAL_RULES_SUFFIX`, shared by every example's local link).
 
-The committed board is seed 103: 2 interior givens, 32 shown clues, 4
+The committed 9x9 board is seed 103: 2 interior givens, 32 shown clues, 4
+interactive. The 6x6 board is seed 102: 0 interior givens, 11 shown clues, 13
 interactive.
 
 ## Paste into SudokuMaker
@@ -531,6 +546,8 @@ just time hit-counts
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts | 6300ms | 6500ms | 1.03 | FAIL |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts after-logical | 6300ms | 5600ms | 0.89 | PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_local.txt) | — | — | — | DNF (300s timeout, 3/3 reps) |
+| 2026-09-03 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_6x6_local.txt) | 200ms | — | — | BASELINE |
+| 2026-09-03 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_6x6_local.txt) after-logical | 200ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) | 7200ms | 7200ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) after-logical | 6100ms | 6100ms | 1.00 | gate: PASS |
 
@@ -590,8 +607,22 @@ had no candidate edit to gate. See `docs/real-app-timing.md` for what a
 `BASELINE` row means and #248 for the prototype's 0.40×/0.41× measurement
 against the old components.
 
-The local board (`PUZZLE_LINK_local.txt`) is a DNF: its 36 bent paths are not
-full houses, so the components' strong deductions rarely fire and the app's
-own search runs past the 300s per-rep timeout on every rep (`just time
-hit-counts --board PUZZLE_LINK_local.txt`). Closing that gap is #116
-(retitled to cover the local board), not this ticket.
+The 9x9 local board (`PUZZLE_LINK_local.txt`) is a DNF: its 36 bent paths are
+not full houses, so the components' strong deductions rarely fire and the
+app's own search runs past the 300s per-rep timeout on every rep (`just time
+hit-counts --board PUZZLE_LINK_local.txt`). That DNF is a deliberate property
+of the board, not an open bug -- **it is not #116** and it does not get
+regenerated or eased to close. The board exists as a coverage fixture: it
+proves the bare-line rules never remove a candidate the true solution needs,
+which `soundness-harness.mjs` already holds by fuzzing 400 random bare lines
+plus the `[1,2,3,4,5,6,7,8,1]` counterexample at 40,000 iterations on every
+`just check`. What that fixture cannot show is that the real app finishes a
+bare-line board at all -- three reps that all hit the cap prove nothing about
+app-side timing either way. The 6x6 local board carries that evidence
+instead: same paths, same CP-SAT model, small enough that the app returns a
+real verdict (`just time hit-counts --board PUZZLE_LINK_6x6_local.txt`),
+timed above. It is an existence proof, not a gate board: both rows read
+200ms, two ticks of a readout that prints in 100ms steps, so a future
+candidate's 0.9x/1.1x ratio is unmeasurable on it. The after-logical row
+being non-zero is what says search ran — the app's logic pass alone does
+not finish this board.
