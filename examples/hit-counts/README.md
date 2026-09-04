@@ -550,6 +550,16 @@ just time hit-counts
 | 2026-09-03 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_6x6_local.txt) after-logical | 200ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) | 7200ms | 7200ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | hit-counts (cell-id coercion, #276) after-logical | 6100ms | 6100ms | 1.00 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) | 9100ms | 9600ms | 1.05 | gate: PASS |
+| 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) after-logical | 8100ms | 8900ms | 1.10 | gate: PASS |
+
+The #329 pair drops the `instance.sig` write on a `permutationPrune` that
+stopped, so a state the sweep declared dead is swept again rather than skipped
+by the memo the backtrack left behind. It removes no deduction and adds none,
+so it takes the ≤ 1.1× on both rows bar. Three runs: 1.05/1.14, 1.02/1.09 and
+the recorded 1.05/1.10 — the after-logical row sits on the bar, and the run
+that missed it is noise of the same size as the spread in the baseline column
+(8600–10300ms across the three).
 
 The last pair is #276, which makes `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. A cell id built that way is numerically

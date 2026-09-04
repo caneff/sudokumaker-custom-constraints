@@ -300,6 +300,8 @@ function permKeepDigits (F, H, keep, reach, dig, pc, n, W, last) {
 // digit, work out whether it hits for A, for B, and where it lands. That inner
 // step is written out three times rather than shared, because a call in a loop
 // this hot costs more than the repetition; change one and change all three.
+// Returns true when it stopped on a dead branch, which is what keeps `update`
+// from memoising the state it stopped on.
 function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   const { clueA, clueB, line, n } = instance
   const W = n + 1
@@ -318,7 +320,7 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   // dead. Stop with the reason, the same signal the case sweep raises too.
   if ((H[0] & 1) === 0) {
     yield puzzle.stop(`no ordering of the line satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
-    return
+    return true
   }
 
   const { keepA, keepB } = permKeepClues(F, tail, maskA, maskB, n)
@@ -332,6 +334,7 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
     const rm = dig[j] & ~keep[j]
     if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm << 1)), line[j])
   }
+  return false
 }
 
 // A line that holds 1..n once each can never have exactly n - 1 hits: fix
@@ -366,15 +369,15 @@ function * update (instance, puzzle) {
   const exact = kind === FULL_HOUSE && instance.oneToN && n <= PERM_MAX
   const sig = signature(puzzle, instance, exact)
   if (sig === instance.sig) return
-  if (exact) {
-    yield * permutationPrune(instance, puzzle, cm, maskA, maskB)
-    instance.sig = signature(puzzle, instance, exact)
-    return
-  }
-
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
   // signature return early and never raise it.
+  if (exact) {
+    const stopped = yield * permutationPrune(instance, puzzle, cm, maskA, maskB)
+    if (!stopped) instance.sig = signature(puzzle, instance, exact)
+    return
+  }
+
   const stopped = yield * caseSweep(instance, puzzle, cm, maskA, maskB, kind, all)
   if (!stopped) instance.sig = signature(puzzle, instance, exact)
 }
