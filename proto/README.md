@@ -59,6 +59,24 @@ The 4x4 run is exhaustive, and its predicted sets match the observed sets
 exactly — so the bound is not merely sound, it is the tightest bound obtainable
 from the rank alone.
 
+## 9x9
+
+The law is size-generic and gets *stronger* at 9x9 (64 windows, ranks 1-64,
+ambiguous only at 8, 15, 22, 29, 36, 43, 50, 57):
+
+| sweep | result |
+|---|---|
+| `sweep9x9.mjs` — 2,000 random 9x9 solutions, every window | 128,000 tests, **0 violations** |
+| pruning strength | 7.88 of 8 removable candidates per clue; **87.5%** of clues pin the top-left outright |
+| bound tightness | the predicted set matches the observed set at every rank seen |
+
+`random-grids.mjs` supplies those grids: 9x9 has 6.7e21 solutions and no usable
+stride, so the lexicographic walk cannot sample it without landing on the
+degenerate lex-first grids. Shuffled backtracking from a seeded PRNG instead.
+
+The 6x6 timing numbers below do **not** carry over — the shipped 9x9 board needs
+its own `just time` row.
+
 ## Files
 
 | file | what |
@@ -69,6 +87,7 @@ from the rank alone.
 | `soundness-harness.mjs` | the 6x6 sweep |
 | `exhaustive4x4.mjs` | the exhaustive 4x4 proof |
 | `derive_table.mjs` | rebuilds the table from data |
+| `random-grids.mjs`, `sweep9x9.mjs` | random 9x9 solutions and the 9x9 sweep |
 | `rank21.mjs` | the counterexample to #323's table |
 | `pick_board.mjs`, `build_board.py` | the timing board, built off a known grid (strategy B's first half) |
 | `binds_check.mjs` | proves `validate` binds, so the timing comparison is honest |
