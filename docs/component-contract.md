@@ -88,6 +88,35 @@ we found, a component that defines `validate` also defines `update`. A
 validate-only component appears inert — the solver neither prunes nor rejects
 through it. See `gotchas.md`. **[verified]**
 
+## `instance` lives for the whole solve, not one search node
+
+`instance` is the component object itself: the generated wrapper calls
+`setParams(this, ...args)` in its constructor. The solver's DFS clones the
+puzzle state per candidate but copies the component set by reference —
+`this.constraintComponents = new Set(e.constraintComponents)` in the state's
+copy constructor, then `const o = this.state.clone(); ... yield* new
+Qt(o, this).findSolutions()`. So every search node shares one component object,
+and nothing written on `instance` is undone on backtrack. **[verified]**
+(`solver-Bv75x3BJ.js`, extracted from `examples/_shared/sudokumaker.har`.)
+
+`puzzle.stop()` is the other half of that asymmetry. It becomes an
+`AbortSolver` change that fails **the cloned state** — the search loop simply
+tries the next candidate. Nothing on the component is reset. **[verified]**
+
+Two consequences:
+
+- The app's own component template says, twice, "member variables should not be
+  mutated after initialization!" A per-solve memo on `instance` breaks that
+  rule. Ours (`instance.sig`) is safe only because the signature is a pure
+  function of puzzle state, so a memo that still matches describes a state
+  genuinely already swept.
+- **Never write a memo on a path that called `stop()`.** The memo outlives the
+  branch the stop killed; the next visit to that state matches it, returns
+  early, and never raises the stop again. The branch is then silently not
+  declared dead — not unsound, since `validate` still rejects at a leaf, but
+  the pruning is gone. Have the sweep report whether it stopped and write the
+  memo only when it did not (#316, #329).
+
 ## Local vs global
 
 - A **local** constraint gives the author group-drawing tools. The main code
