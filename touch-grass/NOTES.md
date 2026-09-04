@@ -10,12 +10,17 @@ first 3 cells for rows AND columns — deliberately not box-shaped)**.
 
 ## Files here
 
-- `rebuild.js` + `patch.js` + `link_in.txt` — regenerate `board_out.json` and
-  `PUZZLE_LINK_touch_grass.txt` (the 1x1 board) from the original link.
-  **`link_in.txt` is currently an incomplete transcription (blob 8052 chars,
-  needs 8886) — replace it with a good copy of the original link before
-  running.** The original link arrived chat-mangled; `rebuild.js` contains the
-  one-pattern repair (`9.5,"y""y":` → `.5},{"x":0.5,"y":`).
+- `board_out.json` — **canonical source**: the finished 1x1 board document.
+  Recovered from Chris's app export of the candidate map (pencil marks and
+  app-normalized entered values stripped; link re-encodes byte-length
+  identical to the pre-loss build). `PUZZLE_LINK_touch_grass.txt` is its link.
+- `board_cands.json` / `PUZZLE_LINK_touch_grass_candidates.txt` — the same
+  board with every unknown cell's CP-SAT-exact candidate set as pencil marks.
+  Analysis copy; opens with work filled in, never share as the puzzle.
+- `make_2x2_full.js` — builds `board_2x2_full.json` /
+  `PUZZLE_LINK_touch_grass_2x2_full.txt` from `board_out.json`: the 2x2-overlap
+  full-ring variant (provably infeasible; kept for hand-editing clue subsets).
+- `patch.js` — the "Named messages" wrapper embedded in both boards.
 - Components are lifted verbatim from this repo's examples (`numbered-rooms`,
   `skyscraper`, `running-start`, `outside-sudoku` — each's local-lane
   PUZZLE_LINK), so their soundness harnesses cover the embedded code.
@@ -70,11 +75,14 @@ cells as variables:
   ignoring outside-sudoku clue multiplicity (16 pure Out clues pinned).
   Uniqueness needs carving.
 
-## Lost artifacts (rebuildable)
+## Recovery note
 
-The session scratchpad was wiped before anything was committed. Gone:
-`board_out.json`, `board_2x2*.json`, all `PUZZLE_LINK_*.txt`, the candidate
-probe data, and the CP-SAT scripts (feasibility, core extraction, forced-digit
-probe, solution count). `rebuild.js` regenerates the main board once
-`link_in.txt` is restored; the 2x2 variants and analyses re-derive from
-`board_out.json` per the descriptions above.
+The session scratchpad was wiped before anything was committed; the boards
+were recovered from Chris's SudokuMaker export of the candidate map
+(`Touch grass (candidate map).puzzle.json`) — the app normalizes single-mark
+cells to entered values on export, so a strip pass must clear both
+`candidates` and non-given `value` cells. The CP-SAT analysis scripts
+(feasibility, core extraction, forced-digit probe, solution counting) were
+lost but every method and result is described above; rebuild them against the
+exact groups in `board_out.json`, with rule semantics from the examples'
+generators (`build_size.py` / `generate.py` / `outside_rule.py`).
