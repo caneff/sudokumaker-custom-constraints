@@ -437,4 +437,30 @@ if __name__ == "__main__":
         assert result.returncode == 0, result
         assert "ok" in result.stdout, result.stdout
 
+    # a committed link that is NOT a PUZZLE_LINK*.txt -- a frozen timing
+    # fixture, a hunt record -- is still a link, so the share criteria bind it
+    # (#303 review: 50 such files sat outside the old glob)
+    fixture = "timing-fixture-9x9-cap9-seed3-rung25.txt"
+    with example(extra_links=[fixture], contents={fixture: _link(entered=True)}) as (
+        root,
+        _,
+    ):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert fixture in violations[0], violations
+        assert "entered value" in violations[0], violations
+
+    # ...but the link-NAME grammar does not: a fixture names itself for what it
+    # records, and only PUZZLE_LINK*.txt has a grammar to break
+    with example(extra_links=[fixture]) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # a committed .txt that is not a link at all is left alone -- no decode,
+    # no criteria, no name complaint
+    with example(
+        extra_links=["hunt-cold-times.tsv.txt"],
+        contents={"hunt-cold-times.tsv.txt": "board\tms\ncap9-seed3\t1000\n"},
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
     print("ok")

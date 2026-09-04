@@ -177,8 +177,15 @@ vocabulary. Where a term belongs to only one of them, the entry says so.
 - **growth test** (fillomino) — the rule with no ISOFILL ancestor, indexed per
   (open cell, candidate digit) rather than per island. Grow from the cell
   through cells that still allow the digit; a reach too small to hold the
-  region drops the candidate, and a reach that stops at exactly the region size
-  forces every cell it covers.
+  region drops the candidate. It ships at **frontier-only** scope: the open
+  cells asked about are the doors, not every open cell (#308's named fallback,
+  taken because full scope failed the clock), paired with the per-digit
+  **component bound**, which is what reaches a silent region. There is no
+  forcing half. "A reach that stops at exactly the region size forces every
+  cell it covers" is sound only from a *placed* island — that is rung 1's
+  force — and unsound from an open cell, because the walk's budget already
+  assumes the cell holds the digit; `FillominoComponent.js` states the `k = 1`
+  counterexample and does not build the rule.
 - **budget** — the rule that matches open cells to regions' remaining slots and
   kills the branch when no full matching exists. ISOFILL matches per digit;
   fillomino matches per island.

@@ -199,6 +199,13 @@ CP-SAT proof.
 None of these is a shipped board — `PUZZLE_LINK.txt` and the frozen fixture
 set are untouched. They are the evidence for the loop.
 
+The three `.txt` links above were **rebuilt** after `052e3af` added the
+separation sentence to the rules text, so a recipient reads the whole rule.
+Decoding old against new shows `comment` as the only key that moved: same
+board, same clue set, same component code, so the app timings recorded here
+still stand. The frozen `timing-fixture-*.txt` files are deliberately *not*
+rebuilt — a frozen fixture is frozen (#307).
+
 ## When the hunt outruns the app (#310)
 
 Shipping the example's own instance ran the loop for real: a 300-board

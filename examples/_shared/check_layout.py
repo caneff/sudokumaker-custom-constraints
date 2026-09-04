@@ -1,14 +1,21 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
-# decodes every shipped PUZZLE_LINK*.txt and checks the three mechanical
-# pre-share criteria from docs/share-checklist.md: the link opens clean (no
-# entered values on non-given cells), the outside ring is not filled end to
-# end, and the rules text carries the sudoku prefix, except an example in
-# NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt from the
-# first two -- filling every clue is what that name means. It
-# also checks that every link ships exactly the components its own embedded
-# backend registers, so a link cannot go stale behind its builder.
+# decodes EVERY committed link -- the shipped PUZZLE_LINK*.txt boards and the
+# other link .txt files an example commits beside them (fillomino's frozen
+# timing fixtures and its hunt records, 50 of them) -- and checks the three
+# mechanical pre-share criteria from docs/share-checklist.md: the link opens
+# clean (no entered values on non-given cells), the outside ring is not filled
+# end to end, and the rules text carries the sudoku prefix, except an example
+# in NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt from the
+# first two -- filling every clue is what that name means. It also checks that
+# every link ships exactly the components its own embedded backend registers,
+# so a link cannot go stale behind its builder.
+#
+# The link-NAME grammar binds only PUZZLE_LINK*.txt: a fixture or a hunt record
+# is not a shipped board and names itself for what it records. The share
+# criteria bind all of them -- a link is a link, and any of these can be handed
+# to a person (#310's board was picked out of exactly such a batch).
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
@@ -149,6 +156,34 @@ def check_gen_link_pairing(example_dir):
     return violations
 
 
+# The prefix every SudokuMaker link starts with. A committed .txt beside an
+# example is a link when it starts with this and nothing else is; a golden or a
+# note is not decoded and not checked.
+LINK_PREFIX = "https://sudokumaker.app/?puzzle="
+
+
+def committed_links(example_dir):
+    """Every committed link .txt directly under `example_dir`, PUZZLE_LINK*.txt
+    first.
+
+    A PUZZLE_LINK*.txt is a link by its name -- one that does not decode is a
+    broken shipped board and gets reported as one. Any other .txt is a link
+    only when its text starts with `LINK_PREFIX`, so a fixture or a hunt record
+    is covered without a naming rule of its own and a golden or a note is left
+    alone."""
+    named, sniffed = [], []
+    for f in sorted(example_dir.glob("*.txt")):
+        if f.name.startswith("PUZZLE_LINK"):
+            named.append(f)
+            continue
+        try:
+            if f.read_text().lstrip().startswith(LINK_PREFIX):
+                sniffed.append(f)
+        except OSError:
+            continue
+    return named + sniffed
+
+
 def _ring_state(puzzle):
     """`(filled, total)` for the board's outer ring -- row and column 0 and the
     last. `(0, 0)` when the cells do not fill `width` x `height`, where the ring
@@ -286,8 +321,8 @@ def check_example(example_dir):
     violations.extend(check_lanes(example_dir))
     violations.extend(check_gen_link_pairing(example_dir))
 
-    for link in sorted(example_dir.glob("PUZZLE_LINK*.txt")):
-        if not LINK_RE.match(link.name):
+    for link in committed_links(example_dir):
+        if link.name.startswith("PUZZLE_LINK") and not LINK_RE.match(link.name):
             violations.append(
                 f"{name}: link name {link.name} does not match "
                 f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "

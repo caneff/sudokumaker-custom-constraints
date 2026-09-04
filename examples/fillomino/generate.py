@@ -9,6 +9,11 @@ app-strip.mjs strips in the app.
     uv run --with ortools examples/fillomino/generate.py sample 7      # a full grid
     uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # side 9, cap 12
     uv run --with ortools examples/fillomino/generate.py unique gen.json
+    uv run --with ortools examples/fillomino/generate.py unique gen.json 30  # 30s cap
+
+A dropped grid -- no solution for the pinned cells, a striped grid, or a
+uniqueness solve that timed out -- prints one `drop (...)` line on stderr
+naming the seed and the clue set, so the run reproduces (#303, story 14).
 
 gen.json: {"grid": [N rows of digits], "clues": [[r, c], ...], "cap": N}. Each
 row is a list of ints -- a joined char string is ambiguous once a digit can
@@ -118,6 +123,19 @@ def is_striped(grid):
     return dull_rows > len(grid) // 2
 
 
+def drop(why, seed, givens, sub=None):
+    """Log a dropped grid with the seed and the clue set that produced it, so
+    any generator run reproduces (#303, story 14). Goes to stderr: `sample`
+    prints its JSON on stdout."""
+    clues = {f"{r},{c}": d for (r, c), d in sorted(givens.items())}
+    print(
+        f"drop ({why}): seed={seed}"
+        + (f" sub={sub}" if sub is not None else "")
+        + f" side={SIDE} cap={CAP} clues={json.dumps(clues, sort_keys=True)}",
+        file=sys.stderr,
+    )
+
+
 def sample(seed, side=None, cap=None, pins=4, max_tries=50):
     """A random fillomino grid, retried away from striped rows.
 
@@ -139,15 +157,18 @@ def sample(seed, side=None, cap=None, pins=4, max_tries=50):
         givens.update({p: rng.randint(1, CAP) for p in chosen})
         m, x = model(givens)
         s = cp_model.CpSolver()
-        s.parameters.random_seed = rng.randint(0, 2**31 - 1)
+        sub = rng.randint(0, 2**31 - 1)
+        s.parameters.random_seed = sub
         s.parameters.randomize_search = True
         s.parameters.num_workers = 8
         status = s.Solve(m)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            drop("no solution", seed, givens, sub=sub)
             continue
         grid = _rows(s, x)
         if not is_striped(grid):
             return grid
+        drop("striped", seed, givens, sub=sub)
     raise RuntimeError(f"seed {seed}: no non-striped grid in {max_tries} tries")
 
 
@@ -281,10 +302,17 @@ if __name__ == "__main__":
         doc = json.loads(Path(sys.argv[2]).read_text())
         set_board(len(doc["grid"]), doc.get("cap"))
         givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
-        ok = unique(givens)
+        limit = float(sys.argv[3]) if len(sys.argv) > 3 else 600
+        try:
+            ok = unique(givens, limit=limit)
+        except TimeoutError:
+            # A timeout is no verdict, and the grid is dropped -- but never
+            # silently: the log names the clue set that has to be re-run.
+            drop(f"timeout at {limit}s", doc.get("seed", "unrecorded"), givens)
+            sys.exit(2)
         print("unique" if ok else "not unique")
         sys.exit(0 if ok else 1)
     else:
         sys.exit(
-            f"usage: {sys.argv[0]} [sample <seed> [side] [cap] | unique <gen.json>]"
+            f"usage: {sys.argv[0]} [sample <seed> [side] [cap] | unique <gen.json> [limit]]"
         )

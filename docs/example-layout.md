@@ -100,6 +100,13 @@ inner grid" — except an example in `NO_RULES_PREFIX` (isofill is not
 sudoku, and its rules text must not mention sudoku). See
 `docs/share-checklist.md` for the full pre-share list.
 
+The **name** grammar above binds `PUZZLE_LINK*.txt` only, but the share
+criteria bind every committed link: a `.txt` beside an example whose text
+starts with `https://sudokumaker.app/?puzzle=` is decoded and checked too,
+whatever it is called. That covers fillomino's 19 frozen fixture triples and
+its hunt records — 50 links that used to sit outside the glob. A `.txt` that
+is not a link (a golden, a note) is left alone.
+
 It also checks each link's component set against the backend embedded in
 that same link: a link ships exactly the components its backend registers.
 The builder asserts this when it writes a link (`framebuild.check`), but a

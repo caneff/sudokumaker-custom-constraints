@@ -247,6 +247,54 @@ Rebuild the link:
 uv run --with lzstring examples/fillomino/build_link.py
 ```
 
+## Share checklist, walked
+
+`docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt`
+as it ships. This is the record the checklist asks for; re-walk it whenever
+the board or the rules text changes.
+
+**Free gate** — `just check` green: layout, lint, probe goldens, soundness at
+zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
+sample → CP-SAT proof → the shipped component solving this clue set offline →
+the link decode, and fails if any two of them disagree.
+
+The three mechanical criteria, checked by `check_layout.py` on every committed
+link in the example (all 51: this board, the 19 frozen fixture triples, the
+hunt records):
+
+- **Opens clean** ✓ — 53 non-given cells, every one `{}`. `pipeline.test.py`
+  asserts it cell by cell as well.
+- **Ring not filled end to end** ✓ — 14 of 32 ring cells hold a given. See
+  criterion 3 below for what the ring means on this board.
+- **Rules prefix** — **exempt**, and deliberately: fillomino is not sudoku, so
+  the example is in `NO_RULES_PREFIX` and `build_link.test.py` asserts the
+  rules text does *not* open with the sudoku sentence.
+
+1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
+   exact `gen.json`, 5.4 s, no timeout; the run is recorded under *The board*
+   above. Since this ticket it is not only a recorded run: `pipeline.test.py`
+   re-proves it on every `just check`, so the board cannot outlive its proof.
+2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-9 in every
+   cell. Orthogonally connected cells with the same digit are regions; the
+   number of cells in a region has to equal its digit. Two regions of the same
+   size may not touch orthogonally." Three sentences, no repo jargon, no
+   component name, and the separation rule stated — a solver who has never seen
+   this repo has the whole rule.
+3. **Clue set curated** ✓, read the way the criterion says to read it. There is
+   no outside-clue ring on this board: fillomino is a whole-grid constraint, so
+   the "ring" is just the grid's outer cells and 14 of 32 filled is the clue
+   set falling where it falls, not a ring handed over. 28 givens on 81 cells is
+   sane for a 9x9. The carve is recorded: a live-app strip under the shipped
+   component (`app-strip.mjs`), one greedy pass that keeps a removal only while
+   the app still closes the board — so no given in it is known-droppable by
+   that walk. It is a greedy strip, not a CP-SAT minimality proof, and the
+   README says so where the board is described.
+4. **Component reads well** ✓ — `FillominoComponent.js` opens with an 81-line
+   `//!` overview (what the rules are, why the growth test ships at
+   frontier-only scope, why merge force is not built) and carries short
+   per-step comments through the scan, the walk, the doors and the bound. The
+   recipient reads that source inside the 10.4 KB link blob.
+
 ## Paste into SudokuMaker
 
 Make a custom board (any square side) with digits 1 through the cap. Add a
@@ -309,6 +357,43 @@ minimal clue set in the live app; the generator itself carries no strip step.
   builds a fresh instance per state.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
+- `pipeline.test.py` — the whole chain on one board: `generate.py sample` draws
+  a grid and CP-SAT proves it; CP-SAT proves the shipped clue set; the shipped
+  component solves that clue set offline out of `PUZZLE_LINK.txt` and must land
+  on `gen.json`'s grid; the link decodes with every non-given cell empty. Each
+  step is covered on its own elsewhere — what only this test covers is that the
+  generator, the proof, the component and the link cannot drift apart quietly.
+  About 30 s.
+- `generate.test.py` — the generator's acceptance criteria, including that a
+  dropped grid (no solution, striped, or a uniqueness solve that timed out)
+  logs its seed and clue set instead of vanishing.
+
+## Minimum givens — the strength headline
+
+#303's headline for solving strength is *the fewest givens the component still
+closes a board from*, run once over the fixture set. **27**, on the frozen
+9x9 digits-1-12 boards cap12-seed3 and cap12-seed4.
+
+Method: the **offline strip** (`hunt.mjs strip`, HUNT.md) at seed 7 over the
+19 frozen fixtures — the same greedy walk `app-strip.mjs` runs in the app, with
+the app swapped out for the offline scorer, whose only propagator is the
+shipped `FillominoComponent.js`. The walk starts from the full grid and keeps a
+removal only when the board still closes, so the count is the clue set this
+component needs on that grid, not the fixture's own. An offline number ranks;
+it is not an app claim (`docs/real-app-timing.md`).
+
+    for f in examples/fillomino/timing-fixture-*-rung25.txt; do
+        node examples/fillomino/hunt.mjs strip "$f" /tmp/$(basename "$f" .txt).json 7
+    done
+
+**18 of 19 boards.** Spread 27–37, median 30. The nineteenth, cap9-seed3, is
+the board HUNT.md already names: it spends the scorer's default 200,000-node
+budget and scores `capped`, so the strip has no verdict to strip against and
+refuses to start. A spent budget is not an answer.
+
+For reference, the shipped instance (`gen.json`) carries **28** givens, cut by
+the *live* strip under the same component — the same neighbourhood, from a
+different grid and a different stripper.
 
 ## Timing
 
@@ -338,8 +423,16 @@ grid.
 
 ### Which table is the record
 
-The **rung 3 table below is the strength/speed record for the ladder itself**:
-all 19 frozen fixtures, on the code in the tree, rung 3 vs rung 2.5. Every row
+Two tables answer two questions.
+
+**Against the vendored baseline** — the #303 headline — is the first table
+below: the shipped component next to the catalog's, on the 8 fixtures the
+baseline was ever timed on at this app version. Every number in it is reused,
+and each names the sweep it came from.
+
+**Against the rung under it** — the pay-for-itself gate, and the
+strength/speed record for the ladder itself — is the rung 3 vs rung 2.5 table
+after it: all 19 frozen fixtures, on the code in the tree. Every row
 in it is **#309's original sweep, reused as-is** — the component has not
 changed since that sweep ran, so #310 added no fresh rows here (per
 `docs/real-app-timing.md`, a row is only re-timed when the code it measures
@@ -349,6 +442,54 @@ different board from any of the 19 frozen fixtures, timed for the first time
 this ticket. The tables under the rung 3 table are further history — #312's
 7-board panel and #308's two passes time rung 2.5 and rung 2 against what
 came before them, not the shipped code.
+
+### Rung 3 against the vendored baseline — the headline comparison
+
+Baseline column: the community catalog's fillomino constraint, timed log-free
+(`docs/research/fillomino-baseline/`). Candidate column: rung 3, the shipped
+component. **8 fixtures, 8 SHIP.**
+
+Every number here is **reused, not re-timed**, and each names the sweep it came
+from: the baseline column is #308's interim baseline sweep (the `-base.txt`
+fixtures) and the rung 3 column is #309's sweep (the `-rung25.txt` fixtures).
+That reuse is legitimate on three counts — the two sweeps ran on the same day
+against the same app version (2026-09-03, v2026.08.14-d47fc4b); `-base`,
+`-rung1` and `-rung25` for one seed are *byte-identical boards* with one
+component swapped in, asserted by decoding all 19 fixture triples; and neither
+component has changed since its sweep ran, which is the condition
+`docs/real-app-timing.md` puts on reusing a row.
+
+Cold time over the eight falls from **189.4 s to 1.7 s (0.009x)**, and the
+median fixture's cold row is **0.004x**. Six of the eight now read 0 ms or
+100 ms — the app's own timer resolution.
+
+| Date | App version | Board (one grid, two components) | Baseline (#308 sweep) | Rung 3 (#309 sweep) | Ratio | Row |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed10) | 24500ms | 100ms | 0.004 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed10) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed11) | 24400ms | 1000ms | 0.041 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed11) after-logical | 21900ms | 700ms | 0.032 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed13) | 17800ms | 100ms | 0.006 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed13) after-logical | 800ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed14) | 24200ms | 100ms | 0.004 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed14) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed16) | 21400ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed16) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed17) | 23800ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed17) after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed18) | 25500ms | 400ms | 0.016 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed18) after-logical | 23800ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed20) | 27800ms | 0ms | 0.00 | PASS |
+| 2026-09-03 | v2026.08.14-d47fc4b | fillomino (9x9-cap12-seed20) after-logical | 0ms | 0ms | — | NO TIME |
+
+**Eleven fixtures are untimed against the baseline at this app version** — the
+same eleven #308's own table names: cap9-seed1, cap9-seed3, cap9-seed5,
+cap9-seed10, cap9-seed18, cap9-seed20, cap12-seed3, cap12-seed4, cap12-seed5,
+cap12-seed8 and cap12-seed9. The pre-bitmask code cleared all 19 against this
+baseline; that table is in this file's history at `8acf3d7`. Rung 3 beats
+rung 2.5 on all 19 (below) and rung 2.5 traces back to rung 2, so nothing here
+suggests the eleven would read differently — but they are not measured against
+the baseline at this version, and this table does not claim them.
 
 ### Rung 3 against rung 2.5 — the pay-for-itself gate
 

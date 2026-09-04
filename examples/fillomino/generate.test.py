@@ -4,13 +4,15 @@
 #
 #   uv run --with ortools examples/fillomino/generate.test.py
 
+import json
 import pathlib
+import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from generate import is_striped, sample, self_check, set_board, unique
+from generate import drop, is_striped, sample, self_check, set_board, unique
 
 
 def test_self_check():
@@ -38,6 +40,44 @@ def test_cap_wider_than_side():
     digits = {d for row in grid for d in row}
     assert max(digits) <= 12, f"digit above the cap 12: {digits}"
     assert any(d > 9 for d in digits), f"no digit above 9 in {sorted(digits)}"
+
+
+def test_dropped_grid_logs_seed_and_clue_set():
+    # #303 story 14: a dropped grid is logged with the seed and the clue set,
+    # so any generator run reproduces. The log goes to stderr, since `sample`
+    # prints its grid JSON on stdout.
+    set_board(9)
+    err = _stderr_of(lambda: drop("striped", 7, {(0, 0): 3, (4, 2): 9}, sub=1234))
+    assert err.startswith("drop (striped):"), err
+    assert "seed=7" in err and "sub=1234" in err, err
+    assert '"0,0": 3' in err and '"4,2": 9' in err, err
+
+
+def test_unique_cli_logs_the_clue_set_it_dropped():
+    # The `unique` CLI drops a timed-out grid -- it must name the clue set on
+    # the way out, not exit on a bare traceback.
+    gen = HERE / "gen.json"
+    r = subprocess.run(
+        [sys.executable, str(HERE / "generate.py"), "unique", str(gen), "0.001"],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 2, (r.returncode, r.stdout, r.stderr)
+    assert "unique" not in r.stdout, "a timeout must never report a verdict"
+    assert "drop (timeout" in r.stderr, r.stderr
+    spec = json.loads(gen.read_text())
+    for r_, c_ in spec["clues"]:
+        assert f'"{r_},{c_}": {spec["grid"][r_][c_]}' in r.stderr, r.stderr
+
+
+def _stderr_of(fn):
+    import contextlib
+    import io
+
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        fn()
+    return buf.getvalue()
 
 
 # The raw (unpinned) grid seed 1 draws, reproduced from
@@ -77,6 +117,9 @@ if __name__ == "__main__":
     print("self-check: ok")
     test_timeout_never_a_verdict()
     print("timeout never a verdict: ok")
+    test_dropped_grid_logs_seed_and_clue_set()
+    test_unique_cli_logs_the_clue_set_it_dropped()
+    print("dropped grids log seed and clue set: ok")
     test_cap_wider_than_side()
     print("cap wider than side: ok")
     test_striped_seeds_rejected_and_sampling_varies()
