@@ -51,6 +51,17 @@ Three approaches, in the order tried:
    infected, one cell's digit equals the size"; require ≥ *k* placements.
    Two clued brainanas in ~70 s per seed, three on the first seed asked.
 
+## Diversity `[verified]`
+
+Random weights on digits alone converge on one shading with permuted digits
+(seeds 200 and 201 had identical shading). The sampler now also puts random
+weights on the shading and requires every new grid to differ from each earlier
+grid in the batch by ≥ 12 cells (Hamming distance on infection status). A
+two-pocket grid ≥ 12 cells from seed 0 exists. **Three clued brainanas (3–6
+cell pockets) are nearly unique:** CP-SAT proves no three-pocket grid exists
+≥ 12 cells from seed 200's shading, while ≥ 8 is feasible. The three-pocket
+hunt runs at distance 8.
+
 ## Stripping lessons `[verified]`
 
 - **Cuts must be tagged by the circle they came from.** A lazy cut recorded

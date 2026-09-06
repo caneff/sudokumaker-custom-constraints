@@ -1,7 +1,7 @@
 """Zombo Brainanas (Infections + Choco Banana) — CP-SAT generator prototype.
 
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py sample 3 [limit] [rect]
-    uv run --with ortools docs/research/zombo_brainanas_cpsat.py hunt 0 100 600 outdir [rect] [want]
+    uv run --with ortools docs/research/zombo_brainanas_cpsat.py hunt 0 100 600 outdir [rect] [want] [min_distance]
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py verify out.json
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py strip full.json out.json [seed]
 
@@ -115,7 +115,16 @@ RECTS = rects()
 POCKETS = placements()
 
 
-def build(givens=None, circles=None, cuts=(), seed=0, min_pockets=0, objective=False):
+def build(
+    givens=None,
+    circles=None,
+    cuts=(),
+    seed=0,
+    min_pockets=0,
+    objective=False,
+    avoid=(),
+    min_distance=12,
+):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
     x = {p: m.NewIntVar(1, 9, f"x{p}") for p in CELLS}
@@ -216,9 +225,16 @@ def build(givens=None, circles=None, cuts=(), seed=0, min_pockets=0, objective=F
                 m.AddImplication(hit, comp)
                 m.Add(x[p] == len(cells)).OnlyEnforceIf(hit)
                 clue.append(hit)
-        rng = random.Random(seed)  # small random weights: seeds give different grids
-        noise = sum(rng.randint(0, 3) * x[p] for p in CELLS)
+        # Random weights on digits AND on the shading: without the shading
+        # term every seed converged on one shading with permuted digits.
+        rng = random.Random(seed)
+        noise = sum(rng.randint(0, 3) * x[p] for p in CELLS) + 20 * sum(
+            rng.randint(-1, 1) * inf[p] for p in CELLS
+        )
         m.Maximize(CIRCLE_WEIGHT * sum(clue) + noise)
+    for old in avoid:
+        # A new shading must differ from each earlier one in >= min_distance cells.
+        m.Add(sum(inf[p].Not() if old[p] else inf[p] for p in CELLS) >= min_distance)
     return m, x, inf
 
 
@@ -264,12 +280,16 @@ def solve_valid(
     limit=120,
     min_pockets=0,
     objective=False,
+    avoid=(),
+    min_distance=12,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
     circles = circles or {}
     while True:
-        m, x, inf = build(givens, circles, cuts, seed, min_pockets, objective)
+        m, x, inf = build(
+            givens, circles, cuts, seed, min_pockets, objective, avoid, min_distance
+        )
         for sol in exclude:  # not all cells equal
             diffs = []
             for p, v in sol.items():
@@ -340,9 +360,17 @@ def clued_bananas(sol, shade, circ):
     return [c for c in comps(shade, 1 - RECT) if any(p in circ for p in c)]
 
 
-def sample(seed, limit=20, min_pockets=0):
-    """A random valid grid with many circle-able cells and >= min_pockets clued bananas."""
-    return solve_valid(seed=seed, limit=limit, min_pockets=min_pockets, objective=True)
+def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12):
+    """A random valid grid with many circle-able cells and >= min_pockets clued
+    bananas, whose shading differs from every shading in `avoid` by >= min_distance cells."""
+    return solve_valid(
+        seed=seed,
+        limit=limit,
+        min_pockets=min_pockets,
+        objective=True,
+        avoid=avoid,
+        min_distance=min_distance,
+    )
 
 
 def generate(seed, sol, shade, log=print, keep_bananas=True):
@@ -392,7 +420,7 @@ def dump(path, sol, shade, givens, circles):
     )
 
 
-def hunt(first, last, limit, outdir, want=2):
+def hunt(first, last, limit, outdir, want=2, min_distance=12):
     """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
     out = Path(outdir)
     out.mkdir(exist_ok=True)
@@ -402,12 +430,19 @@ def hunt(first, last, limit, outdir, want=2):
         with progress.open("a") as fh:
             fh.write(line + "\n")
 
+    seen = [
+        {p: int(d["infected"][p[0]][p[1]] == "*") for p in CELLS}
+        for d in (json.loads(f.read_text()) for f in sorted(out.glob("full_*.json")))
+    ]
     for seed in range(first, last):
-        found = sample(seed, limit, min_pockets=want)
+        found = sample(
+            seed, limit, min_pockets=want, avoid=seen, min_distance=min_distance
+        )
         if found is None:
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
             continue
         sol, shade = found
+        seen.append(shade)
         circ = circle_candidates(sol, shade)
         pockets = clued_bananas(sol, shade, circ)
         log(
@@ -447,7 +482,15 @@ def main():
     elif cmd == "hunt":
         RECT = int(sys.argv[6]) if len(sys.argv) > 6 else 1
         want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
-        hunt(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], want)
+        dist = int(sys.argv[8]) if len(sys.argv) > 8 else 12
+        hunt(
+            int(sys.argv[2]),
+            int(sys.argv[3]),
+            int(sys.argv[4]),
+            sys.argv[5],
+            want,
+            dist,
+        )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
         RECT = d.get("rect", 1)
