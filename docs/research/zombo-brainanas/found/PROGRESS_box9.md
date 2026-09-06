@@ -19,3 +19,12 @@ seed 705: 11 circles, 3 clued bananas sizes [5, 7, 9], 26 infected
     round 1: OPTIMAL in 545s (first feasible 57s)
     valid after 1 rounds, first feasible 57s
 seed 706: 10 circles, 2 clued bananas sizes [5, 7], 25 infected
+    round 1: OPTIMAL in 554s (first feasible 112s)
+    valid after 1 rounds, first feasible 112s
+seed 707: 9 circles, 2 clued bananas sizes [7, 7], 31 infected
+    round 1: OPTIMAL in 674s (first feasible 55s)
+    valid after 1 rounds, first feasible 55s
+seed 708: 9 circles, 2 clued bananas sizes [5, 7], 28 infected
+    round 1: OPTIMAL in 505s (first feasible 160s)
+    valid after 1 rounds, first feasible 160s
+seed 709: 8 circles, 2 clued bananas sizes [4, 7], 32 infected

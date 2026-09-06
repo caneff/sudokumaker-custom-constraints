@@ -18,3 +18,19 @@ seed 906: no grid with 2 clued bananas within 1500s
 seed 907: no grid with 2 clued bananas within 1500s
     round 1: INFEASIBLE in 163s (first feasible None)
 seed 908: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 177s (first feasible None)
+seed 909: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 147s (first feasible None)
+seed 910: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 225s (first feasible None)
+seed 911: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 203s (first feasible None)
+seed 912: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 204s (first feasible None)
+seed 913: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 200s (first feasible None)
+seed 914: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 229s (first feasible None)
+seed 915: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 190s (first feasible None)
+seed 916: no grid with 2 clued bananas within 1500s

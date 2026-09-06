@@ -34,3 +34,10 @@ seed 814: no grid with 2 clued bananas within 1500s
 seed 815: no grid with 2 clued bananas within 1500s
     round 1: INFEASIBLE in 93s (first feasible None)
 seed 816: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 68s (first feasible None)
+seed 817: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 90s (first feasible None)
+seed 818: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 63s (first feasible None)
+seed 819: no grid with 2 clued bananas within 1500s
+arm paused 14:25: slot given to box9_cross
