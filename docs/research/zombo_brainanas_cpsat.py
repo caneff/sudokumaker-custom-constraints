@@ -59,12 +59,12 @@ def isrect(cells):
     return len(cells) == (max(rs) - min(rs) + 1) * (max(cs) - min(cs) + 1)
 
 
-def rects():
-    """Every axis-aligned rectangle of area <= 9 as (cells, border)."""
+def rects(max_area=9):
+    """Every axis-aligned rectangle of area <= max_area as (cells, border)."""
     out = []
     for h in range(1, 10):
         for w in range(1, 10):
-            if h * w > 9:
+            if h * w > max_area:
                 continue
             for r in range(N - h + 1):
                 for c in range(N - w + 1):
@@ -115,6 +115,7 @@ def placements(max_size=MAX_POCKET):
 
 
 RECTS = rects()
+ALL_RECTS = rects(81)
 POCKETS = placements()
 
 
@@ -178,9 +179,12 @@ def build(
                 sum([rect[r, c], rect[r + 1, c], rect[r, c + 1], rect[r + 1, c + 1]])
                 != 3
             )
-    # Banana rule, cheap exact part: no isolated banana cell.
-    for p in CELLS:
-        m.AddBoolOr([rect[p]] + [ban[q] for q in nb(p)])
+    # Banana rule, exact: no banana group is a rectangle. One clause per
+    # rectangle (2025 of them): some cell inside is rect-colour or some border
+    # cell is banana. Replaces the lazy per-violation cuts, which cost a full
+    # re-solve each; only banana circles stay lazy.
+    for cells, border in ALL_RECTS:
+        m.AddBoolOr([rect[q] for q in cells] + [ban[q] for q in border])
     for p, v in (givens or {}).items():
         m.Add(x[p] == v)
     for p, v in (circles or {}).items():
@@ -247,14 +251,16 @@ def build(
                 clue_at.append(((p, len(cells)), hit))
     if min_circles:  # rectangle circles only; pocket circles come on top
         m.Add(sum(clue) >= min_circles)
-    if min_per_box:  # spread: every 3x3 box carries >= min_per_box circles
+    if min_per_box:  # spread: box b carries >= min_per_box[b] circles (int = every box)
+        if isinstance(min_per_box, int):
+            min_per_box = dict.fromkeys(range(1, N + 1), min_per_box)
         by_box = {b: [] for b in range(1, N + 1)}
         for (p, _), h in clue_at:
             by_box[box(*p)].append(h)
         for (p, _), c in pocket_at:
             by_box[box(*p)].append(c)
-        for hs in by_box.values():
-            m.Add(sum(hs) >= min_per_box)
+        for b, k in min_per_box.items():
+            m.Add(sum(by_box[b]) >= k)
     if objective:
         # Random weights on digits AND on the shading: without the shading
         # term every seed converged on one shading with permuted digits.
@@ -615,7 +621,13 @@ def main():
         want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
         dist = int(sys.argv[8]) if len(sys.argv) > 8 else 12
         min_inf = int(sys.argv[9]) if len(sys.argv) > 9 else 0
-        per_box = int(sys.argv[10]) if len(sys.argv) > 10 else 0
+        per_box = sys.argv[10] if len(sys.argv) > 10 else "0"
+        # "1" = every box >= 1; "9:2,1:1" = box 9 >= 2 and box 1 >= 1
+        per_box = (
+            {int(b): int(k) for b, k in (t.split(":") for t in per_box.split(","))}
+            if ":" in per_box
+            else int(per_box)
+        )
         do_strip = bool(int(sys.argv[11])) if len(sys.argv) > 11 else False
         hunt(
             int(sys.argv[2]),
