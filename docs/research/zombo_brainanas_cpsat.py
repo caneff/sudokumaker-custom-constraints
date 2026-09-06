@@ -128,6 +128,7 @@ def build(
     avoid=(),
     min_distance=12,
     min_infected=0,
+    min_circles=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -216,7 +217,7 @@ def build(
             m.AddBoolOr(hits).OnlyEnforceIf(b)
             placed.append(b)
         m.Add(sum(placed) >= min_pockets)
-    if objective:
+    if objective or min_circles:
         # Circle-able rectangle cells: digit equals the area of the rectangle.
         clue = []
         for cells, border in RECTS:
@@ -229,6 +230,9 @@ def build(
                 m.AddImplication(hit, comp)
                 m.Add(x[p] == len(cells)).OnlyEnforceIf(hit)
                 clue.append(hit)
+    if min_circles:  # rectangle circles only; pocket circles come on top
+        m.Add(sum(clue) >= min_circles)
+    if objective:
         # Random weights on digits AND on the shading: without the shading
         # term every seed converged on one shading with permuted digits.
         rng = random.Random(seed)
@@ -289,6 +293,7 @@ def solve_valid(
     avoid=(),
     min_distance=12,
     min_infected=0,
+    min_circles=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -304,6 +309,7 @@ def solve_valid(
             avoid,
             min_distance,
             min_infected,
+            min_circles,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
