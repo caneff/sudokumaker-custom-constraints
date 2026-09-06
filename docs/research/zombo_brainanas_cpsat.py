@@ -3,6 +3,7 @@
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py sample 3 [limit] [rect]
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py hunt 0 100 600 outdir [rect] [want]
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py verify out.json
+    uv run --with ortools docs/research/zombo_brainanas_cpsat.py strip full.json out.json [seed]
 
 Rules (map #342): normal 9x9 sudoku. Patient zero = digit equal to its box
 number, exactly one per row and column, infected. Infected cells infect every
@@ -336,10 +337,13 @@ def sample(seed, limit=20, min_pockets=0):
     return solve_valid(seed=seed, limit=limit, min_pockets=min_pockets, objective=True)
 
 
-def generate(seed, sol, shade, log=print):
-    """Strip givens, then circles, while the puzzle stays unique."""
+def generate(seed, sol, shade, log=print, keep_bananas=True):
+    """Strip givens, then circles, while the puzzle stays unique. With
+    keep_bananas, a circle in a banana is never dropped: the clued brainanas
+    are the point of the puzzle, not a uniqueness aid."""
     rng = random.Random(seed)
     circles = circle_candidates(sol, shade)
+    protected = {p for p in circles if shade[p] != RECT} if keep_bananas else set()
     cuts = []
     givens = dict(sol)
     order = list(CELLS)
@@ -350,6 +354,8 @@ def generate(seed, sol, shade, log=print):
             givens = trial
             log(f"drop {p}: {len(givens)} givens, {len(cuts)} cuts")
     for p in list(circles):
+        if p in protected:
+            continue
         trial = {q: v for q, v in circles.items() if q != p}
         if unique(givens, trial, cuts):
             circles = trial
@@ -434,6 +440,17 @@ def main():
         RECT = int(sys.argv[6]) if len(sys.argv) > 6 else 1
         want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
         hunt(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], want)
+    elif cmd == "strip":
+        d = json.loads(Path(sys.argv[2]).read_text())
+        RECT = d.get("rect", 1)
+        sol = {(r, c): int(d["grid"][r][c]) for r, c in CELLS}
+        shade = {(r, c): int(d["infected"][r][c] == "*") for r, c in CELLS}
+        givens, circles = generate(
+            int(sys.argv[4]) if len(sys.argv) > 4 else 0, sol, shade
+        )
+        dump(sys.argv[3], sol, shade, givens, circles)
+        print(show(sol, shade, givens, circles))
+        print(f"{len(givens)} givens, {len(circles)} circles -> {sys.argv[3]}")
     elif cmd == "verify":
         d = json.loads(Path(sys.argv[2]).read_text())
         RECT = d.get("rect", 1)
