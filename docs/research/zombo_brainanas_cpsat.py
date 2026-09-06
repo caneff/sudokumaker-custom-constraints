@@ -400,17 +400,34 @@ def solve_valid(
         hint = sol  # repair the last grid rather than restart
 
 
-def unique(givens, circles, cuts, limit=300):
+def unique(givens, circles, cuts, limit=300, known=None):
     """True iff exactly one valid solution is proved. A time limit counts as
-    not proved, so a stripper that trusts this keeps the given: sound, never lean."""
+    not proved, so a stripper that trusts this keeps the given: sound, never lean.
+    `known`: a solution already in hand, so only the second-solution search runs."""
     try:
-        first = solve_valid(givens, circles, cuts, limit=limit)
-        assert first is not None, "no solution"
-        return (
-            solve_valid(givens, circles, cuts, exclude=[first[0]], limit=limit) is None
-        )
+        first = known or solve_valid(givens, circles, cuts, limit=limit)[0]
+        return solve_valid(givens, circles, cuts, exclude=[first], limit=limit) is None
     except TimeoutError:
         return False
+
+
+def strip(items, keep, test):
+    """Greedy batch removal: drop half the remaining items at once, halve the
+    batch on failure, and pin an item only when it fails alone. Far fewer
+    uniqueness proofs than one-at-a-time when most items are droppable."""
+    items = dict(items)
+    order = [q for q in items if q not in keep]
+    i, k = 0, max(1, len(order) // 2)
+    while i < len(order):
+        chunk = order[i : i + k]
+        trial = {q: v for q, v in items.items() if q not in chunk}
+        if test(trial):
+            items, i = trial, i + k
+        elif k > 1:
+            k //= 2
+        else:
+            i += 1
+    return items
 
 
 def show(sol, shade, givens=None, circles=None):
@@ -475,22 +492,23 @@ def generate(seed, sol, shade, log=print, keep_bananas=True):
     circles = circle_candidates(sol, shade)
     protected = {p for p in circles if shade[p] != RECT} if keep_bananas else set()
     cuts = []
-    givens = dict(sol)
     order = list(CELLS)
     rng.shuffle(order)
-    for p in order:
-        trial = {q: v for q, v in givens.items() if q != p}
-        if unique(trial, circles, cuts):
-            givens = trial
-            log(f"drop {p}: {len(givens)} givens, {len(cuts)} cuts")
-    for p in list(circles):
-        if p in protected:
-            continue
-        trial = {q: v for q, v in circles.items() if q != p}
-        if unique(givens, trial, cuts):
-            circles = trial
-            log(f"drop circle {p}: {len(circles)} circles")
-    assert unique(givens, circles, []), (
+
+    def test_givens(trial):
+        ok = unique(trial, circles, cuts, known=sol)
+        log(f"  {len(trial)} givens: {'unique' if ok else 'not unique'}")
+        return ok
+
+    givens = strip({p: sol[p] for p in order}, set(), test_givens)
+
+    def test_circles(trial):
+        ok = unique(givens, trial, cuts, known=sol)
+        log(f"  {len(trial)} circles: {'unique' if ok else 'not unique'}")
+        return ok
+
+    circles = strip(circles, protected, test_circles)
+    assert unique(givens, circles, [], known=sol), (
         "stripped puzzle failed a fresh uniqueness proof"
     )
     return givens, circles
