@@ -32,6 +32,7 @@ import glob
 import json
 import random
 import sys
+import threading
 from pathlib import Path
 
 from ortools.sat.python import cp_model as cp
@@ -329,16 +330,45 @@ class FirstSolution(cp.CpSolverSolutionCallback):
     With `stop_at`, halt once the objective reaches that many circles: on seed 5
     the solver found a grid at 173s and then improved it until the 400s limit."""
 
-    def __init__(self, stop_at=0):
+    def __init__(self, stop_at=0, stall=0):
         super().__init__()
         self.at = None
         self.stop_at = stop_at
+        self.stall = stall  # seconds without improvement before giving up
+        self.last = None
 
     def on_solution_callback(self):
+        now = self.WallTime()
         if self.at is None:
-            self.at = f"{self.WallTime():.0f}s"
+            self.at = f"{now:.0f}s"
         if self.stop_at and self.ObjectiveValue() >= CIRCLE_WEIGHT * self.stop_at:
             self.StopSearch()
+        self.last = now
+
+    def stalled(self):
+        return (
+            self.stall
+            and self.last is not None
+            and self.WallTime() - self.last > self.stall
+        )
+
+
+def solve_with_watchdog(s, m, cb):
+    """Solve in a thread; stop when the objective has not improved for cb.stall
+    seconds. Half the sampling budget went to proving optimality (seed 701:
+    feasible at 178s, OPTIMAL at 489s)."""
+    out = {}
+
+    def run():
+        out["st"] = s.Solve(m, cb)
+
+    t = threading.Thread(target=run)
+    t.start()
+    while t.is_alive():
+        t.join(1)
+        if cb.stalled():
+            s.StopSearch()
+    return out["st"]
 
 
 def solve_valid(
@@ -358,6 +388,7 @@ def solve_valid(
     stop_at=11,
     min_per_box=0,
     min_cross=0,
+    stall=60,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -395,8 +426,8 @@ def solve_valid(
         s.parameters.random_seed = seed
         s.parameters.num_workers = 8
         s.parameters.max_time_in_seconds = limit
-        cb = FirstSolution(stop_at if objective else 0)
-        st = s.Solve(m, cb)
+        cb = FirstSolution(stop_at if objective else 0, stall if objective else 0)
+        st = solve_with_watchdog(s, m, cb) if cb.stall else s.Solve(m, cb)
         if first_at is None:
             first_at = cb.at
         if log:
