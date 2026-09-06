@@ -114,3 +114,7 @@ choice. A dot that carries a shading relation on both sides (white: consecutive
 and same status; black: 1:2 and different status, which with the spread rule
 forces the smaller digit infected and the larger not) would be new to the series.
 Germy Whispers already covers the German-whisper half of the Renbanana idea.
+
+**Decision (Chris, 6 Sep):** the second clue type is Cocci Dots exactly as in
+Under the Microscope: a dot joins two consecutive uninfected digits. The
+shading-carrying dot above stays an idea, not part of Zombo Brainanas.
