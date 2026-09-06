@@ -1,24 +1,28 @@
 """Zombo Brainanas (Infections + Choco Banana) — CP-SAT generator prototype.
 
-    uv run --with ortools docs/research/zombo_brainanas_cpsat.py sample 3
-    uv run --with ortools docs/research/zombo_brainanas_cpsat.py gen 3 out.json
+    uv run --with ortools docs/research/zombo_brainanas_cpsat.py sample 3 [limit] [rect]
+    uv run --with ortools docs/research/zombo_brainanas_cpsat.py hunt 0 100 600 outdir [rect] [want]
     uv run --with ortools docs/research/zombo_brainanas_cpsat.py verify out.json
 
 Rules (map #342): normal 9x9 sudoku. Patient zero = digit equal to its box
 number, exactly one per row and column, infected. Infected cells infect every
-orthogonally adjacent smaller digit, to closure. Zombo: every connected
-infected group is a rectangle. Brainana: every connected uninfected group is
-not. Cluster: a circled digit equals the size of its own group.
+orthogonally adjacent smaller digit, to closure. Zombo: every connected group
+of the "rectangle colour" is a rectangle. Brainana: every connected group of
+the other colour is not. Cluster: a circled digit equals the size of its own
+group. `rect` picks the rectangle colour: 1 = infected groups are rectangles
+(the map's rules), 0 = the swap (uninfected chocolate, infected bananas).
 
-Modelling. Digits, infection and closure are exact. Zombo is exact through
-the lemma "connected + no 2x2 window with exactly three infected cells <=>
-rectangle". Brainana and an uninfected circle are enforced lazily: solve,
-check the solution, and when an uninfected component is a rectangle (or a
-circled pocket has the wrong size) add a cut that forbids exactly that
-component pattern (its cells uninfected, its orthogonal border infected), then
-re-solve. Every cut excludes only invalid solutions, so uniqueness proofs are
-exact. An infected circle is exact: some rectangle of area == digit around the
-circle is the component.
+Modelling. Digits, infection and closure are exact. The rectangle rule is exact
+through the lemma "connected + no 2x2 window with exactly three cells of the
+colour <=> rectangle". The non-rectangle rule and a banana circle are enforced
+lazily: solve, check, and when a banana component is a rectangle (or a circled
+banana has the wrong size) add a cut forbidding exactly that component pattern
+(its cells one colour, its orthogonal border the other), then re-solve. Every
+cut excludes only invalid solutions, so uniqueness proofs stay exact. A circle
+in a rectangle is exact: some rectangle of area == digit around it is the
+component. Clued bananas are requested exactly: a library of small
+non-rectangular polyominoes placed with a full border of the other colour and
+a cell whose digit equals the size.
 
 # ponytail: research prototype — the shipped generator is a wayfinder decision.
 """
@@ -32,6 +36,8 @@ from ortools.sat.python import cp_model as cp
 
 N = 9
 CELLS = [(r, c) for r in range(N) for c in range(N)]
+RECT = 1  # colour whose groups are rectangles: 1 infected, 0 uninfected
+CIRCLE_WEIGHT = 100
 
 
 def box(r, c):
@@ -44,6 +50,12 @@ def nb(p):
         q = (r + dr, c + dc)
         if 0 <= q[0] < N and 0 <= q[1] < N:
             yield q
+
+
+def isrect(cells):
+    rs = [r for r, _ in cells]
+    cs = [c for _, c in cells]
+    return len(cells) == (max(rs) - min(rs) + 1) * (max(cs) - min(cs) + 1)
 
 
 def rects():
@@ -63,15 +75,54 @@ def rects():
     return out
 
 
+def polyominoes(max_size=6):
+    """Fixed non-rectangular polyominoes of size 3..max_size, normalised to the origin."""
+    shapes = {frozenset([(0, 0)])}
+    out = []
+    for size in range(2, max_size + 1):
+        nxt = set()
+        for sh in shapes:
+            for r, c in sh:
+                for q in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+                    if q in sh:
+                        continue
+                    grown = sh | {q}
+                    mr = min(r for r, _ in grown)
+                    mc = min(c for _, c in grown)
+                    nxt.add(frozenset((r - mr, c - mc) for r, c in grown))
+        shapes = nxt
+        if size >= 3:
+            out += [sh for sh in shapes if not isrect(sh)]
+    return out
+
+
+def placements():
+    """Every placement of a pocket shape as (cells, border)."""
+    out = []
+    for sh in polyominoes():
+        h = max(r for r, _ in sh) + 1
+        w = max(c for _, c in sh) + 1
+        for r0 in range(N - h + 1):
+            for c0 in range(N - w + 1):
+                cells = frozenset((r0 + r, c0 + c) for r, c in sh)
+                border = frozenset(q for p in cells for q in nb(p)) - cells
+                out.append((cells, border))
+    return out
+
+
 RECTS = rects()
+POCKETS = placements()
 
 
-def build(givens=None, circles=None, cuts=(), maximize_clues=False, seed=0):
+def build(givens=None, circles=None, cuts=(), seed=0, min_pockets=0, objective=False):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
     x = {p: m.NewIntVar(1, 9, f"x{p}") for p in CELLS}
     inf = {p: m.NewBoolVar(f"i{p}") for p in CELLS}
     pz = {p: m.NewBoolVar(f"z{p}") for p in CELLS}
+    # rect[p]: p has the rectangle colour; ban[p]: the banana colour
+    rect = {p: inf[p] if RECT else inf[p].Not() for p in CELLS}
+    ban = {p: rect[p].Not() for p in CELLS}
     for r in range(N):
         m.AddAllDifferent([x[r, c] for c in range(N)])
         m.AddAllDifferent([x[c, r] for c in range(N)])
@@ -91,7 +142,7 @@ def build(givens=None, circles=None, cuts=(), maximize_clues=False, seed=0):
     for r in range(N):
         m.AddExactlyOne(pz[r, c] for c in range(N))
         m.AddExactlyOne(pz[c, r] for c in range(N))
-    # Spread and closure. lt[p,q]: x[p] < x[q].
+    # Spread and closure. lt: x[p] < x[q].
     for p in CELLS:
         srcs = []
         for q in nb(p):
@@ -104,52 +155,68 @@ def build(givens=None, circles=None, cuts=(), maximize_clues=False, seed=0):
             m.AddBoolOr([inf[q].Not(), lt.Not()]).OnlyEnforceIf(s.Not())
             srcs.append(s)
         m.AddBoolOr([*srcs, pz[p], inf[p].Not()])  # closure: infected needs a source
-    # Zombo: no 2x2 window with exactly three infected.
+    # Rectangle rule: no 2x2 window with exactly three rectangle-colour cells.
     for r in range(N - 1):
         for c in range(N - 1):
             m.Add(
-                sum([inf[r, c], inf[r + 1, c], inf[r, c + 1], inf[r + 1, c + 1]]) != 3
+                sum([rect[r, c], rect[r + 1, c], rect[r, c + 1], rect[r + 1, c + 1]])
+                != 3
             )
-    # Brainana, cheap exact part: no isolated uninfected cell.
+    # Banana rule, cheap exact part: no isolated banana cell.
     for p in CELLS:
-        m.AddBoolOr([inf[p]] + [inf[q].Not() for q in nb(p)])
+        m.AddBoolOr([rect[p]] + [ban[q] for q in nb(p)])
     for p, v in (givens or {}).items():
         m.Add(x[p] == v)
     for p, v in (circles or {}).items():
         if v is not None:
             m.Add(x[p] == v)
-        # infected circle: some rectangle of area == digit around p is its component
+        # circle in a rectangle: some rectangle of area == digit around p is its group
         opts = []
         for cells, border in RECTS:
             if p not in cells:
                 continue
             comp = m.NewBoolVar("")
             m.AddBoolAnd(
-                [inf[q] for q in cells] + [inf[q].Not() for q in border]
+                [rect[q] for q in cells] + [ban[q] for q in border]
             ).OnlyEnforceIf(comp)
             m.Add(x[p] == len(cells)).OnlyEnforceIf(comp)
             opts.append(comp)
-        m.AddBoolOr([*opts, inf[p].Not()])
-    for uninf_cells, inf_cells in cuts:
-        m.AddBoolOr([inf[q] for q in uninf_cells] + [inf[q].Not() for q in inf_cells])
-    if maximize_clues:
-        # A sampled grid is only settable if enough cells can carry a circle:
-        # infected cells whose digit equals the area of their rectangle.
-        clue = {p: [] for p in CELLS}
+        m.AddBoolOr([*opts, ban[p]])
+    for ban_cells, rect_cells in cuts:
+        m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
+    if min_pockets:
+        # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
+        # colour, holding a cell whose digit equals the pocket size.
+        placed = []
+        for cells, border in POCKETS:
+            b = m.NewBoolVar("")
+            m.AddBoolAnd(
+                [ban[q] for q in cells] + [rect[q] for q in border]
+            ).OnlyEnforceIf(b)
+            hits = []
+            for p in cells:
+                h = m.NewBoolVar("")
+                m.Add(x[p] == len(cells)).OnlyEnforceIf(h)
+                hits.append(h)
+            m.AddBoolOr(hits).OnlyEnforceIf(b)
+            placed.append(b)
+        m.Add(sum(placed) >= min_pockets)
+    if objective:
+        # Circle-able rectangle cells: digit equals the area of the rectangle.
+        clue = []
         for cells, border in RECTS:
             comp = m.NewBoolVar("")
             m.AddBoolAnd(
-                [inf[q] for q in cells] + [inf[q].Not() for q in border]
+                [rect[q] for q in cells] + [ban[q] for q in border]
             ).OnlyEnforceIf(comp)
             for p in cells:
                 hit = m.NewBoolVar("")
-                m.AddBoolAnd([comp]).OnlyEnforceIf(hit)
+                m.AddImplication(hit, comp)
                 m.Add(x[p] == len(cells)).OnlyEnforceIf(hit)
-                clue[p].append(hit)
-        # Small random per-cell weights break ties so seeds give different grids.
-        rng = random.Random(seed)
+                clue.append(hit)
+        rng = random.Random(seed)  # small random weights: seeds give different grids
         noise = sum(rng.randint(0, 3) * x[p] for p in CELLS)
-        m.Maximize(1000 * sum(h for hs in clue.values() for h in hs) + noise)
+        m.Maximize(CIRCLE_WEIGHT * sum(clue) + noise)
     return m, x, inf
 
 
@@ -170,23 +237,17 @@ def comps(shade, val):
     return out
 
 
-def isrect(cells):
-    rs = [r for r, _ in cells]
-    cs = [c for _, c in cells]
-    return len(cells) == (max(rs) - min(rs) + 1) * (max(cs) - min(cs) + 1)
-
-
 def violation(sol, shade, circles):
-    """A cut (uninf cells, inf cells) for the first lazy rule this solution breaks, else None."""
-    for comp in comps(shade, 0):
+    """A cut (banana cells, rect cells) for the first lazy rule this solution breaks, else None."""
+    for comp in comps(shade, 1 - RECT):
         border = frozenset(q for p in comp for q in nb(p)) - comp
         if isrect(comp):
             return (comp, border)
         for p in comp:
             if p in circles and sol[p] != len(comp):
                 return (comp, border)
-    for comp in comps(shade, 1):
-        assert isrect(comp), "zombo lemma broken"
+    for comp in comps(shade, RECT):
+        assert isrect(comp), "rectangle lemma broken"
     return None
 
 
@@ -196,14 +257,15 @@ def solve_valid(
     cuts=None,
     exclude=(),
     seed=0,
-    maximize_clues=False,
     limit=120,
+    min_pockets=0,
+    objective=False,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
     circles = circles or {}
     while True:
-        m, x, inf = build(givens, circles, cuts, maximize_clues, seed)
+        m, x, inf = build(givens, circles, cuts, seed, min_pockets, objective)
         for sol in exclude:  # not all cells equal
             diffs = []
             for p, v in sol.items():
@@ -218,6 +280,8 @@ def solve_valid(
         s.parameters.max_time_in_seconds = limit
         st = s.Solve(m)
         if st not in (cp.OPTIMAL, cp.FEASIBLE):
+            if st == cp.UNKNOWN and objective:
+                return None  # sampling timed out before any feasible grid
             assert st == cp.INFEASIBLE, f"solver status {s.StatusName(st)}"
             return None
         sol = {p: s.Value(x[p]) for p in CELLS}
@@ -249,11 +313,6 @@ def show(sol, shade, givens=None, circles=None):
     return "\n".join(rows)
 
 
-def sample(seed):
-    """A random valid grid with many circle-able cells: 20 s of maximising."""
-    return solve_valid(seed=seed, maximize_clues=True, limit=20)
-
-
 def circle_candidates(sol, shade):
     """Cells whose digit equals the size of their own group."""
     out = {}
@@ -265,12 +324,19 @@ def circle_candidates(sol, shade):
     return out
 
 
-def generate(seed, log=print):
+def clued_bananas(sol, shade, circ):
+    return [c for c in comps(shade, 1 - RECT) if any(p in circ for p in c)]
+
+
+def sample(seed, limit=20, min_pockets=0):
+    """A random valid grid with many circle-able cells and >= min_pockets clued bananas."""
+    return solve_valid(seed=seed, limit=limit, min_pockets=min_pockets, objective=True)
+
+
+def generate(seed, sol, shade, log=print):
+    """Strip givens, then circles, while the puzzle stays unique."""
     rng = random.Random(seed)
-    sol, shade = sample(seed)
     circles = circle_candidates(sol, shade)
-    log(f"seed {seed}: {len(circles)} circle candidates")
-    log(show(sol, shade, circles=circles))
     cuts = []
     givens = dict(sol)
     order = list(CELLS)
@@ -280,47 +346,91 @@ def generate(seed, log=print):
         if unique(trial, circles, cuts):
             givens = trial
             log(f"drop {p}: {len(givens)} givens, {len(cuts)} cuts")
-    # then try dropping circles
     for p in list(circles):
         trial = {q: v for q, v in circles.items() if q != p}
         if unique(givens, trial, cuts):
             circles = trial
             log(f"drop circle {p}: {len(circles)} circles")
-    return sol, shade, givens, circles
+    return givens, circles
+
+
+def dump(path, sol, shade, givens, circles):
+    Path(path).write_text(
+        json.dumps(
+            {
+                "rect": RECT,
+                "grid": ["".join(str(sol[r, c]) for c in range(N)) for r in range(N)],
+                "infected": [
+                    "".join("*" if shade[r, c] else "." for c in range(N))
+                    for r in range(N)
+                ],
+                "givens": sorted(givens),
+                "circles": sorted(circles),
+            },
+            indent=1,
+        )
+    )
+
+
+def hunt(first, last, limit, outdir, want=2):
+    """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
+    out = Path(outdir)
+    out.mkdir(exist_ok=True)
+    progress = out / "PROGRESS.md"
+
+    def log(line):
+        with progress.open("a") as fh:
+            fh.write(line + "\n")
+
+    for seed in range(first, last):
+        found = sample(seed, limit, min_pockets=want)
+        if found is None:
+            log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
+            continue
+        sol, shade = found
+        circ = circle_candidates(sol, shade)
+        pockets = clued_bananas(sol, shade, circ)
+        log(
+            f"seed {seed}: {len(circ)} circles, {len(pockets)} clued bananas"
+            f" sizes {sorted(len(c) for c in pockets)}"
+        )
+        (out / f"grid_{seed}.txt").write_text(show(sol, shade, circles=circ) + "\n")
+        dump(out / f"full_{seed}.json", sol, shade, dict(sol), circ)
+        givens, circles = generate(seed, sol, shade, log=lambda s: None)
+        dump(out / f"puzzle_{seed}.json", sol, shade, givens, circles)
+        (out / f"puzzle_{seed}.txt").write_text(
+            show(sol, shade, givens, circles) + "\n"
+        )
+        log(f"  seed {seed}: stripped to {len(givens)} givens, {len(circles)} circles")
+    log("HUNT DONE")
 
 
 def main():
+    global RECT
     cmd = sys.argv[1]
     if cmd == "sample":
+        limit = int(sys.argv[3]) if len(sys.argv) > 3 else 20
+        RECT = int(sys.argv[4]) if len(sys.argv) > 4 else 1
         for seed in range(int(sys.argv[2])):
-            sol, shade = sample(seed)
+            found = sample(seed, limit)
+            if found is None:
+                print(f"seed {seed}: no grid within {limit}s")
+                continue
+            sol, shade = found
+            circ = circle_candidates(sol, shade)
+            pockets = clued_bananas(sol, shade, circ)
             print(
-                f"seed {seed}: infected comps {sorted(len(c) for c in comps(shade, 1))}"
+                f"seed {seed}: rect comps {sorted(len(c) for c in comps(shade, RECT))},"
+                f" {len(circ)} circles, {len(pockets)} clued bananas"
             )
-            print(show(sol, shade, circles=circle_candidates(sol, shade)))
-    elif cmd == "gen":
-        seed, out = int(sys.argv[2]), sys.argv[3]
-        sol, shade, givens, circles = generate(seed)
-        Path(out).write_text(
-            json.dumps(
-                {
-                    "grid": [
-                        "".join(str(sol[r, c]) for c in range(N)) for r in range(N)
-                    ],
-                    "infected": [
-                        "".join("*" if shade[r, c] else "." for c in range(N))
-                        for r in range(N)
-                    ],
-                    "givens": sorted(givens),
-                    "circles": sorted(circles),
-                },
-                indent=1,
-            )
-        )
-        print(show(sol, shade, givens, circles))
-        print(f"{len(givens)} givens, {len(circles)} circles -> {out}")
+            print(show(sol, shade, circles=circ))
+    elif cmd == "hunt":
+        RECT = int(sys.argv[6]) if len(sys.argv) > 6 else 1
+        want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
+        hunt(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], want)
     elif cmd == "verify":
         d = json.loads(Path(sys.argv[2]).read_text())
+        RECT = d.get("rect", 1)
         sol = {(r, c): int(d["grid"][r][c]) for r, c in CELLS}
         givens = {tuple(p): sol[tuple(p)] for p in d["givens"]}
         circles = {tuple(p): sol[tuple(p)] for p in d["circles"]}
