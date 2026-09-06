@@ -43,9 +43,10 @@ exists to teach.
   identical removal sequence, since the filter may only remove work. It
   patches the source by anchor line, the way `cut-profile.mjs` does.
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
-  set has exactly one solution. It is slow (CP-SAT), so it is not part of
-  `just check` or CI. Run it by hand with `just verify-isofill` after a
-  puzzle change.
+  set has exactly one solution. The full-board proofs are slow (CP-SAT), so
+  they are not part of `just check` or CI — run them by hand with
+  `just verify-isofill` after a puzzle change. `verify.test.py` runs the same
+  model at 4x4 in `just check`; only the full-board proofs are hand-run.
 - `gen.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
 - `gen_44g.json` — the same grid with 44 givens: a fixture kept for

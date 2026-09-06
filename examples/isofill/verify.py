@@ -129,12 +129,15 @@ def unique(givens, limit=600):
 def self_check():
     rows = ["".join(str(r) for _ in range(N)) for r in range(N)]
     given = lambda *rs: {(r, c): int(rows[r][c]) for r in rs for c in range(N)}
-    # Rows 1-9 given: the ten free cells must all be the missing digit 0.
+    # Every row but the first given: the free row's cells must all be the
+    # one missing digit.
     assert unique(given(*range(1, N))) is True
-    # Rows 2-9 given: digits 0 and 1 can split the top strip many ways.
+    # Every row but the first two given: the top strip can split between the
+    # two missing digits many ways.
     assert unique(given(*range(2, N))) is False
-    # Digit 0 pinned at both ends of row 0 with 1s between, rows 2-9 full:
-    # counts allow it, but 0 cannot connect through only eight spare cells.
+    # Digit 0 pinned at both ends of row 0 with 1s between, every row but the
+    # first two full: counts allow it, but 0 cannot connect through the
+    # spare cells outside row 0.
     split = given(*range(2, N))
     split.update({(0, c): (0 if c in (0, N - 1) else 1) for c in range(N)})
     try:
