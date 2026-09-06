@@ -52,3 +52,6 @@ seed 920: 10 circles, 2 clued bananas sizes [7, 7], 26 infected
 seed 921: no grid with 2 clued bananas within 1500s
     round 1: INFEASIBLE in 188s (first feasible None)
 seed 922: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 286s (first feasible None)
+seed 923: no grid with 2 clued bananas within 1500s
+restarted on stall-stop build 15:23

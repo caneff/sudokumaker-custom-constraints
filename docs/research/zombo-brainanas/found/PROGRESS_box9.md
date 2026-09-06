@@ -37,3 +37,4 @@ seed 711: 8 circles, 2 clued bananas sizes [7, 7], 27 infected
     round 1: OPTIMAL in 586s (first feasible 142s)
     valid after 1 rounds, first feasible 142s
 seed 712: 8 circles, 2 clued bananas sizes [6, 7], 27 infected
+restarted on stall-stop build 15:23

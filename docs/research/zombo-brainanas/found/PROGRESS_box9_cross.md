@@ -16,3 +16,6 @@ cross 14 / distance 18 proven infeasible; relaunched at cross 12 / distance 12 1
     round 1: OPTIMAL in 521s (first feasible 323s)
     valid after 1 rounds, first feasible 323s
 seed 1020: 10 circles, 2 clued bananas sizes [4, 7], 26 infected
+    round 1: INFEASIBLE in 471s (first feasible None)
+seed 1021: no grid with 2 clued bananas within 1500s
+restarted on stall-stop build 15:23
