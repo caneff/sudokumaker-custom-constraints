@@ -129,6 +129,7 @@ def build(
     min_distance=12,
     min_infected=0,
     min_circles=0,
+    min_per_box=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -200,7 +201,7 @@ def build(
     for ban_cells, rect_cells, circle in cuts:
         if circle is None or circle in (circles or {}):
             m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
-    pocket_clue = []
+    pocket_clue, pocket_at = [], []
     if min_pockets:
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
         # colour, holding a cell whose digit equals the pocket size.
@@ -218,7 +219,7 @@ def build(
             m.AddBoolOr(hits).OnlyEnforceIf(b)
             placed.append(b)
         m.Add(sum(placed) >= min_pockets)
-        if objective:
+        if objective or min_per_box:
             # Pocket circles count too: cell p holds k inside a placed k-pocket.
             by_cell = {}
             for (cells, _), b in zip(POCKETS, placed, strict=True):
@@ -229,9 +230,10 @@ def build(
                 m.Add(x[p] == k).OnlyEnforceIf(c)
                 m.AddBoolOr(bs).OnlyEnforceIf(c)
                 pocket_clue.append(c)
-    if objective or min_circles:
+                pocket_at.append(((p, k), c))
+    if objective or min_circles or min_per_box:
         # Circle-able rectangle cells: digit equals the area of the rectangle.
-        clue = []
+        clue, clue_at = [], []
         for cells, border in RECTS:
             comp = m.NewBoolVar("")
             m.AddBoolAnd(
@@ -242,8 +244,17 @@ def build(
                 m.AddImplication(hit, comp)
                 m.Add(x[p] == len(cells)).OnlyEnforceIf(hit)
                 clue.append(hit)
+                clue_at.append(((p, len(cells)), hit))
     if min_circles:  # rectangle circles only; pocket circles come on top
         m.Add(sum(clue) >= min_circles)
+    if min_per_box:  # spread: every 3x3 box carries >= min_per_box circles
+        by_box = {b: [] for b in range(1, N + 1)}
+        for (p, _), h in clue_at:
+            by_box[box(*p)].append(h)
+        for (p, _), c in pocket_at:
+            by_box[box(*p)].append(c)
+        for hs in by_box.values():
+            m.Add(sum(hs) >= min_per_box)
     if objective:
         # Random weights on digits AND on the shading: without the shading
         # term every seed converged on one shading with permuted digits.
@@ -325,6 +336,7 @@ def solve_valid(
     min_circles=0,
     log=None,
     stop_at=11,
+    min_per_box=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -344,6 +356,7 @@ def solve_valid(
             min_distance,
             min_infected,
             min_circles,
+            min_per_box,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -430,7 +443,14 @@ def clued_bananas(sol, shade, circ):
 
 
 def sample(
-    seed, limit=20, min_pockets=0, avoid=(), min_distance=12, min_infected=0, log=None
+    seed,
+    limit=20,
+    min_pockets=0,
+    avoid=(),
+    min_distance=12,
+    min_infected=0,
+    log=None,
+    min_per_box=0,
 ):
     """A random valid grid with many circle-able cells and >= min_pockets clued
     bananas, whose shading differs from every shading in `avoid` by >= min_distance cells."""
@@ -443,6 +463,7 @@ def sample(
         min_distance=min_distance,
         min_infected=min_infected,
         log=log,
+        min_per_box=min_per_box,
     )
 
 
@@ -493,7 +514,9 @@ def dump(path, sol, shade, givens, circles):
     )
 
 
-def hunt(first, last, limit, outdir, want=2, min_distance=12, min_infected=0):
+def hunt(
+    first, last, limit, outdir, want=2, min_distance=12, min_infected=0, min_per_box=0
+):
     """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
     out = Path(outdir)
     out.mkdir(exist_ok=True)
@@ -516,6 +539,7 @@ def hunt(first, last, limit, outdir, want=2, min_distance=12, min_infected=0):
             min_distance=min_distance,
             min_infected=min_infected,
             log=log,
+            min_per_box=min_per_box,
         )
         if found is None:
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
@@ -563,6 +587,7 @@ def main():
         want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
         dist = int(sys.argv[8]) if len(sys.argv) > 8 else 12
         min_inf = int(sys.argv[9]) if len(sys.argv) > 9 else 0
+        per_box = int(sys.argv[10]) if len(sys.argv) > 10 else 0
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
@@ -571,6 +596,7 @@ def main():
             want,
             dist,
             min_inf,
+            per_box,
         )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
