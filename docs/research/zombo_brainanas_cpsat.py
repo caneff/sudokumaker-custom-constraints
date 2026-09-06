@@ -182,8 +182,9 @@ def build(givens=None, circles=None, cuts=(), seed=0, min_pockets=0, objective=F
             m.Add(x[p] == len(cells)).OnlyEnforceIf(comp)
             opts.append(comp)
         m.AddBoolOr([*opts, ban[p]])
-    for ban_cells, rect_cells in cuts:
-        m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
+    for ban_cells, rect_cells, circle in cuts:
+        if circle is None or circle in (circles or {}):
+            m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
     if min_pockets:
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
         # colour, holding a cell whose digit equals the pocket size.
@@ -238,14 +239,16 @@ def comps(shade, val):
 
 
 def violation(sol, shade, circles):
-    """A cut (banana cells, rect cells) for the first lazy rule this solution breaks, else None."""
+    """A cut (banana cells, rect cells, circle) for the first lazy rule this solution
+    breaks, else None. `circle` is the circle the cut depends on (None for a
+    rectangle-shaped banana): a cut is only valid while that circle is present."""
     for comp in comps(shade, 1 - RECT):
         border = frozenset(q for p in comp for q in nb(p)) - comp
         if isrect(comp):
-            return (comp, border)
+            return (comp, border, None)
         for p in comp:
             if p in circles and sol[p] != len(comp):
-                return (comp, border)
+                return (comp, border, p)
     for comp in comps(shade, RECT):
         assert isrect(comp), "rectangle lemma broken"
     return None
@@ -351,6 +354,9 @@ def generate(seed, sol, shade, log=print):
         if unique(givens, trial, cuts):
             circles = trial
             log(f"drop circle {p}: {len(circles)} circles")
+    assert unique(givens, circles, []), (
+        "stripped puzzle failed a fresh uniqueness proof"
+    )
     return givens, circles
 
 
