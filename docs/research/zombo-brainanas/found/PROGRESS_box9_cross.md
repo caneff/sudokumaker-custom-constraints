@@ -21,3 +21,5 @@ seed 1021: no grid with 2 clued bananas within 1500s
 restarted on stall-stop build 15:23
     round 1: INFEASIBLE in 428s (first feasible None)
 seed 1022: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 317s (first feasible None)
+seed 1023: no grid with 2 clued bananas within 1500s

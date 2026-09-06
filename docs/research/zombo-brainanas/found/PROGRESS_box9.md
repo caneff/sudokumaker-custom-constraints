@@ -41,3 +41,6 @@ restarted on stall-stop build 15:23
     round 1: OPTIMAL in 683s (first feasible 185s)
     valid after 1 rounds, first feasible 185s
 seed 713: 8 circles, 2 clued bananas sizes [6, 7], 30 infected
+    round 1: OPTIMAL in 589s (first feasible 207s)
+    valid after 1 rounds, first feasible 207s
+seed 714: 7 circles, 2 clued bananas sizes [4, 7], 29 infected
