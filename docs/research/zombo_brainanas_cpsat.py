@@ -28,6 +28,7 @@ the other colour and a cell whose digit equals the size.
 # ponytail: research prototype — the shipped generator is a wayfinder decision.
 """
 
+import glob
 import json
 import random
 import sys
@@ -564,7 +565,9 @@ def hunt(
 
     def seen():
         files = sorted(
-            Path().glob(avoid_glob) if avoid_glob else out.glob("full_*.json")
+            map(Path, glob.glob(avoid_glob))  # noqa: PTH207 absolute pattern
+            if avoid_glob
+            else out.glob("full_*.json")
         )
         grids = {}
         for f in files:
