@@ -44,3 +44,18 @@ seed 713: 8 circles, 2 clued bananas sizes [6, 7], 30 infected
     round 1: OPTIMAL in 589s (first feasible 207s)
     valid after 1 rounds, first feasible 207s
 seed 714: 7 circles, 2 clued bananas sizes [4, 7], 29 infected
+    round 1: INFEASIBLE in 402s (first feasible None)
+seed 715: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 354s (first feasible None)
+seed 716: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 361s (first feasible None)
+seed 717: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 349s (first feasible None)
+seed 718: no grid with 2 clued bananas within 1500s
+distance 18 proven infeasible at seed 717; relaunched at 12 16:09
+    round 1: FEASIBLE in 195s (first feasible 46s)
+    valid after 1 rounds, first feasible 46s
+seed 718: 11 circles, 2 clued bananas sizes [6, 7], 26 infected
+    round 1: FEASIBLE in 85s (first feasible 44s)
+    valid after 1 rounds, first feasible 44s
+seed 719: 11 circles, 2 clued bananas sizes [7, 7], 29 infected
