@@ -132,6 +132,7 @@ def build(
     min_infected=0,
     min_circles=0,
     min_per_box=0,
+    min_cross=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -273,6 +274,18 @@ def build(
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
         m.Add(sum(inf[p].Not() if old[p] else inf[p] for p in CELLS) >= min_distance)
+    if min_cross:
+        # Reach: adjacent infected pairs straddling a box border, i.e. rectangles
+        # poking out of their patient zero's box. Known grids score 3-12.
+        pairs = []
+        for p in CELLS:
+            for q in ((p[0] + 1, p[1]), (p[0], p[1] + 1)):
+                if q in CELLS and box(*p) != box(*q):
+                    both = m.NewBoolVar("")
+                    m.AddBoolAnd([inf[p], inf[q]]).OnlyEnforceIf(both)
+                    m.AddBoolOr([inf[p].Not(), inf[q].Not()]).OnlyEnforceIf(both.Not())
+                    pairs.append(both)
+        m.Add(sum(pairs) >= min_cross)
     if min_infected:  # choco/banana balance: bare hunts land at 27-33 infected
         m.Add(sum(inf.values()) >= min_infected)
     return m, x, inf
@@ -344,6 +357,7 @@ def solve_valid(
     log=None,
     stop_at=11,
     min_per_box=0,
+    min_cross=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -364,6 +378,7 @@ def solve_valid(
             min_infected,
             min_circles,
             min_per_box,
+            min_cross,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -475,6 +490,7 @@ def sample(
     min_infected=0,
     log=None,
     min_per_box=0,
+    min_cross=0,
 ):
     """A random valid grid with many circle-able cells and >= min_pockets clued
     bananas, whose shading differs from every shading in `avoid` by >= min_distance cells."""
@@ -488,6 +504,7 @@ def sample(
         min_infected=min_infected,
         log=log,
         min_per_box=min_per_box,
+        min_cross=min_cross,
     )
 
 
@@ -550,6 +567,7 @@ def hunt(
     min_per_box=0,
     do_strip=False,
     avoid_glob=None,
+    min_cross=0,
 ):
     """Overnight: sample seeds needing >= `want` clued bananas, strip each hit.
     `avoid_glob`: where to read earlier shadings from before each seed (default:
@@ -587,6 +605,7 @@ def hunt(
             min_infected=min_infected,
             log=log,
             min_per_box=min_per_box,
+            min_cross=min_cross,
         )
         if found is None:
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
@@ -644,6 +663,7 @@ def main():
         )
         do_strip = bool(int(sys.argv[11])) if len(sys.argv) > 11 else False
         avoid_glob = sys.argv[12] if len(sys.argv) > 12 else None
+        min_cross = int(sys.argv[13]) if len(sys.argv) > 13 else 0
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
@@ -655,6 +675,7 @@ def main():
             per_box,
             do_strip,
             avoid_glob,
+            min_cross,
         )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
