@@ -533,7 +533,15 @@ def dump(path, sol, shade, givens, circles):
 
 
 def hunt(
-    first, last, limit, outdir, want=2, min_distance=12, min_infected=0, min_per_box=0
+    first,
+    last,
+    limit,
+    outdir,
+    want=2,
+    min_distance=12,
+    min_infected=0,
+    min_per_box=0,
+    do_strip=False,
 ):
     """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
     out = Path(outdir)
@@ -572,6 +580,8 @@ def hunt(
         )
         (out / f"grid_{seed}.txt").write_text(show(sol, shade, circles=circ) + "\n")
         dump(out / f"full_{seed}.json", sol, shade, dict(sol), circ)
+        if not do_strip:  # stripping takes hours per grid; sample-only by default
+            continue
         givens, circles = generate(seed, sol, shade, log=lambda s: None)
         dump(out / f"puzzle_{seed}.json", sol, shade, givens, circles)
         (out / f"puzzle_{seed}.txt").write_text(
@@ -606,6 +616,7 @@ def main():
         dist = int(sys.argv[8]) if len(sys.argv) > 8 else 12
         min_inf = int(sys.argv[9]) if len(sys.argv) > 9 else 0
         per_box = int(sys.argv[10]) if len(sys.argv) > 10 else 0
+        do_strip = bool(int(sys.argv[11])) if len(sys.argv) > 11 else False
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
@@ -615,6 +626,7 @@ def main():
             dist,
             min_inf,
             per_box,
+            do_strip,
         )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
