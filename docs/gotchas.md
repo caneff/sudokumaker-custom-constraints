@@ -77,3 +77,30 @@ which is silent data loss. Keep component code lean. **[docs]**
 
 The `?puzzle=` payload is `LZString.compressToEncodedURIComponent(JSON.stringify(document))`.
 Decode with `decompressFromEncodedURIComponent`. See `patterns.md`. **[verified]**
+
+## 9. A region constraint does not give you rows and columns
+
+A board built with `{"type": 1, "regions": [...]}` plus `{"type": 0}` enforces
+**boxes and given digits only**. Rows and columns are not implied, and nothing
+in the app says so: the solver runs, reports times, and counts solutions on a
+puzzle that is not the one you meant. Add them explicitly, the way
+`framebuild.py` does:
+
+```python
+CAGE_STYLE = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
+{"name": "Rows",    "type": 301, "cages": [{"cells": row_cells(r), "value": 0} ...], "style": CAGE_STYLE},
+{"name": "Columns", "type": 301, "cages": [{"cells": col_cells(c), "value": 0} ...], "style": CAGE_STYLE},
+```
+
+This cost three tickets of quad-rank work (#324, #328, #335). Every board went
+to the app box-only, so the app searched a wildly under-constrained puzzle: a
+9x9 with 44 givens that CP-SAT proves unique in 0.01s timed out at 300s, and a
+6x6 whose true count is 2 came back as 5 solutions. Adding rows and columns
+made the same boards finish in 0.0s with the right verdicts. A latin-square
+deduction (quad rank's leading-digit bound) is also *unsound* on such a board,
+so those timings measured a component removing true candidates.
+
+**How to catch it:** decode the link and count solutions independently
+(`proto/ground_truth.mjs`), or tap the solver worker's messages and read the
+grid it calls a solution (`proto/app_solutions.mjs`) — a duplicate digit in a
+row is the tell. **[verified]**
