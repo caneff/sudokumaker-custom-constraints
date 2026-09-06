@@ -38,7 +38,7 @@ from ortools.sat.python import cp_model as cp
 N = 9
 CELLS = [(r, c) for r in range(N) for c in range(N)]
 RECT = 1  # colour whose groups are rectangles: 1 infected, 0 uninfected
-CIRCLE_WEIGHT = 100
+CIRCLE_WEIGHT = 10_000  # > the noise range (~2200), so circles come first
 
 
 def box(r, c):
@@ -200,6 +200,7 @@ def build(
     for ban_cells, rect_cells, circle in cuts:
         if circle is None or circle in (circles or {}):
             m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
+    pocket_clue = []
     if min_pockets:
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
         # colour, holding a cell whose digit equals the pocket size.
@@ -217,6 +218,17 @@ def build(
             m.AddBoolOr(hits).OnlyEnforceIf(b)
             placed.append(b)
         m.Add(sum(placed) >= min_pockets)
+        if objective:
+            # Pocket circles count too: cell p holds k inside a placed k-pocket.
+            by_cell = {}
+            for (cells, _), b in zip(POCKETS, placed, strict=True):
+                for p in cells:
+                    by_cell.setdefault((p, len(cells)), []).append(b)
+            for (p, k), bs in by_cell.items():
+                c = m.NewBoolVar("")
+                m.Add(x[p] == k).OnlyEnforceIf(c)
+                m.AddBoolOr(bs).OnlyEnforceIf(c)
+                pocket_clue.append(c)
     if objective or min_circles:
         # Circle-able rectangle cells: digit equals the area of the rectangle.
         clue = []
@@ -239,7 +251,7 @@ def build(
         noise = sum(rng.randint(0, 3) * x[p] for p in CELLS) + 20 * sum(
             rng.randint(-1, 1) * inf[p] for p in CELLS
         )
-        m.Maximize(CIRCLE_WEIGHT * sum(clue) + noise)
+        m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise)
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
         m.Add(sum(inf[p].Not() if old[p] else inf[p] for p in CELLS) >= min_distance)
@@ -281,6 +293,23 @@ def violation(sol, shade, circles):
     return None
 
 
+class FirstSolution(cp.CpSolverSolutionCallback):
+    """Wall time of the first feasible solution, to tell finding from improving.
+    With `stop_at`, halt once the objective reaches that many circles: on seed 5
+    the solver found a grid at 173s and then improved it until the 400s limit."""
+
+    def __init__(self, stop_at=0):
+        super().__init__()
+        self.at = None
+        self.stop_at = stop_at
+
+    def on_solution_callback(self):
+        if self.at is None:
+            self.at = f"{self.WallTime():.0f}s"
+        if self.stop_at and self.ObjectiveValue() >= CIRCLE_WEIGHT * self.stop_at:
+            self.StopSearch()
+
+
 def solve_valid(
     givens=None,
     circles=None,
@@ -294,11 +323,16 @@ def solve_valid(
     min_distance=12,
     min_infected=0,
     min_circles=0,
+    log=None,
+    stop_at=11,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
     circles = circles or {}
+    hint = exclude[0] if exclude else None  # uniqueness: search near the known solution
+    rounds, first_at = 0, None
     while True:
+        rounds += 1
         m, x, inf = build(
             givens,
             circles,
@@ -319,11 +353,22 @@ def solve_valid(
                 m.Add(x[p] == v).OnlyEnforceIf(d.Not())
                 diffs.append(d)
             m.AddBoolOr(diffs)
+        if hint:
+            for p, v in hint.items():
+                m.AddHint(x[p], v)
         s = cp.CpSolver()
         s.parameters.random_seed = seed
         s.parameters.num_workers = 8
         s.parameters.max_time_in_seconds = limit
-        st = s.Solve(m)
+        cb = FirstSolution(stop_at if objective else 0)
+        st = s.Solve(m, cb)
+        if first_at is None:
+            first_at = cb.at
+        if log:
+            log(
+                f"    round {rounds}: {s.StatusName(st)} in {s.WallTime():.0f}s"
+                f" (first feasible {cb.at})"
+            )
         if st not in (cp.OPTIMAL, cp.FEASIBLE):
             if st == cp.UNKNOWN and objective:
                 return None  # sampling timed out before any feasible grid
@@ -335,8 +380,11 @@ def solve_valid(
         shade = {p: s.Value(inf[p]) for p in CELLS}
         cut = violation(sol, shade, circles)
         if cut is None:
+            if log:
+                log(f"    valid after {rounds} rounds, first feasible {first_at}")
             return sol, shade
         cuts.append(cut)
+        hint = sol  # repair the last grid rather than restart
 
 
 def unique(givens, circles, cuts, limit=300):
@@ -381,7 +429,9 @@ def clued_bananas(sol, shade, circ):
     return [c for c in comps(shade, 1 - RECT) if any(p in circ for p in c)]
 
 
-def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12, min_infected=0):
+def sample(
+    seed, limit=20, min_pockets=0, avoid=(), min_distance=12, min_infected=0, log=None
+):
     """A random valid grid with many circle-able cells and >= min_pockets clued
     bananas, whose shading differs from every shading in `avoid` by >= min_distance cells."""
     return solve_valid(
@@ -392,6 +442,7 @@ def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12, min_infecte
         avoid=avoid,
         min_distance=min_distance,
         min_infected=min_infected,
+        log=log,
     )
 
 
@@ -464,6 +515,7 @@ def hunt(first, last, limit, outdir, want=2, min_distance=12, min_infected=0):
             avoid=seen,
             min_distance=min_distance,
             min_infected=min_infected,
+            log=log,
         )
         if found is None:
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
