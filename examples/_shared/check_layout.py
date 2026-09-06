@@ -10,7 +10,10 @@
 # example in NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt
 # from the first two -- filling every clue is what that name means. It also
 # checks that every link ships exactly the components its own embedded
-# backend registers, so a link cannot go stale behind its builder.
+# backend registers, so a link cannot go stale behind its builder, and that
+# every interior row and column of a sudoku example's board is a house the
+# link actually declares (a region constraint gives boxes only -- see #335 and
+# docs/gotchas.md #9; isofill and fillomino are bare boards and exempt).
 #
 # Links committed outside examples/ (docs/research/fillomino-baseline/'s
 # PUZZLE_LINK.txt and its 19 timing fixtures) are out of scope for this sweep
@@ -70,6 +73,12 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 # must say so (#271); fillomino is not sudoku either (spec #303). Same
 # pattern as NO_LOCAL_GLOBAL_SPLIT above.
 NO_RULES_PREFIX = {"isofill", "fillomino"}
+
+# An example whose board has no houses at all: isofill and fillomino are
+# whole-grid constraints on a bare board, with no row, column or box rule to
+# check (specs #232, #303). Every other example is a sudoku, so every one of
+# its interior rows and columns must be a house the link actually declares.
+NO_HOUSES = {"isofill", "fillomino"}
 
 # `build_original.py` / `build_clued.py` build a hand-derived twin: the same
 # board as another committed link, re-encoded with different wrapper code or
@@ -298,6 +307,75 @@ def check_components(example_dir, link):
     return violations
 
 
+def declared_houses(puzzle):
+    """Every set of cells the document says must hold distinct digits: each
+    group of a region constraint, plus the cells of every cage."""
+    houses = set()
+    for constraint in puzzle.get("constraints", []):
+        groups = {}
+        for i, region in enumerate(constraint.get("regions", [])):
+            if isinstance(region, int) and region >= 0:
+                groups.setdefault(region, []).append(i)
+        houses.update(frozenset(cells) for cells in groups.values())
+        for cage in constraint.get("cages", []):
+            houses.add(frozenset(cage["cells"]))
+    return houses
+
+
+def check_houses(example_dir, link):
+    """Decode `link` and return one violation string per interior row or column
+    that is not a house the document declares.
+
+    A region constraint gives you BOXES ONLY -- rows and columns are not
+    implied, and nothing in the app says so: it solves, times and counts
+    solutions on a board that is not the one you meant. `framebuild.py` ships
+    them as two type-301 cage constraints; a builder that writes its own
+    constraint list has to do the same. This cost three tickets of quad-rank
+    work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
+    a 6x6 whose true count is 2 came back as 5 (#335, docs/gotchas.md #9).
+
+    Interior means the cells a region constraint places in a region -- the ring
+    of a frame board is outside every region and has no house of its own. A
+    board with no region constraint is all interior.
+    """
+    name = example_dir.name
+    if name in NO_HOUSES:
+        return []
+
+    try:
+        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+    except Exception:
+        return []  # check_share_ready reports the decode failure
+
+    width, height = puzzle.get("width"), puzzle.get("height")
+    if not isinstance(width, int) or not isinstance(height, int):
+        return []
+
+    regions = next(
+        (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
+    )
+    inside = (
+        {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
+        if regions is not None
+        else set(range(width * height))
+    )
+
+    houses = declared_houses(puzzle)
+    violations = []
+    for label, lines in (
+        ("row", [[i for i in inside if i // width == r] for r in range(height)]),
+        ("column", [[i for i in inside if i % width == c] for c in range(width)]),
+    ):
+        missing = sum(1 for line in lines if line and frozenset(line) not in houses)
+        if missing:
+            violations.append(
+                f"{name}: {link.name} declares no house for {missing} interior "
+                f"{label}(s) -- a region constraint gives boxes only, so rows and "
+                f"columns need their own constraints (docs/gotchas.md #9)"
+            )
+    return violations
+
+
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
@@ -336,6 +414,7 @@ def check_example(example_dir):
             )
         violations.extend(check_share_ready(example_dir, link))
         violations.extend(check_components(example_dir, link))
+        violations.extend(check_houses(example_dir, link))
 
     return violations
 

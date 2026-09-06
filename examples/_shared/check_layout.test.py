@@ -26,6 +26,7 @@ def _link(
     registers=None,
     note=None,
     full_ring=False,
+    houses="full",
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -40,6 +41,11 @@ def _link(
     backend instantiates, so a case can make the two sets disagree. `note`
     prepends a comment line to the backend, which must not read as a
     registration.
+
+    `houses` shapes the board's house constraints on this 3x3: "full" (the
+    default) is a real board -- three regions, one per row, plus a column cage
+    each; "boxes" drops the column cages, the shape that cost three tickets of
+    quad-rank work (#335); "none" drops both.
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if full_ring:
@@ -61,13 +67,24 @@ def _link(
             "components": [{"type": "code", "name": n, "code": "x"} for n in ships],
         },
     }
+    house_constraints = []
+    if houses in ("full", "boxes"):
+        house_constraints.append({"type": 1, "regions": [0, 0, 0, 1, 1, 1, 2, 2, 2]})
+    if houses == "full":
+        house_constraints.append(
+            {
+                "name": "Columns",
+                "type": 301,
+                "cages": [{"cells": [c, c + 3, c + 6], "value": 0} for c in range(3)],
+            }
+        )
     doc = {
         "puzzle": {
             "width": 3,
             "height": 3,
             "cells": cells,
             "comment": comment,
-            "constraints": [constraint],
+            "constraints": [*house_constraints, constraint],
         }
     }
     return encode_link(doc)
@@ -362,6 +379,39 @@ if __name__ == "__main__":
         files=fillomino_files,
         name="fillomino",
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # a link with boxes but no column houses fails: a region constraint gives
+    # boxes only, and the app solves the under-constrained board without a
+    # word (#335)
+    with example(contents={"PUZZLE_LINK.txt": _link(houses="boxes")}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "PUZZLE_LINK.txt" in violations[0]
+        assert "3 interior column(s)" in violations[0], violations[0]
+
+    # a link with no houses at all fails on both rows and columns
+    with example(contents={"PUZZLE_LINK.txt": _link(houses="none")}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        assert any("interior row(s)" in v for v in violations), violations
+        assert any("interior column(s)" in v for v in violations), violations
+
+    # isofill and fillomino are exempt: whole-grid constraints on a bare
+    # board, with no row, column or box rule to declare (#232, #303)
+    with example(
+        files=missing,
+        name="isofill",
+        contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+    with example(
+        files=fillomino_files,
+        name="fillomino",
+        contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
