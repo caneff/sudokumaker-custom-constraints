@@ -286,6 +286,8 @@ def solve_valid(
         if st not in (cp.OPTIMAL, cp.FEASIBLE):
             if st == cp.UNKNOWN and objective:
                 return None  # sampling timed out before any feasible grid
+            if st == cp.UNKNOWN:
+                raise TimeoutError("uniqueness search hit the time limit")
             assert st == cp.INFEASIBLE, f"solver status {s.StatusName(st)}"
             return None
         sol = {p: s.Value(x[p]) for p in CELLS}
@@ -296,11 +298,17 @@ def solve_valid(
         cuts.append(cut)
 
 
-def unique(givens, circles, cuts):
-    """True iff exactly one valid solution."""
-    first = solve_valid(givens, circles, cuts)
-    assert first is not None, "no solution"
-    return solve_valid(givens, circles, cuts, exclude=[first[0]]) is None
+def unique(givens, circles, cuts, limit=300):
+    """True iff exactly one valid solution is proved. A time limit counts as
+    not proved, so a stripper that trusts this keeps the given: sound, never lean."""
+    try:
+        first = solve_valid(givens, circles, cuts, limit=limit)
+        assert first is not None, "no solution"
+        return (
+            solve_valid(givens, circles, cuts, exclude=[first[0]], limit=limit) is None
+        )
+    except TimeoutError:
+        return False
 
 
 def show(sol, shade, givens=None, circles=None):
