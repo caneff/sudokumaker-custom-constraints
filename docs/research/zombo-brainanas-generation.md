@@ -46,7 +46,8 @@ Three approaches, in the order tried:
    pockets, then fill digits): fast to draw, but every pattern was unfillable.
    A shading that ignores where patient zeros can go is almost never realisable.
 3. **Exact pocket placement in the joint model** — the one that works. A
-   library of the 293 fixed non-rectangular polyominoes of 3–6 cells, each
+   library of the fixed non-rectangular polyominoes of 3–MAX_POCKET cells
+   (293 up to size 6, 1,051 up to size 7), each
    placement a boolean meaning "these cells uninfected, the whole border
    infected, one cell's digit equals the size"; require ≥ *k* placements.
    Two clued brainanas in ~70 s per seed, three on the first seed asked.
@@ -57,10 +58,16 @@ Random weights on digits alone converge on one shading with permuted digits
 (seeds 200 and 201 had identical shading). The sampler now also puts random
 weights on the shading and requires every new grid to differ from each earlier
 grid in the batch by ≥ 12 cells (Hamming distance on infection status). A
-two-pocket grid ≥ 12 cells from seed 0 exists. **Three clued brainanas (3–6
-cell pockets) are nearly unique:** CP-SAT proves no three-pocket grid exists
-≥ 12 cells from seed 200's shading, while ≥ 8 is feasible. The three-pocket
-hunt runs at distance 8.
+two-pocket grid ≥ 12 cells from seed 0 exists.
+
+**The pocket library's size cap matters.** With pockets capped at 6 cells,
+CP-SAT proves no three-pocket grid exists ≥ 12 cells from seed 200's shading
+(≥ 8 is feasible) — which looked like "three clued brainanas is one puzzle up
+to small variations". Adding the 758 size-7 polyominoes (29,722 placements)
+finds a three-pocket grid ≥ 12 cells away, pockets 4, 5 and 7, in 436 s on 16
+threads (`zombo-brainanas/three_size7.json`). So the near-uniqueness was the
+cap, not the ruleset. The generator's default cap is now 7; size 8–9 pockets
+(2,725 and 9,910 shapes) are still uncovered.
 
 ## Stripping lessons `[verified]`
 

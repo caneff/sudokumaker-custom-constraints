@@ -22,8 +22,8 @@ banana has the wrong size) add a cut forbidding exactly that component pattern
 cut excludes only invalid solutions, so uniqueness proofs stay exact. A circle
 in a rectangle is exact: some rectangle of area == digit around it is the
 component. Clued bananas are requested exactly: a library of small
-non-rectangular polyominoes placed with a full border of the other colour and
-a cell whose digit equals the size.
+non-rectangular polyominoes (3..MAX_POCKET cells) placed with a full border of
+the other colour and a cell whose digit equals the size.
 
 # ponytail: research prototype — the shipped generator is a wayfinder decision.
 """
@@ -97,10 +97,13 @@ def polyominoes(max_size=6):
     return out
 
 
-def placements():
+MAX_POCKET = 7  # 6 misses real grids (see the generation note); 7 costs ~4x solve time
+
+
+def placements(max_size=MAX_POCKET):
     """Every placement of a pocket shape as (cells, border)."""
     out = []
-    for sh in polyominoes():
+    for sh in polyominoes(max_size):
         h = max(r for r, _ in sh) + 1
         w = max(c for _, c in sh) + 1
         for r0 in range(N - h + 1):
