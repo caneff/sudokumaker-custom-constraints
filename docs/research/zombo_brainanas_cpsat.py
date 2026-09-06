@@ -127,6 +127,7 @@ def build(
     objective=False,
     avoid=(),
     min_distance=12,
+    min_infected=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -238,6 +239,8 @@ def build(
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
         m.Add(sum(inf[p].Not() if old[p] else inf[p] for p in CELLS) >= min_distance)
+    if min_infected:  # choco/banana balance: bare hunts land at 27-33 infected
+        m.Add(sum(inf.values()) >= min_infected)
     return m, x, inf
 
 
@@ -285,13 +288,22 @@ def solve_valid(
     objective=False,
     avoid=(),
     min_distance=12,
+    min_infected=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
     circles = circles or {}
     while True:
         m, x, inf = build(
-            givens, circles, cuts, seed, min_pockets, objective, avoid, min_distance
+            givens,
+            circles,
+            cuts,
+            seed,
+            min_pockets,
+            objective,
+            avoid,
+            min_distance,
+            min_infected,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -363,7 +375,7 @@ def clued_bananas(sol, shade, circ):
     return [c for c in comps(shade, 1 - RECT) if any(p in circ for p in c)]
 
 
-def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12):
+def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12, min_infected=0):
     """A random valid grid with many circle-able cells and >= min_pockets clued
     bananas, whose shading differs from every shading in `avoid` by >= min_distance cells."""
     return solve_valid(
@@ -373,6 +385,7 @@ def sample(seed, limit=20, min_pockets=0, avoid=(), min_distance=12):
         objective=True,
         avoid=avoid,
         min_distance=min_distance,
+        min_infected=min_infected,
     )
 
 
@@ -423,7 +436,7 @@ def dump(path, sol, shade, givens, circles):
     )
 
 
-def hunt(first, last, limit, outdir, want=2, min_distance=12):
+def hunt(first, last, limit, outdir, want=2, min_distance=12, min_infected=0):
     """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
     out = Path(outdir)
     out.mkdir(exist_ok=True)
@@ -439,7 +452,12 @@ def hunt(first, last, limit, outdir, want=2, min_distance=12):
     ]
     for seed in range(first, last):
         found = sample(
-            seed, limit, min_pockets=want, avoid=seen, min_distance=min_distance
+            seed,
+            limit,
+            min_pockets=want,
+            avoid=seen,
+            min_distance=min_distance,
+            min_infected=min_infected,
         )
         if found is None:
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
@@ -450,7 +468,7 @@ def hunt(first, last, limit, outdir, want=2, min_distance=12):
         pockets = clued_bananas(sol, shade, circ)
         log(
             f"seed {seed}: {len(circ)} circles, {len(pockets)} clued bananas"
-            f" sizes {sorted(len(c) for c in pockets)}"
+            f" sizes {sorted(len(c) for c in pockets)}, {sum(shade.values())} infected"
         )
         (out / f"grid_{seed}.txt").write_text(show(sol, shade, circles=circ) + "\n")
         dump(out / f"full_{seed}.json", sol, shade, dict(sol), circ)
@@ -486,6 +504,7 @@ def main():
         RECT = int(sys.argv[6]) if len(sys.argv) > 6 else 1
         want = int(sys.argv[7]) if len(sys.argv) > 7 else 2
         dist = int(sys.argv[8]) if len(sys.argv) > 8 else 12
+        min_inf = int(sys.argv[9]) if len(sys.argv) > 9 else 0
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
@@ -493,6 +512,7 @@ def main():
             sys.argv[5],
             want,
             dist,
+            min_inf,
         )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
