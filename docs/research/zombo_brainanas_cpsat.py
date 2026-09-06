@@ -548,8 +548,12 @@ def hunt(
     min_infected=0,
     min_per_box=0,
     do_strip=False,
+    avoid_glob=None,
 ):
-    """Overnight: sample seeds needing >= `want` clued bananas, strip each hit."""
+    """Overnight: sample seeds needing >= `want` clued bananas, strip each hit.
+    `avoid_glob`: where to read earlier shadings from before each seed (default:
+    this outdir); several arms hunting the same class share one via a glob, or
+    two arms converge on the same grid from different noise (seeds 704 and 900)."""
     out = Path(outdir)
     out.mkdir(exist_ok=True)
     progress = out / "PROGRESS.md"
@@ -558,16 +562,24 @@ def hunt(
         with progress.open("a") as fh:
             fh.write(line + "\n")
 
-    seen = [
-        {p: int(d["infected"][p[0]][p[1]] == "*") for p in CELLS}
-        for d in (json.loads(f.read_text()) for f in sorted(out.glob("full_*.json")))
-    ]
+    def seen():
+        files = sorted(
+            Path().glob(avoid_glob) if avoid_glob else out.glob("full_*.json")
+        )
+        grids = {}
+        for f in files:
+            d = json.loads(f.read_text())
+            grids["".join(d["infected"])] = {
+                p: int(d["infected"][p[0]][p[1]] == "*") for p in CELLS
+            }
+        return list(grids.values())
+
     for seed in range(first, last):
         found = sample(
             seed,
             limit,
             min_pockets=want,
-            avoid=seen,
+            avoid=seen(),
             min_distance=min_distance,
             min_infected=min_infected,
             log=log,
@@ -577,7 +589,6 @@ def hunt(
             log(f"seed {seed}: no grid with {want} clued bananas within {limit}s")
             continue
         sol, shade = found
-        seen.append(shade)
         circ = circle_candidates(sol, shade)
         pockets = clued_bananas(sol, shade, circ)
         log(
@@ -629,6 +640,7 @@ def main():
             else int(per_box)
         )
         do_strip = bool(int(sys.argv[11])) if len(sys.argv) > 11 else False
+        avoid_glob = sys.argv[12] if len(sys.argv) > 12 else None
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
@@ -639,6 +651,7 @@ def main():
             min_inf,
             per_box,
             do_strip,
+            avoid_glob,
         )
     elif cmd == "strip":
         d = json.loads(Path(sys.argv[2]).read_text())
