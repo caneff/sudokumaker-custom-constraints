@@ -34,3 +34,21 @@ seed 914: no grid with 2 clued bananas within 1500s
 seed 915: no grid with 2 clued bananas within 1500s
     round 1: INFEASIBLE in 190s (first feasible None)
 seed 916: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 243s (first feasible None)
+seed 917: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 206s (first feasible None)
+seed 918: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 176s (first feasible None)
+seed 919: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 233s (first feasible None)
+seed 920: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 234s (first feasible None)
+seed 921: no grid with 2 clued bananas within 1500s
+distance 18 proven infeasible on every seed; relaunched at distance 12 15:06
+    round 1: OPTIMAL in 230s (first feasible 190s)
+    valid after 1 rounds, first feasible 190s
+seed 920: 10 circles, 2 clued bananas sizes [7, 7], 26 infected
+    round 1: INFEASIBLE in 245s (first feasible None)
+seed 921: no grid with 2 clued bananas within 1500s
+    round 1: INFEASIBLE in 188s (first feasible None)
+seed 922: no grid with 2 clued bananas within 1500s
