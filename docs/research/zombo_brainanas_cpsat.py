@@ -252,6 +252,9 @@ def build(
                 m.Add(x[p] == len(cells)).OnlyEnforceIf(hit)
                 clue.append(hit)
                 clue_at.append(((p, len(cells)), hit))
+        m.circle_at = {}  # cell -> bools, one per way the cell can be a circle
+        for (p, _), h in clue_at + pocket_at:
+            m.circle_at.setdefault(p, []).append(h)
     if min_circles:  # rectangle circles only; pocket circles come on top
         m.Add(sum(clue) >= min_circles)
     if min_per_box:  # spread: box b carries >= min_per_box[b] circles (int = every box)
