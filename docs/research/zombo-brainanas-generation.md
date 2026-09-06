@@ -96,3 +96,21 @@ size). Pockets of 4 (top right), 5 (bottom left) and 6 (the elbow at r6c6).
 uv run --with ortools docs/research/zombo_brainanas_cpsat.py hunt 200 240 900 out 1 3
 python3 docs/research/zombo_brainanas_render.py out/full_200.json seed200.png
 ```
+
+## gdc's clue kit across the series
+
+Source: the four LMD puzzles found by the "Norma L. Dokes" search (tinyurl.com/normaldokes).
+
+| Puzzle | Genre | Clues beyond patient zeros |
+|---|---|---|
+| Patient Zeroes, 000PUV | path | Microscopes on the path count infected cells among the surrounding 9. Kropki Tablets join consecutive uninfected digits. |
+| Under the Microscope, 000PXK | Cave | Detector Cells: a blue-circled digit is uninfected and counts infected cells among its 8 neighbours. Germy Whispers join two infected digits differing by ≥5. Cocci Dots join consecutive uninfected digits. |
+| Spill The Genes, 000Q02 | Nurikabe | Detector Cells. Cocci Dots join uninfected digits differing by the number of dots. |
+| See The Symptoms, 000SDK | none, 6x6 | Internal X-Sums: a diamond digit is uninfected, counts uninfected digits seen in row and column (infected cells block), the number beside sums them. |
+
+Patterns: every counting clue is pinned uninfected, so it is a shading given
+first; every dot joins two uninfected digits. Our Cluster circle is neutral by
+choice. A dot that carries a shading relation on both sides (white: consecutive
+and same status; black: 1:2 and different status, which with the spread rule
+forces the smaller digit infected and the larger not) would be new to the series.
+Germy Whispers already covers the German-whisper half of the Renbanana idea.
