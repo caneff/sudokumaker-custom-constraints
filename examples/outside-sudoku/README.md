@@ -70,7 +70,7 @@ line as its window. That is weaker than the rule, never unsound.
 | `outside_rule.py` | The window rule in Python: both window measures and the CP-SAT membership post |
 | `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9 |
 | `rebuild_size.py` | Re-encode a sized link from its recorded seed, no fresh search |
-| `verify.py` | CP-SAT proof that a board has one solution |
+| `verify.py` (+ test) | CP-SAT proof that a board has one solution |
 | `PUZZLE_LINK.txt`, `gen.json` | The shipped board, on the global lane (see below) |
 | `PUZZLE_LINK_local.txt`, `gen_local.json` | The same frame, on the local lane |
 | `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The smaller boards and their seed data |
@@ -211,10 +211,11 @@ argument.
     node examples/outside-sudoku/backends.test.mjs
     uv run --with lzstring examples/outside-sudoku/build_link.test.py
     uv run --with lzstring examples/outside-sudoku/build_size.test.py
+    uv run --with lzstring --with ortools examples/outside-sudoku/verify.test.py
 
-All of these run under `just check`. None needs OR-Tools: `framebuild` imports
-the solver inside its search, so the clue functions, the document assembly and
-the rebuild all reach a test with `lzstring` alone.
+All of these run under `just check`. Only `verify.test.py` needs OR-Tools:
+`framebuild` imports the solver inside its search, so the clue functions, the
+document assembly and the rebuild all reach a test with `lzstring` alone.
 
 ## Timing
 
