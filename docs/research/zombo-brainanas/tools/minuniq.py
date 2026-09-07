@@ -1,13 +1,13 @@
 """Minimal clue set (irreducible, greedy) that makes one found fill the unique solution, using only circles, white dots
 and black dots, no givens, no negative constraint on dots. r9c7, r9c9 and the opener white dot r4c6-r5c6 are always kept.
-usage: minuniq.py <found name> [limit] -> hunt/minuniq/<name>.json + PROGRESS.md"""
+usage: minuniq.py <found name> [limit] Dots are stripped first with every circle kept, then circles. -> hunt/minuniq/<name>.json + PROGRESS.md"""
 import sys, os, json, time
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/minuniq/"; os.makedirs(OUT, exist_ok=True)
 F = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/"
-name = sys.argv[1]; limit = int(sys.argv[2]) if len(sys.argv) > 2 else 120
+name = sys.argv[1]; tag = "_nb" if os.environ.get("NO_BLACK") else ""; limit = int(sys.argv[2]) if len(sys.argv) > 2 else 120
 zb.WORKERS = int(os.environ.get("ZB_WORKERS", zb.WORKERS)); zb.BIG_POCKET_CELLS = None  # any pocket may carry a circle
 d = json.load(open(F + name + ".json"))
 sol = {(r, c): int(d["grid"][r][c]) for r in range(9) for c in range(9)}
@@ -22,9 +22,11 @@ for p in zb.CELLS:
         if shade[p] != shade[q]:
             i, u = (p, q) if shade[p] else (q, p)
             if sol[u] == 2 * sol[i]: items[("b", p, q)] = 1
+if os.environ.get("NO_BLACK"):  # circles + white dots only
+    items = {k: v for k, v in items.items() if k[0] != "b"}
 keep = {("c", A), ("c", B), ("w", *OPEN)}
 assert keep <= set(items), "opener or box-9 circles missing on this fill"
-def log(line): open(OUT + "PROGRESS.md", "a").write(f"{name}: {line}\n")
+def log(line): open(OUT + "PROGRESS.md", "a").write(f"{name}{tag}: {line}\n")
 def fmt(k): return (f"r{k[1][0]+1}c{k[1][1]+1}" if k[0] == "c" else f"{'white' if k[0]=='w' else 'black'} r{k[1][0]+1}c{k[1][1]+1}-r{k[2][0]+1}c{k[2][1]+1}")
 _build = zb.build
 current = {}
@@ -55,8 +57,11 @@ def test(trial):
 log(f"start: {len(items)} candidate clues ({sum(k[0]=='c' for k in items)} circles, {sum(k[0]=='w' for k in items)} white, {sum(k[0]=='b' for k in items)} black)")
 if not test(items):
     log("NOT UNIQUE even with every clue"); sys.exit(0)
-final = zb.strip(items, keep, test)
+# phase 1: strip dots while every circle stays; phase 2: strip circles
+after_dots = zb.strip(items, keep | {k for k in items if k[0] == "c"}, test)
+log(f"dots minimal: {sum(k[0] != 'c' for k in after_dots)} dots kept with all circles: " + ", ".join(fmt(k) for k in after_dots if k[0] != "c"))
+final = zb.strip(after_dots, keep, test)
 log(f"MINIMAL {len(final)} clues after {tests[0]} tests: " + ", ".join(fmt(k) for k in final))
 json.dump({"fill": name, "clues": [fmt(k) for k in final], "circles": [list(k[1]) for k in final if k[0] == "c"],
            "white": [[*k[1], *k[2]] for k in final if k[0] == "w"], "black": [[*k[1], *k[2]] for k in final if k[0] == "b"]},
-          open(OUT + name + ".json", "w"), indent=1)
+          open(OUT + name + tag + ".json", "w"), indent=1)

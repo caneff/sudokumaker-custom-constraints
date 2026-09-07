@@ -210,3 +210,7 @@ the objective, so an optimizing hunt may pick a slightly worse fill.
 proofs): circles r9c7, r9c9; white r4c6–r5c6 (opener), r1c8–r2c8; black
 r1c7–r2c7, r5c2–r6c2, r8c2–r9c2. Dots are positive-only clues (no negative
 constraint). Result in `unique/pair99g4_UI_w3_s0.json`.
+Circles + white dots only (`NO_BLACK=1`, dots stripped first): 9 clues —
+circles r9c7, r9c9, r3c1, r6c9, r7c4, r9c2; white r4c6–r5c6, r3c6–r4c6,
+r2c8–r2c9. With all nine circles, four white dots suffice (those three plus
+r9c5–r9c6). `unique/pair99g4_UI_w3_s0_nb.json`.
