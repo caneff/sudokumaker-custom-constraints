@@ -138,6 +138,7 @@ def build(
     min_per_box=0,
     min_cross=0,
     big_pocket_cells=None,
+    shade=None,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -194,6 +195,8 @@ def build(
         m.AddBoolOr([rect[q] for q in cells] + [ban[q] for q in border])
     for p, v in (givens or {}).items():
         m.Add(x[p] == v)
+    for p, v in (shade or {}).items():  # template: fix the shading of these cells
+        m.Add(inf[p] == v)
     for p, v in (circles or {}).items():
         if v is not None:
             m.Add(x[p] == v)
@@ -211,7 +214,14 @@ def build(
         m.AddBoolOr([*opts, ban[p]])
     for ban_cells, rect_cells, circle in cuts:
         if circle is None or circle in (circles or {}):
-            m.AddBoolOr([rect[q] for q in ban_cells] + [ban[q] for q in rect_cells])
+            lits = [rect[q] for q in ban_cells] + [ban[q] for q in rect_cells]
+            if circle is not None and (circles or {})[circle] is None:
+                # Open circle: the shape may stay if its digit becomes the size.
+                e = m.NewBoolVar("")
+                m.Add(x[circle] == len(ban_cells)).OnlyEnforceIf(e)
+                m.Add(x[circle] != len(ban_cells)).OnlyEnforceIf(e.Not())
+                lits.append(e)
+            m.AddBoolOr(lits)
     pocket_clue, pocket_at = [], []
     if min_pockets:
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
@@ -408,6 +418,7 @@ def solve_valid(
     min_per_box=0,
     min_cross=0,
     stall=60,
+    shade=None,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -429,6 +440,7 @@ def solve_valid(
             min_circles,
             min_per_box,
             min_cross,
+            shade=shade,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
