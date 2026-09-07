@@ -27,7 +27,7 @@ Two attempts, one that works:
 | brainanas | verdict | time |
 |---|---|---|
 | 5 | FEASIBLE | 20 s, grid `found/groups_5` (sizes 21, 12, 7, 6, 5) |
-| 6 | unknown | 600 s timeout at 8 workers; 1 h run at 16 workers pending |
+| 6 | unknown | 600 s timeout at 8 workers, then 3600 s timeout at 16 workers (`scratch-zombo/hunt/plant/six.log`) |
 
 Before this the record across every arm was 4 (5 grids of 195). The
 `pairpock` arm (37 grids) maximized the library count and never beat 4.
