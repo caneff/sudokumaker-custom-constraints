@@ -186,3 +186,6 @@ Three pockets, UI: six seeds all land (`found/pair99ring_UI_*_g3`, 8–11
 circles, 25–32 chocolate). Four pockets: exactly one shading at distance ≥ 12
 (`pair99ring_UI_w3_s0_g4`, 9 circles, 35 chocolate, pockets 24/9/8/5, opener
 dot white r4c6–r5c6); the second seed is infeasible.
+Aliases (sync dedupes by grid): the 4-pocket hit is `found/pair99g4_UI_w3_s0`
+and the 3-pocket s0 is `found/pair99b8d1_UI_w3_s0`; both already carried the
+r4c6–r5c6 white dot.
