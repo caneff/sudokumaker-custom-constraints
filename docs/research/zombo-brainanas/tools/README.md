@@ -36,3 +36,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `pocket4.py` — circles r9c7 r8c9 r6c8, one forced white dot, shading free, at least four pockets: 4POCKET or NO4.
 - `pair99b8d1.py` — r9c7 + r9c9 UI, at least two circles in box 8, a black dot on some edge inside box 1, optional pocket floor.
 - `pair99b68.py` — r9c7 + r9c9, black dot inside box 1 or 2, a circle in box 6 off row 6 and one in box 8 off column 6, pocket floor.
+- `pair99ring.py` — r9c7 + r9c9 UI with the opener kropki: a white or black dot on a domino touching r5c6–r5c9 or r6c5, the cells outside the 7-cell green block that r9c7 = 9 would force; pocket floor.

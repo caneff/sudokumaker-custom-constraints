@@ -175,3 +175,14 @@ three-pocket space at that spacing.
 Four pockets infeasible for both UI and IU (proofs). Three pockets, UI: six
 seeds all land (`found/pair99b68_UI_*_g3`, 7–10 circles, 25–32 chocolate); the
 box-6 circle sits at r4c8, r4c9 or r5c8, the box-8 one at r7c5 or r9c4.
+
+## Opener: r9c7 + r9c9 with a kropki on the would-be green ring
+
+Chris's opener: if r9c7 were 9, r7–9 c6–8 is chocolate and r6c6–r6c9 +
+r7c9–r9c9 are a 7-cell green block; any kropki domino adjacent to that block
+grows it past what r9c9 can circle, so the 9 dies. `tools/pair99ring.py`
+requires a white or black dot on a domino with a cell in r5c6–r5c9 or r6c5.
+Three pockets, UI: six seeds all land (`found/pair99ring_UI_*_g3`, 8–11
+circles, 25–32 chocolate). Four pockets: exactly one shading at distance ≥ 12
+(`pair99ring_UI_w3_s0_g4`, 9 circles, 35 chocolate, pockets 24/9/8/5, opener
+dot white r4c6–r5c6); the second seed is infeasible.
