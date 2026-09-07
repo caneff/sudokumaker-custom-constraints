@@ -31,3 +31,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `tri68sweep.py` — same circles, one forced white-dot edge per run; sweep of rows 6–9 cols 4–6 (results in `probes/tri68w/sweep.txt`).
 - `tri3.py` — circles r9c7 + r8c9 + r6c8, kind = shading of (r9c7, r8c9), circles + chocolate maximized.
 - `tri3w66.py` — as tri3 with a white dot on some edge of r6c6 (solver picks the edge).
+- `tri3wdot.py` — as tri3 with a forced white dot on one named edge (e.g. `UI r6c5 r7c5`).

@@ -99,3 +99,8 @@ on some edge of r6c6 (`tools/tri3w66.py`): **UI is infeasible** (17 s proof),
 IU gives four grids (`found/tri3w66_IU_*`), the dot landing on r5c6–r6c6 or
 r6c6–r6c7. So a white dot at r6c6 pins IU here (r9c7 infected, r8c9
 uninfected), not UI.
+
+With the white dot forced on r6c5–r7c5 instead (`tools/tri3wdot.py`): IU is
+infeasible, UI gives three grids (`found/tri3wdot_r6c5r7c5_UI_*`, 10/9/9
+circles, 32/29/29 chocolate, two pockets each). So r6c6 pins IU and r6c5–r7c5
+pins UI for this circle triple.
