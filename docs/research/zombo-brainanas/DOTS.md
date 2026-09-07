@@ -189,3 +189,8 @@ dot white r4c6–r5c6); the second seed is infeasible.
 Aliases (sync dedupes by grid): the 4-pocket hit is `found/pair99g4_UI_w3_s0`
 and the 3-pocket s0 is `found/pair99var_UI_w3_s0`; both already carried the
 r4c6–r5c6 white dot.
+Correction: the g4 run's distance-12 spacing hid the other three four-pocket
+shadings. Over the exhaustive 36 fills, 28 carry an opener kropki: the
+pair99g4_UI_w3_s0 and n1 shadings in every fill (white r4c6–r5c6, often plus
+black r5c8–r6c8), the n0 and n2 shadings in 8 of 12 fills each (black
+r6c4–r6c5 and/or black r5c8–r6c8 only). No fill of n0/n2 has a white opener.
