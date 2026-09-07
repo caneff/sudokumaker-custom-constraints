@@ -147,8 +147,12 @@ def build(
     bonus_edges=None,
     pocket_weight=0,
     min_groups=0,
+    dots=None,
 ):
-    """The model. givens {cell: digit}; circles {cell: digit or None}."""
+    """The model. givens {cell: digit}; circles {cell: digit or None}.
+    dots: None (no dot rule) or the set of dotted edges {frozenset({p, q})}: a
+    black dot joins an infected cell and an uninfected neighbour in 1:2 ratio
+    (the uninfected one is the double), and every other edge is not such a pair."""
     m = cp.CpModel()
     x = {p: m.NewIntVar(1, 9, f"x{p}") for p in CELLS}
     inf = {p: m.NewBoolVar(f"i{p}") for p in CELLS}
@@ -205,6 +209,17 @@ def build(
         m.Add(x[p] == v)
     for p, v in (fix_shade or {}).items():  # template: fix the shading of these cells
         m.Add(inf[p] == v)
+    if dots is not None:
+        for p in CELLS:
+            for q in nb(p):
+                if q < p:
+                    continue
+                for a, b in ((p, q), (q, p)):  # a infected, b not
+                    if frozenset((p, q)) in dots:
+                        m.Add(inf[a] != inf[b])
+                        m.Add(x[b] == 2 * x[a]).OnlyEnforceIf([inf[a], inf[b].Not()])
+                    else:
+                        m.Add(x[b] != 2 * x[a]).OnlyEnforceIf([inf[a], inf[b].Not()])
     for p, v in (circles or {}).items():
         if v is not None:
             m.Add(x[p] == v)
@@ -498,6 +513,7 @@ def solve_valid(
     bonus_edges=None,
     pocket_weight=0,
     min_groups=0,
+    dots=None,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -524,6 +540,7 @@ def solve_valid(
             bonus_edges=bonus_edges,
             pocket_weight=pocket_weight,
             min_groups=min_groups,
+            dots=dots,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -571,13 +588,16 @@ def solve_valid(
         hint = sol  # repair the last grid rather than restart
 
 
-def unique(givens, circles, cuts, limit=300, known=None):
+def unique(givens, circles, cuts, limit=300, known=None, dots=None):
     """True iff exactly one valid solution is proved. A time limit counts as
     not proved, so a stripper that trusts this keeps the given: sound, never lean.
     `known`: a solution already in hand, so only the second-solution search runs."""
     try:
-        first = known or solve_valid(givens, circles, cuts, limit=limit)[0]
-        return solve_valid(givens, circles, cuts, exclude=[first], limit=limit) is None
+        first = known or solve_valid(givens, circles, cuts, limit=limit, dots=dots)[0]
+        return (
+            solve_valid(givens, circles, cuts, exclude=[first], limit=limit, dots=dots)
+            is None
+        )
     except TimeoutError:
         return False
 

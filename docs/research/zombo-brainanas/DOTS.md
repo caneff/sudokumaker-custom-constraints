@@ -10,8 +10,11 @@ double. Replaces Cocci Dots (consecutive uninfected digits).
 
 - Shading is derived from the digits, so every clue is a digit clue. Circles
   say "this group has size N"; with five brainanas most groups are large and
-  the box-9 sweep for one circle (`tools/pairone5.py`, 16 cases) returned only
-  INFEASIBLE / UNKNOWN in its first 8 cases, no grid.
+  the box-9 sweep for one circle (`tools/pairone5.py`, 16 cases, 400 s each,
+  4 workers) was cut after 11 cases: 7 INFEASIBLE, 4 UNKNOWN, no grid
+  (`found/PROGRESS_pairone5.md`; the two shard logs interleave, so per-case
+  attribution is not recorded). Chris scrapped the 5-brainana line on
+  2026-09-07 ("scrap the idea of the 5 brainana for now"); no more hunting.
 - Cocci Dots mark two uninfected cells, the default state in a brainana-heavy
   grid, and add kropki information only. A boundary dot marks a rectangle
   edge, which is where the propagation research puts the deductions.
@@ -31,7 +34,10 @@ white-style (+1) pairs.
 
 ## Open
 
-- Uniqueness with dots as the only non-given clue: not measured yet. Next step
-  in #345: add a dot term to the CP-SAT model (every 1:2 boundary pair is a
-  dot, negative constraint for undotted boundary edges) and count how few dots
-  plus givens make the grid unique.
+- Uniqueness from circles plus dots with **no givens** (Chris: circles stay,
+  they are what makes it feel like Choco Banana): not measured yet. The model
+  now takes `dots=` (`zombo_brainanas_cpsat.py`: a dotted edge is opposite
+  shading with the uninfected digit double the infected one; every undotted
+  edge forbids that pair), so `unique({}, circles, [], known=sol, dots=D)` is
+  the test. Candidate grids by circles/dots: `probe_circ13` (13/5),
+  `dist25_400` (12/8), `probe_bal37` and `box9_704` (11/9).
