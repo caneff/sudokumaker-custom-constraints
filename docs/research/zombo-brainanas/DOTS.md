@@ -148,3 +148,12 @@ other 20 killers are NO4 by proof.
 
 Ops note: two WSL crashes today came from running 7 solvers whose per-process
 caps summed past the VM's memory. Keep it to two solvers at a time.
+
+## UI r9c7 + r9c9, 4 pockets, circles in boxes 6 and 8, none in r6 of box 6
+
+Filter over the exhaustive 36 fills of the 4 UI four-pocket shadings: **none**.
+Every fill has exactly one box-6 circle and it is in row 6: rows 4–5 of box 6
+are part of a rectangle wider than the box (no digit can circle it), and
+r6c7–r6c9 belong to r9c7's 8-pocket, whose second 8 lands there. Box 8 has 1–2
+circles in every fill. Library caveat as usual (pockets > 9 cells only next to
+box 9).
