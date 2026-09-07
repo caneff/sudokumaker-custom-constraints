@@ -140,6 +140,7 @@ def build(
     big_pocket_cells=None,
     fix_shade=None,
     bonus=None,
+    bonus_edges=None,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -320,6 +321,13 @@ def build(
         # bonus {cell: weight}: extra objective on infected cells, e.g. chocolate
         # in the upper-left quadrant so boxes 1-2 are not all banana.
         extra = sum(w * inf[p] for p, w in (bonus or {}).items())
+        # bonus_edges {(p, q): weight}: reward neighbours of different shading,
+        # i.e. many small groups of both colours where deductions live.
+        for (p, q), w in (bonus_edges or {}).items():
+            d = m.NewBoolVar("")
+            m.Add(inf[p] != inf[q]).OnlyEnforceIf(d)
+            m.Add(inf[p] == inf[q]).OnlyEnforceIf(d.Not())
+            extra += w * d
         m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise + extra)
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
@@ -440,6 +448,7 @@ def solve_valid(
     stall=60,
     fix_shade=None,
     bonus=None,
+    bonus_edges=None,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -463,6 +472,7 @@ def solve_valid(
             min_cross,
             fix_shade=fix_shade,
             bonus=bonus,
+            bonus_edges=bonus_edges,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
