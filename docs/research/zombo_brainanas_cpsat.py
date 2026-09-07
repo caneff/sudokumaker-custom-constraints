@@ -119,6 +119,9 @@ def placements(max_size=MAX_POCKET):
 RECTS = rects()
 ALL_RECTS = rects(81)
 POCKETS = placements()
+BIG_POCKET_CELLS = (
+    None  # hunt CLI: keep 8/9-cell pockets only where they touch these cells
+)
 
 
 def build(
@@ -224,6 +227,8 @@ def build(
             return eq[p, k]
 
         pockets = POCKETS
+        if big_pocket_cells is None:
+            big_pocket_cells = BIG_POCKET_CELLS
         if big_pocket_cells is not None:
             # Pockets above 7 cells only where a circle there matters.
             pockets = [
@@ -709,6 +714,10 @@ def main():
         do_strip = bool(int(sys.argv[11])) if len(sys.argv) > 11 else False
         avoid_glob = sys.argv[12] if len(sys.argv) > 12 else None
         min_cross = int(sys.argv[13]) if len(sys.argv) > 13 else 0
+        if len(sys.argv) > 14:  # box number: large pockets only touching that box
+            global BIG_POCKET_CELLS
+            b = int(sys.argv[14])
+            BIG_POCKET_CELLS = frozenset(p for p in CELLS if box(*p) == b)
         hunt(
             int(sys.argv[2]),
             int(sys.argv[3]),
