@@ -26,7 +26,7 @@ def log(line): open(OUT + "PROGRESS.md", "a").write(line + "\n")
 avoid = []
 for seed in range(nseeds):
     w = 3 if seed % 2 == 0 else 6
-    name = f"{edge}_{kind}_w{w}_s{seed}"
+    name = f"{edge}_{kind}_w{w}_s{seed}" + (f"_g{groups}" if groups > 1 else "")
     if os.path.exists(OUT + f"full_{name}.json"):
         d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
     t = time.time(); log(f"{name}: start")

@@ -104,3 +104,8 @@ With the white dot forced on r6c5–r7c5 instead (`tools/tri3wdot.py`): IU is
 infeasible, UI gives three grids (`found/tri3wdot_r6c5r7c5_UI_*`, 10/9/9
 circles, 32/29/29 chocolate, two pockets each). So r6c6 pins IU and r6c5–r7c5
 pins UI for this circle triple.
+
+More r6c5–r7c5 UI grids: seeds 3–10 all land (7–9 circles, 24–31 chocolate),
+every one with exactly two pockets [n, 8]. Four pockets is **infeasible** with
+this dot (proof in seconds); three pockets gives one grid (9 circles, 24
+chocolate, pockets 37/12/8) and the second seed at distance ≥ 12 is infeasible.
