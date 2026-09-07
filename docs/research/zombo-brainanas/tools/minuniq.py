@@ -7,7 +7,7 @@ import zombo_brainanas_cpsat as zb
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/minuniq/"; os.makedirs(OUT, exist_ok=True)
 F = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/"
-name = sys.argv[1]; tag = "_nb" if os.environ.get("NO_BLACK") else ""; limit = int(sys.argv[2]) if len(sys.argv) > 2 else 120
+name = sys.argv[1]; tag = ("_nb" if os.environ.get("NO_BLACK") else "") + "".join("_" + c for c in os.environ.get("KEEP", "").split()); limit = int(sys.argv[2]) if len(sys.argv) > 2 else 120
 zb.WORKERS = int(os.environ.get("ZB_WORKERS", zb.WORKERS)); zb.BIG_POCKET_CELLS = None  # any pocket may carry a circle
 d = json.load(open(F + name + ".json"))
 sol = {(r, c): int(d["grid"][r][c]) for r in range(9) for c in range(9)}
@@ -25,6 +25,8 @@ for p in zb.CELLS:
 if os.environ.get("NO_BLACK"):  # circles + white dots only
     items = {k: v for k, v in items.items() if k[0] != "b"}
 keep = {("c", A), ("c", B), ("w", *OPEN)}
+for cell in os.environ.get("KEEP", "").split():  # extra circles to keep, e.g. KEEP=r6c8
+    keep.add(("c", (int(cell[1]) - 1, int(cell[3]) - 1)))
 assert keep <= set(items), "opener or box-9 circles missing on this fill"
 def log(line): open(OUT + "PROGRESS.md", "a").write(f"{name}{tag}: {line}\n")
 def fmt(k): return (f"r{k[1][0]+1}c{k[1][1]+1}" if k[0] == "c" else f"{'white' if k[0]=='w' else 'black'} r{k[1][0]+1}c{k[1][1]+1}-r{k[2][0]+1}c{k[2][1]+1}")

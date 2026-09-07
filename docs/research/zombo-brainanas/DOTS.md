@@ -214,3 +214,13 @@ Circles + white dots only (`NO_BLACK=1`, dots stripped first): 9 clues —
 circles r9c7, r9c9, r3c1, r6c9, r7c4, r9c2; white r4c6–r5c6, r3c6–r4c6,
 r2c8–r2c9. With all nine circles, four white dots suffice (those three plus
 r9c5–r9c6). `unique/pair99g4_UI_w3_s0_nb.json`.
+
+### r6c8 circled, circles + white dots only
+
+Eight of the 12 fills have r6c8 circleable (it is the pocket's second 8).
+`KEEP=r6c8 NO_BLACK=1`: two are unique — `pair99digits_UI_d1` with 8 clues
+(circles r6c8, r9c7, r9c9, r6c2, r9c2; white r4c6–r5c6, r3c2–r3c3,
+r3c5–r4c5) and `pair99digits_UI_d0` with 10 (circles r6c8, r9c7, r9c9, r3c1,
+r6c2, r9c2; white r4c6–r5c6, r3c6–r4c6, r2c7–r2c8, r2c8–r2c9). The other six
+(d2, d3, n1_f02–f04, pair99g4near_UI_w3_s1) are not unique even with every
+circle and white dot, so they need black dots. Pictures in `unique/`.
