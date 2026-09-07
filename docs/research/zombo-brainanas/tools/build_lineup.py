@@ -23,7 +23,9 @@ rows = []
 for f in sorted(glob.glob(F + "/*.json")):
     d = json.load(open(f)); name = os.path.basename(f)[:-5]
     arm, seed = name.rsplit("_", 1)
-    if name.startswith("pair_"):  # pair_r7c7_r7c8 -> one arm, seed = the pair
+    if name.startswith("pairopt_"):  # pairopt_r7c7_r7c8_IU -> arm, seed = pair+kind
+        arm, seed = "pair optimal", name[8:]
+    elif name.startswith("pair_"):  # pair_r7c7_r7c8 -> one arm, seed = the pair
         arm, seed = "pair", name[5:].replace("_", "+")
     grid, inf = d["grid"], [[ch == "*" for ch in row] for row in d["infected"]]
     circles, pockets = [], []

@@ -12,3 +12,5 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `build_lineup.py` + `lineup_template.html` — the lineup artifact page
 - `memlog.sh`, `sanity.py` — RSS log per solver process, quick model check
 - `forced.py shard nshards` — per cell, can it be infected / uninfected (FORCED.md)
+- `kinds.py shard nshards` — per pair, which shading combos (II/IU/UI/UU) are feasible
+- `pairopt.py shard nshards [limit] [stall]` — per pair kind (no r8c8), maximize circles → hunt/pairopt/
