@@ -138,7 +138,7 @@ def build(
     min_per_box=0,
     min_cross=0,
     big_pocket_cells=None,
-    shade=None,
+    fix_shade=None,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -195,7 +195,7 @@ def build(
         m.AddBoolOr([rect[q] for q in cells] + [ban[q] for q in border])
     for p, v in (givens or {}).items():
         m.Add(x[p] == v)
-    for p, v in (shade or {}).items():  # template: fix the shading of these cells
+    for p, v in (fix_shade or {}).items():  # template: fix the shading of these cells
         m.Add(inf[p] == v)
     for p, v in (circles or {}).items():
         if v is not None:
@@ -418,7 +418,7 @@ def solve_valid(
     min_per_box=0,
     min_cross=0,
     stall=60,
-    shade=None,
+    fix_shade=None,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -440,7 +440,7 @@ def solve_valid(
             min_circles,
             min_per_box,
             min_cross,
-            shade=shade,
+            fix_shade=fix_shade,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
