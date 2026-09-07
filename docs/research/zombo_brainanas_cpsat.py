@@ -99,7 +99,7 @@ def polyominoes(max_size=6):
     return out
 
 
-MAX_POCKET = 7  # 6 misses real grids (see the generation note); 7 costs ~4x solve time
+MAX_POCKET = 9  # every non-rectangle pocket a real grid can hold; 440k placements
 
 
 def placements(max_size=MAX_POCKET):
@@ -134,6 +134,7 @@ def build(
     min_circles=0,
     min_per_box=0,
     min_cross=0,
+    big_pocket_cells=None,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -213,28 +214,38 @@ def build(
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
         # colour, holding a cell whose digit equals the pocket size.
         placed = []
-        for cells, border in POCKETS:
+        eq = {}  # (cell, digit) -> literal, shared by every placement
+
+        def is_digit(p, k):
+            if (p, k) not in eq:
+                eq[p, k] = m.NewBoolVar("")
+                m.Add(x[p] == k).OnlyEnforceIf(eq[p, k])
+                m.Add(x[p] != k).OnlyEnforceIf(eq[p, k].Not())
+            return eq[p, k]
+
+        pockets = POCKETS
+        if big_pocket_cells is not None:
+            # Pockets above 7 cells only where a circle there matters.
+            pockets = [
+                pl for pl in POCKETS if len(pl[0]) <= 7 or pl[0] & big_pocket_cells
+            ]
+        for cells, border in pockets:
             b = m.NewBoolVar("")
             m.AddBoolAnd(
                 [ban[q] for q in cells] + [rect[q] for q in border]
             ).OnlyEnforceIf(b)
-            hits = []
-            for p in cells:
-                h = m.NewBoolVar("")
-                m.Add(x[p] == len(cells)).OnlyEnforceIf(h)
-                hits.append(h)
-            m.AddBoolOr(hits).OnlyEnforceIf(b)
+            m.AddBoolOr([is_digit(p, len(cells)) for p in cells]).OnlyEnforceIf(b)
             placed.append(b)
         m.Add(sum(placed) >= min_pockets)
         if objective or min_per_box:
             # Pocket circles count too: cell p holds k inside a placed k-pocket.
             by_cell = {}
-            for (cells, _), b in zip(POCKETS, placed, strict=True):
+            for (cells, _), b in zip(pockets, placed, strict=True):
                 for p in cells:
                     by_cell.setdefault((p, len(cells)), []).append(b)
             for (p, k), bs in by_cell.items():
                 c = m.NewBoolVar("")
-                m.Add(x[p] == k).OnlyEnforceIf(c)
+                m.AddImplication(c, is_digit(p, k))
                 m.AddBoolOr(bs).OnlyEnforceIf(c)
                 pocket_clue.append(c)
                 pocket_at.append(((p, k), c))
