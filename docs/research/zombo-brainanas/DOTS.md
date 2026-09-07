@@ -168,3 +168,10 @@ chocolate and three pockets 34/8/7.
 Three-pocket floor: five shadings at distance ≥ 12 (`found/pair99b8d1_UI_*_g3`,
 7–10 circles, 25–32 chocolate), the sixth infeasible, so that is the whole
 three-pocket space at that spacing.
+
+## UI r9c7 + r9c9, black dot in box 1 or 2, circle in box 6 off row 6 and in box 8 off column 6
+
+`tools/pair99b68.py` (circle floors via `m.circle_at`, sound as lower bounds).
+Four pockets infeasible for both UI and IU (proofs). Three pockets, UI: six
+seeds all land (`found/pair99b68_UI_*_g3`, 7–10 circles, 25–32 chocolate); the
+box-6 circle sits at r4c8, r4c9 or r5c8, the box-8 one at r7c5 or r9c4.
