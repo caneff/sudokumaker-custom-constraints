@@ -44,3 +44,24 @@ best of 3:
 - **Source build with `-march=native`** is the only way to change the
   binary's own speed; PyPI wheels are generic x86-64. Typical gain is a few
   percent, not worth the build and the reproducibility loss.
+
+## Allocator swap (same day)
+
+The wheel bundles every dependency (abseil, protobuf, re2, zlib, bzip2, CBC,
+Clp, HiGHS, SCIP); only glibc, libstdc++, and libm come from the system. So
+the one runtime-swappable dependency is malloc. Same fillomino `unique()`
+benchmark, 5 reps, `LD_PRELOAD` of the Ubuntu packages:
+
+| allocator | workers | min    | median |
+|-----------|---------|--------|--------|
+| glibc     | 8       | 0.99 s | 1.16 s |
+| glibc     | 16      | 0.67 s | 0.94 s |
+| mimalloc  | 8       | 1.04 s | 1.42 s |
+| mimalloc  | 16      | 0.69 s | 0.98 s |
+| jemalloc  | 8       | 1.33 s | 1.80 s |
+| jemalloc  | 16      | 0.77 s | 1.01 s |
+
+glibc ties or wins. CP-SAT is not allocator-bound at this model size; no
+`LD_PRELOAD` line in the recipes. (The glibc 8-worker row is faster than the
+morning table because the box was under less load; compare within a table,
+not across them.)
