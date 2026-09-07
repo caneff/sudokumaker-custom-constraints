@@ -93,3 +93,38 @@ r7c8_r9c9_UI: start
     valid after 1 rounds, first feasible 47s
 r7c8_r9c9_UI: 7 circles, 2 clued bananas, 28 infected, 3 uninfected groups [41, 8, 4], 5 infected in quadrant, 4 in boxes 2+4 (78s)
 r7c9_r8c9_UI: start
+    round 1: OPTIMAL in 206s (first feasible 50s)
+    valid after 1 rounds, first feasible 50s
+r8c7_r8c9_UI: 10 circles, 2 clued bananas, 27 infected, 3 uninfected groups [42, 7, 5], 4 infected in quadrant, 4 in boxes 2+4 (212s)
+r8c7_r9c9_UI: start
+    round 1: OPTIMAL in 181s (first feasible 51s)
+    valid after 1 rounds, first feasible 51s
+r8c7_r9c9_UI: 10 circles, 2 clued bananas, 25 infected, 3 uninfected groups [44, 7, 5], 6 infected in quadrant, 4 in boxes 2+4 (187s)
+r8c9_r9c9_IU: start
+    round 1: OPTIMAL in 288s (first feasible 58s)
+    valid after 1 rounds, first feasible 58s
+r7c9_r8c9_UI: 10 circles, 1 clued bananas, 27 infected, 2 uninfected groups [49, 5], 4 infected in quadrant, 3 in boxes 2+4 (293s)
+r7c9_r9c8_IU: start
+    round 1: INFEASIBLE in 28s (first feasible None)
+r7c9_r9c8_IU: no grid within 400s
+r7c9_r9c9_UI: start
+    round 1: OPTIMAL in 60s (first feasible 37s)
+    valid after 1 rounds, first feasible 37s
+r8c9_r9c9_IU: 9 circles, 1 clued bananas, 24 infected, 2 uninfected groups [50, 7], 5 infected in quadrant, 4 in boxes 2+4 (66s)
+r9c7_r9c9_UI: start
+    round 1: INFEASIBLE in 35s (first feasible None)
+r7c9_r9c9_UI: no grid within 400s
+r8c7_r9c8_UI: start
+    round 1: OPTIMAL in 150s (first feasible 36s)
+    valid after 1 rounds, first feasible 36s
+r9c7_r9c9_UI: 9 circles, 2 clued bananas, 25 infected, 3 uninfected groups [41, 8, 7], 3 infected in quadrant, 4 in boxes 2+4 (155s)
+SHARD 2 DONE
+r7c7_r9c8_IU: start
+    round 1: OPTIMAL in 186s (first feasible 52s)
+    valid after 1 rounds, first feasible 52s
+r8c7_r9c8_UI: 8 circles, 2 clued bananas, 35 infected, 3 uninfected groups [31, 8, 7], 6 infected in quadrant, 6 in boxes 2+4 (192s)
+r8c9_r9c7_IU: start
+    round 1: OPTIMAL in 64s (first feasible 26s)
+    valid after 1 rounds, first feasible 26s
+r7c7_r9c8_IU: 9 circles, 2 clued bananas, 29 infected, 3 uninfected groups [41, 7, 4], 6 infected in quadrant, 3 in boxes 2+4 (71s)
+r7c7_r9c9_UI: start
