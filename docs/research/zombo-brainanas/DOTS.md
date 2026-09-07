@@ -244,3 +244,8 @@ r4c6–r5c6 opener, r5c5–r5c6, r3c2–r3c3); x9_r8c9_w3_s0 → 8 (circles r9c7
 r8c9, r3c9, r4c7, r7c6, r8c1; white r6c7–r7c7 opener, r3c4–r4c4).
 x9_r7c7_w3_s0 is not unique even with every circle and white dot. Pictures in
 `unique/`. r9c9 ≠ 9 was a hunt filter only and plays no part in uniqueness.
+Solve note (Chris, d1 with the r3c1 circle added and extra white dots
+r1c5–r2c5, r9c5–r9c6): after sudoku stalls, the finish is the circled 6 at
+r9c9. Its rectangle already holds r8–9 c8–9, cannot extend to r9c7 (the 8 has
+no bigger infected neighbour), so r7c8 and r7c9 are infected; r7c8's only
+possible source is r7c9, so r7c9 > r7c8 gives 5/3, and the rest is sudoku.
