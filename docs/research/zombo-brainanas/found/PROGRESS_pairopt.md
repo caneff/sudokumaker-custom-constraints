@@ -68,3 +68,27 @@ r7c8_r9c9_IU: start
     valid after 1 rounds, first feasible 23s
 r7c7_r9c9_UI: 10 circles, 2 clued bananas, 30 infected (62s)
 r7c8_r8c9_UI: start
+    round 1: OPTIMAL in 29s (first feasible 18s)
+    valid after 1 rounds, first feasible 18s
+r7c8_r9c9_IU: 10 circles, 1 clued bananas, 24 infected (33s)
+r7c9_r8c7_IU: start
+    round 1: OPTIMAL in 57s (first feasible 23s)
+    valid after 1 rounds, first feasible 23s
+r7c8_r8c9_UI: 10 circles, 2 clued bananas, 30 infected (61s)
+r7c8_r9c7_UI: start
+    round 1: OPTIMAL in 37s (first feasible 23s)
+    valid after 1 rounds, first feasible 23s
+r7c9_r8c7_IU: 11 circles, 1 clued bananas, 29 infected (41s)
+r7c9_r8c9_UI: start
+    round 1: OPTIMAL in 40s (first feasible 19s)
+    valid after 1 rounds, first feasible 19s
+r7c8_r9c7_UI: 10 circles, 2 clued bananas, 30 infected (45s)
+r7c8_r9c8_UI: start
+    round 1: OPTIMAL in 69s (first feasible 25s)
+    valid after 1 rounds, first feasible 25s
+r7c9_r8c9_UI: 10 circles, 1 clued bananas, 27 infected (72s)
+r7c9_r9c7_UI: start
+    round 1: OPTIMAL in 68s (first feasible 29s)
+    valid after 1 rounds, first feasible 29s
+r7c8_r9c8_UI: 10 circles, 1 clued bananas, 29 infected (72s)
+r7c8_r9c9_UI: start
