@@ -44,6 +44,7 @@ N = 9
 CELLS = [(r, c) for r in range(N) for c in range(N)]
 RECT = 1  # colour whose groups are rectangles: 1 infected, 0 uninfected
 CIRCLE_WEIGHT = 10_000  # > the noise range (~2200), so circles come first
+WORKERS = 8  # CP-SAT workers per solve; peak memory scales with it
 
 
 def box(r, c):
@@ -145,6 +146,7 @@ def build(
     bonus=None,
     bonus_edges=None,
     pocket_weight=0,
+    min_groups=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -254,17 +256,11 @@ def build(
         if not min_pockets:  # open circles only need the shapes through them
             through = frozenset(open_circles)
             pockets = [pl for pl in pockets if pl[0] & through]
-        groups = []  # g: the placement IS a whole uninfected group, clued or
-        # not (every group of 3-9 cells matches exactly one placement, so
-        # sum(groups) counts them; pocket_weight rewards it). b: g and clued.
         for cells, border in pockets:
-            g = m.NewBoolVar("")
+            b = m.NewBoolVar("")
             m.AddBoolAnd(
                 [ban[q] for q in cells] + [rect[q] for q in border]
-            ).OnlyEnforceIf(g)
-            groups.append(g)
-            b = m.NewBoolVar("")
-            m.AddImplication(b, g)
+            ).OnlyEnforceIf(b)
             m.AddBoolOr([is_digit(p, len(cells)) for p in cells]).OnlyEnforceIf(b)
             placed.append(b)
         if min_pockets:
@@ -292,6 +288,34 @@ def build(
                 m.AddBoolOr(bs).OnlyEnforceIf(c)
                 pocket_clue.append(c)
                 pocket_at.append(((p, k), c))
+    roots = []
+    if min_groups or pocket_weight:
+        # Exact count of uninfected groups: every uninfected cell carries the
+        # label of its group and a distance to the group's one root (label ==
+        # own index); a non-root needs a neighbour of the same label one step
+        # closer. Labels agree across adjacent uninfected cells, so a group has
+        # exactly one root and sum(roots) is the number of groups. ~300 bools:
+        # a cardinality over the 200k-placement library blew 16 GB.
+        idx = {p: p[0] * N + p[1] for p in CELLS}
+        label = {p: m.NewIntVar(0, N * N - 1, "") for p in CELLS}
+        dist = {p: m.NewIntVar(0, N * N - 1, "") for p in CELLS}
+        for p in CELLS:
+            root = m.NewBoolVar("")
+            m.AddImplication(root, ban[p])
+            m.Add(label[p] == idx[p]).OnlyEnforceIf(root)
+            m.Add(dist[p] == 0).OnlyEnforceIf(root)
+            parents = []
+            for q in nb(p):
+                if q > p:  # each edge once: same label when both uninfected
+                    m.Add(label[p] == label[q]).OnlyEnforceIf([ban[p], ban[q]])
+                par = m.NewBoolVar("")
+                m.AddImplication(par, ban[q])
+                m.Add(dist[q] == dist[p] - 1).OnlyEnforceIf(par)
+                parents.append(par)
+            m.AddBoolOr([*parents, root, rect[p]])
+            roots.append(root)
+        if min_groups:
+            m.Add(sum(roots) >= min_groups)
     if objective or min_circles or min_per_box:
         # Circle-able rectangle cells: digit equals the area of the rectangle.
         clue, clue_at = [], []
@@ -338,8 +362,8 @@ def build(
             m.Add(inf[p] != inf[q]).OnlyEnforceIf(d)
             m.Add(inf[p] == inf[q]).OnlyEnforceIf(d.Not())
             extra += w * d
-        if pocket_weight:
-            extra += pocket_weight * sum(groups)
+        if pocket_weight:  # per uninfected group, clued or not
+            extra += pocket_weight * sum(roots)
         m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise + extra)
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
@@ -473,6 +497,7 @@ def solve_valid(
     bonus=None,
     bonus_edges=None,
     pocket_weight=0,
+    min_groups=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -498,6 +523,7 @@ def solve_valid(
             bonus=bonus,
             bonus_edges=bonus_edges,
             pocket_weight=pocket_weight,
+            min_groups=min_groups,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -512,7 +538,7 @@ def solve_valid(
                 m.AddHint(x[p], v)
         s = cp.CpSolver()
         s.parameters.random_seed = seed
-        s.parameters.num_workers = 8
+        s.parameters.num_workers = WORKERS
         s.parameters.max_time_in_seconds = limit
         cb = FirstSolution(stop_at if objective else 0, stall if objective else 0)
         st = solve_with_watchdog(s, m, cb) if cb.stall else s.Solve(m, cb)
