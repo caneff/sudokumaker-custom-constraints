@@ -31,3 +31,21 @@ Two attempts, one that works:
 
 Before this the record across every arm was 4 (5 grids of 195). The
 `pairpock` arm (37 grids) maximized the library count and never beat 4.
+
+## Five brainanas and two circles in box 9: impossible
+
+Chris asked for 5 brainanas with 2 circles in box 9. Two sweeps, both exact:
+
+- `pairopt.py ... g5` (42 pair kinds without r8c8, both circles open, pair
+  shading fixed, `min_groups=5`, circles maximized): every kind INFEASIBLE,
+  34-98 s each, no timeouts. That run also excludes grids within 12 cells of
+  `found/`, so:
+- `tools/kinds5.py` (all 49 feasible pair kinds from PAIRS.md including r8c8,
+  same model without the exclusion and without an objective): every kind
+  INFEASIBLE, no timeouts.
+
+Since every way to put two circles in box 9 is one of those pair kinds, no
+valid grid has 5 brainanas and 2 box-9 circles. The `found/groups_5` witness
+has one box-9 circle (r9c7). Open: 5 brainanas with one box-9 circle and
+circles maximized elsewhere; whether 6 brainanas exist at all (hour-long run
+pending).

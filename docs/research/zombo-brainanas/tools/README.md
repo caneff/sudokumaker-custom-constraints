@@ -16,3 +16,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `pairopt.py shard nshards [limit] [stall]` — per pair kind (no r8c8), maximize circles → hunt/pairopt/
 - `plant.py variant seed [ceil|r7c8I_r9c7U]` — plant the 4 and 5 next to box 1, maximize box-1 chocolate (UPPER_LEFT.md)
 - `groups.py K [limit] [workers]` — can a grid have K brainanas? exact component count, 20 s at K=5
+- `kinds5.py shard nshards` — per box-9 pair kind, can the grid have 5 brainanas? (all infeasible, BRAINANAS.md)
