@@ -13,6 +13,10 @@ d = json.load(open(F + name + ".json"))
 sol = {(r, c): int(d["grid"][r][c]) for r in range(9) for c in range(9)}
 shade = {(r, c): int(d["infected"][r][c] == "*") for r in range(9) for c in range(9)}
 A, B, OPEN = (8, 6), (8, 8), ((3, 5), (4, 5))
+if os.environ.get("SECOND"):  # the second box-9 circle, e.g. SECOND=r7c9 (default r9c9)
+    B = (int(os.environ["SECOND"][1]) - 1, int(os.environ["SECOND"][3]) - 1)
+if os.environ.get("OPENER"):  # the opener white dot, e.g. OPENER=r5c5-r5c6 (default r4c6-r5c6)
+    a, b = os.environ["OPENER"].split("-"); OPEN = ((int(a[1]) - 1, int(a[3]) - 1), (int(b[1]) - 1, int(b[3]) - 1))
 items = {}
 for p in zb.circle_candidates(sol, shade): items[("c", p)] = 1
 for p in zb.CELLS:

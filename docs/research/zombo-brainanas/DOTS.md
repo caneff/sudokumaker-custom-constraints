@@ -234,3 +234,13 @@ r8c7, r8c8, r9c8. `tools/x9kill.py` then tests every white dot near box 9 on
 each grid with r9c7 given 9: **every one of the 11 grids has at least one white
 dot that kills the 9** (`probes/x9/killers.txt`, no timeouts). Grids in the
 lineup under "r9c7 + other box-9 circle".
+
+### Unique sets for the moved circle (circles + white dots only)
+
+`minuniq.py` with `SECOND=<cell> OPENER=<edge> NO_BLACK=1`: x9_r7c8_w3_s0 → 7
+clues (circles r9c7, r7c8, r3c6; white r4c8–r5c8 opener, r4c5–r5c5, r2c9–r3c9,
+r5c1–r6c1); x9_r7c9_w6_s1 → 7 (circles r9c7, r7c9, r6c2, r9c2; white
+r4c6–r5c6 opener, r5c5–r5c6, r3c2–r3c3); x9_r8c9_w3_s0 → 8 (circles r9c7,
+r8c9, r3c9, r4c7, r7c6, r8c1; white r6c7–r7c7 opener, r3c4–r4c4).
+x9_r7c7_w3_s0 is not unique even with every circle and white dot. Pictures in
+`unique/`. r9c9 ≠ 9 was a hunt filter only and plays no part in uniqueness.
