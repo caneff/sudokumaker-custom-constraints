@@ -55,4 +55,4 @@ CP-SAT proved INFEASIBLE for any further shading at distance ≥ 1, in about
 Digit fills of those four UI shadings are finite too (`tools/pair99fills.py`,
 all exhausted): 6, 12, 6 and 12 fills, 36 grids in `found/pair99fills_*`.
 Most dot options: `pair99fills_n1_f04` (8 black + 18 white, 7 circles, 34
-chocolate); best with 9 circles: `pair99fills_s0_f02` (7 black + 17 white).
+chocolate); best with 9 circles: `pair99digits_UI_d1` (= fill s0_f02, 7 black + 17 white). The s0 fills duplicate the `pair99digits_*` grids, so `found/` holds 27 of the 36.
