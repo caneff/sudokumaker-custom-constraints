@@ -115,3 +115,23 @@ floor), UI feasible with four grids (`found/tri3wdot_r6c4r6c5_UI_*`, 8–9
 circles, 28–32 chocolate); four pockets infeasible, one grid has three
 (25/16/8). r6c5–r6c6 was started by mistake and stopped: IU infeasible, UI
 undecided.
+
+## Killing r9c7 = 9 with a white dot (circles r9c7 + r8c9 + r6c8)
+
+Goal (Chris): r9c7 = 9 must be impossible. Without a dot it is possible: the
+infected 3×3 is r7–9 c6–8 and r8c9 sits in a 7-cell banana r6c6–r6c9 +
+r7c9–r9c9 (`probes/kill9/none_grid.txt`). A white dot that forces a cell of
+that ring's neighbourhood uninfected merges the banana past 9. Sweep of 69
+edges with r9c7 given 9, shading free (`tools/kill9.py`,
+`probes/kill9/results.txt`, no timeouts):
+
+Dots that **kill the 9** (23): r4c6–r5c6, r4c7–r5c7, r4c8–r5c8, r4c9–r5c9,
+r5c4–r6c4, r5c5–r5c6, r5c5–r6c5, r5c7–r5c8, r5c7–r6c7, r5c8–r5c9, r5c8–r6c8,
+r5c9–r6c9, r6c4–r6c5, r6c5–r6c6, r6c5–r7c5, r6c6–r7c6, r6c8–r6c9, r7c5–r7c6,
+r7c5–r8c5, r7c6–r8c6, r8c5–r8c6, r8c6–r9c6, r9c5–r9c6. Every edge touching
+r5c6–r5c9, r6c5, r6c6, r6c9, r7c5, r7c6, r8c5, r8c6 or r9c6 kills it; every
+edge in rows 1–3 of cols 7–9, in cols 3–4, or on r4 horizontally leaves it.
+
+Cross-check with the UI hunts: r6c4–r6c5 and r6c5–r7c5 both kill the 9 and
+both give UI grids (2–3 pockets). The only dots that allowed four pockets
+(r4c3–r4c4, r6c3–r6c4) do not kill the 9.

@@ -32,3 +32,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `tri3.py` — circles r9c7 + r8c9 + r6c8, kind = shading of (r9c7, r8c9), circles + chocolate maximized.
 - `tri3w66.py` — as tri3 with a white dot on some edge of r6c6 (solver picks the edge).
 - `tri3wdot.py` — as tri3 with a forced white dot on one named edge (e.g. `UI r6c5 r7c5`).
+- `kill9.py` — circles r9c7 r8c9 r6c8, r9c7 given 9, one forced white-dot edge (or `none`), shading free: KILLED means the dot makes r9c7 = 9 impossible.
