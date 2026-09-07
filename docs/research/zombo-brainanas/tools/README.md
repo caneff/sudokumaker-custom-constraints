@@ -34,3 +34,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `tri3wdot.py` — as tri3 with a forced white dot on one named edge (e.g. `UI r6c5 r7c5`).
 - `kill9.py` — circles r9c7 r8c9 r6c8, r9c7 given 9, one forced white-dot edge (or `none`), shading free: KILLED means the dot makes r9c7 = 9 impossible.
 - `pocket4.py` — circles r9c7 r8c9 r6c8, one forced white dot, shading free, at least four pockets: 4POCKET or NO4.
+- `pair99b8d1.py` — r9c7 + r9c9 UI, at least two circles in box 8, a black dot on some edge inside box 1, optional pocket floor.

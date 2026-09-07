@@ -157,3 +157,11 @@ are part of a rectangle wider than the box (no digit can circle it), and
 r6c7–r6c9 belong to r9c7's 8-pocket, whose second 8 lands there. Box 8 has 1–2
 circles in every fill. Library caveat as usual (pockets > 9 cells only next to
 box 9).
+
+## UI r9c7 + r9c9, two circles in box 8, a black dot inside box 1
+
+Five earlier UI grids already qualify, all with two pockets (pair99_r9c7_r9c9_UI,
+pair99var_UI_w6_s1/s3/s5, pairb24_r9c7_r9c9_UI). `tools/pair99b8d1.py` enforces
+both in the model: four pockets is **infeasible** (proof); without the floor,
+four new grids (`found/pair99b8d1_UI_*`), best UI_w3_s0 with 10 circles, 32
+chocolate and three pockets 34/8/7.

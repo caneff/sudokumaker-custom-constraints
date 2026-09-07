@@ -29,6 +29,8 @@ for f in sorted(glob.glob(F + "/*.json")):
         arm, seed = "brainanas", "≥ " + name[7:]
     elif name.startswith("pairg5_"):  # pairg5_r7c7_r7c8_IU -> five brainanas required, circles maximized
         arm, seed = "pair, 5 brainanas", name[7:]
+    elif name.startswith("pair99b8d1_"):  # pair99b8d1_UI_w3_s0 -> r9c7 + r9c9, >= 2 circles in box 8, a black dot inside box 1
+        arm, seed = "r9c7 + r9c9", "b8 x2 + black dot b1 " + name[11:]
     elif name.startswith("pair99"):  # every r9c7 + r9c9 hunt in one arm; the variant goes in front of the seed
         sub = {"pair99fills": "fills", "pair99digits": "digits", "pair99g4nearIU": "near IU", "pair99g4near": "near", "pair99g4": "4 pockets",
                "pair99var": "variety", "pair99free": "free", "pair99": "chocolate"}
