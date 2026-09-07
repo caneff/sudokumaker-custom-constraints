@@ -194,3 +194,12 @@ shadings. Over the exhaustive 36 fills, 28 carry an opener kropki: the
 pair99g4_UI_w3_s0 and n1 shadings in every fill (white r4c6–r5c6, often plus
 black r5c8–r6c8), the n0 and n2 shadings in 8 of 12 fills each (black
 r6c4–r6c5 and/or black r5c8–r6c8 only). No fill of n0/n2 has a white opener.
+
+### Library caveat, corrected
+
+The pocket library only models pockets that carry a circle; uncircled
+uninfected groups are free-form (validated by lazy cuts), and a circle's digit
+caps its pocket at 9 cells, which the library covers. So shading enumerations
+and fill enumerations above are exact. The library only affects circle
+maximization: a circle in an 8/9-cell pocket away from box 9 is not counted in
+the objective, so an optimizing hunt may pick a slightly worse fill.
