@@ -1,16 +1,19 @@
 """Optimal grid per box-9 pair kind: fix the pair's shading, both circles open,
-maximize circles. usage: pairopt.py shard nshards [limit] [stall]  -> hunt/pairopt/full_<pair>_<kind>.json"""
+maximize circles. usage: pairopt.py shard nshards [limit] [stall] [quad|b24]  -> hunt/pairopt/full_<pair>_<kind>.json
+quad: also reward chocolate in rows 1-5 x cols 1-5 (-> hunt/pairquad/); b24: reward chocolate in boxes 2 and 4 (-> hunt/pairb24/)."""
 import sys, time, os, glob, json, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
-OUT = Z + ("hunt/pairquad/" if len(sys.argv) > 5 and sys.argv[5] == "quad" else "hunt/pairopt/"); os.makedirs(OUT, exist_ok=True)
+MODE = sys.argv[5] if len(sys.argv) > 5 else ""
+OUT = Z + {"quad": "hunt/pairquad/", "b24": "hunt/pairb24/"}.get(MODE, "hunt/pairopt/"); os.makedirs(OUT, exist_ok=True)
 FOUND = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/*.json"
 shard, n = int(sys.argv[1]), int(sys.argv[2])
 limit = int(sys.argv[3]) if len(sys.argv) > 3 else 400
 stall = int(sys.argv[4]) if len(sys.argv) > 4 else 90
-QUAD = len(sys.argv) > 5 and sys.argv[5] == "quad"  # also reward chocolate in rows 1-5 x cols 1-5
-BONUS = {p: zb.CIRCLE_WEIGHT // 3 for p in zb.CELLS if p[0] < 5 and p[1] < 5} if QUAD else None
+QUAD = MODE in ("quad", "b24")  # bonus modes: stop only on stall
+REWARD = {"quad": lambda p: p[0] < 5 and p[1] < 5, "b24": lambda p: zb.box(*p) in (2, 4)}.get(MODE)
+BONUS = {p: zb.CIRCLE_WEIGHT // 3 for p in zb.CELLS if REWARD(p)} if REWARD else None
 zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 kinds = []  # (pair name, cell a, cell b, shading dict)
 for line in open(Z + "kinds2.log").read().splitlines() + open(Z + "kinds.log").read().splitlines():
@@ -35,5 +38,5 @@ for i, (name, a, b, sh) in enumerate(kinds):
         log(f"{name}: no grid within {limit}s"); continue
     sol, shade = found; circ = zb.circle_candidates(sol, shade)
     zb.dump(OUT + f"full_{name}.json", sol, shade, dict(sol), circ)
-    log(f"{name}: {len(circ)} circles, {len(zb.clued_bananas(sol, shade, circ))} clued bananas, {sum(shade.values())} infected, {sum(v for p, v in shade.items() if p[0] < 5 and p[1] < 5)} infected in quadrant ({time.time()-t:.0f}s)")
+    log(f"{name}: {len(circ)} circles, {len(zb.clued_bananas(sol, shade, circ))} clued bananas, {sum(shade.values())} infected, {sum(v for p, v in shade.items() if p[0] < 5 and p[1] < 5)} infected in quadrant, {sum(v for p, v in shade.items() if zb.box(*p) in (2, 4))} in boxes 2+4 ({time.time()-t:.0f}s)")
 log(f"SHARD {shard} DONE")
