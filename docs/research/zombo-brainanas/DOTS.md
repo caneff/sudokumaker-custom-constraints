@@ -135,3 +135,16 @@ edge in rows 1–3 of cols 7–9, in cols 3–4, or on r4 horizontally leaves it
 Cross-check with the UI hunts: r6c4–r6c5 and r6c5–r7c5 both kill the 9 and
 both give UI grids (2–3 pockets). The only dots that allowed four pockets
 (r4c3–r4c4, r6c3–r6c4) do not kill the 9.
+
+### Four pockets with a 9-killing dot
+
+`tools/pocket4.py` over the 23 killing edges, shading free
+(`probes/pocket4/results.txt`): only **r4c8–r5c8, r5c7–r5c8 and r8c6–r9c6**
+allow four pockets, and all three land on the same UI grid,
+`found/tri3wdot_r4c3r4c4_UI_w3_s0_g4` (6 circles, 28 chocolate, pockets
+22/13/10/8), which carries those three dots naturally. A second 4-pocket
+shading at distance ≥ 12 is infeasible for both r5c7–r5c8 and r8c6–r9c6. The
+other 20 killers are NO4 by proof.
+
+Ops note: two WSL crashes today came from running 7 solvers whose per-process
+caps summed past the VM's memory. Keep it to two solvers at a time.
