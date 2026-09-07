@@ -28,6 +28,9 @@ the other colour and a cell whose digit equals the size.
 # ponytail: research prototype — the shipped generator is a wayfinder decision.
 """
 
+import contextlib
+import ctypes
+import gc
 import glob
 import json
 import random
@@ -410,6 +413,17 @@ class FirstSolution(cp.CpSolverSolutionCallback):
         )
 
 
+def release_heap():
+    """Give freed solver memory back to the OS. CP-SAT frees its model, but
+    glibc keeps the pages in the heap: repeated solves in one process grew RSS
+    by 0.4-0.8 GB each and died of std::bad_alloc on the fourth (measured with
+    the pocket library, 8 workers, 9 GB address-space cap). With this trim RSS
+    stays flat at ~1.5 GB across five solves."""
+    gc.collect()
+    with contextlib.suppress(OSError, AttributeError):  # not glibc
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+
+
 def solve_with_watchdog(s, m, cb):
     """Solve in a thread; stop when the objective has not improved for cb.stall
     seconds. Half the sampling budget went to proving optimality (seed 701:
@@ -498,15 +512,19 @@ def solve_valid(
                 f"    round {rounds}: {s.StatusName(st)} in {s.WallTime():.0f}s"
                 f" (first feasible {cb.at})"
             )
-        if st not in (cp.OPTIMAL, cp.FEASIBLE):
+        ok = st in (cp.OPTIMAL, cp.FEASIBLE)
+        name = s.StatusName(st)
+        sol = {p: s.Value(x[p]) for p in CELLS} if ok else None
+        shade = {p: s.Value(inf[p]) for p in CELLS} if ok else None
+        del m, s, cb, x, inf
+        release_heap()
+        if not ok:
             if st == cp.UNKNOWN and objective:
                 return None  # sampling timed out before any feasible grid
             if st == cp.UNKNOWN:
                 raise TimeoutError("uniqueness search hit the time limit")
-            assert st == cp.INFEASIBLE, f"solver status {s.StatusName(st)}"
+            assert st == cp.INFEASIBLE, f"solver status {name}"
             return None
-        sol = {p: s.Value(x[p]) for p in CELLS}
-        shade = {p: s.Value(inf[p]) for p in CELLS}
         cut = violation(sol, shade, circles)
         if cut is None:
             if log:

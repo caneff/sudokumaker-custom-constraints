@@ -33,3 +33,35 @@ rule is the killer). What remains:
 2. A rules change, which is a wayfinder decision, not a generator setting:
    e.g. a different digit-to-box assignment so a big patient zero sits in the
    top band.
+
+## Planting the 4 and 5 next to box 1 (tools/plant.py)
+
+Question (Chris): bias the upper left differently — plant the box-4 and box-5
+patient zeros where their chains reach into box 1.
+
+Six plants as givens, each with the box-9 pair open and no pocket library
+(min_pockets 0, so the objective model fits in memory), maximizing circles plus
+50000 per infected box-1 cell; every run proved OPTIMAL in under 10 s:
+
+| plant | box-1 infected | quadrant (5x5) |
+|---|---|---|
+| 5 r4c4, 4 r5c1 | 3/9 | 9/25 |
+| 5 r4c4, 4 r5c2 | 3/9 | 8/25 |
+| 5 r4c4, 4 r5c3 | 3/9 | 9/25 |
+| 5 r5c4, 4 r4c3 | 3/9 | 7/25 |
+| 5 r5c4, 4 r4c2 | 3/9 | 7/25 |
+| 5 r5c4, 4 r4c1 | 3/9 | 5/25 |
+| no plant | 3/9 | 6/25 |
+
+Box 1 holds at most 3 infected cells whatever is planted: its own 1 plus two
+more, and the digit-height bound (row r holds only infected digits <= r+2)
+leaves no room for a third. Planting moves those cells, it does not add any:
+the 5 r4c4 + 4 r5c1 grid runs a 5-4-3-2 staircase up column 3 into r2c3.
+Grids are in `scratch-zombo/hunt/plant/grid_*_ceil.txt` (not synced to
+`found/`: they are ceiling witnesses, 6-10 circles, no pocket circles).
+
+Two gotchas from the run: the fixed pair r7c8 infected + r9c7 uninfected used
+by `ceiling.py` is infeasible with every one of the six plants (each plant alone
+is feasible), so a plant hunt needs its own pair kind; and repeated solves in
+one process leaked until `release_heap()` landed in the model (see its
+docstring).
