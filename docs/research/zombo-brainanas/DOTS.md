@@ -79,3 +79,23 @@ r9     .  .  U  U  X  U  #  #  #
 ```
 
 29 cells pin UI, two pin IU (r6c4, r8c3), two kill both (r7c3, r9c5).
+
+## Circles r6c8 + r9c7 + r9c9 with a white dot near r7c5 (2026-09-07)
+
+Ask: a white dot between r7c5 and r7c6. Result: infeasible for both kinds, with
+or without the 4-group floor. Splitting it: r7c6 uninfected alone is infeasible
+for both kinds once r6c8 carries a circle (with only the box-9 pair, UI allows
+it), and r7c5 uninfected alone is feasible only for IU. So r6c6–r7c6 is dead
+too. Edge sweep of rows 6–9, cols 4–6 (`probes/tri68w/sweep.txt`, 26 of 34
+cases decided before the hunt was stopped): IU allows r6c4–r7c4, r7c4–r7c5,
+r7c4–r8c4, r8c4–r8c5, r8c4–r9c4, r8c5–r9c5; UI allows only r9c5–r9c6.
+Scripts: `tools/tri68w.py`, `tools/tri68sweep.py`.
+
+## Circles r9c7 + r8c9 + r6c8 (2026-09-07)
+
+Kind = shading of (r9c7, r8c9). II and UU infeasible in seconds; IU and UI both
+feasible, 10 circles each, chocolate 27–32 (`found/tri3_*`). With a white dot
+on some edge of r6c6 (`tools/tri3w66.py`): **UI is infeasible** (17 s proof),
+IU gives four grids (`found/tri3w66_IU_*`), the dot landing on r5c6–r6c6 or
+r6c6–r6c7. So a white dot at r6c6 pins IU here (r9c7 infected, r8c9
+uninfected), not UI.

@@ -27,3 +27,7 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `plant.py variant seed [ceil|r7c8I_r9c7U]` — plant the 4 and 5 next to box 1, maximize box-1 chocolate (UPPER_LEFT.md)
 - `groups.py K [limit] [workers]` — can a grid have K brainanas? exact component count, 20 s at K=5
 - `kinds5.py shard nshards` — per box-9 pair kind, can the grid have 5 brainanas? (all infeasible, BRAINANAS.md)
+- `tri68w.py` — circles r6c8 + r9c7 + r9c9 with a forced white dot on r7c5–r7c6 (both uninfected, consecutive); infeasible for both kinds.
+- `tri68sweep.py` — same circles, one forced white-dot edge per run; sweep of rows 6–9 cols 4–6 (results in `probes/tri68w/sweep.txt`).
+- `tri3.py` — circles r9c7 + r8c9 + r6c8, kind = shading of (r9c7, r8c9), circles + chocolate maximized.
+- `tri3w66.py` — as tri3 with a white dot on some edge of r6c6 (solver picks the edge).
