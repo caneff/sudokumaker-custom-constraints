@@ -51,3 +51,8 @@ total (`found/pair99g4_UI_w3_s0`, `found/pair99g4near_UI_w3_s0..s2`) and then
 CP-SAT proved INFEASIBLE for any further shading at distance ≥ 1, in about
 40 s each. The IU kind (r9c7 infected) has two shadings at distance ≥ 12
 (`found/pair99g4_IU_*`), unexplored closer in.
+
+Digit fills of those four UI shadings are finite too (`tools/pair99fills.py`,
+all exhausted): 6, 12, 6 and 12 fills, 36 grids in `found/pair99fills_*`.
+Most dot options: `pair99fills_n1_f04` (8 black + 18 white, 7 circles, 34
+chocolate); best with 9 circles: `pair99fills_s0_f02` (7 black + 17 white).
