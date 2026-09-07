@@ -29,6 +29,13 @@ for f in sorted(glob.glob(F + "/*.json")):
         arm, seed = "brainanas", "≥ " + name[7:]
     elif name.startswith("pairg5_"):  # pairg5_r7c7_r7c8_IU -> five brainanas required, circles maximized
         arm, seed = "pair, 5 brainanas", name[7:]
+    elif name.startswith("pair99"):  # every r9c7 + r9c9 hunt in one arm; the variant goes in front of the seed
+        sub = {"pair99fills": "fills", "pair99digits": "digits", "pair99g4nearIU": "near IU", "pair99g4near": "near", "pair99g4": "4 pockets",
+               "pair99var": "variety", "pair99free": "free", "pair99": "chocolate"}
+        key = next(k for k in sub if name.startswith(k + "_"))
+        arm, seed = "r9c7 + r9c9", sub[key] + " " + name[len(key) + 1:]
+    elif name.startswith("pairone5_"):  # pairone5_r7c7_I -> one box-9 circle, 5 brainanas, circles + chocolate maximized
+        arm, seed = "one circle, 5 brainanas", name[9:]
     elif name.startswith("pairpock_"):  # pairpock_r7c7_r7c8_IU -> every uninfected group rewarded
         arm, seed = "pair pockets", name[9:]
     elif name.startswith("pairb24_"):  # pairb24_r7c7_r7c8_IU -> chocolate in boxes 2+4 rewarded
@@ -43,15 +50,19 @@ for f in sorted(glob.glob(F + "/*.json")):
             circles += hits
             if not val and hits: pockets.append(len(comp))
     circles.sort()
-    dots = []
+    dots, white = [], []  # black: boundary edge, uninfected digit double the infected; white: two uninfected consecutive digits
     for r in N:
         for c in N:
             for a, b in ((r+1, c), (r, c+1)):
-                if a < 9 and b < 9 and not inf[r][c] and not inf[a][b] and abs(int(grid[r][c]) - int(grid[a][b])) == 1:
-                    dots.append([r, c, a, b])
+                if a >= 9 or b >= 9: continue
+                if inf[r][c] != inf[a][b]:
+                    i, u = ((r, c), (a, b)) if inf[r][c] else ((a, b), (r, c))
+                    if int(grid[u[0]][u[1]]) == 2 * int(grid[i[0]][i[1]]): dots.append([r, c, a, b])
+                elif not inf[r][c] and abs(int(grid[r][c]) - int(grid[a][b])) == 1:
+                    white.append([r, c, a, b])
     cross = sum(1 for r in N for c in N for a, b in ((r+1, c), (r, c+1)) if a < 9 and b < 9 and inf[r][c] and inf[a][b] and box(r, c) != box(a, b))
     rows.append(dict(id=name, arm=ARM.get(arm, arm), seed=seed, grid=grid, inf=d["infected"], circles=[list(p) for p in circles],
-                     pockets=sorted(pockets), circ=len(circles), infected=sum(map(sum, inf)), dots=len(dots), dotEdges=dots, cross=cross,
+                     pockets=sorted(pockets), circ=len(circles), infected=sum(map(sum, inf)), dots=len(dots), dotEdges=dots, white=len(white), whiteEdges=white, cross=cross,
                      box9=sum(1 for p in circles if box(*p) == 9)))
 t = open(Z + "/lineup_template.html").read()
 out = t.replace("const DATA=[];\n", "const DATA=" + json.dumps(rows, separators=(",", ":"), ensure_ascii=False) + ";\n", 1)
