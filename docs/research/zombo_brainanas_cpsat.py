@@ -144,6 +144,7 @@ def build(
     fix_shade=None,
     bonus=None,
     bonus_edges=None,
+    pocket_weight=0,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -253,11 +254,17 @@ def build(
         if not min_pockets:  # open circles only need the shapes through them
             through = frozenset(open_circles)
             pockets = [pl for pl in pockets if pl[0] & through]
+        groups = []  # g: the placement IS a whole uninfected group, clued or
+        # not (every group of 3-9 cells matches exactly one placement, so
+        # sum(groups) counts them; pocket_weight rewards it). b: g and clued.
         for cells, border in pockets:
-            b = m.NewBoolVar("")
+            g = m.NewBoolVar("")
             m.AddBoolAnd(
                 [ban[q] for q in cells] + [rect[q] for q in border]
-            ).OnlyEnforceIf(b)
+            ).OnlyEnforceIf(g)
+            groups.append(g)
+            b = m.NewBoolVar("")
+            m.AddImplication(b, g)
             m.AddBoolOr([is_digit(p, len(cells)) for p in cells]).OnlyEnforceIf(b)
             placed.append(b)
         if min_pockets:
@@ -331,6 +338,8 @@ def build(
             m.Add(inf[p] != inf[q]).OnlyEnforceIf(d)
             m.Add(inf[p] == inf[q]).OnlyEnforceIf(d.Not())
             extra += w * d
+        if pocket_weight:
+            extra += pocket_weight * sum(groups)
         m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise + extra)
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
@@ -463,6 +472,7 @@ def solve_valid(
     fix_shade=None,
     bonus=None,
     bonus_edges=None,
+    pocket_weight=0,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -487,6 +497,7 @@ def solve_valid(
             fix_shade=fix_shade,
             bonus=bonus,
             bonus_edges=bonus_edges,
+            pocket_weight=pocket_weight,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
@@ -587,6 +598,25 @@ def circle_candidates(sol, shade):
                 if sol[p] == len(comp):
                     out[p] = sol[p]
     return out
+
+
+def uninfected_groups(shade):
+    """Sizes of the uninfected groups (4-connected), largest first."""
+    seen, sizes = set(), []
+    for p in CELLS:
+        if shade[p] or p in seen:
+            continue
+        stack, n = [p], 0
+        seen.add(p)
+        while stack:
+            q = stack.pop()
+            n += 1
+            for r in nb(q):
+                if not shade[r] and r not in seen:
+                    seen.add(r)
+                    stack.append(r)
+        sizes.append(n)
+    return sorted(sizes, reverse=True)
 
 
 def clued_bananas(sol, shade, circ):

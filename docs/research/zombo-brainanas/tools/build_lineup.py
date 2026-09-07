@@ -25,6 +25,8 @@ for f in sorted(glob.glob(F + "/*.json")):
     arm, seed = name.rsplit("_", 1)
     if name.startswith("pairopt_"):  # pairopt_r7c7_r7c8_IU -> arm, seed = pair+kind
         arm, seed = "pair optimal", name[8:]
+    elif name.startswith("pairpock_"):  # pairpock_r7c7_r7c8_IU -> every uninfected group rewarded
+        arm, seed = "pair pockets", name[9:]
     elif name.startswith("pairb24_"):  # pairb24_r7c7_r7c8_IU -> chocolate in boxes 2+4 rewarded
         arm, seed = "pair boxes 2+4", name[8:]
     elif name.startswith("pair_"):  # pair_r7c7_r7c8 -> one arm, seed = the pair
