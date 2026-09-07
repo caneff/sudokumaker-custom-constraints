@@ -49,3 +49,14 @@ valid grid has 5 brainanas and 2 box-9 circles. The `found/groups_5` witness
 has one box-9 circle (r9c7). Open: 5 brainanas with one box-9 circle and
 circles maximized elsewhere; whether 6 brainanas exist at all (hour-long run
 pending).
+
+## Five brainanas and two circles in box 8: 38 of 144 cases infeasible (cut)
+
+Same sweep for box 8 (`tools/pairs8.py`: 36 cell pairs x 4 shading kinds,
+both circles open, pair shading fixed, `min_groups=5`, no objective). Box 8
+keeps 203k pocket placements against box 9's 133k, so 8 workers crossed the
+9 GB cap on the hard kinds; the run that held was 2 processes, 13 GB, 4
+workers, 133 s per case. Cut at Chris's second status ask with 38 of 144
+cases done, every one INFEASIBLE, no timeouts (`pairs8_partial.log`; pairs
+r7c4+* complete, r7c5+r7c6, r7c5+r8c4, r7c5+r8c5 partial). Follow-up issue
+covers the remaining 106 cases; the script skips cases already in the log.
