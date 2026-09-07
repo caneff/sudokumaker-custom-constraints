@@ -109,3 +109,9 @@ More r6c5–r7c5 UI grids: seeds 3–10 all land (7–9 circles, 24–31 chocola
 every one with exactly two pockets [n, 8]. Four pockets is **infeasible** with
 this dot (proof in seconds); three pockets gives one grid (9 circles, 24
 chocolate, pockets 37/12/8) and the second seed at distance ≥ 12 is infeasible.
+
+White dot r6c4–r6c5, same triple: IU infeasible (with or without the 4-pocket
+floor), UI feasible with four grids (`found/tri3wdot_r6c4r6c5_UI_*`, 8–9
+circles, 28–32 chocolate); four pockets infeasible, one grid has three
+(25/16/8). r6c5–r6c6 was started by mistake and stopped: IU infeasible, UI
+undecided.
