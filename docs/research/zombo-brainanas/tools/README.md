@@ -18,6 +18,7 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `pair99.py shard nshards [limit] [stall]` — r9c7 + r9c9 circles (IU / UI), maximize circles + chocolate → hunt/pair99/
 - `pair99free.py` — as `pair99.py` with no avoid set → hunt/pair99free/
 - `pair99var.py shard nshards [nseeds] [limit] [stall]` — variety around r9c7 + r9c9: seeds ≥12 shading cells apart, chocolate weight alternating 1/3 and 1/6 circle → hunt/pair99var/
+- `pair99g4.py` — as `pair99var.py` with ≥4 uninfected groups → hunt/pair99g4/
 - `plant.py variant seed [ceil|r7c8I_r9c7U]` — plant the 4 and 5 next to box 1, maximize box-1 chocolate (UPPER_LEFT.md)
 - `groups.py K [limit] [workers]` — can a grid have K brainanas? exact component count, 20 s at K=5
 - `kinds5.py shard nshards` — per box-9 pair kind, can the grid have 5 brainanas? (all infeasible, BRAINANAS.md)
