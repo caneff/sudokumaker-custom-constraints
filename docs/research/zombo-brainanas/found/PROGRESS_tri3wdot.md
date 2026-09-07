@@ -99,3 +99,109 @@ r6c4r6c5_UI_w6_s3: start
     valid after 1 rounds, first feasible 12s
 r6c4r6c5_UI_w6_s3: 9 circles, 28 chocolate, 2 uninfected groups [45, 8] (17s)
 r6c4r6c5 UI DONE
+r5c5r6c5_IU_w3_s0_g4: start
+r5c5r6c5_UI_w3_s0_g4: start
+    round 1: INFEASIBLE in 2s (first feasible None)
+r5c5r6c5_IU_w3_s0_g4: no grid within 600s
+r5c5r6c5 IU DONE
+    round 1: INFEASIBLE in 14s (first feasible None)
+r5c5r6c5_UI_w3_s0_g4: no grid within 600s
+r5c5r6c5 UI DONE
+r4c4r4c5_UI_w3_s0_g4: start
+r5c4r5c5_UI_w3_s0_g4: start
+r4c3r4c4_UI_w3_s0_g4: start
+r6c3r6c4_UI_w3_s0_g4: start
+r4c5r4c6_UI_w3_s0_g4: start
+r6c4r6c5_UI_w3_s0_g4: start
+r5c5r5c6_UI_w3_s0_g4: start
+r5c3r5c4_UI_w3_s0_g4: start
+    round 1: INFEASIBLE in 28s (first feasible None)
+    round 1: INFEASIBLE in 29s (first feasible None)
+r4c5r4c6_UI_w3_s0_g4: no grid within 300s
+r4c5r4c6 UI DONE
+r6c4r6c5_UI_w3_s0_g4: no grid within 300s
+r6c4r6c5 UI DONE
+    round 1: INFEASIBLE in 33s (first feasible None)
+    round 1: INFEASIBLE in 33s (first feasible None)
+    round 1: INFEASIBLE in 33s (first feasible None)
+r4c4r4c5_UI_w3_s0_g4: no grid within 300s
+r4c4r4c5 UI DONE
+r5c4r5c5_UI_w3_s0_g4: no grid within 300s
+r5c4r5c5 UI DONE
+    round 1: OPTIMAL in 34s (first feasible 24s)
+r5c3r5c4_UI_w3_s0_g4: no grid within 300s
+r5c3r5c4 UI DONE
+    valid after 1 rounds, first feasible 24s
+r4c3r4c4_UI_w3_s0_g4: 6 circles, 28 chocolate, 4 uninfected groups [22, 13, 10, 8] (38s)
+r4c3r4c4 UI DONE
+    round 1: INFEASIBLE in 37s (first feasible None)
+r5c5r5c6_UI_w3_s0_g4: no grid within 300s
+r5c5r5c6 UI DONE
+    round 1: OPTIMAL in 38s (first feasible 26s)
+    valid after 1 rounds, first feasible 26s
+r6c3r6c4_UI_w3_s0_g4: 6 circles, 28 chocolate, 4 uninfected groups [22, 13, 10, 8] (43s)
+r6c3r6c4 UI DONE
+r4c6r5c6_UI_w3_s0_g4: start
+r7c3r7c4_UI_w3_s0_g4: start
+r7c5r7c6_UI_w3_s0_g4: start
+r4c3r5c3_UI_w3_s0_g4: start
+r6c5r6c6_UI_w3_s0_g4: start
+r7c4r7c5_UI_w3_s0_g4: start
+r4c5r5c5_UI_w3_s0_g4: start
+r4c4r5c4_UI_w3_s0_g4: start
+    round 1: INFEASIBLE in 3s (first feasible None)
+r7c4r7c5_UI_w3_s0_g4: no grid within 300s
+r7c4r7c5 UI DONE
+    round 1: INFEASIBLE in 17s (first feasible None)
+r7c5r7c6_UI_w3_s0_g4: no grid within 300s
+r7c5r7c6 UI DONE
+    round 1: INFEASIBLE in 19s (first feasible None)
+r6c5r6c6_UI_w3_s0_g4: no grid within 300s
+r6c5r6c6 UI DONE
+    round 1: INFEASIBLE in 23s (first feasible None)
+    round 1: INFEASIBLE in 23s (first feasible None)
+r4c4r5c4_UI_w3_s0_g4: no grid within 300s
+r4c4r5c4 UI DONE
+r7c3r7c4_UI_w3_s0_g4: no grid within 300s
+r7c3r7c4 UI DONE
+    round 1: INFEASIBLE in 30s (first feasible None)
+    round 1: INFEASIBLE in 31s (first feasible None)
+r4c3r5c3_UI_w3_s0_g4: no grid within 300s
+r4c3r5c3 UI DONE
+r4c5r5c5_UI_w3_s0_g4: no grid within 300s
+r4c5r5c5 UI DONE
+    round 1: INFEASIBLE in 32s (first feasible None)
+r4c6r5c6_UI_w3_s0_g4: no grid within 300s
+r4c6r5c6 UI DONE
+r6c5r7c5_UI_w3_s0_g4: start
+r6c6r7c6_UI_w3_s0_g4: start
+r5c6r6c6_UI_w3_s0_g4: start
+r5c3r6c3_UI_w3_s0_g4: start
+r6c4r7c4_UI_w3_s0_g4: start
+r5c5r6c5_UI_w3_s0_g4: start
+r5c4r6c4_UI_w3_s0_g4: start
+r6c3r7c3_UI_w3_s0_g4: start
+    round 1: INFEASIBLE in 18s (first feasible None)
+    round 1: INFEASIBLE in 19s (first feasible None)
+r5c6r6c6_UI_w3_s0_g4: no grid within 300s
+r5c6r6c6 UI DONE
+r6c6r7c6_UI_w3_s0_g4: no grid within 300s
+r6c6r7c6 UI DONE
+    round 1: INFEASIBLE in 22s (first feasible None)
+r6c5r7c5_UI_w3_s0_g4: no grid within 300s
+r6c5r7c5 UI DONE
+    round 1: INFEASIBLE in 22s (first feasible None)
+r6c4r7c4_UI_w3_s0_g4: no grid within 300s
+r6c4r7c4 UI DONE
+    round 1: INFEASIBLE in 24s (first feasible None)
+    round 1: INFEASIBLE in 24s (first feasible None)
+r5c5r6c5_UI_w3_s0_g4: no grid within 300s
+r5c5r6c5 UI DONE
+r5c4r6c4_UI_w3_s0_g4: no grid within 300s
+r5c4r6c4 UI DONE
+    round 1: INFEASIBLE in 31s (first feasible None)
+r6c3r7c3_UI_w3_s0_g4: no grid within 300s
+r6c3r7c3 UI DONE
+    round 1: INFEASIBLE in 32s (first feasible None)
+r5c3r6c3_UI_w3_s0_g4: no grid within 300s
+r5c3r6c3 UI DONE
