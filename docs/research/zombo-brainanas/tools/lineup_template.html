@@ -47,7 +47,7 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
  <div class="legend"><span><i style="background:var(--inf)"></i>infected</span><span><i style="background:var(--pz)"></i>patient zero</span><span><i style="background:var(--ban)"></i>uninfected</span></div>
 </header>
 <div class="bar">
- <label>filter <input id="q" type="search" placeholder="arm, seed or id" size="22"></label>
+ <label>filter <input id="q" type="search" placeholder="arm, seed, id, p4, opener" size="22"></label>
  <label>arm <select id="arm"><option value="">all</option></select></label>
  <label>sort <select id="sort"><option value="circ">circles</option><option value="infected">infected</option><option value="box9">box 9 circles</option><option value="cross">reach</option><option value="dots">black dots</option><option value="white">white dots</option><option value="pockets">pockets</option></select></label>
  <label>min circles <input id="minc" type="number" value="0" min="0" max="13"></label>
@@ -85,7 +85,7 @@ function render(){
   const minc=+document.getElementById('minc').value, mini=+document.getElementById('mini').value, minb=+document.getElementById('minb').value;
   const showDots=document.getElementById('showdots').checked, showWhite=document.getElementById('showwhite').checked;
   const q=document.getElementById('q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const hay=d=>(d.arm+' '+d.seed+' '+d.id+' '+d.pockets.join('/')).toLowerCase();
+  const hay=d=>(d.arm+' '+d.seed+' '+d.id+' '+d.pockets.join('/')+' p'+d.groups+(d.opener&&d.opener.length?' opener':'')).toLowerCase();
   const rows=DATA.filter(d=>(!arm||d.arm===arm)&&q.every(w=>hay(d).includes(w))&&d.circ>=minc&&d.infected>=mini&&d.box9>=minb)
     .sort((a,b)=>(key==='pockets'?b.pockets.length-a.pockets.length:b[key]-a[key])||b.circ-a.circ);
   document.getElementById('main').innerHTML=rows.length?rows.map(d=>card(d,showDots,showWhite)).join(''):'<div class="empty">No grid matches these filters.</div>';

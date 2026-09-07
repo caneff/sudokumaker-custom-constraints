@@ -66,10 +66,13 @@ for f in sorted(glob.glob(F + "/*.json")):
                     if int(grid[u[0]][u[1]]) == 2 * int(grid[i[0]][i[1]]): dots.append([r, c, a, b])
                 elif not inf[r][c] and abs(int(grid[r][c]) - int(grid[a][b])) == 1:
                     white.append([r, c, a, b])
+    TOUCH = {(4, 5), (4, 6), (4, 7), (4, 8), (5, 4)}  # r5c6-r5c9, r6c5: outside the 7-cell block r9c7=9 would force
+    groups = len(comps(inf, False))  # every uninfected group, circled or not
+    opener = [e for e in white if (e[0], e[1]) in TOUCH or (e[2], e[3]) in TOUCH]
     cross = sum(1 for r in N for c in N for a, b in ((r+1, c), (r, c+1)) if a < 9 and b < 9 and inf[r][c] and inf[a][b] and box(r, c) != box(a, b))
     rows.append(dict(id=name, arm=ARM.get(arm, arm), seed=seed, grid=grid, inf=d["infected"], circles=[list(p) for p in circles],
                      pockets=sorted(pockets), circ=len(circles), infected=sum(map(sum, inf)), dots=len(dots), dotEdges=dots, white=len(white), whiteEdges=white, cross=cross,
-                     box9=sum(1 for p in circles if box(*p) == 9)))
+                     box9=sum(1 for p in circles if box(*p) == 9), opener=opener, groups=groups))
 t = open(Z + "/lineup_template.html").read()
 out = t.replace("const DATA=[];\n", "const DATA=" + json.dumps(rows, separators=(",", ":"), ensure_ascii=False) + ";\n", 1)
 open(Z + "/lineup.html", "w").write(out); print(len(rows), "grids")
