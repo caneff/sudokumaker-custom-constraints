@@ -139,6 +139,7 @@ def build(
     min_cross=0,
     big_pocket_cells=None,
     fix_shade=None,
+    bonus=None,
 ):
     """The model. givens {cell: digit}; circles {cell: digit or None}."""
     m = cp.CpModel()
@@ -316,7 +317,10 @@ def build(
         noise = sum(rng.randint(0, 3) * x[p] for p in CELLS) + 20 * sum(
             rng.randint(-1, 1) * inf[p] for p in CELLS
         )
-        m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise)
+        # bonus {cell: weight}: extra objective on infected cells, e.g. chocolate
+        # in the upper-left quadrant so boxes 1-2 are not all banana.
+        extra = sum(w * inf[p] for p, w in (bonus or {}).items())
+        m.Maximize(CIRCLE_WEIGHT * (sum(clue) + sum(pocket_clue)) + noise + extra)
     for old in avoid:
         # A new shading must differ from each earlier one in >= min_distance cells.
         m.Add(sum(inf[p].Not() if old[p] else inf[p] for p in CELLS) >= min_distance)
@@ -435,6 +439,7 @@ def solve_valid(
     min_cross=0,
     stall=60,
     fix_shade=None,
+    bonus=None,
 ):
     """A valid solution (sol, shade) or None. `exclude`: solutions to forbid. Grows `cuts` in place."""
     cuts = cuts if cuts is not None else []
@@ -457,6 +462,7 @@ def solve_valid(
             min_per_box,
             min_cross,
             fix_shade=fix_shade,
+            bonus=bonus,
         )
         for sol in exclude:  # not all cells equal
             diffs = []
