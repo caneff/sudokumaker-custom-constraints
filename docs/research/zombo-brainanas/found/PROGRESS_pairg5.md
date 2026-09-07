@@ -82,3 +82,51 @@ r7c9_r9c9_IU: start
     round 1: INFEASIBLE in 43s (first feasible None)
 r7c9_r9c9_IU: no grid within 400s
 r8c7_r8c9_UI: start
+    round 1: INFEASIBLE in 228s (first feasible None)
+r7c9_r8c9_UI: no grid within 400s
+r7c9_r9c8_IU: start
+    round 1: INFEASIBLE in 199s (first feasible None)
+r7c9_r9c8_UI: no grid within 400s
+r8c7_r8c9_IU: start
+    round 1: INFEASIBLE in 35s (first feasible None)
+r7c9_r9c8_IU: no grid within 400s
+r7c9_r9c9_UI: start
+    round 1: INFEASIBLE in 188s (first feasible None)
+r8c7_r8c9_UI: no grid within 400s
+r8c7_r9c9_UI: start
+    round 1: INFEASIBLE in 58s (first feasible None)
+r8c7_r8c9_IU: no grid within 400s
+r8c7_r9c9_IU: start
+    round 1: INFEASIBLE in 49s (first feasible None)
+r7c9_r9c9_UI: no grid within 400s
+r8c7_r9c8_UI: start
+    round 1: INFEASIBLE in 41s (first feasible None)
+r8c7_r9c9_IU: no grid within 400s
+r8c9_r9c7_UI: start
+    round 1: INFEASIBLE in 114s (first feasible None)
+    round 1: INFEASIBLE in 63s (first feasible None)
+r8c7_r9c9_UI: no grid within 400s
+r8c9_r9c9_IU: start
+r8c9_r9c7_UI: no grid within 400s
+r9c7_r9c9_IU: start
+    round 1: INFEASIBLE in 109s (first feasible None)
+r8c7_r9c8_UI: no grid within 400s
+r8c9_r9c7_IU: start
+    round 1: INFEASIBLE in 35s (first feasible None)
+r9c7_r9c9_IU: no grid within 400s
+SHARD 1 DONE
+    round 1: INFEASIBLE in 38s (first feasible None)
+r8c9_r9c9_IU: no grid within 400s
+r9c7_r9c9_UI: start
+    round 1: INFEASIBLE in 108s (first feasible None)
+r9c7_r9c9_UI: no grid within 400s
+SHARD 2 DONE
+    round 1: INFEASIBLE in 187s (first feasible None)
+r8c9_r9c7_IU: no grid within 400s
+r9c7_r9c8_UI: start
+    round 1: INFEASIBLE in 136s (first feasible None)
+r9c7_r9c8_UI: no grid within 400s
+r9c8_r9c9_IU: start
+    round 1: INFEASIBLE in 18s (first feasible None)
+r9c8_r9c9_IU: no grid within 400s
+SHARD 0 DONE
