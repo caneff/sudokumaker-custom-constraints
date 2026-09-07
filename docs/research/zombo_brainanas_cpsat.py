@@ -223,7 +223,8 @@ def build(
                 lits.append(e)
             m.AddBoolOr(lits)
     pocket_clue, pocket_at = [], []
-    if min_pockets:
+    open_circles = [p for p, v in (circles or {}).items() if v is None]
+    if min_pockets or open_circles:
         # Clued bananas: a pocket shape, all banana, fully bordered by rectangle
         # colour, holding a cell whose digit equals the pocket size.
         placed = []
@@ -244,6 +245,9 @@ def build(
             pockets = [
                 pl for pl in POCKETS if len(pl[0]) <= 7 or pl[0] & big_pocket_cells
             ]
+        if not min_pockets:  # open circles only need the shapes through them
+            through = frozenset(open_circles)
+            pockets = [pl for pl in pockets if pl[0] & through]
         for cells, border in pockets:
             b = m.NewBoolVar("")
             m.AddBoolAnd(
@@ -251,7 +255,19 @@ def build(
             ).OnlyEnforceIf(b)
             m.AddBoolOr([is_digit(p, len(cells)) for p in cells]).OnlyEnforceIf(b)
             placed.append(b)
-        m.Add(sum(placed) >= min_pockets)
+        if min_pockets:
+            m.Add(sum(placed) >= min_pockets)
+        # Open circle in a pocket, exact: if p is banana, some placed pocket
+        # through p has p's digit as its size. No lazy round needed.
+        for p in open_circles:
+            opts = []
+            for (cells, _), b in zip(pockets, placed, strict=True):
+                if p in cells:
+                    c = m.NewBoolVar("")
+                    m.AddImplication(c, b)
+                    m.AddImplication(c, is_digit(p, len(cells)))
+                    opts.append(c)
+            m.AddBoolOr([*opts, rect[p]])
         if objective or min_per_box:
             # Pocket circles count too: cell p holds k inside a placed k-pocket.
             by_cell = {}
