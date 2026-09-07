@@ -68,3 +68,21 @@ the six cells is feasible with it, and every plant is feasible with the pair
 open. A plant hunt needs its own pair kind. And repeated solves in one process
 leaked until `release_heap()` landed in the model (see its docstring); the
 18-solve ablation is the confirmation.
+
+## Chocolate reaching boxes 2 and 4 (tools/pairopt.py b24)
+
+Accepting the corner, the next hunt rewarded chocolate in boxes 2 and 4:
+`pairopt.py shard 3 400 90 b24`, one run per box-9 pair kind (42, no r8c8),
+circle weight 10000 plus 3333 per infected cell in boxes 2 and 4, stall 90 s.
+39 of 42 kinds produced a grid (r7c7+r7c8 IU, r7c9+r9c9 IU, r7c9+r9c8 IU and
+r9c8+r9c9 IU hit the 400 s limit); results are `found/pairb24_*`, arm
+"pair boxes 2+4" on the lineup.
+
+| | boxes 2+4 infected | circles |
+|---|---|---|
+| found/ before this arm (119 grids) | 2-7, median 4 | |
+| b24 arm (39 grids) | 3-7, median 5 | 4-12, median 10 |
+
+A one-cell median gain and no new maximum: with circles weighted three times
+a chocolate cell the objective still spends its budget on circles. A heavier
+chocolate weight (trade circles for reach) is the untested lever.
