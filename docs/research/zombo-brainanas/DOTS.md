@@ -165,3 +165,6 @@ pair99var_UI_w6_s1/s3/s5, pairb24_r9c7_r9c9_UI). `tools/pair99b8d1.py` enforces
 both in the model: four pockets is **infeasible** (proof); without the floor,
 four new grids (`found/pair99b8d1_UI_*`), best UI_w3_s0 with 10 circles, 32
 chocolate and three pockets 34/8/7.
+Three-pocket floor: five shadings at distance ≥ 12 (`found/pair99b8d1_UI_*_g3`,
+7–10 circles, 25–32 chocolate), the sixth infeasible, so that is the whole
+three-pocket space at that spacing.
