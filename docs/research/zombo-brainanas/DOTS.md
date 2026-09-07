@@ -56,3 +56,26 @@ Digit fills of those four UI shadings are finite too (`tools/pair99fills.py`,
 all exhausted): 6, 12, 6 and 12 fills, 36 grids in `found/pair99fills_*`.
 Most dot options: `pair99fills_n1_f04` (8 black + 18 white, 7 circles, 34
 chocolate); best with 9 circles: `pair99digits_UI_d1` (= fill s0_f02, 7 black + 17 white). The s0 fills duplicate the `pair99digits_*` grids, so `found/` holds 27 of the 36.
+
+## Which third circle pins the r9c7 / r9c9 shading (2026-09-07)
+
+`tools/pinx.py`: circles open on r9c7, r9c9 and one cell X outside box 9, no
+other constraint; a kind INFEASIBLE for X means a circle on X pins the other
+kind. Logs in `probes/pinx_IU.log`, `probes/pinx_UI.log`, every cell decided
+(no timeouts). U = pins UI (r9c7 uninfected, r9c9 infected), I = pins IU,
+X = neither kind survives, . = no pin.
+
+```
+      c1 c2 c3 c4 c5 c6 c7 c8 c9
+r1     .  .  .  .  .  U  U  .  .
+r2     .  .  .  .  .  U  U  .  .
+r3     .  .  .  .  .  U  U  .  .
+r4     .  .  .  .  U  U  U  U  .
+r5     .  .  .  U  U  U  .  U  U
+r6     .  .  .  I  .  .  .  .  U
+r7     .  .  X  U  U  U  #  #  #
+r8     .  .  I  U  U  U  #  #  #
+r9     .  .  U  U  X  U  #  #  #
+```
+
+29 cells pin UI, two pin IU (r6c4, r8c3), two kill both (r7c3, r9c5).
