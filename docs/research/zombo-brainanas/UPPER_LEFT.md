@@ -60,8 +60,11 @@ the 5 r4c4 + 4 r5c1 grid runs a 5-4-3-2 staircase up column 3 into r2c3.
 Grids are in `scratch-zombo/hunt/plant/grid_*_ceil.txt` (not synced to
 `found/`: they are ceiling witnesses, 6-10 circles, no pocket circles).
 
-Two gotchas from the run: the fixed pair r7c8 infected + r9c7 uninfected used
-by `ceiling.py` is infeasible with every one of the six plants (each plant alone
-is feasible), so a plant hunt needs its own pair kind; and repeated solves in
-one process leaked until `release_heap()` landed in the model (see its
-docstring).
+Two gotchas from the run. The fixed pair r7c8 infected + r9c7 uninfected used
+by `ceiling.py` is infeasible with every one of the six plants; the ablation
+(`scratch-zombo/hunt/plant/ablate.py`, 18 solves in one process) pins it on
+the 5: a 5 at r4c4 or r5c4 is infeasible with that pair, while a 4 in any of
+the six cells is feasible with it, and every plant is feasible with the pair
+open. A plant hunt needs its own pair kind. And repeated solves in one process
+leaked until `release_heap()` landed in the model (see its docstring); the
+18-solve ablation is the confirmation.
