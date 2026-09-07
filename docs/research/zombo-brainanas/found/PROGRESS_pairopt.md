@@ -171,3 +171,9 @@ SHARD 0 DONE
     valid after 1 rounds, first feasible 18s
 r9c7_r9c9_UI: 11 circles, 2 clued bananas, 29 infected (42s)
 SHARD 1 DONE
+SHARD 1 DONE
+SHARD 2 DONE
+r9c8_r9c9_IU: start
+    round 1: INFEASIBLE in 10s (first feasible None)
+r9c8_r9c9_IU: no grid within 400s
+SHARD 0 DONE
