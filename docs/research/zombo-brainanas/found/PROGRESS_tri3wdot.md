@@ -205,3 +205,21 @@ r6c3r7c3 UI DONE
     round 1: INFEASIBLE in 32s (first feasible None)
 r5c3r6c3_UI_w3_s0_g4: no grid within 300s
 r5c3r6c3 UI DONE
+r5c7r5c8_UI_w3_s0_g4: start
+r5c7r5c8_UI_w3_s0_g4: start
+r5c7r5c8_UI_w3_s0_g4: start
+    round 1: OPTIMAL in 17s (first feasible 13s)
+    valid after 1 rounds, first feasible 13s
+r5c7r5c8_UI_w3_s0_g4: 6 circles, 28 chocolate, 4 uninfected groups [22, 13, 10, 8] (20s)
+r5c7r5c8_UI_w6_s1_g4: start
+    round 1: INFEASIBLE in 16s (first feasible None)
+r5c7r5c8_UI_w6_s1_g4: no grid within 600s
+r5c7r5c8 UI DONE
+r8c6r9c6_UI_w3_s0_g4: start
+    round 1: OPTIMAL in 18s (first feasible 16s)
+    valid after 1 rounds, first feasible 16s
+r8c6r9c6_UI_w3_s0_g4: 6 circles, 28 chocolate, 4 uninfected groups [22, 13, 10, 8] (21s)
+r8c6r9c6_UI_w6_s1_g4: start
+    round 1: INFEASIBLE in 17s (first feasible None)
+r8c6r9c6_UI_w6_s1_g4: no grid within 600s
+r8c6r9c6 UI DONE
