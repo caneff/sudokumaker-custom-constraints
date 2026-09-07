@@ -22,11 +22,14 @@ Measured (tools/ceiling.py, model 6ec3f89, rows 1-5 x cols 1-5 = 25 cells):
 
 Conclusion. Under the map #342 rules the upper left cannot carry a "this
 banana must grow" deduction: there is not enough chocolate to box a banana in.
-Two levers, both untested:
+The role swap (`rect=0`) is not a lever: #342 records it as infeasible under
+gdc's rules (CP-SAT proves it in under a second; the one-patient-zero-per-row
+rule is the killer). What remains:
 
-1. `rect=0` (swap: uninfected groups are rectangles, infected groups are
-   bananas). Sparse infection then means every infected clump must be
-   non-rectangular, i.e. must grow, and the banana-heavy corner becomes
-   chocolate-heavy. The model already supports it (RECT global, `rect` CLI arg).
-2. Accept it: the upper left resolves by sudoku + Cocci dots, and the
-   chocolate/banana interplay lives in the bottom and right thirds.
+1. Accept it: the upper left resolves by sudoku + Cocci dots, and the
+   chocolate/banana interplay lives in the bottom and right thirds. Optimize
+   grids for chocolate reach into boxes 2 and 4 (min_cross, bonus) rather than
+   box 1.
+2. A rules change, which is a wayfinder decision, not a generator setting:
+   e.g. a different digit-to-box assignment so a big patient zero sits in the
+   top band.
