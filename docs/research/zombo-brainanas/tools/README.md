@@ -11,3 +11,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `b9cover.py` — build-once cover loop over box-9 pairs
 - `build_lineup.py` + `lineup_template.html` — the lineup artifact page
 - `memlog.sh`, `sanity.py` — RSS log per solver process, quick model check
+- `forced.py shard nshards` — per cell, can it be infected / uninfected (FORCED.md)
