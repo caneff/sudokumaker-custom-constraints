@@ -29,6 +29,8 @@ for f in sorted(glob.glob(F + "/*.json")):
         arm, seed = "brainanas", "≥ " + name[7:]
     elif name.startswith("pairg5_"):  # pairg5_r7c7_r7c8_IU -> five brainanas required, circles maximized
         arm, seed = "pair, 5 brainanas", name[7:]
+    elif name.startswith("x9_"):  # x9_r8c9_w3_s0 -> r9c7 uninfected + another box-9 circle infected, r9c9 != 9, 4 pockets
+        arm, seed = "r9c7 + other box-9 circle", name[3:]
     elif name.startswith("pair99ring_"):  # pair99ring_UI_w3_s0_g3 -> r9c7 + r9c9, opener kropki touching the would-be green ring
         arm, seed = "r9c7 + r9c9", "ring kropki " + name[11:]
     elif name.startswith("pair99b68_"):  # pair99b68_UI_w3_s0_g3 -> r9c7 + r9c9, black dot in box 1 or 2, circle in b6 off row 6 and in b8 off col 6

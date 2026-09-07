@@ -224,3 +224,13 @@ r3c5–r4c5) and `pair99digits_UI_d0` with 10 (circles r6c8, r9c7, r9c9, r3c1,
 r6c2, r9c2; white r4c6–r5c6, r3c6–r4c6, r2c7–r2c8, r2c8–r2c9). The other six
 (d2, d3, n1_f02–f04, pair99g4near_UI_w3_s1) are not unique even with every
 circle and white dot, so they need black dots. Pictures in `unique/`.
+
+## Moving the second circle: r9c7 + another box-9 circle, 4 pockets, r9c9 ≠ 9
+
+`tools/x9hunt.py` (r9c7 uninfected, X infected, four pockets, r9c9 ≠ 9, three
+seeds at distance ≥ 12): feasible for X = r7c7 (3 grids), r7c8 (3), r7c9 (2),
+r8c9 (2), r9c9 (1, the known shading with r9c9 = 6); infeasible by proof for
+r8c7, r8c8, r9c8. `tools/x9kill.py` then tests every white dot near box 9 on
+each grid with r9c7 given 9: **every one of the 11 grids has at least one white
+dot that kills the 9** (`probes/x9/killers.txt`, no timeouts). Grids in the
+lineup under "r9c7 + other box-9 circle".

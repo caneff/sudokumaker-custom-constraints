@@ -39,3 +39,5 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `pair99ring.py` — r9c7 + r9c9 UI with the opener kropki: a white or black dot on a domino touching r5c6–r5c9 or r6c5, the cells outside the 7-cell green block that r9c7 = 9 would force; pocket floor.
 - `minuniq.py` — greedy irreducible clue set (circles, white dots, black dots unless `NO_BLACK=1`; no givens, positive dots only) that makes a found fill the unique solution; dots are stripped first with every circle kept, then circles. Keeps r9c7, r9c9 and the opener dot. Output in `unique/`.
 - `render_unique.py` — two-panel PNG of a `unique/*.json` clue set: puzzle as presented, and the solution with shading.
+- `x9hunt.py` — circle r9c7 (uninfected) + one other box-9 circle X (infected), r9c9 != 9, pocket floor, circles + chocolate maximized.
+- `x9kill.py` — for one x9 grid, tests each white dot near box 9 alone with r9c7 given 9: KILLS = the dot makes r9c7 = 9 impossible (results in `probes/x9/killers.txt`).
