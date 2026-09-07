@@ -27,6 +27,8 @@ for f in sorted(glob.glob(F + "/*.json")):
         arm, seed = "pair optimal", name[8:]
     elif name.startswith("groups_"):  # groups_5 -> the exact-count check asked for >= 5 brainanas
         arm, seed = "brainanas", "≥ " + name[7:]
+    elif name.startswith("pairg5_"):  # pairg5_r7c7_r7c8_IU -> five brainanas required, circles maximized
+        arm, seed = "pair, 5 brainanas", name[7:]
     elif name.startswith("pairpock_"):  # pairpock_r7c7_r7c8_IU -> every uninfected group rewarded
         arm, seed = "pair pockets", name[9:]
     elif name.startswith("pairb24_"):  # pairb24_r7c7_r7c8_IU -> chocolate in boxes 2+4 rewarded
