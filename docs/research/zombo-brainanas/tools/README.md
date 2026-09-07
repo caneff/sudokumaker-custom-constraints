@@ -38,3 +38,4 @@ directory is the durable copy of those scripts; results sync into `../found/`.
 - `pair99b68.py` — r9c7 + r9c9, black dot inside box 1 or 2, a circle in box 6 off row 6 and one in box 8 off column 6, pocket floor.
 - `pair99ring.py` — r9c7 + r9c9 UI with the opener kropki: a white or black dot on a domino touching r5c6–r5c9 or r6c5, the cells outside the 7-cell green block that r9c7 = 9 would force; pocket floor.
 - `minuniq.py` — greedy irreducible clue set (circles, white dots, black dots unless `NO_BLACK=1`; no givens, positive dots only) that makes a found fill the unique solution; dots are stripped first with every circle kept, then circles. Keeps r9c7, r9c9 and the opener dot. Output in `unique/`.
+- `render_unique.py` — two-panel PNG of a `unique/*.json` clue set: puzzle as presented, and the solution with shading.
