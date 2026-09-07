@@ -41,3 +41,13 @@ white-style (+1) pairs.
   edge forbids that pair), so `unique({}, circles, [], known=sol, dots=D)` is
   the test. Candidate grids by circles/dots: `probe_circ13` (13/5),
   `dist25_400` (12/8), `probe_bal37` and `box9_704` (11/9).
+
+## r9c7 + r9c9 circles, four pockets (2026-09-07)
+
+With circles on r9c7 (uninfected) and r9c9 (infected), at least four
+uninfected groups and the circles + chocolate objective, the shading space is
+tiny: `tools/pair99g4.py` and `tools/pair99g4near.py` found four shadings in
+total (`found/pair99g4_UI_w3_s0`, `found/pair99g4near_UI_w3_s0..s2`) and then
+CP-SAT proved INFEASIBLE for any further shading at distance ≥ 1, in about
+40 s each. The IU kind (r9c7 infected) has two shadings at distance ≥ 12
+(`found/pair99g4_IU_*`), unexplored closer in.
