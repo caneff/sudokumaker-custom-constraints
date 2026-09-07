@@ -203,3 +203,10 @@ caps its pocket at 9 cells, which the library covers. So shading enumerations
 and fill enumerations above are exact. The library only affects circle
 maximization: a circle in an 8/9-cell pocket away from box 9 is not counted in
 the objective, so an optimizing hunt may pick a slightly worse fill.
+
+## Minimal unique clue set (no givens)
+
+`tools/minuniq.py` on `pair99g4_UI_w3_s0`: 7 clues, irreducible (greedy, 23
+proofs): circles r9c7, r9c9; white r4c6–r5c6 (opener), r1c8–r2c8; black
+r1c7–r2c7, r5c2–r6c2, r8c2–r9c2. Dots are positive-only clues (no negative
+constraint). Result in `unique/pair99g4_UI_w3_s0.json`.
