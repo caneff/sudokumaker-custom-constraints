@@ -323,7 +323,11 @@ clues are data rather than cells the solver fills. On the identical board — th
 same 20 clues at the same positions, the same 7 interior givens — it finds no
 first solution inside the app's 300 s limit, cold or after the app's own logic
 pass. A capability row, not a ratio: one arm produced no number, so none was
-invented. The board and the rule were both proved identical first (the app
+invented. The direction is a tautology, not a discovery: our component reads
+both ends of every line, so its deductions are a strict superset of one-sided
+propagation, and the blank ring ends are functions of the line rather than extra
+information — the built-in board is the same puzzle with the same unique
+solution. What the run buys is the bound: the gap crosses 300 s. The board and the rule were both proved identical first (the app
 returns `unique` in 0 ms on our solution grid under its own constraint), so the
 DNF is search cost and not a contradiction. Full method, the mapping from the
 constraint's `outerCell` indices to our clue labels, and the link:

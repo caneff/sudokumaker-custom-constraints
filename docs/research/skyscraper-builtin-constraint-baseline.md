@@ -7,7 +7,9 @@ takes its clues as data rather than as cells a solver fills. On the identical
 board, how fast is the built-in?
 
 **Answer: it does not finish.** No first solution inside the app's 300 s limit,
-cold or after the app's own logical pass. Ours proves the board unique in 8.3 s
+cold or after the app's own logical pass. The *direction* of that result is a
+tautology — see the nesting argument below — so what the run buys is the bound,
+not the ranking. Ours proves the board unique in 8.3 s
 cold and needs no search at all after the logic pass.
 
 | date | app version | board | ours | built-in `503` | verdict |
@@ -35,19 +37,38 @@ from a timeout.
   native rule accepts our solution. So the DNF is search cost, not
   unsatisfiability.
 
-## Why the built-in loses on this board
+## The deduction sets are nested, so the direction was never in doubt
 
-The two are not doing the same job. Our component reads **both end clues of one
-line at once** and runs an exact subset DP over the peak split, so it is a
-decision procedure for the line: it removes every digit no full arrangement can
-use, and it deduces the clues from the line as well as the line from the clues.
-The built-in enforces one clue against one line and prunes far less, so the
-app's solver has to search the space our component collapses. Twenty clues and
-seven givens is a thin clue set — that is the regime where the difference bites.
+One-sided reasoning is a **strict subset** of two-sided. Every line on our board
+carries a cell at each end: the 20 clued ends are givens, and the other 16 are
+blank cells the solver fills. Our component reads both, so on a line clued at
+one end only it still runs the full peak-split join with the far clue's
+candidates wide open — which subsumes exactly what one-sided propagation
+derives, and then adds the far clue's own value on top. There is no deduction
+the built-in makes here that our component does not.
 
-Nothing here says the built-in is bad; it says our board was carved to
-CP-SAT minimality against a much stronger propagator, and a weaker one cannot
-close it inside the app's limit.
+Two things follow, and the second is the honest cost of this measurement.
+
+**The two boards have the same solution set — proved, not spot-checked.** A
+blank ring cell is constrained to equal the visible count along its line, which
+is a function of cells that already exist. Defining a variable as a function of
+existing variables adds no information, so our frame's 16 blank ends constrain
+the interior not at all. The built-in board is therefore the *same puzzle*, with
+the same unique solution, under a weaker propagator. That is a stronger claim
+than the 0 ms solution-grid check above, which only shows our grid is *a*
+solution under the app's rule.
+
+**The DNF was predictable a priori, so it quantifies rather than discovers.**
+A strictly weaker propagator on a board carved to minimality against the
+stronger one was always going to lose; the only content in the number is that
+the gap crosses the app's 300 s limit. Read it as a bound, not as a comparison
+of two comparable solvers. Two rows of the same shape are already in
+`examples/skyscraper/README.md` — the `MAXN` cap at 10x10, and the running cap
+on the 9x9 local board — and this is a third instance of that one phenomenon.
+
+Nothing here says the built-in is bad. It says a thin clue set — 20 clues and
+7 givens — is exactly the regime where the extra strength is load-bearing, and
+that our board sits past the point where one-sided propagation can close it.
 
 ## Reproducing
 
