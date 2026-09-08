@@ -88,6 +88,12 @@ def neighbours(r, c):
 
 ADJACENT = [(p, q) for p in CELLS for q in neighbours(*p) if IDX[q] > IDX[p]]
 
+# Both are sound and both are redundant with the rest of the model; they exist
+# to give the solver the enumeration instead of making it repeat the search.
+# Kept switchable because "sound and redundant" does not mean "faster".
+USE_CATALOGUE_DOMAINS = True
+USE_CHECKERBOARD = True
+
 CATALOGUE = json.loads(
     (Path(__file__).parent / "renbanana" / "rectangle-catalogue.json").read_text()
 )
@@ -110,6 +116,29 @@ def circle_cells_at(a, b, ro, co):
         ro, co = co, ro
     cells = CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("circle_cells", [])
     return [(c, r) if flip else (r, c) for r, c in cells]
+
+
+def support_at(a, b, ro, co):
+    """Per-cell digit domains for an `a` by `b` rectangle at box offset
+    (ro, co), straight from the #377 catalogue: cell (i, j) may only hold a
+    digit that some legal filling puts there.
+
+    Layer B again -- the rectangle and the boxes, nothing outside -- so a real
+    grid can only narrow these further and the domains are sound. Handing them
+    to the digit stage replaces a search CP-SAT would otherwise redo on every
+    shading with an enumeration already on disk.
+    """
+    if max(a, b) > 8:
+        return None
+    key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
+    if flip:
+        ro, co = co, ro
+    sup = CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("support")
+    if sup is None:
+        return None
+    if flip:  # stored rows are the other orientation's columns
+        return [[sup[j][i] for j in range(len(sup))] for i in range(len(sup[0]))]
+    return sup
 
 
 def fillings_at(a, b, ro, co):
@@ -450,13 +479,40 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
                 [d[br * 3 + r, bc * 3 + c] for r in range(3) for c in range(3)]
             )
 
+    # The whisper, stated as the checkerboard it forces rather than left for
+    # the solver to rediscover on every shading. If a chocolate cell has a
+    # chocolate neighbour then |a - b| >= 5 puts one of them at 4 or below and
+    # the other at 6 or above, so 5 cannot appear and the classes alternate.
+    # A lone 1x1 keeps the full domain, 5 included.
+    high = {}
+    for p in CELLS if USE_CHECKERBOARD else []:
+        if is_choc[p] and any(is_choc[q] for q in neighbours(*p)):
+            hi = m.new_bool_var(f"hi{p}")
+            m.add(d[p] >= 6).only_enforce_if(hi)
+            m.add(d[p] <= 4).only_enforce_if(hi.negated())
+            high[p] = hi
     for p, q in ADJACENT:
         if is_choc[p] and is_choc[q]:
+            if USE_CHECKERBOARD:
+                m.add(high[p] != high[q])
             gap = m.new_int_var(-8, 8, f"g{p}{q}")
             m.add(gap == d[p] - d[q])
             abs_gap = m.new_int_var(0, 8, f"a{p}{q}")
             m.add_abs_equality(abs_gap, gap)
             m.add(abs_gap >= 5)
+
+    # Per-cell domains from the catalogue, for every chocolate rectangle.
+    for group in rv.components(is_choc, True) if USE_CATALOGUE_DOMAINS else []:
+        rows, cols = rv.shape(group)
+        r0, c0 = min(group)
+        sup = support_at(rows, cols, r0 % 3, c0 % 3)
+        if sup is None:
+            continue
+        for i in range(rows):
+            for j in range(cols):
+                m.add_allowed_assignments(
+                    [d[r0 + i, c0 + j]], [(v,) for v in sup[i][j]]
+                )
 
     for group in rv.components(is_choc, False):
         m.add_all_different([d[p] for p in group])
