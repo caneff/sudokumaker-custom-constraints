@@ -48,6 +48,7 @@ by `renbanana_verify.py`, written from the rules rather than from this encoding.
 """
 
 import argparse
+import gc
 import json
 import random
 import sys
@@ -103,7 +104,9 @@ class Shadings:
     optimum is a true upper bound on any shading-layer objective.
     """
 
-    def __init__(self, objective=None, rng=None, lemmas=True, cap=None):
+    def __init__(
+        self, objective=None, rng=None, lemmas=True, cap=None, require_shapes=()
+    ):
         m = cp.CpModel()
         self.m = m
         self.choc = {p: m.new_bool_var(f"c{p}") for p in CELLS}
@@ -150,6 +153,12 @@ class Shadings:
 
         if cap is not None:
             m.add(sum(self.choc.values()) <= cap)
+
+        for a, b in require_shapes:
+            spots = self._spots(a, b) + ([] if a == b else self._spots(b, a))
+            if not spots:
+                raise SystemExit(f"shape {a}x{b} cannot fit the grid")
+            m.add_bool_or(spots)
 
         self.terms = []
         if objective == "chocolate":
@@ -201,23 +210,27 @@ class Shadings:
         cannot claim a shape it has not placed."""
         present = []
         for a, b in SHAPES:
-            spots = []
-            for r in range(N - a + 1):
-                for c in range(N - b + 1):
-                    inside = [(r + i, c + j) for i in range(a) for j in range(b)]
-                    border = {
-                        q for p in inside for q in neighbours(*p) if q not in inside
-                    }
-                    spot = self.m.new_bool_var(f"p{a}x{b}@{r},{c}")
-                    for p in inside:
-                        self.m.add_implication(spot, self.choc[p])
-                    for q in border:
-                        self.m.add_implication(spot, self.choc[q].negated())
-                    spots.append(spot)
             here = self.m.new_bool_var(f"has{a}x{b}")
-            self.m.add_bool_or([here.negated(), *spots])
+            self.m.add_bool_or([here.negated(), *self._spots(a, b)])
             present.append(here)
         return present
+
+    def _spots(self, a, b):
+        """One bool per placement of an `a` by `b` maximal chocolate component:
+        true only if those cells are chocolate and every bordering cell banana.
+        Implication one way only, so a spot is never forced true by the shading."""
+        spots = []
+        for r in range(N - a + 1):
+            for c in range(N - b + 1):
+                inside = [(r + i, c + j) for i in range(a) for j in range(b)]
+                border = {q for p in inside for q in neighbours(*p) if q not in inside}
+                spot = self.m.new_bool_var(f"p{a}x{b}@{r},{c}")
+                for p in inside:
+                    self.m.add_implication(spot, self.choc[p])
+                for q in border:
+                    self.m.add_implication(spot, self.choc[q].negated())
+                spots.append(spot)
+        return spots
 
     def forbid_component(self, group):
         """Cut exactly one illegal pattern: these cells banana with a fully
@@ -452,6 +465,7 @@ def hunt(
     progress,
     lemmas=True,
     caps=(None,),
+    require_shapes=(),
 ):
     """Sample seeds until `target` diverse candidates are found, or seeds run out.
 
@@ -492,7 +506,7 @@ def hunt(
             stats["seeds_run"] += 1
             started = time.monotonic()
             rng = random.Random(seed)
-            model = Shadings(objective, rng, lemmas, cap)
+            model = Shadings(objective, rng, lemmas, cap, require_shapes)
             model.replay(learned)
             model.cuts = []  # replayed cuts are already in `learned`, not new
             deadline = started + limit
@@ -565,6 +579,8 @@ def hunt(
                 )
                 break
             learned.extend(model.cuts)
+            del model  # a seed's model is large; do not hold two at once
+            gc.collect()
             stats["seconds"] += time.monotonic() - started
             log(
                 f"seed {seed}: done in {time.monotonic() - started:.0f}s, "
@@ -623,6 +639,12 @@ def main():
         help="descending objective caps to sweep, e.g. 50,48,46; empty = uncapped",
     )
     h.add_argument(
+        "--require-shape",
+        default="",
+        help="comma-separated shapes every shading must contain, e.g. 2x4,3x3; "
+        "either orientation counts",
+    )
+    h.add_argument(
         "--no-lemmas",
         action="store_true",
         help="drop the 5-placement lemma from the shading model",
@@ -655,6 +677,11 @@ def main():
             a.progress,
             not a.no_lemmas,
             tuple(int(v) for v in a.caps.split(",")) if a.caps else (None,),
+            tuple(
+                tuple(int(v) for v in s.split("x"))
+                for s in a.require_shape.split(",")
+                if s
+            ),
         )
     elif a.cmd == "bound":
         bound(a.objective, a.limit, min(a.workers, 8), not a.no_lemmas)
