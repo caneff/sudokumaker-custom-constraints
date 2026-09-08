@@ -25,7 +25,7 @@ fmt:
 #
 # ortools rides along with lzstring so a test can prove uniqueness the way the
 # generators do. Keep such a test to a handful of single solves — a 4x4, a 9x9,
-# skyscraper's sweep of its four global boards (about two seconds): a full
+# skyscraper's sweep of its global boards (about two seconds): a full
 # carve is minutes, and this gate has to stay fast enough to run before every
 # commit.
 test:

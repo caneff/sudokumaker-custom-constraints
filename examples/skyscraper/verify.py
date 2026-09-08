@@ -41,6 +41,7 @@
 # groups rather than on ring keys, so its clue set is not read the way this
 # reads one; rebuild_size.py --paths is what keeps those links honest.
 
+import json
 import pathlib
 import sys
 
@@ -105,11 +106,7 @@ def grid_problems(grid, clue, givens, lines, n, bh, bw):
     clue it does not produce. Empty means the grid stands up."""
     houses = [[(r, c) for c in range(n)] for r in range(n)]
     houses += [[(r, c) for r in range(n)] for c in range(n)]
-    houses += [
-        [(br + r, bc + c) for r in range(bh) for c in range(bw)]
-        for br in range(0, n, bh)
-        for bc in range(0, n, bw)
-    ]
+    houses += [sorted(box) for box in boxes(n, bh, bw)]
     read = {
         key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells)
         for key, cells in lines.items()
@@ -134,32 +131,47 @@ def grid_problems(grid, clue, givens, lines, n, bh, bw):
     )
 
 
+def boxes(n, bh, bw):
+    """The board's boxes, as sets of (row, column). One home: the house check
+    and the box check below both read the same partition."""
+    return {
+        frozenset((br + r, bc + c) for r in range(bh) for c in range(bw))
+        for br in range(0, n, bh)
+        for bc in range(0, n, bw)
+    }
+
+
 def box_problems(doc, n, bh, bw):
     """Whether the link draws the same boxes gen records. The proof runs on
     gen's box shape, so a link whose houses differ is a different puzzle
     however well its givens and clues line up. Compared as a partition: the
     app is free to number the boxes as it likes."""
     W = doc["width"]
-    regions = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
+    # type 1 is the app's region constraint, the one that draws the boxes
+    drawn_regions = [c for c in doc["constraints"] if c.get("type") == 1]
+    if not drawn_regions:
+        return ["the link draws no regions at all, so it has no boxes"]
+    regions = drawn_regions[0]["regions"]
     drawn = {}
     for r in range(n):
         for c in range(n):
             drawn.setdefault(regions[interior_index(W, r, c)], set()).add((r, c))
-    recorded = {
-        frozenset((br + r, bc + c) for r in range(bh) for c in range(bw))
-        for br in range(0, n, bh)
-        for bc in range(0, n, bw)
-    }
-    if {frozenset(cells) for cells in drawn.values()} != recorded:
+    if {frozenset(cells) for cells in drawn.values()} != boxes(n, bh, bw):
         return [f"the link's boxes are not the {bh}x{bw} boxes gen records"]
     return []
 
 
 def boards():
     """Every global board committed here, as (size, gen tag, link file), found
-    by its gen file so a new size needs no edit. The 9x9 is the plain-named
-    pair; a `_local` board is a drawn-path board, which this does not read."""
-    found = [(9, "", HERE / "PUZZLE_LINK.txt")] if (HERE / "gen.json").exists() else []
+    by its gen file so a new size needs no edit, and sized by what that file
+    records rather than by its name. The 9x9 is the plain-named pair; a
+    `_local` board is a drawn-path board, which this does not read."""
+    plain = HERE / "gen.json"
+    found = (
+        [(len(json.loads(plain.read_text())["grid"]), "", HERE / "PUZZLE_LINK.txt")]
+        if plain.exists()
+        else []
+    )
     for path in HERE.glob("gen_*x*.json"):
         tag = path.stem.removeprefix("gen_")
         if tag.endswith("_local"):
