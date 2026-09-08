@@ -68,7 +68,7 @@ Clues are needed, and circles (group size) are the ones that speak about the
 shading — kropki and givens only constrain digits, which is not the
 under-determined layer.
 
-## Two hand lemmas worth having as solve deductions
+## Three hand lemmas worth having as solve deductions
 
 Both derived by hand, both consistent with the witness.
 
@@ -82,6 +82,19 @@ Both derived by hand, both consistent with the witness.
   fixed before any digit is placed. A width-*b* row of a rectangle holds
   ceil(b/2) cells of one class in one grid row, all distinct from a 4-element
   set, so no chocolate rectangle has a side longer than 8.
+
+- **A chocolate circle is never a 5, and a circled chocolate 9 is a 3x3.** A
+  circle gives its group's size, so a circled 5 would mean a five-cell group —
+  2+ cells, so its 5 needs a chocolate neighbour differing by >= 5, impossible.
+  A circled 9 rules out 1x9 and 9x1, which are a whole row or column and so
+  contain the 5, leaving 3x3. Whether a 3x3 chocolate rectangle exists at all is
+  unverified: its checkerboard puts five cells of one class in the rectangle,
+  all needing low digits from the four-element set {1,2,3,4}, distinct within
+  each row and column. Tight, but not obviously dead.
+
+This is why circles are worth placing on chocolate rather than banana: on
+chocolate the number is a rectangle area and factors into a short list of
+shapes, while on banana it only says how many cells an L-or-worse blob has.
 
 ## Method and caveats
 
