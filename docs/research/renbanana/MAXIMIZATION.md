@@ -127,6 +127,39 @@ The general lesson for scoring: a circle is worth what it rules out, not what
 its digit reads. A big chocolate circle is rare and forces a large rectangle;
 a big banana circle is automatic.
 
+## A circled 2x3 exists; a circled 2x2 is the hard one
+
+Asking a rectangle to *exist* and asking it to *carry a circle* are different
+requests, and only the second is interesting: the first three grids with two
+2D chocolates each had six rectangles between them and not one circle on any.
+`--require-shape` states the first in stage 1, `--circled` the second in
+stage 3, and the two together are what a clued rectangle needs.
+
+Run each circle alone before asking for both — the conjunction hides which
+half is the blocker:
+
+| demands | shadings | candidates |
+| --- | ---: | ---: |
+| a circled 2x3 | 226 | 3 |
+| a circled 2x2 | 222 | 0 |
+| both | 190 | 0 |
+
+The three 2x3 grids verify LEGAL and hold a real 6, at box offsets (1,2),
+(0,2) and (2,2). The 2x2 is what stalls.
+
+**The degree lemma says why.** A circled 2x2 needs a 4 somewhere in it. Digit
+4 has one German partner, 9, and inside a 2x2 every cell has two chocolate
+neighbours — so both of the 4's neighbours must be 9. They sit at (r, c+1)
+and (r+1, c), which sudoku permits only when those cells fall in different
+boxes, so **a circled 2x2 must straddle a box line**. That is exactly the
+catalogue's five live offsets for a circled 2x2: every one has ro = 2 or
+co = 2, and the four offsets interior to a box are dead.
+
+The same argument covers a circled 2x3, needing a 6 whose only partner is 1 —
+but a 2x3 has corner cells with two neighbours and edge cells with three, and
+its extra length gives the pair of 1s more ways to land in separate boxes.
+Hence 7 live offsets against the 2x2's 5, and hence the split above.
+
 ## Chocolate maximization is a dead end
 
 Recorded here so it is not re-run. Maximizing total chocolate pins every
