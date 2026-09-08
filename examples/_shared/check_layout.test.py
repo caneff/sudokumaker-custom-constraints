@@ -434,9 +434,11 @@ if __name__ == "__main__":
         assert "PUZZLE_LINK.txt" in violations[0]
         assert "BarComponent" in violations[0]
 
-    # a comment naming a component is not a registration -- minify keeps
-    # `//!` notes in the shipped backend, and one of those must not read as
-    # a `new BarComponent` the link is missing
+    # a comment naming a component is not a registration. A link built today
+    # ships no comments (#385), but this sweep also reads backends off links
+    # no builder rebuilds -- fillomino's frozen fixtures and hunt records --
+    # and one of their notes must not read as a `new BarComponent` the link
+    # is missing
     commented = _link(
         ships=("FooComponent",), note="a paired end gets a new BarComponent"
     )

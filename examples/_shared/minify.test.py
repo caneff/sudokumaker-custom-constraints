@@ -9,22 +9,24 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from minify import minify_js
 
 
-def test_keeps_marked_comments_and_drops_ordinary_ones():
+def test_drops_every_comment_including_the_marked_ones():
+    # A "//!" block is commentary for the source file, not for the link: the
+    # shipped copy carries no comments at all (#385).
     got = minify_js(
         "// ordinary, dropped\n"
-        "  //! kept note\n"
+        "  //! marked, dropped too\n"
         "const x = 1        // inline note, dropped\n"
         "\n"
         "  const u = 'http://a/b'\n"
     )
-    assert got == "  // kept note\nconst x = 1\n  const u = 'http://a/b'\n", repr(got)
+    assert got == "const x = 1\n  const u = 'http://a/b'\n", repr(got)
 
 
-def test_keeps_the_spacing_a_marked_comment_lays_out():
-    # These headers put rules in columns; flattening them costs the shipped
-    # copy its shape.
-    got = minify_js("//! Seal:     a finished region\n//!           loses k.\n")
-    assert got == "// Seal:     a finished region\n//           loses k.\n", repr(got)
+def test_drops_a_marked_comment_that_trails_code():
+    # The marker is not special anywhere: a "//!" after code goes the same way
+    # an ordinary trailing comment does.
+    got = minify_js("const x = 1  //! marked, dropped\n")
+    assert got == "const x = 1\n", repr(got)
 
 
 def test_drops_a_block_comment():
@@ -32,10 +34,9 @@ def test_drops_a_block_comment():
     # which means nothing to a recipient who runs no linter.
     got = minify_js(
         "/* eslint-disable no-unused-vars -- the component API */\n"
-        "//! Kept.\n"
         "function update () {}\n"
     )
-    assert got == "// Kept.\nfunction update () {}\n", repr(got)
+    assert got == "function update () {}\n", repr(got)
 
 
 def test_drops_a_block_comment_sharing_a_line_with_code():
@@ -50,6 +51,10 @@ def test_keeps_block_comments_when_asked_to():
     src = "function* update (i) /* : Generator<Change> */ {\n"
     assert minify_js(src, drop_blocks=False) == src, repr(minify_js(src, False))
     assert "/*" not in minify_js(src)
+    # Sparing block comments does not spare line comments -- marked or not.
+    # No vendored file carries a "//!", so this path loses nothing (#385).
+    kept = minify_js("//! marked\n// plain\nconst x = 1\n", drop_blocks=False)
+    assert kept == "const x = 1\n", repr(kept)
 
 
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
@@ -70,8 +75,8 @@ def test_refuses_an_unpaired_block_marker_rather_than_guessing():
 
 
 if __name__ == "__main__":
-    test_keeps_marked_comments_and_drops_ordinary_ones()
-    test_keeps_the_spacing_a_marked_comment_lays_out()
+    test_drops_every_comment_including_the_marked_ones()
+    test_drops_a_marked_comment_that_trails_code()
     test_drops_a_block_comment()
     test_keeps_block_comments_when_asked_to()
     test_drops_a_block_comment_sharing_a_line_with_code()

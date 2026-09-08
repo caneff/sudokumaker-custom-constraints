@@ -46,9 +46,12 @@ if __name__ == "__main__":
 
         # a candidate file for the same registered component name, the shape a
         # real edit-and-retime loop uses
+        # The edit has to be code: a comment is stripped out of the shipped
+        # copy, which would leave the candidate byte-equal (#385).
         candidate = tmp / f"{TIMED_COMPONENT}.js"
         candidate.write_text(
-            (HERE / f"{TIMED_COMPONENT}.js").read_text() + "\n//! candidate edit\n"
+            (HERE / f"{TIMED_COMPONENT}.js").read_text()
+            + "\nconst CANDIDATE_EDIT = 1\n"
         )
         out = tmp / "candidate.txt"
         cand_link, cand_doc, cand_n_clues = build(candidate, HERE / "gen.json")

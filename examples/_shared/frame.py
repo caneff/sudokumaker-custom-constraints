@@ -8,6 +8,7 @@
 #   Outside Outlines box exactly the given clue cells; not the corner fillers.
 #   Grid Outer Border the black square around the interior, drawn on top.
 
+import itertools
 
 # A ring key names one clue cell of the frame: "T3"/"B3" sit above/below
 # interior column 3, "L2"/"R2" left/right of interior row 2.
@@ -31,6 +32,115 @@ def rect(x, y):
         {"x": x + 1, "y": y + 1},
         {"x": x, "y": y + 1},
         {"x": x, "y": y},
+    ]
+
+
+# ---- drawing the same picture with fewer points ---------------------------
+#
+# A layer built a cell at a time draws each shared edge twice and spends five
+# points on every unit square, and the link carries every one of those points
+# as JSON. `merge` re-draws the same ink: it reduces a layer to the set of unit
+# segments it covers, then walks that set back out as long polylines. What a
+# viewer sees is the union of the segments, so redrawing that union any other
+# way is invisible on screen -- which is what makes this free. On the shipped
+# 9x9 board it takes the three layers from 337 points to 154 (#385).
+
+
+def segments(lines):
+    """The set of unit segments a list of polylines covers -- the ink it lays
+    on the page, with no trace of how the polylines carried it. Every point in
+    this file is on the integer lattice and every step is axis-aligned, so a
+    segment is named by its two endpoints, lower one first."""
+    segs = set()
+    for pts in lines:
+        for a, b in itertools.pairwise(pts):
+            a, b = (a["x"], a["y"]), (b["x"], b["y"])
+            assert (a[0] == b[0]) != (a[1] == b[1]), f"not one axis: {a} -> {b}"
+            axis = 1 if a[0] == b[0] else 0
+            lo, hi = sorted((a[axis], b[axis]))
+            for k in range(lo, hi):
+                p = (a[0], k) if axis else (k, a[1])
+                q = (a[0], k + 1) if axis else (k + 1, a[1])
+                segs.add((p, q))
+    return segs
+
+
+def _step_on(v, prev, choices):
+    """The next vertex of a trail at `v`, having arrived from `prev`. Carrying
+    straight on where the ink does keeps a long run in one polyline, so the
+    collinear points inside it collapse away; `min` breaks every other tie so
+    a rebuild of a committed link is byte-identical."""
+    if prev is not None:
+        ahead = (2 * v[0] - prev[0], 2 * v[1] - prev[1])
+        if ahead in choices:
+            return ahead
+    return min(choices)
+
+
+def _trails(segs):
+    """Walk `segs` into polylines, each segment used exactly once.
+
+    Open runs come out first, started from a vertex where an odd number of
+    segments meet -- such a vertex has to be an end of some polyline, and
+    starting anywhere else would cut a run in half. What is left over meets
+    evenly everywhere and closes back on itself.
+    """
+    adj = {}
+    for a, b in segs:
+        adj.setdefault(a, set()).add(b)
+        adj.setdefault(b, set()).add(a)
+    trails = []
+    while True:
+        live = sorted(v for v, nbrs in adj.items() if nbrs)
+        if not live:
+            return trails
+        odd = [v for v in live if len(adj[v]) % 2]
+        v, prev = (odd[0] if odd else live[0]), None
+        trail = [v]
+        while adj[v]:
+            nxt = _step_on(v, prev, adj[v])
+            adj[v].discard(nxt)
+            adj[nxt].discard(v)
+            trail.append(nxt)
+            prev, v = v, nxt
+        trails.append(trail)
+
+
+def _direction(a, b):
+    return (b[0] - a[0], b[1] - a[1])
+
+
+def _drop_straight_through(trail):
+    """The same trail with every point that is not a turn removed. A closed
+    trail is rotated to start at a turn first, so the point it starts and ends
+    on is not a straight-through the collapse cannot see."""
+    if trail[0] == trail[-1] and len(trail) > 3:
+        ring = trail[:-1]
+        turn = next(
+            (
+                i
+                for i in range(len(ring))
+                if _direction(ring[i - 1], ring[i])
+                != _direction(ring[i], ring[(i + 1) % len(ring)])
+            ),
+            None,
+        )
+        if turn is not None:
+            ring = ring[turn:] + ring[:turn]
+            trail = [*ring, ring[0]]
+    turns = [
+        trail[i]
+        for i in range(1, len(trail) - 1)
+        if _direction(trail[i - 1], trail[i]) != _direction(trail[i], trail[i + 1])
+    ]
+    return [trail[0], *turns, trail[-1]]
+
+
+def merge(lines):
+    """`lines` redrawn with fewer points and the same ink on the page."""
+    return [
+        [{"x": x, "y": y} for x, y in _drop_straight_through(trail)]
+        for trail in _trails(segments(lines))
     ]
 
 
@@ -61,19 +171,19 @@ def cosmetics(W, cells):
         {
             "name": "White Lines (to hide outside cell borders)",
             "type": 2000,
-            "lines": white,
+            "lines": merge(white),
             "style": {"thickness": 0.05, "color": "#ffffffff"},
         },
         {
             "name": "Outside Cell Outlines",
             "type": 2000,
-            "lines": outlines,
+            "lines": merge(outlines),
             "style": {"thickness": 0.03, "color": "#d7d7d7ff"},
         },
         {
             "name": "Grid Outer Border",
             "type": 2000,
-            "lines": border,
+            "lines": merge(border),
             "style": {"thickness": 0.07, "color": "#000000ff"},
         },
     ]

@@ -7,6 +7,7 @@
 import copy
 import pathlib
 
+from frame import segments
 from link_codec import decode_puzzle, encode_link
 
 
@@ -40,12 +41,21 @@ def frame_only(doc, constraint_name):
 
 
 def frame_and_comment_only(doc, constraint_name):
-    """`frame_only`, plus the puzzle comment cleared, so two variants that
-    differ only in code, input or comment compare equal -- the same board,
-    givens and shown clues either way. The guard a rebuild-from-seed script
-    puts on its output."""
+    """`frame_only`, plus the puzzle comment cleared and every decoration
+    layer reduced to the ink it draws, so two variants that differ only in
+    code, input, comment or how the decoration is drawn compare equal -- the
+    same board, givens and shown clues either way. The guard a
+    rebuild-from-seed script puts on its output.
+
+    The decoration layers are derived from the board, and a rebuild redraws
+    them: merging the per-cell squares into runs changes every polyline and
+    nothing a solver sees (#385). Comparing the ink instead of the point
+    lists still catches a layer that moved, gained a line, or lost one."""
     d = frame_only(doc, constraint_name)
     d["puzzle"]["comment"] = ""
+    for c in d["puzzle"]["constraints"]:
+        if c.get("type") == 2000:
+            c["lines"] = sorted(segments(c["lines"]))
     return d
 
 

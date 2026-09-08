@@ -1,10 +1,14 @@
 # swap_component_code replaces one named component's code and leaves the
 # backend and every other component untouched; replace_constraint_code can
 # replace both. check_and_write enforces the "only the constraint code
-# differs" invariant that build_link.py and build_original.py rely on.
+# differs" invariant that build_link.py and build_original.py rely on, and
+# frame_and_comment_only is the same invariant for a rebuild-from-seed
+# script, judging the decoration layers by the ink they lay down rather than
+# by the polylines that carry it (#385).
 #
 #   uv run --with lzstring examples/_shared/link_swap.test.py
 
+import itertools
 import pathlib
 import tempfile
 
@@ -13,6 +17,7 @@ from link_swap import (
     blanked,
     check_and_write,
     find_constraint,
+    frame_and_comment_only,
     replace_constraint_code,
     swap_component_code,
 )
@@ -78,5 +83,31 @@ if __name__ == "__main__":
             raise AssertionError("expected an assertion when the frame itself changes")
         except AssertionError as e:
             assert "frames differ" in str(e)
+
+    # frame_and_comment_only: a decoration layer redrawn with different
+    # polylines over the same ink is the same board. A rebuild that merges the
+    # per-cell squares into runs has to pass this guard, and one that moves a
+    # line has to fail it.
+    def cosmetic(doc):
+        return next(c for c in doc["puzzle"]["constraints"] if c.get("type") == 2000)
+
+    redrawn = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+    layer = cosmetic(redrawn)
+    # every closed square broken back into its four sides: same ink on the
+    # page, a completely different set of polylines carrying it
+    layer["lines"] = [
+        [a, b] for pts in layer["lines"] for a, b in itertools.pairwise(pts)
+    ]
+    assert cosmetic(redrawn)["lines"] != cosmetic(base)["lines"], "fixture is a no-op"
+    assert frame_and_comment_only(redrawn, CONSTRAINT_NAME) == frame_and_comment_only(
+        base, CONSTRAINT_NAME
+    ), "the same ink drawn as different polylines must compare equal"
+
+    shifted = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+    for point in cosmetic(shifted)["lines"][0]:
+        point["x"] += 1
+    assert frame_and_comment_only(shifted, CONSTRAINT_NAME) != frame_and_comment_only(
+        base, CONSTRAINT_NAME
+    ), "a decoration line that actually moved must compare unequal"
 
     print("ok")

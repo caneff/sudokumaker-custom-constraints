@@ -114,7 +114,8 @@ either.
 ## Where our 15 KB goes
 
 Measured 2026-09-08 by decoding `PUZZLE_LINK.txt`, editing one thing out, and
-re-encoding. The link is 14,990 bytes as it ships.
+re-encoding. The link was 14,990 bytes that day; "Both levers, pulled" below
+records what it is now.
 
 | variant | link bytes | delta |
 |---|---|---|
@@ -142,6 +143,25 @@ into runs would recover most of the 2,086 bytes and change nothing a solver or a
 reader ever sees. That is the one size lever here that costs nothing.
 
 `SkyscraperSideComponent` is not a lever: "exactly one 1 per side" is a real
-deduction the board is carved against, not packaging. Stripping comments is the
-biggest single number on the list and is the thing #383 ruled against — the link
-is the only documentation a reuser ever gets.
+deduction the board is carved against, not packaging.
+
+## Both levers, pulled (#385)
+
+The table above is the board as it stood on the measurement day. #385 took the
+two rows it named and the shipped link is now **9,729 bytes, down 5,260 (35%)**.
+
+- **The decoration is merged.** `frame.cosmetics` still states the picture one
+  closed square per cell, then `frame.merge` reduces the layer to the set of
+  unit segments it covers and walks that set back out as long polylines. 337
+  points became 154, and 6,730 chars of JSON became 3,309. The rendered board
+  is pixel-identical at 4x4, 6x6, 9x9 and 10x10.
+- **Every comment is stripped.** This reverses #383, on the owner's call: the
+  size is wanted back now, and how a reuser gets the commentary is a separate
+  question. The source files keep their full `//!` blocks; only the copy baked
+  into a link loses them. 15,803 chars of embedded code became 9,053.
+
+Across all 43 committed links the two together take 440,245 bytes to 351,503,
+a fifth of the total. The floor the table names is untouched: the frame
+document is still 4,594 bytes before a single byte of code, because an
+interactive-outside frame is a 121-cell board with clue cells a solver can
+fill, and no amount of minification reaches that.
