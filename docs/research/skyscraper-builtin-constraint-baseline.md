@@ -83,14 +83,24 @@ Not measured either way: per-call cost. Ours is 12 us at n=9 (README, Timing);
 there is no number for the built-in, and on a board one-sided propagation can
 close, a cheaper propagator called more often could win on wall clock.
 
-Our `update` does stand down unless the line is a house whose live candidates
-union to exactly `{1..length}`, but that costs us nothing against this
-comparison and is **not** an axis the built-in wins. Type `503`'s clues are
-`{value, outerCell}` on the outer frame, so they attach to grid rows and
-columns — which are houses by construction. The premise our gate checks can
-never fail on a line the built-in is able to constrain at all. The gate exists
-to make the *local* backend safe, where an author draws an arbitrary path; the
-built-in cannot be pointed at one.
+### The house gate is not a weakness
+
+`SkyscraperLineComponent` stands down unless the line is a house whose live
+candidates union to exactly `{1..length}`. That is the DP's **premise**, not a
+shortfall: the peak split is what makes the two ends independent, and it holds
+only because a permutation has exactly one cell holding `maxDigit`. Off that
+premise the peak is not necessarily the tallest, digits may repeat, and the
+subset state means nothing. Standing down is the sound answer, and it costs
+nothing here — type `503`'s clues are `{value, outerCell}` on the outer frame,
+so they attach to grid rows and columns, which are houses by construction. The
+gate can never fail on a line the built-in is able to constrain at all.
+
+A non-house line is not unserved, either. `SkyscraperOneSidedComponent` takes
+one clue at one end of an arbitrary drawn group and assumes nothing about it:
+digits may repeat, any length, no clue needed at the far end. Its
+`(position, tallest so far, visible count)` DP is a decision procedure for that
+line and runs **with no gate at all**. The two components split the space
+between them; neither is the other's fallback.
 
 The app's separate `SkyscraperComponent(name, amount, cells)` does take an
 arbitrary cell list, but `amount` is a fixed number — it is the class the
