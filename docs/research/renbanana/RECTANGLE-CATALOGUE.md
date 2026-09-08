@@ -218,6 +218,178 @@ including the 5, which no multi-cell chocolate group may contain. Every other
 offset is fine (40 at the once-straddling offsets, 552 at the twice-straddling
 ones), and a 9 can sit in any of the nine cells.
 
+## Why the boxed offsets die: the three-in-a-band lemma
+
+The catalogue counts which `(shape, offset)` pairs are boxed-dead. This section
+says **why**. Three rules account for every boxed-dead offset in the catalogue
+except one shape, with **no false kills** — no offset a rule calls dead has a
+non-zero count.
+
+### Rule F — the rectangle contains a whole box
+
+If three of the rectangle's rows lie in one band **and** three of its columns
+lie in one stack, the nine cells at that intersection are one full sudoku box.
+They are pairwise distinct, so they are all nine digits, including the 5 — and
+no chocolate group of area >= 2 may contain a 5. Dead.
+
+This is the old box-aligned-3x3 argument, stated once for every shape.
+
+### Rule R — three rows in one band, width >= 4
+
+**Lemma.** A chocolate rectangle with three rows inside a single box band and
+width `b >= 4` admits no legal filling.
+
+The width threshold is real and sharp: at `b = 3` a rectangle with three rows in
+one band is fine (3x3 has 40 fillings at offsets (0,1) and (0,2)); at `b = 4` it
+is dead at every column offset.
+
+**Proof.** Take the three rows in the band; they alone must be fillable. Group
+the rectangle's columns by stack. Consecutive columns of the rectangle fall into
+runs, one per stack, and only the first and last run can be shorter than 3.
+
+*Case A — some run has length 3.* Then those three columns and the three band
+rows form a whole box, and Rule F kills it.
+
+*Case B — every run has length <= 2.* Then there are at most two runs, so
+`b <= 4`, and with `b >= 4` we get exactly `b = 4` split `2 + 2`: two 3x2 blocks
+side by side, each entirely inside one box.
+
+Analyse one such **3x2 block, all six cells in one box** (hence pairwise
+distinct). Label it
+
+```
+    (1,1) (1,2)
+    (2,1) (2,2)
+    (3,1) (3,2)
+```
+
+with (1,1) low. Every cell has at least two neighbours inside the block, and any
+two of those neighbours are either in the same rectangle row, the same rectangle
+column, or the same box — distinct in all three cases. So:
+
+- (1,1) and (3,1) each need >= 2 distinct partners, so neither is a **4**
+  (partner set of 4 is {9}).
+- (2,2) has three in-block neighbours, pairwise distinct, so it needs >= 3
+  distinct partners: `(2,2) ∈ {1,2}`.
+- Symmetrically (1,2), (3,2) are not **6**, and `(2,1) ∈ {8,9}`.
+
+The block's three lows are therefore three distinct members of {1,2,3} — that
+is, exactly **{1,2,3}** — and its three highs are exactly **{7,8,9}**. Because
+`(2,2) ∈ {1,2}` the **3** sits in an outer row, and because `(2,1) ∈ {8,9}` the
+**7** does too.
+
+Now place the 3. Its partner set is {8,9}, and its two in-block neighbours are
+distinct, so they are exactly {8,9} — which uses up both of the block's other
+highs. The remaining high, the 7, is then forced into the block's *other* outer
+row. **In any 3x2 in-box block, the 3 and the 7 occupy opposite outer rows.**
+
+Apply that to both blocks of the 2+2 split. Each block's lows are {1,2,3}, so
+each block has its own 3, and rectangle-row distinctness forbids the two 3s from
+sharing a row. Both 3s are in outer rows, so one is in the top row and the other
+in the bottom row. Say the left 3 is at (1,1); then the left 7 is at (3,2), and
+the right 3 must be at (3,3). But (3,2) and (3,3) are orthogonally adjacent, and
+`|7 - 3| = 4 < 5`. Contradiction. The mirror case is identical. ∎
+
+**Why width 4 and not width 3.** Width 4 with a 2+2 split is the smallest
+configuration that puts *two* complete in-box 3x2 blocks side by side. One block
+is satisfiable — 16 fillings. Two blocks each force a 3 into an outer row, the
+row constraint pushes them to opposite outer rows, and each block's 7 then lands
+in the other block's 3's row, directly across the block boundary. At width 3 the
+third column stands alone in its own stack, no second block forms, nothing is
+forced, and the shape survives with 40 fillings.
+
+**Rule C** is Rule R transposed: three columns in one stack and height `a >= 4`.
+
+### The worked example: the 4x4 offset table
+
+`(ro, co)` is the box offset of the top-left cell. A 4x4 at row offset 0 covers
+grid rows 0-3 and so contains band rows 0-2; at row offset 2 it covers rows 2-5
+and contains band rows 3-5; only row offset 1 (rows 1-4) contains no full band.
+Same for columns.
+
+| offset | full band? | full stack? | rule | count |
+|---|---|---|---|---|
+| (0,0) | yes | yes | F (and R, C) | 0 |
+| (0,1) | yes | no | **R** | 0 |
+| (0,2) | yes | yes | F (and R, C) | 0 |
+| (1,0) | no | yes | **C** | 0 |
+| (1,1) | no | no | — | **2288** |
+| (1,2) | no | yes | **C** | 0 |
+| (2,0) | yes | yes | F (and R, C) | 0 |
+| (2,1) | yes | no | **R** | 0 |
+| (2,2) | yes | yes | F (and R, C) | 0 |
+
+Four of the eight dead offsets contain a whole box and fall to the 5 argument.
+The other four — (0,1), (2,1), (1,0), (1,2) — contain **no** full box, so the 5
+argument does not reach them; they are exactly the offsets Rule R (or its
+transpose C) kills, via the 3x4 or 4x3 sub-rectangle with a 2+2 split. Offset
+(1,1) splits 2+2 in both directions, contains neither obstruction, and is the
+one survivor.
+
+### The general form, checked against every shape
+
+Predicate: `(shape, offset)` is dead if F, R or C fires.
+
+- **False kills: none.** Every offset the rules call dead has count 0 in
+  `rectangle-catalogue.json`. Checked over all 36 shapes x all offsets.
+- **Coverage.** Of the 69 boxed-dead offsets belonging to shapes that are
+  Latin-legal, the rules explain **63**.
+
+| shape | offsets killed | by |
+|---|---|---|
+| 3x3 | (0,0) | F only |
+| 3x4 | (0,0), (0,1), (0,2) | (0,1) by **R alone**; the others also F |
+| 3x5, 3x6 | (0,0), (0,1), (0,2) | F and R |
+| 4x4 | all but (1,1) | (0,1), (2,1) by **R alone**; (1,0), (1,2) by **C alone** |
+| 4x5, 4x6 | all 9 | R/C everywhere; C alone at ro=1 |
+| 5x5, 5x6, 6x6 | all 9 | F, R and C at every offset |
+
+3x3 at (0,0) is the only offset needing **F on its own** — it is exactly one box,
+too narrow for R. And Rule R is not redundant either: 3x4 at (0,1) and 4x4 at
+(0,1)/(2,1) are dead with no full box anywhere in them.
+
+**This gives a hand proof of a result the catalogue previously had only by
+enumeration:** 4x5, 4x6, 5x5, 5x6 and 6x6 are boxed-impossible at every offset.
+A rectangle with `a >= 5` contains a full band at every row offset, and one with
+`a = 4` contains one at row offsets 0 and 2; pairing that with `b >= 4` and the
+transposed rule covers all nine offsets in each case.
+
+### The one gap: 2x7
+
+**2x7 is dead at row offsets 0 and 1 and no rule above explains it.** Both rows
+lie in one band there, but two rows in a band is not three, so R does not apply.
+
+The reason is visible in the enumeration but rests on it. All four layer-L 2x7
+fillings are shifts —
+
+```
+1 7 2 8 3 9 4        4 9 3 8 2 7 1
+6 1 7 2 8 3 9        9 3 8 2 7 1 6
+```
+
+and their vertical flips. In each, `row2[j+1] = row1[j]` for every `j`. When the
+two rows are in one band and columns `j`, `j+1` are in one stack, that pair of
+equal digits sits in a single box. Among 7 columns some stack holds two adjacent
+ones, so at row offsets 0 and 1 every filling dies; at row offset 2 the rows
+straddle the band boundary and all 4 survive. That is a proof, but it is a proof
+about four hand-checked fillings, not a structural one — recorded as an open
+end, not as a lemma.
+
+### Verification
+
+Two independent checks, both re-run for this section:
+
+1. **Predicate vs. catalogue.** The F/R/C predicate was evaluated for every
+   shape and offset in `rectangle-catalogue.json` and compared with the stored
+   counts: zero false kills, six unexplained dead offsets, all six being 2x7.
+2. **Proof steps vs. a fresh enumerator.** A separately written brute-force
+   enumerator reproduced each step: a 3x2 block wholly inside one box has **16**
+   fillings, **every one** of them using lows exactly {1,2,3} and highs exactly
+   {7,8,9}, with the 3 and the 7 in opposite outer rows in all 16 (rows 1/3 or
+   3/1, never the middle, never the same row). It also reproduced 3x4 at
+   row offset 0 = 0 fillings at all three column offsets, and 3x3 at row offset
+   0 = 0 / 40 / 40, matching the catalogue.
+
 ## The circle query
 
 Derived from the catalogue: for a shape of area `k`, can the digit `k` appear,
