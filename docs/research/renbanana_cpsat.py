@@ -105,7 +105,14 @@ class Shadings:
     """
 
     def __init__(
-        self, objective=None, rng=None, lemmas=True, cap=None, require_shapes=()
+        self,
+        objective=None,
+        rng=None,
+        lemmas=True,
+        cap=None,
+        require_shapes=(),
+        require_family=(),
+        require_count=1,
     ):
         m = cp.CpModel()
         self.m = m
@@ -159,6 +166,20 @@ class Shadings:
             if not spots:
                 raise SystemExit(f"shape {a}x{b} cannot fit the grid")
             m.add_bool_or(spots)
+
+        if require_family:
+            # Distinct maximal components never overlap, so summing one spot
+            # per placement counts components. The implication runs one way,
+            # so the solver may leave a real component's spot false -- which
+            # makes >= a genuine lower bound, never an overcount.
+            spots = [
+                spot
+                for a, b in sorted(set(require_family))
+                for spot in self._spots(a, b)
+            ]
+            if len(spots) < require_count:
+                raise SystemExit("that family cannot fit the grid that often")
+            m.add(sum(spots) >= require_count)
 
         self.terms = []
         if objective == "chocolate":
@@ -466,6 +487,8 @@ def hunt(
     lemmas=True,
     caps=(None,),
     require_shapes=(),
+    require_family=(),
+    require_count=1,
 ):
     """Sample seeds until `target` diverse candidates are found, or seeds run out.
 
@@ -506,7 +529,15 @@ def hunt(
             stats["seeds_run"] += 1
             started = time.monotonic()
             rng = random.Random(seed)
-            model = Shadings(objective, rng, lemmas, cap, require_shapes)
+            model = Shadings(
+                objective,
+                rng,
+                lemmas,
+                cap,
+                require_shapes,
+                require_family,
+                require_count,
+            )
             model.replay(learned)
             model.cuts = []  # replayed cuts are already in `learned`, not new
             deadline = started + limit
@@ -616,6 +647,22 @@ def bound(objective, limit, workers, lemmas=True):
     return best, proven
 
 
+def parse_family(text):
+    """`2xN,3x3` -> every (a, b) it names, both orientations. `N` on one side
+    stands for every second side from 2 up that still fits an 8-cell rectangle,
+    so `2xN` means a genuinely two-dimensional group, never a 1xN strip."""
+    out = set()
+    for token in filter(None, text.split(",")):
+        lo, hi = token.lower().split("x")
+        sides = range(2, 9) if hi == "n" else [int(hi)]
+        a = int(lo)
+        for b in sides:
+            if (a, b) in SHAPES:
+                out.add((a, b))
+                out.add((b, a))
+    return tuple(sorted(out))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -643,6 +690,18 @@ def main():
         default="",
         help="comma-separated shapes every shading must contain, e.g. 2x4,3x3; "
         "either orientation counts",
+    )
+    h.add_argument(
+        "--require-family",
+        default="",
+        help="shape family every shading must draw from, e.g. 2xN,3xN or 2x4; "
+        "'N' matches every second side from 2 up, either orientation",
+    )
+    h.add_argument(
+        "--require-count",
+        type=int,
+        default=1,
+        help="how many maximal components --require-family must place",
     )
     h.add_argument(
         "--no-lemmas",
@@ -682,6 +741,8 @@ def main():
                 for s in a.require_shape.split(",")
                 if s
             ),
+            parse_family(a.require_family),
+            a.require_count,
         )
     elif a.cmd == "bound":
         bound(a.objective, a.limit, min(a.workers, 8), not a.no_lemmas)
