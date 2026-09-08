@@ -183,8 +183,10 @@ Run on skyscraper's four board sizes -- `PUZZLE_LINK_4x4.txt`,
 `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (9x9) and `PUZZLE_LINK_10x10.txt`.
 **All four pairs came back byte-identical PNGs: 0 differing pixels, max channel
 delta 0.** No internal ring border shows, no corner filler is boxed, and
-adjacent boxed clue cells keep the border between them. The screenshots
-themselves were scratch artifacts and are gone; the method above is the record.
+adjacent boxed clue cells keep the border between them. The screenshots and
+the page collecting them live in the building workspace's git-ignored
+`.scratch/385/`, which does not outlive the workspace -- so the method above,
+not the images, is what a later reader re-runs.
 
 ### Numbered rooms is the exception to the merge
 

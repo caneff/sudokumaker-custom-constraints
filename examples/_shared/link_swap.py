@@ -50,10 +50,13 @@ def _comparable_ink(lines):
     decoration cosmetics never drew -- and such a layer falls back to being
     compared point for point. That reads a redraw of it as a mismatch, which
     the caller can look at; raising instead would take the guard itself down.
+    A malformed layer -- a point short of a coordinate, a "line" that is not
+    points -- is that same outage, so it degrades the same way rather than
+    raising.
     """
     try:
         return sorted(segments(lines))
-    except UndescribableInk:
+    except (UndescribableInk, KeyError, TypeError):
         return lines
 
 
@@ -75,7 +78,7 @@ def frame_and_comment_only(doc, constraint_name):
     d["puzzle"]["comment"] = ""
     for c in d["puzzle"]["constraints"]:
         if c.get("type") == 2000:
-            c["lines"] = _comparable_ink(c["lines"])
+            c["lines"] = _comparable_ink(c.get("lines", []))
     return d
 
 

@@ -125,13 +125,30 @@ if __name__ == "__main__":
         assert cosmetic(reduced)["lines"] == lines, (
             f"{what}: an undescribable layer must be compared as authored"
         )
-        assert (
-            frame_and_comment_only(with_first_layer(lines), CONSTRAINT_NAME) == reduced
-        ), f"{what}: the same doc must still compare equal to itself"
         moved = [[{**q, "x": q["x"] + 1} for q in pts] for pts in lines]
         assert (
             frame_and_comment_only(with_first_layer(moved), CONSTRAINT_NAME) != reduced
         ), f"{what}: the guard must still catch a layer that moved"
+
+    # A malformed layer is the same outage in a different coat: a point with
+    # no "y", or a "line" that is not points at all, reaches `segments` and
+    # raises out of the guard. Its ink has no name either, so it degrades the
+    # same way an undescribable one does.
+    malformed = {
+        "a point missing a coordinate": [[pt(0, 0), {"x": 1}]],
+        "a line that is not points": [[0, 1]],
+        "a layer with no lines at all": None,
+    }
+    for what, lines in malformed.items():
+        doc = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+        if lines is None:
+            del cosmetic(doc)["lines"]
+        else:
+            cosmetic(doc)["lines"] = lines
+        reduced = frame_and_comment_only(doc, CONSTRAINT_NAME)
+        assert cosmetic(reduced)["lines"] == (lines if lines is not None else []), (
+            f"{what}: a malformed layer must be compared as authored, not raise"
+        )
 
     # one undescribable layer does not stop the others being judged by ink
     mixed = with_first_layer(undrawable["a diagonal"])

@@ -104,7 +104,7 @@ def _trails(segs):
     it and every committed link re-encodes with the same ink and the same point
     count, but different bytes. One example pins that down:
     `test_rebuild_reproduces_every_shipped_link_byte_for_byte`
-    (examples/outside-sudoku/build_size.test.py) rebuilds outside-sudoku's five
+    (examples/outside-sudoku/build_size.test.py) rebuilds outside-sudoku's four
     links and demands the exact committed bytes. No other example's links are
     pinned that way -- their rebuild guards compare ink
     (`link_swap.frame_and_comment_only`), which a moved start vertex passes.
