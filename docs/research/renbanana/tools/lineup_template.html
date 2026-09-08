@@ -31,11 +31,14 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
  border-right:1px solid rgba(0,0,0,.10);border-bottom:1px solid rgba(0,0,0,.10)}
 .cell.k{background:var(--choc);color:var(--chocInk)}
 .board.nodigit .cell{color:transparent}
-.cell.c::after,.cell.bc::after{content:"";position:absolute;inset:12%;border:2.5px solid var(--edge);border-radius:50%}
+.cell.c::after,.cell.bc::after,.cell.fc::after{content:"";position:absolute;inset:12%;border:2.5px solid var(--edge);border-radius:50%}
 .cell.k.c::after{border-color:var(--chocInk)}
 .cell.bc::after{border-color:var(--bcirc);border-width:3px}
+/* forced: every banana group of 5+ cells has one, so it rules out nothing */
+.cell.fc::after{border-color:var(--bcirc);border-style:dashed;opacity:.55}
 .board.nocircle .cell.c::after{display:none}
 .board.nobcircle .cell.bc::after{display:none}
+.board.noforced .cell.fc::after{display:none}
 /* group outline: a thick edge wherever the neighbour has the other colour */
 .board.outline .cell.gr{border-right:3px solid var(--edge)}
 .board.outline .cell.gb{border-bottom:3px solid var(--edge)}
@@ -59,8 +62,8 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
 </style>
 <header>
  <h1>Renbanana <span>lineup</span></h1>
- <div class="sub">Every candidate grid found so far. Chocolate groups are rectangles whose orthogonal neighbours differ by at least 5; banana groups are non-rectangles holding distinct consecutive digits. A circle marks a cell whose digit equals the size of its own group — dark on chocolate, green on banana — a clue the puzzle could offer, not one that has been chosen. A banana group is a renban, so its digits are distinct and at most one cell in it can be circled; a chocolate rectangle repeats digits, so the one shown is the first of possibly several. Hover a cell to light up its whole group.</div>
- <div class="legend"><span><i style="background:var(--choc)"></i>chocolate</span><span><i style="background:var(--ban)"></i>banana</span><span><i style="border-radius:50%;border:2.5px solid var(--edge);background:none"></i>chocolate circle</span><span><i style="border-radius:50%;border:2.5px solid var(--bcirc);background:none"></i>banana circle</span></div>
+ <div class="sub">Every candidate grid found so far. Chocolate groups are rectangles whose orthogonal neighbours differ by at least 5; banana groups are non-rectangles holding distinct consecutive digits. A circle marks a cell whose digit equals the size of its own group — dark on chocolate, green on banana — a clue the puzzle could offer, not one that has been chosen. A banana group is a renban holding a run of k consecutive digits, so a circle needs the run to start at or below k — which it always does once the group has five cells or more. Those circles are forced by the group's size alone, rule out no shading, and are drawn dashed and hidden by default. Hover a cell to light up its whole group.</div>
+ <div class="legend"><span><i style="background:var(--choc)"></i>chocolate</span><span><i style="background:var(--ban)"></i>banana</span><span><i style="border-radius:50%;border:2.5px solid var(--edge);background:none"></i>chocolate circle</span><span><i style="border-radius:50%;border:2.5px solid var(--bcirc);background:none"></i>banana circle</span><span><i style="border-radius:50%;border:2.5px dashed var(--bcirc);background:none;opacity:.55"></i>forced banana circle</span></div>
 </header>
 <div class="bar">
  <label>filter <input id="q" type="search" placeholder="run, seed, shape e.g. 2x4" size="22"></label>
@@ -73,13 +76,13 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
   <option value="groups">chocolate groups</option>
   <option value="circleable">circleable groups</option>
   <option value="bananaCircles">banana circles</option>
-  <option value="bananaValue">banana circle score</option>
  </select></label>
  <label>min score <input id="minv" type="number" value="0" min="0"></label>
  <label>largest ≥ <input id="minl" type="number" value="0" min="0" max="81"></label>
  <label><input id="digits" type="checkbox" checked> digits</label>
  <label><input id="circles" type="checkbox" checked> chocolate circles</label>
  <label><input id="bcircles" type="checkbox" checked> banana circles</label>
+ <label><input id="forced" type="checkbox"> forced banana circles</label>
  <label><input id="outline" type="checkbox" checked> group outlines</label>
  <span class="count" id="count"></span>
 </div>
@@ -91,10 +94,11 @@ const runSel=document.getElementById('run');
 function card(d){
   const circ=new Set(d.circles.map(p=>p.join(',')));
   const bcirc=new Set(d.bcircles.map(p=>p.join(',')));
+  const fcirc=new Set(d.forced.map(p=>p.join(',')));
   let cells='';
   for(let r=0;r<9;r++)for(let c=0;c<9;c++){
     const g=d.gid[r][c], k=d.shading[r][c]==='C';
-    const cls=['cell',k?'k':'',circ.has(r+','+c)?'c':'',bcirc.has(r+','+c)?'bc':'',
+    const cls=['cell',k?'k':'',circ.has(r+','+c)?'c':'',bcirc.has(r+','+c)?'bc':'',fcirc.has(r+','+c)?'fc':'',
       c<8&&d.gid[r][c+1]!==g?'gr':'', r<8&&d.gid[r+1][c]!==g?'gb':'',
       c>0&&d.gid[r][c-1]!==g?'gl':'', r>0&&d.gid[r-1][c]!==g?'gt':'',
       ].filter(Boolean).join(' ');
@@ -120,10 +124,12 @@ function render(){
   m.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">No grid matches these filters.</div>';
   const on=k=>k?'':'no';
   const dig=document.getElementById('digits').checked, cir=document.getElementById('circles').checked,
-        bci=document.getElementById('bcircles').checked, out=document.getElementById('outline').checked;
+        bci=document.getElementById('bcircles').checked, fc=document.getElementById('forced').checked,
+        out=document.getElementById('outline').checked;
   m.querySelectorAll('.board').forEach(b=>{
     b.classList.toggle('nodigit',!dig); b.classList.toggle('nocircle',!cir);
-    b.classList.toggle('nobcircle',!bci); b.classList.toggle('outline',out);
+    b.classList.toggle('nobcircle',!bci); b.classList.toggle('noforced',!fc);
+    b.classList.toggle('outline',out);
   });
   document.getElementById('count').textContent=`${rows.length} of ${DATA.length} grids`;
 }

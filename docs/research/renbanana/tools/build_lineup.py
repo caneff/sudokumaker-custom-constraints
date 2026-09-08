@@ -32,7 +32,8 @@ def rows():
             # can outline a group and light it up on hover.
             gid = [[-1] * 9 for _ in range(9)]
             gsize = []
-            bcircles = []
+            bcircles = []  # on a group of size < 5: says something
+            forced = []  # on a group of size >= 5: says nothing, see below
             for colour in (True, False):
                 for group in rv.components(is_choc, colour):
                     for r, c in group:
@@ -43,11 +44,17 @@ def rows():
                     # A banana circle is as legal as a chocolate one -- the
                     # verifier checks both -- but the generator never scores
                     # them, so they are recovered here. A banana group is a
-                    # renban, its digits distinct, so at most one cell in it
-                    # can equal the group's size.
+                    # renban holding the run [m, m+k-1], so at most one cell
+                    # can equal k, and one does exactly when m <= k. The run
+                    # must fit in 1..9, so m <= 10-k, and the circle fails only
+                    # for m in [k+1, 10-k] -- empty once k >= 5. Every banana
+                    # group of five cells or more therefore carries a circle
+                    # whatever its digits, so that circle rules out no shading
+                    # and is tracked apart from the ones that do.
+                    k = len(group)
                     for r, c in sorted(group):
-                        if int(d["grid"][r][c]) == len(group):
-                            bcircles.append([r, c])
+                        if int(d["grid"][r][c]) == k:
+                            (forced if k >= 5 else bcircles).append([r, c])
                             break
             prof = d["profile"]
             out.append(
@@ -61,6 +68,7 @@ def rows():
                     "shading": d["shading"],
                     "circles": [list(p) for p in d.get("circles", [])],
                     "bcircles": bcircles,
+                    "forced": forced,
                     "gid": gid,
                     "gsize": gsize,
                     "shapes": prof["shapes"],
@@ -69,7 +77,7 @@ def rows():
                     "largest": prof["largest_rectangle"],
                     "circleable": prof["circleable_groups"],
                     "bananaCircles": len(bcircles),
-                    "bananaValue": sum(gsize[gid[r][c]] for r, c in bcircles),
+                    "forcedCircles": len(forced),
                 }
             )
     return out

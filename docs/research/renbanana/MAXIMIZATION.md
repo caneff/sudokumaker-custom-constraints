@@ -86,39 +86,46 @@ carries a 1x5 alongside the 2x4, so two large groups do coexist. Its score is
 low *because* those two groups eat sixteen cells that would otherwise be
 scoring singletons.
 
-## Banana circles are the abundant clue, and nothing was scoring them
+## Most banana circles are forced, so they say nothing
 
 A circle is legal on either colour — `renbanana_verify.check` tests a circled
-digit against its own group's size whatever that group is shaded. The hunt's
-`circles` objective only ever scored chocolate groups, so banana circles were
-never counted, never optimized, and never drawn.
+digit against its own group's size whatever that group is shaded — and the
+hunt's `circles` objective only ever scored chocolate groups. Recovering the
+banana ones looked at first like finding a large pile of value: seven or eight
+per grid against chocolate's three to ten.
 
-Recovering them from the eleven candidates, every one of which re-verifies
-LEGAL with its banana circles included:
+Almost all of them are forced by the group's size alone.
 
-| run | seed | chocolate circles | banana circles | banana score |
-| --- | ---: | ---: | ---: | ---: |
-| free | 2 | 5 | 7 | 44 |
-| free | 4 | 7 | 7 | 51 |
-| free | 5 | 7 | 7 | 50 |
-| free | 7 | 10 | 7 | 52 |
-| free | 8 | 7 | 8 | 51 |
-| free | 9 | 8 | 7 | 49 |
-| free | 10 | 7 | 7 | 48 |
-| free | 11 | 6 | 7 | 48 |
-| forced 2x4 | 2 | 6 | 7 | 43 |
-| forced 2x4 | 4 | 6 | 7 | 49 |
-| forced 2x4 | 10 | 3 | 7 | 47 |
+A banana group of size k is a renban, so it holds the run [m, m+k-1]. A circle
+needs a member equal to k, which happens exactly when m <= k. The run must fit
+in 1..9, so m <= 10-k. The circle therefore fails only for m in [k+1, 10-k],
+and that range is empty once k >= 5.
 
-Banana circle scores run 43-52 against chocolate's 9-17, and the count barely
-moves: seven or eight in every grid, whatever the shading did. Two reasons.
-A banana group is a renban, so its digits are distinct and at most one cell in
-it can be circled — but banana groups are large, so their sizes land in the
-range digits can express, and each one very often contains its own size. A
-chocolate rectangle is small, so it usually wants a digit of 1 to 4.
+**Every banana group of five cells or more contains its own size, whatever its
+digits.** Such a circle rules out no shading and no digit the solver did not
+already have; it is a consequence of the group being big, not a clue about it.
 
-So the value is concentrated on the banana side and the free hunt was blind to
-it. No objective scores banana circles yet.
+The pool agrees exactly — 67 of 67 groups of size >= 5 carry a circle, against
+11 of 15 below that:
+
+| group size | groups | with a circle | forced by the lemma |
+| ---: | ---: | ---: | :--- |
+| 3 | 4 | 2 | no |
+| 4 | 11 | 9 | no |
+| 5 | 11 | 11 | yes |
+| 6 | 12 | 12 | yes |
+| 7 | 10 | 10 | yes |
+| 8 | 13 | 13 | yes |
+| 9 | 21 | 21 | yes |
+
+So the banana side carries almost no usable circle value after all. Across all
+eleven candidates only **11 informative banana circles** exist, about one per
+grid, every one on a group of three or four cells. `lineup.html` draws those
+solid and the forced ones dashed and hidden by default.
+
+The general lesson for scoring: a circle is worth what it rules out, not what
+its digit reads. A big chocolate circle is rare and forces a large rectangle;
+a big banana circle is automatic.
 
 ## Chocolate maximization is a dead end
 
@@ -141,5 +148,5 @@ back down to where grids live.
   chance in either pool.
 - The `variety` and `circleable` objectives as their own hunts.
 - An upper bound for `circles`.
-- A banana-circle objective, or a combined one. Nothing currently scores the
-  side of the board that carries most of the circle value.
+- A circle objective weighted by rarity rather than by digit value, so a
+  forced banana circle scores nothing and a large chocolate one scores a lot.
