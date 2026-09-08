@@ -219,6 +219,57 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
   Defaults to `PUZZLE_LINK.txt`; `--board <file>` swaps against another
   committed link instead. See `docs/real-app-timing.md`.
+
+## Share checklist, walked
+
+`docs/share-checklist.md`, criterion by criterion, against `PUZZLE_LINK.txt` —
+the 9x9 global board, seed 610 — as it ships. This is the record the checklist
+asks for; re-walk it whenever the board or the rules text changes.
+
+**Free gate** — `just check` green: lint, probe goldens, every example's own
+tests, the soundness fuzz at zero violations, the never-weaker floor, and
+`check_layout.py` over every committed link in this example.
+
+The three mechanical criteria, checked by `check_layout.py`:
+
+- **Opens clean** ✓ — 31 filled cells, every one of them a given; every other
+  cell is `{}`. Nothing is stored as an entered value.
+- **Ring not filled end to end** ✓ — 24 of 40 ring cells hold something: the 20
+  shown clues plus the 4 corner fillers. The 16 clues left blank are the
+  interactive ones, which is the point of the board.
+- **Rules prefix** ✓ — "Normal sudoku rules apply on the inner grid."
+
+1. **Uniqueness proven on the shipped board** ✓ — CP-SAT (`framebuild.unique`,
+   the same model `build_size.py` carves against) run on the exact `gen.json`
+   behind this link: unique, 0.5 s, 2026-09-08. The link decodes back to that
+   board — the 7 interior givens and the 20 shown clue values match `gen.json`
+   cell for cell. The real app agrees independently, proving it unique in 7.4 s
+   (`just time skyscraper --ring-clues`, above). There is no `verify.py` here
+   and `just check` does not re-run the proof, so this record is what carries
+   it: re-run the check above if the board changes.
+2. **Rules text stands alone** ✓ — "Normal sudoku rules apply on the inner
+   grid. Skyscrapers (interactive outside clues): each outside cell holds a
+   digit equal to the number of buildings visible along its line. A building is
+   visible when it is taller than every building before it. Blank outside cells
+   are interactive: read them off the line as you solve." A worked example
+   follows, both directions. No repo jargon, no component names. The second
+   paragraph — the note on the corner 1s — stays deliberately: it explains a
+   real feature of the board to whoever opens it.
+3. **Clue set curated** ✓, read against the carve the way the criterion says.
+   `build_size.py` carves both the interior givens and the shown clues by
+   greedy drop-one under CP-SAT, and the result is minimal — re-verified
+   2026-09-08 by removing each of the 7 givens and each of the 20 shown clues
+   in turn and re-proving (27 solves, 6.3 s): every single removal costs
+   uniqueness, so no clue on this board is unnecessary.
+4. **Component reads well** ✓ — the link carries the two global components.
+   `SkyscraperLineComponent.js` opens with a 35-line `//!` overview (the rule,
+   the peak split, the subset DP and its state, why soundness holds, and the
+   permutation precondition both entry points re-check) and carries a short
+   `//!` note per step of the sweep — 58 `//!` lines in all.
+   `SkyscraperSideComponent.js` ships 26. Only `//!` comments survive
+   `minify.py`, so that is exactly the commentary a recipient reads inside the
+   link.
+
 ## Paste into SudokuMaker
 
 To draw your own lines, add a custom local constraint and paste `main.js` as
