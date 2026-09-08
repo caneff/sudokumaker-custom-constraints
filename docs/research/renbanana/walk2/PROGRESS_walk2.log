@@ -1,0 +1,60 @@
+candidates-walk_cand_11: step 1 after 2 tries — grid 18 cells from origin, shading 3
+candidates-walk_cand_04: step 1 after 28 tries — grid 18 cells from origin, shading 5
+candidates-walk_cand_02: step 1 after 28 tries — grid 18 cells from origin, shading 1
+candidates-walk_cand_08: step 1 after 208 tries — grid 18 cells from origin, shading 9
+candidates-walk_cand_10: step 1 after 344 tries — grid 18 cells from origin, shading 5
+candidates-walk_cand_07: step 1 after 344 tries — grid 18 cells from origin, shading 4
+candidates-walk_cand_07: step 2 after 594 tries — grid 36 cells from origin, shading 9
+candidates-walk_cand_08: step 2 after 594 tries — grid 45 cells from origin, shading 10
+candidates-walk_cand_07: step 3 after 675 tries — grid 45 cells from origin, shading 10
+candidates-walk_cand_05: step 1 after 594 tries — grid 36 cells from origin, shading 4
+candidates-walk_cand_01: DONE 0 recorded in 1689914 tries, 1689863 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_03: DONE 0 recorded in 1385272 tries, 1385211 skipped as already tested, 2 stepped through as too close (pool held 47)
+candidates-walk_cand_11: DONE 1 recorded in 1750162 tries, 1750107 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_04: DONE 1 recorded in 1180286 tries, 1180215 skipped as already tested, 1 stepped through as too close (pool held 47)
+candidates-walk_cand_06: DONE 0 recorded in 1370508 tries, 1370447 skipped as already tested, 2 stepped through as too close (pool held 47)
+candidates-walk_cand_10: DONE 1 recorded in 570403 tries, 570305 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_07: DONE 3 recorded in 686 tries, 574 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_05: DONE 1 recorded in 598 tries, 457 skipped as already tested, 3 stepped through as too close (pool held 47)
+candidates-walk_cand_08: DONE 2 recorded in 687 tries, 569 skipped as already tested, 2 stepped through as too close (pool held 47)
+candidates-walk_cand_09: DONE 0 recorded in 1732995 tries, 1732943 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_02: DONE 1 recorded in 1351629 tries, 1351570 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_00: DONE 0 recorded in 938 tries, 776 skipped as already tested, 4 stepped through as too close (pool held 47)
+candidates-walk_cand_21: step 1 after 28 tries — grid 36 cells from origin, shading 3
+candidates-walk_cand_13: step 1 after 344 tries — grid 18 cells from origin, shading 2
+candidates-walk_cand_15: step 1 after 344 tries — grid 18 cells from origin, shading 4
+candidates-walk_cand_22: step 1 after 235 tries — grid 44 cells from origin, shading 7
+candidates-walk_cand_19: step 1 after 344 tries — grid 18 cells from origin, shading 1
+candidates-walk_cand_18: step 1 after 235 tries — grid 27 cells from origin, shading 3
+candidates-walk_cand_16: step 1 after 336 tries — grid 36 cells from origin, shading 4
+candidates-walk_cand_18: step 2 after 336 tries — grid 18 cells from origin, shading 2
+candidates-walk_cand_22: step 2 after 594 tries — grid 27 cells from origin, shading 1
+candidates-walk_cand_12: DONE 0 recorded in 1615167 tries, 1615095 skipped as already tested, 1 stepped through as too close (pool held 47)
+candidates-walk_cand_13: DONE 1 recorded in 759 tries, 610 skipped as already tested, 3 stepped through as too close (pool held 47)
+candidates-walk_cand_15: DONE 1 recorded in 944 tries, 805 skipped as already tested, 3 stepped through as too close (pool held 47)
+candidates-walk_cand_14: DONE 0 recorded in 724 tries, 587 skipped as already tested, 4 stepped through as too close (pool held 47)
+candidates-walk_cand_16: DONE 1 recorded in 752 tries, 606 skipped as already tested, 3 stepped through as too close (pool held 47)
+candidates-walk_cand_22: DONE 2 recorded in 996 tries, 802 skipped as already tested, 6 stepped through as too close (pool held 47)
+candidates-walk_cand_20: DONE 0 recorded in 1789644 tries, 1789591 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_17: DONE 0 recorded in 504 tries, 368 skipped as already tested, 4 stepped through as too close (pool held 47)
+candidates-walk_cand_18: DONE 2 recorded in 637 tries, 503 skipped as already tested, 1 stepped through as too close (pool held 47)
+candidates-walk_cand_19: DONE 1 recorded in 422432 tries, 422330 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_21: DONE 1 recorded in 672 tries, 491 skipped as already tested, 6 stepped through as too close (pool held 47)
+candidates-walk_cand_23: DONE 0 recorded in 1082362 tries, 1082275 skipped as already tested, 2 stepped through as too close (pool held 47)
+candidates-walk_cand_30: step 1 after 12 tries — grid 18 cells from origin, shading 2
+candidates-walk_cand_27: step 1 after 329 tries — grid 27 cells from origin, shading 12
+candidates-walk_cand_30: step 2 after 357 tries — grid 46 cells from origin, shading 5
+candidates-walk_cand_30: step 3 after 365 tries — grid 49 cells from origin, shading 7
+candidates-walk_cand_30: step 4 after 379 tries — grid 42 cells from origin, shading 6
+candidates-walk_cand_27: step 2 after 672 tries — grid 45 cells from origin, shading 13
+candidates-walk_cand_27: step 3 after 674 tries — grid 52 cells from origin, shading 17
+candidates-walk_cand_27: step 4 after 906 tries — grid 63 cells from origin, shading 14
+candidates-walk_cand_24: DONE 0 recorded in 2085872 tries, 2085821 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_25: DONE 0 recorded in 2849813 tries, 2849781 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_26: DONE 0 recorded in 2390401 tries, 2390354 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_28: DONE 0 recorded in 2445851 tries, 2445804 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_31: DONE 0 recorded in 2391135 tries, 2391088 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_27: DONE 4 recorded in 937 tries, 766 skipped as already tested, 2 stepped through as too close (pool held 47)
+candidates-walk_cand_30: DONE 4 recorded in 370881 tries, 370700 skipped as already tested, 3 stepped through as too close (pool held 47)
+candidates-walk_cand_29: DONE 0 recorded in 2426180 tries, 2426132 skipped as already tested, 0 stepped through as too close (pool held 47)
+candidates-walk_cand_32: DONE 0 recorded in 381 tries, 280 skipped as already tested, 2 stepped through as too close (pool held 47)

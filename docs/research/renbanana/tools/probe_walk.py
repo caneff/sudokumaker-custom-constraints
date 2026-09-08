@@ -73,6 +73,12 @@ def main():
         default=60.0,
         help="seconds between re-reads of the shared key set",
     )
+    ap.add_argument(
+        "--patience",
+        type=int,
+        default=40,
+        help="consecutive dead moves before jumping out of a spent neighbourhood",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
 
@@ -93,10 +99,17 @@ def main():
     shared = a.out / "keys"
     shared.mkdir(parents=True, exist_ok=True)
     mine = shared / f"{name}.keys"
+    mine_legal = shared / f"{name}.legal"
 
     pool_paths = sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json"))
     pool = [rv.load(p) for p in pool_paths]
     seen = {canon.key_grid(g) for g, _, _ in pool}
+    # Tested and *legal* is a different set from merely tested. A grid we have
+    # already shaded is nothing new to record, but it is still a legal place to
+    # stand, so the walk may step onto it for free and carry on from there.
+    # Without that, a walker parks the moment its own neighbourhood is spent --
+    # one spun through 1.7 million instant skips in a quarter of an hour.
+    legal = set(seen)
     held = len(seen)
 
     # What counts as worth recording: the pool's own diversity rule, applied
@@ -105,14 +118,20 @@ def main():
 
     def refresh():
         for path in sorted(shared.glob("*.keys")):
-            if path == mine:
-                continue
-            # a sibling mid-write; the next pass picks it up
-            with contextlib.suppress(OSError):
-                seen.update(path.read_text().split())
+            if path != mine:
+                # a sibling mid-write; the next pass picks it up
+                with contextlib.suppress(OSError):
+                    seen.update(path.read_text().split())
+        for path in sorted(shared.glob("*.legal")):
+            if path != mine_legal:
+                with contextlib.suppress(OSError):
+                    found_keys = path.read_text().split()
+                    seen.update(found_keys)
+                    legal.update(found_keys)
 
     here = origin
-    found = tries = skipped = dull = 0
+    found = tries = skipped = dull = kicks = 0
+    stuck = 0
     deadline = time.monotonic() + a.budget
     next_refresh = time.monotonic() + a.refresh
     log = a.out / f"{name}.jsonl"
@@ -121,6 +140,14 @@ def main():
         if time.monotonic() >= next_refresh:
             refresh()
             next_refresh = time.monotonic() + a.refresh
+        if stuck >= a.patience:
+            # Every move from here has been tried. Jump: a run of moves taken
+            # without testing any of them, which lands somewhere far enough out
+            # to have untested neighbours again.
+            for _ in range(rng.randint(3, 8)):
+                here = perturb(here, rng)
+            stuck = 0
+            kicks += 1
         # Row and column swaps move the shading; a digit swap moves 18 grid
         # cells and usually none, so it is in the mix for reach, not for yield.
         candidate = perturb(here, rng, ("rows", "rows", "cols", "cols", "digits"))
@@ -128,8 +155,13 @@ def main():
         k = canon.key_grid(candidate)
         if k in seen:
             skipped += 1
+            stuck += 1
+            if k in legal:  # already shaded once; still a legal place to stand
+                here = candidate
+                stuck = 0
             continue
         seen.add(k)
+        stuck = 0
         with mine.open("a") as f:
             f.write(k + "\n")
         model = Shadings(candidate)
@@ -146,6 +178,9 @@ def main():
         # a recolour keeps the walk connected -- it may be the only bridge to
         # somewhere new -- but there is no reason to write it down.
         here = candidate
+        legal.add(k)
+        with mine_legal.open("a") as f:
+            f.write(k + "\n")
         rows_new = shading_rows(is_choc)
         shapes_new = shapes_of(is_choc)
         if not all(
@@ -179,7 +214,7 @@ def main():
     print(
         f"{name}: DONE {found} recorded in {tries} tries, "
         f"{skipped} skipped as already tested, {dull} stepped through as "
-        f"too close (pool held {held})",
+        f"too close, {kicks} kicks (pool held {held})",
         flush=True,
     )
 
