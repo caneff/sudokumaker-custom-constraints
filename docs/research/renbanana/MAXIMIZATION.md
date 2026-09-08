@@ -6,7 +6,12 @@ digit fill under *some* legal shading, nothing more.
 
 Two hunts have run so far, both on `--objective circles`. Every grid was
 re-checked from its JSON with `renbanana_cpsat.py verify`; all report LEGAL.
-Pictures for all eleven, in one page: `candidates.html`.
+
+All eleven live on one interactive page, `lineup.html` — filter by run or
+shape, sort by any column below, toggle digits, circles and group outlines,
+and hover a cell to light up its whole group. Rebuild it after a hunt with
+`uv run python docs/research/renbanana/tools/build_lineup.py`; a new pool
+needs one line in that script's `POOLS`.
 
 ## Leaderboard
 
