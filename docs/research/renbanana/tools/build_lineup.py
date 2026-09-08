@@ -23,12 +23,18 @@ POOLS = {
     "candidates-walk": "walked",
 }
 
+sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT.parent))
+import canon
 import renbanana_verify as rv
 
 
 def rows():
     out = []
+    # One card per *puzzle*, not per file. Two hunts can land on the same grid
+    # up to a rotation or a reflection, and the pools keep both because each
+    # records what its own hunt found -- but the lineup shows it once.
+    seen = {}
     for pool, label in POOLS.items():
         if not (ROOT / pool).is_dir():  # a hunt that has not been run
             continue
@@ -80,6 +86,11 @@ def rows():
                         if grid[r, c] == k:
                             (forced if k >= 5 else bcircles).append([r, c])
                             break
+            k = canon.key_from_rows(d["grid"], d["shading"])
+            if k in seen:
+                print(f"  {pool}/{path.stem} is {seen[k]} rotated — one card")
+                continue
+            seen[k] = f"{pool}/{path.stem}"
             prof = d["profile"]
             out.append(
                 {

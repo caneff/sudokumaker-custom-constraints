@@ -29,6 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import canon
 import renbanana_verify as rv
 from probe_inverted import CELLS, N, Shadings
 from probe_neighbourhood import perturb
@@ -65,14 +66,28 @@ def main():
     name = f"{a.source.parent.name}_{a.source.stem}"
     rng = random.Random(a.seed)
 
+    # Never solve a grid twice. Legality survives every rotation and
+    # reflection, so a grid whose image we have already tested tells us nothing
+    # new -- and the pool's own grids are, by definition, already found.
+    seen = {
+        canon.key_grid(rv.load(p)[0])
+        for p in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json"))
+    }
+    held = len(seen)
+
     here = origin
-    found = tries = 0
+    found = tries = skipped = 0
     deadline = time.monotonic() + a.budget
     log = a.out / f"{name}.jsonl"
 
     while time.monotonic() < deadline:
         candidate = perturb(here, rng)
         tries += 1
+        k = canon.key_grid(candidate)
+        if k in seen:
+            skipped += 1
+            continue
+        seen.add(k)
         model = Shadings(candidate)
         _, is_choc = model.solve(
             min(a.seconds, deadline - time.monotonic()), a.workers, tries
@@ -105,7 +120,11 @@ def main():
             flush=True,
         )
 
-    print(f"{name}: DONE {found} steps in {tries} tries", flush=True)
+    print(
+        f"{name}: DONE {found} steps in {tries} tries, "
+        f"{skipped} skipped as already tested (pool held {held})",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

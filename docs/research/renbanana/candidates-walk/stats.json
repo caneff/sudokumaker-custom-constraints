@@ -1,6 +1,7 @@
 {
  "kept": 33,
- "rejected_as_duplicate": 35,
+ "same_puzzle_up_to_symmetry": 17,
+ "rejected_as_too_close": 18,
  "refused_illegal": 0,
  "walk_rows": 68,
  "pool_held_before": 23

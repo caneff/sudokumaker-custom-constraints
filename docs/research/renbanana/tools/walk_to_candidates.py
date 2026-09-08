@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import canon
 import renbanana_cpsat as rc
 import renbanana_verify as rv
 
@@ -53,11 +54,15 @@ def main():
     a = ap.parse_args()
 
     pool = []
+    keys = set()
     for path in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json")):
+        if path.parent == a.out:  # rebuilding this pool, not adding to it
+            continue
         grid, is_choc, _ = rv.load(path)
         pool.append(
             {"shading": as_rows(is_choc, "C", "b"), "shapes": shapes_of(is_choc)}
         )
+        keys.add(canon.key(grid, is_choc))
     held = len(pool)
 
     rows = [
@@ -68,8 +73,12 @@ def main():
     ]
 
     a.out.mkdir(parents=True, exist_ok=True)
-    kept = rejected = illegal = 0
+    kept = rejected = illegal = same = 0
     for row in rows:
+        k = canon.key_from_rows(row["grid"], row["shading"])
+        if k in keys:
+            same += 1
+            continue
         if not all(
             hamming(row["shading"], other["shading"]) >= MIN_DISTANCE
             or row["shapes"] != other["shapes"]
@@ -86,6 +95,7 @@ def main():
             illegal += 1
             print(f"REFUSED an illegal grid from {row['source']}: {bad[0]}")
             continue
+        keys.add(k)
         pool.append(row)
         (a.out / f"cand_{kept:02d}.json").write_text(
             json.dumps(
@@ -112,7 +122,8 @@ def main():
         json.dumps(
             {
                 "kept": kept,
-                "rejected_as_duplicate": rejected,
+                "same_puzzle_up_to_symmetry": same,
+                "rejected_as_too_close": rejected,
                 "refused_illegal": illegal,
                 "walk_rows": len(rows),
                 "pool_held_before": held,
@@ -122,8 +133,8 @@ def main():
         + "\n"
     )
     print(
-        f"kept {kept} of {len(rows)} walk rows "
-        f"({rejected} duplicates, {illegal} illegal) into {a.out}"
+        f"kept {kept} of {len(rows)} walk rows ({same} the same puzzle, "
+        f"{rejected} too close, {illegal} illegal) into {a.out}"
     )
 
 
