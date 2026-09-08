@@ -60,11 +60,15 @@ for (const grid of grids) {
     const p = makePuzzle(truth, seed)
     const before = [...p._cand.values()].reduce((n, s) => n + s.size, 0)
 
+    // Every clue on the board, the shape a cross-clue component reads (#375).
+    // A component that ignores the extra argument is unaffected.
+    const clueList = chosen.map(w => [(w.r - 1) * N + (w.c - 1), rk.get(w.id)])
+
     const insts = chosen.map(w => {
       const tl = (w.r - 1) * N + (w.c - 1)
       const cells = [tl, tl + 1, tl + N, tl + N + 1]
       const inst = { name: `QR ${w.id}` }
-      mod.setParams(inst, cells, rk.get(w.id), ALL, N)
+      mod.setParams(inst, cells, rk.get(w.id), ALL, N, clueList)
       return inst
     })
 

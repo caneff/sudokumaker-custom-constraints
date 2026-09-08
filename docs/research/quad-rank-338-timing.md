@@ -151,3 +151,96 @@ node examples/_shared/app-solve.mjs proto/LINK_rc338_c2_lad_g8.txt 3
 node examples/_shared/app-solve.mjs proto/LINK_rc338_c2_lad_g8.txt 3 ShowCandidates --after-logical
 QR_COMPONENT=QuadRankComponent2.js node proto/soundness-counting.mjs 100 13 9
 ```
+
+---
+
+# Follow-up (#375): cross-clue order closes the gap
+
+`chris15` — the 15-clue zero-given board the section above could not solve — now
+finishes **in 200ms**. The deduction that did it was not a sharper version of
+anything here; it was a whole axis the component never used.
+
+## Every clue was reasoning alone
+
+The leading-digit bound reads one clue's rank. The counting identity reads one
+clue's window against *unconditional* intervals for the other 63. Neither ever
+used the fact that **the other clues' ranks are known too**.
+
+Ranks order the clued windows exactly. Verified at **0 mismatches over 604,800
+window pairs** across 300 random 9x9 grids (`proto/order-check.mjs`):
+
+- `rank(a) < rank(b)` **iff** `value(a) < value(b)`
+- `rank(a) == rank(b)` **iff** `value(a) == value(b)`, and every tied pair
+  measured is **digit-identical** — all four cells
+
+`proto/QuadRankComponent4.js` (C4) adds three things on that:
+
+- **3a, tie equality.** Two clues at the same rank are the same four digits, so
+  their candidate sets intersect cell-wise. `chris15` has exactly one such pair
+  (rank 35 at R1C8 and R8C1) — four cell equalities C2 discarded.
+- **3b, known-rank counting.** In the `L`/`P` count a *clued* window needs no
+  interval test: smaller rank is below, anything else is not. Exact precisely
+  where the intervals overlap and the interval test gave up.
+- **3c, pairwise.** `rank(u) < rank(me)` means `value(u) < value(me)` directly,
+  so a digit forcing `value(me) <= lo(u)` is dead. The counting rule only ever
+  saw this through the aggregate.
+
+**A wrong first draft, recorded because it is the trap.** 3b alone, written as
+"clued window: use the rank, skip the interval test", removed *fewer* candidates
+than C2 (52.0 vs 52.2 per state). Skipping the interval test threw away the
+cases where rank and intervals **contradict** each other — each of which is a
+dead branch C2 was catching via `L`/`P`. The fix is to keep both signals: use
+the rank for the count, and check the contradiction explicitly (`pairDead`).
+
+## Offline
+
+`proto/qr-metric.mjs` on `chris15` (real component over a Regin all-different
+floor; `QR_COMPONENT` selects the file):
+
+| component | logic pass | search |
+|---|---|---|
+| C1 | 339 removed, 15 cells solved | **200,001 nodes, 0 solutions [CAPPED]** |
+| C2 | 339 removed, 15 cells solved | **200,001 nodes, 0 solutions [CAPPED]** |
+| C4 | 394 removed, 16 cells solved | **1,076 nodes, 1 solution** |
+
+Soundness fuzz, **0 violations** for C4 at both sizes, and strictly more pruning
+than C2 everywhere:
+
+| fuzz | C2 | C4 |
+|---|---|---|
+| 9x9, 900 states, 15 clues | 52.6 / state | **62.4** |
+| 9x9, 90% pinned | 8.6 | **9.6** |
+| 6x6, 180 states, 8 clues | 17.3 | **20.1** |
+
+## In the app
+
+Medians over 3 reps unless noted. Baseline is C2, the component #338 shipped.
+
+| board | mode | C2 | C4 | ratio |
+|---|---|---|---|---|
+| **chris15** (15 clues, **0 givens**) | cold | **timeout 300s (0/3)** | **200ms** | — |
+| **chris15** | after-logical | **timeout 300s (0/3)** | **200ms** | — |
+| 6x6 | cold / after | 0ms / 0ms | 0ms / 0ms | no constraint |
+| lad_g12 | cold | 100ms | **0ms** | 0.00x |
+| lad_g12 | after-logical | 100ms | 100ms | 1.00x |
+| p325g16 | cold (7 reps) | **0ms** | **100ms** | regression |
+| p325g16 | after-logical | 200ms | 200ms | 1.00x |
+| lad_g8 | cold | 1400ms | **600ms** | 0.43x |
+| lad_g8 | after-logical | 1400ms | **600ms** | 0.43x |
+
+**Ground-truthed, not taken on trust.** `proto/app_solutions.mjs` taps the
+solver worker on the C4 `chris15` link; the single grid it posts is byte-equal
+to the grid CP-SAT proved unique. The 200ms is a real solve.
+
+## One row fails the gate, and it is a real 100ms
+
+`p325g16` cold: C2 reads 0ms, C4 reads 100ms, stable at **7 of 7 reps each**.
+Under `docs/real-app-timing.md` a 0ms baseline the candidate does not match
+sinks the change, and that board's other row is 1.00x, so it cannot rescue it.
+By the letter of the two-row rule, **p325g16 is NO SHIP**.
+
+The other fixtures are SHIP (0.00x/1.00x on g12, 0.43x on both g8 rows), and the
+target board goes from a 300s timeout to 200ms. So the tension is one readout
+tick on a board that finishes in a tenth of a second either way, against the
+only measured way to solve a zero-given board at all. **That is an owner's call,
+not a measurement**, and it is recorded here rather than waved through.

@@ -27,7 +27,7 @@ const NODE_CAP = 200_000
 
 installGlobals(1, N)
 const { load } = makeIo(HERE)
-const mod = load('QuadRankComponent.js', ['setParams', 'update', 'validate', 'getAffectedCells'])
+const mod = load(process.env.QR_COMPONENT || 'QuadRankComponent.js', ['setParams', 'update', 'validate', 'getAffectedCells'])
 
 const cell = (r, c) => r * N + c
 const allCells = [...Array(N * N).keys()]
@@ -50,9 +50,11 @@ const st = makeCandidateState({ houses })
 const floorGroup = makeAllDifferentFloor(st, { maxDigit: N })
 
 function instances (clues) {
+  // Every clue as [topLeftCell, rank], for a cross-clue component (#375).
+  const clueList = clues.map(([r, c, rank]) => [cell(r, c), rank])
   return clues.map(([r, c, rank]) => {
     const inst = { name: `QR_R${r + 1}C${c + 1}` }
-    mod.setParams(inst, [cell(r, c), cell(r, c + 1), cell(r + 1, c), cell(r + 1, c + 1)], rank, allCells, N)
+    mod.setParams(inst, [cell(r, c), cell(r, c + 1), cell(r + 1, c), cell(r + 1, c + 1)], rank, allCells, N, clueList)
     inst.__mod = mod
     return inst
   })

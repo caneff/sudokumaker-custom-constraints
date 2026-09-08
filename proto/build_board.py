@@ -81,12 +81,23 @@ const n = %d
 const allCells = [...Array(n * n).keys()]
 const maxRank = (n - 1) * (n - 1)
 
+const readRank = g => {
+  if (g.cells.length !== 4) return null
+  const r = Number(String(g.value).trim())
+  return Number.isInteger(r) && r >= 1 && r <= maxRank ? r : null
+}
+const clueList = input.groups
+  .map(g => [g.cells[0], readRank(g)])
+  .filter(([, r]) => r !== null)
+
 for (const g of input.groups) {
   if (g.cells.length !== 4) continue
   const rank = Number(String(g.value).trim())
   if (!Number.isInteger(rank) || rank < 1 || rank > maxRank) continue
   const name = `the quad rank clue at ${helpers.naming.getCellName(g.cells[0])}`
-  puzzle.addConstraintComponent(new QuadRankComponent(name, g.cells, rank, allCells, n))
+  // Every clue on the board as [topLeftCell, rank]. A cross-clue component
+  // (#375) reads it; one that ignores the extra argument is unaffected.
+  puzzle.addConstraintComponent(new QuadRankComponent(name, g.cells, rank, allCells, n, clueList))
 }
 """
     % N
