@@ -70,7 +70,7 @@ def spec_for(bh, bw):
     return Spec(
         dir=HERE,
         title="Outside Sudoku",
-        lines_name="Custom Outside Sudoku",
+        constraint_name="Custom Outside Sudoku",
         components=["OutsideSudokuComponent.js"],
         min_digit=1,
         clue_fn=clue_fn,

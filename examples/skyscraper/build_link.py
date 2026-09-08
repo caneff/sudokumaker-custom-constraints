@@ -7,7 +7,7 @@
 #     --component SkyscraperLineComponent.js --out /tmp/candidate.txt
 #
 # --component names a file whose basename (minus .js) matches an existing
-# component registered on the board's "Skyscraper Lines" constraint; that
+# component registered on the board's "Skyscrapers" constraint; that
 # component's code becomes the given file's, minified. The backend and any
 # sibling component are untouched. --board swaps against a different
 # committed link (e.g. PUZZLE_LINK_6x6.txt) instead of PUZZLE_LINK.txt;
@@ -23,7 +23,7 @@ from link_swap import check_and_write, swap_component_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
-CONSTRAINT_NAME = "Skyscraper Lines"
+CONSTRAINT_NAME = "Skyscrapers"
 TIMED_COMPONENT = "SkyscraperLineComponent"
 
 

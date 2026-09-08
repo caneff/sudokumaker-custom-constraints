@@ -57,9 +57,9 @@ def rebuild(n, local=False):
     check(spec, link, doc, n, local=local)
 
     before = decode_puzzle(link_path(n, local).read_text().strip())
-    assert frame_and_comment_only(before, spec.lines_name) == frame_and_comment_only(
-        doc, spec.lines_name
-    ), (
+    assert frame_and_comment_only(
+        before, spec.constraint_name
+    ) == frame_and_comment_only(doc, spec.constraint_name), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "
         "seed must only change the constraint code and comment"
     )

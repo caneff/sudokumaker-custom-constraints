@@ -63,9 +63,9 @@ if __name__ == "__main__":
     link = encode_link(doc)
     check(SPEC, link, doc, n, local=paths)
 
-    assert frame_and_comment_only(before, SPEC.lines_name) == frame_and_comment_only(
-        doc, SPEC.lines_name
-    ), (
+    assert frame_and_comment_only(
+        before, SPEC.constraint_name
+    ) == frame_and_comment_only(doc, SPEC.constraint_name), (
         "grid, givens, or shown clues changed -- rebuild-from-frame must only "
         "change the constraint code and comment"
     )

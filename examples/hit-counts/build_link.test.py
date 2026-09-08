@@ -2,7 +2,7 @@
 #
 # 1. build_link.py --component --out: decode the output and assert the only
 #    difference from the committed board is the swapped-in component's code,
-#    and that swapping one of the three Hit Counts Lines components leaves the
+#    and that swapping one of the three Hit Counts components leaves the
 #    other two and the backend untouched. --board times a link other than
 #    PUZZLE_LINK.txt. Mirrors examples/skyscraper/build_link.test.py.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`: each

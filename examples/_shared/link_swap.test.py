@@ -19,7 +19,7 @@ from link_swap import (
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK.txt"
-CONSTRAINT_NAME = "Skyscraper Lines"
+CONSTRAINT_NAME = "Skyscrapers"
 
 if __name__ == "__main__":
     base = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))

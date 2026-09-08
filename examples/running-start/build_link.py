@@ -21,7 +21,7 @@
 #     --component RunningStartComponent.js --out /tmp/candidate.txt
 #
 # --component names a file whose basename (minus .js) matches an existing
-# component registered on the board's "Running Start Lines" constraint
+# component registered on the board's "Running Start" constraint
 # (RunningStartComponent or RunningStartPairComponent); that component's code
 # becomes the given file's, minified. The backend and the sibling component
 # are untouched.
@@ -46,7 +46,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
-CONSTRAINT_NAME = "Running Start Lines"
+CONSTRAINT_NAME = "Running Start"
 TIMED_COMPONENT = "RunningStartComponent"
 
 
@@ -82,7 +82,7 @@ def build_from_template():
     doc["puzzle"]["author"] = ""
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
-        if c.get("type") == 1000 and d.get("name") == "Running Start Lines":
+        if c.get("type") == 1000 and d.get("name") == CONSTRAINT_NAME:
             d["backend"]["code"] = minify_js((HERE / "main-global.js").read_text())
             d["components"] = [
                 {
@@ -96,7 +96,7 @@ def build_from_template():
             c["input"] = {}
             break
     else:
-        raise SystemExit("template is missing the 'Running Start Lines' constraint")
+        raise SystemExit(f"template is missing the {CONSTRAINT_NAME!r} constraint")
     # trim the postproc helper's verbose comments out of the shared link too
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})

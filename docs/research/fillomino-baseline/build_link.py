@@ -27,6 +27,13 @@ from link_codec import decode_puzzle, encode_link  # noqa: E402
 from link_swap import check_and_write, swap_component_code  # noqa: E402
 from minify import minify_js  # noqa: E402
 
+
+# This baseline is the vendor's own file and has to re-encode byte-for-byte, so
+# its block comments stay in -- the type annotations are part of what was
+# published. Everything built from examples/ takes minify_js's default.
+def minify_js_keep_blocks(src):
+    return minify_js(src, drop_blocks=False)
+
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Fillomino"
 TIMED_COMPONENT = "FillominoComponent"
@@ -79,13 +86,13 @@ def build(component_path, puzzle_path, cap=None):
                         "input": [],
                         "backend": {
                             "type": "code",
-                            "code": minify_js((HERE / "main.js").read_text()),
+                            "code": minify_js_keep_blocks((HERE / "main.js").read_text()),
                         },
                         "components": [
                             {
                                 "type": "code",
                                 "name": TIMED_COMPONENT,
-                                "code": minify_js(
+                                "code": minify_js_keep_blocks(
                                     pathlib.Path(component_path).read_text()
                                 ),
                             }
@@ -119,7 +126,7 @@ def check(link, doc, n_givens):
 def build_on_board(component_path, out_path, board_path):
     """Swap the component's code into a committed link, changing nothing else."""
     base = decode_puzzle(pathlib.Path(board_path).read_text().strip())
-    code = minify_js(pathlib.Path(component_path).read_text())
+    code = minify_js_keep_blocks(pathlib.Path(component_path).read_text())
     doc = swap_component_code(base, CONSTRAINT_NAME, TIMED_COMPONENT, code)
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
 

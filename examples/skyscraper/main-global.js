@@ -1,5 +1,5 @@
-//! Skyscrapers with interactive outside clues, GLOBAL variant. No groups are
-//! drawn: build every frame line from the board size -- an interior nw = W-2
+//! Skyscrapers with interactive outside clues, on a whole-grid frame. No
+//! groups are drawn: every line comes from the board size -- an interior nw = W-2
 //! wide and nh = H-2 tall, ringed by one clue cell per row and per column. A
 //! left or right clue reads one interior row, so it has nw cells and there are
 //! nh such lines; a top or bottom clue reads one interior column, so it has nh
@@ -8,14 +8,14 @@
 //! it reads row r, column c, the cell its own name says. The L/R/T/B labels
 //! below are the real sides.
 //!
-//! A frame line is clued at both ends, which is what the two-clue DP in
+//! Every line is clued at both ends, which is what the two-clue DP in
 //! SkyscraperLineComponent reads: the line, both clues, and every way the
-//! digits can lie between them. The DP is a decision procedure for one line, so
-//! it subsumes the one-clue rule a single end would give: this variant
-//! registers the two-clue DP alone, once per line.
+//! digits can lie between them. One of those is registered per line, and it
+//! decides that line on its own -- a value survives only if some full line
+//! consistent with the candidates and both clues uses it.
 //!
-//! On top of that goes the one component that only makes sense across a whole
-//! side of the frame: the one-1-per-side count.
+//! One further component runs across each side of the frame, over that side's
+//! clue cells together: the one-1-per-side count.
 function frameGroups () {
   const W = puzzle.spec.size.width
   const H = puzzle.spec.size.height

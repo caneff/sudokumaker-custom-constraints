@@ -90,7 +90,7 @@ def no_zero_cage(interior):
 SPEC = Spec(
     dir=HERE,
     title="Hit Counts",
-    lines_name="Hit Counts Lines",
+    constraint_name="Hit Counts",
     components=COMPONENTS,
     local_components=LOCAL_COMPONENTS,
     min_digit=0,

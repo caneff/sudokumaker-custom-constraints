@@ -31,7 +31,7 @@ from minify import minify_js
 class Spec:
     dir: pathlib.Path  # example directory: scripts, components, and outputs live here
     title: str  # puzzle title, e.g. "Skyscrapers Interactive" (the "NxN" is appended)
-    lines_name: str  # name of the custom "...Lines" constraint, e.g. "Skyscraper Lines"
+    constraint_name: str  # the custom constraint's name, e.g. "Skyscrapers"
     components: list[str]  # component filenames the global lane ships, read from `dir`
     min_digit: int  # puzzle's minDigit
     # clue_fn(values, cells) -> the true clue for one line. `cells` are the
@@ -404,10 +404,10 @@ def build_doc(
         {"type": 0},
         *(spec.extra_cages(interior) if spec.extra_cages else []),
         {
-            "name": spec.lines_name,
+            "name": spec.constraint_name,
             "type": 1000,
             "definition": {
-                "name": spec.lines_name,
+                "name": spec.constraint_name,
                 "input": definition_input,
                 "backend": {"type": "code", "code": backend_code},
                 "components": components,
@@ -465,7 +465,7 @@ def check(spec, link, doc, n, local=False):
     lc = next(
         c
         for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == spec.lines_name
+        if c.get("definition", {}).get("name") == spec.constraint_name
     )
     if local:
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"

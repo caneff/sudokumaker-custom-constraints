@@ -5,8 +5,7 @@
 //!
 //! Every rule here is sound on every line kind. The line's kind only decides
 //! how hard each one may push: on a house two neighbours can never be equal,
-//! so both the climb and the break tighten to strict comparisons there
-//! (docs/line-contract.md).
+//! so both the climb and the break tighten to strict comparisons there.
 
 // Ties, per docs/line-contract.md. false: the run climbs strictly, so an equal
 // neighbour ends it. true: an equal neighbour continues the run, and only a

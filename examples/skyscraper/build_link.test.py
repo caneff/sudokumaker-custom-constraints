@@ -2,7 +2,7 @@
 #
 # 1. build_link.py --component --out: decode the output and assert the only
 #    difference from the committed PUZZLE_LINK.txt is the swapped-in
-#    component's code, and that swapping one Skyscraper Lines component leaves
+#    component's code, and that swapping one Skyscrapers component leaves
 #    any other component and the backend untouched. Prior art: the check in
 #    build_original.py, and examples/_shared/probe_link.test.py.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`: each
@@ -160,7 +160,7 @@ if __name__ == "__main__":
         # --board: swap against a different committed link, not just
         # PUZZLE_LINK.txt. Build one from a copy of the base doc with a
         # harmless field changed, so it is distinguishable from base but
-        # still a valid "Skyscraper Lines" board.
+        # still a valid "Skyscrapers" board.
         other_doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
         other_doc["puzzle"]["name"] = other_doc["puzzle"]["name"] + " (other board)"
         other_board = tmp / "other_board.txt"
