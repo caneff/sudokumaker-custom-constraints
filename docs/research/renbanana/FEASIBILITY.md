@@ -109,9 +109,9 @@ shading and the whole grid re-checked against all six rules from scratch.
 | 1x5 | 5 | SAT | but a 5-cell group can never carry a circle — see below |
 | 1x6 | 6 | SAT | |
 | 2x3 | 6 | **SAT** | `witness-2x3.png`, block `2 8 3 / 8 2 9` at r1c3 |
-| 1x7 | 7 | unresolved | 22 shadings tried, every one digit-UNSAT |
+| 1x7 | 7 | **SAT** | verified witness in `CIRCLE-VALUES.md`, plus a proof: legal only at cols 1-7 or 3-9, never 2-8 |
 | 1x8 | 8 | **UNSAT** | dies at the shading stage, before digits |
-| 2x4 | 8 | unresolved | |
+| 2x4 | 8 | **SAT** | verified witness in `CIRCLE-VALUES.md` |
 | 1x9, 9x1 | 9 | UNSAT | a whole row or column, so it contains the 5 |
 | 3x3 | 9 | **SAT** | `witness-3x3.png`, block `1 8 2 / 7 1 8 / 2 9 3` at r6c1 |
 
@@ -120,12 +120,14 @@ circle reads its group's area, so the circled cell's digit must equal that area
 and must live inside the group. The 2x3 witness above is `2 8 3 / 8 2 9`, which
 holds no 6, so it cannot carry a circle. Confirmed circle values so far:
 
+Resolved in #374 — **every value except 5 is placeable.** The verified
+witnesses, the search rates and the 1x7 offset proof are in
+**`CIRCLE-VALUES.md`**.
+
 | circle | status |
 |---|---|
-| 9 | **confirmed** — the 3x3 witness contains a 9 at r8c2, neighbours 1, 2, 3 |
+| 1, 2, 3, 4, 6, 7, 8, 9 | **confirmed** — each with a verified witness in `CIRCLE-VALUES.md` |
 | 5 | **impossible** — a 5-cell group has 2+ cells, and no multi-cell chocolate group may hold a 5 |
-| 1, 2, 3 | expected trivial, not separately verified |
-| 4, 6, 7, 8 | **open** — the shapes exist (4, 6) or are themselves open (7, 8), but no witness yet places the matching digit inside one |
 
 German's partner sets are what make this hard, and they are tiny: 6 pairs only
 with 1, 4 only with 9, 3 with {8,9}, 7 with {1,2}, 2 with {7,8,9}, 9 with
