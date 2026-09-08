@@ -313,6 +313,22 @@ cap the component yields nothing above 9 and the app finds no first solution
 inside its limit; with the DP it proves the board unique in 0.1 s, 3/3 reps.
 The app accepts `maxDigit` 10 without complaint.
 
+### Against the app's built-in Skyscraper constraint
+
+| 2026-09-08 | v2026.08.14-d47fc4b | skyscraper (ours) | 8300ms | no first solve in 300s (built-in `503`) | — | capability |
+| 2026-09-08 | v2026.08.14-d47fc4b | skyscraper after-logical (ours) | 0ms | no first solve in 300s (built-in `503`) | — | capability |
+
+SudokuMaker ships a native Skyscraper constraint (document type `503`), whose
+clues are data rather than cells the solver fills. On the identical board — the
+same 20 clues at the same positions, the same 7 interior givens — it finds no
+first solution inside the app's 300 s limit, cold or after the app's own logic
+pass. A capability row, not a ratio: one arm produced no number, so none was
+invented. The board and the rule were both proved identical first (the app
+returns `unique` in 0 ms on our solution grid under its own constraint), so the
+DNF is search cost and not a contradiction. Full method, the mapping from the
+constraint's `outerCell` indices to our clue labels, and the link:
+`../../docs/research/skyscraper-builtin-constraint-baseline.md`.
+
 ### The uncached gate (#336)
 
 | 2026-09-04 | v2026.08.14-d47fc4b | skyscraper | 8600ms | 9200ms | 1.07 | gate: PASS |
