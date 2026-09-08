@@ -266,6 +266,19 @@ under C4, cap 200,000.
 a hard board for the machine.** Two other zero-given boards, both unique, still
 defeat C4 outright, and CP-SAT settles all three in 5-85s.
 
+**The app agrees, board for board.** Built under C4 and run cold:
+
+| board | C4 offline nodes | C4 in the app |
+|---|---|---|
+| `chris15` | 1,076 | **unique, 200ms** |
+| `p325_g0` | 200,003 CAPPED | **timeout 300s** |
+| `HARD_328_g1` | 200,002 CAPPED | **timeout 300s** |
+
+That is three boards where `qr-metric.mjs` and the app land on the same verdict,
+including both directions — the metric validation #328 asked for and never had.
+It is a small sample, but it is the first evidence the offline number tracks the
+engine that ships.
+
 So the #375 result is narrower than "zero-given boards are solved": C4 closed
 the gap **for this board**, not in general. The remaining two are where any
 further deduction work should be measured.
