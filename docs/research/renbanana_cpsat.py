@@ -102,6 +102,8 @@ def circle_cells_at(a, b, ro, co):
     whatever put a circle on that rectangle in that position, which is a fact
     stage 1 can act on instead of stage 3 rediscovering it per shading.
     """
+    if max(a, b) > 8:
+        return []
     key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
     if flip:  # transposing swaps rows and cols; the 3x3 boxes are symmetric
         ro, co = co, ro
@@ -114,7 +116,14 @@ def fillings_at(a, b, ro, co):
     filled at all, from the same catalogue. Zero means no grid anywhere holds
     that rectangle in that position -- 4x5 and 5x5 are dead at every offset,
     3x3 only at (0,0) -- so stage 1 can rule the placement out instead of
-    handing stage 1's answer to a digit solve that must fail."""
+    handing stage 1's answer to a digit solve that must fail.
+
+    A side above 8 is off the catalogue and always zero: a column of an `a` by
+    `b` rectangle holds ceil(a/2) cells of one parity class, distinct and drawn
+    from a 4-element set, so ceil(a/2) <= 4 and no side exceeds 8.
+    """
+    if max(a, b) > 8:
+        return 0
     key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
     if flip:
         ro, co = co, ro
