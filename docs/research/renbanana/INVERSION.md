@@ -104,9 +104,56 @@ the current pipeline, with one risk not yet measured: a neighbour of a known
 grid may only yield a shading close to its parent's, so the pool could be
 cheap and inbred. Diversity has to be measured before this replaces anything.
 
+## The label-sharing bug
+
+The first walk caught the model handing back a shading its own renban encoding
+should have forbidden — a banana group holding 1, 4 and 8.
+
+The cause: a label is only pinned to be **at most** the least cell index in its
+component, so two disjoint components may pick the same label. Renban then
+lands on their union, and a gap in one component gets plugged by a digit from
+the other. That is exactly what happened — digits 2, 3, 5, 6 and 7 were present
+under that label, in a different component.
+
+It never rules a legal shading out, because the solver can always give each
+component its own least index. So the model still admits every legal shading
+and **the 0-of-200 result above is still a proof**. It only let some illegal
+ones through, and every positive result in this file was verified from the
+rules before it was recorded.
+
+The fix keeps the label constraints as a filter and moves the last word to the
+solve loop: `Shadings.offenders` now cuts a non-renban banana group exactly the
+way it already cut a rectangular one. Both cuts forbid a pattern no legal grid
+contains, so both stay valid for the life of the model, and the loop returns
+only a shading that survives every rule.
+`tools/repro_renban_bug.py` is the regression: the old model failed it at try
+20, the fixed one finds 0 illegal.
+
+## What the walk produced
+
+23 seeds, 12 processes, one worker each, 15 minutes apiece:
+
+| | |
+| --- | --- |
+| shadeable grids stepped onto | 68 |
+| illegal ones caught and discarded | 19 |
+| kept after the hunt's diversity rule | **33** |
+| pool before / after | 23 / **56** |
+
+Every kept grid is re-checked from the rules by `renbanana_verify` on the way
+in, and all 33 pass independently.
+
+The inbreeding worry was real but partial. The median accepted step moves 18
+grid cells and only 5 shading cells, and 11 of 53 landed on their parent's
+exact shape multiset — many steps are digit relabels that barely move the
+puzzle. Half the rows were duplicates by the hunt's own rule. The other half
+were not, which is where the 33 came from.
+
 ## Verdict
 
 Inverting the pipeline works, but not as first framed. Sampling grids is dead —
-0 of 200, all proved. Seeding from grids we already have and walking is alive
-and roughly 25x cheaper per candidate than the shading-first hunt. The next
-question is whether its output is diverse or inbred.
+0 of 200, all proved. Walking from grids we already have more than doubled the
+pool in 15 minutes on 12 cores, against roughly 40 minutes per candidate for
+the shading-first hunt. Its output is half duplicates, so the yield decays as
+the pool grows and the seeds get walked out; it is a pool multiplier, not a
+replacement for a generator.

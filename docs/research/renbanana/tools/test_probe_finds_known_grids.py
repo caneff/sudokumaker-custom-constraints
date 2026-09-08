@@ -24,6 +24,11 @@ for path in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json
     name = cp.CpSolver().status_name(st).lower()
     same = found == is_choc if found else False
     ok = ok and found is not None
+    if found is not None:
+        violations = rv.check(grid, found)
+        ok = ok and not violations
+        if violations:
+            print(f"  ILLEGAL: {violations[0]}")
     print(
         f"{path.parent.name}/{path.name}: {name} cuts={m.cuts} matches_original={same}"
         + (

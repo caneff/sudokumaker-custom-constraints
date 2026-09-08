@@ -1,0 +1,131 @@
+"""Turn the walk's accepted steps into a candidate pool.
+
+The walk writes one JSONL row per shadeable grid it steps onto. This selects
+the ones worth keeping and writes them in the candidate format the rest of the
+tooling reads -- `renbanana_verify.load`, `build_lineup.py`, the lineup page.
+
+Selection is the hunt's own diversity rule, seeded with the existing pool so a
+walk result never duplicates a grid we already had: keep a grid when its
+shading is at least 12 cells from every grid already held, or its multiset of
+chocolate rectangle shapes differs. Every kept grid is re-checked from the
+rules before it is written; nothing enters a pool unverified.
+
+    uv run docs/research/renbanana/tools/walk_to_candidates.py \
+        --walk docs/research/renbanana/walk \
+        --out docs/research/renbanana/candidates-walk
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import renbanana_cpsat as rc
+import renbanana_verify as rv
+
+MIN_DISTANCE = 12
+
+
+def hamming(a, b):
+    return sum(
+        x != y for ra, rb in zip(a, b, strict=True) for x, y in zip(ra, rb, strict=True)
+    )
+
+
+def shapes_of(is_choc):
+    return sorted("x".join(map(str, rv.shape(g))) for g in rv.components(is_choc, True))
+
+
+def as_rows(mapping, true_char, false_char=None):
+    if false_char is None:
+        return ["".join(str(mapping[r, c]) for c in range(9)) for r in range(9)]
+    return [
+        "".join(true_char if mapping[r, c] else false_char for c in range(9))
+        for r in range(9)
+    ]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--walk", type=Path, default=Path("docs/research/renbanana/walk"))
+    ap.add_argument("--out", type=Path, required=True)
+    a = ap.parse_args()
+
+    pool = []
+    for path in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json")):
+        grid, is_choc, _ = rv.load(path)
+        pool.append(
+            {"shading": as_rows(is_choc, "C", "b"), "shapes": shapes_of(is_choc)}
+        )
+    held = len(pool)
+
+    rows = [
+        json.loads(line)
+        for path in sorted(a.walk.glob("*.jsonl"))
+        for line in path.read_text().splitlines()
+        if line.strip()
+    ]
+
+    a.out.mkdir(parents=True, exist_ok=True)
+    kept = rejected = illegal = 0
+    for row in rows:
+        if not all(
+            hamming(row["shading"], other["shading"]) >= MIN_DISTANCE
+            or row["shapes"] != other["shapes"]
+            for other in pool
+        ):
+            rejected += 1
+            continue
+        grid = {(r, c): int(row["grid"][r][c]) for r in range(9) for c in range(9)}
+        is_choc = {
+            (r, c): row["shading"][r][c] == "C" for r in range(9) for c in range(9)
+        }
+        bad = rv.check(grid, is_choc)
+        if bad:
+            illegal += 1
+            print(f"REFUSED an illegal grid from {row['source']}: {bad[0]}")
+            continue
+        pool.append(row)
+        (a.out / f"cand_{kept:02d}.json").write_text(
+            json.dumps(
+                {
+                    # The card format the lineup reads, built by the generator's
+                    # own profile and circle helpers rather than a second copy
+                    # of them.
+                    "objective": "walk",
+                    "value": len(rc.circle_cells(grid, is_choc)),
+                    "seed": f"{Path(row['source']).parent.name}/"
+                    f"{Path(row['source']).stem}+{row['step']}",
+                    "grid": row["grid"],
+                    "shading": row["shading"],
+                    "circles": rc.circle_cells(grid, is_choc),
+                    "profile": rc.profile(grid, is_choc),
+                },
+                indent=1,
+            )
+            + "\n"
+        )
+        kept += 1
+
+    (a.out / "stats.json").write_text(
+        json.dumps(
+            {
+                "kept": kept,
+                "rejected_as_duplicate": rejected,
+                "refused_illegal": illegal,
+                "walk_rows": len(rows),
+                "pool_held_before": held,
+            },
+            indent=1,
+        )
+        + "\n"
+    )
+    print(
+        f"kept {kept} of {len(rows)} walk rows "
+        f"({rejected} duplicates, {illegal} illegal) into {a.out}"
+    )
+
+
+if __name__ == "__main__":
+    main()

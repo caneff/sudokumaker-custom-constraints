@@ -20,6 +20,7 @@ POOLS = {
     "candidates-only22": "circled 2x2",
     "candidates-only23": "circled 2x3",
     "candidates-circ2": "circled 2x2 + 2x3",
+    "candidates-walk": "walked",
 }
 
 sys.path.insert(0, str(ROOT.parent))

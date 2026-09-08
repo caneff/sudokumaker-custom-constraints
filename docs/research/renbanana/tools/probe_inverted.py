@@ -98,6 +98,7 @@ class Shadings:
         m = cp.CpModel()
         self.m = m
         self.grid = grid
+        self.drop = drop
         self.choc = {p: m.new_bool_var(f"c{p}") for p in CELLS}
 
         # Rule 3: no 2x2 window holds exactly three chocolate cells.
@@ -132,9 +133,18 @@ class Shadings:
             for ell in range(IDX[lo] + 1, IDX[hi] + 1):
                 m.add_bool_or([self.choc[p], self.choc[q], lab[hi, ell].negated()])
 
-        # Rule 6, exactly, because the digits are known. Per label: at most one
-        # cell of each digit (distinct), and no digit missing between two that
-        # are present (consecutive).
+        # Rule 6 as a strong filter, not as the last word. Per label: at most
+        # one cell of each digit (distinct), and no digit missing between two
+        # that are present (consecutive).
+        #
+        # Not exact, because a label is only pinned to be *at most* the least
+        # cell index in its component, so two disjoint components may pick the
+        # same label. Renban then lands on their union, and a gap in one
+        # component can be plugged by a digit from the other -- which is how a
+        # banana group holding 1, 4 and 8 once came back as legal. It never
+        # rules a legal shading out (the solver can always give each component
+        # its own least index), so an INFEASIBLE is still a proof; it just lets
+        # some illegal ones through. `solve` catches those and cuts them.
         for ell in range(len(CELLS)):
             members = [p for p in CELLS if IDX[p] >= ell]
             here = {}
@@ -156,7 +166,6 @@ class Shadings:
                                 [here[u].negated(), here[w].negated(), here[v]]
                             )
 
-        self.drop = drop
         if min_chocolate:
             m.add(sum(self.choc.values()) >= min_chocolate)
 
@@ -168,6 +177,32 @@ class Shadings:
             [self.choc[p] for p in group] + [self.choc[q].negated() for q in border]
         )
         self.cuts += 1
+
+    def offenders(self, is_choc):
+        """Banana groups this shading may not contain, each cut one at a time.
+
+        Rule 4 -- a rectangular banana group -- was always lazy. Rule 6 joins
+        it because the label encoding above is a filter rather than a proof:
+        two components sharing a label can satisfy it while one of them is not
+        a renban at all. Both kinds of cut forbid one pattern that no legal
+        grid contains, so both stay valid for the life of the model, and the
+        loop returns only a shading that survives every rule.
+        """
+        bad = []
+        for g in rv.components(is_choc, False):
+            if rv.is_rectangle(g) and self.drop != "non-rectangle":
+                bad.append(g)
+                continue
+            digits = [self.grid[p] for p in g]
+            if len(set(digits)) != len(digits):
+                if self.drop != "renban-distinct":
+                    bad.append(g)
+            elif (
+                max(digits) - min(digits) != len(digits) - 1
+                and self.drop != "renban-consecutive"
+            ):
+                bad.append(g)
+        return bad
 
     def solve(self, seconds, workers, seed):
         """Loop the lazy rule-4 cuts until the shading is clean or time runs out."""
@@ -184,11 +219,7 @@ class Shadings:
             if status not in (cp.OPTIMAL, cp.FEASIBLE):
                 return status, None
             is_choc = {p: s.value(self.choc[p]) == 1 for p in CELLS}
-            bad = (
-                []
-                if self.drop == "non-rectangle"
-                else [g for g in rv.components(is_choc, False) if rv.is_rectangle(g)]
-            )
+            bad = self.offenders(is_choc)
             if not bad:
                 return status, is_choc
             for g in bad:
