@@ -12,7 +12,15 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-POOLS = {"candidates": "free", "candidates-2x4": "forced 2x4"}
+POOLS = {
+    "candidates": "free",
+    "candidates-2x4": "forced 2x4",
+    "candidates-multi2": "2+ rectangles",
+    "candidates-multi3": "3+ rectangles",
+    "candidates-only22": "circled 2x2",
+    "candidates-only23": "circled 2x3",
+    "candidates-circ2": "circled 2x2 + 2x3",
+}
 
 sys.path.insert(0, str(ROOT.parent))
 import renbanana_verify as rv
@@ -21,7 +29,10 @@ import renbanana_verify as rv
 def rows():
     out = []
     for pool, label in POOLS.items():
+        if not (ROOT / pool).is_dir():  # a hunt that has not been run
+            continue
         for path in sorted((ROOT / pool).glob("cand_*.json")):
+            # A hunt still running writes here; take whatever it has so far.
             d = json.loads(path.read_text())
             is_choc = {
                 (r, c): ch == "C"

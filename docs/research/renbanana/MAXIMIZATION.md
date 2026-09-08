@@ -147,18 +147,36 @@ half is the blocker:
 The three 2x3 grids verify LEGAL and hold a real 6, at box offsets (1,2),
 (0,2) and (2,2). The 2x2 is what stalls.
 
-**The degree lemma says why.** A circled 2x2 needs a 4 somewhere in it. Digit
-4 has one German partner, 9, and inside a 2x2 every cell has two chocolate
-neighbours — so both of the 4's neighbours must be 9. They sit at (r, c+1)
-and (r+1, c), which sudoku permits only when those cells fall in different
-boxes, so **a circled 2x2 must straddle a box line**. That is exactly the
-catalogue's five live offsets for a circled 2x2: every one has ro = 2 or
-co = 2, and the four offsets interior to a box are dead.
+**The degree lemma constrains both shapes, not just the 2x2.** A circled 2x2
+needs a 4, whose only German partner is 9, and every cell of a 2x2 has two
+chocolate neighbours — so both of the 4's neighbours are 9. They sit at
+(r, c+1) and (r+1, c), which sudoku permits only across a box line.
 
-The same argument covers a circled 2x3, needing a 6 whose only partner is 1 —
-but a 2x3 has corner cells with two neighbours and edge cells with three, and
-its extra length gives the pair of 1s more ways to land in separate boxes.
-Hence 7 live offsets against the 2x2's 5, and hence the split above.
+The 2x3 is in exactly the same position. Its circle needs a 6, whose only
+partner is 1, and the circle can only sit on a **corner**: a middle cell has
+three chocolate neighbours, all of which would have to be 1, and two of those
+land in one row. A corner has two neighbours, same as any 2x2 cell. So a
+circled 2x3 must straddle a box line too — the requirement is not weaker.
+
+The only difference is arithmetic. Both shapes need one straddling pair, and
+the pair can straddle by row or by column. A 2x2 spans two columns, so it has
+one adjacent column pair to straddle with; a 2x3 spans three, so it has two.
+Where a 2x2 at column offset 0 or 1 must fall back on a row straddle, a 2x3 at
+column offset 1 or 2 always has a column pair that works. That is the whole
+gap: 7 live offsets against 5, and 76 of 112 placements against 28 of 64.
+
+| shape | live offsets | placements surviving |
+| --- | ---: | ---: |
+| 2x2 | 5 of 9 | 28 of 64 (44%) |
+| 2x3 | 7 of 9 | 76 of 112 (68%) |
+
+**That 1.5x does not explain the search result, and the search result is not
+yet significant.** At the 2x3's observed rate of 3 in 226, the chance of
+seeing zero in 222 draws is 0.051 — right at the edge. So "a circled 2x2 is
+harder than a circled 2x3" is a factor-of-1.5 structural claim that the
+sampling has not yet confirmed and could not confirm at this sample size. The
+honest reading: the 2x3 is demonstrably attainable, the 2x2 is unproven either
+way, and only a longer 2x2 run settles it.
 
 ## Chocolate maximization is a dead end
 
