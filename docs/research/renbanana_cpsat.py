@@ -109,9 +109,34 @@ def circle_cells_at(a, b, ro, co):
     return [(c, r) if flip else (r, c) for r, c in cells]
 
 
+def fillings_at(a, b, ro, co):
+    """How many ways an `a` by `b` rectangle at box offset (ro, co) can be
+    filled at all, from the same catalogue. Zero means no grid anywhere holds
+    that rectangle in that position -- 4x5 and 5x5 are dead at every offset,
+    3x3 only at (0,0) -- so stage 1 can rule the placement out instead of
+    handing stage 1's answer to a digit solve that must fail."""
+    key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
+    if flip:
+        ro, co = co, ro
+    return CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("count", 0)
+
+
 # Rectangle shapes a rectangle can take: no side exceeds 8 (RECTANGLE-CATALOGUE.md,
 # the low/high checkerboard bound), and the shape must fit the grid.
-SHAPES = [(a, b) for a in range(1, 9) for b in range(1, 9)]
+# Shapes a rectangle can take: no side exceeds 8, and the #377 catalogue must
+# leave it at least one box offset where a filling exists. That drops 2x8 and
+# every a x b with a >= 3, b >= 7, along with 4x5, 4x6, 5x5, 5x6 and 6x6 --
+# shapes the variety objective would otherwise chase and never place.
+SHAPES = [
+    (a, b)
+    for a in range(1, 9)
+    for b in range(1, 9)
+    if any(
+        CATALOGUE[f"{min(a, b)}x{max(a, b)}"]["B"].get(f"{ro},{co}", {}).get("count", 0)
+        for ro in range(3)
+        for co in range(3)
+    )
+]
 
 
 # ---------------------------------------------------------------- stage 1
@@ -178,6 +203,8 @@ class Shadings:
             covering = [lab[p, ell] for p in CELLS if IDX[p] >= ell]
             m.add(sum(covering) <= MAX_BANANA)
 
+        self._forbid_dead_placements()
+
         if lemmas:
             self._where_the_fives_go()
 
@@ -223,6 +250,37 @@ class Shadings:
             )
         if self.terms:
             m.maximize(sum(self.terms))
+
+    def _forbid_dead_placements(self):
+        """Rule out every maximal chocolate rectangle the #377 catalogue proves
+        cannot be filled where it sits.
+
+        Two kinds. A shape dead at layer L -- 2x8, 4x8, 7x7 and the rest --
+        cannot be filled anywhere at all. A shape dead only at some box offsets
+        -- 3x3 at (0,0), 4x4 at eight of nine, 4x5 and 5x5 and 6x6 everywhere --
+        can be filled in the abstract but not in that position mod 3.
+
+        Both are proofs about the rectangle and the boxes alone, so they hold in
+        every grid and the model stays exact: an INFEASIBLE here is still a
+        proof and the optimum is still a true ceiling. It removes 634 of the
+        1936 placements a 9x9 has room for, every one of which used to reach
+        the digit stage only to fail there.
+        """
+        for a in range(1, N + 1):
+            for b in range(1, N + 1):
+                for r in range(N - a + 1):
+                    for c in range(N - b + 1):
+                        if fillings_at(a, b, r % 3, c % 3):
+                            continue
+                        inside = [(r + i, c + j) for i in range(a) for j in range(b)]
+                        border = {
+                            q for p in inside for q in neighbours(*p) if q not in inside
+                        }
+                        # not (all inside chocolate and all border banana)
+                        self.m.add_bool_or(
+                            [self.choc[p].negated() for p in inside]
+                            + [self.choc[q] for q in border]
+                        )
 
     def _where_the_fives_go(self):
         """The one digit fact cheap enough to state on the shading alone, and the
