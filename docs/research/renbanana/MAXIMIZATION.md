@@ -86,6 +86,40 @@ carries a 1x5 alongside the 2x4, so two large groups do coexist. Its score is
 low *because* those two groups eat sixteen cells that would otherwise be
 scoring singletons.
 
+## Banana circles are the abundant clue, and nothing was scoring them
+
+A circle is legal on either colour — `renbanana_verify.check` tests a circled
+digit against its own group's size whatever that group is shaded. The hunt's
+`circles` objective only ever scored chocolate groups, so banana circles were
+never counted, never optimized, and never drawn.
+
+Recovering them from the eleven candidates, every one of which re-verifies
+LEGAL with its banana circles included:
+
+| run | seed | chocolate circles | banana circles | banana score |
+| --- | ---: | ---: | ---: | ---: |
+| free | 2 | 5 | 7 | 44 |
+| free | 4 | 7 | 7 | 51 |
+| free | 5 | 7 | 7 | 50 |
+| free | 7 | 10 | 7 | 52 |
+| free | 8 | 7 | 8 | 51 |
+| free | 9 | 8 | 7 | 49 |
+| free | 10 | 7 | 7 | 48 |
+| free | 11 | 6 | 7 | 48 |
+| forced 2x4 | 2 | 6 | 7 | 43 |
+| forced 2x4 | 4 | 6 | 7 | 49 |
+| forced 2x4 | 10 | 3 | 7 | 47 |
+
+Banana circle scores run 43-52 against chocolate's 9-17, and the count barely
+moves: seven or eight in every grid, whatever the shading did. Two reasons.
+A banana group is a renban, so its digits are distinct and at most one cell in
+it can be circled — but banana groups are large, so their sizes land in the
+range digits can express, and each one very often contains its own size. A
+chocolate rectangle is small, so it usually wants a digit of 1 to 4.
+
+So the value is concentrated on the banana side and the free hunt was blind to
+it. No objective scores banana circles yet.
+
 ## Chocolate maximization is a dead end
 
 Recorded here so it is not re-run. Maximizing total chocolate pins every
@@ -107,3 +141,5 @@ back down to where grids live.
   chance in either pool.
 - The `variety` and `circleable` objectives as their own hunts.
 - An upper bound for `circles`.
+- A banana-circle objective, or a combined one. Nothing currently scores the
+  side of the board that carries most of the circle value.

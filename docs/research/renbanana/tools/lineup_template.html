@@ -2,11 +2,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 :root{--bg:#f6f1e4;--panel:#fffaf0;--ink:#2a2620;--muted:#6f675a;--line:#d9cfb8;--accent:#8a3b2c;
- --choc:#6e482e;--chocInk:#fdf6ec;--ban:#faec96;--banInk:#2a2620;--edge:#1d1a15;--chip:#efe6d0;--hl:#c2703f}
+ --choc:#6e482e;--chocInk:#fdf6ec;--ban:#faec96;--banInk:#2a2620;--edge:#1d1a15;--chip:#efe6d0;--hl:#c2703f;--bcirc:#1f6b52}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1c1d18;--panel:#24261f;--ink:#efe9da;--muted:#a8a08e;--line:#3a3d31;--accent:#e08a6f;
- --choc:#5a3a25;--chocInk:#f3e7d8;--ban:#e6d68d;--banInk:#1f1c14;--edge:#0f0e0b;--chip:#2f3228;--hl:#e08a6f}}
+ --choc:#5a3a25;--chocInk:#f3e7d8;--ban:#e6d68d;--banInk:#1f1c14;--edge:#0f0e0b;--chip:#2f3228;--hl:#e08a6f;--bcirc:#2f8a68}}
 :root[data-theme="dark"]{--bg:#1c1d18;--panel:#24261f;--ink:#efe9da;--muted:#a8a08e;--line:#3a3d31;--accent:#e08a6f;
- --choc:#5a3a25;--chocInk:#f3e7d8;--ban:#e6d68d;--banInk:#1f1c14;--edge:#0f0e0b;--chip:#2f3228;--hl:#e08a6f}
+ --choc:#5a3a25;--chocInk:#f3e7d8;--ban:#e6d68d;--banInk:#1f1c14;--edge:#0f0e0b;--chip:#2f3228;--hl:#e08a6f;--bcirc:#2f8a68}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
 header{padding:28px 32px 12px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 28px;border-bottom:1px solid var(--line)}
@@ -31,9 +31,11 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
  border-right:1px solid rgba(0,0,0,.10);border-bottom:1px solid rgba(0,0,0,.10)}
 .cell.k{background:var(--choc);color:var(--chocInk)}
 .board.nodigit .cell{color:transparent}
-.cell.c::after{content:"";position:absolute;inset:12%;border:2.5px solid var(--edge);border-radius:50%}
+.cell.c::after,.cell.bc::after{content:"";position:absolute;inset:12%;border:2.5px solid var(--edge);border-radius:50%}
 .cell.k.c::after{border-color:var(--chocInk)}
+.cell.bc::after{border-color:var(--bcirc);border-width:3px}
 .board.nocircle .cell.c::after{display:none}
+.board.nobcircle .cell.bc::after{display:none}
 /* group outline: a thick edge wherever the neighbour has the other colour */
 .board.outline .cell.gr{border-right:3px solid var(--edge)}
 .board.outline .cell.gb{border-bottom:3px solid var(--edge)}
@@ -57,8 +59,8 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
 </style>
 <header>
  <h1>Renbanana <span>lineup</span></h1>
- <div class="sub">Every candidate grid found so far. Chocolate groups are rectangles whose orthogonal neighbours differ by at least 5; banana groups are non-rectangles holding distinct consecutive digits. A circle marks a cell whose digit equals the size of its own chocolate group — a clue the puzzle could offer, not one that has been chosen. Hover a cell to light up its whole group.</div>
- <div class="legend"><span><i style="background:var(--choc)"></i>chocolate</span><span><i style="background:var(--ban)"></i>banana</span></div>
+ <div class="sub">Every candidate grid found so far. Chocolate groups are rectangles whose orthogonal neighbours differ by at least 5; banana groups are non-rectangles holding distinct consecutive digits. A circle marks a cell whose digit equals the size of its own group — dark on chocolate, green on banana — a clue the puzzle could offer, not one that has been chosen. A banana group is a renban, so its digits are distinct and at most one cell in it can be circled; a chocolate rectangle repeats digits, so the one shown is the first of possibly several. Hover a cell to light up its whole group.</div>
+ <div class="legend"><span><i style="background:var(--choc)"></i>chocolate</span><span><i style="background:var(--ban)"></i>banana</span><span><i style="border-radius:50%;border:2.5px solid var(--edge);background:none"></i>chocolate circle</span><span><i style="border-radius:50%;border:2.5px solid var(--bcirc);background:none"></i>banana circle</span></div>
 </header>
 <div class="bar">
  <label>filter <input id="q" type="search" placeholder="run, seed, shape e.g. 2x4" size="22"></label>
@@ -70,11 +72,14 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
   <option value="cells">chocolate cells</option>
   <option value="groups">chocolate groups</option>
   <option value="circleable">circleable groups</option>
+  <option value="bananaCircles">banana circles</option>
+  <option value="bananaValue">banana circle score</option>
  </select></label>
  <label>min score <input id="minv" type="number" value="0" min="0"></label>
  <label>largest ≥ <input id="minl" type="number" value="0" min="0" max="81"></label>
  <label><input id="digits" type="checkbox" checked> digits</label>
- <label><input id="circles" type="checkbox" checked> circles</label>
+ <label><input id="circles" type="checkbox" checked> chocolate circles</label>
+ <label><input id="bcircles" type="checkbox" checked> banana circles</label>
  <label><input id="outline" type="checkbox" checked> group outlines</label>
  <span class="count" id="count"></span>
 </div>
@@ -85,10 +90,11 @@ const runSel=document.getElementById('run');
 [...new Set(DATA.map(d=>d.run))].sort().forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;runSel.appendChild(o)});
 function card(d){
   const circ=new Set(d.circles.map(p=>p.join(',')));
+  const bcirc=new Set(d.bcircles.map(p=>p.join(',')));
   let cells='';
   for(let r=0;r<9;r++)for(let c=0;c<9;c++){
     const g=d.gid[r][c], k=d.shading[r][c]==='C';
-    const cls=['cell',k?'k':'',circ.has(r+','+c)?'c':'',
+    const cls=['cell',k?'k':'',circ.has(r+','+c)?'c':'',bcirc.has(r+','+c)?'bc':'',
       c<8&&d.gid[r][c+1]!==g?'gr':'', r<8&&d.gid[r+1][c]!==g?'gb':'',
       c>0&&d.gid[r][c-1]!==g?'gl':'', r>0&&d.gid[r-1][c]!==g?'gt':'',
       ].filter(Boolean).join(' ');
@@ -99,7 +105,7 @@ function card(d){
   return `<article class="card" tabindex="0">
    <div class="head"><b>${d.run} · seed ${d.seed}</b><small>score ${d.value}</small></div>
    <div class="board" data-i="${d.i}">${cells}<div class="boxes"><span class="v" style="left:33.333%"></span><span class="v" style="left:66.667%"></span><span class="h" style="top:33.333%"></span><span class="h" style="top:66.667%"></span></div></div>
-   <div class="stats"><div>circle score<b>${d.value}</b></div><div>circles<b>${d.circles.length}</b></div><div>chocolate<b>${d.cells}</b></div><div>largest<b>${d.largest}</b></div></div>
+   <div class="stats"><div>circle score<b>${d.value}</b></div><div>circles<b>${d.circles.length}</b></div><div>banana circles<b>${d.bcircles.length}</b></div><div>largest<b>${d.largest}</b></div></div>
    <div class="shapes"><b>shapes</b> ${shapes}</div>
   </article>`;
 }
@@ -113,9 +119,11 @@ function render(){
   const m=document.getElementById('main');
   m.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">No grid matches these filters.</div>';
   const on=k=>k?'':'no';
-  const dig=document.getElementById('digits').checked, cir=document.getElementById('circles').checked, out=document.getElementById('outline').checked;
+  const dig=document.getElementById('digits').checked, cir=document.getElementById('circles').checked,
+        bci=document.getElementById('bcircles').checked, out=document.getElementById('outline').checked;
   m.querySelectorAll('.board').forEach(b=>{
-    b.classList.toggle('nodigit',!dig); b.classList.toggle('nocircle',!cir); b.classList.toggle('outline',out);
+    b.classList.toggle('nodigit',!dig); b.classList.toggle('nocircle',!cir);
+    b.classList.toggle('nobcircle',!bci); b.classList.toggle('outline',out);
   });
   document.getElementById('count').textContent=`${rows.length} of ${DATA.length} grids`;
 }

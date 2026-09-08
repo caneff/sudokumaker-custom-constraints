@@ -32,11 +32,23 @@ def rows():
             # can outline a group and light it up on hover.
             gid = [[-1] * 9 for _ in range(9)]
             gsize = []
+            bcircles = []
             for colour in (True, False):
                 for group in rv.components(is_choc, colour):
                     for r, c in group:
                         gid[r][c] = len(gsize)
                     gsize.append(len(group))
+                    if colour:
+                        continue
+                    # A banana circle is as legal as a chocolate one -- the
+                    # verifier checks both -- but the generator never scores
+                    # them, so they are recovered here. A banana group is a
+                    # renban, its digits distinct, so at most one cell in it
+                    # can equal the group's size.
+                    for r, c in sorted(group):
+                        if int(d["grid"][r][c]) == len(group):
+                            bcircles.append([r, c])
+                            break
             prof = d["profile"]
             out.append(
                 {
@@ -48,6 +60,7 @@ def rows():
                     "grid": d["grid"],
                     "shading": d["shading"],
                     "circles": [list(p) for p in d.get("circles", [])],
+                    "bcircles": bcircles,
                     "gid": gid,
                     "gsize": gsize,
                     "shapes": prof["shapes"],
@@ -55,6 +68,8 @@ def rows():
                     "groups": prof["chocolate_groups"],
                     "largest": prof["largest_rectangle"],
                     "circleable": prof["circleable_groups"],
+                    "bananaCircles": len(bcircles),
+                    "bananaValue": sum(gsize[gid[r][c]] for r, c in bcircles),
                 }
             )
     return out
