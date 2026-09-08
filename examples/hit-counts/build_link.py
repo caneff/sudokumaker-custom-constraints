@@ -8,7 +8,7 @@
 #     --component HitCountsJointComponent.js --out /tmp/candidate.txt
 #
 # --component names a file whose basename (minus .js) matches an existing
-# component registered on PUZZLE_LINK.txt's "Hit Counts Lines" constraint
+# component registered on PUZZLE_LINK.txt's "Hit Counts" constraint
 # (HitCountsJointComponent, SideSumComponent or SideHitMatchingComponent);
 # that component's code becomes the given file's, minified. The backend and
 # the sibling components are untouched. --board swaps against a different
@@ -26,7 +26,7 @@ from link_swap import check_and_write, swap_component_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
-CONSTRAINT_NAME = "Hit Counts Lines"
+CONSTRAINT_NAME = "Hit Counts"
 TIMED_COMPONENT = "HitCountsJointComponent"
 
 

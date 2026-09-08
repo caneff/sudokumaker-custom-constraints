@@ -59,7 +59,7 @@ def add_numbered_room(m, x, cells, kk, n, tag):
 SPEC = Spec(
     dir=HERE,
     title="Numbered Rooms",
-    lines_name="Numbered Rooms",
+    constraint_name="Numbered Rooms",
     components=["NumberedRoomsComponent.js"],
     min_digit=1,
     clue_fn=numbered_room,

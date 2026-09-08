@@ -87,7 +87,7 @@ def add_running_start(m, x, cells, kk, n, tag):
 SPEC = Spec(
     dir=HERE,
     title="Running Start",
-    lines_name="Running Start Lines",
+    constraint_name="Running Start",
     components=COMPONENTS,
     local_components=LOCAL_COMPONENTS,
     min_digit=1,

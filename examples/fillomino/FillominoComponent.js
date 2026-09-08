@@ -9,12 +9,12 @@
 //! adjacent cells holding k lie in one region, so an island of digit k with p
 //! cells sits wholly inside one region, and that region needs k - p more
 //! cells. One thing IS carried between calls: the component bound's
-//! allowed-digit row (#312), and it is carried as a SNAPSHOT to diff against,
+//! allowed-digit row, and it is carried as a SNAPSHOT to diff against,
 //! never as a dirty flag. The solver gives no backtrack signal, so a flag set
 //! on our own prunes goes stale the moment the search restores a candidate;
 //! comparing this call's codes against the last call's cannot.
 //!
-//! Rung 1 of the ladder, per island:
+//! Per island:
 //!   Overflow: an island of more than k cells holding k is a dead branch.
 //!   Seal:     an island of k cells holding k is a finished region, so every
 //!             open cell touching it loses k.
@@ -30,7 +30,7 @@
 //!             that cell holds k; and a door that touches islands of k adding
 //!             up past k cells cannot hold k.
 //!
-//! Rung 2, the growth test (§6), at the scope the clock allowed:
+//! The growth test, at the scope it can pay for:
 //!   Merge:          at a DOOR, M is the door plus every island of the digit
 //!                   it touches. If the door held k they would all be one
 //!                   region.
@@ -43,43 +43,38 @@
 //!                   one of them, so every cell of a component under k cells
 //!                   loses k. This is the only rule that reaches a SILENT
 //!                   REGION -- a region with no placed cell in it -- because
-//!                   every other rule starts from an island. Rung 2.5 (#312)
-//!                   re-floods only the components a changed cell touches,
-//!                   which leaves what it deduces byte-identical.
+//!                   every other rule starts from an island. It re-floods
+//!                   only the components a changed cell touches, which leaves
+//!                   what it deduces byte-identical.
 //!
-//! Rung 3, cut starve (§4):
 //!   Cut starve: an open cell of the walk whose removal starves the walk under
 //!               k cells cannot be outside the region, so it holds k. A
-//!               dominator-tree filter (cutFilter, transferred from ISOFILL
-//!               unchanged) answers most cells at once, and only the rest pay
-//!               for a walk of their own. ISOFILL's strand half does not come
-//!               along: two islands of one digit need not share a region.
+//!               dominator-tree filter (cutFilter) answers most cells at once,
+//!               and only the rest pay for a walk of their own. There is no
+//!               matching rule for a cell whose removal strands a placed cell:
+//!               two islands of one digit need not share a region.
 //!
-//! Scope, and why it is not the whole board. #308's rung 2 asks for the growth
-//! test at FULL scope: the merge rules per (open cell, candidate digit) pair,
-//! every open cell. That was built and timed first, and the clock refused it --
-//! against rung 1 it ran 1.0x to 4.9x on the frozen fixtures, worst on the
-//! digits-1-12 boards. #308's named fallback is this: frontier-only scope (the
-//! doors) plus the per-digit component bound. It keeps the silent-region win,
-//! since the component bound needs no placed cell, and it costs one flood per
-//! digit instead of one bounded walk per (cell, digit) pair. The measured rows
-//! are in this example's README.
+//! Scope, and why it is not the whole board. The growth test at FULL scope --
+//! the merge rules per (open cell, candidate digit) pair, over every open cell
+//! -- was built and timed first, and the clock refused it: 1.0x to 4.9x slower
+//! than the per-island rules alone, worst where digits run past the board
+//! side. What ships instead is frontier-only scope (the doors) plus the
+//! per-digit component bound. It keeps the silent-region win, since the
+//! component bound needs no placed cell, and it costs one flood per digit
+//! instead of one bounded walk per (cell, digit) pair.
 //!
 //! Merge force -- "a walk of exactly k cells IS the region, so every open cell
-//! it covers holds k" -- is NOT here. The transfer doc's §6 box states it, but
-//! it is unsound whenever the walk starts at an open cell: the walk's budget
-//! k - |M| already assumes the cell holds k, so the conclusion is conditional
-//! on the very thing under test. The smallest counterexample is k = 1, where M
+//! it covers holds k" -- is NOT here. It is unsound whenever the walk starts
+//! at an open cell: the walk's budget k - |M| already assumes the cell holds
+//! k, so the conclusion is conditional on the very thing under test. The
+//! smallest counterexample is k = 1, where M
 //! is the cell alone, the walk covers exactly one cell, and the rule would
-//! place a 1 in every open cell that still allows one. Rung 1's force is the
-//! sound reading of the same shape: its walk starts from a PLACED island, so
-//! the region is known to exist.
+//! place a 1 in every open cell that still allows one. The per-island force
+//! above is the sound reading of the same shape: its walk starts from a PLACED
+//! island, so the region is known to exist.
 //!
 //! validate: one flood over a full grid; every same-digit component's cell
 //! count must equal its digit.
-//!
-//! Rule statements and soundness arguments: docs/research/
-//! fillomino-isofill-transfer.md, sections 0-3, 6 and 9.
 
 function getAffectedCells (cells) {
   return cells

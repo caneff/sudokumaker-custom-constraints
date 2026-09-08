@@ -53,7 +53,7 @@ def _spec(
         yield Spec(
             dir=d,
             title="Widget",
-            lines_name="Widget Lines",
+            constraint_name="Widget Lines",
             components=components,
             min_digit=1,
             clue_fn=clue_fn or (lambda values, cells: 0),

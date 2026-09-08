@@ -58,16 +58,15 @@ for (const [sa, sb] of [[left, right], [top, bottom]]) {
 //! Side sum: the n clues on one side sum to exactly n. Regroup the side's hits
 //! by the crossing line each one lands on: a line that holds 1..n once each has
 //! its own value at home exactly once, so it gives one hit, n in all. The
-//! component gets those n crossing lines and checks each of them itself
-//! (docs/line-contract.md); it prunes nothing until they all prove out.
+//! component gets those n crossing lines and checks each of them itself,
+//! rather than trusting its caller; it prunes nothing until they all prove out.
 //! n is the line length (a line is a full row/column), not helpers.digits.maxDigit,
 //! which the app can set past n when minDigit is 0.
 //! Side hit matching: the same regrouping, assigned rather than counted. Each
 //! of the side's n positions is hosted by exactly one of its n lines, and a line
 //! hosts as many positions as its clue says. The component gets the side's clues
 //! and its clued lines, and builds each position's cell list from them; it
-//! checks itself that a position is a house of 1..n before it prunes anything
-//! (docs/line-contract.md).
+//! checks itself that a position is a house of 1..n before it prunes anything.
 for (const side of sides) {
   const clueCells = side.groups.map(g => g.clue)
   puzzle.addConstraintComponent(

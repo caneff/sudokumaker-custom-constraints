@@ -160,7 +160,7 @@ if __name__ == "__main__":
         # --board: swap against a different committed link, not just
         # PUZZLE_LINK.txt. Build one from a copy of the base doc with a
         # harmless field changed, so it is distinguishable from base but
-        # still a valid "Skyscraper Lines" board.
+        # still a valid "Skyscrapers" board.
         other_doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
         other_doc["puzzle"]["name"] = other_doc["puzzle"]["name"] + " (other board)"
         other_board = tmp / "other_board.txt"

@@ -111,7 +111,7 @@ def add_visibility(m, x, cells, kk, n, tag):
 SPEC = Spec(
     dir=HERE,
     title="Skyscrapers Interactive",
-    lines_name="Skyscraper Lines",
+    constraint_name="Skyscrapers",
     components=COMPONENTS,
     local_components=LOCAL_COMPONENTS,
     min_digit=1,

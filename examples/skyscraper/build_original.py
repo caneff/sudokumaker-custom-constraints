@@ -34,7 +34,7 @@ from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
-CONSTRAINT_NAME = "Skyscraper Lines"
+CONSTRAINT_NAME = "Skyscrapers"
 
 
 def frame_groups(n, lines):
