@@ -115,8 +115,30 @@ shading and the whole grid re-checked against all six rules from scratch.
 | 1x9, 9x1 | 9 | UNSAT | a whole row or column, so it contains the 5 |
 | 3x3 | 9 | **SAT** | `witness-3x3.png`, block `1 8 2 / 7 1 8 / 2 9 3` at r6c1 |
 
-So circled chocolate digits 1, 2, 3, 4, 6 and 9 are all confirmed placeable; 5
-is impossible; 7 and 8 are open.
+**A rectangle existing is not the same as a circle being placeable in it.** A
+circle reads its group's area, so the circled cell's digit must equal that area
+and must live inside the group. The 2x3 witness above is `2 8 3 / 8 2 9`, which
+holds no 6, so it cannot carry a circle. Confirmed circle values so far:
+
+| circle | status |
+|---|---|
+| 9 | **confirmed** — the 3x3 witness contains a 9 at r8c2, neighbours 1, 2, 3 |
+| 5 | **impossible** — a 5-cell group has 2+ cells, and no multi-cell chocolate group may hold a 5 |
+| 1, 2, 3 | expected trivial, not separately verified |
+| 4, 6, 7, 8 | **open** — the shapes exist (4, 6) or are themselves open (7, 8), but no witness yet places the matching digit inside one |
+
+German's partner sets are what make this hard, and they are tiny: 6 pairs only
+with 1, 4 only with 9, 3 with {8,9}, 7 with {1,2}, 2 with {7,8,9}, 9 with
+{1,2,3,4}, 1 with {6,7,8,9}, and 5 with nothing. Consequences:
+
+- A **circled 6** must sit at a *corner* of its 2x3, or an *end* of its 1x6: an
+  edge-centre cell has two neighbours in the same row, and both would have to be
+  1.
+- A **circled 4** in a 2x2 needs a 9 on both of its neighbours, and those two
+  sit in different rows and columns, so **the 2x2 must straddle a box boundary**
+  or the 9s collide. The fourth cell touches both 9s, so it is at most 4. In a
+  1x4 the circled 4 must be at an end.
+- A **circled 9** forces a 3x3 straddling the box band, as above.
 
 **A circled 9 is the strongest clue in the puzzle.** It forces a 3x3, and that
 3x3 must straddle the box band — a box-aligned 3x3 holds all nine digits,
