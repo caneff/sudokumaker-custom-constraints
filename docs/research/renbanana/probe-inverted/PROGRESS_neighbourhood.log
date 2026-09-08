@@ -1,0 +1,25 @@
+candidates/cand_00.json: 0/3 neighbours shadeable
+candidates/cand_01.json: 0/3 neighbours shadeable
+candidates/cand_02.json: 0/3 neighbours shadeable
+candidates/cand_03.json: 0/3 neighbours shadeable
+candidates/cand_04.json: 0/3 neighbours shadeable
+candidates/cand_05.json: 0/3 neighbours shadeable
+candidates/cand_06.json: 1/3 neighbours shadeable
+candidates/cand_07.json: 0/3 neighbours shadeable
+candidates-2x4/cand_00.json: 0/3 neighbours shadeable
+candidates-2x4/cand_01.json: 0/3 neighbours shadeable
+candidates-2x4/cand_02.json: 0/3 neighbours shadeable
+candidates-multi2/cand_00.json: 1/3 neighbours shadeable
+candidates-multi2/cand_01.json: 0/3 neighbours shadeable
+candidates-multi2/cand_02.json: 0/3 neighbours shadeable
+candidates-only22/cand_00.json: 0/3 neighbours shadeable
+candidates-only22/cand_01.json: 0/3 neighbours shadeable
+candidates-only22/cand_02.json: 0/3 neighbours shadeable
+candidates-only22/cand_03.json: 0/3 neighbours shadeable
+candidates-only23/cand_00.json: 0/3 neighbours shadeable
+candidates-only23/cand_01.json: 0/3 neighbours shadeable
+candidates-only23/cand_02.json: 0/3 neighbours shadeable
+candidates-only23/cand_03.json: 0/3 neighbours shadeable
+candidates-only23/cand_04.json: 0/3 neighbours shadeable
+
+2/69 grids 1 move(s) from a known-good one are shadeable (3%); 361s
