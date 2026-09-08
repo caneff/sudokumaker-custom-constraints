@@ -288,3 +288,63 @@ the app grinds on is a bad demo — slow for the reader, and one component chang
 away from being easy anyway, since difficulty here is measured against a solver
 we control and keep strengthening. Human solve path (#326) is the axis that
 survives a component upgrade; DFS nodes is not.
+
+---
+
+# Follow-up (#381): saturation prunes outward, and ships
+
+`proto/QuadRankComponent5.js` (C5) is C4 plus one deduction. Everything before it
+prunes **inward** — a clue only ever removed candidates from its own four cells.
+But "exactly `R-1` windows are strictly below me" is a count that can run out:
+
+- the definitely-below set already holds `R-1`, so **nothing else may be below**;
+- the possibly-below set holds exactly `R-1`, so **every one of them must be**.
+
+Either way a digit in some *other* window's cell that breaks the settled
+relation is dead. `getAffectedCells` already returned the whole grid, so the app
+was waking the clue on those cells anyway; only the pruning was missing.
+
+## The gate needed a slower fixture
+
+Once C4 is the baseline, **every board in the #338 fixture set is sub-second** —
+`lad_g8` is 600ms, and the noise floor means none of them can rule. `lad_g4` (13
+clues, 4 givens, CP-SAT-unique in 1.6s) is the rung below and lands in a band
+that can. It is now the ruling fixture for this component.
+
+| board | mode | C4 | C5 | ratio |
+|---|---|---|---|---|
+| `lad_g4` | cold | 77800ms | **45500ms** | **0.58x PASS** |
+| `lad_g4` | after-logical | 85800ms (2/3 reps) | **43500ms** | **0.51x PASS** |
+| `lad_g8` | cold / after | 600ms | 300ms | sub-second, no constraint |
+| `chris15` | cold / after | 200ms | — | sub-second, no constraint |
+
+**two-row rule: SHIP.** Both rows clear 0.9x outright, on the only fixture above
+the noise floor. C4's after-logical row completed 2 of 3 reps, which if anything
+flatters it.
+
+Offline and soundness, **0 violations** at both sizes:
+
+| | C4 | C5 |
+|---|---|---|
+| `chris15` search nodes | 1,076 | **286** |
+| `lad_g8` search nodes | 2,050 | **750** |
+| `p325_g16` search nodes | 876 | **796** |
+| 9x9 fuzz, 900 states | 62.4 / state | **63.9** |
+| 9x9 fuzz, 90% pinned | 9.6 | **18.7** |
+| 6x6 fuzz | 20.1 | **22.1** |
+
+The pinned-state number is where the deduction lives: nearly double C4's
+pruning in the regime the DFS actually spends its time in.
+
+## The benchmark boards are not close, and the chase stopped
+
+`p325_g0` and `HARD_328_g1` still cap under C5, and a probe at a 3,000,000-node
+cap on `p325_g0` ran ~20 minutes without returning — deep search, not a
+near-miss. Both remain CP-SAT-unique (11.8s and 85.2s), so the gap to CP-SAT on
+these two is real and unclosed.
+
+**Recorded as not worth continuing on this axis.** CP-SAT's advantage here is
+clause learning, which a component `update` cannot replicate, and nothing the
+map needs depends on solving them: the destination is a shipped example, and
+`chris15` is 200ms under C4 and faster under C5. They stay on disk as the
+benchmark any future deduction should be measured against.

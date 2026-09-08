@@ -23,7 +23,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url))
 const N = 9
 const BOX = [3, 3]
-const NODE_CAP = 200_000
+const NODE_CAP = parseInt(process.env.QR_NODE_CAP || '200000', 10)
 
 installGlobals(1, N)
 const { load } = makeIo(HERE)
