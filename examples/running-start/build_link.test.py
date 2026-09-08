@@ -2,7 +2,7 @@
 #
 # 1. build_link.py --component --out: decode the output and assert the only
 #    difference from the committed PUZZLE_LINK.txt is the swapped-in
-#    component's code, and that swapping one of the two Running Start Lines
+#    component's code, and that swapping one of the two Running Start
 #    components leaves the other component and the backend untouched. Mirrors
 #    examples/skyscraper/build_link.test.py.
 # 1b. build_from_template + check: the no-args rebuild path. It must

@@ -20,7 +20,11 @@
 import re
 
 
-def minify_js(src):
+def minify_js(src, drop_blocks=True):
+    """`drop_blocks=False` keeps block comments, for vendored code that has to
+    round-trip byte-for-byte: the fillomino baseline carries `/* : Generator
+    <Change> */` type annotations, and its whole point is being the author's
+    own file. Everything shipped from examples/ takes the default."""
     out = []
     for line in src.splitlines():
         stripped = line.lstrip()
@@ -31,10 +35,11 @@ def minify_js(src):
             indent = line[: len(line) - len(stripped)]
             out.append((indent + "//" + stripped[3:]).rstrip())
             continue
-        line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
-        assert "/*" not in line and "*/" not in line, (
-            f"unpaired block-comment marker, which this strip cannot read: {line!r}"
-        )
+        if drop_blocks:
+            line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
+            assert "/*" not in line and "*/" not in line, (
+                f"unpaired block-comment marker, which this strip cannot read: {line!r}"
+            )
         line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
         if line.strip():
             out.append(line.rstrip())

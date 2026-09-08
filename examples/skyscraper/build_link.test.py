@@ -2,7 +2,7 @@
 #
 # 1. build_link.py --component --out: decode the output and assert the only
 #    difference from the committed PUZZLE_LINK.txt is the swapped-in
-#    component's code, and that swapping one Skyscraper Lines component leaves
+#    component's code, and that swapping one Skyscrapers component leaves
 #    any other component and the backend untouched. Prior art: the check in
 #    build_original.py, and examples/_shared/probe_link.test.py.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`: each

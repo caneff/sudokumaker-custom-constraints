@@ -45,6 +45,13 @@ def test_drops_a_block_comment_sharing_a_line_with_code():
     assert got == "const n = 3\nconst m =  2\n", repr(got)
 
 
+def test_keeps_block_comments_when_asked_to():
+    # Vendored code has to round-trip byte-for-byte, type annotations included.
+    src = "function* update (i) /* : Generator<Change> */ {\n"
+    assert minify_js(src, drop_blocks=False) == src, repr(minify_js(src, False))
+    assert "/*" not in minify_js(src)
+
+
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
     # This is a regex strip, not a scanner, so anything it cannot pair on one
     # line -- a block spanning lines, or a "/*" living inside a string -- is
@@ -66,6 +73,7 @@ if __name__ == "__main__":
     test_keeps_marked_comments_and_drops_ordinary_ones()
     test_keeps_the_spacing_a_marked_comment_lays_out()
     test_drops_a_block_comment()
+    test_keeps_block_comments_when_asked_to()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
     print("ok")

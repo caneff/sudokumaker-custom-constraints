@@ -12,7 +12,7 @@ alone. The 4x4 and 6x6 puzzles carry the same rule at their size.
 
 ## Why replace the built-in
 
-SudokuMaker ships `SkyscraperComponent`, and the built-in "Skyscrapers"
+SudokuMaker ships `SkyscraperComponent`, and the built-in "Skyscraper Lines"
 template wraps it: a small component watches the clue cell and, once that cell
 holds a value, calls `replaceComponent(instance, new SkyscraperComponent(...))`.
 Two things follow, and both hurt an interactive clue:

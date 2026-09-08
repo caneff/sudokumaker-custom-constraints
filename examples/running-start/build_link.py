@@ -82,7 +82,7 @@ def build_from_template():
     doc["puzzle"]["author"] = ""
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
-        if c.get("type") == 1000 and d.get("name") == "Running Start":
+        if c.get("type") == 1000 and d.get("name") == CONSTRAINT_NAME:
             d["backend"]["code"] = minify_js((HERE / "main-global.js").read_text())
             d["components"] = [
                 {
@@ -96,7 +96,7 @@ def build_from_template():
             c["input"] = {}
             break
     else:
-        raise SystemExit("template is missing the 'Running Start Lines' constraint")
+        raise SystemExit(f"template is missing the {CONSTRAINT_NAME!r} constraint")
     # trim the postproc helper's verbose comments out of the shared link too
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
