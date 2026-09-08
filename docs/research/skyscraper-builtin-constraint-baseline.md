@@ -72,14 +72,8 @@ that our board sits past the point where one-sided propagation can close it.
 
 ## What the built-in is better at
 
-Deduction is not the only axis, and on two of the others the built-in wins.
+One thing, and it is not deduction.
 
-- **It needs no premise.** Our `update` returns immediately unless the line is a
-  house whose live candidates union to exactly `{1..length}`. A non-house line, a
-  bent path, a board whose digits start at 0 — we yield nothing at all, and the
-  built-in still enforces its rule. Our strength is conditional; theirs is not.
-  (`MAXN = 16` is a guard, not a limit: it covers every board up to 16x16, and
-  the largest here is 10x10.)
 - **It is nearly free to ship.** The built-in link is 797 bytes against our
   14.6 KB, because ours carries the whole component source in the blob. And a
   recipient adds the built-in from the app's own editor UI, where ours needs
@@ -89,24 +83,20 @@ Not measured either way: per-call cost. Ours is 12 us at n=9 (README, Timing);
 there is no number for the built-in, and on a board one-sided propagation can
 close, a cheaper propagator called more often could win on wall clock.
 
-One axis the built-in cannot play on at all: its clues are `{value, outerCell}`
-data inside the constraint object, so there is no cell for a solver to fill.
-Interactive outside clues are not expressible with it.
+Our `update` does stand down unless the line is a house whose live candidates
+union to exactly `{1..length}`, but that costs us nothing against this
+comparison and is **not** an axis the built-in wins. Type `503`'s clues are
+`{value, outerCell}` on the outer frame, so they attach to grid rows and
+columns — which are houses by construction. The premise our gate checks can
+never fail on a line the built-in is able to constrain at all. The gate exists
+to make the *local* backend safe, where an author draws an arbitrary path; the
+built-in cannot be pointed at one.
 
-## Reproducing
+The app's separate `SkyscraperComponent(name, amount, cells)` does take an
+arbitrary cell list, but `amount` is a fixed number — it is the class the
+`original/` wrapper swaps in once a clue cell holds a value, and it deduces
+nothing while the clue is blank. So it is not an interactive-clue answer
+either.
 
-The built-in link (797 bytes, no component code) is
-`docs/research/skyscraper-builtin-503.txt`.
-
-```sh
-node examples/_shared/app-solve.mjs docs/research/skyscraper-builtin-503.txt 1
-node examples/_shared/app-solve.mjs docs/research/skyscraper-builtin-503.txt 1 --after-logical
-node examples/_shared/app-solve.mjs examples/skyscraper/PUZZLE_LINK.txt 3 --ring-clues
-node examples/_shared/app-solve.mjs examples/skyscraper/PUZZLE_LINK.txt 3 --ring-clues --after-logical
-```
-
-The link was built by decoding a hand-made built-in-constraint puzzle, moving
-its one misplaced top clue from `T1` to `T0`, and adding `gen.json`'s 7 interior
-givens — the hand-made original had neither. It is **not** a shipped board and
-does not live in the example directory: it carries no custom component and no
-rules text, so `check_layout.py` has nothing to say about it.
+`MAXN = 16` is likewise a guard, not a limit: it covers every board up to
+16x16, and the largest here is 10x10.
