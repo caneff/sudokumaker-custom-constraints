@@ -48,6 +48,7 @@ by `renbanana_verify.py`, written from the rules rather than from this encoding.
 """
 
 import argparse
+import collections
 import gc
 import json
 import random
@@ -226,13 +227,13 @@ class Shadings:
                 raise SystemExit(f"shape {a}x{b} cannot fit the grid")
             m.add_bool_or(spots)
 
-        for a, b in circled:
+        for (a, b), wanted in collections.Counter(circled).items():
             spots = self._spots(a, b, circleable=True)
             if a != b:
                 spots += self._spots(b, a, circleable=True)
-            if not spots:
-                raise SystemExit(f"no {a}x{b} placement can carry a circle")
-            m.add_bool_or(spots)
+            if len(spots) < wanted:
+                raise SystemExit(f"fewer than {wanted} {a}x{b} spots can be circled")
+            m.add(sum(spots) >= wanted)
 
         if require_family:
             # Distinct maximal components never overlap, so summing one spot
@@ -465,28 +466,34 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
         m.add_max_equality(hi, [d[p] for p in group])
         m.add(hi - lo == len(group) - 1)
 
-    for a, b in circled:
+    for (a, b), wanted in collections.Counter(circled).items():
         groups = [
             g
             for g in rv.components(is_choc, True)
             if tuple(sorted(rv.shape(g))) == (a, b)
         ]
-        if not groups:
+        if len(groups) < wanted:
             return None, None, None
-        # Some group of this shape holds its own size somewhere.
-        picks = []
+        # One indicator per group, so asking for two circled 2x3s asks for two
+        # different rectangles rather than the same one twice.
+        carries = []
         for i, g in enumerate(groups):
             r0, c0 = min(g)
-            rows, cols = rv.shape(g)[0], rv.shape(g)[1]
-            allowed = circle_cells_at(rows, cols, r0 % 3, c0 % 3)
-            for dr, dc in allowed:
+            rows, cols = rv.shape(g)
+            picks = []
+            for dr, dc in circle_cells_at(rows, cols, r0 % 3, c0 % 3):
                 p = (r0 + dr, c0 + dc)
                 hit = m.new_bool_var(f"circ{a}x{b}_{i}_{p}")
                 m.add(d[p] == len(g)).only_enforce_if(hit)
                 picks.append(hit)
-        if not picks:
+            if not picks:
+                continue
+            here = m.new_bool_var(f"has_circ{a}x{b}_{i}")
+            m.add_bool_or([here.negated(), *picks])
+            carries.append(here)
+        if len(carries) < wanted:
             return None, None, None
-        m.add_bool_or(picks)
+        m.add(sum(carries) >= wanted)
 
     value = None
     terms = []
@@ -836,8 +843,9 @@ def main():
         "--circled",
         default="",
         help="shapes that must carry a circle, e.g. 2x2,2x3 -- a 2x2 holding a "
-        "4 and a 2x3 holding a 6. Checked in the digit stage, so pair it with "
-        "--require-shape to force the shape itself",
+        "4 and a 2x3 holding a 6. Repeat a shape to demand that many distinct "
+        "ones (2x3,2x3 = two circled 2x3s). Checked in the digit stage, so "
+        "pair it with --require-shape to force the shape itself",
     )
     h.add_argument(
         "--require-family",
