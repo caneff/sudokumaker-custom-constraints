@@ -88,12 +88,6 @@ def neighbours(r, c):
 
 ADJACENT = [(p, q) for p in CELLS for q in neighbours(*p) if IDX[q] > IDX[p]]
 
-# Both are sound and both are redundant with the rest of the model; they exist
-# to give the solver the enumeration instead of making it repeat the search.
-# Kept switchable because "sound and redundant" does not mean "faster".
-USE_CATALOGUE_DOMAINS = True
-USE_CHECKERBOARD = True
-
 CATALOGUE = json.loads(
     (Path(__file__).parent / "renbanana" / "rectangle-catalogue.json").read_text()
 )
@@ -485,7 +479,7 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
     # the other at 6 or above, so 5 cannot appear and the classes alternate.
     # A lone 1x1 keeps the full domain, 5 included.
     high = {}
-    for p in CELLS if USE_CHECKERBOARD else []:
+    for p in CELLS:
         if is_choc[p] and any(is_choc[q] for q in neighbours(*p)):
             hi = m.new_bool_var(f"hi{p}")
             m.add(d[p] >= 6).only_enforce_if(hi)
@@ -493,8 +487,7 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
             high[p] = hi
     for p, q in ADJACENT:
         if is_choc[p] and is_choc[q]:
-            if USE_CHECKERBOARD:
-                m.add(high[p] != high[q])
+            m.add(high[p] != high[q])
             gap = m.new_int_var(-8, 8, f"g{p}{q}")
             m.add(gap == d[p] - d[q])
             abs_gap = m.new_int_var(0, 8, f"a{p}{q}")
@@ -502,7 +495,7 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
             m.add(abs_gap >= 5)
 
     # Per-cell domains from the catalogue, for every chocolate rectangle.
-    for group in rv.components(is_choc, True) if USE_CATALOGUE_DOMAINS else []:
+    for group in rv.components(is_choc, True):
         rows, cols = rv.shape(group)
         r0, c0 = min(group)
         sup = support_at(rows, cols, r0 % 3, c0 % 3)
@@ -558,12 +551,19 @@ def digit_model(is_choc, objective=None, rng=None, circled=()):
         bearing = []
         for group in groups:
             area = len(group)
+            rows, cols = rv.shape(group)
+            r0, c0 = min(group)
             hits = []
-            for p in group:
+            # Only the catalogue's circle cells can ever hold the area, so the
+            # rest are not candidates and never become variables.
+            for dr, dc in circle_cells_at(rows, cols, r0 % 3, c0 % 3):
+                p = (r0 + dr, c0 + dc)
                 hit = m.new_bool_var(f"h{p}")
                 m.add(d[p] == area).only_enforce_if(hit)
                 m.add(d[p] != area).only_enforce_if(hit.negated())
                 hits.append(hit)
+            if not hits:  # this rectangle cannot be circled where it sits
+                continue
             can = m.new_bool_var(f"can{group[0]}")
             m.add_max_equality(can, hits)
             bearing.append((area, can))
