@@ -269,6 +269,46 @@ magnitude in digit-feasibility.
 Scripts are throwaway and live in the session scratchpad; the description above
 is the artifact.
 
+## How many circles at once — the generator objective
+
+The per-value questions above are "can this value ever appear". The generator
+wants a different number: how many circles one grid can carry at once. That is
+one model, not nine — fix a shading, solve digits exactly, and **maximize the
+count of chocolate rectangles whose area equals a digit they contain**. Run to
+optimality on 18 digit-feasible shadings (the cached ones plus the four witness
+shadings above):
+
+| | |
+|---|---|
+| chocolate groups per shading | 17 to 23 |
+| circles placeable at once, optimum | **5 to 11** |
+| best seen | 11 of 23 |
+
+Every one of those solved to proven optimality in seconds, so these are exact
+per-shading maxima, not lower bounds.
+
+**The catch is what the optimum is made of.** The best grids are a wall of
+small values:
+
+```
+11 circles: 1 1 1 1 1 1 2 2 2 2 2
+11 circles: 1 1 1 1 1 2 2 2 2 2 3
+ 9 circles: 1 1 1 1 1 1 2 2 2
+ 6 circles: 1 1 2 3 4 7      <- the varied one, on the 1x7 witness shading
+```
+
+Maximizing *count* actively costs you the interesting values. The 2x4 witness
+shading tops out at 5 circles when it keeps its 8, and the 2x2 witness shading
+reaches 9 only by giving up its 4 — on that shading the optimum contains no 4
+at all, even though a 4 is placeable there. Large circles and many circles pull
+against each other, because a large circle needs a large rectangle and large
+rectangles eat the cells that would have been singletons.
+
+So the generator objective is **not** "maximize circles". It should weight by
+value, or fix a target multiset of circle values and satisfy it. That is the
+map's stated tension — bigger chocolate rectangles make better circles, renban
+fights them — showing up as a measured trade-off rather than a hunch.
+
 ## What this means for the clue ladder
 
 Circles are not the thin clue source that was feared. **Every value but 5 is
@@ -280,6 +320,9 @@ shape hard: a circled 9 forces a 3x3 straddling the box band, an 8 forces a 2x4
 edge.
 
 The clue ladder does not need kropki brought forward on account of circle
-scarcity. The real constraint is the opposite one: chocolate groups in practice
-run small, so a puzzle wanting many *large*-value circles will be fighting the
+scarcity — a single grid carries 5 to 11 circles at optimum, which is a real
+clue budget. But temper it with the trade-off above: that budget is mostly 1s
+and 2s, and a 1 or a 2 says very little, since singleton and domino chocolate
+groups are everywhere. If the ladder needs circles that *cut*, it needs the
+large values, and those come a few per grid at best. The real constraint is the
 shading, not the circle rule.
