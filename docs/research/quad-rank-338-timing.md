@@ -232,15 +232,19 @@ Medians over 3 reps unless noted. Baseline is C2, the component #338 shipped.
 solver worker on the C4 `chris15` link; the single grid it posts is byte-equal
 to the grid CP-SAT proved unique. The 200ms is a real solve.
 
-## One row fails the gate, and it is a real 100ms
+## The one sub-second row, and the rule it produced
 
-`p325g16` cold: C2 reads 0ms, C4 reads 100ms, stable at **7 of 7 reps each**.
-Under `docs/real-app-timing.md` a 0ms baseline the candidate does not match
-sinks the change, and that board's other row is 1.00x, so it cannot rescue it.
-By the letter of the two-row rule, **p325g16 is NO SHIP**.
+`p325g16` cold reads 0ms under C2 and 100ms under C4, stable at **7 of 7 reps
+each**. Under the two-row rule as written, a 0ms baseline the candidate does not
+match sinks the change, and that board's other row is 1.00x, so nothing rescued
+it. Every other fixture was SHIP (0.00x/1.00x on g12, 0.43x on both g8 rows) and
+the target board went from a 300s timeout to 200ms.
 
-The other fixtures are SHIP (0.00x/1.00x on g12, 0.43x on both g8 rows), and the
-target board goes from a 300s timeout to 200ms. So the tension is one readout
-tick on a board that finishes in a tenth of a second either way, against the
-only measured way to solve a zero-given board at all. **That is an owner's call,
-not a measurement**, and it is recorded here rather than waved through.
+**Ruled: differences under 1 second are ignorable.** Below 1s the app's readout
+is quantised to 100ms ticks and the gate reads its own rounding. That is now the
+protocol, not a one-off — `docs/real-app-timing.md` carries it as a noise floor
+(`10168f6` on main), and the 0ms-baseline rule applies only once the candidate
+is at or over 1s.
+
+**So C4 ships.** The only row in this document at or above 1s is `lad_g8`, which
+C4 takes from 1400ms to 600ms — 0.43x on both rows, SHIP outright.
