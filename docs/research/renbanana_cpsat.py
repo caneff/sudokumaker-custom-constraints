@@ -87,6 +87,28 @@ def neighbours(r, c):
 
 ADJACENT = [(p, q) for p in CELLS for q in neighbours(*p) if IDX[q] > IDX[p]]
 
+CATALOGUE = json.loads(
+    (Path(__file__).parent / "renbanana" / "rectangle-catalogue.json").read_text()
+)
+
+
+def circle_cells_at(a, b, ro, co):
+    """Which cells of an `a` by `b` rectangle whose top-left sits at box offset
+    (ro, co) can hold the digit `a*b` -- straight from the #377 catalogue.
+
+    The catalogue is layer B: the rectangle's own constraints plus the boxes,
+    and nothing from the rest of the grid. A real grid only adds constraints,
+    so a real circle cell is always one of these. Empty means no digits
+    whatever put a circle on that rectangle in that position, which is a fact
+    stage 1 can act on instead of stage 3 rediscovering it per shading.
+    """
+    key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
+    if flip:  # transposing swaps rows and cols; the 3x3 boxes are symmetric
+        ro, co = co, ro
+    cells = CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("circle_cells", [])
+    return [(c, r) if flip else (r, c) for r, c in cells]
+
+
 # Rectangle shapes a rectangle can take: no side exceeds 8 (RECTANGLE-CATALOGUE.md,
 # the low/high checkerboard bound), and the shape must fit the grid.
 SHAPES = [(a, b) for a in range(1, 9) for b in range(1, 9)]
@@ -113,6 +135,7 @@ class Shadings:
         require_shapes=(),
         require_family=(),
         require_count=1,
+        circled=(),
     ):
         m = cp.CpModel()
         self.m = m
@@ -165,6 +188,14 @@ class Shadings:
             spots = self._spots(a, b) + ([] if a == b else self._spots(b, a))
             if not spots:
                 raise SystemExit(f"shape {a}x{b} cannot fit the grid")
+            m.add_bool_or(spots)
+
+        for a, b in circled:
+            spots = self._spots(a, b, circleable=True)
+            if a != b:
+                spots += self._spots(b, a, circleable=True)
+            if not spots:
+                raise SystemExit(f"no {a}x{b} placement can carry a circle")
             m.add_bool_or(spots)
 
         if require_family:
@@ -236,13 +267,21 @@ class Shadings:
             present.append(here)
         return present
 
-    def _spots(self, a, b):
+    def _spots(self, a, b, circleable=False):
         """One bool per placement of an `a` by `b` maximal chocolate component:
         true only if those cells are chocolate and every bordering cell banana.
-        Implication one way only, so a spot is never forced true by the shading."""
+        Implication one way only, so a spot is never forced true by the shading.
+
+        `circleable` keeps only the placements the #377 catalogue says can hold
+        a circle. A 2x2 whose top-left sits at box offset (0,0) never holds a 4
+        whatever the rest of the grid does, so sampling one wastes a whole
+        digit solve to learn what is already enumerated.
+        """
         spots = []
         for r in range(N - a + 1):
             for c in range(N - b + 1):
+                if circleable and not circle_cells_at(a, b, r % 3, c % 3):
+                    continue
                 inside = [(r + i, c + j) for i in range(a) for j in range(b)]
                 border = {q for p in inside for q in neighbours(*p) if q not in inside}
                 spot = self.m.new_bool_var(f"p{a}x{b}@{r},{c}")
@@ -323,9 +362,15 @@ def legal_shading(model, seconds, workers, log, slice_seconds=None):
 # ---------------------------------------------------------------- stage 2/3
 
 
-def digit_model(is_choc, objective=None, rng=None):
+def digit_model(is_choc, objective=None, rng=None, circled=()):
     """Digits on a fixed shading: sudoku, the whisper on chocolate adjacencies,
-    renban per banana group. Returns (model, digit vars, objective value var)."""
+    renban per banana group. Returns (model, digit vars, objective value var).
+
+    `circled` names shapes that must actually carry a circle, e.g. 2x2 -> some
+    chocolate 2x2 on this shading holds a 4. That is a digit fact, not a
+    shading one, so it cannot be stated in stage 1: forcing the shape there and
+    the circle here is what separates "a 2x2 exists" from "a 2x2 is clued".
+    """
     m = cp.CpModel()
     d = {p: m.new_int_var(1, 9, f"d{p}") for p in CELLS}
     for i in range(N):
@@ -352,6 +397,29 @@ def digit_model(is_choc, objective=None, rng=None):
         m.add_min_equality(lo, [d[p] for p in group])
         m.add_max_equality(hi, [d[p] for p in group])
         m.add(hi - lo == len(group) - 1)
+
+    for a, b in circled:
+        groups = [
+            g
+            for g in rv.components(is_choc, True)
+            if tuple(sorted(rv.shape(g))) == (a, b)
+        ]
+        if not groups:
+            return None, None, None
+        # Some group of this shape holds its own size somewhere.
+        picks = []
+        for i, g in enumerate(groups):
+            r0, c0 = min(g)
+            rows, cols = rv.shape(g)[0], rv.shape(g)[1]
+            allowed = circle_cells_at(rows, cols, r0 % 3, c0 % 3)
+            for dr, dc in allowed:
+                p = (r0 + dr, c0 + dc)
+                hit = m.new_bool_var(f"circ{a}x{b}_{i}_{p}")
+                m.add(d[p] == len(g)).only_enforce_if(hit)
+                picks.append(hit)
+        if not picks:
+            return None, None, None
+        m.add_bool_or(picks)
 
     value = None
     terms = []
@@ -385,9 +453,11 @@ def digit_model(is_choc, objective=None, rng=None):
     return m, d, value
 
 
-def fill_digits(is_choc, seconds, workers, objective=None, rng=None):
+def fill_digits(is_choc, seconds, workers, objective=None, rng=None, circled=()):
     """Best digit fill for a fixed shading, or None if the shading admits none."""
-    m, d, value = digit_model(is_choc, objective, rng)
+    m, d, value = digit_model(is_choc, objective, rng, circled)
+    if m is None:  # the shading has no group of a shape a circle was asked of
+        return cp.INFEASIBLE, None, None
     s = cp.CpSolver()
     s.parameters.max_time_in_seconds = seconds
     s.parameters.num_workers = workers
@@ -489,6 +559,7 @@ def hunt(
     require_shapes=(),
     require_family=(),
     require_count=1,
+    circled=(),
 ):
     """Sample seeds until `target` diverse candidates are found, or seeds run out.
 
@@ -566,7 +637,9 @@ def hunt(
                 # be a verdict rather than a timeout. Only a shading that survives
                 # gets the second, weighted solve.
                 fill_seconds = min(DIGIT_SLICE, max(1.0, deadline - time.monotonic()))
-                fill_status, grid, _ = fill_digits(is_choc, fill_seconds, workers)
+                fill_status, grid, _ = fill_digits(
+                    is_choc, fill_seconds, workers, circled=circled
+                )
                 model.forbid_shading(is_choc)  # this shading is spent either way
                 if grid is not None:
                     digit_objective = (
@@ -578,6 +651,7 @@ def hunt(
                         workers,
                         digit_objective,
                         random.Random(seed ^ 0x5EED),
+                        circled,
                     )
                     grid = better or grid
                 if grid is None:
@@ -692,6 +766,13 @@ def main():
         "either orientation counts",
     )
     h.add_argument(
+        "--circled",
+        default="",
+        help="shapes that must carry a circle, e.g. 2x2,2x3 -- a 2x2 holding a "
+        "4 and a 2x3 holding a 6. Checked in the digit stage, so pair it with "
+        "--require-shape to force the shape itself",
+    )
+    h.add_argument(
         "--require-family",
         default="",
         help="shape family every shading must draw from, e.g. 2xN,3xN or 2x4; "
@@ -743,6 +824,11 @@ def main():
             ),
             parse_family(a.require_family),
             a.require_count,
+            tuple(
+                tuple(sorted(int(v) for v in s.split("x")))
+                for s in a.circled.split(",")
+                if s
+            ),
         )
     elif a.cmd == "bound":
         bound(a.objective, a.limit, min(a.workers, 8), not a.no_lemmas)
