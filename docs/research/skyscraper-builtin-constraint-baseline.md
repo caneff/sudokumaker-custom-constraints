@@ -110,3 +110,38 @@ either.
 
 `MAXN = 16` is likewise a guard, not a limit: it covers every board up to
 16x16, and the largest here is 10x10.
+
+## Where our 15 KB goes
+
+Measured 2026-09-08 by decoding `PUZZLE_LINK.txt`, editing one thing out, and
+re-encoding. The link is 14,990 bytes as it ships.
+
+| variant | link bytes | delta |
+|---|---|---|
+| shipped | 14,990 | — |
+| drop the three decoration polylines (type `2000`) | 12,904 | **−2,086 (−14%)** |
+| drop `SkyscraperSideComponent` | 13,017 | −1,973 |
+| strip leading indentation from the shipped code | 14,765 | −225 |
+| strip every comment from the shipped code | 10,536 | −4,454 (−30%) |
+| no component code at all | 4,594 | −10,396 (−69%) |
+| the built-in `503` link, for scale | 797 | |
+
+Two floors worth knowing. **Code is 69% of the link** — 15,659 chars of source
+across the two components and the backend, of which 6,750 chars (43%) are
+comments. And **the frame document alone is 4,594 bytes**, 5.8x the built-in's
+entire link, before a single byte of code. An interactive-outside frame is an
+11x11 board with 121 cells, 31 givens and three polyline constraints; that is
+the price of clue cells a solver can fill, and no amount of minification touches
+it.
+
+The three type `2000` constraints are pure decoration — white lines hiding the
+outside cells' borders, outlines around the clue cells, the grid's outer border —
+and gridfind drops them when it solves. They cost 6,724 chars of JSON because
+each outside cell is its own five-point closed square. Merging adjacent squares
+into runs would recover most of the 2,086 bytes and change nothing a solver or a
+reader ever sees. That is the one size lever here that costs nothing.
+
+`SkyscraperSideComponent` is not a lever: "exactly one 1 per side" is a real
+deduction the board is carved against, not packaging. Stripping comments is the
+biggest single number on the list and is the thing #383 ruled against — the link
+is the only documentation a reuser ever gets.
