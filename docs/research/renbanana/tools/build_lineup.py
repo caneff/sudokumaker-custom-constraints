@@ -41,16 +41,28 @@ def rows():
             }
             # One id per maximal group, chocolate and banana alike, so the page
             # can outline a group and light it up on hover.
+            grid = {
+                (r, c): int(ch)
+                for r, row in enumerate(d["grid"])
+                for c, ch in enumerate(row)
+            }
             gid = [[-1] * 9 for _ in range(9)]
             gsize = []
-            bcircles = []  # on a group of size < 5: says something
-            forced = []  # on a group of size >= 5: says nothing, see below
+            circles = []  # every chocolate cell that could take a circle
+            bcircles = []  # on a banana group of size < 5: says something
+            forced = []  # on a banana group of size >= 5: says nothing, below
             for colour in (True, False):
                 for group in rv.components(is_choc, colour):
                     for r, c in group:
                         gid[r][c] = len(gsize)
                     gsize.append(len(group))
                     if colour:
+                        # A rectangle repeats digits, so more than one of its
+                        # cells can equal its size. The generator records one
+                        # per group for scoring; every site is drawn.
+                        circles += [
+                            [r, c] for r, c in sorted(group) if grid[r, c] == len(group)
+                        ]
                         continue
                     # A banana circle is as legal as a chocolate one -- the
                     # verifier checks both -- but the generator never scores
@@ -64,7 +76,7 @@ def rows():
                     # and is tracked apart from the ones that do.
                     k = len(group)
                     for r, c in sorted(group):
-                        if int(d["grid"][r][c]) == k:
+                        if grid[r, c] == k:
                             (forced if k >= 5 else bcircles).append([r, c])
                             break
             prof = d["profile"]
@@ -77,7 +89,7 @@ def rows():
                     "value": d["value"],
                     "grid": d["grid"],
                     "shading": d["shading"],
-                    "circles": [list(p) for p in d.get("circles", [])],
+                    "circles": circles,
                     "bcircles": bcircles,
                     "forced": forced,
                     "gid": gid,
