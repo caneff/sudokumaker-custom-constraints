@@ -283,11 +283,17 @@ So the #375 result is narrower than "zero-given boards are solved": C4 closed
 the gap **for this board**, not in general. The remaining two are where any
 further deduction work should be measured.
 
-**And "hard for the app" is the wrong target for the shipped example.** A board
-the app grinds on is a bad demo — slow for the reader, and one component change
-away from being easy anyway, since difficulty here is measured against a solver
-we control and keep strengthening. Human solve path (#326) is the axis that
-survives a component upgrade; DFS nodes is not.
+**This section first argued that "hard for the app" was the wrong target for the
+shipped example** — that a board the app grinds on is a bad demo, and that a
+human solve path was the axis that survives a component upgrade. **#326 reversed
+that.** This repo ships hard puzzles, and hardness is measured as `qr-metric.mjs`
+nodes under the shipped component, not as a walked solve path.
+
+The concern that difficulty drifts as we strengthen the component is real and is
+handled by the band rather than by abandoning the axis: the shipped board must be
+zero-given, CP-SAT unique, solve in the app cold in **<= 10s**, and take **>=
+20,000 offline nodes** under C5 — three orders below the cap, so there is
+headroom before a future component makes it trivial. The board is hunted in #384.
 
 ---
 
