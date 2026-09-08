@@ -27,8 +27,11 @@ checks:
 ## 1. Uniqueness is proven on the shipped board
 
 `verify.py` ran on the exact `gen.json` behind the shipped link — not an
-earlier variant — and the README records the run. `just test` skips
-`verify.py`, so a stale board can carry a stale proof.
+earlier variant — and the README records the run. Whether the gate re-runs it
+is per example: skyscraper's is one cheap solve per board and `just test`
+sweeps its global boards, so those cannot outlive their proof (its local
+boards are not covered); isofill's searches for minutes and waits for `just
+verify-isofill`, so there a stale board can carry a stale proof.
 
 ## 2. Rules text stands alone
 

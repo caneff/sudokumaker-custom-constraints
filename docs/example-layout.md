@@ -64,7 +64,7 @@ Run when present, skipped with a note when absent:
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes |
 | `rebuild_size.py` | Re-encodes a committed board's link from its `gen_*.json` — current component code, no fresh CP-SAT search |
-| `verify.py` | Uniqueness proof (slow CP-SAT); not run by `just test`, only by hand via `just verify-isofill` or the example's own recipe |
+| `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and is named in the `test` recipe, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed |
 
 ## Link grammar

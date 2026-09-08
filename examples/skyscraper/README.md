@@ -214,6 +214,12 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   same grid, givens, and clues as the improved links, so you can compare the two
   solve experiences directly:
   `uv run --with ortools --with lzstring examples/skyscraper/build_original.py 9`
+- `verify.py` (+ test) — proves a shipped global board still matches its
+  `gen_<n>x<n>.json`, that the solution recorded there really solves it, and
+  that it still has exactly one solution, under the CP-SAT model
+  `build_size.py` carved it with. One solve per board, and it finds the boards
+  by their gen files, so `just check` sweeps all of them; by hand, `just
+  verify-skyscraper [size]`.
 - `build_link.py` — rebuilds a committed board link with one named
   component's code swapped for a candidate file, board and clues unchanged:
   `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
@@ -244,9 +250,13 @@ The three mechanical criteria, checked by `check_layout.py`:
    behind this link: unique, 0.5 s, 2026-09-08. The link decodes back to that
    board — the 7 interior givens and the 20 shown clue values match `gen.json`
    cell for cell. The real app agrees independently, proving it unique in 7.4 s
-   (`just time skyscraper --ring-clues`, above). There is no `verify.py` here
-   and `just check` does not re-run the proof, so this record is what carries
-   it: re-run the check above if the board changes.
+   (`just time skyscraper --ring-clues`, above). The board cannot outlive that
+   proof: `verify.py` re-runs it on every `just check`, for every global board
+   the example ships, along with the two checks that make it a proof about
+   *this* board —
+   the committed link still decodes to what `gen.json` records, and the
+   solution it records really solves it. `just verify-skyscraper [size]` is the
+   same check by hand.
 2. **Rules text stands alone** ✓ — "Normal sudoku rules apply on the inner
    grid. Skyscrapers (interactive outside clues): each outside cell holds a
    digit equal to the number of buildings visible along its line. A building is

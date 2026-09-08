@@ -19,12 +19,15 @@ fmt:
 # Regression goldens for the recovery/speed probes, plus every example's own
 # tests, discovered by file name so a new example needs no edit here. See
 # docs/example-layout.md. Builders (build_*.py) do not run here — only files
-# named *.test.mjs / *.test.py. verify.py is excluded on purpose: it is a
-# slow CP-SAT proof, run by hand via `just verify-isofill` (see there).
+# named *.test.mjs / *.test.py. A verify.py runs here only when it is cheap:
+# skyscraper's is one solve and is wired in below, isofill's searches for
+# minutes and stays behind `just verify-isofill` (see there).
 #
 # ortools rides along with lzstring so a test can prove uniqueness the way the
-# generators do. Keep such a test to a 4x4 or a single 9x9 solve: a full carve
-# is minutes, and this gate has to stay fast enough to run before every commit.
+# generators do. Keep such a test to a handful of single solves — a 4x4, a 9x9,
+# skyscraper's sweep of its four global boards (about two seconds): a full
+# carve is minutes, and this gate has to stay fast enough to run before every
+# commit.
 test:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -53,6 +56,16 @@ test:
     done
     uv run --with lzstring examples/_shared/check_layout.test.py
     uv run --with lzstring examples/_shared/check_layout.py
+    uv run --with lzstring --with ortools examples/skyscraper/verify.py
+
+# A shipped Skyscrapers board, proved: the committed link still decodes to the
+# board its gen JSON records, that recorded solution really solves it, and it
+# still has exactly one solution. One solve each, well under a second, so
+# `test` above sweeps every global board this example ships — this recipe is
+# the named entry point, and a size argument narrows it to one board. See
+# examples/skyscraper/README.md, "Share checklist, walked".
+verify-skyscraper size="9":
+    uv run --with lzstring --with ortools examples/skyscraper/verify.py {{size}}
 
 # Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
 # Not part of check/test/CI; run by hand after a puzzle change. See
