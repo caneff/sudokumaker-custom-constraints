@@ -8,6 +8,11 @@ checked-in HAR; non-deterministic solve off; medians over 3 reps.
 identity are each weak alone and strong together — 53x on the hardest board that
 finishes at all, where either one alone times out or crawls.
 
+**And a correction.** This document first concluded that zero-given quad-rank
+boards were out of reach. A real 15-clue zero-given puzzle, unique and solved by
+CP-SAT in 9 seconds, times out in the app under every component here. The gap is
+our component's, not the puzzle's — see the last section.
+
 ## The three components
 
 | id | file | deductions in `update` |
@@ -93,16 +98,48 @@ goes from 1.4s to a 300s timeout.
 The bound is also close to free: one pass over one cell, then latched off.
 There is no cost case for dropping it.
 
-## The 0-given regime is out of reach
+## The 0-given gap is the component's, not the puzzle's
 
-`lad_g4` (13 clues, 4 givens) times out at 300s under **C2 and C3 alike**, and
-so did C1. With #335's 13-clue and 16-clue 0-given boards, that is five boards
-across three components with no finish. The gap is not a rep or two of noise and
-no deduction on the table closes it.
+The first draft of this document concluded "the 0-given regime is out of reach"
+and sent #326 off to pick a given count. **That was wrong, and a counterexample
+killed it.** The reasoning ran three 0-given boards together — #335's 13- and
+16-clue boards and this ticket's `lad_g4` — and generalised from a component
+timeout to a claim about what quad-rank puzzles can be.
 
-This settles the open question the map carried: the shipped puzzle carries
-givens. On this ladder the app needs somewhere around 8 to 12 of them at 13
-clues — 8 is 1.4s with C2, 4 is a timeout. That is the range #326 picks from.
+`proto/chris15.json` is a real 15-clue, **zero-given** 9x9 quad-rank puzzle
+(note the deliberate tie: rank 35 on both R1C8 and R8C1). It is not a
+generated artefact:
+
+| check | result |
+|---|---|
+| CP-SAT witness search (no grid supplied) | grid found, **2.9s** |
+| CP-SAT uniqueness | **unique**, 5.8s |
+| app, C2, cold / after-logical | **timeout 300s, 0/3 reps each** |
+| app, C1, cold / after-logical | **timeout 300s, 0/3 reps each** |
+
+CP-SAT settles the whole puzzle from nothing in under 9 seconds. The app with
+our strongest component cannot finish it in 300. **That is a 30x-plus deduction
+gap on a board that is provably fine**, so the honest statement is:
+
+> Zero-given quad-rank puzzles are ordinary and tractable. *Our component* is
+> too weak for them in SudokuMaker's solver, and so is CP-SAT's advantage over
+> it a measure of how much deduction we are leaving on the table.
+
+The ISS bench (`~/src/iss-stuff/quad-rank/bench/results.md`) points the same
+way and was already on record: its openers are pure clue lists with no givens,
+difficulty falls **monotonically as clues are added**, and `opener-18.qr`
+completes in 22.0s where 13 clues never converges. This ticket's ladder held
+clues fixed at 13 and swept givens — the worst standing point on that curve, and
+a sweep along the wrong axis.
+
+**What still holds.** The given ladder is a fair measurement of C1 vs C2 vs C3;
+it just does not license a claim about 0-given boards. The deduction verdict
+above is unaffected.
+
+**What is open.** Whether more clues (18-22, the ISS-tractable end) let the app
+finish a 0-given board, and whether clue *placement* matters — `chris15`'s clues
+sit on a structured lattice, every generated board here used random or greedy
+placement. Neither was tested.
 
 ## Reproduce
 
