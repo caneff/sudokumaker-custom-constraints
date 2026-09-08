@@ -29,6 +29,15 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   does, which sinks the change. `just time` prints the
   `two-row rule: SHIP` / `NO SHIP` line; each row's own `PASS`/`FAIL` is that
   row's 0.9× result alone, not the gate.
+- **Noise floor: a difference under 1 second is ignorable.** Below that the
+  app's readout is quantised to 100 ms ticks and the gate reads its own
+  rounding. A row where the larger of the two medians is under 1 s places no
+  constraint on the change, whichever direction it moved and whichever side
+  reads 0 ms — the 0 ms-baseline rule above applies only once the candidate is
+  at or over 1 s. Decide such a change on the fixtures that are actually slow
+  enough to time, and never let a sub-second row sink one (#375: a 0 ms -> 100
+  ms row, stable at 7 of 7 reps each way, against a board that went from a 300 s
+  timeout to 200 ms).
 - **Bar for a gate change.** A change that adds or moves a gate in front of
   an existing rule and adds no deduction cannot reach 0.9× — on the shipped
   board every line is a house, so the rule runs as before. Such a change ships
