@@ -96,6 +96,42 @@ This is why circles are worth placing on chocolate rather than banana: on
 chocolate the number is a rectangle area and factors into a short list of
 shapes, while on banana it only says how many cells an L-or-worse blob has.
 
+## Which chocolate rectangles can exist
+
+A circle on chocolate reads the group's area, so this table is the list of
+circle values the puzzle can actually offer. Every SAT row is a verified
+witness: the shape was found by search, then digits were solved exactly on that
+shading and the whole grid re-checked against all six rules from scratch.
+
+| shape | area | verdict | note |
+|---|---|---|---|
+| 1x1 .. 1x4, 2x2 | 1-4 | SAT | 2x2 appears in the first witness |
+| 1x5 | 5 | SAT | but a 5-cell group can never carry a circle — see below |
+| 1x6 | 6 | SAT | |
+| 2x3 | 6 | **SAT** | `witness-2x3.png`, block `2 8 3 / 8 2 9` at r1c3 |
+| 1x7 | 7 | unresolved | 22 shadings tried, every one digit-UNSAT |
+| 1x8 | 8 | **UNSAT** | dies at the shading stage, before digits |
+| 2x4 | 8 | unresolved | |
+| 1x9, 9x1 | 9 | UNSAT | a whole row or column, so it contains the 5 |
+| 3x3 | 9 | **SAT** | `witness-3x3.png`, block `1 8 2 / 7 1 8 / 2 9 3` at r6c1 |
+
+So circled chocolate digits 1, 2, 3, 4, 6 and 9 are all confirmed placeable; 5
+is impossible; 7 and 8 are open.
+
+**A circled 9 is the strongest clue in the puzzle.** It forces a 3x3, and that
+3x3 must straddle the box band — a box-aligned 3x3 holds all nine digits,
+including the 5 that no multi-cell chocolate group may contain.
+
+**Why 1x8 fails**, and it is the size cap, not the whisper: raising the banana
+cap from 9 to 12 makes the shading satisfiable again (17 shadings found where
+the capped model had none). A long thin strip runs a wall of banana down both
+long edges, and chopping those into groups of at most 9 needs more chocolate,
+which may not touch the strip. The whisper itself is not the obstacle — the
+arithmetic is fine: a 1x8 strip has exactly one legal digit sequence up to
+reversal, `4-9-3-8-2-7-1-6`, since the 5 is excluded and 4 and 6 each have only
+one legal partner so they must be the ends. 1x7 admits 8 sequences and 1x6
+admits 31.
+
 ## Method and caveats
 
 Two stages, because solving shading and digits jointly converged badly.
@@ -117,6 +153,17 @@ banana component at a time. It never found a legal shading in 150 s (2313
 cuts) — the solver simply kept producing one large blob. The cap has to be
 structural. Anyone re-running this should not read that earlier failure as
 evidence of infeasibility.
+
+A faster model was tried for the shape questions, encoding renban up front
+instead of by cuts: label each banana cell, force adjacent banana cells to share
+a label, and require each label's digit set to be distinct and contiguous. **It
+is unsound as written** — two disjoint components may take the same label, so
+the constraint lands on their union and lets non-renban groups through. It
+produced a "solution" with six broken banana groups. It is still useful as a
+*shading generator*, since the shading rules it enforces are exact; the digits
+are then solved exactly on that fixed shading and the result verified. Both new
+witnesses came out of that pipeline. Anyone reviving the encoding must first
+make labels canonical, so that at most one component can claim a label.
 
 Scripts are throwaway and live in the session scratchpad, not the repo; the
 model is short enough that the description above is the artifact.
