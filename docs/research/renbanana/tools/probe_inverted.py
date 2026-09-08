@@ -43,12 +43,19 @@ IDX = {p: i for i, p in enumerate(CELLS)}
 ADJACENT = [(p, q) for p in CELLS for q in rv.neighbours(*p) if IDX[q] > IDX[p]]
 
 
-def random_grid(seed, seconds, workers):
+def random_grid(seed, seconds, workers, steer=0):
     """A solved sudoku, steered somewhere random by hinting every cell.
 
     Hints rather than a random objective: the objective makes CP-SAT prove an
     optimum we do not care about, while a hint costs nothing and still lands
     the search in a different corner each seed.
+
+    `steer` demands at least that many whisper-legal adjacencies -- orthogonal
+    pairs differing by 5 or more. Those pairs are the only places two chocolate
+    cells may touch, so they are the raw material every chocolate rectangle
+    above 1x1 is built from. A uniform random grid has about 37 of them and the
+    23 grids we know are legal average 49, ranges barely overlapping, so the
+    uniform sample is simply the wrong population to draw from.
     """
     rng = random.Random(seed)
     m = cp.CpModel()
@@ -61,6 +68,18 @@ def random_grid(seed, seconds, workers):
             m.add_all_different(
                 [d[br * 3 + r, bc * 3 + c] for r in range(3) for c in range(3)]
             )
+    if steer:
+        far = []
+        for p, q in ADJACENT:
+            v = m.new_bool_var(f"far{p}{q}")
+            gap = m.new_int_var(-8, 8, f"gap{p}{q}")
+            m.add(gap == d[p] - d[q])
+            far_abs = m.new_int_var(0, 8, f"abs{p}{q}")
+            m.add_abs_equality(far_abs, gap)
+            m.add(far_abs >= 5).only_enforce_if(v)
+            m.add(far_abs <= 4).only_enforce_if(v.negated())
+            far.append(v)
+        m.add(sum(far) >= steer)
     for p in CELLS:
         m.add_hint(d[p], rng.randint(1, 9))
     s = cp.CpSolver()
@@ -75,7 +94,7 @@ def random_grid(seed, seconds, workers):
 class Shadings:
     """Legal shadings of one *fixed* solved grid. Exact but for rule 4."""
 
-    def __init__(self, grid, min_chocolate=0):
+    def __init__(self, grid, min_chocolate=0, drop="none"):
         m = cp.CpModel()
         self.m = m
         self.grid = grid
@@ -90,7 +109,7 @@ class Shadings:
                 )
 
         # Rule 5, now a plain clause: this pair cannot both be chocolate.
-        for p, q in ADJACENT:
+        for p, q in [] if drop == "whisper" else ADJACENT:
             if abs(grid[p] - grid[q]) < 5:
                 m.add_bool_or([self.choc[p].negated(), self.choc[q].negated()])
 
@@ -123,7 +142,8 @@ class Shadings:
                 same = [lab[p, ell] for p in members if grid[p] == v]
                 if not same:
                     continue
-                m.add(sum(same) <= 1)
+                if drop != "renban-distinct":
+                    m.add(sum(same) <= 1)
                 seen = m.new_bool_var(f"v{ell}_{v}")
                 m.add(sum(same) == 1).only_enforce_if(seen)
                 m.add(sum(same) == 0).only_enforce_if(seen.negated())
@@ -131,11 +151,12 @@ class Shadings:
             for v in here:
                 for u in here:
                     for w in here:
-                        if u < v < w:
+                        if u < v < w and drop != "renban-consecutive":
                             m.add_bool_or(
                                 [here[u].negated(), here[w].negated(), here[v]]
                             )
 
+        self.drop = drop
         if min_chocolate:
             m.add(sum(self.choc.values()) >= min_chocolate)
 
@@ -163,7 +184,11 @@ class Shadings:
             if status not in (cp.OPTIMAL, cp.FEASIBLE):
                 return status, None
             is_choc = {p: s.value(self.choc[p]) == 1 for p in CELLS}
-            bad = [g for g in rv.components(is_choc, False) if rv.is_rectangle(g)]
+            bad = (
+                []
+                if self.drop == "non-rectangle"
+                else [g for g in rv.components(is_choc, False) if rv.is_rectangle(g)]
+            )
             if not bad:
                 return status, is_choc
             for g in bad:
@@ -185,6 +210,7 @@ def main():
     ap.add_argument("--seconds", type=float, default=20.0)
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--min-chocolate", type=int, default=0)
+    ap.add_argument("--steer", type=int, default=0)
     ap.add_argument("--start", type=int, default=0)
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
@@ -195,9 +221,9 @@ def main():
     began = time.monotonic()
 
     for seed in range(a.start, a.start + a.grids):
-        grid = random_grid(seed, 30.0, a.workers)
+        grid = random_grid(seed, 30.0, a.workers, a.steer)
         if grid is None:
-            print(f"seed {seed}: no sudoku (should not happen)", flush=True)
+            print(f"seed {seed}: no grid at steer >= {a.steer}", flush=True)
             continue
         model = Shadings(grid, a.min_chocolate)
         t0 = time.monotonic()
