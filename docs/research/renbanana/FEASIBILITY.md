@@ -191,5 +191,8 @@ are then solved exactly on that fixed shading and the result verified. Both new
 witnesses came out of that pipeline. Anyone reviving the encoding must first
 make labels canonical, so that at most one component can claim a label.
 
-Scripts are throwaway and live in the session scratchpad, not the repo; the
-model is short enough that the description above is the artifact.
+Scripts live in the repo, not a session scratchpad (#380). The pipeline above
+is `docs/research/renbanana_cpsat.py`, with `renbanana_render.py` for pictures
+and `renbanana_verify.py` — the checker written from the six rules rather than
+from the solver's encoding — for the from-scratch re-check every candidate goes
+through.
