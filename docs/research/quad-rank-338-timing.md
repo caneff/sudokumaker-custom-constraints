@@ -248,3 +248,30 @@ is at or over 1s.
 
 **So C4 ships.** The only row in this document at or above 1s is `lad_g8`, which
 C4 takes from 1400ms to 600ms — 0.43x on both rows, SHIP outright.
+
+## Is chris15 hard? No — and two boards say C4 is not the end
+
+Every board below is CP-SAT-**unique**. Offline search nodes are `qr-metric.mjs`
+under C4, cap 200,000.
+
+| board | clues | givens | CP-SAT uniqueness | C4 search nodes |
+|---|---|---|---|---|
+| `p325_g16` | 6 | 16 | 0.3s | 876 |
+| **`chris15`** | **15** | **0** | **5.3s** | **1,076** |
+| `lad_g8` | 13 | 8 | 0.5s | 2,050 |
+| `p325_g0` | 13 | 0 | 11.8s | **200,003 CAPPED** |
+| `HARD_328_g1` | 16 | 0 | 85.2s | **200,002 CAPPED** |
+
+`chris15` sits with the easy boards — a hair above a 16-given puzzle. **It is not
+a hard board for the machine.** Two other zero-given boards, both unique, still
+defeat C4 outright, and CP-SAT settles all three in 5-85s.
+
+So the #375 result is narrower than "zero-given boards are solved": C4 closed
+the gap **for this board**, not in general. The remaining two are where any
+further deduction work should be measured.
+
+**And "hard for the app" is the wrong target for the shipped example.** A board
+the app grinds on is a bad demo — slow for the reader, and one component change
+away from being easy anyway, since difficulty here is measured against a solver
+we control and keep strengthening. Human solve path (#326) is the axis that
+survives a component upgrade; DFS nodes is not.
