@@ -5,7 +5,10 @@ rectangle, so the circled cell's digit must equal the rectangle's area *and*
 sit inside the rectangle. Which of 1..9 can actually appear?
 
 Rules, shapes and the earlier witnesses are in `FEASIBILITY.md`; this doc only
-resolves the circle-value table.
+resolves the circle-value table. The digit half of every row below is settled
+exhaustively in **`RECTANGLE-CATALOGUE.md`**, which enumerates every legal
+chocolate rectangle and its support matrix — read that first if you want the
+"which digits can sit where" answer rather than the "is it placeable" one.
 
 **Verdict: every value except 5 is placeable. 1, 2, 3, 4, 6, 7, 8 and 9 all
 have verified witnesses; 5 is impossible. The table is closed.**
@@ -81,6 +84,31 @@ one on its fourth shading. That one immediately carried the circled 7, as the
 enumeration guarantees. The witness strip reads `4 9 3 8 1 7 2`, which is the
 reversal of `2 7 1 8 3 9 4` from the list above.
 
+## Sanity checks run against a false negative
+
+A null on circle 4 or 6 would have been a harness bug, not a finding. Neither
+came out null, but the checks were run and are recorded here so a later reader
+knows the pipeline was not simply lucky.
+
+1. **Stage 2 on the existing `FEASIBILITY.md` witness, circle demand removed,
+   returns SAT**, and the independent checker passes that grid with the group
+   sizes the doc reports. The harness reproduces a known-good grid.
+2. **The circle demand is an OR over the target rectangle's cells** — "some
+   cell of this group holds the digit `k`" — not an equality on a fixed cell,
+   and not quantified over all groups.
+3. **Box-straddling rectangles were generated deliberately**, not left to
+   chance. `RECTANGLE-CATALOGUE.md` shows why this matters: a box-aligned 2x2
+   admits no 4 at all, so a cache of only box-aligned 2x2s would have produced
+   a confident false negative on circle 4. The witness found has its 2x2 at
+   offset (2,2).
+4. **The corner rule for 6 was checked against the catalogue**, which shows the
+   digit 6 in the support of a 2x3's corner cells only. The witness has its 6
+   at a corner.
+
+Two further crosschecks, both passed: every witness re-verified from scratch,
+and the catalogue's independently computed 1x8 and 1x7 filling counts match the
+counts derived here by a separate enumeration.
+
 ## Hand lemmas, all confirmed by the witnesses
 
 German's partner sets are tiny: 6 pairs only with 1, 4 only with 9, 3 with
@@ -94,7 +122,15 @@ with nothing. Three predictions, all borne out:
   witness below has 6 at r4c9, the corner of the 2x3 at r3c7, with 1 at r3c9
   and 1 at r4c8.
 - **A circled 9 forces a 3x3 straddling the box band** — unchanged from
-  `FEASIBILITY.md`.
+  `FEASIBILITY.md`, and now confirmed mechanically: the 3x3 catalogue at box
+  offset (0,0) is empty against 1520 region-agnostic fillings.
+
+All three are instances of one degree lemma, stated and computed in
+`RECTANGLE-CATALOGUE.md`: inside a rectangle, a cell's two horizontal
+neighbours share its grid row and its two vertical neighbours share its grid
+column, so each pair must be *distinct* partners. A digit with exactly one
+partner — 4 and 6 — can therefore never have two neighbours in one line, which
+confines it to a corner and forces the equal-digit pair into different boxes.
 
 ## Verified witnesses
 

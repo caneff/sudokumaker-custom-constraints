@@ -1,0 +1,264 @@
+# Renbanana — the chocolate rectangle catalogue
+
+Every legal chocolate rectangle, enumerated exhaustively, in two layers. The
+circle-value table in `CIRCLE-VALUES.md` falls out of this as a query; the
+support matrices here are the reusable part.
+
+Data: `rectangle-catalogue.json` beside this file — per shape, per box offset,
+the count, the support matrix, one example filling, and the circle cells.
+
+**A shape being in this catalogue means it is *locally* legal. It does not mean
+it fits in a real grid.** The catalogue says nothing about whether a legal
+shading can put that rectangle there, nor about the digits outside it. 1x8 is
+the standing counterexample: it is catalogue-legal (2 fillings) and yet
+UNSAT in a real grid, because it dies at the shading stage.
+
+## What is enumerated
+
+A filling of an `a x b` rectangle is legal when:
+
+- orthogonally adjacent cells differ by **>= 5** (German Chocolate), and
+- digits are **distinct within each row of the rectangle and each column of
+  it** — a Latin condition, restricted to the rectangle's own cells.
+
+That is all. Digits may repeat across different rows and columns; that is
+exactly why `4 9 / 9 4` works as a 2x2.
+
+Two things are *consequences*, not inputs:
+
+- **No 5 in any group of area >= 2.** A 5 with a chocolate neighbour needs
+  `|5 - d| >= 5`, so `d <= 0` or `d >= 10`. In a rectangle of area >= 2 every
+  cell has at least one neighbour, so the 5 is squeezed out by the adjacency
+  rule alone. **A 1x1 has no neighbour, so a lone chocolate 5 is legal** — and
+  the 1x1 support below is all of 1..9 including 5, as it must be. Stated the
+  way the component will want it: *no chocolate group of size >= 2 contains a
+  5; every 5 on the grid is banana or a lone 1x1 chocolate cell.*
+- **The low/high checkerboard.** Two digits from {1,2,3,4} differ by at most 3,
+  as do two from {6,7,8,9}, so every chocolate adjacency pairs a low with a
+  high and the parity classes are fixed. Not imposed; it emerges.
+
+### Two layers, reported side by side
+
+- **Layer L (Latin, region-agnostic)** — the constraints above and nothing
+  else. No boxes. Reusable for any region layout, including a boxless or
+  irregular-region variant, or the 6x6 variant.
+- **Layer B (boxed)** — for each box offset `(ro, co)` of the rectangle's
+  top-left cell mod 3, the subset of L in which no repeated digit has both its
+  cells inside one sudoku box.
+
+Distinctness against cells *outside* the rectangle is an embedding question,
+not a catalogue question, and is in neither layer.
+
+## Side bound
+
+**No side exceeds 8.** A column of the rectangle holds `ceil(a/2)` cells of one
+parity class. They lie in distinct grid rows but the same grid column, so they
+are distinct, and they are all drawn from a 4-element set — {1,2,3,4} or
+{6,7,8,9}. So `ceil(a/2) <= 4`, giving `a <= 8`; the same argument on rows gives
+`b <= 8`. The bound depends on the 5 exclusion: the parity classes have four
+members each *because* 5 is out, which holds for area >= 2 — and area 1 is the
+only case where a side above 1 is impossible anyway.
+
+**The enumeration is much tighter than that bound.** Latin-UNSAT shapes:
+
+```
+2x8  3x7  3x8  4x7  4x8  5x7  5x8  6x7  6x8  7x7  7x8  8x8
+```
+
+So in layer L the real limit is: a side of 8 needs the other side to be 1, a
+side of 7 needs the other to be 1 or 2, and once both sides are >= 3 neither
+exceeds 6.
+
+## The catalogue
+
+`L` is the layer-L filling count; `boxSAT offsets` are the `(ro, co)` classes
+where layer B is non-empty. Exhaustive, nothing truncated.
+
+| shape | area | L | boxSAT offsets |
+|---|---|---|---|
+| 1x1 | 1 | 9 | all 9 |
+| 1x2 | 2 | 20 | all 9 |
+| 1x3 | 3 | 40 | all 9 |
+| 1x4 | 4 | 70 | all 9 |
+| 1x5 | 5 | 72 | all 9 |
+| 1x6 | 6 | 62 | all 9 |
+| 1x7 | 7 | 16 | all 9 |
+| 1x8 | 8 | 2 | all 6 that fit |
+| 2x2 | 4 | 140 | all 9 |
+| 2x3 | 6 | 428 | all 9 |
+| 2x4 | 8 | 1148 | all 9 |
+| 2x5 | 10 | 832 | all 9 |
+| 2x6 | 12 | 396 | all 9 |
+| 2x7 | 14 | 4 | **only ro=2** |
+| 3x3 | 9 | 1520 | all but **(0,0)** |
+| 3x4 | 12 | 5380 | only ro in {1,2} |
+| 3x5 | 15 | 1600 | only ro in {1,2} |
+| 3x6 | 18 | 408 | only ro in {1,2} |
+| 4x4 | 16 | 26358 | **only (1,1)** |
+| 4x5 | 20 | 3076 | **none** |
+| 4x6 | 24 | 424 | **none** |
+| 5x5 | 25 | 928 | **none** |
+| 5x6 | 30 | 300 | **none** |
+| 6x6 | 36 | 328 | **none** |
+| 2x8, 3x7, 3x8, 4x7, 4x8, 5x7, 5x8, 6x7, 6x8, 7x7, 7x8, 8x8 | — | **0** | — |
+
+Transposes `b x a` behave identically with the offsets swapped.
+
+Two results worth pulling out:
+
+- **Five shapes are Latin-legal but boxed-impossible: 4x5, 4x6, 5x5, 5x6, 6x6.**
+  They cannot sit in a 9x9 sudoku at any offset. A boxless or irregular-region
+  variant would admit them — which is precisely why layer L is worth keeping
+  separately.
+- **The largest chocolate rectangle a 9x9 sudoku can hold is 3x6 (18 cells)**,
+  with 4x4 (16) and 2x7 (14) next. Subject to a legal shading existing, which
+  is a separate question and a much harsher one.
+
+## Layer L support matrices
+
+Each entry is the set of digits that can occupy that cell.
+
+```
+1x1   123456789
+
+1x4   12346789  123789    123789    12346789
+1x6   12346789  123789    123789    123789    123789    12346789
+1x7   12346789  123789    123789    2378      123789    123789    12346789
+1x8   46        19        37        28        28        37        19        46
+
+2x2   12346789  12346789          2x3   12346789  123789    12346789
+      12346789  12346789                12346789  123789    12346789
+
+2x4   12346789  123789    123789    12346789
+      12346789  123789    123789    12346789
+
+3x3   12346789  123789    12346789
+      123789    123789    123789
+      12346789  123789    12346789
+```
+
+**The degree lemma, computed rather than argued.** 4 and 6 have exactly one
+German partner each (4 with 9, 6 with 1), so a cell holding one of them cannot
+have two neighbours in the same line — the two would be forced equal and
+collide. Read it straight off the tables: 4 and 6 appear only in cells of
+degree <= 2 with their two neighbours in different lines, i.e. **corners**.
+Every interior support above is `123789` — no 4, no 6 — and every corner
+support is `12346789`. The 3x3 centre, degree 4, is `123789` for the same
+reason.
+
+Partner sets, for reference: 1:{6,7,8,9}, 2:{7,8,9}, 3:{8,9}, 4:{9}, 5:{},
+6:{1}, 7:{1,2}, 8:{1,2,3}, 9:{1,2,3,4}.
+
+## The L-to-B delta
+
+Where layer B differs from layer L is where the box constraint is doing work.
+These three are the diagnostic cases.
+
+**2x2 — this is the circled-4 story.** Box-aligned, the 4 vanishes.
+
+```
+offset (0,0), (0,1), (1,0), (1,1)  -- box-aligned      count 40
+    123789    123789
+    123789    123789
+
+offset (0,2), (1,2), (2,0), (2,1), (2,2)  -- straddling  count 140 (= all of L)
+    12346789  12346789
+    12346789  12346789
+```
+
+A 4 in a 2x2 needs a 9 on both neighbours; those two 9s sit in different rows
+and different columns, so they collide only if the whole 2x2 is inside one box.
+The moment the 2x2 straddles a box line in either direction, all four cells are
+in different boxes and the box constraint does nothing at all — layer B equals
+layer L. **A circled 4 in a 2x2 therefore requires a box-straddling 2x2**, and
+that is now a table entry, not prose. The verified witness in
+`CIRCLE-VALUES.md` has its 2x2 at rows 3-4, cols 3-4 — offset (2,2).
+
+**2x3 — the same story for the circled 6, plus a side.**
+
+```
+offset (0,0), (1,0)   count 16    circle cells: none
+    123789    1289      123789
+    123789    1289      123789
+
+offset (0,1), (1,1)   count 152   circle cells: the right-hand corners
+    123789    123789    12346789
+    123789    123789    12346789
+
+offset (2,*)          count 428   circle cells: all four corners
+    12346789  123789    12346789
+    12346789  123789    12346789
+```
+
+**3x3 — the box-aligned 3x3 is impossible.** Offset (0,0) has layer B **empty**
+against 1520 layer-L fillings. That is the mechanical form of the old hand
+argument: a box-aligned 3x3 is a whole sudoku box, so it holds all nine digits
+including the 5, which no multi-cell chocolate group may contain. Every other
+offset is fine (40 at the once-straddling offsets, 552 at the twice-straddling
+ones), and a 9 can sit in any of the nine cells.
+
+## The circle query
+
+Derived from the catalogue: for a shape of area `k`, can the digit `k` appear,
+and where. This is the whole of `CIRCLE-VALUES.md`'s digit half, computed
+exactly.
+
+| area | shape | fillings containing the digit | where the digit may sit |
+|---|---|---|---|
+| 1 | 1x1 | 9 of 9 | the cell |
+| 4 | 1x4 | 12 of 70 | the two ends only |
+| 4 | 2x2 | 14 of 140 | any cell — but only at a box-straddling offset |
+| 5 | 1x5 | **0 of 72** | nowhere |
+| 6 | 1x6 | 18 of 62 | the two ends only |
+| 6 | 2x3 | — | the four corners only; which corners depends on the offset |
+| 7 | 1x7 | **16 of 16** | any cell |
+| 8 | 1x8 | 2 of 2 | positions 4 and 5 only |
+| 8 | 2x4 | 1060 of 1148 | any cell |
+| 9 | 3x3 | 1456 of 1520 | any cell, at any offset but (0,0) |
+
+Two rows carry real weight:
+
+- **Circle 5 is impossible, mechanically.** Area 5 has only one shape, 1x5, and
+  not one of its 72 legal fillings contains a 5. That replaces the hand
+  argument with an exhaustive check.
+- **Circle 7 is free once the shape exists.** All 16 legal 1x7 fillings contain
+  a 7, at every offset. So "can a circle read 7" and "does a 1x7 exist" are the
+  same question — which is how `CIRCLE-VALUES.md` closes it.
+
+## Why the support matrix is the artifact
+
+Given a chocolate rectangle of known shape and box position, the support matrix
+says which digits can sit in which cell — a sound candidate-elimination oracle,
+computed once, offline, exhaustively. That is exactly the shape of deduction
+the constraint component needs, and it is sound by construction: it never
+removes a digit that some legal filling uses.
+
+It does not solve the component's harder problem — the shading is existential,
+so the component does not know which rectangle a cell belongs to. But once a
+rectangle is known or hypothesised, this table is the answer, and it is
+reusable at every later ticket on this map.
+
+## Method and verification
+
+Plain depth-first search in row-major order, pruning on row distinctness,
+column distinctness and the two adjacency differences as each cell is placed.
+No CP-SAT anywhere near it. All 36 shapes finished exhaustively well inside a
+minute; nothing was truncated, so every count above is exact and every support
+matrix is complete.
+
+Layer B is a filter over layer L: a filling survives offset `(ro, co)` iff no
+digit repeats within a box, where the box of local cell `(i, j)` is
+`((ro + i) // 3, (co + j) // 3)`. Offsets are restricted to those a side of
+that length can actually take in a 9-wide grid — a side of 8 can only start at
+column 1 or 2, so it has offsets 0 and 1.
+
+**Verification.** The counts were cross-checked against a separately written
+brute force that enumerates all `9^area` assignments and applies the rules
+directly, with no shared code: 1x1, 1x4, 1x6, 2x2 and 2x3 in layer L, and
+2x2 and 2x3 at four box offsets in layer B. Every count matched.
+
+The catalogue also reproduces three results derived independently elsewhere,
+which is a further check: the 1x8 row gives one filling up to reversal
+(`4 9 3 8 2 7 1 6`), matching `FEASIBILITY.md`; the 1x7 row gives 16 fillings,
+i.e. 8 up to reversal, matching `CIRCLE-VALUES.md`; and the 3x3 offset-(0,0)
+zero reproduces the box-aligned-3x3 argument.

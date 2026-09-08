@@ -81,7 +81,9 @@ Both derived by hand, both consistent with the witness.
   adjacency pairs a low with a high, and the rectangle's parity classes are
   fixed before any digit is placed. A width-*b* row of a rectangle holds
   ceil(b/2) cells of one class in one grid row, all distinct from a 4-element
-  set, so no chocolate rectangle has a side longer than 8.
+  set, so no chocolate rectangle has a side longer than 8. Exhaustive
+  enumeration sharpens this a long way — see `RECTANGLE-CATALOGUE.md`, which
+  also gives the per-cell support matrices.
 
 - **A chocolate circle is never a 5, and a circled chocolate 9 is a 3x3.** A
   circle gives its group's size, so a circled 5 would mean a five-cell group —
