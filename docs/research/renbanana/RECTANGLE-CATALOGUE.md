@@ -1,8 +1,8 @@
 # Renbanana — the chocolate rectangle catalogue
 
-Every legal chocolate rectangle, enumerated exhaustively, in two layers. The
-circle-value table in `CIRCLE-VALUES.md` falls out of this as a query; the
-support matrices here are the reusable part.
+Ticket #377. Every legal chocolate rectangle, enumerated exhaustively, in two
+layers. The circle-value table in `CIRCLE-VALUES.md` (#374) falls out of this
+as a query; the support matrices here are the reusable part.
 
 Data: `rectangle-catalogue.json` beside this file — per shape, per box offset,
 the count, the support matrix, one example filling, and the circle cells.
@@ -137,17 +137,38 @@ Each entry is the set of digits that can occupy that cell.
       12346789  123789    12346789
 ```
 
-**The degree lemma, computed rather than argued.** 4 and 6 have exactly one
-German partner each (4 with 9, 6 with 1), so a cell holding one of them cannot
-have two neighbours in the same line — the two would be forced equal and
-collide. Read it straight off the tables: 4 and 6 appear only in cells of
-degree <= 2 with their two neighbours in different lines, i.e. **corners**.
-Every interior support above is `123789` — no 4, no 6 — and every corner
-support is `12346789`. The 3x3 centre, degree 4, is `123789` for the same
-reason.
+### The degree lemma
 
-Partner sets, for reference: 1:{6,7,8,9}, 2:{7,8,9}, 3:{8,9}, 4:{9}, 5:{},
-6:{1}, 7:{1,2}, 8:{1,2,3}, 9:{1,2,3,4}.
+**Lemma.** Inside a chocolate rectangle, a cell's left and right neighbours
+share its grid row, and its up and down neighbours share its grid column. Each
+such pair must therefore be *distinct* partners of the cell's digit. A digit
+with exactly one German partner can consequently never have two neighbours in
+the same line. Partner sets are 1:{6,7,8,9}, 2:{7,8,9}, 3:{8,9}, **4:{9}**,
+5:{}, **6:{1}**, 7:{1,2}, 8:{1,2,3}, 9:{1,2,3,4} — so the digits with a single
+partner are exactly **4 and 6**, and each is confined to a rectangle **corner**,
+where it has at most one horizontal and one vertical neighbour. Those two
+neighbours carry equal digits (9 and 9 for a 4, 1 and 1 for a 6) in different
+rows and different columns, so they collide unless the rectangle straddles a
+box line.
+
+**The support matrices reproduce it mechanically.** Every interior support
+above is `123789` — no 4, no 6 — and every corner support is `12346789`. The
+3x3 centre, degree 4, is `123789` for the same reason.
+
+**Two confirming witnesses**, both verified grids from `CIRCLE-VALUES.md`:
+
+- The circled **4** sits at r4c4 in a 2x2 at rows 3-4, cols 3-4, with **9 at
+  r3c4 and 9 at r4c3** — its only two neighbours, equal, in different rows and
+  columns, and the 2x2 straddles the horizontal band boundary so they land in
+  different boxes.
+- The circled **6** sits at r4c9, a corner of the 2x3 at rows 3-4, cols 7-9,
+  with **1 at r3c9 and 1 at r4c8**.
+
+**This doubles as the offset-handling self-check.** If layer B's support for
+the digit 4 in a box-*aligned* 2x2 ever comes out non-empty, the offset
+handling is wrong. It comes out `123789` — no 4 — at all four aligned offsets,
+against `12346789` in layer L. The delta is neither empty nor total, which is
+what a correct implementation looks like.
 
 ## The L-to-B delta
 
@@ -238,6 +259,58 @@ so the component does not know which rectangle a cell belongs to. But once a
 rectangle is known or hypothesised, this table is the answer, and it is
 reusable at every later ticket on this map.
 
+## One example per shape
+
+The smallest boxed-SAT offset for each shape; for the five shapes that are
+Latin-legal but boxed-impossible, a layer-L filling instead.
+
+```
+1x1  @0,0   1                     2x2  @0,0   1 7
+1x2  @0,0   1 6                               8 2
+1x3  @0,0   1 7 2
+1x4  @0,0   1 7 2 8               2x3  @0,0   1 8 3
+1x5  @0,0   1 7 2 8 3                         7 2 9
+1x6  @0,0   1 7 2 8 3 9
+1x7  @0,0   1 7 2 8 3 9 4         2x4  @0,0   1 8 3 9
+1x8  @0,0   4 9 3 8 2 7 1 6                   7 2 9 1
+
+2x5  @0,0   1 8 3 9 2             2x6  @0,0   1 8 3 9 2 7
+            7 2 9 1 8                         7 2 9 3 8 1
+
+2x7  @2,0   1 7 2 8 3 9 4         3x3  @0,1   1 7 2
+            6 1 7 2 8 3 9                     8 2 7
+                                              3 9 1
+
+3x4  @1,0   1 8 3 9               3x5  @1,0   1 8 3 9 2
+            7 2 9 1                           7 2 9 1 8
+            2 7 1 6                           2 7 1 8 3
+
+3x6  @1,0   1 8 3 9 2 7           4x4  @1,1   1 7 2 8
+            7 2 9 3 8 1                       8 2 7 1
+            2 7 1 8 3 9                       2 8 1 7
+                                              7 1 8 2
+
+boxed-UNSAT, layer L only:
+
+4x5         1 7 2 8 3             4x6         1 7 2 8 3 9
+            7 1 8 2 9                         7 1 8 3 9 2
+            2 8 3 9 1                         2 8 3 9 1 7
+            8 2 9 1 6                         8 3 9 2 7 1
+
+5x5         1 7 2 8 3             5x6         1 7 2 8 3 9
+            7 1 8 2 9                         7 1 8 3 9 2
+            2 8 3 9 1                         2 8 3 9 1 7
+            8 2 9 1 7                         8 3 9 2 7 1
+            3 9 1 7 2                         3 9 1 7 2 8
+
+6x6         1 7 2 8 3 9
+            7 1 8 3 9 2
+            2 8 3 9 1 7
+            8 3 9 2 7 1
+            3 9 1 7 2 8
+            9 2 7 1 8 3
+```
+
 ## Method and verification
 
 Plain depth-first search in row-major order, pruning on row distinctness,
@@ -252,13 +325,23 @@ digit repeats within a box, where the box of local cell `(i, j)` is
 that length can actually take in a 9-wide grid — a side of 8 can only start at
 column 1 or 2, so it has offsets 0 and 1.
 
-**Verification.** The counts were cross-checked against a separately written
-brute force that enumerates all `9^area` assignments and applies the rules
-directly, with no shared code: 1x1, 1x4, 1x6, 2x2 and 2x3 in layer L, and
-2x2 and 2x3 at four box offsets in layer B. Every count matched.
+**Verification, three independent ways.**
 
-The catalogue also reproduces three results derived independently elsewhere,
-which is a further check: the 1x8 row gives one filling up to reversal
-(`4 9 3 8 2 7 1 6`), matching `FEASIBILITY.md`; the 1x7 row gives 16 fillings,
-i.e. 8 up to reversal, matching `CIRCLE-VALUES.md`; and the 3x3 offset-(0,0)
-zero reproduces the box-aligned-3x3 argument.
+1. **Against a brute force.** The counts were cross-checked against a
+   separately written enumerator that walks all `9^area` assignments and
+   applies the rules directly, with no shared code: 1x1, 1x4, 1x6, 2x2 and 2x3
+   in layer L, and 2x2 and 2x3 at four box offsets in layer B. Every count
+   matched.
+2. **Against real verified grids — the end-to-end check.** Take the five full
+   9x9 grids that the from-scratch six-rule checker has passed (the
+   `FEASIBILITY.md` witness and the four in `CIRCLE-VALUES.md`), decompose each
+   into its chocolate components, and look every one of them up in the
+   catalogue at its actual box offset. **All 93 rectangles are present, and
+   every digit in every one of them lies in that offset's support matrix — zero
+   mismatches.** A support matrix that had over-pruned would have shown up here
+   as a legal digit missing from the table.
+3. **Against results derived elsewhere.** The 1x8 row gives one filling up to
+   reversal (`4 9 3 8 2 7 1 6`), matching `FEASIBILITY.md`; the 1x7 row gives
+   16 fillings, i.e. 8 up to reversal, matching `CIRCLE-VALUES.md`; and the 3x3
+   offset-(0,0) zero reproduces the box-aligned-3x3 argument.
+
