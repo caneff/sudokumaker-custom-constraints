@@ -70,6 +70,29 @@ Nothing here says the built-in is bad. It says a thin clue set — 20 clues and
 7 givens — is exactly the regime where the extra strength is load-bearing, and
 that our board sits past the point where one-sided propagation can close it.
 
+## What the built-in is better at
+
+Deduction is not the only axis, and on two of the others the built-in wins.
+
+- **It needs no premise.** Our `update` returns immediately unless the line is a
+  house whose live candidates union to exactly `{1..length}`. A non-house line, a
+  bent path, a board whose digits start at 0 — we yield nothing at all, and the
+  built-in still enforces its rule. Our strength is conditional; theirs is not.
+  (`MAXN = 16` is a guard, not a limit: it covers every board up to 16x16, and
+  the largest here is 10x10.)
+- **It is nearly free to ship.** The built-in link is 797 bytes against our
+  14.6 KB, because ours carries the whole component source in the blob. And a
+  recipient adds the built-in from the app's own editor UI, where ours needs
+  pasted code in a custom constraint.
+
+Not measured either way: per-call cost. Ours is 12 us at n=9 (README, Timing);
+there is no number for the built-in, and on a board one-sided propagation can
+close, a cheaper propagator called more often could win on wall clock.
+
+One axis the built-in cannot play on at all: its clues are `{value, outerCell}`
+data inside the constraint object, so there is no cell for a solver to fill.
+Interactive outside clues are not expressible with it.
+
 ## Reproducing
 
 The built-in link (797 bytes, no component code) is
