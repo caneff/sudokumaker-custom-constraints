@@ -59,21 +59,19 @@ two-row protocol in `docs/real-app-timing.md` is not satisfied for any of them.
 has been closed`. That is an infrastructure failure, **not** a 300s timeout
 reading, and it is recorded as unmeasured rather than guessed at.
 
-## The open decision
+## The ruling: ceiling widened to 15s
 
-**The band may be empty as specified.** The two boards that were measured both
-clear the >= 20,000 node floor and both miss the <= 10s app ceiling — 12.2s and
-15.9s. Interpolating the two points, the crossover sits near **25,000-30,000
-nodes**, and the only sampled board under that (`20 clues, sample 0`, 17,537
-nodes) falls below the floor.
+**Owner ruling: widen the app ceiling.** The band's two halves nearly excluded
+each other — both measured boards cleared the >= 20,000 node floor and missed
+the original <= 10s ceiling, with the crossover interpolating to ~25,000-30,000
+nodes and the only sampled board below that (17,537) falling under the floor.
 
-So the two halves of the band nearly exclude each other, and one of three
-things has to give:
+The node floor stays at 20,000. **The app ceiling moves to 15s.**
 
-1. **Widen the app ceiling** to ~15s. `qr384_b` ships as-is.
-2. **Lower the node floor** to ~15,000 and re-measure the 17,537-node board,
-   which should land near 6-7s.
-3. **Sample harder inside the gap** — more clue placements at 20-21 clues aimed
-   at 25,000-30,000 nodes, hoping a board sits in the overlap.
+That selects **`proto/qr384_b.json`** — 20 clues, zero givens, CP-SAT unique in
+5.7s, 35,021 offline nodes under C5, 12.2s cold in the app. `qr384_c` at 15.9s
+falls outside the widened ceiling; `qr384_a` was never measured.
 
-Owner ruling required; nothing further was run.
+**Still outstanding on the shipped board:** the 1-rep recon above is not the
+timing protocol. `docs/real-app-timing.md` wants medians over 3 reps and both
+the cold and after-logical rows, and neither exists for `qr384_b` yet.
