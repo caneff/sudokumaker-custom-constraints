@@ -1,0 +1,250 @@
+"""Probe: invert the Renbanana pipeline — fix the digits, solve for a shading.
+
+The shading-first pipeline wastes almost everything it does. Across every hunt
+in #380 only ~2.7% of legal shadings admit any digit fill, and no shading-layer
+constraint we added moved that number. Inverting it makes every candidate
+digit-valid by construction, but only if the other direction is not just as
+thin. This measures that: of K random solved sudoku grids, how many admit a
+legal Renbanana shading at all?
+
+    uv run --with ortools docs/research/renbanana/tools/probe_inverted.py \
+        --grids 100 --seconds 20 --workers 1 --out docs/research/renbanana/probe-inverted
+
+One worker by default and one process, ever: this box is shared (AGENTS.md).
+
+Why the model is sharper here than stage 1. With the digits known, the whisper
+stops being a digit-stage question and becomes a plain clause — an adjacent
+pair differing by less than 5 simply cannot both be chocolate. The renban rule
+stops being lazy too: component labels already exist in stage 1 for the size
+cap, and with fixed digits a label plus a digit is enough to state both halves
+of renban exactly (at most one cell of each digit per label; no gap between two
+digits present in a label). Only the banana-non-rectangle rule stays lazy, cut
+one pattern at a time exactly as stage 1 does.
+
+So an INFEASIBLE from this model is a proof: that solved grid carries no legal
+Renbanana shading at all.
+"""
+
+import argparse
+import json
+import random
+import sys
+import time
+from pathlib import Path
+
+from ortools.sat.python import cp_model as cp
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import renbanana_verify as rv
+
+N = 9
+CELLS = [(r, c) for r in range(N) for c in range(N)]
+IDX = {p: i for i, p in enumerate(CELLS)}
+ADJACENT = [(p, q) for p in CELLS for q in rv.neighbours(*p) if IDX[q] > IDX[p]]
+
+
+def random_grid(seed, seconds, workers):
+    """A solved sudoku, steered somewhere random by hinting every cell.
+
+    Hints rather than a random objective: the objective makes CP-SAT prove an
+    optimum we do not care about, while a hint costs nothing and still lands
+    the search in a different corner each seed.
+    """
+    rng = random.Random(seed)
+    m = cp.CpModel()
+    d = {p: m.new_int_var(1, 9, f"d{p}") for p in CELLS}
+    for i in range(N):
+        m.add_all_different([d[i, c] for c in range(N)])
+        m.add_all_different([d[r, i] for r in range(N)])
+    for br in range(3):
+        for bc in range(3):
+            m.add_all_different(
+                [d[br * 3 + r, bc * 3 + c] for r in range(3) for c in range(3)]
+            )
+    for p in CELLS:
+        m.add_hint(d[p], rng.randint(1, 9))
+    s = cp.CpSolver()
+    s.parameters.max_time_in_seconds = seconds
+    s.parameters.num_workers = workers
+    s.parameters.random_seed = seed
+    if s.solve(m) not in (cp.OPTIMAL, cp.FEASIBLE):
+        return None
+    return {p: s.value(d[p]) for p in CELLS}
+
+
+class Shadings:
+    """Legal shadings of one *fixed* solved grid. Exact but for rule 4."""
+
+    def __init__(self, grid, min_chocolate=0):
+        m = cp.CpModel()
+        self.m = m
+        self.grid = grid
+        self.choc = {p: m.new_bool_var(f"c{p}") for p in CELLS}
+
+        # Rule 3: no 2x2 window holds exactly three chocolate cells.
+        for r in range(N - 1):
+            for c in range(N - 1):
+                m.add(
+                    sum(self.choc[r + i, c + j] for i in range(2) for j in range(2))
+                    != 3
+                )
+
+        # Rule 5, now a plain clause: this pair cannot both be chocolate.
+        for p, q in ADJACENT:
+            if abs(grid[p] - grid[q]) < 5:
+                m.add_bool_or([self.choc[p].negated(), self.choc[q].negated()])
+
+        # Component labels for the banana groups, as in stage 1: every banana
+        # cell carries exactly one label, adjacent banana cells share it, and a
+        # label is the least cell index in its component.
+        lab = {
+            (p, ell): m.new_bool_var(f"l{p}_{ell}")
+            for p in CELLS
+            for ell in range(IDX[p] + 1)
+        }
+        for p in CELLS:
+            m.add(sum(lab[p, ell] for ell in range(IDX[p] + 1)) == 1 - self.choc[p])
+        for p, q in ADJACENT:
+            lo, hi = (p, q) if IDX[p] < IDX[q] else (q, p)
+            for ell in range(IDX[lo] + 1):
+                m.add_bool_or(
+                    [self.choc[p], self.choc[q], lab[lo, ell].negated(), lab[hi, ell]]
+                )
+            for ell in range(IDX[lo] + 1, IDX[hi] + 1):
+                m.add_bool_or([self.choc[p], self.choc[q], lab[hi, ell].negated()])
+
+        # Rule 6, exactly, because the digits are known. Per label: at most one
+        # cell of each digit (distinct), and no digit missing between two that
+        # are present (consecutive).
+        for ell in range(len(CELLS)):
+            members = [p for p in CELLS if IDX[p] >= ell]
+            here = {}
+            for v in range(1, 10):
+                same = [lab[p, ell] for p in members if grid[p] == v]
+                if not same:
+                    continue
+                m.add(sum(same) <= 1)
+                seen = m.new_bool_var(f"v{ell}_{v}")
+                m.add(sum(same) == 1).only_enforce_if(seen)
+                m.add(sum(same) == 0).only_enforce_if(seen.negated())
+                here[v] = seen
+            for v in here:
+                for u in here:
+                    for w in here:
+                        if u < v < w:
+                            m.add_bool_or(
+                                [here[u].negated(), here[w].negated(), here[v]]
+                            )
+
+        if min_chocolate:
+            m.add(sum(self.choc.values()) >= min_chocolate)
+
+        self.cuts = 0
+
+    def forbid_component(self, group):
+        border = {q for p in group for q in rv.neighbours(*p) if q not in group}
+        self.m.add_bool_or(
+            [self.choc[p] for p in group] + [self.choc[q].negated() for q in border]
+        )
+        self.cuts += 1
+
+    def solve(self, seconds, workers, seed):
+        """Loop the lazy rule-4 cuts until the shading is clean or time runs out."""
+        deadline = time.monotonic() + seconds
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                return cp.UNKNOWN, None
+            s = cp.CpSolver()
+            s.parameters.max_time_in_seconds = left
+            s.parameters.num_workers = workers
+            s.parameters.random_seed = seed
+            status = s.solve(self.m)
+            if status not in (cp.OPTIMAL, cp.FEASIBLE):
+                return status, None
+            is_choc = {p: s.value(self.choc[p]) == 1 for p in CELLS}
+            bad = [g for g in rv.components(is_choc, False) if rv.is_rectangle(g)]
+            if not bad:
+                return status, is_choc
+            for g in bad:
+                self.forbid_component(g)
+
+
+def profile(is_choc):
+    shapes = sorted(rv.shape(g) for g in rv.components(is_choc, True))
+    return {
+        "chocolate": sum(is_choc.values()),
+        "groups": len(shapes),
+        "shapes": ["x".join(map(str, s)) for s in shapes],
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--grids", type=int, default=100)
+    ap.add_argument("--seconds", type=float, default=20.0)
+    ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--min-chocolate", type=int, default=0)
+    ap.add_argument("--start", type=int, default=0)
+    ap.add_argument("--out", type=Path, required=True)
+    a = ap.parse_args()
+
+    a.out.mkdir(parents=True, exist_ok=True)
+    log = a.out / "probe.jsonl"
+    tally = {"feasible": 0, "infeasible": 0, "unknown": 0}
+    began = time.monotonic()
+
+    for seed in range(a.start, a.start + a.grids):
+        grid = random_grid(seed, 30.0, a.workers)
+        if grid is None:
+            print(f"seed {seed}: no sudoku (should not happen)", flush=True)
+            continue
+        model = Shadings(grid, a.min_chocolate)
+        t0 = time.monotonic()
+        status, is_choc = model.solve(a.seconds, a.workers, seed)
+        took = time.monotonic() - t0
+
+        row = {
+            "seed": seed,
+            "status": cp.CpSolver().status_name(status).lower(),
+            "seconds": round(took, 1),
+            "cuts": model.cuts,
+        }
+        if is_choc is not None:
+            tally["feasible"] += 1
+            row["profile"] = profile(is_choc)
+            row["grid"] = ["".join(str(grid[r, c]) for c in range(N)) for r in range(N)]
+            row["shading"] = [
+                "".join("C" if is_choc[r, c] else "b" for c in range(N))
+                for r in range(N)
+            ]
+            bad = rv.check(grid, is_choc)
+            row["verified"] = not bad
+            if bad:
+                row["violations"] = bad[:5]
+        elif status == cp.INFEASIBLE:
+            tally["infeasible"] += 1
+        else:
+            tally["unknown"] += 1
+
+        with log.open("a") as f:
+            f.write(json.dumps(row) + "\n")
+        done = seed - a.start + 1
+        print(
+            f"seed {seed}: {row['status']} in {row['seconds']}s "
+            f"({model.cuts} cuts) — {tally['feasible']}/{done} feasible",
+            flush=True,
+        )
+
+    total = sum(tally.values())
+    print(
+        f"\n{tally['feasible']}/{total} grids admit a legal shading "
+        f"({100 * tally['feasible'] / max(total, 1):.0f}%); "
+        f"{tally['infeasible']} proved impossible, {tally['unknown']} timed out; "
+        f"{time.monotonic() - began:.0f}s total",
+        flush=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

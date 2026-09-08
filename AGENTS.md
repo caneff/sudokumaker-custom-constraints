@@ -33,6 +33,15 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - `docs/research/renbanana/tools/test_catalogue_is_used.py` fails if a call
   site drops it. Run it after touching `renbanana_cpsat.py`.
 
+## Solver runs stay off the machine's back (always on)
+
+- **One hunt at a time, and `--workers 1` unless told otherwise.** This box is
+  a WSL2 VM other agents share; oversubscribing it has hung the desktop. Check
+  `uptime` before launching anything, and never let the total worker count
+  approach the core count — leave most of the cores for everyone else.
+- Long runs go under `job-run --name <n>` and append to a progress file, so a
+  kill does not lose the result.
+
 ## Coding invariant (always on)
 
 - **A component's `update` must never remove a candidate the true solution
