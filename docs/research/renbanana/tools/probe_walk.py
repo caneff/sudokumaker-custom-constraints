@@ -21,6 +21,7 @@ that is what has to stay inside the core budget (AGENTS.md).
 """
 
 import argparse
+import contextlib
 import json
 import random
 import sys
@@ -34,9 +35,17 @@ import renbanana_verify as rv
 from probe_inverted import CELLS, N, Shadings
 from probe_neighbourhood import perturb
 
+MIN_DISTANCE = 12  # the pool's own rule for "different enough"
+
 
 def hamming(a, b):
     return sum(a[p] != b[p] for p in CELLS)
+
+
+def hamming_rows(a, b):
+    return sum(
+        x != y for ra, rb in zip(a, b, strict=True) for x, y in zip(ra, rb, strict=True)
+    )
 
 
 def rows_of(grid):
@@ -58,6 +67,12 @@ def main():
     ap.add_argument("--seconds", type=float, default=20.0, help="per shading solve")
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--refresh",
+        type=float,
+        default=60.0,
+        help="seconds between re-reads of the shared key set",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
 
@@ -69,25 +84,54 @@ def main():
     # Never solve a grid twice. Legality survives every rotation and
     # reflection, so a grid whose image we have already tested tells us nothing
     # new -- and the pool's own grids are, by definition, already found.
-    seen = {
-        canon.key_grid(rv.load(p)[0])
-        for p in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json"))
-    }
+    #
+    # The set is shared. A dozen walkers drifting from nearby seeds land on each
+    # other's grids constantly, and a walker that only reads the pool at startup
+    # is blind to every find its siblings make while it runs. Each appends its
+    # keys to its own file in a shared directory and re-reads the lot on a
+    # timer: append-only, one writer per file, so no locking is needed.
+    shared = a.out / "keys"
+    shared.mkdir(parents=True, exist_ok=True)
+    mine = shared / f"{name}.keys"
+
+    pool_paths = sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json"))
+    pool = [rv.load(p) for p in pool_paths]
+    seen = {canon.key_grid(g) for g, _, _ in pool}
     held = len(seen)
 
+    # What counts as worth recording: the pool's own diversity rule, applied
+    # here so the walk stops writing rows the converter would only discard.
+    known = [(shading_rows(is_choc), shapes_of(is_choc)) for _, is_choc, _ in pool]
+
+    def refresh():
+        for path in sorted(shared.glob("*.keys")):
+            if path == mine:
+                continue
+            # a sibling mid-write; the next pass picks it up
+            with contextlib.suppress(OSError):
+                seen.update(path.read_text().split())
+
     here = origin
-    found = tries = skipped = 0
+    found = tries = skipped = dull = 0
     deadline = time.monotonic() + a.budget
+    next_refresh = time.monotonic() + a.refresh
     log = a.out / f"{name}.jsonl"
 
     while time.monotonic() < deadline:
-        candidate = perturb(here, rng)
+        if time.monotonic() >= next_refresh:
+            refresh()
+            next_refresh = time.monotonic() + a.refresh
+        # Row and column swaps move the shading; a digit swap moves 18 grid
+        # cells and usually none, so it is in the mix for reach, not for yield.
+        candidate = perturb(here, rng, ("rows", "rows", "cols", "cols", "digits"))
         tries += 1
         k = canon.key_grid(candidate)
         if k in seen:
             skipped += 1
             continue
         seen.add(k)
+        with mine.open("a") as f:
+            f.write(k + "\n")
         model = Shadings(candidate)
         _, is_choc = model.solve(
             min(a.seconds, deadline - time.monotonic()), a.workers, tries
@@ -98,8 +142,20 @@ def main():
         if bad:
             print(f"{name}: REJECTED an illegal shading: {bad[0]}", flush=True)
             continue
-        found += 1
+        # Move first, record second. Stepping onto a neighbour that is merely
+        # a recolour keeps the walk connected -- it may be the only bridge to
+        # somewhere new -- but there is no reason to write it down.
         here = candidate
+        rows_new = shading_rows(is_choc)
+        shapes_new = shapes_of(is_choc)
+        if not all(
+            hamming_rows(rows_new, s) >= MIN_DISTANCE or shapes_new != sh
+            for s, sh in known
+        ):
+            dull += 1
+            continue
+        known.append((rows_new, shapes_new))
+        found += 1
         row = {
             "source": str(a.source),
             "step": found,
@@ -121,8 +177,9 @@ def main():
         )
 
     print(
-        f"{name}: DONE {found} steps in {tries} tries, "
-        f"{skipped} skipped as already tested (pool held {held})",
+        f"{name}: DONE {found} recorded in {tries} tries, "
+        f"{skipped} skipped as already tested, {dull} stepped through as "
+        f"too close (pool held {held})",
         flush=True,
     )
 

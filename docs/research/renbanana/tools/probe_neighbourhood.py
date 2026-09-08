@@ -28,9 +28,15 @@ import renbanana_verify as rv
 from probe_inverted import CELLS, Shadings
 
 
-def perturb(grid, rng):
-    """One symmetry move that can change which adjacencies are whisper-legal."""
-    kind = rng.choice(("rows", "cols", "digits"))
+def perturb(grid, rng, kinds=("rows", "cols", "digits")):
+    """One symmetry move that can change which adjacencies are whisper-legal.
+
+    `kinds` is drawn from with replacement, so repeating an entry weights it.
+    The default is the flat three this file measured with; the walk leans on
+    row and column swaps instead, because a digit swap moves 18 grid cells and
+    typically no shading cells at all.
+    """
+    kind = rng.choice(kinds)
     if kind == "digits":
         u, v = rng.sample(range(1, 10), 2)
         swap = {u: v, v: u}
