@@ -47,16 +47,30 @@ def rect(x, y):
 # docs/research/skyscraper-builtin-constraint-baseline.md (#385).
 
 
+class UndescribableInk(ValueError):
+    """`segments` was handed a step it cannot name: one that leaves the
+    integer lattice, runs off the axes, or covers no ground at all. Ink like
+    that is drawable and legal in a link -- SudokuMaker takes any points it is
+    given -- it is only this file's segment vocabulary that has no word for
+    it. A caller that merely wants to compare two layers should catch this and
+    fall back to comparing them as authored; `merge` lets it out, because
+    redrawing ink it cannot name would change the picture."""
+
+
 def segments(lines):
     """The set of unit segments a list of polylines covers -- the ink it lays
-    on the page, with no trace of how the polylines carried it. Every point in
-    this file is on the integer lattice and every step is axis-aligned, so a
-    segment is named by its two endpoints, lower one first."""
+    on the page, with no trace of how the polylines carried it. Every point
+    this file draws is on the integer lattice and every step is axis-aligned,
+    so a segment is named by its two endpoints, lower one first. A step that
+    is neither raises `UndescribableInk`."""
     segs = set()
     for pts in lines:
         for a, b in itertools.pairwise(pts):
             a, b = (a["x"], a["y"]), (b["x"], b["y"])
-            assert (a[0] == b[0]) != (a[1] == b[1]), f"not one axis: {a} -> {b}"
+            if not all(isinstance(v, int) and not isinstance(v, bool) for v in a + b):
+                raise UndescribableInk(f"off the integer lattice: {a} -> {b}")
+            if (a[0] == b[0]) == (a[1] == b[1]):
+                raise UndescribableInk(f"not a one-axis run: {a} -> {b}")
             axis = 1 if a[0] == b[0] else 0
             lo, hi = sorted((a[axis], b[axis]))
             for k in range(lo, hi):
@@ -88,8 +102,12 @@ def _trails(segs):
 
     Where the walk starts decides the point lists, not just their length: move
     it and every committed link re-encodes with the same ink and the same point
-    count, which is what `test_rebuild_reproduces_every_shipped_link_byte_for_byte`
-    (examples/outside-sudoku/build_size.test.py) catches.
+    count, but different bytes. One example pins that down:
+    `test_rebuild_reproduces_every_shipped_link_byte_for_byte`
+    (examples/outside-sudoku/build_size.test.py) rebuilds outside-sudoku's five
+    links and demands the exact committed bytes. No other example's links are
+    pinned that way -- their rebuild guards compare ink
+    (`link_swap.frame_and_comment_only`), which a moved start vertex passes.
     """
     adj = {}
     for a, b in segs:

@@ -103,6 +103,46 @@ if __name__ == "__main__":
         base, CONSTRAINT_NAME
     ), "the same ink drawn as different polylines must compare equal"
 
+    # Ink `segments` cannot name -- a fractional length, a diagonal, a
+    # repeated point -- must not raise: numbered-rooms already ships
+    # hand-authored decoration, and a rebuild guard that crashes on it is an
+    # outage, not a check. Such a layer degrades to being compared as
+    # authored, and the layers alongside it are still judged by their ink.
+    def with_first_layer(lines):
+        doc = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+        cosmetic(doc)["lines"] = lines
+        return doc
+
+    pt = lambda x, y: {"x": x, "y": y}
+    undrawable = {
+        "a fractional length": [[pt(0, 0), pt(0, 0.5)]],
+        "a diagonal": [[pt(0, 0), pt(1, 1)]],
+        "a repeated point": [[pt(2, 2), pt(2, 2)]],
+    }
+    for what, lines in undrawable.items():
+        authored = with_first_layer(lines)
+        reduced = frame_and_comment_only(authored, CONSTRAINT_NAME)
+        assert cosmetic(reduced)["lines"] == lines, (
+            f"{what}: an undescribable layer must be compared as authored"
+        )
+        assert (
+            frame_and_comment_only(with_first_layer(lines), CONSTRAINT_NAME) == reduced
+        ), f"{what}: the same doc must still compare equal to itself"
+        moved = [[{**q, "x": q["x"] + 1} for q in pts] for pts in lines]
+        assert (
+            frame_and_comment_only(with_first_layer(moved), CONSTRAINT_NAME) != reduced
+        ), f"{what}: the guard must still catch a layer that moved"
+
+    # one undescribable layer does not stop the others being judged by ink
+    mixed = with_first_layer(undrawable["a diagonal"])
+    last = [c for c in mixed["puzzle"]["constraints"] if c.get("type") == 2000][-1]
+    last["lines"] = [
+        [a, b] for pts in last["lines"] for a, b in itertools.pairwise(pts)
+    ]
+    assert frame_and_comment_only(mixed, CONSTRAINT_NAME) == frame_and_comment_only(
+        with_first_layer(undrawable["a diagonal"]), CONSTRAINT_NAME
+    ), "a layer alongside undescribable ink must still compare by its ink"
+
     shifted = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
     for point in cosmetic(shifted)["lines"][0]:
         point["x"] += 1

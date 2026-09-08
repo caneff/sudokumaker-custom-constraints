@@ -7,7 +7,7 @@
 import copy
 import pathlib
 
-from frame import segments
+from frame import UndescribableInk, segments
 from link_codec import decode_puzzle, encode_link
 
 
@@ -40,6 +40,23 @@ def frame_only(doc, constraint_name):
     return d
 
 
+def _comparable_ink(lines):
+    """What to compare a decoration layer by: its ink where `frame.segments`
+    can name it, otherwise the polylines exactly as authored.
+
+    segments only speaks of axis-aligned runs on the integer lattice, which is
+    all `frame.cosmetics` draws. A hand-authored layer can hold a diagonal, a
+    half-cell line or a repeated point -- numbered-rooms already ships
+    decoration cosmetics never drew -- and such a layer falls back to being
+    compared point for point. That reads a redraw of it as a mismatch, which
+    the caller can look at; raising instead would take the guard itself down.
+    """
+    try:
+        return sorted(segments(lines))
+    except UndescribableInk:
+        return lines
+
+
 def frame_and_comment_only(doc, constraint_name):
     """`frame_only`, plus the puzzle comment cleared and every decoration
     layer reduced to the ink it draws, so two variants that differ only in
@@ -50,12 +67,15 @@ def frame_and_comment_only(doc, constraint_name):
     The decoration layers are derived from the board, and a rebuild redraws
     them: merging the per-cell squares into runs changes every polyline and
     nothing a solver sees (#385). Comparing the ink instead of the point
-    lists still catches a layer that moved, gained a line, or lost one."""
+    lists still catches a layer that moved, gained a line, or lost one.
+
+    Layers whose ink has no name in segments are compared as authored --
+    see `_comparable_ink`."""
     d = frame_only(doc, constraint_name)
     d["puzzle"]["comment"] = ""
     for c in d["puzzle"]["constraints"]:
         if c.get("type") == 2000:
-            c["lines"] = sorted(segments(c["lines"]))
+            c["lines"] = _comparable_ink(c["lines"])
     return d
 
 
