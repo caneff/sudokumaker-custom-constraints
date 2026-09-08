@@ -3,10 +3,10 @@
 #
 # The picture is the contract, not the polylines: these layers hide the ring's
 # cell borders, box the shown clue cells, and draw the interior's outer border,
-# and a solver must see exactly the same board after the merge. So each case
-# states the picture the old code drew -- one closed unit square per cell --
-# right here, independently of frame.py, and asserts the merged layer draws
-# the same set of unit segments with fewer points.
+# and a solver must see exactly that board. So each case states the picture the
+# layers must show -- one closed unit square per cell -- right here,
+# independently of frame.py, and asserts the merged layer draws the same set of
+# unit segments with fewer points.
 #
 #   uv run examples/_shared/frame.test.py
 
@@ -59,7 +59,8 @@ def _ring_cells(W):
 
 
 def _square(x0, y0, x1, y1):
-    """A closed rectangle, the way the pre-merge code drew every one of them."""
+    """A closed rectangle: five points, the corners with the first repeated.
+    One per cell is the picture these layers have to show."""
     return [
         {"x": x0, "y": y0},
         {"x": x1, "y": y0},
@@ -98,14 +99,19 @@ def test_white_lines_still_cover_every_ring_cell_border():
 
 def test_white_lines_cost_far_fewer_points_than_a_square_per_cell():
     # The layer is 4W-4 closed squares at five points each before the merge.
-    # Halving is the bar: below it the merge is not worth its own code.
+    # Every shared edge is then drawn once and every straight run collapses to
+    # its ends, which costs well under half the naive layer. The bar sits just
+    # above what that walk achieves, so a merge that gave back even a twentieth
+    # of its own saving turns this red.
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
         before = 5 * len(_ring_cells(W))
         after = _points(
             _layer(W, cells, "White Lines (to hide outside cell borders)")["lines"]
         )
-        assert after * 2 <= before, f"W={W}: {after} points, want at most {before // 2}"
+        assert 20 * after <= 9 * before, (
+            f"W={W}: {after} points, want at most {9 * before // 20}"
+        )
 
 
 def test_outlines_box_the_shown_clue_cells_and_nothing_else():
@@ -148,8 +154,8 @@ def test_the_outer_border_is_the_interior_square():
         want = _unit_segments([_square(1, 1, W - 1, W - 1)])
         layer = _layer(W, cells, "Grid Outer Border")
         assert _unit_segments(layer["lines"]) == want, f"W={W}: the border moved"
-        # One closed square needs five points; the old code walked it a cell
-        # at a time and spent 4W-7.
+        # One closed square needs five points, whatever the width: the border
+        # has four turns and no other point survives the collapse.
         assert _points(layer["lines"]) == 5, f"W={W}: {_points(layer['lines'])} points"
 
 

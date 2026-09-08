@@ -42,8 +42,9 @@ def rect(x, y):
 # as JSON. `merge` re-draws the same ink: it reduces a layer to the set of unit
 # segments it covers, then walks that set back out as long polylines. What a
 # viewer sees is the union of the segments, so redrawing that union any other
-# way is invisible on screen -- which is what makes this free. On the shipped
-# 9x9 board it takes the three layers from 337 points to 154 (#385).
+# way is invisible on screen -- which is what makes this free. It cuts the three
+# layers to well under half their points; the measured sizes are in
+# docs/research/skyscraper-builtin-constraint-baseline.md (#385).
 
 
 def segments(lines):
@@ -84,6 +85,11 @@ def _trails(segs):
     segments meet -- such a vertex has to be an end of some polyline, and
     starting anywhere else would cut a run in half. What is left over meets
     evenly everywhere and closes back on itself.
+
+    Where the walk starts decides the point lists, not just their length: move
+    it and every committed link re-encodes with the same ink and the same point
+    count, which is what `test_rebuild_reproduces_every_shipped_link_byte_for_byte`
+    (examples/outside-sudoku/build_size.test.py) catches.
     """
     adj = {}
     for a, b in segs:
@@ -106,32 +112,14 @@ def _trails(segs):
         trails.append(trail)
 
 
-def _direction(a, b):
-    return (b[0] - a[0], b[1] - a[1])
-
-
 def _drop_straight_through(trail):
-    """The same trail with every point that is not a turn removed. A closed
-    trail is rotated to start at a turn first, so the point it starts and ends
-    on is not a straight-through the collapse cannot see."""
-    if trail[0] == trail[-1] and len(trail) > 3:
-        ring = trail[:-1]
-        turn = next(
-            (
-                i
-                for i in range(len(ring))
-                if _direction(ring[i - 1], ring[i])
-                != _direction(ring[i], ring[(i + 1) % len(ring)])
-            ),
-            None,
-        )
-        if turn is not None:
-            ring = ring[turn:] + ring[:turn]
-            trail = [*ring, ring[0]]
+    """The same trail with every point that is not a turn removed. Steps are
+    axis-aligned units, so a point turns exactly when its two neighbours share
+    neither coordinate; the trail's own two ends are kept whatever they are."""
     turns = [
         trail[i]
         for i in range(1, len(trail) - 1)
-        if _direction(trail[i - 1], trail[i]) != _direction(trail[i], trail[i + 1])
+        if trail[i - 1][0] != trail[i + 1][0] and trail[i - 1][1] != trail[i + 1][1]
     ]
     return [trail[0], *turns, trail[-1]]
 

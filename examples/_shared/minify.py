@@ -5,9 +5,11 @@
 # What survives into the export: the code and its indentation. Every comment
 # and every blank line is dropped, block comments included -- a component's
 # `/* eslint-disable ... */` is an apology to a linter the recipient does not
-# run, and the commentary a source file carries in its "//!" blocks is 43% of
-# the shipped code and 30% of the link (#385). The source files keep those
-# blocks; how a reuser gets the commentary is a separate question.
+# run, and the commentary a source file carries in its "//!" blocks is a large
+# fraction of both the shipped code and the link it goes into (#385; the
+# measured shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
+# The source files keep those blocks; how a reuser gets the commentary is a
+# separate question.
 #
 # ponytail: regex strip, not a real parser. Safe for these files because none of
 # them holds "//" inside a string or a regex literal (only single slashes, e.g.
