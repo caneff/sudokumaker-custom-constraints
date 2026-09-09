@@ -301,15 +301,29 @@ class JointPair:
                 self.forbid_component(g)
 
 
+def _key(pair):
+    """A geometry as a hashable, however it arrived -- JSON gives lists."""
+    return tuple(tuple(x) for x in pair)
+
+
 def work(job):
-    pair, seconds, pin_labels = job
+    """One geometry, one seed.
+
+    The seed is the whole point of a second pass. CP-SAT's search is
+    randomised, and the 600-second test showed a geometry that resists one
+    search resists it all the way down -- so an unknown is re-attacked with a
+    different seed rather than a longer clock. A job that omits the seed gets
+    0, which is what every run before this one used.
+    """
+    pair, seconds, pin_labels, seed = job if len(job) == 4 else (*job, 0)
     pair = [tuple(x) for x in pair]
     model = JointPair(pair, pin_labels=pin_labels)
     t0 = time.monotonic()
-    verdict, grid, is_choc = model.solve(seconds, 1, 0)
+    verdict, grid, is_choc = model.solve(seconds, 1, seed)
     row = {
         "pair": pair,
         "verdict": verdict,
+        "seed": seed,
         "seconds": round(time.monotonic() - t0, 1),
         "cuts": model.cuts,
     }
@@ -334,6 +348,21 @@ def main():
         "shared-label hole either way; this is here to measure which model "
         "harvests more verified grids per hour.",
     )
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="CP-SAT random seed. A second pass over the leftovers uses a "
+        "different one; the same one repeats the same search exactly.",
+    )
+    ap.add_argument(
+        "--only-unknown-from",
+        type=Path,
+        default=None,
+        help="a proof.jsonl from an earlier pass. Only geometries it left "
+        "unknown are attempted, so a re-seeded pass never re-proves a "
+        "settled one.",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -350,6 +379,22 @@ def main():
         )
         if r["grid"] is not None
     ]
+    if a.only_unknown_from:
+        prior = [
+            json.loads(line)
+            for line in a.only_unknown_from.read_text().splitlines()
+            if line.strip()
+        ]
+        settled = {
+            _key(r["pair"]) for r in prior if r["verdict"] in ("infeasible", "hit")
+        }
+        before = len(feasible)
+        feasible = [p for p in feasible if _key(p) not in settled]
+        print(
+            f"{before - len(feasible)} geometries already settled by "
+            f"{a.only_unknown_from}; {len(feasible)} left",
+            flush=True,
+        )
     if a.limit:
         feasible = feasible[: a.limit]
     print(f"{len(feasible)} geometries a sudoku can carry; proving each", flush=True)
@@ -361,7 +406,7 @@ def main():
         for done, row in enumerate(
             pool.map(
                 work,
-                [(p, a.seconds, not a.no_pin_labels) for p in feasible],
+                [(p, a.seconds, not a.no_pin_labels, a.seed) for p in feasible],
                 chunksize=1,
             ),
             1,
