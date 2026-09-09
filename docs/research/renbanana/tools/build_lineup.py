@@ -132,14 +132,18 @@ def rows():
                     # or 1. The circle on the L is the sharper clue: it pins
                     # the run to one of {1,2,3}, {2,3,4}, {3,4,5}.
                     "smallBanana": sum(5 - k for k in bsizes),
-                    # The top of the run under a scoreable banana circle. The
-                    # circle says the run holds k, so the run starts at or
-                    # below k and its top lands in 3..5 for an L and 4..7 for a
-                    # group of four -- a high top means a run pushed as far up
-                    # as the circle allows. Forced circles are left out: a
-                    # group of five or more always carries one and its run
-                    # reaches 9, so counting those would flatten the sort.
-                    "maxBananaDigit": max(bmax, default=0),
+                    # The lowest run-top among this grid's scoreable banana
+                    # circles. The circle says its group's run holds k, so the
+                    # top lands in 3..5 for a three-cell L and 4..7 for a group
+                    # of four, and the lowest one is the sharpest clue the grid
+                    # offers: a group running 1-2-3 tops out at 3 and pins all
+                    # three digits, where one running 2-3-4-5 tops at 5. A grid
+                    # holding both scores 3, by its best clue and not its
+                    # worst. Forced circles are left out -- a group of five or
+                    # more always carries one and its run reaches 9 -- and a
+                    # grid with no scoreable banana circle scores 0, which the
+                    # page sorts last rather than first.
+                    "minBananaTop": min(bmax, default=0),
                     "forcedCircles": len(forced),
                 }
             )

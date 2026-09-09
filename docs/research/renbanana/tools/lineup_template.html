@@ -82,7 +82,7 @@ main{padding:24px 32px 48px;display:grid;grid-template-columns:repeat(auto-fill,
   <option value="circleable">circleable groups</option>
   <option value="bananaCircles">banana circles</option>
   <option value="smallBanana">small banana circles</option>
-  <option value="maxBananaDigit">max digit under a banana circle</option>
+  <option value="minBananaTop">sharpest banana circle</option>
  </select></label>
  <label>min score <input id="minv" type="number" value="0" min="0"></label>
  <label>largest ≥ <input id="minl" type="number" value="0" min="0" max="81"></label>
@@ -139,8 +139,13 @@ function render(){
   const minv=+document.getElementById('minv').value, minl=+document.getElementById('minl').value;
   const q=document.getElementById('q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const hay=d=>(d.run+' seed'+d.seed+' '+d.seed+' '+d.id+' '+d.shapes.join(' ')).toLowerCase();
+  // Most keys read better big-first. minBananaTop is the exception: it is the
+  // top of the tightest run under a banana circle, so a small one is the
+  // sharper clue. A grid with no such circle holds 0 and sorts last, not first.
+  const asc=key==='minBananaTop';
+  const rank=d=>asc?(d[key]||Infinity):(key==='circles'?d.circles.length:d[key]);
   const rows=DATA.filter(d=>(!run||d.run===run)&&q.every(w=>hay(d).includes(w))&&d.value>=minv&&d.largest>=minl)
-    .sort((a,b)=>(key==='circles'?b.circles.length-a.circles.length:b[key]-a[key])||b.value-a.value);
+    .sort((a,b)=>(asc?rank(a)-rank(b):rank(b)-rank(a))||b.value-a.value);
   const m=document.getElementById('main');
   m.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">No grid matches these filters.</div>';
   const on=k=>k?'':'no';
