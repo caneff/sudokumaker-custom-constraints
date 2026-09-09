@@ -105,10 +105,6 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //   mainSrc: the text of main.js.
 //   input: the object main.js reads as `input` (its groups/geometry). Empty
 //     for main-global.js, which builds its own frame instead of reading it.
-//   builtins: in-memory modules for the built-in components main.js constructs
-//     but that ship with SudokuMaker, not as example files — each is
-//     { ctorName, mod } where mod supplies setParams/update (e.g.
-//     ExactDigitCountComponent). They join the file-backed ctors in scope.
 //   frame: { W, H, idx }, from frame-geometry.mjs's frameGeometry() — when
 //     given, the registrar also answers getCellAt(col, row) = idx(row, col)
 //     and spec.size.width = W, spec.size.height = H, the three calls
@@ -117,7 +113,7 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //     takes the column first and `idx` takes the row first, so the arguments
 //     swap here: a mock that fed them straight through would hand the backend
 //     the transposed frame.
-export function loadComponents ({ here, files, mainSrc, input, builtins = [], frame = null }) {
+export function loadComponents ({ here, files, mainSrc, input, frame = null }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
@@ -128,8 +124,7 @@ export function loadComponents ({ here, files, mainSrc, input, builtins = [], fr
   const comps = []
   const frameMethods = frame ? { getCellAt: (a, b) => frame.idx(b, a), spec: { size: { width: frame.W, height: frame.H } } } : {}
   const registrar = { addConstraintComponent: inst => comps.push(inst), ...frameMethods }
-  const fromFiles = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
-  const ctors = [...fromFiles, ...builtins]
+  const ctors = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
   const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func
   run(input, globalThis.helpers, registrar, ...ctors.map(c => makeCtor(c.mod)))
   return comps
@@ -169,24 +164,20 @@ export function dead (state, alldiffGroups) {
 // caller's model-specific check that a full assignment is a real solution
 // (the components prune toward this but do not reject a completed instance
 // on their own). Returns {nodes, solutions, capped} — capped means the
-// NODE_CAP was hit before the search finished. `stopAtFirst` returns as soon as
-// one solution is found (solutions caps at 1, capped stays false): use it to ask
-// "can this wiring solve the puzzle at all" rather than "is it unique" — the
-// difference between finding a solution and proving no others exist.
-export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000, stopAtFirst = false }) {
+// NODE_CAP was hit before the search finished.
+export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000 }) {
   let nodes = 0
   let solutions = 0
   let capped = false
-  let done = false
   function pickMRV () {
     let best = null; let bs = Infinity
     for (const c of interior) { const s = state.cand.get(c).size; if (s > 1 && s < bs) { bs = s; best = c } }
     return best
   }
   function dfs () {
-    if (done || capped || nodes > nodeCap) { if (!done) capped = true; return }
+    if (capped || nodes > nodeCap) { capped = true; return }
     const cell = pickMRV()
-    if (cell === null) { if (validLeaf()) { solutions++; if (stopAtFirst) done = true } return }
+    if (cell === null) { if (validLeaf()) solutions++; return }
     for (const v of [...state.cand.get(cell)].sort((a, b) => a - b)) {
       nodes++
       const saved = state.clone()
@@ -195,7 +186,7 @@ export function search (state, { interior, comps, alldiffGroups, floorGroup, ext
       if (!dead(state, alldiffGroups)) dfs()
       state.cand = saved
       state.stopped = false
-      if (capped || done) return
+      if (capped) return
     }
   }
   if (!dead(state, alldiffGroups)) dfs()

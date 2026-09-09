@@ -24,7 +24,7 @@ const { rnd, pick } = makeRng()
 
 installGlobals(0, 9)
 
-const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate', 'seedWalk'])
+const mod = load('IsofillComponent.js', ['setParams', 'update', 'validate'])
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -257,70 +257,6 @@ const flankKept = ALL.filter(d => d !== 1)
 const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
   !flank.getCandidates(2).has(1) && flank.getCandidates(11).has(1)
 
-// ---- Differential: the seed walk never holds a cell the old reach walk
-// missed. The reference below is that removed walk -- BFS from every placed
-// cell of the digit, at most (size - placed) steps through the cells that
-// allow it. The seed walk starts from one placed cell instead and charges
-// only open cells, so it is a subset, and on some states a proper one ----
-function nbrs10 (i) {
-  const out = []
-  if (i % N > 0) out.push(i - 1)
-  if (i % N < N - 1) out.push(i + 1)
-  if (i >= N) out.push(i - N)
-  if (i + N < N * N) out.push(i + N)
-  return out
-}
-
-function oldWalk (placed, allowed) {
-  const seen = new Uint8Array(N * N)
-  let frontier = []
-  for (const i of placed) { seen[i] = 1; frontier.push(i) }
-  for (let step = 0; step < N - placed.length && frontier.length; step++) {
-    const next = []
-    for (const f of frontier) for (const n of nbrs10(f)) if (allowed[n] && !seen[n]) { seen[n] = 1; next.push(n) }
-    frontier = next
-  }
-  return seen
-}
-
-const diffInst = {}
-mod.setParams(diffInst, CELLS)
-let diffWalks = 0
-let diffSmaller = 0
-let diffEscaped = 0
-let diffMissized = 0
-for (const truth of [rows, bent, hard, shipped]) {
-  for (let iter = 0; iter < FUZZ; iter++) {
-    const p = makePuzzle(truth, seeder)
-    const value = new Int8Array(N * N).fill(-1)
-    const allowedOf = ALL.map(() => new Uint8Array(N * N))
-    const placedOf = ALL.map(() => [])
-    for (const c of CELLS) {
-      const cand = [...p.getCandidates(c)]
-      if (cand.length === 1) { value[c] = cand[0]; allowedOf[cand[0]][c] = 1; placedOf[cand[0]].push(c) } else for (const d of cand) allowedOf[d][c] = 1
-    }
-    for (const d of ALL) {
-      const placed = placedOf[d].sort((a, b) => a - b)
-      if (placed.length === 0) continue
-      const walk = mod.seedWalk(diffInst, placed[0], N - placed.length, allowedOf[d], value, d)
-      const old = oldWalk(placed, allowedOf[d])
-      let newSize = 0
-      let oldSize = 0
-      for (const c of CELLS) {
-        if (old[c]) oldSize++
-        if (diffInst.mask[c] !== walk.stamp) continue
-        newSize++
-        if (!old[c]) diffEscaped++
-      }
-      if (newSize !== walk.size) diffMissized++ // the reported size must match the mask
-      diffWalks++
-      if (newSize < oldSize) diffSmaller++
-    }
-  }
-}
-const diffOk = diffEscaped === 0 && diffMissized === 0 && diffSmaller > 0
-console.log('isofill seed-walk differential:', diffWalks, 'walks,', diffEscaped, 'escaped the old walk,', diffMissized, 'with a size that misses the mask,', diffSmaller, 'strictly smaller')
-
 // ---- One pass: update reads each cell's candidates at most once per call ----
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
@@ -379,8 +315,8 @@ console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
 
 console.log('validate:', validateOk)
 console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| differential:', diffOk, '| cut starve fired:', cutStarveOk, '| cut strand fired:', cutStrandOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| cut starve fired:', cutStarveOk, '| cut strand fired:', cutStrandOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && diffOk && cutStarveOk && cutStrandOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && cutStarveOk && cutStrandOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

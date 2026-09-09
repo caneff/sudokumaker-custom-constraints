@@ -306,8 +306,8 @@ component file's contents. Enter the givens.
 
 ## Generator
 
-`generate.py` (OR-Tools CP-SAT), grown from the research prototype
-(`docs/research/fillomino_cpsat.py`, #280/#288):
+`generate.py` (OR-Tools CP-SAT), grown from the research prototype whose model
+`docs/research/fillomino-cpsat.md` records (#280/#288):
 
 ```
 uv run --with ortools examples/fillomino/generate.py               # self-check

@@ -220,7 +220,7 @@ def unique(post_clue, lines, clue, active, givens, n, bh, bw):
     return s2.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
-def generate(spec, n, bh, bw, seeds, hide_key=None, paths=False):
+def generate(spec, n, bh, bw, seeds, paths=False):
     """Search `seeds` for the leanest board and return the chosen one.
 
     `paths` builds the local board: bent paths in place of the straight frame
@@ -263,8 +263,6 @@ def generate(spec, n, bh, bw, seeds, hide_key=None, paths=False):
     rng = random.Random(seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
     rng.shuffle(order)
-    if hide_key:  # stable: ties keep the shuffled order
-        order.sort(key=lambda k: hide_key(clue[k]))
     for k in order:
         active.discard(k)
         if not unique(spec.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw):

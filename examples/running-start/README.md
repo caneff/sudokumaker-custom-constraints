@@ -58,7 +58,6 @@ deleted before publishing.
 - `RunningStartPairComponent.js` — couples two clues on opposite ends of one
   line through `A + B <= n + 1`.
 - `soundness-harness.mjs` — Node soundness test (see below).
-- `generate.py` — fresh grid, derived clues, uniqueness proof (OR-Tools).
 - `PUZZLE_LINK.txt` — the built SudokuMaker link for the seed-104 grid. Open it
   to play the example.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` from `main-global.js` and the
@@ -158,12 +157,14 @@ node soundness-harness.mjs
 # -> line + pair components, 0 violations, "PASS"
 ```
 
-Generation and uniqueness (needs Python with ortools):
+Generation and uniqueness (needs Python with ortools): `build_size.py`, whose
+commands are in Files above. It carves a fresh board and proves it unique on
+the way, so running it is how you see the proof — and it overwrites the
+committed pair for the size you ask for, so run it only on a size you mean to
+regenerate.
 
-```
-uv run --with ortools generate.py gen_fresh.json
-# -> per-seed given counts, the chosen seed, and the file written
-```
+The committed links themselves are checked by `just check`: `build_link.py`'s
+byte-equal rebuild and `_shared/check_layout.py`'s layout pass.
 
 `soundness-harness.mjs` runs every pool twice, once per reading of
 `ALLOW_TIES`, editing the constant in the source the way an author edits the
