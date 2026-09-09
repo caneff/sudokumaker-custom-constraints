@@ -75,3 +75,43 @@ def key_grid(grid):
         "".join(str(g[r, c]) for r, c in CELLS)
         for g, _ in images(grid, dict.fromkeys(CELLS, False))
     )
+
+
+def _place_cells(place):
+    a, b, r0, c0 = place
+    return [(r0 + i, c0 + j) for i in range(a) for j in range(b)]
+
+
+def _bbox(cells):
+    rs = [r for r, _ in cells]
+    cs = [c for _, c in cells]
+    return (max(rs) - min(rs) + 1, max(cs) - min(cs) + 1, min(rs), min(cs))
+
+
+def place_images(place):
+    """The eight dihedral images of one rectangle placement.
+
+    A rectangle stays a rectangle under the group, so the image is read back
+    off the bounding box of the moved cells -- no per-symmetry index algebra
+    to get wrong.
+    """
+    out = []
+    for flipped in (False, True):
+        send = _flip if flipped else (lambda p: p)
+        for _ in range(4):
+            prev = send
+            out.append(_bbox([prev(p) for p in _place_cells(place)]))
+            send = (lambda f: lambda p: _rotate(f(p)))(prev)
+    return out
+
+
+def geometry_key(places):
+    """The canonical key of a set of rectangle placements.
+
+    Renbanana legality is invariant under the group, so two geometries in the
+    same orbit are the same question: one has a legal grid exactly when the
+    other does, and the grids correspond image for image. Solving one
+    representative per orbit is therefore sound, not a sample.
+    """
+    per = [place_images(p) for p in places]
+    return min(tuple(sorted(img[i] for img in per)) for i in range(8))

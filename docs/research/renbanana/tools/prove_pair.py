@@ -47,6 +47,7 @@ from ortools.sat.python import cp_model as cp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import canon
 import count_circled_pairs as ccp
 import renbanana_cpsat as rc
 import renbanana_verify as rv
@@ -363,6 +364,13 @@ def main():
         "unknown are attempted, so a re-seeded pass never re-proves a "
         "settled one.",
     )
+    ap.add_argument(
+        "--canonical",
+        action="store_true",
+        help="one geometry per dihedral orbit. Legality is invariant under "
+        "the group, so the seven others in an orbit have a legal grid exactly "
+        "when the representative does -- 2,482 geometries become 320.",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -395,6 +403,15 @@ def main():
             f"{a.only_unknown_from}; {len(feasible)} left",
             flush=True,
         )
+    if a.canonical:
+        by_orbit = {}
+        for p in feasible:
+            by_orbit.setdefault(canon.geometry_key([tuple(x) for x in p]), p)
+        print(
+            f"{len(feasible)} geometries collapse to {len(by_orbit)} orbits",
+            flush=True,
+        )
+        feasible = list(by_orbit.values())
     if a.limit:
         feasible = feasible[: a.limit]
     print(f"{len(feasible)} geometries a sudoku can carry; proving each", flush=True)
