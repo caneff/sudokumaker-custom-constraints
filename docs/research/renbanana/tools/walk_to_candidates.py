@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import build_lineup
 import canon
 import renbanana_cpsat as rc
 import renbanana_verify as rv
@@ -142,6 +143,10 @@ def main():
         )
         + "\n"
     )
+    # The lineup is how the pool gets looked at, so it is rebuilt here rather
+    # than left for someone to remember: every round that adds a grid also
+    # refreshes the page.
+    build_lineup.main()
     print(
         f"kept {kept} of {len(rows)} walk rows ({same} the same puzzle, "
         f"{rejected} too close, {illegal} illegal) into {a.out}"

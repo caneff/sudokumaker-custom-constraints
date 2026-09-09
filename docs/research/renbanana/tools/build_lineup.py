@@ -22,6 +22,8 @@ POOLS = {
     "candidates-circ2": "circled 2x2 + 2x3",
     "candidates-walk": "walked",
     "candidates-walk2": "walked twice",
+    "candidates-circled": "circled climb",
+    "candidates-small": "small bananas",
 }
 
 sys.path.insert(0, str(HERE))
