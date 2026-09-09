@@ -56,6 +56,32 @@ def shading_rows(is_choc):
     return ["".join("C" if is_choc[r, c] else "b" for c in range(N)) for r in range(N)]
 
 
+def circled_targets(grid, is_choc, want):
+    """How many chocolate rectangles of a wanted shape carry their own circle.
+
+    A circle holds its group's size, so a 2x3 is circled when one of its six
+    cells holds a 6. This is the quantity the targeted walk climbs: diversity
+    alone lets a step throw a circled 2x3 away for nothing, which is why 55
+    walked grids produced none.
+    """
+    n = 0
+    for g in rv.components(is_choc, True):
+        if tuple(sorted(rv.shape(g))) in want and any(grid[p] == len(g) for p in g):
+            n += 1
+    return n
+
+
+def parse_want(text):
+    out = set()
+    for bit in text.split(","):
+        bit = bit.strip()
+        if not bit:
+            continue
+        a, b = (int(x) for x in bit.lower().split("x"))
+        out.add(tuple(sorted((a, b))))
+    return out
+
+
 def shapes_of(is_choc):
     return sorted("x".join(map(str, rv.shape(g))) for g in rv.components(is_choc, True))
 
@@ -72,6 +98,17 @@ def main():
         type=float,
         default=60.0,
         help="seconds between re-reads of the shared key set",
+    )
+    ap.add_argument(
+        "--want",
+        default="",
+        help="shapes whose circled count the walk climbs, e.g. 2x2,2x3",
+    )
+    ap.add_argument(
+        "--floor",
+        type=int,
+        default=0,
+        help="record only steps holding at least this many circled wanted shapes",
     )
     ap.add_argument(
         "--patience",
@@ -129,8 +166,11 @@ def main():
                     seen.update(found_keys)
                     legal.update(found_keys)
 
+    want = parse_want(a.want)
+    score_here = circled_targets(origin, origin_shading, want) if want else 0
+
     here = origin
-    found = tries = skipped = dull = kicks = 0
+    found = tries = skipped = dull = kicks = downhill = 0
     stuck = 0
     deadline = time.monotonic() + a.budget
     next_refresh = time.monotonic() + a.refresh
@@ -174,15 +214,28 @@ def main():
         if bad:
             print(f"{name}: REJECTED an illegal shading: {bad[0]}", flush=True)
             continue
+        # Climb, when there is something to climb. A move that loses a circled
+        # wanted shape is a step backwards, and the walk refuses it rather than
+        # drifting off the feature it was sent to find; equal scores are still
+        # taken, so it can cross a plateau.
+        score_new = circled_targets(candidate, is_choc, want) if want else 0
+        if want and score_new < score_here:
+            downhill += 1
+            continue
+
         # Move first, record second. Stepping onto a neighbour that is merely
         # a recolour keeps the walk connected -- it may be the only bridge to
         # somewhere new -- but there is no reason to write it down.
         here = candidate
+        score_here = score_new
         legal.add(k)
         with mine_legal.open("a") as f:
             f.write(k + "\n")
         rows_new = shading_rows(is_choc)
         shapes_new = shapes_of(is_choc)
+        if score_new < a.floor:
+            dull += 1
+            continue
         if not all(
             hamming_rows(rows_new, s) >= MIN_DISTANCE or shapes_new != sh
             for s, sh in known
@@ -201,20 +254,23 @@ def main():
             "grid_distance_from_origin": hamming(candidate, origin),
             "shading_distance_from_origin": hamming(is_choc, origin_shading),
             "chocolate": sum(is_choc.values()),
+            "circled_wanted": score_new,
         }
         with log.open("a") as f:
             f.write(json.dumps(row) + "\n")
         print(
             f"{name}: step {found} after {tries} tries — "
             f"grid {row['grid_distance_from_origin']} cells from origin, "
-            f"shading {row['shading_distance_from_origin']}",
+            f"shading {row['shading_distance_from_origin']}"
+            + (f", circled wanted {score_new}" if want else ""),
             flush=True,
         )
 
     print(
         f"{name}: DONE {found} recorded in {tries} tries, "
         f"{skipped} skipped as already tested, {dull} stepped through as "
-        f"too close, {kicks} kicks (pool held {held})",
+        f"too close, {downhill} refused as downhill, {kicks} kicks "
+        f"(pool held {held})",
         flush=True,
     )
 
