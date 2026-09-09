@@ -271,9 +271,16 @@ def main():
             downhill += 1
             continue
 
-        # Move first, record second. Stepping onto a neighbour that is merely
-        # a recolour keeps the walk connected -- it may be the only bridge to
-        # somewhere new -- but there is no reason to write it down.
+        # Every legal shading gets written, without exception.
+        #
+        # This used to filter first and write second, to keep the file free of
+        # rows the converter would discard anyway. That threw away 107 legal
+        # grids across one overnight run and left nothing on disk to show for
+        # 22,452 solves. The trade was backwards: a line of JSONL is free and
+        # can be re-judged forever, a solve costs seconds and cannot be
+        # recovered. Whether a grid is worth keeping is the converter's
+        # decision, made once, downstream, where the threshold can change
+        # without re-running the search.
         here = candidate
         score_here = score_new
         legal.add(k)
@@ -281,20 +288,19 @@ def main():
             f.write(k + "\n")
         rows_new = shading_rows(is_choc)
         shapes_new = shapes_of(is_choc)
-        if circ_new < a.floor:
-            dull += 1
-            continue
-        if not all(
+        novel = circ_new >= a.floor and all(
             hamming_rows(rows_new, s) >= MIN_DISTANCE or shapes_new != sh
             for s, sh in known
-        ):
+        )
+        if novel:
+            known.append((rows_new, shapes_new))
+            found += 1
+        else:
             dull += 1
-            continue
-        known.append((rows_new, shapes_new))
-        found += 1
         row = {
             "source": str(a.source),
             "step": found,
+            "novel_when_found": novel,
             "tries": tries,
             "grid": rows_of(candidate),
             "shading": shading_rows(is_choc),
@@ -309,7 +315,8 @@ def main():
         with log.open("a") as f:
             f.write(json.dumps(row) + "\n")
         print(
-            f"{name}: step {found} after {tries} tries — "
+            f"{name}: {'step' if novel else 'kept (not novel)'} "
+            f"{found} after {tries} tries — "
             f"grid {row['grid_distance_from_origin']} cells from origin, "
             f"shading {row['shading_distance_from_origin']}"
             + f", circled {circ_new}, small bananas {row['small_bananas']}",
@@ -317,10 +324,10 @@ def main():
         )
 
     print(
-        f"{name}: DONE {found} recorded in {tries} tries, "
-        f"{skipped} skipped as already tested, {dull} stepped through as "
-        f"too close, {downhill} refused as downhill, {kicks} kicks "
-        f"(pool held {held})",
+        f"{name}: DONE {found + dull} legal shadings written "
+        f"({found} novel, {dull} not) in {tries} tries, "
+        f"{skipped} skipped as already tested, {downhill} refused as "
+        f"downhill, {kicks} kicks (pool held {held})",
         flush=True,
     )
 
