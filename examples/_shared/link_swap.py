@@ -12,11 +12,17 @@ from link_codec import decode_puzzle, encode_link
 
 
 def find_constraint(doc, constraint_name):
-    return next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == constraint_name
-    )
+    """The constraint `doc` ships under `constraint_name`.
+
+    Raises naming the constraint it could not find: a caller that reaches
+    through this -- `framebuild.refresh_frame_backends`, `frame_and_comment_only`
+    -- is asserting the board carries it, and a bare StopIteration names
+    nothing to go and look for.
+    """
+    for c in doc["puzzle"]["constraints"]:
+        if c.get("definition", {}).get("name") == constraint_name:
+            return c
+    raise ValueError(f"the document has no constraint named {constraint_name!r}")
 
 
 def blanked(doc, constraint_name):
@@ -60,12 +66,18 @@ def _comparable_ink(lines):
         return lines
 
 
-def frame_and_comment_only(doc, constraint_name):
+def frame_and_comment_only(doc, constraint_name, also_blank=()):
     """`frame_only`, plus the puzzle comment cleared and every decoration
     layer reduced to the ink it draws, so two variants that differ only in
     code, input, comment or how the decoration is drawn compare equal -- the
     same board, givens and shown clues either way. The guard a
     rebuild-from-seed script puts on its output.
+
+    `also_blank` names further constraints whose code is generated rather than
+    board data -- the frame's own shared backends, which every framebuilt link
+    embeds. Without it, editing one of those files makes every committed link
+    unrebuildable: the guard reads the new code as a changed board and refuses
+    the only route that would refresh it.
 
     The decoration layers are derived from the board, and a rebuild redraws
     them: merging the per-cell squares into runs changes every polyline and
@@ -75,6 +87,10 @@ def frame_and_comment_only(doc, constraint_name):
     Layers whose ink has no name in segments are compared as authored --
     see `_comparable_ink`."""
     d = frame_only(doc, constraint_name)
+    for name in also_blank:
+        defn = find_constraint(d, name)["definition"]
+        defn["backend"]["code"] = ""
+        defn["components"] = []
     d["puzzle"]["comment"] = ""
     for c in d["puzzle"]["constraints"]:
         if c.get("type") == 2000:
@@ -114,13 +130,23 @@ def swap_component_code(doc, constraint_name, component_name, new_code):
     return replace_constraint_code(doc, constraint_name, components=components)
 
 
+def write_link(doc, out_path):
+    """Encode `doc`, assert the link decodes back to it, and write it.
+
+    Every path through this module writes its link here, and a builder that
+    encodes its own should assert the same thing: the encoder is lossy on a
+    document it cannot represent, and a link that does not round-trip is a
+    board nobody can rebuild from what is on disk."""
+    link = encode_link(doc)
+    assert decode_puzzle(link) == doc, "link does not round-trip"
+    pathlib.Path(out_path).write_text(link + "\n")
+    return link
+
+
 def check_and_write(base_doc, new_doc, constraint_name, out_path):
     """Assert new_doc differs from base_doc only in the named constraint's
     code, then encode, round-trip check, and write the link to out_path."""
     assert blanked(base_doc, constraint_name) == blanked(new_doc, constraint_name), (
         "frames differ beyond the constraint code"
     )
-    link = encode_link(new_doc)
-    assert decode_puzzle(link) == new_doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
+    return write_link(new_doc, out_path)

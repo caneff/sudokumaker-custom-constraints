@@ -5,9 +5,32 @@
 # the same regex (#292). stdlib `re` only, no ortools: `check_layout.py`
 # imports this module under `--with lzstring` alone.
 
+import functools
+import pathlib
 import re
 
 _NEW_COMPONENT = re.compile(r"new ([A-Za-z0-9_]+Component)\b")
+
+# The built-in list of record: the component tables in
+# docs/builtin-components.md, reproduced there from the SudokuMaker docs. The
+# app injects these classes into a backend's scope by name -- they are not
+# properties of `globalThis`, so nothing can enumerate them at run time and
+# this doc is the only list there is (#394).
+_BUILTINS_DOC = pathlib.Path(__file__).parents[2] / "docs" / "builtin-components.md"
+_DOC_COMPONENT = re.compile(r"`([A-Z][A-Za-z0-9_]*Component)[(`]")
+
+
+@functools.cache
+def builtin_components():
+    """The component classes SudokuMaker itself provides.
+
+    A backend that constructs one of these ships no component file for it --
+    the class lives in the app -- so the shipped-vs-registered checks in
+    `framebuild.check` and `check_layout.check_components` subtract this set
+    before they compare. Read from the doc rather than copied into code, so
+    the two cannot drift.
+    """
+    return set(_DOC_COMPONENT.findall(_BUILTINS_DOC.read_text()))
 
 
 def registered_components(backend_code):

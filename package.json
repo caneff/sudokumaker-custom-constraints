@@ -24,6 +24,9 @@
     ],
     "globals": [
       "SudokuDigitSet",
+      "PredefinedCandidatesComponent",
+      "HouseComponent",
+      "DifferentDigitsComponent",
       "helpers",
       "input",
       "puzzle",

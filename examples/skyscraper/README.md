@@ -240,11 +240,13 @@ tests, the soundness fuzz at zero violations, the never-weaker floor, and
 
 The three mechanical criteria, checked by `check_layout.py`:
 
-- **Opens clean** ✓ — 31 filled cells, every one of them a given; every other
-  cell is `{}`. Nothing is stored as an entered value.
-- **Ring not filled end to end** ✓ — 24 of 40 ring cells hold something: the 20
-  shown clues plus the 4 corner fillers. The 16 clues left blank are the
-  interactive ones, which is the point of the board.
+- **Opens clean** ✓ — 27 filled cells, every one of them a given; every other
+  cell is `{}`. Nothing is stored as an entered value. The four corners are
+  among the empty ones: `frame-corners.js` pins them, so no digit is drawn
+  there for a recipient to read.
+- **Ring not filled end to end** ✓ — 20 of 40 ring cells hold something, all of
+  them shown clues. The 16 clues left blank are the interactive ones, which is
+  the point of the board, and the 4 corners carry nothing.
 - **Rules prefix** ✓ — "Normal sudoku rules apply on the inner grid."
 
 1. **Uniqueness proven on the shipped board** ✓ — CP-SAT (`framebuild.unique`,
@@ -258,15 +260,17 @@ The three mechanical criteria, checked by `check_layout.py`:
    *this* board —
    the committed link still decodes to what `gen.json` records, and the
    solution it records really solves it. `just verify-skyscraper [size]` is the
-   same check by hand.
+   same check by hand. Every other link that runs the shared frame backends is
+   swept in the app the same way, and the verdicts are recorded in
+   `../../docs/frame-link-verdicts.md`.
 2. **Rules text stands alone** ✓ — "Normal sudoku rules apply on the inner
    grid. Skyscrapers (interactive outside clues): each outside cell holds a
    digit equal to the number of buildings visible along its line. A building is
    visible when it is taller than every building before it. Blank outside cells
    are interactive: read them off the line as you solve." A worked example
-   follows, both directions. No repo jargon, no component names. The second
-   paragraph — the note on the corner 1s — stays deliberately: it explains a
-   real feature of the board to whoever opens it.
+   follows, both directions. No repo jargon, no component names, and nothing
+   the recipient has to do to the board before playing it: the rules text is
+   one paragraph and describes only the puzzle.
 3. **Clue set curated** ✓, read against the carve the way the criterion says.
    `build_size.py` carves both the interior givens and the shown clues by
    greedy drop-one under CP-SAT, and the result is minimal — re-verified
@@ -304,12 +308,45 @@ To use the whole grid as an interactive-outside frame instead (see
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2700ms | 2300ms | 0.85 | noise |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2000ms | 1900ms | 0.95 | noise |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper 10x10 | timeout (no deduction, `MAXN = 9`) | 100ms (`MAXN = 16`) | — | KEEP |
+| 2026-09-09 | v2026.08.14-d47fc4b | skyscraper | 7500ms | 7400ms | 0.99 | KEEP |
+| 2026-09-09 | v2026.08.14-d47fc4b | skyscraper (T9 merge) | 8500ms | 8900ms | 1.05 | KEEP |
 
 The three 9x9 rows are the cap lift (`MAXN` 9 to 16) timed against the
 shipped board: the constant sizes three scratch arrays and nothing on the
 n ≤ 9 path, and the ratios land on both sides of 1, so the 9x9 is unchanged
 within the app's run-to-run swing. The 300ms row above is the earlier, easier
 board; `34991d9` shipped the harder one.
+
+The 2026-09-09 row is #394, which changes the board rather than a component:
+the corners stop being filler givens and a component pins them, and the
+interior's rows and columns become named `HouseComponent`s instead of
+transparent type-301 cages. No component code changed, so `just time` has no
+candidate to build and prints baseline-only rows:
+
+    | 2026-09-09 | v2026.08.14-d47fc4b | skyscraper | 7400ms | — | — | BASELINE |
+    | 2026-09-09 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | — | — | BASELINE |
+
+The ratio in the table is therefore the committed link *before* the change
+against the committed link *after* it -- five interleaved rounds, one rep
+each, cold, non-deterministic solve off: 7500ms to 7400ms, 0.99x. Both
+after-logical rows read 0ms, so that row places no constraint (the logic pass
+finishes this board). No deduction was added, so the bar is 1.1x on both rows.
+
+The second 2026-09-09 row is the same kind of measurement, for the merge of
+`origin/main` into #394: T9 (#359) put the shared frame reader on the solve
+path, spliced into every global backend, and every link was regenerated again.
+So the 0.99x above no longer stands as evidence and this replaces it. Committed
+link before the merge against committed link after it, same protocol: 8500ms to
+8900ms, **1.05x**, inside the 1.1x bar. The reader does cost a little -- the
+post link was slower in four of the five rounds, so the ordering is real and not
+swing -- and the whole-board medians moved from 7400ms to 8900ms between the two
+sessions, which is machine state, not the change: the pre-merge link measured
+8500ms in the same interleaved session that read the post-merge one at 8900ms.
+`just time skyscraper --ring-clues` still prints baseline-only rows here, for
+the same reason as above, and read 8900ms / 0ms.
+
+The rounds were interleaved, one rep per variant per round, for the reason
+`docs/real-app-timing.md` gives under "Protocol".
 
 The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10x10.json`, 2x5 boxes, 12 givens,
 20 shown clues) is the size that lifted the line cap from 9 to 16: with the

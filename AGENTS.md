@@ -52,6 +52,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`
 - Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`
+- What the live app says about every frame link → `docs/frame-link-verdicts.md`
 - Design reasoning → `docs/agents/design-reasoning.md`
 - Reading ISS (the closest public solver) → `docs/agents/iss.md`
 

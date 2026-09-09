@@ -114,6 +114,45 @@ link is never regenerated (#287, #289, #290, #291). Regenerate the stale
 link from its committed `gen_*.json` with the example's
 `build_size.py --rebuild <n>`.
 
+The frame's own two shared backends (`_shared/frame-rowcol.js`,
+`_shared/frame-corners.js`) go stale the same way, and every framebuilt link
+carries a copy of both: a real change to either means rebuilding all of them in
+that commit. `check_frame_backends` compares each embedded copy against the
+file in the tree and names the stale one; `check_houses` steps aside for a link
+that carries the row/column backend, rather than counting missing rows at it.
+Both backends need this sweep, and `frame-corners.js` needs it most: it
+registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
+component file and the component check above has no set to compare it against.
+
+The same check requires a frame link to declare `minDigit`/`maxDigit`. The app
+defaults a custom puzzle to 0..9 whatever the grid size, and both backends read
+`helpers.digits`: undeclared, a 9-cell interior line stops matching the digit
+count, so every row and column silently degrades from a named `HouseComponent`
+to a plain `DifferentDigitsComponent`, and the corner pin lands on 0. A range
+that is declared but does not span the interior line does the same thing, so
+the check compares `maxDigit - minDigit + 1` against the interior line length
+rather than only asking that both fields are there. `hit-counts` is the one
+example exempt: it runs `minDigit: 0` so a clue can read 0 and keeps 0 out of
+the interior with a look-and-say cage, so its lines are all-different by
+design.
+
+A `gen*.json` records the board, not the frame backends' code — those come from
+the tree at build time (`framebuild.refresh_frame_backends`), so a copy kept in
+a template is dead data that can only drift. `check_gen_frame_backends` requires
+the field to be empty.
+
+Two frame boards have no `gen_*.json` and so no `--rebuild`:
+`running-start/PUZZLE_LINK.txt`, rebuilt whole by its own `build_link.py` with
+no arguments, and `numbered-rooms/PUZZLE_LINK.txt`, which is hand-built and
+takes `build_link.py --refresh` (that also pins its digit range and rewrites its
+rules text — nothing else writes either; both values belong to that one board,
+so `--refresh` rewrites it alone and refuses `--board`). Both go through
+`framebuild.refresh_frame_backends`. numbered-rooms has three more hand-built
+links derived from `PUZZLE_LINK.txt`, so `build_original.py` and
+`build_clued.py` run after the refresh. After such a rebuild, re-check every link
+in the live app and record what it said:
+`docs/frame-link-verdicts.md` holds that sweep.
+
 ## Board naming
 
 - `gen.json` — the shipped board.

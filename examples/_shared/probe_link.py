@@ -25,9 +25,11 @@
 # searches.
 #
 # Why does `empty` keep the whole ring instead of "keep givens, empty the rest"?
-# Because a clue is not always a given. Numbered Rooms stores its 36 outside clues as
-# non-given cell VALUES in the ring, not as givens (only the 4 filler corners
-# are given). Empty every non-given cell and you delete the clues -- verified:
+# Because a clue is not always a given. Numbered Rooms stores its 36 outside
+# clues as non-given cell VALUES in the ring, not as givens -- and no ring cell
+# is a given at all: even the four corners, which belong to no line, are held
+# by a component rather than filled in (#394).
+# Empty every non-given cell and you delete the clues -- verified:
 # the app then reports the puzzle "not unique". The given flag does not separate
 # clue from solution here, so we separate them by position instead.
 

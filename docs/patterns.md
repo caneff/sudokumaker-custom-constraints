@@ -33,13 +33,34 @@ author builds a grid one ring larger than the puzzle (an 11×11 board around a
 - **Cosmetic layers** (`type: 2000` line drawings) hide the ring's cell borders
   so it reads as a margin, not extra cells: "White Lines", "Outside Cell
   Outlines", "Grid Outer Border".
-- **Corner cells** are often `given: true` with a filler value (e.g. `1`) so the
-  solver ignores them; they belong to no line.
-- **Conflict checking** for the ring: the puzzle adds hidden row/column cages
-  (`type: 301`) and a small JSON post-process constraint that tags them
-  `rowcol` and sets `norowcol`, so the app's duplicate checker treats ring
-  cells correctly. This needs a userscript at publish time; it is optional and
-  cosmetic for solving.
+- **Corner cells** belong to no line, no region and no cage, so nothing
+  reaches them: left free, the board is **not unique**. They are held down by
+  a component that pins them to one digit
+  (`examples/_shared/frame-corners.js`), not by a filler given -- a given
+  there is a digit the recipient reads off the board, which is what every
+  shipped link used to show in all four corners (#394).
+- **The interior's rows and columns have to be declared, and they enforce the
+  puzzle.** Not decoration, not optional: a region constraint gives BOXES
+  ONLY, so undeclared rows and columns are not houses at all, and the app
+  answers **not unique in 400 ms** where it answered unique in seconds (#394;
+  the same fact cost three tickets of quad-rank work, docs/gotchas.md #9).
+  `framebuild.py` declares them in `examples/_shared/frame-rowcol.js` as named
+  `HouseComponent`s -- `row 4`, `column 7` -- rather than as the transparent
+  `type: 301` cages it used to ship. Two reasons: a cage **cannot be named**
+  (the app hard-codes `the cage at <cell>`, the identical string for row 1 and
+  column 1), and the named houses cost nothing once their cell ids are coerced
+  with `| 0` (see `docs/puzzle-api.md`, `helpers.geometry`). A line shorter
+  than the digit range gets a `DifferentDigitsComponent` instead: Hit Counts
+  runs `minDigit: 0`, so "every digit exactly once" is false there.
+  `check_layout.check_houses` sweeps every committed link and accepts either
+  form.
+- **Conflict checking for the ring**, at publish time: the same file's
+  `postprocessJSON` sets `norowcol` -- a ring clue shares a physical row with
+  the interior, so SudokuPad's duplicate checker would read it as a repeat --
+  and pushes the same lines back as hidden `rowcol` cages, since the export
+  otherwise carries no line rule at all. **This is a Tampermonkey userscript
+  hook, not an app one**: the app has no `postprocessJSON` and never calls it,
+  which is why the name appears in none of its bundles.
 
 **A cell holds a value only when it is a given.** A shown clue is a ring cell
 with `given: true` and its value; a hidden (interactive) clue is an **empty**
@@ -82,7 +103,7 @@ a bare `puzzle["maxDigit"]` raises on a link that is otherwise fine.
 | `0` | Standard sudoku (rows, columns, boxes). |
 | `1` | Regions map (`regions`: one region id per cell, `-1` = none). |
 | `101` | Cell decoration (circles); `cells` + `style`. Purely cosmetic. |
-| `301` | Named cages / houses (used here as hidden `rowcol` helpers). |
+| `301` | Named cages / houses. Frame boards no longer use these: a cage cannot be named, so their interior lines are `HouseComponent`s (#394). |
 | `304` | Named cage rule; `name` + `cages`. Hit Counts ships one as "Disallow 0 in the main grid". |
 | `1000` | **Custom constraint** — `definition` (main code + components), `input.groups`. |
 | `2000` | Cosmetic line drawings; `lines` (arrays of `{x, y}` points) + `style`. |

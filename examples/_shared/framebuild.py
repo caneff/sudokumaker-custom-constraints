@@ -29,8 +29,8 @@ from dataclasses import dataclass, replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
-from component_scan import registered_components
-from frame import cosmetics, ring_cell
+from component_scan import builtin_components, registered_components
+from frame import corner_cells, cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
 from minify import minify_file
 
@@ -397,6 +397,41 @@ def frame_groups(n, lines):
     ]
 
 
+# The frame's own two backends, shared by every example: the file in _shared
+# that holds each one, and the constraint name it ships under. `build_doc`
+# embeds them; `rebuild`'s guard reads the names off here, because their code
+# is generated from the working tree and is not part of the board.
+FRAME_BACKENDS = (
+    ("frame-rowcol", "Frame Rows and Columns"),
+    ("frame-corners", "Frame Corners"),
+)
+
+
+def frame_backend_code():
+    """The frame's own two backends as `(constraint name, minified code)`,
+    read from the working tree."""
+    shared = pathlib.Path(__file__).parent
+    return [
+        (title, minify_file(shared / f"{name}.js")) for name, title in FRAME_BACKENDS
+    ]
+
+
+def refresh_frame_backends(doc):
+    """Point a decoded document's frame backends at the code in the tree.
+
+    A board this module carved is rebuilt whole, so it picks the current code
+    up for free. A hand-built frame board is not: its own script injects only
+    that example's constraint, and the shared backends would keep whatever
+    copy the board was first encoded with -- which `check_layout.check_houses`
+    then reads as a link that declares no interior lines at all. Raises when a
+    backend is missing, so a board that should carry them cannot quietly skip
+    the refresh.
+    """
+    for title, code in frame_backend_code():
+        find_constraint(doc, title)["definition"]["backend"]["code"] = code
+    return doc
+
+
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -417,9 +452,10 @@ def build_doc(spec, board, local=False):
     # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
     cells = [{"value": 1} for _ in range(W * W)]
 
-    # corners: filler givens, belong to no line
-    for r, c in [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]:
-        cells[idx(r, c)] = {"given": True, "value": 1}
+    # corners: empty, and belong to no line. A given here is a digit the
+    # recipient reads off the board, so the frame backend pins them instead.
+    for r, c in corner_cells(W):
+        cells[idx(r, c)] = {}
 
     # interior: a given carries its value; every other cell is EMPTY. The
     # solution is never stored — a non-given value ships as an entered digit.
@@ -448,15 +484,6 @@ def build_doc(spec, board, local=False):
         for c in range(n):
             regions[idx(r + 1, c + 1)] = (r // bh) * (n // bw) + (c // bw)
 
-    # transparent row/column cages over the interior (hidden rowcol helpers)
-    row_cages = [
-        {"cells": [idx(r + 1, c + 1) for c in range(n)], "value": 0} for r in range(n)
-    ]
-    col_cages = [
-        {"cells": [idx(r + 1, c + 1) for r in range(n)], "value": 0} for c in range(n)
-    ]
-    cage_style = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
-
     # Global: no drawn groups, so main-global.js builds all 4n frame lines
     # itself from the grid at solve time. Local: each line ships as a group
     # whose cells are the clue then the line inward, which is the order
@@ -473,17 +500,20 @@ def build_doc(spec, board, local=False):
         for f in component_files(spec, local)
     ]
 
-    postproc_code = (
-        "function postprocessJSON(json) {\n"
-        "    json.metadata.norowcol = true;\n"
-        '    json.cages.forEach(cage => cage.hidden ? cage.type = "rowcol" : null)\n'
-        "}\n"
-    )
+    # The frame's own two backends, shared by every example (their rules live
+    # in the files' own headers):
+    #   frame-rowcol   declares the interior's rows and columns as named
+    #                  houses, and hands SudokuPad the same lines at publish
+    #                  time. A region constraint gives BOXES ONLY, so without
+    #                  this the board is not the puzzle it looks like
+    #                  (docs/gotchas.md #9).
+    #   frame-corners  pins the four corner cells, which no line, region or
+    #                  house reaches; without it the app calls the board not
+    #                  unique.
+    frame_backends = frame_backend_code()
 
     constraints = [
         {"type": 1, "regions": regions},
-        {"name": "Rows", "type": 301, "cages": row_cages, "style": cage_style},
-        {"name": "Columns", "type": 301, "cages": col_cages, "style": cage_style},
         {"type": 0},
         *(spec.extra_cages(interior) if spec.extra_cages else []),
         {
@@ -498,17 +528,20 @@ def build_doc(spec, board, local=False):
             "input": constraint_input,
             "style": {},
         },
-        {
-            "type": 1000,
-            "definition": {
-                "name": "JSON Postproc",
-                "input": [],
-                "backend": {"type": "code", "code": postproc_code},
-                "components": [],
-            },
-            "input": {},
-            "style": {},
-        },
+        *(
+            {
+                "type": 1000,
+                "definition": {
+                    "name": name,
+                    "input": [],
+                    "backend": {"type": "code", "code": code},
+                    "components": [],
+                },
+                "input": {},
+                "style": {},
+            }
+            for name, code in frame_backends
+        ),
         *cosmetics(W, cells),
     ]
 
@@ -581,8 +614,10 @@ def check(spec, link, doc, board, local=False):
     # one is dead weight the recipient still reads as part of the rule --
     # #287, #289, #290, #291). `registered_components` is a lexical check: it
     # reads `new <Name>Component` off the backend source, so a class reached
-    # through an alias, or named some other way, is invisible to it.
-    registered = registered_components(backend)
+    # through an alias, or named some other way, is invisible to it. The
+    # built-ins are subtracted: SudokuMaker provides those classes, so a
+    # backend that constructs one ships no component file for it.
+    registered = registered_components(backend) - builtin_components()
     unshipped = sorted(registered - set(names))
     assert not unshipped, (
         f"the backend registers components the link omits: {unshipped}"
@@ -736,9 +771,13 @@ def rebuild(spec, n, local=False):
             "board's -- a rebuild from the recorded seed must not move the "
             "geometry"
         )
+    # The frame backends are blanked alongside the example's own constraint:
+    # all three carry code generated from the working tree, and a rebuild
+    # exists precisely to refresh it.
+    frame_names = [title for _, title in FRAME_BACKENDS]
     assert frame_and_comment_only(
-        before, spec.constraint_name
-    ) == frame_and_comment_only(doc, spec.constraint_name), (
+        before, spec.constraint_name, frame_names
+    ) == frame_and_comment_only(doc, spec.constraint_name, frame_names), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "
         "seed must only change the constraint code and comment"
     )

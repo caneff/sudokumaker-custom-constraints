@@ -37,6 +37,7 @@ import { dirname, join } from 'path'
 import { existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
+import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -144,18 +145,10 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 // groups and checks the cell ids alone. `file` and `note` only name the run in
 // an assertion message.
 function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '' } = {}) {
-  // The component constructors the backend calls, recorded rather than run.
-  const ctorNames = [...new Set([...src.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
-  const ctors = ctorNames.map(n => {
-    const Recorder = function (...args) { this.args = args }
-    Object.defineProperty(Recorder, 'name', { value: n })
-    return Recorder
-  })
   const p = mockPuzzle(W, H)
-  // The app runs a backend segment as a bare script with these names in scope;
-  // a Function body is the closest Node equivalent.
-  const fn = new Function('input', 'puzzle', 'helpers', ...ctorNames, src) // eslint-disable-line no-new-func
-  fn(groups ? { groups } : undefined, p, helpers, ...ctors)
+  // The app runs a backend segment as a bare script with `input` in scope;
+  // backend-runner.mjs is that setup, shared with the frame backends' own tests.
+  runBackend(src, { puzzle: p, helpers, input: groups ? { groups } : undefined })
 
   const where = `${name}/${file} on ${W}x${H}${note}`
   assert.ok(p.registered.length > 0, `${where}: registered nothing`)

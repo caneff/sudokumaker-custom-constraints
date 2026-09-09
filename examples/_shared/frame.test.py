@@ -71,8 +71,13 @@ def _square(x0, y0, x1, y1):
 
 
 def _cells_with_given_ring(W, shown):
-    """A board's cell list: the four corner fillers are always givens, and
-    `shown` names the ring keys whose clue cell is a shown given."""
+    """A board's cell list: every corner is a given, and `shown` names the ring
+    keys whose clue cell is a shown given.
+
+    `framebuild` leaves the corners empty (#394), so this is a board it never
+    builds -- deliberately, because the guard under test is what stops a
+    corner given being drawn as a clue, and only a corner given exercises it.
+    """
     cells = [{} for _ in range(W * W)]
     for r, c in [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]:
         cells[r * W + c] = {"given": True, "value": 1}
@@ -125,14 +130,14 @@ def test_outlines_box_the_shown_clue_cells_and_nothing_else():
         assert _unit_segments(got) == want, f"W={W}: the boxed cells changed"
 
 
-def test_outlines_never_box_a_corner_filler():
-    # A corner sits on both edges, belongs to no line, and its "1" is solver
-    # support rather than a clue. It is a given on every board, so a merge
-    # that boxed givens blindly would draw four boxes here.
+def test_outlines_never_box_a_corner():
+    # A corner sits on both edges and belongs to no line, so a digit there is
+    # never a clue and never gets a box. Fed four corner givens, a layer that
+    # boxed givens blindly would draw four boxes here.
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
         got = _layer(W, cells, "Outside Cell Outlines")["lines"]
-        assert _unit_segments(got) == set(), f"W={W}: a corner filler got boxed"
+        assert _unit_segments(got) == set(), f"W={W}: a corner got boxed"
 
 
 def test_adjacent_boxed_cells_keep_the_border_between_them():
@@ -196,7 +201,7 @@ if __name__ == "__main__":
     test_white_lines_still_cover_every_ring_cell_border()
     test_white_lines_cost_far_fewer_points_than_a_square_per_cell()
     test_outlines_box_the_shown_clue_cells_and_nothing_else()
-    test_outlines_never_box_a_corner_filler()
+    test_outlines_never_box_a_corner()
     test_adjacent_boxed_cells_keep_the_border_between_them()
     test_the_outer_border_is_the_interior_square()
     test_every_layer_keeps_its_name_type_and_style()

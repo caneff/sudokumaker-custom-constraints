@@ -43,6 +43,16 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   lines drawn as groups (`build_size.py --local`, #268).
 - **Record.** Paste both printed rows into the example's README, under a
   `## Timing` section.
+- **Link vs link, when no component changed.** A change to the *board* --
+  regenerated links, a different constraint shape -- leaves `just time` with
+  no candidate to build, so it prints baseline-only rows and no ratio. Time
+  the committed link before the change against the committed link after it,
+  and say in the README that the row is that comparison rather than a
+  `just time` row.
+- **Interleave a comparison, one rep per variant per round.** Never run each
+  variant as a block. Under machine load the blocks drifted far enough to
+  reverse their own ordering twice, and the same pair read 1.00x/1.22x one way
+  and 1.00x/0.73x the other (#394).
 
 The rest of this doc is the mechanics behind that command: how the driver
 reads the app's readout, how to strip a link so the solver searches, and how

@@ -26,7 +26,9 @@ HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
 
 # Row-major digits for all 121 cells (11x11: the 9x9 interior plus its outer
-# clue ring), including the 4 unused filler corners.
+# clue ring). The 4 corners belong to no line and hold no puzzle digit -- a
+# component pins them -- so their characters here are placeholders that no
+# check reads.
 SOLUTION = (
     "151392163819758261943913419785626469253417891485197236112168537943593742"
     "6815245697423811117368542915824319657413777112981"
@@ -44,15 +46,22 @@ def verify_solution(doc, values):
             )
 
     regions = next(c for c in p["constraints"] if c["type"] == 1)["regions"]
-    rows = next(c for c in p["constraints"] if c.get("name") == "Rows")["cages"]
-    cols = next(c for c in p["constraints"] if c.get("name") == "Columns")["cages"]
     boxes = {}
     for i, r in enumerate(regions):
         if r >= 0:
             boxes.setdefault(r, []).append(i)
-    for group in (
-        [c["cells"] for c in rows] + [c["cells"] for c in cols] + list(boxes.values())
-    ):
+    # The interior's rows and columns are named houses the frame backend
+    # builds from the board's own geometry, not cages in the document (#394),
+    # so read them off the region map the same way that backend reads them off
+    # the grid: an interior cell is one the region map places in a region.
+    W = p["width"]
+    inside = [i for i, r in enumerate(regions) if r >= 0]
+    rows = {}
+    cols = {}
+    for i in inside:
+        rows.setdefault(i // W, []).append(i)
+        cols.setdefault(i % W, []).append(i)
+    for group in list(rows.values()) + list(cols.values()) + list(boxes.values()):
         digits = [values[i] for i in group]
         assert len(set(digits)) == len(digits), f"repeated digit in {group}: {digits}"
 

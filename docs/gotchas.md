@@ -83,14 +83,18 @@ Decode with `decompressFromEncodedURIComponent`. See `patterns.md`. **[verified]
 A board built with `{"type": 1, "regions": [...]}` plus `{"type": 0}` enforces
 **boxes and given digits only**. Rows and columns are not implied, and nothing
 in the app says so: the solver runs, reports times, and counts solutions on a
-puzzle that is not the one you meant. Add them explicitly, the way
-`framebuild.py` does:
+puzzle that is not the one you meant. Add them explicitly. `framebuild.py` registers one named component per
+interior line (`examples/_shared/frame-rowcol.js`), which is how a line gets a
+name the app can use in an explanation -- a `type: 301` cage cannot be named,
+the app hard-codes `the cage at <cell>` and gives row 1 and column 1 the same
+string:
 
-```python
-CAGE_STYLE = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
-{"name": "Rows",    "type": 301, "cages": [{"cells": row_cells(r), "value": 0} ...], "style": CAGE_STYLE},
-{"name": "Columns", "type": 301, "cages": [{"cells": col_cells(c), "value": 0} ...], "style": CAGE_STYLE},
+```js
+new HouseComponent(`row ${i + 1}`, cells.map(c => c | 0), 'Row')
 ```
+
+Read the next gotcha before copying that line: the `| 0` is load-bearing.
+A cage still works, and `check_layout.check_houses` accepts either form.
 
 This cost three tickets of quad-rank work (#324, #328, #335). Every board went
 to the app box-only, so the app searched a wildly under-constrained puzzle: a
@@ -106,3 +110,25 @@ not cover, decode the link and count solutions independently, or tap the solver
 worker's messages and read the grid the app calls a solution — a duplicate
 digit in a row is the tell. Both tools are on branch `proto/quad-rank-335`
 (`proto/ground_truth.mjs`, `proto/app_solutions.mjs`). **[verified]**
+
+## 10. Cell ids from the geometry helpers need `| 0`, like `getCellAt`
+
+Gotcha-adjacent to #276's `getCellAt` rule, and it caught us again.
+`helpers.geometry.getAllRows()` / `getAllColumns()` yield ids that are **not
+plain integers**, and the app's solver runs slower on them until they are.
+Nothing about the value looks wrong from JS: `Array.isArray` on the line is
+true, `typeof` on a cell is `"number"`, and the ids compare `===` to the ones
+in the puzzle JSON.
+
+Measured on the shipped Skyscrapers 9x9 (#394), four interleaved rounds, cold,
+non-deterministic solve off: eighteen `HouseComponent`s built straight from
+`getAllRows()` ran **1.18x** the `type: 301` cages they replaced; the identical
+construction with `.map(c => c | 0)` ran **0.97x**. One `| 0` was the whole
+difference. A control of eighteen registered components whose `update` returns
+immediately cost 1.02x, so it is neither the registration nor the class.
+
+**Also:** those two are **generators**, not arrays -- `[...getAllRows()]` to
+index or slice them, and call the helper again rather than reusing a spent
+generator. Each line it yields covers the whole board, ring included.
+`docs/puzzle-api.md` carries the full note. **[verified]** (live probe
+2026-09-09)

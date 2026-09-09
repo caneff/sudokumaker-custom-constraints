@@ -5,7 +5,7 @@
 #
 # Three layers, drawn in this order:
 #   White Lines      paint over every ring cell so the ring reads as a margin.
-#   Outside Outlines box exactly the given clue cells; not the corner fillers.
+#   Outside Outlines box exactly the given clue cells; never a corner.
 #   Grid Outer Border the black square around the interior, drawn on top.
 
 import itertools
@@ -23,6 +23,22 @@ SIDES = {
 def ring_cell(key, W):
     """The frame (row, column) of a ring key's clue cell, on a W-wide board."""
     return SIDES[key[0]](int(key[1:]), W)
+
+
+def corner_cells(W):
+    """The four (row, column) corners of a W-wide frame board.
+
+    A corner sits on two edges of the ring, belongs to no clue line and to no
+    region, so it is the one cell of the board no rule reaches. Both the
+    builder and the cosmetic layers have to know which cells those are.
+
+    This is one of three copies of that identity and the only Python one. The
+    app runs each backend as its own segment with nothing shared between them,
+    so `frame-corners.js` (which pins them) and `frame-rowcol.js` (which hides
+    them from the export) each restate it, as `[0, W - 1, W * (H - 1),
+    W * H - 1]` in cell ids. Change one, change all three.
+    """
+    return [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]
 
 
 def rect(x, y):
@@ -159,13 +175,13 @@ def cosmetics(W, cells):
         + [(r, W - 1) for r in range(1, W - 1)]
     )
     white = [rect(c, r) for (r, c) in ring_cells]
-    # box a given clue cell, but not the corner fillers (a corner sits on both
-    # edges and belongs to no line, so its "1" is solver support, not a clue)
-    corner = lambda r, c: r in (0, W - 1) and c in (0, W - 1)
+    # box a given clue cell, never a corner: a corner sits on both edges and
+    # belongs to no line, so a digit there is never a clue
+    corners = set(corner_cells(W))
     outlines = [
         rect(c, r)
         for (r, c) in ring_cells
-        if cells[idx(r, c)].get("given") and not corner(r, c)
+        if cells[idx(r, c)].get("given") and (r, c) not in corners
     ]
     border = [
         [{"x": x, "y": 1} for x in range(1, W)]

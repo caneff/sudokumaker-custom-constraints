@@ -36,6 +36,8 @@ test:
     node examples/_shared/app-solve-lib.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
     node examples/_shared/harness-lib.test.mjs
+    node examples/_shared/frame-rowcol.test.mjs
+    node examples/_shared/frame-corners.test.mjs
     node examples/_shared/include.test.mjs
     node examples/_shared/frame-geometry.test.mjs
     node examples/_shared/frame-lines.test.mjs

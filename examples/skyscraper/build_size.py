@@ -59,12 +59,6 @@ RULE_EXAMPLES = {
 }
 
 
-CORNER_NOTE = (
-    "The 1s in the corners only fill space for SudokuMaker's solver; "
-    "delete them before publishing."
-)
-
-
 def rule_text(n):
     rule = (
         "Skyscrapers (interactive outside clues): each outside cell holds a digit "
@@ -75,7 +69,7 @@ def rule_text(n):
     ex = RULE_EXAMPLES.get(n)
     if ex:
         rule = f"{rule} For example, {ex}."
-    return f"{rule}\n\n{CORNER_NOTE}"
+    return rule
 
 
 def sky(v, _cells, _box):
