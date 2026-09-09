@@ -185,8 +185,9 @@ Every negative above is per-grid, on sampled grids. The joint model --
 `tools/prove_pair.py`, digits and shading searched together with one geometry
 pinned -- settles it, and the answer is yes.
 
-Two grids, both verified from the rules by `renbanana_verify`, held in
-`candidates-two-circles/`:
+Three grids so far, each verified from the rules by `renbanana_verify` and
+re-verified from disk by `renbanana_cpsat.py verify`, held in
+`candidates-two-circles/`. Two of them:
 
 ```
 679413285   bbCCbbCbb      2x2  circle at r1c4 holding 4
@@ -243,28 +244,44 @@ Same 40 geometries, same 120 second budget:
 | median cuts | 31 | **0** |
 | infeasible | 3 | 3 |
 
-## The label hole, and closing it
+## The label hole, which is NOT closed
 
 Three of those first five hits were illegal, each tripping rule 6. The cause is
-in the component-label encoding that stage 1, `probe_inverted` and
-`prove_pair` all shared: a label was pinned to be *at most* its component's
-least cell index, never equal to it. Two disjoint components could therefore
-both claim a label below both their minimums, and renban would land on their
-union -- a gap in one component plugged by a digit from the other. That is how
-a banana group holding 1, 4 and 8 once came back "legal".
+in the component-label encoding that stage 1, `probe_inverted` and `prove_pair`
+all share: a label is pinned to be *at most* its component's least cell index,
+never equal to it. Two disjoint components can therefore both claim a label
+below both their minimums, and renban lands on their union -- a gap in one
+component plugged by a digit from the other. That is how a banana group holding
+1, 4 and 8 once came back "legal".
 
-The fix is one clause per (cell, label) pair: whoever uses label `ell` must
-share it with the cell whose index *is* `ell`. That owner cell lies in exactly
-one component, so no second component can claim the label; and since every
-member's index is at least the component minimum while the label is at most it,
-the label is forced to equal the minimum exactly. It rules no legal grid out --
-a component can always take its own least index -- and the soundness gate
-confirms it: 28 of 28 known-legal grids still accepted.
+One clause was added toward closing it: whoever uses label `ell` must share it
+with the cell whose index *is* `ell`. **It is not sufficient**, and the measured
+result says so plainly. The owner cell lies in one component, so that
+component satisfies the clause -- and a second, disconnected component then
+rides along on the same label for free. Label propagation runs only from lower
+index to higher, so nothing forces the label constant on a component either.
 
-Note which way the old hole cut. It let illegal shadings *through*, never ruled
-a legal one out, so every INFEASIBLE from before remains a proof. Only the hits
-needed `renbanana_verify` to sort, which is how the two real grids were found
-among the five.
+| same 40 geometries, 120s | hits | legal | illegal |
+| --- | --- | --- | --- |
+| before the clause | 5 | 2 | 3 |
+| after the clause | 17 | 1 | 16 |
+
+Closing it properly needs real connectivity -- "this cell reaches the owner cell
+through banana cells all carrying this label" -- which CP-SAT has no cheap way
+to state. That is a piece of work, not a clause, and it is not done.
+
+The clause was kept: the soundness gate holds at 28 of 28, so it rules no legal
+grid out, and it made the search markedly faster (20 unknown against 32).
+
+### Which way the hole cuts, and why the results survive
+
+It lets illegal shadings *through*; it never rules a legal one out, because the
+solver can always give each component its own least index. So:
+
+- **Every INFEASIBLE is still a proof.** The pool sweep, the 30,140 sampled
+  grids and the 826 digit-impossible geometries all stand unchanged.
+- **Every hit must go through `renbanana_verify` before it counts.** That is
+  how the real grids were sorted from the candidates, and it is not optional.
 
 ## Still open
 
