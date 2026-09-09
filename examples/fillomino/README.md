@@ -316,17 +316,24 @@ uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # seed 7, sid
 uv run --with ortools examples/fillomino/generate.py unique examples/fillomino/gen.json
 ```
 
-Knobs on `sample(seed, side=None, cap=None, pins=4, max_tries=50)`: `side`
-and `cap` default to 9 and to `side`; `cap` above `side` widens the digit
-range without changing the board size (one pin is then forced above `side`
-so the wide cap actually gets used). `pins` random cells are seeded with a
-random digit before each solve — diversity against CP-SAT's own
-`randomize_search`, which alone still hands back dull striped grids on some
-seeds. A pin combination with no solution, or that solves to a striped grid,
-is dropped and retried with a fresh sub-seed, up to `max_tries`. `unique`
-wraps the same model's `solutions()` capped at 2 and raises `TimeoutError`
-past its `limit` (600s default) rather than returning a verdict — a timeout
-is never read as proof.
+Every function takes the `Board` it works on — `Board.of(side, cap=None)`,
+where `cap` defaults to `side`. The board is a value, not module state, so a
+process can check two boards without resetting anything between them.
+
+Knobs on `sample(board, seed, pins=4, max_tries=50)`: a `cap` above `side`
+widens the digit range without changing the board size (one pin is then
+forced above `side` so the wide cap actually gets used). `pins` random cells
+are seeded with a random digit before each solve — diversity against CP-SAT's
+own `randomize_search`, which alone still hands back dull striped grids on
+some seeds. A pin combination with no solution, or that solves to a striped
+grid, is dropped and retried with a fresh sub-seed, up to `max_tries`.
+
+`unique(board, givens)` wraps the same model's `solutions()` capped at 2 and
+raises `TimeoutError` past its `limit` (600s default) rather than returning a
+verdict — a timeout is never read as proof. It runs on the reproducible
+solver configuration (`_shared/cpsat.py`: one worker, seed 0), so a committed
+proof gives the same answer on every run; `sample` runs the portfolio, since
+what it draws is written to a gen JSON and proved from there.
 
 `app-strip.mjs` strips a sampled grid's 81 (or `side`²) givens down to a
 minimal clue set in the live app; the generator itself carries no strip step.

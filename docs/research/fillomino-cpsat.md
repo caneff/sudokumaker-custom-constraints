@@ -207,7 +207,7 @@ uv run --with ortools examples/fillomino/generate.py unique gen.json      # prov
 `verify.py` prints, so the surrounding generator tooling transfers unchanged —
 with one change the prototype did not need: a grid row is a list of ints, not
 a joined digit string, which is ambiguous once `cap` runs past 9.
-`set_board(side, cap)` takes any board side, and a digit cap independent of it
+`Board.of(side, cap)` takes any board side, and a digit cap independent of it
 (the prototype's digits were always `1..n`).
 
 ## What this does not answer

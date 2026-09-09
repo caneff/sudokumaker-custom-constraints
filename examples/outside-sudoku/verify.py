@@ -26,12 +26,17 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import cpsat
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
 from link_codec import decode_puzzle
 from link_swap import find_constraint
 from outside_rule import post_membership, window_length_by_region
+
+# Seconds per solve. Generous: this runs by hand on a shipped board, and a
+# board that needs two minutes is a board worth waiting for.
+SOLVE_LIMIT = 120
 
 
 def clue_groups(link, W, n):
@@ -52,26 +57,20 @@ def clue_groups(link, W, n):
     return groups
 
 
-def solve(model, x, forbid=None):
-    """Solve, returning the interior assignment or None. `forbid` rules out one
-    earlier assignment, which is how the second-solution search runs."""
-    if forbid is not None:
-        lits = []
-        for cell, v in forbid.items():
-            b = model.NewBoolVar(f"d{cell}")
-            model.Add(x[cell] != v).OnlyEnforceIf(b)
-            model.Add(x[cell] == v).OnlyEnforceIf(b.Not())
-            lits.append(b)
-        model.AddBoolOr(lits)
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120
-    # One worker, fixed seed: CP-SAT's parallel portfolio is not reproducible
-    # run to run, and this check has to give the same answer every time.
-    solver.parameters.num_workers = 1
-    solver.parameters.random_seed = 0
-    if solver.Solve(model) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+def solve(model, x):
+    """The interior assignment, or None when the model has no solution.
+
+    Raises TimeoutError when the search spends `SOLVE_LIMIT` without a verdict:
+    "no answer yet" is not "no solution", and this script's caller reads a None
+    as proof of the second kind.
+    """
+    s = cpsat.solver(SOLVE_LIMIT)
+    status = s.Solve(model)
+    if status == cpsat.UNKNOWN:
+        raise TimeoutError(f"CP-SAT hit the {SOLVE_LIMIT}s limit; no verdict")
+    if status not in cpsat.SOLVED:
         return None
-    return {cell: solver.Value(var) for cell, var in x.items()}
+    return {cell: s.Value(var) for cell, var in x.items()}
 
 
 def main(argv):
@@ -115,7 +114,11 @@ def main(argv):
 
     first = solve(m, x)
     assert first is not None, "the shipped board has no solution"
-    assert solve(m, x, forbid=first) is None, "the shipped board has two solutions"
+    # has_second_solution raises rather than answer on a spent time cap, so a
+    # slow search can never print the "exactly one" line below.
+    assert not cpsat.has_second_solution(m, x, first, SOLVE_LIMIT), (
+        "the shipped board has two solutions"
+    )
     print("ok — exactly one solution")
 
 

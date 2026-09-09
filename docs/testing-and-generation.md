@@ -44,6 +44,16 @@ solution exists:
 2. Add a clause "not all cells equal `S1`".
 3. Solve again. Infeasible → the puzzle is unique.
 
+Steps 2 and 3 are `_shared/cpsat.py`: `forbid(m, x, assignment)` posts the
+clause, `has_second_solution(m, x, first, limit)` posts it and solves, and
+`solver(limit)` is the configuration every proof runs under — one worker and
+seed 0, since CP-SAT's parallel portfolio races its workers and a proof that
+does not reproduce is not a gate. A search for a *fresh grid* asks for
+`solver(limit, reproducible=False, seed=..., randomize=True)` instead: what it
+draws is written to a gen JSON and proved from there. The one full-board proof
+that also takes the portfolio is isofill's, which a single worker cannot
+finish at all — see `examples/isofill/README.md`.
+
 To generate a puzzle:
 
 1. Build a random valid sudoku (the pattern-and-shuffle trick needs no solver).
