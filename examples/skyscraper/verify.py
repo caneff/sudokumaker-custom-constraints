@@ -35,13 +35,13 @@
 # What it deliberately leaves to the neighbours, one home per rule: that a link
 # opens clean (no non-given cell carrying a value) is check_layout.py's, run in
 # the same gate; that a link ships its lane's own components and input is
-# framebuild.check's, run by build_size.py and rebuild_size.py.
+# framebuild.check's, run by build_size.py's two lanes.
 #
 # Global boards only. A local (--paths) board carries its clues on drawn bent
 # groups rather than on ring keys, so its clue set is not read the way this
-# reads one; rebuild_size.py --paths is what keeps those links honest.
+# reads one; `build_size.py --rebuild <n> --paths` is what keeps those links
+# honest.
 
-import json
 import pathlib
 import sys
 
@@ -51,7 +51,7 @@ sys.path.insert(0, str(HERE))
 
 from build_size import SPEC
 from frame import ring_cell
-from framebuild import load_gen, unique
+from framebuild import board_files, load_board, unique
 from link_codec import decode_puzzle
 
 
@@ -100,16 +100,17 @@ def mismatches(doc, givens, shown):
     ]
 
 
-def grid_problems(grid, clue, givens, lines, n, bh, bw):
-    """Every way the recorded solution fails to be a solution of the recorded
-    board: a repeat in some house, a given it contradicts, or a line whose
-    clue it does not produce. Empty means the grid stands up."""
+def grid_problems(board):
+    """Every way `board`'s recorded solution fails to be a solution of the
+    recorded board: a repeat in some house, a given it contradicts, or a line
+    whose clue it does not produce. Empty means the grid stands up."""
+    n, grid = board.n, board.grid
     houses = [[(r, c) for c in range(n)] for r in range(n)]
     houses += [[(r, c) for r in range(n)] for c in range(n)]
-    houses += [sorted(box) for box in boxes(n, bh, bw)]
+    houses += [sorted(box) for box in boxes(n, board.bh, board.bw)]
     read = {
-        key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells)
-        for key, cells in lines.items()
+        key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells, board.box)
+        for key, cells in board.lines.items()
     }
     return (
         [
@@ -119,14 +120,14 @@ def grid_problems(grid, clue, givens, lines, n, bh, bw):
         ]
         + [
             f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
-            for key, v in sorted(givens.items())
+            for key, v in sorted(board.givens.items())
             if grid[key[0]][key[1]] != v
         ]
         + [
-            f"clue {key[0]}{key[1]}: gen says {clue[key]}, "
+            f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
             f"the recorded grid reads {read[key]}"
-            for key in sorted(lines)
-            if read[key] != clue[key]
+            for key in sorted(board.lines)
+            if read[key] != board.clue[key]
         ]
     )
 
@@ -141,11 +142,12 @@ def boxes(n, bh, bw):
     }
 
 
-def box_problems(doc, n, bh, bw):
-    """Whether the link draws the same boxes gen records. The proof runs on
-    gen's box shape, so a link whose houses differ is a different puzzle
+def box_problems(doc, board):
+    """Whether the link draws the same boxes `board` records. The proof runs
+    on gen's box shape, so a link whose houses differ is a different puzzle
     however well its givens and clues line up. Compared as a partition: the
     app is free to number the boxes as it likes."""
+    n, bh, bw = board.n, board.bh, board.bw
     W = doc["width"]
     # type 1 is the app's region constraint, the one that draws the boxes
     drawn_regions = [c for c in doc["constraints"] if c.get("type") == 1]
@@ -162,26 +164,23 @@ def box_problems(doc, n, bh, bw):
 
 
 def boards():
-    """Every global board committed here, as (size, gen tag, link file), found
-    by its gen file so a new size needs no edit, and sized by what that file
-    records rather than by its name. The 9x9 is the plain-named pair; a
-    `_local` board is a drawn-path board, which this does not read."""
-    plain = HERE / "gen.json"
-    found = (
-        [(len(json.loads(plain.read_text())["grid"]), "", HERE / "PUZZLE_LINK.txt")]
-        if plain.exists()
-        else []
-    )
-    for path in HERE.glob("gen_*x*.json"):
-        tag = path.stem.removeprefix("gen_")
-        if tag.endswith("_local"):
+    """Every global board committed here, as (Board, link file), found by its
+    gen file so a new size needs no edit and sized by what that file records
+    rather than by its name. The 9x9 is the plain-named pair; a `_local` board
+    is a drawn-path board, which this does not read."""
+    found = []
+    for path in [HERE / "gen.json", *HERE.glob("gen_*x*.json")]:
+        # gen.json is named, not globbed, so this example may simply not have
+        # one; a _local board is a drawn-path board and is not read here.
+        if not path.exists() or path.stem.endswith("_local"):
             continue
-        found.append((int(tag.split("x")[0]), tag, HERE / f"PUZZLE_LINK_{tag}.txt"))
-    return sorted(found)
+        board = load_board(path)
+        found.append((board, board_files(SPEC, board.n)[0]))
+    return sorted(found, key=lambda pair: pair[0].n)
 
 
-def check(n, tag, link_file):
-    bh, bw, grid, clue, givens, active, lines = load_gen(HERE, n, tag=tag)
+def check(board, link_file):
+    n, givens, active, clue = board.n, board.givens, board.active, board.clue
     doc = decode_puzzle(link_file.read_text().strip())["puzzle"]
     assert doc["width"] == n + 2, (
         f"{link_file.name} is {doc['width'] - 2}x{doc['width'] - 2}, "
@@ -192,15 +191,13 @@ def check(n, tag, link_file):
     assert not bad, f"{link_file.name} is not the recorded board:\n  " + "\n  ".join(
         bad
     )
-    bad = box_problems(doc, n, bh, bw) + grid_problems(
-        grid, clue, givens, lines, n, bh, bw
-    )
+    bad = box_problems(doc, board) + grid_problems(board)
     assert not bad, (
         f"{link_file.name}: the recorded solution does not solve the recorded "
         "board:\n  " + "\n  ".join(bad)
     )
 
-    verdict = unique(SPEC.cp_sat_clue_fn, lines, clue, active, givens, n, bh, bw)
+    verdict = unique(SPEC.cp_sat_clue_fn, board)
     # unique() answers None when its first solve finds nothing inside the time
     # limit -- a timeout or an unsatisfiable model, not a verdict on a second
     # solution. Reporting that as "two solutions" would send a reader hunting
@@ -213,17 +210,17 @@ def check(n, tag, link_file):
     assert verdict is True, f"{link_file.name} has more than one solution"
     print(
         f"{link_file.name} ({n}x{n}): {len(givens)} interior givens, "
-        f"{len(active)} shown clues of {len(lines)} -- matches gen, grid solves "
+        f"{len(active)} shown clues of {len(board.lines)} -- matches gen, grid solves "
         "it, exactly one solution"
     )
 
 
 def main(argv):
     wanted = int(argv[1]) if len(argv) > 1 else None
-    todo = [b for b in boards() if wanted in (None, b[0])]
+    todo = [(b, f) for b, f in boards() if wanted in (None, b.n)]
     assert todo, f"no committed global board of size {wanted}"
-    for n, tag, link_file in todo:
-        check(n, tag, link_file)
+    for board, link_file in todo:
+        check(board, link_file)
 
 
 if __name__ == "__main__":

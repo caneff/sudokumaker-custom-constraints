@@ -8,10 +8,16 @@
 #   uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py 9 3 3
 #   uv run --with ortools --with lzstring \
 #       examples/numbered-rooms/build_size.py 9 3 3 3 --paths
+#   uv run --with ortools --with lzstring \
+#       examples/numbered-rooms/build_size.py --rebuild 9
 #
-# Args: n box_height box_width [seed_count] [--paths]
+# Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 #       (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.
+# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script; the
+# local 9x9 pair is plain-named (framebuild.board_files), and PUZZLE_LINK.txt
+# itself is this example's hand-built original board, not a generated one.
+# --rebuild re-encodes a committed board against the code in the tree right
+# now, with no fresh CP-SAT search.
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
 # frame lines, shipped as drawn groups on the main.js lane, so the three rules
@@ -28,7 +34,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, run
+from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 
@@ -45,11 +51,11 @@ def comment_text(n):
     )
 
 
-def numbered_room(v, _cells):
+def numbered_room(v, _cells, _box):
     return v[v[0] - 1]
 
 
-def add_numbered_room(m, x, cells, kk, n, tag):
+def add_numbered_room(m, x, cells, kk, n, tag, _box):
     # x[cells[x[cells[0]] - 1]] == kk, as one element constraint
     ix = m.NewIntVar(0, n - 1, f"ix{tag}")
     m.Add(ix == x[cells[0]] - 1)
@@ -65,15 +71,10 @@ SPEC = Spec(
     clue_fn=numbered_room,
     cp_sat_clue_fn=add_numbered_room,
     comment_fn=comment_text,
+    # PUZZLE_LINK.txt is this example's hand-built original board, so the
+    # framebuild 9x9 keeps its NxN name (framebuild.board_files).
+    plain_global_9x9=False,
 )
 
 if __name__ == "__main__":
-    paths = "--paths" in sys.argv
-    if paths:
-        sys.argv.remove("--paths")
-    n = int(sys.argv[1])
-    run(SPEC, paths=paths)
-    if n == 9 and paths:
-        (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
-        (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
-        print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
+    main(SPEC)

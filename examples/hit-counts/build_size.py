@@ -12,12 +12,16 @@
 #   uv run --with ortools --with lzstring examples/hit-counts/build_size.py 9 3 3
 #   uv run --with ortools --with lzstring \
 #       examples/hit-counts/build_size.py 9 3 3 3 --paths
+#   uv run --with ortools --with lzstring \
+#       examples/hit-counts/build_size.py --rebuild 9
 #
-# Args: n box_height box_width [seed_count] [--paths]
+# Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
-# it lands as PUZZLE_LINK.txt and gen.json.
+# it lands as PUZZLE_LINK.txt and gen.json (framebuild.board_files).
+# --rebuild re-encodes a committed board against the code in the tree right
+# now, with no fresh CP-SAT search.
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
 # frame lines, shipped as drawn groups on the main.js lane, so a rule that runs
@@ -36,7 +40,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, run
+from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
@@ -58,12 +62,12 @@ def comment_text(n):
     )
 
 
-def hits(v, _cells):
+def hits(v, _cells, _box):
     # cells whose digit equals their 1-based distance from the clue
     return sum(1 for i, x in enumerate(v) if x == i + 1)
 
 
-def add_hit_count(m, x, cells, kk, n, tag):
+def add_hit_count(m, x, cells, kk, n, tag, _box):
     # exactly kk cells hold their 1-based distance from the clue
     bs = []
     for i, cell in enumerate(cells):
@@ -101,17 +105,4 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
-    paths = "--paths" in sys.argv
-    if paths:
-        sys.argv.remove("--paths")
-    n = int(sys.argv[1])
-    run(SPEC, paths=paths)
-    if n == 9:
-        if paths:
-            (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
-            (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
-            print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
-        else:
-            (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-            (HERE / "gen_9x9.json").rename(HERE / "gen.json")
-            print("renamed to PUZZLE_LINK.txt and gen.json (the plain-named 9x9 pair)")
+    main(SPEC)

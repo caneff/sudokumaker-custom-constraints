@@ -70,11 +70,11 @@ deleted before publishing.
   line gets. Built by
   `uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths`,
   with its geometry recorded in `gen_local.json`.
-- `rebuild_size.py` — re-encodes a committed board (`gen_4x4.json`,
+- `build_size.py --rebuild <n>` — re-encodes a committed board (`gen_4x4.json`,
   `gen_6x6.json`, `gen_local.json`) with the current component code and rule
   text, no fresh CP-SAT search, so a sized link never ships a stale component
   snapshot:
-  `uv run --with ortools --with lzstring examples/running-start/rebuild_size.py 4`.
+  `uv run --with ortools --with lzstring examples/running-start/build_size.py --rebuild 4`.
   The shipped 9x9 global board is not a framebuild board, so `build_link.py`
   rebuilds that one.
 - `build_size.py` — builds the whole document from scratch for any grid size,

@@ -15,23 +15,33 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_size import spec_for
+from build_size import SPEC
 from frame import ring_cell
-from framebuild import LOCAL_RULES_SUFFIX, RULES_PREFIX, make_lines
+from framebuild import (
+    LOCAL_RULES_SUFFIX,
+    RULES_PREFIX,
+    board_files,
+    make_lines,
+    rebuild,
+)
 from link_codec import decode_puzzle
 from link_swap import find_constraint
 from minify import minify_js
 from outside_rule import window_length_by_box, window_length_by_region
-from rebuild_size import link_path, rebuild
 
 SIZES = [(4, 2, 2), (6, 2, 3), (9, 3, 3)]
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 
 
-def gen_path(n):
-    """The recorded seed for size n: the 9x9 global board is the plain-named
-    pair, so it is gen.json, not gen_9x9.json (#294)."""
-    return HERE / ("gen.json" if n == 9 else f"gen_{n}x{n}.json")
+def link_path(n, local=False):
+    """The committed link for this board -- the 9x9 global board is the
+    shipped one, so it is plain-named (framebuild.board_files, #294)."""
+    return board_files(SPEC, n, local)[0]
+
+
+def gen_path(n, local=False):
+    """The recorded seed for this board, named by the same rule."""
+    return board_files(SPEC, n, local)[1]
 
 
 # One row line and one column line of each shipped size, as framebuild draws
@@ -60,19 +70,19 @@ def test_window_never_runs_past_the_line():
 
 
 def test_clue_is_the_largest_digit_of_the_window():
-    clue = spec_for(3, 3).clue_fn
+    clue = SPEC.clue_fn
     # 9x9, window 3: the clue is the largest of 2, 3, 8 — the 5 and the 9
     # further down the line are outside the window and cannot be the clue.
-    assert clue([2, 3, 8, 1, 4, 5, 6, 7, 9], ROW_9) == 8
+    assert clue([2, 3, 8, 1, 4, 5, 6, 7, 9], ROW_9, (3, 3)) == 8
 
 
 def test_the_window_follows_the_direction_on_a_6x6():
     # Boxes 2 tall by 3 wide, so the same digits give a different clue
     # depending on which way the line runs.
-    clue = spec_for(2, 3).clue_fn
+    clue = SPEC.clue_fn
     values = [1, 3, 6, 2, 5, 4]
-    assert clue(values, ROW_6) == 6  # 3 across: max(1, 3, 6)
-    assert clue(values, COL_6) == 3  # 2 down: max(1, 3)
+    assert clue(values, ROW_6, (2, 3)) == 6  # 3 across: max(1, 3, 6)
+    assert clue(values, COL_6, (2, 3)) == 3  # 2 down: max(1, 3)
 
 
 def test_rebuild_reproduces_every_shipped_link_byte_for_byte():
@@ -80,9 +90,9 @@ def test_rebuild_reproduces_every_shipped_link_byte_for_byte():
     # back out of its recorded seed data, with no fresh search.
     for n, _bh, _bw in SIZES:
         link = link_path(n).read_text()
-        assert rebuild(n) + "\n" == link, f"{n}x{n} does not rebuild byte-equal"
+        assert rebuild(SPEC, n) + "\n" == link, f"{n}x{n} does not rebuild byte-equal"
     local = link_path(9, local=True).read_text()
-    assert rebuild(9, local=True) + "\n" == local, (
+    assert rebuild(SPEC, 9, local=True) + "\n" == local, (
         "the local board does not rebuild byte-equal"
     )
 
@@ -168,7 +178,7 @@ def test_the_local_board_is_share_ready():
     # Its lines are rows and columns, so the rules text must not tell a solver
     # a line is no house -- that sentence belongs to a bent-path board (#268).
     assert LOCAL_RULES_SUFFIX not in doc["comment"]
-    shown = len(json.loads((HERE / "gen_local.json").read_text())["active"])
+    shown = len(json.loads(gen_path(9, local=True).read_text())["active"])
     assert shown < 4 * 9, (
         "the local board shows every clue -- the ring must stay sparse"
     )

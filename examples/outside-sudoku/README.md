@@ -68,8 +68,7 @@ line as its window. That is weaker than the rule, never unsound.
 | `backends.test.mjs` | What each backend registers, and how `main.js` fails |
 | `build_link.py` (+ test) | Swap a candidate component into the shipped board |
 | `outside_rule.py` | The window rule in Python: both window measures and the CP-SAT membership post |
-| `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9 |
-| `rebuild_size.py` | Re-encode a sized link from its recorded seed, no fresh search |
+| `build_size.py` (+ test) | The generator: fresh boards at 4x4, 6x6 and 9x9, and `--rebuild <n>` to re-encode one from its recorded seed |
 | `verify.py` (+ test) | CP-SAT proof that a board has one solution |
 | `PUZZLE_LINK.txt`, `gen.json` | The shipped board, on the global lane (see below) |
 | `PUZZLE_LINK_local.txt`, `gen_local.json` | The same frame, on the local lane |
@@ -131,7 +130,7 @@ the 36 clues shown. It carries the local timing row.
 
     uv run --with ortools --with lzstring \
       examples/outside-sudoku/build_size.py 9 3 3 1 --local
-    uv run --with lzstring examples/outside-sudoku/rebuild_size.py 9 --local
+    uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 9 --local
 
 ### Why its lines are straight, not bent (#268)
 
@@ -179,12 +178,13 @@ After a component change, re-encode a sized link from its recorded seed rather
 than searching again — the clue of a line is a pure function of the line, so
 the same board comes back out:
 
-    uv run --with lzstring examples/outside-sudoku/rebuild_size.py 6
+    uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
 
 `build_size.test.py` holds that to a byte: each committed link must equal what
-`rebuild_size.rebuild(n)` produces from its gen JSON, the local board
+`framebuild.rebuild(SPEC, n)` produces from its gen JSON, the local board
 included. The 9x9 global board is the shipped one, so `build_size.py 9 3 3`
-and `rebuild_size.py 9` write `PUZZLE_LINK.txt`, not `PUZZLE_LINK_9x9.txt`.
+and `build_size.py --rebuild 9` write `PUZZLE_LINK.txt`, not
+`PUZZLE_LINK_9x9.txt` (`framebuild.board_files`).
 
 ### Which window digit is the clue
 
@@ -197,12 +197,12 @@ membership.
 ### How a clue function sees the direction
 
 A window is 3 across but 2 down on a 6x6, so the line's digits alone do not
-fix its length. `framebuild.Spec.clue_fn` therefore takes `(values, cells)`:
-`cells` are the line's cells, nearest the clue first, and both of this
-example's clue functions read the direction off `cells[0]` and `cells[1]`.
-The box shape comes from `build_size.spec_for(bh, bw)`, which builds a Spec for
-the size being generated. Clue functions on other examples ignore the second
-argument.
+fix its length. `framebuild.Spec.clue_fn` therefore takes
+`(values, cells, box)`: `cells` are the line's cells, nearest the clue first,
+and both of this example's clue functions read the direction off `cells[0]`
+and `cells[1]`; `box` is the board's `(box_height, box_width)`, which fixes how
+far the window reaches in that direction. One `SPEC` therefore serves every
+size. Clue functions on other examples ignore both arguments.
 
 ## Run
 

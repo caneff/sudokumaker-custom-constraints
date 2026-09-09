@@ -12,8 +12,10 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import dataclasses
+
 from build_size import SPEC
-from framebuild import load_gen, unique
+from framebuild import board_files, load_board, unique
 from link_codec import decode_puzzle
 from verify import (
     boards,
@@ -27,16 +29,17 @@ from verify import (
 
 def _shipped():
     """The shipped 9x9 as both halves see it: the decoded link, and the
-    recorded board load_gen reads out of gen.json."""
-    doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())["puzzle"]
-    return doc, load_gen(HERE, 9, tag="")
+    recorded board load_board reads out of gen.json."""
+    link_path, gen_path = board_files(SPEC, 9)
+    doc = decode_puzzle(link_path.read_text().strip())["puzzle"]
+    return doc, load_board(gen_path)
 
 
 def test_link_board_reads_the_link_not_the_recorded_board():
-    doc, (_, _, _, clue, givens, active, _) = _shipped()
+    doc, board = _shipped()
     link_givens, link_shown = link_board(doc)
-    assert link_givens == givens
-    assert link_shown == {k: clue[k] for k in active}
+    assert link_givens == board.givens
+    assert link_shown == {k: board.clue[k] for k in board.active}
 
     # A sentinel the recorded board could never hold: link_board must read the
     # link's own cells, so a check built on it cannot pass by reading gen.json
@@ -46,8 +49,9 @@ def test_link_board_reads_the_link_not_the_recorded_board():
 
 
 def test_mismatches_flags_a_changed_given_and_a_changed_clue():
-    doc, (_, _, _, clue, givens, active, _) = _shipped()
-    shown = {k: clue[k] for k in active}
+    doc, board = _shipped()
+    givens = board.givens
+    shown = {k: board.clue[k] for k in board.active}
     assert mismatches(doc, givens, shown) == []
 
     # One witness per half: the givens comparison and the clue comparison each
@@ -63,36 +67,37 @@ def test_mismatches_flags_a_changed_given_and_a_changed_clue():
 
 
 def test_box_problems_flags_boxes_the_link_does_not_draw():
-    doc, (bh, bw, *_) = _shipped()
-    assert box_problems(doc, 9, bh, bw) == []
+    doc, board = _shipped()
+    assert box_problems(doc, board) == []
     # The shipped link draws 3x3 boxes; a board recorded with any other shape
     # is a different puzzle wearing the same givens.
-    assert box_problems(doc, 9, 1, 9)
+    assert box_problems(doc, dataclasses.replace(board, bh=1, bw=9))
 
 
 def test_grid_problems_speaks_for_each_of_its_three_checks():
-    _, (bh, bw, grid, clue, givens, _, lines) = _shipped()
-    assert grid_problems(grid, clue, givens, lines, 9, bh, bw) == []
+    _, board = _shipped()
+    assert grid_problems(board) == []
 
     # A given the grid contradicts: only the givens check can see it.
-    bent = dict(givens)
+    bent = dict(board.givens)
     key = next(iter(sorted(bent)))
     bent[key] = bent[key] % 9 + 1
-    out = grid_problems(grid, clue, bent, lines, 9, bh, bw)
+    out = grid_problems(dataclasses.replace(board, givens=bent))
     assert out and all(m.startswith("given") for m in out)
 
     # A clue the grid does not read: only the clue check can see it.
-    bent = dict(clue)
+    bent = dict(board.clue)
     key = next(iter(sorted(bent)))
     bent[key] = bent[key] % 9 + 1
-    out = grid_problems(grid, bent, givens, lines, 9, bh, bw)
+    out = grid_problems(dataclasses.replace(board, clue=bent))
     assert out and all(m.startswith("clue") for m in out)
 
     # A repeat in a house. Uniqueness cannot catch this on its own: bend the
     # recorded solution and CP-SAT still proves the board has exactly one --
     # the one gen no longer records.
+    grid = [list(row) for row in board.grid]
     grid[0][0] = grid[0][0] % 9 + 1
-    out = grid_problems(grid, clue, givens, lines, 9, bh, bw)
+    out = grid_problems(dataclasses.replace(board, grid=grid))
     assert [m for m in out if m.startswith("house")]
 
 
@@ -103,27 +108,33 @@ def test_the_givens_and_the_shown_clues_are_both_load_bearing():
     # clue model would leave the board unique on its givens alone. `is False`,
     # not `not`: unique() answers None when a solve times out, and a timeout
     # witnesses nothing.
-    _, (bh, bw, _, clue, givens, active, lines) = _shipped()
-    assert unique(SPEC.cp_sat_clue_fn, lines, clue, active, givens, 9, bh, bw) is True
-    assert unique(SPEC.cp_sat_clue_fn, lines, clue, set(), givens, 9, bh, bw) is False
-    if givens:
-        fewer = dict(givens)
+    _, board = _shipped()
+    assert unique(SPEC.cp_sat_clue_fn, board) is True
+    assert (
+        unique(SPEC.cp_sat_clue_fn, dataclasses.replace(board, active=set())) is False
+    )
+    if board.givens:
+        fewer = dict(board.givens)
         fewer.pop(next(iter(sorted(fewer))))
         assert (
-            unique(SPEC.cp_sat_clue_fn, lines, clue, active, fewer, 9, bh, bw) is False
+            unique(SPEC.cp_sat_clue_fn, dataclasses.replace(board, givens=fewer))
+            is False
         )
 
 
 def test_boards_finds_every_global_board_and_no_local_one():
     found = boards()
-    sizes = [n for n, _, _ in found]
+    sizes = [b.n for b, _ in found]
     assert sizes == sorted(sizes) and len(set(sizes)) == len(sizes)
-    for _n, tag, link_file in found:
+    for _b, link_file in found:
         assert link_file.exists(), f"{link_file.name} is missing"
-        assert "local" not in tag, "a drawn-path board is not verify.py's to read"
-    # Discovery, not a list: every committed global gen file is in there.
+        assert "local" not in link_file.name, (
+            "a drawn-path board is not verify.py's to read"
+        )
+    # Discovery, not a list: every committed global gen file is in there, under
+    # the name framebuild.board_files gives it.
     gens = {p.stem for p in HERE.glob("gen*.json") if not p.stem.endswith("_local")}
-    assert {f"gen_{tag}" if tag else "gen" for _, tag, _ in found} == gens
+    assert {board_files(SPEC, b.n)[1].stem for b, _ in found} == gens
 
 
 if __name__ == "__main__":
