@@ -62,6 +62,7 @@ def rows():
             circles = []  # every chocolate cell that could take a circle
             bcircles = []  # on a banana group of size < 5: says something
             bsizes = []  # the size of the group carrying each of those
+            bmax = []  # and the top of each of those groups' renban runs
             forced = []  # on a banana group of size >= 5: says nothing, below
             for colour in (True, False):
                 for group in rv.components(is_choc, colour):
@@ -94,6 +95,7 @@ def rows():
                             else:
                                 bcircles.append([r, c])
                                 bsizes.append(k)
+                                bmax.append(max(grid[q] for q in group))
                             break
             k = canon.key_from_rows(d["grid"], d["shading"])
             if k in seen:
@@ -121,12 +123,23 @@ def rows():
                     "largest": prof["largest_rectangle"],
                     "circleable": prof["circleable_groups"],
                     "bananaCircles": len(bcircles),
-                    # How small the groups carrying those circles are, not just
-                    # how many there are. A circle on a banana pair is the
-                    # sharpest clue in the grid -- it names both its digits --
-                    # and one on a group of four barely narrows anything, so
-                    # the score weights each by 5 - k.
+                    # How small the groups carrying those circles are, not
+                    # just how many there are. Rule 4 puts a floor at three: a
+                    # lone banana cell is a 1x1 and a banana domino a 1x2, both
+                    # rectangles, so the smallest banana group is a three-cell
+                    # L. With sizes 5 and up forced, a scoreable circle sits on
+                    # a group of 3 or 4 and nothing else, and 5 - k scores it 2
+                    # or 1. The circle on the L is the sharper clue: it pins
+                    # the run to one of {1,2,3}, {2,3,4}, {3,4,5}.
                     "smallBanana": sum(5 - k for k in bsizes),
+                    # The top of the run under a scoreable banana circle. The
+                    # circle says the run holds k, so the run starts at or
+                    # below k and its top lands in 3..5 for an L and 4..7 for a
+                    # group of four -- a high top means a run pushed as far up
+                    # as the circle allows. Forced circles are left out: a
+                    # group of five or more always carries one and its run
+                    # reaches 9, so counting those would flatten the sort.
+                    "maxBananaDigit": max(bmax, default=0),
                     "forcedCircles": len(forced),
                 }
             )
