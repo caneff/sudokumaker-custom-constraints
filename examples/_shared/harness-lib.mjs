@@ -10,7 +10,7 @@
 import { join } from 'path'
 import { execFileSync } from 'child_process'
 import { Script } from 'vm'
-import { assembleSource } from './include.mjs'
+import { assembleSource, firstInclude } from './include.mjs'
 
 // The app's DigitSet, as read from its bundle (docs/puzzle-api.md): a bitmask
 // where bit d is digit d. The algebra methods MUTATE and return this.
@@ -53,8 +53,17 @@ export function makeIo (here) {
     new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
   const load = (file, names) => evalNamed(read(file), names, join(here, file))
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
-  const loadAt = (commit, file, names) =>
-    evalNamed(git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`]), names, `${join(here, file)}@${commit}`)
+  const loadAt = (commit, file, names) => {
+    const src = git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`])
+    // `read` assembles includes; this reader holds text from a commit and has
+    // no directory to resolve one against. Refuse rather than eval the
+    // directive as a comment and fail later with `frameLines is not defined`.
+    const inc = firstInclude(src)
+    if (inc !== null) {
+      throw new Error(`loadAt cannot resolve an #include at a commit: ${file}@${commit} carries ${JSON.stringify(inc.trim())}`)
+    }
+    return evalNamed(src, names, `${join(here, file)}@${commit}`)
+  }
   return { read, load, loadAt, loadSource: evalNamed }
 }
 

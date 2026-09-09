@@ -14,12 +14,17 @@
 # Stays out of `just check`: it drives the live site (docs/real-app-timing.md).
 
 import argparse
+import atexit
 import datetime
+import functools
+import io
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 HERE = pathlib.Path(__file__).parent
@@ -28,7 +33,7 @@ sys.path.insert(0, str(HERE))
 
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, replace_constraint_code
-from minify import minify_file, minify_js
+from minify import minify_file
 from probe_link import empty_link_file
 
 APP_SOLVE = HERE / "app-solve.mjs"
@@ -136,18 +141,38 @@ def registered_backend(doc, constraint_name):
 BACKEND_FILES = ("main.js", "main-global.js")
 
 
-def head_content(path):
-    """path's last-committed (git HEAD) content, ignoring any working-tree
-    edit -- resolve_backend_file's ground truth for "which file built the
-    committed link", immune to the very edit it is trying to detect."""
-    result = subprocess.run(
-        ["git", "show", f"HEAD:./{path.name}"],
-        cwd=path.parent,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout
+@functools.cache
+def _head_tree(toplevel):
+    """A temp checkout of the whole repo at git HEAD, deleted when the process
+    ends. A whole tree, not one file's text: a paste target's `// #include`
+    resolves against a real directory, so HEAD's copy of an included file has
+    to sit at HEAD's copy of its path."""
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="head-tree-"))
+    atexit.register(shutil.rmtree, tmp, ignore_errors=True)
+    archive = subprocess.run(
+        ["git", "-C", toplevel, "archive", "HEAD"], stdout=subprocess.PIPE, check=True
+    ).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as tar:
+        tar.extractall(tmp, filter="data")
+    return tmp
+
+
+def head_file(path):
+    """path as it stood at git HEAD, as a real file inside a HEAD checkout --
+    resolve_backend_file's ground truth for "which file built the committed
+    link", immune to the very working-tree edit it is trying to detect, and
+    immune all the way down: minify_file resolves this file's includes inside
+    the same checkout, so an edited include cannot leak in either."""
+    path = path.resolve()
+    toplevel = pathlib.Path(
+        subprocess.run(
+            ["git", "-C", path.parent, "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    ).resolve()
+    return _head_tree(str(toplevel)) / path.relative_to(toplevel)
 
 
 def resolve_backend_file(example_dir, base_doc, constraint_name):
@@ -165,13 +190,7 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
     ]
     if not candidates:
         return None
-    # head_content is a string, so it carries no directory: an `// #include`
-    # in it resolves against the file's own directory in the working tree.
-    matches = [
-        f
-        for f in candidates
-        if minify_js(head_content(f), base_dir=f.parent) == committed_backend
-    ]
+    matches = [f for f in candidates if minify_file(head_file(f)) == committed_backend]
     if not matches:
         raise ValueError(
             f"{example_dir.name}: no backend file "

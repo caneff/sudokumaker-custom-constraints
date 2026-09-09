@@ -251,11 +251,9 @@ for (const name of dirs) {
 // isofill have no main-global.js and so appear in neither -- each is a
 // whole-grid constraint with no outside frame at all, and its lone main.js
 // builds its cell list from the board size rather than from drawn groups.
-const localDirs = dirs.filter(name => existsSync(join(EXAMPLES, name, 'main.js')))
-
-assert.deepStrictEqual(localDirs, dirs,
-  'an example with a main-global.js must have the main.js that is its other lane')
-for (const name of localDirs) {
+for (const name of dirs) {
+  assert.ok(existsSync(join(EXAMPLES, name, 'main.js')),
+    `${name} has a main-global.js and must have the main.js that is its other lane`)
   assert.ok(readFileSync(join(EXAMPLES, name, 'main.js'), 'utf8').includes('input.groups'),
     `${name}/main.js is the local lane and must read the drawn groups`)
 }
@@ -298,31 +296,41 @@ function localCases (W, H) {
   return [
     { note: ', drawn frame', groups: frame },
     { note: ', lone clue', groups: [frame[0]] },
-    // Only the bent path may be refused: a rule can genuinely need a straight
-    // line. A drawn frame and a lone clue are shapes every local lane owes an
-    // answer to, so a throw there is a failure.
-    { note: ', bent path', groups: [drawn(bent)], mayRefuse: true }
+    // Only the bent path may be refused, and only by BENT_REFUSER: a rule can
+    // genuinely need a straight line. A drawn frame and a lone clue are shapes
+    // every local lane owes an answer to, so a throw there is a failure.
+    { note: ', bent path', groups: [drawn(bent)], bentPath: true }
   ]
 }
 
+// The one local lane allowed to refuse a bent path, and the refusal it must
+// give: outside-sudoku's window is a box's extent along the line's DIRECTION,
+// which a bent path has none of, so its main.js throws rather than size a
+// window from nothing. Named, not a blanket allowance -- a TypeError out of
+// any other main.js is a real crash in a shipped lane, and swallowing it
+// printed PASS (#359 review F3).
+const BENT_REFUSER = 'outside-sudoku'
+const BENT_REFUSAL = /is not one row or column/
+
 let localRuns = 0
-for (const name of localDirs) {
+let localRefusals = 0
+for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
   for (const [W, H] of BOARDS) {
-    for (const { note, groups, mayRefuse } of localCases(W, H)) {
+    for (const { note, groups, bentPath } of localCases(W, H)) {
       try {
         checkBackend(name, src, W, H, { groups, file: 'main.js', note })
+        localRuns++
       } catch (e) {
-        // Refusing a bent path loudly is a legitimate answer, and one example
-        // gives it: outside-sudoku's window is a box's extent along the line's
-        // DIRECTION, which a bent path has none of, so its main.js throws
-        // rather than size a window from nothing. Anywhere else, and for an
-        // assertion from the checks above, the throw IS the failure.
-        if (!mayRefuse || e instanceof assert.AssertionError) throw e
+        // Anywhere else, on any other shape, and for an assertion from the
+        // checks above, the throw IS the failure.
+        if (!bentPath || name !== BENT_REFUSER || e instanceof assert.AssertionError) throw e
+        assert.match(e.message, BENT_REFUSAL,
+          `${name}/main.js may refuse a bent path, but only by saying so: ${e.message}`)
+        localRefusals++
       }
-      localRuns++
     }
   }
 }
 
-console.log(`PASS (${dirs.length} global backends, ${localDirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)
+console.log(`PASS (${dirs.length} global backends, ${dirs.length} local backends, ${localRuns} local runs, ${localRefusals} bent-path refusals, ${BOARDS.length} board shapes)`)

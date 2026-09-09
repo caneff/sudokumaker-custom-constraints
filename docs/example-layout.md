@@ -159,13 +159,25 @@ a bare script. It declares `frameLines(puzzle)` — every clued line as
 `{ side, clue, line }`, the line read inward from its clue — and
 `framePairs(lines)` — the opposite-end pairs, L with R and T with B, by
 construction rather than by a scan for one line that is another reversed.
+`framePairs` takes the whole `frameLines` list, in its order, and refuses
+anything else: a filtered or odd-length list would otherwise pair two clues on
+the same side, or the last entry with `undefined`.
 
 The splice happens wherever the source is turned into something that runs:
 `minify_js` / `minify_file` (`examples/_shared/minify.py`) for the link a
 builder writes, and `assembleSource` (`examples/_shared/include.mjs`) for the
 Node tests, harnesses and probes. A path resolves against the including file's
 own directory; a missing file, a cycle, or a directive naming no path stops the
-build.
+build. `loadAt` in `harness-lib.mjs` is the one reader that cannot splice --
+it holds a file's text at a git commit, with no directory to resolve against --
+so it refuses a source carrying a directive rather than eval it as a comment.
+
+Because a paste target's body can arrive through a directive, anything that
+judges what a file does reads the ASSEMBLED text, not the raw file:
+`check_layout.check_lanes` minifies both paste targets before looking for
+`getCellAt(` and `input.groups`, and `time_example.resolve_backend_file` builds
+its ground truth from a checkout of git HEAD so an edited include cannot leak
+into it.
 
 ## Extension rule
 

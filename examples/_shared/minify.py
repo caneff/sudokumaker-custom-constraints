@@ -42,11 +42,11 @@ import re
 _INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
 
 
-def minify_file(path, drop_blocks=True):
+def minify_file(path):
     """`minify_js` on `path`'s text, with includes resolved against its own
     directory. Every caller that ships a file's code into a link uses this."""
     path = pathlib.Path(path)
-    return minify_js(path.read_text(), drop_blocks, base_dir=path.parent)
+    return minify_js(path.read_text(), base_dir=path.parent)
 
 
 def minify_js(src, drop_blocks=True, base_dir=None, _stack=()):
@@ -58,7 +58,11 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=()):
     for line in src.splitlines():
         directive = _INCLUDE_RE.match(line)
         if directive:
-            out.append(_include(directive.group(1), drop_blocks, base_dir, _stack))
+            # An include that minifies to nothing appends nothing: every blank
+            # line is dropped, an included file's included.
+            spliced = _include(directive.group(1), drop_blocks, base_dir, _stack)
+            if spliced:
+                out.append(spliced)
             continue
         if drop_blocks:
             line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments

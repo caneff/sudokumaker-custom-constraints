@@ -19,13 +19,14 @@ sys.path.insert(0, str(HERE))
 
 import time_example
 from link_codec import decode_puzzle, encode_link
-from minify import minify_js
+from minify import minify_file, minify_js
 from time_example import (
     build_candidate,
     build_candidate_doc,
     build_row,
     find_component_file,
     parse_app_solve_output,
+    resolve_backend_file,
     row_ratio,
     run,
     ship_verdict,
@@ -552,6 +553,30 @@ if __name__ == "__main__":
             raise AssertionError("expected a no-backend-match failure")
         except ValueError:
             pass
+
+    # a backend built from an `// #include`: resolve_backend_file's ground
+    # truth is HEAD all the way down, includes included. Editing the included
+    # file in the working tree must not change what it resolves -- half-HEAD
+    # ground truth made `just time` abort on every frame example the moment
+    # examples/_shared/frame-lines.js was touched (#359 review F1).
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "included-backend"
+        example_dir.mkdir()
+        (example_dir / "seg.js").write_text("function seg(){return 'committed'}\n")
+        (example_dir / "main.js").write_text("// #include seg.js\nconsole.log(seg())\n")
+        base_doc = _widget_doc(
+            minify_file(example_dir / "main.js"),
+            minify_js("function update(){return 1}\n"),
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
+        _git_commit_all(example_dir)
+        (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")
+        assert (
+            resolve_backend_file(example_dir, base_doc, "Widget Lines")
+            == example_dir / "main.js"
+        ), "an edited include must not change which backend file HEAD resolves to"
 
     # all reps timed out: the failure names the fixed 300s per-rep timeout
     # and the rep counts

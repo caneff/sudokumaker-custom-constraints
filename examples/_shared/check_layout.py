@@ -35,6 +35,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import registered_components
 from link_codec import decode_puzzle
+from minify import minify_file
 
 REQUIRED_FILES = [
     "README.md",
@@ -111,16 +112,23 @@ LINK_RE = re.compile(
 def check_lanes(example_dir):
     """`main.js` (the local, drawn-groups paste target) must never build the
     frame itself; `main-global.js` (the whole-grid paste target) must never
-    read the drawn groups. See docs/example-layout.md."""
+    read the drawn groups. See docs/example-layout.md.
+
+    Both scans read the SHIPPED text -- `minify_file`, so `// #include`s are
+    spliced in and comments are gone. The raw file is not the lane: a paste
+    target's real body can live in an included file, and a guard reading the
+    raw text would pass a main.js that includes the frame reader (#359 review
+    F2). Minifying also stops a mention inside a comment from failing the
+    check."""
     name = example_dir.name
     violations = []
 
     main_js = example_dir / "main.js"
-    if main_js.is_file() and "getCellAt(" in main_js.read_text():
+    if main_js.is_file() and "getCellAt(" in minify_file(main_js):
         violations.append(f"{name}: main.js builds frame lines (calls getCellAt)")
 
     main_global_js = example_dir / "main-global.js"
-    if main_global_js.is_file() and "input.groups" in main_global_js.read_text():
+    if main_global_js.is_file() and "input.groups" in minify_file(main_global_js):
         violations.append(f"{name}: main-global.js reads input.groups")
 
     return violations

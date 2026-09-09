@@ -102,6 +102,18 @@ def test_minifies_the_included_text_too():
     assert got == "const x = 1\n", repr(got)
 
 
+def test_an_include_that_minifies_to_nothing_leaves_no_blank_line():
+    # Minify's contract is that no blank line survives. An included file made
+    # only of commentary minifies to "", and splicing that in unconditionally
+    # shipped a stray blank line (#359 review F5).
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("// all commentary, nothing to ship\n")
+        (root / "main.js").write_text("const a = 1\n// #include seg.js\nconst b = 2\n")
+        got = minify_file(root / "main.js")
+    assert got == "const a = 1\nconst b = 2\n", repr(got)
+
+
 def test_refuses_a_missing_include_rather_than_shipping_the_directive():
     # A directive that resolves to nothing must stop the build: silently
     # leaving it in ships a link whose backend is missing a whole function.
@@ -168,6 +180,7 @@ if __name__ == "__main__":
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
     test_splices_an_include_relative_to_the_including_file()
     test_minifies_the_included_text_too()
+    test_an_include_that_minifies_to_nothing_leaves_no_blank_line()
     test_refuses_a_missing_include_rather_than_shipping_the_directive()
     test_refuses_an_include_when_no_base_directory_is_known()
     test_refuses_an_include_cycle()
