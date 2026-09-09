@@ -51,12 +51,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--walk", type=Path, default=Path("docs/research/renbanana/walk"))
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="build the pool from scratch instead of adding to what it holds",
+    )
     a = ap.parse_args()
 
     pool = []
     keys = set()
     for path in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json")):
-        if path.parent == a.out:  # rebuilding this pool, not adding to it
+        if a.rebuild and path.parent == a.out:
             continue
         grid, is_choc, _ = rv.load(path)
         pool.append(
@@ -73,6 +78,11 @@ def main():
     ]
 
     a.out.mkdir(parents=True, exist_ok=True)
+    # Round after round adds to the same pool, so new files carry on from the
+    # highest number already there rather than overwriting it.
+    start = 1 + max(
+        (int(f.stem.split("_")[1]) for f in a.out.glob("cand_*.json")), default=-1
+    )
     kept = rejected = illegal = same = 0
     for row in rows:
         k = canon.key_from_rows(row["grid"], row["shading"])
@@ -97,7 +107,7 @@ def main():
             continue
         keys.add(k)
         pool.append(row)
-        (a.out / f"cand_{kept:02d}.json").write_text(
+        (a.out / f"cand_{start + kept:03d}.json").write_text(
             json.dumps(
                 {
                     # The card format the lineup reads, built by the generator's
