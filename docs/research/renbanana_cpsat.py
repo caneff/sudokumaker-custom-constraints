@@ -49,6 +49,7 @@ by `renbanana_verify.py`, written from the rules rather than from this encoding.
 
 import argparse
 import collections
+import functools
 import gc
 import json
 import random
@@ -93,6 +94,7 @@ CATALOGUE = json.loads(
 )
 
 
+@functools.cache
 def circle_cells_at(a, b, ro, co):
     """Which cells of an `a` by `b` rectangle whose top-left sits at box offset
     (ro, co) can hold the digit `a*b` -- straight from the #377 catalogue.
@@ -104,14 +106,15 @@ def circle_cells_at(a, b, ro, co):
     stage 1 can act on instead of stage 3 rediscovering it per shading.
     """
     if max(a, b) > 8:
-        return []
+        return ()
     key, flip = (f"{a}x{b}", False) if a <= b else (f"{b}x{a}", True)
     if flip:  # transposing swaps rows and cols; the 3x3 boxes are symmetric
         ro, co = co, ro
     cells = CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("circle_cells", [])
-    return [(c, r) if flip else (r, c) for r, c in cells]
+    return tuple((c, r) if flip else (r, c) for r, c in cells)
 
 
+@functools.cache
 def support_at(a, b, ro, co):
     """Per-cell digit domains for an `a` by `b` rectangle at box offset
     (ro, co), straight from the #377 catalogue: cell (i, j) may only hold a
@@ -128,13 +131,17 @@ def support_at(a, b, ro, co):
     if flip:
         ro, co = co, ro
     sup = CATALOGUE[key]["B"].get(f"{ro},{co}", {}).get("support")
-    if sup is None:
-        return None
+    if not sup or not sup[0]:
+        return None  # absent, or an empty entry: nothing can be filled here
     if flip:  # stored rows are the other orientation's columns
-        return [[sup[j][i] for j in range(len(sup))] for i in range(len(sup[0]))]
-    return sup
+        sup = [[sup[j][i] for j in range(len(sup))] for i in range(len(sup[0]))]
+    # Frozen sets, cached: the domains are read once per placement per solve and
+    # a membership test should not walk a list. The whole catalogue is a few
+    # hundred entries, so the cache never needs evicting.
+    return tuple(tuple(frozenset(cell) for cell in row) for row in sup)
 
 
+@functools.cache
 def fillings_at(a, b, ro, co):
     """How many ways an `a` by `b` rectangle at box offset (ro, co) can be
     filled at all, from the same catalogue. Zero means no grid anywhere holds

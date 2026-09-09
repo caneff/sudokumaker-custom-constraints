@@ -31,6 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import canon
+import renbanana_cpsat as rc
 import renbanana_verify as rv
 from probe_inverted import CELLS, N, Shadings
 from probe_neighbourhood import perturb
@@ -66,7 +67,15 @@ def circled_targets(grid, is_choc, want):
     """
     n = 0
     for g in rv.components(is_choc, True):
-        if tuple(sorted(rv.shape(g))) in want and any(grid[p] == len(g) for p in g):
+        rows, cols = rv.shape(g)
+        if tuple(sorted((rows, cols))) not in want:
+            continue
+        r0, c0 = min(g)
+        # Only the cells the #377 catalogue says can carry a circle at this box
+        # offset are worth testing -- it enumerated them, so re-deriving which
+        # cell of a 2x3 could hold a 6 would be doing the work twice.
+        sites = rc.circle_cells_at(rows, cols, r0 % 3, c0 % 3)
+        if any(grid[r0 + dr, c0 + dc] == len(g) for dr, dc in sites):
             n += 1
     return n
 

@@ -18,5 +18,3 @@ docs/research/renbanana/candidates-only23/cand_03.json
 docs/research/renbanana/candidates-only23/cand_02.json
 docs/research/renbanana/candidates-only23/cand_01.json
 docs/research/renbanana/candidates-only23/cand_00.json
-docs/research/renbanana/candidates/cand_07.json
-docs/research/renbanana/candidates/cand_04.json

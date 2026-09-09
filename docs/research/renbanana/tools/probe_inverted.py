@@ -35,6 +35,7 @@ from pathlib import Path
 from ortools.sat.python import cp_model as cp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import renbanana_cpsat as rc
 import renbanana_verify as rv
 
 N = 9
@@ -169,7 +170,63 @@ class Shadings:
         if min_chocolate:
             m.add(sum(self.choc.values()) >= min_chocolate)
 
+        self._forbid_dead_placements()
         self.cuts = 0
+
+    def _forbid_dead_placements(self):
+        """Rule out every maximal chocolate rectangle the #377 catalogue proves
+        cannot exist here, before the solver looks at one.
+
+        Three kinds, all read straight off the catalogue rather than searched
+        for again on every solve:
+
+        - a shape with no legal filling anywhere (2x8, 4x8, 7x7 and the rest);
+        - a shape with no legal filling at *this* box offset (3x3 at (0,0), 4x4
+          at eight of nine, and so on);
+        - a placement whose actual digits fall outside the per-cell support the
+          catalogue records for that shape at that offset.
+
+        The first two are facts about the rectangle and the boxes alone, so they
+        hold in any grid. The third is this grid's digits checked against the
+        enumeration. A dead placement is forbidden as a *maximal* rectangle:
+        every cell chocolate with a wholly banana border.
+        """
+        self.dead = 0
+        for a in range(1, N + 1):
+            for b in range(1, N + 1):
+                sup = rc.support_at(a, b, 0, 0) if max(a, b) <= 8 else None
+                for r0 in range(N - a + 1):
+                    for c0 in range(N - b + 1):
+                        if not self._is_dead(a, b, r0, c0):
+                            continue
+                        inside = [(r0 + i, c0 + j) for i in range(a) for j in range(b)]
+                        border = {
+                            q
+                            for p in inside
+                            for q in rv.neighbours(*p)
+                            if q not in set(inside)
+                        }
+                        self.m.add_bool_or(
+                            [self.choc[p].negated() for p in inside]
+                            + [self.choc[q] for q in border]
+                        )
+                        self.dead += 1
+        del sup
+
+    def _is_dead(self, a, b, r0, c0):
+        """True when the catalogue says this placement cannot be filled."""
+        if max(a, b) > 8:
+            return True  # no side above 8 survives the parity bound
+        sup = rc.support_at(a, b, r0 % 3, c0 % 3)
+        if sup is None:
+            return True  # dead shape, or dead at this box offset
+        if len(sup) != a or len(sup[0]) != b:
+            return False  # catalogue orientation not usable here; leave it be
+        return any(
+            self.grid[r0 + i, c0 + j] not in sup[i][j]
+            for i in range(a)
+            for j in range(b)
+        )
 
     def forbid_component(self, group):
         border = {q for p in group for q in rv.neighbours(*p) if q not in group}
