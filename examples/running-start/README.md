@@ -157,15 +157,11 @@ node soundness-harness.mjs
 # -> line + pair components, 0 violations, "PASS"
 ```
 
-Generation and uniqueness (needs Python with ortools). `build_size.py` carves
-a fresh board and proves it unique on the way — the proof happens during
-generation, so running it is how you see it. It overwrites the committed pair
-for the size you ask for, so do it on a size you mean to regenerate:
-
-```
-uv run --with ortools --with lzstring build_size.py 4 2 2
-# -> per-seed given counts, the chosen seed, and the files written
-```
+Generation and uniqueness (needs Python with ortools): `build_size.py`, whose
+commands are in Files above. It carves a fresh board and proves it unique on
+the way, so running it is how you see the proof — and it overwrites the
+committed pair for the size you ask for, so run it only on a size you mean to
+regenerate.
 
 The committed links themselves are checked by `just check`: `build_link.py`'s
 byte-equal rebuild and `_shared/check_layout.py`'s layout pass.

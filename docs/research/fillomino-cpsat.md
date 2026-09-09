@@ -12,8 +12,9 @@ worst.
 
 The prototype this was measured on is gone — #353 deleted it once its verdict
 was recorded here. The model shipped unchanged as
-`examples/fillomino/generate.py`, which is what the commands below now run. The prototype's own greedy CP-SAT `strip` did not ship: the
-app strips, through `app-strip.mjs`.
+`examples/fillomino/generate.py`, which is what the commands below now run.
+Its greedy CP-SAT `strip` did not ship: the app strips, through
+`app-strip.mjs`.
 
 ## The one idea that keeps the model small
 
@@ -203,7 +204,9 @@ uv run --with ortools examples/fillomino/generate.py unique gen.json      # prov
 ```
 
 `sample` prints the `{"grid": [...], "clues": [...]}` shape ISOFILL's
-`verify.py` prints, so the surrounding generator tooling transfers unchanged.
+`verify.py` prints, so the surrounding generator tooling transfers unchanged —
+with one change the prototype did not need: a grid row is a list of ints, not
+a joined digit string, which is ambiguous once `cap` runs past 9.
 `set_board(side, cap)` takes any board side, and a digit cap independent of it
 (the prototype's digits were always `1..n`).
 

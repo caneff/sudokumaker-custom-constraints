@@ -2,8 +2,7 @@
 docs/research/fillomino-cpsat.md records (#280/#288) -- same model, same rule,
 the {"grid": [...], "clues": [...]} shape ISOFILL's verify.py prints, so
 app-strip and the link builders drive it unchanged for a real (cap <= 9)
-puzzle. The prototype's own greedy CP-SAT strip never shipped;
-app-strip.mjs strips in the app.
+puzzle. This generates; app-strip.mjs strips, in the app.
 
     uv run --with ortools examples/fillomino/generate.py               # self-check
     uv run --with ortools examples/fillomino/generate.py sample 7      # a full grid

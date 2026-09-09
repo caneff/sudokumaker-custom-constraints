@@ -146,9 +146,10 @@ cells:
   region. The last two are dead branches, and the component empties a placed
   cell of that digit so the solver drops the branch. Charging only open cells,
   and starting from one cell rather than the whole placed set, makes this walk
-  a strict subset of the older reach walk it replaced — the harness asserts the
-  subset on every fuzz state — so cut, tour, and budget all read a smaller cell
-  set. Cell neighbours come from index arithmetic on the row-major list.
+  a strict subset of the older reach walk it replaced — proved over 79,158 walks
+  when the walk landed, `OPTIMIZATION_LOG.md` row 30; the harness carried that
+  differential until #353 removed it, its verdict recorded — so cut, tour, and
+  budget all read a smaller cell set. Cell neighbours come from index arithmetic on the row-major list.
 - **Cut** — for each open cell the walk met, drop it and walk again. If the
   walk now holds fewer than ten cells (**starve**), or a placed cell falls out
   of it (**strand**), the region cannot exist without that cell, so it must

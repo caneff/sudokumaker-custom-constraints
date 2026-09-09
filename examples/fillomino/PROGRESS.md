@@ -903,7 +903,8 @@ seed3 scores **151442 nodes**, seed15 **83192 nodes** -- both 4-8x every
 offline-hunted candidate. The live app's own strip order (seeded by
 `app-strip.mjs`'s per-seed shuffle) found harder boards than 300 fresh
 CP-SAT samples stripped offline did. Hill-climbing seed3 offline
-(`hunt.mjs climb`, `--free 10 --iters 12 --restarts 2 --seed 21`) could not
+(`hunt.mjs climb`, `--free 10 --iters 12 --restarts 2 --seed 21`; `climb` was
+deleted in #353) could not
 beat it either: climb re-strips the seed board with its own offline order
 before mutating, which lands on a much weaker rebaseline (3525 nodes, not
 151442) -- its best mutant reached 17630 nodes, still an order of magnitude
