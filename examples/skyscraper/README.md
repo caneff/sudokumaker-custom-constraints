@@ -309,6 +309,7 @@ To use the whole grid as an interactive-outside frame instead (see
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2000ms | 1900ms | 0.95 | noise |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper 10x10 | timeout (no deduction, `MAXN = 9`) | 100ms (`MAXN = 16`) | — | KEEP |
 | 2026-09-09 | v2026.08.14-d47fc4b | skyscraper | 7500ms | 7400ms | 0.99 | KEEP |
+| 2026-09-09 | v2026.08.14-d47fc4b | skyscraper (T9 merge) | 8500ms | 8900ms | 1.05 | KEEP |
 
 The three 9x9 rows are the cap lift (`MAXN` 9 to 16) timed against the
 shipped board: the constant sizes three scratch arrays and nothing on the
@@ -330,6 +331,19 @@ against the committed link *after* it -- five interleaved rounds, one rep
 each, cold, non-deterministic solve off: 7500ms to 7400ms, 0.99x. Both
 after-logical rows read 0ms, so that row places no constraint (the logic pass
 finishes this board). No deduction was added, so the bar is 1.1x on both rows.
+
+The second 2026-09-09 row is the same kind of measurement, for the merge of
+`origin/main` into #394: T9 (#359) put the shared frame reader on the solve
+path, spliced into every global backend, and every link was regenerated again.
+So the 0.99x above no longer stands as evidence and this replaces it. Committed
+link before the merge against committed link after it, same protocol: 8500ms to
+8900ms, **1.05x**, inside the 1.1x bar. The reader does cost a little -- the
+post link was slower in four of the five rounds, so the ordering is real and not
+swing -- and the whole-board medians moved from 7400ms to 8900ms between the two
+sessions, which is machine state, not the change: the pre-merge link measured
+8500ms in the same interleaved session that read the post-merge one at 8900ms.
+`just time skyscraper --ring-clues` still prints baseline-only rows here, for
+the same reason as above, and read 8900ms / 0ms.
 
 The rounds were interleaved, one rep per variant per round, for the reason
 `docs/real-app-timing.md` gives under "Protocol".
