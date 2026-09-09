@@ -714,10 +714,12 @@ if __name__ == "__main__":
         assert ship is None, "nothing to judge means no ship verdict"
         assert [c[0] for c in calls] == ["baseline_probe.txt"] * 2
 
-    # regenerating the link before timing is the ordinary way to arrive here:
-    # T9 edited frame-lines.js and rebuilt all 18 links. base_doc and the
-    # backend file it resolves to both come from HEAD, so the two halves cannot
-    # disagree and the run times the change instead of aborting on it.
+    # A link regenerated against edited code is not a baseline: the link that
+    # was the baseline is gone from this tree. Every link the run times comes
+    # from the working tree, so timing it would time the change against itself
+    # -- two probes carrying the same new code, a ratio near 1, and a
+    # paste-ready verdict for a change nobody measured. Refuse instead, and
+    # name the link, because the message otherwise blames the backend files.
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "regenerated-link"
         example_dir.mkdir()
@@ -737,10 +739,16 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(regenerated) + "\n")
         with fake_solve([1000, 500, 800, 400]) as calls:
-            rows, ship = run(example_dir)
-        assert [r[1] for r in rows] == ["PASS", "PASS"], rows
-        assert ship == "SHIP"
-        assert len(calls) == 4, "a regenerated link must be timed, not refused"
+            try:
+                run(example_dir)
+            except ValueError as e:
+                message = str(e)
+            else:
+                raise AssertionError("a regenerated link must be refused, not timed")
+        # The message names the link, not just the backend files: a builder who
+        # has just regenerated one would otherwise go looking at the wrong file.
+        assert "PUZZLE_LINK" in message, message
+        assert not calls, "a refused run must not time anything"
 
     # ring_clues reaches the driver, and board= names the row's board label
     with tempfile.TemporaryDirectory() as tmp:
