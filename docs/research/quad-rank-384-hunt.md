@@ -75,3 +75,33 @@ falls outside the widened ceiling; `qr384_a` was never measured.
 **Still outstanding on the shipped board:** the 1-rep recon above is not the
 timing protocol. `docs/real-app-timing.md` wants medians over 3 reps and both
 the cold and after-logical rows, and neither exists for `qr384_b` yet.
+
+## The protocol rows, and they overturn the recon
+
+`qr384_b` under `docs/real-app-timing.md` proper — medians over 3 reps,
+non-deterministic solve off, app `v2026.08.14-d47fc4b`:
+
+| board | mode | first | unique | sum | reps |
+|---|---|---|---|---|---|
+| `qr384_b` | cold | 21100ms | 2500ms | **23600ms** | 3/3 unique |
+| `qr384_b` | after-logical | 19200ms | 2400ms | **21900ms** | 3/3 unique |
+
+**That is ~2x the 12.2s the 1-rep recon reported, and it misses the widened 15s
+ceiling.** Every rep is internally consistent (cold spread 21.8-23.9s), so the
+recon reading is the outlier, not these. The cause is not established — the
+recon ran the same link, same component, same driver, on an idle machine — and
+it is recorded as unexplained rather than guessed at. **The recon numbers for
+`qr384_c` (15.9s) are suspect for the same reason and should be re-taken under
+the protocol before being used for anything.**
+
+The practical consequence: 35,021 offline nodes maps to ~23.6s in the app, so a
+15s ceiling implies roughly **20,000-22,000 nodes** — the floor itself. The band
+is a knife edge, not an interval.
+
+Three ways forward, none taken:
+
+1. **Widen the ceiling again**, to ~25s. `qr384_b` ships unchanged.
+2. **Re-measure `20 clues, sample 0`** (17,537 nodes) under the protocol. It
+   should land near 12s — inside a 15s ceiling, 12% under the node floor.
+3. **Accept that the floor and ceiling meet** and set the band at a single
+   point near 20,000 nodes, then hunt boards at exactly that difficulty.
