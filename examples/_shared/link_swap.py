@@ -7,6 +7,7 @@
 import copy
 import pathlib
 
+from frame import UndescribableInk, segments
 from link_codec import decode_puzzle, encode_link
 
 
@@ -39,13 +40,45 @@ def frame_only(doc, constraint_name):
     return d
 
 
+def _comparable_ink(lines):
+    """What to compare a decoration layer by: its ink where `frame.segments`
+    can name it, otherwise the polylines exactly as authored.
+
+    segments only speaks of axis-aligned runs on the integer lattice, which is
+    all `frame.cosmetics` draws. A hand-authored layer can hold a diagonal, a
+    half-cell line or a repeated point -- numbered-rooms already ships
+    decoration cosmetics never drew -- and such a layer falls back to being
+    compared point for point. That reads a redraw of it as a mismatch, which
+    the caller can look at; raising instead would take the guard itself down.
+    A malformed layer -- a point short of a coordinate, a "line" that is not
+    points -- is that same outage, so it degrades the same way rather than
+    raising.
+    """
+    try:
+        return sorted(segments(lines))
+    except (UndescribableInk, KeyError, TypeError):
+        return lines
+
+
 def frame_and_comment_only(doc, constraint_name):
-    """`frame_only`, plus the puzzle comment cleared, so two variants that
-    differ only in code, input or comment compare equal -- the same board,
-    givens and shown clues either way. The guard a rebuild-from-seed script
-    puts on its output."""
+    """`frame_only`, plus the puzzle comment cleared and every decoration
+    layer reduced to the ink it draws, so two variants that differ only in
+    code, input, comment or how the decoration is drawn compare equal -- the
+    same board, givens and shown clues either way. The guard a
+    rebuild-from-seed script puts on its output.
+
+    The decoration layers are derived from the board, and a rebuild redraws
+    them: merging the per-cell squares into runs changes every polyline and
+    nothing a solver sees (#385). Comparing the ink instead of the point
+    lists still catches a layer that moved, gained a line, or lost one.
+
+    Layers whose ink has no name in segments are compared as authored --
+    see `_comparable_ink`."""
     d = frame_only(doc, constraint_name)
     d["puzzle"]["comment"] = ""
+    for c in d["puzzle"]["constraints"]:
+        if c.get("type") == 2000:
+            c["lines"] = _comparable_ink(c.get("lines", []))
     return d
 
 

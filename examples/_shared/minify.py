@@ -2,13 +2,14 @@
 # stays small. The source files keep their full commentary; only the copy baked
 # into the link is stripped.
 #
-# What survives into the export: the code, its indentation, and the few comments
-# a maintainer marked "//!" as essential to reading the algorithm. Every other
-# comment and every blank line is dropped, block comments included -- a
-# component's `/* eslint-disable ... */` is an apology to a linter the
-# recipient does not run. Keep "//!" comments self-contained -- they ship to
-# people who never see this repo, so they must not point at local files, docs,
-# or ADRs.
+# What survives into the export: the code and its indentation. Every comment
+# and every blank line is dropped, block comments included -- a component's
+# `/* eslint-disable ... */` is an apology to a linter the recipient does not
+# run, and the commentary a source file carries in its "//!" blocks is a large
+# fraction of both the shipped code and the link it goes into (#385; the
+# measured shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
+# The source files keep those blocks; how a reuser gets the commentary is a
+# separate question.
 #
 # ponytail: regex strip, not a real parser. Safe for these files because none of
 # them holds "//" inside a string or a regex literal (only single slashes, e.g.
@@ -27,14 +28,6 @@ def minify_js(src, drop_blocks=True):
     own file. Everything shipped from examples/ takes the default."""
     out = []
     for line in src.splitlines():
-        stripped = line.lstrip()
-        if stripped.startswith("//!"):  # keep, as a plain comment
-            # Only the marker goes: the spacing after it is load-bearing, since
-            # these blocks lay rules out in columns and the shipped copy is the
-            # one a reader sees.
-            indent = line[: len(line) - len(stripped)]
-            out.append((indent + "//" + stripped[3:]).rstrip())
-            continue
         if drop_blocks:
             line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
             assert "/*" not in line and "*/" not in line, (
@@ -50,11 +43,11 @@ if __name__ == "__main__":
     sample = (
         "/* eslint-disable no-unused-vars -- the component API */\n"
         "// ordinary comment, dropped\n"
-        "  //! kept note\n"
+        "  //! marked comment, dropped too\n"
         "const x = 1        // inline note, dropped\n"
         "\n"
         "  const u = 'http://a/b'\n"
     )
     got = minify_js(sample)
-    assert got == "  // kept note\nconst x = 1\n  const u = 'http://a/b'\n", repr(got)
+    assert got == "const x = 1\n  const u = 'http://a/b'\n", repr(got)
     print("minify self-check OK")

@@ -278,8 +278,11 @@ def check_components(example_dir, link):
     A lexical check, like the one in `framebuild.check`: it reads
     `new <Name>Component` off the backend source, so a class reached through
     an alias, or named some other way, is invisible to it. Comment lines are
-    dropped first, or a kept `//!` note that mentions a component would read
-    as a registration.
+    dropped first: a link built today ships none (#385, minify.py), but this
+    sweep also reads backends off links no builder rebuilds -- fillomino's
+    frozen timing fixtures and hunt records -- whose committed backends still
+    carry them, and a note that names a component must not read as a
+    registration.
     """
     name = example_dir.name
 

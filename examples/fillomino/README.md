@@ -289,11 +289,13 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
    the app still closes the board — so no given in it is known-droppable by
    that walk. It is a greedy strip, not a CP-SAT minimality proof, and the
    README says so where the board is described.
-4. **Component reads well** ✓ — `FillominoComponent.js` opens with an 81-line
-   `//!` overview (what the rules are, why the growth test ships at
-   frontier-only scope, why merge force is not built) and carries short
-   per-step comments through the scan, the walk, the doors and the bound. The
-   recipient reads that source inside the 10.4 KB link blob.
+4. **Component reads well at its source** ✓ — `FillominoComponent.js` opens
+   with an 81-line `//!` overview (what the rules are, why the growth test
+   ships at frontier-only scope, why merge force is not built) and carries
+   short per-step comments through the scan, the walk, the doors and the bound.
+   **None of it ships** (#385): `minify.py` strips every comment from the copy
+   baked into the link, so a recipient reads the algorithm and nothing about
+   it. The criterion is checked against the file, not against the blob.
 
 ## Paste into SudokuMaker
 

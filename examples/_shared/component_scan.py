@@ -14,10 +14,14 @@ def registered_components(backend_code):
     """Return the set of component names `backend_code` constructs with
     `new <Name>Component(...)`.
 
-    Comment lines are dropped first, so a `//!` note that mentions a
-    component does not read as a registration. A class reached through an
-    alias, or registered some other way than a literal `new` call, is
-    invisible to this scan -- it is lexical, not a JS parse.
+    Comment lines are dropped first, so a note that mentions a component does
+    not read as a registration. A shipped link carries no comments at all
+    (#385, minify.py), but this scan also reads backends off already-committed
+    links that were not built that way -- fillomino's frozen timing fixtures
+    and hunt records, which `check_layout` sweeps and no builder rebuilds. A
+    class reached through an alias, or registered some other way than a
+    literal `new` call, is invisible to this scan -- it is lexical, not a JS
+    parse.
     """
     code = "\n".join(
         line for line in backend_code.splitlines() if not line.lstrip().startswith("//")

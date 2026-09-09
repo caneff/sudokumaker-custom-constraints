@@ -114,7 +114,8 @@ either.
 ## Where our 15 KB goes
 
 Measured 2026-09-08 by decoding `PUZZLE_LINK.txt`, editing one thing out, and
-re-encoding. The link is 14,990 bytes as it ships.
+re-encoding. The link was 14,990 bytes that day; "Both levers, pulled" below
+records what it is now.
 
 | variant | link bytes | delta |
 |---|---|---|
@@ -142,6 +143,62 @@ into runs would recover most of the 2,086 bytes and change nothing a solver or a
 reader ever sees. That is the one size lever here that costs nothing.
 
 `SkyscraperSideComponent` is not a lever: "exactly one 1 per side" is a real
-deduction the board is carved against, not packaging. Stripping comments is the
-biggest single number on the list and is the thing #383 ruled against — the link
-is the only documentation a reuser ever gets.
+deduction the board is carved against, not packaging.
+
+## Both levers, pulled (#385)
+
+The table above is the board as it stood on the measurement day. #385 took the
+two rows it named and the shipped link is now **9,729 bytes, down 5,260 (35%)**.
+
+- **The decoration is merged.** `frame.cosmetics` still states the picture one
+  closed square per cell, then `frame.merge` reduces the layer to the set of
+  unit segments it covers and walks that set back out as long polylines. 337
+  points became 154, and 6,730 chars of JSON became 3,309. The rendered board
+  is pixel-identical at 4x4, 6x6, 9x9 and 10x10.
+- **Every comment is stripped.** This reverses #383, on the owner's call: the
+  size is wanted back now, and how a reuser gets the commentary is a separate
+  question. The source files keep their full `//!` blocks; only the copy baked
+  into a link loses them. 15,803 chars of embedded code became 9,053.
+
+Across all 43 committed links the two together take 440,245 bytes to 351,503,
+a fifth of the total. The floor the table names is untouched: the frame
+document is still 4,594 bytes before a single byte of code, because an
+interactive-outside frame is a 121-cell board with clue cells a solver can
+fill, and no amount of minification reaches that.
+
+### How the picture was checked
+
+Ink equality is provable from the link -- `frame.merge` is a function of the
+segment set alone -- but Part 1's constraint is what a solver *sees*, so it was
+also judged from a picture. Method, so a later change can redo it:
+
+1. Open each committed link in the live app with headless Chromium
+   (Playwright), viewport 1400x1200 at device scale 3, and let it settle.
+2. Screenshot the `svg.SudokuSvg` element alone, not the page, so app chrome
+   and scroll position cannot move a pixel.
+3. Do that on the links as committed before the change and again after, and
+   compare the two PNGs byte for byte.
+
+Run on skyscraper's four board sizes -- `PUZZLE_LINK_4x4.txt`,
+`PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK.txt` (9x9) and `PUZZLE_LINK_10x10.txt`.
+**All four pairs came back byte-identical PNGs: 0 differing pixels, max channel
+delta 0.** No internal ring border shows, no corner filler is boxed, and
+adjacent boxed clue cells keep the border between them. The screenshots and
+the page collecting them live in the building workspace's git-ignored
+`.scratch/385/`, which does not outlive the workspace -- so the method above,
+not the images, is what a later reader re-runs.
+
+### Numbered rooms is the exception to the merge
+
+The byte totals above are whole-corpus and hide one family. Four links --
+`examples/numbered-rooms/PUZZLE_LINK.txt`, `_clued.txt`, `_original.txt` and
+`_clued_original.txt` -- carry **218 hand-authored decoration points apiece**,
+and the merge does not reach them. Their decoration is not `frame.cosmetics`
+output: the outlines box six cells the board has no given for, and the third
+layer is named "Grid Outer Border (to hide outside cell outline endpoints)"
+rather than "Grid Outer Border". Regenerating them would change the picture,
+and Part 1's hard constraint -- the rendered board must not move -- outranks
+the size lever. So those four kept their decoration and only their code was
+rebuilt, and two of them (the two `_original` twins, whose vendored wrapper
+carries no comments to strip) came out byte-identical to their previous
+revision. That is the correct outcome, not a skipped rebuild.

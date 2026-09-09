@@ -20,13 +20,16 @@ if __name__ == "__main__":
     code = "puzzle.addConstraintComponent(\n  new FooComponent()\n)"
     assert registered_components(code) == {"FooComponent"}
 
-    # a comment line naming a component is not a registration
+    # a comment line naming a component is not a registration. A link built
+    # today ships no comments (#385), but the sweep also reads backends off
+    # links no builder rebuilds -- fillomino's frozen fixtures and hunt
+    # records, whose committed backends still carry comment lines.
     code = "// a paired end gets a new BarComponent\nnew FooComponent()"
     assert registered_components(code) == {"FooComponent"}
 
-    # a kept `//!` note (already turned into a plain `//` comment by minify
-    # before this scan ever sees it) is likewise not a registration
-    code = "// kept note: a new BarComponent\nnew FooComponent()"
+    # an indented comment line counts too: the scan strips leading whitespace
+    # before it looks for the marker
+    code = "    // a new BarComponent goes here\nnew FooComponent()"
     assert registered_components(code) == {"FooComponent"}
 
     # no registrations at all
