@@ -86,22 +86,26 @@ non-deterministic solve off, app `v2026.08.14-d47fc4b`:
 | `qr384_b` | cold | 21100ms | 2500ms | **23600ms** | 3/3 unique |
 | `qr384_b` | after-logical | 19200ms | 2400ms | **21900ms** | 3/3 unique |
 
-**That is ~2x the 12.2s the 1-rep recon reported, and it misses the widened 15s
-ceiling.** Every rep is internally consistent (cold spread 21.8-23.9s), so the
-recon reading is the outlier, not these. The cause is not established — the
-recon ran the same link, same component, same driver, on an idle machine — and
-it is recorded as unexplained rather than guessed at. **The recon numbers for
-`qr384_c` (15.9s) are suspect for the same reason and should be re-taken under
-the protocol before being used for anything.**
+**Every app wall-clock figure in this document is void.** The machine was
+running other solver jobs throughout — load average **27.7 on 32 cores** when
+the rows above were taken. The 12.2s recon and the 23.6s protocol median differ
+by 2x because they sampled different amounts of contention, not because either
+the board or the driver changed.
 
-The practical consequence: 35,021 offline nodes maps to ~23.6s in the app, so a
-15s ceiling implies roughly **20,000-22,000 nodes** — the floor itself. The band
-is a knife edge, not an interval.
+What survives and what does not:
 
-Three ways forward, none taken:
+- **Offline node counts survive.** `qr-metric.mjs` counts DFS nodes, which is
+  deterministic and load-independent. The whole ladder stands.
+- **CP-SAT uniqueness verdicts survive.** Their wall clocks are inflated; the
+  verdicts are not timings.
+- **Every app row is void** — the three recon readings and both protocol rows.
+  No board has a valid app measurement, so **no board is selected**.
 
-1. **Widen the ceiling again**, to ~25s. `qr384_b` ships unchanged.
-2. **Re-measure `20 clues, sample 0`** (17,537 nodes) under the protocol. It
-   should land near 12s — inside a 15s ceiling, 12% under the node floor.
-3. **Accept that the floor and ceiling meet** and set the band at a single
-   point near 20,000 nodes, then hunt boards at exactly that difficulty.
+**The protocol has a hole.** `docs/real-app-timing.md` never mentions machine
+load, and `app-solve.mjs` neither records nor checks it. Ratio comparisons taken
+back to back in one run are partly self-protecting; an **absolute** threshold
+like #326's ceiling is not, and that is exactly what this ticket measures
+against. A timing run needs a quiet machine and a recorded load average.
+
+Re-measurement waits on an idle machine. Until then the question #326 set
+stands unanswered: which boards, if any, sit inside the band.
