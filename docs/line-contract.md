@@ -16,7 +16,11 @@ every kind above it.
 | **full house** | not repeat, and every digit the line can hold is present once | house and the union of live candidates across the line has exactly `line.length` digits |
 
 "Clued at both ends" is not a kind. It is a **pair** shape, owned by the global
-main code (below).
+main code (below). The global lane gets those pairs from `framePairs`, which
+reads them off the frame's own order — L with R on a row, T with B on a column
+— rather than searching for a line that is another line reversed. A frame line
+therefore cannot come out unpaired, and the local lane, where an author may
+have drawn one end and not the other, is where a lone clue is handled.
 
 ## What a component may assume
 
@@ -72,8 +76,9 @@ Each example ships two puzzle links from one component set:
 
 - **local** — `main.js`: the author draws groups; it registers one **line
   component** per group, one end only, no assumption about the line.
-- **global** — `main-global.js`: no groups; it builds every frame line from
-  the grid and registers the line component on each, plus the global-only
+- **global** — `main-global.js`: no groups; it splices in the one shared frame
+  reader (`examples/_shared/frame-lines.js`, `docs/example-layout.md`) and
+  registers the line component on each line it returns, plus the global-only
   components.
 
 Two files, no "groups present?" switch in one file (#194): each paste carries

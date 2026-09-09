@@ -39,7 +39,7 @@ import sys
 sys.path.insert(0, {str(HERE)!r})
 from link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
-from minify import minify_js
+from minify import minify_file, minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Widget Lines"
@@ -48,7 +48,7 @@ CONSTRAINT_NAME = "Widget Lines"
 def build(component_path, out_path, board=None):
     component_path = pathlib.Path(component_path)
     board_path = pathlib.Path(board) if board else HERE / "PUZZLE_LINK.txt"
-    code = minify_js(component_path.read_text())
+    code = minify_file(component_path)
     base = decode_puzzle(board_path.read_text().strip())
     doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)

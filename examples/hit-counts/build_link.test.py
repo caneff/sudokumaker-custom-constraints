@@ -26,7 +26,7 @@ from build_link import CONSTRAINT_NAME, build
 from frame import ring_cell
 from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
-from minify import minify_js
+from minify import minify_file
 
 # Must match framebuild.RULES_PREFIX; restated so this test never imports
 # the builder it is checking.
@@ -70,9 +70,9 @@ def check_local_link(tag):
 
     names = [c.get("name") for c in p["constraints"]]
     lc = p["constraints"][names.index(CONSTRAINT_NAME)]
-    assert lc["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main.js").read_text()
-    ), "the local board runs the main.js lane, not main-global.js"
+    assert lc["definition"]["backend"]["code"] == minify_file(HERE / "main.js"), (
+        "the local board runs the main.js lane, not main-global.js"
+    )
 
     # the paths ship as drawn groups: clue cell first, then the path inward
     groups = lc["input"]["groups"]

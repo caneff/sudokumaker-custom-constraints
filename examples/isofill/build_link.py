@@ -26,7 +26,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from link_codec import decode_puzzle, encode_link
 from link_swap import check_and_write, swap_component_code
-from minify import minify_js
+from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "ISOFILL"
@@ -73,15 +73,13 @@ def build(component_path, puzzle_path):
                         "input": [],
                         "backend": {
                             "type": "code",
-                            "code": minify_js((HERE / "main.js").read_text()),
+                            "code": minify_file(HERE / "main.js"),
                         },
                         "components": [
                             {
                                 "type": "code",
                                 "name": "IsofillComponent",
-                                "code": minify_js(
-                                    pathlib.Path(component_path).read_text()
-                                ),
+                                "code": minify_file(pathlib.Path(component_path)),
                             }
                         ],
                     },
@@ -116,7 +114,7 @@ def build_on_board(component_path, out_path, board_path):
     than the default board: the grid and clues stay exactly as committed.
     """
     base = decode_puzzle(pathlib.Path(board_path).read_text().strip())
-    code = minify_js(pathlib.Path(component_path).read_text())
+    code = minify_file(pathlib.Path(component_path))
     doc = swap_component_code(base, CONSTRAINT_NAME, TIMED_COMPONENT, code)
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
 

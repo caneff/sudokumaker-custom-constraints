@@ -1,7 +1,15 @@
-// Every global backend must coerce the cell ids it gets from the app to plain
-// integers before it registers a component (#276), and must build the frame it
-// says it builds: the 4n lines of the shared frameGeometry, and a side label
-// that names the side its clues actually sit on (#295).
+// Every backend must coerce the cell ids it gets from the app to plain
+// integers before it registers a component (#276), and a global one must build
+// the frame it says it builds: the 4n lines of the shared frameGeometry, and a
+// side label that names the side its clues actually sit on (#295).
+//
+// Both lanes run here (docs/line-contract.md). The GLOBAL lane is
+// main-global.js with no `input`: it derives every cell id from the board size,
+// so it gets the frame checks as well. The LOCAL lane is main.js with
+// `input.groups` supplied in the shape framebuild.frame_groups ships --
+// `{ cells: [clueCell, ...line], value: '' }` -- and it gets the id checks
+// alone: a drawn board is whatever its author drew, and the shapes below are
+// two of the things an author can legitimately draw that a frame never is.
 //
 //   node examples/_shared/global-backends.test.mjs
 //
@@ -29,6 +37,7 @@ import { dirname, join } from 'path'
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
+import { assembleSource } from './include.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -110,6 +119,15 @@ function cellGroupsIn (value, cells, lengths) {
   return Object.values(value).flatMap(v => cellGroupsIn(v, cells, lengths))
 }
 
+// Every in-range cell id reachable from a component's arguments as a bare
+// number that is one of the frame's ring cells. A pair component takes its two
+// clues that way, one argument each, not as a group.
+function ringIdsIn (value, ringCells) {
+  if (typeof value === 'number') return ringCells.has(value) ? [value] : []
+  if (!value || typeof value !== 'object') return []
+  return Object.values(value).flatMap(v => ringIdsIn(v, ringCells))
+}
+
 const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
   .filter(d => d.isDirectory() && d.name !== '_shared')
   .map(d => d.name)
@@ -120,7 +138,12 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 
 // Run one backend against a board W wide and H tall, and check the frame it
 // builds against the one truthful copy of the geometry.
-function checkBackend (name, src, W, H) {
+//
+// `groups` switches lanes: null runs the global backend with no `input` at all
+// and checks the whole frame; an array runs a local backend on those drawn
+// groups and checks the cell ids alone. `file` and `note` only name the run in
+// an assertion message.
+function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '' } = {}) {
   // The component constructors the backend calls, recorded rather than run.
   const ctorNames = [...new Set([...src.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
   const ctors = ctorNames.map(n => {
@@ -132,9 +155,9 @@ function checkBackend (name, src, W, H) {
   // The app runs a backend segment as a bare script with these names in scope;
   // a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', ...ctorNames, src) // eslint-disable-line no-new-func
-  fn(undefined, p, helpers, ...ctors)
+  fn(groups ? { groups } : undefined, p, helpers, ...ctors)
 
-  const where = `${name}/main-global.js on ${W}x${H}`
+  const where = `${name}/${file} on ${W}x${H}${note}`
   assert.ok(p.registered.length > 0, `${where}: registered nothing`)
   assert.strictEqual(p.offBoard, 0,
     `${where} asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
@@ -142,6 +165,11 @@ function checkBackend (name, src, W, H) {
   const bad = p.registered.flatMap((c, i) => badIdsIn(c.args, cells, `${name} component ${i} arg`))
   assert.deepStrictEqual(bad.slice(0, 5), [],
     `${where} must hand components plain in-range integer cell ids (${bad.length} bad)`)
+
+  // The two checks below describe a WHOLE FRAME -- all 4n lines, and a ring
+  // cell per row and column. A drawn board owes neither: it ships the groups
+  // its author drew and nothing else.
+  if (groups) return
 
   // Every cell group a backend hands a component is either a line (all
   // interior) or a side's clues (all ring), so the two are told apart by their
@@ -156,7 +184,7 @@ function checkBackend (name, src, W, H) {
   }
   const ringCells = new Set([...ring.values()].flat())
   const lengths = new Set([nw, nh])
-  const groups = p.registered.flatMap(c => cellGroupsIn(c.args, cells, lengths))
+  const registeredGroups = p.registered.flatMap(c => cellGroupsIn(c.args, cells, lengths))
 
   // 1. The line set: every line the backend registers is a frame line, and it
   // registers all 2 * nw + 2 * nh of them. A square frame is symmetric under
@@ -166,7 +194,7 @@ function checkBackend (name, src, W, H) {
   // twice builds the wrong lines and this check catches it on its own (#299).
   // The off-board count above usually reports the same backend first, since
   // reading one dimension twice also walks off the short side.
-  const lines = groups.filter(g => g.every(id => !ringCells.has(id)))
+  const lines = registeredGroups.filter(g => g.every(id => !ringCells.has(id)))
   assert.deepStrictEqual(
     [...new Set(lines.map(g => g.join(',')))].sort(),
     [...new Set(geom.groups.map(g => g.cells.slice(1).join(',')))].sort(),
@@ -187,6 +215,22 @@ function checkBackend (name, src, W, H) {
         `${where}: "${c.args[0]}" does not hold side ${side}'s clue cells`)
     }
   }
+
+  // 3. The pairs: a component given ONE line and TWO clue cells is a pair
+  // component, and its two clues must be the ones at the two ends of THAT
+  // line. Nothing above sees this -- a backend that pairs every clue with some
+  // other clue's opposite still registers the right line set and the right
+  // side labels, and the puzzle it builds is a different puzzle.
+  const clueOfLine = new Map(geom.groups.map(g => [g.cells.slice(1).join(','), g.cells[0]]))
+  for (const c of p.registered) {
+    const ownLines = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
+    const ownClues = [...new Set(ringIdsIn(c.args, ringCells))]
+    if (ownLines.length !== 1 || ownClues.length !== 2) continue
+    const line = ownLines[0]
+    const ends = [clueOfLine.get(line.join(',')), clueOfLine.get([...line].reverse().join(','))]
+    assert.deepStrictEqual([...ownClues].sort((a, b) => a - b), ends.sort((a, b) => a - b),
+      `${where}: "${c.args[0]}" pairs clues that are not the two ends of the line it was given`)
+  }
 }
 
 // 11x11 is the shipped board size. 11x8 is the same width with a shorter
@@ -195,8 +239,90 @@ function checkBackend (name, src, W, H) {
 const BOARDS = [[11, 11], [11, 8]]
 
 for (const name of dirs) {
-  const src = readFileSync(join(EXAMPLES, name, 'main-global.js'), 'utf8')
+  const src = assembleSource(join(EXAMPLES, name, 'main-global.js'))
   for (const [W, H] of BOARDS) checkBackend(name, src, W, H)
 }
 
-console.log(`PASS (${dirs.length} global backends, ${BOARDS.length} board shapes)`)
+// ---- the local lane
+//
+// An example has a local lane exactly when it has both paste targets: main.js
+// reading the author's drawn groups and main-global.js building the frame
+// itself (docs/example-layout.md). `dirs` is already that list. fillomino and
+// isofill have no main-global.js and so appear in neither -- each is a
+// whole-grid constraint with no outside frame at all, and its lone main.js
+// builds its cell list from the board size rather than from drawn groups.
+const localDirs = dirs.filter(name => existsSync(join(EXAMPLES, name, 'main.js')))
+
+assert.deepStrictEqual(localDirs, dirs,
+  'an example with a main-global.js must have the main.js that is its other lane')
+for (const name of localDirs) {
+  assert.ok(readFileSync(join(EXAMPLES, name, 'main.js'), 'utf8').includes('input.groups'),
+    `${name}/main.js is the local lane and must read the drawn groups`)
+}
+
+// A drawn group as framebuild.frame_groups ships it: the clue's ring cell,
+// then that line's cells inward, and the empty value the app stores on a group
+// the author has not typed into.
+const drawn = cells => ({ cells, value: '' })
+
+// The three drawn shapes. The frame is what every example's own local board
+// ships; the other two are shapes a frame never has and an author can still
+// draw, so a backend that quietly assumes a frame is caught here.
+//
+//  - LONE CLUE: one line clued at ONE end. A frame clues both, and a backend
+//    that pairs ends must still do something sane with a single one -- the
+//    author may be halfway through drawing the other.
+//  - BENT PATH: an L, `a` cells straight in from the clue then a turn and
+//    n - a across, n in all. That is the shape framebuild.make_paths generates
+//    and the local boards of the bare-line examples ship. A bent path spans more
+//    than one row and more than one column, so it is not a house and the line
+//    kind checks in a component must not assume one (docs/line-contract.md).
+function localCases (W, H) {
+  const nw = W - 2
+  const nh = H - 2
+  const geom = frameGeometry(nw, [3, 3], nh)
+  const frame = geom.groups.map(g => drawn(g.cells))
+
+  // The bent path leaves the L0 clue: `a` cells along interior row 0, then a
+  // turn down that column for the remaining nw - a. `a` is the shortest first
+  // leg whose second leg still fits the board's height, and never under 2 --
+  // the range make_paths draws from -- so both legs stay non-empty and the
+  // path really does span more than one row and more than one column.
+  const a = Math.max(2, nw - nh + 1)
+  const straight = Array.from({ length: a }, (_, c) => geom.interior(0, c))
+  const across = Array.from({ length: nw - a }, (_, k) => geom.interior(k + 1, a - 1))
+  const bent = [geom.clueCell('L', 0), ...straight, ...across]
+  assert.strictEqual(bent.length, nw + 1, 'the bent path must hold as many cells as a straight one')
+  assert.ok(nw - a <= nh - 1, 'the bent path\'s second leg must fit the board')
+
+  return [
+    { note: ', drawn frame', groups: frame },
+    { note: ', lone clue', groups: [frame[0]] },
+    // Only the bent path may be refused: a rule can genuinely need a straight
+    // line. A drawn frame and a lone clue are shapes every local lane owes an
+    // answer to, so a throw there is a failure.
+    { note: ', bent path', groups: [drawn(bent)], mayRefuse: true }
+  ]
+}
+
+let localRuns = 0
+for (const name of localDirs) {
+  const src = assembleSource(join(EXAMPLES, name, 'main.js'))
+  for (const [W, H] of BOARDS) {
+    for (const { note, groups, mayRefuse } of localCases(W, H)) {
+      try {
+        checkBackend(name, src, W, H, { groups, file: 'main.js', note })
+      } catch (e) {
+        // Refusing a bent path loudly is a legitimate answer, and one example
+        // gives it: outside-sudoku's window is a box's extent along the line's
+        // DIRECTION, which a bent path has none of, so its main.js throws
+        // rather than size a window from nothing. Anywhere else, and for an
+        // assertion from the checks above, the throw IS the failure.
+        if (!mayRefuse || e instanceof assert.AssertionError) throw e
+      }
+      localRuns++
+    }
+  }
+}
+
+console.log(`PASS (${dirs.length} global backends, ${localDirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)

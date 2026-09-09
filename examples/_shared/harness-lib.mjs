@@ -7,10 +7,10 @@
 // A component reads two globals at update time: SudokuDigitSet.from(array) and
 // helpers.digits.{minDigit,maxDigit}. Call installGlobals once before running.
 
-import { readFileSync } from 'fs'
 import { join } from 'path'
 import { execFileSync } from 'child_process'
 import { Script } from 'vm'
+import { assembleSource } from './include.mjs'
 
 // The app's DigitSet, as read from its bundle (docs/puzzle-api.md): a bitmask
 // where bit d is digit d. The algebra methods MUTATE and return this.
@@ -37,14 +37,16 @@ export function installGlobals (minDigit, maxDigit) {
   }
 }
 
-// Bind file reads to the example's own directory. `read` returns a file's text;
+// Bind file reads to the example's own directory. `read` returns a file's text
+// with its `// #include` directives spliced in (include.mjs), so a probe runs
+// the same assembled paste target the link ships;
 // `load` evals a component file and returns the named functions from it;
 // `loadSource` does the same for source a caller already holds, which is how a
 // harness runs one component twice with a flag at the top of the file flipped;
 // `loadAt` does the same for the file as it stood at a git commit, which is how
 // a strength test holds a component to the floor it set.
 export function makeIo (here) {
-  const read = f => readFileSync(join(here, f), 'utf8')
+  const read = f => assembleSource(join(here, f))
   // vm.Script instead of eval so V8 coverage (c8) attributes the component's
   // execution to its own file, not to this harness.
   const evalNamed = (src, names, filename = 'loadSource.js') =>

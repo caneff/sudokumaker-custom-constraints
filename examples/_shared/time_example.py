@@ -28,7 +28,7 @@ sys.path.insert(0, str(HERE))
 
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, replace_constraint_code
-from minify import minify_js
+from minify import minify_file, minify_js
 from probe_link import empty_link_file
 
 APP_SOLVE = HERE / "app-solve.mjs"
@@ -165,7 +165,13 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
     ]
     if not candidates:
         return None
-    matches = [f for f in candidates if minify_js(head_content(f)) == committed_backend]
+    # head_content is a string, so it carries no directory: an `// #include`
+    # in it resolves against the file's own directory in the working tree.
+    matches = [
+        f
+        for f in candidates
+        if minify_js(head_content(f), base_dir=f.parent) == committed_backend
+    ]
     if not matches:
         raise ValueError(
             f"{example_dir.name}: no backend file "
@@ -199,7 +205,7 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     constraint_name = find_component_constraint(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
     if backend_file is not None:
-        backend_code = minify_js(backend_file.read_text())
+        backend_code = minify_file(backend_file)
         candidate_doc = replace_constraint_code(
             candidate_doc, constraint_name, backend_code=backend_code
         )

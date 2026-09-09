@@ -1,58 +1,39 @@
 // Hit Counts — main (backend) code segment, GLOBAL variant.
 //
-// No groups are drawn: build every frame line from the board size -- an
-// interior nw = W-2 wide and nh = H-2 tall, ringed by one clue cell per row and
-// per column. A left or right clue reads one interior row, so it has nw cells
-// and there are nh such lines; a top or bottom clue reads one interior column,
-// so it has nh cells and there are nw of them. `puzzle.getCellAt(a, b)`
-// is the cell at column a, row b (docs/puzzle-api.md), so `at(r, c)` hands it
-// the arguments the other way round: it reads row r, column c, the cell its
-// own name says. The side names below are the real sides.
+// No groups are drawn: the frame lines come from the shared reader below, one
+// { side, clue, line } per clued line (examples/_shared/frame-lines.js).
 // Then register the same joint line component as main.js, plus the per-side
 // sum, which only makes sense across the whole frame.
 //
 // The interior's rows and columns ARE the frame's lines: a left clue and a
 // right clue read one row from opposite ends, a top and a bottom clue one
-// column. Build the rows and columns once, then hand each side both its own
-// clued lines and the n lines that cross it -- the side sum's proof runs over
-// the crossing lines, not the clued ones.
-const W = puzzle.spec.size.width
-const H = puzzle.spec.size.height
-const nw = W - 2
-const nh = H - 2
-// `| 0` is load-bearing, not decoration: an id derived from the board size
-// costs the app's solver ~1.3x per candidate read until it is a plain integer
-// again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate here is in
-// range, so getCellAt never returns undefined -- and it must stay that way,
-// because `undefined | 0` is 0, a real cell.
-const at = (r, c) => puzzle.getCellAt(c, r) | 0
-const along = (len, f) => Array.from({ length: len }, (_, k) => f(k + 1))
-const rows = along(nh, i => along(nw, c => at(i, c)))
-const cols = along(nw, i => along(nh, r => at(r, i)))
-const reversed = line => line.slice().reverse()
+// column. So the lines that CROSS one side are already in hand -- the left and
+// right clues are crossed by the columns, which is what the top clues read, and
+// the top and bottom clues by the rows, which is what the left clues read. The
+// side sum's proof runs over those crossing lines, not the clued ones, and
+// there is no second copy of the geometry here to get them.
+// #include ../_shared/frame-lines.js
 
-// Each side, clue cell first, its line read inward from the cell next to the
-// clue -- the group order every line component expects (gotcha 3).
+const lines = frameLines(puzzle)
+const bySide = s => lines.filter(g => g.side === s)
+const rows = bySide('L').map(g => g.line)
+const cols = bySide('T').map(g => g.line)
+
 const sides = [
-  { name: 'left', across: cols, groups: along(nh, i => ({ clue: at(i, 0), line: rows[i - 1] })) },
-  { name: 'right', across: cols, groups: along(nh, i => ({ clue: at(i, W - 1), line: reversed(rows[i - 1]) })) },
-  { name: 'top', across: rows, groups: along(nw, i => ({ clue: at(0, i), line: cols[i - 1] })) },
-  { name: 'bottom', across: rows, groups: along(nw, i => ({ clue: at(H - 1, i), line: reversed(cols[i - 1]) })) }
+  { name: 'left', across: cols, groups: bySide('L') },
+  { name: 'right', across: cols, groups: bySide('R') },
+  { name: 'top', across: rows, groups: bySide('T') },
+  { name: 'bottom', across: rows, groups: bySide('B') }
 ]
 
 //! Opposite pair: the two clues at the ends of one line get ONE
 //! HitCountsJointComponent, which reads the line, both clues, and the hit
-//! conflicts between a position and its mirror. Left and right clue the same
-//! row, top and bottom the same column, so the pairs come off the sides by
-//! index -- the line is the one read inward from clue A.
-const [left, right, top, bottom] = sides
-for (const [sa, sb] of [[left, right], [top, bottom]]) {
-  for (let i = 0; i < sa.groups.length; i++) {
-    const a = sa.groups[i]
-    const b = sb.groups[i]
-    const name = `the hit-count clues at ${helpers.naming.getCellName(a.clue)} and ${helpers.naming.getCellName(b.clue)}`
-    puzzle.addConstraintComponent(new HitCountsJointComponent(name, a.clue, b.clue, a.line))
-  }
+//! conflicts between a position and its mirror. `framePairs` hands over the two
+//! ends of each line by construction -- left with right on a row, top with
+//! bottom on a column -- and `a.line` is the line read inward from clue `a`.
+for (const { a, b } of framePairs(lines)) {
+  const name = `the hit-count clues at ${helpers.naming.getCellName(a.clue)} and ${helpers.naming.getCellName(b.clue)}`
+  puzzle.addConstraintComponent(new HitCountsJointComponent(name, a.clue, b.clue, a.line))
 }
 
 //! Side sum: the n clues on one side sum to exactly n. Regroup the side's hits

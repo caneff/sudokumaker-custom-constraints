@@ -11,7 +11,7 @@ so a missing required file or a bad link name fails the gate.
 | --- | --- |
 | `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
 | `main.js` | The SudokuMaker constraint definition for the **local** link (paste target); registers the line component per drawn group |
-| `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194) |
+| `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194). It does not build the frame itself: it splices in the one shared reader (below) |
 | `*Component.js` (at least one) | The pasted constraint snippet(s) |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
@@ -142,6 +142,30 @@ Baseline code and links for `just time` comparisons live under an
 `original/` subdir, which mirrors the example's own layout for the baseline
 component. `_original` links pair with it. Keep an `original/` baseline only
 where `just time` actually compares against it — not as a general changelog.
+
+## The shared frame reader, and `#include`
+
+Every `main-global.js` reads the same frame off the board, so it is written
+once, in `examples/_shared/frame-lines.js`, and spliced into each paste target
+by a directive line:
+
+```
+// #include ../_shared/frame-lines.js
+```
+
+The included file is a **paste segment**, not a module: plain function
+declarations, no `import`/`export`, because the app runs the assembled text as
+a bare script. It declares `frameLines(puzzle)` — every clued line as
+`{ side, clue, line }`, the line read inward from its clue — and
+`framePairs(lines)` — the opposite-end pairs, L with R and T with B, by
+construction rather than by a scan for one line that is another reversed.
+
+The splice happens wherever the source is turned into something that runs:
+`minify_js` / `minify_file` (`examples/_shared/minify.py`) for the link a
+builder writes, and `assembleSource` (`examples/_shared/include.mjs`) for the
+Node tests, harnesses and probes. A path resolves against the including file's
+own directory; a missing file, a cycle, or a directive naming no path stops the
+build.
 
 ## Extension rule
 

@@ -98,8 +98,9 @@ per-line component below carries the whole example.
   `NumberedRoomsComponent.js` plus one main file into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
   `main.js` (local) reads the drawn `groups` input; `main-global.js`
-  (global) builds all 4n frame lines from the board size itself instead —
-  no lines to draw.
+  (global) reads all 4n frame lines off the board through the shared reader it
+  splices in (`examples/_shared/frame-lines.js`, `docs/example-layout.md`)
+  instead — no lines to draw.
 - `PUZZLE_LINK_local.txt`, `gen_local.json` — the 9x9 **local** board: 36 bent
   paths in place of the frame lines, each shipped as a drawn group on the
   `main.js` lane, so the three rules that hold on a bare line have a board to

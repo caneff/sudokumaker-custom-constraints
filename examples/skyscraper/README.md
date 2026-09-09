@@ -37,10 +37,11 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
   gets a `SkyscraperOneSidedComponent`: the one-sided DP, sound on a line
   whose digits repeat.
 - **global** (`main-global.js`, `PUZZLE_LINK.txt`) — no groups. The backend
-  builds all 4n frame lines from the board size and registers the two-clue DP
-  alone per line, plus the one-1-per-side component. The DP is a decision
-  procedure for a whole line, so it subsumes the one-sided DP and global does
-  not run one beside it.
+  reads all 4n frame lines off the board through the shared reader it splices
+  in (`examples/_shared/frame-lines.js`, `docs/example-layout.md`), and
+  registers the two-clue DP alone per line, plus the one-1-per-side component.
+  The DP is a decision procedure for a whole line, so it subsumes the
+  one-sided DP and global does not run one beside it.
 
 Each link ships what its own backend registers, and nothing else: a global
 link carries the two-clue DP and the side count, a local link carries the
@@ -161,10 +162,11 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 - `main.js` — the local backend segment: one running-cap component per drawn
   group. A group of one cell is a clue an author has started and not finished,
   so it is skipped.
-- `main-global.js` — the global backend segment: builds all 4n frame lines
-  from the board size, then registers the two-clue DP per line plus the
-  one-1-per-side component (it needs a whole side, which only a full frame
-  has).
+- `main-global.js` — the global backend segment: reads all 4n frame lines off
+  the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
+  `docs/example-layout.md`), then registers the two-clue DP per line plus the
+  one-1-per-side component (it needs a whole side, which only a
+  full frame has).
 - `SkyscraperLineComponent.js` — the two-clue DP: both clues, the whole
   line, and the final check. Global only.
 - `SkyscraperOneSidedComponent.js` — the one-sided DP: one clue, one drawn

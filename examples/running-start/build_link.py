@@ -42,7 +42,7 @@ from frame import cosmetics
 from framebuild import RULES_PREFIX
 from link_codec import decode_puzzle, encode_link
 from link_swap import check_and_write, swap_component_code
-from minify import minify_js
+from minify import minify_file, minify_js
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -58,7 +58,7 @@ def build(component_path, out_path, board_path=None):
     how `just time running-start --board PUZZLE_LINK_local.txt` reaches the
     local board, whose bent paths are the fixture for a bare-line rule."""
     component_path = pathlib.Path(component_path)
-    code = minify_js(component_path.read_text())
+    code = minify_file(component_path)
     board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
     base = decode_puzzle(board_path.read_text().strip())
     doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
@@ -83,12 +83,12 @@ def build_from_template():
     for c in doc["puzzle"]["constraints"]:
         d = c.get("definition", {})
         if c.get("type") == 1000 and d.get("name") == CONSTRAINT_NAME:
-            d["backend"]["code"] = minify_js((HERE / "main-global.js").read_text())
+            d["backend"]["code"] = minify_file(HERE / "main-global.js")
             d["components"] = [
                 {
                     "type": "code",
                     "name": f[:-3],
-                    "code": minify_js((HERE / f).read_text()),
+                    "code": minify_file(HERE / f),
                 }
                 for f in COMPONENTS
             ]
@@ -129,9 +129,7 @@ def check(link, doc):
     )
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
-    assert rs["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main-global.js").read_text()
-    )
+    assert rs["definition"]["backend"]["code"] == minify_file(HERE / "main-global.js")
     assert rs["input"] == {}, "the global board reads no drawn groups"
 
 

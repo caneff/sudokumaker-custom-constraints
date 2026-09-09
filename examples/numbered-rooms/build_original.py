@@ -29,7 +29,7 @@ from framebuild import frame_groups as _frame_groups
 from framebuild import make_lines
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, frame_only, replace_constraint_code
-from minify import minify_js
+from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -57,10 +57,8 @@ def with_frame_groups(doc):
 def build_original(base):
     """`base` with the original wrapper's backend, component, and drawn
     groups. Only the constraint's own code and input change."""
-    backend_code = minify_js((HERE / "original" / "main.js").read_text())
-    component_code = minify_js(
-        (HERE / "original" / "CustomIndexComponent.js").read_text()
-    )
+    backend_code = minify_file(HERE / "original" / "main.js")
+    component_code = minify_file(HERE / "original" / "CustomIndexComponent.js")
     assert backend_code and component_code, "original code empty"
 
     original = with_frame_groups(
