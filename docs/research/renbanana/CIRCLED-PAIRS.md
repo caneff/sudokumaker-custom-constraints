@@ -185,7 +185,7 @@ Every negative above is per-grid, on sampled grids. The joint model --
 `tools/prove_pair.py`, digits and shading searched together with one geometry
 pinned -- settles it, and the answer is yes.
 
-Seven grids so far, each verified from the rules by `renbanana_verify` and
+Seventeen grids so far, each verified from the rules by `renbanana_verify` and
 re-verified from disk by `renbanana_cpsat.py verify`, held in
 `candidates-two-circles/`. Five came from the joint model directly; the other
 two were recovered from hits it had produced and been refused (below).
@@ -362,6 +362,63 @@ search: they steer the digits toward the vanishing fraction of sudokus that
 admit a legal shading at all. Without them the solver reaches the hopeless
 99.99% very quickly. `--drop-renban` stays in the tool for the record, and
 stays off.
+
+## The census after the 320-orbit harvest
+
+Two passes over the 320 orbit representatives, 120 seconds each, no label
+clause, then the recycler on every hit.
+
+| pass | proofs | hits | unknown |
+| --- | --- | --- | --- |
+| seed 0 | 42 | 25 | 253 |
+| seed 7 | 42 | 26 | 252 |
+
+Not one of pass 2's 26 hits was a geometry pass 1 had hit. Two searches over
+the same problems at the same budget reached disjoint sets, which is the
+strongest evidence yet that seeds beat clocks here. The proof count is
+identical both times because proofs are deterministic.
+
+Where that leaves the 320:
+
+| pair | orbits | impossible | has a grid | unknown |
+| --- | --- | --- | --- | --- |
+| 2x2 + 2x2 | 19 | 0 | 1 | 18 |
+| 2x2 + 2x3 | 170 | 8 | 9 | 153 |
+| 2x3 + 2x3 | 131 | 34 | 5 | 92 |
+| total | 320 | 42 | 15 | 263 |
+
+## 2x3 is harder than 2x2, and the circle digit says why
+
+The death rate climbs 0% -> 5% -> 26% as 2x2s are swapped for 2x3s, and the
+hit rate falls the other way, 16% -> 9% -> 5%. The cause is which digit the
+circle must hold, and how few partners the whisper leaves it:
+
+| shape | circle digit | may sit beside | count |
+| --- | --- | --- | --- |
+| 2x2 | 4 | 9 | 1 |
+| 2x3 | 6 | 1 | 1 |
+| 2x4 | 8 | 1, 2, 3 | 3 |
+| 3x3 | 9 | 1, 2, 3, 4 | 4 |
+
+4 and 6 are the only digits in the grid with a single legal chocolate
+neighbour, and they are exactly the circle digits of 2x2 and 2x3. A circled 4
+*is* a pair of 9s, one per neighbour -- checked in all 17 grids, without
+exception -- which is why a 2x2 can only be circled where it straddles a box.
+2x2 and 2x3 tie on that, so the tiebreak is size: the 2x3 pays the same
+forcing over 6 cells and a 10-cell banana halo instead of 4 and 8. 8 and 9 are
+where monogamy breaks, which is why 2x4 and 3x3 are the easy shapes.
+
+## Banana groups start at three
+
+Rule 4 puts a hard floor under every banana group: a lone cell is a 1x1 and a
+domino a 1x2, both rectangles, and a straight 1x3 is one too. So the smallest
+banana group is a three-cell L. Measured over every pool grid, banana sizes
+run 3, 4, 5, ... with no 1s or 2s, while chocolate holds 1,131 singletons and
+481 dominoes -- the exact mirror, because rule 3 wants chocolate groups to
+*be* rectangles.
+
+A circle on a three-cell L is the sharpest clue the shading can offer: it pins
+the run to {1,2,3}, {2,3,4} or {3,4,5}. The lineup sorts on that.
 
 ## Still open
 
