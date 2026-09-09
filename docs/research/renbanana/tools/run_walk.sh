@@ -13,6 +13,8 @@ BUDGET=${BUDGET:-900}
 OUT=${OUT:-docs/research/renbanana/walk}
 WANT=${WANT:-}
 FLOOR=${FLOOR:-0}
+CLIMB=${CLIMB:-circled}
+SMALLMAX=${SMALLMAX:-4}
 SEEDFILE=${SEEDFILE:-}
 SEEDS=${SEEDS:-docs/research/renbanana/candidates*/cand_*.json}
 
@@ -24,4 +26,5 @@ else
 fi | xargs -P "$PROCS" -I{} uv run --with ortools \
       docs/research/renbanana/tools/probe_walk.py \
       --source {} --budget "$BUDGET" --seconds 20 --workers 1 \
-      --want "$WANT" --floor "$FLOOR" --out "$OUT"
+      --want "$WANT" --floor "$FLOOR" --climb "$CLIMB" \
+      --small-max "$SMALLMAX" --out "$OUT"

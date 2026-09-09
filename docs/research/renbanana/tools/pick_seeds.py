@@ -32,6 +32,18 @@ def main():
     ap.add_argument("--want", default="2x2,2x3")
     ap.add_argument("--top", type=int, default=24)
     ap.add_argument("--min-score", type=int, default=1)
+    ap.add_argument(
+        "--rank",
+        choices=("circled", "small"),
+        default="circled",
+        help="rank seeds by circled wanted shapes, or by small banana groups",
+    )
+    ap.add_argument(
+        "--small-max",
+        type=int,
+        default=4,
+        help="a banana group this size or under counts as small",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
 
@@ -39,11 +51,17 @@ def main():
     rows = []
     for path in sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json")):
         grid, is_choc, _ = rv.load(path)
-        score = sum(
-            1
-            for g in rv.components(is_choc, True)
-            if tuple(sorted(rv.shape(g))) in want and any(grid[p] == len(g) for p in g)
-        )
+        if a.rank == "circled":
+            score = sum(
+                1
+                for g in rv.components(is_choc, True)
+                if tuple(sorted(rv.shape(g))) in want
+                and any(grid[p] == len(g) for p in g)
+            )
+        else:
+            score = sum(
+                1 for g in rv.components(is_choc, False) if len(g) <= a.small_max
+            )
         if score >= a.min_score:
             rows.append((score, path.stat().st_mtime, str(path)))
     rows.sort(reverse=True)

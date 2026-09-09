@@ -71,6 +71,19 @@ def circled_targets(grid, is_choc, want):
     return n
 
 
+def small_bananas(is_choc, cap):
+    """Banana groups holding at most `cap` cells.
+
+    A renban of k cells holds the run [m, m+k-1], so a group of 5 or more
+    always contains its own size whatever its digits -- its circle is forced
+    and tells a solver nothing. Informative banana circles live in the small
+    groups, and a grid whose bananas are all large barely presses its digits at
+    all: the run is nearly the whole of 1..9 and says little about any one
+    cell. So more small groups is a better puzzle, not just a different one.
+    """
+    return sum(1 for g in rv.components(is_choc, False) if len(g) <= cap)
+
+
 def parse_want(text):
     out = set()
     for bit in text.split(","):
@@ -103,6 +116,19 @@ def main():
         "--want",
         default="",
         help="shapes whose circled count the walk climbs, e.g. 2x2,2x3",
+    )
+    ap.add_argument(
+        "--climb",
+        choices=("circled", "small", "both"),
+        default="circled",
+        help="what the walk hill-climbs: circled wanted shapes, small banana "
+        "groups, or both with circles ranked first",
+    )
+    ap.add_argument(
+        "--small-max",
+        type=int,
+        default=4,
+        help="a banana group this size or under counts as small",
     )
     ap.add_argument(
         "--floor",
@@ -167,7 +193,19 @@ def main():
                     legal.update(found_keys)
 
     want = parse_want(a.want)
-    score_here = circled_targets(origin, origin_shading, want) if want else 0
+
+    def score_of(grid, is_choc):
+        """One number to climb. Circles outrank small groups by a factor no
+        realistic count of small groups can bridge, so a run climbing both
+        never trades a circle away for bananas."""
+        n = 0
+        if a.climb in ("circled", "both") and want:
+            n += 100 * circled_targets(grid, is_choc, want)
+        if a.climb in ("small", "both"):
+            n += small_bananas(is_choc, a.small_max)
+        return n
+
+    score_here = score_of(origin, origin_shading)
 
     here = origin
     found = tries = skipped = dull = kicks = downhill = 0
@@ -218,8 +256,9 @@ def main():
         # wanted shape is a step backwards, and the walk refuses it rather than
         # drifting off the feature it was sent to find; equal scores are still
         # taken, so it can cross a plateau.
-        score_new = circled_targets(candidate, is_choc, want) if want else 0
-        if want and score_new < score_here:
+        score_new = score_of(candidate, is_choc)
+        circ_new = circled_targets(candidate, is_choc, want) if want else 0
+        if score_new < score_here:
             downhill += 1
             continue
 
@@ -233,7 +272,7 @@ def main():
             f.write(k + "\n")
         rows_new = shading_rows(is_choc)
         shapes_new = shapes_of(is_choc)
-        if score_new < a.floor:
+        if circ_new < a.floor:
             dull += 1
             continue
         if not all(
@@ -254,7 +293,9 @@ def main():
             "grid_distance_from_origin": hamming(candidate, origin),
             "shading_distance_from_origin": hamming(is_choc, origin_shading),
             "chocolate": sum(is_choc.values()),
-            "circled_wanted": score_new,
+            "circled_wanted": circ_new,
+            "small_bananas": small_bananas(is_choc, a.small_max),
+            "score": score_new,
         }
         with log.open("a") as f:
             f.write(json.dumps(row) + "\n")
@@ -262,7 +303,7 @@ def main():
             f"{name}: step {found} after {tries} tries — "
             f"grid {row['grid_distance_from_origin']} cells from origin, "
             f"shading {row['shading_distance_from_origin']}"
-            + (f", circled wanted {score_new}" if want else ""),
+            + f", circled {circ_new}, small bananas {row['small_bananas']}",
             flush=True,
         )
 
