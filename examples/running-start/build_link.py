@@ -39,9 +39,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import rule_text
 from frame import cosmetics
-from framebuild import RULES_PREFIX
+from framebuild import RULES_PREFIX, frame_backend_code, refresh_frame_backends
 from link_codec import decode_puzzle, encode_link
-from link_swap import check_and_write, swap_component_code
+from link_swap import check_and_write, find_constraint, swap_component_code
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -115,6 +115,9 @@ def build_from_template():
     # and the local board also use. Read it here rather than restate it, so a
     # wording change (the tie sentence, say) reaches every link at once.
     doc["puzzle"]["comment"] = RULES_PREFIX + rule_text(9)
+    # The frame's shared backends live in _shared, not in this template, so
+    # they are refreshed from the tree the way the example's own code is.
+    refresh_frame_backends(doc)
     return encode_link(doc), doc
 
 
@@ -133,6 +136,9 @@ def check(link, doc):
         (HERE / "main-global.js").read_text()
     )
     assert rs["input"] == {}, "the global board reads no drawn groups"
+    for title, code in frame_backend_code():
+        embedded = find_constraint(doc, title)["definition"]["backend"]["code"]
+        assert embedded == code, f"{title} is not the copy in the tree"
 
 
 if __name__ == "__main__":

@@ -51,6 +51,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming → `docs/example-layout.md`
 - Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`
+- What the live app says about every frame link → `docs/frame-link-verdicts.md`
 - Design reasoning → `docs/agents/design-reasoning.md`
 - Reading ISS (the closest public solver) → `docs/agents/iss.md`
 

@@ -23,7 +23,8 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from link_codec import decode_puzzle
+from framebuild import refresh_frame_backends
+from link_codec import decode_puzzle, encode_link
 from link_swap import (
     check_and_write,
     replace_constraint_code,
@@ -67,14 +68,41 @@ def build(component_path, out_path, backend_path=None, board_path=None):
     return check_and_write(base, doc, name, out_path)
 
 
+def refresh(board_path=None):
+    """Rewrite a committed link in place with the frame's shared backends as
+    they stand in the tree.
+
+    This board is hand-built: no `gen_*.json` describes it, so
+    `framebuild.rebuild` cannot reach it and nothing else re-embeds
+    `frame-rowcol.js` or `frame-corners.js` when they change. Without this the
+    link keeps a stale copy and `check_layout.check_houses` reads it as a
+    board that declares no interior rows or columns at all.
+    """
+    board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
+    doc = decode_puzzle(board_path.read_text().strip())
+    refresh_frame_backends(doc)
+    board_path.write_text(encode_link(doc) + "\n")
+    return board_path
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--component", required=True)
+    p.add_argument("--component")
     p.add_argument(
         "--backend", help="main-code file to swap in as well (main-global.js)"
     )
-    p.add_argument("--out", required=True)
+    p.add_argument("--out")
     p.add_argument("--board")
+    p.add_argument(
+        "--refresh",
+        action="store_true",
+        help="re-embed the shared frame backends in the board link, in place",
+    )
     args = p.parse_args()
-    build(args.component, args.out, args.backend, args.board)
-    print(f"wrote {args.out}")
+    if args.refresh:
+        print(f"refreshed {refresh(args.board).name}")
+    elif args.component and args.out:
+        build(args.component, args.out, args.backend, args.board)
+        print(f"wrote {args.out}")
+    else:
+        p.error("give --component with --out, or --refresh")

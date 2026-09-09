@@ -60,12 +60,18 @@ def _comparable_ink(lines):
         return lines
 
 
-def frame_and_comment_only(doc, constraint_name):
+def frame_and_comment_only(doc, constraint_name, also_blank=()):
     """`frame_only`, plus the puzzle comment cleared and every decoration
     layer reduced to the ink it draws, so two variants that differ only in
     code, input, comment or how the decoration is drawn compare equal -- the
     same board, givens and shown clues either way. The guard a
     rebuild-from-seed script puts on its output.
+
+    `also_blank` names further constraints whose code is generated rather than
+    board data -- the frame's own shared backends, which every framebuilt link
+    embeds. Without it, editing one of those files makes every committed link
+    unrebuildable: the guard reads the new code as a changed board and refuses
+    the only route that would refresh it.
 
     The decoration layers are derived from the board, and a rebuild redraws
     them: merging the per-cell squares into runs changes every polyline and
@@ -75,6 +81,10 @@ def frame_and_comment_only(doc, constraint_name):
     Layers whose ink has no name in segments are compared as authored --
     see `_comparable_ink`."""
     d = frame_only(doc, constraint_name)
+    for name in also_blank:
+        defn = find_constraint(d, name)["definition"]
+        defn["backend"]["code"] = ""
+        defn["components"] = []
     d["puzzle"]["comment"] = ""
     for c in d["puzzle"]["constraints"]:
         if c.get("type") == 2000:

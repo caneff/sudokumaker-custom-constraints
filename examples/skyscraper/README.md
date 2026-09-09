@@ -238,11 +238,13 @@ tests, the soundness fuzz at zero violations, the never-weaker floor, and
 
 The three mechanical criteria, checked by `check_layout.py`:
 
-- **Opens clean** ✓ — 31 filled cells, every one of them a given; every other
-  cell is `{}`. Nothing is stored as an entered value.
-- **Ring not filled end to end** ✓ — 24 of 40 ring cells hold something: the 20
-  shown clues plus the 4 corner fillers. The 16 clues left blank are the
-  interactive ones, which is the point of the board.
+- **Opens clean** ✓ — 27 filled cells, every one of them a given; every other
+  cell is `{}`. Nothing is stored as an entered value. The four corners are
+  among the empty ones: `frame-corners.js` pins them, so no digit is drawn
+  there for a recipient to read.
+- **Ring not filled end to end** ✓ — 20 of 40 ring cells hold something, all of
+  them shown clues. The 16 clues left blank are the interactive ones, which is
+  the point of the board, and the 4 corners carry nothing.
 - **Rules prefix** ✓ — "Normal sudoku rules apply on the inner grid."
 
 1. **Uniqueness proven on the shipped board** ✓ — CP-SAT (`framebuild.unique`,
@@ -256,15 +258,17 @@ The three mechanical criteria, checked by `check_layout.py`:
    *this* board —
    the committed link still decodes to what `gen.json` records, and the
    solution it records really solves it. `just verify-skyscraper [size]` is the
-   same check by hand.
+   same check by hand. Every other link that runs the shared frame backends is
+   swept in the app the same way, and the verdicts are recorded in
+   `../../docs/frame-link-verdicts.md`.
 2. **Rules text stands alone** ✓ — "Normal sudoku rules apply on the inner
    grid. Skyscrapers (interactive outside clues): each outside cell holds a
    digit equal to the number of buildings visible along its line. A building is
    visible when it is taller than every building before it. Blank outside cells
    are interactive: read them off the line as you solve." A worked example
-   follows, both directions. No repo jargon, no component names. The second
-   paragraph — the note on the corner 1s — stays deliberately: it explains a
-   real feature of the board to whoever opens it.
+   follows, both directions. No repo jargon, no component names, and nothing
+   the recipient has to do to the board before playing it: the rules text is
+   one paragraph and describes only the puzzle.
 3. **Clue set curated** ✓, read against the carve the way the criterion says.
    `build_size.py` carves both the interior givens and the shown clues by
    greedy drop-one under CP-SAT, and the result is minimal — re-verified
@@ -325,10 +329,8 @@ each, cold, non-deterministic solve off: 7500ms to 7400ms, 0.99x. Both
 after-logical rows read 0ms, so that row places no constraint (the logic pass
 finishes this board). No deduction was added, so the bar is 1.1x on both rows.
 
-Interleave a comparison like this, one rep per variant per round; do not run
-each variant as a block. Under machine load the blocks drifted enough to
-reverse their own ordering twice, and the same pair read 1.00x/1.22x one way
-and 1.00x/0.73x the other.
+The rounds were interleaved, one rep per variant per round, for the reason
+`docs/real-app-timing.md` gives under "Protocol".
 
 The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10x10.json`, 2x5 boxes, 12 givens,
 20 shown clues) is the size that lifted the line cap from 9 to 16: with the

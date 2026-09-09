@@ -16,14 +16,16 @@
 //
 // The mock yields BOXED `new Number(id)` cells, the same trick
 // global-backends.test.mjs uses. An id that reaches a component unboxed has
-// been coerced with `| 0`, which is load-bearing and not decoration: the same
-// eighteen houses built straight from `getAllRows()` ran 1.18x the document
-// cages they replaced, and 0.97x once coerced (#394, #276).
+// been coerced with `| 0`, which is load-bearing and not decoration: on the
+// shipped 9x9 skyscraper board these eighteen houses ran 1.18x its baseline
+// solve time built straight from `getAllRows()`, and 0.97x once coerced
+// (#394, #276).
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
+import { runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'frame-rowcol.js'), 'utf8')
 
@@ -48,17 +50,14 @@ function mockHelpers (W, H, minDigit = 1, maxDigit = null) {
 }
 
 function run (W, H, minDigit = 1, maxDigit = null) {
-  const ctorNames = [...new Set([...SRC.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
-  const ctors = ctorNames.map(n => {
-    const Recorder = function (...args) { this.args = args; this.ctor = n }
-    Object.defineProperty(Recorder, 'name', { value: n })
-    return Recorder
-  })
   const registered = []
-  const puzzle = { addConstraintComponent: c => registered.push(c) }
   const helpers = mockHelpers(W, H, minDigit, maxDigit)
-  const fn = new Function('input', 'puzzle', 'helpers', 'SudokuDigitSet', ...ctorNames, SRC + '\n;return typeof postprocessJSON === "function" ? postprocessJSON : null') // eslint-disable-line no-new-func
-  const postprocessJSON = fn(undefined, puzzle, helpers, null, ...ctors)
+  const { value: postprocessJSON } = runBackend(SRC, {
+    puzzle: { addConstraintComponent: c => registered.push(c) },
+    helpers,
+    globals: { SudokuDigitSet: null },
+    returns: 'typeof postprocessJSON === "function" ? postprocessJSON : null'
+  })
   return { registered, postprocessJSON, helpers }
 }
 
@@ -95,9 +94,9 @@ for (const [W, H] of [[11, 11], [8, 6], [6, 8]]) {
       `${where}: house ${i} carries ${boxed.length} uncoerced ids; \`| 0\` is load-bearing (#276, #394)`)
   }
 
-  // Names the app can use in an explanation, and distinct -- the document
-  // cages it replaces were all called "the cage at <cell>", duplicated
-  // between row 1 and column 1.
+  // Names the app can use in an explanation, and distinct: the app prints the
+  // name in its own step log, so two houses sharing one are indistinguishable
+  // there.
   const names = registered.map(c => c.args.find(a => typeof a === 'string'))
   assert.strictEqual(new Set(names).size, want.length, `${where}: house names are not distinct`)
   assert.deepStrictEqual(names.slice(0, 2), ['row 1', 'row 2'], `${where}: rows are misnamed`)
@@ -127,8 +126,12 @@ for (const [W, H] of [[11, 11], [8, 6], [6, 8]]) {
   // ---- the publish-time hook -------------------------------------------
   assert.ok(postprocessJSON, `${where}: the backend defines no postprocessJSON`)
 
+  // A solution string the way SudokuPad reads one: one character per cell in
+  // row-major order. The digits vary along it so a mask that did nothing is
+  // told apart from a mask that hid the corners.
+  const solution = Array.from({ length: W * H }, (_, i) => String((i % 9) + 1)).join('')
   const json = {
-    metadata: {},
+    metadata: { solution },
     cages: [{ cells: [[0, 0]], value: 3 }],
     cells: Array.from({ length: H }, () => Array.from({ length: W }, () => ({ value: 1 })))
   }
@@ -144,26 +147,42 @@ for (const [W, H] of [[11, 11], [8, 6], [6, 8]]) {
     added.map(c => c.cells),
     want.map(cells => cells.map(c => [Math.floor(c / W), c % W])),
     `${where}: the exported cages are not the same lines the components got`)
+  // Booleans, the shape the app's own exporter writes
+  // (`addGlobalUniqueDigitsGroup` pushes `{hidden: true, unique: true, type:
+  // "rowcol"}`). A downstream `=== true` drops the string `'true'`.
   for (const cage of added) {
     assert.strictEqual(cage.type, 'rowcol', `${where}: an exported line cage is not tagged rowcol`)
-    assert.strictEqual(String(cage.hidden), 'true', `${where}: an exported line cage is not hidden`)
-    assert.strictEqual(String(cage.unique), 'true', `${where}: an exported line cage is not unique`)
+    assert.strictEqual(cage.hidden, true, `${where}: an exported line cage is not hidden (must be the boolean, not a string)`)
+    assert.strictEqual(cage.unique, true, `${where}: an exported line cage is not unique (must be the boolean, not a string)`)
   }
   assert.strictEqual(json.cages[0].value, 3, `${where}: an existing cage was disturbed`)
 
   // The corners hold no puzzle digit, so nothing about them should ride into
-  // what SudokuPad checks.
-  for (const [r, c] of [[0, 0], [0, W - 1], [H - 1, 0], [H - 1, W - 1]]) {
+  // what SudokuPad checks: not the grid value, and not the character under
+  // that cell in the solution string.
+  const cornerCells = [[0, 0], [0, W - 1], [H - 1, 0], [H - 1, W - 1]]
+  for (const [r, c] of cornerCells) {
     assert.ok(!('value' in json.cells[r][c]),
       `${where}: corner ${r},${c} still carries a value into the export`)
   }
+
+  // SudokuPad compares the solution character by character, and the app's own
+  // exporter writes an unknown cell as `.` (`t.map(o => o ?? ".").join("")`).
+  // Any other placeholder is a character no entry can match, so the puzzle
+  // could never be marked correct.
+  const gotSolution = json.metadata.solution
+  assert.strictEqual(gotSolution.length, solution.length,
+    `${where}: masking changed the solution string's length`)
+  const wantSolution = [...solution]
+  for (const [r, c] of cornerCells) wantSolution[r * W + c] = '.'
+  assert.strictEqual(gotSolution, wantSolution.join(''),
+    `${where}: the corners are not masked out of the solution string with '.'`)
 }
 
 // A board whose digit range is WIDER than its lines -- hit-counts runs
 // `minDigit: 0`, so a 9x9 interior row holds 9 cells and the puzzle has ten
 // digits. "Every digit exactly once" is then false and a `HouseComponent`
-// states a rule the puzzle does not have; all-different is the honest one, and
-// it is what the type-301 cages this replaces actually registered.
+// states a rule the puzzle does not have; all-different is the honest one.
 for (const [W, H, minDigit, maxDigit] of [[11, 11, 0, 9], [8, 6, 0, 6]]) {
   const { registered } = run(W, H, minDigit, maxDigit)
   const where = `${W}x${H}, digits ${minDigit}..${maxDigit}`

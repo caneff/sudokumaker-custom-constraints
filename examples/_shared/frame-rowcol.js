@@ -11,9 +11,10 @@
 //!
 //! `| 0` on every cell id is load-bearing, not decoration. An id that comes out
 //! of the app's own geometry helpers is not a plain integer, and the solver
-//! runs slower on it until it is one again: these eighteen houses built
-//! straight from `getAllRows()` measured 1.18x the document cages they
-//! replace, and 0.97x coerced (#394, the same trap as #276).
+//! runs slower on it until it is one again: on the shipped 9x9 skyscraper
+//! board these eighteen houses measured 1.18x the board's baseline solve time
+//! built straight from `getAllRows()`, and 0.97x coerced (#394, the same trap
+//! as #276).
 //!
 //! `houseType` is what makes a house legible to the solver's row and column
 //! machinery -- its Fishes and its row/column mappings read `Row` and `Column`
@@ -38,8 +39,8 @@ function rowsAndColumns () {
 //! digit is used" -- and the second half is only true when the line is as long
 //! as the digit range. Hit Counts runs `minDigit: 0`, so its 9x9 interior rows
 //! hold nine cells and the puzzle has ten digits: a house there states a rule
-//! the puzzle does not have. All-different is what the type-301 cages this
-//! replaces actually registered, and it is the honest fallback.
+//! the puzzle does not have. All-different is the honest fallback: it states
+//! the half of the house rule that still holds, and nothing more.
 const digitCount = helpers.digits.maxDigit - helpers.digits.minDigit + 1
 
 for (const { name, houseType, cells } of rowsAndColumns()) {
@@ -70,12 +71,20 @@ function postprocessJSON (json) { // eslint-disable-line no-unused-vars -- calle
 
   json.metadata.norowcol = true
   json.cages.push(...rowsAndColumns().map(({ cells }) => ({
-    unique: 'true', type: 'rowcol', hidden: 'true', cells: cells.map(toRC)
+    unique: true, type: 'rowcol', hidden: true, cells: cells.map(toRC)
   })))
 
-  const corners = [[0, 0], [0, W - 1], [H - 1, 0], [H - 1, W - 1]]
-  for (const [r, c] of corners) delete json.cells[r][c].value
-  const masked = new Set(corners.map(([r, c]) => r * W + c))
+  // The corner identity, written the same way `frame-corners.js` writes it.
+  // The app runs each backend as its own segment with nothing shared between
+  // them, and `frame.py:corner_cells` is the Python copy for the builder, so
+  // three copies is the floor. Keeping them one expression is what makes a
+  // drift between them visible.
+  const corners = [0, W - 1, W * (H - 1), W * H - 1]
+  for (const cell of corners) {
+    const [r, c] = toRC(cell)
+    delete json.cells[r][c].value
+  }
+  const masked = new Set(corners)
   json.metadata.solution = json.metadata.solution?.replace(/./g,
-    (digit, index) => masked.has(index) ? '?' : digit)
+    (digit, index) => masked.has(index) ? '.' : digit)
 }

@@ -31,6 +31,12 @@ def corner_cells(W):
     A corner sits on two edges of the ring, belongs to no clue line and to no
     region, so it is the one cell of the board no rule reaches. Both the
     builder and the cosmetic layers have to know which cells those are.
+
+    This is one of three copies of that identity and the only Python one. The
+    app runs each backend as its own segment with nothing shared between them,
+    so `frame-corners.js` (which pins them) and `frame-rowcol.js` (which hides
+    them from the export) each restate it, as `[0, W - 1, W * (H - 1),
+    W * H - 1]` in cell ids. Change one, change all three.
     """
     return [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]
 

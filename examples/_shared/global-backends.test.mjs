@@ -29,6 +29,7 @@ import { dirname, join } from 'path'
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
+import { runBackend } from './backend-runner.mjs'
 
 const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -121,18 +122,8 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 // Run one backend against a board W wide and H tall, and check the frame it
 // builds against the one truthful copy of the geometry.
 function checkBackend (name, src, W, H) {
-  // The component constructors the backend calls, recorded rather than run.
-  const ctorNames = [...new Set([...src.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
-  const ctors = ctorNames.map(n => {
-    const Recorder = function (...args) { this.args = args }
-    Object.defineProperty(Recorder, 'name', { value: n })
-    return Recorder
-  })
   const p = mockPuzzle(W, H)
-  // The app runs a backend segment as a bare script with these names in scope;
-  // a Function body is the closest Node equivalent.
-  const fn = new Function('input', 'puzzle', 'helpers', ...ctorNames, src) // eslint-disable-line no-new-func
-  fn(undefined, p, helpers, ...ctors)
+  runBackend(src, { puzzle: p, helpers })
 
   const where = `${name}/main-global.js on ${W}x${H}`
   assert.ok(p.registered.length > 0, `${where}: registered nothing`)

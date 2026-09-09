@@ -181,10 +181,10 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
 
 
 def test_build_doc_leaves_the_frame_corners_empty():
-    # A corner belongs to no line, no region and no cage, so the filler given
-    # that used to hold it down was a digit the recipient could read off the
-    # board -- a `1` in all four corners of every shipped link (#394). The
-    # document leaves them empty and the frame backend pins them instead.
+    # A corner belongs to no line, no region and no cage, so a given is the
+    # only thing the document itself could hold it down with -- and a given is
+    # a digit the recipient reads off the board. The document leaves the
+    # corners empty and the frame backend pins them instead (#394).
     with _spec(["FooComponent.js"]) as spec:
         _, doc, board = _build(spec)
         W = board.n + 2
@@ -195,11 +195,11 @@ def test_build_doc_leaves_the_frame_corners_empty():
 def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
     # A region constraint gives boxes only, so the interior lines have to be
     # declared somewhere or the board is not the puzzle it looks like (#335).
-    # They are declared in the frame backend now, as named houses, rather than
-    # as transparent type-301 cages: the cage form cannot be named (the app
+    # They are declared in the frame backend, as named houses: a house carries
+    # a name the app prints in its own step log, and costs nothing once its
+    # ids are coerced (#394). A document cage cannot carry one -- the app
     # hard-codes "the cage at <cell>" and duplicates it between row 1 and
-    # column 1), and the named houses cost nothing once their ids are coerced
-    # (#394). This pins that the link runs both frame backends -- the ones
+    # column 1. This pins that the link runs both frame backends -- the ones
     # `frame-rowcol.test.mjs` and `frame-corners.test.mjs` cover -- and that no
     # cage is left claiming to do the job.
     with _spec(["FooComponent.js"]) as spec:

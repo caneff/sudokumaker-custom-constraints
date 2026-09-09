@@ -42,9 +42,9 @@ below `line[j]`, which a level run does not supply). The pair component's
 `A + B <= n + 1` needs a house outright — a run of equal digits belongs to both
 end runs at once — so it prunes on a house and goes quiet everywhere else.
 
-Each puzzle's in-app rule text is prefixed `Running Start:` and ends with a note
-that the corner `1`s only fill space for SudokuMaker's solver and should be
-deleted before publishing.
+Each puzzle's in-app rule text is prefixed `Running Start:` and says nothing
+beyond the rule: the four corners carry no digit for a recipient to wonder
+about, because `frame-corners.js` pins them instead of a given.
 
 ## Files
 

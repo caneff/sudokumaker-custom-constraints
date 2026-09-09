@@ -6,8 +6,8 @@
 //! nothing reaches it -- so it takes any digit and the board is not unique.
 //!
 //! Pinning them to the puzzle's lowest digit costs the solver one candidate
-//! set each and leaves the board blank where a filler given used to show a
-//! digit the recipient could read (#394).
+//! set each, and does it invisibly: a component holds the cell, so the board
+//! draws nothing there and the recipient reads no digit off a corner (#394).
 
 const { width: W, height: H } = helpers.cellIds
 const corners = [0, W - 1, W * (H - 1), W * H - 1]

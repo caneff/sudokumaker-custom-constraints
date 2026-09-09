@@ -114,6 +114,18 @@ link is never regenerated (#287, #289, #290, #291). Regenerate the stale
 link from its committed `gen_*.json` with the example's
 `build_size.py --rebuild <n>`.
 
+The frame's own two shared backends (`_shared/frame-rowcol.js`,
+`_shared/frame-corners.js`) go stale the same way, and every framebuilt link
+carries a copy of both: a real change to either means rebuilding all of them in
+that commit. `check_houses` names that case rather than counting missing rows.
+Two frame boards have no `gen_*.json` and so no `--rebuild`:
+`running-start/PUZZLE_LINK.txt`, rebuilt whole by its own `build_link.py` with
+no arguments, and `numbered-rooms/PUZZLE_LINK.txt`, which is hand-built and
+takes `build_link.py --refresh`. Both go through
+`framebuild.refresh_frame_backends`. After such a rebuild, re-check every link
+in the live app and record what it said:
+`docs/frame-link-verdicts.md` holds that sweep.
+
 ## Board naming
 
 - `gen.json` — the shipped board.

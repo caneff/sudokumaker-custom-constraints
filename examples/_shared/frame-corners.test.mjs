@@ -8,9 +8,9 @@
 // cage, and nothing reaches it at all. Left free it takes any digit, and the
 // app reports the board NOT UNIQUE -- measured on the shipped skyscraper 9x9,
 // which goes from unique to not-unique in 400ms when the corners are emptied
-// and nothing replaces them (#394). The builder used to hold them down with a
-// filler given, which the recipient could read off the board as a `1` in all
-// four corners. This backend holds them down invisibly instead.
+// and nothing replaces them (#394). This backend holds them down invisibly: a
+// component pins the cell, so the board draws no digit there for a recipient
+// to read.
 //
 // The board is run rectangular here (W != H) on purpose: the two dimensions
 // are read from different fields, and a backend that reads one of them twice
@@ -20,26 +20,18 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
+import { runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'frame-corners.js'), 'utf8')
 
-// Run the backend against a W x H board and return what it registered. The app
-// runs a backend segment as a bare script with these names in scope; a
-// Function body is the closest Node equivalent (as global-backends.test.mjs
-// does). Component constructors are recorded, not run.
+// Run the backend against a W x H board and return what it registered.
 function run (W, H, minDigit) {
-  const ctorNames = [...new Set([...SRC.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
-  const ctors = ctorNames.map(n => {
-    const Recorder = function (...args) { this.args = args }
-    Object.defineProperty(Recorder, 'name', { value: n })
-    return Recorder
-  })
   const registered = []
-  const puzzle = { addConstraintComponent: c => registered.push(c) }
-  const helpers = { cellIds: { width: W, height: H }, digits: { minDigit } }
-  const SudokuDigitSet = { from: values => ({ digits: [...values] }) }
-  const fn = new Function('input', 'puzzle', 'helpers', 'SudokuDigitSet', ...ctorNames, SRC) // eslint-disable-line no-new-func
-  fn(undefined, puzzle, helpers, SudokuDigitSet, ...ctors)
+  const { ctorNames } = runBackend(SRC, {
+    puzzle: { addConstraintComponent: c => registered.push(c) },
+    helpers: { cellIds: { width: W, height: H }, digits: { minDigit } },
+    globals: { SudokuDigitSet: { from: values => ({ digits: [...values] }) } }
+  })
   return { registered, ctorNames }
 }
 

@@ -405,6 +405,42 @@ def frame_groups(n, lines):
     ]
 
 
+# The frame's own two backends, shared by every example: the file in _shared
+# that holds each one, and the constraint name it ships under. `build_doc`
+# embeds them; `rebuild`'s guard reads the names off here, because their code
+# is generated from the working tree and is not part of the board.
+FRAME_BACKENDS = (
+    ("frame-rowcol", "Frame Rows and Columns"),
+    ("frame-corners", "Frame Corners"),
+)
+
+
+def frame_backend_code():
+    """The frame's own two backends as `(constraint name, minified code)`,
+    read from the working tree."""
+    shared = pathlib.Path(__file__).parent
+    return [
+        (title, minify_js((shared / f"{name}.js").read_text()))
+        for name, title in FRAME_BACKENDS
+    ]
+
+
+def refresh_frame_backends(doc):
+    """Point a decoded document's frame backends at the code in the tree.
+
+    A board this module carved is rebuilt whole, so it picks the current code
+    up for free. A hand-built frame board is not: its own script injects only
+    that example's constraint, and the shared backends would keep whatever
+    copy the board was first encoded with -- which `check_layout.check_houses`
+    then reads as a link that declares no interior lines at all. Raises when a
+    backend is missing, so a board that should carry them cannot quietly skip
+    the refresh.
+    """
+    for title, code in frame_backend_code():
+        find_constraint(doc, title)["definition"]["backend"]["code"] = code
+    return doc
+
+
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -485,14 +521,7 @@ def build_doc(spec, board, local=False):
     #   frame-corners  pins the four corner cells, which no line, region or
     #                  house reaches; without it the app calls the board not
     #                  unique.
-    shared = pathlib.Path(__file__).parent
-    frame_backends = [
-        (title, minify_js((shared / f"{name}.js").read_text()))
-        for name, title in (
-            ("frame-rowcol", "Frame Rows and Columns"),
-            ("frame-corners", "Frame Corners"),
-        )
-    ]
+    frame_backends = frame_backend_code()
 
     constraints = [
         {"type": 1, "regions": regions},
@@ -755,9 +784,13 @@ def rebuild(spec, n, local=False):
             "board's -- a rebuild from the recorded seed must not move the "
             "geometry"
         )
+    # The frame backends are blanked alongside the example's own constraint:
+    # all three carry code generated from the working tree, and a rebuild
+    # exists precisely to refresh it.
+    frame_names = [title for _, title in FRAME_BACKENDS]
     assert frame_and_comment_only(
-        before, spec.constraint_name
-    ) == frame_and_comment_only(doc, spec.constraint_name), (
+        before, spec.constraint_name, frame_names
+    ) == frame_and_comment_only(doc, spec.constraint_name, frame_names), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "
         "seed must only change the constraint code and comment"
     )

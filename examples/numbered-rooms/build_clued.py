@@ -26,7 +26,9 @@ HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
 
 # Row-major digits for all 121 cells (11x11: the 9x9 interior plus its outer
-# clue ring), including the 4 unused filler corners.
+# clue ring). The 4 corners belong to no line and hold no puzzle digit -- a
+# component pins them -- so their characters here are placeholders that no
+# check reads.
 SOLUTION = (
     "151392163819758261943913419785626469253417891485197236112168537943593742"
     "6815245697423811117368542915824319657413777112981"

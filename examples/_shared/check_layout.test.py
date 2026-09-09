@@ -85,6 +85,8 @@ def _link(
     extra = []
     if frame_backend:
         code = minify_js((HERE / "frame-rowcol.js").read_text())
+        if frame_backend == "stale":
+            code = code + "\n// an older copy"
         extra.append(
             {
                 "type": 1000,
@@ -462,11 +464,26 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
-    # ...but a board that declares them nowhere at all still fails
+    # A link carrying an OLD copy of the frame backend is stale, not house-less.
+    # Both fail, but they need different fixes -- rebuild the link, versus
+    # declare the lines at all -- so the message has to tell them apart. Every
+    # committed frame link goes stale together the moment frame-rowcol.js
+    # changes, and "declares no house for 9 interior row(s)" sends the reader
+    # hunting for a missing constraint that is right there.
+    stale = _link(houses="none", frame_backend="stale")
+    with example(contents={"PUZZLE_LINK.txt": stale}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "frame-rowcol.js" in violations[0], violations[0]
+        assert "interior row" not in violations[0], violations[0]
+
+    # ...but a board that declares them nowhere at all still fails, and says so
     bare = _link(houses="none")
     with example(contents={"PUZZLE_LINK.txt": bare}) as (root, _):
         violations = check_tree(root)
         assert violations, "a board with no houses at all was accepted"
+        assert "stale" not in violations[0].lower(), violations[0]
 
     # a built-in is not a component the link must carry: SudokuMaker provides
     # the class, so a backend that constructs one ships no file for it and the

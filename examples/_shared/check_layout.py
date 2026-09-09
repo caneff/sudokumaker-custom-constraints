@@ -332,6 +332,12 @@ def declared_houses(puzzle):
 FRAME_ROWCOL = pathlib.Path(__file__).parent / "frame-rowcol.js"
 
 
+# The constraint name `framebuild.build_doc` ships the row/column backend
+# under. It is the handle that says "this board meant to declare its lines in
+# JS" even when the code embedded under it is an old copy.
+FRAME_ROWCOL_CONSTRAINT = "Frame Rows and Columns"
+
+
 def declares_lines_in_js(puzzle):
     """Does this link run the shared frame row/column backend?
 
@@ -342,10 +348,23 @@ def declares_lines_in_js(puzzle):
     are coerced (#394). The match is against the committed file's own minified
     text, so this excuses exactly the reviewed code -- a stale copy, a
     hand-edited one, or any other backend does not pass.
+
+    `minify_js` drops comments, so editing this file's prose leaves every
+    committed link valid; only a real code change makes them stale, and a
+    stale link genuinely runs different code from the one under review.
     """
     want = minify_js(FRAME_ROWCOL.read_text())
     return any(
         (c.get("definition") or {}).get("backend", {}).get("code") == want
+        for c in puzzle.get("constraints", [])
+    )
+
+
+def carries_frame_rowcol(puzzle):
+    """Does this link ship the frame row/column backend under its own name,
+    whatever code is embedded there?"""
+    return any(
+        (c.get("definition") or {}).get("name") == FRAME_ROWCOL_CONSTRAINT
         for c in puzzle.get("constraints", [])
     )
 
@@ -391,6 +410,18 @@ def check_houses(example_dir, link):
 
     if declares_lines_in_js(puzzle):
         return []
+
+    # A link that ships the backend under its own name but not the code in the
+    # tree is STALE, not house-less. Say so: every committed frame link goes
+    # stale together the moment `frame-rowcol.js` changes, and counting missing
+    # rows sends the reader looking for a constraint that is already there.
+    if carries_frame_rowcol(puzzle):
+        return [
+            f"{name}: {link.name} embeds a stale copy of frame-rowcol.js -- "
+            f"rebuild it in the same commit as the change (the example's "
+            f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` for "
+            f"a hand-built board)"
+        ]
 
     houses = declared_houses(puzzle)
     violations = []
