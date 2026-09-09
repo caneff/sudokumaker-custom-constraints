@@ -129,8 +129,8 @@ assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]
 // ---- makeIo().loadAt refuses a source carrying an #include ----
 // `read` assembles includes and `loadAt` cannot: it holds text from a commit,
 // with no directory to resolve one against. Two readers in one factory must
-// not silently disagree -- evalling the directive as a comment fails much
-// later, as `frameLines is not defined` (#359 review F6).
+// not silently disagree -- evalling the directive as a comment would fail much
+// later, as `frameLines is not defined`.
 {
   const repo = mkdtempSync(join(tmpdir(), 'loadat-'))
   const git = args => execFileSync('git', args, { cwd: repo, encoding: 'utf8' })

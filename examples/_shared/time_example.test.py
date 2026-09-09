@@ -554,11 +554,35 @@ if __name__ == "__main__":
         except ValueError:
             pass
 
+    # a backend file added to the working tree but never committed cannot have
+    # built a committed link. It is named as exactly that, rather than dying on
+    # a FileNotFoundError pointing at the temp HEAD checkout.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "untracked-backend"
+        example_dir.mkdir()
+        base_doc = _widget_doc(
+            "SOMETHING NEITHER FILE HAS",
+            minify_js("function update(){return 1}\n"),
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
+        (example_dir / "main.js").write_text("console.log('does not match')\n")
+        _git_commit_all(example_dir)
+        (example_dir / "main-global.js").write_text("console.log('brand new')\n")
+        try:
+            resolve_backend_file(example_dir, base_doc, "Widget Lines")
+            raise AssertionError("expected a no-backend-match failure")
+        except ValueError as e:
+            assert "main-global.js is in the working tree but not at HEAD" in str(e), (
+                str(e)
+            )
+
     # a backend built from an `// #include`: resolve_backend_file's ground
     # truth is HEAD all the way down, includes included. Editing the included
-    # file in the working tree must not change what it resolves -- half-HEAD
-    # ground truth made `just time` abort on every frame example the moment
-    # examples/_shared/frame-lines.js was touched (#359 review F1).
+    # file in the working tree must not change what it resolves, or touching
+    # examples/_shared/frame-lines.js aborts `just time` on every frame
+    # example.
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "included-backend"
         example_dir.mkdir()
@@ -689,6 +713,34 @@ if __name__ == "__main__":
         assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
         assert ship is None, "nothing to judge means no ship verdict"
         assert [c[0] for c in calls] == ["baseline_probe.txt"] * 2
+
+    # regenerating the link before timing is the ordinary way to arrive here:
+    # T9 edited frame-lines.js and rebuilt all 18 links. base_doc and the
+    # backend file it resolves to both come from HEAD, so the two halves cannot
+    # disagree and the run times the change instead of aborting on it.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "regenerated-link"
+        example_dir.mkdir()
+        (example_dir / "seg.js").write_text("function seg(){return 'committed'}\n")
+        (example_dir / "main.js").write_text("// #include seg.js\nconsole.log(seg())\n")
+        component_src = "function update(){return 1}\n"
+        base_doc = _widget_doc(
+            minify_file(example_dir / "main.js"), minify_js(component_src)
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text(component_src)
+        _git_commit_all(example_dir)
+        (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")
+        regenerated = _widget_doc(
+            minify_file(example_dir / "main.js"), minify_js(component_src)
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(regenerated) + "\n")
+        with fake_solve([1000, 500, 800, 400]) as calls:
+            rows, ship = run(example_dir)
+        assert [r[1] for r in rows] == ["PASS", "PASS"], rows
+        assert ship == "SHIP"
+        assert len(calls) == 4, "a regenerated link must be timed, not refused"
 
     # ring_clues reaches the driver, and board= names the row's board label
     with tempfile.TemporaryDirectory() as tmp:

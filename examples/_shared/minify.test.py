@@ -104,8 +104,8 @@ def test_minifies_the_included_text_too():
 
 def test_an_include_that_minifies_to_nothing_leaves_no_blank_line():
     # Minify's contract is that no blank line survives. An included file made
-    # only of commentary minifies to "", and splicing that in unconditionally
-    # shipped a stray blank line (#359 review F5).
+    # only of commentary minifies to "", and splicing that in must not leave a
+    # blank line behind.
     with tempfile.TemporaryDirectory() as d:
         root = pathlib.Path(d)
         (root / "seg.js").write_text("// all commentary, nothing to ship\n")

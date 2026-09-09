@@ -142,6 +142,19 @@ BACKEND_FILES = ("main.js", "main-global.js")
 
 
 @functools.cache
+def _toplevel(start_dir):
+    """The git toplevel containing start_dir."""
+    return pathlib.Path(
+        subprocess.run(
+            ["git", "-C", start_dir, "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    ).resolve()
+
+
+@functools.cache
 def _head_tree(toplevel):
     """A temp checkout of the whole repo at git HEAD, deleted when the process
     ends. A whole tree, not one file's text: a paste target's `// #include`
@@ -157,22 +170,34 @@ def _head_tree(toplevel):
     return tmp
 
 
+def head_path(path):
+    """Where path's HEAD copy sits inside the HEAD checkout -- a path, which
+    may not exist when the file is only in the working tree. Callers that need
+    the file itself use head_file."""
+    path = path.resolve()
+    toplevel = _toplevel(path.parent)
+    return _head_tree(str(toplevel)) / path.relative_to(toplevel)
+
+
 def head_file(path):
     """path as it stood at git HEAD, as a real file inside a HEAD checkout --
-    resolve_backend_file's ground truth for "which file built the committed
-    link", immune to the very working-tree edit it is trying to detect, and
-    immune all the way down: minify_file resolves this file's includes inside
-    the same checkout, so an edited include cannot leak in either."""
-    path = path.resolve()
-    toplevel = pathlib.Path(
-        subprocess.run(
-            ["git", "-C", path.parent, "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    ).resolve()
-    return _head_tree(str(toplevel)) / path.relative_to(toplevel)
+    the ground truth for everything that describes the committed link: the link
+    itself and the backend file it was built from. Immune to the very
+    working-tree edit it is trying to detect, and immune all the way down:
+    minify_file resolves this file's includes inside the same checkout, so an
+    edited include cannot leak in either.
+
+    Raises FileNotFoundError naming the working-tree path when the file is not
+    at HEAD -- the temp-checkout path the caller would otherwise see points at
+    a directory that is gone by the time anyone looks."""
+    at_head = head_path(path)
+    if not at_head.is_file():
+        raise FileNotFoundError(
+            f"{path.resolve().relative_to(_toplevel(path.resolve().parent))} is "
+            f"in the working tree but not at git HEAD; commit it before timing "
+            f"against it"
+        )
+    return at_head
 
 
 def resolve_backend_file(example_dir, base_doc, constraint_name):
@@ -190,12 +215,25 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
     ]
     if not candidates:
         return None
-    matches = [f for f in candidates if minify_file(head_file(f)) == committed_backend]
+    # A candidate that exists only in the working tree cannot have built a
+    # committed link, so it is not a match -- but it is worth naming when
+    # nothing matches, because "I added this file" is the likely reason.
+    at_head = [(f, head_path(f)) for f in candidates]
+    uncommitted = [f for f, h in at_head if not h.is_file()]
+    matches = [
+        f for f, h in at_head if h.is_file() and minify_file(h) == committed_backend
+    ]
     if not matches:
+        note = ""
+        if uncommitted:
+            note = (
+                f"; {', '.join(f.name for f in uncommitted)} is in the working "
+                f"tree but not at HEAD"
+            )
         raise ValueError(
             f"{example_dir.name}: no backend file "
             f"({', '.join(BACKEND_FILES)}) matches the committed "
-            f"{constraint_name!r} backend"
+            f"{constraint_name!r} backend{note}"
         )
     if len(matches) > 1:
         raise ValueError(
@@ -384,7 +422,11 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     if not build_link_py.exists():
         raise FileNotFoundError(f"missing {build_link_py}")
 
-    base_doc = decode_puzzle(baseline_link.read_text().strip())
+    # The committed link, not the working-tree one: the backend file it was
+    # built from is resolved at HEAD too (resolve_backend_file), and a
+    # comparison that straddles two trees matches nothing. Regenerating a link
+    # and then timing it is the ordinary way to arrive here.
+    base_doc = decode_puzzle(head_file(baseline_link).read_text().strip())
     component_file = find_component_file(example_dir, base_doc, component=component)
     board_label = f"{example_dir.name} ({board})" if board else example_dir.name
 

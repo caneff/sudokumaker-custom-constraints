@@ -79,4 +79,4 @@ assert.strictEqual(firstInclude('const x = 1\n// an ordinary comment\n'), null)
   assert.strictEqual(agree.trim(), 'agree', agree)
 }
 
-console.log('include.test.mjs: splice, three refusals, and both halves agree')
+console.log('include.test.mjs: splice, four refusals, and both halves agree')

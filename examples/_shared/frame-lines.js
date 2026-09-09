@@ -53,8 +53,8 @@ function frameLines (puzzle) {
 // The opposite-end pairs of `frameLines`, as { a, b }: L_i with R_i, T_i with
 // B_i. They come off the order above two at a time, so this is construction,
 // not a search -- there is no scan comparing every line against every other,
-// and no line that can come out unpaired. A list that is not frameLines' own
-// is refused rather than mispaired. `a.line` is the line as read inward
+// and no line that can come out unpaired. A list filtered by side, or one of
+// odd length, is refused rather than mispaired. `a.line` is the line as read inward
 // from clue `a`; clue `b` reads its reverse, which is the order a pair
 // component is given (docs/line-contract.md).
 function framePairs (lines) {
@@ -62,13 +62,15 @@ function framePairs (lines) {
   for (let i = 0; i < lines.length; i += 2) {
     const a = lines[i]
     const b = lines[i + 1]
-    // Construction only holds for the list frameLines produced whole. A
-    // filtered list (framePairs(lines.filter(g => g.side === 'L'))) would
-    // otherwise pair L0 with L1 and hand a joint component two clues on one
-    // side and the wrong line, and an odd-length one would pair the last entry
-    // with undefined and throw inside the app at solve time. The two strings
-    // are the opposite-side table, read as a lookup; kept to one throw because
-    // this ships in five links (gotcha 7).
+    // Construction only holds for the list frameLines produced whole. This
+    // catches the two misuses that reach here: a list filtered by side
+    // (framePairs(lines.filter(g => g.side === 'L'))) would otherwise pair L0
+    // with L1 and hand a joint component two clues on one side and the wrong
+    // line, and an odd-length one would pair the last entry with undefined and
+    // throw inside the app at solve time. It does not check that a and b are
+    // the two ends of the same line. The two strings are the opposite-side
+    // table, read as a lookup; kept to one throw because this ships in every
+    // link of five examples (gotcha 7).
     if (!b || b.side !== 'RLBT'['LRTB'.indexOf(a.side)]) {
       throw new Error('framePairs takes whole frameLines output')
     }

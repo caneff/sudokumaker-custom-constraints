@@ -115,20 +115,30 @@ def check_lanes(example_dir):
     read the drawn groups. See docs/example-layout.md.
 
     Both scans read the SHIPPED text -- `minify_file`, so `// #include`s are
-    spliced in and comments are gone. The raw file is not the lane: a paste
-    target's real body can live in an included file, and a guard reading the
-    raw text would pass a main.js that includes the frame reader (#359 review
-    F2). Minifying also stops a mention inside a comment from failing the
-    check."""
+    spliced in and comments are gone. That is the lane: a paste target's real
+    body can live in an included file, and a mention inside a comment is not
+    part of it."""
     name = example_dir.name
     violations = []
 
+    def shipped(path):
+        """path's shipped text, or None with a violation recorded. minify_file
+        signals a malformed file (unpaired block marker, broken #include) by
+        assertion; letting that out would end the whole sweep on one example
+        and leave the rest unchecked, so it becomes a violation like any
+        other."""
+        try:
+            return minify_file(path)
+        except AssertionError as exc:
+            violations.append(f"{name}: {path.name} does not minify: {exc}")
+            return None
+
     main_js = example_dir / "main.js"
-    if main_js.is_file() and "getCellAt(" in minify_file(main_js):
+    if main_js.is_file() and "getCellAt(" in (shipped(main_js) or ""):
         violations.append(f"{name}: main.js builds frame lines (calls getCellAt)")
 
     main_global_js = example_dir / "main-global.js"
-    if main_global_js.is_file() and "input.groups" in minify_file(main_global_js):
+    if main_global_js.is_file() and "input.groups" in (shipped(main_global_js) or ""):
         violations.append(f"{name}: main-global.js reads input.groups")
 
     return violations

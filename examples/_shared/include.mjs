@@ -19,7 +19,7 @@ const INCLUDE = /^\s*\/\/\s*#include\b(.*)$/
 // The first `// #include` line in `src`, or null. A reader that cannot splice
 // -- `loadAt` in harness-lib.mjs, which holds text from a git commit and has no
 // directory to resolve against -- uses this to refuse loudly instead of evalling
-// the directive as an ordinary comment (#359 review F6).
+// the directive as an ordinary comment.
 export function firstInclude (src) {
   return src.split('\n').find(line => INCLUDE.test(line)) ?? null
 }

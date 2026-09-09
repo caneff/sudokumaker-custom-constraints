@@ -2,23 +2,19 @@
 // refuses. Run:
 //   node examples/_shared/frame-lines.test.mjs
 //
-// The file is a paste segment, not a module -- no import, no export -- so this
-// test assembles it the way a link does and evals the two declarations out.
+// The file is a paste segment, not a module -- no import, no export -- so it is
+// loaded through makeIo().load, the seam every other harness uses to assemble a
+// paste target and eval named declarations out of it.
 // global-backends.test.mjs checks it as each backend USES it; this one holds it
 // on its own, which is where a refusal can be asked for.
 
 import assert from 'assert'
-import { Script } from 'vm'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { assembleSource } from './include.mjs'
+import { dirname } from 'path'
+import { makeIo } from './harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const src = assembleSource(join(HERE, 'frame-lines.js'))
-const { frameLines, framePairs } = new Script(
-  '(function(){' + src + '\n return { frameLines, framePairs };})()',
-  { filename: join(HERE, 'frame-lines.js') }
-).runInThisContext()
+const { frameLines, framePairs } = makeIo(HERE).load('frame-lines.js', ['frameLines', 'framePairs'])
 
 // A board of plain integer ids, the shape frameLines reads: getCellAt(col, row).
 const board = (W, H) => ({
@@ -53,4 +49,4 @@ const board = (W, H) => ({
   assert.throws(() => framePairs(lines.slice(0, 3)), /whole frameLines output/)
 }
 
-console.log('frame-lines.test.mjs: pairs by construction, and refuses a list that is not one')
+console.log('frame-lines.test.mjs: pairs by construction, and refuses a filtered or odd-length list')

@@ -34,7 +34,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { readFileSync, existsSync, readdirSync } from 'fs'
+import { existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
 import { assembleSource } from './include.mjs'
@@ -254,7 +254,9 @@ for (const name of dirs) {
 for (const name of dirs) {
   assert.ok(existsSync(join(EXAMPLES, name, 'main.js')),
     `${name} has a main-global.js and must have the main.js that is its other lane`)
-  assert.ok(readFileSync(join(EXAMPLES, name, 'main.js'), 'utf8').includes('input.groups'),
+  // The assembled text, like every other read of a paste target here: a body
+  // delivered through an `// #include` is still the lane's body.
+  assert.ok(assembleSource(join(EXAMPLES, name, 'main.js')).includes('input.groups'),
     `${name}/main.js is the local lane and must read the drawn groups`)
 }
 
@@ -307,8 +309,7 @@ function localCases (W, H) {
 // give: outside-sudoku's window is a box's extent along the line's DIRECTION,
 // which a bent path has none of, so its main.js throws rather than size a
 // window from nothing. Named, not a blanket allowance -- a TypeError out of
-// any other main.js is a real crash in a shipped lane, and swallowing it
-// printed PASS (#359 review F3).
+// any other main.js is a real crash in a shipped lane, and must fail here.
 const BENT_REFUSER = 'outside-sudoku'
 const BENT_REFUSAL = /is not one row or column/
 
