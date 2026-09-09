@@ -179,15 +179,96 @@ infeasible**. The whisper was making the proof short, not doing the refusing.
 So each of the four rules, removed alone, leaves the pair impossible. Whatever
 refuses two circles is a joint effect, and naming it is the open question.
 
-## What this does and does not prove
+## The answer: they exist
 
-Proved: no grid in the pool, and none of 30,140 sampled grids built for the
-purpose, holds two circled rectangles of size 2x2 or 2x3. Proved outright: 826
-of the 3,308 geometries admit no digits whatever.
+Every negative above is per-grid, on sampled grids. The joint model --
+`tools/prove_pair.py`, digits and shading searched together with one geometry
+pinned -- settles it, and the answer is yes.
 
-Not proved: that no such grid exists. Every negative above is per-grid, and the
-grids are sampled. A proof over the space needs digits and shading searched
-together with the demand in the model -- the joint model, not yet built. A
-prior attempt in the *forward* direction is on record and failed:
-`candidates-circ2/stats.json`, 518 shadings built to carry the property, 0
-digit-feasible, 48 minutes.
+Two grids, both verified from the rules by `renbanana_verify`, held in
+`candidates-two-circles/`:
+
+```
+679413285   bbCCbbCbb      2x2  circle at r1c4 holding 4
+513928476   CbCCbCbbb      2x3  circle at r4c4 holding 6
+842576931   bbbbCbCbC
+981652347   bCCCbbbCb
+327194568   bCCCbbCbb
+456837129   CbbbCbbCb
+134765892   bbbCbCbCb
+798241653   bbCbbbCbb
+265389714   bCbbbbbCb
+```
+
+```
+179245863   CbCCbbbCb      2x2  circle at r2c3 holding 4
+584936721   bbCCbbCbb      2x3  circle at r7c7 holding 6
+632718594   bCbbbCbCb
+461892375   CbCCbCbbC
+825173946   bbbbCbCbb
+793654218   bbbCbbbCb
+947581632   CbCbCCCbC
+356427189   bCbbCCCbC
+218369457   bbCCbbbbb
+```
+
+Two days of walking produced none of these. What the walk could not do was
+demand the property; it could only wander and hope. The joint model demands it.
+
+## What made the joint model work
+
+The first version could not decide anything: on 40 geometries at 120 seconds it
+returned 3 infeasible, 20 unknown, and a median of **31 lazy cuts** per
+geometry. Four changes, three of them catalogue reads:
+
+1. **Rule 4 exactly, up front.** Every cut was costing a full joint solve, and
+   the loop was the bottleneck. But the rule is finite -- a 9x9 holds 45 * 45 =
+   2025 rectangle placements and forbidding each as a maximal banana group is
+   one clause -- so the loop goes away entirely.
+2. **Per-cell digit domains for the pinned rectangles**, from `support_at`.
+   The solver was rediscovering the catalogue's enumeration on every geometry.
+3. **Dead chocolate placements forbidden**, from `fillings_at`. The solver was
+   free to propose a maximal 4x5, or a 3x3 at box offset (0,0) -- shapes that
+   appear in no grid anywhere.
+4. **The fives lemma stated on digits.** No chocolate cell with a chocolate
+   neighbour holds a 5, since the neighbour would need to be <= 0 or >= 10.
+   Stage 1 can only assert that *some* legal placement of the nine 5s exists,
+   having no digits to point at; here they are present.
+
+Same 40 geometries, same 120 second budget:
+
+| | before | after |
+| --- | --- | --- |
+| hits | 0 | **5** |
+| median cuts | 31 | **0** |
+| infeasible | 3 | 3 |
+
+## The label hole, and closing it
+
+Three of those first five hits were illegal, each tripping rule 6. The cause is
+in the component-label encoding that stage 1, `probe_inverted` and
+`prove_pair` all shared: a label was pinned to be *at most* its component's
+least cell index, never equal to it. Two disjoint components could therefore
+both claim a label below both their minimums, and renban would land on their
+union -- a gap in one component plugged by a digit from the other. That is how
+a banana group holding 1, 4 and 8 once came back "legal".
+
+The fix is one clause per (cell, label) pair: whoever uses label `ell` must
+share it with the cell whose index *is* `ell`. That owner cell lies in exactly
+one component, so no second component can claim the label; and since every
+member's index is at least the component minimum while the label is at most it,
+the label is forced to equal the minimum exactly. It rules no legal grid out --
+a component can always take its own least index -- and the soundness gate
+confirms it: 28 of 28 known-legal grids still accepted.
+
+Note which way the old hole cut. It let illegal shadings *through*, never ruled
+a legal one out, so every INFEASIBLE from before remains a proof. Only the hits
+needed `renbanana_verify` to sort, which is how the two real grids were found
+among the five.
+
+## Still open
+
+32 of the 40 geometries return unknown at 120 seconds, so the full count is not
+in: how many of the 2,482 geometries a sudoku can carry admit a legal grid is
+the open question. It is now a hunt with known yield rather than a search for
+something that may not exist.

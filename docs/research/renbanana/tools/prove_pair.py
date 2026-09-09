@@ -145,6 +145,21 @@ class JointPair:
             for ell in range(IDX[lo] + 1, IDX[hi] + 1):
                 m.add_bool_or([choc[p], choc[q], lab[hi, ell].negated()])
 
+        # Pin each label to be *exactly* its component's least cell index, not
+        # merely at most it. Without this a label is only bounded above, so two
+        # disjoint components can both claim a label below both their minimums
+        # and renban then lands on their union -- a gap in one component
+        # plugged by a digit from the other. Requiring that whoever uses label
+        # `ell` shares it with the cell whose index *is* `ell` closes that: the
+        # owner cell lies in exactly one component, so no second component can
+        # claim the label. It rules no legal grid out, since a component can
+        # always take its own least index.
+        for ell in range(len(CELLS)):
+            owner = CELLS[ell]
+            for p in CELLS:
+                if IDX[p] >= ell and p != owner:
+                    m.add_implication(lab[p, ell], lab[owner, ell])
+
         # Renban per label: distinct digits spanning exactly their own count.
         # max - min == size - 1 with all members distinct is precisely "a set of
         # consecutive digits", which is the rule.
