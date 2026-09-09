@@ -271,14 +271,16 @@ The three mechanical criteria, checked by `check_layout.py`:
    2026-09-08 by removing each of the 7 givens and each of the 20 shown clues
    in turn and re-proving (27 solves, 6.3 s): every single removal costs
    uniqueness, so no clue on this board is unnecessary.
-4. **Component reads well** ✓ — the link carries the two global components.
+4. **Component reads well at its source** ✓ — the link carries the two global
+   components, and their files in this repo carry the commentary.
    `SkyscraperLineComponent.js` opens with a 35-line `//!` overview (the rule,
    the peak split, the subset DP and its state, why soundness holds, and the
    permutation precondition both entry points re-check) and carries a short
    `//!` note per step of the sweep — 58 `//!` lines in all.
-   `SkyscraperSideComponent.js` ships 26. Only `//!` comments survive
-   `minify.py`, so that is exactly the commentary a recipient reads inside the
-   link.
+   `SkyscraperSideComponent.js` carries 26. **None of it ships** (#385):
+   `minify.py` strips every comment from the copy baked into the link, so a
+   recipient opening this board reads the algorithm and nothing about it. The
+   criterion is checked against the two files, not against the blob.
 
 ## Paste into SudokuMaker
 

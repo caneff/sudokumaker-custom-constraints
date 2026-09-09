@@ -50,9 +50,9 @@ minimality — drop any one and the solution stops being unique — "mostly blan
 means "no unnecessary clue": read the criterion against the recorded carve,
 not against a target count.
 
-## 4. The shipped component reads well
+## 4. The component reads well at its source
 
-The recipient can read the source inside the link, so it carries:
+The component's own file in this repo carries:
 
 - one top-level comment with a brief overview of the design, and
 - at most one short comment per step of the algorithm — helpful, not a
@@ -60,3 +60,11 @@ The recipient can read the source inside the link, so it carries:
 
 `CODING_STANDARDS.md` already bans history comments; this criterion is about
 the overview and step comments being *present*.
+
+**The link ships that source stripped of every comment (#385).** `minify.py`
+drops all of them, `//!` included, and it is worth 30% of a link's bytes. So a
+recipient who opens the link reads the algorithm and not a word about it. That
+is a real loss, taken deliberately and for now: how a reuser gets the
+commentary is unresolved and is its own piece of work. Until it is solved, this
+criterion is checked against the file in the tree, and no criterion here claims
+the recipient is handed documentation.
