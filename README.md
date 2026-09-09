@@ -42,8 +42,8 @@ variant) built and shipped end to end:
   the SudokuMaker constraint editor.
 - `soundness-harness.mjs` — a Node mock of the solver API that proves the
   component never removes a true candidate.
-- `generate.py` — generates a fresh grid, derives clues, and proves a unique
-  solution with OR-Tools CP-SAT.
+- `build_size.py` — generates a fresh grid, derives clues, proves a unique
+  solution with OR-Tools CP-SAT, and builds the link, at any grid size.
 
 ## Sources
 

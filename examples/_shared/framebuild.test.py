@@ -185,10 +185,8 @@ if __name__ == "__main__":
     with _spec(
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
-        # hide_key orders the clue carve: keys whose clue sorts first are
-        # dropped first, so the shown set skews toward the ones it ranks last
         seed, grid, clue, givens, active, lines = generate(
-            spec, n, bh, bw, range(101, 104), hide_key=lambda v: -v
+            spec, n, bh, bw, range(101, 104)
         )
         assert seed in range(101, 104)
         assert _valid_sudoku(grid, n, bh, bw)

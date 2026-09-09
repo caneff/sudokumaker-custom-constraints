@@ -1,6 +1,6 @@
 # Tests for generate.py -- the shipped fillomino generator (#306), grown from
-# docs/research/fillomino_cpsat.py. Each function below is one acceptance
-# criterion from #306.
+# the research prototype whose model docs/research/fillomino-cpsat.md records.
+# Each function below is one acceptance criterion from #306.
 #
 #   uv run --with ortools examples/fillomino/generate.test.py
 

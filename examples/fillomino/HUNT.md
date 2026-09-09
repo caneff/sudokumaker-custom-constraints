@@ -2,8 +2,13 @@
 
 Hunting hard fillomino boards in the live app measures hardness only at the
 end, at minutes a board. This is the offline loop: score a clue set in Node in
-milliseconds, strip offline, search adversarially, and let the app judge only
-the finalists.
+milliseconds, strip offline, and let the app judge the survivors.
+
+The loop's adversarial half — the hill-climb (`climb`), the ranking handoff
+(`finalists`), the CP-SAT resampler and the `--times` rank correlation — was
+deleted in #353 once its verdict was recorded. That verdict is below, under
+"What the deleted half found"; what runs today is `score`, `board` and
+`strip`.
 
 **An offline score ranks candidate boards. It never ships as a claim** — the
 app's own solver, driven by `app-solve.mjs` and `just time`, stays the record
@@ -14,12 +19,11 @@ app verdicts that back it.
 
 | File | What it is |
 | --- | --- |
-| `hunt-lib.mjs` | The seams: scorer, offline strip, hill-climb keep rule, Spearman's rho. |
+| `hunt-lib.mjs` | The seams: the scorer and the offline strip. |
 | `hunt-lib.test.mjs` | Their tests. 3x3/2x2 expectations come from `generate.py`'s `brute`, not from the scorer. |
-| `hunt.mjs` | The CLI: `score`, `board`, `strip`, `climb`, `finalists`. |
+| `hunt.mjs` | The CLI: `score`, `board`, `strip`. |
 | `hunt_link.py` | A committed link read back into the clue set the scorer reads. |
-| `hunt_resample.py` | CP-SAT resampling of a freed patch, on `generate.py`'s model. |
-| `hunt_offline.test.py` | Tests for those two. |
+| `hunt_offline.test.py` | Its test. |
 | `hunt-cold-times.tsv` | The app's recorded cold times for the 19 frozen fixtures, copied from `README.md`'s rung 3 record. |
 
 ## The scorer
@@ -39,8 +43,10 @@ Two things it deliberately does not do:
 
 ## Does the scorer agree with the app? — the 19 frozen fixtures
 
-    node examples/fillomino/hunt.mjs score --times examples/fillomino/hunt-cold-times.tsv \
-        examples/fillomino/timing-fixture-*-rung25.txt
+    node examples/fillomino/hunt.mjs score examples/fillomino/timing-fixture-*-rung25.txt
+
+The app-cold column is `hunt-cold-times.tsv`, read by hand: the `--times` flag
+that used to join the two and print the rank correlation went with #353.
 
 | Fixture (rung25) | Offline verdict | Nodes | Passes | App cold (ms) |
 | --- | --- | ---: | ---: | ---: |
@@ -70,8 +76,8 @@ Two things it deliberately does not do:
 nodes, 25.5 minutes. The app closes the same board in a second. See "Where the
 scorer is weaker than the app" below.
 
-**Spearman's rho between offline nodes and the app's recorded cold times:
-0.599 over all 19** (cap9-seed3 at its true 15,516,324; it ranks top either
+**Spearman's rho between offline nodes and the app's recorded cold times, as
+measured before the flag was deleted: 0.599 over all 19** (cap9-seed3 at its true 15,516,324; it ranks top either
 way, so the capped run gives the same rho). Positive and useful for ranking, well short of a proxy.
 Two reasons not to read more into it: twelve of the recorded times are 0 ms or
 100 ms, which is the app's timer resolution and not a measurement, and the app
@@ -109,32 +115,25 @@ A strip trial runs under a lower node budget than a scoring run (20,000). A
 trial that runs out KEEPS the clue, so a low budget can only leave a board with
 more clues than it needed — never fewer, and never a board that stops closing.
 
-## Adversarial hill-climb
+## What the deleted half found
 
-    node examples/fillomino/hunt.mjs climb <board.json> <out.jsonl> \
-        [--free K] [--iters M] [--restarts R] [--seed S]
+`climb` and `finalists` were deleted in #353. What follows is the record they
+returned, kept because it is the evidence the loop worked, not a set of
+commands to re-run.
 
-One step: free a connected patch of K cells, ask CP-SAT for a different filling
-of that patch with the rest pinned (`hunt_resample.py`, `generate.py`'s model),
-strip the mutant grid, score it. **Keep it only when it still has exactly one
-solution AND outranks its seed** — more solutions, none, or a spent node budget
-all drop it, whatever they scored.
+**The hill-climb.** One step freed a connected patch of K cells, asked CP-SAT
+for a different filling of that patch with the rest pinned, stripped the
+mutant grid and scored it. A mutant replaced its seed only when it still had
+exactly one solution AND outranked the seed — more solutions, none, or a spent
+node budget all dropped it, whatever they scored. The patch was connected on
+purpose: six cells scattered over a 9x9 leave the pinned rest so tight that
+CP-SAT's only completion is the grid it started from, and the first run of the
+loop logged 23 dead draws out of 24. Both sides went through the same strip,
+so a comparison read the board and not the clue count.
 
-The patch is connected on purpose. Six cells scattered over a 9x9 leave the
-pinned rest so tight that CP-SAT's only completion is the grid it started from,
-and the mutation does nothing: the first run of this loop logged 23 dead draws
-out of 24.
-
-Both sides go through the same strip, so a comparison reads the board and not
-the clue count.
-
-### The run of record
-
-    node examples/fillomino/hunt.mjs climb examples/fillomino/hunt-seed-cap12-seed13.json \
-        examples/fillomino/hunt-climb-cap12-seed13.jsonl --free 10 --iters 12 --restarts 2 --seed 11
-
-Seed: `hunt-seed-cap12-seed13.json`, the mid-pack fixture cap12-seed13 (1032
-nodes as the fixture ships, 3156 after the climb's own strip).
+The run of record climbed the mid-pack fixture cap12-seed13 (1032 nodes as the
+fixture ships, 3156 after the climb's own strip), `--free 10 --iters 12
+--restarts 2 --seed 11`:
 
 | | Nodes | Passes | Clues |
 | --- | ---: | ---: | ---: |
@@ -142,7 +141,10 @@ nodes as the fixture ships, 3156 after the climb's own strip).
 | Best mutant (`hunt-climb-cap12-seed13-best.json`) | **17467** | 19712 | 28 |
 
 24 draws, 3 kept, 4 of them dead (the freed patch had no other filling). The
-winner is the first kept draw, `rngSeed` 11000033.
+winner is the first kept draw, `rngSeed` 11000033. Every draw appended one
+JSON line to `hunt-climb-cap12-seed13.jsonl`, kept or not, with the seed
+board's label, the `rngSeed`, the freed cells and the scores before and after
+— a dead draw as `"resample": "none"`, so the log accounts for every draw.
 
 **CP-SAT proves the winner unique**, in 4.6 s, no timeout:
 
@@ -150,7 +152,7 @@ winner is the first kept draw, `rngSeed` 11000033.
         examples/fillomino/hunt-climb-cap12-seed13-best.json
     unique
 
-**And the app agrees it is harder.** `hunt-finalist-1.txt` is that board built
+**And the app agreed it is harder.** `hunt-finalist-1.txt` is that board built
 through `build_link.py`; `app-solve.mjs`, 3 reps, non-deterministic solve off,
 app v2026.08.14-d47fc4b:
 
@@ -162,30 +164,14 @@ app v2026.08.14-d47fc4b:
 A 5.5x rise offline landed as a 7x rise on the app's own clock. One board is
 not a calibration, but it is the loop working end to end.
 
-### The reproduction log
+**`finalists`** ranked boards by offline score and wrote `hunt-finalist-<i>`
+JSON plus link files for the top n, through `build_link.py` — the same builder
+`PUZZLE_LINK.txt` goes through. From there the surviving tools take over:
+`app-solve.mjs` for the verdict, `just time` for the two-row timing,
+`generate.py unique` for the CP-SAT proof. That handoff is two commands by
+hand, which is why the wrapper went.
 
-Every draw appends one JSON line to the log, kept or not: the seed board's
-label, the `rngSeed` that picked the patch, the freed cells, the score before
-and after (each with the grid), and the verdict. A dead draw — the patch had no
-other filling — is logged too, as `"resample": "none"`, so the log accounts for
-every draw and not just the interesting ones.
-
-The clue set is not in the record, and does not need to be: the seed label,
-the `rngSeed` and the freed cells replay the mutation exactly, and the strip
-that follows is deterministic on the climb's `--seed`.
-
-## The app has the last word
-
-    node examples/fillomino/hunt.mjs finalists <n> <board.json>...
-
-Ranks the boards by offline score and writes `hunt-finalist-<i>.json` plus
-`hunt-finalist-<i>.txt` for the top n, through `build_link.py` — the same
-builder `PUZZLE_LINK.txt` goes through, so a finalist opens under exactly the
-shipped component. From there the existing tools take over: `app-solve.mjs` for
-the verdict, `just time` for the two-row timing, `generate.py unique` for the
-CP-SAT proof.
-
-### Committed artifacts
+## Committed artifacts
 
 | File | What it is |
 | --- | --- |
@@ -197,7 +183,8 @@ CP-SAT proof.
 | `hunt-finalist-1.txt` | That board as a link. App: unique, 700 ms. |
 
 None of these is a shipped board — `PUZZLE_LINK.txt` and the frozen fixture
-set are untouched. They are the evidence for the loop.
+set are untouched. They are the evidence for the loop, and they outlive the
+tools that made them.
 
 The three `.txt` links above were **rebuilt** after `052e3af` added the
 separation sentence to the rules text, so a recipient reads the whole rule.

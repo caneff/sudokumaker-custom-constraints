@@ -5,13 +5,15 @@ proved unique? `examples/isofill/verify.py` models a *fixed* partition — N
 regions of N cells, one per digit. Fillomino has variable region sizes, an
 unknown number of regions, per-region connectivity, and the separation rule.
 
-**Answer.** A working prototype: `docs/research/fillomino_cpsat.py`. It samples
-a full 9x9 grid in about 0.1–1 s and proves a minimal clue set unique in
-0.3–69 s across twelve seeds. Every proof stayed inside the 600 s limit
-`unique()` uses, with roughly 8x to spare at the worst.
+**Answer.** The model below. It samples a full 9x9 grid in about 0.1–1 s and
+proves a minimal clue set unique in 0.3–69 s across twelve seeds. Every proof
+stayed inside the 600 s limit `unique()` uses, with roughly 8x to spare at the
+worst.
 
-This is research, not the shipped generator. It lives under `docs/research/`
-and nothing in `examples/` imports it.
+The prototype this was measured on is gone — #353 deleted it once its verdict
+was recorded here. The model shipped unchanged as
+`examples/fillomino/generate.py`, which is what the commands below now run. The prototype's own greedy CP-SAT `strip` did not ship: the
+app strips, through `app-strip.mjs`.
 
 ## The one idea that keeps the model small
 
@@ -129,9 +131,10 @@ The ticket named three candidates. Flow won on all three counts here.
 
 ## The model is checked against brute force, not against itself
 
-`self_check()` enumerates **every** valid grid two ways and asserts the sets are
-equal: once from the CP-SAT model (solve, forbid that grid, repeat) and once
-from `brute()`, a plain flood-fill reading of the rule with no solver in it.
+`self_check()` — now `examples/fillomino/generate.py`'s — enumerates **every**
+valid grid two ways and asserts the sets are equal: once from the CP-SAT model
+(solve, forbid that grid, repeat) and once from `brute()`, a plain flood-fill
+reading of the rule with no solver in it.
 
 - 2x2: both say **0 grids**. (Sanity: `1 2 / 2 1` fails — each 2 is alone but
   holds the digit 2.)
@@ -143,9 +146,11 @@ from `brute()`, a plain flood-fill reading of the rule with no solver in it.
 
 ## Measured runtimes (9x9, digits 1–9)
 
-One run per seed, 8 workers, on the dev machine. `strip` is the greedy
-minimal-clue reduction: it calls `unique()` 81 times, once per candidate
-removal.
+One run per seed, 8 workers, on the dev machine, on the prototype as it then
+stood. `strip` is the greedy minimal-clue reduction: it calls `unique()` 81
+times, once per candidate removal. It is the one piece of the prototype that
+did not ship — the app strips instead — so the times below are the record it
+left, not a command to re-run.
 
 | Seed | sample | strip (81 proofs) | clues kept | prove unique | find a second solution |
 | --- | --- | --- | --- | --- | --- |
@@ -191,15 +196,16 @@ random cells pinned before the solve — rather than the raw seed.
 ## Running it
 
 ```
-uv run --with ortools docs/research/fillomino_cpsat.py            # self-check
-uv run --with ortools docs/research/fillomino_cpsat.py sample 7   # a full grid
-uv run --with ortools docs/research/fillomino_cpsat.py strip 7    # + a clue set
-uv run --with ortools docs/research/fillomino_cpsat.py gen.json   # prove unique
+uv run --with ortools examples/fillomino/generate.py                      # self-check
+uv run --with ortools examples/fillomino/generate.py sample 7             # a full grid
+uv run --with ortools examples/fillomino/generate.py sample 7 9 12        # side 9, cap 12
+uv run --with ortools examples/fillomino/generate.py unique gen.json      # prove unique
 ```
 
-`sample` and `strip` print the `{"grid": [...], "clues": [...]}` shape ISOFILL's
+`sample` prints the `{"grid": [...], "clues": [...]}` shape ISOFILL's
 `verify.py` prints, so the surrounding generator tooling transfers unchanged.
-`set_board(n)` takes any board side; the digits are always `1..n`.
+`set_board(side, cap)` takes any board side, and a digit cap independent of it
+(the prototype's digits were always `1..n`).
 
 ## What this does not answer
 

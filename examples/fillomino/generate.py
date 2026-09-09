@@ -1,8 +1,8 @@
-"""Fillomino generator (OR-Tools CP-SAT). Grown from the research prototype,
-docs/research/fillomino_cpsat.py (#280/#288) -- same model, same rule, the
-{"grid": [...], "clues": [...]} shape ISOFILL's verify.py prints, so
+"""Fillomino generator (OR-Tools CP-SAT). Grown from the research prototype
+docs/research/fillomino-cpsat.md records (#280/#288) -- same model, same rule,
+the {"grid": [...], "clues": [...]} shape ISOFILL's verify.py prints, so
 app-strip and the link builders drive it unchanged for a real (cap <= 9)
-puzzle. The prototype's own greedy CP-SAT strip stays there, unshipped;
+puzzle. The prototype's own greedy CP-SAT strip never shipped;
 app-strip.mjs strips in the app.
 
     uv run --with ortools examples/fillomino/generate.py               # self-check

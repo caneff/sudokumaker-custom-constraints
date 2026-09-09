@@ -1,6 +1,5 @@
 // Seams of the offline board hunt (#317): the hardness scorer's verdict and
-// node/pass counts, the offline strip's closable invariant, and the
-// hill-climb's keep/drop rule with its reproduction record.
+// node/pass counts, and the offline strip's closable invariant.
 // Run: node examples/fillomino/hunt-lib.test.mjs
 //
 // The expected verdicts on 3x3 and 2x2 boards come from generate.py's
@@ -13,7 +12,7 @@
 import assert from 'assert'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { loadComponent, score, stripOffline, givensOf, harder, judgeMutant, spearman } from './hunt-lib.mjs'
+import { loadComponent, score, stripOffline, givensOf } from './hunt-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const mod = loadComponent(HERE)
@@ -81,60 +80,6 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 {
   const board = { side: 3, cap: 3, grid: GRID3 }
   assert.deepStrictEqual(stripOffline(mod, board, 7), stripOffline(mod, board, 7))
-}
-
-// ---- Hardness order: nodes first, passes only as the tie-break ----
-{
-  const s = (nodes, passes) => ({ nodes, passes })
-  assert.ok(harder(s(10, 1), s(9, 999)) > 0, 'more nodes is harder whatever the passes')
-  assert.ok(harder(s(9, 999), s(10, 1)) < 0)
-  assert.ok(harder(s(10, 20), s(10, 19)) > 0, 'equal nodes break on passes')
-  assert.strictEqual(harder(s(10, 20), s(10, 20)), 0)
-}
-
-// ---- The hill-climb keeps a mutant only when it is unique AND harder ----
-{
-  const seed = { label: 'seed-1', score: { verdict: 'unique', nodes: 100, passes: 200 } }
-  const mut = (verdict, nodes, passes) => ({
-    rngSeed: 42, freed: [[0, 0], [1, 1]], score: { verdict, nodes, passes }
-  })
-
-  assert.strictEqual(judgeMutant(seed, mut('unique', 101, 1)).kept, true)
-  assert.strictEqual(judgeMutant(seed, mut('unique', 100, 201)).kept, true)
-  assert.strictEqual(judgeMutant(seed, mut('unique', 100, 200)).kept, false)
-  assert.strictEqual(judgeMutant(seed, mut('unique', 99, 9999)).kept, false)
-  // A board with more than one solution is not a puzzle, however long it took.
-  assert.strictEqual(judgeMutant(seed, mut('multiple', 9999, 9999)).kept, false)
-  // A spent node budget is not a verdict -- the same rule CP-SAT timeouts get.
-  assert.strictEqual(judgeMutant(seed, mut('capped', 9999, 9999)).kept, false)
-}
-
-// ---- Every judged mutant leaves a record that reproduces it ----
-{
-  const seed = { label: 'seed-1', score: { verdict: 'unique', nodes: 100, passes: 200 } }
-  const { record } = judgeMutant(seed,
-    { rngSeed: 42, freed: [[0, 0], [1, 1]], score: { verdict: 'unique', nodes: 150, passes: 210 } })
-  assert.deepStrictEqual(record, {
-    seed: 'seed-1',
-    rngSeed: 42,
-    freed: [[0, 0], [1, 1]],
-    from: { verdict: 'unique', nodes: 100, passes: 200 },
-    to: { verdict: 'unique', nodes: 150, passes: 210 },
-    kept: true
-  })
-}
-
-// ---- Spearman's rho, against hand-worked values ----
-{
-  const near = (got, want) => assert.ok(Math.abs(got - want) < 1e-9, `${got} != ${want}`)
-  near(spearman([1, 2, 3], [1, 2, 3]), 1)
-  near(spearman([1, 2, 3], [3, 2, 1]), -1)
-  // d = 0, -1, 1 -> 1 - 6*2/(3*(9-1)) = 0.5
-  near(spearman([1, 2, 3], [1, 3, 2]), 0.5)
-  // Tied ranks average: x ranks 1.5, 1.5, 3 against y ranks 1, 2, 3
-  near(spearman([1, 1, 2], [1, 2, 3]), 1.5 / Math.sqrt(3))
-  // No spread on one side leaves rho undefined, not zero.
-  assert.strictEqual(spearman([1, 1, 1], [1, 2, 3]), null)
 }
 
 console.log('hunt-lib.test.mjs: all seams pass')

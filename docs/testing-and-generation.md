@@ -51,8 +51,9 @@ To generate a puzzle:
 3. Keep all clues; add interior givens until unique; then carve givens back out
    while it stays unique. Carve clues too if you want fewer.
 
-`examples/running-start/generate.py` does all of this and scans several seeds
-for the leanest grid. Note a real finding there: running-start clues are weak,
+`examples/running-start/build_size.py` does all of this — through the shared
+`_shared/framebuild.py` machinery — and scans several seeds for the leanest
+grid. Note a real finding there: running-start clues are weak,
 so all four sides with **no** interior givens is *not* unique — a few givens are
 unavoidable.
 

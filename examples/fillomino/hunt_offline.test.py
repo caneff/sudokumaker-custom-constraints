@@ -1,7 +1,7 @@
-"""Tests for the offline hunt's Python seams (#317): reading a committed link
-back into a clue set, and CP-SAT resampling a few freed cells.
+"""Tests for the offline hunt's Python seam (#317): reading a committed link
+back into the clue set the scorer reads.
 
-Run: uv run --with lzstring --with ortools examples/fillomino/hunt_offline.test.py
+Run: uv run --with lzstring examples/fillomino/hunt_offline.test.py
 """
 
 import json
@@ -9,9 +9,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import generate
 import hunt_link
-import hunt_resample
 
 HERE = pathlib.Path(__file__).parent
 
@@ -33,23 +31,4 @@ wide = hunt_link.clues(
 )
 assert (wide["side"], wide["cap"]) == (9, 12), wide
 
-# ---- Resampling frees cells and returns a DIFFERENT valid grid ----
-GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
-freed = [[1, 1], [1, 2], [2, 1], [2, 2]]
-got = hunt_resample.resample(GRID3, freed, seed=7)
-assert got is not None, "the freed corner has another filling"
-assert got != GRID3, "a mutation that changes nothing is not a mutation"
-for r in range(3):
-    for c in range(3):
-        if [r, c] not in freed:
-            assert got[r][c] == GRID3[r][c], f"pinned cell {r},{c} moved"
-generate.set_board(3)
-assert generate.unique({(r, c): got[r][c] for r, c in generate.CELLS}) is True
-
-# ---- Freeing nothing has nothing to resample ----
-assert hunt_resample.resample(GRID3, [], seed=7) is None
-
-# ---- A grid whose freed cells admit no other filling reports None ----
-assert hunt_resample.resample(GRID3, [[0, 0]], seed=7) is None
-
-print("hunt_offline.test.py: all seams pass")
+print("hunt_offline.test.py: the link seam passes")
