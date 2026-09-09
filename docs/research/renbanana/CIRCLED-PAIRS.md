@@ -185,9 +185,10 @@ Every negative above is per-grid, on sampled grids. The joint model --
 `tools/prove_pair.py`, digits and shading searched together with one geometry
 pinned -- settles it, and the answer is yes.
 
-Four grids so far, each verified from the rules by `renbanana_verify` and
+Seven grids so far, each verified from the rules by `renbanana_verify` and
 re-verified from disk by `renbanana_cpsat.py verify`, held in
-`candidates-two-circles/`.
+`candidates-two-circles/`. Five came from the joint model directly; the other
+two were recovered from hits it had produced and been refused (below).
 
 The hardest of them is a **pair of circled 2x2s** -- the most forcing
 configuration in the space, since a 2x2 admits a circle at only 5 of 9 box
@@ -300,6 +301,41 @@ solver can always give each component its own least index. So:
   grids and the 826 digit-impossible geometries all stand unchanged.
 - **Every hit must go through `renbanana_verify` before it counts.** That is
   how the real grids were sorted from the candidates, and it is not optional.
+
+## A refused hit still holds a good sudoku
+
+The joint model returns digits and a shading together, and the label hole means
+the shading can be wrong while the digits are not. Every refused hit is a
+sudoku the model has already proved carries both circled rectangles -- the
+expensive half of the problem, thrown away with the cheap half.
+
+Asking the cheap half again, on its own, is the fix: hand the digits alone to
+the inverted shading search (`probe_inverted.Shadings(grid, want_circled=2)`),
+whose cut loop forbids each illegal shading and keeps going, so it either finds
+a legal one or exhausts them.
+
+Run over all 53 refused hits on record, at 240 seconds each:
+
+| verdict | grids | meaning |
+| --- | --- | --- |
+| infeasible | 51 | proof that these digits admit no legal shading at all |
+| LEGAL | 2 | `cand_005`, `cand_006` -- both verified from disk |
+
+Nearly every one settled in **one to three seconds**, against the joint model's
+85% timeout rate at 120. The stage is close to free and it is decisive, so a
+harvest pipes every hit into it, refused or not.
+
+## A bigger budget is not what these need
+
+20 geometries that timed out at 120 seconds were re-run at 600. The result was
+16 still unknown, 4 hits, and **no** verified grids and no proofs. Against 100
+geometries at 120 seconds -- the same solver-seconds -- which produced three
+verified grids.
+
+Not one of the 20 came back infeasible even at 600 seconds, so the long budget
+is not closing them by proof either. A satisfiable geometry appears to fall to
+an early restart or not at all. Harvest short and wide, and re-attack an
+unknown with a different seed rather than a longer clock.
 
 ## Still open
 
