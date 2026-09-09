@@ -62,7 +62,7 @@ MAX_BANANA = 9
 class JointPair:
     """Digits and shading together, with one pair of circled rectangles pinned."""
 
-    def __init__(self, pair, pin_labels=True):
+    def __init__(self, pair, pin_labels=True, renban=True):
         m = cp.CpModel()
         self.m = m
         self.pair = pair
@@ -130,70 +130,79 @@ class JointPair:
             m.add(mag <= 4).only_enforce_if(far.negated())
             m.add_bool_or([choc[p].negated(), choc[q].negated(), far])
 
-        # Component labels for the banana groups, as stage 1 builds them.
-        lab = {
-            (p, ell): m.new_bool_var(f"l{p}_{ell}")
-            for p in CELLS
-            for ell in range(IDX[p] + 1)
-        }
-        self.lab = lab
-        for p in CELLS:
-            m.add(sum(lab[p, ell] for ell in range(IDX[p] + 1)) == 1 - choc[p])
-        for p, q in ADJACENT:
-            lo, hi = (p, q) if IDX[p] < IDX[q] else (q, p)
-            for ell in range(IDX[lo] + 1):
-                m.add_bool_or([choc[p], choc[q], lab[lo, ell].negated(), lab[hi, ell]])
-            for ell in range(IDX[lo] + 1, IDX[hi] + 1):
-                m.add_bool_or([choc[p], choc[q], lab[hi, ell].negated()])
-
-        # Pin each label to be *exactly* its component's least cell index, not
-        # merely at most it. Without this a label is only bounded above, so two
-        # disjoint components can both claim a label below both their minimums
-        # and renban then lands on their union -- a gap in one component
-        # plugged by a digit from the other. Requiring that whoever uses label
-        # `ell` shares it with the cell whose index *is* `ell` closes that: the
-        # owner cell lies in exactly one component, so no second component can
-        # claim the label. It rules no legal grid out, since a component can
-        # always take its own least index.
-        if pin_labels:
-            for ell in range(len(CELLS)):
-                owner = CELLS[ell]
-                for p in CELLS:
-                    if IDX[p] >= ell and p != owner:
-                        m.add_implication(lab[p, ell], lab[owner, ell])
-
-        # Renban per label: distinct digits spanning exactly their own count.
-        # max - min == size - 1 with all members distinct is precisely "a set of
-        # consecutive digits", which is the rule.
-        eq = {(p, v): m.new_bool_var(f"e{p}_{v}") for p in CELLS for v in range(1, 10)}
-        for p in CELLS:
-            m.add_exactly_one([eq[p, v] for v in range(1, 10)])
-            for v in range(1, 10):
-                m.add(d[p] == v).only_enforce_if(eq[p, v])
-                m.add(d[p] != v).only_enforce_if(eq[p, v].negated())
-        for ell in range(len(CELLS)):
-            members = [p for p in CELLS if IDX[p] >= ell]
-            size = m.new_int_var(0, MAX_BANANA, f"n{ell}")
-            m.add(size == sum(lab[p, ell] for p in members))
-            lo = m.new_int_var(1, 9, f"lo{ell}")
-            hi = m.new_int_var(1, 9, f"hi{ell}")
-            for p in members:
-                m.add(d[p] >= lo).only_enforce_if(lab[p, ell])
-                m.add(d[p] <= hi).only_enforce_if(lab[p, ell])
-            # Empty labels are free; a used one spans exactly its own size.
-            used = m.new_bool_var(f"u{ell}")
-            m.add(size >= 1).only_enforce_if(used)
-            m.add(size == 0).only_enforce_if(used.negated())
-            m.add(hi - lo == size - 1).only_enforce_if(used)
-            for v in range(1, 10):
-                m.add(
-                    sum(
-                        self._both(m, lab[p, ell], eq[p, v], f"b{ell}_{v}_{IDX[p]}")
-                        for p in members
+        # Rule 6 is the whole cost of this model: a label bool per cell pair,
+        # a digit indicator per cell, and a product var per member per digit.
+        # Dropping it leaves the digits free of renban, which the recycler then
+        # settles exactly on fixed digits in a second or two -- generate
+        # loosely, verify exactly.
+        if renban:
+            # Component labels for the banana groups, as stage 1 builds them.
+            lab = {
+                (p, ell): m.new_bool_var(f"l{p}_{ell}")
+                for p in CELLS
+                for ell in range(IDX[p] + 1)
+            }
+            self.lab = lab
+            for p in CELLS:
+                m.add(sum(lab[p, ell] for ell in range(IDX[p] + 1)) == 1 - choc[p])
+            for p, q in ADJACENT:
+                lo, hi = (p, q) if IDX[p] < IDX[q] else (q, p)
+                for ell in range(IDX[lo] + 1):
+                    m.add_bool_or(
+                        [choc[p], choc[q], lab[lo, ell].negated(), lab[hi, ell]]
                     )
-                    <= 1
-                )
+                for ell in range(IDX[lo] + 1, IDX[hi] + 1):
+                    m.add_bool_or([choc[p], choc[q], lab[hi, ell].negated()])
 
+            # Pin each label to be *exactly* its component's least cell index, not
+            # merely at most it. Without this a label is only bounded above, so two
+            # disjoint components can both claim a label below both their minimums
+            # and renban then lands on their union -- a gap in one component
+            # plugged by a digit from the other. Requiring that whoever uses label
+            # `ell` shares it with the cell whose index *is* `ell` closes that: the
+            # owner cell lies in exactly one component, so no second component can
+            # claim the label. It rules no legal grid out, since a component can
+            # always take its own least index.
+            if pin_labels:
+                for ell in range(len(CELLS)):
+                    owner = CELLS[ell]
+                    for p in CELLS:
+                        if IDX[p] >= ell and p != owner:
+                            m.add_implication(lab[p, ell], lab[owner, ell])
+
+            # Renban per label: distinct digits spanning exactly their own count.
+            # max - min == size - 1 with all members distinct is precisely "a set of
+            # consecutive digits", which is the rule.
+            eq = {
+                (p, v): m.new_bool_var(f"e{p}_{v}") for p in CELLS for v in range(1, 10)
+            }
+            for p in CELLS:
+                m.add_exactly_one([eq[p, v] for v in range(1, 10)])
+                for v in range(1, 10):
+                    m.add(d[p] == v).only_enforce_if(eq[p, v])
+                    m.add(d[p] != v).only_enforce_if(eq[p, v].negated())
+            for ell in range(len(CELLS)):
+                members = [p for p in CELLS if IDX[p] >= ell]
+                size = m.new_int_var(0, MAX_BANANA, f"n{ell}")
+                m.add(size == sum(lab[p, ell] for p in members))
+                lo = m.new_int_var(1, 9, f"lo{ell}")
+                hi = m.new_int_var(1, 9, f"hi{ell}")
+                for p in members:
+                    m.add(d[p] >= lo).only_enforce_if(lab[p, ell])
+                    m.add(d[p] <= hi).only_enforce_if(lab[p, ell])
+                # Empty labels are free; a used one spans exactly its own size.
+                used = m.new_bool_var(f"u{ell}")
+                m.add(size >= 1).only_enforce_if(used)
+                m.add(size == 0).only_enforce_if(used.negated())
+                m.add(hi - lo == size - 1).only_enforce_if(used)
+                for v in range(1, 10):
+                    m.add(
+                        sum(
+                            self._both(m, lab[p, ell], eq[p, v], f"b{ell}_{v}_{IDX[p]}")
+                            for p in members
+                        )
+                        <= 1
+                    )
         self._forbid_banana_rectangles()
         self._forbid_dead_chocolate()
         self._fives_are_lonely()
@@ -316,15 +325,16 @@ def work(job):
     different seed rather than a longer clock. A job that omits the seed gets
     0, which is what every run before this one used.
     """
-    pair, seconds, pin_labels, seed = job if len(job) == 4 else (*job, 0)
+    pair, seconds, pin_labels, seed, renban = (*job, True)[:5] if len(job) < 5 else job
     pair = [tuple(x) for x in pair]
-    model = JointPair(pair, pin_labels=pin_labels)
+    model = JointPair(pair, pin_labels=pin_labels, renban=renban)
     t0 = time.monotonic()
     verdict, grid, is_choc = model.solve(seconds, 1, seed)
     row = {
         "pair": pair,
         "verdict": verdict,
         "seed": seed,
+        "renban": renban,
         "seconds": round(time.monotonic() - t0, 1),
         "cuts": model.cuts,
     }
@@ -363,6 +373,14 @@ def main():
         help="a proof.jsonl from an earlier pass. Only geometries it left "
         "unknown are attempted, so a re-seeded pass never re-proves a "
         "settled one.",
+    )
+    ap.add_argument(
+        "--drop-renban",
+        action="store_true",
+        help="leave rule 6 out of the joint model and let recycle_hits settle "
+        "it on the fixed digits afterwards -- generate loosely, verify "
+        "exactly. Dropping a rule is a relaxation, so an INFEASIBLE verdict "
+        "is still a proof; only a hit becomes weaker.",
     )
     ap.add_argument(
         "--canonical",
@@ -423,7 +441,10 @@ def main():
         for done, row in enumerate(
             pool.map(
                 work,
-                [(p, a.seconds, not a.no_pin_labels, a.seed) for p in feasible],
+                [
+                    (p, a.seconds, not a.no_pin_labels, a.seed, not a.drop_renban)
+                    for p in feasible
+                ],
                 chunksize=1,
             ),
             1,

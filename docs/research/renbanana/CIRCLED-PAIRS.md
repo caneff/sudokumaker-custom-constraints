@@ -337,6 +337,32 @@ is not closing them by proof either. A satisfiable geometry appears to fall to
 an early restart or not at all. Harvest short and wide, and re-attack an
 unknown with a different seed rather than a longer clock.
 
+## Renban is doing the searching, not just costing time
+
+Rule 6 is nearly the whole cost of the joint model -- a label bool per cell
+pair, a digit indicator per cell, a product var per member per digit -- and the
+recycler settles it exactly on fixed digits in a second or two. So the obvious
+move is to drop it from the joint model and let the recycler have it:
+generate loosely, verify exactly. It is a relaxation, so INFEASIBLE would stay
+a proof.
+
+It fails, and not marginally. Forty orbit representatives, 60 seconds each:
+
+| model | solve cost | hits | recycled to legal |
+| --- | --- | --- | --- |
+| full | 122s | 3 | 1 |
+| rule 6 dropped, 5 seeds | 9s | 200 | **0** |
+
+Thirteen times faster, fifty times the hits, and every one of the 200 came
+back infeasible -- no legal shading for any of those digits. That is the same
+wall the sampled-grid pipeline hit at 30,140 grids.
+
+So the renban constraints are not overhead on the search, they *are* the
+search: they steer the digits toward the vanishing fraction of sudokus that
+admit a legal shading at all. Without them the solver reaches the hopeless
+99.99% very quickly. `--drop-renban` stays in the tool for the record, and
+stays off.
+
 ## Still open
 
 32 of the 40 geometries return unknown at 120 seconds, so the full count is not
