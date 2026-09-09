@@ -45,7 +45,7 @@ def build(n, out_dir=HERE):
     board = load_board(gen_path)
     improved = build_doc(build_size.SPEC, board)
     improved_link = encode_link(improved)
-    check(build_size.SPEC, improved_link, improved, n)
+    check(build_size.SPEC, improved_link, improved, board)
     improved_name = link_path.name
     (out_dir / improved_name).write_text(improved_link + "\n")
     print(

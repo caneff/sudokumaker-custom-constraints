@@ -309,6 +309,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     lines. The geometry is drawn from its own random stream, so the frame-line
     case (which ignores its rng) makes every other draw exactly as before.
     """
+    box = (bh, bw)
     best = None
     for seed in seeds:
         lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
@@ -324,7 +325,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
             bw=bw,
             grid=grid,
             clue={
-                k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, (bh, bw))
+                k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
                 for k, cells in lines.items()
             },
             givens={},
@@ -543,7 +544,13 @@ def build_doc(spec, board, local=False):
     }
 
 
-def check(spec, link, doc, n, local=False):
+def check(spec, link, doc, board, local=False):
+    """Everything a built link must satisfy before it is written: it decodes
+    back to `doc`, opens with the rules prefix, stores no value on a non-given
+    cell, draws its lane's groups, and ships exactly the components its backend
+    registers. `board` is what `doc` was built from, so the size is compared
+    against the board rather than read back out of the document."""
+    n = board.n
     back = link_codec.decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
     assert doc["puzzle"]["comment"].startswith(RULES_PREFIX), (
@@ -624,16 +631,6 @@ def board_files(spec, n, local=False):
     return spec.dir / link, spec.dir / gen
 
 
-def _ring_key(name):
-    """A ring key as the gen JSON spells it: "T3" -> ("T", 3)."""
-    return (name[0], int(name[1:]))
-
-
-def _ring_name(key):
-    """The inverse of `_ring_key`: ("T", 3) -> "T3"."""
-    return f"{key[0]}{key[1]}"
-
-
 def save_board(board, path):
     """Write `board` to `path` as the gen JSON `load_board` reads back.
 
@@ -654,7 +651,7 @@ def save_board(board, path):
             _ring_name(k): [list(c) for c in board.lines[k]]
             for k in sorted(board.lines)
         }
-    with pathlib.Path(path).open("w") as f:
+    with path.open("w") as f:
         json.dump(doc, f, indent=1)
 
 
@@ -666,7 +663,7 @@ def load_board(path):
     undone. A board with no "paths" carries the straight frame lines its size
     implies.
     """
-    g = json.loads(pathlib.Path(path).read_text())
+    g = json.loads(path.read_text())
     grid = g["grid"]
     n = len(grid)
     bh, bw = g["box"]
@@ -706,7 +703,7 @@ def run(spec, n, bh, bw, seeds, local=False):
     board = generate(spec, n, bh, bw, seeds, paths=local and spec.bent_lines)
     doc = build_doc(spec, board, local=local)
     link = link_codec.encode_link(doc)
-    check(spec, link, doc, n, local=local)
+    check(spec, link, doc, board, local=local)
     link_path, gen_path = board_files(spec, n, local)
     link_path.write_text(link + "\n")
     save_board(board, gen_path)
@@ -733,7 +730,7 @@ def rebuild(spec, n, local=False):
     board = load_board(gen_path)
     doc = build_doc(spec, board, local=local)
     link = link_codec.encode_link(doc)
-    check(spec, link, doc, n, local=local)
+    check(spec, link, doc, board, local=local)
     assert link_path.exists(), (
         f"{link_path.name} does not exist: there is no committed link for this "
         "board to rebuild"

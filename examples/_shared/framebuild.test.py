@@ -125,13 +125,13 @@ def _build(spec, board=None):
     """A real board built through `build_doc`, no drawn groups (global lane)."""
     board = board or _board()
     doc = build_doc(spec, board, local=False)
-    return link_codec.encode_link(doc), doc
+    return link_codec.encode_link(doc), doc, board
 
 
 def test_check_passes_when_the_backend_registers_the_declared_component():
     with _spec(["FooComponent.js"]) as spec:
-        link, doc = _build(spec)
-        check(spec, link, doc, 4, local=False)
+        link, doc, board = _build(spec)
+        check(spec, link, doc, board, local=False)
 
 
 def test_check_catches_a_shipped_component_the_backend_never_registers():
@@ -140,13 +140,27 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
     # a subset of shipped), so only the shipped-minus-registered assertion
     # catches it (#292)
     with _spec(["FooComponent.js", "BarComponent.js"]) as spec:
-        link, doc = _build(spec)
+        link, doc, board = _build(spec)
         try:
-            check(spec, link, doc, 4, local=False)
+            check(spec, link, doc, board, local=False)
         except AssertionError as e:
             assert "BarComponent" in str(e), e
         else:
             raise AssertionError("a shipped, never-registered component was not caught")
+
+
+def test_check_catches_a_document_that_is_not_the_board_s_size():
+    # `check` takes the board the document was built from, so the size it
+    # holds the document to comes from outside the document -- reading it back
+    # out of the doc would make the comparison say nothing.
+    with _spec(["FooComponent.js"]) as spec:
+        link, doc, board = _build(spec)
+        try:
+            check(spec, link, doc, dataclasses.replace(board, n=6), local=False)
+        except AssertionError as e:
+            assert "maxDigit" in str(e), e
+        else:
+            raise AssertionError("a document of the wrong size was not caught")
 
 
 def test_make_grid_is_a_real_sudoku_reproducible_from_its_seed():
@@ -339,15 +353,15 @@ def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
         link_path, gen_path = board_files(spec, n)
         link = link_path.read_text().strip()
         doc = link_codec.decode_puzzle(link)
+        board = load_board(gen_path)
         # the written link decodes, and passes the same check main ran
-        check(spec, link, doc, n, local=False)
+        check(spec, link, doc, board, local=False)
         # a cell holds a value only when it is a given: the shipped board must
         # never carry the solution or a hidden clue as an entered digit
         assert not [
             c for c in doc["puzzle"]["cells"] if "value" in c and not c.get("given")
         ]
         # the gen JSON reads back as the board the link ships
-        board = load_board(gen_path)
         assert (board.bh, board.bw) == (bh, bw)
         assert _valid_sudoku(board.grid, n, bh, bw)
         assert board.lines == make_lines(n), "a straight-frame run records no paths"
@@ -369,7 +383,7 @@ def test_main_builds_the_local_lane_under_either_flag_name():
             link_path, gen_path = board_files(spec, n, local=True)
             link = link_path.read_text().strip()
             doc = link_codec.decode_puzzle(link)
-            check(spec, link, doc, n, local=True)
+            check(spec, link, doc, load_board(gen_path), local=True)
             assert not [
                 c for c in doc["puzzle"]["cells"] if "value" in c and not c.get("given")
             ]
@@ -471,8 +485,9 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines():
 
 
 def test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search():
-    # `build_size.py 9 3 3 --rebuild` used to parse cleanly and quietly
-    # re-encode, printing a success line for a search that never ran.
+    # A rebuild re-encodes a committed board; a box shape belongs to a fresh
+    # search. Accepting both silently discards one and prints a success line
+    # for a search that never ran.
     with _spec(["FooComponent.js"]) as spec:
         try:
             main(spec, ["4", "2", "2", "--rebuild"])
@@ -544,6 +559,7 @@ def test_run_takes_its_arguments_and_never_reads_sys_argv():
 if __name__ == "__main__":
     test_check_passes_when_the_backend_registers_the_declared_component()
     test_check_catches_a_shipped_component_the_backend_never_registers()
+    test_check_catches_a_document_that_is_not_the_board_s_size()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
