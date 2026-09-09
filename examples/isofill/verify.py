@@ -14,141 +14,176 @@ single-commodity flow per digit: one root cell sends nine units, every other
 cell of that digit absorbs one, and flow moves only between orthogonal
 neighbours that both hold the digit. A cut-off cell starves, so a split
 region is infeasible.
+
+Every function here takes the `Board` it works on. Nothing is read off module
+state, so two boards can be checked in one process -- which is what
+verify.test.py and `just verify-isofill` do.
 """
 
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "_shared"))
+import cpsat
 from ortools.sat.python import cp_model
 
-N = 10  # board side and digit count; set_board() changes it
-LO = 0  # lowest digit
-CELLS = EDGES = None
+# Seconds per solve when no caller names a cap. A 10x10 proof runs in minutes;
+# past ten, the run reports no verdict rather than waiting on one.
+LIMIT = 600
 
 
-def set_board(n, lo=0):
-    global N, LO, CELLS, EDGES
-    N, LO = n, lo
-    CELLS = [(r, c) for r in range(N) for c in range(N)]
-    EDGES = [
-        ((r, c), (r + dr, c + dc))
-        for (r, c) in CELLS
-        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-        if 0 <= r + dr < N and 0 <= c + dc < N
-    ]
+@dataclass(frozen=True)
+class Board:
+    """An ISOFILL board's shape: `n` x `n`, digits `lo` .. `lo + n - 1`.
+
+    `cells` is every cell in reading order, `edges` every ordered orthogonal
+    step between two of them. Both fall out of `n`, so a board is built with
+    `Board.of` rather than by naming them.
+    """
+
+    n: int
+    lo: int
+    cells: list
+    edges: list
+
+    @classmethod
+    def of(cls, n, lo=0):
+        cells = [(r, c) for r in range(n) for c in range(n)]
+        edges = [
+            ((r, c), (r + dr, c + dc))
+            for (r, c) in cells
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            if 0 <= r + dr < n and 0 <= c + dc < n
+        ]
+        return cls(n, lo, cells, edges)
+
+    @classmethod
+    def of_doc(cls, doc):
+        """The board a gen.json describes."""
+        return cls.of(len(doc["grid"]), doc.get("minDigit", 0))
+
+    def givens(self, doc):
+        """The clue cells of a gen.json, as {(row, column): digit}."""
+        return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
 
 
-set_board(N, LO)
-
-
-def model(givens):
+def model(board, givens):
     """The ISOFILL model with `givens` pinned; returns (model, cell vars)."""
+    n, lo = board.n, board.lo
     m = cp_model.CpModel()
-    x = {p: m.NewIntVar(LO, LO + N - 1, f"x{p}") for p in CELLS}
+    x = {p: m.NewIntVar(lo, lo + n - 1, f"x{p}") for p in board.cells}
     for p, v in givens.items():
         m.Add(x[p] == v)
-    for d in range(LO, LO + N):
-        holds = {p: m.NewBoolVar(f"h{d}{p}") for p in CELLS}
-        for p in CELLS:
+    for d in range(lo, lo + n):
+        holds = {p: m.NewBoolVar(f"h{d}{p}") for p in board.cells}
+        for p in board.cells:
             m.Add(x[p] == d).OnlyEnforceIf(holds[p])
             m.Add(x[p] != d).OnlyEnforceIf(holds[p].Not())
-        m.Add(sum(holds.values()) == N)
-        root = {p: m.NewBoolVar(f"r{d}{p}") for p in CELLS}
+        m.Add(sum(holds.values()) == n)
+        root = {p: m.NewBoolVar(f"r{d}{p}") for p in board.cells}
         m.AddExactlyOne(root.values())
-        flow = {e: m.NewIntVar(0, N - 1, f"f{d}{e}") for e in EDGES}
+        flow = {e: m.NewIntVar(0, n - 1, f"f{d}{e}") for e in board.edges}
         for (p, q), f in flow.items():
-            m.Add(f <= (N - 1) * holds[p])
-            m.Add(f <= (N - 1) * holds[q])
-        for p in CELLS:
+            m.Add(f <= (n - 1) * holds[p])
+            m.Add(f <= (n - 1) * holds[q])
+        for p in board.cells:
             m.AddImplication(root[p], holds[p])
             inflow = sum(f for (_, q), f in flow.items() if q == p)
             outflow = sum(f for (q, _), f in flow.items() if q == p)
-            m.Add(inflow - outflow == holds[p] - N * root[p])
+            m.Add(inflow - outflow == holds[p] - n * root[p])
     return m, x
 
 
-def sample(seed):
-    """A random ISOFILL grid (no givens) as ten row strings."""
-    m, x = model({})
-    s = cp_model.CpSolver()
-    s.parameters.random_seed = seed
+def rows(board, s, x):
+    """The solved board as `n` row strings."""
+    return [
+        "".join(str(s.Value(x[r, c])) for c in range(board.n)) for r in range(board.n)
+    ]
+
+
+def sample(board, seed):
+    """A random ISOFILL grid (no givens) as `n` row strings."""
+    m, x = model(board, {})
     # A seed alone barely moves the default search (it hands back striped
     # grids); randomize_search makes the seed pick a genuinely different grid.
-    s.parameters.randomize_search = True
-    s.parameters.num_workers = 8
-    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
-    return ["".join(str(s.Value(x[r, c])) for c in range(N)) for r in range(N)]
+    # Not a proof, so it runs the portfolio: what it draws is written to a gen
+    # JSON and proved from there.
+    s = cpsat.solver(LIMIT, reproducible=False, seed=seed, randomize=True)
+    status = s.Solve(m)
+    if status == cpsat.UNKNOWN:
+        raise TimeoutError(f"seed {seed}: CP-SAT hit the {LIMIT}s limit; no grid")
+    assert status in cpsat.SOLVED, (
+        f"seed {seed}: no ISOFILL grid on a {board.n}x{board.n} board"
+    )
+    return rows(board, s, x)
 
 
-def strip(grid, seed):
+def strip(board, grid, seed):
     """Greedily drop givens from a full grid in a seeded random order, keeping
-    only those whose removal breaks uniqueness. Returns the clue list."""
+    only those whose removal breaks uniqueness. Returns the clue list.
+
+    Hundreds of solves, none of them the proof that ships: the clue set this
+    lands on is written to a gen JSON and re-proved by `unique` before the
+    link is shared, so these run on the portfolio."""
     import random
 
-    givens = {(r, c): int(grid[r][c]) for r, c in CELLS}
-    order = list(CELLS)
+    givens = {(r, c): int(grid[r][c]) for r, c in board.cells}
+    order = list(board.cells)
     random.Random(seed).shuffle(order)
     for p in order:
         v = givens.pop(p)
-        if not unique(givens):
+        if not unique(board, givens, reproducible=False):
             givens[p] = v
     return sorted(givens)
 
 
-def unique(givens, limit=600):
+def unique(board, givens, limit=LIMIT, reproducible=True):
     """True if exactly one ISOFILL grid matches the givens, False if more.
 
     Raises ValueError when none does and TimeoutError when a solve hits `limit`
     seconds — a timeout is never reported as unique.
+
+    Reproducible by default: one worker and seed 0, so a committed proof gives
+    the same answer on every run. `reproducible=False` opens CP-SAT's
+    portfolio, which is far faster and is what the generation searches want.
     """
-    m, x = model(givens)
-
-    def solve():
-        s = cp_model.CpSolver()
-        s.parameters.max_time_in_seconds = limit
-        s.parameters.num_workers = 8
-        status = s.Solve(m)
-        if status == cp_model.UNKNOWN:
-            raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
-        return s if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None
-
-    s1 = solve()
-    if s1 is None:
+    m, x = model(board, givens)
+    s = cpsat.solver(limit, reproducible=reproducible)
+    status = s.Solve(m)
+    if status == cpsat.UNKNOWN:
+        raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
+    if status not in cpsat.SOLVED:
         raise ValueError("no ISOFILL grid matches the givens")
-    diff = []
-    for p in CELLS:
-        b = m.NewBoolVar(f"d{p}")
-        m.Add(x[p] != s1.Value(x[p])).OnlyEnforceIf(b)
-        m.Add(x[p] == s1.Value(x[p])).OnlyEnforceIf(b.Not())
-        diff.append(b)
-    m.AddBoolOr(diff)
-    return solve() is None
+    first = {p: s.Value(x[p]) for p in board.cells}
+    return not cpsat.has_second_solution(m, x, first, limit, reproducible=reproducible)
 
 
-def self_check():
-    rows = ["".join(str(r) for _ in range(N)) for r in range(N)]
-    given = lambda *rs: {(r, c): int(rows[r][c]) for r in rs for c in range(N)}
+def self_check(board):
+    n = board.n
+    banded = ["".join(str(r) for _ in range(n)) for r in range(n)]
+    given = lambda *rs: {(r, c): int(banded[r][c]) for r in rs for c in range(n)}
     # Every row but the first given: the free row's cells must all be the
     # one missing digit.
-    assert unique(given(*range(1, N))) is True
+    assert unique(board, given(*range(1, n))) is True
     # Every row but the first two given: the top strip can split between the
     # two missing digits many ways.
-    assert unique(given(*range(2, N))) is False
+    assert unique(board, given(*range(2, n))) is False
     # Digit 0 pinned at both ends of row 0 with 1s between, every row but the
     # first two full: counts allow it, but 0 cannot connect through the
     # spare cells outside row 0.
-    split = given(*range(2, N))
-    split.update({(0, c): (0 if c in (0, N - 1) else 1) for c in range(N)})
+    split = given(*range(2, n))
+    split.update({(0, c): (0 if c in (0, n - 1) else 1) for c in range(n)})
     try:
-        unique(split)
+        unique(board, split)
     except ValueError:
         pass
     else:
         raise AssertionError("disconnected region accepted")
     # A blank grid under a 1ms cap must raise, never report a verdict.
     try:
-        unique({}, limit=0.001)
+        unique(board, {}, limit=0.001)
     except TimeoutError:
         pass
     else:
@@ -158,23 +193,29 @@ def self_check():
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        self_check()
+        self_check(Board.of(10))
     elif sys.argv[1] in ("sample", "strip"):
         # verify.py sample <seed> [side] [minDigit]: a full grid as gen.json
         # with every cell given, ready for app-strip.mjs --grid.
         # verify.py strip <seed> [side] [minDigit]: the same grid stripped to a
         # minimal unique clue set with CP-SAT (slower than the app strip; fine
         # for a 9x9).
-        args = [int(a) for a in sys.argv[2:]]
-        seed = args[0]
-        set_board(*args[1:]) if len(args) > 1 else None
-        grid = sample(seed)
-        clues = strip(grid, seed) if sys.argv[1] == "strip" else CELLS
-        print(json.dumps({"grid": grid, "clues": clues, "minDigit": LO}))
+        seed, *shape = (int(a) for a in sys.argv[2:])
+        board = Board.of(*shape) if shape else Board.of(10)
+        grid = sample(board, seed)
+        clues = strip(board, grid, seed) if sys.argv[1] == "strip" else board.cells
+        print(json.dumps({"grid": grid, "clues": clues, "minDigit": board.lo}))
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
-        set_board(len(doc["grid"]), doc.get("minDigit", 0))
-        givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
-        ok = unique(givens)
+        board = Board.of_doc(doc)
+        # The one proof here that does NOT run reproducible. A 10x10 ISOFILL
+        # model is out of reach of a single worker: gen_24g.json is 187s on
+        # the portfolio and hits the 600s limit with no verdict at
+        # num_workers=1, and gen.json is 12s against more than twenty minutes.
+        # Nothing this prints is committed except the verdict itself, and the
+        # verdict is a property of the model, not of the search -- the two
+        # configurations agree wherever both terminate, and only one of them
+        # terminates. See README, "verify.py".
+        ok = unique(board, board.givens(doc), reproducible=False)
         print("unique" if ok else "not unique")
         sys.exit(0 if ok else 1)

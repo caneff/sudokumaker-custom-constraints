@@ -26,7 +26,7 @@ from build_link import CONSTRAINT_NAME, build, constraint_with
 from frame import ring_cell
 from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
-from minify import minify_js
+from minify import minify_file
 
 # Must match framebuild.RULES_PREFIX. Written out rather than imported for the
 # same reason as the rule below: an assertion that imports what it checks
@@ -69,9 +69,9 @@ def check_local_link(tag):
     assert not [c for c in p["cells"] if "value" in c and not c.get("given")]
 
     lc = find_constraint(doc, constraint_with(doc, "NumberedRoomsComponent"))
-    assert lc["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main.js").read_text()
-    ), "the local board runs the main.js lane, not main-global.js"
+    assert lc["definition"]["backend"]["code"] == minify_file(HERE / "main.js"), (
+        "the local board runs the main.js lane, not main-global.js"
+    )
 
     # the paths ship as drawn groups: clue cell first, then the path inward
     groups = lc["input"]["groups"]
@@ -112,8 +112,8 @@ def check_shipped_link():
     (docs/example-layout.md, "Which lane a link runs")."""
     doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     lc = find_constraint(doc, CONSTRAINT_NAME)
-    assert lc["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main-global.js").read_text()
+    assert lc["definition"]["backend"]["code"] == minify_file(
+        HERE / "main-global.js"
     ), "PUZZLE_LINK.txt must run main-global.js"
     assert lc["definition"]["input"] == [] and lc["input"] == {}, (
         "the global board reads no drawn groups"
@@ -174,8 +174,8 @@ def check_wrapper_links():
     for name in ("PUZZLE_LINK_original.txt", "PUZZLE_LINK_clued_original.txt"):
         doc = decode_puzzle((HERE / name).read_text().strip())
         lc = find_constraint(doc, CONSTRAINT_NAME)
-        assert lc["definition"]["backend"]["code"] == minify_js(
-            (HERE / "original" / "main.js").read_text()
+        assert lc["definition"]["backend"]["code"] == minify_file(
+            HERE / "original" / "main.js"
         ), f"{name} must run the original wrapper's main.js"
         groups = lc["input"]["groups"]
         assert {tuple(g["cells"]) for g in groups} == want, (

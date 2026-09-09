@@ -65,6 +65,13 @@ times baseline and candidate 3 reps each in both modes, and prints one
 paste-ready row per mode (date, app version, board, both medians, ratio, and
 that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 `two-row rule:` line. Byte-equal candidate code prints baseline-only rows.
+
+The baseline is the link file on disk, and the paste target that built it is
+identified at git HEAD. So **time before you regenerate**: a `PUZZLE_LINK*.txt`
+rebuilt against edited code is not a baseline — the link the candidate would be
+judged against no longer exists in the tree — and `just time` refuses rather
+than time the change against itself. Commit the regenerated link, or time first
+and rebuild after.
 `--board <file>` times a different committed link in the example dir instead
 of `PUZZLE_LINK.txt`; only an example whose `build_link.py` takes `--board`
 accepts it, and the row's board column then names the file. The

@@ -19,13 +19,14 @@ sys.path.insert(0, str(HERE))
 
 import time_example
 from link_codec import decode_puzzle, encode_link
-from minify import minify_js
+from minify import minify_file, minify_js
 from time_example import (
     build_candidate,
     build_candidate_doc,
     build_row,
     find_component_file,
     parse_app_solve_output,
+    resolve_backend_file,
     row_ratio,
     run,
     ship_verdict,
@@ -39,7 +40,7 @@ import sys
 sys.path.insert(0, {str(HERE)!r})
 from link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
-from minify import minify_js
+from minify import minify_file, minify_js
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Widget Lines"
@@ -48,7 +49,7 @@ CONSTRAINT_NAME = "Widget Lines"
 def build(component_path, out_path, board=None):
     component_path = pathlib.Path(component_path)
     board_path = pathlib.Path(board) if board else HERE / "PUZZLE_LINK.txt"
-    code = minify_js(component_path.read_text())
+    code = minify_file(component_path)
     base = decode_puzzle(board_path.read_text().strip())
     doc = swap_component_code(base, CONSTRAINT_NAME, component_path.stem, code)
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
@@ -553,6 +554,54 @@ if __name__ == "__main__":
         except ValueError:
             pass
 
+    # a backend file added to the working tree but never committed cannot have
+    # built a committed link. It is named as exactly that, rather than dying on
+    # a FileNotFoundError pointing at the temp HEAD checkout.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "untracked-backend"
+        example_dir.mkdir()
+        base_doc = _widget_doc(
+            "SOMETHING NEITHER FILE HAS",
+            minify_js("function update(){return 1}\n"),
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
+        (example_dir / "main.js").write_text("console.log('does not match')\n")
+        _git_commit_all(example_dir)
+        (example_dir / "main-global.js").write_text("console.log('brand new')\n")
+        try:
+            resolve_backend_file(example_dir, base_doc, "Widget Lines")
+            raise AssertionError("expected a no-backend-match failure")
+        except ValueError as e:
+            assert "main-global.js is in the working tree but not at HEAD" in str(e), (
+                str(e)
+            )
+
+    # a backend built from an `// #include`: resolve_backend_file's ground
+    # truth is HEAD all the way down, includes included. Editing the included
+    # file in the working tree must not change what it resolves, or touching
+    # examples/_shared/frame-lines.js aborts `just time` on every frame
+    # example.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "included-backend"
+        example_dir.mkdir()
+        (example_dir / "seg.js").write_text("function seg(){return 'committed'}\n")
+        (example_dir / "main.js").write_text("// #include seg.js\nconsole.log(seg())\n")
+        base_doc = _widget_doc(
+            minify_file(example_dir / "main.js"),
+            minify_js("function update(){return 1}\n"),
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
+        _git_commit_all(example_dir)
+        (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")
+        assert (
+            resolve_backend_file(example_dir, base_doc, "Widget Lines")
+            == example_dir / "main.js"
+        ), "an edited include must not change which backend file HEAD resolves to"
+
     # all reps timed out: the failure names the fixed 300s per-rep timeout
     # and the rep counts
     stdout = (
@@ -664,6 +713,42 @@ if __name__ == "__main__":
         assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
         assert ship is None, "nothing to judge means no ship verdict"
         assert [c[0] for c in calls] == ["baseline_probe.txt"] * 2
+
+    # A link regenerated against edited code is not a baseline: the link that
+    # was the baseline is gone from this tree. Every link the run times comes
+    # from the working tree, so timing it would time the change against itself
+    # -- two probes carrying the same new code, a ratio near 1, and a
+    # paste-ready verdict for a change nobody measured. Refuse instead, and
+    # name the link, because the message otherwise blames the backend files.
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "regenerated-link"
+        example_dir.mkdir()
+        (example_dir / "seg.js").write_text("function seg(){return 'committed'}\n")
+        (example_dir / "main.js").write_text("// #include seg.js\nconsole.log(seg())\n")
+        component_src = "function update(){return 1}\n"
+        base_doc = _widget_doc(
+            minify_file(example_dir / "main.js"), minify_js(component_src)
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "WidgetComponent.js").write_text(component_src)
+        _git_commit_all(example_dir)
+        (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")
+        regenerated = _widget_doc(
+            minify_file(example_dir / "main.js"), minify_js(component_src)
+        )
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(regenerated) + "\n")
+        with fake_solve([1000, 500, 800, 400]) as calls:
+            try:
+                run(example_dir)
+            except ValueError as e:
+                message = str(e)
+            else:
+                raise AssertionError("a regenerated link must be refused, not timed")
+        # The message names the link, not just the backend files: a builder who
+        # has just regenerated one would otherwise go looking at the wrong file.
+        assert "PUZZLE_LINK" in message, message
+        assert not calls, "a refused run must not time anything"
 
     # ring_clues reaches the driver, and board= names the row's board label
     with tempfile.TemporaryDirectory() as tmp:

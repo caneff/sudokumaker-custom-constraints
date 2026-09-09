@@ -32,7 +32,7 @@ import link_codec
 from component_scan import builtin_components, registered_components
 from frame import corner_cells, cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
-from minify import minify_js
+from minify import minify_file
 
 
 @dataclass
@@ -88,6 +88,12 @@ def stem(filename):
 
 # Every generated link opens with this sentence (project rule).
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+
+# Seconds per solve in `unique`. A frame board this size is proved in
+# milliseconds, so a solve anywhere near the cap is a carve that has gone
+# wrong; `unique` returns None for it, which the carve loop reads as "not
+# unique" and the final assert in `generate` turns into a loud failure.
+SOLVE_LIMIT = 10
 
 # A bent-path link's rules text closes with this: its lines are drawn paths,
 # not rows and columns, so a solver must not read them as houses (spec #232,
@@ -239,25 +245,11 @@ def repeating_lines(grid, lines):
     ]
 
 
-def _solver(cp_model):
-    """The one solver configuration every proof here runs under.
-
-    Pinned to one worker with a fixed seed: CP-SAT's parallel portfolio search
-    is not reproducible run-to-run (the workers race, and which one reports
-    first depends on thread timing). Deterministic so regenerate + `git diff`
-    is a real gate.
-    """
-    s = cp_model.CpSolver()
-    s.parameters.max_time_in_seconds = 10
-    s.parameters.num_workers = 1
-    s.parameters.random_seed = 0
-    return s
-
-
 def unique(post_clue, board):
     """True when `board`'s interior has exactly one solution, False when it has
-    more, None when the first solve finds none inside the time limit (a timeout
-    or an unsatisfiable model, which is no verdict on a second solution).
+    more, None when there is no verdict -- either the first solve found nothing
+    inside the time limit (a timeout or an unsatisfiable model) or the search
+    for a second solution spent the limit without one.
 
     `post_clue` is a Spec's cp_sat_clue_fn; unique() needs nothing else off the
     Spec, so a caller with its own line geometry can reuse it.
@@ -265,6 +257,7 @@ def unique(post_clue, board):
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
     # load_board) and a caller's Spec stay importable without one.
+    import cpsat
     from ortools.sat.python import cp_model
 
     n, bh, bw = board.n, board.bh, board.bw
@@ -286,18 +279,17 @@ def unique(post_clue, board):
     for k in sorted(board.active):
         cells = board.lines[k]
         post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
-    s = _solver(cp_model)
-    if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+    s = cpsat.solver(SOLVE_LIMIT)
+    if s.Solve(m) not in cpsat.SOLVED:
         return None
     s1 = {(r, c): s.Value(x[r, c]) for r in range(n) for c in range(n)}
-    lits = []
-    for (r, c), v in s1.items():
-        b = m.NewBoolVar(f"d{r}{c}")
-        m.Add(x[r, c] != v).OnlyEnforceIf(b)
-        m.Add(x[r, c] == v).OnlyEnforceIf(b.Not())
-        lits.append(b)
-    m.AddBoolOr(lits)
-    return _solver(cp_model).Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    try:
+        return not cpsat.has_second_solution(m, x, s1, SOLVE_LIMIT)
+    except TimeoutError:
+        # The board has a solution but the search for a second one ran out of
+        # time: no verdict either way, same answer as a first solve that found
+        # nothing.
+        return None
 
 
 def generate(spec, n, bh, bw, seeds, paths=False):
@@ -420,8 +412,7 @@ def frame_backend_code():
     read from the working tree."""
     shared = pathlib.Path(__file__).parent
     return [
-        (title, minify_js((shared / f"{name}.js").read_text()))
-        for name, title in FRAME_BACKENDS
+        (title, minify_file(shared / f"{name}.js")) for name, title in FRAME_BACKENDS
     ]
 
 
@@ -497,9 +488,7 @@ def build_doc(spec, board, local=False):
     # itself from the grid at solve time. Local: each line ships as a group
     # whose cells are the clue then the line inward, which is the order
     # main.js reads (docs/example-layout.md).
-    backend_code = minify_js(
-        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
-    )
+    backend_code = minify_file(spec.dir / ("main.js" if local else "main-global.js"))
     definition_input = (
         [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
         if local
@@ -507,7 +496,7 @@ def build_doc(spec, board, local=False):
     )
     constraint_input = {"groups": frame_groups(n, board.lines)} if local else {}
     components = [
-        {"type": "code", "name": stem(f), "code": minify_js((spec.dir / f).read_text())}
+        {"type": "code", "name": stem(f), "code": minify_file(spec.dir / f)}
         for f in component_files(spec, local)
     ]
 
@@ -604,9 +593,7 @@ def check(spec, link, doc, board, local=False):
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
     else:
         assert lc["input"] == {}, "the global board reads no drawn groups"
-    backend = minify_js(
-        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
-    )
+    backend = minify_file(spec.dir / ("main.js" if local else "main-global.js"))
     assert lc["definition"]["backend"]["code"] == backend
     # Read the lane off `local` here, not off component_files(): an assertion
     # built from the same call the builder used would still pass if that call

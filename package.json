@@ -12,7 +12,7 @@
     "standard": "^17.1.2"
   },
   "standard": {
-    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet) and the component constructors main.js references; each component file disables no-unused-vars for its API functions. `ignore` holds verbatim third-party files, which must stay exactly as their author wrote them, plus FillominoComponentNoLog.js -- the same code minus its one console.log line (#307's log-free timing variant), kept in the vendor's own style so the comparison stays apples-to-apples.",
+    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet), the component constructors main.js references, and the functions a `// #include` splices into a paste target (frameLines, framePairs -- declared in _shared/frame-lines.js, called from each main-global.js); each component file disables no-unused-vars for its API functions. `ignore` holds verbatim third-party files, which must stay exactly as their author wrote them, plus FillominoComponentNoLog.js -- the same code minus its one console.log line (#307's log-free timing variant), kept in the vendor's own style so the comparison stays apples-to-apples.",
     "ignore": [
       "examples/numbered-rooms/original/main.js",
       "examples/numbered-rooms/original/CustomIndexComponent.js",
@@ -47,7 +47,9 @@
       "RunningStartComponent",
       "RunningStartPairComponent",
       "CustomSkyscraperLineComponent",
-      "CustomIndexComponent"
+      "CustomIndexComponent",
+      "frameLines",
+      "framePairs"
     ]
   }
 }

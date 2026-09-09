@@ -26,7 +26,7 @@ from framebuild import (
 )
 from link_codec import decode_puzzle
 from link_swap import find_constraint
-from minify import minify_js
+from minify import minify_file
 from outside_rule import window_length_by_box, window_length_by_region
 
 SIZES = [(4, 2, 2), (6, 2, 3), (9, 3, 3)]
@@ -148,9 +148,9 @@ def test_the_two_lanes_ship_the_boards_their_names_promise():
     ):
         doc = decode_puzzle(link_path(9, local=local).read_text().strip())
         lc = find_constraint(doc, CONSTRAINT_NAME)
-        assert lc["definition"]["backend"]["code"] == minify_js(
-            (HERE / backend).read_text()
-        ), f"{link_path(9, local=local).name} must run {backend}"
+        assert lc["definition"]["backend"]["code"] == minify_file(HERE / backend), (
+            f"{link_path(9, local=local).name} must run {backend}"
+        )
         groups = lc["input"].get("groups", [])
         assert bool(groups) is drawn, f"{backend}: drawn groups {drawn} expected"
         if drawn:

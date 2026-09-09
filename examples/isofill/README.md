@@ -43,10 +43,23 @@ exists to teach.
   identical removal sequence, since the filter may only remove work. It
   patches the source by anchor line, the way `cut-profile.mjs` does.
 - `verify.py` — uniqueness checker (OR-Tools CP-SAT). Proves a grid plus clue
-  set has exactly one solution. The full-board proofs are slow (CP-SAT), so
-  they are not part of `just check` or CI — run them by hand with
-  `just verify-isofill` after a puzzle change. `verify.test.py` runs the same
-  model at 4x4 in `just check`; only the full-board proofs are hand-run.
+  set has exactly one solution. Every function takes the `Board` it works on
+  (`Board.of(n, lo=0)`, `Board.of_doc(gen_json)`), so a process can check
+  several boards without resetting anything between them. The full-board
+  proofs are slow (CP-SAT), so they are not part of `just check` or CI — run
+  them by hand with `just verify-isofill` after a puzzle change.
+  `verify.test.py` runs the same model at 4x4 in `just check`; only the
+  full-board proofs are hand-run.
+
+  Every solve goes through `_shared/cpsat.py`, and the full-board proof is the
+  one place in this repo that asks it for the portfolio rather than the
+  reproducible one-worker configuration. A 10x10 ISOFILL model is out of a
+  single worker's reach: `gen_24g.json` takes 187 s on the portfolio and hits
+  the 600 s limit with no verdict at all at `num_workers=1`, and `gen.json`
+  takes 12 s against more than twenty minutes. Only the verdict is committed,
+  and a verdict is a property of the model rather than of the search — the two
+  configurations agree wherever both terminate, and here only one of them
+  does.
 - `gen.json` — the shipped instance: the full solution grid and the list of
   clue cells (35 givens).
 - `gen_44g.json` — the same grid with 44 givens: a fixture kept for

@@ -37,6 +37,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import builtin_components, registered_components
 from framebuild import FRAME_BACKENDS, frame_backend_code
 from link_codec import decode_puzzle
+from minify import minify_file
 
 REQUIRED_FILES = [
     "README.md",
@@ -121,16 +122,33 @@ LINK_RE = re.compile(
 def check_lanes(example_dir):
     """`main.js` (the local, drawn-groups paste target) must never build the
     frame itself; `main-global.js` (the whole-grid paste target) must never
-    read the drawn groups. See docs/example-layout.md."""
+    read the drawn groups. See docs/example-layout.md.
+
+    Both scans read the SHIPPED text -- `minify_file`, so `// #include`s are
+    spliced in and comments are gone. That is the lane: a paste target's real
+    body can live in an included file, and a mention inside a comment is not
+    part of it."""
     name = example_dir.name
     violations = []
 
+    def shipped(path):
+        """path's shipped text, or None with a violation recorded. minify_file
+        signals a malformed file (unpaired block marker, broken #include) by
+        assertion; letting that out would end the whole sweep on one example
+        and leave the rest unchecked, so it becomes a violation like any
+        other."""
+        try:
+            return minify_file(path)
+        except AssertionError as exc:
+            violations.append(f"{name}: {path.name} does not minify: {exc}")
+            return None
+
     main_js = example_dir / "main.js"
-    if main_js.is_file() and "getCellAt(" in main_js.read_text():
+    if main_js.is_file() and "getCellAt(" in (shipped(main_js) or ""):
         violations.append(f"{name}: main.js builds frame lines (calls getCellAt)")
 
     main_global_js = example_dir / "main-global.js"
-    if main_global_js.is_file() and "input.groups" in main_global_js.read_text():
+    if main_global_js.is_file() and "input.groups" in (shipped(main_global_js) or ""):
         violations.append(f"{name}: main-global.js reads input.groups")
 
     return violations

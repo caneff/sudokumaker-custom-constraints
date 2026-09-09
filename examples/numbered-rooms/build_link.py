@@ -28,11 +28,12 @@ from framebuild import RULES_PREFIX, refresh_frame_backends
 from link_codec import decode_puzzle
 from link_swap import (
     check_and_write,
+    find_constraint,
     replace_constraint_code,
     swap_component_code,
     write_link,
 )
-from minify import minify_js
+from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 # The shipped board is hand-built and calls its constraint this; the generated
@@ -78,19 +79,20 @@ def build(component_path, out_path, backend_path=None, board_path=None):
     board_path swaps against a committed link other than PUZZLE_LINK.txt."""
     component_path = pathlib.Path(component_path)
     board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
-    code = minify_js(component_path.read_text())
+    code = minify_file(component_path)
     base = decode_puzzle(board_path.read_text().strip())
     name = constraint_with(base, component_path.stem)
     doc = swap_component_code(base, name, component_path.stem, code)
     if backend_path is not None:
-        backend = minify_js(pathlib.Path(backend_path).read_text())
+        backend = minify_file(pathlib.Path(backend_path))
         doc = replace_constraint_code(doc, name, backend_code=backend)
     return check_and_write(base, doc, name, out_path)
 
 
 def refresh():
-    """Rewrite PUZZLE_LINK.txt in place: the frame's shared backends as they
-    stand in the tree, the digit range those backends read, and the rules text.
+    """Rewrite PUZZLE_LINK.txt in place: this board's own backend and the
+    frame's shared ones as they stand in the tree, the digit range those
+    backends read, and the rules text.
 
     PUZZLE_LINK.txt and no other board. DIGITS and COMMENT below describe this
     one hand-built 9x9; stamped on a smaller board they would give six-cell
@@ -99,16 +101,25 @@ def refresh():
 
     This board is hand-built. No `gen_*.json` describes it, so
     `framebuild.rebuild` cannot reach it and nothing else re-embeds
-    `frame-rowcol.js` or `frame-corners.js` when they change, pins the range
-    both of them read off `helpers.digits`, or corrects the comment. Without
-    this the link keeps a stale copy and `check_layout.check_houses` reads it as
-    a board that declares no interior rows or columns at all.
+    `main-global.js`, `frame-rowcol.js` or `frame-corners.js` when they change,
+    pins the range both frame backends read off `helpers.digits`, or corrects
+    the comment. Without this the link keeps a stale copy and
+    `check_layout.check_houses` reads it as a board that declares no interior
+    rows or columns at all.
+
+    `main-global.js` is refreshed here for the same reason as the other two:
+    it is assembled from the tree (an `// #include` of the shared frame reader
+    resolves at minify time, #359), so a link built before that file moved
+    ships a body no source file matches. `check_shipped_link` asserts exactly
+    that equality, and this is the only writer that can satisfy it.
 
     PUZZLE_LINK.txt is the source of truth for this example's three other
     hand-built links, so build_original.py and build_clued.py run after it.
     """
     board_path = HERE / "PUZZLE_LINK.txt"
     doc = decode_puzzle(board_path.read_text().strip())
+    lc = find_constraint(doc, CONSTRAINT_NAME)
+    lc["definition"]["backend"]["code"] = minify_file(HERE / "main-global.js")
     refresh_frame_backends(doc)
     doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"] = DIGITS
     doc["puzzle"]["comment"] = COMMENT

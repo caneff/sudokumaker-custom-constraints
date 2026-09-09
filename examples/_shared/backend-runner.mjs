@@ -18,11 +18,13 @@ function componentNames (src) {
 
 // Evaluate `src` against `puzzle` and `helpers`.
 //
+// `input` is the segment's own `input` -- what the app hands a LOCAL lane as
+// `{ groups }` and a global one not at all, so it defaults to undefined.
 // `globals` names any further API global the backend reads (`SudokuDigitSet`,
 // say), by name. `returns` is an expression evaluated after the backend body
 // and handed back as `value` -- the way to reach a function the backend
 // declares but never calls itself, such as `postprocessJSON`.
-export function runBackend (src, { puzzle, helpers, globals = {}, returns = null }) {
+export function runBackend (src, { puzzle, helpers, input = undefined, globals = {}, returns = null }) {
   const ctorNames = componentNames(src)
   const ctors = ctorNames.map(name => {
     const Recorder = function (...args) { this.args = args; this.ctor = name }
@@ -32,6 +34,6 @@ export function runBackend (src, { puzzle, helpers, globals = {}, returns = null
   const globalNames = Object.keys(globals)
   const body = returns === null ? src : `${src}\n;return (${returns})`
   const fn = new Function('input', 'puzzle', 'helpers', ...globalNames, ...ctorNames, body) // eslint-disable-line no-new-func
-  const value = fn(undefined, puzzle, helpers, ...globalNames.map(n => globals[n]), ...ctors)
+  const value = fn(input, puzzle, helpers, ...globalNames.map(n => globals[n]), ...ctors)
   return { ctorNames, value }
 }

@@ -38,6 +38,9 @@ test:
     node examples/_shared/harness-lib.test.mjs
     node examples/_shared/frame-rowcol.test.mjs
     node examples/_shared/frame-corners.test.mjs
+    node examples/_shared/include.test.mjs
+    node examples/_shared/frame-geometry.test.mjs
+    node examples/_shared/frame-lines.test.mjs
     node examples/_shared/global-backends.test.mjs
     uv run examples/_shared/minify.test.py
     uv run examples/_shared/frame.test.py
@@ -47,6 +50,7 @@ test:
     uv run --with lzstring examples/_shared/time_example.test.py
     uv run --with lzstring examples/_shared/component_scan.test.py
     uv run --with lzstring examples/_shared/count_calls.test.py
+    uv run --with ortools examples/_shared/cpsat.test.py
     uv run --with lzstring --with ortools examples/_shared/framebuild.test.py
     for dir in examples/*/; do
         name=$(basename "$dir")
