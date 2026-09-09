@@ -56,20 +56,41 @@ def cells_of(a, b, r0, c0):
     return {(r0 + i, c0 + j) for i in range(a) for j in range(b)}
 
 
-def geometries():
-    """Every (2x2, 2x3-or-3x2) pair that is disjoint and does not touch."""
-    small = [(2, 2, r, c) for r, c in circle_capable(2, 2)]
-    large = [(2, 3, r, c) for r, c in circle_capable(2, 3)] + [
-        (3, 2, r, c) for r, c in circle_capable(3, 2)
-    ]
+# The catalogue allows a circle on exactly four shapes with both sides >= 2 --
+# 2x2, 2x3, 2x4 and 3x3, plus the transposes. Every other living shape (2x5,
+# 2x6, 2x7, 3x4, 3x5, 3x6, 4x4) can never hold its own size, so it is
+# permanently uncircleable and no hunt should aim at one.
+#
+# Of the four, 2x4 and 3x3 are the easy ones: 2x4 can carry a circle at all
+# nine box offsets and 3x3 at eight, against five for a 2x2. The hunt is for
+# the hard pair, so the default is 2x2 and 2x3 only -- two 2x2s, two 2x3s, or
+# one of each all count.
+WANTED = ((2, 2), (2, 3), (3, 2))
+
+
+def circleable_shapes(wanted=WANTED):
+    """The wanted shapes, each with the placements the catalogue allows."""
+    return [(a, b, circle_capable(a, b)) for a, b in wanted if circle_capable(a, b)]
+
+
+def geometries(wanted=WANTED):
+    """Every pair of circled rectangles that is disjoint and does not touch.
+
+    Every ordered-once pair drawn from the wanted shapes, so two 2x2s and two
+    2x3s are in scope alongside one of each. Touching is excluded because each
+    rectangle must be a *maximal* chocolate group: a shared border cell would
+    be chocolate in one and banana in the other.
+    """
+    places = [(a, b, r, c) for a, b, pl in circleable_shapes(wanted) for r, c in pl]
     out = []
-    for s in small:
-        cs = cells_of(*s)
-        halo = cs | {q for p in cs for q in rv.neighbours(*p)}
-        for ell in large:
-            cl = cells_of(*ell)
-            if not (halo & cl):
-                out.append((s, ell))
+    for i, first in enumerate(places):
+        cf = cells_of(*first)
+        halo = cf | {q for p in cf for q in rv.neighbours(*p)}
+        out.extend(
+            (first, second)
+            for second in places[i + 1 :]
+            if not (halo & cells_of(*second))
+        )
     return out
 
 
