@@ -61,6 +61,7 @@ def rows():
             gsize = []
             circles = []  # every chocolate cell that could take a circle
             bcircles = []  # on a banana group of size < 5: says something
+            bsizes = []  # the size of the group carrying each of those
             forced = []  # on a banana group of size >= 5: says nothing, below
             for colour in (True, False):
                 for group in rv.components(is_choc, colour):
@@ -88,7 +89,11 @@ def rows():
                     k = len(group)
                     for r, c in sorted(group):
                         if grid[r, c] == k:
-                            (forced if k >= 5 else bcircles).append([r, c])
+                            if k >= 5:
+                                forced.append([r, c])
+                            else:
+                                bcircles.append([r, c])
+                                bsizes.append(k)
                             break
             k = canon.key_from_rows(d["grid"], d["shading"])
             if k in seen:
@@ -116,6 +121,12 @@ def rows():
                     "largest": prof["largest_rectangle"],
                     "circleable": prof["circleable_groups"],
                     "bananaCircles": len(bcircles),
+                    # How small the groups carrying those circles are, not just
+                    # how many there are. A circle on a banana pair is the
+                    # sharpest clue in the grid -- it names both its digits --
+                    # and one on a group of four barely narrows anything, so
+                    # the score weights each by 5 - k.
+                    "smallBanana": sum(5 - k for k in bsizes),
                     "forcedCircles": len(forced),
                 }
             )
