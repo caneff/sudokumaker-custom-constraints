@@ -35,56 +35,81 @@ docs/research/fillomino-cpsat.md.
 import json
 import random
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "_shared"))
+import cpsat
 from ortools.sat.python import cp_model
 
-SIDE = 9
-CAP = 9
-CELLS = EDGES = UEDGES = None
+# Seconds per solve when no caller names a cap. Every solve here is one solve
+# of one board, and a board that has not answered in ten minutes is a board
+# the run drops and reports rather than one it waits on.
+LIMIT = 600
 
 
-def set_board(side, cap=None):
-    """Set the board side and digit cap (defaults to `side`); rebuild cells/edges."""
-    global SIDE, CAP, CELLS, EDGES, UEDGES
-    SIDE = side
-    CAP = cap if cap is not None else side
-    CELLS = [(r, c) for r in range(SIDE) for c in range(SIDE)]
-    EDGES = [
-        ((r, c), (r + dr, c + dc))
-        for (r, c) in CELLS
-        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-        if 0 <= r + dr < SIDE and 0 <= c + dc < SIDE
-    ]
-    UEDGES = [(p, q) for p, q in EDGES if p < q]
+@dataclass(frozen=True)
+class Board:
+    """A fillomino board's shape: `side` x `side`, digits 1..`cap`.
+
+    `cap` and `side` are independent -- a 9x9 board carries a digit above 9
+    when `cap` says so. `cells` is every cell in reading order, `edges` every
+    ordered orthogonal step between two of them, and `uedges` each of those
+    pairs once. All three fall out of `side`, so a board is built with
+    `Board.of` rather than by naming them.
+    """
+
+    side: int
+    cap: int
+    cells: list
+    edges: list
+    uedges: list
+
+    @classmethod
+    def of(cls, side, cap=None):
+        cells = [(r, c) for r in range(side) for c in range(side)]
+        edges = [
+            ((r, c), (r + dr, c + dc))
+            for (r, c) in cells
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            if 0 <= r + dr < side and 0 <= c + dc < side
+        ]
+        uedges = [(p, q) for p, q in edges if p < q]
+        return cls(side, side if cap is None else cap, cells, edges, uedges)
+
+    @classmethod
+    def of_doc(cls, doc):
+        """The board a gen.json describes."""
+        return cls.of(len(doc["grid"]), doc.get("cap"))
+
+    def givens(self, doc):
+        """The clue cells of a gen.json, as {(row, column): digit}."""
+        return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
+
+    def idx(self, p):
+        """The cell's index, 0..side*side-1, in reading order."""
+        return p[0] * self.side + p[1]
 
 
-set_board(SIDE, CAP)
-
-
-def idx(p):
-    """The cell's index, 0..side*side-1, in reading order."""
-    return p[0] * SIDE + p[1]
-
-
-def model(givens):
+def model(board, givens):
     """The fillomino model with `givens` pinned; returns (model, cell vars)."""
+    side, cap, cells = board.side, board.cap, board.cells
     m = cp_model.CpModel()
-    x = {p: m.NewIntVar(1, CAP, f"x{p}") for p in CELLS}
+    x = {p: m.NewIntVar(1, cap, f"x{p}") for p in cells}
     for p, v in givens.items():
         m.Add(x[p] == v)
 
     # A region id per cell, forced to be the region's lowest cell index.
-    rid = {p: m.NewIntVar(0, SIDE * SIDE - 1, f"g{p}") for p in CELLS}
-    root = {p: m.NewBoolVar(f"r{p}") for p in CELLS}
-    for p in CELLS:
-        m.Add(rid[p] <= idx(p))
-        m.Add(rid[p] == idx(p)).OnlyEnforceIf(root[p])
-        m.Add(rid[p] < idx(p)).OnlyEnforceIf(root[p].Not())
+    rid = {p: m.NewIntVar(0, side * side - 1, f"g{p}") for p in cells}
+    root = {p: m.NewBoolVar(f"r{p}") for p in cells}
+    for p in cells:
+        m.Add(rid[p] <= board.idx(p))
+        m.Add(rid[p] == board.idx(p)).OnlyEnforceIf(root[p])
+        m.Add(rid[p] < board.idx(p)).OnlyEnforceIf(root[p].Not())
 
     # Equal digits across an edge means one region: this is the separation rule.
     eq = {}
-    for p, q in UEDGES:
+    for p, q in board.uedges:
         b = m.NewBoolVar(f"e{p}{q}")
         m.Add(x[p] == x[q]).OnlyEnforceIf(b)
         m.Add(x[p] != x[q]).OnlyEnforceIf(b.Not())
@@ -93,11 +118,11 @@ def model(givens):
 
     # Single-commodity flow: the root emits its digit, every cell absorbs one,
     # and flow crosses an edge only when both cells hold the same digit.
-    flow = {e: m.NewIntVar(0, CAP - 1, f"f{e}") for e in EDGES}
+    flow = {e: m.NewIntVar(0, cap - 1, f"f{e}") for e in board.edges}
     for e, f in flow.items():
-        m.Add(f <= (CAP - 1) * eq[e])
-    for p in CELLS:
-        emit = m.NewIntVar(0, CAP, f"s{p}")
+        m.Add(f <= (cap - 1) * eq[e])
+    for p in cells:
+        emit = m.NewIntVar(0, cap, f"s{p}")
         m.Add(emit == x[p]).OnlyEnforceIf(root[p])
         m.Add(emit == 0).OnlyEnforceIf(root[p].Not())
         inflow = sum(f for (_, q), f in flow.items() if q == p)
@@ -106,10 +131,10 @@ def model(givens):
     return m, x
 
 
-def _rows(s, x):
+def rows(board, s, x):
     """Each row as a list of ints -- unambiguous once a digit can reach two
     digits wide (cap > 9), unlike a joined char string."""
-    return [[s.Value(x[r, c]) for c in range(SIDE)] for r in range(SIDE)]
+    return [[s.Value(x[r, c]) for c in range(board.side)] for r in range(board.side)]
 
 
 def is_striped(grid):
@@ -122,7 +147,7 @@ def is_striped(grid):
     return dull_rows > len(grid) // 2
 
 
-def drop(why, seed, givens, sub=None):
+def drop(board, why, seed, givens, sub=None):
     """Log a dropped grid with the seed and the clue set that produced it, so
     any generator run reproduces (#303, story 14). Goes to stderr: `sample`
     prints its JSON on stdout."""
@@ -130,12 +155,13 @@ def drop(why, seed, givens, sub=None):
     print(
         f"drop ({why}): seed={seed}"
         + (f" sub={sub}" if sub is not None else "")
-        + f" side={SIDE} cap={CAP} clues={json.dumps(clues, sort_keys=True)}",
+        + f" side={board.side} cap={board.cap}"
+        + f" clues={json.dumps(clues, sort_keys=True)}",
         file=sys.stderr,
     )
 
 
-def sample(seed, side=None, cap=None, pins=4, max_tries=50):
+def sample(board, seed, pins=4, max_tries=50):
     """A random fillomino grid, retried away from striped rows.
 
     A handful of cells are pinned to random digits before each solve for
@@ -145,81 +171,76 @@ def sample(seed, side=None, cap=None, pins=4, max_tries=50):
     retried with a fresh sub-seed. When `cap` exceeds `side`, one pin is
     forced above `side` so a wide cap actually gets used.
     """
-    set_board(side if side is not None else SIDE, cap if cap is not None else CAP)
     rng = random.Random(seed)
     for _ in range(max_tries):
-        chosen = rng.sample(CELLS, min(pins, len(CELLS)))
+        chosen = rng.sample(board.cells, min(pins, len(board.cells)))
         givens = {}
-        if CAP > SIDE and chosen:
+        if board.cap > board.side and chosen:
             high, *chosen = chosen
-            givens[high] = rng.randint(SIDE + 1, CAP)
-        givens.update({p: rng.randint(1, CAP) for p in chosen})
-        m, x = model(givens)
-        s = cp_model.CpSolver()
+            givens[high] = rng.randint(board.side + 1, board.cap)
+        givens.update({p: rng.randint(1, board.cap) for p in chosen})
+        m, x = model(board, givens)
         sub = rng.randint(0, 2**31 - 1)
-        s.parameters.random_seed = sub
-        s.parameters.randomize_search = True
-        s.parameters.num_workers = 8
+        # A draw, not a proof: the portfolio and the sub-seed are what make
+        # two seeds land on two different grids. What it draws is written to
+        # a gen JSON and proved from there.
+        s = cpsat.solver(LIMIT, reproducible=False, seed=sub, randomize=True)
         status = s.Solve(m)
-        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            drop("no solution", seed, givens, sub=sub)
+        if status not in cpsat.SOLVED:
+            why = f"timeout at {LIMIT}s" if status == cpsat.UNKNOWN else "no solution"
+            drop(board, why, seed, givens, sub=sub)
             continue
-        grid = _rows(s, x)
+        grid = rows(board, s, x)
         if not is_striped(grid):
             return grid
-        drop("striped", seed, givens, sub=sub)
+        drop(board, "striped", seed, givens, sub=sub)
     raise RuntimeError(f"seed {seed}: no non-striped grid in {max_tries} tries")
 
 
-def solutions(givens, cap=2, limit=600):
-    """Up to `cap` distinct grids matching `givens`, as lists of row strings.
+def solutions(board, givens, most=2, limit=LIMIT, reproducible=True):
+    """Up to `most` distinct grids matching `givens`, as lists of row lists.
 
     Each round solves, records the grid, and forbids it, so the grids differ in
     the digits themselves and not in the model's internal region bookkeeping.
     Raises TimeoutError when a solve hits `limit` seconds.
     """
-    m, x = model(givens)
+    m, x = model(board, givens)
     found = []
-    while len(found) < cap:
-        s = cp_model.CpSolver()
-        s.parameters.max_time_in_seconds = limit
-        s.parameters.num_workers = 8
+    while len(found) < most:
+        s = cpsat.solver(limit, reproducible=reproducible)
         status = s.Solve(m)
-        if status == cp_model.UNKNOWN:
+        if status == cpsat.UNKNOWN:
             raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
-        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        if status not in cpsat.SOLVED:
             break
-        found.append(_rows(s, x))
-        diff = []
-        for p in CELLS:
-            b = m.NewBoolVar(f"d{len(found)}{p}")
-            m.Add(x[p] != s.Value(x[p])).OnlyEnforceIf(b)
-            m.Add(x[p] == s.Value(x[p])).OnlyEnforceIf(b.Not())
-            diff.append(b)
-        m.AddBoolOr(diff)
+        found.append(rows(board, s, x))
+        cpsat.forbid(m, x, {p: s.Value(x[p]) for p in board.cells}, tag=len(found))
     return found
 
 
-def unique(givens, limit=600):
+def unique(board, givens, limit=LIMIT, reproducible=True):
     """True if exactly one fillomino grid matches the givens, False if more.
 
     Raises ValueError when none does and TimeoutError when a solve hits `limit`
     seconds -- a timeout is never reported as unique.
+
+    Reproducible by default: one worker and seed 0, so a committed proof gives
+    the same answer on every run.
     """
-    found = solutions(givens, cap=2, limit=limit)
+    found = solutions(board, givens, most=2, limit=limit, reproducible=reproducible)
     if not found:
         raise ValueError("no fillomino grid matches the givens")
     return len(found) == 1
 
 
-def brute(givens):
-    """Every valid grid for the current (small) board, by exhaustive search.
+def brute(board, givens):
+    """Every valid grid for a small `board`, by exhaustive search.
 
     The independent reading of the rule that the CP-SAT model is checked
     against: it flood-fills the finished grid and compares each region's cell
     count with its digit. Only usable for side <= 3.
     """
-    cells = CELLS
+    cells = board.cells
 
     def ok(g):
         seen = set()
@@ -243,10 +264,10 @@ def brute(givens):
     def walk(i, g):
         if i == len(cells):
             if ok(g):
-                out.append(_rows_from_dict(g))
+                out.append(_rows_from_dict(board, g))
             return
         p = cells[i]
-        for v in [givens[p]] if p in givens else range(1, CAP + 1):
+        for v in [givens[p]] if p in givens else range(1, board.cap + 1):
             g[p] = v
             walk(i + 1, g)
         del g[p]
@@ -255,30 +276,30 @@ def brute(givens):
     return out
 
 
-def _rows_from_dict(g):
-    return [[g[r, c] for c in range(SIDE)] for r in range(SIDE)]
+def _rows_from_dict(board, g):
+    return [[g[r, c] for c in range(board.side)] for r in range(board.side)]
 
 
 def self_check():
     """Assert the model against brute force on 2x2 and 3x3, then on a 9x9."""
     for n in (2, 3):
-        set_board(n)
-        want = sorted(brute({}))
-        got = sorted(solutions({}, cap=len(want) + 5))
+        board = Board.of(n)
+        want = sorted(brute(board, {}))
+        got = sorted(solutions(board, {}, most=len(want) + 5))
         assert got == want, f"{n}x{n}: model {len(got)} grids, brute {len(want)}"
         print(f"{n}x{n}: {len(want)} grids, model agrees with brute force")
 
     # A 3x3 clue set the model must call unique, checked against brute force.
-    set_board(3)
+    board = Board.of(3)
     for clues in ({(0, 0): 1}, {(1, 1): 3}, {(0, 0): 3, (2, 2): 3}):
-        assert unique(clues) == (len(brute(clues)) == 1)
+        assert unique(board, clues) == (len(brute(board, clues)) == 1)
     print("3x3: unique() agrees with brute force on three clue sets")
 
-    set_board(9)
-    grid = sample(seed=1)
-    assert unique({(r, c): grid[r][c] for r, c in CELLS}) is True
+    board = Board.of(9)
+    grid = sample(board, seed=1)
+    assert unique(board, {p: grid[p[0]][p[1]] for p in board.cells}) is True
     try:
-        unique({}, limit=0.001)
+        unique(board, {}, limit=0.001)
     except TimeoutError:
         pass
     else:
@@ -291,23 +312,21 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         self_check()
     elif sys.argv[1] == "sample":
-        args = [int(a) for a in sys.argv[2:]]
-        seed = args[0]
-        side = args[1] if len(args) > 1 else None
-        cap = args[2] if len(args) > 2 else None
-        grid = sample(seed, side=side, cap=cap)
-        print(json.dumps({"grid": grid, "clues": CELLS}))
+        seed, *shape = (int(a) for a in sys.argv[2:])
+        board = Board.of(*shape) if shape else Board.of(9)
+        grid = sample(board, seed)
+        print(json.dumps({"grid": grid, "clues": board.cells}))
     elif sys.argv[1] == "unique":
         doc = json.loads(Path(sys.argv[2]).read_text())
-        set_board(len(doc["grid"]), doc.get("cap"))
-        givens = {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
-        limit = float(sys.argv[3]) if len(sys.argv) > 3 else 600
+        board = Board.of_doc(doc)
+        givens = board.givens(doc)
+        limit = float(sys.argv[3]) if len(sys.argv) > 3 else LIMIT
         try:
-            ok = unique(givens, limit=limit)
+            ok = unique(board, givens, limit=limit)
         except TimeoutError:
             # A timeout is no verdict, and the grid is dropped -- but never
             # silently: the log names the clue set that has to be re-run.
-            drop(f"timeout at {limit}s", doc.get("seed", "unrecorded"), givens)
+            drop(board, f"timeout at {limit}s", doc.get("seed", "unrecorded"), givens)
             sys.exit(2)
         print("unique" if ok else "not unique")
         sys.exit(0 if ok else 1)

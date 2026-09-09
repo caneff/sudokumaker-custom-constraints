@@ -45,6 +45,7 @@ test:
     uv run --with lzstring examples/_shared/time_example.test.py
     uv run --with lzstring examples/_shared/component_scan.test.py
     uv run --with lzstring examples/_shared/count_calls.test.py
+    uv run --with ortools examples/_shared/cpsat.test.py
     uv run --with lzstring --with ortools examples/_shared/framebuild.test.py
     for dir in examples/*/; do
         name=$(basename "$dir")

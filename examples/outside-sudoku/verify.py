@@ -26,12 +26,17 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import cpsat
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
 from link_codec import decode_puzzle
 from link_swap import find_constraint
 from outside_rule import post_membership, window_length_by_region
+
+# Seconds per solve. Generous: this runs by hand on a shipped board, and a
+# board that needs two minutes is a board worth waiting for.
+SOLVE_LIMIT = 120
 
 
 def clue_groups(link, W, n):
@@ -52,26 +57,15 @@ def clue_groups(link, W, n):
     return groups
 
 
-def solve(model, x, forbid=None):
-    """Solve, returning the interior assignment or None. `forbid` rules out one
+def solve(model, x, ruled_out=None):
+    """Solve, returning the interior assignment or None. `ruled_out` forbids one
     earlier assignment, which is how the second-solution search runs."""
-    if forbid is not None:
-        lits = []
-        for cell, v in forbid.items():
-            b = model.NewBoolVar(f"d{cell}")
-            model.Add(x[cell] != v).OnlyEnforceIf(b)
-            model.Add(x[cell] == v).OnlyEnforceIf(b.Not())
-            lits.append(b)
-        model.AddBoolOr(lits)
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120
-    # One worker, fixed seed: CP-SAT's parallel portfolio is not reproducible
-    # run to run, and this check has to give the same answer every time.
-    solver.parameters.num_workers = 1
-    solver.parameters.random_seed = 0
-    if solver.Solve(model) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+    if ruled_out is not None:
+        cpsat.forbid(model, x, ruled_out)
+    s = cpsat.solver(SOLVE_LIMIT)
+    if s.Solve(model) not in cpsat.SOLVED:
         return None
-    return {cell: solver.Value(var) for cell, var in x.items()}
+    return {cell: s.Value(var) for cell, var in x.items()}
 
 
 def main(argv):
@@ -115,7 +109,7 @@ def main(argv):
 
     first = solve(m, x)
     assert first is not None, "the shipped board has no solution"
-    assert solve(m, x, forbid=first) is None, "the shipped board has two solutions"
+    assert solve(m, x, ruled_out=first) is None, "the shipped board has two solutions"
     print("ok — exactly one solution")
 
 

@@ -44,13 +44,12 @@ CLUES = [tuple(p) for p in SPEC["clues"]]
 # not reproducible run to run, so the grid is not asserted equal to gen.json's;
 # what is asserted is that whatever it draws is a valid grid -- `unique` raises
 # ValueError when no grid matches its givens.
-generate.set_board(SIDE, CAP)
-sampled = generate.sample(3, side=SIDE, cap=CAP)
-assert generate.unique({p: sampled[p[0]][p[1]] for p in generate.CELLS}) is True
+BOARD = generate.Board.of(SIDE, CAP)
+sampled = generate.sample(BOARD, 3)
+assert generate.unique(BOARD, {p: sampled[p[0]][p[1]] for p in BOARD.cells}) is True
 
 # ---- 2. the shipped clue set has exactly one solution ----
-generate.set_board(SIDE, CAP)
-assert generate.unique({p: int(SPEC["grid"][p[0]][p[1]]) for p in CLUES}) is True
+assert generate.unique(BOARD, {p: int(SPEC["grid"][p[0]][p[1]]) for p in CLUES}) is True
 
 # ---- 3. the shipped component closes the shipped clue set, offline ----
 # `hunt.mjs board` reads the LINK (not gen.json), solves from its givens with

@@ -89,6 +89,11 @@ def stem(filename):
 # Every generated link opens with this sentence (project rule).
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
+# Seconds per solve in `unique`. A frame board this size is proved in
+# milliseconds, so a solve anywhere near the cap is a carve that has gone
+# wrong, and the carve loop moves on to the next seed.
+SOLVE_LIMIT = 10
+
 # A bent-path link's rules text closes with this: its lines are drawn paths,
 # not rows and columns, so a solver must not read them as houses (spec #232,
 # user story 9). One sentence for every example, since the fact is the
@@ -239,21 +244,6 @@ def repeating_lines(grid, lines):
     ]
 
 
-def _solver(cp_model):
-    """The one solver configuration every proof here runs under.
-
-    Pinned to one worker with a fixed seed: CP-SAT's parallel portfolio search
-    is not reproducible run-to-run (the workers race, and which one reports
-    first depends on thread timing). Deterministic so regenerate + `git diff`
-    is a real gate.
-    """
-    s = cp_model.CpSolver()
-    s.parameters.max_time_in_seconds = 10
-    s.parameters.num_workers = 1
-    s.parameters.random_seed = 0
-    return s
-
-
 def unique(post_clue, board):
     """True when `board`'s interior has exactly one solution, False when it has
     more, None when the first solve finds none inside the time limit (a timeout
@@ -265,6 +255,7 @@ def unique(post_clue, board):
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
     # load_board) and a caller's Spec stay importable without one.
+    import cpsat
     from ortools.sat.python import cp_model
 
     n, bh, bw = board.n, board.bh, board.bw
@@ -286,18 +277,17 @@ def unique(post_clue, board):
     for k in sorted(board.active):
         cells = board.lines[k]
         post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
-    s = _solver(cp_model)
-    if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+    s = cpsat.solver(SOLVE_LIMIT)
+    if s.Solve(m) not in cpsat.SOLVED:
         return None
     s1 = {(r, c): s.Value(x[r, c]) for r in range(n) for c in range(n)}
-    lits = []
-    for (r, c), v in s1.items():
-        b = m.NewBoolVar(f"d{r}{c}")
-        m.Add(x[r, c] != v).OnlyEnforceIf(b)
-        m.Add(x[r, c] == v).OnlyEnforceIf(b.Not())
-        lits.append(b)
-    m.AddBoolOr(lits)
-    return _solver(cp_model).Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    try:
+        return not cpsat.has_second_solution(m, x, s1, SOLVE_LIMIT)
+    except TimeoutError:
+        # The board has a solution but the search for a second one ran out of
+        # time: no verdict either way, same answer as a first solve that found
+        # nothing.
+        return None
 
 
 def generate(spec, n, bh, bw, seeds, paths=False):
