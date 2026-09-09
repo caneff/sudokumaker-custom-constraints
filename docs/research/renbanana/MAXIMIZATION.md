@@ -8,8 +8,9 @@ Two hunts have run so far, both on `--objective circles`. Every grid was
 re-checked from its JSON with `renbanana_cpsat.py verify`; all report LEGAL.
 
 All eleven live on one interactive page, `lineup.html` — filter by run or
-shape, sort by any column below, toggle digits, circles and group outlines,
-and hover a cell to light up its whole group. Rebuild it after a hunt with
+shape, sort by any column below (or by `circles in one house`), toggle
+digits, circles, group outlines and the `fullest house` wash, and hover a cell
+to light up its whole group. Rebuild it after a hunt with
 `uv run python docs/research/renbanana/tools/build_lineup.py`; a new pool
 needs one line in that script's `POOLS`.
 
@@ -193,11 +194,115 @@ The same trap applies to any shading-layer objective: `chocolate` and
 optimum it finds is usually unfillable. `--caps` exists to walk the objective
 back down to where grids live.
 
+## How many circles can one house carry: six, so far
+
+A different question from the rest of this doc. Not "how much circle value does
+a grid hold" but "how many circles can share one row, column or box" —
+chocolate, banana and forced alike, since the question is about crowding and
+not about what each circle says.
+
+**Six, witnessed and verified: `candidates-house/cand_00.json`, row 5.** The
+best any of the 96 candidate files already in `candidates*/` manages is four,
+and 36 of them reach it.
+
+| r5 cell | digit | colour | group | circled |
+| --- | ---: | --- | ---: | :--- |
+| c1 | 2 | banana | 7 | |
+| c2 | 9 | chocolate | 2 | |
+| c3 | 8 | banana | 8 | yes |
+| c4 | 3 | chocolate | 3 | yes |
+| c5 | 5 | banana | 5 | yes |
+| c6 | 1 | chocolate | 1 | yes |
+| c7 | 7 | banana | 9 | |
+| c8 | 4 | chocolate | 4 | yes |
+| c9 | 6 | banana | 6 | yes |
+
+The circles alternate colour along the row, and they have to. Two touching
+cells of one colour are one group and so one size, while a house's digits are
+distinct — so no two adjacent cells of a house are ever both circled unless
+they differ in colour. Three more constraints fall out of the same reading:
+
+- **A size-1 or size-2 circle is chocolate.** A one-cell banana group is a 1x1
+  and a two-cell one a 1x2; rule 4 forbids both.
+- **A size-5 circle is banana.** Any cell of a five-cell chocolate group has a
+  chocolate neighbour, and 5 has no partner at a difference of 5 or more.
+- **Sizes 6 and up are cheap on banana and dear on chocolate**, by the forced
+  circle lemma above: a banana group of five cells or more always contains its
+  own size, so the circle costs nothing but the group.
+
+## The tool: `max_house_circles.py`
+
+`tools/max_house_circles.py` asks one house for one level and answers
+SAT-with-a-witness or IMPOSSIBLE. It splits the way the rest of the repo does,
+and the split is right here because **group size is a pure shading fact** —
+which cells are circle*able* is settled before a digit is placed.
+
+- **Stage A, shading only.** Exact for rule 3, and — unlike `Shadings` —
+  exact for rule 4 as well: one clause per rectangle placement forbidding
+  "inside all banana, whole border chocolate", so no cuts. It measures each
+  house cell's group size, takes chocolate sizes straight from the placement's
+  area and banana sizes from a closed, rank-walked membership set, and counts a
+  cell circleable only when its size is 1..9, the house's circled sizes are
+  distinct, and the #377 catalogue allows a circle on that cell of that
+  rectangle at that box offset. Every clause is a necessary condition, so
+  **stage A INFEASIBLE at a level is a proof** that the level is unreachable.
+- **Stage B, digits on the fixed shading.** Sudoku, whisper, renban, catalogue
+  domains, and at least `level` cells of the house holding their own group's
+  size. Stage A names a circle set; stage B is free to pick another on the same
+  shading, which is what makes a good shading worth keeping.
+
+A shading stage B refuses is forbidden and the hunt draws another.
+`tools/test_max_house_circles.py` pins verified pool grids into both stages: the
+sizes stage A measures must equal `renbanana_verify`'s, an illegal shading must
+be refused, and stage B must reproduce a circle set the checker already sees.
+
+## Where the joint model went wrong, twice
+
+Recorded so it is not rebuilt. The obvious model — digits and shading in one
+CP-SAT solve, group sizes from a labelling — is **too heavy to find even a
+first solution in 180 s**, mostly from the per-label, per-value booleans that
+renban distinctness needs. Splitting the layers is not a nicety here.
+
+Worse, a labelling gets group size wrong in two ways a *maximizing* solver will
+find and exploit:
+
+1. **Label-uniform is not enough.** If two disjoint components may carry one
+   label, the solver merges them to inflate a size until it matches a digit,
+   and reports a circle that is not there.
+2. **A label class must be connected, and "descend to the smallest index" does
+   not do it.** A connected component need not have a monotonically decreasing
+   index path to its own minimum — the cells (r1c9, r2c9, r2c8) are a
+   component whose r2c8 has no smaller-index neighbour inside it. The fix is a
+   free integer rank per cell and a walk down it to a root, which is where the
+   label's name comes from.
+
+## Two loose ends
+
+- **Seven is unresolved.** Eighty stage-A shadings at level 7 in row 5 were all
+  refused by digits, and stage A itself has not been run to INFEASIBLE at 7, 8
+  or 9. So six is a floor, not a ceiling, and nothing here says where the
+  ceiling is. Only rows have been hunted; columns are their transpose, boxes
+  are untouched. **Boxes are the interesting case** (owner's call) and are
+  where the next run goes. A row spends its adjacency in one line, so its
+  circles have to alternate colour along it; a box is 3x3, and two circled
+  cells that meet only at a corner are in different groups without needing
+  different colours. The alternation argument that shapes the row result does
+  not bind there, so the box ceiling need not match the row's.
+- **The witness scores 22 on `circles`**, against the leaderboard's best of 17
+  — from eleven chocolate circle sites on eighteen small groups, not from good
+  ones. It is another instance of the count-versus-quality tension above, found
+  by a hunt that was not looking for it.
+
 ## Not yet run
 
 - `3x3` forced. The catalogue says it is placeable; it has never appeared by
   chance in either pool.
 - The `variety` and `circleable` objectives as their own hunts.
 - An upper bound for `circles`.
+- Stage A at level 7, 8 and 9, run to INFEASIBLE or a witness — the ceiling on
+  circles in one house. **Boxes first**, then rows; three box positions cover
+  all nine up to symmetry (corner, edge, centre) and five row indices cover the
+  eighteen rows and columns. Nothing has been run: this is a record of a
+  method and one witness, not of a search.
 - A circle objective weighted by rarity rather than by digit value, so a
   forced banana circle scores nothing and a large chocolate one scores a lot.
