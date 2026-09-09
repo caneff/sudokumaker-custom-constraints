@@ -61,7 +61,7 @@ MAX_BANANA = 9
 class JointPair:
     """Digits and shading together, with one pair of circled rectangles pinned."""
 
-    def __init__(self, pair):
+    def __init__(self, pair, pin_labels=True):
         m = cp.CpModel()
         self.m = m
         self.pair = pair
@@ -154,11 +154,12 @@ class JointPair:
         # owner cell lies in exactly one component, so no second component can
         # claim the label. It rules no legal grid out, since a component can
         # always take its own least index.
-        for ell in range(len(CELLS)):
-            owner = CELLS[ell]
-            for p in CELLS:
-                if IDX[p] >= ell and p != owner:
-                    m.add_implication(lab[p, ell], lab[owner, ell])
+        if pin_labels:
+            for ell in range(len(CELLS)):
+                owner = CELLS[ell]
+                for p in CELLS:
+                    if IDX[p] >= ell and p != owner:
+                        m.add_implication(lab[p, ell], lab[owner, ell])
 
         # Renban per label: distinct digits spanning exactly their own count.
         # max - min == size - 1 with all members distinct is precisely "a set of
@@ -301,9 +302,9 @@ class JointPair:
 
 
 def work(job):
-    pair, seconds = job
+    pair, seconds, pin_labels = job
     pair = [tuple(x) for x in pair]
-    model = JointPair(pair)
+    model = JointPair(pair, pin_labels=pin_labels)
     t0 = time.monotonic()
     verdict, grid, is_choc = model.solve(seconds, 1, 0)
     row = {
@@ -326,6 +327,13 @@ def main():
     ap.add_argument("--procs", type=int, default=20)
     ap.add_argument("--seconds", type=float, default=120.0)
     ap.add_argument("--limit", type=int, default=0, help="0 means every geometry")
+    ap.add_argument(
+        "--no-pin-labels",
+        action="store_true",
+        help="drop the owner-cell label clause. It does not close the "
+        "shared-label hole either way; this is here to measure which model "
+        "harvests more verified grids per hour.",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -351,7 +359,12 @@ def main():
     began = time.monotonic()
     with ProcessPoolExecutor(max_workers=a.procs) as pool:
         for done, row in enumerate(
-            pool.map(work, [(p, a.seconds) for p in feasible], chunksize=1), 1
+            pool.map(
+                work,
+                [(p, a.seconds, not a.no_pin_labels) for p in feasible],
+                chunksize=1,
+            ),
+            1,
         ):
             tally[row["verdict"]] = tally.get(row["verdict"], 0) + 1
             with log.open("a") as f:

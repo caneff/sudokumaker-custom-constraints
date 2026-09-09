@@ -185,9 +185,27 @@ Every negative above is per-grid, on sampled grids. The joint model --
 `tools/prove_pair.py`, digits and shading searched together with one geometry
 pinned -- settles it, and the answer is yes.
 
-Three grids so far, each verified from the rules by `renbanana_verify` and
+Four grids so far, each verified from the rules by `renbanana_verify` and
 re-verified from disk by `renbanana_cpsat.py verify`, held in
-`candidates-two-circles/`. Two of them:
+`candidates-two-circles/`.
+
+The hardest of them is a **pair of circled 2x2s** -- the most forcing
+configuration in the space, since a 2x2 admits a circle at only 5 of 9 box
+offsets against 7 for a 2x3 and 9 for a 2x4:
+
+```
+315829476   bbbbbCCbC      2x2  circle at r1c7 holding 4
+276541983   CbbCbCCbb      2x2  circle at r3c2 holding 4
+849736125   bCCbCbbbC
+693284517   bCCbCbbCb
+154397268   bbbbbCCbb
+728165349   CCCCCbbbC
+561473892   bbbbbCCbC
+932618754   CbbCCbbCb
+487952631   CbCbbbbbb
+```
+
+And two of the 2x2-plus-2x3 grids:
 
 ```
 679413285   bbCCbbCbb      2x2  circle at r1c4 holding 4
