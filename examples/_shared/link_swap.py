@@ -133,8 +133,9 @@ def swap_component_code(doc, constraint_name, component_name, new_code):
 def write_link(doc, out_path):
     """Encode `doc`, assert the link decodes back to it, and write it.
 
-    Every path that commits a link goes through here: the encoder is lossy on
-    a document it cannot represent, and a link that does not round-trip is a
+    Every path through this module writes its link here, and a builder that
+    encodes its own should assert the same thing: the encoder is lossy on a
+    document it cannot represent, and a link that does not round-trip is a
     board nobody can rebuild from what is on disk."""
     link = encode_link(doc)
     assert decode_puzzle(link) == doc, "link does not round-trip"

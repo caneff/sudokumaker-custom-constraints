@@ -31,7 +31,7 @@ def _link(
     houses="full",
     frame_backend=False,
     corners_backend=False,
-    digits=(1, 9),
+    digits=(1, 3),
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -520,10 +520,27 @@ if __name__ == "__main__":
             assert len(violations) == 1, violations
             assert "digit range" in violations[0], violations[0]
 
+    # A range that is declared but does not span the interior line degrades the
+    # lines exactly the same way, so presence is not enough: nine digits on a
+    # three-cell line is all-different, not a house.
+    wide = _link(frame_backend=True, houses="none", digits=(1, 9))
+    with example(contents={"PUZZLE_LINK.txt": wide}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "9 digits" in violations[0] and "3 cell" in violations[0], violations[0]
+
+    # `isinstance(True, int)` is true in Python, so a bool has to be turned away
+    # by name or `minDigit: true` reads as a declared 1.
+    boolean = _link(frame_backend=True, houses="none", digits=(True, 3))
+    with example(contents={"PUZZLE_LINK.txt": boolean}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "digit range" in violations[0], violations[0]
+
     # A gen JSON records the BOARD. The frame backends' code is read from the
-    # tree at build time, so a copy kept in a template is dead data that can
-    # only drift from the file it copies -- running-start's sat two commits
-    # behind, contradicting the very fix under review (#394).
+    # tree at build time, so a copy kept in a gen JSON is dead data no build
+    # reads and nothing rebuilds -- it can only drift from the file it copies
+    # (#394).
     def _gen(code):
         return json.dumps(
             {

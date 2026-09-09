@@ -16,7 +16,8 @@
 #
 # --board swaps against a different committed link instead of PUZZLE_LINK.txt,
 # which is how `just time numbered-rooms --board PUZZLE_LINK_local.txt` reaches
-# the local board.
+# the local board. It pairs with --component only: --refresh writes values
+# belonging to PUZZLE_LINK.txt and rewrites that board alone.
 
 import argparse
 import pathlib
@@ -87,9 +88,14 @@ def build(component_path, out_path, backend_path=None, board_path=None):
     return check_and_write(base, doc, name, out_path)
 
 
-def refresh(board_path=None):
-    """Rewrite a committed link in place: the frame's shared backends as they
+def refresh():
+    """Rewrite PUZZLE_LINK.txt in place: the frame's shared backends as they
     stand in the tree, the digit range those backends read, and the rules text.
+
+    PUZZLE_LINK.txt and no other board. DIGITS and COMMENT below describe this
+    one hand-built 9x9; stamped on a smaller board they would give six-cell
+    interior lines a nine-digit range -- the very degradation the range is
+    declared to prevent -- and rules text for a different puzzle.
 
     This board is hand-built. No `gen_*.json` describes it, so
     `framebuild.rebuild` cannot reach it and nothing else re-embeds
@@ -101,7 +107,7 @@ def refresh(board_path=None):
     PUZZLE_LINK.txt is the source of truth for this example's three other
     hand-built links, so build_original.py and build_clued.py run after it.
     """
-    board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
+    board_path = HERE / "PUZZLE_LINK.txt"
     doc = decode_puzzle(board_path.read_text().strip())
     refresh_frame_backends(doc)
     doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"] = DIGITS
@@ -117,7 +123,11 @@ if __name__ == "__main__":
         "--backend", help="main-code file to swap in as well (main-global.js)"
     )
     p.add_argument("--out")
-    p.add_argument("--board")
+    p.add_argument(
+        "--board",
+        help="committed link to swap against instead of PUZZLE_LINK.txt; "
+        "pairs with --component only",
+    )
     p.add_argument(
         "--refresh",
         action="store_true",
@@ -126,7 +136,9 @@ if __name__ == "__main__":
     )
     args = p.parse_args()
     if args.refresh:
-        print(f"refreshed {refresh(args.board).name}")
+        if args.board:
+            p.error("--refresh rewrites PUZZLE_LINK.txt alone; drop --board")
+        print(f"refreshed {refresh().name}")
     elif args.component and args.out:
         build(args.component, args.out, args.backend, args.board)
         print(f"wrote {args.out}")

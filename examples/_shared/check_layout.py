@@ -82,6 +82,14 @@ NO_RULES_PREFIX = {"isofill", "fillomino"}
 # its interior rows and columns must be a house the link actually declares.
 NO_HOUSES = {"isofill", "fillomino"}
 
+# An example whose digit range is deliberately wider than its interior lines.
+# A house is "every digit exactly once", which needs the line to be as long as
+# the range; hit-counts runs minDigit 0 so a clue can read 0 and keeps 0 out of
+# the interior with a look-and-say cage, so ten digits sit over nine-cell lines
+# and `frame-rowcol.js` drops them to all-different on purpose. Every other
+# frame board's range must span its interior line exactly.
+DIGITS_EXCEED_LINES = {"hit-counts"}
+
 # `build_original.py` / `build_clued.py` build a hand-derived twin: the same
 # board as another committed link, re-encoded with different wrapper code or
 # extra clues. That board already has its own gen entry under an untagged
@@ -353,6 +361,29 @@ def carries_frame_rowcol(puzzle):
     )
 
 
+def interior_cells(puzzle, width, height):
+    """The ids of the cells a region constraint places in a region.
+
+    That is the interior of a frame board: its ring is outside every region and
+    has no house of its own. A board with no region constraint is all interior.
+    """
+    regions = next(
+        (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
+    )
+    if regions is None:
+        return set(range(width * height))
+    return {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
+
+
+def interior_line_lengths(puzzle, width, height):
+    """How many interior cells each row and each column holds, empty lines
+    dropped -- a frame board's ring rows and columns hold none."""
+    inside = interior_cells(puzzle, width, height)
+    rows = ([i for i in inside if i // width == r] for r in range(height))
+    columns = ([i for i in inside if i % width == c] for c in range(width))
+    return {len(line) for line in (*rows, *columns) if line}
+
+
 def check_houses(example_dir, link):
     """Decode `link` and return one violation string per interior row or column
     that is neither a house the document declares nor one the shared frame
@@ -366,9 +397,7 @@ def check_houses(example_dir, link):
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
     a 6x6 whose true count is 2 came back as 5 (#335, docs/gotchas.md #9).
 
-    Interior means the cells a region constraint places in a region -- the ring
-    of a frame board is outside every region and has no house of its own. A
-    board with no region constraint is all interior.
+    Interior is `interior_cells` above.
     """
     name = example_dir.name
     if name in NO_HOUSES:
@@ -383,14 +412,7 @@ def check_houses(example_dir, link):
     if not isinstance(width, int) or not isinstance(height, int):
         return []
 
-    regions = next(
-        (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
-    )
-    inside = (
-        {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
-        if regions is not None
-        else set(range(width * height))
-    )
+    inside = interior_cells(puzzle, width, height)
 
     # A board carrying the row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
@@ -434,8 +456,10 @@ def check_frame_backends(example_dir, link):
     line stops matching `digitCount`, so every row and column degrades from a
     named `HouseComponent` to a bare `DifferentDigitsComponent` -- the weaker
     rule, with no houseType for the solver's row/column machinery -- and the
-    corners are pinned to 0, a digit the puzzle never uses. None of that shows
-    on the board or in the source text, so the range has to be declared.
+    corners are pinned to 0, a digit the puzzle never uses. Declaring a range
+    that does not span the interior line does the same thing, so the range is
+    checked against the line and not merely for being there. None of it shows
+    on the board or in the source text.
 
     `minify_js` drops comments, so editing a backend file's prose leaves every
     committed link valid; only a real code change makes them stale, and a stale
@@ -465,15 +489,37 @@ def check_frame_backends(example_dir, link):
                 f"for a hand-built board)"
             )
 
-    if carried and not all(
-        isinstance(puzzle.get(key), int) for key in ("minDigit", "maxDigit")
-    ):
+    if not carried:
+        return violations
+
+    lo, hi = puzzle.get("minDigit"), puzzle.get("maxDigit")
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
         violations.append(
             f"{name}: {link.name} ships {sorted(carried)} but declares no "
             f"digit range -- the app defaults a custom puzzle to 0..9 whatever "
             f"the grid size, so the interior lines fall back from named houses "
             f"to plain all-different and a corner is pinned to 0. Pin "
             f"minDigit/maxDigit on the document (#394)"
+        )
+        return violations
+
+    width, height = puzzle.get("width"), puzzle.get("height")
+    if name in DIGITS_EXCEED_LINES or not (
+        isinstance(width, int) and isinstance(height, int)
+    ):
+        return violations
+
+    lengths = interior_line_lengths(puzzle, width, height)
+    span = hi - lo + 1
+    if lengths and lengths != {span}:
+        cells = "/".join(str(n) for n in sorted(lengths))
+        violations.append(
+            f"{name}: {link.name} ships {sorted(carried)} and declares "
+            f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
+            f"cell interior lines -- a line as long as the range is a house, "
+            f"any other length falls back to plain all-different, and the "
+            f"corner pin lands on minDigit whether or not the board uses it. "
+            f"Match the range to the interior (#394)"
         )
     return violations
 
@@ -483,11 +529,10 @@ def check_gen_frame_backends(example_dir):
 
     A gen JSON is the board's record, and the shared frame backends are not
     part of a board: their code is read from the tree at build time
-    (`framebuild.refresh_frame_backends`), so a copy kept here is dead data that
-    can only go stale. running-start's template carried one and it sat two
-    commits behind the file it copied -- a committed record contradicting the
-    code under review, with nothing to catch it (#394). Keep the field empty,
-    the way that template already keeps its own constraint's.
+    (`framebuild.refresh_frame_backends`), so a copy kept here is dead data no
+    build reads and nothing rebuilds -- it can only drift from the file it
+    copies, and a reader comparing the two has no way to tell which one runs.
+    Keep the field empty.
     """
     name = example_dir.name
     titles = {title for _, title in FRAME_BACKENDS}

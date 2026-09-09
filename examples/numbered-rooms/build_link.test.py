@@ -14,6 +14,7 @@
 
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 
@@ -119,6 +120,33 @@ def check_shipped_link():
     )
 
 
+def check_refresh_rejects_another_board():
+    """`--refresh` stamps DIGITS and COMMENT, and both are written for this one
+    hand-built 9x9 board. Aimed at any other committed link it would hand a
+    smaller interior a 1..9 range -- nine digits against six-cell lines, the
+    silent HouseComponent -> DifferentDigitsComponent degradation the range is
+    declared to prevent -- and rules text describing a different puzzle. So the
+    two flags must not combine, and the named board must come back untouched.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = pathlib.Path(tmp) / "PUZZLE_LINK_6x6.txt"
+        before = (HERE / "PUZZLE_LINK_6x6.txt").read_text()
+        copy.write_text(before)
+        run = subprocess.run(
+            [
+                sys.executable,
+                str(HERE / "build_link.py"),
+                "--refresh",
+                "--board",
+                str(copy),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert run.returncode != 0, f"--refresh --board was accepted: {run.stdout}"
+        assert copy.read_text() == before, "--refresh rewrote the board it was given"
+
+
 def check_wrapper_links():
     """`PUZZLE_LINK.txt` ships no groups, so build_original.py builds the
     ones the original wrapper reads. Each `_original` link must therefore
@@ -158,6 +186,7 @@ def check_wrapper_links():
 if __name__ == "__main__":
     check_shipped_link()
     check_wrapper_links()
+    check_refresh_rejects_another_board()
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
 
     with tempfile.TemporaryDirectory() as tmp:
