@@ -12,12 +12,17 @@
 #   uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3
 #   uv run --with ortools --with lzstring \
 #       examples/skyscraper/build_size.py 9 3 3 3 --paths
+#   uv run --with ortools --with lzstring \
+#       examples/skyscraper/build_size.py --rebuild 9
 #
-# Args: n box_height box_width [seed_count] [--paths]
+# Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the plain-named pair build_link.py and
-# build_original.py reuse, so it lands as PUZZLE_LINK.txt and gen.json.
+# build_original.py reuse, so it lands as PUZZLE_LINK.txt and gen.json
+# (framebuild.board_files).
+# --rebuild re-encodes a committed board against the code in the tree right
+# now, with no fresh CP-SAT search.
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
 # frame lines, shipped as drawn groups on the main.js lane, so the one-sided DP
@@ -29,7 +34,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, run
+from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 # Each lane ships what its own backend registers, and nothing else.
@@ -73,7 +78,7 @@ def rule_text(n):
     return f"{rule}\n\n{CORNER_NOTE}"
 
 
-def sky(v, _cells):
+def sky(v, _cells, _box):
     # visible buildings: count left-to-right maxima
     count = 0
     mx = 0
@@ -84,7 +89,7 @@ def sky(v, _cells):
     return count
 
 
-def add_visibility(m, x, cells, kk, n, tag):
+def add_visibility(m, x, cells, kk, n, tag, _box):
     # exactly kk cells top every cell before them along `cells`.
     # `g` is "taller than", so its negation is "no taller" -- a tie is hidden,
     # which is what SkyscraperOneSidedComponent's ALLOW_TIES = false says. A
@@ -121,17 +126,4 @@ SPEC = Spec(
 )
 
 if __name__ == "__main__":
-    paths = "--paths" in sys.argv
-    if paths:
-        sys.argv.remove("--paths")
-    n = int(sys.argv[1])
-    run(SPEC, paths=paths)
-    if n == 9:
-        if paths:
-            (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
-            (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
-            print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
-        else:
-            (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-            (HERE / "gen_9x9.json").rename(HERE / "gen.json")
-            print("renamed to PUZZLE_LINK.txt and gen.json (the plain-named 9x9 pair)")
+    main(SPEC)

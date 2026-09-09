@@ -192,10 +192,10 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   frame lines, shipped as drawn groups on the `main.js` lane, so the one-sided
   DP has a board to play and to time:
   `uv run --with ortools --with lzstring examples/skyscraper/build_size.py 9 3 3 3 --paths`
-- `rebuild_size.py` — re-encodes a committed board from its `gen_*.json` with
-  the current component and backend code, no fresh search, so a shipped link
-  never carries a stale snapshot:
-  `uv run --with ortools --with lzstring examples/skyscraper/rebuild_size.py 9`
+- `build_size.py --rebuild <n>` — re-encodes a committed board from its
+  `gen_*.json` with the current component and backend code, no fresh search, so
+  a shipped link never carries a stale snapshot:
+  `uv run --with ortools --with lzstring examples/skyscraper/build_size.py --rebuild 9`
   (`--paths` for the local board).
 - `PUZZLE_LINK_local.txt` / `gen_local.json` — the 9x9 local board: 36 bent
   paths, 35 of them repeating a digit, drawn as groups. It is carved to CP-SAT

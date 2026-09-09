@@ -62,8 +62,7 @@ Run when present, skipped with a note when absent:
 | --- | --- |
 | `.golden/` | Regression goldens for the recovery/speed probes |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
-| `build_size.py` | Builds boards at other sizes |
-| `rebuild_size.py` | Re-encodes a committed board's link from its `gen_*.json` — current component code, no fresh CP-SAT search |
+| `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`framebuild.main`) |
 | `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and is named in the `test` recipe, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed |
 
@@ -112,7 +111,8 @@ that same link: a link ships exactly the components its backend registers.
 The builder asserts this when it writes a link (`framebuild.check`), but a
 committed link goes stale on its own — the builder's list changes and the
 link is never regenerated (#287, #289, #290, #291). Regenerate the stale
-link from its committed `gen_*.json` with the example's `rebuild_size.py`.
+link from its committed `gen_*.json` with the example's
+`build_size.py --rebuild <n>`.
 
 ## Board naming
 
@@ -123,6 +123,11 @@ link from its committed `gen_*.json` with the example's `rebuild_size.py`.
   `PUZZLE_LINK_30g.txt`), or a size/givens/tag combination
   (`gen_35g_silent.json` pairs with `PUZZLE_LINK_35g_silent.txt`).
 - A generator may keep extra input files; they are inputs, not "the board."
+- On the shared interactive-outside frame that pairing is stated once in code:
+  `framebuild.board_files(spec, n, local)`. The 9x9 is plain-named on both
+  lanes (`PUZZLE_LINK.txt` / `PUZZLE_LINK_local.txt`), every other size carries
+  its `NxN` tag, and an example whose `PUZZLE_LINK.txt` is some other,
+  hand-built board says so with `Spec.plain_global_9x9 = False`.
 - The pairing runs both ways where a link is generated: `check_layout.py`
   flags a `gen*.json` with no matching link, and a link with no matching
   `gen*.json`, same as above. Two kinds of link are exempt from needing one

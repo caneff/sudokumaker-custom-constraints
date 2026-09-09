@@ -65,20 +65,17 @@ no ordering. That makes Hit Counts simpler than Running Start.
   board.
 - `PUZZLE_LINK_local.txt`, `gen_local.json` — the local board: the same 9x9
   frame, but every line is a drawn bent path. See "The local board".
-- `rebuild_size.py` — re-encodes a shipped link from its committed
+- `build_size.py --rebuild <n>` — re-encodes a shipped link from its committed
   `gen_<n>x<n>.json` (or `gen_local.json`, with `--paths`) with the component
   code and backend as they stand in the repo now, on the same board and givens
   (no fresh CP-SAT search). Run it after any component edit, or the shipped
   links keep an old snapshot:
-  `uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9`
-  `uv run --with ortools --with lzstring examples/hit-counts/rebuild_size.py 9 --paths`
+  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py --rebuild 9`
+  `uv run --with ortools --with lzstring examples/hit-counts/build_size.py --rebuild 9 --paths`
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
   `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsJointComponent.js --out /tmp/candidate.txt`
-- `rebuild_size.py` — re-encodes a shipped link from its committed
-  `gen_<n>x<n>.json` with the component code as it stands in the repo, with no
-  fresh CP-SAT search: same board, current code.
 - `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
   Running Start (the interactive-outside frame cosmetics and the link-shrinking
   pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.

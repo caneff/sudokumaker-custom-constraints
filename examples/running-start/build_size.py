@@ -10,22 +10,27 @@
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 9 3 3 --paths
+#   uv run --with ortools --with lzstring examples/running-start/build_size.py --rebuild 4
 #
-# Args: n box_height box_width [seed_count] [--paths]
+# Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script.
+# --rebuild re-encodes a committed board against the code in the tree right
+# now, with no fresh CP-SAT search.
 #
 # --paths builds the LOCAL board instead: bent paths in place of the straight
 # frame lines, shipped as drawn groups on the main.js lane. A path spans more
 # than one row and more than one column, so the app reads it as a bare line and
 # its digits may repeat -- the shape the local variant exists to prove
-# (docs/line-contract.md). At n = 9 the pair is renamed to the plain
-# PUZZLE_LINK_local.txt and gen_local.json.
+# (docs/line-contract.md). At n = 9 the pair is the plain-named
+# PUZZLE_LINK_local.txt and gen_local.json (framebuild.board_files). There is
+# no framebuild 9x9 GLOBAL board here: PUZZLE_LINK.txt is a known-good decoded
+# board that build_link.py rebuilds.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec, run
+from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -64,7 +69,7 @@ def rule_text(n):
     return f"{rule}\n\n{CORNER_NOTE}"
 
 
-def rs(v, _cells):
+def rs(v, _cells, _box):
     # length of the first strictly ascending run, read inward
     k = 1
     for i in range(1, len(v)):
@@ -75,7 +80,7 @@ def rs(v, _cells):
     return k
 
 
-def add_running_start(m, x, cells, kk, n, tag):
+def add_running_start(m, x, cells, kk, n, tag, _box):
     # the first kk cells strictly ascend; the run breaks at cell kk unless it
     # already fills the whole line
     for i in range(1, kk):
@@ -94,15 +99,11 @@ SPEC = Spec(
     clue_fn=rs,
     cp_sat_clue_fn=add_running_start,
     comment_fn=rule_text,
+    # PUZZLE_LINK.txt is this example's known-good decoded board, rebuilt by
+    # build_link.py rather than searched for, so it owns the plain names and
+    # there is no framebuild 9x9 global board (framebuild.board_files).
+    plain_global_9x9=False,
 )
 
 if __name__ == "__main__":
-    paths = "--paths" in sys.argv
-    if paths:
-        sys.argv.remove("--paths")
-    n = int(sys.argv[1])
-    run(SPEC, paths=paths)
-    if n == 9 and paths:
-        (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
-        (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
-        print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
+    main(SPEC)

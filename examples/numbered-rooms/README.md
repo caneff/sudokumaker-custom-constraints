@@ -90,10 +90,10 @@ per-line component below carries the whole example.
   clues are stored; the rest of the board is empty. Not timing boards: over
   half the ring is shown. After a `main.js` or `NumberedRoomsComponent.js`
   change, re-encode from the recorded seed instead of a fresh search:
-  `uv run --with ortools --with lzstring examples/numbered-rooms/rebuild_size.py 9`
-  (`rebuild_size.py`, args: `n`) loads `gen_<n>x<n>.json` and calls the shared
-  frame's `build_doc` directly, so the link's grid, givens, and shown clues
-  stay exactly what the seed produced and only the embedded code changes.
+  `uv run --with ortools --with lzstring examples/numbered-rooms/build_size.py --rebuild 9`
+  (`framebuild.rebuild`) loads `gen_<n>x<n>.json` and calls the shared frame's
+  `build_doc` directly, so the link's grid, givens, and shown clues stay
+  exactly what the seed produced and only the embedded code changes.
 - `main.js`, `main-global.js`, `NumberedRoomsComponent.js` — paste
   `NumberedRoomsComponent.js` plus one main file into the SudokuMaker
   constraint editor, replacing the old backend and `CustomIndexComponent`.
@@ -353,4 +353,4 @@ for exactly this.
 `PUZZLE_LINK.txt` is hand-made and is the committed source of truth: no
 generator produces it, so there is no fresh version of that board to make. The
 sized and local boards do have one — `build_size.py`, on the shared frame — and
-`rebuild_size.py` re-encodes any of them with the current code.
+`build_size.py --rebuild <n>` re-encodes any of them with the current code.

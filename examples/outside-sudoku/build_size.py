@@ -8,12 +8,13 @@
 #   uv run --with ortools --with lzstring examples/outside-sudoku/build_size.py 9 3 3
 #   uv run --with ortools --with lzstring \
 #       examples/outside-sudoku/build_size.py 9 3 3 1 --local
+#   uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
 #
-# Args: n box_height box_width [seed_count] [--local]
+# Args: n box_height box_width [seed_count] [--local], or --rebuild n [--local]
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the shipped board, so it lands as
-# PUZZLE_LINK.txt and gen.json.
+# PUZZLE_LINK.txt and gen.json (framebuild.board_files).
 #
 # --local builds the LOCAL board instead: the same frame lines shipped as drawn
 # groups on the main.js lane, written as PUZZLE_LINK_local.txt with
@@ -26,17 +27,16 @@
 # clues are the interactive ones: the solver deduces them.
 #
 # The window length depends on the line's DIRECTION, which a 6x6 shows: boxes
-# 2 tall by 3 wide give a window of 3 across a row and 2 down a column. A Spec
-# therefore has to be built for one box shape -- `spec_for(bh, bw)` -- and
-# framebuild hands both clue functions the line's cells, so each can read the
-# direction off them.
+# 2 tall by 3 wide give a window of 3 across a row and 2 down a column.
+# framebuild hands both clue functions the line's cells and the board's box
+# shape, so each sizes its own window and one Spec serves every size.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import Spec, run
+from framebuild import Spec, main
 from outside_rule import post_membership, window_length_by_box
 
 HERE = pathlib.Path(__file__).parent
@@ -50,48 +50,32 @@ def comment_text(_n):
     )
 
 
-def spec_for(bh, bw):
-    """The generator Spec for a board of `bh` by `bw` boxes.
+def clue_fn(values, cells, box):
+    # The largest digit of the window. Any window digit satisfies the rule;
+    # picking one deterministically is what lets a rebuild re-derive the same
+    # clues from the recorded seed, with no fresh search.
+    return max(values[: window_length_by_box(cells, *box)])
 
-    Both clue functions size the window from the line's own direction, so they
-    need the box shape, which the Spec closes over.
-    """
 
-    def clue_fn(values, cells):
-        # The largest digit of the window. Any window digit satisfies the rule;
-        # picking one deterministically is what lets rebuild_size.py re-derive
-        # the same clues from the recorded seed, with no fresh search.
-        return max(values[: window_length_by_box(cells, bh, bw)])
+def cp_sat_clue_fn(m, x, cells, kk, n, tag, box):
+    window = cells[: window_length_by_box(cells, *box)]
+    post_membership(m, x, window, kk, tag)
 
-    def cp_sat_clue_fn(m, x, cells, kk, n, tag):
-        window = cells[: window_length_by_box(cells, bh, bw)]
-        post_membership(m, x, window, kk, tag)
 
-    return Spec(
-        dir=HERE,
-        title="Outside Sudoku",
-        constraint_name="Custom Outside Sudoku",
-        components=["OutsideSudokuComponent.js"],
-        min_digit=1,
-        clue_fn=clue_fn,
-        cp_sat_clue_fn=cp_sat_clue_fn,
-        comment_fn=comment_text,
-    )
-
+SPEC = Spec(
+    dir=HERE,
+    title="Outside Sudoku",
+    constraint_name="Custom Outside Sudoku",
+    components=["OutsideSudokuComponent.js"],
+    min_digit=1,
+    clue_fn=clue_fn,
+    cp_sat_clue_fn=cp_sat_clue_fn,
+    comment_fn=comment_text,
+    # This rule's window is a box extent along the line's DIRECTION, and a bent
+    # path has none, so the local board draws the STRAIGHT frame lines and its
+    # rules text must not say a line is no house (#268).
+    bent_lines=False,
+)
 
 if __name__ == "__main__":
-    local = "--local" in sys.argv
-    if local:
-        sys.argv.remove("--local")
-    n = int(sys.argv[1])
-    bh, bw = (int(a) for a in sys.argv[2:4])
-    run(spec_for(bh, bw), local=local)
-    if n == 9:
-        if local:
-            (HERE / "PUZZLE_LINK_9x9_local.txt").rename(HERE / "PUZZLE_LINK_local.txt")
-            (HERE / "gen_9x9_local.json").rename(HERE / "gen_local.json")
-            print("renamed to PUZZLE_LINK_local.txt and gen_local.json")
-        else:
-            (HERE / "PUZZLE_LINK_9x9.txt").rename(HERE / "PUZZLE_LINK.txt")
-            (HERE / "gen_9x9.json").rename(HERE / "gen.json")
-            print("renamed to PUZZLE_LINK.txt and gen.json (the shipped board)")
+    main(SPEC)
