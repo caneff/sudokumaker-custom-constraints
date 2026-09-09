@@ -111,7 +111,12 @@ def sample(board, seed):
     # Not a proof, so it runs the portfolio: what it draws is written to a gen
     # JSON and proved from there.
     s = cpsat.solver(LIMIT, reproducible=False, seed=seed, randomize=True)
-    assert s.Solve(m) in cpsat.SOLVED
+    status = s.Solve(m)
+    if status == cpsat.UNKNOWN:
+        raise TimeoutError(f"seed {seed}: CP-SAT hit the {LIMIT}s limit; no grid")
+    assert status in cpsat.SOLVED, (
+        f"seed {seed}: no ISOFILL grid on a {board.n}x{board.n} board"
+    )
     return rows(board, s, x)
 
 
@@ -157,8 +162,8 @@ def unique(board, givens, limit=LIMIT, reproducible=True):
 
 def self_check(board):
     n = board.n
-    rows_ = ["".join(str(r) for _ in range(n)) for r in range(n)]
-    given = lambda *rs: {(r, c): int(rows_[r][c]) for r in rs for c in range(n)}
+    banded = ["".join(str(r) for _ in range(n)) for r in range(n)]
+    given = lambda *rs: {(r, c): int(banded[r][c]) for r in rs for c in range(n)}
     # Every row but the first given: the free row's cells must all be the
     # one missing digit.
     assert unique(board, given(*range(1, n))) is True

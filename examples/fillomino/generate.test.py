@@ -43,18 +43,18 @@ def test_cap_wider_than_side():
 
 
 def test_model_and_rows_read_the_board_they_are_given():
-    # The board is a value, so nothing has to be reset between calls: a 3x3
-    # model built after a 9x9 one is still a 3x3, and `rows` reads the board
-    # it is handed, not the last one anybody built.
-    model(Board.of(9, 12), {})
-    small = Board.of(3)
-    m, x = model(small, {})
-    assert len(x) == 9, f"a 3x3 model carries 9 cells, not {len(x)}"
+    # Two boards alive at once, each with its own digit cap: a given of 5 fits
+    # the cap-5 board and nothing else, and `rows` shapes the grid from the
+    # board it is handed rather than from whichever was built last.
+    wide, plain = Board.of(3, 5), Board.of(3)
+    m_wide, x_wide = model(wide, {(0, 0): 5})
+    m_plain, _ = model(plain, {(0, 0): 5})
     s = cp_model.CpSolver()
-    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
-    grid = rows(small, s, x)
+    assert s.Solve(m_plain) == cp_model.INFEASIBLE, "digit 5 does not fit a cap-3 board"
+    assert s.Solve(m_wide) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    grid = rows(wide, s, x_wide)
     assert [len(row) for row in grid] == [3, 3, 3], grid
-    assert max(max(row) for row in grid) <= 3, grid
+    assert grid[0][0] == 5, grid
 
 
 def test_dropped_grid_logs_seed_and_clue_set():

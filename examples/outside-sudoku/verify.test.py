@@ -12,6 +12,7 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import verify
 from link_codec import decode_puzzle
 from link_swap import find_constraint
 from verify import CONSTRAINT_NAME, clue_groups
@@ -65,7 +66,24 @@ def test_local_branch_returns_the_link_s_own_drawn_cells_verbatim():
     assert [999999] in _groups(doc), "clue_groups must return drawn cells verbatim"
 
 
+def test_a_spent_time_cap_raises_instead_of_printing_a_verdict():
+    # A solve that runs out of time is no verdict. The script's whole output is
+    # one "exactly one solution" line, so a timeout that came back as None
+    # would print proof of uniqueness for a board nobody finished checking.
+    limit = verify.SOLVE_LIMIT
+    verify.SOLVE_LIMIT = 0.0001
+    try:
+        verify.main(["verify.py", str(HERE / "PUZZLE_LINK.txt")])
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("a spent time cap printed a verdict")
+    finally:
+        verify.SOLVE_LIMIT = limit
+
+
 if __name__ == "__main__":
     test_drawn_groups_and_rebuilt_frame_lines_agree()
+    test_a_spent_time_cap_raises_instead_of_printing_a_verdict()
     test_local_branch_returns_the_link_s_own_drawn_cells_verbatim()
     print("ok")

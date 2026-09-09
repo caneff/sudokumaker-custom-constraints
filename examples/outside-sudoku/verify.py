@@ -57,13 +57,18 @@ def clue_groups(link, W, n):
     return groups
 
 
-def solve(model, x, ruled_out=None):
-    """Solve, returning the interior assignment or None. `ruled_out` forbids one
-    earlier assignment, which is how the second-solution search runs."""
-    if ruled_out is not None:
-        cpsat.forbid(model, x, ruled_out)
+def solve(model, x):
+    """The interior assignment, or None when the model has no solution.
+
+    Raises TimeoutError when the search spends `SOLVE_LIMIT` without a verdict:
+    "no answer yet" is not "no solution", and this script's caller reads a None
+    as proof of the second kind.
+    """
     s = cpsat.solver(SOLVE_LIMIT)
-    if s.Solve(model) not in cpsat.SOLVED:
+    status = s.Solve(model)
+    if status == cpsat.UNKNOWN:
+        raise TimeoutError(f"CP-SAT hit the {SOLVE_LIMIT}s limit; no verdict")
+    if status not in cpsat.SOLVED:
         return None
     return {cell: s.Value(var) for cell, var in x.items()}
 
@@ -109,7 +114,11 @@ def main(argv):
 
     first = solve(m, x)
     assert first is not None, "the shipped board has no solution"
-    assert solve(m, x, ruled_out=first) is None, "the shipped board has two solutions"
+    # has_second_solution raises rather than answer on a spent time cap, so a
+    # slow search can never print the "exactly one" line below.
+    assert not cpsat.has_second_solution(m, x, first, SOLVE_LIMIT), (
+        "the shipped board has two solutions"
+    )
     print("ok — exactly one solution")
 
 

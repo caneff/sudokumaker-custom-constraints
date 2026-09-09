@@ -71,6 +71,21 @@ def test_reproducible_pins_one_worker_and_seed_zero():
     assert s.parameters.randomize_search is False
 
 
+def test_a_seed_handed_to_the_reproducible_solver_is_a_loud_mistake():
+    # The reproducible configuration pins seed 0, so a caller's seed could only
+    # be silently dropped. It is refused instead.
+    for kwargs in ({"seed": 1234}, {"randomize": True}):
+        assert _refused(kwargs), f"{kwargs} was accepted and ignored"
+
+
+def _refused(kwargs):
+    try:
+        solver(30, **kwargs)
+    except ValueError:
+        return True
+    return False
+
+
 def test_search_mode_leaves_the_portfolio_and_the_caller_s_seed_alone():
     # Sampling a fresh grid wants variety, not reproducibility: the portfolio
     # stays on and the caller's sub-seed drives randomize_search.
@@ -85,5 +100,6 @@ if __name__ == "__main__":
     test_has_second_solution_on_a_unique_and_an_ambiguous_model()
     test_has_second_solution_raises_rather_than_report_a_verdict()
     test_reproducible_pins_one_worker_and_seed_zero()
+    test_a_seed_handed_to_the_reproducible_solver_is_a_loud_mistake()
     test_search_mode_leaves_the_portfolio_and_the_caller_s_seed_alone()
     print("cpsat.test.py: ok")

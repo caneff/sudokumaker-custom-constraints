@@ -197,7 +197,7 @@ def sample(board, seed, pins=4, max_tries=50):
     raise RuntimeError(f"seed {seed}: no non-striped grid in {max_tries} tries")
 
 
-def solutions(board, givens, most=2, limit=LIMIT, reproducible=True):
+def solutions(board, givens, most=2, limit=LIMIT):
     """Up to `most` distinct grids matching `givens`, as lists of row lists.
 
     Each round solves, records the grid, and forbids it, so the grids differ in
@@ -207,7 +207,7 @@ def solutions(board, givens, most=2, limit=LIMIT, reproducible=True):
     m, x = model(board, givens)
     found = []
     while len(found) < most:
-        s = cpsat.solver(limit, reproducible=reproducible)
+        s = cpsat.solver(limit)
         status = s.Solve(m)
         if status == cpsat.UNKNOWN:
             raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
@@ -218,16 +218,14 @@ def solutions(board, givens, most=2, limit=LIMIT, reproducible=True):
     return found
 
 
-def unique(board, givens, limit=LIMIT, reproducible=True):
+def unique(board, givens, limit=LIMIT):
     """True if exactly one fillomino grid matches the givens, False if more.
 
     Raises ValueError when none does and TimeoutError when a solve hits `limit`
-    seconds -- a timeout is never reported as unique.
-
-    Reproducible by default: one worker and seed 0, so a committed proof gives
-    the same answer on every run.
+    seconds -- a timeout is never reported as unique. Runs on the reproducible
+    solver configuration, so a committed proof gives the same answer twice.
     """
-    found = solutions(board, givens, most=2, limit=limit, reproducible=reproducible)
+    found = solutions(board, givens, most=2, limit=limit)
     if not found:
         raise ValueError("no fillomino grid matches the givens")
     return len(found) == 1

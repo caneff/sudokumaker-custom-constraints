@@ -91,7 +91,8 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 # Seconds per solve in `unique`. A frame board this size is proved in
 # milliseconds, so a solve anywhere near the cap is a carve that has gone
-# wrong, and the carve loop moves on to the next seed.
+# wrong; `unique` returns None for it, which the carve loop reads as "not
+# unique" and the final assert in `generate` turns into a loud failure.
 SOLVE_LIMIT = 10
 
 # A bent-path link's rules text closes with this: its lines are drawn paths,
@@ -246,8 +247,9 @@ def repeating_lines(grid, lines):
 
 def unique(post_clue, board):
     """True when `board`'s interior has exactly one solution, False when it has
-    more, None when the first solve finds none inside the time limit (a timeout
-    or an unsatisfiable model, which is no verdict on a second solution).
+    more, None when there is no verdict -- either the first solve found nothing
+    inside the time limit (a timeout or an unsatisfiable model) or the search
+    for a second solution spent the limit without one.
 
     `post_clue` is a Spec's cp_sat_clue_fn; unique() needs nothing else off the
     Spec, so a caller with its own line geometry can reuse it.

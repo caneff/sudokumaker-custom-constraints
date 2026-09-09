@@ -43,6 +43,10 @@ def solver(limit, reproducible=True, seed=0, randomize=False):
     takes the caller's `seed`, with `randomize` steering the search away from
     the dull grids the default order keeps returning.
     """
+    if reproducible and (seed or randomize):
+        # Fail loud rather than accept a call whose seed cannot do anything:
+        # the reproducible configuration pins seed 0 and the default search.
+        raise ValueError("a reproducible solver takes no seed and no randomize")
     s = cp_model.CpSolver()
     s.parameters.max_time_in_seconds = limit
     s.parameters.num_workers = 1 if reproducible else SEARCH_WORKERS
