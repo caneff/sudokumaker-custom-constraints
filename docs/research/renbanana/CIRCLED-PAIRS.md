@@ -77,6 +77,53 @@ One pair type never fails: a 2x2 against a perpendicular 2x3 always admits
 digits. Every impossibility is a same-shape or same-orientation pair, and a
 quarter of the whole space dies here, before shading is considered at all.
 
+## How many circled-rectangle layouts a sudoku can carry: 41,574
+
+Geometry alone allows 422,438 non-empty sets of circled 2x2 / 2x3 placements --
+disjoint, non-touching, at a box offset the catalogue permits a circle at --
+peaking at 169,452 five-rectangle sets and topping out at 8, which is only ever
+eight 2x2s in a lattice.
+
+`tools/count_circled_sets.py` asks each set for a solved sudoku carrying every
+rectangle in it, building levels in order and pruning: a set containing an
+infeasible subset is infeasible, since it carries all of that subset's
+constraints and more. Every level resolved, nothing timed out.
+
+| rectangles | geometric sets | a sudoku can carry | share |
+| --- | --- | --- | --- |
+| 1 | 104 | 104 | 100% |
+| 2 | 3,308 | 2,482 | 75% |
+| 3 | 39,068 | 14,444 | 37% |
+| 4 | 161,593 | 21,676 | 13% |
+| 5 | 169,452 | 2,764 | 1.6% |
+| 6 | 45,172 | 104 | 0.2% |
+| 7 | 3,660 | **0** | -- |
+| 8 | 81 | **0** | -- |
+| **total** | **422,438** | **41,574** | **9.8%** |
+
+**Six is the digit maximum**, against a geometric maximum of 8: the all-2x2
+lattices die on digits, and no seven-rectangle layout survives. One of the 104
+six-rectangle grids, verified cell by cell -- valid sudoku, every rectangle
+internally whisper-legal, every circle landing, none overlapping or touching:
+
+```
+981623547     2x2 @ (4,5)  circle at r5c6 or r6c7
+647195283     2x2 @ (7,2)  circle at r8c3
+352847619     2x3 @ (7,5)  circle at r9c6
+495238761     3x2 @ (0,2)  circle at r1c4
+276514938     3x2 @ (1,7)  circle at r4c8
+813769452     3x2 @ (4,0)  circle at r7c2
+168472395
+734951826
+529386174
+```
+
+This is the sharpest statement of where the difficulty lives. **Digits will
+carry six circled rectangles at once. The full shading will not carry two.**
+Everything above the rectangles -- the banana groups being renbans, being
+non-rectangular, the 2x2-window rule, maximality -- is what refuses, and it
+refuses long before the digits do.
+
 ## And the shading refuses all of them
 
 `tools/probe_inverted.py --want-circled N` adds the demand to the full model:
