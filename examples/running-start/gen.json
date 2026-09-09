@@ -1094,7 +1094,7 @@
      "input": [],
      "backend": {
       "type": "code",
-      "code": "function rowsAndColumns () {\n  return [\n    ['row', 'Row', helpers.geometry.getAllRows()],\n    ['column', 'Column', helpers.geometry.getAllColumns()]\n  ].flatMap(([kind, houseType, lines]) =>\n    [...lines].slice(1, -1).map((line, i) => ({\n      name: `${kind} ${i + 1}`,\n      houseType,\n      cells: line.slice(1, -1).map(cell => cell | 0)\n    }))\n  )\n}\nconst digitCount = helpers.digits.maxDigit - helpers.digits.minDigit + 1\nfor (const { name, houseType, cells } of rowsAndColumns()) {\n  puzzle.addConstraintComponent(cells.length === digitCount\n    ? new HouseComponent(name, cells, houseType)\n    : new DifferentDigitsComponent(name, cells))\n}\nfunction postprocessJSON (json) {\n  const { width: W, height: H } = helpers.cellIds\n  const toRC = cell => {\n    const { x, y } = helpers.cellIds.getCoordsFromId(cell)\n    return [y, x]\n  }\n  json.metadata.norowcol = true\n  json.cages.push(...rowsAndColumns().map(({ cells }) => ({\n    unique: 'true', type: 'rowcol', hidden: 'true', cells: cells.map(toRC)\n  })))\n  const corners = [[0, 0], [0, W - 1], [H - 1, 0], [H - 1, W - 1]]\n  for (const [r, c] of corners) delete json.cells[r][c].value\n  const masked = new Set(corners.map(([r, c]) => r * W + c))\n  json.metadata.solution = json.metadata.solution?.replace(/./g,\n    (digit, index) => masked.has(index) ? '?' : digit)\n}\n"
+      "code": ""
      },
      "components": []
     },
@@ -1108,7 +1108,7 @@
      "input": [],
      "backend": {
       "type": "code",
-      "code": "const { width: W, height: H } = helpers.cellIds\nconst corners = [0, W - 1, W * (H - 1), W * H - 1]\npuzzle.addConstraintComponent(new PredefinedCandidatesComponent(\n  'the frame corners', SudokuDigitSet.from([helpers.digits.minDigit]), corners))\n"
+      "code": ""
      },
      "components": []
     },

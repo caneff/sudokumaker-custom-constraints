@@ -12,11 +12,17 @@ from link_codec import decode_puzzle, encode_link
 
 
 def find_constraint(doc, constraint_name):
-    return next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == constraint_name
-    )
+    """The constraint `doc` ships under `constraint_name`.
+
+    Raises naming the constraint it could not find: a caller that reaches
+    through this -- `framebuild.refresh_frame_backends`, `frame_and_comment_only`
+    -- is asserting the board carries it, and a bare StopIteration names
+    nothing to go and look for.
+    """
+    for c in doc["puzzle"]["constraints"]:
+        if c.get("definition", {}).get("name") == constraint_name:
+            return c
+    raise ValueError(f"the document has no constraint named {constraint_name!r}")
 
 
 def blanked(doc, constraint_name):
@@ -124,13 +130,22 @@ def swap_component_code(doc, constraint_name, component_name, new_code):
     return replace_constraint_code(doc, constraint_name, components=components)
 
 
+def write_link(doc, out_path):
+    """Encode `doc`, assert the link decodes back to it, and write it.
+
+    Every path that commits a link goes through here: the encoder is lossy on
+    a document it cannot represent, and a link that does not round-trip is a
+    board nobody can rebuild from what is on disk."""
+    link = encode_link(doc)
+    assert decode_puzzle(link) == doc, "link does not round-trip"
+    pathlib.Path(out_path).write_text(link + "\n")
+    return link
+
+
 def check_and_write(base_doc, new_doc, constraint_name, out_path):
     """Assert new_doc differs from base_doc only in the named constraint's
     code, then encode, round-trip check, and write the link to out_path."""
     assert blanked(base_doc, constraint_name) == blanked(new_doc, constraint_name), (
         "frames differ beyond the constraint code"
     )
-    link = encode_link(new_doc)
-    assert decode_puzzle(link) == new_doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
+    return write_link(new_doc, out_path)

@@ -23,12 +23,13 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import refresh_frame_backends
-from link_codec import decode_puzzle, encode_link
+from framebuild import RULES_PREFIX, refresh_frame_backends
+from link_codec import decode_puzzle
 from link_swap import (
     check_and_write,
     replace_constraint_code,
     swap_component_code,
+    write_link,
 )
 from minify import minify_js
 
@@ -39,6 +40,24 @@ HERE = pathlib.Path(__file__).parent
 # name, and this constant names only the shipped board's.
 CONSTRAINT_NAME = "Custom Numbered Rooms"
 TIMED_COMPONENT = "NumberedRoomsComponent"
+
+# The shipped board's rules text. It has to live here: the board is hand-built,
+# no generator writes its comment, and `refresh` is the only thing that can keep
+# it true. The generated boards read theirs from build_size.comment_text.
+COMMENT = RULES_PREFIX + (
+    "Numbered Rooms: All outside cells on a clue must contain a digit. That "
+    "digit must also appear in the Nth position looking into the grid in the "
+    "row/column, where N is the digit in the first position."
+)
+
+# The interior is a 9x9 sudoku on 1-9, and the document has to say so. The app
+# defaults a custom puzzle to 0..9 whatever the grid size, and both shared frame
+# backends read `helpers.digits`: left undeclared, a 9-cell interior line stops
+# matching digitCount, so every row and column falls back from a named
+# HouseComponent to a plain DifferentDigitsComponent with no houseType, and the
+# corner pin lands on 0 -- a digit this puzzle never uses. Same pin and the same
+# reason as running-start/build_link.py's template (#394).
+DIGITS = (1, 9)
 
 
 def constraint_with(doc, component_name):
@@ -69,19 +88,25 @@ def build(component_path, out_path, backend_path=None, board_path=None):
 
 
 def refresh(board_path=None):
-    """Rewrite a committed link in place with the frame's shared backends as
-    they stand in the tree.
+    """Rewrite a committed link in place: the frame's shared backends as they
+    stand in the tree, the digit range those backends read, and the rules text.
 
-    This board is hand-built: no `gen_*.json` describes it, so
+    This board is hand-built. No `gen_*.json` describes it, so
     `framebuild.rebuild` cannot reach it and nothing else re-embeds
-    `frame-rowcol.js` or `frame-corners.js` when they change. Without this the
-    link keeps a stale copy and `check_layout.check_houses` reads it as a
-    board that declares no interior rows or columns at all.
+    `frame-rowcol.js` or `frame-corners.js` when they change, pins the range
+    both of them read off `helpers.digits`, or corrects the comment. Without
+    this the link keeps a stale copy and `check_layout.check_houses` reads it as
+    a board that declares no interior rows or columns at all.
+
+    PUZZLE_LINK.txt is the source of truth for this example's three other
+    hand-built links, so build_original.py and build_clued.py run after it.
     """
     board_path = pathlib.Path(board_path) if board_path else HERE / "PUZZLE_LINK.txt"
     doc = decode_puzzle(board_path.read_text().strip())
     refresh_frame_backends(doc)
-    board_path.write_text(encode_link(doc) + "\n")
+    doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"] = DIGITS
+    doc["puzzle"]["comment"] = COMMENT
+    write_link(doc, board_path)
     return board_path
 
 
@@ -96,7 +121,8 @@ if __name__ == "__main__":
     p.add_argument(
         "--refresh",
         action="store_true",
-        help="re-embed the shared frame backends in the board link, in place",
+        help="bring the board link up to date in place: the shared frame\n"
+        "backends, the digit range, the rules text",
     )
     args = p.parse_args()
     if args.refresh:

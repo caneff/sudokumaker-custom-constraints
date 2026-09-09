@@ -8,6 +8,7 @@
 #   uv run --with lzstring examples/_shared/check_layout.test.py
 
 import contextlib
+import json
 import pathlib
 import subprocess
 import sys
@@ -29,6 +30,8 @@ def _link(
     full_ring=False,
     houses="full",
     frame_backend=False,
+    corners_backend=False,
+    digits=(1, 9),
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -49,7 +52,10 @@ def _link(
     each; "boxes" drops the column cages, the shape that cost three tickets of
     quad-rank work (#335); "none" drops both. `frame_backend` adds a constraint
     carrying the shared frame row/column backend, which declares the interior
-    lines in JS instead of in the document (#394).
+    lines in JS instead of in the document, and `corners_backend` the corner-pin
+    one; either takes "stale" to embed an older copy. `digits` is the document's
+    declared range -- None leaves it off, which is what makes the app default
+    the board to 0..9 and silently weaken both frame backends (#394).
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if full_ring:
@@ -83,30 +89,35 @@ def _link(
             }
         )
     extra = []
-    if frame_backend:
-        code = minify_js((HERE / "frame-rowcol.js").read_text())
-        if frame_backend == "stale":
+    for wanted, source, title in (
+        (frame_backend, "frame-rowcol.js", "Frame Rows and Columns"),
+        (corners_backend, "frame-corners.js", "Frame Corners"),
+    ):
+        if not wanted:
+            continue
+        code = minify_js((HERE / source).read_text())
+        if wanted == "stale":
             code = code + "\n// an older copy"
         extra.append(
             {
                 "type": 1000,
                 "definition": {
-                    "name": "Frame Rows and Columns",
+                    "name": title,
                     "backend": {"type": "code", "code": code},
                     "components": [],
                 },
             }
         )
-    doc = {
-        "puzzle": {
-            "width": 3,
-            "height": 3,
-            "cells": cells,
-            "comment": comment,
-            "constraints": [*house_constraints, constraint, *extra],
-        }
+    puzzle = {
+        "width": 3,
+        "height": 3,
+        "cells": cells,
+        "comment": comment,
+        "constraints": [*house_constraints, constraint, *extra],
     }
-    return encode_link(doc)
+    if digits is not None:
+        puzzle["minDigit"], puzzle["maxDigit"] = digits
+    return encode_link({"puzzle": puzzle})
 
 
 REQUIRED = [
@@ -477,6 +488,82 @@ if __name__ == "__main__":
         assert "stale" in violations[0].lower(), violations[0]
         assert "frame-rowcol.js" in violations[0], violations[0]
         assert "interior row" not in violations[0], violations[0]
+
+    # The corner-pin backend goes stale the same way, and NOTHING ELSE can see
+    # it: it registers a built-in, so its constraint ships no component file and
+    # check_components has no set to compare. The pin is what makes a frame
+    # board unique at all, so a stale copy has to be its own finding (#394).
+    stale_corners = _link(corners_backend="stale")
+    with example(contents={"PUZZLE_LINK.txt": stale_corners}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "frame-corners.js" in violations[0], violations[0]
+
+    # a current copy of it is fine
+    fresh_corners = _link(corners_backend=True)
+    with example(contents={"PUZZLE_LINK.txt": fresh_corners}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # A frame link that declares no digit range is silently weakened: the app
+    # defaults a custom puzzle to 0..9 whatever the grid size, the interior
+    # lines stop matching digitCount and fall back to plain all-different, and
+    # the corners are pinned to 0. The source text still reads right, so only
+    # the document can be asked (#394).
+    for kwargs in (
+        {"frame_backend": True, "houses": "none"},
+        {"corners_backend": True},
+    ):
+        rangeless = _link(digits=None, **kwargs)
+        with example(contents={"PUZZLE_LINK.txt": rangeless}) as (root, _):
+            violations = check_tree(root)
+            assert len(violations) == 1, violations
+            assert "digit range" in violations[0], violations[0]
+
+    # A gen JSON records the BOARD. The frame backends' code is read from the
+    # tree at build time, so a copy kept in a template is dead data that can
+    # only drift from the file it copies -- running-start's sat two commits
+    # behind, contradicting the very fix under review (#394).
+    def _gen(code):
+        return json.dumps(
+            {
+                "puzzle": {
+                    "constraints": [
+                        {
+                            "type": 1000,
+                            "definition": {
+                                "name": "Frame Rows and Columns",
+                                "backend": {"type": "code", "code": code},
+                                "components": [],
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": _gen("// a copy")},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "gen_6x6.json" in violations[0], violations[0]
+        assert "Frame Rows and Columns" in violations[0], violations[0]
+
+    # an emptied field is what the template is supposed to carry
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": _gen("")},
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # ...and a board with no frame backend at all is not asked for one
+    plain = _link(digits=None)
+    with example(contents={"PUZZLE_LINK.txt": plain}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
 
     # ...but a board that declares them nowhere at all still fails, and says so
     bare = _link(houses="none")

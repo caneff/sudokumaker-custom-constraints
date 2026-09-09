@@ -15,6 +15,14 @@ not a measurement — timing rows live in each example's README.
 non-`unique` outcomes are pre-existing and none of them moved: see "The nine"
 below.
 
+The four hand-built numbered-rooms links were re-run on the same day after a
+second regeneration — round 2 pins `minDigit`/`maxDigit` on them, which the app
+otherwise defaults to 0..9 (#394). Every verdict held: `PUZZLE_LINK.txt`
+unique 1700 ms, `PUZZLE_LINK_clued.txt` and `PUZZLE_LINK_clued_original.txt`
+unique 0 ms, `PUZZLE_LINK_original.txt` timeout. The table carries the first
+run's times; both readings are the same order of magnitude, which is all a
+time here claims.
+
 | Link | Verdict | Time |
 | --- | --- | --- |
 | `examples/hit-counts/PUZZLE_LINK.txt` | unique | 7400 ms |

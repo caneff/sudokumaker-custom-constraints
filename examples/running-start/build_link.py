@@ -3,9 +3,10 @@
 # No args: rebuild PUZZLE_LINK.txt from scratch from the current source files.
 # The grid, clue ring, given flags, regions, cages, and cosmetic lines never
 # change for this example; they live in gen.json (a document decoded once
-# from a known-good link, with the code fields emptied). Only the embedded
-# code changes when you edit main-global.js or a component, so this path
-# injects the current files and re-encodes.
+# from a known-good link, with EVERY code field emptied -- this example's own
+# and the shared frame backends' alike, so the record cannot drift from the
+# tree). Only the embedded code changes when you edit main-global.js or a
+# component, so this path injects the current files and re-encodes.
 #
 #   uv run --with lzstring examples/running-start/build_link.py
 #
@@ -97,11 +98,6 @@ def build_from_template():
             break
     else:
         raise SystemExit(f"template is missing the {CONSTRAINT_NAME!r} constraint")
-    # trim the postproc helper's verbose comments out of the shared link too
-    for c in doc["puzzle"]["constraints"]:
-        d = c.get("definition", {})
-        if d.get("name") == "JSON Postproc":
-            d["backend"]["code"] = minify_js(d["backend"]["code"])
     # replace the template's hand-drawn cosmetics with generated ones, so the
     # outlines box exactly the given outside cells (same rule as the 4x4/6x6)
     cons = doc["puzzle"]["constraints"]

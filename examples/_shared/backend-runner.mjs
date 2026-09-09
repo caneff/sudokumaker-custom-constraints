@@ -12,7 +12,7 @@
 // component was built and with what, without a working implementation of it.
 
 // Scrape the component constructors `src` calls, in first-use order.
-export function componentNames (src) {
+function componentNames (src) {
   return [...new Set([...src.matchAll(/new (\w+Component)\(/g)].map(m => m[1]))]
 }
 

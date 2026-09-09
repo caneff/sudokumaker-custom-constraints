@@ -28,14 +28,15 @@
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
+import json
 import pathlib
 import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import builtin_components, registered_components
+from framebuild import FRAME_BACKENDS, frame_backend_code
 from link_codec import decode_puzzle
-from minify import minify_js
 
 REQUIRED_FILES = [
     "README.md",
@@ -329,35 +330,18 @@ def declared_houses(puzzle):
     return houses
 
 
-FRAME_ROWCOL = pathlib.Path(__file__).parent / "frame-rowcol.js"
-
-
 # The constraint name `framebuild.build_doc` ships the row/column backend
-# under. It is the handle that says "this board meant to declare its lines in
-# JS" even when the code embedded under it is an old copy.
-FRAME_ROWCOL_CONSTRAINT = "Frame Rows and Columns"
+# under, read off the one place that pairing lives so a rename reaches this
+# sweep too. It is the handle that says "this board meant to declare its lines
+# in JS" even when the code embedded under it is an old copy.
+FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 
 
-def declares_lines_in_js(puzzle):
-    """Does this link run the shared frame row/column backend?
-
-    A framebuilt board declares its interior rows and columns as named
-    `HouseComponent`s from that one file rather than as document cages: a cage
-    cannot be named (the app hard-codes "the cage at <cell>", the same string
-    for row 1 and column 1) and the named houses cost nothing once their ids
-    are coerced (#394). The match is against the committed file's own minified
-    text, so this excuses exactly the reviewed code -- a stale copy, a
-    hand-edited one, or any other backend does not pass.
-
-    `minify_js` drops comments, so editing this file's prose leaves every
-    committed link valid; only a real code change makes them stale, and a
-    stale link genuinely runs different code from the one under review.
-    """
-    want = minify_js(FRAME_ROWCOL.read_text())
-    return any(
-        (c.get("definition") or {}).get("backend", {}).get("code") == want
-        for c in puzzle.get("constraints", [])
-    )
+def frame_backend_files():
+    """`{constraint name: (source file name, its minified code in the tree)}`
+    for both of the frame's shared backends."""
+    code = dict(frame_backend_code())
+    return {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
 
 
 def carries_frame_rowcol(puzzle):
@@ -408,20 +392,12 @@ def check_houses(example_dir, link):
         else set(range(width * height))
     )
 
-    if declares_lines_in_js(puzzle):
-        return []
-
-    # A link that ships the backend under its own name but not the code in the
-    # tree is STALE, not house-less. Say so: every committed frame link goes
-    # stale together the moment `frame-rowcol.js` changes, and counting missing
-    # rows sends the reader looking for a constraint that is already there.
+    # A board carrying the row/column backend declares its lines in JS, so
+    # counting missing rows here would send the reader after a constraint that
+    # is already present. Whether the copy embedded there is the current one is
+    # `check_frame_backends`' question, with its own message and its own fix.
     if carries_frame_rowcol(puzzle):
-        return [
-            f"{name}: {link.name} embeds a stale copy of frame-rowcol.js -- "
-            f"rebuild it in the same commit as the change (the example's "
-            f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` for "
-            f"a hand-built board)"
-        ]
+        return []
 
     houses = declared_houses(puzzle)
     violations = []
@@ -436,6 +412,103 @@ def check_houses(example_dir, link):
                 f"{label}(s) -- a region constraint gives boxes only, so rows and "
                 f"columns need their own constraints (docs/gotchas.md #9)"
             )
+    return violations
+
+
+def check_frame_backends(example_dir, link):
+    """Return one violation per shared frame backend `link` ships under its own
+    name with code that is not the copy in the tree, plus one if it ships
+    either backend and declares no digit range.
+
+    BOTH backends need checking here and only here. `check_components` cannot
+    see `frame-corners.js` at all: it registers a `PredefinedCandidatesComponent`,
+    which is a built-in, so that constraint ships no component file and the
+    shipped/registered sets agree whatever its code says. A changed
+    `frame-corners.js` with un-rebuilt links would otherwise pass every gate in
+    silence -- and the corner pin is the whole reason a frame board comes back
+    unique (#394).
+
+    The digit range is the other silent one. Both backends read
+    `helpers.digits`, and the app defaults a custom puzzle to 0..9 whatever the
+    grid size. With no `minDigit`/`maxDigit` on the document, a 9-cell interior
+    line stops matching `digitCount`, so every row and column degrades from a
+    named `HouseComponent` to a bare `DifferentDigitsComponent` -- the weaker
+    rule, with no houseType for the solver's row/column machinery -- and the
+    corners are pinned to 0, a digit the puzzle never uses. None of that shows
+    on the board or in the source text, so the range has to be declared.
+
+    `minify_js` drops comments, so editing a backend file's prose leaves every
+    committed link valid; only a real code change makes them stale, and a stale
+    link genuinely runs different code from the one under review.
+    """
+    try:
+        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+    except Exception:
+        return []  # check_share_ready reports the decode failure
+
+    name = example_dir.name
+    current = frame_backend_files()
+    violations = []
+    carried = []
+    for constraint in puzzle.get("constraints", []):
+        definition = constraint.get("definition") or {}
+        title = definition.get("name")
+        if title not in current:
+            continue
+        carried.append(title)
+        source, want = current[title]
+        if definition.get("backend", {}).get("code") != want:
+            violations.append(
+                f"{name}: {link.name} embeds a stale copy of {source} -- "
+                f"rebuild it in the same commit as the change (the example's "
+                f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
+                f"for a hand-built board)"
+            )
+
+    if carried and not all(
+        isinstance(puzzle.get(key), int) for key in ("minDigit", "maxDigit")
+    ):
+        violations.append(
+            f"{name}: {link.name} ships {sorted(carried)} but declares no "
+            f"digit range -- the app defaults a custom puzzle to 0..9 whatever "
+            f"the grid size, so the interior lines fall back from named houses "
+            f"to plain all-different and a corner is pinned to 0. Pin "
+            f"minDigit/maxDigit on the document (#394)"
+        )
+    return violations
+
+
+def check_gen_frame_backends(example_dir):
+    """Return one violation per `gen*.json` that records a frame backend's code.
+
+    A gen JSON is the board's record, and the shared frame backends are not
+    part of a board: their code is read from the tree at build time
+    (`framebuild.refresh_frame_backends`), so a copy kept here is dead data that
+    can only go stale. running-start's template carried one and it sat two
+    commits behind the file it copied -- a committed record contradicting the
+    code under review, with nothing to catch it (#394). Keep the field empty,
+    the way that template already keeps its own constraint's.
+    """
+    name = example_dir.name
+    titles = {title for _, title in FRAME_BACKENDS}
+    violations = []
+    for gen in sorted(example_dir.glob("gen*.json")):
+        try:
+            doc = json.loads(gen.read_text())
+            constraints = doc["puzzle"]["constraints"]
+        except Exception:
+            continue  # a board-data gen JSON carries no document at all
+        for constraint in constraints:
+            definition = constraint.get("definition") or {}
+            if definition.get("name") in titles and definition.get("backend", {}).get(
+                "code"
+            ):
+                violations.append(
+                    f"{name}: {gen.name} records code for "
+                    f"{definition['name']!r} -- the frame backends come from "
+                    f"the tree at build time, so a copy here is dead data that "
+                    f"goes stale. Empty the field"
+                )
     return violations
 
 
@@ -467,6 +540,7 @@ def check_example(example_dir):
 
     violations.extend(check_lanes(example_dir))
     violations.extend(check_gen_link_pairing(example_dir))
+    violations.extend(check_gen_frame_backends(example_dir))
 
     for link in committed_links(example_dir):
         if link.name.startswith("PUZZLE_LINK") and not LINK_RE.match(link.name):
@@ -477,6 +551,7 @@ def check_example(example_dir):
             )
         violations.extend(check_share_ready(example_dir, link))
         violations.extend(check_components(example_dir, link))
+        violations.extend(check_frame_backends(example_dir, link))
         violations.extend(check_houses(example_dir, link))
 
     return violations

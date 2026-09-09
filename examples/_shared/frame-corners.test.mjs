@@ -40,11 +40,20 @@ function run (W, H, minDigit) {
 // backend's own arithmetic, so the assertion can disagree with the code.
 const cornersOf = (W, H) => [0, W - 1, W * (H - 1), W * H - 1]
 
+// A pin is a PredefinedCandidatesComponent and nothing else. A HouseComponent
+// over the four corners would also take one argument list of four cells and
+// would also leave the board drawing nothing -- and would let every corner
+// hold a different digit, which is the not-unique board this backend exists to
+// close. The type is the rule here, so the type is asserted.
+const PIN = 'PredefinedCandidatesComponent'
+
 for (const [W, H, minDigit] of [[11, 11, 1], [8, 6, 1], [6, 8, 0], [5, 12, 2]]) {
-  const { registered } = run(W, H, minDigit)
+  const { registered, ctorNames } = run(W, H, minDigit)
   const where = `${W}x${H}, minDigit ${minDigit}`
 
+  assert.deepStrictEqual(ctorNames, [PIN], `${where}: the backend must build only a ${PIN}`)
   assert.strictEqual(registered.length, 1, `${where}: expected exactly one component, got ${registered.length}`)
+  assert.strictEqual(registered[0].ctor, PIN, `${where}: a corner must be PINNED, not merely made distinct`)
 
   const args = registered[0].args
   const cells = args.find(a => Array.isArray(a) && a.length === 4)
