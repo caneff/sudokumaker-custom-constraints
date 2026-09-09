@@ -1,3 +1,4 @@
+docs/research/renbanana/candidates-circled/cand_000.json
 docs/research/renbanana/candidates-walk2/cand_10.json
 docs/research/renbanana/candidates-walk2/cand_09.json
 docs/research/renbanana/candidates-walk2/cand_08.json
@@ -17,4 +18,3 @@ docs/research/renbanana/candidates-only22/cand_00.json
 docs/research/renbanana/candidates-only23/cand_03.json
 docs/research/renbanana/candidates-only23/cand_02.json
 docs/research/renbanana/candidates-only23/cand_01.json
-docs/research/renbanana/candidates-only23/cand_00.json
