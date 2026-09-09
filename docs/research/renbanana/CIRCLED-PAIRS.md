@@ -23,46 +23,68 @@ of another grid. Treat the pool as roughly eighteen shading families with the
 digits shuffled, not as a survey of the space. Any statement proved "over the
 pool" is a statement about those eighteen.
 
+## Only four shapes can ever carry a circle
+
+Straight off the #377 catalogue, no solver. A rectangle with both sides at
+least 2 can hold its own size only if it is a **2x2, 2x3, 2x4 or 3x3** (plus
+transposes). Every other living shape -- 2x5, 2x6, 2x7, 3x4, 3x5, 3x6, 4x4 --
+is placeable and permanently uncircleable, so no hunt should ever aim at one.
+1x5 is the same story on the thin side: alive at all nine box offsets, never
+circleable, because the 5 it would need cannot sit beside another chocolate
+cell (a difference of 5 or more puts one cell in {1,2,3,4} and the other in
+{6,7,8,9}, and 5 belongs to neither).
+
+How forcing each one is, as a clue, is also a catalogue read -- the count of
+box offsets at which a circle fits at all:
+
+| shape | offsets allowing a circle | placements |
+| --- | --- | --- |
+| **2x2** | 5 of 9 | 28 |
+| **2x3** (and 3x2) | 7 of 9 | 38 each |
+| 3x3 | 8 of 9 | 40 |
+| 2x4 (and 4x2) | 9 of 9 | 48 each |
+
+A 2x4 circle fits at every offset and so rules almost nothing out; a 2x2 is the
+most constrained shape there is. That is why the hunt targets 2x2 and 2x3 and
+leaves 2x4 and 3x3 alone.
+
 ## The geometry is not the obstruction
 
-Straight off the #377 catalogue, with no solver:
+Pairs of circled rectangles drawn from 2x2, 2x3 and 3x2, disjoint and not
+touching -- touching is out because each must be a *maximal* chocolate group,
+so a shared border cell would be chocolate in one and banana in the other:
 
-| shape | placements | can carry a circle |
-| --- | --- | --- |
-| 2x2 | 64 | 28 |
-| 2x3 | 56 | 38 |
-| 3x2 | 56 | 38 |
+**3,308 geometries.** An earlier count of 1,360 was the mixed 2x2-against-2x3
+slice only; it silently dropped every same-shape pair.
 
-Pairing the 28 with the 76 gives 2,128 combinations. 392 overlap and 376 touch
-— touching is illegal because each rectangle must be a *maximal* chocolate
-group, so a shared border cell would be chocolate in one and banana in the
-other. **1,360 geometries survive.**
+## The digits refuse some pairs outright
 
-## Nor are the digits, at the level of the two rectangles
+`tools/count_circled_pairs.py` asks, per geometry, for a solved sudoku in which
+both rectangles are internally whisper-legal and both circles land. All 3,308
+resolved, none timed out:
 
-`tools/count_circled_pairs.py` asks, for each of those 1,360 geometries,
-whether a solved sudoku exists in which both rectangles are internally
-whisper-legal (every orthogonal pair inside differs by at least 5) and both
-circles land — 4 somewhere in the 2x2, 6 somewhere in the 2x3, on cells the
-catalogue allows.
+| pair | geometries | admit digits | proved impossible |
+| --- | --- | --- | --- |
+| 2x2 + 2x2 | 278 | 130 | **148** |
+| 2x2 + 2x3 | 680 | 680 | 0 |
+| 2x2 + 3x2 | 680 | 680 | 0 |
+| 2x3 + 2x3 | 421 | 254 | **167** |
+| 2x3 + 3x2 | 828 | 484 | **344** |
+| 3x2 + 3x2 | 421 | 254 | **167** |
+| **total** | **3,308** | **2,482** | **826** |
 
-**1,360 of 1,360 admit digits.** Layer B judges each rectangle alone; this
-closes that gap by making the two share a real grid, and the pair survives it.
+One pair type never fails: a 2x2 against a perpendicular 2x3 always admits
+digits. Every impossibility is a same-shape or same-orientation pair, and a
+quarter of the whole space dies here, before shading is considered at all.
 
-Those witness grids are *not* usable as candidates, and the control says why:
-run them through the full shading model with the circle demand switched off
-and they are still infeasible. They are near-random solved sudokus, and only
-about 1 in 200 random grids admits any legal Renbanana shading at all. A sweep
-over them measures that base rate, not the pair.
-
-## The obstruction is the rest of the shading
+## And the shading refuses all of them
 
 `tools/probe_inverted.py --want-circled N` adds the demand to the full model:
 one bool per catalogue-surviving circled placement meaning "this rectangle is a
 maximal chocolate group here", every cell inside chocolate and every bordering
-cell banana, and at least N of them chosen. Two chosen placements cannot
-overlap — a shared cell would sit inside one and on the other's banana border —
-so demanding two is already demanding two disjoint ones.
+cell banana, at least N chosen. Two chosen placements cannot overlap -- a shared
+cell would sit inside one and on the other's banana border -- so demanding two
+is already demanding two disjoint ones.
 
 The gate, on a pool grid known to hold exactly one circled rectangle:
 
@@ -71,27 +93,54 @@ The gate, on a pool grid known to hold exactly one circled rectangle:
 | `--want-circled 1` | feasible, 3.3s |
 | `--want-circled 2` | infeasible, 0.1s |
 
-Across the whole pool, 70 distinct digit-grids:
+Three runs, none of which found a single grid:
 
-> **0 of 70 admit two circled rectangles. All 70 proved INFEASIBLE, 12 seconds
-> for the lot.**
+| run | grids | result |
+| --- | --- | --- |
+| the pool | 70 distinct digit-grids | **0 feasible**, all 70 proved, 12s |
+| 2x2+2x3 geometries, fresh grids | 13,600 attempts | **0 feasible**, all proved, 655s |
+| all 2x2/2x3 pairs, fresh grids | 16,540 attempts | **0 feasible**; 12,410 proved, 4,130 had no grid to shade |
 
-Not one was refused for lack of geometry — every grid offered between 8 and 20
-candidate circled placements, and the solver ruled each out on the rules. So
-what kills the pair is the banana side: with two rectangles pinned chocolate
-and their borders pinned banana, the remaining cells cannot be partitioned into
-groups that are all renbans and all non-rectangular.
+The fresh grids are built *around* a pinned geometry and steered to at least 46
+whisper-legal adjacencies, so the constraint was in the search from the start
+rather than filtered in afterwards. `--want-circled 2` also accepts any two
+circled rectangles, not only the pinned pair, so a grid could have satisfied it
+some other way. None did.
+
+The 4,130 "no grid" outcomes are not timeouts: a sample of 24 was retried at
+120 seconds with the steer removed and all 24 still had no solved sudoku at
+all. They are the 826 digit-impossible geometries showing up again.
+
+## No single rule is the obstruction
+
+`Shadings` can drop rules one at a time. With two circled rectangles demanded,
+on 12 pool grids:
+
+| rule dropped | result |
+| --- | --- |
+| none | 12 infeasible |
+| whisper | 1 infeasible, 11 unknown at 20s |
+| renban-distinct | 12 infeasible |
+| renban-consecutive | 12 infeasible |
+| non-rectangle | 12 infeasible |
+
+The whisper row looked like a lemma and is not one. Dropping a rule removes
+clauses, which makes infeasibility harder to *prove* as well as less true, so
+UNKNOWN at 20 seconds proves nothing. Re-run at 300 seconds: **6 of 6
+infeasible**. The whisper was making the proof short, not doing the refusing.
+
+So each of the four rules, removed alone, leaves the pair impossible. Whatever
+refuses two circles is a joint effect, and naming it is the open question.
 
 ## What this does and does not prove
 
-It proves it for these eighteen families, in twelve seconds — against a night
-of walking that proved nothing. It does **not** prove it for the space: the
-pool is a clustered sample, and every grid in it was found by a search that
-never had this constraint in it.
+Proved: no grid in the pool, and none of 30,140 sampled grids built for the
+purpose, holds two circled rectangles of size 2x2 or 2x3. Proved outright: 826
+of the 3,308 geometries admit no digits whatever.
 
-The next question is therefore joint: search digits and shading together with
-`--want-circled 2` in the model from the start, rather than filtering grids
-found without it. A prior attempt in the *forward* direction is on record and
-failed — `candidates-circ2/stats.json`: 518 shadings built to carry the
-property, 0 digit-feasible, 518 infeasible, 48 minutes. The joint model is a
-different question and has not been asked.
+Not proved: that no such grid exists. Every negative above is per-grid, and the
+grids are sampled. A proof over the space needs digits and shading searched
+together with the demand in the model -- the joint model, not yet built. A
+prior attempt in the *forward* direction is on record and failed:
+`candidates-circ2/stats.json`, 518 shadings built to carry the property, 0
+digit-feasible, 48 minutes.
