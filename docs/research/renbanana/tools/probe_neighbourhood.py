@@ -41,6 +41,24 @@ def perturb(grid, rng, kinds=("rows", "cols", "digits")):
         u, v = rng.sample(range(1, 10), 2)
         swap = {u: v, v: u}
         return {p: swap.get(grid[p], grid[p]) for p in CELLS}
+
+    if kind in ("bands", "stacks"):
+        # Whole bands and stacks, not rows inside one. Swapping two rows of a
+        # band leaves most of the grid's adjacencies alone, so the shading
+        # re-solves within a few cells of where it was; swapping two bands
+        # moves twenty-seven cells of context at once. Still a sudoku symmetry
+        # -- bands map to bands, so rows, columns and boxes all survive.
+        i, j = rng.sample(range(3), 2)
+
+        def send(x):
+            band, off = divmod(x, 3)
+            band = j if band == i else i if band == j else band
+            return band * 3 + off
+
+        if kind == "bands":
+            return {(r, c): grid[send(r), c] for r, c in CELLS}
+        return {(r, c): grid[r, send(c)] for r, c in CELLS}
+
     band = rng.randrange(3)
     i, j = rng.sample(range(3), 2)
     a, b = band * 3 + i, band * 3 + j

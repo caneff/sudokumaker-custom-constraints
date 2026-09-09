@@ -38,6 +38,14 @@ from probe_neighbourhood import perturb
 
 MIN_DISTANCE = 12  # the pool's own rule for "different enough"
 
+# Row and column swaps inside a band move the shading by a cell or three, which
+# is how ten hours of walking produced only recolourings: every grid it found
+# sat 0 to 3 cells from one already held. Band and stack swaps move twenty-seven
+# cells of context at once, so they carry the weight here; the small moves stay
+# in the mix because they are what refines a grid once the walk is somewhere
+# new, and digit swaps stay because they sometimes bridge to it.
+MOVES = ("bands", "bands", "stacks", "stacks", "rows", "cols", "digits")
+
 
 def hamming(a, b):
     return sum(a[p] != b[p] for p in CELLS)
@@ -237,7 +245,7 @@ def main():
             kicks += 1
         # Row and column swaps move the shading; a digit swap moves 18 grid
         # cells and usually none, so it is in the mix for reach, not for yield.
-        candidate = perturb(here, rng, ("rows", "rows", "cols", "cols", "digits"))
+        candidate = perturb(here, rng, MOVES)
         tries += 1
         k = canon.key_grid(candidate)
         if k in seen:
