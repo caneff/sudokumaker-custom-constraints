@@ -72,12 +72,16 @@ def build(n, out_dir=HERE):
     olc["definition"]["input"] = [
         {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
     ]
+    # The shared frame_groups, so the original wrapper reads the same drawn
+    # groups every other local-lane link in this repo ships (ordered by ring
+    # key). The wrapper takes each group's clue from cells[0], so the order of
+    # the groups is not part of the rule -- only the cells within one are.
     olc["input"] = {"groups": frame_groups(n, board.lines)}
 
     assert frame_only(improved, CONSTRAINT_NAME) == frame_only(
         original, CONSTRAINT_NAME
     ), "frames differ beyond the constraint's own code/input"
-    out_name = improved_name.replace(".txt", "_original.txt")
+    out_name = f"{link_path.stem}_original.txt"
     link = encode_link(original)
     assert decode_puzzle(link) == original, "link does not round-trip"
     (out_dir / out_name).write_text(link + "\n")

@@ -401,6 +401,87 @@ def test_a_spec_whose_local_lines_stay_straight_draws_the_frame():
         assert LOCAL_RULES_SUFFIX not in doc["puzzle"]["comment"]
 
 
+def test_the_rules_text_follows_the_board_not_the_spec():
+    # The "a digit may repeat along it" sentence belongs to a board whose drawn
+    # lines really bend. A Spec that GENERATES bent paths still must not put it
+    # on a board whose recorded lines are the straight frame lines -- there the
+    # lines are houses (#268).
+    with _spec(["FooComponent.js"]) as spec:
+        assert spec.bent_lines
+        straight = _board()
+        doc = build_doc(spec, straight, local=True)
+        assert LOCAL_RULES_SUFFIX not in doc["puzzle"]["comment"]
+        bent = dataclasses.replace(
+            straight, lines=make_paths(random.Random(3), straight.n)
+        )
+        assert (
+            LOCAL_RULES_SUFFIX in build_doc(spec, bent, local=True)["puzzle"]["comment"]
+        )
+
+
+def test_rebuild_names_the_file_it_cannot_find():
+    # Both halves of a board have to be there, and a reader who ran the wrong
+    # size or the wrong lane needs to be told which file is missing -- not a
+    # bare traceback out of a read.
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    ) as spec:
+        # no board of this size has been built at all
+        try:
+            rebuild(spec, n)
+        except AssertionError as e:
+            assert board_files(spec, n)[1].name in str(e), e
+        else:
+            raise AssertionError("a rebuild with no recorded board said nothing")
+
+        main(spec, [str(n), str(bh), str(bw), "2"])
+        link_path, _ = board_files(spec, n)
+        link_path.unlink()
+        try:
+            rebuild(spec, n)
+        except AssertionError as e:
+            assert link_path.name in str(e), e
+        else:
+            raise AssertionError("a rebuild with no committed link said nothing")
+
+
+def test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines():
+    # On the local lane the drawn groups are the ONLY place the line geometry
+    # reaches the document, and the frame comparison clears them -- so moving
+    # the recorded paths has to be caught on its own.
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    ) as spec:
+        main(spec, [str(n), str(bh), str(bw), "4", "--paths"])
+        _, gen_path = board_files(spec, n, local=True)
+        g = json.loads(gen_path.read_text())
+        # bend one path somewhere else on the grid: the shown clues no longer
+        # describe the cells the rebuilt link would draw
+        key = sorted(g["paths"])[0]
+        g["paths"][key] = list(reversed(g["paths"][key]))
+        gen_path.write_text(json.dumps(g))
+        try:
+            rebuild(spec, n, local=True)
+        except AssertionError as e:
+            assert "draws different lines" in str(e), e
+        else:
+            raise AssertionError("a moved line geometry rebuilt without complaint")
+
+
+def test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search():
+    # `build_size.py 9 3 3 --rebuild` used to parse cleanly and quietly
+    # re-encode, printing a success line for a search that never ran.
+    with _spec(["FooComponent.js"]) as spec:
+        try:
+            main(spec, ["4", "2", "2", "--rebuild"])
+        except SystemExit as e:
+            assert e.code != 0
+        else:
+            raise AssertionError("a rebuild carrying a box shape was accepted")
+
+
 def test_rebuild_reproduces_a_committed_link_byte_for_byte():
     n, bh, bw = 4, 2, 2
     with _spec(
@@ -453,9 +534,11 @@ def test_run_takes_its_arguments_and_never_reads_sys_argv():
     with _spec(
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
-        run(spec, n, bh, bw, range(101, 103))
-        link_path, _ = board_files(spec, n)
+        run(spec, n, bh, bw, range(107, 109))
+        link_path, gen_path = board_files(spec, n)
         assert link_path.exists()
+        # the seeds it searched are the ones it was handed, not a default range
+        assert load_board(gen_path).seed in (107, 108)
 
 
 if __name__ == "__main__":
@@ -471,6 +554,10 @@ if __name__ == "__main__":
     test_main_generates_a_board_from_its_own_argv_and_writes_both_files()
     test_main_builds_the_local_lane_under_either_flag_name()
     test_a_spec_whose_local_lines_stay_straight_draws_the_frame()
+    test_the_rules_text_follows_the_board_not_the_spec()
+    test_rebuild_names_the_file_it_cannot_find()
+    test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines()
+    test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search()
     test_rebuild_reproduces_a_committed_link_byte_for_byte()
     test_rebuild_refuses_a_gen_json_that_moved_the_board()
     test_main_rebuild_writes_the_committed_link_back()

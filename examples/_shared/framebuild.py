@@ -25,13 +25,13 @@ import pathlib
 import random
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
 from component_scan import registered_components
 from frame import cosmetics, ring_cell
-from link_swap import frame_and_comment_only
+from link_swap import find_constraint, frame_and_comment_only
 from minify import minify_js
 
 
@@ -61,11 +61,11 @@ class Spec:
     # weight in that lane's link, and the recipient reads it as part of the
     # rule.
     local_components: list[str] | None = None
-    # Do this example's LOCAL board's drawn lines bend? True everywhere but
-    # outside-sudoku, whose window is a box extent along the line's DIRECTION
-    # and a bent path has none: its local board draws the straight frame lines,
-    # so its rules text must not tell a solver a line is no house (#268). The
-    # global lane draws no lines at all, so it is never bent.
+    # Does a fresh local board for this example GENERATE bent paths? True
+    # everywhere but outside-sudoku, whose window is a box extent along the
+    # line's DIRECTION and a bent path has none, so its local board draws the
+    # straight frame lines (#268). Only `run` reads this; whether a rules text
+    # says a line is no house is read off the board being encoded, not here.
     bent_lines: bool = True
     # Does this example's framebuild 9x9 GLOBAL board own the plain names
     # (PUZZLE_LINK.txt / gen.json)? See `board_files`. False for
@@ -113,9 +113,12 @@ class Board:
     `generate` seed carved it, and is None for a board read back off disk that
     never recorded one.
 
-    Frozen: `generate` proves a board unique and `build_doc` encodes exactly
-    that board, so nothing between the two re-points a board at another grid.
-    A variant is `dataclasses.replace(board, ...)`.
+    Frozen at the field level: `generate` proves a board unique and
+    `build_doc` encodes exactly that board, so nothing between the two
+    re-points a board at another grid. A variant is
+    `dataclasses.replace(board, ...)`, which is how the carve loop and the
+    tests build one. The containers themselves are ordinary dicts and lists,
+    so a caller that means to bend a board's contents copies them first.
     """
 
     n: int
@@ -132,6 +135,18 @@ class Board:
     def box(self):
         """The (box_height, box_width) pair a clue rule sizes itself from."""
         return (self.bh, self.bw)
+
+
+def _ring_key(name):
+    """A ring key as the gen JSON spells it: "T3" -> ("T", 3)."""
+    return (name[0], int(name[1:]))
+
+
+def _ring_name(key):
+    """The inverse of `_ring_key`: ("T", 3) -> "T3". The one spelling of a ring
+    key as a string, shared by the gen JSON, the ring-cell lookup and the
+    CP-SAT variable tags."""
+    return f"{key[0]}{key[1]}"
 
 
 # ---- grid generation ------------------------------------------------------
@@ -270,7 +285,7 @@ def unique(post_clue, board):
     # and so the CP-SAT search path, the same on every run.
     for k in sorted(board.active):
         cells = board.lines[k]
-        post_clue(m, x, cells, board.clue[k], n, f"{k[0]}{k[1]}", board.box)
+        post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
     s = _solver(cp_model)
     if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return None
@@ -302,54 +317,48 @@ def generate(spec, n, bh, bw, seeds, paths=False):
         if paths and not repeating_lines(grid, lines):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
-        clue = {
-            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, (bh, bw))
-            for k, cells in lines.items()
-        }
-
-        def carved(givens, active, _s=seed, _g=grid, _c=clue, _l=lines):
-            """The board this seed carves to, as the givens and shown clues
-            stand right now -- one value per probe, so the carve never edits a
-            board it has already proved."""
-            return Board(
-                n=n,
-                bh=bh,
-                bw=bw,
-                grid=_g,
-                clue=_c,
-                givens=dict(givens),
-                active=set(active),
-                lines=_l,
-                seed=_s,
-            )
-
-        active = set(lines)  # every line clued while carving givens
+        # every line clued while carving givens
+        base = Board(
+            n=n,
+            bh=bh,
+            bw=bw,
+            grid=grid,
+            clue={
+                k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, (bh, bw))
+                for k, cells in lines.items()
+            },
+            givens={},
+            active=set(lines),
+            lines=lines,
+            seed=seed,
+        )
         givens = {}
         cells_all = [(r, c) for r in range(n) for c in range(n)]
         rng.shuffle(cells_all)
-        if not unique(spec.cp_sat_clue_fn, carved(givens, active)):
+        if not unique(spec.cp_sat_clue_fn, base):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
-                if unique(spec.cp_sat_clue_fn, carved(givens, active)):
+                if unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
                     break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
-            if not unique(spec.cp_sat_clue_fn, carved(givens, active)):
+            if not unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
                 givens[cell] = v
         print(f"  seed {seed}: interior givens = {len(givens)}")
-        if best is None or len(givens) < len(best[0].givens):
-            best = (carved(givens, active), carved)
+        if best is None or len(givens) < len(best.givens):
+            best = replace(base, givens=dict(givens))
     assert best is not None, "no seed produced a board to carve"
-    board, carved = best
-    givens, active = dict(board.givens), set(board.active)
+
+    board = best
+    active = set(board.active)
     rng = random.Random(board.seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
     rng.shuffle(order)
     for k in order:
         active.discard(k)
-        if not unique(spec.cp_sat_clue_fn, carved(givens, active)):
+        if not unique(spec.cp_sat_clue_fn, replace(board, active=set(active))):
             active.add(k)
-    board = carved(givens, active)
+    board = replace(board, active=active)
     assert unique(spec.cp_sat_clue_fn, board) is True
     if paths:
         # The property the board exists to carry. Asserted here so a
@@ -386,7 +395,7 @@ def frame_groups(n, lines):
     return [
         {
             "cells": [
-                idx(*ring_cell(f"{key[0]}{key[1]}", W)),
+                idx(*ring_cell(_ring_name(key), W)),
                 *(idx(r + 1, c + 1) for r, c in lines[key]),
             ],
             "value": "",
@@ -404,11 +413,12 @@ def build_doc(spec, board, local=False):
     clue cell first.
 
     Whether those drawn lines bend -- which only the rules text cares about --
-    is the Spec's `bent_lines`, and the global lane, which draws none, is
-    never bent.
+    is read off `board` itself, so a link never tells a solver a digit may
+    repeat along cells that are a plain row. The global lane draws no lines at
+    all, so it is never bent.
     """
     n, bh, bw = board.n, board.bh, board.bw
-    bent = local and spec.bent_lines
+    bent = local and board.lines != make_lines(n)
     W = n + 2
     idx = lambda r, c: r * W + c
     # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
@@ -434,7 +444,7 @@ def build_doc(spec, board, local=False):
     # EMPTY cell. Never store the hidden value — a non-given value ships as an
     # entered digit, so the recipient opens the link with every clue typed in.
     for key in board.lines:
-        ci = idx(*ring_cell(f"{key[0]}{key[1]}", W))
+        ci = idx(*ring_cell(_ring_name(key), W))
         cells[ci] = (
             {"value": board.clue[key], "given": True} if key in board.active else {}
         )
@@ -716,13 +726,31 @@ def rebuild(spec, n, local=False):
     """
     link_path, gen_path = board_files(spec, n, local)
     assert gen_path.exists(), (
-        f"{gen_path.name} does not exist: this example has no such board"
+        f"{gen_path.name} does not exist: this example ships no framebuild "
+        f"board at n={n} on the {'local' if local else 'global'} lane. A link "
+        "whose board was not carved here is rebuilt by its own build_link.py."
     )
     board = load_board(gen_path)
     doc = build_doc(spec, board, local=local)
     link = link_codec.encode_link(doc)
     check(spec, link, doc, n, local=local)
+    assert link_path.exists(), (
+        f"{link_path.name} does not exist: there is no committed link for this "
+        "board to rebuild"
+    )
     before = link_codec.decode_puzzle(link_path.read_text().strip())
+    if local:
+        # `frame_and_comment_only` clears the constraint's own input, and on
+        # the local lane that input IS the line geometry -- the only place a
+        # drawn board's lines appear in the document. Compare it here, or a
+        # gen JSON whose "paths" moved rebuilds into a link drawing lines the
+        # shown clues no longer describe, and the guard below sees nothing.
+        drawn = find_constraint(before, spec.constraint_name)["input"].get("groups")
+        assert drawn == frame_groups(board.n, board.lines), (
+            "the committed link draws different lines from the recorded "
+            "board's -- a rebuild from the recorded seed must not move the "
+            "geometry"
+        )
     assert frame_and_comment_only(
         before, spec.constraint_name
     ) == frame_and_comment_only(doc, spec.constraint_name), (
@@ -738,9 +766,9 @@ def main(spec, argv=None):
         <n> <box_height> <box_width> [seed_count] [--paths|--local]
         --rebuild <n> [--paths|--local]
 
-    `--paths` and `--local` both name the LOCAL board; the pair exists because
-    the examples' READMEs grew up saying different things, and the Spec's
-    `bent_lines` -- not the flag -- says whether that board's lines bend.
+    `--paths` and `--local` are two names for the same lane: both build the
+    LOCAL board. The Spec's `bent_lines` -- not the flag -- says whether that
+    board's drawn lines bend.
 
     `argv` defaults to the process's, and is passed explicitly by
     `framebuild.test.py`: nothing below `main` reads `sys.argv`.
@@ -764,6 +792,8 @@ def main(spec, argv=None):
     )
     args = p.parse_args(argv)
 
+    if args.rebuild and (args.box_height is not None or args.box_width is not None):
+        p.error("--rebuild re-encodes a committed board: pass n and the lane only")
     if args.rebuild:
         link_path, _ = board_files(spec, args.n, args.local)
         link = rebuild(spec, args.n, local=args.local)

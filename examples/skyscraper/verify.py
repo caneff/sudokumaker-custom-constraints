@@ -104,19 +104,13 @@ def grid_problems(board):
     """Every way `board`'s recorded solution fails to be a solution of the
     recorded board: a repeat in some house, a given it contradicts, or a line
     whose clue it does not produce. Empty means the grid stands up."""
-    n, grid, clue, givens, lines = (
-        board.n,
-        board.grid,
-        board.clue,
-        board.givens,
-        board.lines,
-    )
+    n, grid = board.n, board.grid
     houses = [[(r, c) for c in range(n)] for r in range(n)]
     houses += [[(r, c) for r in range(n)] for c in range(n)]
     houses += [sorted(box) for box in boxes(n, board.bh, board.bw)]
     read = {
         key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells, board.box)
-        for key, cells in lines.items()
+        for key, cells in board.lines.items()
     }
     return (
         [
@@ -126,14 +120,14 @@ def grid_problems(board):
         ]
         + [
             f"given {key}: gen says {v}, the recorded grid has {grid[key[0]][key[1]]}"
-            for key, v in sorted(givens.items())
+            for key, v in sorted(board.givens.items())
             if grid[key[0]][key[1]] != v
         ]
         + [
-            f"clue {key[0]}{key[1]}: gen says {clue[key]}, "
+            f"clue {key[0]}{key[1]}: gen says {board.clue[key]}, "
             f"the recorded grid reads {read[key]}"
-            for key in sorted(lines)
-            if read[key] != clue[key]
+            for key in sorted(board.lines)
+            if read[key] != board.clue[key]
         ]
     )
 
@@ -174,12 +168,14 @@ def boards():
     gen file so a new size needs no edit and sized by what that file records
     rather than by its name. The 9x9 is the plain-named pair; a `_local` board
     is a drawn-path board, which this does not read."""
-    paths = [HERE / "gen.json", *HERE.glob("gen_*x*.json")]
-    found = [
-        (board := load_board(path), board_files(SPEC, board.n)[0])
-        for path in paths
-        if path.exists() and not path.stem.endswith("_local")
-    ]
+    found = []
+    for path in [HERE / "gen.json", *HERE.glob("gen_*x*.json")]:
+        # gen.json is named, not globbed, so this example may simply not have
+        # one; a _local board is a drawn-path board and is not read here.
+        if not path.exists() or path.stem.endswith("_local"):
+            continue
+        board = load_board(path)
+        found.append((board, board_files(SPEC, board.n)[0]))
     return sorted(found, key=lambda pair: pair[0].n)
 
 

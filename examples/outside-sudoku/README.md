@@ -197,12 +197,12 @@ membership.
 ### How a clue function sees the direction
 
 A window is 3 across but 2 down on a 6x6, so the line's digits alone do not
-fix its length. `framebuild.Spec.clue_fn` therefore takes `(values, cells)`:
-`cells` are the line's cells, nearest the clue first, and both of this
-example's clue functions read the direction off `cells[0]` and `cells[1]`.
-The box shape comes from `build_size.spec_for(bh, bw)`, which builds a Spec for
-the size being generated. Clue functions on other examples ignore the second
-argument.
+fix its length. `framebuild.Spec.clue_fn` therefore takes
+`(values, cells, box)`: `cells` are the line's cells, nearest the clue first,
+and both of this example's clue functions read the direction off `cells[0]`
+and `cells[1]`; `box` is the board's `(box_height, box_width)`, which fixes how
+far the window reaches in that direction. One `SPEC` therefore serves every
+size. Clue functions on other examples ignore both arguments.
 
 ## Run
 
