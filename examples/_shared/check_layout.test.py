@@ -15,6 +15,7 @@ import tempfile
 
 from check_layout import RULES_PREFIX, check_tree
 from link_codec import encode_link
+from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
 
@@ -27,6 +28,7 @@ def _link(
     note=None,
     full_ring=False,
     houses="full",
+    frame_backend=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -45,7 +47,9 @@ def _link(
     `houses` shapes the board's house constraints on this 3x3: "full" (the
     default) is a real board -- three regions, one per row, plus a column cage
     each; "boxes" drops the column cages, the shape that cost three tickets of
-    quad-rank work (#335); "none" drops both.
+    quad-rank work (#335); "none" drops both. `frame_backend` adds a constraint
+    carrying the shared frame row/column backend, which declares the interior
+    lines in JS instead of in the document (#394).
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if full_ring:
@@ -78,13 +82,26 @@ def _link(
                 "cages": [{"cells": [c, c + 3, c + 6], "value": 0} for c in range(3)],
             }
         )
+    extra = []
+    if frame_backend:
+        code = minify_js((HERE / "frame-rowcol.js").read_text())
+        extra.append(
+            {
+                "type": 1000,
+                "definition": {
+                    "name": "Frame Rows and Columns",
+                    "backend": {"type": "code", "code": code},
+                    "components": [],
+                },
+            }
+        )
     doc = {
         "puzzle": {
             "width": 3,
             "height": 3,
             "cells": cells,
             "comment": comment,
-            "constraints": [*house_constraints, constraint],
+            "constraints": [*house_constraints, constraint, *extra],
         }
     }
     return encode_link(doc)
@@ -433,6 +450,35 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "PUZZLE_LINK.txt" in violations[0]
         assert "BarComponent" in violations[0]
+
+    # a link that declares its interior rows and columns in the shared frame
+    # backend, not in the document, still satisfies the house check: the
+    # cage form cannot be named and the named houses cost nothing once their
+    # ids are coerced, so framebuilt boards moved the declaration into JS
+    # (#394). The guard matches the committed frame-rowcol.js byte for byte,
+    # so a stale or hand-edited copy is still caught.
+    framed = _link(houses="none", frame_backend=True)
+    with example(contents={"PUZZLE_LINK.txt": framed}) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # ...but a board that declares them nowhere at all still fails
+    bare = _link(houses="none")
+    with example(contents={"PUZZLE_LINK.txt": bare}) as (root, _):
+        violations = check_tree(root)
+        assert violations, "a board with no houses at all was accepted"
+
+    # a built-in is not a component the link must carry: SudokuMaker provides
+    # the class, so a backend that constructs one ships no file for it and the
+    # link is not stale (#394). The frame boards' corner pin is the first
+    # backend in this repo to do that.
+    builtin = _link(
+        ships=("FooComponent",),
+        registers=("FooComponent", "PredefinedCandidatesComponent"),
+    )
+    with example(contents={"PUZZLE_LINK.txt": builtin}) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
 
     # a comment naming a component is not a registration. A link built today
     # ships no comments (#385), but this sweep also reads backends off links

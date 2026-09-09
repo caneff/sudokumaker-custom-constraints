@@ -5,7 +5,7 @@
 #
 #   uv run --with lzstring examples/_shared/component_scan.test.py
 
-from component_scan import registered_components
+from component_scan import builtin_components, registered_components
 
 if __name__ == "__main__":
     # a single registration is found
@@ -35,5 +35,18 @@ if __name__ == "__main__":
     # no registrations at all
     assert registered_components("") == set()
     assert registered_components("const x = 1;") == set()
+
+    # the built-ins SudokuMaker ships are read off docs/builtin-components.md,
+    # the list of record. A backend may construct one of these without the
+    # link carrying any component file for it -- they live in the app, not in
+    # the link -- so the shipped-vs-registered checks subtract them (#394).
+    builtins = builtin_components()
+    assert "PredefinedCandidatesComponent" in builtins
+    assert "HouseComponent" in builtins
+    assert "DifferentDigitsComponent" in builtins
+    # an example's own component is not a built-in, or the checks that keep a
+    # link's component list honest would stop seeing it
+    assert "SkyscraperLineComponent" not in builtins
+    assert "FooComponent" not in builtins
 
     print("component_scan self-check OK")

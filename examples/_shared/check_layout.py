@@ -33,8 +33,9 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from component_scan import registered_components
+from component_scan import builtin_components, registered_components
 from link_codec import decode_puzzle
+from minify import minify_js
 
 REQUIRED_FILES = [
     "README.md",
@@ -277,7 +278,10 @@ def check_components(example_dir, link):
 
     A lexical check, like the one in `framebuild.check`: it reads
     `new <Name>Component` off the backend source, so a class reached through
-    an alias, or named some other way, is invisible to it. Comment lines are
+    an alias, or named some other way, is invisible to it. SudokuMaker's own
+    built-ins are subtracted first (`component_scan.builtin_components`): the
+    app provides those classes, so a backend that constructs one ships no
+    component file for it and the link is not stale (#394). Comment lines are
     dropped first: a link built today ships none (#385, minify.py), but this
     sweep also reads backends off links no builder rebuilds -- fillomino's
     frozen timing fixtures and hunt records -- whose committed backends still
@@ -300,7 +304,7 @@ def check_components(example_dir, link):
         # A definition with no code backend registers nothing; its component
         # list is then empty too, so the two sets still match.
         backend = definition.get("backend", {}).get("code", "")
-        registered = registered_components(backend)
+        registered = registered_components(backend) - builtin_components()
         if shipped != registered:
             violations.append(
                 f"{name}: {link.name} constraint {definition['name']!r} ships "
@@ -325,9 +329,31 @@ def declared_houses(puzzle):
     return houses
 
 
+FRAME_ROWCOL = pathlib.Path(__file__).parent / "frame-rowcol.js"
+
+
+def declares_lines_in_js(puzzle):
+    """Does this link run the shared frame row/column backend?
+
+    A framebuilt board declares its interior rows and columns as named
+    `HouseComponent`s from that one file rather than as document cages: a cage
+    cannot be named (the app hard-codes "the cage at <cell>", the same string
+    for row 1 and column 1) and the named houses cost nothing once their ids
+    are coerced (#394). The match is against the committed file's own minified
+    text, so this excuses exactly the reviewed code -- a stale copy, a
+    hand-edited one, or any other backend does not pass.
+    """
+    want = minify_js(FRAME_ROWCOL.read_text())
+    return any(
+        (c.get("definition") or {}).get("backend", {}).get("code") == want
+        for c in puzzle.get("constraints", [])
+    )
+
+
 def check_houses(example_dir, link):
     """Decode `link` and return one violation string per interior row or column
-    that is not a house the document declares.
+    that is neither a house the document declares nor one the shared frame
+    backend declares in JS.
 
     A region constraint gives you BOXES ONLY -- rows and columns are not
     implied, and nothing in the app says so: it solves, times and counts
@@ -362,6 +388,9 @@ def check_houses(example_dir, link):
         if regions is not None
         else set(range(width * height))
     )
+
+    if declares_lines_in_js(puzzle):
+        return []
 
     houses = declared_houses(puzzle)
     violations = []

@@ -36,6 +36,8 @@ test:
     node examples/_shared/app-solve-lib.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
     node examples/_shared/harness-lib.test.mjs
+    node examples/_shared/frame-rowcol.test.mjs
+    node examples/_shared/frame-corners.test.mjs
     node examples/_shared/global-backends.test.mjs
     uv run examples/_shared/minify.test.py
     uv run examples/_shared/frame.test.py

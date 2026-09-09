@@ -8,10 +8,7 @@
   "width": 11,
   "height": 11,
   "cells": [
-   {
-    "given": true,
-    "value": 1
-   },
+   {},
    {
     "value": 2,
     "given": true
@@ -45,10 +42,7 @@
     "value": 2,
     "given": true
    },
-   {
-    "given": true,
-    "value": 1
-   },
+   {},
    {
     "value": 2
    },
@@ -362,10 +356,7 @@
    {
     "value": 2
    },
-   {
-    "given": true,
-    "value": 1
-   },
+   {},
    {
     "value": 5,
     "given": true
@@ -398,10 +389,7 @@
     "value": 2,
     "given": true
    },
-   {
-    "given": true,
-    "value": 1
-   }
+   {}
   ],
   "constraints": [
    {
@@ -529,286 +517,6 @@
      -1,
      -1
     ]
-   },
-   {
-    "name": "Rows",
-    "type": 301,
-    "cages": [
-     {
-      "cells": [
-       12,
-       13,
-       14,
-       15,
-       16,
-       17,
-       18,
-       19,
-       20
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       23,
-       24,
-       25,
-       26,
-       27,
-       28,
-       29,
-       30,
-       31
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       34,
-       35,
-       36,
-       37,
-       38,
-       39,
-       40,
-       41,
-       42
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       45,
-       46,
-       47,
-       48,
-       49,
-       50,
-       51,
-       52,
-       53
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       56,
-       57,
-       58,
-       59,
-       60,
-       61,
-       62,
-       63,
-       64
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       67,
-       68,
-       69,
-       70,
-       71,
-       72,
-       73,
-       74,
-       75
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       78,
-       79,
-       80,
-       81,
-       82,
-       83,
-       84,
-       85,
-       86
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       89,
-       90,
-       91,
-       92,
-       93,
-       94,
-       95,
-       96,
-       97
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       100,
-       101,
-       102,
-       103,
-       104,
-       105,
-       106,
-       107,
-       108
-      ],
-      "value": 0
-     }
-    ],
-    "style": {
-     "text": {
-      "color": "#000000"
-     },
-     "cage": {
-      "color": "#00000000"
-     }
-    }
-   },
-   {
-    "name": "Columns",
-    "type": 301,
-    "cages": [
-     {
-      "cells": [
-       12,
-       23,
-       34,
-       45,
-       56,
-       67,
-       78,
-       89,
-       100
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       13,
-       24,
-       35,
-       46,
-       57,
-       68,
-       79,
-       90,
-       101
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       14,
-       25,
-       36,
-       47,
-       58,
-       69,
-       80,
-       91,
-       102
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       15,
-       26,
-       37,
-       48,
-       59,
-       70,
-       81,
-       92,
-       103
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       16,
-       27,
-       38,
-       49,
-       60,
-       71,
-       82,
-       93,
-       104
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       17,
-       28,
-       39,
-       50,
-       61,
-       72,
-       83,
-       94,
-       105
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       18,
-       29,
-       40,
-       51,
-       62,
-       73,
-       84,
-       95,
-       106
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       19,
-       30,
-       41,
-       52,
-       63,
-       74,
-       85,
-       96,
-       107
-      ],
-      "value": 0
-     },
-     {
-      "cells": [
-       20,
-       31,
-       42,
-       53,
-       64,
-       75,
-       86,
-       97,
-       108
-      ],
-      "value": 0
-     }
-    ],
-    "style": {
-     "text": {
-      "color": "#000000"
-     },
-     "cage": {
-      "color": "#00000000"
-     }
-    }
    },
    {
     "type": 0
@@ -1382,11 +1090,25 @@
    {
     "type": 1000,
     "definition": {
-     "name": "JSON Postproc",
+     "name": "Frame Rows and Columns",
      "input": [],
      "backend": {
       "type": "code",
-      "code": "// optional: Make conflict checker work again.  Needs cirne's userscript installed to TamperMonkey or equivalent plugin. Find script here:\n// https://gist.github.com/dmchurch/9e43f85588c4ef90e231f94afc7bd0f7#file-sudokumaker-json-postproc-user-js\n\n// To manually make conclict checking work, edit the json of the final puzzle (using https://marktekfan.github.io/sudokupad-penpa-import/ for instance) and\n// \"norowcol\":true to the metadata section, and for each hidden cage (the rows and columns) add \"type\":\"rowcol\" to them. \nfunction postprocessJSON(json) {\n    json.metadata.norowcol = true;\n    json.cages.forEach(cage => cage.hidden ? cage.type = \"rowcol\" : null)\n}"
+      "code": "function rowsAndColumns () {\n  return [\n    ['row', 'Row', helpers.geometry.getAllRows()],\n    ['column', 'Column', helpers.geometry.getAllColumns()]\n  ].flatMap(([kind, houseType, lines]) =>\n    [...lines].slice(1, -1).map((line, i) => ({\n      name: `${kind} ${i + 1}`,\n      houseType,\n      cells: line.slice(1, -1).map(cell => cell | 0)\n    }))\n  )\n}\nconst digitCount = helpers.digits.maxDigit - helpers.digits.minDigit + 1\nfor (const { name, houseType, cells } of rowsAndColumns()) {\n  puzzle.addConstraintComponent(cells.length === digitCount\n    ? new HouseComponent(name, cells, houseType)\n    : new DifferentDigitsComponent(name, cells))\n}\nfunction postprocessJSON (json) {\n  const { width: W, height: H } = helpers.cellIds\n  const toRC = cell => {\n    const { x, y } = helpers.cellIds.getCoordsFromId(cell)\n    return [y, x]\n  }\n  json.metadata.norowcol = true\n  json.cages.push(...rowsAndColumns().map(({ cells }) => ({\n    unique: 'true', type: 'rowcol', hidden: 'true', cells: cells.map(toRC)\n  })))\n  const corners = [[0, 0], [0, W - 1], [H - 1, 0], [H - 1, W - 1]]\n  for (const [r, c] of corners) delete json.cells[r][c].value\n  const masked = new Set(corners.map(([r, c]) => r * W + c))\n  json.metadata.solution = json.metadata.solution?.replace(/./g,\n    (digit, index) => masked.has(index) ? '?' : digit)\n}\n"
+     },
+     "components": []
+    },
+    "input": {},
+    "style": {}
+   },
+   {
+    "type": 1000,
+    "definition": {
+     "name": "Frame Corners",
+     "input": [],
+     "backend": {
+      "type": "code",
+      "code": "const { width: W, height: H } = helpers.cellIds\nconst corners = [0, W - 1, W * (H - 1), W * H - 1]\npuzzle.addConstraintComponent(new PredefinedCandidatesComponent(\n  'the frame corners', SudokuDigitSet.from([helpers.digits.minDigit]), corners))\n"
      },
      "components": []
     },

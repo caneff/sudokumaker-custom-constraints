@@ -39,6 +39,7 @@ from framebuild import (
     save_board,
     unique,
 )
+from minify import minify_js
 
 
 @contextlib.contextmanager
@@ -149,6 +150,22 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
             raise AssertionError("a shipped, never-registered component was not caught")
 
 
+def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
+    # SudokuMaker provides the built-ins, so a backend that constructs one
+    # ships no component file for it and the link is not missing anything.
+    # `check_layout.check_components` says the same at the sweep seam; the two
+    # copies of this rule have to agree (#394).
+    with _spec(
+        ["FooComponent.js"],
+        main_global=(
+            "puzzle.addConstraintComponent(new FooComponent())\n"
+            "puzzle.addConstraintComponent(new PredefinedCandidatesComponent())"
+        ),
+    ) as spec:
+        link, doc, board = _build(spec)
+        check(spec, link, doc, board, local=False)
+
+
 def test_check_catches_a_document_that_is_not_the_board_s_size():
     # `check` takes the board the document was built from, so the size it
     # holds the document to comes from outside the document -- reading it back
@@ -161,6 +178,44 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
             assert "maxDigit" in str(e), e
         else:
             raise AssertionError("a document of the wrong size was not caught")
+
+
+def test_build_doc_leaves_the_frame_corners_empty():
+    # A corner belongs to no line, no region and no cage, so the filler given
+    # that used to hold it down was a digit the recipient could read off the
+    # board -- a `1` in all four corners of every shipped link (#394). The
+    # document leaves them empty and the frame backend pins them instead.
+    with _spec(["FooComponent.js"]) as spec:
+        _, doc, board = _build(spec)
+        W = board.n + 2
+        corners = [0, W - 1, W * (W - 1), W * W - 1]
+        assert [doc["puzzle"]["cells"][i] for i in corners] == [{}] * 4
+
+
+def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
+    # A region constraint gives boxes only, so the interior lines have to be
+    # declared somewhere or the board is not the puzzle it looks like (#335).
+    # They are declared in the frame backend now, as named houses, rather than
+    # as transparent type-301 cages: the cage form cannot be named (the app
+    # hard-codes "the cage at <cell>" and duplicates it between row 1 and
+    # column 1), and the named houses cost nothing once their ids are coerced
+    # (#394). This pins that the link runs both frame backends -- the ones
+    # `frame-rowcol.test.mjs` and `frame-corners.test.mjs` cover -- and that no
+    # cage is left claiming to do the job.
+    with _spec(["FooComponent.js"]) as spec:
+        _, doc, _ = _build(spec)
+        backends = [
+            c.get("definition", {}).get("backend", {}).get("code", "")
+            for c in doc["puzzle"]["constraints"]
+        ]
+        shared = pathlib.Path(__file__).parent
+        for name in ("frame-rowcol.js", "frame-corners.js"):
+            assert minify_js((shared / name).read_text()) in backends, (
+                f"the link does not run {name}"
+            )
+        assert not [c for c in doc["puzzle"]["constraints"] if c.get("type") == 301], (
+            "the interior lines are declared twice: as houses and as cages"
+        )
 
 
 def test_make_grid_is_a_real_sudoku_reproducible_from_its_seed():
@@ -560,6 +615,9 @@ if __name__ == "__main__":
     test_check_passes_when_the_backend_registers_the_declared_component()
     test_check_catches_a_shipped_component_the_backend_never_registers()
     test_check_catches_a_document_that_is_not_the_board_s_size()
+    test_check_accepts_a_backend_that_reaches_for_a_built_in_component()
+    test_build_doc_leaves_the_frame_corners_empty()
+    test_build_doc_declares_the_interior_rows_and_columns_in_its_backends()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()

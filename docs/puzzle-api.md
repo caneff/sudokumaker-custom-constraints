@@ -66,6 +66,22 @@ include `getOrthogonallyAdjacentCells`, `getDiagonallyAdjacentCells`,
 `getCellsPointedAtByOuterClue`, and `helpers.lines.getLineEnds`. Verify the
 exact signature before relying on one. **[docs]**
 
+**`getAllRows()` / `getAllColumns()` return a GENERATOR, not an array**, and
+each line it yields is a plain `Array` of cell ids covering the whole board
+edge to edge -- on a frame board, `[...getAllRows()].slice(1, -1)` drops the
+ring rows and `line.slice(1, -1)` drops each row's two ring cells. The
+generator is consumed by one walk, so call it again rather than reusing it.
+**[verified]** (live probe 2026-09-09, #394)
+
+**Coerce these ids with `| 0` too.** The same ~1.2-1.3x per-candidate cost
+`getCellAt` carries (#276, above) applies to ids that come out of the geometry
+helpers. Measured on the shipped skyscraper 9x9: eighteen row/column
+`HouseComponent`s built straight from `getAllRows()` ran **1.18x** the
+document cages they replaced; the identical construction with
+`.map(c => c | 0)` ran **0.97x** (#394). Nothing about the id looks different
+from JS -- `Array.isArray` is true and the values compare `===` -- so the
+coercion is not optional decoration.
+
 ## spec
 
 `puzzle.spec.digitCount`, `spec.minDigit`, `spec.maxDigit`,

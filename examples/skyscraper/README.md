@@ -302,12 +302,33 @@ To use the whole grid as an interactive-outside frame instead (see
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2700ms | 2300ms | 0.85 | noise |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2000ms | 1900ms | 0.95 | noise |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper 10x10 | timeout (no deduction, `MAXN = 9`) | 100ms (`MAXN = 16`) | — | KEEP |
+| 2026-09-09 | v2026.08.14-d47fc4b | skyscraper | 7500ms | 7400ms | 0.99 | KEEP |
 
 The three 9x9 rows are the cap lift (`MAXN` 9 to 16) timed against the
 shipped board: the constant sizes three scratch arrays and nothing on the
 n ≤ 9 path, and the ratios land on both sides of 1, so the 9x9 is unchanged
 within the app's run-to-run swing. The 300ms row above is the earlier, easier
 board; `34991d9` shipped the harder one.
+
+The 2026-09-09 row is #394, which changes the board rather than a component:
+the corners stop being filler givens and a component pins them, and the
+interior's rows and columns become named `HouseComponent`s instead of
+transparent type-301 cages. No component code changed, so `just time` has no
+candidate to build and prints baseline-only rows:
+
+    | 2026-09-09 | v2026.08.14-d47fc4b | skyscraper | 7400ms | — | — | BASELINE |
+    | 2026-09-09 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | — | — | BASELINE |
+
+The ratio in the table is therefore the committed link *before* the change
+against the committed link *after* it -- five interleaved rounds, one rep
+each, cold, non-deterministic solve off: 7500ms to 7400ms, 0.99x. Both
+after-logical rows read 0ms, so that row places no constraint (the logic pass
+finishes this board). No deduction was added, so the bar is 1.1x on both rows.
+
+Interleave a comparison like this, one rep per variant per round; do not run
+each variant as a block. Under machine load the blocks drifted enough to
+reverse their own ordering twice, and the same pair read 1.00x/1.22x one way
+and 1.00x/0.73x the other.
 
 The 10x10 row (`PUZZLE_LINK_10x10.txt`, `gen_10x10.json`, 2x5 boxes, 12 givens,
 20 shown clues) is the size that lifted the line cap from 9 to 16: with the

@@ -289,6 +289,18 @@ Two hooks recur and are worth knowing:
   board — e.g. Candy Dots reads a disabled Difference constraint to build its
   colored dots. First Seen's version even pads the whole grid (offsetting cells,
   cages, lines, fog, and the solution).
+  **The app does not call this hook -- the publish-time userscript does.**
+  `postprocessJSON` appears in none of the recorded bundles
+  (`examples/_shared/sudokumaker.har`, v2026.08.14), and a hook defined in a
+  backend fires zero times across a full load and solve; a probe that logged
+  on entry confirmed it (#394). That is what a Tampermonkey hook looks like
+  from inside the app, not evidence the hook is dead: every framebuilt board
+  ships one, and `examples/_shared/frame-rowcol.js` is the worked example.
+  Test such a hook against a mock `json` -- it cannot be exercised end to end
+  from here. For comparison, the app's own SudokuPad exporter offers
+  `addGlobalUniqueDigitsGroup(cells)`, which writes exactly
+  `{cells, hidden: true, unique: true, type: "rowcol"}`, and
+  `addCage(cage, {unique, hidden, type, ...})`.
 - **`issExport(input, api, puzzle)`** emits the constraint to the sudokucolors
   ISS format through `And`/`Or` builders. Bounce Lines is notable: it expresses
   the rule as a **state machine** (`api.addStateMachine` with

@@ -29,8 +29,8 @@ from dataclasses import dataclass, replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
-from component_scan import registered_components
-from frame import cosmetics, ring_cell
+from component_scan import builtin_components, registered_components
+from frame import corner_cells, cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
 from minify import minify_js
 
@@ -425,9 +425,10 @@ def build_doc(spec, board, local=False):
     # interior cell (r,c) 0-indexed sits at board (r+1, c+1)
     cells = [{"value": 1} for _ in range(W * W)]
 
-    # corners: filler givens, belong to no line
-    for r, c in [(0, 0), (0, W - 1), (W - 1, 0), (W - 1, W - 1)]:
-        cells[idx(r, c)] = {"given": True, "value": 1}
+    # corners: empty, and belong to no line. A given here is a digit the
+    # recipient reads off the board, so the frame backend pins them instead.
+    for r, c in corner_cells(W):
+        cells[idx(r, c)] = {}
 
     # interior: a given carries its value; every other cell is EMPTY. The
     # solution is never stored — a non-given value ships as an entered digit.
@@ -456,15 +457,6 @@ def build_doc(spec, board, local=False):
         for c in range(n):
             regions[idx(r + 1, c + 1)] = (r // bh) * (n // bw) + (c // bw)
 
-    # transparent row/column cages over the interior (hidden rowcol helpers)
-    row_cages = [
-        {"cells": [idx(r + 1, c + 1) for c in range(n)], "value": 0} for r in range(n)
-    ]
-    col_cages = [
-        {"cells": [idx(r + 1, c + 1) for r in range(n)], "value": 0} for c in range(n)
-    ]
-    cage_style = {"text": {"color": "#000000"}, "cage": {"color": "#00000000"}}
-
     # Global: no drawn groups, so main-global.js builds all 4n frame lines
     # itself from the grid at solve time. Local: each line ships as a group
     # whose cells are the clue then the line inward, which is the order
@@ -483,17 +475,27 @@ def build_doc(spec, board, local=False):
         for f in component_files(spec, local)
     ]
 
-    postproc_code = (
-        "function postprocessJSON(json) {\n"
-        "    json.metadata.norowcol = true;\n"
-        '    json.cages.forEach(cage => cage.hidden ? cage.type = "rowcol" : null)\n'
-        "}\n"
-    )
+    # The frame's own two backends, shared by every example (their rules live
+    # in the files' own headers):
+    #   frame-rowcol   declares the interior's rows and columns as named
+    #                  houses, and hands SudokuPad the same lines at publish
+    #                  time. A region constraint gives BOXES ONLY, so without
+    #                  this the board is not the puzzle it looks like
+    #                  (docs/gotchas.md #9).
+    #   frame-corners  pins the four corner cells, which no line, region or
+    #                  house reaches; without it the app calls the board not
+    #                  unique.
+    shared = pathlib.Path(__file__).parent
+    frame_backends = [
+        (title, minify_js((shared / f"{name}.js").read_text()))
+        for name, title in (
+            ("frame-rowcol", "Frame Rows and Columns"),
+            ("frame-corners", "Frame Corners"),
+        )
+    ]
 
     constraints = [
         {"type": 1, "regions": regions},
-        {"name": "Rows", "type": 301, "cages": row_cages, "style": cage_style},
-        {"name": "Columns", "type": 301, "cages": col_cages, "style": cage_style},
         {"type": 0},
         *(spec.extra_cages(interior) if spec.extra_cages else []),
         {
@@ -508,17 +510,20 @@ def build_doc(spec, board, local=False):
             "input": constraint_input,
             "style": {},
         },
-        {
-            "type": 1000,
-            "definition": {
-                "name": "JSON Postproc",
-                "input": [],
-                "backend": {"type": "code", "code": postproc_code},
-                "components": [],
-            },
-            "input": {},
-            "style": {},
-        },
+        *(
+            {
+                "type": 1000,
+                "definition": {
+                    "name": name,
+                    "input": [],
+                    "backend": {"type": "code", "code": code},
+                    "components": [],
+                },
+                "input": {},
+                "style": {},
+            }
+            for name, code in frame_backends
+        ),
         *cosmetics(W, cells),
     ]
 
@@ -593,8 +598,10 @@ def check(spec, link, doc, board, local=False):
     # one is dead weight the recipient still reads as part of the rule --
     # #287, #289, #290, #291). `registered_components` is a lexical check: it
     # reads `new <Name>Component` off the backend source, so a class reached
-    # through an alias, or named some other way, is invisible to it.
-    registered = registered_components(backend)
+    # through an alias, or named some other way, is invisible to it. The
+    # built-ins are subtracted: SudokuMaker provides those classes, so a
+    # backend that constructs one ships no component file for it.
+    registered = registered_components(backend) - builtin_components()
     unshipped = sorted(registered - set(names))
     assert not unshipped, (
         f"the backend registers components the link omits: {unshipped}"
