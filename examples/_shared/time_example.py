@@ -14,12 +14,17 @@
 # Stays out of `just check`: it drives the live site (docs/real-app-timing.md).
 
 import argparse
+import atexit
 import datetime
+import functools
+import io
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 HERE = pathlib.Path(__file__).parent
@@ -28,7 +33,7 @@ sys.path.insert(0, str(HERE))
 
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, replace_constraint_code
-from minify import minify_js
+from minify import minify_file
 from probe_link import empty_link_file
 
 APP_SOLVE = HERE / "app-solve.mjs"
@@ -136,18 +141,47 @@ def registered_backend(doc, constraint_name):
 BACKEND_FILES = ("main.js", "main-global.js")
 
 
-def head_content(path):
-    """path's last-committed (git HEAD) content, ignoring any working-tree
-    edit -- resolve_backend_file's ground truth for "which file built the
-    committed link", immune to the very edit it is trying to detect."""
-    result = subprocess.run(
-        ["git", "show", f"HEAD:./{path.name}"],
-        cwd=path.parent,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout
+@functools.cache
+def _toplevel(start_dir):
+    """The git toplevel containing start_dir."""
+    return pathlib.Path(
+        subprocess.run(
+            ["git", "-C", start_dir, "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    ).resolve()
+
+
+@functools.cache
+def _head_tree(toplevel):
+    """A temp checkout of the whole repo at git HEAD, deleted when the process
+    ends. A whole tree, not one file's text: a paste target's `// #include`
+    resolves against a real directory, so HEAD's copy of an included file has
+    to sit at HEAD's copy of its path."""
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="head-tree-"))
+    atexit.register(shutil.rmtree, tmp, ignore_errors=True)
+    archive = subprocess.run(
+        ["git", "-C", toplevel, "archive", "HEAD"], stdout=subprocess.PIPE, check=True
+    ).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as tar:
+        tar.extractall(tmp, filter="data")
+    return tmp
+
+
+def head_path(path):
+    """Where path's HEAD copy sits inside the HEAD checkout -- a path, which
+    may not exist, because a file can be in the working tree and not at HEAD.
+    The caller decides what an absent one means; resolve_backend_file reads it
+    as "this cannot have built a committed link".
+
+    Immune to the working-tree edit it is trying to detect, and immune all the
+    way down: minify_file resolves this file's includes inside the same
+    checkout, so an edited include cannot leak in either."""
+    path = path.resolve()
+    toplevel = _toplevel(path.parent)
+    return _head_tree(str(toplevel)) / path.relative_to(toplevel)
 
 
 def resolve_backend_file(example_dir, base_doc, constraint_name):
@@ -165,12 +199,36 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
     ]
     if not candidates:
         return None
-    matches = [f for f in candidates if minify_js(head_content(f)) == committed_backend]
+    # A candidate that exists only in the working tree cannot have built a
+    # committed link, so it is not a match -- but it is worth naming when
+    # nothing matches, because "I added this file" is the likely reason.
+    at_head = [(f, head_path(f)) for f in candidates]
+    uncommitted = [f for f, h in at_head if not h.is_file()]
+    matches = [
+        f for f, h in at_head if h.is_file() and minify_file(h) == committed_backend
+    ]
     if not matches:
+        # The usual cause is not a missing backend file at all: it is a
+        # PUZZLE_LINK.txt that has been rebuilt against edited code and not
+        # committed. Its backend is then the new one while every candidate here
+        # is read at HEAD, so nothing matches -- and there is no baseline left
+        # to time against, because the link that was the baseline is gone. Say
+        # that first; a builder who has just regenerated a link would otherwise
+        # go looking at the wrong files.
+        note = (
+            f"; the likeliest cause is an uncommitted {example_dir.name}"
+            f"/PUZZLE_LINK*.txt rebuilt against edited code -- the baseline it "
+            f"used to be no longer exists in this tree"
+        )
+        if uncommitted:
+            note += (
+                f", or that {', '.join(f.name for f in uncommitted)} is in the "
+                f"working tree but not at HEAD"
+            )
         raise ValueError(
             f"{example_dir.name}: no backend file "
             f"({', '.join(BACKEND_FILES)}) matches the committed "
-            f"{constraint_name!r} backend"
+            f"{constraint_name!r} backend{note}"
         )
     if len(matches) > 1:
         raise ValueError(
@@ -199,7 +257,7 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     constraint_name = find_component_constraint(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
     if backend_file is not None:
-        backend_code = minify_js(backend_file.read_text())
+        backend_code = minify_file(backend_file)
         candidate_doc = replace_constraint_code(
             candidate_doc, constraint_name, backend_code=backend_code
         )
@@ -359,6 +417,19 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     if not build_link_py.exists():
         raise FileNotFoundError(f"missing {build_link_py}")
 
+    # The working-tree link, which is also what build_link.py bases the
+    # candidate on and what empty_link_file strips into the baseline probe --
+    # every link this function times comes from one tree. Reading it from HEAD
+    # instead would leave the two TIMED probes here in the working tree while
+    # only the decisions moved, and a regenerated link would then be timed
+    # against itself: two probes carrying the same new code, a ratio near 1,
+    # and a paste-ready verdict for a change nobody measured.
+    #
+    # The backend file is still identified at HEAD (resolve_backend_file), so
+    # an edit to a paste target or to something it includes cannot hide the
+    # file it is an edit to. When the link has itself been regenerated, those
+    # two disagree and the run refuses: the baseline that link used to be no
+    # longer exists in this tree, so there is nothing to time against.
     base_doc = decode_puzzle(baseline_link.read_text().strip())
     component_file = find_component_file(example_dir, base_doc, component=component)
     board_label = f"{example_dir.name} ({board})" if board else example_dir.name

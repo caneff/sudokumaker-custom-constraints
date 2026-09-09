@@ -14,7 +14,8 @@
 // every probe that builds one needs the same row/column/box cell groups, so it
 // rides along here too. It is built for a square interior only: on a rectangle
 // no one digit set fits both a row of nw and a column of nh, and boxes tile
-// only for dimensions that happen to divide.
+// only for dimensions that happen to divide. So on a rectangle `alldiffGroups`
+// throws rather than quietly using nw for both dimensions.
 
 export function frameGeometry (nw, [bh, bw], nh = nw) {
   const W = nw + 2
@@ -39,28 +40,53 @@ export function frameGeometry (nw, [bh, bw], nh = nw) {
 
   // Every clued line, as { key, clue cell, line cells }. A key is its side
   // plus its index: "L0".."L{nh-1}" and the same for R, "T0".."T{nw-1}" and
-  // the same for B. The keys group by side — every L, then every R, then every
-  // T, then every B — because the sides have different counts. Key order is
-  // not a contract: the frame is compared as a set of lines (#295), so a
-  // caller that depends on the sequence is depending on an accident.
-  const keys = []
-  for (const s of ['L', 'R']) for (let i = 0; i < nh; i++) keys.push(s + i)
-  for (const s of ['T', 'B']) for (let i = 0; i < nw; i++) keys.push(s + i)
-  const groups = keys.map(k => {
-    const side = k[0]; const i = +k.slice(1)
-    return { key: k, cells: [clueCell(side, i), ...lineCells(side, i)] }
-  })
+  // the same for B. The groups come off the side table below -- each side with
+  // its own count, because a left/right line and a top/bottom line are
+  // different lengths -- and `keys` is then their own keys, so the two cannot
+  // disagree. Key order is not a contract: the frame is compared as a set of
+  // lines (#295), so a caller that depends on the sequence is depending on an
+  // accident.
+  const groups = [['L', nh], ['R', nh], ['T', nw], ['B', nw]].flatMap(([side, count]) =>
+    Array.from({ length: count }, (_, i) => ({
+      key: side + i,
+      cells: [clueCell(side, i), ...lineCells(side, i)]
+    })))
+  const keys = groups.map(g => g.key)
 
-  const alldiffGroups = []
-  for (let r = 0; r < nw; r++) alldiffGroups.push(Array.from({ length: nw }, (_, c) => interior(r, c)))
-  for (let c = 0; c < nw; c++) alldiffGroups.push(Array.from({ length: nw }, (_, r) => interior(r, c)))
-  for (let br = 0; br < nw; br += bh) {
-    for (let bc = 0; bc < nw; bc += bw) {
-      const cells = []
-      for (let dr = 0; dr < bh; dr++) for (let dc = 0; dc < bw; dc++) cells.push(interior(br + dr, bc + dc))
-      alldiffGroups.push(cells)
+  function buildAlldiffGroups () {
+    const out = []
+    for (let r = 0; r < nw; r++) out.push(Array.from({ length: nw }, (_, c) => interior(r, c)))
+    for (let c = 0; c < nw; c++) out.push(Array.from({ length: nw }, (_, r) => interior(r, c)))
+    for (let br = 0; br < nw; br += bh) {
+      for (let bc = 0; bc < nw; bc += bw) {
+        const cells = []
+        for (let dr = 0; dr < bh; dr++) for (let dc = 0; dc < bw; dc++) cells.push(interior(br + dr, bc + dc))
+        out.push(cells)
+      }
     }
+    return out
   }
 
-  return { W, H, idx, interior, lineCells, clueCell, keys, groups, alldiffGroups }
+  // A getter, so the refusal fires on the ASK and not on the frame. A
+  // rectangular frame is a legitimate thing to build -- global-backends.test.mjs
+  // runs every backend on an 11x8 board precisely because a square frame is
+  // symmetric under transpose and hides a backend that reads one dimension
+  // twice (#299). Throwing in the constructor would take that board away to
+  // guard a field that board never reads.
+  return {
+    W,
+    H,
+    idx,
+    interior,
+    lineCells,
+    clueCell,
+    keys,
+    groups,
+    get alldiffGroups () {
+      if (nh !== nw) {
+        throw new Error(`frameGeometry: alldiffGroups is built for a square interior only, and this one is ${nw}x${nh}`)
+      }
+      return buildAlldiffGroups()
+    }
+  }
 }

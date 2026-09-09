@@ -263,6 +263,31 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "main.js" in violations[0] and "frame" in violations[0]
 
+    # the lane guards read the ASSEMBLED, minified source: a main.js whose
+    # body arrives through an `// #include` is still the local lane, so the
+    # getCellAt in the included file is the one that counts
+    with example(contents={"main.js": "// #include seg.js\n"}) as (root, d):
+        (d / "seg.js").write_text("puzzle.getCellAt(0, 0)\n")
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "main.js" in violations[0] and "frame" in violations[0]
+
+    # ...and comments are gone by then, so merely NAMING the other lane in
+    # prose is not a violation
+    with example(
+        contents={"main-global.js": "// never reads input.groups\nconst x = 1\n"}
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # a main.js that does not minify (here, an #include resolving to nothing)
+    # is a violation naming the example, not an AssertionError out of the walk
+    # that would leave every later example unchecked
+    with example(contents={"main.js": "// #include missing.js\n"}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "widget: main.js does not minify" in violations[0], violations[0]
+        assert "missing.js" in violations[0], violations[0]
+
     # main-global.js reading input.groups is a lane violation -- the drawn
     # groups belong to main.js only
     with example(contents={"main-global.js": "input.groups.map(g => g)"}) as (

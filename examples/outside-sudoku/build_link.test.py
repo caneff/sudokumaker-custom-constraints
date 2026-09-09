@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE))
 from build_link import CONSTRAINT_NAME, build
 from link_codec import decode_puzzle, encode_link
 from link_swap import blanked, find_constraint
-from minify import minify_js
+from minify import minify_file
 
 if __name__ == "__main__":
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
@@ -25,8 +25,8 @@ if __name__ == "__main__":
     # (docs/example-layout.md, "Which lane a link runs"). The local board and
     # its drawn groups are build_size.test.py's.
     lc = find_constraint(base, CONSTRAINT_NAME)
-    assert lc["definition"]["backend"]["code"] == minify_js(
-        (HERE / "main-global.js").read_text()
+    assert lc["definition"]["backend"]["code"] == minify_file(
+        HERE / "main-global.js"
     ), "PUZZLE_LINK.txt must run main-global.js"
     assert lc["definition"]["input"] == [] and lc["input"] == {}, (
         "the global board reads no drawn groups"

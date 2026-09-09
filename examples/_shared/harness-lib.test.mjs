@@ -2,8 +2,11 @@
 //   node examples/_shared/harness-lib.test.mjs
 
 import assert from 'assert'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import { dirname, join } from 'path'
 import { DigitSet, installGlobals, makeIo, makeLine, makePuzzle, makeRng } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -122,5 +125,25 @@ const { rnd } = makeRng()
 // ---- installGlobals: the naming helper a component calls for a message ----
 installGlobals(1, 9)
 assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]), 'string')
+
+// ---- makeIo().loadAt refuses a source carrying an #include ----
+// `read` assembles includes and `loadAt` cannot: it holds text from a commit,
+// with no directory to resolve one against. Two readers in one factory must
+// not silently disagree -- evalling the directive as a comment would fail much
+// later, as `frameLines is not defined`.
+{
+  const repo = mkdtempSync(join(tmpdir(), 'loadat-'))
+  const git = args => execFileSync('git', args, { cwd: repo, encoding: 'utf8' })
+  git(['init', '-q'])
+  writeFileSync(join(repo, 'comp.js'), '// #include seg.js\nfunction f () { return 1 }\n')
+  writeFileSync(join(repo, 'seg.js'), 'function seg () { return 2 }\n')
+  git(['add', '-A'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'init'])
+  const { loadAt } = makeIo(repo)
+  assert.throws(() => loadAt('HEAD', 'comp.js', ['f']), /#include/,
+    'loadAt must refuse a source it cannot assemble, not eval it')
+  // ...and a source with no directive still loads
+  assert.strictEqual(loadAt('HEAD', 'seg.js', ['seg']).seg(), 2)
+}
 
 console.log('harness-lib.test.mjs: all seams pass')

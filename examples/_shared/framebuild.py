@@ -32,7 +32,7 @@ import link_codec
 from component_scan import registered_components
 from frame import cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
-from minify import minify_js
+from minify import minify_file
 
 
 @dataclass
@@ -461,9 +461,7 @@ def build_doc(spec, board, local=False):
     # itself from the grid at solve time. Local: each line ships as a group
     # whose cells are the clue then the line inward, which is the order
     # main.js reads (docs/example-layout.md).
-    backend_code = minify_js(
-        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
-    )
+    backend_code = minify_file(spec.dir / ("main.js" if local else "main-global.js"))
     definition_input = (
         [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
         if local
@@ -471,7 +469,7 @@ def build_doc(spec, board, local=False):
     )
     constraint_input = {"groups": frame_groups(n, board.lines)} if local else {}
     components = [
-        {"type": "code", "name": stem(f), "code": minify_js((spec.dir / f).read_text())}
+        {"type": "code", "name": stem(f), "code": minify_file(spec.dir / f)}
         for f in component_files(spec, local)
     ]
 
@@ -562,9 +560,7 @@ def check(spec, link, doc, board, local=False):
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
     else:
         assert lc["input"] == {}, "the global board reads no drawn groups"
-    backend = minify_js(
-        (spec.dir / ("main.js" if local else "main-global.js")).read_text()
-    )
+    backend = minify_file(spec.dir / ("main.js" if local else "main-global.js"))
     assert lc["definition"]["backend"]["code"] == backend
     # Read the lane off `local` here, not off component_files(): an assertion
     # built from the same call the builder used would still pass if that call

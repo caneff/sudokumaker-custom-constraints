@@ -4,9 +4,10 @@
 
 import pathlib
 import sys
+import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from minify import minify_js
+from minify import minify_file, minify_js
 
 
 def test_drops_every_comment_including_the_marked_ones():
@@ -74,6 +75,102 @@ def test_refuses_an_unpaired_block_marker_rather_than_guessing():
         raise AssertionError(f"expected a refusal for {src!r}")
 
 
+def test_splices_an_include_relative_to_the_including_file():
+    # A "// #include <path>" line is replaced by the named file's text, so one
+    # copy of a shared segment can serve every paste target that needs it.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "_shared").mkdir()
+        (root / "_shared" / "seg.js").write_text("function f () { return 1 }\n")
+        (root / "main-global.js").write_text("// #include _shared/seg.js\nf()\n")
+        got = minify_file(root / "main-global.js")
+    assert got == "function f () { return 1 }\nf()\n", repr(got)
+
+
+def test_minifies_the_included_text_too():
+    # The include is spliced before the strip runs, so an included file's
+    # commentary is dropped exactly like the including file's.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "/* eslint-disable no-unused-vars */\n"
+            "// commentary, dropped\n"
+            "const x = 1  //! dropped too\n"
+        )
+        (root / "main.js").write_text("// #include seg.js\n")
+        got = minify_file(root / "main.js")
+    assert got == "const x = 1\n", repr(got)
+
+
+def test_an_include_that_minifies_to_nothing_leaves_no_blank_line():
+    # Minify's contract is that no blank line survives. An included file made
+    # only of commentary minifies to "", and splicing that in must not leave a
+    # blank line behind.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("// all commentary, nothing to ship\n")
+        (root / "main.js").write_text("const a = 1\n// #include seg.js\nconst b = 2\n")
+        got = minify_file(root / "main.js")
+    assert got == "const a = 1\nconst b = 2\n", repr(got)
+
+
+def test_refuses_a_missing_include_rather_than_shipping_the_directive():
+    # A directive that resolves to nothing must stop the build: silently
+    # leaving it in ships a link whose backend is missing a whole function.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "main.js").write_text("// #include nope.js\n")
+        try:
+            minify_file(root / "main.js")
+        except AssertionError:
+            return
+        raise AssertionError("expected a refusal for a missing include")
+
+
+def test_refuses_an_include_when_no_base_directory_is_known():
+    # minify_js on a bare string cannot resolve a relative path, so it refuses
+    # instead of dropping the directive as an ordinary comment.
+    # The message has to name the missing directory, not the missing file: a
+    # relative path resolved against the process's cwd fails as "no such file"
+    # too, and that refusal would hide this one.
+    try:
+        minify_js("// #include seg.js\n")
+    except AssertionError as e:
+        assert "minify_file" in str(e), str(e)
+        return
+    raise AssertionError("expected a refusal with no base_dir")
+
+
+def test_refuses_an_include_cycle():
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "a.js").write_text("// #include b.js\n")
+        (root / "b.js").write_text("// #include a.js\n")
+        try:
+            minify_file(root / "a.js")
+        except AssertionError:
+            return
+        raise AssertionError("expected a refusal for an include cycle")
+
+
+def test_refuses_a_directive_with_no_path():
+    # "// #include" alone is not an ordinary comment to drop: it is a
+    # half-written directive, and guessing what it meant is the ambiguity this
+    # strip refuses.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "main.js").write_text("// #include\n")
+        try:
+            minify_file(root / "main.js")
+        except AssertionError as e:
+            # Named as a pathless directive, not as a missing file: an empty
+            # path resolves to the directory itself, which is not a file
+            # either, and that refusal would hide this one.
+            assert "exactly one path" in str(e), str(e)
+            return
+        raise AssertionError("expected a refusal for a pathless directive")
+
+
 if __name__ == "__main__":
     test_drops_every_comment_including_the_marked_ones()
     test_drops_a_marked_comment_that_trails_code()
@@ -81,4 +178,11 @@ if __name__ == "__main__":
     test_keeps_block_comments_when_asked_to()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
+    test_splices_an_include_relative_to_the_including_file()
+    test_minifies_the_included_text_too()
+    test_an_include_that_minifies_to_nothing_leaves_no_blank_line()
+    test_refuses_a_missing_include_rather_than_shipping_the_directive()
+    test_refuses_an_include_when_no_base_directory_is_known()
+    test_refuses_an_include_cycle()
+    test_refuses_a_directive_with_no_path()
     print("ok")

@@ -9,12 +9,14 @@
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { readFileSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { assembleSource } from '../_shared/include.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const src = f => readFileSync(join(HERE, f), 'utf8')
+// Assembled, not raw: main-global.js splices in the shared frame reader
+// (examples/_shared/frame-lines.js), and the app runs the assembled text.
+const src = f => assembleSource(join(HERE, f))
 
 // A board W cells wide: cell id = col + row * W, so `getCellAt(a, b)` is
 // `a + b * W` (docs/puzzle-api.md) -- the cell at column a, row b, the same

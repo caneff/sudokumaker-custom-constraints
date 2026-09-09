@@ -29,7 +29,7 @@ import build_size
 from framebuild import board_files, build_doc, check, frame_groups, load_board
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, frame_only, replace_constraint_code
-from minify import minify_js
+from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
@@ -52,8 +52,8 @@ def build(n, out_dir=HERE):
         f"wrote {improved_name} ({len(improved_link)} chars) — current component code"
     )
 
-    backend_code = minify_js((ORIG / "main.js").read_text())
-    component_code = minify_js((ORIG / "CustomSkyscraperLineComponent.js").read_text())
+    backend_code = minify_file(ORIG / "main.js")
+    component_code = minify_file(ORIG / "CustomSkyscraperLineComponent.js")
     assert backend_code and component_code, "original code empty"
 
     original = replace_constraint_code(

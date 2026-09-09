@@ -21,10 +21,11 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `main.js` — the local backend segment: one joint component per pair of drawn
   groups that cover the same line from opposite ends, and the per-line component
   for every group with no such partner.
-- `main-global.js` — the global backend segment: builds all 4n frame lines
-  from the board size, then registers the joint component per line plus the
-  side-sum and side-hit-matching components below (both need a whole side, so
-  only a full frame has them).
+- `main-global.js` — the global backend segment: reads all 4n frame lines off
+  the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
+  `docs/example-layout.md`), then registers the joint component per line plus
+  the side-sum and side-hit-matching components below (both need a whole side,
+  so only a full frame has them).
 - `HitCountsJointComponent.js` — one component for a whole line and both its
   clues, used wherever a line is clued at both ends. It reads the hits as a
   matching between digits and positions and prunes cells and clues against the
