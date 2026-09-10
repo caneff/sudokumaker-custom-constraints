@@ -229,7 +229,14 @@ def load_known(path):
     src = Path(path)
     out = []
     if src.is_file() and src.suffix == ".json":
-        if "grid" in json.loads(src.read_text()):
+        # An --out file may also be named .json, so what says a file is a
+        # candidate is that it parses as JSON carrying `grid` -- not the
+        # suffix. Anything else falls through to the streamed parser below.
+        try:
+            candidate = "grid" in json.loads(src.read_text())
+        except json.JSONDecodeError:
+            candidate = False
+        if candidate:
             grid, is_choc, _ = rv.load(src)
             return [(grid, is_choc)]
     if src.is_dir():
@@ -297,6 +304,10 @@ def flag_complaint(a):
         )
     if a.known_solution and not a.unique:
         return "--known-solution only means anything with --unique"
+    if a.unique and a.enumerate:
+        return "--unique and --enumerate are different runs; pick one"
+    if a.unique and a.out:
+        return "--unique writes no solutions file; --out belongs to --enumerate"
     return None
 
 
@@ -384,7 +395,10 @@ def prove_unique(m, choc, d, circled, a, known=None):
         )
         print("\n".join(render(g2, c2)))
         return "NOT UNIQUE"
-    print("verdict: NOT PROVED -- second-solution search timed out")
+    print(
+        "verdict: NOT PROVED -- second-solution search returned "
+        f"{s.status_name(st2)}"
+    )
     return "NOT PROVED"
 
 
@@ -475,9 +489,9 @@ def main():
     )
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    wrong = flag_complaint(a)
-    if wrong:
-        sys.exit(wrong)
+    refusal = flag_complaint(a)
+    if refusal:
+        sys.exit(refusal)
     circled = parse_cells(a.cells)
     givens = []
     for tok in a.givens.replace(" ", "").split(","):
@@ -498,11 +512,11 @@ def main():
             if not found:
                 sys.exit(f"no solution found in {a.known_solution}")
             seed = found[0]
-            wrong = clue_complaints(seed, circled, choc_cells, ban_cells, givens)
-            if wrong:
+            unmet = clue_complaints(seed, circled, choc_cells, ban_cells, givens)
+            if unmet:
                 sys.exit(
                     f"{a.known_solution} does not solve this clue set:\n  "
-                    + "\n  ".join(wrong)
+                    + "\n  ".join(unmet)
                 )
         return prove_unique(m, choc, d, circled, a, known=seed)
     if a.enumerate:
