@@ -1,4 +1,4 @@
-# 406: the app's logical stepper leaves placed digits unpropagated
+# 406: measurements on the skyscraper unclued-line stall (explanation retracted)
 
 The Skyscrapers global board (11x11, interactive ring clues) stalls its logical
 solver at 30/81 interior cells when four unclued line components are skipped,
@@ -6,7 +6,26 @@ and finishes at 81/81 when any one of them is kept. The four lines carry no
 information — CP-SAT says the inner 9x9 has one solution, the same one, in
 every variant. This note records what the stall actually is.
 
-## Verdict
+## Status: the causal story here is RETRACTED
+
+The measurements below stand. The explanation drawn from them does not, and
+this note should not be cited for one. The hole, found straight after writing
+it:
+
+Call the drawn stall state D and the state a component is shown C. Measured,
+both directions: D is a subset of C, strictly on 35 cells, and both contain the
+true solution. C has exactly 30 singletons and they are exactly the 30 placed
+cells. So naked singles over C can only shrink C toward D, and can never go
+below D. D forces no placement -- it is closed under singles, subsets and full
+Regin GAC. **So naked singles cannot move the board past 30/81, and yet it
+does.** One of those facts is false and it is not yet known which.
+
+The suspect worth chasing is the Rows & Columns constraint's own
+`DifferentDigitsComponent` instances: if C really carries 52 unpropagated
+placements, they are not committing house eliminations on this board, and the
+question is why they do in the variants that finish. Hypothesis, not result.
+
+## What was claimed (retracted)
 
 At the stall, SudokuMaker's own candidate state still holds **52 placements it
 has not propagated**: a solved cell's digit still sits in a house-mate's
@@ -45,7 +64,7 @@ Analysis of the reporter's masks at the same moment: **52** cases of a
 single-candidate cell whose digit is still a candidate in a house-mate of the
 same house.
 
-## What this retires
+## What this retires (still holds)
 
 - The GAC hypothesis. `SkyscraperLineComponent` is exactly GAC on its own
   constraint (12000 fuzzed states at n=4,5,6, zero deviation; `just check`
