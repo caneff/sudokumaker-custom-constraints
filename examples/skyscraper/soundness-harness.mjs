@@ -425,92 +425,11 @@ const lineLatchBad = violates(mod, latchInst, backP, backTruth)
 console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(lineLatchBad)}`)
 installGlobals(1, N)
 
-// ---------------------------------------------------------------------------
-// One 1 per side. A clue of 1 says the cell next to it tops its whole line, and
-// on a frame the cells next to one side are a house, so exactly one clue on
-// that side is a 1. The rule needs every line of the side to be a full house of
-// {1..n} AND the nearest rank to be one, so the component asks for both in
-// `update`. Fixture: a 5x5 Latin square read from the left, its five rows as
-// the lines and its first column as the rank -- then the same states again with
-// the mock reporting bare lines, where the component must go quiet.
-// ---------------------------------------------------------------------------
-
-const sideMod = load('SkyscraperSideComponent.js', ['setParams', 'update', 'validate'])
-const S = 5
-const SIDE_CLUE = 300 // clue cells are SIDE_CLUE + row
-
-// A Latin square whose first column is a permutation too: row r reads the digit
-// relabelling from its own start, so no column repeats.
-function latinSquare () {
-  const digits = [...Array(S).keys()].map(i => i + 1)
-  for (let i = S - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [digits[i], digits[j]] = [digits[j], digits[i]] }
-  const starts = [...Array(S).keys()]
-  for (let i = S - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [starts[i], starts[j]] = [starts[j], starts[i]] }
-  return starts.map(start => Array.from({ length: S }, (_, c) => digits[(start + c) % S]))
-}
-
-function fuzzSide (label, kind, iters) {
-  const clues = Array.from({ length: S }, (_, r) => SIDE_CLUE + r)
-  const lines = Array.from({ length: S }, (_, r) => Array.from({ length: S }, (_, c) => r * S + c))
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const rows = latinSquare()
-    const truth = {}
-    for (let r = 0; r < S; r++) {
-      truth[clues[r]] = visible(rows[r])
-      for (let c = 0; c < S; c++) truth[lines[r][c]] = rows[r][c]
-    }
-    const p = makePuzzle(truth, (c, v) => {
-      const set = new Set([v])
-      for (let d = 1; d <= S; d++) if (rnd() < 0.4) set.add(d)
-      return [...set]
-    }, { kind, digitCount: S })
-    const inst = {}
-    sideMod.setParams(inst, clues, lines)
-    const before = total(p)
-    const v = violates(sideMod, inst, p, truth)
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v) }
-  }
-  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
-}
-
-installGlobals(1, S)
-const sideFull = fuzzSide('side component, full house', 'fullHouse', 5000)
-const sideBare = fuzzSide('side component, bare      ', 'bare', 5000)
-installGlobals(1, N)
-
-// The side gate across a backtrack (#336), same shape. Deep node: every line
-// holds {1..5}, so the gate opens. Parent: a six-digit board where each line
-// can still hold {1..6}, so two lines can each start with their own tallest
-// building and two clues are legally 1 -- rows 0 and 1 below both read 1. A
-// latched gate pins the side's single 1 on the first clue and takes the true
-// 1 off the second.
-installGlobals(1, 6)
-const sideRows = [[6, 1, 2, 3, 4], [5, 1, 2, 3, 4], [4, 6, 1, 2, 3], [3, 6, 1, 2, 4], [2, 6, 1, 3, 4]]
-const sideClues = Array.from({ length: S }, (_, r) => SIDE_CLUE + r)
-const sideLines = Array.from({ length: S }, (_, r) => Array.from({ length: S }, (_, c) => r * S + c))
-const sideTruth = {}
-for (let r = 0; r < S; r++) {
-  sideTruth[sideClues[r]] = visible(sideRows[r])
-  for (let c = 0; c < S; c++) sideTruth[sideLines[r][c]] = sideRows[r][c]
-}
-const sideState = fill => makePuzzle(sideTruth, (c, v) => (c === sideClues[0] ? [1] : c >= SIDE_CLUE ? [1, 2, 3, 4, 5, 6] : fill), { kind: 'fullHouse', digitCount: 6 })
-const sideLatchInst = {}
-sideMod.setParams(sideLatchInst, sideClues, sideLines)
-fixpoint(sideMod, sideLatchInst, sideState([1, 2, 3, 4, 5])) // deep node: the gate opens here
-const sideLatchBad = violates(sideMod, sideLatchInst, sideState([1, 2, 3, 4, 5, 6]), sideTruth)
-console.log('side gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
-installGlobals(1, N)
-
 const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
   oneSidedBad === 0 && oneSidedSilent === 0 && oneSidedValidateBad === 0 &&
   oneSidedExactBad === 0 && oneSidedExactRuns > 0 &&
   bareRemovals === 0 && bareRepeats > 0 &&
   zeroRemovals === 0 && zeroValidates && shutWhileZeroLive && opensAfterZeroGoes &&
-  lineLatchBad === null && sideLatchBad === null &&
-  sideFull.bad === 0 && sideFull.fired > 0 && sideBare.fired === 0
+  lineLatchBad === null
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

@@ -13,12 +13,10 @@
 //
 // TWO wirings, same start state:
 //   - 'ours'     — main-global.js: one SkyscraperLineComponent per line, reading BOTH
-//                  end clues and the line together (deduces blank clues), and
-//                  one SkyscraperSideComponent per side (one 1 per side).
+//                  end clues and the line together (deduces blank clues).
 //   - 'original' — the wrapper ChinStrap shipped: one per-line component that does
 //                  NOTHING while its clue is blank, and once the clue is pinned
-//                  runs the built-in forward skyscraper prune. No pair, no side
-//                  count.
+//                  runs the built-in forward skyscraper prune. No pair.
 //
 // MODELLING THE ORIGINAL. The real wrapper calls replaceComponent to swap in the
 // built-in SkyscraperComponent once the clue is pinned; this engine does not model
@@ -27,8 +25,8 @@
 // pinned, which then runs the forward "keep only line candidates that reach k
 // visible" prune the built-in does (`forwardPrune` below). This GIVES the
 // original every per-line deduction for a KNOWN clue. The only differences left
-// are the features under test: blank-clue deduction, two-clue coupling, and the
-// one-1-per-side count. If the real built-in is WEAKER than this forward pass,
+// are the features under test: blank-clue deduction and two-clue coupling. If
+// the real built-in is WEAKER than this forward pass,
 // the original is slower still, so the comparison is conservative.
 //
 // The generic engine (all-different floor, component loader, fixpoint, DFS search)
@@ -94,8 +92,7 @@ function buildOurs () {
     input: {},
     frame: { W, H, idx },
     files: [
-      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' },
-      { file: 'SkyscraperSideComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperSideComponent' }
+      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
     ]
   })
 }

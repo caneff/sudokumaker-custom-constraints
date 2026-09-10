@@ -38,15 +38,13 @@ from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 # Each lane ships what its own backend registers, and nothing else.
-# main-global.js builds the 4n frame lines and puts the two-clue DP on each
-# one, plus the one-1-per-side count over each side's clues.
+# main-global.js builds the 4n frame lines and puts the two-clue DP on each one.
 COMPONENTS = [
     "SkyscraperLineComponent.js",
-    "SkyscraperSideComponent.js",
 ]
 # main.js registers one one-sided DP per drawn group and nothing else: a drawn
-# group carries a single clue on a line of any shape, so neither the two-clue
-# DP nor the per-side count has the frame it needs.
+# group carries a single clue on a line of any shape, so the two-clue DP has
+# not got the frame it needs.
 LOCAL_COMPONENTS = ["SkyscraperOneSidedComponent.js"]
 
 # One worked example per size, read inward from the clue -- a local board's

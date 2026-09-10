@@ -33,7 +33,6 @@
       "SudokuMaker",
       "SkyscraperLineComponent",
       "SkyscraperOneSidedComponent",
-      "SkyscraperSideComponent",
       "HitCountsJointComponent",
       "HitCountsComponent",
       "IsofillComponent",
