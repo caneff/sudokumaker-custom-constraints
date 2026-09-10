@@ -206,6 +206,27 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
     [...new Set(geom.groups.map(g => undirected(g.cells.slice(1))))].sort(),
     `${where} must register the frame lines of frameGeometry`)
 
+  // 1b. Coverage, clue by clue. Comparing lines undirected is what lets a
+  // both-ends component register one line per pair, and on its own it would
+  // stop seeing whether every CLUE got a component: a backend registering one
+  // component per clue could drop half the frame's clues and still register
+  // the whole line set (#404). So every one of the 4n (clue, line) pairs the
+  // geometry states must be covered by some single component that was handed
+  // that clue AND that line -- which a both-ends component does for two pairs
+  // at once, and a one-clue component for one.
+  const covered = new Set()
+  for (const c of p.registered) {
+    const own = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
+    for (const clue of new Set(ringIdsIn(c.args, ringCells))) {
+      for (const g of own) covered.add(`${clue}:${undirected(g)}`)
+    }
+  }
+  const uncovered = geom.groups
+    .filter(g => !covered.has(`${g.cells[0]}:${undirected(g.cells.slice(1))}`))
+    .map(g => g.cells[0])
+  assert.deepStrictEqual(uncovered.slice(0, 5), [],
+    `${where} leaves ${uncovered.length} of ${geom.groups.length} frame clues with no component holding both that clue and its line`)
+
   // 2. The labels: a component named for a side holds that side's clues. This
   // is the check that pins the reading on a square board, since a transposed
   // `getCellAt` puts the top ring under the name "left" (#295). It reaches only

@@ -270,8 +270,8 @@ The three mechanical criteria, checked by `check_layout.py`:
    2026-09-08 by removing each of the 7 givens and each of the 20 shown clues
    in turn and re-proving (27 solves, 6.3 s): every single removal costs
    uniqueness, so no clue on this board is unnecessary.
-4. **Component reads well at its source** ✓ — the link carries the two global
-   components, and their files in this repo carry the commentary.
+4. **Component reads well at its source** ✓ — the link carries the one global
+   component, and its file in this repo carries the commentary.
    `SkyscraperLineComponent.js` opens with a 35-line `//!` overview (the rule,
    the peak split, the subset DP and its state, why soundness holds, and the
    permutation precondition both entry points re-check) and carries a short
@@ -279,7 +279,7 @@ The three mechanical criteria, checked by `check_layout.py`:
    **None of it ships** (#385):
    `minify.py` strips every comment from the copy baked into the link, so a
    recipient opening this board reads the algorithm and nothing about it. The
-   criterion is checked against the two files, not against the blob.
+   criterion is checked against that file, not against the blob.
 
 ## Paste into SudokuMaker
 
@@ -303,6 +303,12 @@ segment.
 | 2026-09-10 | v2026.08.14-d47fc4b | skyscraper | 8400ms | 8000ms | 0.95 | FAIL |
 | 2026-09-10 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
 
+`just time` printed `two-row rule: NO SHIP` on all three runs, as it does for
+every change that adds no deduction: that line reads the 0.9x deduction rule,
+and each row's own PASS/FAIL is that row's 0.9x result alone
+(`../../docs/real-app-timing.md`). The bar this change answers to is the gate
+bar below.
+
 Baseline is the shipped link with `SkyscraperSideComponent` on it; the
 candidate is the same board with that component's `update` neutered (an early
 `return`, nothing else touched), built by `just time skyscraper --ring-clues
@@ -312,14 +318,14 @@ after-logical row read 0ms on both sides in every run, so it places no
 constraint.
 
 Removal adds no deduction, so the bar it has to clear is the gate bar, **≤
-1.1x on both rows** — it clears it on every run, and one run clears the 0.9x
-deduction bar outright.
+1.1x on both rows** (`../../docs/real-app-timing.md`, #197) — it clears it on
+every run, and the first run clears the 0.9x deduction bar outright.
 
 Two more readings agree. The mock probe's goldens
 (`recovery-probe.test.mjs`, including `gen.json --search --only=ours`) came
 back **byte-identical** with the component gone: it pruned nothing the
-two-clue DP had not already pruned. And the shipped 9x9 link fell from 9,729
-to 8,197 chars, **-1,532 (-16%)**.
+two-clue DP had not already pruned. And the shipped 9x9 link fell from 9,426
+to 8,197 chars, **-1,229 (-13%)**.
 
 This reverses the #135/#129 row in `OPTIMIZATION_LOG.md`, which recorded a
 wash and kept the component as a correctness rule. That row was measured on an

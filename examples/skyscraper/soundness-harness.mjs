@@ -423,7 +423,6 @@ for (const i of zeroLine) backTruth[i] = i
 const backP = makePuzzle(backTruth, (c, v) => (c === CA || c === CB ? unclued : [v]), zeroOpts)
 const lineLatchBad = violates(mod, latchInst, backP, backTruth)
 console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(lineLatchBad)}`)
-installGlobals(1, N)
 
 const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
   oneSidedBad === 0 && oneSidedSilent === 0 && oneSidedValidateBad === 0 &&
