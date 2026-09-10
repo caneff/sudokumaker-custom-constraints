@@ -132,3 +132,57 @@ index or slice them, and call the helper again rather than reusing a spent
 generator. Each line it yields covers the whole board, ring included.
 `docs/puzzle-api.md` carries the full note. **[verified]** (live probe
 2026-09-09)
+
+## 11. `update` runs inside the solver's hypotheses — never read its view as the board
+
+The app's logical stepper (Icon AutoStep) does **trial-based contradiction
+reasoning**: it hypothetically places a digit, propagates, and eliminates the
+candidate when the branch dies. Its own step log says so —
+
+    Placing 5 in R2C3 forces R2C2 -> 2, R2C7 -> 6, ... causing a
+    contradiction: unable to place 6 in row 2; removed 5 from R2C3
+
+**A component's `update` is called inside those hypotheses.** So most of what it
+sees through `getCandidates` / `getCandidatesBitMask` is a branch, not the
+board, and the *last* state it observes is a branch teardown. A component is
+only called when its cells change, so it can never observe the fixpoint at all.
+
+Measured on the Skyscrapers global board (#406): a reporter component logging
+its houses produced 55537 snapshots, and **25832 of them hold a state
+impossible for the puzzle's unique solution** — 22018 cells forced to the WRONG
+digit, 50020 missing the true digit. A sound propagator cannot do that on a
+uniquely solvable puzzle. The same shows on a plain board with no custom
+constraint (1393 of 3274), so it is how the app works, not a board quirk.
+
+This is not a defect and `getCandidatesBitMask` is not lying —
+`docs/puzzle-api.md` describes it correctly. The trap is reading a branch as a
+board state. In #406 that produced four wrong diagnoses in a row, each built on
+"the solver stalls with N unpropagated placements" numbers that were pure
+teardown-frame artifacts.
+
+**What to do instead:** read the app's own step log off the page
+(`document.body.innerText`). It names the technique for every step — naked
+single, hidden single, pointing pair, contradiction — and a custom component's
+`puzzle.stop()` message appears there verbatim as a deduction, which is how you
+confirm your component is actually firing. **[verified]** (live probe
+2026-09-10)
+
+## 12. An unclued line component is not idle — it is a refutation test
+
+Because the stepper works by refutation (#11), a component earns its keep by
+**killing hypotheses**, not only by removing candidates outright. A skyscraper
+line with both clue cells still unsolved carries no information, and CP-SAT
+confirms the grid's solution is unchanged without it — yet deleting it makes
+the app's logical solver measurably weaker, because inside a trial placement it
+still answers "no arrangement of heights fits" and kills the branch.
+
+Measured (#406): skipping three such lines still finishes 81/81; skipping a
+fourth drops it to 30/81; skipping all eighteen leaves the board at its 7
+givens. The stalled run ends ON contradiction steps after 3.0s — out of steps,
+not out of time.
+
+**Consequence for judging strength:** a propagation-only harness understates a
+component. It measures what the component removes at a fixpoint and misses
+every branch it would have refuted. Two components equal at a fixpoint can be
+far apart in the real app. Judge on real-app timing and on the app's step log,
+not on fixpoint candidate counts alone. **[verified]** (live probe 2026-09-10)
