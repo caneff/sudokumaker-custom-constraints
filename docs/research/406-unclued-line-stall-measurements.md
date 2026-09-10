@@ -96,31 +96,29 @@ repo, and rebuild from the decoded link: `build_variant.py` (skip sets),
 `build_plain.py` (the control), `logic.mjs` (AutoStep and count),
 `loud.mjs` (AutoStep, count, and relay `[probe]` console lines).
 
-## What `getCandidatesBitMask` reports (measured, no skyscraper needed)
+## `getCandidatesBitMask` is fine — the "unpropagated placements" were a probe artifact
 
-It tracks **placements, not the app's own house eliminations**. A component is
-handed a much weaker state than the app itself holds.
+Earlier revisions of this note reported that a component sees a state missing
+the app's own house eliminations (52 such cases on the skip-4 board, 468 on a
+plain stalled board). **That is wrong.** Both numbers came from reading the
+reporter's LAST logged frame, and that frame is a teardown/reset state, not the
+fixpoint.
 
-Reproduce on a plain board — the 11x11 frame with the skyscraper constraint
-deleted, only the boxes and Rows & Columns constraints left — with givens dug
-until singles alone cannot finish, so it stalls with multi-candidate cells:
+The trajectory is the tell — total candidates summed over all 27 houses, and
+the count of "a singleton whose digit a house-mate still lists":
 
-| board | interior | violations in the component view | dirty houses |
-| --- | --- | --- | --- |
-| plain, 24 givens (solves) | 81/81 | 0 | 0 of 27 |
-| plain, 23 givens (stalls) | 36/81 | 468 (row 136, column 162, box 170) | 26 of 27 |
+| skip-4 board | plain stalled board |
+| --- | --- |
+| report 41652: 3 violations, 576 cands | report 2454: 8 violations, 481 cands |
+| report 48594: 6 violations, 584 cands | report 2863: 15 violations, 486 cands |
+| report 55536: **52** violations, **833** cands | report 3273: **468** violations, **1323** cands |
 
-A "violation" is a cell that is a singleton in the component view while a
-house-mate still lists that digit. The solving board shows zero only because
-every cell is a singleton — it proves nothing. The stalled board is the real
-reading, and its component view differs from the drawn marks on 45 of 81 cells.
+Candidates nearly triple on the final frame. Through the whole run the view is
+clean. `docs/puzzle-api.md` describes `getCandidatesBitMask` as the raw
+candidate bitmask, the same source as `getCandidates`, and nothing here
+contradicts that.
 
-Consequence: any component computing from `getCandidatesBitMask` — including
-`SkyscraperLineComponent` — reasons from a state weaker than the app's own.
-Every candidate-state measurement above must be read that way. On the skip-4
-skyscraper board this shows up sharply: the only dirty rows and columns are
-`row 2`, `row 3`, `column 2`, `column 3` — exactly the four whose line component
-was removed — while the other 14 stay clean.
+**Probe lesson:** a component is only called when its cells change, so it can
+never observe the fixpoint, and its last frame may be a reset. Never read a
+component's final logged state as the board's final state.
 
-Build it with `build_plain.py` (writes `link_plain.txt`, `link_plain_hard.txt`
-and the reporter variants).
