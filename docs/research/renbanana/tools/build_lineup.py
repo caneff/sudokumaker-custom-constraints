@@ -56,6 +56,8 @@ POOLS = {
     "candidates-small": "small bananas",
     "candidates-two-circles": "TWO circled rectangles",
     "candidates-house": "fullest house",
+    "candidates-circle-pattern": "box-3 circle pattern",
+    "candidates-fully-circled": "fully circled pick",
 }
 
 sys.path.insert(0, str(HERE))
