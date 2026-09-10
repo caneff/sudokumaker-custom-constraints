@@ -1,4 +1,4 @@
-# 406: measurements on the skyscraper unclued-line stall (explanation retracted)
+# 406: the app's logical stepper leaves placed digits unpropagated
 
 The Skyscrapers global board (11x11, interactive ring clues) stalls its logical
 solver at 30/81 interior cells when four unclued line components are skipped,
@@ -6,26 +6,21 @@ and finishes at 81/81 when any one of them is kept. The four lines carry no
 information — CP-SAT says the inner 9x9 has one solution, the same one, in
 every variant. This note records what the stall actually is.
 
-## Status: the causal story here is RETRACTED
+## Status
 
-The measurements below stand. The explanation drawn from them does not, and
-this note should not be cited for one. The hole, found straight after writing
-it:
+Confirmed, after a retraction and a re-instatement. The reasoning that briefly
+retracted this was itself wrong and is recorded below so it is not repeated.
 
-Call the drawn stall state D and the state a component is shown C. Measured,
-both directions: D is a subset of C, strictly on 35 cells, and both contain the
-true solution. C has exactly 30 singletons and they are exactly the 30 placed
-cells. So naked singles over C can only shrink C toward D, and can never go
-below D. D forces no placement -- it is closed under singles, subsets and full
-Regin GAC. **So naked singles cannot move the board past 30/81, and yet it
-does.** One of those facts is false and it is not yet known which.
+**The bad argument.** Naked-singles closure of the component-visible state C
+was computed from the reporter run's FINAL C and found to yield no new
+placement, "proving" naked singles could not reach 81/81. That treats the app's
+own contribution as already baked into C. It is not: the app's progress is
+conditional on C being propagated, so a component that propagates C unlocks
+further app progress, which enlarges C's propagation again. Measured: naked
+singles alone from the INITIAL C reaches 7 singletons (exactly the givens) and
+stops. Weak alone, decisive in the loop.
 
-The suspect worth chasing is the Rows & Columns constraint's own
-`DifferentDigitsComponent` instances: if C really carries 52 unpropagated
-placements, they are not committing house eliminations on this board, and the
-question is why they do in the variants that finish. Hypothesis, not result.
-
-## What was claimed (retracted)
+## Verdict
 
 At the stall, SudokuMaker's own candidate state still holds **52 placements it
 has not propagated**: a solved cell's digit still sits in a house-mate's
@@ -54,6 +49,7 @@ houses in play are constraint-supplied, not the app's built-in grid.
 | naked singles over the 27 houses | 81/81 | the deduction content is what matters |
 | naked singles, instrumented | 81/81, **6195 real removals**, 33 of them before AutoStep was clicked | the removals are real, not no-ops |
 | reporter: logs the solver's own masks, yields one no-op Change | 30/81, 27 houses, 4332 passes | inert, so its masks are the stall state |
+| removes real digits present in C but absent from the drawn marks (35 cells, 59 digits) | 30/81 | a real, committed state change that adds no information does NOT wake it |
 
 Analysis of the drawn marks at the stall (`gap2.py`): zero naked singles, zero
 hidden singles, zero naked or hidden subsets at k=2,3,4, zero pointing or
@@ -73,6 +69,17 @@ same house.
   all-different exactly (300 random 9-cell lines, zero differences). True, and
   irrelevant here — the stall state is already GAC-clean.
 - The scheduling hypothesis. The no-op-Change control sits at 30/81.
+
+## Also established
+
+- The marks are not stored in the puzzle document (zero pencil-mark fields) and
+  are absent before AutoStep, so the app computes the strong state D itself
+  during the step.
+- D is sound: it never eliminated a digit the final 81/81 grid needs.
+- D is a strict subset of C, checked both directions, differing on 35 cells.
+- Components gate on `puzzle.getCellsCanHaveRepeats(cells)` and proceed, so the
+  app DOES know the inner rows, columns and boxes are all-different. The
+  constraint is registered and C still stalls with 52 placements uneliminated.
 
 ## Open
 
