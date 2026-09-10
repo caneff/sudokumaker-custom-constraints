@@ -1,8 +1,10 @@
 # 406: measurements on the skyscraper unclued-line stall
 
-Measurements only. Several explanations were tried against these numbers and
-all were refuted; none is recorded here on purpose. See the issue for the
-history of the wrong turns.
+**Answer: an unclued line is a refutation test, and the app uses refutation.**
+SudokuMaker's AutoStep does trial-based contradiction reasoning, custom
+components run inside each hypothetical placement, and a line component kills
+branches there. Deleting one deletes a refuter. Details in the last section;
+the measurements follow first.
 
 ## The board
 
@@ -118,3 +120,60 @@ contradicts that.
 never observe the fixpoint, and its last frame may be a reset. Never read a
 component's final logged state as the board's final state.
 
+
+
+## Why an unclued line still does work
+
+The app's step log, read off the page after AutoStep, settles it. Nothing here
+rests on reading a component's candidate view.
+
+**1. AutoStep does trial-based contradiction reasoning.** Its own log says so:
+
+    Placing 8 in R7C2 causes a contradiction: unable to place 7 and 8 in
+    region 7; removed 8 from R7C2
+
+    Placing 5 in R2C3 forces R2C2 -> 2, R2C7 -> 6, ... causing a
+    contradiction: unable to place 6 in row 2; removed 5 from R2C3
+
+**2. Custom components run inside those hypotheses.** The reporter's snapshots
+were checked against the puzzle's unique solution: 25832 of 55537 snapshots
+hold a state impossible for it — 22018 cells forced to the WRONG digit, 50020
+missing the true digit. A sound propagator cannot do that on a uniquely
+solvable puzzle, so these are branch states. The same shows on the plain board
+(1393 of 3274), so it is general app behaviour.
+
+**3. A line component supplies refutations as app steps.** Its own
+`puzzle.stop()` text appears in the log:
+
+    no arrangement of heights satisfies both clues of the skyscraper clues at
+    R1C10 and R11C10
+
+Realized refutations: 5 on the skip-4 board, 7 on the skip-3 board.
+
+**4. So deleting a line deletes a refuter.** With both clue ends free the line
+carries no information, but inside a trial placement it still answers "no
+arrangement of heights fits" and kills the branch. Fewer refuters, fewer
+contradiction steps, and AutoStep exhausts its techniques earlier. The skip-4
+board's log ends ON contradiction steps at 3.0s, versus 3.5s for the board that
+finishes — it runs out of steps, not out of time. Step counts: 31 contradiction
+and 28 single steps on skip-4, against 47 and 85 on skip-3.
+
+Step 4 is the one inferential link; steps 1-3 are direct evidence.
+
+This also explains the results above that looked impossible. The drawn stall
+state being closed under GAC is irrelevant, because the app's strength is
+trial-based and far beyond GAC. Naked singles rescued the board by strengthening
+propagation *inside* the trials, so more hypotheses reach a contradiction —
+invisible to any analysis of the final state. A no-op or an uninformative
+removal adds no refutation power, so neither helped. And the plain stalled board
+was unmoved by naked singles because its built-in propagation already does that
+inside trials.
+
+## Probe lesson
+
+**Never read a component's observed candidate state as a board state.** A
+component is called inside hypothetical placements, so most of what it sees is
+a branch, and its last logged frame is a branch teardown — that frame is where
+this note's earlier "unpropagated placements" numbers came from, and they were
+meaningless. Read the app's step log instead; it names the technique for every
+step, including a component's own `puzzle.stop()` message.
