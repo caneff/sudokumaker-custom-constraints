@@ -1,10 +1,11 @@
 # 406: measurements on the skyscraper unclued-line stall
 
-**Answer: an unclued line is a refutation test, and the app uses refutation.**
-SudokuMaker's AutoStep does trial-based contradiction reasoning, custom
-components run inside each hypothetical placement, and a line component kills
-branches there. Deleting one deletes a refuter. Details in the last section;
-the measurements follow first.
+**Answer: the app's built-in house constraints are below GAC, and an unclued
+line was the upgrade.** With both clue ends free `SkyscraperLineComponent`'s
+pruning equals Regin all-different exactly, so each line silently filtered its
+row or column to generalized arc consistency. It adds no information; it filters
+harder. Details in the last section; the measurements follow first. A shareable
+two-link demo with no skyscraper is in `docs/research/406-gac-demo/`.
 
 ## The board
 
@@ -124,50 +125,56 @@ component's final logged state as the board's final state.
 
 ## Why an unclued line still does work
 
-The app's step log, read off the page after AutoStep, settles it. Nothing here
-rests on reading a component's candidate view.
+**It supplies GAC all-different that nothing else on the board supplies.**
 
-**1. AutoStep does trial-based contradiction reasoning.** Its own log says so:
+Directly measured on the skip-4 board:
 
-    Placing 8 in R7C2 causes a contradiction: unable to place 7 and 8 in
-    region 7; removed 8 from R7C2
+| variant | interior |
+| --- | --- |
+| skip 4 lines | 30/81 |
+| + a duplicate of an already-registered line component | 30/81 |
+| + GAC all-different on **only the 4 orphaned houses** | **81/81** |
+| + GAC all-different on all 27 houses | 81/81 |
+
+The duplicate rules out "any perturbation works". The four-house GAC pins the
+missing ingredient to exactly those houses.
+
+And the built-ins are below GAC. Registering one or the other for every interior
+row and column:
+
+| Rows & Columns registers | skip 0 | skip 4 | skip all 18 |
+| --- | --- | --- | --- |
+| `DifferentDigitsComponent` | 81/81 | 30/81 | 7/81 |
+| `HouseComponent` (+ `| 0`, named Row/Column) | 81/81 | 30/81 | 7/81 |
+
+Identical at every rung, so the gap is not "every digit is used", and the
+component facts above already show it is not naked or hidden singles. It is Hall
+sets of every size.
+
+The link back to the skyscraper line is a measurement recorded above: with both
+clue ends free its pruning equals Regin all-different exactly, 300 random 9-cell
+lines, zero differences. So each unclued line was a GAC filter on its house.
+
+**Why this is nearly invisible, and why several earlier explanations died on
+it.** The extra strength never shows at the fixpoint — the stalled state is
+GAC-clean and a full Regin sweep removes zero candidates. It pays off inside the
+solver's hypothetical placements. AutoStep does trial-based contradiction
+reasoning, its own log says so:
 
     Placing 5 in R2C3 forces R2C2 -> 2, R2C7 -> 6, ... causing a
     contradiction: unable to place 6 in row 2; removed 5 from R2C3
 
-**2. Custom components run inside those hypotheses.** The reporter's snapshots
-were checked against the puzzle's unique solution: 25832 of 55537 snapshots
-hold a state impossible for it — 22018 cells forced to the WRONG digit, 50020
-missing the true digit. A sound propagator cannot do that on a uniquely
-solvable puzzle, so these are branch states. The same shows on the plain board
-(1393 of 3274), so it is general app behaviour.
+and components run inside those trials: of the reporter's 55537 snapshots,
+25832 hold a state impossible for the puzzle's unique solution (22018 cells
+forced to the WRONG digit). A sound propagator cannot do that, so those are
+branch states. A stronger filter kills branches a weaker one cannot.
 
-**3. A line component supplies refutations as app steps.** Its own
-`puzzle.stop()` text appears in the log:
-
-    no arrangement of heights satisfies both clues of the skyscraper clues at
-    R1C10 and R11C10
-
-Realized refutations: 5 on the skip-4 board, 7 on the skip-3 board.
-
-**4. So deleting a line deletes a refuter.** With both clue ends free the line
-carries no information, but inside a trial placement it still answers "no
-arrangement of heights fits" and kills the branch. Fewer refuters, fewer
-contradiction steps, and AutoStep exhausts its techniques earlier. The skip-4
-board's log ends ON contradiction steps at 3.0s, versus 3.5s for the board that
-finishes — it runs out of steps, not out of time. Step counts: 31 contradiction
-and 28 single steps on skip-4, against 47 and 85 on skip-3.
-
-Step 4 is the one inferential link; steps 1-3 are direct evidence.
-
-This also explains the results above that looked impossible. The drawn stall
-state being closed under GAC is irrelevant, because the app's strength is
-trial-based and far beyond GAC. Naked singles rescued the board by strengthening
-propagation *inside* the trials, so more hypotheses reach a contradiction —
-invisible to any analysis of the final state. A no-op or an uninformative
-removal adds no refutation power, so neither helped. And the plain stalled board
-was unmoved by naked singles because its built-in propagation already does that
-inside trials.
+**Redundant strength buys nothing.** A refutation-only component — Hall check,
+`puzzle.stop()`, never removes a candidate — was called about 2400 times on a
+stalled plain board and fired zero times, leaving it at 36/81; the app already
+does that inside a trial (`R9C5, R9C6, R9C7 and R10C5 share only 3 candidates`).
+The duplicate-line result says the same. What earns its keep is filtering harder
+than what is already registered.
 
 ## Probe lesson
 

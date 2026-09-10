@@ -167,22 +167,55 @@ single, hidden single, pointing pair, contradiction — and a custom component's
 confirm your component is actually firing. **[verified]** (live probe
 2026-09-10)
 
-## 12. An unclued line component is not idle — it is a refutation test
+## 12. The built-in house constraints are below GAC — an "unclued" line can be the upgrade
 
-Because the stepper works by refutation (#11), a component earns its keep by
-**killing hypotheses**, not only by removing candidates outright. A skyscraper
-line with both clue cells still unsolved carries no information, and CP-SAT
-confirms the grid's solution is unchanged without it — yet deleting it makes
-the app's logical solver measurably weaker, because inside a trial placement it
-still answers "no arrangement of heights fits" and kills the branch.
+`DifferentDigitsComponent` and `HouseComponent` do **not** filter an
+all-different house to generalized arc consistency. A custom component that does
+is a real strength upgrade even though it adds no information, because every row,
+column and box was already declared all-different.
 
-Measured (#406): skipping three such lines still finishes 81/81; skipping a
-fourth drops it to 30/81; skipping all eighteen leaves the board at its 7
-givens. The stalled run ends ON contradiction steps after 3.0s — out of steps,
-not out of time.
+**Shareable demo:** `docs/research/406-gac-demo/` — one plain sudoku, 25 givens,
+no skyscraper constraint anywhere, two links differing only by
+`AllDiffGacComponent` (matching-based Regin filter) registered per interior row,
+column and box. AutoStep reaches **53/81** without it and **81/81** with it.
+Same board, same givens, same solution; the 81/81 grid checked against CP-SAT,
+zero disagreements.
 
-**Consequence for judging strength:** a propagation-only harness understates a
-component. It measures what the component removes at a fixpoint and misses
-every branch it would have refuted. Two components equal at a fixpoint can be
-far apart in the real app. Judge on real-app timing and on the app's step log,
-not on fixpoint candidate counts alone. **[verified]** (live probe 2026-09-10)
+The two built-ins are indistinguishable in strength. On the Skyscrapers board
+(#406), registering one or the other for every interior row and column:
+
+| Rows & Columns registers | skip 0 lines | skip 4 lines | skip all 18 |
+| --- | --- | --- | --- |
+| `DifferentDigitsComponent` | 81/81 | 30/81 | 7/81 |
+| `HouseComponent` (+ `\| 0`, named Row/Column) | 81/81 | 30/81 | 7/81 |
+
+Identical at every rung, so the gap is not "every digit is used" and not naked
+or hidden singles — it is **Hall sets of every size**. Swapping a GAC filter onto
+just the four houses whose line component was skipped reaches 81/81.
+
+That is what an "unclued" skyscraper line was quietly supplying. With both clue
+cells unsolved the line carries no information — CP-SAT confirms the solution is
+unchanged without it — but its pruning **equals Regin all-different exactly**
+(300 random 9-cell lines, zero differences), so each line silently upgraded its
+row or column to GAC. Deleting four dropped four houses to the weaker built-in
+and the solver stalled at 30/81.
+
+**Why it is nearly invisible.** The extra strength never shows at the fixpoint:
+the stalled state is already GAC-clean, and a full Regin sweep over all 27 houses
+removes zero candidates there. It pays off inside the hypothetical placements of
+#11, where a stronger filter kills branches a weaker one cannot. Any analysis of
+the final drawn state concludes — wrongly — that the component cannot be doing
+anything.
+
+**But redundant strength buys nothing.** A refutation-only component (checks its
+house for a Hall violation, calls `puzzle.stop()`, never removes a candidate)
+was called ~2400 times on a stalled plain board and fired **zero** times, leaving
+it at 36/81. The app already does that reasoning inside a trial — its own log
+prints `R9C5, R9C6, R9C7 and R10C5 share only 3 candidates`. Likewise a duplicate
+of an already-registered line component leaves the board at 30/81. A component
+only earns its keep by filtering harder than what is already registered, not by
+being present.
+
+**Consequence for judging strength:** a propagation-only harness at a fixpoint
+can rate two components equal when they are far apart in the real app. Judge on
+real-app timing and on the app's step log. **[verified]** (live probe 2026-09-10)
