@@ -95,3 +95,32 @@ Probe scripts and every variant link are in the session scratchpad, not the
 repo, and rebuild from the decoded link: `build_variant.py` (skip sets),
 `build_plain.py` (the control), `logic.mjs` (AutoStep and count),
 `loud.mjs` (AutoStep, count, and relay `[probe]` console lines).
+
+## What `getCandidatesBitMask` reports (measured, no skyscraper needed)
+
+It tracks **placements, not the app's own house eliminations**. A component is
+handed a much weaker state than the app itself holds.
+
+Reproduce on a plain board — the 11x11 frame with the skyscraper constraint
+deleted, only the boxes and Rows & Columns constraints left — with givens dug
+until singles alone cannot finish, so it stalls with multi-candidate cells:
+
+| board | interior | violations in the component view | dirty houses |
+| --- | --- | --- | --- |
+| plain, 24 givens (solves) | 81/81 | 0 | 0 of 27 |
+| plain, 23 givens (stalls) | 36/81 | 468 (row 136, column 162, box 170) | 26 of 27 |
+
+A "violation" is a cell that is a singleton in the component view while a
+house-mate still lists that digit. The solving board shows zero only because
+every cell is a singleton — it proves nothing. The stalled board is the real
+reading, and its component view differs from the drawn marks on 45 of 81 cells.
+
+Consequence: any component computing from `getCandidatesBitMask` — including
+`SkyscraperLineComponent` — reasons from a state weaker than the app's own.
+Every candidate-state measurement above must be read that way. On the skip-4
+skyscraper board this shows up sharply: the only dirty rows and columns are
+`row 2`, `row 3`, `column 2`, `column 3` — exactly the four whose line component
+was removed — while the other 14 stay clean.
+
+Build it with `build_plain.py` (writes `link_plain.txt`, `link_plain_hard.txt`
+and the reporter variants).
