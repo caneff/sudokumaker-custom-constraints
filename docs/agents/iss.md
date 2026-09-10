@@ -50,7 +50,8 @@ not redo the read.
 | `connected_values.md` §4.4, §5.2, §5.3 | isofill rules | #150 (cut), #148 (cut), #149 (kept, `issue-149`) |
 | `connected_values.md` §7.2, §7.4, §8; `chaos_construction.md` | isofill survey | `docs/research/connectivity-techniques.md` |
 | `Skyscraper`, `HiddenSkyscraper`, `Indexing`, `Lunchbox`, `FullRank`; `sudoku_builder.js` `XSum`; `sudoku_constraint.js` outside-clue defs | how outside-clue deductions are gated on house / full house, and ties | `docs/research/190-one-sided-clues-ties-non-house-lines.md` (#190) |
-| `count_distinct.md` §5, `sum.md` §4 | exclusion-group gating only | same doc, §7. Rest of both docs still unread. |
+| `count_distinct.md` §5, `sum.md` §4 | exclusion-group gating only | same doc, §7. `count_distinct.md` still read for §5 only. |
+| `sum.md`, all sections; `sum_handler.js` spot-check | what makes killer-cage/weighted-sum propagation fast | `docs/research/iss-sum-handler.md`. Packed-lane aggregates, layered bounds-vs-GAC dispatch, `killerCageSums`, `reverse` reflection, complement optimization. Nothing ported — we ship no cage component. |
 | `chaos_construction.md` §7.4 (the general cut rule ISS dropped) | whether their heuristic warning applies to SudokuMaker | #169: it does not. Both halves of cut ship; each half alone is worse, and starve alone times the app out. `examples/isofill/README.md` § Cut split |
 | `chaos_construction.md` §8 (dirty-region tracking); `connected_values.md` §7.4 read as one articulation pass | whether either can replace cut's per-cell re-walks | #170: neither built. Cut is 36-45% of `update` on the hard fixtures, under the 50% bar both were parked behind. Re-open conditions in `examples/isofill/README.md` § Cut profile |
 | `nfa.md` | — | not yet read |
