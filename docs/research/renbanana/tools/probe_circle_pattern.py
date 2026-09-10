@@ -209,31 +209,6 @@ def build(circled, choc_cells=(), ban_cells=(), givens=()):
     return m, choc, d
 
 
-class Collect(cp.CpSolverSolutionCallback):
-    """Every (digit grid, shading) pair. `strict` also demands that no
-    *uncircled* cell reads its own group size -- the "circles mark them all"
-    reading of the clue."""
-
-    def __init__(self, choc, d, circled, limit):
-        super().__init__()
-        self.choc, self.d, self.circled, self.limit = choc, d, set(circled), limit
-        self.sols = []
-
-    def on_solution_callback(self):
-        grid = {p: self.value(self.d[p]) for p in CELLS}
-        is_choc = {p: bool(self.value(self.choc[p])) for p in CELLS}
-        assert not rv.check(grid, is_choc), rv.check(grid, is_choc)
-        extra = []
-        for colour in (True, False):
-            for g in rv.components(is_choc, colour):
-                for p in g:
-                    if grid[p] == len(g) and p not in self.circled:
-                        extra.append(p)
-        self.sols.append((grid, is_choc, sorted(extra)))
-        if len(self.sols) >= self.limit:
-            self.stop_search()
-
-
 def render(grid, is_choc):
     return [
         " ".join(
@@ -254,8 +229,9 @@ def load_known(path):
     src = Path(path)
     out = []
     if src.is_file() and src.suffix == ".json":
-        grid, is_choc, _ = rv.load(src)
-        return [(grid, is_choc)]
+        if "grid" in json.loads(src.read_text()):
+            grid, is_choc, _ = rv.load(src)
+            return [(grid, is_choc)]
     if src.is_dir():
         for f in sorted(src.glob("cand_*.json")):
             dd = json.loads(f.read_text())
@@ -305,6 +281,49 @@ def block(m, choc, d, grid, is_choc):
     m.add_bool_or(lits)
 
 
+def flag_complaint(a):
+    """Why this flag combination cannot give an honest verdict, or None.
+
+    Both cases would otherwise pass silently: `--known` blocks its pool out of
+    the very model `--unique` proves on, so a real second solution sitting in
+    that pool comes back INFEASIBLE and prints UNIQUE; `--known-solution` is
+    read only under `--unique`, so elsewhere it is a no-op the operator paid a
+    full budget for.
+    """
+    if a.unique and a.known:
+        return (
+            "--known blocks solutions out of the model, so --unique would call "
+            "a blocked second solution a proof; use --known-solution instead"
+        )
+    if a.known_solution and not a.unique:
+        return "--known-solution only means anything with --unique"
+    return None
+
+
+def clue_complaints(known, circled, choc_cells, ban_cells, givens):
+    """Why this (grid, shading) is not a solution of *this* clue set.
+
+    A solution the solver found satisfies the clues by construction; one read
+    off disk does not. Blocking a point the model never contained leaves the
+    second search INFEASIBLE for the wrong reason, and that prints a false
+    UNIQUE -- so a mismatch has to stop the run, not narrow it.
+    """
+    grid, is_choc = known
+    bad = list(rv.check(grid, is_choc, list(circled)))
+    for p in choc_cells:
+        if not is_choc[p]:
+            bad.append(f"--choc r{p[0] + 1}c{p[1] + 1} is banana in the solution")
+    for p in ban_cells:
+        if is_choc[p]:
+            bad.append(f"--ban r{p[0] + 1}c{p[1] + 1} is chocolate in the solution")
+    for p, v in givens:
+        if grid[p] != v:
+            bad.append(
+                f"--givens r{p[0] + 1}c{p[1] + 1}={v} but the solution has {grid[p]}"
+            )
+    return bad
+
+
 def prove_unique(m, choc, d, circled, a, known=None):
     """Verdict on the clue set: one solution, more than one, or not proved.
 
@@ -343,7 +362,7 @@ def prove_unique(m, choc, d, circled, a, known=None):
         grid, is_choc = known
         spent = 0.0
         print("first solution (supplied -- first solve skipped):")
-    bad = rv.check(grid, is_choc)
+    bad = rv.check(grid, is_choc, circled)
     assert not bad, bad
     print("\n".join(render(grid, is_choc)))
 
@@ -356,7 +375,7 @@ def prove_unique(m, choc, d, circled, a, known=None):
     if st2 in (cp.OPTIMAL, cp.FEASIBLE):
         g2 = {p: s.value(d[p]) for p in CELLS}
         c2 = {p: bool(s.value(choc[p])) for p in CELLS}
-        bad = rv.check(g2, c2)
+        bad = rv.check(g2, c2, circled)
         assert not bad, bad
         same_digits = all(g2[p] == grid[p] for p in CELLS)
         print(
@@ -388,7 +407,7 @@ def enumerate_all(m, choc, d, circled, a):
             break
         grid = {p: s.value(d[p]) for p in CELLS}
         is_choc = {p: bool(s.value(choc[p])) for p in CELLS}
-        bad = rv.check(grid, is_choc)
+        bad = rv.check(grid, is_choc, circled)
         assert not bad, bad
         extra = [
             p
@@ -456,26 +475,36 @@ def main():
     )
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    wrong = flag_complaint(a)
+    if wrong:
+        sys.exit(wrong)
     circled = parse_cells(a.cells)
     givens = []
     for tok in a.givens.replace(" ", "").split(","):
         if tok:
             cell, val = tok.split("=")
             givens.append((parse_cells(cell)[0], int(val)))
-    m, choc, d = build(circled, parse_cells(a.choc), parse_cells(a.ban), givens)
+    choc_cells, ban_cells = parse_cells(a.choc), parse_cells(a.ban)
+    m, choc, d = build(circled, choc_cells, ban_cells, givens)
     if a.known:
-        known = load_known(a.known)
-        for grid, is_choc in known:
+        blocked = load_known(a.known)
+        for grid, is_choc in blocked:
             block(m, choc, d, grid, is_choc)
-        print(f"blocked {len(known)} already-known solutions from {a.known}")
+        print(f"blocked {len(blocked)} already-known solutions from {a.known}")
     if a.unique:
-        known = None
+        seed = None
         if a.known_solution:
             found = load_known(a.known_solution)
             if not found:
                 sys.exit(f"no solution found in {a.known_solution}")
-            known = found[0]
-        return prove_unique(m, choc, d, circled, a, known=known)
+            seed = found[0]
+            wrong = clue_complaints(seed, circled, choc_cells, ban_cells, givens)
+            if wrong:
+                sys.exit(
+                    f"{a.known_solution} does not solve this clue set:\n  "
+                    + "\n  ".join(wrong)
+                )
+        return prove_unique(m, choc, d, circled, a, known=seed)
     if a.enumerate:
         return enumerate_all(m, choc, d, circled, a)
     s = cp.CpSolver()
@@ -495,7 +524,7 @@ def main():
                     for c in range(N)
                 )
             )
-        ok = rv.check(grid, is_choc)
+        ok = rv.check(grid, is_choc, circled)
         print("verify:", ok)
         for X in circled:
             comp = [g for g in rv.components(is_choc, is_choc[X]) if X in g][0]

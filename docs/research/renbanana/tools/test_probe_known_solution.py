@@ -61,11 +61,6 @@ def stub_solver(monkeypatch, statuses, answers):
     return calls
 
 
-def fixture():
-    grid, is_choc, circles = rv.load(CAND)
-    return grid, is_choc, circles
-
-
 def answers_for(choc, d, grid, is_choc):
     out = {id(d[p]): grid[p] for p in pcp.CELLS}
     out.update({id(choc[p]): int(is_choc[p]) for p in pcp.CELLS})
@@ -73,7 +68,7 @@ def answers_for(choc, d, grid, is_choc):
 
 
 def test_known_solution_skips_the_first_solve(monkeypatch):
-    grid, is_choc, circles = fixture()
+    grid, is_choc, circles = rv.load(CAND)
     m, choc, d = bare_model()
     calls = stub_solver(
         monkeypatch, [cp.INFEASIBLE], answers_for(choc, d, grid, is_choc)
@@ -85,7 +80,7 @@ def test_known_solution_skips_the_first_solve(monkeypatch):
 
 
 def test_without_a_known_solution_it_solves_twice(monkeypatch):
-    grid, is_choc, circles = fixture()
+    grid, is_choc, circles = rv.load(CAND)
     m, choc, d = bare_model()
     calls = stub_solver(
         monkeypatch,
@@ -98,7 +93,7 @@ def test_without_a_known_solution_it_solves_twice(monkeypatch):
 
 
 def test_a_timed_out_second_search_is_never_unique(monkeypatch):
-    grid, is_choc, circles = fixture()
+    grid, is_choc, circles = rv.load(CAND)
     m, choc, d = bare_model()
     stub_solver(monkeypatch, [cp.UNKNOWN], answers_for(choc, d, grid, is_choc))
     verdict = pcp.prove_unique(m, choc, d, circles, Args(), known=(grid, is_choc))
@@ -106,6 +101,49 @@ def test_a_timed_out_second_search_is_never_unique(monkeypatch):
 
 
 def test_load_known_reads_a_single_candidate_file():
-    grid, is_choc, _ = fixture()
+    grid, is_choc, _ = rv.load(CAND)
     got = pcp.load_known(CAND)
     assert got == [(grid, is_choc)]
+
+
+def test_a_supplied_solution_is_checked_against_the_clue_set():
+    """A file that does not satisfy the clues must be refused, not blocked.
+
+    Blocking a point the model never contained leaves the second search
+    INFEASIBLE for the wrong reason, which prints a false UNIQUE.
+    """
+    grid, is_choc, circles = rv.load(CAND)
+    uncircled = next(p for p in pcp.CELLS if p not in set(circles))
+    assert pcp.clue_complaints(
+        (grid, is_choc), [*circles, uncircled], (), (), ()
+    ), "a circle the grid does not satisfy must be reported"
+    assert pcp.clue_complaints((grid, is_choc), circles, (), (), []) == []
+
+
+def test_a_supplied_solution_is_checked_against_givens_and_shading():
+    grid, is_choc, circles = rv.load(CAND)
+    wrong = next(p for p in pcp.CELLS if not is_choc[p])
+    assert pcp.clue_complaints((grid, is_choc), circles, (wrong,), (), [])
+    assert pcp.clue_complaints((grid, is_choc), circles, (), (wrong,), []) == []
+    p0 = pcp.CELLS[0]
+    bad_given = (p0, 1 + grid[p0] % 9)
+    assert pcp.clue_complaints((grid, is_choc), circles, (), (), [bad_given])
+    assert pcp.clue_complaints((grid, is_choc), circles, (), (), [(p0, grid[p0])]) == []
+
+
+class Flags:
+    def __init__(self, **kw):
+        self.unique = self.known = self.known_solution = self.enumerate = None
+        self.__dict__.update(kw)
+
+
+def test_known_blocks_are_refused_under_unique():
+    """`--known` blocks pool solutions out of the model. Under `--unique` the
+    second search would then miss a real second solution and report a proof."""
+    assert pcp.flag_complaint(Flags(unique=True, known="pool/"))
+    assert pcp.flag_complaint(Flags(known="pool/", enumerate=50)) is None
+
+
+def test_known_solution_outside_unique_is_refused():
+    assert pcp.flag_complaint(Flags(known_solution="cand_00.json"))
+    assert pcp.flag_complaint(Flags(unique=True, known_solution="cand_00.json")) is None
