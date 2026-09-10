@@ -56,18 +56,14 @@ document, so the app computes them during the step.
 
 ## What a component is shown
 
-Through `puzzle.getCandidatesBitMask`, at the same fixpoint, from a reporter
-registered per house that yields one no-op Change so it keeps being called
-(27 houses, 4332 passes, logging only on change; leaves the board at 30/81):
+Through `puzzle.getCandidatesBitMask`, from a reporter registered per house that
+yields one no-op Change so it keeps being called (27 houses, 4332 passes,
+logging only on change; leaves the board at 30/81).
 
-- The drawn marks are a strict subset of it, differing on 35 of 81 cells.
-- It contains the true solution digit everywhere.
-- Its 30 singletons are exactly the 30 drawn placed cells, no contradictions.
-- It holds 52 cases of a placed digit still a candidate in a house-mate.
-
-**What `getCandidatesBitMask` actually reports is not established.** Treating it
-as the solver's operative state is what produced the refuted explanations. Pin
-this down before using these numbers for anything.
+**Read the trajectory, not the last frame** — see the section at the end of this
+note. The final frame is a teardown state and every number taken from it is an
+artifact. Through the run the view is clean: violations 0-6, and it contains the
+true solution digit everywhere.
 
 ## The skyscraper-free control
 
