@@ -148,8 +148,8 @@ overturned that**: the rule is implied by the two-clue line DP, which on a
 frame is always at full strength, and timing it out cost nothing (three runs
 at 0.93 / 0.98 / 0.95, mock goldens byte-identical). The component is gone,
 and the row above became a lever after all. The 1,973 bytes there were measured
-on the 14,990-byte link of the day; taking the component out of the post-#385
-link took off 1,229 (9,426 → 8,197 chars, −13%).
+on the 14,990-byte link of the day; taking the component out of the post-#385,
+post-#399 link took off 1,182 (9,458 → 8,276 chars, −12%).
 
 ## Both levers, pulled (#385)
 

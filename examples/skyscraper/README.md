@@ -315,7 +315,10 @@ candidate is the same board with that component's `update` neutered (an early
 --component SkyscraperSideComponent`. 3 reps per arm, non-deterministic solve
 off, three whole runs. Off is 2-7% faster and the sign never flips. The
 after-logical row read 0ms on both sides in every run, so it places no
-constraint.
+constraint. The three runs were timed against the shipped link as it stood
+before #399 renamed the interior's houses (9,426 chars); that change moved no
+deduction, and this branch's links are the #399 boards rebuilt without the
+component.
 
 Removal adds no deduction, so the bar it has to clear is the gate bar, **≤
 1.1x on both rows** (`../../docs/real-app-timing.md`, #197) — it clears it on
@@ -324,8 +327,8 @@ every run, and the first run clears the 0.9x deduction bar outright.
 Two more readings agree. The mock probe's goldens
 (`recovery-probe.test.mjs`, including `gen.json --search --only=ours`) came
 back **byte-identical** with the component gone: it pruned nothing the
-two-clue DP had not already pruned. And the shipped 9x9 link fell from 9,426
-to 8,197 chars, **-1,229 (-13%)**.
+two-clue DP had not already pruned. And the shipped 9x9 link fell from 9,458
+to 8,276 chars, **-1,182 (-12%)**.
 
 This reverses the #135/#129 row in `OPTIMIZATION_LOG.md`, which recorded a
 wash and kept the component as a correctness rule. That row was measured on an
