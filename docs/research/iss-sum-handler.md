@@ -74,3 +74,6 @@ gets timed on our fixtures with `just time <example>` per
 ## Not read
 
 `nfa.md` is still unread. `count_distinct.md` remains read for §5 only.
+
+A companion note compares this to SudokuMaker's own built-in sum logic:
+`docs/research/sm-vs-iss-sum.md`.
