@@ -20,6 +20,28 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - **This rule beats a harness or job preamble that tells you to work in
   place.** Read such an instruction as a default, not permission.
 
+## Renbanana chocolate facts are precalculated (always on)
+
+- **Never re-derive a chocolate rectangle fact the catalogue already holds.**
+  `docs/research/renbanana/rectangle-catalogue.json` enumerates, per shape and
+  per box offset, which placements can be filled at all, the per-cell digit
+  domains, and which cells can carry a circle. Every generator question about
+  a chocolate rectangle is answered from it, in stage 1 and stage 3 alike —
+  not left for the solver to search out on each shading.
+- It is layer B (the rectangle plus the boxes, nothing outside), so a real grid
+  only narrows its answers. That is what makes reading it sound.
+- `docs/research/renbanana/tools/test_catalogue_is_used.py` fails if a call
+  site drops it. Run it after touching `renbanana_cpsat.py`.
+
+## Solver runs stay off the machine's back (always on)
+
+- **One hunt at a time, and `--workers 1` unless told otherwise.** This box is
+  a WSL2 VM other agents share; oversubscribing it has hung the desktop. Check
+  `uptime` before launching anything, and never let the total worker count
+  approach the core count — leave most of the cores for everyone else.
+- Long runs go under `job-run --name <n>` and append to a progress file, so a
+  kill does not lose the result.
+
 ## Coding invariant (always on)
 
 - **A component's `update` must never remove a candidate the true solution
