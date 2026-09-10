@@ -38,12 +38,16 @@ is why macOS users see staleness too, despite working FSEvents.
 | #11643 | Stale/missing entries for WSL directories on Windows |
 | #9018 | Sidebar does not refresh when a coding agent modifies files |
 
-PR #10551 added a `Refresh` item to the directory right-click menu and was
-merged to `warp-oss` (merge commit `991e453`, Jun 2026). It is **not** present in
-the shipped Windows build as of `v0.2026.09.02.08.27.stable_01` — verified by
-right-clicking a directory: the menu offers New file, cd to directory, Open in
-new tab, Reveal in Explorer, Rename, Delete, Attach as context, Copy path, Copy
-relative path, and nothing else.
+PR #10551 added a `Refresh` item to the directory right-click menu. It was
+**closed without merging** (`merged=False`, `merged_at=null` on the API); the
+`991e453` "merge commit" GitHub reports is its test-merge ref, not a commit on
+master. Master has no Refresh today: `app/src/code/file_tree/view.rs` builds the
+directory menu with "Open in new tab", "cd to directory", "Reveal in Explorer"
+and "Attach as context" and nothing else. The shipped Windows build
+`v0.2026.09.02.08.27.stable_01` matches — verified by right-clicking a directory.
+
+PR #10025, a spec for a Command Palette "Reload File Tree" action, is still open
+and unimplemented.
 
 ## What does not work
 
