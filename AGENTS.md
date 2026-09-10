@@ -42,6 +42,12 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Real-app timing for one example: `just time <example>` — prints a
   paste-ready row; drives the live site, so it stays out of `just check`. See
   `docs/real-app-timing.md`.
+- **A browser-driving probe runs in the local session, never a sandboxed
+  delegate.** `just time`, `app-solve.mjs`, `app-strip.mjs` and any Playwright
+  probe need Chromium and a writable profile. The Codex rescue companion pins
+  `sandbox: read-only` unless the call passes `--write`, and even
+  `workspace-write` has no network by default, so such a run dies before the
+  puzzle loads. Delegate the reading and the reasoning; drive the browser here.
 - Node dev tools install with `npm ci`; Python runs through `uv`.
 
 ## Pointers
