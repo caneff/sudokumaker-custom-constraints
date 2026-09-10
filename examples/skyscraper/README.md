@@ -23,7 +23,7 @@ Two things follow, and both hurt an interactive clue:
 - **It never couples the two ends of a line.** Each clue is on its own.
 
 So this example is one self-contained component per line that reads both end
-clues and the whole line together, plus a per-side count. It follows the same
+clues and the whole line together. It follows the same
 shape as `../running-start/`; see `../../docs/gotchas.md` on why a custom
 component must not lean on `replaceComponent`.
 
@@ -39,13 +39,12 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
 - **global** (`main-global.js`, `PUZZLE_LINK.txt`) — no groups. The backend
   reads all 4n frame lines off the board through the shared reader it splices
   in (`examples/_shared/frame-lines.js`, `docs/example-layout.md`), and
-  registers the two-clue DP alone per line, plus the one-1-per-side component.
-  The DP is a decision procedure for a whole line, so it subsumes the
-  one-sided DP and global does not run one beside it.
+  registers the two-clue DP per line and nothing else. The DP is a decision
+  procedure for a whole line, so it subsumes the one-sided DP and global does
+  not run one beside it.
 
 Each link ships what its own backend registers, and nothing else: a global
-link carries the two-clue DP and the side count, a local link carries the
-one-sided DP alone. `build_size.py` names the two sets as `COMPONENTS` and
+link carries the two-clue DP, a local link the one-sided DP. `build_size.py` names the two sets as `COMPONENTS` and
 `LOCAL_COMPONENTS`, and `framebuild.check` asserts both that the link matches
 its lane and that no backend registers a component the link left out.
 
@@ -107,20 +106,18 @@ so it runs on every line kind with no gate.
 counts as visible. Flip the constant in the pasted segment, and say the same
 thing in the puzzle's rules text.
 
-**`SkyscraperSideComponent.js` — one per side, exactly one `1`.** A clue of `1`
-means the building next to it hides every other one on its line, which happens
-exactly when it is the tallest there. The first cells of one side's lines are
-the *nearest rank*, a house of its own, so the tallest building of the whole
-side stands on exactly one of them: exactly one of the side's clues is a `1`,
-which couples all n clues on a side. The proof needs both halves and the
-component checks both in `update` — every line of the side must be a full house
-of `{1..n}`, and so must the nearest rank, which it reads off the lines' own
-first cells. Take either half away and the count is wrong: on lines that may
-repeat, two sides can both start with their own tallest building.
+### The per-side count, removed (#404)
 
-Timed with and without the per-side count on both boards, the two pairs of
-medians disagree on sign: a wash, so it stays (#129). Numbers and method in
-`../../docs/real-app-timing.md`.
+An earlier version registered one more component per side of the frame:
+`SkyscraperSideComponent`, stating that exactly one of a side's n clues is a
+`1`. The rule is true — a clue of `1` says its building tops its whole line,
+the lines' first cells are a house, and the tallest of them stands on exactly
+one line — but it is *implied* by the line rule the two-clue DP already
+decides, and on a frame every line is a full house, so the DP is always at
+full strength and gets there first.
+
+It was measured three ways and earned nothing in any of them. It is gone;
+the numbers are under `## Timing` below.
 
 ## Is it faster than the original?
 
@@ -150,7 +147,7 @@ original deduces nothing about a blank clue, so it must *guess* every blank clue
 and it wanders. The probe models the original's built-in as a one-clue forward
 prune, gated to fire only once a clue is pinned — so the original gets every
 per-line deduction for a known clue. The gap is exactly the features it lacks:
-blank-clue deduction, two-clue coupling, and the one-1-per-side count. Run it:
+blank-clue deduction and two-clue coupling. Run it:
 
 ```
 node examples/skyscraper/recovery-probe.mjs gen_6x6.json            # root recovery + soundness
@@ -164,15 +161,11 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   so it is skipped.
 - `main-global.js` — the global backend segment: reads all 4n frame lines off
   the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
-  `docs/example-layout.md`), then registers the two-clue DP per line plus the
-  one-1-per-side component (it needs a whole side, which only a
-  full frame has).
+  `docs/example-layout.md`), then registers the two-clue DP per line.
 - `SkyscraperLineComponent.js` — the two-clue DP: both clues, the whole
   line, and the final check. Global only.
 - `SkyscraperOneSidedComponent.js` — the one-sided DP: one clue, one drawn
   line of any shape. Local only.
-- `SkyscraperSideComponent.js` — exactly one `1` among a side's clues.
-  Global only.
 - `soundness-harness.mjs` — Node soundness fuzz for the line component.
   Soundness = the component never removes a cell's true value. Run it:
   `node examples/skyscraper/soundness-harness.mjs` (`FUZZ=20000` for the deep
@@ -277,16 +270,16 @@ The three mechanical criteria, checked by `check_layout.py`:
    2026-09-08 by removing each of the 7 givens and each of the 20 shown clues
    in turn and re-proving (27 solves, 6.3 s): every single removal costs
    uniqueness, so no clue on this board is unnecessary.
-4. **Component reads well at its source** ✓ — the link carries the two global
-   components, and their files in this repo carry the commentary.
+4. **Component reads well at its source** ✓ — the link carries the one global
+   component, and its file in this repo carries the commentary.
    `SkyscraperLineComponent.js` opens with a 35-line `//!` overview (the rule,
    the peak split, the subset DP and its state, why soundness holds, and the
    permutation precondition both entry points re-check) and carries a short
    `//!` note per step of the sweep — 58 `//!` lines in all.
-   `SkyscraperSideComponent.js` carries 26. **None of it ships** (#385):
+   **None of it ships** (#385):
    `minify.py` strips every comment from the copy baked into the link, so a
    recipient opening this board reads the algorithm and nothing about it. The
-   criterion is checked against the two files, not against the blob.
+   criterion is checked against that file, not against the blob.
 
 ## Paste into SudokuMaker
 
@@ -298,10 +291,49 @@ cell blank (`given: false`) to make it interactive; mark it given to show it.
 
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
-`main-global.js` as the main code, plus the `SkyscraperLineComponent` and
-`SkyscraperSideComponent` segments.
+`main-global.js` as the main code, plus the `SkyscraperLineComponent`
+segment.
 
 ## Timing
+
+### Removing the per-side count (#404)
+
+| 2026-09-10 | v2026.08.14-d47fc4b | skyscraper | 8300ms | 7700ms | 0.93 | PASS |
+| 2026-09-10 | v2026.08.14-d47fc4b | skyscraper | 8100ms | 7900ms | 0.98 | FAIL |
+| 2026-09-10 | v2026.08.14-d47fc4b | skyscraper | 8400ms | 8000ms | 0.95 | FAIL |
+| 2026-09-10 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+
+`just time` printed `two-row rule: NO SHIP` on all three runs, as it does for
+every change that adds no deduction: that line reads the 0.9x deduction rule,
+and each row's own PASS/FAIL is that row's 0.9x result alone
+(`../../docs/real-app-timing.md`). The bar this change answers to is the gate
+bar below.
+
+Baseline is the shipped link with `SkyscraperSideComponent` on it; the
+candidate is the same board with that component's `update` neutered (an early
+`return`, nothing else touched), built by `just time skyscraper --ring-clues
+--component SkyscraperSideComponent`. 3 reps per arm, non-deterministic solve
+off, three whole runs. Off is 2-7% faster and the sign never flips. The
+after-logical row read 0ms on both sides in every run, so it places no
+constraint. The three runs were timed against the shipped link as it stood
+before #399 renamed the interior's houses (9,426 chars); that change moved no
+deduction, and this branch's links are the #399 boards rebuilt without the
+component.
+
+Removal adds no deduction, so the bar it has to clear is the gate bar, **≤
+1.1x on both rows** (`../../docs/real-app-timing.md`, #197) — it clears it on
+every run, and the first run clears the 0.9x deduction bar outright.
+
+Two more readings agree. The mock probe's goldens
+(`recovery-probe.test.mjs`, including `gen.json --search --only=ours`) came
+back **byte-identical** with the component gone: it pruned nothing the
+two-clue DP had not already pruned. And the shipped 9x9 link fell from 9,458
+to 8,276 chars, **-1,182 (-12%)**.
+
+This reverses the #135/#129 row in `OPTIMIZATION_LOG.md`, which recorded a
+wash and kept the component as a correctness rule. That row was measured on an
+older board and before the #336 uncached-gate fix, and its numbers were never
+written down.
 
 | 2026-08-27 | v2026.08.14-d47fc4b | skyscraper | 300ms | — | — | BASELINE |
 | 2026-08-28 | v2026.08.14-d47fc4b | skyscraper | 2700ms | 3700ms | 1.37 | noise |

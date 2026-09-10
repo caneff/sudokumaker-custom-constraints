@@ -180,18 +180,52 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   const registeredGroups = p.registered.flatMap(c => cellGroupsIn(c.args, cells, lengths))
 
   // 1. The line set: every line the backend registers is a frame line, and it
-  // registers all 2 * nw + 2 * nh of them. A square frame is symmetric under
+  // registers all nw + nh of them. A square frame is symmetric under
   // transpose, so on a square board this set is the same whichever way round
   // the coordinates are read and it pins the frame, not the reading (#295). A
   // rectangular board breaks that symmetry: a backend that reads one dimension
   // twice builds the wrong lines and this check catches it on its own (#299).
   // The off-board count above usually reports the same backend first, since
   // reading one dimension twice also walks off the short side.
+  //
+  // Lines are compared UNDIRECTED -- each one canonicalized to the smaller of
+  // its two readings. `frameGeometry` states each line twice, once read inward
+  // from each of its two clues, and a backend owes the line, not both readings
+  // of it: a component that reads both end clues at once takes one line per
+  // pair (#404). A reading that is not one of the two the geometry states
+  // still fails here, since neither of its orientations canonicalizes to a
+  // frame line.
+  const undirected = g => {
+    const fwd = g.join(',')
+    const rev = [...g].reverse().join(',')
+    return fwd < rev ? fwd : rev
+  }
   const lines = registeredGroups.filter(g => g.every(id => !ringCells.has(id)))
   assert.deepStrictEqual(
-    [...new Set(lines.map(g => g.join(',')))].sort(),
-    [...new Set(geom.groups.map(g => g.cells.slice(1).join(',')))].sort(),
+    [...new Set(lines.map(undirected))].sort(),
+    [...new Set(geom.groups.map(g => undirected(g.cells.slice(1))))].sort(),
     `${where} must register the frame lines of frameGeometry`)
+
+  // 1b. Coverage, clue by clue. Comparing lines undirected is what lets a
+  // both-ends component register one line per pair, and on its own it would
+  // stop seeing whether every CLUE got a component: a backend registering one
+  // component per clue could drop half the frame's clues and still register
+  // the whole line set (#404). So every one of the 4n (clue, line) pairs the
+  // geometry states must be covered by some single component that was handed
+  // that clue AND that line -- which a both-ends component does for two pairs
+  // at once, and a one-clue component for one.
+  const covered = new Set()
+  for (const c of p.registered) {
+    const own = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
+    for (const clue of new Set(ringIdsIn(c.args, ringCells))) {
+      for (const g of own) covered.add(`${clue}:${undirected(g)}`)
+    }
+  }
+  const uncovered = geom.groups
+    .filter(g => !covered.has(`${g.cells[0]}:${undirected(g.cells.slice(1))}`))
+    .map(g => g.cells[0])
+  assert.deepStrictEqual(uncovered.slice(0, 5), [],
+    `${where} leaves ${uncovered.length} of ${geom.groups.length} frame clues with no component holding both that clue and its line`)
 
   // 2. The labels: a component named for a side holds that side's clues. This
   // is the check that pins the reading on a square board, since a transposed
