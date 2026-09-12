@@ -22,6 +22,19 @@
 # directive rather than dropping it. A missing file, a cycle, and a directive
 # with no path all stop the build, the way an unpaired block marker does.
 #
+# After every include resolves, a top-level `function name (...) { ... }`
+# declaration that came FROM an include and that the assembled script never
+# references by name is dropped (#395). Scoped to spliced-in code only: a
+# component's own unused top-level function is still shipped, so it stays a
+# lint error instead of a silent deletion. A reference is any other
+# occurrence of the bare name in the assembled text -- a call, a value
+# passed around, or a string that happens to spell it -- so the count is
+# conservative in the direction of keeping code, not dropping it. The one
+# thing this cannot see through is dispatch by a COMPUTED name (`obj[key]()`,
+# `eval(...)`, `new Function(...)`): finding one of those anywhere in the
+# assembled script means some name might be reached in a way no text search
+# can confirm or rule out, so the whole prune refuses rather than guessing.
+#
 # The Node side runs the same assembled source without Python: the include
 # splice is mirrored in examples/_shared/include.mjs. Two copies of one rule --
 # keep the syntax identical when either changes.
@@ -41,6 +54,18 @@ import re
 # comment.
 _INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
 
+# A top-level function declaration: no leading whitespace, so a helper nested
+# inside another function (indented) is never a prune candidate.
+_FUNC_DECL_RE = re.compile(r"^function\s+([A-Za-z_$][\w$]*)\s*\(")
+
+# Dispatch through a name this strip cannot read: a computed member call
+# (`obj[key](...)`) or a call built from a string at runtime. `\bFunction\(`
+# only matches the bare word, so an identifier merely ending in "Function"
+# (`myFunction(`) does not trip it.
+_DYNAMIC_RE = re.compile(
+    r"\beval\s*\(|\bnew\s+Function\s*\(|\bFunction\s*\(|\[\s*[A-Za-z_$][\w$]*\s*\]\s*\("
+)
+
 
 def minify_file(path):
     """`minify_js` on `path`'s text, with includes resolved against its own
@@ -54,15 +79,25 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=()):
     round-trip byte-for-byte: the fillomino baseline carries `/* : Generator
     <Change> */` type annotations, and its whole point is being the author's
     own file. Everything shipped from examples/ takes the default."""
+    lines = _splice_and_strip(src, drop_blocks, base_dir, _stack)
+    if not _stack:  # the outermost call sees the whole assembled script
+        lines = _prune_dead_includes(lines)
+    return "\n".join(text for text, _included in lines) + "\n"
+
+
+def _splice_and_strip(src, drop_blocks, base_dir, stack):
+    """`(line, included)` pairs for `src`, includes spliced in and comments
+    stripped. `included` is true for every line that came from a `#include`
+    (at any depth), false for the top-level file's own lines -- the split
+    `_prune_dead_includes` scopes itself to."""
+    included = bool(stack)
     out = []
     for line in src.splitlines():
         directive = _INCLUDE_RE.match(line)
         if directive:
             # An include that minifies to nothing appends nothing: every blank
             # line is dropped, an included file's included.
-            spliced = _include(directive.group(1), drop_blocks, base_dir, _stack)
-            if spliced:
-                out.append(spliced)
+            out.extend(_include(directive.group(1), drop_blocks, base_dir, stack))
             continue
         if drop_blocks:
             line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
@@ -71,13 +106,13 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=()):
             )
         line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
         if line.strip():
-            out.append(line.rstrip())
-    return "\n".join(out) + "\n"
+            out.append((line.rstrip(), included))
+    return out
 
 
 def _include(rest, drop_blocks, base_dir, stack):
-    """The minified text of the file one `// #include` names, without its
-    trailing newline -- the caller re-joins the lines."""
+    """The minified `(line, included)` pairs for the file one `// #include`
+    names -- the caller splices them straight into its own list."""
     rel = rest.strip()
     assert rel and len(rel.split()) == 1, (
         f"an #include names exactly one path, which this one does not: {rest!r}"
@@ -89,9 +124,51 @@ def _include(rest, drop_blocks, base_dir, stack):
     target = (pathlib.Path(base_dir) / rel).resolve()
     assert target.is_file(), f"#include {rel} resolves to no file: {target}"
     assert target not in stack, f"#include cycle through {target}"
-    return minify_js(
+    return _splice_and_strip(
         target.read_text(), drop_blocks, target.parent, (*stack, target)
-    ).rstrip("\n")
+    )
+
+
+def _prune_dead_includes(lines):
+    """`lines` with a spliced-in top-level function dropped whenever the
+    assembled script never refers to its name again. See the module docstring
+    for what counts as a reference and when this refuses instead of guessing."""
+    whole = "\n".join(text for text, _included in lines)
+    dynamic = _DYNAMIC_RE.search(whole)
+    assert not dynamic, (
+        f"refuses to prune: {dynamic.group(0)!r} could reach a function by a "
+        "computed name, which a text search cannot confirm or rule out"
+    )
+
+    spans = []  # (start, end) inclusive, over `lines`
+    i, n = 0, len(lines)
+    while i < n:
+        text, included = lines[i]
+        decl = _FUNC_DECL_RE.match(text)
+        if decl and included:
+            depth = text.count("{") - text.count("}")
+            end = i
+            while depth > 0:
+                end += 1
+                assert end < n, (
+                    f"function {decl.group(1)!r} never closes its brace, which "
+                    "this strip cannot read"
+                )
+                end_text, _ = lines[end]
+                depth += end_text.count("{") - end_text.count("}")
+            spans.append((i, end, decl.group(1)))
+            i = end + 1
+        else:
+            i += 1
+
+    drop = set()
+    for start, end, name in spans:
+        pattern = re.compile(rf"\b{re.escape(name)}\b")
+        span_text = "\n".join(text for text, _included in lines[start : end + 1])
+        used_elsewhere = len(pattern.findall(whole)) - len(pattern.findall(span_text))
+        if used_elsewhere == 0:
+            drop.update(range(start, end + 1))
+    return [pair for idx, pair in enumerate(lines) if idx not in drop]
 
 
 if __name__ == "__main__":
