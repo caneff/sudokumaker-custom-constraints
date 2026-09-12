@@ -10,7 +10,9 @@ snippets and `docs/research/fillomino-baseline/` — which must stay
 byte-for-byte as their author wrote them, plus that baseline's
 `FillominoComponentNoLog.js`, the same vendored code minus its one
 `console.log`, kept in the vendor's style so the timing comparison stays
-apples-to-apples. `package.json`'s `standard.ignore` is the list.
+apples-to-apples — plus a `docs/research/<n>/` investigation's own frozen
+probe scripts, which are the closed-out record of that ticket rather than
+maintained source. `package.json`'s `standard.ignore` is the list.
 Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points there.
 
 ## Soundness is the invariant
