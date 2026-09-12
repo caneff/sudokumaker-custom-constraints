@@ -42,6 +42,18 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   approach the core count — leave most of the cores for everyone else.
 - Long runs go under `job-run --name <n>` and append to a progress file, so a
   kill does not lose the result.
+- Reprioritise a running hunt with SIGSTOP/SIGCONT rather than kill, and sync
+  found results into the repo on a timer so nothing is lost.
+- Before a measurement run longer than a few minutes, state the expected wall
+  clock and the decision the result changes. A result already on record (a
+  prior DNF, a byte-equal baseline) is not re-measured; a refusal by the
+  standard driver (`just time` raising on a cold all-timeout) is the recorded
+  outcome — post the DNF verbatim, never improvise a protocol to get a number.
+- A regeneration script runs on the clean baseline (`git show <base>:<file>`),
+  never on its own output. After regenerating, verify the spliced block
+  appears exactly once and the diff against main holds only the intended
+  change — a splicing generator run twice on one file duplicates the scene
+  silently.
 
 ## Coding invariant (always on)
 
