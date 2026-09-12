@@ -153,6 +153,64 @@ def test_refuses_an_include_cycle():
         raise AssertionError("expected a refusal for an include cycle")
 
 
+def test_prunes_a_spliced_function_the_assembled_script_never_calls():
+    # #395: an included file's helper that nothing in the assembled script
+    # calls ships for nothing. Its called sibling in the same include stays.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "function used () { return 1 }\nfunction unused () { return 2 }\n"
+        )
+        (root / "main.js").write_text("// #include seg.js\nused()\n")
+        got = minify_file(root / "main.js")
+    assert got == "function used () { return 1 }\nused()\n", repr(got)
+
+
+def test_keeps_a_multiline_spliced_function_the_script_calls():
+    # The brace count, not the line count, decides where a function ends.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "function used (x) {\n  if (x) {\n    return 1\n  }\n  return 0\n}\n"
+        )
+        (root / "main.js").write_text("// #include seg.js\nused(1)\n")
+        got = minify_file(root / "main.js")
+    assert "function used" in got and got.endswith("used(1)\n"), repr(got)
+
+
+def test_never_prunes_the_including_files_own_unused_function():
+    # Scoped to the splice output: a component's own unused top-level helper
+    # is still a lint error, not a silent deletion (#395).
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("function used () { return 1 }\n")
+        (root / "main.js").write_text(
+            "// #include seg.js\nused()\nfunction ownUnused () { return 2 }\n"
+        )
+        got = minify_file(root / "main.js")
+    assert "ownUnused" in got, repr(got)
+
+
+def test_refuses_to_prune_when_a_name_could_be_reached_dynamically():
+    # `obj[key]()` calls through a name this strip cannot read, so it cannot
+    # confirm -- or rule out -- that `unused` is the target. Refuse rather
+    # than guess, the same way a missing include or a cycle refuses (#395).
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "function used () { return 1 }\nfunction unused () { return 2 }\n"
+        )
+        (root / "main.js").write_text(
+            "// #include seg.js\nused()\nconst key = 'unused'\nwindow[key]()\n"
+        )
+        try:
+            minify_file(root / "main.js")
+        except AssertionError as e:
+            assert "computed name" in str(e), str(e)
+            return
+        raise AssertionError("expected a refusal for a dynamic call")
+
+
 def test_refuses_a_directive_with_no_path():
     # "// #include" alone is not an ordinary comment to drop: it is a
     # half-written directive, and guessing what it meant is the ambiguity this
@@ -184,5 +242,9 @@ if __name__ == "__main__":
     test_refuses_a_missing_include_rather_than_shipping_the_directive()
     test_refuses_an_include_when_no_base_directory_is_known()
     test_refuses_an_include_cycle()
+    test_prunes_a_spliced_function_the_assembled_script_never_calls()
+    test_keeps_a_multiline_spliced_function_the_script_calls()
+    test_never_prunes_the_including_files_own_unused_function()
+    test_refuses_to_prune_when_a_name_could_be_reached_dynamically()
     test_refuses_a_directive_with_no_path()
     print("ok")
