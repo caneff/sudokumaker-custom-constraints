@@ -89,6 +89,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
+- The app bundle's full extracted API surface (names + arities, generated) → `docs/research/bundle-api-index.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`
