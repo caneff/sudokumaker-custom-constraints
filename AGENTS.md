@@ -10,9 +10,10 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 
 ## Always work in your own worktree (always on)
 
-- **Create a worktree before your first edit — every session, no exception.**
-  Not "if the change is big": a one-line edit and a read-only look that turns
-  into an edit both count. Several agents share this checkout at once, so two
+- **Be in your own task worktree before your first edit — every session, no
+  exception.** One worktree per task: resume the task's existing worktree if it
+  has one, create it if not. Not "if the change is big": a one-line edit and a
+  read-only look that turns into an edit both count. Several agents share this checkout at once, so two
   sessions in it switch branches under each other, and one session's
   uncommitted work gets read into another's build output and shipped. This has
   already happened: an agent regenerating puzzle links embedded another
