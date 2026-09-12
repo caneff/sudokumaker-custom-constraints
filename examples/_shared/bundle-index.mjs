@@ -1,32 +1,27 @@
 // Extract the app bundle's public API surface into a checked-in Markdown
 // index (#410).
 //
-//   node examples/_shared/bundle_index.mjs
+//   node examples/_shared/bundle-index.mjs
 //
 // Reads the tracked HAR (`sudokumaker.har`), picks the JS bundle entries
 // whose body contains `getCellsCanHaveRepeats` -- the app's solver/main/query
 // bundles, de-duplicated by content -- and writes
 // `docs/research/bundle-api-index.md`.
 //
-// Ticket #410 originally specced this stdlib-only in Python. It picked up
-// one dependency mid-build on the owner's instruction (see issue #410
-// comments): a hand-rolled brace/paren scanner over the minified text
-// worked, but every shape it needed to recognize (class fields, private
-// methods, computed member names) was a fresh brittle case. `acorn` parses
-// the bundle into a real AST, so extraction below matches on AST node
-// shapes instead of counting brackets. The three bundles are the same
-// library under different mangled names (a Vite chunk duplicated per entry
-// point); `bundle_index.test.mjs` asserts they agree, and this script reads
-// its structural detail from one of them (the `solver-*` bundle, which
-// carries the fullest component + solve surface) and its built-in component
-// registrations from all of them, unioned.
+// Parses each bundle with `acorn` and extracts off the resulting AST, rather
+// than scanning the minified text for brackets/braces. The three bundles are
+// the same library under different mangled names (a Vite chunk duplicated
+// per entry point); `bundle-index.test.mjs` asserts they agree, and this
+// script reads its structural detail from one of them (the `solver-*`
+// bundle, which carries the fullest component + solve surface) and its
+// built-in component registrations from all of them, unioned.
 //
 // Nothing here is anchored to a mangled name -- every lookup starts from a
 // public marker (a method name, a decorator string, a namespace-object key)
 // and only then follows references to find the class/function that defines
 // it. A bundle that changes these shapes produces an empty or partial
 // section, not a hand-tuned identifier that quietly goes stale;
-// `bundle_index.test.mjs`'s known-name assertions are what catches that.
+// `bundle-index.test.mjs`'s known-name assertions are what catches that.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
@@ -34,7 +29,7 @@ import { fileURLToPath } from 'url'
 import * as acorn from 'acorn'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-export const HAR_PATH = join(HERE, 'sudokumaker.har')
+const HAR_PATH = join(HERE, 'sudokumaker.har')
 export const OUTPUT_PATH = join(HERE, '..', '..', 'docs', 'research', 'bundle-api-index.md')
 
 const MARKER = 'getCellsCanHaveRepeats'
@@ -53,8 +48,22 @@ const HELPER_KEYS = [
 // whichever is stale, not a bug in either.
 const DIGITSET_MUTATORS = new Set(['add', 'delete', 'clear', 'union', 'intersect', 'xor', 'subtract'])
 
-export function loadBundleSources (harPath = HAR_PATH) {
-  const har = JSON.parse(readFileSync(harPath, 'utf8'))
+// The change-object type enum names the shape, not the fields; the fields
+// are read here off the app's own factory functions (see docs/research/
+// bundle-api-index.md's Change objects section for the source read), keyed
+// on the enum's own public names so a renumbering can't desync this table.
+const CHANGE_PAYLOADS = {
+  SetValue: 'value, cell',
+  FilterCandidatesAtCell: 'value, cell',
+  FilterCandidatesAtCells: 'value, cells',
+  RemoveCandidatesFromCell: 'value, cell',
+  RemoveCandidatesFromCells: 'value, cells',
+  AbortSolver: 'message, cells',
+  ReplaceComponent: 'with'
+}
+
+function loadBundleSources () {
+  const har = JSON.parse(readFileSync(HAR_PATH, 'utf8'))
   const urlForText = new Map()
   for (const entry of har.log.entries) {
     const text = entry.response.content.text || ''
@@ -102,7 +111,7 @@ function exprText (node) {
   return '?'
 }
 
-export function classMembers (classNode) {
+function classMembers (classNode) {
   const members = []
   for (const el of classNode.body.body) {
     if (el.type === 'PropertyDefinition') {
@@ -110,7 +119,7 @@ export function classMembers (classNode) {
     } else if (el.type === 'MethodDefinition') {
       const kind = el.kind === 'get' || el.kind === 'set'
         ? `accessor-${el.kind}`
-        : (el.value.generator ? 'generator' : (el.kind === 'constructor' ? 'method' : 'method'))
+        : (el.value.generator ? 'generator' : 'method')
       members.push({
         name: memberName(el.key, el.computed),
         kind,
@@ -204,8 +213,36 @@ function superClassName (cls) {
   return cls.superClass && cls.superClass.type === 'Identifier' ? cls.superClass.name : null
 }
 
-// `IDENT("Title","message {template}",[["param",TypeEnum.X],...])` --
-// every built-in component's registration decorator.
+// A component param's type node comes in three shapes in this bundle:
+// `f.CellArray` (a type-enum member), a bare string literal ("CellId[][]"
+// on DifferentCombinations), or an object literal carrying `type` plus
+// extra constraints (`{type:f.CellArray,amount:2}` on Between's
+// `endPoints`, `{type:f.ObjectArray,fields:{...}}` on SameSum's `groups`).
+// Reading only the first shape silently drops the param on the other two --
+// which is what this function existed to fix (see #410 review).
+function describeParamType (node) {
+  if (node.type === 'MemberExpression' && node.property.type === 'Identifier') {
+    return node.property.name
+  }
+  if (node.type === 'Literal' && typeof node.value === 'string') {
+    return node.value
+  }
+  if (node.type === 'ObjectExpression') {
+    const type = node.properties.find(p => p.key && p.key.name === 'type')
+    const base = type && type.value.type === 'MemberExpression' ? type.value.property.name : 'Object'
+    const fields = node.properties.find(p => p.key && p.key.name === 'fields')
+    if (fields && fields.value.type === 'ObjectExpression') {
+      const names = fields.value.properties.map(p => (p.key.type === 'Identifier' ? p.key.name : p.key.value))
+      return `${base} of {${names.join(', ')}}`
+    }
+    const extras = node.properties.filter(p => p !== type).map(p => `${p.key.name}: ${p.value.value}`)
+    return extras.length ? `${base} (${extras.join(', ')})` : base
+  }
+  return null
+}
+
+// `IDENT("Title","message {template}",[["param",<type>],...])` -- every
+// built-in component's registration decorator.
 function extractComponents (ast) {
   const calls = collect(ast, n =>
     n.type === 'CallExpression' &&
@@ -222,9 +259,8 @@ function extractComponents (ast) {
     for (const el of call.arguments[2].elements) {
       if (!el || el.type !== 'ArrayExpression' || el.elements.length !== 2) continue
       const [pname, ptype] = el.elements
-      if (pname && pname.type === 'Literal' && ptype && ptype.type === 'MemberExpression' && ptype.property.type === 'Identifier') {
-        params.push([pname.value, ptype.property.name])
-      }
+      const typeDesc = pname && pname.type === 'Literal' ? describeParamType(ptype) : null
+      if (typeDesc) params.push([pname.value, typeDesc])
     }
     out.set(name, { message, params })
   }
@@ -270,7 +306,7 @@ function extractChangeTypeEnum (ast) {
   throw new Error('change-object type enum (containing SetValue) not found')
 }
 
-export function buildIndex (sources) {
+function buildIndex (sources) {
   const [primaryUrl, primaryText] = sources.entries().next().value
   const ast = parseBundle(primaryText)
   const byName = classesByName(ast)
@@ -339,16 +375,16 @@ function membersTable (members, mutators = new Set()) {
   return lines.join('\n')
 }
 
-export function render (index) {
+function render (index) {
   const lines = []
   lines.push('# Bundle API index')
   lines.push('')
   lines.push(
-    'Generated by `examples/_shared/bundle_index.mjs` from the tracked ' +
+    'Generated by `examples/_shared/bundle-index.mjs` from the tracked ' +
     '`examples/_shared/sudokumaker.har`. Do not hand-edit -- ' +
-    '`bundle_index.test.mjs` asserts this file is byte-equal to a fresh run ' +
+    '`bundle-index.test.mjs` asserts this file is byte-equal to a fresh run ' +
     'of the script, so a hand edit is a failing test, not a fix. Regenerate ' +
-    'with:\n\n    node examples/_shared/bundle_index.mjs'
+    'with:\n\n    node examples/_shared/bundle-index.mjs'
   )
   lines.push('')
   lines.push(
@@ -403,29 +439,30 @@ export function render (index) {
     'adds candidate reads/writes and solver control.'
   )
   lines.push('')
-  lines.push(`### ${index.puzzleBaseName} (base)`)
+  lines.push(`### base (\`${index.puzzleBaseName}\`)`)
   lines.push('')
   lines.push(membersTable(index.puzzleBaseMembers))
   lines.push('')
-  lines.push(`### ${index.puzzleClassName} (candidate + solver control)`)
+  lines.push(`### candidate + solver control (\`${index.puzzleClassName}\`)`)
   lines.push('')
   lines.push(membersTable(index.puzzleMembers))
   lines.push('')
 
   lines.push('## DigitSet (`SudokuDigitSet`)')
   lines.push('')
+  const mutatorList = [...DIGITSET_MUTATORS].map(m => `\`${m}\``).join(', ')
   lines.push(
     `Mangled class \`${index.digitSetClassName} extends ${index.digitSetBaseName}\`. ` +
-    '`union`, `intersect`, `xor`, `subtract`, `add`, `delete`, `clear` ' +
-    'mutate `this` in place and return it; everything else (including ' +
-    '`intersects`, `isSubsetOf`) is a read (verified in `docs/puzzle-api.md`).'
+    `${mutatorList} mutate \`this\` in place and return it; everything else ` +
+    '(including `intersects`, `isSubsetOf`) is a read (verified in ' +
+    '`docs/puzzle-api.md`).'
   )
   lines.push('')
-  lines.push(`### ${index.digitSetBaseName} (base)`)
+  lines.push(`### base (\`${index.digitSetBaseName}\`)`)
   lines.push('')
   lines.push(membersTable(index.digitSetBaseMembers, DIGITSET_MUTATORS))
   lines.push('')
-  lines.push(`### ${index.digitSetClassName} (own)`)
+  lines.push(`### own (\`${index.digitSetClassName}\`)`)
   lines.push('')
   lines.push(membersTable(index.digitSetMembers, DIGITSET_MUTATORS))
   lines.push('')
@@ -452,22 +489,23 @@ export function render (index) {
   lines.push('')
   lines.push(
     'The `{type: N, ...}` objects a component\'s `update`/`initialize` ' +
-    'yields, read off the app\'s own type enum.'
+    'yields, read off the app\'s own type enum. `fields` beyond `type` is ' +
+    'read off the app\'s factory functions, keyed on the enum\'s own names.'
   )
   lines.push('')
-  lines.push('| type | name |')
-  lines.push('|-|-|')
+  lines.push('| type | name | fields |')
+  lines.push('|-|-|-|')
   for (const num of Object.keys(index.changeTypes).map(Number).sort((a, b) => a - b)) {
-    lines.push(`| ${num} | ${index.changeTypes[num]} |`)
+    const name = index.changeTypes[num]
+    lines.push(`| ${num} | ${name} | ${CHANGE_PAYLOADS[name] || ''} |`)
   }
   lines.push('')
 
   return lines.join('\n') + '\n'
 }
 
-export function generate (harPath = HAR_PATH) {
-  const sources = loadBundleSources(harPath)
-  return render(buildIndex(sources))
+export function generate () {
+  return render(buildIndex(loadBundleSources()))
 }
 
 function main () {

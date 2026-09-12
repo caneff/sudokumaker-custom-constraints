@@ -1,7 +1,7 @@
 # The puzzle API
 
 Full extracted surface: `docs/research/bundle-api-index.md`, regenerate with
-`node examples/_shared/bundle_index.mjs`.
+`node examples/_shared/bundle-index.mjs`.
 
 The solving object is available as `puzzle` or `sudoku`. `helpers` is also
 reachable as `puzzle.helpers`. Signatures below are from the community docs
