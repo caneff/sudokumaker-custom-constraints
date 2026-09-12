@@ -157,9 +157,11 @@ function findFunctionsReturningObject (ast) {
 
 // Read the `helpers` factory (`function NAME(s){const a=new ClassA(...),...;
 // return{cellIds:a,...}}`), identified by its return object carrying a
-// `cellIds` key -- a public name, not a mangled one.
-function extractHelperClassNames (ast) {
-  for (const fn of findFunctionsReturningObject(ast)) {
+// `cellIds` key -- a public name, not a mangled one. Takes the already-
+// collected candidate functions (shared with extractDigitSetClassName)
+// rather than re-walking the AST for the same node shape.
+function extractHelperClassNames (fns) {
+  for (const fn of fns) {
     const ret = fn.body.body[fn.body.body.length - 1]
     if (!ret.argument.properties.some(p => p.key && p.key.name === 'cellIds')) continue
 
@@ -186,9 +188,9 @@ function extractHelperClassNames (ast) {
 
 // Read the DigitSet class name off a namespace factory's `SudokuDigitSet`
 // key (same idea as the digits above; the app's own `zs()`-shaped
-// `function(){return{...,SudokuDigitSet:X,...}}`).
-function extractDigitSetClassName (ast) {
-  for (const fn of findFunctionsReturningObject(ast)) {
+// `function(){return{...,SudokuDigitSet:X,...}}`). Same shared `fns`.
+function extractDigitSetClassName (fns) {
+  for (const fn of fns) {
     const ret = fn.body.body[fn.body.body.length - 1]
     for (const prop of ret.argument.properties) {
       if (prop.key && prop.key.name === 'SudokuDigitSet' && prop.value.type === 'Identifier') {
@@ -211,6 +213,19 @@ function findClassDefiningMethod (byName, methodName) {
 
 function superClassName (cls) {
   return cls.superClass && cls.superClass.type === 'Identifier' ? cls.superClass.name : null
+}
+
+// byName.get(x) for a class this script's own logic expects to exist --
+// a missing one means an earlier lookup (extractHelperClassNames,
+// findClassDefiningMethod, extractDigitSetClassName, superClassName) found
+// a name the bundle doesn't actually declare as a class, which is a bug in
+// this script or a bundle shape it no longer recognizes. Naming which
+// lookup failed beats the generic TypeError that follows from indexing
+// into `undefined`.
+function requireClass (byName, name, context) {
+  const cls = byName.get(name)
+  if (!cls) throw new Error(`${context}: no class named ${name}`)
+  return cls
 }
 
 // A component param's type node comes in three shapes in this bundle:
@@ -310,23 +325,27 @@ function buildIndex (sources) {
   const [primaryUrl, primaryText] = sources.entries().next().value
   const ast = parseBundle(primaryText)
   const byName = classesByName(ast)
+  const functionsReturningObject = findFunctionsReturningObject(ast)
 
-  const helperClasses = extractHelperClassNames(ast)
+  const helperClasses = extractHelperClassNames(functionsReturningObject)
   const helperMembers = {}
   for (const key of HELPER_KEYS) {
     if (!(key in helperClasses)) continue
-    helperMembers[key] = classMembers(byName.get(helperClasses[key]))
+    helperMembers[key] = classMembers(requireClass(byName, helperClasses[key], `helpers.${key}`))
   }
 
   const puzzleClassName = findClassDefiningMethod(byName, 'getCandidatesBitMask')
-  const puzzleClass = byName.get(puzzleClassName)
+  if (!puzzleClassName) throw new Error('no class defines getCandidatesBitMask')
+  const puzzleClass = requireClass(byName, puzzleClassName, 'puzzle/state')
   const puzzleBaseName = superClassName(puzzleClass)
-  const puzzleBaseClass = byName.get(puzzleBaseName)
+  if (!puzzleBaseName) throw new Error(`puzzle/state: ${puzzleClassName} does not extend a named base class`)
+  const puzzleBaseClass = requireClass(byName, puzzleBaseName, 'puzzle/state base')
 
-  const digitSetClassName = extractDigitSetClassName(ast)
-  const digitSetClass = byName.get(digitSetClassName)
+  const digitSetClassName = extractDigitSetClassName(functionsReturningObject)
+  const digitSetClass = requireClass(byName, digitSetClassName, 'DigitSet')
   const digitSetBaseName = superClassName(digitSetClass)
-  const digitSetBaseClass = byName.get(digitSetBaseName)
+  if (!digitSetBaseName) throw new Error(`DigitSet: ${digitSetClassName} does not extend a named base class`)
+  const digitSetBaseClass = requireClass(byName, digitSetBaseName, 'DigitSet base')
 
   const components = new Map()
   for (const text of sources.values()) {
