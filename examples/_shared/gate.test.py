@@ -10,7 +10,8 @@
 #     names and the soundness harnesses -- nothing heavy runs in check, and
 #     nothing light is moved out of it;
 #   - every command check runs, check-full runs too;
-#   - lint fails when uv.lock no longer matches pyproject.toml;
+#   - lint runs `uv lock --check`, which fails when uv.lock no longer matches
+#     pyproject.toml;
 #   - no Python step passes --with, so every call uses the one synced project
 #     environment and nothing resolves per call.
 #

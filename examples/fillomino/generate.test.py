@@ -35,8 +35,8 @@ def test_cap_wider_than_side():
     # When the cap exceeds the side, `sample` forces one pin above the side, so
     # every grid it draws uses a digit the side alone would not reach, and none
     # above the cap. One pin per draw on a 5x5 with digits 1-6: without the
-    # forced pin, about 60% of draws still reach a 6 by chance, so thirty seeds
-    # all reaching one by chance is about a 2-in-10-million event.
+    # forced pin, about two draws in three still reach a 6 by chance, so thirty
+    # seeds all reaching one by chance is a few-in-a-million event.
     board = Board.of(5, 6)
     for seed in range(1, 31):
         grid = sample(board, seed=seed, pins=1)
