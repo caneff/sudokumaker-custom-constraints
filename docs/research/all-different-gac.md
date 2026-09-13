@@ -129,7 +129,7 @@ forms.
 
 | component | per call, n=9 | vs terse | minified | compressed alone | link grows by |
 | --- | --- | --- | --- | --- | --- |
-| `HouseGacComponent.js` (named bitmask, shipped) | **4.2-4.6 us** | ~1.1x | 2168 | 1568 B | 1687 |
+| `HouseGacComponent.js` (named bitmask, shipped) | **4.2-4.6 us** | ~1.1x | 2183 | 1562 B | 1689 |
 | `TerseHouseGacComponent.js` (terse bitmask) | 3.9-4.4 us | 1x | 1480 | **1209 B** | **1310** |
 | `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-18.5 us | ~4x | 1883 | 1376 B | 1502 |
 | `ReadableHouseGacComponent.js` (pool from scratch) | 100-108 us | ~25x | 1835 | 1319 B | 1463 |
@@ -139,7 +139,7 @@ Naming the bitmask form costs almost no speed. It runs within about 10% of the
 terse form, well inside the gap to every other form; the one-line helpers are
 small enough for V8 to inline, though that is inferred from the timing, not
 profiled. It costs bytes instead. Names survive minification, so it is the
-largest form: 359 B more compressed than the terse form on its own, and 377
+largest form: 353 B more compressed than the terse form on its own, and 379
 characters more in a link.
 
 The readable form's cost is allocation, not the rule. For each of the 511
@@ -220,12 +220,12 @@ lz-string compressed, comments stripped:
 | `tools/AllDiffGacComponent.js` (naive matching GAC) | 2212 | 1576 | **1201 B** |
 | `tools/ReginGac.js` (proper Regin **sketch**) | 3306 | 3080 | **2131 B** |
 | `408-house-gac/TerseHouseGacComponent.js` (bitmask subsets) | — | 1480 | **1209 B** |
-| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named) | — | 2168 | 1568 B |
+| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named) | — | 2183 | 1562 B |
 
 Measured for #408 with the builder's own `minify_file` and
 `compressToEncodedURIComponent`; that method gives the matching component 1203
 B, so the terse subset form and matching are the same size on their own, and
-the named form is 365 B larger. The difference shows in
+the named form is 359 B larger than matching. The difference shows in
 a link, where the backend rides too. Appended as one more constraint to
 `examples/skyscraper/PUZZLE_LINK.txt` (8276 characters),
 `408-house-gac/link-delta-house-gac.py` measures:
@@ -234,7 +234,7 @@ a link, where the backend rides too. Appended as one more constraint to
 | --- | --- |
 | `tools/alldiff-main.js` + `tools/AllDiffGacComponent.js` | 1488 |
 | `examples/_shared/house-gac.js` + `408-house-gac/TerseHouseGacComponent.js` | **1310** |
-| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named) | 1687 |
+| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named) | 1689 |
 
 `ReginGac.js` is a **size probe, not working code** — it was never verified and
 contains a meaningless `|| true` in the SCC loop. Do not ship it as is. Most of

@@ -72,7 +72,7 @@ function withoutLowestBit (bits) {
 }
 
 //! The index of a single set bit: 1 -> 0, 2 -> 1, 4 -> 2, ...
-function indexOf (singleBit) {
+function positionOf (singleBit) {
   return 31 - Math.clz32(singleBit)
 }
 
@@ -94,8 +94,8 @@ function * update (instance, puzzle) {
   const wholeHouse = (1 << cellCount) - 1
   pooledDigitsOf[0] = 0
   for (let group = 1; group <= wholeHouse; group++) {
-    const newestCell = lowestBit(group)
-    const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[indexOf(newestCell)]
+    const newestCellBit = lowestBit(group)
+    const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[positionOf(newestCellBit)]
     pooledDigitsOf[group] = pooledDigits
 
     const cellsInGroup = countOf(group)
@@ -110,7 +110,7 @@ function * update (instance, puzzle) {
     if (groupOwnsItsDigits) {
       const cellsOutside = wholeHouse & ~group
       for (let rest = cellsOutside; rest !== 0; rest = withoutLowestBit(rest)) {
-        candidates[indexOf(lowestBit(rest))] &= ~pooledDigits
+        candidates[positionOf(lowestBit(rest))] &= ~pooledDigits
       }
     }
   }

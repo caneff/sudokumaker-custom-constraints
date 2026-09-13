@@ -9,8 +9,10 @@
 // hands back a fresh DigitSet per call, as the app does, using the harness's
 // DigitSet, whose methods are copied from the bundle.
 //
-// Before timing, every form runs once on the first 2000 states and must leave
-// what the shipped form leaves, so the rows compare the same work.
+// Before timing, every form runs once on the first 2000 states, and on 2000
+// sparse states with no planted filling (many of which stop), and must leave
+// what the shipped form leaves, stop included, so the rows compare the same
+// work.
 //
 // Run: node docs/research/408-house-gac/bench-house-gac.mjs (#408)
 import { installGlobals, makeIo, makePuzzle, makeRng } from '../../../examples/_shared/harness-lib.mjs'
@@ -44,16 +46,25 @@ function candidatesAfter (component, masks) {
   const instance = { name: 'house' }
   component.setParams(instance, cells)
   Array.from(component.update(instance, puzzle))
+  if (puzzle._stopped !== null) return 'stop'
   return JSON.stringify(cells.map(c => [...puzzle._cand.get(c)].sort((a, b) => a - b)))
 }
 
-const shipped = components['shipped (HouseGacComponent)']
-for (const [t, masks] of states.slice(0, 2000).entries()) {
-  const want = candidatesAfter(shipped, masks)
+const openStates = []
+for (let t = 0; t < 2000; t++) {
+  openStates.push(cells.map(() => { let mask = 0; for (let d = 1; d <= 9; d++) if (rnd() < 0.2) mask |= 1 << d; return mask || 1 << (1 + ((rnd() * 9) | 0)) }))
+}
+const shippedLabel = 'shipped (HouseGacComponent)'
+let stops = 0
+for (const [t, masks] of [...states.slice(0, 2000), ...openStates].entries()) {
+  const want = candidatesAfter(components[shippedLabel], masks)
+  if (want === 'stop') stops++
   for (const [label, component] of Object.entries(components)) {
+    if (label === shippedLabel) continue
     if (candidatesAfter(component, masks) !== want) throw new Error(`state ${t}: ${label} disagrees with HouseGacComponent`)
   }
 }
+if (stops < 100) throw new Error(`only ${stops} check states stop; the stop is not compared`)
 
 for (const [label, component] of Object.entries(components)) {
   let masks

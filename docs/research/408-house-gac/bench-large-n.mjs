@@ -1,6 +1,7 @@
 // Per-call cost at n=9..16: TerseHouseGacComponent.js (the bitmask algorithm
-// of examples/_shared/HouseGacComponent.js, the form these numbers were first
-// taken on) against the #406 matching filter AllDiffGacComponent.js, both run
+// of examples/_shared/HouseGacComponent.js with short names; the table in
+// docs/research/all-different-gac.md is its output) against the #406 matching
+// filter AllDiffGacComponent.js, both run
 // through their own update(). Both bitmask forms refuse a house above 9 cells,
 // so this probe loads the source with MAX_CELLS raised to 16 in memory; the
 // file is untouched.

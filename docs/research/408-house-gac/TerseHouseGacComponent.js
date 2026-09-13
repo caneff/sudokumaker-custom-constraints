@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! Research record (#408): `examples/_shared/HouseGacComponent.js` before its
-//! bit tricks got names -- the same algorithm with short variables. Kept so
-//! the size and speed rows in docs/research/all-different-gac.md can be run
-//! again; not tested or maintained.
+//! Research record (#408): the algorithm of `examples/_shared/HouseGacComponent.js`
+//! written with short variables and no named helpers. It exists so the size and
+//! speed rows in docs/research/all-different-gac.md can be run again;
+//! `bench-house-gac.mjs` checks it against the shipped form, and nothing else
+//! tests or maintains it.
 //!
 //! All-different at full strength (generalized arc consistency) over one house
 //! of at most 9 cells.

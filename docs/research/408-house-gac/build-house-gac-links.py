@@ -11,7 +11,8 @@ from house_gac_links import BASE_LINK, FORMS, HERE, with_filter  # noqa: E402
 from link_codec import decode_puzzle, encode_link  # noqa: E402
 
 base = decode_puzzle(BASE_LINK.read_text().strip())
+by_name = {component.stem: component for component in FORMS}
 for name, out in [("HouseGacComponent", "PUZZLE_LINK_house_gac.txt"), ("TerseHouseGacComponent", "PUZZLE_LINK_terse.txt")]:
-    link = encode_link(with_filter(base, None, FORMS[name]))
+    link = encode_link(with_filter(base, by_name[name]))
     (HERE / out).write_text(link + "\n")
     print(f"{HERE / out}: {len(link)} characters")

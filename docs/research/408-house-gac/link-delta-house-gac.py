@@ -18,10 +18,10 @@ n0 = len(encode_link(base))
 print("base link", n0)
 print(
     "AllDiffGacComponent + alldiff-main (matching)",
-    len(encode_link(with_filter(base, TOOLS / "alldiff-main.js", TOOLS / "AllDiffGacComponent.js"))) - n0,
+    len(encode_link(with_filter(base, TOOLS / "AllDiffGacComponent.js", TOOLS / "alldiff-main.js"))) - n0,
 )
-for name, component in FORMS.items():
-    print(f"{name} + house-gac", len(encode_link(with_filter(base, None, component))) - n0)
-for f in [TOOLS / "AllDiffGacComponent.js", *FORMS.values()]:
+for component in FORMS:
+    print(f"{component.stem} + house-gac", len(encode_link(with_filter(base, component))) - n0)
+for f in [TOOLS / "AllDiffGacComponent.js", *FORMS]:
     code = minify_file(f)
     print(f"alone: {f.name} minified {len(code)}, compressed {len(LZString.compressToEncodedURIComponent(code))}")

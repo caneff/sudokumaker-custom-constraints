@@ -21,14 +21,16 @@ export class DigitSet {
   has (d) { return (this.mask & (1 << d)) !== 0 }
   valueOf () { return this.mask }
   // Copied from the bundle's SmallNumberSet (bundle.claude.js:558-617);
-  // `getUnion` returns a fresh set.
+  // `getUnion` returns a fresh set. Their callers are the digit-set forms in
+  // docs/research/408-house-gac/, run by its bench through this harness.
   union (other) { this.mask |= other.valueOf(); return this }
   subtract (other) { this.mask &= ~other.valueOf(); return this }
   equals (other) { return this.mask === +other }
   static getUnion (sets) { const u = new this(); for (const s of sets) u.union(s); return u }
   // ponytail: the rest of SmallNumberSet (intersect, xor, add, delete, clear,
   // the is*/intersects tests, getSmallest/LargestNumber, getIntersection) is
-  // not mocked — no component uses it yet. Add a member here when one does.
+  // not mocked — nothing that runs through this harness uses it. Add a member
+  // here when something does.
   * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
 }
 

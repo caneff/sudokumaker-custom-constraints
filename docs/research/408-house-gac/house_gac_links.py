@@ -14,18 +14,19 @@ HERE = pathlib.Path("docs/research/408-house-gac")
 BASE_LINK = pathlib.Path("examples/skyscraper/PUZZLE_LINK.txt")
 BACKEND = pathlib.Path("examples/_shared/house-gac.js")
 
-# Every form of the rule, by the constructor name it ships under.
-FORMS = {
-    "HouseGacComponent": pathlib.Path("examples/_shared/HouseGacComponent.js"),
-    "TerseHouseGacComponent": HERE / "TerseHouseGacComponent.js",
-    "IncrementalHouseGacComponent": HERE / "IncrementalHouseGacComponent.js",
-    "ReadableHouseGacComponent": HERE / "ReadableHouseGacComponent.js",
-}
+# Every form of the rule. A component's constructor name is its file stem.
+FORMS = [
+    pathlib.Path("examples/_shared/HouseGacComponent.js"),
+    HERE / "TerseHouseGacComponent.js",
+    HERE / "IncrementalHouseGacComponent.js",
+    HERE / "ReadableHouseGacComponent.js",
+]
 
 
-def with_filter(doc, backend, component):
-    """A copy of `doc` with one more constraint: `backend` (default: house-gac.js
-    registering `component`'s name) and `component`."""
+def with_filter(doc, component, backend=None):
+    """A copy of `doc` with one more constraint carrying `component`, registered
+    by `backend`, or by house-gac.js with its constructor renamed to `component`'s
+    stem when no backend is given."""
     name = pathlib.Path(component).stem
     if backend is None:
         code = minify_js(BACKEND.read_text().replace("HouseGacComponent", name))

@@ -49,8 +49,8 @@ function shuffle (rnd, a) {
 
 // A house state that still allows the solution `perm`: each cell keeps its
 // true digit and gains each other digit in lo..hi with probability `rate`.
-function consistentState (rnd, lo, hi, rate) {
-  const perm = shuffle(rnd, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)).slice(0, 9)
+function consistentState (rnd, lo, hi, rate, size = 9) {
+  const perm = shuffle(rnd, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)).slice(0, size)
   const cands = perm.map(v => {
     const s = [v]
     for (let d = lo; d <= hi; d++) if (d !== v && rnd() < rate) s.push(d)
@@ -114,6 +114,29 @@ installGlobals(1, 9)
     assert.deepStrictEqual(got, want, `open state ${t}: ${JSON.stringify(cands)}`)
   }
   assert.ok(stops > 100, `only ${stops} of 2000 open states had no solution; the case is not exercised`)
+}
+
+// ---- houses shorter than 9 cells ------------------------------------------
+// A frame board's 6x6 or 8x8 interior hands the backend houses of 6 or 8 cells,
+// and nothing about the rule depends on the house holding 9. Every size from 1
+// to 8 over digits 1..9, with and without a planted solution, lands exactly
+// where the matching filter lands.
+for (let size = 1; size <= 8; size++) {
+  let stops = 0
+  for (let t = 0; t < 400; t++) {
+    const planted = t % 2 === 0
+    const cands = planted
+      ? consistentState(rnd, 1, 9, 0.3, size).cands
+      : CELLS.slice(0, size).map(() => {
+        const s = []
+        for (let d = 1; d <= 9; d++) if (rnd() < 0.15) s.push(d)
+        return s.length ? s : [1 + ((rnd() * 9) | 0)]
+      })
+    const want = runOnce(ref, cands, 'house')
+    if (want === 'stop') stops++
+    assert.deepStrictEqual(runOnce(gac, cands, 'house'), want, `${size} cells, state ${t}: ${JSON.stringify(cands)}`)
+  }
+  if (size >= 3) assert.ok(stops > 10, `${size} cells: only ${stops} of 400 states had no filling; the stop is not exercised`)
 }
 
 // ---- a worked Hall set, independent of any reference ----------------------
