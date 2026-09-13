@@ -93,28 +93,69 @@ Returns the `Set` of components currently registered on that cell.
 (`spec.size.width`), `height`, `maxDigit`, `minDigit`, `digitCount` — all plain
 reads off `spec`.
 
-#### `getRegion(cellId)` / `getRegionCells(regionId)` / `getRegions()` / `hasRegions()` / `getRegionAt(x, y)`
-Region lookups, delegated straight to `SolverState`.
-- **Returns:** `getRegion` → 0-based region id, `-1` when the cell has no region
-  (`getRegionIdAt` is `this.regionsByCellId[cellId] ?? -1`, 8802).
-  `getRegionCells` → the region's cell-id array. `getRegions` → the array of
-  those arrays. `hasRegions` → `regions.length > 0`.
-- **Notes:** `getRegionAt(x, y)` goes through `unsafeGetCellAt`, so
-  out-of-range coords give a garbage id, not `undefined`.
+#### `getRegion(cellId)`
+The region a cell belongs to, delegated to `SolverState.getRegionIdAt`
+(`this.regionsByCellId[cellId] ?? -1`, 8802).
+- **Returns:** 0-based region id, `-1` when the cell has no region.
 
-#### `getX(cellId)` / `getY(cellId)` / `getColumn(cellId)` / `getRow(cellId)`
-0-based column and row. `getColumn` is literally `getX` and `getRow` is `getY`
-(9264-9273) — same function, two names.
+#### `getRegionCells(regionId)`
+The cells of one region.
+- **Returns:** the region's cell-id array, as the state holds it.
 
-#### `getCellAt(x, y)` / `unsafeGetCellAt(x, y)`
-Coords to cell id. `getCellAt` uses `helpers.cellIds.getIdFromCoordsSafe` and is
-`undefined` off the board; `unsafeGetCellAt` uses `getIdFromCoords` and does not
-bounds-check.
+#### `getRegions()`
+Every region on the board.
+- **Returns:** the array of region cell-id arrays.
 
-#### `getCellsOrthogonallyAdjacentToCell(cellId)` / `…DiagonallyAdjacentToCell(cellId)` / the `…ToCoords(x, y)` pair
-Thin `yield*` wrappers over `helpers.geometry.getOrthogonallyAdjacentCells` and
-`getDiagonallyAdjacentCells`.
+#### `hasRegions()`
+Whether the puzzle defines any regions at all.
+- **Returns:** boolean, `regions.length > 0`.
+
+#### `getRegionAt(x, y)`
+The region of the cell at these coordinates.
+- **Returns:** 0-based region id, or `-1`.
+- **Notes:** goes through `unsafeGetCellAt`, so out-of-range coords give a
+  garbage id, not `undefined`.
+
+#### `getX(cellId)`
+The 0-based column of a cell.
+- **Returns:** number.
+
+#### `getY(cellId)`
+The 0-based row of a cell.
+- **Returns:** number.
+
+#### `getColumn(cellId)`
+Alias of `getX` (9264-9273): the same function under a second name.
+
+#### `getRow(cellId)`
+Alias of `getY` (9264-9273): the same function under a second name.
+
+#### `getCellAt(x, y)`
+Coordinates to cell id, bounds-checked through
+`helpers.cellIds.getIdFromCoordsSafe`.
+- **Returns:** cell id, or `undefined` off the board.
+
+#### `unsafeGetCellAt(x, y)`
+Coordinates to cell id through `getIdFromCoords`, with no bounds check.
+- **Returns:** `x + y * width`, which is a garbage id for off-board coords.
+
+#### `*getCellsOrthogonallyAdjacentToCell(cellId)`
+The up-to-four edge neighbours of a cell, a `yield*` wrapper over
+`helpers.geometry.getOrthogonallyAdjacentCells`.
 - **Returns:** generator of cell ids. Spread it before indexing.
+
+#### `*getCellsOrthogonallyAdjacentToCoords(x, y)`
+The same for the cell at `(x, y)`.
+- **Returns:** generator of cell ids.
+
+#### `*getCellsDiagonallyAdjacentToCell(cellId)`
+The up-to-four corner neighbours of a cell, a `yield*` wrapper over
+`helpers.geometry.getDiagonallyAdjacentCells`.
+- **Returns:** generator of cell ids.
+
+#### `*getCellsDiagonallyAdjacentToCoords(x, y)`
+The same for the cell at `(x, y)`.
+- **Returns:** generator of cell ids.
 
 #### `getFriendlyDigitsForCell(cellId)`
 The "friendly digits" of a cell: column index + 1, row index + 1, and region id
@@ -132,12 +173,17 @@ The set of cells that must differ from this one.
   `includeClones` (the default) the clone map expands both the source and the
   result.
 
-#### `getCellsSeeEachOther(cells)` / `getCellsCanHaveRepeats(cells)`
-Whether every pair in the list excludes each other, and its complement.
+#### `getCellsSeeEachOther(cells)`
+Whether every pair of cells in the list must differ, using `getCellsSeenByCell`
+for each.
 - **Params:** array or any iterable of cell ids.
-- **Returns:** boolean. `getCellsCanHaveRepeats` is
-  `hasDuplicates(list) || !getCellsSeeEachOther(list)` (8860) — a repeated id in
-  the list alone makes it `true`.
+- **Returns:** boolean; `true` for a single cell.
+
+#### `getCellsCanHaveRepeats(cells)`
+The complement: whether some two cells in the list may hold the same digit.
+- **Params:** array or any iterable of cell ids.
+- **Returns:** boolean, `hasDuplicates(list) || !getCellsSeeEachOther(list)`
+  (8860). A repeated id in the list alone makes it `true`.
 - **Notes:** cost is `O(n)` calls to `getCellsSeenByCell`, each of which walks
   every component on that cell. Not a cheap read in a hot loop.
 
@@ -153,9 +199,13 @@ write nothing — they build and return a plain change object for you to `yield`
 > to the factories at `bundle.claude.js:1866-1881`, whose bodies fix the order:
 > **the digit or digit mask comes first, the cell or cells second**.
 
-#### `getValue(cellId)` / `hasValue(cellId)`
-The solved digit, and whether there is one. `getValue` is
-`state.cells[cellId].value`, `undefined` when unsolved.
+#### `getValue(cellId)`
+The solved digit of a cell, read as `state.cells[cellId].value`.
+- **Returns:** number, or `undefined` when unsolved.
+
+#### `hasValue(cellId)`
+Whether the cell is solved to a single digit.
+- **Returns:** boolean, `value !== undefined`.
 
 #### `getCandidates(cellId)`
 Remaining candidates as a `SudokuDigitSet`.
@@ -189,10 +239,20 @@ Change: drop a set of digits from one cell.
 Change: keep only these digits in the cell.
 - **Returns:** `{ type: 1, value: digits, cell }`.
 
-#### `removeCandidateFromCells(digit, cells)` / `removeCandidatesFromCells(digits, cells)` / `filterCandidatesInCells(digits, cells)`
-The same three changes over a list of cells.
-- **Returns:** `{ type: 4 | 4 | 2, value, cells: [...cells] }` — the cell list is
-  copied at build time, so mutating your array afterwards is harmless.
+#### `removeCandidateFromCells(digit, cells)`
+Change: drop one digit from every listed cell.
+- **Returns:** `{ type: 4, value: 1 << digit, cells: [...cells] }`. The cell
+  list is copied at build time, so mutating your array afterwards is harmless.
+
+#### `removeCandidatesFromCells(digits, cells)`
+Change: drop a set of digits from every listed cell.
+- **Params:** `digits` — a bitmask or a `DigitSet`, stored raw as for the
+  single-cell form.
+- **Returns:** `{ type: 4, value: digits, cells: [...cells] }`.
+
+#### `filterCandidatesInCells(digits, cells)`
+Change: keep only these digits in every listed cell.
+- **Returns:** `{ type: 2, value: digits, cells: [...cells] }`.
 
 #### `replaceComponent(component, replacement)`
 Change: unregister the component this change came from and register the
@@ -1412,8 +1472,11 @@ Full prime factorization, small primes first then odd candidates upward.
   Called with 0 it never terminates — 0 is divisible by every prime and the
   magnitude never reaches 1. Guard the zero case yourself.
 
-#### `toDegrees(radians)` / `toRadians(degrees)`
-Angle conversion. **Returns:** number.
+#### `toDegrees(radians)`
+Radians to degrees. **Returns:** number.
+
+#### `toRadians(degrees)`
+Degrees to radians. **Returns:** number.
 
 ### `Vector2Funcs` (global `Vector2Funcs`)
 
@@ -2863,12 +2926,22 @@ Builds the per-request report the worker ships to the UI.
 #### `processChange(change)`
 Dispatches one change by type, exactly as in `ChangeApplier`, but returns a generator of `[affectedCellId, result]` pairs; an unknown type returns `[]`. **[read]**
 
-#### `setValueAtCell(value, cell)` / `filterCandidatesAtCell(digitMask, cell)` / `removeCandidatesFromCell(digitMask, cell)`
-Each performs the same state mutation as its `ChangeApplier` twin, but yields `[cell, result]` only when the result is not `unchanged`, after passing it through `ensureErrorMessage`. **[read]**
+#### `*setValueAtCell(value, cell)`
+Sets the cell's value as `ChangeApplier` does, but yields `[cell, result]` only when the result is not `unchanged`, after passing it through `ensureErrorMessage`. **[read]**
 
-#### `filterCandidatesAtCells(digitMask, cells)` / `removeCandidatesFromCells(digitMask, cells)`
-Loop the single-cell version over `cells`, yielding a pair per cell that actually changed.
-- **Notes:** unlike the `ChangeApplier` versions, these call the state's *single-cell* method in a loop rather than its plural generator. Same effect. **[read]**
+#### `*filterCandidatesAtCell(digitMask, cell)`
+Intersects the cell's candidates with `digitMask` as `ChangeApplier` does, yielding `[cell, result]` only on a change, after `ensureErrorMessage`. **[read]**
+
+#### `*removeCandidatesFromCell(digitMask, cell)`
+Clears `digitMask` from the cell's candidates as `ChangeApplier` does, yielding `[cell, result]` only on a change, after `ensureErrorMessage`. **[read]**
+
+#### `*filterCandidatesAtCells(digitMask, cells)`
+Loops `filterCandidatesAtCell` over `cells`, yielding a pair per cell that actually changed.
+- **Notes:** unlike the `ChangeApplier` version, this calls the state's *single-cell* method in a loop rather than its plural generator. Same effect. **[read]**
+
+#### `*removeCandidatesFromCells(digitMask, cells)`
+Loops `removeCandidatesFromCell` over `cells`, yielding a pair per cell that actually changed.
+- **Notes:** same loop-versus-plural-generator difference from `ChangeApplier`, same effect. **[read]**
 
 #### `reportBroken(cells, message)`
 Yields one `[undefined, { type: "failed", cells, message }]` pair for an `AbortSolver` change; the `undefined` cell id is what keeps the abort out of the affected-cell highlighting. **[read]**
