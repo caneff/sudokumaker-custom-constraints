@@ -37,19 +37,15 @@ Caveats:
   the call sites, or a partial read, and the entry says what was not read.
   Treat an **[inferred]** entry as a best guess to verify before relying on it.
 
-## Discrepancies found against the existing docs
+## Bundle bugs
 
-Seven findings from the first pass were folded into `docs/puzzle-api.md`,
-`docs/component-contract.md` and `docs/gotchas.md` on 2026-09-13 and their
-notes removed from this reference. What remains is open or is a property of
-the bundle itself; each is also flagged in place as a `Discrepancy` note.
+Places where the bundle's own behaviour looks wrong. Each is also flagged in
+place as a `Discrepancy` note in the entry concerned.
 
-| # | Finding | Status |
-|-|-|-|
-| 1 | `bundle-api-index.md` listed 34 components against 42 `defineComponent` calls: the generator's filter rejected an array of names and a template-literal description. | **Resolved**, #415 / PR #416. The index now reports 44 names, 42 constructors. |
-| 2 | `bundle-api-index.md` indexed `helpers.geometry` as the base class and had no `helpers.lines` or `helpers.misc`. | **Resolved**, #417 / PR #418. Those members are listed and marked `main code only`. |
-| 3 | `createExtendedHelpers` hands `MiscHelper` the base geometry, not the region-aware one (9218). | **Resolved as unobservable**: neither `MiscHelper` method uses its geometry helper. Noted in `puzzle-api.md`. |
-| 4 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. | Bundle bug. Do not trust a bottom-corner straight ray. |
+| # | Finding |
+|-|-|
+| 1 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. Do not trust a bottom-corner straight ray. |
+| 2 | `groupsArePolarityPair` (10375) builds its low and high masks with the same `digit < midpoint` test (10382), so the two are identical and a low/high polarity pair is never recognised. Confirmed in the minified original. |
 
 ## The puzzle object, change objects and the component contract
 
