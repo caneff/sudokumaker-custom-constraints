@@ -20,12 +20,12 @@ t = "docs/research/406-gac-demo/tools/"
 print("base link", n0)
 print("matching (AllDiffGacComponent + alldiff-main)", with_constraint(t + "alldiff-main.js", t + "AllDiffGacComponent.js"))
 print("subsets  (HouseGacComponent + house-gac)", with_constraint("examples/_shared/house-gac.js", "examples/_shared/HouseGacComponent.js"))
-# house-gac.js names HouseGacComponent; each digit-set form ships under its own name.
-for name in ["ReadableHouseGacComponent", "IncrementalHouseGacComponent"]:
+# house-gac.js names HouseGacComponent; each other form ships under its own name.
+for name in ["ReadableHouseGacComponent", "IncrementalHouseGacComponent", "NamedBitmaskHouseGacComponent"]:
     with tempfile.TemporaryDirectory() as tmp:
         backend = pathlib.Path(tmp) / "house-gac.js"
         backend.write_text(pathlib.Path("examples/_shared/house-gac.js").read_text().replace("HouseGacComponent", name))
         print(f"{name} + house-gac", with_constraint(str(backend), f"examples/_shared/{name}.js"))
-for f in [t + "AllDiffGacComponent.js", "examples/_shared/HouseGacComponent.js", "examples/_shared/ReadableHouseGacComponent.js", "examples/_shared/IncrementalHouseGacComponent.js"]:
+for f in [t + "AllDiffGacComponent.js", "examples/_shared/HouseGacComponent.js", "examples/_shared/ReadableHouseGacComponent.js", "examples/_shared/IncrementalHouseGacComponent.js", "examples/_shared/NamedBitmaskHouseGacComponent.js"]:
     code = minify_file(pathlib.Path(f))
     print(f"alone: {pathlib.Path(f).name} minified {len(code)}, compressed {len(LZString.compressToEncodedURIComponent(code))}")

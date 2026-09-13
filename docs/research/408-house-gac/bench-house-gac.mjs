@@ -1,6 +1,7 @@
 // Per-call cost, n=9: examples/_shared/HouseGacComponent.js (bitmask),
 // ReadableHouseGacComponent.js (digit sets, each group pooled from scratch) and
 // IncrementalHouseGacComponent.js (digit sets, each group grown by one cell)
+// and NamedBitmaskHouseGacComponent.js (the bitmask form, tricks named)
 // against the #406 matching filter
 // AllDiffGacComponent.js, each run through its own update()
 // on 20000 random consistent states (a hidden permutation plus each other digit
@@ -16,7 +17,8 @@ const components = {
   'matching (AllDiffGacComponent)': makeIo(new URL('../406-gac-demo/tools', import.meta.url).pathname).load('AllDiffGacComponent.js', FUNCTIONS),
   'subsets (HouseGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('HouseGacComponent.js', FUNCTIONS),
   'readable (ReadableHouseGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('ReadableHouseGacComponent.js', FUNCTIONS),
-  'incremental (IncrementalHouseGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('IncrementalHouseGacComponent.js', FUNCTIONS)
+  'incremental (IncrementalHouseGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('IncrementalHouseGacComponent.js', FUNCTIONS),
+  'named bitmask (NamedBitmaskHouseGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('NamedBitmaskHouseGacComponent.js', FUNCTIONS)
 }
 
 const { rnd } = makeRng(99)
@@ -36,6 +38,6 @@ for (const [label, component] of Object.entries(components)) {
   for (let rep = 0; rep < 3; rep++) {
     const t0 = process.hrtime.bigint()
     for (const state of states) { masks = state; for (const _ of component.update(instance, puzzle)); } // eslint-disable-line no-unused-vars
-    console.log(label.padEnd(44), (Number(process.hrtime.bigint() - t0) / states.length / 1000).toFixed(1), 'us/call')
+    console.log(label.padEnd(48), (Number(process.hrtime.bigint() - t0) / states.length / 1000).toFixed(1), 'us/call')
   }
 }

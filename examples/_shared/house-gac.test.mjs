@@ -16,7 +16,8 @@
 // ticket's 3000-state one (#408).
 //
 // `ReadableHouseGacComponent.js` and `IncrementalHouseGacComponent.js` state
-// the same rule in digit sets. Each must land on exactly what
+// the same rule in digit sets, and `NamedBitmaskHouseGacComponent.js` in the
+// bitmask form with its tricks named. Each must land on exactly what
 // `HouseGacComponent.js` lands on in every fuzz below, and each takes every
 // fixed test the bitmask one takes.
 
@@ -30,7 +31,7 @@ import { runBackend } from './backend-runner.mjs'
 const here = dirname(fileURLToPath(import.meta.url))
 const NAMES = ['getAffectedCells', 'setParams', 'update']
 const gac = makeIo(here).load('HouseGacComponent.js', NAMES)
-const ALTERNATIVES = ['ReadableHouseGacComponent', 'IncrementalHouseGacComponent']
+const ALTERNATIVES = ['ReadableHouseGacComponent', 'IncrementalHouseGacComponent', 'NamedBitmaskHouseGacComponent']
   .map(name => [name, makeIo(here).load(`${name}.js`, NAMES)])
 const COMPONENTS = [['HouseGacComponent', gac], ...ALTERNATIVES]
 const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
