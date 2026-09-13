@@ -9,33 +9,27 @@ inferred from its name. It complements `bundle-api-index.md`, which is the
 generated, mangled-name-anchored signature list; this document explains what
 the signatures do.
 
-How it was made: `docs/research/humanify-pedagogy/` holds `bundle.claude.js`,
-the bundle with all 3,674 mangled identifiers renamed by Claude (AST-verified
-to be the same program), and `reference/` holds the seven section drafts plus
-the brief their writers followed. Line citations point into
-`bundle.claude.js`.
+Source: `docs/research/humanify-pedagogy/bundle.claude.js`, the bundle with
+every mangled identifier renamed (AST-verified to be the same program). Line
+citations point into it.
 
 Caveats:
 
 - Public method names, decorator display names and string literals are the
   app's own. Every other identifier in `bundle.claude.js`, including parameter
-  names, was inferred by reading and can be wrong. One such case has been
-  found and corrected by hand: the six candidate-removal methods on
-  `SolverPuzzleView` take the digit first and the cell second, as
-  `puzzle-api.md` says. Trust the entry text here over the renamed parameter
-  list when they disagree.
+  names, was inferred by reading and can be wrong. Trust the entry text here
+  over a renamed parameter list when they disagree.
 - There are two `helpers` objects. Setup code gets the extended one with
   `lines`, `misc` and a region-aware `geometry`; a component's `update`,
   `initialize` and `validate` get the plain one without them.
 - Mangled names are per-build. Everything here is for the bundle above and
   should be re-derived after the app ships a new one.
-- Confidence. The sections up to and including the built-in components were
-  written under a brief that required reading every function body before
-  writing a sentence, so their entries carry no tag. The appendix sections
-  after them tag every entry: **[read]** means the whole body was read and the
-  text follows from it; **[inferred]** means the writer went from the name,
+- Confidence. Every entry was written from the function body unless it
+  carries **[inferred]**, which means the description comes from the name,
   the call sites, or a partial read, and the entry says what was not read.
   Treat an **[inferred]** entry as a best guess to verify before relying on it.
+  Entries in the appendix sections also carry **[read]** where the body was
+  read in full.
 
 ## Bundle bugs
 
@@ -159,11 +153,8 @@ write nothing — they build and return a plain change object for you to `yield`
 
 > Note: the six change-building methods here are bare positional pass-throughs
 > to the factories at `bundle.claude.js:1866-1881`, whose bodies fix the order:
-> **the digit or digit mask comes first, the cell or cells second**, exactly as
-> `docs/puzzle-api.md` says. The first deobfuscation pass had labelled them
-> `(cellId, digit)`; `bundle.claude.js:9941` onwards now reads
-> `removeCandidateFromCell(digit, cellId)` and so on, corrected by hand and
-> re-verified against the AST and scope checks.
+> **the digit or digit mask comes first, the cell or cells second**, as
+> `docs/puzzle-api.md` says.
 
 #### `getValue(cellId)` / `hasValue(cellId)`
 The solved digit, and whether there is one. `getValue` is
