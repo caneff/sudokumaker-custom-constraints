@@ -16,7 +16,35 @@ import { fileURLToPath } from 'url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const vt = (name) => readFileSync(join(here, 'vt', name), 'utf8')
-const md = readFileSync(process.argv[2], 'utf8').replace(/<\/script/gi, '<\\/script')
+// The markdown keeps bundle line citations for readers with the bundle in
+// hand; the page is for readers without it, so they are stripped here.
+function stripLineRefs (text) {
+  return text
+    // the intro paragraph that explains the citations
+    .replace(/\nLine citations \(`bundle\.claude\.js:<line>`\)[^\n]*(\n[^\n]+)*\n/, '\n')
+    // "(`bundle.claude.js:123`)", "(`bundle.claude.js:123`, `bundle.claude.js:456`)", "(`bundle.claude.js:1985` and `:1988`)"
+    .replace(/ ?\((?:`bundle\.claude\.js:\d+(?:-\d+)?`|`:\d+`)(?:(?:, | and | or )(?:`bundle\.claude\.js:\d+(?:-\d+)?`|`:\d+`))*\)/g, '')
+    // "`bundle.claude.js:9318`. " leading a paragraph, and "at `bundle.claude.js:627`"
+    .replace(/`bundle\.claude\.js:\d+(?:-\d+)?`\. ?/g, '')
+    .replace(/ (?:at|from|in|near|around) `bundle\.claude\.js:\d+(?:-\d+)?`/g, '')
+    .replace(/,? ?`bundle\.claude\.js:\d+(?:-\d+)?`(?: and `:\d+`)?/g, '')
+    // bare "(9349)", "(1183, 1195)", "(10031-10034)", "(9994/1614)" after a name
+    .replace(/ \(\d{3,5}(?:-\d{3,5})?(?:(?:, |\/)\d{3,5}(?:-\d{3,5})?)*\)/g, '')
+    // "lines 10049-10062", "line 8802", "at 9201", "(base at 2686)"
+    .replace(/,? (?:at |base at )?lines? \d{3,5}(?:-\d{3,5})?(?: and \d{3,5})?/g, '')
+    .replace(/ \((?:base )?at \d{3,5}(?:-\d{3,5})?\)/g, '')
+    // line-initial "(9349) " and ", 8802)" / "(9911, a bare" / "(e.g. 10237)" forms
+    .replace(/\n\(\d{3,5}(?:-\d{3,5})?\) ?/g, '\n')
+    .replace(/, \d{3,5}(?:-\d{3,5})?\)/g, ')')
+    .replace(/\(\d{3,5}(?:-\d{3,5})?, /g, '(')
+    .replace(/ \(e\.g\. \d{3,5}\)/g, '')
+    // the two mentions of the renamed file itself
+    .replace(/ in `bundle\.claude\.js`,/, ',')
+    .replace(/ Everything here is read from `bundle\.claude\.js`\./, '')
+    .replace(/\(\)/g, '')
+    .replace(/ \.(?=\s)/g, '.')
+}
+const md = stripLineRefs(readFileSync(process.argv[2], 'utf8')).replace(/<\/script/gi, '<\\/script')
 
 const html = `<title>SudokuMaker Constraint API</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
