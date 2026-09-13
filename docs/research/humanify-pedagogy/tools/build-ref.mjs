@@ -85,8 +85,8 @@ ${md}
   var TIER={'public':'good','reachable, not documented':'warn','internal':'neutral'};
   var r=new marked.Renderer();
   r.heading=function(text,level){var id=slug(typeof text==='string'?text:text.text);var t=typeof text==='string'?text:marked.parseInline(text.text);var lv=typeof text==='string'?level:text.depth;return '<h'+lv+' id="'+id+'">'+t+'</h'+lv+'>'};
-  r.paragraph=function(tok){var raw=typeof tok==='string'?tok:tok.text;var m=/^Access: \\*\\*([^*]+)\\*\\*\\s*[—-]\\s*([\\s\\S]*)$/.exec(raw);
-    if(m){var tone=TIER[m[1]]||'neutral';return '<p class="access"><span class="vt-pill dot '+tone+'">'+esc(m[1])+'</span><span>'+marked.parseInline(m[2])+'</span></p>'}
+  r.paragraph=function(tok){var raw=typeof tok==='string'?tok:tok.text;var m=/^Access: (?:\\*\\*|<strong>)([^*<]+)(?:\\*\\*|<\\/strong>)\\s*[—-]\\s*([\\s\\S]*)$/.exec(raw);
+    if(m){var tone=TIER[m[1]]||'neutral';var rest=typeof tok==='string'?m[2]:marked.parseInline(m[2]);return '<p class="access"><span class="vt-pill dot '+tone+'">'+esc(m[1])+'</span><span>'+rest+'</span></p>'}
     var inner=typeof tok==='string'?tok:marked.parseInline(tok.text);return '<p>'+inner+'</p>'};
   r.blockquote=function(tok){var body=typeof tok==='string'?tok:marked.parser(tok.tokens);var plain=body.replace(/<[^>]+>/g,'');var tone=/^\\s*Discrepancy/.test(plain)?'risk':/^\\s*Note/.test(plain)?'info':'warn';return '<div class="vt-callout '+tone+'">'+body+'</div>'};
   r.table=function(tok){var head='',rows='';

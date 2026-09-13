@@ -66,6 +66,7 @@ only the solver view can read cells or build changes.
 ### `puzzle` in the main code (class PuzzleSetupView)
 
 Access: **public** — the `puzzle` object your main code receives.
+
 `bundle.claude.js:9318`. Extends `PuzzleAccessorBase` and adds nothing but
 component registration. It is constructed once per solve setup in
 `ConstraintHandlerRegistry.setupPuzzle` (9349) and passed to every constraint
@@ -98,6 +99,7 @@ Returns the `Set` of components currently registered on that cell.
 ### Shared reads (class PuzzleAccessorBase)
 
 Access: **public** — inherited by both `puzzle` objects.
+
 `bundle.claude.js:9222`. The base of both views. Fields: `spec`, `state`,
 `helpers`. Getters `puzzleType` (`spec.type`), `size` and `width`
 (`spec.size.width`), `height`, `maxDigit`, `minDigit`, `digitCount` — all plain
@@ -200,6 +202,7 @@ The complement: whether some two cells in the list may hold the same digit.
 ### `puzzle` inside `update` / `initialize` / `validate` (class SolverPuzzleView)
 
 Access: **public** — the `puzzle` object your component functions receive.
+
 `bundle.claude.js:9914`. Constructed per call by `__getFacade` (10072) as
 `new SolverPuzzleView(componentInstance, puzzleSpec, solverState, helpers)`, so
 `puzzle.state` is the search node's live `SolverState` and `puzzle.instance` is
@@ -278,6 +281,7 @@ Change: declare the current state contradictory.
 ### Change objects (ChangeType and the factory functions)
 
 Access: **public** — built for you by the `puzzle` write methods; the factory functions themselves are not injected.
+
 `bundle.claude.js:1845`. A change is a plain object with a numeric `type` and a
 couple of fields; there is no class and no method on it. The solver reads
 `change.type` in `SolverState.processChange`. The `ChangeType` enum is not
@@ -305,6 +309,7 @@ one is left.
 ### The component base class (class ConstraintComponent)
 
 Access: **public** — the hooks your component segment may define; the class itself is not injected.
+
 `bundle.claude.js:2676`. Every component, built-in or custom, extends this.
 Fields: `name` (string, defaults to `"Nameless constraint"`; used in failure
 messages) and `cellIds` (the array the solver indexes and dirty-checks against).
@@ -371,6 +376,7 @@ Whether the solver may drop this component for the rest of this branch.
 ### When the solver calls what (SolverState)
 
 Access: **reachable, not documented** — `puzzle.state` inside a component is this object, but nothing documents it and its shape is the solver's own.
+
 `bundle.claude.js:8630`. The state object your component receives (as
 `puzzle.state`) and that the solver clones per search node. The fields worth
 knowing, and what a component may legitimately reach through `puzzle`:
@@ -445,6 +451,7 @@ loaded and before the first `updateConstraintsAndValidate`, via
 ### How your code becomes a class
 
 Access: **public** — the wrapper every custom component runs through.
+
 #### `runCustomCodeWithGlobals(code, globals)`
 `bundle.claude.js:9987`. Runs a code string with a set of names in scope:
 `new Function(...Object.keys(globals), code)(...Object.values(globals))`.
@@ -553,6 +560,7 @@ nothing will throw.
 ### helpers.cellIds (class CellIds)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:3`. Cell ids are row-major over the grid:
 `cellId = x + y * width`, so id 0 is the top-left cell and x, y are 0-based
 with y growing downward. A cell occupies the unit square `[x, x+1] x [y, y+1]`
@@ -597,6 +605,7 @@ scheme in this section is defined against.
 ### helpers.cornerIds (class CornerIds)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:497`. Corners are the lattice points of the grid: integer
 `(x, y)` with `x` in `[0, width]` and `y` in `[0, height]`, numbered row-major
 over a lattice one wider than the cell grid — `cornerId = x + y * (width + 1)`.
@@ -621,6 +630,7 @@ Converts a corner id to grid-point coordinates on the (width+1) by (height+1) la
 ### helpers.edgeIds (class EdgeIds)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:659`. An edge is the border between two orthogonally adjacent
 cells, identified by its **midpoint** in board coordinates: a vertical edge has
 integer `x` and half-integer `y`, a horizontal edge half-integer `x` and
@@ -654,6 +664,7 @@ Inverse of the above, branching on whether `edgeId % (width * 2) < width`.
 ### helpers.outerCellIds (class OuterCellIds)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:1404`. Outer cells are the clue positions in the one-cell
 ring around the board, addressed in a coordinate system where the grid itself
 is `0 … width-1` / `0 … height-1` and the ring is `x = -1` or `x = width`,
@@ -705,6 +716,7 @@ Classifies ring coords: `y < 0` gives `TopLeft` / `Top` / `TopRight` by `x`;
 ### helpers.connectivity (class ConnectivityHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:478`. One method, wrapping the internal `LineGraph`
 (`bundle.claude.js:250`) — an undirected adjacency-map graph. Fields: `spec`,
 `geometryHelper`.
@@ -736,6 +748,7 @@ by structural key, so `{x, y}` objects compare by value.
 ### helpers.lines (class LinesHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:9135`. **Extended helpers only** (`createExtendedHelpers`,
 `bundle.claude.js:9201`); absent from the base `createHelpers` result.
 Stateless — no constructor, no fields. A
@@ -762,6 +775,7 @@ Every consecutive pair along every line.
 ### helpers.misc (class MiscHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `bundle.claude.js:9148`. **Extended helpers only**, same as `lines`. Holds
 `cellIdHelper`, `edgeIdHelper`, `outerCellIdHelper`, `cornerIdHelper`,
 `geometryHelper` and `spec`; note the constructor is handed the *base*
@@ -813,6 +827,7 @@ return values, plus `getSubsetsPerRegion` on the subclass.
 ### `helpers.geometry` (class `RegionAwareGeometryHelper extends GeometryHelper`)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 `GeometryHelper` is `bundle.claude.js:913`; `RegionAwareGeometryHelper` is
 `bundle.claude.js:9114`. What a component actually receives is the subclass:
 `createExtendedHelpers` (`bundle.claude.js:9201`) builds
@@ -1019,6 +1034,7 @@ Buckets a set of cells by which region each lives in. Subclass-only
 ### `DiagonalType` (enum, `bundle.claude.js:697`)
 
 Access: **public** — injected into custom code under this global name.
+
 Numeric enum with two members, and the values are the `x`-step used when
 walking down a diagonal, which is why they are signed rather than 0/1.
 
@@ -1042,6 +1058,7 @@ values, not these numbers.
 ### `OuterPosition` (enum, `bundle.claude.js:677`)
 
 Access: **public** — injected into custom code under this global name.
+
 Numeric enum naming which side of the board an outer-clue cell sits on. It is
 what `helpers.outerCellIds.getSide(id)` and the `side` field of
 `getAllAttributes(id)` return, and the thing `getCoordsPointedAtByOuterClue`
@@ -1088,6 +1105,7 @@ is read via `valueOf()`, and a raw number can be passed wherever a method calls
 ### helpers.sums (class SumsHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 Sum arithmetic over per-cell candidate masks (`bundle.claude.js:1466`). Fields:
 `minDigit`, `maxDigit` (copied from the puzzle spec). Two families: the
 `ExtremeSums`/`MinimumSum`/`MaximumSum` methods take **candidate masks** and
@@ -1162,6 +1180,7 @@ returns a sum instead of `null`.
 ### helpers.xSums (class XSumsHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 Enumerates which X-sum readings are arithmetically possible for a given total
 (`bundle.claude.js:1580`). Fields: `maxDigit`. It holds a reference to the
 `SumsHelper` and reuses its memoized combination enumeration.
@@ -1186,6 +1205,7 @@ Yields one entry per value of X for which the first X cells could sum to `sum`.
 ### helpers.digits (class DigitsHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 Digit-range facts and `DigitSet` factories (`bundle.claude.js:627`). Fields:
 `minDigit`, `maxDigit` (from the spec) and `allDigitsMask`, computed as
 `(1 << (maxDigit + 1)) - (1 << minDigit)` — for a classic 1..9 puzzle that is
@@ -1217,6 +1237,7 @@ Digits in range for which `predicate(digit)` is truthy.
 ### helpers.naming (class NamingHelper)
 
 Access: **public** — a member of the injected `helpers` object (main code only where the entry says so).
+
 Builds the human-readable strings shown in solve explanations
 (`bundle.claude.js:1301`). Fields: `spec`, and `names`, a row-major array of
 `R#C#` labels built in the constructor — one per grid cell, so it is indexed by
@@ -1321,6 +1342,7 @@ module-local from the bundle is.
 ### `SmallNumberSet` (global `SmallNumberSet`)
 
 Access: **public** — injected into custom code under this global name.
+
 A set of small non-negative integers stored as a single 32-bit bitmask, at
 `bundle.claude.js:541`. Bit `d` is member `d`, so digit 1 is bit 1 and bit 0 is
 unused in sudoku puzzles. One public field, `mask`, the raw bitmask; it is
@@ -1431,6 +1453,7 @@ Intersection of an iterable of sets.
 ### `SudokuDigitSet` (globals `SudokuDigitSet` and `DigitSet`)
 
 Access: **public** — injected into custom code under this global name.
+
 `bundle.claude.js:619`. A `SmallNumberSet` with two renamed accessors and
 nothing else added — no digit-range awareness of its own, so a `SudokuDigitSet`
 can hold bit 0 or bit 12 if you put them there. The puzzle's actual digit range
@@ -1452,6 +1475,7 @@ Alias for `getLargestNumber()`.
 ### `MathUtils` (global `MathUtils`)
 
 Access: **public** — injected into custom code under this global name.
+
 Scalar helpers, defined at `bundle.claude.js:767` as a plain object of free
 functions. Nothing here is sudoku-specific.
 
@@ -1500,6 +1524,7 @@ Degrees to radians. **Returns:** number.
 ### `Vector2Funcs` (global `Vector2Funcs`)
 
 Access: **public** — injected into custom code under this global name.
+
 Free functions over plain `{x, y}` points, at `bundle.claude.js:896`. Every one
 of them takes and returns plain objects and mutates nothing — the mutating
 `Vector2` class next to them is not exported to custom code. Cell coords from
@@ -1561,6 +1586,7 @@ gives `{x: NaN, y: NaN}` (0/0).
 ### `SetUtils` (global `SetUtils`)
 
 Access: **public** — injected into custom code under this global name.
+
 Helpers over native `Set` objects, at `bundle.claude.js:141`. Several accept an
 options object `{comparator}`; when given, membership is decided by calling
 `comparator(a, b)` pairwise instead of by identity, which costs O(n·m) but lets
@@ -1630,6 +1656,7 @@ Whether any element satisfies `predicate`.
 ### `IterationUtils` (global `IterationUtils`)
 
 Access: **public** — injected into custom code under this global name.
+
 Iterable helpers, at `bundle.claude.js:197`. Three of the six are generators, so
 their results are consumed once — spread them if you need to iterate twice.
 
@@ -1670,6 +1697,7 @@ The element with the highest `scoreFn` value.
 ### `ArrayUtils` (global `ArrayUtils`)
 
 Access: **public** — injected into custom code under this global name.
+
 Array helpers, at `bundle.claude.js:1825`. The same `{comparator}` option
 appears throughout with the same meaning as in `SetUtils`. The in-place members
 (`remove`, `removeWhere`, `removeFirst`, `removeFirstWhere`) all return the same
@@ -1755,6 +1783,7 @@ Deduplicates, keeping first occurrences.
 ### `CombinatoricUtils` (global `CombinatoricUtils`)
 
 Access: **public** — injected into custom code under this global name.
+
 One function, at `bundle.claude.js:3342`. This is the sum-combination search
 behind killer-style reasoning.
 
@@ -1775,6 +1804,7 @@ Every combination of distinct positions in `values` whose elements add to
 ### `OuterPosition` (global `OuterPosition`)
 
 Access: **public** — injected into custom code under this global name.
+
 A numeric enum of the eight outer-clue anchor positions, at
 `bundle.claude.js:677`: `Top` 0, `Right` 1, `Bottom` 2, `Left` 3, `TopLeft` 4,
 `TopRight` 5, `BottomRight` 6, `BottomLeft` 7. It is the usual TypeScript
@@ -1785,6 +1815,7 @@ along; the four corners are the diagonal cases.
 ### `DiagonalType` (global `DiagonalType`)
 
 Access: **public** — injected into custom code under this global name.
+
 A numeric enum with two members, at `bundle.claude.js:697`: `PositiveDiagonal`
 is `1` and `NegativeDiagonal` is `-1`. The values are the x-step direction used
 when walking a diagonal, not arbitrary tags, so they can be multiplied into
@@ -1822,6 +1853,7 @@ name, when unregistered) sorts before `N`, in that order.
 ### Between (`class BetweenComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Between-line logic for two endpoints and any number of midpoints
 (`bundle.claude.js:4891`). Fields: `endPoints` (exactly two cell ids),
 `midPoints`. `cellIds` is the concatenation, endpoints first.
@@ -1848,6 +1880,7 @@ Between-line logic for two endpoints and any number of midpoints
 ### CompositeComponent (`class CompositeComponent extends ConstraintComponent`)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 The base for every component that is just a bundle of other components
 (`bundle.claude.js:4998`). Unregistered; you reach it only by subclassing or by
 reading one of its concrete subclasses. Field: `getComponents`, a thunk taking
@@ -1865,6 +1898,7 @@ the solver state.
 ### ConsecutiveDigits (`class ConsecutiveDigitsComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Digits in the cells form a run of consecutive values, repeats allowed
 (`bundle.claude.js:2794`).
 
@@ -1890,6 +1924,7 @@ Digits in the cells form a run of consecutive values, repeats allowed
 ### ConsecutiveDigitsSet (`class ConsecutiveDigitsSetComponent extends CompositeComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Consecutive run with no repeats (`bundle.claude.js:5029`).
 
 - **Registered as** `ConsecutiveDigitsSet`, "All digits within {cells} must make
@@ -1907,6 +1942,7 @@ Consecutive run with no repeats (`bundle.claude.js:5029`).
 ### CountDigit (`class CountDigitComponent extends CompositeComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 One digit's occurrence count, read off a counter cell (`bundle.claude.js:5167`).
 
 - **Registered as** `CountDigit`, "The digit in {counterCell} must equal the
@@ -1922,6 +1958,7 @@ One digit's occurrence count, read off a counter cell (`bundle.claude.js:5167`).
 ### CountDigits (`class CountDigitsComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Counter cell equals the number of target cells holding a digit from a set
 (`bundle.claude.js:5092`). Fields: `digits` (a digit mask), `counterCell`,
 `targetCells`, `digitsName`.
@@ -1947,6 +1984,7 @@ Counter cell equals the number of target cells holding a digit from a set
 ### Difference (`class DifferenceComponent extends PairComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Two cells differ by exactly one of the given amounts (`bundle.claude.js:3939`).
 Fields: `differences` (array), `cellId1`, `cellId2`.
 
@@ -1968,6 +2006,7 @@ Fields: `differences` (array), `cellId1`, `cellId2`.
 ### DifferentCombinations (`class DifferentCombinationsComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 No two cell groups may hold the same multiset of digits
 (`bundle.claude.js:5219`). Field: `cellGroups` (array of cell id arrays);
 `cellIds` is the flattened union.
@@ -1990,6 +2029,7 @@ No two cell groups may hold the same multiset of digits
 ### DifferentDigits (`class DifferentDigitsComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 All cells hold different digits, without requiring the full digit set
 (`bundle.claude.js:3166`).
 
@@ -2011,6 +2051,7 @@ All cells hold different digits, without requiring the full digit set
 ### DifferentGroups (`class DifferentGroupsComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Each cell takes its digit from a different one of the given digit groups
 (`bundle.claude.js:5286`). Field: `groups` (array of masks, coerced with `+`).
 
@@ -2033,6 +2074,7 @@ Each cell takes its digit from a different one of the given digit groups
 ### DiverseGroups (`class DiverseGroupsComponent extends CompositeComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 At least one digit from every group must appear (`bundle.claude.js:5485`).
 
 - **Registered as** `DiverseGroups`, params `[["groups", DigitSetArray],
@@ -2046,6 +2088,7 @@ At least one digit from every group must appear (`bundle.claude.js:5485`).
 ### ExactDigitCount (`class ExactDigitCountComponent extends CompositeComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 A digit appears exactly `count` times (`bundle.claude.js:5676`).
 
 - **Registered as** `ExactDigitCount`, "The digit {value} must appear exactly
@@ -2060,6 +2103,7 @@ A digit appears exactly `count` times (`bundle.claude.js:5676`).
 ### ExactSumComponent (`class ExactSumComponent extends ConstraintComponent`)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 Unregistered leaf that `SumComponent` and friends delegate to
 (`bundle.claude.js:4251`). Fields: `sums` (array), `repeat` (bool), `minSum`,
 `maxSum`, `sumsDescription`.
@@ -2080,6 +2124,7 @@ Unregistered leaf that `SumComponent` and friends delegate to
 ### ForbiddenCandidates (`class ForbiddenCandidatesComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 One-shot removal of a digit set from cells (`bundle.claude.js:5555`).
 
 - **Registered as** `ForbiddenCandidates`, "The value of {cellOrCells} cannot be
@@ -2097,6 +2142,7 @@ One-shot removal of a digit set from cells (`bundle.claude.js:5555`).
 ### FriendDigitTable (`class FriendDigitTable`)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 Not a component: the memoized lookup table behind every `PairComponent`
 subclass (`bundle.claude.js:3774`).
 
@@ -2116,6 +2162,7 @@ subclass (`bundle.claude.js:3774`).
 ### GreaterThan / LessThan (`class GreaterThanComponent extends PairComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Strict inequality between two cells (`bundle.claude.js:5739`). Fields:
 `lesserCellId`, `greaterCellId`.
 
@@ -2136,6 +2183,7 @@ Strict inequality between two cells (`bundle.claude.js:5739`). Fields:
 ### GreaterThanOrEquals (`class GreaterThanOrEqualsComponent extends PairComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Non-strict inequality (`bundle.claude.js:5810`).
 
 - **Registered as** `GreaterThanOrEquals`, "The digit in {greaterCell} must be
@@ -2155,6 +2203,7 @@ Non-strict inequality (`bundle.claude.js:5810`).
 ### House (`class HouseComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 A full house: every digit exactly once (`bundle.claude.js:3096`). Fields:
 `houseType` (defaults to `HouseType.ExtraRegion`), `seenIds` (a `Map` from each
 cell to the other cells, built in the constructor).
@@ -2179,6 +2228,7 @@ cell to the other cells, built in the constructor).
 ### Index (`class IndexComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 An indexer cell points at a position holding a given digit
 (`bundle.claude.js:5877`). Fields: `valueToIndex`, `indexerCellId`,
 `indexingCellIds`, `allowRepeats`.
@@ -2206,6 +2256,7 @@ An indexer cell points at a position holding a given digit
 ### MaxDigitCount (`class MaxDigitCountComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 A digit appears at most `maxCount` times (`bundle.claude.js:5605`). Fields:
 `value`, `maxCount`.
 
@@ -2231,6 +2282,7 @@ A digit appears at most `maxCount` times (`bundle.claude.js:5605`). Fields:
 ### MaximumDifference (`class MaximumDifferenceComponent extends PairComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Two cells differ by at most `maxDifference` (`bundle.claude.js:5990`).
 
 - **Registered as** `MaximumDifference`, "The difference between the values of
@@ -2247,6 +2299,7 @@ Two cells differ by at most `maxDifference` (`bundle.claude.js:5990`).
 ### MinimumDifference (`class MinimumDifferenceComponent extends PairComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 Two cells differ by at least `minDifference` (`bundle.claude.js:6073`).
 
 - **Registered as** `MinimumDifference`, "The difference between the values of
@@ -2264,6 +2317,7 @@ Two cells differ by at least `minDifference` (`bundle.claude.js:6073`).
 ### MultiProductComponent (`class MultiProductComponent extends ConstraintComponent`)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 Unregistered leaf that `ProductComponent` uses when its product argument is an
 array (`bundle.claude.js:6601`; dispatch at `bundle.claude.js:6578`). A single
 positive product goes to `SingleProductComponent`, and a product of 0 becomes a
@@ -2311,6 +2365,7 @@ ReplaceComponent, and `removeComponentChange()` is `replaceComponentChange([])`
 ### PairComponent (global `PairComponent`, aliased `AsymmetricalPairComponent`)
 
 Access: **public** — registered as `PairComponent` and `AsymmetricalPairComponent`, so `new PairComponent(...)` works in custom code.
+
 Abstract two-cell base, `class extends ConstraintComponent` at
 `bundle.claude.js:3849`. Almost every two-cell built-in (Difference, Ratio,
 GreaterThan(OrEquals), MaximumDifference, MinimumDifference, NegativeDifference,
@@ -2345,6 +2400,7 @@ cell 2 — i.e. the pair can no longer prune.
 ### NegativeBetween (`NegativeBetweenComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6135`. Midpoints must fall outside the closed interval spanned
 by the two endpoints.
 
@@ -2367,6 +2423,7 @@ by the two endpoints.
 ### NegativeDifference (`NegativeDifferenceComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6238`, extends PairComponent.
 
 - **Registered as** `"NegativeDifference"`, params `differences: NumberArray`,
@@ -2384,6 +2441,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### NegativeIndex (`NegativeIndexComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6299`. The indexer cell must not point at an occurrence of one
 specific digit.
 
@@ -2403,6 +2461,7 @@ specific digit.
 ### NegativeRatio (`NegativeRatioComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6365`, extends PairComponent.
 
 - **Registered as** `"NegativeRatio"`, params `ratios: NumberArray`,
@@ -2416,6 +2475,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### NegativeSum (`NegativeSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6472`, a CompositeComponent.
 
 - **Registered as** `"NegativeSum"`, params `sums: NumberArray`,
@@ -2426,6 +2486,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### NegativeSumPairComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6430`, extends PairComponent. Friends from
 `negativeSumFriendTable`: full digit set minus `sum − digit` for each forbidden
 sum. `validate` fails when the two values add to a listed sum. This is the only
@@ -2434,6 +2495,7 @@ negative-sum path that actually prunes candidates.
 ### NegativeSumGroupComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6404`. Three-or-more-cell fallback. `validateDuringSolve` is
 true, but it defines **no `update`** — it only checks, once every cell in the
 group is filled, that the total is not a forbidden sum. Expect zero propagation
@@ -2442,6 +2504,7 @@ from a NegativeSum over three or more cells.
 ### PredefinedCandidates (`PredefinedCandidatesComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:5369`. One-shot candidate restriction.
 
 - **Registered as** `"PredefinedCandidates"`, params `candidates: DigitSet`,
@@ -2456,6 +2519,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### Product (`ProductComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6574`, a CompositeComponent.
 
 - **Registered as** `"Product"`, params `productOrProducts: NumberOrNumberArray`,
@@ -2468,6 +2532,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SingleProductComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6499`. The propagating product component.
 
 - **update** Divides the target by every filled value in turn; a value that does
@@ -2484,6 +2549,7 @@ Access: **internal** — not reachable from custom code.
 ### MultiProductComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6601`. Used when several products are allowed.
 
 - **initialize** Builds the union of digits dividing any allowed product (plus 1,
@@ -2495,6 +2561,7 @@ Access: **internal** — not reachable from custom code.
 ### RatioComponent (`RatioComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:4009`, extends PairComponent. Sorts under R, included here
 because PairComponent is documented in this section.
 
@@ -2509,6 +2576,7 @@ because PairComponent is documented in this section.
 ### RequiredDigits (`RequiredDigitsComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:3234`. A multiset of digits must be placeable in distinct cells
 of the group. Heavily reused: SandwichSum, SelfCounting and Product all build
 these internally.
@@ -2536,6 +2604,7 @@ these internally.
 ### RequiredGroups (`RequiredGroupsComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:5416`. Each digit group must be represented at least once.
 
 - **Registered as** `"RequiredGroups"`, params `groups: DigitSetArray`,
@@ -2552,6 +2621,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SameDigit (`SameDigitComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6658`. Clone cells.
 
 - **Registered as** `"SameDigit"`, params `cells: CellArray`.
@@ -2571,6 +2641,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SameGroup (`SameGroupComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6749`. Every cell takes a digit from one and the same group.
 
 - **Registered as** `"SameGroup"`, params `groups: DigitSetArray`,
@@ -2583,6 +2654,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SameSum (`SameSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:7069`. The richest component in this range: several named
 groups, possibly weighted or digit-string valued, must share one sum.
 
@@ -2624,6 +2696,7 @@ groups, possibly weighted or digit-string valued, must share one sum.
 ### SandwichSum (`SandwichSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:7525`, a CompositeComponent.
 
 - **Registered as** `"SandwichSum"`, params `sum: Number`,
@@ -2635,6 +2708,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SandwichSumInnerComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:7363`. Fields: `combinations` (every subset of the non-crust
 digits summing to `sum`, enumerated once in the constructor by
 `iterateSubsetsSummingTo`), `minDistance`/`maxDistance` (shortest and longest
@@ -2659,6 +2733,7 @@ crust-to-crust gap, subset length + 1), `sandwichDigitsMask`.
 ### SelfCounting (`SelfCountingComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:7803`, a CompositeComponent.
 
 - **Registered as** `"SelfCounting"`, params `cells: CellArray`.
@@ -2673,6 +2748,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SelfCountingStateComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:7553`. The non-verbose engine. Immutable-state style: instead
 of mutating, it builds a replacement of itself via `transitionTo` and yields a
 ReplaceComponent change. Fields: `state` (`{required, forbidden, housed,
@@ -2702,6 +2778,7 @@ combinations}`) and `misc` (house bookkeeping, built once).
 ### SelfCountingSumComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:3345`. The verbose-solving engine. Fields: `helperComponents`
 (the DifferentDigits/House components overlapping the cells, discovered lazily in
 `initialize` via `sudoku.getConstraintComponents()`), `excludedDigits` and
@@ -2726,6 +2803,7 @@ tick).
 ### Sequence (`SequenceComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:7853`, a CompositeComponent.
 
 - **Registered as** `"Sequence"`, params `cells: CellArray`.
@@ -2736,6 +2814,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### SequenceStepComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:7877`. Arithmetic progression along the cell order.
 
 - **update** Returns immediately for lines of two or fewer cells — a
@@ -2753,6 +2832,7 @@ Access: **internal** — not reachable from custom code.
 ### Skyscraper (`SkyscraperComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:7950`. Count of visible increasing maxima along the cell order.
 
 - **Registered as** `"Skyscraper"`, params `amount: Number`, `cells: CellArray`.
@@ -2774,6 +2854,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### Sum (`SumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6982`, a CompositeComponent — the dispatcher every other sum
 constraint funnels through.
 
@@ -2794,6 +2875,7 @@ constraint funnels through.
 ### SumPairComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6861`, extends PairComponent. Constructor takes
 `(name, sums, allowRepeats, cellIdA, cellIdB)` and picks between two friend
 tables: the repeat table allows `sum − digit === digit`, the distinct table
@@ -2803,6 +2885,7 @@ not in `sums`.
 ### ExactSumComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4251`. Used when the allowed totals are not contiguous.
 `validateDuringSolve` is true. `update` delegates the whole job to
 `SumCandidateUpdater` over `[min(sums), max(sums)]`; `validate` checks the exact
@@ -2813,6 +2896,7 @@ total against the list once every cell is filled.
 ### SumRangeComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4292`. Used when the allowed totals form a contiguous run.
 `update` runs `SumCandidateUpdater` with a `resolvedFlag`; if the updater found
 exactly one surviving digit combination, the component removes itself after
@@ -2822,6 +2906,7 @@ at a leaf) compares the sums helper's reachable min/max against the window.
 ### SumCandidateUpdater (internal helper, not a component)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4108`. Shared by ExactSum, SumRange and SameSum's list groups.
 `updateCandidates(allowRepeats, resolvedFlag)` picks one of two strategies.
 
@@ -2842,6 +2927,7 @@ Access: **internal** — not reachable from custom code.
 ### WeightedSum (`WeightedSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:6905`. Cells with per-cell multipliers summing to a target.
 
 - **Registered as** `"WeightedSum"`, params `sumOrSums: NumberOrNumberArray`,
@@ -2858,6 +2944,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### WeightedSumCandidateUpdater (internal helper, not a component)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:6781`. The weighted twin of `SumCandidateUpdater`'s
 with-repeats path, and its only strategy: subtract filled contributions from the
 window, then for each open cell remove digits where
@@ -2869,6 +2956,7 @@ take their extremes.
 ### WeakLink (`WeakLinkComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:8055`. A single forbidden value pair.
 
 - **Registered as** `"WeakLink"`, params `cell1: Cell`, `value1: Number`,
@@ -2885,6 +2973,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### WeakLinks (`WeakLinksComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:8111`. Group form of the same idea.
 
 - **Registered as** `"WeakLinks"`, params `cells1: CellOrCellArray`,
@@ -2901,6 +2990,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### XSum (`XSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
 `bundle.claude.js:8321`, a CompositeComponent.
 
 - **Registered as** `"XSum"`, params `sum: Number`, `xCell: Cell`,
@@ -2912,6 +3002,7 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 ### XSumFullLineComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:8161`. The strong path, using the precomputed
 `helpers.xSums.getXSumPossibilities(sum)` table. `cellIds` is truncated to the
 largest feasible X.
@@ -2929,6 +3020,7 @@ largest feasible X.
 ### XSumPrefixComponent (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:8251`. The general fallback, with a separate X cell.
 
 - **initialize** `sum === 0` pins the X cell to 0 and removes the component.
@@ -2957,6 +3049,7 @@ bit *d* set for digit *d*.
 ### ChangeApplier (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2011`. Applies the changes of one or more deduction requests
 (a logic step's `{ changes, description }` objects) to a `SolverState`. Built by
 `Solver.getDeductionProcessor` when verbose solving is off. Fields: `sudoku`
@@ -2989,6 +3082,7 @@ Clears the bits of `digitMask` from one cell's candidates, or from each listed c
 ### VerboseChangeApplier (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2078`. The applier used when verbose solving is on (the
 default; `disableVerboseSolving` turns it off). Same job as `ChangeApplier`, but
 it records which cells each change actually touched so the UI can highlight the
@@ -3029,6 +3123,7 @@ Fills in a missing message on a `failed` result with `describeCellsWithNoCandida
 ### BranchCellRanking (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2198`. Picks which unsolved cell the search should branch on
 when logic runs out. Constructed per branch point by `Solver.findSolutions` with
 the current state and a randomness flag; `cellWeights` is a lazily filled array
@@ -3053,6 +3148,7 @@ Computes and memoizes a cell's branching cost: candidate count (capped at 3) tim
 ### ComponentSubscription (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2870`. A live, cloneable view of the components matching a
 filter, used by logic steps that want to iterate "all components of kind X"
 without rescanning the state. Fields: `filter` (component predicate), `state`
@@ -3079,6 +3175,7 @@ Makes a subscription for a cloned state: same filter and callbacks, `state?.clon
 ### EventEmitter (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:8613`. A minimal name-to-handler-set emitter. `SolverState`
 holds one as `componentEventBus` and emits `"change"` on it for every component
 add or remove. Field: `all`, a Map from event name to a Set of handlers.
@@ -3095,6 +3192,7 @@ Calls each handler with `payload`, over a copied array so a handler may subscrib
 ### CloneableMap (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4353`. A `Map` subclass whose values are Sets, used for
 `SolverState.constraintComponentByCell` (cell id → Set of components).
 
@@ -3104,6 +3202,7 @@ Returns a new `CloneableMap` with the same keys and a fresh `Set` per value, so 
 ### CandidateSetMap (internal)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:8450`. Per digit, the list of "this digit must appear among
 these cells" sets that the required-digits machinery has recorded — the index
 behind hidden singles, pointing pairs and the like. Field: `map`, an array
@@ -3131,6 +3230,7 @@ Sorts a set-info array ascending by `cells.length`, so the most constrained set 
 ### Solver (additional members)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:8347`. The search driver. One `Solver` per search node: the
 constructor takes a state and an optional parent, inheriting `depth + 1`,
 `useRandomness`, and a per-node clone of each logic step.
@@ -3163,6 +3263,7 @@ Prints `message` to the console indented by two spaces per search depth. **[read
 ### SolverState (additional members)
 
 Access: **reachable, not documented** — see the `SolverState` section above.
+
 `bundle.claude.js:8630`. The already-documented state object; these are the
 members the existing "When the solver calls what" section does not cover.
 
@@ -3230,6 +3331,7 @@ True for `ReplaceComponent` and `AbortSolver` — the two change types after whi
 ### ConstraintHandlerRegistry (additional members)
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:9342`. Maps a `ConstraintType` to the handler that turns a
 constraint's config into components. The module-level singleton is
 `constraintHandlerRegistry`.
@@ -3244,6 +3346,7 @@ Builds the whole puzzle: creates the helper bundle and a `PuzzleSetupView` over 
 ### PuzzleSetupView (additional members)
 
 Access: **public** — more members of the `puzzle` object.
+
 `bundle.claude.js:9318`. The `puzzle` object a constraint handler receives
 during setup; extends `PuzzleAccessorBase` with the mutating methods.
 
@@ -3253,6 +3356,7 @@ Forwards straight to `SolverState.setRegions`, creating the region components. *
 ### PuzzleAccessorBase (additional members)
 
 Access: **public** — more members of the `puzzle` object.
+
 `bundle.claude.js:9222`. The read-only geometry and grid base under both
 `PuzzleSetupView` and `SolverPuzzleView`, so these are available on the `puzzle`
 object inside a custom component.
@@ -3272,6 +3376,7 @@ The same for the cell at `(x, y)`, via `helpers.cellIds.getIdFromCoords`.
 ### Top-level functions (solver internals)
 
 Access: **internal** — not reachable from custom code.
+
 #### `setPuzzleSpec(spec)`
 `bundle.claude.js:1651`. Installs the module-level puzzle spec: deep-copies `spec` into `puzzleSpec`, rebuilds `sharedHelpers` from it, and recomputes `allDigitsMask`.
 - **Notes:** everything below reads grid size and digit range from this module global, so it must run before any state is created. **[read]**
@@ -3344,6 +3449,7 @@ Cell ids are 0-based (`x + y * width`); a digit mask has bit `d` set for digit
 ### Top-level functions (deductions and results)
 
 Access: **internal** — not reachable from custom code.
+
 #### `countMatchingValues(values, target, { comparator })`
 Counts entries of `values` equal to `target`, by `===` unless a `comparator`
 is passed. `bundle.claude.js:1660`. **[read]**
@@ -3405,6 +3511,7 @@ digit from every cell seen by all its possible carriers.
 ### `AlmostXWingLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:1903`. Single-digit almost-fish patterns on rows and columns:
 skyscrapers, finned and sashimi X-wings. Constructed with the solver state
 only.
@@ -3433,6 +3540,7 @@ New `AlmostXWingLogicStep` over `sudoku`; nothing is carried over. **[read]**
 ### `NakedSingleLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2244`. Always in the step list, first. Holds only the state.
 
 #### `*execute()`
@@ -3446,6 +3554,7 @@ New instance over `sudoku`. **[read]**
 ### `ByContradictionLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2297`. Brute-force last resort: try a candidate, propagate,
 and if that explodes, eliminate it. Fields: `sudoku`, `useRandomness` (passed
 to the branch-cell ranking, default `true`). Last in the step list because it
@@ -3482,6 +3591,7 @@ New instance over `sudoku`, keeping `useRandomness`. **[read]**
 ### `FishLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2378`. Classic fish of a fixed size: X-wing at size 2,
 swordfish at 3, and so on. Fields: `groupSize`, `sudoku`.
 
@@ -3501,6 +3611,7 @@ New `FishLogicStep` with the same `groupSize`. **[read]**
 ### `HiddenSetLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2495`. Hidden pairs, triples and so on inside one house.
 Fields: `groupSize`, `sudoku`.
 
@@ -3523,6 +3634,7 @@ New instance with the same `groupSize`. **[read]**
 ### `HiddenSingleLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2544`. Always in the step list, second. Holds only the state.
 
 #### `*execute()`
@@ -3538,6 +3650,7 @@ New instance over `sudoku`. **[read]**
 ### `NakedSetLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2568`. Naked pairs, triples and so on inside one house.
 Fields: `groupSize`, `sudoku`.
 
@@ -3558,6 +3671,7 @@ seen by the whole combination.
 ### `PointingSetLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2604`. The cheapest cross-house step. Holds only the state.
 
 #### `*execute()`
@@ -3573,6 +3687,7 @@ New instance over `newSudoku`. **[read]**
 ### `UnorthodoxNakedSetLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:2634`. A naked set whose cells need not share a house — any
 mutually-seeing group of cells works, which is what makes it useful on custom
 puzzles. Fields: `groupSize`, `sudoku`.
@@ -3592,6 +3707,7 @@ New instance with the same `groupSize`. **[read]**
 ### `ConsecutiveSetsLogicStep` (additional members)
 
 Access: **internal** — not reachable from custom code.
+
 Constructed with the state and an optional previous step; its `cache` is a
 `ComponentSubscription` over `ConsecutiveDigitsComponent`s whose cells all see
 each other, cloned from the previous step when there is one.
@@ -3621,6 +3737,7 @@ it hands that required mask to `yieldRequiredDigitDeductions`.
 ### `CountingCirclesCacheState`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:3508`. The per-search-node payload for the counting-circles
 subscription: `info`, a `Map` from component to
 `{ houses: { row|column|region → Map<house, cellIds> }, availableDigits }`.
@@ -3632,6 +3749,7 @@ Deep-clones `info` so a branch's digit eliminations do not leak to siblings.
 ### `CountingCirclesLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:3516`. Handles self-counting circles: a digit `d` in a circle
 means exactly `d` circles hold `d`. Fields: `rowMapping`, `columnMapping`,
 `regionMapping` (cell id → house component), `legibleHouses` (rows, columns and
@@ -3676,6 +3794,7 @@ New step over `newState` with `this` as source: mappings shared, cache cloned.
 ### `KropkiDotsLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4055`. Works the two-cell white-dot / black-dot components.
 Field `components`, the set of `DifferenceComponent`s and `RatioComponent`s
 with exactly one difference or ratio; it is seeded from the state (or from the
@@ -3699,6 +3818,7 @@ installs a fresh listener on the new state. **[read]**
 ### `SumLogicCacheState`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4375`. Payload for the simple-sums subscription:
 `componentInfo` (component → `{ combinations, required }` from
 `buildSumCombinationsEntry`) and `componentsByCell` (a `CloneableMap` from cell
@@ -3711,6 +3831,7 @@ pruning is per search node. **[read]**
 ### `SimpleSumsLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4390`. Prunes the candidate-digit combinations of
 non-repeating sum components (killer cages and the like). `cache` is a
 `ComponentSubscription` over `isNonRepeatingSumComponent`; on add it indexes the
@@ -3746,6 +3867,7 @@ New step over `state` with `this` as source, cloning the cache. **[read]**
 ### `UnorthodoxFishLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4527`. Counting argument on `RequiredDigitsComponent`s that
 demand a digit more than once. Fields: `cache` (subscription to those
 components), `regionComponents` (the region houses) and
@@ -3781,6 +3903,7 @@ Same for regions, indexing `this.regionComponents` and taking their `cellIds`.
 ### `YWingLogicStep`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4706`. Classic Y-wing (XY-wing). Holds only the state.
 
 #### `*execute()`
@@ -3799,6 +3922,7 @@ New instance over `state`. **[read]**
 ### `StandardLogicStepsGenerator`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4769`. Builds the step list for a `"sudoku"` puzzle. Fields:
 `enabledStepTypes` (a `Set` of `LogicStepType` strings from the solve strategy)
 and `useRandomness`.
@@ -3820,6 +3944,7 @@ counting circles, and finally by-contradiction.
 ### `CustomLogicStepsGenerator`
 
 Access: **internal** — not reachable from custom code.
+
 `bundle.claude.js:4841`. The generator used for a `"custom"` puzzle. It filters
 the requested step types down to `CustomPuzzleEnabledStepTypes` — naked sets,
 hidden sets, pointing sets, unorthodox naked sets, simple sums, consecutive
@@ -3854,6 +3979,7 @@ identity. Cell ids are 0-based; in a digit mask, bit `d` is digit `d`.
 ### `DirectedLineGraph` (not a global; internal, used by the Thermometer handler)
 
 Access: **internal** — not reachable from custom code.
+
 A directed multi-source graph, at `bundle.claude.js:11095`. Fields: `points`, a
 `Set` of every interned point; `pointsAfter`, a `Map` from point to its
 successor `Set`; `pointsBefore`, the same for predecessors. The constructor
@@ -3974,6 +4100,7 @@ Rebuilds a graph from `getEdges()`.
 ### `LineGraph` (additional members)
 
 Access: **reachable, not documented** — instances come back from `helpers.connectivity.getOrthogonallyConnectedGroups`, but the class is not injected.
+
 Members of the undirected graph at `bundle.claude.js:250` not covered earlier.
 Its one field is `pointsConnected`, a `Map` from interned point to a `Set` of
 neighbours; the constructor's second argument is an `isGreaterThan(a, b)`
@@ -4054,6 +4181,7 @@ Rebuilds from `getEdges()` with the same comparator.
 ### `Vector2` (additional members)
 
 Access: **reachable, not documented** — instances come back from `helpers.outerCellIds`, but the class is not injected.
+
 The mutable vector class at `bundle.claude.js:775`. Not exported to custom
 code; you will meet it only inside the bundle. Every instance method returns
 `this`, so calls chain and each one mutates the receiver.
@@ -4090,6 +4218,7 @@ Builds a `Vector2` from anything with `x` and `y`.
 ### Top-level functions (sets, iteration, arrays, numbers, vectors, cloning)
 
 Access: **internal** — not reachable from custom code.
+
 Source-order groups. Where a function is the implementation behind a namespace
 member already documented, the entry says so and still describes the body.
 
@@ -4479,6 +4608,7 @@ is digit *d*.
 ### FriendDigitTable (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `getFriends(paramValue)`
 
 Returns the memoized per-digit "friend" table for `paramValue`, an array indexed
@@ -4491,6 +4621,7 @@ table's callback produced for that digit (typically a digit mask of partners).
 ### SumCandidateUpdater (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `*updateCandidatesWithoutRepeats(resolvedFlag)`
 
 Generator implementing the no-repeat branch of `updateCandidates`: it subtracts
@@ -4529,6 +4660,7 @@ candidate. **[read]**
 ### WeightedSumCandidateUpdater (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `getMinSum(state, cellWeights, excludedCellId)`
 
 Returns the smallest weighted total over the `Map` of cell id to weight, skipping
@@ -4545,6 +4677,7 @@ times its weight. **[read]**
 ### SandwichSumInnerComponent (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `*updatePossibleCellsForSandwichDigits(puzzle, knownDigit, otherDigit)`
 
 Generator: once `knownDigit` is placed (some cell's candidates equal exactly that
@@ -4571,6 +4704,7 @@ but a sandwich digit. **[read]**
 ### SelfCountingStateComponent (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `getCandidatesUnion(puzzle, cellIdsToUnion)`
 
 Returns a `SudokuDigitSet` holding every digit still a candidate in any of
@@ -4586,6 +4720,7 @@ of `cellIdsToScan`.
 ### SelfCountingSumComponent (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `updatePossibleSums(state)`
 
 Recomputes `this.possibleSums` and `this.possibleDigits` from the current
@@ -4601,6 +4736,7 @@ length `cellIds.length` and discarding any that touch `excludedDigits`.
 ### SequenceStepComponent (additional members)
 
 Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
 #### `getValidValuesForDirection(puzzle, reversed = false)`
 
 Returns an array of digit masks, one per cell, holding every digit that appears
@@ -4618,6 +4754,7 @@ sequence is read from one end.
 ### Top-level functions (constraint handlers, layouts, digit groups, sum caches)
 
 Access: **internal** — not reachable from custom code.
+
 **Sum caches and combination entries.**
 
 #### `getFriendCacheKeyBuilder(keyKind)`
