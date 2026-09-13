@@ -225,7 +225,7 @@ The cell's friendly digits intersected with its live candidates.
 - **Returns:** a `SudokuDigitSet`. Note the body mutates the friendly set in
   place and returns it, so the result is a fresh set you may keep mutating.
 
-#### `removeCandidateFromCell(digit, cellId)`, `removeCandidateFromCells(digit, cells)`, `removeCandidatesFromCell(digits, cellId)`, `removeCandidatesFromCells(digits, cells)`
+#### `removeCandidateFromCell(digit, cellId)` / `removeCandidateFromCells(digit, cells)` / `removeCandidatesFromCell(digits, cellId)` / `removeCandidatesFromCells(digits, cells)`
 Change: drop one digit, or a set of digits, from one cell or from every listed
 cell. The four are one operation; the name picks the digit form and the cell
 form.
@@ -237,7 +237,7 @@ form.
   The cell list is copied at build time, so mutating your array afterwards is
   harmless.
 
-#### `filterCandidatesInCell(digits, cellId)`, `filterCandidatesInCells(digits, cells)`
+#### `filterCandidatesInCell(digits, cellId)` / `filterCandidatesInCells(digits, cells)`
 Change: keep only these digits in one cell, or in every listed cell.
 - **Returns:** `{ type: 1, value: digits, cell }` for one cell;
   `{ type: 2, value: digits, cells: [...cells] }` for a list.
@@ -2880,10 +2880,10 @@ Dispatches one change object to the matching applier method by `change.type`.
 #### `*setValueAtCell(value, cell)`
 Sets `cell` to `value` through `SolverState.setValueAtCell`, yielding its one result. **[read]**
 
-#### `*filterCandidatesAtCell(digitMask, cell)`, `*filterCandidatesAtCells(digitMask, cells)`
+#### `*filterCandidatesAtCell(digitMask, cell)` / `*filterCandidatesAtCells(digitMask, cells)`
 Intersects the candidates of one cell, or of each listed cell, with `digitMask` via the matching `SolverState` method, yielding one result per cell. **[read]**
 
-#### `*removeCandidatesFromCell(digitMask, cell)`, `*removeCandidatesFromCells(digitMask, cells)`
+#### `*removeCandidatesFromCell(digitMask, cell)` / `*removeCandidatesFromCells(digitMask, cells)`
 Clears the bits of `digitMask` from one cell's candidates, or from each listed cell's, yielding one result per cell. **[read]**
 
 ### VerboseChangeApplier (internal)
@@ -2911,11 +2911,11 @@ Dispatches one change by type, exactly as in `ChangeApplier`, but returns a gene
 #### `*setValueAtCell(value, cell)`
 Sets the cell's value as `ChangeApplier` does, but yields `[cell, result]` only when the result is not `unchanged`, after passing it through `ensureErrorMessage`. **[read]**
 
-#### `*filterCandidatesAtCell(digitMask, cell)`, `*filterCandidatesAtCells(digitMask, cells)`
+#### `*filterCandidatesAtCell(digitMask, cell)` / `*filterCandidatesAtCells(digitMask, cells)`
 Intersects the candidates of one cell, or of each listed cell, with `digitMask` as `ChangeApplier` does, yielding `[cell, result]` only for a cell that actually changed, after `ensureErrorMessage`.
 - **Notes:** the plural form loops the single-cell state method rather than calling the state's plural generator as `ChangeApplier` does. Same effect. **[read]**
 
-#### `*removeCandidatesFromCell(digitMask, cell)`, `*removeCandidatesFromCells(digitMask, cells)`
+#### `*removeCandidatesFromCell(digitMask, cell)` / `*removeCandidatesFromCells(digitMask, cells)`
 Clears `digitMask` from one cell's candidates, or from each listed cell's, as `ChangeApplier` does, yielding `[cell, result]` only for a cell that actually changed, after `ensureErrorMessage`.
 - **Notes:** same loop-versus-plural-generator difference from `ChangeApplier`, same effect. **[read]**
 
@@ -3085,7 +3085,7 @@ The set of cells seen by **every** cell in `cellIds` — the intersection of the
 - **Returns:** a `Set` of cell ids; empty `Set` for an empty input.
 - **Notes:** short-circuits as soon as the running intersection empties. This is what a naked-subset style elimination calls to find its targets; reached from a component as `puzzle.getCellsSeenByCells`. **[read]**
 
-#### `filterCandidatesAtCell(digitMask, cellId)`, `*filterCandidatesAtCells(digitMask, cellIds)`
+#### `filterCandidatesAtCell(digitMask, cellId)` / `*filterCandidatesAtCells(digitMask, cellIds)`
 Intersects the candidate mask of one cell, or of each listed cell in turn, with `digitMask`, telling the candidate-set map about each digit removed and marking the cell dirty.
 - **Returns:** for one cell, `UnchangedResult` if nothing was removed, a failed result for the cell if the mask emptied, otherwise `ChangedResult`; the plural form is a generator yielding one such result per cell.
 - **Mutates:** the cell's `candidates`, `candidateSetMap`, `updateSet`. **[read]**
@@ -3239,7 +3239,7 @@ is passed. `bundle.claude.js:1660`. **[read]**
 Builds the failure string `"<cells description> has/have no candidates"`, the
 verb agreeing with `cells.length`. `bundle.claude.js:1980`. **[read]**
 
-#### `createFailedResultForCell(cell)`, `createFailedResultForCells(cells, message)`
+#### `createFailedResultForCell(cell)` / `createFailedResultForCells(cells, message)`
 Builds a failed result: `{ type: "failed", cells: [cell] }` with no message for
 one cell, or `{ type: "failed", cells: cells.slice(), message }` for a list;
 the copy means the caller may keep mutating its own array.
