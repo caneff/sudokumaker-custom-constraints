@@ -192,6 +192,27 @@ with each bitmask form added, to try in the app: `PUZZLE_LINK_house_gac.txt`
 (named) and `PUZZLE_LINK_terse.txt`. Everything but the added "House GAC"
 constraint is identical to `examples/skyscraper/PUZZLE_LINK.txt`.
 
+### Precomputed bit counts, n=9 (#408)
+
+The shipped component counts bits twice per group, every call: the group's
+cells (which depend only on the group number) and its pooled digits.
+`408-house-gac/bench-count-tables.mjs` builds two variants in memory from
+the shipped source. It checks both against it on 4000 states (1758 of them
+stops, 0 disagreements), then times the three forms interleaved: 6 rounds of
+20000 states, two runs.
+
+| variant | median us per call | vs shipped |
+| --- | --- | --- |
+| shipped: `countOf` for both counts | 4.25-4.27 | 1x |
+| A: group sizes from a 512-entry table | 3.59-3.66 | 0.85-0.86x |
+| B: A plus digit counts from a 1024-entry table (digits 0..9) | **2.01-2.06** | **0.47-0.48x** |
+
+The digit count is the bigger cost: a pooled mask has up to 9 bits, so
+`countOf` loops up to 9 times per group, 511 groups per call. B falls back to
+`countOf` for a mask with a digit above 9. No check state reaches that path,
+since every state uses digits 1..9, so a test for it would be needed before
+shipping B.
+
 ### Larger houses, both real components (#408)
 
 `408-house-gac/bench-large-n.mjs` runs both `update` functions at n=9..16,
