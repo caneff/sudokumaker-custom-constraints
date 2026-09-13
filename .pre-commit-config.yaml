@@ -1,7 +1,7 @@
 # Fast local gate before each commit. Run once after cloning:
 #   uvx pre-commit install
 # The full gate (tests + soundness fuzz) is too slow for a commit hook and runs
-# in CI via `just check`. Keep verbatim comparison files and probe goldens
+# in CI via `just check-full`. Keep verbatim comparison files and probe goldens
 # untouched — they must stay byte-for-byte.
 exclude: '^(examples/numbered-rooms/original/|examples/skyscraper/original/|examples/[^/]+/\.golden/)'
 

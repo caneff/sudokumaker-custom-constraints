@@ -227,7 +227,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 the 9x9 global board, seed 610 — as it ships. This is the record the checklist
 asks for; re-walk it whenever the board or the rules text changes.
 
-**Free gate** — `just check` green: lint, probe goldens, every example's own
+**Free gate** — `just check-full` green: lint, probe goldens, every example's own
 tests, the soundness fuzz at zero violations, the never-weaker floor, and
 `check_layout.py` over every committed link in this example.
 

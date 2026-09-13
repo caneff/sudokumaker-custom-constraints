@@ -638,7 +638,7 @@ regenerated or eased to close. The board exists as a coverage fixture: it
 proves the bare-line rules never remove a candidate the true solution needs,
 which `soundness-harness.mjs` already holds by fuzzing 400 random bare lines
 plus the `[1,2,3,4,5,6,7,8,1]` counterexample at 40,000 iterations on every
-`just check`. What that fixture cannot show is that the real app finishes a
+`just check-full`. What that fixture cannot show is that the real app finishes a
 bare-line board at all -- three reps that all hit the cap prove nothing about
 app-side timing either way. The 6x6 local board carries that evidence
 instead: same paths, same CP-SAT model, small enough that the app returns a
