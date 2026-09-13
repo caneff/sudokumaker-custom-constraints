@@ -99,6 +99,37 @@ table ran bare mask functions, and this runs each component's generator,
 mask reads and Change building included. It refuses a house above 9 cells in
 `setParams`.
 
+### Readable against bitmask, n=9 (#408)
+
+`examples/_shared/ReadableHouseGacComponent.js` is the same one-scan rule
+written for a reader. It uses `getCandidates` digit sets, `SudokuDigitSet.getUnion`,
+`size`, `subtract` and `equals`, named groups of cells, and no bit arithmetic.
+`house-gac.test.mjs` holds it to identical results with `HouseGacComponent.js`
+on every fuzz state (3000 at 1..9, 1000 at 0..9, 2000 unplanted), and it takes
+the same gate, refusal and yield tests.
+
+Speed comes from `408-house-gac/bench-house-gac.mjs`: the bench's 20000 states,
+3 reps, two runs, each component through its own `update`. The readable
+component gets a fresh DigitSet per `getCandidates` call, as in the app, built
+from the harness's DigitSet, whose methods are copied from the bundle. Size
+comes from `408-house-gac/link-delta-house-gac.py`: the builder's `minify_file`
+and `compressToEncodedURIComponent`, for the component on its own and for the
+component plus `house-gac.js` added to `examples/skyscraper/PUZZLE_LINK.txt`.
+For the readable row, the backend's constructor name is swapped in memory.
+
+| component | per call, n=9 | vs bitmask | minified | compressed alone | link grows by |
+| --- | --- | --- | --- | --- | --- |
+| `HouseGacComponent.js` (bitmask) | **4.0-4.4 us** | 1x | 1475 | **1202 B** | **1299** |
+| `ReadableHouseGacComponent.js` (digit sets) | 101-108 us | ~25x | 1835 | 1319 B | 1463 |
+| `tools/AllDiffGacComponent.js` (matching, for scale) | 24.5-28.8 us | ~6.5x | 1577 | 1203 B | 1488 |
+
+The readable form is about 25x slower than the bitmask form and about 4x slower
+than the naive matching filter. It is 117 B larger compressed on its own, and
+164 characters larger in a link. The cost is allocation, not the rule: every
+group builds a fresh array of positions and a fresh union set, across 511
+groups per call, where the bitmask form reuses one int per subset. Each lookup
+of a subset's cells is also linear in its size.
+
 ### Larger houses, both real components (#408)
 
 `408-house-gac/bench-large-n.mjs` runs both `update` functions at n=9..16,

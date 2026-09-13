@@ -14,6 +14,10 @@
 // The reference is the matching-based `AllDiffGacComponent.js` the #406 demo
 // ran, so the zero-disagreement count here is the same measurement as the
 // ticket's 3000-state one (#408).
+//
+// `ReadableHouseGacComponent.js` states the same rule in digit sets and plain
+// words. It must land on exactly what `HouseGacComponent.js` lands on in every
+// fuzz below, and it takes every fixed test the bitmask one takes.
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
@@ -25,6 +29,8 @@ import { runBackend } from './backend-runner.mjs'
 const here = dirname(fileURLToPath(import.meta.url))
 const NAMES = ['getAffectedCells', 'setParams', 'update']
 const gac = makeIo(here).load('HouseGacComponent.js', NAMES)
+const readable = makeIo(here).load('ReadableHouseGacComponent.js', NAMES)
+const COMPONENTS = [['HouseGacComponent', gac], ['ReadableHouseGacComponent', readable]]
 const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
 
 const CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 19]
@@ -68,6 +74,7 @@ const { rnd } = makeRng(408)
 // filter must keep every true digit and never stop.
 {
   let disagree = 0
+  let readableDisagree = 0
   for (let t = 0; t < 3000; t++) {
     const { perm, cands } = consistentState(rnd, 1, 9, 0.35)
     const got = runOnce(gac, cands)
@@ -75,8 +82,10 @@ const { rnd } = makeRng(408)
     got.forEach((s, i) => assert.ok(s.includes(perm[i]),
       `state ${t}: cell ${i} lost its true digit ${perm[i]} -- unsound`))
     if (JSON.stringify(got) !== JSON.stringify(runOnce(ref, cands))) disagree++
+    if (JSON.stringify(runOnce(readable, cands)) !== JSON.stringify(got)) readableDisagree++
   }
   assert.strictEqual(disagree, 0, `${disagree} of 3000 states disagree with matching GAC`)
+  assert.strictEqual(readableDisagree, 0, `${readableDisagree} of 3000 states: the readable filter disagrees with the bitmask one`)
 }
 
 // ---- exactly GAC on 9 cells of ten digits (hit-counts runs 0..9) ---------
@@ -86,14 +95,17 @@ const { rnd } = makeRng(408)
 installGlobals(0, 9)
 {
   let disagree = 0
+  let readableDisagree = 0
   for (let t = 0; t < 1000; t++) {
     const { perm, cands } = consistentState(rnd, 0, 9, 0.25)
     const got = runOnce(gac, cands, 'house')
     assert.notStrictEqual(got, 'stop', `0..9 state ${t}: stopped on a house that has a solution`)
     got.forEach((s, i) => assert.ok(s.includes(perm[i]), `0..9 state ${t}: cell ${i} lost ${perm[i]}`))
     if (JSON.stringify(got) !== JSON.stringify(runOnce(ref, cands, 'house'))) disagree++
+    if (JSON.stringify(runOnce(readable, cands, 'house')) !== JSON.stringify(got)) readableDisagree++
   }
   assert.strictEqual(disagree, 0, `${disagree} of 1000 digit-0..9 states disagree with matching GAC`)
+  assert.strictEqual(readableDisagree, 0, `${readableDisagree} of 1000 digit-0..9 states: the readable filter disagrees with the bitmask one`)
 }
 installGlobals(1, 9)
 
@@ -112,6 +124,7 @@ installGlobals(1, 9)
     const got = runOnce(gac, cands)
     if (want === 'stop') stops++
     assert.deepStrictEqual(got, want, `open state ${t}: ${JSON.stringify(cands)}`)
+    assert.deepStrictEqual(runOnce(readable, cands), got, `open state ${t}, readable vs bitmask: ${JSON.stringify(cands)}`)
   }
   assert.ok(stops > 100, `only ${stops} of 2000 open states had no solution; the case is not exercised`)
 }
@@ -120,27 +133,29 @@ installGlobals(1, 9)
 // Cells 0-2 hold only {1,2,3}: a naked triple, so 1, 2 and 3 leave the other
 // six cells. Cell 3 is then left with 4 alone, a naked single, so 4 leaves the
 // last five as well -- all in one call.
-{
+for (const [label, mod] of COMPONENTS) {
   const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-  const got = runOnce(gac, [[1, 2], [2, 3], [1, 3], [3, 4], all, all, all, all, all])
-  assert.deepStrictEqual(got.slice(0, 4), [[1, 2], [2, 3], [1, 3], [4]])
-  for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'the triple and the single are not removed from the rest')
+  const got = runOnce(mod, [[1, 2], [2, 3], [1, 3], [3, 4], all, all, all, all, all])
+  assert.deepStrictEqual(got.slice(0, 4), [[1, 2], [2, 3], [1, 3], [4]], label)
+  for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], `${label}: the triple and the single are not removed from the rest`)
 }
 
 // ---- gated: a line that may repeat is left alone --------------------------
 // docs/line-contract.md: all-different only holds where the app says the cells
 // cannot repeat. The same Hall set on a bare line removes nothing.
-{
+for (const [label, mod] of COMPONENTS) {
   const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
   const cands = [[1, 2], [2, 3], [1, 3], [3, 4], all, all, all, all, all]
-  assert.deepStrictEqual(runOnce(gac, cands, 'bare'), cands, 'pruned a line whose digits may repeat')
+  assert.deepStrictEqual(runOnce(mod, cands, 'bare'), cands, `${label}: pruned a line whose digits may repeat`)
 }
 
 // ---- refuses a house above 9 cells, loudly --------------------------------
 // 2^n subsets per call: in the bare-mask probe, 25 us at n=10 and 676 us at
 // n=14 against matching's 22 and 79 (docs/research/all-different-gac.md,
 // "Cost"). Registering one there is a mistake the author must see at setup.
-assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
+for (const [label, mod] of COMPONENTS) {
+  assert.throws(() => mod.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/, label)
+}
 
 // ---- no scratch state crosses a yield --------------------------------------
 // The solver may run another instance's `update` while this one is suspended at
@@ -151,7 +166,7 @@ assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, 
 // cells 0 and 3, subset 0b1001; a filter that yielded there and read its
 // subset unions after would take cell 3's union from B, a solved house where
 // it is {4}, and read cells 1 and 3 as a false pair on {4, 5}.
-{
+for (const [label, mod] of COMPONENTS) {
   const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
   const aCands = [[1, 2], [4, 5], all, [1, 2], all, all, all, all, all]
   const bCands = [[1], [2], [3], [4], [5], [6], [7], [8], [9]]
@@ -160,14 +175,14 @@ assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, 
   const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { kind: 'fullHouse' })
   const a = { name: 'A' }
   const b = { name: 'B' }
-  gac.setParams(a, CELLS)
-  gac.setParams(b, CELLS)
-  const genA = gac.update(a, pa)
-  assert.strictEqual(genA.next().done, false, 'house A yields no removal to suspend at')
-  Array.from(gac.update(b, pb))
+  mod.setParams(a, CELLS)
+  mod.setParams(b, CELLS)
+  const genA = mod.update(a, pa)
+  assert.strictEqual(genA.next().done, false, `${label}: house A yields no removal to suspend at`)
+  Array.from(mod.update(b, pb))
   Array.from(genA)
   const got = CELLS.map(c => [...pa._cand.get(c)].sort((x, y) => x - y))
-  assert.deepStrictEqual(got, runOnce(gac, aCands), 'house A changed because house B ran at its yield')
+  assert.deepStrictEqual(got, runOnce(mod, aCands), `${label}: house A changed because house B ran at its yield`)
 }
 
 // ---- the backend: one filter per interior row, column and box -------------

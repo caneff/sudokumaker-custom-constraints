@@ -28,6 +28,7 @@
       "HouseComponent",
       "DifferentDigitsComponent",
       "HouseGacComponent",
+      "ReadableHouseGacComponent",
       "helpers",
       "input",
       "puzzle",

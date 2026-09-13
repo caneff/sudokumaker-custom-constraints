@@ -20,8 +20,14 @@ export class DigitSet {
   get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
   has (d) { return (this.mask & (1 << d)) !== 0 }
   valueOf () { return this.mask }
-  // ponytail: the app's intersect/union/subtract (mutating) are not mocked —
-  // no component uses them yet. Add them here when one does.
+  // Copied from the bundle's SmallNumberSet (bundle.claude.js:558-617). `union`
+  // and `subtract` MUTATE this and return it; `getUnion` returns a fresh set.
+  union (other) { this.mask |= other.valueOf(); return this }
+  subtract (other) { this.mask &= ~other.valueOf(); return this }
+  equals (other) { return this.mask === +other }
+  static getUnion (sets) { const u = new this(); for (const s of sets) u.union(s); return u }
+  // ponytail: the app's intersect/xor (mutating) are not mocked — no component
+  // uses them yet. Add them here when one does.
   * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
 }
 
