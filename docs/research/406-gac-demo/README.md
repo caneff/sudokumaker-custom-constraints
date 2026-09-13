@@ -1,7 +1,7 @@
 # GAC demo: an all-different upgrade the app's own house constraints do not have
 
-Two links, one board, 25 givens, a plain sudoku with **no skyscraper constraint
-anywhere**. The only difference between them is one extra custom constraint.
+Two links, one board, 25 givens, a plain 9x9 sudoku with **no skyscraper
+constraint anywhere** and no clue ring. The only difference between them is one extra custom constraint.
 
 | link | AutoStep (Icon AutoStep, run to fixpoint) |
 | --- | --- |
@@ -50,5 +50,13 @@ drawn state concludes, wrongly, that the component cannot be doing anything.
 
 ## Rebuilding
 
-`build_demo.py` in the session scratchpad; the component is
-`AllDiffGacComponent.js` with `alldiff-main.js` as its backend.
+`tools/build9.py` writes both links on a bare 9x9, carrying the 25 givens over
+from the committed without-GAC link, and proves uniqueness with CP-SAT on the
+way. `tools/logic9.mjs <link>` runs AutoStep in the recorded app and prints the
+grid it reached. The component is `tools/AllDiffGacComponent.js` with
+`tools/gac9-main.js` as its backend.
+
+The first pair was cut from the Skyscrapers 11x11 document with the skyscraper
+constraint deleted, so it carried an empty clue ring for no reason; the plain
+9x9 pair gives the same readout, 53/81 without and 81/81 with, and the 81/81
+grid matches the CP-SAT solution cell for cell.
