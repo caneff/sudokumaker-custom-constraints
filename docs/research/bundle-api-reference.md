@@ -39,9 +39,9 @@ the bundle itself; each is also flagged in place as a `Discrepancy` note.
 
 | # | Finding | Status |
 |-|-|-|
-| 1 | `bundle-api-index.md` lists 34 components; the bundle has 42 `defineComponent` calls. The generator's filter rejects an array of names (`Pair`/`AsymmetricalPair`, `GreaterThan`/`LessThan`) and a template-literal description (the six group and sum components). | **Ticketed**, sudokumaker-custom-constraints #415. All eight are already in `builtin-components.md`. |
-| 2 | `bundle-api-index.md:70` indexes `helpers.geometry` as the base class, so `getSubsetsPerRegion` is absent from it; the main-code instance is the region-aware subclass swapped in by `createExtendedHelpers` (9205). | Covered by `puzzle-api.md`, "Two helpers objects"; the index cannot see the swap. |
-| 3 | `createExtendedHelpers` hands `MiscHelper` the base geometry, not the region-aware one (9218), so `helpers.misc`'s internal geometry has no `getSubsetsPerRegion`. | Bundle quirk. Only matters if you reach inside `helpers.misc`. |
+| 1 | `bundle-api-index.md` lists 34 components; the bundle has 42 `defineComponent` calls. The generator's filter rejects an array of names (`Pair`/`AsymmetricalPair`, `GreaterThan`/`LessThan`) and a template-literal description (the six group and sum components). | **In review**, sudokumaker-custom-constraints #415, PR #416. All eight are already in `builtin-components.md`. |
+| 2 | `bundle-api-index.md:70` indexes `helpers.geometry` as the base class, so `getSubsetsPerRegion` is absent from it; the main-code instance is the region-aware subclass swapped in by `createExtendedHelpers` (9205). | **Ticketed** as the second gap on #415; `puzzle-api.md`, "Two helpers objects", already documents it. |
+| 3 | `createExtendedHelpers` hands `MiscHelper` the base geometry, not the region-aware one (9218). | **Resolved as unobservable**: neither `MiscHelper` method uses its geometry helper. Noted in `puzzle-api.md`. |
 | 4 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. | Bundle bug. Do not trust a bottom-corner straight ray. |
 
 ## The puzzle object, change objects and the component contract
