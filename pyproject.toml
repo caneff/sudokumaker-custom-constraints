@@ -1,0 +1,12 @@
+# One Python environment for every generator, test and verify script (#411):
+# `uv run <file>` syncs it from uv.lock once instead of resolving `--with`
+# packages on every call. Not a package -- the scripts load `_shared` through
+# sys.path, as before.
+[project]
+name = "sudokumaker-custom-constraints"
+version = "0"
+requires-python = ">=3.11"
+dependencies = ["lzstring", "ortools"]
+
+[tool.uv]
+package = false
