@@ -81,4 +81,22 @@ assert.ok(generated.includes(
 assert.ok(generated.includes('44 registered component names (42 constructors, 2 of them aliasing'),
   'header should count all 44 component name rows and call out the 2 aliases')
 
+// (h) #417: helpers.geometry lists the base class's own members plus the
+// main-code-only RegionAwareGeometryHelper's getSubsetsPerRegion, marked as
+// such; helpers.lines and helpers.misc get their own sections, same marker.
+const geometrySection = generated.slice(
+  generated.indexOf('### helpers.geometry ('), generated.indexOf('### helpers.sums ('))
+assert.ok(/getSubsetsPerRegion\(arg0\)` \| method \| main code only \|/.test(geometrySection),
+  'getSubsetsPerRegion should appear under helpers.geometry marked main code only')
+assert.ok(generated.includes('### helpers.lines ('),
+  'helpers.lines should have its own section')
+assert.ok(/getLineEnds\(arg0\)` \| method \| main code only \|/.test(generated),
+  'helpers.lines should list getLineEnds, marked main code only')
+assert.ok(generated.includes('### helpers.misc ('),
+  'helpers.misc should have its own section')
+assert.ok(/\*getEdgesForNegativeConstraint\(arg0\)` \| generator \| main code only \|/.test(generated),
+  'helpers.misc should list getEdgesForNegativeConstraint as a generator, marked main code only')
+assert.ok(/getCellGroupsFromLines\(arg0\)` \| method \| main code only \|/.test(generated),
+  'helpers.misc should list getCellGroupsFromLines, marked main code only')
+
 console.log('bundle-index self-check OK')
