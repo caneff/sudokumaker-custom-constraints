@@ -256,20 +256,51 @@ function describeParamType (node) {
   return null
 }
 
-// `IDENT("Title","message {template}",[["param",<type>],...])` -- every
-// built-in component's registration decorator.
+function isNameLiteral (n) {
+  return n.type === 'Literal' && typeof n.value === 'string' && /^[A-Z]/.test(n.value)
+}
+
+// `defineComponent` takes either one display name (`"House"`) or an array
+// of names (`["Pair","AsymmetricalPair"]`) registering every name as an
+// alias of the first.
+function isNameArg (n) {
+  return isNameLiteral(n) ||
+    (n.type === 'ArrayExpression' && n.elements.length > 0 && n.elements.every(el => el && isNameLiteral(el)))
+}
+
+// The message is usually a plain string, but a multi-line message (a
+// trailing "**Note:**" paragraph) is written as a template literal instead
+// -- still with no `${...}` in this bundle, but a future one could add one,
+// so an expression is rendered as a `${...}` placeholder rather than
+// silently dropping the row.
+function extractMessage (node) {
+  if (node.type === 'Literal') return node.value
+  let out = ''
+  node.quasis.forEach((quasi, i) => {
+    out += quasi.value.cooked
+    if (i < node.expressions.length) out += '$' + '{...}'
+  })
+  return out
+}
+
+// `IDENT("Title"|["Title","Alias",...],"message {template}"|`template`,
+// [["param",<type>],...])` -- every built-in component's registration
+// decorator.
 function extractComponents (ast) {
   const calls = collect(ast, n =>
     n.type === 'CallExpression' &&
     n.arguments.length >= 3 &&
-    n.arguments[0].type === 'Literal' && typeof n.arguments[0].value === 'string' && /^[A-Z]/.test(n.arguments[0].value) &&
-    n.arguments[1].type === 'Literal' && typeof n.arguments[1].value === 'string' &&
+    isNameArg(n.arguments[0]) &&
+    (n.arguments[1].type === 'TemplateLiteral' ||
+      (n.arguments[1].type === 'Literal' && typeof n.arguments[1].value === 'string')) &&
     n.arguments[2].type === 'ArrayExpression'
   )
   const out = new Map()
   for (const call of calls) {
-    const name = call.arguments[0].value
-    const message = call.arguments[1].value
+    const nameArg = call.arguments[0]
+    const names = nameArg.type === 'ArrayExpression' ? nameArg.elements.map(el => el.value) : [nameArg.value]
+    const primary = names[0]
+    const message = extractMessage(call.arguments[1])
     const params = []
     for (const el of call.arguments[2].elements) {
       if (!el || el.type !== 'ArrayExpression' || el.elements.length !== 2) continue
@@ -277,7 +308,9 @@ function extractComponents (ast) {
       const typeDesc = pname && pname.type === 'Literal' ? describeParamType(ptype) : null
       if (typeDesc) params.push([pname.value, typeDesc])
     }
-    out.set(name, { message, params })
+    for (const name of names) {
+      out.set(name, { message, params, alias: name === primary ? null : primary })
+    }
   }
   return out
 }
@@ -488,19 +521,23 @@ function render (index) {
 
   lines.push('## Built-in components')
   lines.push('')
+  const aliasCount = [...index.components.values()].filter(info => info.alias).length
   lines.push(
-    `${index.components.size} registered component constructors, read off ` +
-    'their `("Name","message template",[[param,Type],...])` decorator ' +
-    'call, unioned across every bundle entry (a given build may omit a ' +
-    'component its chunk has no use for).'
+    `${index.components.size} registered component names ` +
+    `(${index.components.size - aliasCount} constructors, ${aliasCount} of them aliasing ` +
+    'another name in the same registration call), read off their ' +
+    '`("Name"|["Name","Alias",...],"message template",[[param,Type],...])` ' +
+    'decorator call, unioned across every bundle entry (a given build may ' +
+    'omit a component its chunk has no use for).'
   )
   lines.push('')
   lines.push('| Component | Params | Message template |')
   lines.push('|-|-|-|')
   for (const [name, info] of index.components) {
+    const label = info.alias ? `${name} (alias of ${info.alias})` : name
     const params = info.params.map(([pname, ptype]) => `${pname}: ${ptype}`).join(', ')
-    const message = info.message.replace(/\|/g, '\\|')
-    lines.push(`| ${name} | ${params} | ${message} |`)
+    const message = info.message.replace(/\|/g, '\\|').replace(/\n/g, '<br>')
+    lines.push(`| ${label} | ${params} | ${message} |`)
   }
   lines.push('')
 

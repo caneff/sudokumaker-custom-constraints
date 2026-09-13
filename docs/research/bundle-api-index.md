@@ -261,10 +261,11 @@ Mangled class `I extends ls`. `add`, `delete`, `clear`, `union`, `intersect`, `x
 
 ## Built-in components
 
-34 registered component constructors, read off their `("Name","message template",[[param,Type],...])` decorator call, unioned across every bundle entry (a given build may omit a component its chunk has no use for).
+44 registered component names (42 constructors, 2 of them aliasing another name in the same registration call), read off their `("Name"|["Name","Alias",...],"message template",[[param,Type],...])` decorator call, unioned across every bundle entry (a given build may omit a component its chunk has no use for).
 
 | Component | Params | Message template |
 |-|-|-|
+| AsymmetricalPair (alias of Pair) | filterOrMapping: ((d1: number, d2: number) => boolean) | DigitSet[], cell1: Cell, cell2: Cell | The digits {digit1} and {digit2} in {cell1} and {cell2} are valid when {filterOrMapping(digit1, digit2)} evaluates to {true}, or when {filterOrMapping[digit1].has(digit2)}. |
 | Between | endPoints: CellArray (amount: 2), midPoints: CellArray | The digits on all {midPoints} must be between the digits on the {endPoints}. |
 | ConsecutiveDigits | cells: CellArray | All digits within {cells} must make a set of consecutive digits, but may repeat as well. |
 | ConsecutiveDigitsSet | cells: CellArray | All digits within {cells} must make a set of consecutive digits, without repeats. |
@@ -273,11 +274,15 @@ Mangled class `I extends ls`. `add`, `delete`, `clear`, `union`, `intersect`, `x
 | Difference | difference: NumberOrNumberArray, cell1: Cell, cell2: Cell | The difference between the values at {cell1} and {cell2} must be exactly {difference}. |
 | DifferentCombinations | cellGroups: CellId[][] | Every group of cells of {cellGroups} must have a distinct make-up of digits. |
 | DifferentDigits | cells: CellArray | Every cell of {cells} must have a different digit from the rest. |
+| DifferentGroups | groups: DigitSetArray, cells: CellArray | Every cell of {cells} must have a digit from a different group from {groups}. E.g. if one group is 123, and one cell has a 1, the other cells cannot be 2 or 3.<br>**Note:** currently only works properly when the groups do not overlap. |
+| DiverseGroups | groups: DigitSetArray, cells: CellArray | A digit from every group from {groups} must appear at least once in {cells}, or from different groups if there are less cells than there are groups. <br>**Note:** currently only works properly when the groups do not overlap. |
 | ExactDigitCount | value: Number, count: Number, cells: CellArray | The digit {value} must appear exactly {count} times in {cells}. |
 | ForbiddenCandidates | candidates: DigitSet, cellOrCells: CellOrCellArray | The value of {cellOrCells} cannot be any of {candidates}. |
+| GreaterThan | lesserCell: Cell, greaterCell: Cell | The digit in {lesserCell} must be less than the one in {greaterCell} |
 | GreaterThanOrEquals | lesserCell: Cell, greaterCell: Cell | The digit in {greaterCell} must be greater than or equal to the one in {lesserCell} |
 | House | cells: CellArray | Every digit must appear exactly once in {cells}. |
 | Index | valueToIndex: Number, indexerCell: Cell, cells: CellArray | The value of {indexerCell} must be the (1-based) index of an appearance of {valueToIndex} in the sequence of cells {cells}. |
+| LessThan (alias of GreaterThan) | lesserCell: Cell, greaterCell: Cell | The digit in {lesserCell} must be less than the one in {greaterCell} |
 | MaxDigitCount | value: Number, maxCount: Number, cells: CellArray | The digit {value} must appear at most {maxCount} times in {cells}. |
 | MaximumDifference | maxDifference: Number, cell1: Cell, cell2: Cell | The difference between the values of {cell1} and {cell2} must be at most {maxDifference}. |
 | MinimumDifference | minDifference: Number, cell1: Cell, cell2: Cell | The difference between the values of {cell1} and {cell2} must be at least {minDifference}. |
@@ -286,18 +291,23 @@ Mangled class `I extends ls`. `add`, `delete`, `clear`, `union`, `intersect`, `x
 | NegativeIndex | valueToNotIndex: Number, indexerCell: Cell, cells: CellArray | The value of {indexerCell} must **not** be the (1-based) index of {valueToNotIndex} in the sequence of cells {cells}. |
 | NegativeRatio | ratios: NumberArray, cell1: Cell, cell2: Cell | The ratio of the values of {cell1} and {cell2} (either way) must not be any of {ratios}. |
 | NegativeSum | sums: NumberArray, cells: CellArray | The digits within {cells} must not sum to any of {sums}. |
+| Pair | filterOrMapping: ((d1: number, d2: number) => boolean) | DigitSet[], cell1: Cell, cell2: Cell | The digits {digit1} and {digit2} in {cell1} and {cell2} are valid when {filterOrMapping(digit1, digit2)} evaluates to {true}, or when {filterOrMapping[digit1].has(digit2)}. |
 | PredefinedCandidates | candidates: DigitSet, cellOrCells: CellArray | The value of {cellOrCells} must be one of {candidates}. |
 | Product | productOrProducts: NumberOrNumberArray, cells: CellArray | The product of the digits in {cells} must equal to {productOrProducts}. |
 | RatioComponent | ratioOrRatios: NumberOrNumberArray, cell1: Cell, cell2: Cell | The ratio of the values of {cell1} and {cell2} (either way) must equal {ratioOrRatios}. |
 | RequiredDigits | values: NumberArray, cells: CellArray | Every digit of {values} must be assigned a unique cell of {cells}. Requiring a digit to repeat can be achieved by repeating that digit in {values}. |
+| RequiredGroups | groups: DigitSetArray, cells: CellArray | For every group from {groups}, a digit must appear at least once in {cells}. E.g. If the groups are 123, 456 and 789, then {cells} must be at least 3 cells, and one digit of every group is assigned to a cell. <br>**Note:** currently only works properly when the groups do not overlap. |
 | SameDigit | cells: CellArray | Every cell of {cells} must have the same value. |
+| SameGroup | groups: DigitSetArray, cells: CellArray | Every cell of {cells} must have a digit from the same group within {groups}. E.g. if the groups are the evens and the odds, then either every cell is even, or every cell is odd. <br>**Note:** currently only works properly when the groups do not overlap. |
 | SameSum | groups: ObjectArray of {name, cells, weights?, asNumber?} | Every group of cells from {groups} must sum to the same value. Set {asNumber} to true, to interpret that group as a sequence that spells out a number (e.g. for arrows), where the least significant digit is at index 0. Use {weights} to set a custom weight for specific cells (see **WeightedSumComponent** for details) |
+| SandwichSum | sum: Number, sandwichDigits: NumberArray (amount: 2), cells: CellArray | Along {cells} there must be a sequence of values starting with one of {sandwichDigits}, then some values summing to {sum}, then another digit from {sandwichDigits}. <br>**Note:** currently requires all cells to be different. |
 | SelfCounting | cells: CellArray | A digit X in a cell of {cells} means that digit is in exactly X cells of {cells} in total. |
 | Sequence | cells: CellArray | Digits along {cells} must increase or decrease by the same amount (or stay the same) |
 | Skyscraper | amount: Number, cells: CellArray | Digits along {cells} represent skyscrapers, blocking cells further along the sequence. The amount of skyscrapers seen from the start must equal {amount}. |
 | Sum | sumOrSums: NumberOrNumberArray, cells: CellArray | The digits in {cells} must sum to (one of) {sumOrSums}. If a cell appears N times in {cells}, the value in that cell is counted N times. |
 | WeakLink | cell1: Cell, value1: Number, cell2: Cell, value2: Number | If {cell1} is set to {value1}, {cell2} must not be {value2}. Similarly, if {cell2} is set to {value2}, {cell1} cannot be {value1}. |
 | WeakLinks | cells1: CellOrCellArray, value1: DigitSet, cells2: CellOrCellArray, value2: DigitSet | If any of {cells1} is set to one of {values1}, all of {cells2} cannot be any of {values2}. Similarly, if any of {cells2} is set to one of {values2}, all of {cells1} cannot be any of {values1}. |
+| WeightedSum | sumOrSums: NumberOrNumberArray, cellWeightMapping: Map<CellId, number> | The sums of every value of cell X in {cellWeightMapping}, multiplied by {cellWeightMapping.get(X)}, must sum to (one of) {sumOrSums}.<br>**Note:** Currently only supports **positive** weights. To avoid floating point inaccuracies breaking this component, use whole numbers as weights. In case you want to do something like x+y/3=5, multiply it all such that you get 3x+y=15 |
 | XSum | sum: Number, xCell: Cell, cells: CellArray | The first X digits along {cells} must sum to {sum}, where X is the value of {xCell}. |
 
 ## Change objects
