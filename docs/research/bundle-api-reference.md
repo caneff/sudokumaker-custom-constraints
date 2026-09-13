@@ -4319,30 +4319,6 @@ of the section documents members of already-covered helper and component classes
 that the reference did not reach. Cell ids are 0-based; in a digit mask, bit *d*
 is digit *d*.
 
-### XSumsHelper (additional members)
-
-#### `*getXSumPossibilities(sum)`
-
-Generator over the ways an X-sum clue of total `sum` can be realised, yielding
-`{ x, combinations }` where `x` is the count of leading cells and
-`combinations` is an array of digit masks for the remaining `x - 1` cells.
-- **Notes:** `sum === 1` yields only `{ x: 1, combinations: [2] }` (the mask for
-  digit 1, since the single leading cell must itself be 1). Sums 2 and 4, and
-  any sum above the triangular number of `maxDigit`, yield nothing. For each
-  candidate `x` it enumerates non-repeating combinations of `sum - x` over
-  `x - 1` cells and drops any that contain `x` itself, since `x` occupies the
-  first cell of the same house. Enumeration cost scales with `maxDigit`.
-  **[read]**
-
-### LinesHelper (additional members)
-
-#### `*getAllPairsAlongLines(lines)`
-
-Generator yielding `[cellA, cellB]` for every adjacent pair of cells along each
-line in `lines` (an array of cell-id arrays).
-- **Notes:** pairs are consecutive positions in the line's own order, not
-  geometric adjacency; a line of *n* cells yields *n - 1* pairs. **[read]**
-
 ### FriendDigitTable (additional members)
 
 #### `getFriends(paramValue)`
