@@ -225,34 +225,23 @@ The cell's friendly digits intersected with its live candidates.
 - **Returns:** a `SudokuDigitSet`. Note the body mutates the friendly set in
   place and returns it, so the result is a fresh set you may keep mutating.
 
-#### `removeCandidateFromCell(digit, cellId)`
-Change: drop one digit from one cell.
-- **Returns:** `{ type: 3, value: 1 << digit, cell }`.
+#### `removeCandidateFromCell(digit, cellId)`, `removeCandidateFromCells(digit, cells)`
+Change: drop one digit from one cell, or from every listed cell.
+- **Returns:** `{ type: 3, value: 1 << digit, cell }` for one cell;
+  `{ type: 4, value: 1 << digit, cells: [...cells] }` for a list. The cell list
+  is copied at build time, so mutating your array afterwards is harmless.
 
-#### `removeCandidatesFromCell(digits, cellId)`
-Change: drop a set of digits from one cell.
+#### `removeCandidatesFromCell(digits, cellId)`, `removeCandidatesFromCells(digits, cells)`
+Change: drop a set of digits from one cell, or from every listed cell.
 - **Params:** `digits` — a bitmask or a `DigitSet` (it is stored raw and later
   used under `&`, which calls `valueOf`).
-- **Returns:** `{ type: 3, value: digits, cell }`.
+- **Returns:** `{ type: 3, value: digits, cell }` for one cell;
+  `{ type: 4, value: digits, cells: [...cells] }` for a list.
 
-#### `filterCandidatesInCell(digits, cellId)`
-Change: keep only these digits in the cell.
-- **Returns:** `{ type: 1, value: digits, cell }`.
-
-#### `removeCandidateFromCells(digit, cells)`
-Change: drop one digit from every listed cell.
-- **Returns:** `{ type: 4, value: 1 << digit, cells: [...cells] }`. The cell
-  list is copied at build time, so mutating your array afterwards is harmless.
-
-#### `removeCandidatesFromCells(digits, cells)`
-Change: drop a set of digits from every listed cell.
-- **Params:** `digits` — a bitmask or a `DigitSet`, stored raw as for the
-  single-cell form.
-- **Returns:** `{ type: 4, value: digits, cells: [...cells] }`.
-
-#### `filterCandidatesInCells(digits, cells)`
-Change: keep only these digits in every listed cell.
-- **Returns:** `{ type: 2, value: digits, cells: [...cells] }`.
+#### `filterCandidatesInCell(digits, cellId)`, `filterCandidatesInCells(digits, cells)`
+Change: keep only these digits in one cell, or in every listed cell.
+- **Returns:** `{ type: 1, value: digits, cell }` for one cell;
+  `{ type: 2, value: digits, cells: [...cells] }` for a list.
 
 #### `replaceComponent(component, replacement)`
 Change: unregister the component this change came from and register the
@@ -2892,17 +2881,11 @@ Dispatches one change object to the matching applier method by `change.type`.
 #### `*setValueAtCell(value, cell)`
 Sets `cell` to `value` through `SolverState.setValueAtCell`, yielding its one result. **[read]**
 
-#### `*filterCandidatesAtCell(digitMask, cell)`
-Intersects `cell`'s candidates with `digitMask` via `SolverState.filterCandidatesAtCell`, yielding its one result. **[read]**
+#### `*filterCandidatesAtCell(digitMask, cell)`, `*filterCandidatesAtCells(digitMask, cells)`
+Intersects the candidates of one cell, or of each listed cell, with `digitMask` via the matching `SolverState` method, yielding one result per cell. **[read]**
 
-#### `*filterCandidatesAtCells(digitMask, cells)`
-Same intersection across an array of cell ids, delegating to the state's generator and yielding one result per cell. **[read]**
-
-#### `*removeCandidatesFromCell(digitMask, cell)`
-Clears the bits of `digitMask` from `cell`'s candidates, yielding the one result. **[read]**
-
-#### `*removeCandidatesFromCells(digitMask, cells)`
-Same removal across an array of cell ids, one yielded result per cell. **[read]**
+#### `*removeCandidatesFromCell(digitMask, cell)`, `*removeCandidatesFromCells(digitMask, cells)`
+Clears the bits of `digitMask` from one cell's candidates, or from each listed cell's, yielding one result per cell. **[read]**
 
 ### VerboseChangeApplier (internal)
 
@@ -2929,18 +2912,12 @@ Dispatches one change by type, exactly as in `ChangeApplier`, but returns a gene
 #### `*setValueAtCell(value, cell)`
 Sets the cell's value as `ChangeApplier` does, but yields `[cell, result]` only when the result is not `unchanged`, after passing it through `ensureErrorMessage`. **[read]**
 
-#### `*filterCandidatesAtCell(digitMask, cell)`
-Intersects the cell's candidates with `digitMask` as `ChangeApplier` does, yielding `[cell, result]` only on a change, after `ensureErrorMessage`. **[read]**
+#### `*filterCandidatesAtCell(digitMask, cell)`, `*filterCandidatesAtCells(digitMask, cells)`
+Intersects the candidates of one cell, or of each listed cell, with `digitMask` as `ChangeApplier` does, yielding `[cell, result]` only for a cell that actually changed, after `ensureErrorMessage`.
+- **Notes:** the plural form loops the single-cell state method rather than calling the state's plural generator as `ChangeApplier` does. Same effect. **[read]**
 
-#### `*removeCandidatesFromCell(digitMask, cell)`
-Clears `digitMask` from the cell's candidates as `ChangeApplier` does, yielding `[cell, result]` only on a change, after `ensureErrorMessage`. **[read]**
-
-#### `*filterCandidatesAtCells(digitMask, cells)`
-Loops `filterCandidatesAtCell` over `cells`, yielding a pair per cell that actually changed.
-- **Notes:** unlike the `ChangeApplier` version, this calls the state's *single-cell* method in a loop rather than its plural generator. Same effect. **[read]**
-
-#### `*removeCandidatesFromCells(digitMask, cells)`
-Loops `removeCandidatesFromCell` over `cells`, yielding a pair per cell that actually changed.
+#### `*removeCandidatesFromCell(digitMask, cell)`, `*removeCandidatesFromCells(digitMask, cells)`
+Clears `digitMask` from one cell's candidates, or from each listed cell's, as `ChangeApplier` does, yielding `[cell, result]` only for a cell that actually changed, after `ensureErrorMessage`.
 - **Notes:** same loop-versus-plural-generator difference from `ChangeApplier`, same effect. **[read]**
 
 #### `reportBroken(cells, message)`
@@ -3109,14 +3086,10 @@ The set of cells seen by **every** cell in `cellIds` — the intersection of the
 - **Returns:** a `Set` of cell ids; empty `Set` for an empty input.
 - **Notes:** short-circuits as soon as the running intersection empties. This is what a naked-subset style elimination calls to find its targets; reached from a component as `puzzle.getCellsSeenByCells`. **[read]**
 
-#### `filterCandidatesAtCell(digitMask, cellId)`
-Intersects the cell's candidate mask with `digitMask`, telling the candidate-set map about each digit removed and marking the cell dirty.
-- **Returns:** `UnchangedResult` if nothing was removed, a failed result for the cell if the mask emptied, otherwise `ChangedResult`.
+#### `filterCandidatesAtCell(digitMask, cellId)`, `*filterCandidatesAtCells(digitMask, cellIds)`
+Intersects the candidate mask of one cell, or of each listed cell in turn, with `digitMask`, telling the candidate-set map about each digit removed and marking the cell dirty.
+- **Returns:** for one cell, `UnchangedResult` if nothing was removed, a failed result for the cell if the mask emptied, otherwise `ChangedResult`; the plural form is a generator yielding one such result per cell.
 - **Mutates:** the cell's `candidates`, `candidateSetMap`, `updateSet`. **[read]**
-
-#### `*filterCandidatesAtCells(digitMask, cellIds)`
-Applies the same intersection to each cell id in turn.
-- **Returns:** generator, one result per cell. **[read]**
 
 #### `markDigitsAsRequiredForCells(digitMask, componentName, cellIds, { repeatCount = 0, houseType })`
 Records "each digit in `digitMask` must appear in `cellIds`", keyed by `` `${componentName}_${cellIds}` `` so repeated calls for the same group only add newly required digits.
@@ -3267,13 +3240,11 @@ is passed. `bundle.claude.js:1660`. **[read]**
 Builds the failure string `"<cells description> has/have no candidates"`, the
 verb agreeing with `cells.length`. `bundle.claude.js:1980`. **[read]**
 
-#### `createFailedResultForCell(cell)`
-Returns `{ type: "failed", cells: [cell] }` with no message.
-`bundle.claude.js:1985`. **[read]**
-
-#### `createFailedResultForCells(cells, message)`
-Returns `{ type: "failed", cells: cells.slice(), message }`; the copy means the
-caller may keep mutating its own array. `bundle.claude.js:1988`. **[read]**
+#### `createFailedResultForCell(cell)`, `createFailedResultForCells(cells, message)`
+Builds a failed result: `{ type: "failed", cells: [cell] }` with no message for
+one cell, or `{ type: "failed", cells: cells.slice(), message }` for a list;
+the copy means the caller may keep mutating its own array.
+`bundle.claude.js:1985` and `:1988`. **[read]**
 
 #### `getFailureMessage(failedResult)`
 Returns the result's `message`, falling back to
