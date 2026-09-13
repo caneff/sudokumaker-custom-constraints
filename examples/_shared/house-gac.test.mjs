@@ -24,8 +24,16 @@ import { runBackend } from './backend-runner.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const NAMES = ['getAffectedCells', 'setParams', 'update']
-const gac = makeIo(here).load('HouseGacComponent.js', NAMES)
 const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
+
+// The component sizes its digit table from helpers.digits when its code loads,
+// as the app loads it once per puzzle, so each board's globals are installed
+// before a fresh load.
+let gac
+function board (minDigit, maxDigit) {
+  installGlobals(minDigit, maxDigit)
+  gac = makeIo(here).load('HouseGacComponent.js', NAMES)
+}
 
 const CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 19]
 
@@ -59,7 +67,7 @@ function consistentState (rnd, lo, hi, rate, size = 9) {
   return { perm, cands }
 }
 
-installGlobals(1, 9)
+board(1, 9)
 const { rnd } = makeRng(408)
 
 // ---- exactly GAC, and sound, on 9 cells of digits 1..9 -------------------
@@ -83,7 +91,7 @@ const { rnd } = makeRng(408)
 // A house shorter than its digit range: a Hall set still prunes, but no digit
 // is forced to appear, so the subset form must not read "9 cells" as "every
 // digit once".
-installGlobals(0, 9)
+board(0, 9)
 {
   let disagree = 0
   for (let t = 0; t < 1000; t++) {
@@ -95,7 +103,7 @@ installGlobals(0, 9)
   }
   assert.strictEqual(disagree, 0, `${disagree} of 1000 digit-0..9 states disagree with matching GAC`)
 }
-installGlobals(1, 9)
+board(1, 9)
 
 // ---- a house with no solution stops, exactly when matching says so -------
 // Sparse random states with no planted solution: many have none, and the filter
@@ -117,10 +125,10 @@ installGlobals(1, 9)
 }
 
 // ---- digits above 9 (a 16-digit board) -------------------------------------
-// Digit counts come from a table that covers digits 0..9; a digit set with a
-// higher digit is counted bit by bit. Nine cells over digits 1..16, with and
+// Digit counts come from a table sized to the board's digits, so a 16-digit
+// board needs every entry up to digit 16. Nine cells over digits 1..16, with and
 // without a planted solution, land exactly where the matching filter lands.
-installGlobals(1, 16)
+board(1, 16)
 {
   let stops = 0
   let high = 0
@@ -139,9 +147,9 @@ installGlobals(1, 16)
     assert.deepStrictEqual(runOnce(gac, cands, 'house'), want, `1..16 state ${t}: ${JSON.stringify(cands)}`)
   }
   assert.ok(stops > 100, `only ${stops} of 2000 digit-1..16 states stop; the stop is not exercised`)
-  assert.ok(high > 1900, `only ${high} of 2000 states use a digit above 9; the counted path is not exercised`)
+  assert.ok(high > 1900, `only ${high} of 2000 states use a digit above 9; the table above digit 9 is not exercised`)
 }
-installGlobals(1, 9)
+board(1, 9)
 
 // ---- houses shorter than 9 cells ------------------------------------------
 // A frame board's 6x6 or 8x8 interior hands the backend houses of 6 or 8 cells,
@@ -192,6 +200,16 @@ for (let size = 1; size <= 8; size++) {
 // (docs/research/all-different-gac.md, "Larger houses"). Registering one on a
 // larger house is a mistake the author must see at setup.
 assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
+
+// ---- refuses a board with digits above 16, loudly -------------------------
+// Its digit table holds an entry per digit set, 2^(maxDigit+1) of them: 131 KB
+// at 16 digits, doubling with each digit after. Loading on such a board must
+// still work, since the app loads the code before any house is registered.
+for (const maxDigit of [17, 30]) {
+  board(1, maxDigit)
+  assert.throws(() => gac.setParams({ name: 'row 1' }, CELLS), /digits up to 16/, `digits 1..${maxDigit}`)
+}
+board(1, 9)
 
 // ---- no scratch state crosses a yield --------------------------------------
 // The solver may run another instance's `update` while this one is suspended at

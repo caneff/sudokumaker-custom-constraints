@@ -32,7 +32,7 @@
 //! filling uses, so a group that pools exactly k digits pools the same k
 //! digits before and after them.
 
-//! 2^n groups per call: about 4.5 us at n=9 against 26 us for a matching
+//! 2^n groups per call: about 2 us at n=9 against 26 us for a matching
 //! filter, but the cost doubles with each cell and matching is cheaper from
 //! n=12 or 13 on (docs/research/all-different-gac.md). A larger house is a
 //! registration mistake, refused at setup where the author sees it.
@@ -47,11 +47,13 @@ const pooledDigitsOf = new Int32Array(1 << MAX_CELLS)
 
 //! Bit counts looked up rather than counted: two counts per group, 511 groups
 //! per call, and a lookup halves the call (docs/research/all-different-gac.md,
-//! "Precomputed bit counts"). `cellsInGroupOf` covers every group. A digit set
-//! covers digits 0..9 in `digitCountOf`; `digitCount` counts a larger one.
-const DIGIT_TABLE_SIZE = 1 << 10
+//! "Precomputed bit counts"). `cellsInGroupOf` covers every group and
+//! `digitCountOf` every digit set the board can make. The digit table doubles
+//! with each digit, 131 KB at 16, so a board past 16 is refused at setup; its
+//! table is capped so that loading the code on such a board still works.
+const MAX_DIGIT = 16
 const cellsInGroupOf = countTable(1 << MAX_CELLS)
-const digitCountOf = countTable(DIGIT_TABLE_SIZE)
+const digitCountOf = countTable(1 << (Math.min(helpers.digits.maxDigit, MAX_DIGIT) + 1))
 
 function getAffectedCells (cells) {
   return cells
@@ -60,6 +62,9 @@ function getAffectedCells (cells) {
 function setParams (instance, cells) {
   if (cells.length > MAX_CELLS) {
     throw new RangeError(`${instance.name}: HouseGacComponent takes at most ${MAX_CELLS} cells, got ${cells.length}`)
+  }
+  if (helpers.digits.maxDigit > MAX_DIGIT) {
+    throw new RangeError(`${instance.name}: HouseGacComponent takes digits up to ${MAX_DIGIT}, the board goes to ${helpers.digits.maxDigit}`)
   }
   instance.cells = cells
 }
@@ -70,13 +75,6 @@ function countTable (size) {
   const table = new Uint8Array(size)
   for (let bits = 1; bits < size; bits++) table[bits] = table[withoutLowestBit(bits)] + 1
   return table
-}
-
-function digitCount (digits) {
-  if (digits < DIGIT_TABLE_SIZE) return digitCountOf[digits]
-  let count = 0
-  for (let rest = digits; rest !== 0; rest = withoutLowestBit(rest)) count++
-  return count
 }
 
 function lowestBit (bits) {
@@ -115,7 +113,7 @@ function * update (instance, puzzle) {
     pooledDigitsOf[group] = pooledDigits
 
     const cellsInGroup = cellsInGroupOf[group]
-    const digitsInGroup = digitCount(pooledDigits)
+    const digitsInGroup = digitCountOf[pooledDigits]
 
     if (digitsInGroup < cellsInGroup) {
       yield puzzle.stop(`the cells of ${instance.name} cannot all hold different digits`, cells)
