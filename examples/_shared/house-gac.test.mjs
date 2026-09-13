@@ -137,8 +137,9 @@ installGlobals(1, 9)
 }
 
 // ---- refuses a house above 9 cells, loudly --------------------------------
-// 2^n subsets per call: 25 us at n=10 and 676 us at n=14, against matching's
-// 22 and 79. Registering one there is a mistake the author must see at setup.
+// 2^n subsets per call: in the bare-mask probe, 25 us at n=10 and 676 us at
+// n=14 against matching's 22 and 79 (docs/research/all-different-gac.md,
+// "Cost"). Registering one there is a mistake the author must see at setup.
 assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
 
 // ---- no scratch state crosses a yield --------------------------------------

@@ -57,7 +57,7 @@ Measured, n=9, 3000 random states per row, against a matching GAC reference
 
 The curve barely moves until the top. "We do pairs and triples" is not "we do
 GAC" — it misses a quarter of all states. The probe iterated to a fixpoint;
-the shipped one-scan form needs no loop (below). Either way it is per house; cross-house techniques (pointing, box/line) are a separate
+the one-scan form in `examples/_shared/` needs no loop (below). Either way it is per house; cross-house techniques (pointing, box/line) are a separate
 axis that neither approach covers.
 
 ## Cost
@@ -74,10 +74,11 @@ Per house-filter call, node, 20000 random states (`tools/bench.mjs`,
 because 2^n ignores how propagated the house is while matching scales with the
 live edge count.
 
-### The shipped component (#408)
+### The shared component (#408)
 
 `examples/_shared/HouseGacComponent.js` is the subset form, and it needs no
-fixpoint loop. It reads all 2^n subsets in one scan, building each union from
+fixpoint loop. It is available to paste but no shipped link carries it yet;
+putting it into frame links, behind the timing bar, is #421. It reads all 2^n subsets in one scan, building each union from
 the subset minus its lowest cell and removing in place as it goes. One call
 lands on exactly the matching reference's result: 0 of 3000 states differ at
 digits 1..9, 0 of 1000 at 0..9 on nine cells, and it stops on the same 2000
@@ -86,12 +87,12 @@ enough because a Hall-tight set's union is the same under any mix of old and
 new masks while the house still has an assignment.
 
 Both real `update` functions, one call each on the bench's 20000 states
-(`tools/bench-house-gac.mjs`, 3 reps):
+(`408-house-gac/bench-house-gac.mjs`, 3 reps, two runs):
 
 | component | n=9 |
 | --- | --- |
-| `HouseGacComponent.js` (subsets, one scan) | **3.8-4.0 us** |
-| `tools/AllDiffGacComponent.js` (matching) | 26.1-27.3 us |
+| `HouseGacComponent.js` (subsets, one scan) | **3.8-4.4 us** |
+| `tools/AllDiffGacComponent.js` (matching) | 25.3-27.3 us |
 
 These are higher than the table above for matching and lower for subsets: the
 table ran bare mask functions, and this runs each component's generator,
@@ -131,19 +132,19 @@ lz-string compressed, comments stripped:
 | --- | --- | --- | --- |
 | `tools/AllDiffGacComponent.js` (naive matching GAC) | 2212 | 1576 | **1201 B** |
 | `tools/ReginGac.js` (proper Regin **sketch**) | 3306 | 3080 | **2131 B** |
-| `examples/_shared/HouseGacComponent.js` (bitmask subsets) | — | 1488 | **1215 B** |
+| `examples/_shared/HouseGacComponent.js` (bitmask subsets) | — | 1475 | **1202 B** |
 
 Measured for #408 with the builder's own `minify_file` and
 `compressToEncodedURIComponent`; that method gives the matching component 1203
-B, so the two are within a dozen bytes on their own. The difference shows in
+B, so on their own the two are the same size to a byte. The difference shows in
 a link, where the backend rides too. Appended as one more constraint to
 `examples/skyscraper/PUZZLE_LINK.txt` (8276 characters),
-`tools/link-delta-house-gac.py` measures:
+`408-house-gac/link-delta-house-gac.py` measures:
 
 | backend + component | link grows by |
 | --- | --- |
 | `tools/alldiff-main.js` + `tools/AllDiffGacComponent.js` | 1488 |
-| `examples/_shared/house-gac.js` + `HouseGacComponent.js` | **1303** |
+| `examples/_shared/house-gac.js` + `HouseGacComponent.js` | **1299** |
 
 `ReginGac.js` is a **size probe, not working code** — it was never verified and
 contains a meaningless `|| true` in the SCC loop. Do not ship it as is. Most of
@@ -178,8 +179,6 @@ scratchpad and need fixing up before reuse.**
 | --- | --- |
 | `subset_gac_equivalence.py` | naked subsets k=1..8 vs GAC, the 0/3000 result |
 | `bench.mjs`, `bench2.mjs` | per-call cost, n=9..16 |
-| `bench-house-gac.mjs` | per-call cost of the shipped `HouseGacComponent.js` against `AllDiffGacComponent.js`, n=9 (#408) |
-| `link-delta-house-gac.py` | bytes each filter adds to a real link (#408) |
 | `AllDiffGacComponent.js` + `alldiff-main.js` / `gac9-main.js` | the working GAC component (11x11 frame / plain 9x9 backends) |
 | `NakedOnly.js` + `naked-main.js` | naked-singles-only probe |
 | `Refuter.js` + `refuter-main.js` | refutation-only probe (fires zero times) |

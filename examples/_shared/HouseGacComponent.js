@@ -18,9 +18,11 @@
 //! true candidate lies in one, no k true cells span fewer than k digits, and
 //! a set spanning exactly k digits holds all k of them among its own cells.
 
-//! 2^n subsets per call. At n=9 that beats matching (10.9 us against 14.4);
-//! at n=10 it loses, and at n=14 it costs 676 us a call. A larger house is a
-//! registration mistake, refused at setup where the author sees it.
+//! 2^n subsets per call. At n=9 this component takes about 4 us a call against
+//! 26 us for the matching filter it replaces; the bare-mask probe puts the
+//! crossover at n=10 and 676 us a call at n=14 (docs/research/all-different-gac.md,
+//! "Cost"). A larger house is a registration mistake, refused at setup where
+//! the author sees it.
 const MAX_CELLS = 9
 
 //! `unionOf[s]` is the digits the cells in subset `s` can hold. Module-level
@@ -78,7 +80,7 @@ function * update (instance, puzzle) {
       yield puzzle.stop(`the cells of ${instance.name} cannot all hold different digits`, cells)
       return
     }
-    if (span === k && s !== all) {
+    if (span === k) {
       for (let rest = all & ~s; rest !== 0; rest &= rest - 1) {
         masks[31 - Math.clz32(rest & -rest)] &= ~u
       }

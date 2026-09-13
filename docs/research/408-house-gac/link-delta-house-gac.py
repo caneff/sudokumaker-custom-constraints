@@ -1,7 +1,7 @@
 # Bytes each all-different filter adds to a real link: its backend plus its
 # component, minified as a builder ships them, appended as one more constraint
 # to examples/skyscraper/PUZZLE_LINK.txt and re-encoded with the link codec.
-# Run from the repo root: uv run --with lzstring docs/research/406-gac-demo/tools/link-delta-house-gac.py (#408)
+# Run from the repo root: uv run --with lzstring docs/research/408-house-gac/link-delta-house-gac.py (#408)
 import sys, json, pathlib
 sys.path.insert(0, "examples/_shared")
 from minify import minify_file
