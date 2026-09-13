@@ -500,6 +500,9 @@ p.access.default{border:1px dashed var(--vt-rule);border-radius:8px;padding:.5re
 .vt-diagram{background:var(--vt-soft);border:1px solid var(--vt-rule);border-radius:12px;padding:1.5rem;margin:1.4rem 0;overflow-x:auto}
 .vt-diagram pre.mermaid{margin:0;display:flex;justify-content:safe center;font-family:var(--vt-mono-font);font-size:.8rem}
 .vt-diagram svg{display:block;max-width:100%;height:auto}
+figure.fig{margin:1.2rem 0 1.4rem;padding:1rem 1rem .6rem;background:var(--vt-soft);border:1px solid var(--vt-rule);border-radius:12px;overflow-x:auto}
+figure.fig svg{display:block}
+figure.fig figcaption{margin-top:.5rem;font-size:.85rem;color:var(--vt-muted)}
 hr.part{border:0;border-top:3px double var(--vt-rule);margin:4rem 0 1rem}
 details.hood{margin-top:4rem;border-top:3px double var(--vt-rule)}
 details.hood>summary{list-style:none;cursor:pointer}
