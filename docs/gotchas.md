@@ -84,7 +84,11 @@ Decode with `decompressFromEncodedURIComponent`. See `patterns.md`. **[verified]
 A board built with `{"type": 1, "regions": [...]}` plus `{"type": 0}` enforces
 **boxes and given digits only**. Rows and columns are not implied, and nothing
 in the app says so: the solver runs, reports times, and counts solutions on a
-puzzle that is not the one you meant. Add them explicitly. `framebuild.py` registers one named component per
+puzzle that is not the one you meant. Add them explicitly. The switch is the
+puzzle header, not the constraint list: the solver prepends its row-and-column
+houses only when `"type"` is `"sudoku"` (or absent, the classic default), and
+every frame board here is `"type": "custom"`. Wire type 0 is the givens, type 1
+the regions (`research/validate-only-probe.md`, last section). `framebuild.py` registers one named component per
 interior line (`examples/_shared/frame-rowcol.js`), which is how a line gets a
 name the app can use in an explanation -- a `type: 301` cage cannot be named,
 the app hard-codes `the cage at <cell>` and gives row 1 and column 1 the same

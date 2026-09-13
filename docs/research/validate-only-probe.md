@@ -52,11 +52,27 @@ node docs/research/validate-only-probe/probe-verdict.mjs docs/research/validate-
   validate-only component makes the search slower and shows the player no
   candidate eliminations.
 
-## Open oddity
+## Why the control has 4 solutions, not 2
 
-The control found 4 solutions where a brute-force count of the emptied grid
-under full sudoku rules gives 2. That count matches the app enforcing boxes
-plus only one of rows or columns. The document carried `type: "custom"` with
-a bare `{type: 0}` constraint and the standard `{type: 1, regions}`; the
-frame examples in this repo add row and column houses explicitly, which may
-be why. Not chased; it does not affect the verdict above.
+A brute-force count of the emptied grid under full sudoku rules gives 2. The
+app gave 4 because the probe document carried `type: "custom"`, and a
+custom-type puzzle has no row or column houses at all: only the regions. Three
+more controls settle it, all in `validate-only-probe/`:
+
+| Link | Change from the control | App verdict |
+|---|---|---|
+| `PUZZLE_LINK_control-classic.txt` | header fields dropped (the classic default) | Found 2 solutions |
+| `PUZZLE_LINK_control-typesudoku.txt` | `type: "sudoku"` | Found 2 solutions |
+| `PUZZLE_LINK_control-colpattern.txt` | `type: "custom"`, the swap pattern transposed (same stack, two bands) | Found 4 solutions |
+
+The mechanism, from the solver bundle (`bundle.claude.js:11453`): the worker
+prepends an internal `SudokuRules` constraint (type 2003, one house per row
+and per column) only when `spec.type === "sudoku"`. The wire's `{type: 0}` is
+`Givens`, not the sudoku ruleset, and `{type: 1}` is `Regions`. So on a
+custom-type puzzle rows and columns exist only if the document adds them,
+which is gotcha 9. The classic type also selects the standard logic-step
+generator over the custom one (`bundle.claude.js:11529`), and lets the X-sum
+handler use its impossible-value table (`bundle.claude.js:11414`).
+
+The validate-only verdicts above are unaffected: every variant shared the same
+custom-type header, so the counts compare like with like.
