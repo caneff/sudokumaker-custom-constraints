@@ -76,93 +76,90 @@ live edge count.
 
 ### The shared component (#408)
 
-`examples/_shared/HouseGacComponent.js` is the subset form, and it needs no
-fixpoint loop. It is available to paste but no shipped link carries it yet;
-putting it into frame links, behind the timing bar, is #421. It reads all 2^n subsets in one scan, building each union from
-the subset minus its lowest cell and removing in place as it goes. One call
-lands on exactly the matching reference's result: 0 of 3000 states differ at
-digits 1..9, 0 of 1000 at 0..9 on nine cells, and it stops on the same 2000
-unplanted states (`examples/_shared/house-gac.test.mjs`). A single scan is
-enough because a Hall-tight set's union is the same under any mix of old and
-new masks while the house still has an assignment.
+`examples/_shared/HouseGacComponent.js` is the subset form, with its bit
+tricks behind names. It is available to paste, but no shipped link carries it
+yet; putting it into frame links, behind the timing bar, is #421. It reads all
+2^n groups of cells in one scan, building each group's pooled digits from the
+group minus its lowest cell and removing in place as it goes. No fixpoint loop
+is needed. One call lands on exactly the matching reference's result: 0 of
+3000 states differ at digits 1..9, 0 of 1000 at 0..9 on nine cells, and it
+stops on the same 2000 unplanted states (`examples/_shared/house-gac.test.mjs`).
+One scan is enough because, while the house still has a filling, a Hall-tight
+group pools the same digits under any mix of old and new masks. It refuses a
+house above 9 cells in `setParams`.
 
-Both real `update` functions, one call each on the bench's 20000 states
-(`408-house-gac/bench-house-gac.mjs`, 3 reps, two runs):
-
-| component | n=9 |
-| --- | --- |
-| `HouseGacComponent.js` (subsets, one scan) | **3.8-4.4 us** |
-| `tools/AllDiffGacComponent.js` (matching) | 25.3-27.3 us |
-
-These are higher than the table above for matching and lower for subsets: the
-table ran bare mask functions, and this runs each component's generator,
-mask reads and Change building included. It refuses a house above 9 cells in
-`setParams`.
+The bench below runs each component's generator, mask reads and Change building
+included, so matching costs more and subsets less than in the bare-function
+table above.
 
 ### Four forms of one rule, n=9 (#408)
 
-`examples/_shared/` holds the one-scan rule in four forms.
-`house-gac.test.mjs` holds the other three to identical results with the
-bitmask one on every fuzz state (3000 at 1..9, 1000 at 0..9, 2000 unplanted),
-and all four take the same gate, refusal and yield tests.
+The one-scan rule was written four ways and measured. The shipped component
+is the named bitmask form; the other three stay in `408-house-gac/` as the
+record behind this table and are not tested or maintained. The bench first runs
+every form on 2000 states and requires each to leave exactly what the shipped
+form leaves.
 
-- `HouseGacComponent.js`, **bitmask**. Every group of cells is an integer.
-  Its pooled digits are built from the group minus its lowest cell, using
-  `s & -s` and `clz32`.
-- `ReadableHouseGacComponent.js`, **readable**. Digit sets through
-  `getCandidates`, `SudokuDigitSet.getUnion`, `size`, `subtract` and `equals`.
-  Each group is a new array of positions whose digits are pooled from
-  scratch, and `group.includes` finds the cells outside it.
-- `IncrementalHouseGacComponent.js`, **incremental**. The same digit sets. A
-  recursive `growGroup` adds one cell at a time: a grown group's pooled digits
-  are its parent's copy (`new SudokuDigitSet(groupDigits)`) plus that one
-  cell's. An `inGroup` array of flags marks the current group.
-- `NamedBitmaskHouseGacComponent.js`, **named bitmask**. The bitmask
-  algorithm line for line, with every trick behind a name: `lowestBit`,
+- `examples/_shared/HouseGacComponent.js`, **named bitmask** (shipped). Every
+  group of cells is an integer, and every trick has a name: `lowestBit`,
   `withoutLowestBit`, `indexOf`, `countOf`, `pooledDigitsOf[group]`,
-  `wholeHouse`, `cellsOutside`, `groupOwnsItsDigits`. The header explains
-  the two kinds of mask and why counting groups up works.
+  `wholeHouse`, `cellsOutside`, `groupOwnsItsDigits`. The header explains the
+  two kinds of mask and why counting groups up works.
+- `408-house-gac/TerseHouseGacComponent.js`, **terse bitmask**. The same
+  algorithm with short names: `s & -s`, `clz32`, `unionOf[s]`.
+- `408-house-gac/IncrementalHouseGacComponent.js`, **incremental**. Digit sets
+  through `getCandidates`, `union`, `size` and `subtract`. A recursive
+  `growGroup` adds one cell at a time: a grown group's pooled digits are its
+  parent's copy (`new SudokuDigitSet(groupDigits)`) plus that one cell's. An
+  `inGroup` array of flags marks the current group.
+- `408-house-gac/ReadableHouseGacComponent.js`, **readable**. The same digit
+  sets with `SudokuDigitSet.getUnion` and `equals`. Each group is a new array of
+  positions whose digits are pooled from scratch, and `group.includes` finds
+  the cells outside it.
 
-Speed comes from `408-house-gac/bench-house-gac.mjs`: the bench's 20000 states,
-3 reps, two runs, each component through its own `update`. Each digit-set form
+Speed comes from `408-house-gac/bench-house-gac.mjs`: 20000 states, 3 reps,
+each component through its own `update`, across three runs. Each digit-set form
 gets a fresh DigitSet per `getCandidates` call, as in the app, built from the
 harness's DigitSet, whose methods are copied from the bundle. Size comes from
 `408-house-gac/link-delta-house-gac.py`: the builder's `minify_file` and
 `compressToEncodedURIComponent`, for the component on its own and for the
-component plus `house-gac.js` added to `examples/skyscraper/PUZZLE_LINK.txt`.
-For every row but the bitmask one, the backend's constructor name is swapped
-in memory.
+component plus `house-gac.js` added to `examples/skyscraper/PUZZLE_LINK.txt`,
+with the backend's constructor name swapped in memory for the non-shipped
+forms.
 
-| component | per call, n=9 | vs bitmask | minified | compressed alone | link grows by |
+| component | per call, n=9 | vs terse | minified | compressed alone | link grows by |
 | --- | --- | --- | --- | --- | --- |
-| `HouseGacComponent.js` (bitmask) | **4.0-4.4 us** | 1x | 1475 | **1202 B** | **1299** |
-| `NamedBitmaskHouseGacComponent.js` (bitmask, tricks named) | 4.2-4.6 us | ~1.1x | 2180 | 1577 B | 1708 |
-| `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-15.6 us | ~3.7x | 1883 | 1376 B | 1502 |
+| `HouseGacComponent.js` (named bitmask, shipped) | **4.2-4.6 us** | ~1.1x | 2168 | 1568 B | 1687 |
+| `TerseHouseGacComponent.js` (terse bitmask) | 3.9-4.4 us | 1x | 1480 | **1209 B** | **1310** |
+| `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-18.5 us | ~4x | 1883 | 1376 B | 1502 |
 | `ReadableHouseGacComponent.js` (pool from scratch) | 100-108 us | ~25x | 1835 | 1319 B | 1463 |
 | `tools/AllDiffGacComponent.js` (matching, for scale) | 24.5-28.8 us | ~6.5x | 1577 | 1203 B | 1488 |
+
+Naming the bitmask form costs almost no speed. It runs within about 10% of the
+terse form, well inside the gap to every other form; the one-line helpers are
+small enough for V8 to inline, though that is inferred from the timing, not
+profiled. It costs bytes instead. Names survive minification, so it is the
+largest form: 359 B more compressed than the terse form on its own, and 377
+characters more in a link.
 
 The readable form's cost is allocation, not the rule. For each of the 511
 groups per call it builds a position array and pools every member's digits
 again. Growing a group by one cell removes both costs and keeps the digit sets:
 one small set per group and one union per group, not up to nine. That is about
-7x faster than the readable form, and about 1.7x faster than the naive matching
-filter. It is still about 3.7x slower than the bitmask form, which allocates
-nothing. The incremental form is the largest of the three in bytes, 174 B more
-compressed than the bitmask form on its own and 203 characters more in a link.
-The minifier strips comments, not identifiers, so its extra bytes are the
-recursion helper and its long descriptive names.
+6x faster than the readable form and faster than the naive matching filter,
+but still about 4x slower than either bitmask form, which allocate nothing.
 
-Naming the bitmask form costs almost no speed. It runs within about 10% of
-the terse bitmask form, well inside the gap to every other form; the one-line
-helpers are small enough for V8 to inline, though that is inferred from the
-timing, not profiled. It costs bytes instead. Names survive minification, so
-it is the largest form: 375 B more compressed than the terse bitmask form on
-its own, and 409 characters more in a link.
+`408-house-gac/build-house-gac-links.py` writes the shipped Skyscrapers board
+with each bitmask form added, to try in the app: `PUZZLE_LINK_house_gac.txt`
+(named) and `PUZZLE_LINK_terse.txt`. Everything but the added "House GAC"
+constraint is identical to `examples/skyscraper/PUZZLE_LINK.txt`.
 
 ### Larger houses, both real components (#408)
 
 `408-house-gac/bench-large-n.mjs` runs both `update` functions at n=9..16,
-loading `HouseGacComponent.js` with `MAX_CELLS` raised to 16 in memory. A state
+loading the terse bitmask form with `MAX_CELLS` raised to 16 in memory. The
+shipped named form has the same algorithm and ran within about 10% of it at
+n=9. A state
 is n cells over digits 1..n: a hidden permutation plus each other digit at
 `rate`. Before timing, both filters ran once on every state (2000 per row,
 32000 in all) and left identical candidates, so one scan stays exactly GAC up
@@ -222,11 +219,13 @@ lz-string compressed, comments stripped:
 | --- | --- | --- | --- |
 | `tools/AllDiffGacComponent.js` (naive matching GAC) | 2212 | 1576 | **1201 B** |
 | `tools/ReginGac.js` (proper Regin **sketch**) | 3306 | 3080 | **2131 B** |
-| `examples/_shared/HouseGacComponent.js` (bitmask subsets) | — | 1475 | **1202 B** |
+| `408-house-gac/TerseHouseGacComponent.js` (bitmask subsets) | — | 1480 | **1209 B** |
+| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named) | — | 2168 | 1568 B |
 
 Measured for #408 with the builder's own `minify_file` and
 `compressToEncodedURIComponent`; that method gives the matching component 1203
-B, so on their own the two are the same size to a byte. The difference shows in
+B, so the terse subset form and matching are the same size on their own, and
+the named form is 365 B larger. The difference shows in
 a link, where the backend rides too. Appended as one more constraint to
 `examples/skyscraper/PUZZLE_LINK.txt` (8276 characters),
 `408-house-gac/link-delta-house-gac.py` measures:
@@ -234,7 +233,8 @@ a link, where the backend rides too. Appended as one more constraint to
 | backend + component | link grows by |
 | --- | --- |
 | `tools/alldiff-main.js` + `tools/AllDiffGacComponent.js` | 1488 |
-| `examples/_shared/house-gac.js` + `HouseGacComponent.js` | **1299** |
+| `examples/_shared/house-gac.js` + `408-house-gac/TerseHouseGacComponent.js` | **1310** |
+| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named) | 1687 |
 
 `ReginGac.js` is a **size probe, not working code** — it was never verified and
 contains a meaningless `|| true` in the SCC loop. Do not ship it as is. Most of

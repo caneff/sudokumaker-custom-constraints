@@ -2,30 +2,26 @@
 # component, minified as a builder ships them, appended as one more constraint
 # to examples/skyscraper/PUZZLE_LINK.txt and re-encoded with the link codec.
 # Run from the repo root: uv run --with lzstring docs/research/408-house-gac/link-delta-house-gac.py (#408)
-import sys, json, pathlib, tempfile
+import pathlib
+import sys
+
 sys.path.insert(0, "examples/_shared")
-from minify import minify_file
-from link_codec import decode_puzzle, encode_link
-from lzstring import LZString
-base = decode_puzzle(pathlib.Path("examples/skyscraper/PUZZLE_LINK.txt").read_text().strip())
+sys.path.insert(0, "docs/research/408-house-gac")
+from house_gac_links import BASE_LINK, FORMS, with_filter  # noqa: E402
+from link_codec import decode_puzzle, encode_link  # noqa: E402
+from lzstring import LZString  # noqa: E402
+from minify import minify_file  # noqa: E402
+
+TOOLS = pathlib.Path("docs/research/406-gac-demo/tools")
+base = decode_puzzle(BASE_LINK.read_text().strip())
 n0 = len(encode_link(base))
-def with_constraint(backend, comp):
-    doc = json.loads(json.dumps(base))
-    doc["puzzle"]["constraints"].append({"type": 1000, "definition": {"name": "House GAC", "input": [],
-      "backend": {"type": "code", "code": minify_file(pathlib.Path(backend))},
-      "components": [{"type": "code", "name": pathlib.Path(comp).stem, "code": minify_file(pathlib.Path(comp))}]},
-      "input": {}, "style": {}})
-    return len(encode_link(doc)) - n0
-t = "docs/research/406-gac-demo/tools/"
 print("base link", n0)
-print("matching (AllDiffGacComponent + alldiff-main)", with_constraint(t + "alldiff-main.js", t + "AllDiffGacComponent.js"))
-print("subsets  (HouseGacComponent + house-gac)", with_constraint("examples/_shared/house-gac.js", "examples/_shared/HouseGacComponent.js"))
-# house-gac.js names HouseGacComponent; each other form ships under its own name.
-for name in ["ReadableHouseGacComponent", "IncrementalHouseGacComponent", "NamedBitmaskHouseGacComponent"]:
-    with tempfile.TemporaryDirectory() as tmp:
-        backend = pathlib.Path(tmp) / "house-gac.js"
-        backend.write_text(pathlib.Path("examples/_shared/house-gac.js").read_text().replace("HouseGacComponent", name))
-        print(f"{name} + house-gac", with_constraint(str(backend), f"examples/_shared/{name}.js"))
-for f in [t + "AllDiffGacComponent.js", "examples/_shared/HouseGacComponent.js", "examples/_shared/ReadableHouseGacComponent.js", "examples/_shared/IncrementalHouseGacComponent.js", "examples/_shared/NamedBitmaskHouseGacComponent.js"]:
-    code = minify_file(pathlib.Path(f))
-    print(f"alone: {pathlib.Path(f).name} minified {len(code)}, compressed {len(LZString.compressToEncodedURIComponent(code))}")
+print(
+    "AllDiffGacComponent + alldiff-main (matching)",
+    len(encode_link(with_filter(base, TOOLS / "alldiff-main.js", TOOLS / "AllDiffGacComponent.js"))) - n0,
+)
+for name, component in FORMS.items():
+    print(f"{name} + house-gac", len(encode_link(with_filter(base, None, component))) - n0)
+for f in [TOOLS / "AllDiffGacComponent.js", *FORMS.values()]:
+    code = minify_file(f)
+    print(f"alone: {f.name} minified {len(code)}, compressed {len(LZString.compressToEncodedURIComponent(code))}")

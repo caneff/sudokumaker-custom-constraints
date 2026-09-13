@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! The same filter as `HouseGacComponent.js`, written to be read rather than to
-//! be fast: digit sets and cell lists through the puzzle API, no bit arithmetic.
-//! Both files hold one rule; `house-gac.test.mjs` holds them to identical
-//! results.
+//! Research record (#408): the rule of `examples/_shared/HouseGacComponent.js`
+//! written to be read rather than to be fast: digit sets and cell lists through
+//! the puzzle API, no bit arithmetic. About 25x slower. `bench-house-gac.mjs`
+//! checks it against the shipped form before timing it; not otherwise tested
+//! or maintained.
 //!
 //! The rule. Take any group of k cells in the house. Pool every digit those
 //! cells could still hold.

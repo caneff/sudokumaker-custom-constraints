@@ -1,7 +1,9 @@
-// Per-call cost at n=9..16: examples/_shared/HouseGacComponent.js against the
-// #406 matching filter AllDiffGacComponent.js, both run through their own
-// update(). The shipped component refuses a house above 9 cells, so this probe
-// loads its source with MAX_CELLS raised to 16 in memory; the file is untouched.
+// Per-call cost at n=9..16: TerseHouseGacComponent.js (the bitmask algorithm
+// of examples/_shared/HouseGacComponent.js, the form these numbers were first
+// taken on) against the #406 matching filter AllDiffGacComponent.js, both run
+// through their own update(). Both bitmask forms refuse a house above 9 cells,
+// so this probe loads the source with MAX_CELLS raised to 16 in memory; the
+// file is untouched.
 //
 // A state is n cells over digits 1..n: a hidden permutation plus each other
 // digit at `rate`. Two densities: 0.35 (the random bench the #406 table used)
@@ -16,10 +18,10 @@ import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle } from '../../../examples/_shared/harness-lib.mjs'
 
 const FUNCTIONS = ['getAffectedCells', 'setParams', 'update']
-const sharedDir = new URL('../../../examples/_shared/', import.meta.url).pathname
-const subsetSrc = readFileSync(sharedDir + 'HouseGacComponent.js', 'utf8').replace('const MAX_CELLS = 9', 'const MAX_CELLS = 16')
-if (!subsetSrc.includes('const MAX_CELLS = 16')) throw new Error('MAX_CELLS not found in HouseGacComponent.js')
-const io = makeIo(sharedDir)
+const here = new URL('.', import.meta.url).pathname
+const subsetSrc = readFileSync(here + 'TerseHouseGacComponent.js', 'utf8').replace('const MAX_CELLS = 9', 'const MAX_CELLS = 16')
+if (!subsetSrc.includes('const MAX_CELLS = 16')) throw new Error('MAX_CELLS not found in TerseHouseGacComponent.js')
+const io = makeIo(here)
 const subsets = io.loadSource(subsetSrc, FUNCTIONS)
 const matching = makeIo(new URL('../406-gac-demo/tools', import.meta.url).pathname).load('AllDiffGacComponent.js', FUNCTIONS)
 
