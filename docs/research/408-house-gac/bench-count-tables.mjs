@@ -1,4 +1,6 @@
 // Does precomputing bit counts speed up examples/_shared/HouseGacComponent.js?
+// Measured on the component as of commit 1f2d717, before variant B below was
+// adopted into it; the source is read from that commit, not the working tree.
 // Every group's size depends only on the group number, so it can come from a
 // table built once instead of being counted each call. Two variants, built in
 // memory from the shipped source (the file is untouched):
@@ -9,14 +11,14 @@
 // check states before any timing. Timing interleaves the three forms for 6
 // rounds, 20000 states each, so machine drift hits all of them alike.
 // Run: node docs/research/408-house-gac/bench-count-tables.mjs (#408)
-import { readFileSync } from 'fs'
+import { execFileSync } from 'child_process'
 import { installGlobals, makeIo, makePuzzle, makeRng } from '../../../examples/_shared/harness-lib.mjs'
 
 installGlobals(1, 9)
 const FUNCTIONS = ['getAffectedCells', 'setParams', 'update']
 const sharedDir = new URL('../../../examples/_shared/', import.meta.url).pathname
 const io = makeIo(sharedDir)
-const src = readFileSync(sharedDir + 'HouseGacComponent.js', 'utf8')
+const src = execFileSync('git', ['show', '1f2d717:examples/_shared/HouseGacComponent.js'], { cwd: sharedDir, encoding: 'utf8' })
 
 function edit (text, from, to) {
   if (text.split(from).length !== 2) throw new Error(`expected exactly one ${JSON.stringify(from)}`)
@@ -35,7 +37,7 @@ for (let m = 1; m < digitCountOf.length; m++) digitCountOf[m] = digitCountOf[m &
 srcB = edit(srcB, 'const digitsInGroup = countOf(pooledDigits)', 'const digitsInGroup = pooledDigits < 1024 ? digitCountOf[pooledDigits] : countOf(pooledDigits)')
 
 const components = {
-  shipped: io.load('HouseGacComponent.js', FUNCTIONS),
+  shipped: io.loadSource(src, FUNCTIONS),
   'A group-size table': io.loadSource(srcA, FUNCTIONS),
   'B group + digit tables': io.loadSource(srcB, FUNCTIONS)
 }

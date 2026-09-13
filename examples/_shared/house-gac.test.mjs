@@ -116,6 +116,33 @@ installGlobals(1, 9)
   assert.ok(stops > 100, `only ${stops} of 2000 open states had no solution; the case is not exercised`)
 }
 
+// ---- digits above 9 (a 16-digit board) -------------------------------------
+// Digit counts come from a table that covers digits 0..9; a digit set with a
+// higher digit is counted bit by bit. Nine cells over digits 1..16, with and
+// without a planted solution, land exactly where the matching filter lands.
+installGlobals(1, 16)
+{
+  let stops = 0
+  let high = 0
+  for (let t = 0; t < 2000; t++) {
+    const planted = t % 2 === 0
+    const cands = planted
+      ? consistentState(rnd, 1, 16, 0.2).cands
+      : CELLS.map(() => {
+        const s = []
+        for (let d = 1; d <= 16; d++) if (rnd() < 0.08) s.push(d)
+        return s.length ? s : [1 + ((rnd() * 16) | 0)]
+      })
+    if (cands.some(s => s.some(d => d > 9))) high++
+    const want = runOnce(ref, cands, 'house')
+    if (want === 'stop') stops++
+    assert.deepStrictEqual(runOnce(gac, cands, 'house'), want, `1..16 state ${t}: ${JSON.stringify(cands)}`)
+  }
+  assert.ok(stops > 100, `only ${stops} of 2000 digit-1..16 states stop; the stop is not exercised`)
+  assert.ok(high > 1900, `only ${high} of 2000 states use a digit above 9; the counted path is not exercised`)
+}
+installGlobals(1, 9)
+
 // ---- houses shorter than 9 cells ------------------------------------------
 // A frame board's 6x6 or 8x8 interior hands the backend houses of 6 or 8 cells,
 // and nothing about the rule depends on the house holding 9. Every size from 1

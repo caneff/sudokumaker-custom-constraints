@@ -167,18 +167,18 @@ forms.
 
 | component | per call, n=9 | vs terse | minified | compressed alone | link grows by |
 | --- | --- | --- | --- | --- | --- |
-| `HouseGacComponent.js` (named bitmask, shipped) | **4.2-4.6 us** | ~1.1x | 2183 | 1562 B | 1689 |
+| `HouseGacComponent.js` (named bitmask, count tables, shipped) | **2.1-2.3 us** | ~0.5x | 2567 | 1827 B | 1928 |
 | `TerseHouseGacComponent.js` (terse bitmask) | 3.9-4.4 us | 1x | 1480 | **1209 B** | **1310** |
 | `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-18.5 us | ~4x | 1883 | 1376 B | 1502 |
 | `ReadableHouseGacComponent.js` (pool from scratch) | 100-108 us | ~25x | 1835 | 1319 B | 1463 |
 | `tools/AllDiffGacComponent.js` (matching, for scale) | 24.5-28.8 us | ~6.5x | 1577 | 1203 B | 1488 |
 
-Naming the bitmask form costs almost no speed. It runs within about 10% of the
-terse form, well inside the gap to every other form; the one-line helpers are
+Naming the bitmask form cost almost no speed: before its count tables it ran
+within about 10% of the terse form (4.2-4.6 us). The one-line helpers are
 small enough for V8 to inline, though that is inferred from the timing, not
-profiled. It costs bytes instead. Names survive minification, so it is the
-largest form: 353 B more compressed than the terse form on its own, and 379
-characters more in a link.
+profiled. The count tables below then halved it. It costs bytes instead. Names
+and the tables survive minification, so it is the largest form: 618 B more
+compressed than the terse form on its own, and 618 characters more in a link.
 
 The readable form's cost is allocation, not the rule. For each of the 511
 groups per call it builds a position array and pools every member's digits
@@ -209,9 +209,16 @@ stops, 0 disagreements), then times the three forms interleaved: 6 rounds of
 
 The digit count is the bigger cost: a pooled mask has up to 9 bits, so
 `countOf` loops up to 9 times per group, 511 groups per call. B falls back to
-`countOf` for a mask with a digit above 9. No check state reaches that path,
-since every state uses digits 1..9, so a test for it would be needed before
-shipping B.
+counting bits for a mask with a digit above 9. No check state reaches that path,
+since every state uses digits 1..9. The shipped component adopts B, and
+`house-gac.test.mjs` covers the fallback with 2000 nine-cell houses over
+digits 1..16.
+
+Component code can size the table to the board instead. `compileCustomComponentClass`
+(`bundle.claude.js:9990`) runs a component segment with `new Function`, with
+`helpers = createHelpers(puzzleSpec)` in scope, and those helpers carry
+`digits`. So `helpers.digits.maxDigit` is readable by the segment's top-level
+statements.
 
 ### Larger houses, both real components (#408)
 
@@ -279,12 +286,12 @@ lz-string compressed, comments stripped:
 | `tools/AllDiffGacComponent.js` (naive matching GAC) | 2212 | 1576 | **1201 B** |
 | `tools/ReginGac.js` (proper Regin **sketch**) | 3306 | 3080 | **2131 B** |
 | `408-house-gac/TerseHouseGacComponent.js` (bitmask subsets) | — | 1480 | **1209 B** |
-| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named) | — | 2183 | 1562 B |
+| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named, count tables) | — | 2567 | 1827 B |
 
 Measured for #408 with the builder's own `minify_file` and
 `compressToEncodedURIComponent`; that method gives the matching component 1203
 B, so the terse subset form and matching are the same size on their own, and
-the named form is 359 B larger than matching. The difference shows in
+the named form is 624 B larger than matching. The difference shows in
 a link, where the backend rides too. Appended as one more constraint to
 `examples/skyscraper/PUZZLE_LINK.txt` (8276 characters),
 `408-house-gac/link-delta-house-gac.py` measures:
@@ -293,7 +300,7 @@ a link, where the backend rides too. Appended as one more constraint to
 | --- | --- |
 | `tools/alldiff-main.js` + `tools/AllDiffGacComponent.js` | 1488 |
 | `examples/_shared/house-gac.js` + `408-house-gac/TerseHouseGacComponent.js` | **1310** |
-| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named) | 1689 |
+| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named, count tables) | 1928 |
 
 `ReginGac.js` is a **size probe, not working code** — it was never verified and
 contains a meaningless `|| true` in the SCC loop. Do not ship it as is. Most of

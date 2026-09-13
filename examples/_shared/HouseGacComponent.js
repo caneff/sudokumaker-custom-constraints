@@ -45,6 +45,14 @@ const MAX_CELLS = 9
 //! solver may run another component's `update` at a yield point.
 const pooledDigitsOf = new Int32Array(1 << MAX_CELLS)
 
+//! Bit counts looked up rather than counted: two counts per group, 511 groups
+//! per call, and a lookup halves the call (docs/research/all-different-gac.md,
+//! "Precomputed bit counts"). `cellsInGroupOf` covers every group. A digit set
+//! covers digits 0..9 in `digitCountOf`; `digitCount` counts a larger one.
+const DIGIT_TABLE_SIZE = 1 << 10
+const cellsInGroupOf = countTable(1 << MAX_CELLS)
+const digitCountOf = countTable(DIGIT_TABLE_SIZE)
+
 function getAffectedCells (cells) {
   return cells
 }
@@ -56,10 +64,18 @@ function setParams (instance, cells) {
   instance.cells = cells
 }
 
-//! How many bits are set: digits in a digit set, cells in a group.
-function countOf (bits) {
+//! `table[bits]` is how many bits are set in `bits`, for every value below
+//! `size`: a number has one more set bit than itself without its lowest one.
+function countTable (size) {
+  const table = new Uint8Array(size)
+  for (let bits = 1; bits < size; bits++) table[bits] = table[withoutLowestBit(bits)] + 1
+  return table
+}
+
+function digitCount (digits) {
+  if (digits < DIGIT_TABLE_SIZE) return digitCountOf[digits]
   let count = 0
-  for (let rest = bits; rest !== 0; rest = withoutLowestBit(rest)) count++
+  for (let rest = digits; rest !== 0; rest = withoutLowestBit(rest)) count++
   return count
 }
 
@@ -98,8 +114,8 @@ function * update (instance, puzzle) {
     const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[positionOf(newestCellBit)]
     pooledDigitsOf[group] = pooledDigits
 
-    const cellsInGroup = countOf(group)
-    const digitsInGroup = countOf(pooledDigits)
+    const cellsInGroup = cellsInGroupOf[group]
+    const digitsInGroup = digitCount(pooledDigits)
 
     if (digitsInGroup < cellsInGroup) {
       yield puzzle.stop(`the cells of ${instance.name} cannot all hold different digits`, cells)
