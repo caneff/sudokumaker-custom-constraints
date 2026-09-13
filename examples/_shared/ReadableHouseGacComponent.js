@@ -10,9 +10,10 @@
 //!     no answer, so the branch is dead.
 //!   - Exactly k digits: those k cells use up those k digits between them, so
 //!     no other cell in the house may hold any of them.
-//! Checking every group, from single cells up to all but one cell, removes
+//! Checking every group, from single cells up to the whole house, removes
 //! exactly the candidates that no all-different filling of the house can use
-//! (Hall's theorem; docs/research/all-different-gac.md).
+//! (Hall's theorem; docs/research/all-different-gac.md). The whole house can
+//! only fail the first check; there is no other cell to remove digits from.
 //!
 //! One pass is enough. Removals made while the groups are being checked only
 //! take away digits no filling uses, so a group that pools exactly k digits

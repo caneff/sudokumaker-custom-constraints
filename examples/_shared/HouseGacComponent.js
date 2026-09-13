@@ -19,9 +19,9 @@
 //! a set spanning exactly k digits holds all k of them among its own cells.
 
 //! 2^n subsets per call. At n=9 this component takes about 4 us a call against
-//! 26 us for the matching filter it replaces; the bare-mask probe puts the
-//! crossover at n=10 and 676 us a call at n=14 (docs/research/all-different-gac.md,
-//! "Cost"). A larger house is a registration mistake, refused at setup where
+//! 26 us for the matching filter; the cost doubles with each cell, and matching
+//! is cheaper from n=12 or 13 on (docs/research/all-different-gac.md, "Larger
+//! houses"). A larger house is a registration mistake, refused at setup where
 //! the author sees it.
 const MAX_CELLS = 9
 

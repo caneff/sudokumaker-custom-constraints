@@ -20,11 +20,12 @@ t = "docs/research/406-gac-demo/tools/"
 print("base link", n0)
 print("matching (AllDiffGacComponent + alldiff-main)", with_constraint(t + "alldiff-main.js", t + "AllDiffGacComponent.js"))
 print("subsets  (HouseGacComponent + house-gac)", with_constraint("examples/_shared/house-gac.js", "examples/_shared/HouseGacComponent.js"))
-# house-gac.js names HouseGacComponent; the readable one ships under its own name.
-with tempfile.TemporaryDirectory() as tmp:
-    readable_backend = pathlib.Path(tmp) / "house-gac.js"
-    readable_backend.write_text(pathlib.Path("examples/_shared/house-gac.js").read_text().replace("HouseGacComponent", "ReadableHouseGacComponent"))
-    print("readable (ReadableHouseGacComponent + house-gac)", with_constraint(str(readable_backend), "examples/_shared/ReadableHouseGacComponent.js"))
-for f in [t + "AllDiffGacComponent.js", "examples/_shared/HouseGacComponent.js", "examples/_shared/ReadableHouseGacComponent.js"]:
+# house-gac.js names HouseGacComponent; each digit-set form ships under its own name.
+for name in ["ReadableHouseGacComponent", "IncrementalHouseGacComponent"]:
+    with tempfile.TemporaryDirectory() as tmp:
+        backend = pathlib.Path(tmp) / "house-gac.js"
+        backend.write_text(pathlib.Path("examples/_shared/house-gac.js").read_text().replace("HouseGacComponent", name))
+        print(f"{name} + house-gac", with_constraint(str(backend), f"examples/_shared/{name}.js"))
+for f in [t + "AllDiffGacComponent.js", "examples/_shared/HouseGacComponent.js", "examples/_shared/ReadableHouseGacComponent.js", "examples/_shared/IncrementalHouseGacComponent.js"]:
     code = minify_file(pathlib.Path(f))
     print(f"alone: {pathlib.Path(f).name} minified {len(code)}, compressed {len(LZString.compressToEncodedURIComponent(code))}")

@@ -99,36 +99,51 @@ table ran bare mask functions, and this runs each component's generator,
 mask reads and Change building included. It refuses a house above 9 cells in
 `setParams`.
 
-### Readable against bitmask, n=9 (#408)
+### Three forms of one rule, n=9 (#408)
 
-`examples/_shared/ReadableHouseGacComponent.js` is the same one-scan rule
-written for a reader. It uses `getCandidates` digit sets, `SudokuDigitSet.getUnion`,
-`size`, `subtract` and `equals`, named groups of cells, and no bit arithmetic.
-`house-gac.test.mjs` holds it to identical results with `HouseGacComponent.js`
-on every fuzz state (3000 at 1..9, 1000 at 0..9, 2000 unplanted), and it takes
-the same gate, refusal and yield tests.
+`examples/_shared/` holds the one-scan rule in three forms.
+`house-gac.test.mjs` holds the two digit-set forms to identical results with
+the bitmask one on every fuzz state (3000 at 1..9, 1000 at 0..9, 2000
+unplanted), and all three take the same gate, refusal and yield tests.
+
+- `HouseGacComponent.js`, **bitmask**. Every group of cells is an integer.
+  Its pooled digits are built from the group minus its lowest cell, using
+  `s & -s` and `clz32`.
+- `ReadableHouseGacComponent.js`, **readable**. Digit sets through
+  `getCandidates`, `SudokuDigitSet.getUnion`, `size`, `subtract` and `equals`.
+  Each group is a new array of positions whose digits are pooled from
+  scratch, and `group.includes` finds the cells outside it.
+- `IncrementalHouseGacComponent.js`, **incremental**. The same digit sets. A
+  recursive `growGroup` adds one cell at a time: a grown group's pooled digits
+  are its parent's copy (`new SudokuDigitSet(groupDigits)`) plus that one
+  cell's. An `inGroup` array of flags marks the current group.
 
 Speed comes from `408-house-gac/bench-house-gac.mjs`: the bench's 20000 states,
-3 reps, two runs, each component through its own `update`. The readable
-component gets a fresh DigitSet per `getCandidates` call, as in the app, built
-from the harness's DigitSet, whose methods are copied from the bundle. Size
-comes from `408-house-gac/link-delta-house-gac.py`: the builder's `minify_file`
-and `compressToEncodedURIComponent`, for the component on its own and for the
+3 reps, two runs, each component through its own `update`. Each digit-set form
+gets a fresh DigitSet per `getCandidates` call, as in the app, built from the
+harness's DigitSet, whose methods are copied from the bundle. Size comes from
+`408-house-gac/link-delta-house-gac.py`: the builder's `minify_file` and
+`compressToEncodedURIComponent`, for the component on its own and for the
 component plus `house-gac.js` added to `examples/skyscraper/PUZZLE_LINK.txt`.
-For the readable row, the backend's constructor name is swapped in memory.
+For the digit-set rows, the backend's constructor name is swapped in memory.
 
 | component | per call, n=9 | vs bitmask | minified | compressed alone | link grows by |
 | --- | --- | --- | --- | --- | --- |
 | `HouseGacComponent.js` (bitmask) | **4.0-4.4 us** | 1x | 1475 | **1202 B** | **1299** |
-| `ReadableHouseGacComponent.js` (digit sets) | 101-108 us | ~25x | 1835 | 1319 B | 1463 |
+| `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-15.6 us | ~3.7x | 1883 | 1376 B | 1502 |
+| `ReadableHouseGacComponent.js` (pool from scratch) | 100-108 us | ~25x | 1835 | 1319 B | 1463 |
 | `tools/AllDiffGacComponent.js` (matching, for scale) | 24.5-28.8 us | ~6.5x | 1577 | 1203 B | 1488 |
 
-The readable form is about 25x slower than the bitmask form and about 4x slower
-than the naive matching filter. It is 117 B larger compressed on its own, and
-164 characters larger in a link. The cost is allocation, not the rule: every
-group builds a fresh array of positions and a fresh union set, across 511
-groups per call, where the bitmask form reuses one int per subset. Each lookup
-of a subset's cells is also linear in its size.
+The readable form's cost is allocation, not the rule. For each of the 511
+groups per call it builds a position array and pools every member's digits
+again. Growing a group by one cell removes both costs and keeps the digit sets:
+one small set per group and one union per group, not up to nine. That is about
+7x faster than the readable form, and about 1.7x faster than the naive matching
+filter. It is still about 3.7x slower than the bitmask form, which allocates
+nothing. The incremental form is the largest of the three in bytes, 174 B more
+compressed than the bitmask form on its own and 203 characters more in a link.
+The minifier strips comments, not identifiers, so its extra bytes are the
+recursion helper and its long descriptive names.
 
 ### Larger houses, both real components (#408)
 
@@ -152,10 +167,11 @@ to n=16. Best of 3 reps; a second run agreed within about 10% per row.
 
 Subsets cost only depends on n and doubles with each cell, whatever the
 candidates. Matching cost follows the live candidate count, so a sparser,
-better-propagated house moves the crossover down. Measured on the real
-components, it falls at **n=13 for random states (rate 0.35, 3.9-6.4
-candidates a cell) and n=11 for sparse ones (rate 0.15, 2.2-3.3 a cell)**, not
-at the bare-mask probe's n=10. A 9x9 or 10x10 house is cheaper with subsets at
+better-propagated house moves the crossover down. Taking the crossover as the
+first n where subsets is slower, it falls at **n=13 for random states (rate
+0.35, 3.9-6.4 candidates a cell) and n=12 for sparse ones (rate 0.15, 2.2-3.3
+a cell)**, not at the bare-mask probe's n=10. The sparse n=11 row is a near tie
+(0.97x here, 0.87x on a reviewer's rerun). A 9x9 or 10x10 house is cheaper with subsets at
 either density. At 16x16, subsets is 4-12x slower than the matching filter
 this bench compares it with.
 
