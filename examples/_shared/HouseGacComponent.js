@@ -106,7 +106,6 @@ function * update (instance, puzzle) {
   const startingCandidates = candidates.slice()
 
   const wholeHouse = (1 << cellCount) - 1
-  pooledDigitsOf[0] = 0
   for (let group = 1; group <= wholeHouse; group++) {
     const newestCellBit = lowestBit(group)
     const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[positionOf(newestCellBit)]

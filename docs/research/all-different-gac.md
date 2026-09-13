@@ -140,7 +140,8 @@ form leaves.
 
 - `examples/_shared/HouseGacComponent.js`, **named bitmask** (shipped). Every
   group of cells is an integer, and every trick has a name: `lowestBit`,
-  `withoutLowestBit`, `indexOf`, `countOf`, `pooledDigitsOf[group]`,
+  `withoutLowestBit`, `positionOf`, `pooledDigitsOf[group]`, `cellsInGroupOf`,
+  `digitCountOf`,
   `wholeHouse`, `cellsOutside`, `groupOwnsItsDigits`. The header explains the
   two kinds of mask and why counting groups up works.
 - `408-house-gac/TerseHouseGacComponent.js`, **terse bitmask**. The same
@@ -167,7 +168,7 @@ forms.
 
 | component | per call, n=9 | vs terse | minified | compressed alone | link grows by |
 | --- | --- | --- | --- | --- | --- |
-| `HouseGacComponent.js` (named bitmask, count tables, shipped) | **2.1-2.4 us** | ~0.5x | 2585 | 1871 B | 1934 |
+| `HouseGacComponent.js` (named bitmask, count tables, shipped) | **2.1-2.4 us** | ~0.5x | 2561 | 1853 B | 1925 |
 | `TerseHouseGacComponent.js` (terse bitmask) | 3.9-4.4 us | 1x | 1480 | **1209 B** | **1310** |
 | `IncrementalHouseGacComponent.js` (grow one cell) | 14.6-18.5 us | ~4x | 1883 | 1376 B | 1502 |
 | `ReadableHouseGacComponent.js` (pool from scratch) | 100-108 us | ~25x | 1835 | 1319 B | 1463 |
@@ -177,8 +178,8 @@ Naming the bitmask form cost almost no speed: before its count tables it ran
 within about 10% of the terse form (4.2-4.6 us). The one-line helpers are
 small enough for V8 to inline, though that is inferred from the timing, not
 profiled. The count tables below then halved it. It costs bytes instead. Names
-and the tables survive minification, so it is the largest form: 662 B more
-compressed than the terse form on its own, and 624 characters more in a link.
+and the tables survive minification, so it is the largest form: 644 B more
+compressed than the terse form on its own, and 615 characters more in a link.
 
 The readable form's cost is allocation, not the rule. For each of the 511
 groups per call it builds a position array and pools every member's digits
@@ -194,16 +195,17 @@ constraint is identical to `examples/skyscraper/PUZZLE_LINK.txt`.
 
 ### Precomputed bit counts, n=9 (#408)
 
-The shipped component counts bits twice per group, every call: the group's
-cells (which depend only on the group number) and its pooled digits.
-`408-house-gac/bench-count-tables.mjs` builds two variants in memory from
-the shipped source. It checks both against it on 4000 states (1758 of them
+The component as of commit 1f2d717, the "before" row below, counted bits
+twice per group, every call: the group's cells (which depend only on the group
+number) and its pooled digits. `408-house-gac/bench-count-tables.mjs` reads
+that commit's source and builds two variants from it in memory. It checks both
+against it on 4000 states (1758 of them
 stops, 0 disagreements), then times the three forms interleaved: 6 rounds of
 20000 states, two runs.
 
-| variant | median us per call | vs shipped |
+| variant | median us per call | vs before |
 | --- | --- | --- |
-| shipped: `countOf` for both counts | 4.25-4.27 | 1x |
+| before (1f2d717): `countOf` for both counts | 4.25-4.27 | 1x |
 | A: group sizes from a 512-entry table | 3.59-3.66 | 0.85-0.86x |
 | B: A plus digit counts from a 1024-entry table (digits 0..9) | **2.01-2.06** | **0.47-0.48x** |
 
@@ -230,8 +232,9 @@ refusal at 17 and 30.
 
 `408-house-gac/bench-large-n.mjs` runs both `update` functions at n=9..16,
 loading the terse bitmask form with `MAX_CELLS` raised to 16 in memory. The
-shipped named form has the same algorithm and ran within about 10% of it at
-n=9. A state
+shipped named form has the same algorithm plus count tables, which halve its
+time at n=9 (2.1-2.4 us against 3.9-4.4 us), so these rows overstate its cost;
+its group-size table would also double with each cell. A state
 is n cells over digits 1..n: a hidden permutation plus each other digit at
 `rate`. Before timing, both filters ran once on every state (2000 per row,
 32000 in all) and left identical candidates, so one scan stays exactly GAC up
@@ -292,12 +295,12 @@ lz-string compressed, comments stripped:
 | `tools/AllDiffGacComponent.js` (naive matching GAC) | 2212 | 1576 | **1201 B** |
 | `tools/ReginGac.js` (proper Regin **sketch**) | 3306 | 3080 | **2131 B** |
 | `408-house-gac/TerseHouseGacComponent.js` (bitmask subsets) | — | 1480 | **1209 B** |
-| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named, count tables) | — | 2585 | 1871 B |
+| `examples/_shared/HouseGacComponent.js` (bitmask subsets, named, count tables) | — | 2561 | 1853 B |
 
 Measured for #408 with the builder's own `minify_file` and
 `compressToEncodedURIComponent`; that method gives the matching component 1203
 B, so the terse subset form and matching are the same size on their own, and
-the named form is 668 B larger than matching. The difference shows in
+the named form is 650 B larger than matching. The difference shows in
 a link, where the backend rides too. Appended as one more constraint to
 `examples/skyscraper/PUZZLE_LINK.txt` (8276 characters),
 `408-house-gac/link-delta-house-gac.py` measures:
@@ -306,7 +309,7 @@ a link, where the backend rides too. Appended as one more constraint to
 | --- | --- |
 | `tools/alldiff-main.js` + `tools/AllDiffGacComponent.js` | 1488 |
 | `examples/_shared/house-gac.js` + `408-house-gac/TerseHouseGacComponent.js` | **1310** |
-| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named, count tables) | 1934 |
+| `examples/_shared/house-gac.js` + `HouseGacComponent.js` (named, count tables) | 1925 |
 
 `ReginGac.js` is a **size probe, not working code** — it was never verified and
 contains a meaningless `|| true` in the SCC loop. Do not ship it as is. Most of

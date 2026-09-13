@@ -67,6 +67,16 @@ function consistentState (rnd, lo, hi, rate, size = 9) {
   return { perm, cands }
 }
 
+// A house state with no planted solution: each cell gains each digit in lo..hi
+// with probability `rate`, or one random digit if that leaves it empty.
+function openState (rnd, lo, hi, rate, size = 9) {
+  return Array.from({ length: size }, () => {
+    const s = []
+    for (let d = lo; d <= hi; d++) if (rnd() < rate) s.push(d)
+    return s.length ? s : [lo + ((rnd() * (hi - lo + 1)) | 0)]
+  })
+}
+
 board(1, 9)
 const { rnd } = makeRng(408)
 
@@ -111,11 +121,7 @@ board(1, 9)
 {
   let stops = 0
   for (let t = 0; t < 2000; t++) {
-    const cands = CELLS.map(() => {
-      const s = []
-      for (let d = 1; d <= 9; d++) if (rnd() < 0.2) s.push(d)
-      return s.length ? s : [1 + ((rnd() * 9) | 0)]
-    })
+    const cands = openState(rnd, 1, 9, 0.2)
     const want = runOnce(ref, cands)
     const got = runOnce(gac, cands)
     if (want === 'stop') stops++
@@ -136,11 +142,7 @@ board(1, 16)
     const planted = t % 2 === 0
     const cands = planted
       ? consistentState(rnd, 1, 16, 0.2).cands
-      : CELLS.map(() => {
-        const s = []
-        for (let d = 1; d <= 16; d++) if (rnd() < 0.08) s.push(d)
-        return s.length ? s : [1 + ((rnd() * 16) | 0)]
-      })
+      : openState(rnd, 1, 16, 0.08)
     if (cands.some(s => s.some(d => d > 9))) high++
     const want = runOnce(ref, cands, 'house')
     if (want === 'stop') stops++
@@ -162,11 +164,7 @@ for (let size = 1; size <= 8; size++) {
     const planted = t % 2 === 0
     const cands = planted
       ? consistentState(rnd, 1, 9, 0.3, size).cands
-      : CELLS.slice(0, size).map(() => {
-        const s = []
-        for (let d = 1; d <= 9; d++) if (rnd() < 0.15) s.push(d)
-        return s.length ? s : [1 + ((rnd() * 9) | 0)]
-      })
+      : openState(rnd, 1, 9, 0.15, size)
     const want = runOnce(ref, cands, 'house')
     if (want === 'stop') stops++
     assert.deepStrictEqual(runOnce(gac, cands, 'house'), want, `${size} cells, state ${t}: ${JSON.stringify(cands)}`)
@@ -270,11 +268,9 @@ board(1, 9)
     const rows = Array.from({ length: ih }, (_, y) => Array.from({ length: iw }, (_, x) => (x + 1) + (y + 1) * W))
     const cols = Array.from({ length: iw }, (_, x) => Array.from({ length: ih }, (_, y) => (x + 1) + (y + 1) * W))
     assert.deepStrictEqual([...new Set(registered.map(c => c.ctor))], ['HouseGacComponent'], `${where}: wrong component`)
+    // Plain numbers on the right, so an uncoerced id object also fails here (#276, #394).
     assert.deepStrictEqual(registered.map(c => c.args[1]), [...rows, ...cols, ...regions],
-      `${where}: the houses are not the interior rows, then columns, then boxes`)
-    for (const c of registered) {
-      assert.ok(c.args[1].every(x => typeof x === 'number'), `${where}: ${c.args[0]} carries uncoerced ids (#276, #394)`)
-    }
+      `${where}: the houses are not the interior rows, then columns, then boxes, as plain numbers`)
     const names = registered.map(c => c.args[0])
     assert.strictEqual(new Set(names).size, names.length, `${where}: house names are not distinct`)
     assert.deepStrictEqual([names[0], names[ih], names[ih + iw]], ['row 1', 'column 1', 'box 1'], `${where}: misnamed`)
