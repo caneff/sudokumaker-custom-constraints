@@ -37,7 +37,7 @@ You define the ones you need. `setParams` and `update` are the working pair;
 |-|-|-|
 | `getAffectedCells` | `(…params) => CellId[]` | The cells this component watches. The solver re-runs `update` when any of them changes. Return every cell your logic reads. **[verified]** |
 | `setParams` | `(instance, …params) => void` | Store the constructor args on `instance` (e.g. `instance.cells = cells`). Runs once. **[verified]** |
-| `initialize` | `(instance, puzzle) => Generator<Change>` | Optional one-time pass at creation, e.g. remove impossible candidates up front. **[docs]** |
+| `initialize` | `(instance, puzzle) => Generator<Change>` | Optional one-time pass at creation, e.g. remove impossible candidates up front. **It never replaces the first `update`**: the wrapper runs your `initialize`, then the base class's, which ends with `yield* this.update(...)`. So `update` still runs once at setup after your pass; do not duplicate its work here. **[verified]** (bundle: wrapper `bundle.claude.js:10031-10034`, base `initialize` 2686-2704, in `docs/research/humanify-pedagogy/`) |
 | `update` | `(instance, puzzle) => Generator<Change>` | The propagation loop. Yields Changes (candidate removals, component replacement). The solver calls it repeatedly until nothing more changes. **[verified]** |
 | `validate` | `(instance, puzzle) => boolean` | Return `false` when the current assignment already breaks the rule, `true` otherwise. Return `true` while the group is incomplete, then do the real check once it is filled. **[verified]** |
 

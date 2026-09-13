@@ -60,8 +60,10 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 |-|-|
 | `minDigit` / `maxDigit` | Lowest / highest digit in the puzzle (1 / 9 for classic). **[verified]** |
 | `allDigitsMask` | Bitmask of available digits. **[docs]** |
-| `createFullDigitSet()` | DigitSet of all digits. **[docs]** |
-| `createOddsDigitSet()` / `createEvensDigitSet()` | Odd / even DigitSet. **[docs]** |
+| `createFullDigitSet()` | DigitSet of all digits. **[verified]** (bundle) |
+| `createOddsDigitSet()` / `createEvensDigitSet()` | Odd / even DigitSet, masked to `minDigit..maxDigit`. **[verified]** (bundle) |
+| `createModuloDigitSet(divisor, remainder)` | Digits `d` in `minDigit..maxDigit` with `d % divisor === remainder`. **[verified]** (bundle) |
+| `createFilteredDigitSet(predicate)` | Digits `d` in `minDigit..maxDigit` with `predicate(d)` truthy. **[verified]** (bundle) |
 
 ## Two helpers objects
 
@@ -137,5 +139,7 @@ coercion is not optional decoration.
 | `set.mask` / `set.valueOf()` | The bitmask. **[verified]** (bundle) |
 | `set.has(digit)` / `set.size` | Membership / count. **[verified]** (bundle) |
 | `set.intersects(other)` | True when the sets share a digit. Does not mutate. **[verified]** (bundle) |
-| `set.intersect(other)` / `.union(other)` / `.subtract(other)` | Set algebra. **Mutates `set` in place and returns it** — not a new set. Safe on `getCandidates()` results, which are fresh copies. **[verified]** (bundle) |
+| `set.intersect(other)` / `.union(other)` / `.subtract(other)` / `.xor(other)` | Set algebra. **Mutates `set` in place and returns it** — not a new set. Safe on `getCandidates()` results, which are fresh copies. **[verified]** (bundle) |
+| `set.add(digit)` / `set.delete(digit)` / `set.clear()` / `set.equals(other)` | Single-digit edits (in place) and equality. **[verified]** (bundle) |
+| `SudokuDigitSet.getUnion(sets)` / `.getIntersection(sets)` | Statics over an iterable of sets that **return a fresh set** and leave the inputs alone. The intersection starts from an all-ones mask, so pass at least one set. **[verified]** (bundle `bundle.claude.js:608-617`) |
 | `Array.from(set)` | Iterate as an array. **[verified]** |
