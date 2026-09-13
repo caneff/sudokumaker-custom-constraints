@@ -17,6 +17,38 @@ digit exactly once" buys nothing extra on a 9-cell house of 9 digits.
 Demo: `406-gac-demo/` — one plain 9x9, no skyscraper, two links differing only
 by a GAC component. AutoStep reaches **53/81** without and **81/81** with.
 
+## What the app's own house does, read from the bundle (#408)
+
+`HouseComponent` has no `update` (`bundle.claude.js:3096`). Its work happens in
+three other places:
+
+- **Exclusion group.** `getExclusionGroup` returns all its cells, so a placed
+  digit leaves every other cell of the house. That is the naked-single cascade.
+- **Required digits.** Registering it marks every digit required in the house
+  (`SolverState.addConstraintComponent`, 8729). `HiddenSingleLogicStep` reads
+  those sets, so a digit left in one cell is placed.
+- **Set logic steps.** `StandardLogicStepsGenerator.getLogicSteps` (4769) adds
+  `NakedSetLogicStep` and `HiddenSetLogicStep` for sizes 2 to
+  `digitCount / 2`, i.e. 2-4 on nine digits, when those step types are enabled.
+  A custom puzzle keeps both types (`CustomPuzzleEnabledStepTypes`). On a full
+  house, naked k among u unsolved cells is hidden u-k, so sizes 1-4 of both
+  kinds reach every Hall set of a 9-cell house. At the top level, with those
+  steps on, the house does reach GAC, one deduction per step.
+
+The gap is inside a trial. `ByContradictionLogicStep.tryCandidate` (2297)
+clones the state, places the digit, runs `updateConstraintsAndValidate` (every
+component's `update`), then only the naked-single cascade. No set logic step
+runs there. Inside a trial, a `HouseComponent` gives singles only, while a
+component whose `update` filters to GAC gives GAC. That is where the 53/81 ->
+81/81 AutoStep gap comes from, and why the stalled state itself is already
+GAC-clean. The same holds for the solver's search nodes, which also propagate
+with `update` before taking logic steps.
+
+`DifferentDigitsComponent` on as many cells as digits replaces itself with a
+`HouseComponent` at `initialize`. Shorter, it only stops when its pooled
+candidates are fewer than its cells, and gets no set steps: those run over
+house components.
+
 ## Two engines, and why the benefit hides
 
 - **"Find all solutions"** is a search solver: propagate, guess, backtrack. It
