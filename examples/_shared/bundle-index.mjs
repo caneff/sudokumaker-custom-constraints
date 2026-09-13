@@ -46,7 +46,8 @@ const HELPER_KEYS = [
 // `intersects` and `isSubsetOf` do not) -- recorded here from that doc so
 // the two docs cannot silently disagree; a mismatch is a prompt to update
 // whichever is stale, not a bug in either.
-const DIGITSET_MUTATORS = new Set(['add', 'delete', 'clear', 'union', 'intersect', 'xor', 'subtract'])
+const DIGITSET_MUTATOR_NAMES = ['add', 'delete', 'clear', 'union', 'intersect', 'xor', 'subtract']
+const DIGITSET_MUTATORS = new Map(DIGITSET_MUTATOR_NAMES.map(name => [name, 'yes']))
 
 // The change-object type enum names the shape, not the fields; the fields
 // are read here off the app's own factory functions (see docs/research/
@@ -199,6 +200,36 @@ function extractDigitSetClassName (fns) {
     }
   }
   throw new Error('SudokuDigitSet: key not found in any namespace factory')
+}
+
+// Main code's `createExtendedHelpers` (docs/puzzle-api.md's "Two helpers
+// objects") spreads the base `createHelpers` result and overrides `geometry`
+// with a region-aware subclass, adding `lines` and `misc` -- keys the base
+// factory never has. Found by shape (a SpreadElement alongside a `geometry`
+// property in the same object literal), not by a mangled name, so a bundle
+// update that drops the override empties this instead of throwing.
+const EXTENDED_ONLY_KEYS = ['geometry', 'lines', 'misc']
+
+function findExtendedHelpersLiteral (ast) {
+  const literals = collect(ast, n =>
+    n.type === 'ObjectExpression' &&
+    n.properties.some(p => p.type === 'SpreadElement') &&
+    n.properties.some(p => p.type === 'Property' && p.key && p.key.name === 'geometry'))
+  return literals[0] || null
+}
+
+function extractExtendedHelperClassNames (ast) {
+  const literal = findExtendedHelpersLiteral(ast)
+  if (!literal) return {}
+  const result = {}
+  for (const prop of literal.properties) {
+    if (prop.type !== 'Property' || !prop.key) continue
+    if (!EXTENDED_ONLY_KEYS.includes(prop.key.name)) continue
+    if (prop.value.type === 'NewExpression' && prop.value.callee.type === 'Identifier') {
+      result[prop.key.name] = prop.value.callee.name
+    }
+  }
+  return result
 }
 
 // Find the class defining a method with this public name.
@@ -367,6 +398,14 @@ function buildIndex (sources) {
     helperMembers[key] = classMembers(requireClass(byName, helperClasses[key], `helpers.${key}`))
   }
 
+  const extendedHelperClasses = extractExtendedHelperClassNames(ast)
+  const extendedHelperMembers = {}
+  for (const key of EXTENDED_ONLY_KEYS) {
+    if (!(key in extendedHelperClasses)) continue
+    extendedHelperMembers[key] = classMembers(
+      requireClass(byName, extendedHelperClasses[key], `helpers.${key} (main code only)`))
+  }
+
   const puzzleClassName = findClassDefiningMethod(byName, 'getCandidatesBitMask')
   if (!puzzleClassName) throw new Error('no class defines getCandidatesBitMask')
   const puzzleClass = requireClass(byName, puzzleClassName, 'puzzle/state')
@@ -395,6 +434,8 @@ function buildIndex (sources) {
     primaryUrl,
     helperClasses,
     helperMembers,
+    extendedHelperClasses,
+    extendedHelperMembers,
     puzzleClassName,
     puzzleMembers: classMembers(puzzleClass),
     puzzleBaseName,
@@ -417,14 +458,22 @@ function sig (member) {
   return `${prefix}${star}${member.name}(${args})`
 }
 
-function membersTable (members, mutators = new Set()) {
-  const lines = ['| Member | Kind | Mutates |', '|-|-|-|']
+const MAIN_CODE_ONLY = 'main code only'
+
+// `notes` maps a member name to the text shown in the third column --
+// `yes` for a DigitSet mutator, `main code only` for a member that comes
+// from `createExtendedHelpers`'s override rather than the base factory.
+function membersTable (members, notes = new Map(), column = 'Mutates') {
+  const lines = [`| Member | Kind | ${column} |`, '|-|-|-|']
   for (const m of members) {
     if (m.name === 'constructor') continue
-    const mutates = mutators.has(m.name) ? 'yes' : ''
-    lines.push(`| \`${sig(m)}\` | ${m.kind} | ${mutates} |`)
+    lines.push(`| \`${sig(m)}\` | ${m.kind} | ${notes.get(m.name) || ''} |`)
   }
   return lines.join('\n')
+}
+
+function markAll (members, note) {
+  return new Map(members.map(m => [m.name, note]))
 }
 
 function render (index) {
@@ -472,13 +521,33 @@ function render (index) {
   lines.push('')
   lines.push(
     '`helpers.<key>` for each key below; mangled class name from the app\'s ' +
-    '`helpers` factory function shown alongside.'
+    '`helpers` factory function shown alongside. Rows marked ' +
+    `\`${MAIN_CODE_ONLY}\` come from \`createExtendedHelpers\` ` +
+    '(docs/puzzle-api.md\'s "Two helpers objects"), not the base factory a ' +
+    'custom component\'s `helpers` is built from.'
   )
   lines.push('')
   for (const key of Object.keys(index.helperMembers)) {
+    const overrideMembers = index.extendedHelperMembers[key] || []
     lines.push(`### helpers.${key} (\`${index.helperClasses[key]}\`)`)
     lines.push('')
-    lines.push(membersTable(index.helperMembers[key]))
+    lines.push(membersTable(
+      [...index.helperMembers[key], ...overrideMembers],
+      markAll(overrideMembers, MAIN_CODE_ONLY),
+      'Note'
+    ))
+    lines.push('')
+  }
+  for (const key of EXTENDED_ONLY_KEYS) {
+    if (key in index.helperMembers) continue // already rendered above, merged
+    if (!(key in index.extendedHelperMembers)) continue
+    lines.push(`### helpers.${key} (\`${index.extendedHelperClasses[key]}\`)`)
+    lines.push('')
+    lines.push(membersTable(
+      index.extendedHelperMembers[key],
+      markAll(index.extendedHelperMembers[key], MAIN_CODE_ONLY),
+      'Note'
+    ))
     lines.push('')
   }
 
@@ -502,7 +571,7 @@ function render (index) {
 
   lines.push('## DigitSet (`SudokuDigitSet`)')
   lines.push('')
-  const mutatorList = [...DIGITSET_MUTATORS].map(m => `\`${m}\``).join(', ')
+  const mutatorList = DIGITSET_MUTATOR_NAMES.map(m => `\`${m}\``).join(', ')
   lines.push(
     `Mangled class \`${index.digitSetClassName} extends ${index.digitSetBaseName}\`. ` +
     `${mutatorList} mutate \`this\` in place and return it; everything else ` +

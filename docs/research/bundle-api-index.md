@@ -18,11 +18,11 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ## helpers
 
-`helpers.<key>` for each key below; mangled class name from the app's `helpers` factory function shown alongside.
+`helpers.<key>` for each key below; mangled class name from the app's `helpers` factory function shown alongside. Rows marked `main code only` come from `createExtendedHelpers` (docs/puzzle-api.md's "Two helpers objects"), not the base factory a custom component's `helpers` is built from.
 
 ### helpers.cellIds (`ui`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `width` | field |  |
@@ -38,7 +38,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.cornerIds (`xi`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `getIdFromCornerCoords(arg0)` | method |  |
@@ -46,7 +46,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.edgeIds (`Di`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `getIdFromCoords(arg0)` | method |  |
@@ -54,7 +54,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.outerCellIds (`Xi`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `width` | field |  |
 | `height` | field |  |
@@ -69,7 +69,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.geometry (`gs`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `width` | field |  |
@@ -98,10 +98,11 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 | `*getCellsPointedAtByOuterClue(arg0, arg1)` | generator |  |
 | `getManhattanDistanceBetweenCells(arg0, arg1)` | method |  |
 | `getCellsAreKingsMoveApart(arg0, arg1)` | method |  |
+| `getSubsetsPerRegion(arg0)` | method | main code only |
 
 ### helpers.sums (`Ti`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `minDigit` | field |  |
 | `maxDigit` | field |  |
@@ -115,7 +116,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.xSums (`Yi`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `maxDigit` | field |  |
 | `*getXSumPossibilities(arg0)` | generator |  |
@@ -123,7 +124,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.digits (`Ve`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `minDigit` | field |  |
 | `maxDigit` | field |  |
@@ -136,7 +137,7 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.naming (`Ui`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `names` | field |  |
@@ -157,11 +158,27 @@ A digit mask is a bitmask where bit `d` represents digit `d` (`1 << d`). `allDig
 
 ### helpers.connectivity (`wi`)
 
-| Member | Kind | Mutates |
+| Member | Kind | Note |
 |-|-|-|
 | `spec` | field |  |
 | `geometryHelper` | field |  |
 | `getOrthogonallyConnectedGroups(arg0)` | method |  |
+
+### helpers.lines (`kr`)
+
+| Member | Kind | Note |
+|-|-|-|
+| `getLineEnds(arg0)` | method | main code only |
+| `getCellsBetweenLineEnds(arg0)` | method | main code only |
+| `*getAllPairsAlongLines(arg0)` | generator | main code only |
+
+### helpers.misc (`Pr`)
+
+| Member | Kind | Note |
+|-|-|-|
+| `spec` | field | main code only |
+| `*getEdgesForNegativeConstraint(arg0)` | generator | main code only |
+| `getCellGroupsFromLines(arg0)` | method | main code only |
 
 ## puzzle / state
 
