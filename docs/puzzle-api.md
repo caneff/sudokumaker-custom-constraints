@@ -69,7 +69,7 @@ The bundle builds `helpers` twice, and only the main code gets the bigger one.
 
 | Segment | Factory (bundle) | What it has |
 |-|-|-|
-| Main code (`setupPuzzle`) | `createExtendedHelpers` | everything below **plus** `helpers.lines` (`getLineEnds`), `helpers.misc` (`MiscHelper`: `getOrthogonallyConnectedGroups` and friends), and a region-aware `helpers.geometry` that adds `getSubsetsPerRegion(cells)` |
+| Main code (`setupPuzzle`) | `createExtendedHelpers` | everything below **plus** `helpers.lines` (`getLineEnds`), `helpers.misc` (`MiscHelper`: `getCellGroupsFromLines(lines)`, `*getEdgesForNegativeConstraint(clues)`), and a region-aware `helpers.geometry` that adds `getSubsetsPerRegion(cells)` |
 | A component segment, and `puzzle.helpers` inside `initialize` / `update` / `validate` | plain `createHelpers` | `cellIds`, `cornerIds`, `edgeIds`, `outerCellIds`, `geometry` (base class only), `sums`, `xSums`, `digits`, `naming`, `connectivity` |
 
 So inside a component, `helpers.lines` and `helpers.misc` are `undefined` and
@@ -79,6 +79,23 @@ in as a constructor parameter. **[verified]** (bundle: `createHelpers` at
 `bundle.claude.js:1614`, `createExtendedHelpers` at 9201, `setupPuzzle` at
 9349, `compileCustomComponentClass` at 9994 and its `SolverPuzzleView` facade
 at 10072, in `docs/research/humanify-pedagogy/`)
+
+## helpers.connectivity
+
+`getOrthogonallyConnectedGroups(cells)` splits a cell list into its
+orthogonally connected groups. **It returns a generator, and each item is a
+`LineGraph` object, not an array of cell ids.** Call `.getPoints()` on each
+item to get the cells, and spread the generator once:
+
+```js
+const groups = [...helpers.connectivity.getOrthogonallyConnectedGroups(cells)]
+  .map(g => g.getPoints())
+```
+
+`bundle-api-index.md` files it as a plain "method" because the function itself
+is not a generator; it returns `LineGraph.getAllComponents()`, which is
+(`bundle.claude.js:345` and `:494`). Available in both segments.
+**[verified]** (bundle)
 
 ## helpers.geometry / helpers.lines
 
