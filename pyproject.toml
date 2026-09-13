@@ -1,0 +1,11 @@
+# One Python environment for every generator, test and verify script:
+# `uv run <file>` syncs it from uv.lock once, and nothing resolves per call.
+# Not a package -- the scripts load `_shared` through sys.path.
+[project]
+name = "sudokumaker-custom-constraints"
+version = "0"
+requires-python = ">=3.11"
+dependencies = ["lzstring", "ortools"]
+
+[tool.uv]
+package = false

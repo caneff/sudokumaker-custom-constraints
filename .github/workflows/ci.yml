@@ -25,6 +25,8 @@ jobs:
         with:
           enable-cache: true
 
-      # `just check` = lint (standard + ruff) + probe goldens + soundness fuzz.
+      # A pull request runs the full gate (`check-full`: lint, every test,
+      # soundness fuzz); a push to main runs the fast `check` (#411). See the
+      # justfile.
       - name: Gate
-        run: uvx --from rust-just just check
+        run: uvx --from rust-just just ${{ github.event_name == 'pull_request' && 'check-full' || 'check' }}

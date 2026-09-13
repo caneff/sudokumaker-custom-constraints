@@ -88,11 +88,19 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 
 ## Commands
 
-- **Full gate — run before calling any task done:** `just check`
+- **Build loop:** `just check` — lint and every test but the heavy ones, about
+  30 s. Run it before each commit.
+- **Full gate — run before opening a PR or calling a task done:**
+  `just check-full` — `check` plus the heavy tests (the fillomino pipeline and
+  generator, the skyscraper and hit-counts recovery probes) and the soundness
+  fuzz. CI runs it on every pull request, and `check` on pushes to main.
 - Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
-- Probe goldens: `just test` — Soundness fuzz: `just soundness`
+- Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
+- Python runs in the one project environment (`pyproject.toml`, `uv.lock`):
+  `uv run <file>`. The `uv run --with ...` usage lines in older file headers
+  and READMEs still work; the justfile never passes `--with`.
 - Real-app timing for one example: `just time <example>` — prints a
-  paste-ready row; drives the live site, so it stays out of `just check`. See
+  paste-ready row; drives the live site, so it stays out of both gates. See
   `docs/real-app-timing.md`.
 - **A browser-driving probe runs in the local session, never a sandboxed
   delegate.** `just time`, `app-solve.mjs`, `app-strip.mjs` and any Playwright

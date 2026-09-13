@@ -1,8 +1,9 @@
 # Coding standards
 
 The rules a change to a constraint (or its tests and generators) must satisfy.
-`just check` gates the mechanical part — StandardJS on the Node code, ruff on
-the Python generators, the probe goldens, and the soundness fuzz. The rules
+`just check-full` gates the mechanical part — StandardJS on the Node code, ruff
+on the Python generators, the probe goldens, and the soundness fuzz; `just
+check` is its fast subset for the build loop. The rules
 below are the part a gate cannot judge: a human reviewer or an agent reads them
 off the diff. StandardJS lints the `.js` constraint snippets too; the
 exclusions are the vendored files kept for comparison — the `original/`

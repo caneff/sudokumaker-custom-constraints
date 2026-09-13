@@ -253,10 +253,10 @@ uv run --with lzstring examples/fillomino/build_link.py
 as it ships. This is the record the checklist asks for; re-walk it whenever
 the board or the rules text changes.
 
-**Free gate** — `just check` green: layout, lint, probe goldens, soundness at
-zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
-sample → CP-SAT proof → the shipped component solving this clue set offline →
-the link decode, and fails if any two of them disagree.
+**Free gate** — `just check-full` green: layout, lint, probe goldens, soundness
+at zero violations, the never-weaker floor, and `pipeline.test.py`, which drives
+CP-SAT proof → the shipped component solving this clue set offline → the link
+decode, and fails if any two of them disagree.
 
 The three mechanical criteria, checked by `check_layout.py` on every committed
 link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
@@ -273,7 +273,7 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
    exact `gen.json`, 5.4 s, no timeout; the run is recorded under *The board*
    above. Since this ticket it is not only a recorded run: `pipeline.test.py`
-   re-proves it on every `just check`, so the board cannot outlive its proof.
+   re-proves it on every `just check-full`, so the board cannot outlive its proof.
 2. **Rules text stands alone** ✓ — "Fillomino: Place a digit from 1-9 in every
    cell. Orthogonally connected cells with the same digit are regions; the
    number of cells in a region has to equal its digit. Two regions of the same
@@ -366,13 +366,13 @@ minimal clue set in the live app; the generator itself carries no strip step.
   builds a fresh instance per state.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
-- `pipeline.test.py` — the whole chain on one board: `generate.py sample` draws
-  a grid and CP-SAT proves it; CP-SAT proves the shipped clue set; the shipped
-  component solves that clue set offline out of `PUZZLE_LINK.txt` and must land
-  on `gen.json`'s grid; the link decodes with every non-given cell empty. Each
-  step is covered on its own elsewhere — what only this test covers is that the
-  generator, the proof, the component and the link cannot drift apart quietly.
-  About 30 s.
+- `pipeline.test.py` — the chain on the shipped board: CP-SAT proves the
+  shipped clue set; the shipped component solves that clue set offline out of
+  `PUZZLE_LINK.txt` and must land on `gen.json`'s grid; the link decodes with
+  every non-given cell empty. Each step is covered on its own elsewhere — what
+  only this test covers is that the proof, the component and the link cannot
+  drift apart quietly. About 17 s, so `check-full` only. The generator arm
+  (a sampled 9x9 grid proved unique) is `generate.self_check()`'s.
 - `generate.test.py` — the generator's acceptance criteria, including that a
   dropped grid (no solution, striped, or a uniqueness solve that timed out)
   logs its seed and clue set instead of vanishing.
