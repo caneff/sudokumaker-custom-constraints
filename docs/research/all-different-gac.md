@@ -99,6 +99,35 @@ table ran bare mask functions, and this runs each component's generator,
 mask reads and Change building included. It refuses a house above 9 cells in
 `setParams`.
 
+### Larger houses, both real components (#408)
+
+`408-house-gac/bench-large-n.mjs` runs both `update` functions at n=9..16,
+loading `HouseGacComponent.js` with `MAX_CELLS` raised to 16 in memory. A state
+is n cells over digits 1..n: a hidden permutation plus each other digit at
+`rate`. Before timing, both filters ran once on every state (2000 per row,
+32000 in all) and left identical candidates, so one scan stays exactly GAC up
+to n=16. Best of 3 reps; a second run agreed within about 10% per row.
+
+| n | subsets us | matching us, rate 0.35 | ratio | matching us, rate 0.15 | ratio |
+| --- | --- | --- | --- | --- | --- |
+| 9 | 4.1 | 24-26 | 0.17x | 11-12 | 0.34x |
+| 10 | 7.9 | 32-33 | 0.24x | 15-16 | 0.50x |
+| 11 | 16 | 39-40 | 0.41x | 16-17 | **0.97x** |
+| 12 | 33 | 52-54 | 0.62x | 22-23 | 1.45x |
+| 13 | 68 | 67-68 | **1.01x** | 26-29 | 2.45x |
+| 14 | 138-142 | 86 | 1.60x | 33-38 | 4.0x |
+| 15 | 283-302 | 111-117 | 2.5x | 42-46 | 6.8x |
+| 16 | 580-617 | 138-142 | 4.2x | 51-54 | 11.7x |
+
+Subsets cost only depends on n and doubles with each cell, whatever the
+candidates. Matching cost follows the live candidate count, so a sparser,
+better-propagated house moves the crossover down. Measured on the real
+components, it falls at **n=13 for random states (rate 0.35, 3.9-6.4
+candidates a cell) and n=11 for sparse ones (rate 0.15, 2.2-3.3 a cell)**, not
+at the bare-mask probe's n=10. A 9x9 or 10x10 house is cheaper with subsets at
+either density. At 16x16, subsets is 4-12x slower than the matching filter
+this bench compares it with.
+
 ### n and m on a sudoku grid
 
 Regin filters one house at a time: **n** = cells = 9, **d** = values = 9, **m** =
