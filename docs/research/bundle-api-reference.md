@@ -39,8 +39,8 @@ the bundle itself; each is also flagged in place as a `Discrepancy` note.
 
 | # | Finding | Status |
 |-|-|-|
-| 1 | `bundle-api-index.md` lists 34 components; the bundle has 42 `defineComponent` calls. The generator's filter rejects an array of names (`Pair`/`AsymmetricalPair`, `GreaterThan`/`LessThan`) and a template-literal description (the six group and sum components). | **In review**, sudokumaker-custom-constraints #415, PR #416. All eight are already in `builtin-components.md`. |
-| 2 | `bundle-api-index.md:70` indexes `helpers.geometry` as the base class, so `getSubsetsPerRegion` is absent from it; the main-code instance is the region-aware subclass swapped in by `createExtendedHelpers` (9205). | **Ticketed** as the second gap on #415; `puzzle-api.md`, "Two helpers objects", already documents it. |
+| 1 | `bundle-api-index.md` listed 34 components against 42 `defineComponent` calls: the generator's filter rejected an array of names and a template-literal description. | **Resolved**, #415 / PR #416. The index now reports 44 names, 42 constructors. |
+| 2 | `bundle-api-index.md` indexed `helpers.geometry` as the base class and had no `helpers.lines` or `helpers.misc`. | **Resolved**, #417 / PR #418. Those members are listed and marked `main code only`. |
 | 3 | `createExtendedHelpers` hands `MiscHelper` the base geometry, not the region-aware one (9218). | **Resolved as unobservable**: neither `MiscHelper` method uses its geometry helper. Noted in `puzzle-api.md`. |
 | 4 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. | Bundle bug. Do not trust a bottom-corner straight ray. |
 
