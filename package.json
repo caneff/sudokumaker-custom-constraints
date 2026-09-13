@@ -13,16 +13,13 @@
     "standard": "^17.1.2"
   },
   "standard": {
-    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet), the component constructors main.js references, and the functions a `// #include` splices into a paste target (frameLines, framePairs -- declared in _shared/frame-lines.js, called from each main-global.js); each component file disables no-unused-vars for its API functions. `ignore` holds verbatim third-party files, which must stay exactly as their author wrote them, plus FillominoComponentNoLog.js -- the same code minus its one console.log line (#307's log-free timing variant), kept in the vendor's own style so the comparison stays apples-to-apples -- plus docs/research/406-gac-demo/tools, throwaway probe scripts frozen as the record of a closed investigation (see CODING_STANDARDS.md) rather than maintained source.",
+    "//": "The .js files are constraint snippets pasted into SudokuMaker. `globals` names the API globals SudokuMaker injects (helpers, SudokuDigitSet), the component constructors main.js references, and the functions a `// #include` splices into a paste target (frameLines, framePairs -- declared in _shared/frame-lines.js, called from each main-global.js); each component file disables no-unused-vars for its API functions. `ignore` holds verbatim third-party files under examples/, which must stay exactly as their author wrote them, and all of docs/research/: vendored baselines (the fillomino one, plus FillominoComponentNoLog.js -- #307's log-free timing variant, kept in the vendor's own style so the comparison stays apples-to-apples) and throwaway probe scripts frozen as the record of a closed investigation (see CODING_STANDARDS.md). Research is not maintained source, so the gate never reads it (#413).",
     "ignore": [
       "examples/numbered-rooms/original/main.js",
       "examples/numbered-rooms/original/CustomIndexComponent.js",
       "examples/skyscraper/original/CustomSkyscraperLineComponent.js",
       "examples/skyscraper/original/main.js",
-      "docs/research/fillomino-baseline/main.js",
-      "docs/research/fillomino-baseline/FillominoComponent.js",
-      "docs/research/fillomino-baseline/FillominoComponentNoLog.js",
-      "docs/research/406-gac-demo/tools/**"
+      "docs/research/**"
     ],
     "globals": [
       "SudokuDigitSet",
