@@ -2,7 +2,7 @@
 # the research prototype whose model docs/research/fillomino-cpsat.md records.
 # Each function below is one acceptance criterion from #306.
 #
-#   uv run --with ortools examples/fillomino/generate.test.py
+#   uv run examples/fillomino/generate.test.py
 
 import json
 import pathlib
@@ -32,14 +32,16 @@ def test_timeout_never_a_verdict():
 
 
 def test_cap_wider_than_side():
-    # 9x9 board, digits 1-12: a valid grid must use a digit above 9 somewhere,
-    # since a 9-cell board side alone cannot hold a region of, say, 10 cells
-    # unless the region snakes across many rows -- the point is the cap, not
-    # the side, bounds the digit.
-    grid = sample(Board.of(9, 12), seed=1, pins=4)
+    # 4x4 board, digits 1-6: a valid grid must use a digit above 4 somewhere,
+    # since a 4-cell board side alone cannot hold a region of, say, 5 cells
+    # unless the region snakes across rows -- the point is the cap, not the
+    # side, bounds the digit. A 4x4 samples in hundredths of a second where the
+    # 9x9/cap-12 board this used to draw took ten (#411); the claim does not
+    # depend on the side.
+    grid = sample(Board.of(4, 6), seed=1, pins=4)
     digits = {d for row in grid for d in row}
-    assert max(digits) <= 12, f"digit above the cap 12: {digits}"
-    assert any(d > 9 for d in digits), f"no digit above 9 in {sorted(digits)}"
+    assert max(digits) <= 6, f"digit above the cap 6: {digits}"
+    assert any(d > 4 for d in digits), f"no digit above 4 in {sorted(digits)}"
 
 
 def test_model_and_rows_read_the_board_they_are_given():

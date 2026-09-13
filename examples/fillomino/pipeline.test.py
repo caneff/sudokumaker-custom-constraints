@@ -1,24 +1,28 @@
 """The fillomino pipeline, end to end (#303 review).
 
-One test drives the whole chain the example claims, with nothing stubbed:
+One test drives the chain from the shipped board to the shipped link, with
+nothing stubbed:
 
-  1. `generate.py sample` draws a fresh full grid, and CP-SAT proves that grid
-     is the only one matching all 81 of its own cells -- the generator arm.
-  2. CP-SAT proves the SHIPPED clue set (`gen.json`) has exactly one solution.
-  3. The SHIPPED component solves that clue set offline, read back out of
+  1. CP-SAT proves the SHIPPED clue set (`gen.json`) has exactly one solution.
+  2. The SHIPPED component solves that clue set offline, read back out of
      `PUZZLE_LINK.txt` -- `hunt.mjs board`, whose only propagator is
      `FillominoComponent.js`. It must reach `unique` and land on gen.json's
      grid.
-  4. The link decodes with every non-given cell empty, and its givens are
+  3. The link decodes with every non-given cell empty, and its givens are
      exactly gen.json's.
 
 Every step above is covered somewhere on its own; what only this test covers is
-that the four agree on ONE board -- the generator, the proof, the component and
-the link cannot drift apart quietly.
+that the three agree on ONE board -- the proof, the component and the link
+cannot drift apart quietly.
 
-Costs about 30 s: a CP-SAT sample, two proofs, and a 151k-node offline solve.
+The generator arm -- a sampled 9x9 grid is the only one matching all 81 of its
+own cells -- used to run here too. It never touched the shipped board, and
+`generate.self_check()` makes the same assertion on the same 9x9 shape, run by
+generate.test.py, so it left this test in #411.
 
-    uv run --with lzstring --with ortools examples/fillomino/pipeline.test.py
+Costs about 17 s: one proof and a 151k-node offline solve.
+
+    uv run examples/fillomino/pipeline.test.py
 """
 
 import json
@@ -39,19 +43,12 @@ SIDE = len(SPEC["grid"])
 CAP = SPEC.get("cap", SIDE)
 CLUES = [tuple(p) for p in SPEC["clues"]]
 
-# ---- 1. the generator arm: a sampled grid is a fillomino grid ----
-# The shipped instance's own call (README, "The board"). CP-SAT's portfolio is
-# not reproducible run to run, so the grid is not asserted equal to gen.json's;
-# what is asserted is that whatever it draws is a valid grid -- `unique` raises
-# ValueError when no grid matches its givens.
 BOARD = generate.Board.of(SIDE, CAP)
-sampled = generate.sample(BOARD, 3)
-assert generate.unique(BOARD, {p: sampled[p[0]][p[1]] for p in BOARD.cells}) is True
 
-# ---- 2. the shipped clue set has exactly one solution ----
+# ---- 1. the shipped clue set has exactly one solution ----
 assert generate.unique(BOARD, {p: int(SPEC["grid"][p[0]][p[1]]) for p in CLUES}) is True
 
-# ---- 3. the shipped component closes the shipped clue set, offline ----
+# ---- 2. the shipped component closes the shipped clue set, offline ----
 # `hunt.mjs board` reads the LINK (not gen.json), solves from its givens with
 # FillominoComponent.js as the only propagator, and refuses to write anything
 # unless the verdict is `unique`.
@@ -71,7 +68,7 @@ assert sorted(map(tuple, solved["clues"])) == sorted(CLUES), (
     "the link's givens are not gen.json's clue set"
 )
 
-# ---- 4. the link opens clean ----
+# ---- 3. the link opens clean ----
 puzzle = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())["puzzle"]
 assert (puzzle["width"], puzzle["height"]) == (SIDE, SIDE)
 for i, cell in enumerate(puzzle["cells"]):
@@ -81,4 +78,4 @@ for i, cell in enumerate(puzzle["cells"]):
     else:
         assert cell == {}, f"non-given cell {r_},{c_} ships {cell}"
 
-print("pipeline.test.py: sample -> proof -> component -> link all agree")
+print("pipeline.test.py: proof -> component -> link all agree")

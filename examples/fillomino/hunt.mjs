@@ -31,7 +31,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const mod = loadComponent(HERE)
 
 const py = (script, args, input) =>
-  JSON.parse(execFileSync('uv', ['run', '--with', 'lzstring', '--with', 'ortools', join(HERE, script), ...args],
+  JSON.parse(execFileSync('uv', ['run', join(HERE, script), ...args],
     { input, encoding: 'utf8', maxBuffer: 1 << 26 }))
 
 // `--node-cap N` raises the search budget for a board the default cannot
