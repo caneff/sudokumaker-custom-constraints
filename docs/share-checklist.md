@@ -4,7 +4,7 @@ What a puzzle link must satisfy before it goes to another person. The
 audience is a solver who opens the link — they never see this repo, but they
 do see the rules text and the component source embedded in the link blob.
 
-**Free gate first:** `just check` passes clean — layout, soundness at zero
+**Free gate first:** `just check-full` passes clean — layout, soundness at zero
 violations, never-weaker floor, lint, link grammar, and the two checks below.
 The criteria after them are the part the gate does not test.
 
