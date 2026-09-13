@@ -44,8 +44,8 @@ place as a `Discrepancy` note in the entry concerned.
 
 | # | Finding |
 |-|-|
-| 1 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. Do not trust a bottom-corner straight ray. |
-| 2 | `groupsArePolarityPair` (10375) builds its low and high masks with the same `digit < midpoint` test (10382), so the two are identical and a low/high polarity pair is never recognised. Confirmed in the minified original. |
+| 1 | Straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner (1183, 1195), and all four corner cases assume a square board. Do not trust a bottom-corner straight ray. **Confirmed by running the bundle**: on a 9x9 the ray for the bottom-right outer corner starts at (0,8), the bottom-left cell, and the bottom-left ray starts at (8,8). |
+| 2 | `groupsArePolarityPair` (10375) builds its low and high masks with the same `digit < midpoint` test (10382), so both are the low half. **Confirmed by running the bundle** on 1..9: the genuine pair {1..4},{6..9} still passes, but so does {1..4} with {5}, or with itself, while {6..9} paired with anything but the low half fails. Any two-group list containing the low half is described as "polarity (low/high)". Present in the minified original too. |
 
 ## The puzzle object, change objects and the component contract
 
@@ -984,7 +984,10 @@ coordinates.
 > swapped relative to `TopLeft`/`TopRight`, which are correct. Don't trust a
 > bottom-corner outer clue's straight ray. Also, all four corner cases assume
 > a square board: they run `min(width, height)` steps along the true diagonal,
-> which is not the visual diagonal of a non-square grid.
+> which is not the visual diagonal of a non-square grid. Run on a 9x9: the
+> bottom-right outer corner's ray starts (0,8), (1,7), (2,6); the bottom-left
+> corner's starts (8,8), (7,7), (6,6); the two top corners start at their own
+> corner.
 
 #### `getCellsPointedAtByOuterClue(outerCellId, diagonalType)`
 Same walk as `getCoordsPointedAtByOuterClue`, yielding cell ids. Inherits every
@@ -4729,8 +4732,10 @@ the high mask.
   A low/high pair still passes; so would a pair of low plus anything. **[read]**
 
 > Discrepancy: `bundle.claude.js:10382` builds `highMask` with
-> `digitForHigh < midpoint`, the same test as `lowMask` at line 10380. This looks
-> like a bug in the shipped bundle rather than a deliberate rule.
+> `digitForHigh < midpoint`, the same test as `lowMask` at line 10380, so both
+> masks are the low half. Run on a 1..9 spec: `[{1..4}, {6..9}]` → true, but
+> `[{1..4}, {5}]` and `[{1..4}, {1..4}]` → true as well, and `[{6..9}, {1}]` →
+> false. Any pair that contains the low half counts as a polarity pair.
 
 #### `groupsAreEntropySets(groups, spec)`
 
