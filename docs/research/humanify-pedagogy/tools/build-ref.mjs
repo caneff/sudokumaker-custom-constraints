@@ -12,6 +12,11 @@
 //   fenced code                  → .vt-code with a copy button
 //   fenced mermaid               → <pre class="mermaid"> in a .vt-diagram panel
 //                                  (the artifact host renders mermaid itself)
+// After rendering, every h3 and what follows it is wrapped in a
+// <section class="entry" data-tier> so the tier toggles can hide whole entries.
+// The nav is a tree: h2 › h3 › h4. h4 groups are collapsed until their h3 is
+// the one on screen (scroll-spy) or the filter matches inside them. The filter
+// searches headings and each entry's first descriptive paragraph.
 import { readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
@@ -78,6 +83,17 @@ nav .h2>a{font-weight:600;margin-top:10px;color:var(--vt-accent);text-transform:
 nav .h3>a{padding-left:16px}
 nav .h4>a{padding-left:30px;font-family:var(--vt-mono-font);font-size:.74rem;color:var(--vt-muted)}
 nav li[hidden]{display:none}
+nav li.h3>ul{display:none}
+nav li.open>ul,nav li.match>ul{display:block}
+nav li.active>a{background:var(--vt-accent-soft)}
+nav .h3>a::before{content:'▸';display:inline-block;width:.9em;color:var(--vt-muted);font-size:.8em}
+nav .h3.open>a::before,nav .h3.match>a::before{content:'▾'}
+nav .h3.leaf>a::before{content:''}
+nav .tiers{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+nav .tiers button{font:inherit;font-size:.72rem;line-height:1.4;padding:1px 9px;border-radius:999px;border:1px solid var(--vt-rule);background:var(--vt-paper);color:var(--vt-muted);cursor:pointer}
+nav .tiers button[aria-pressed="true"]{background:var(--vt-accent-soft);color:var(--vt-accent);border-color:var(--vt-accent)}
+nav .tiers button:focus-visible{outline:2px solid var(--vt-accent);outline-offset:1px}
+section.entry[hidden]{display:none}
 nav .count{color:var(--vt-muted);font-size:.75rem;margin:4px 8px 8px}
 main{padding-block:28px;min-width:0;max-width:940px}
 main h1{font-family:var(--vt-serif-font);font-weight:600;font-size:2.2rem;line-height:1.1;margin:0 0 .6rem;text-wrap:balance}
@@ -107,14 +123,14 @@ p.access .vt-pill{flex:none;font-weight:600;letter-spacing:.02em}
 .vt-table{font-size:.9rem}
 .vt-code{max-width:100%}
 .vt-diagram{background:var(--vt-soft);border:1px solid var(--vt-rule);border-radius:12px;padding:1.5rem;margin:1.4rem 0;overflow-x:auto}
-.vt-diagram pre.mermaid{margin:0;display:flex;justify-content:center;font-family:var(--vt-mono-font);font-size:.8rem}
+.vt-diagram pre.mermaid{margin:0;display:flex;justify-content:safe center;font-family:var(--vt-mono-font);font-size:.8rem}
 .vt-diagram svg{display:block;max-width:100%;height:auto}
 a{color:var(--vt-accent)}
 @media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--vt-rule);padding-right:0;max-height:40vh}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 <div class="shell">
-<nav aria-label="Contents"><div class="brand">Constraint API</div><input id="q" type="search" placeholder="Filter entries…" aria-label="Filter entries"><div class="count" id="count"></div><ul id="toc"></ul></nav>
+<nav aria-label="Contents"><div class="brand">Constraint API</div><input id="q" type="search" placeholder="Filter entries… ( / )" aria-label="Filter entries"><div class="tiers" role="group" aria-label="Show tiers"><button type="button" data-tier="public" aria-pressed="true">public</button><button type="button" data-tier="reachable" aria-pressed="true">reachable</button><button type="button" data-tier="internal" aria-pressed="true">internal</button></div><div class="count" id="count"></div><ul id="toc"></ul></nav>
 <main id="doc"></main>
 </div>
 <script type="text/markdown" id="src">
@@ -152,11 +168,48 @@ ${md}
   doc.querySelectorAll('.vt-code').forEach(function(block){var btn=block.querySelector('.vt-code-copy'),pre=block.querySelector('pre');btn.innerHTML=COPY;
     btn.addEventListener('click',function(){if(!(navigator.clipboard&&navigator.clipboard.writeText))return;navigator.clipboard.writeText(pre.textContent||'').then(function(){btn.innerHTML=CHECK;setTimeout(function(){btn.innerHTML=COPY},2000)}).catch(function(){})})});
   doc.querySelectorAll('a.anchor').forEach(function(a){a.addEventListener('click',function(){var url=location.href.split('#')[0]+a.getAttribute('href');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){a.classList.add('copied');setTimeout(function(){a.classList.remove('copied')},1500)}).catch(function(){})}})});
-  var toc=document.getElementById('toc');var items=[];
-  document.querySelectorAll('#doc h2,#doc h3,#doc h4').forEach(function(h){var li=document.createElement('li');li.className=h.tagName.toLowerCase();var a=document.createElement('a');a.href='#'+h.id;var label=h.textContent.replace(/#$/,'');a.textContent=label;li.appendChild(a);toc.appendChild(li);items.push({li:li,text:label.toLowerCase(),lv:li.className})});
-  var q=document.getElementById('q'),count=document.getElementById('count');
-  function filter(){var v=q.value.trim().toLowerCase();var n=0;items.forEach(function(it){var show=!v||it.lv==='h2'||it.text.indexOf(v)>=0;it.li.hidden=!show;if(show&&it.lv!=='h2')n++});count.textContent=v?n+' matching':items.filter(function(i){return i.lv==='h4'}).length+' entries';}
-  q.addEventListener('input',filter);filter();
+  // Wrap each h3 and everything up to the next h2/h3 in a section carrying its tier.
+  var TIERKEY={'public':'public','reachable, not documented':'reachable','internal':'internal'};
+  Array.prototype.slice.call(doc.querySelectorAll('h3')).forEach(function(h){var sec=document.createElement('section');sec.className='entry';h.parentNode.insertBefore(sec,h);
+    var n=h;while(n&&!(n.nodeType===1&&(n.tagName==='H2'||(n.tagName==='H3'&&n!==h)))){var nx=n.nextSibling;sec.appendChild(n);n=nx}
+    var pill=sec.querySelector('p.access .vt-pill');sec.dataset.tier=pill?(TIERKEY[pill.textContent.trim()]||'other'):'other'});
+  function firstPara(h){var n=h.nextElementSibling;while(n&&!/^H[1-4]$/.test(n.tagName)){if(n.tagName==='P'&&!n.classList.contains('access'))return n.textContent.toLowerCase();n=n.nextElementSibling}return ''}
+  var toc=document.getElementById('toc');var items=[];var curH2=null,curH3=null;
+  function childList(li){var ul=li.querySelector(':scope>ul');if(!ul){ul=document.createElement('ul');li.appendChild(ul)}return ul}
+  doc.querySelectorAll('h2,h3,h4').forEach(function(h){var lv=h.tagName.toLowerCase();var li=document.createElement('li');li.className=lv;var a=document.createElement('a');a.href='#'+h.id;var label=h.textContent.replace(/#$/,'');a.textContent=lv==='h4'?label.split(' / ')[0]:label;li.appendChild(a);
+    var it={li:li,a:a,h:h,lv:lv,text:label.toLowerCase(),desc:lv==='h2'?'':firstPara(h),parent:null,kids:[]};
+    var sec=h.closest('section.entry');it.tier=sec?sec.dataset.tier:'';it.sec=sec;
+    if(lv==='h2'){toc.appendChild(li);curH2=it;curH3=null}
+    else if(lv==='h3'){childList(curH2.li).appendChild(li);it.parent=curH2;curH2.kids.push(it);curH3=it}
+    else{var p=curH3||curH2;childList(p.li).appendChild(li);it.parent=p;p.kids.push(it)}
+    items.push(it)});
+  items.forEach(function(it){if(it.lv==='h3'&&!it.kids.length)it.li.classList.add('leaf')});
+  var q=document.getElementById('q'),count=document.getElementById('count'),nav=document.querySelector('nav');
+  var tiers={public:true,reachable:true,internal:true};
+  try{var saved=JSON.parse(localStorage.getItem('ref-tiers')||'null');if(saved&&typeof saved==='object')Object.keys(tiers).forEach(function(k){if(k in saved)tiers[k]=!!saved[k]})}catch(e){}
+  var tierButtons=Array.prototype.slice.call(nav.querySelectorAll('.tiers button'));
+  tierButtons.forEach(function(b){b.setAttribute('aria-pressed',String(tiers[b.dataset.tier]));b.addEventListener('click',function(){tiers[b.dataset.tier]=!tiers[b.dataset.tier];b.setAttribute('aria-pressed',String(tiers[b.dataset.tier]));try{localStorage.setItem('ref-tiers',JSON.stringify(tiers))}catch(e){}applyView();spy()})});
+  function tierOn(it){var t=it.tier||(it.parent&&it.parent.tier);return !t||t==='other'||tiers[t]}
+  function applyView(){var v=q.value.trim().toLowerCase();var filtering=!!v;var n=0,total=0;
+    // entries hidden by tier disappear from the page too; the text filter only prunes the nav
+    document.querySelectorAll('section.entry').forEach(function(sec){sec.hidden=!(sec.dataset.tier==='other'||tiers[sec.dataset.tier])});
+    items.forEach(function(it){it.self=tierOn(it)&&(!filtering||it.text.indexOf(v)>=0||it.desc.indexOf(v)>=0)});
+    items.forEach(function(it){if(it.lv==='h4'){it.show=it.self;if(it.show)total++;if(it.show&&filtering)n++}});
+    items.forEach(function(it){if(it.lv==='h3'){var kid=it.kids.some(function(k){return k.show});it.show=tierOn(it)&&(!filtering||it.self||kid);it.li.classList.toggle('match',filtering&&it.show);if(it.show&&filtering&&!kid&&!it.kids.length)n++}});
+    items.forEach(function(it){if(it.lv==='h2'){var kid=it.kids.some(function(k){return k.show});it.show=!filtering||kid||it.text.indexOf(v)>=0;it.li.classList.toggle('match',filtering&&it.show)}});
+    items.forEach(function(it){it.li.hidden=!it.show});
+    count.textContent=filtering?n+' matching':total+' entries'}
+  // Scroll-spy: the last heading above the top of the viewport names the open group.
+  var heads=items.filter(function(it){return it.lv!=='h2'});var activeH3=null,activeItem=null,ticking=false;
+  function spy(){ticking=false;var y=90;var found=null;for(var i=0;i<heads.length;i++){var it=heads[i];if(it.li.hidden||(it.sec&&it.sec.hidden))continue;if(it.h.getBoundingClientRect().top<=y)found=it;else break}
+    var h3=found?(found.lv==='h3'?found:found.parent):null;if(h3&&h3.lv!=='h3')h3=null;
+    if(activeItem&&activeItem!==found)activeItem.li.classList.remove('active');
+    if(activeH3&&activeH3!==h3)activeH3.li.classList.remove('open');
+    activeItem=found;activeH3=h3;if(found)found.li.classList.add('active');if(h3)h3.li.classList.add('open');
+    if(found&&!q.value.trim()){var r=found.a.getBoundingClientRect(),nr=nav.getBoundingClientRect();if(r.top<nr.top+40||r.bottom>nr.bottom-40)found.a.scrollIntoView({block:'center'})}}
+  window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(spy)}},{passive:true});
+  document.addEventListener('keydown',function(e){if(e.key==='/'&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();q.focus();q.select()}});
+  q.addEventListener('input',applyView);applyView();spy();
 })();
 </script>
 `

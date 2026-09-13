@@ -34,7 +34,7 @@ Caveats:
   carries **[inferred]**, which means the description comes from the name,
   the call sites, or a partial read, and the entry says what was not read.
   Treat an **[inferred]** entry as a best guess to verify before relying on it.
-  Entries in the appendix sections also carry **[read]** where the body was
+  Entries in the internals sections also carry **[read]** where the body was
   read in full.
 
 ## Bundle bugs
@@ -95,6 +95,9 @@ Unregisters a component.
 Returns the `Set` of components currently registered on that cell.
 - **Notes:** live set from the state's per-cell index, not a copy. Handlers use
   it to find and drop a component they are about to replace.
+
+#### `setRegions(regionIdByCellId)`
+Forwards straight to `SolverState.setRegions`, creating the region components. **[read]**
 
 ### Shared reads (class PuzzleAccessorBase)
 
@@ -534,6 +537,71 @@ loaded and before the first `updateConstraintsAndValidate`, via
 `processChange` and breaks on the first terminal change. The other caller is the
 `ReplaceComponent` branch above, for the incoming replacement.
 
+**The rest of `SolverState`.** The members below are the solver's own. None is
+part of the documented `puzzle` surface; a component meets them only through
+`puzzle.state`, and the entry says so where one is reached from custom code.
+
+#### `static create()`
+Returns a fresh empty `SolverState` — every cell valueless with all digits as candidates, no regions, no components. **[read]**
+
+#### `setRegions(regionIdByCellId)`
+Installs the region layout and creates one component per region: a `HouseComponent` when the region holds exactly as many cells as there are digits, otherwise a `DifferentDigitsComponent`.
+- **Params:** `regionIdByCellId` – array indexed by cell id giving its region id, `-1` for none.
+- **Mutates:** `regions`, `regionsByCellId`, and the component set.
+- **Notes:** names the regions `box N` when `regionsAreRectangularBoxes` says the layout is rectangular boxes, else `region N`. Reached from setup code as `puzzle.setRegions`. **[read]**
+
+#### `handleRequiredDigitsComponent(component)`
+Registers a `RequiredDigitsComponent`'s digits with the candidate-set map. If the component's values are all distinct it marks them in one mask; otherwise it marks each value separately with that value's repeat count, so "two 5s in here" is recorded as a repeat rather than collapsing to one.
+- **Notes:** called from `addConstraintComponent`, not directly. **[read]**
+
+#### `getConstraintComponents()`
+Returns the live `Set` of every registered component. **[read]**
+
+#### `getHouseComponents()`
+Returns the live `Set` of registered `HouseComponent`s only. **[read]**
+
+#### `addComponentListener(listener)`
+Subscribes `listener` to the `"change"` event, called with `{ type: "add" | "delete", component }` on every registration and unregistration. Used by `ComponentSubscription.bind`. **[read]**
+
+#### `getCellsSeenByCells(cellIds, includeClones = true)`
+The set of cells seen by **every** cell in `cellIds` — the intersection of their `getCellsSeenByCell` sets.
+- **Returns:** a `Set` of cell ids; empty `Set` for an empty input.
+- **Notes:** short-circuits as soon as the running intersection empties. This is what a naked-subset style elimination calls to find its targets; reached from a component as `puzzle.getCellsSeenByCells`. **[read]**
+
+#### `filterCandidatesAtCell(digitMask, cellId)` / `*filterCandidatesAtCells(digitMask, cellIds)`
+Intersects the candidate mask of one cell, or of each listed cell in turn, with `digitMask`, telling the candidate-set map about each digit removed and marking the cell dirty.
+- **Returns:** for one cell, `UnchangedResult` if nothing was removed, a failed result for the cell if the mask emptied, otherwise `ChangedResult`; the plural form is a generator yielding one such result per cell.
+- **Mutates:** the cell's `candidates`, `candidateSetMap`, `updateSet`. **[read]**
+
+#### `markDigitsAsRequiredForCells(digitMask, componentName, cellIds, { repeatCount = 0, houseType })`
+Records "each digit in `digitMask` must appear in `cellIds`", keyed by `` `${componentName}_${cellIds}` `` so repeated calls for the same group only add newly required digits.
+- **Returns:** `true` if any digit was newly required.
+- **Mutates:** `requiredDigitsForComponent`, and adds one set per newly required digit to `candidateSetMap`.
+- **Notes:** a digit already placed enough times (`placedCount >= repeatCount + 1`) or with no candidate cells left records no set. **[read]**
+
+#### `markDigitsAsRequiredForComponent(digitMask, component, cellIds = component.cellIds, repeatCount = 0)`
+The same, keyed by the component's name and carrying the component's `houseType` when it is a `HouseComponent`.
+- **Notes:** this is the call a component makes to tell the solver its cells must contain certain digits; `addConstraintComponent` uses it to require all digits in every house. **[read]**
+
+#### `getSetsForCandidate(digit)`
+Returns that digit's required-digit sets from the candidate-set map, shortest first. Read by hidden-single and pointing logic steps. **[read]**
+
+#### `getCloneSet(cellId)`
+Returns the `Set` of cell ids that always hold the same digit as `cellId`, including itself. Non-empty even with no clone constraints. **[read]**
+
+#### `addClonedCells(cellSet)`
+Expands `cellSet` in place with every clone partner of its members, and returns it.
+- **Mutates:** the argument. **[read]**
+
+#### `isSolved()`
+True when every cell has a value. Says nothing about validity — `findSolutions` pairs it with `validate()`. **[read]**
+
+#### `clone()`
+Returns `new SolverState(this)`: per-cell value and candidates copied, `constraintComponentByCell` and `candidateSetMap` structurally copied, `clonedCellsMap` deep-copied, and the component set copied **by reference**, so every search node shares one component object. **[read]**
+
+#### `isTerminalChange(change)`
+True for `ReplaceComponent` and `AbortSolver` — the two change types after which the solver stops draining a component's generator. **[read]**
+
 ### How your code becomes a class
 
 Access: **public** — the wrapper every custom component runs through.
@@ -633,9 +701,20 @@ from the base factory `createHelpers(spec)` (`bundle.claude.js:1614`);
 `lines` and `misc` exist **only** on the object built by
 `createExtendedHelpers(spec, sudokuState)` (`bundle.claude.js:9201`), which
 spreads the base helpers and adds `lines`, `misc`, and a region-aware
-`geometry`. Built-in components use `helpers.lines` and `helpers.misc` freely,
-so the extended object is what a solving component receives; a bare
-`createHelpers` result would not have them.
+`geometry`. Which object you hold depends on where your code runs: main code
+runs under `setupPuzzle`, which builds the extended object
+(`bundle.claude.js:9349`); a custom component class is compiled with a bare
+`createHelpers(puzzleSpec)` result (`bundle.claude.js:9994`), so inside
+`update`, `initialize` and `validate` there is no `helpers.lines` or
+`helpers.misc`. Built-in components, which the handlers build during setup,
+use both freely.
+
+| `helpers.` member | main code | `update` / `initialize` / `validate` |
+|-|-|-|
+| `cellIds`, `cornerIds`, `edgeIds`, `outerCellIds`, `connectivity` | yes | yes |
+| `sums`, `xSums`, `digits`, `naming` | yes | yes |
+| `geometry` | `RegionAwareGeometryHelper`, adds `getSubsetsPerRegion` | plain `GeometryHelper` |
+| `lines`, `misc` | yes | absent |
 
 The four id schemes are all row-major integers, but over four different
 lattices: cells over `width`, corners over `width + 1`, edges over
@@ -830,6 +909,87 @@ three or more neighbours), and `toArrays()` (traces the graph into arrays of
 points, starting from degree-1 endpoints; it throws
 `"This should never happen"` after 1000 steps). Non-number points are interned
 by structural key, so `{x, y}` objects compare by value.
+
+### `LineGraph` (the graph `getOrthogonallyConnectedGroups` yields)
+
+Access: **reachable, not documented** — instances come back from `helpers.connectivity.getOrthogonallyConnectedGroups`, but the class is not injected.
+
+The members of the undirected graph at `bundle.claude.js:250` that the list above does not cover.
+Its one field is `pointsConnected`, a `Map` from interned point to a `Set` of
+neighbours; the constructor's second argument is an `isGreaterThan(a, b)`
+comparator (default `a > b`) used only to emit each undirected edge once.
+
+#### `addLine(line)`
+Adds an undirected edge for each consecutive pair in `line`.
+- **Returns:** `this`. **Mutates:** the receiver. A one-point line adds
+  nothing; use `addPoint` for that. **[read]**
+
+#### `addPoint(point)` / `addPoints(points)`
+Ensures the point, or each point of an iterable, exists with an empty neighbour
+set.
+- **Returns:** `undefined`. **Mutates:** the receiver.
+- **Notes:** this is the one entry point that does **not** intern its argument,
+  so an object point added here and then queried via `hasPoint` may miss. Pass
+  cell ids, or intern yourself. **[read]**
+
+#### `addEdge(pointA, pointB)`
+Interns both points, creates their neighbour sets if needed, and links them
+both ways.
+- **Returns:** `this`. **Mutates:** the receiver. **[read]**
+
+#### `removeEdge(pointA, pointB, pruneIsolated = true)`
+Removes the link in both directions, and by default deletes either endpoint
+that is left with no neighbours.
+- **Returns:** `this`. **Mutates:** the receiver. Pass `false` as the third
+  argument to keep now-isolated points in the graph. A no-op when either point
+  is absent. **[read]**
+
+#### `removePoint(point)`
+Removes every edge at `point`, which with default pruning also removes the
+point.
+- **Returns:** `this`. **Mutates:** the receiver.
+- **Notes:** it iterates the point's live neighbour set while `removeEdge`
+  deletes from it. Sets tolerate this in JS, but a point whose last edge is
+  removed disappears mid-loop. **[read]**
+
+#### `hasPoint(point)`
+Whether the interned point is present. **Returns:** boolean. **[read]**
+
+#### `getAllComponents()`
+Splits the whole graph into connected components.
+- **Returns:** generator of new `LineGraph` objects, each carrying the original
+  comparator. **Mutates:** nothing.
+- **Notes:** this is what `helpers.connectivity.getOrthogonallyConnectedGroups`
+  hands you — a generator, so spread it if you need two passes. **[read]**
+
+#### `getConnectedPointSets(points)`
+Groups the given points by which component they fall in, without building
+graphs.
+- **Params:** `points` – iterable, interned; omit it to use every point in the
+  graph.
+- **Returns:** generator of arrays of points. **Mutates:** nothing.
+- **Notes:** each yielded array is the *full* connected set reachable from a
+  seed, so it can include points that were not in your input. **[read]**
+
+#### `getPointsConnectedTo(startPoint)`
+Breadth-style flood fill from `startPoint` over neighbour sets.
+- **Returns:** a new `Set` of reachable points. **Mutates:** nothing.
+- **Notes:** a `startPoint` not in the graph yields an empty set, since the
+  loop skips points with no entry. **[read]**
+
+#### `getComponentContainingPoint(startPoint)` / `getComponentsContainingPoints(points)`
+The single component containing `startPoint`, or the union of the components
+containing any of `points`, as one graph.
+- **Returns:** a new `LineGraph` with the same comparator, holding those points
+  and the edges among them. **Mutates:** nothing. An unknown start point gives
+  an empty graph; in the plural form the requested points are added explicitly,
+  so isolated ones survive (unlike the `DirectedLineGraph` twin). **[read]**
+
+#### `clone()`
+Rebuilds from `getEdges()` with the same comparator.
+- **Returns:** a new `LineGraph`. **Mutates:** nothing.
+- **Notes:** edges only — a point with no edges is lost by the clone, and so
+  by `toArrays()`, which clones first. **[read]**
 
 ### helpers.lines (class LinesHelper)
 
@@ -1425,6 +1585,9 @@ site (`bundle.claude.js:10119`) adds `puzzle`, `sudoku` (the same object) and
 global scope: `window`, `Math`, `Set` and friends are reachable, but nothing
 module-local from the bundle is.
 
+`DiagonalType` and `OuterPosition` are described with the geometry helper
+that consumes them, in the Geometry section above.
+
 ### `SmallNumberSet` (global `SmallNumberSet`)
 
 Access: **public** — injected into custom code under this global name.
@@ -1887,30 +2050,7 @@ Every combination of distinct positions in `values` whose elements add to
   when `minCount` is 0. A digit set needs converting first:
   `getCombinationsForSum([...digitSet], 15, 2, 2)`.
 
-### `OuterPosition` (global `OuterPosition`)
-
-Access: **public** — injected into custom code under this global name.
-
-A numeric enum of the eight outer-clue anchor positions, at
-`bundle.claude.js:677`: `Top` 0, `Right` 1, `Bottom` 2, `Left` 3, `TopLeft` 4,
-`TopRight` 5, `BottomRight` 6, `BottomLeft` 7. It is the usual TypeScript
-two-way enum object, so `OuterPosition[0]` is the string `"Top"`. The geometry
-helper uses it to turn an outer cell into the row, column or diagonal it points
-along; the four corners are the diagonal cases.
-
-### `DiagonalType` (global `DiagonalType`)
-
-Access: **public** — injected into custom code under this global name.
-
-A numeric enum with two members, at `bundle.claude.js:697`: `PositiveDiagonal`
-is `1` and `NegativeDiagonal` is `-1`. The values are the x-step direction used
-when walking a diagonal, not arbitrary tags, so they can be multiplied into
-coordinate arithmetic. Also two-way: `DiagonalType[1]` is `"PositiveDiagonal"`.
-Beware the sign intuition — in screen coords, where y grows downward, the
-"negative" diagonal is the one running top-left to bottom-right.
-
-
-## Built-in components, A to M
+## Built-in components
 
 The solver ships ~42 constraint component classes. A custom component never
 subclasses them, but three things make them worth reading: a `replaceComponent`
@@ -1921,8 +2061,9 @@ templates are the app's own vocabulary. Reach them by their registered
 constructor name inside main code: the `defineComponent` decorator appends
 `Component` to any name that lacks it, so `House` is registered as
 `HouseComponent` and that is the global you call `new` on
-(`bundle.claude.js:2745`). Every registered constructor is spread into the
-custom constraint's evaluation globals by name
+(`bundle.claude.js:2745`); `RatioComponent` is registered with the suffix
+already present and is reached the same way. Every registered constructor is
+spread into the custom constraint's evaluation globals by name
 (`...Object.fromEntries(getComponentConstructorsByName())`,
 `bundle.claude.js:10069`), which is what makes those names resolve inside a
 component or main code segment.
@@ -1933,8 +2074,22 @@ builds a list of leaf components in `initialize`, and deletes itself. A **pair**
 extends `PairComponent` and delegates all pruning to a precomputed friend table,
 supplying only `validate` and a constructor.
 
-This section covers every such class whose registered display name (or class
-name, when unregistered) sorts before `N`, in that order.
+Two conventions used throughout. A component's `update` and `initialize` are
+generators that `yield` change objects (`{type: N, …}`); the change-type names
+below are the app's own enum names, and the factory helpers map to them as:
+`filterCandidatesAtCellChange`/`keepOnlyDigitAtCell` → type 1
+FilterCandidatesAtCell, `filterCandidatesAtCellsChange` → type 2,
+`removeDigitFromCellChange`/`removeCandidatesFromCellChange` → type 3,
+`removeDigitFromCellsChange`/`removeCandidatesFromCellsChange` → type 4,
+`abortSolverChange` → type 5 AbortSolver, `replaceComponentChange` → type 6
+ReplaceComponent, and `removeComponentChange()` is `replaceComponentChange([])`
+(`bundle.claude.js:1863`). And a built-in `validate` returns
+`ValidResult = {valid: true}` (`bundle.claude.js:2675`) or
+`{valid: false, message}` — not a boolean.
+
+This section holds every registered component, by display name, plus the
+public base `PairComponent`. The unregistered classes they delegate to are in
+the next section.
 
 ### Between (`class BetweenComponent extends ConstraintComponent`)
 
@@ -1962,24 +2117,6 @@ Between-line logic for two endpoints and any number of midpoints
   fires when both ends are solved to the same digit. `getIsDone` returns true as
   soon as both endpoints have values, so a Between line stops re-running before
   its midpoints are filled.
-
-### CompositeComponent (`class CompositeComponent extends ConstraintComponent`)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-The base for every component that is just a bundle of other components
-(`bundle.claude.js:4998`). Unregistered; you reach it only by subclassing or by
-reading one of its concrete subclasses. Field: `getComponents`, a thunk taking
-the solver state.
-
-- **Constructor** `(name, cellIds, getComponents)` — `getComponents` is
-  `(state) => Component | Component[]`, called once.
-- **initialize** Yields exactly one `ReplaceComponent` change carrying
-  `getComponents(state)`. The composite is gone after that; it never sees
-  `update`.
-- **Notes** The thunk runs at initialize time, not construction time, so it can
-  branch on puzzle geometry (`state.getCellsCanHaveRepeats`, `puzzleSpec.digitCount`).
-  This is the pattern to copy when your constraint decomposes into built-ins.
 
 ### ConsecutiveDigits (`class ConsecutiveDigitsComponent extends ConstraintComponent`)
 
@@ -2186,27 +2323,6 @@ A digit appears exactly `count` times (`bundle.claude.js:5676`).
   times (the lower bound). The repeat-to-require-repeats trick is exactly what
   `RequiredDigits`' own message template describes.
 
-### ExactSumComponent (`class ExactSumComponent extends ConstraintComponent`)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-Unregistered leaf that `SumComponent` and friends delegate to
-(`bundle.claude.js:4251`). Fields: `sums` (array), `repeat` (bool), `minSum`,
-`maxSum`, `sumsDescription`.
-
-- **Constructor** `(name, sums, cellIds, repeat)`.
-- **update** Delegates wholesale to `new SumCandidateUpdater(state, minSum,
-  maxSum, cellIds, name).updateCandidates(repeat)`; it holds no sum logic of its
-  own. See the sums section for that updater.
-- **validate** `validateDuringSolve` is true. Returns valid as soon as it hits an
-  unfilled cell; otherwise checks the total against `sums`.
-- **Notes** `SumComponent` picks this class only when the requested sums are
-  *not* a contiguous range; a contiguous list goes to `SumRangeComponent`
-  instead (`bundle.claude.js:7019`). Only `minSum` and `maxSum` reach the
-  updater, so a disjoint list such as `[5, 20]` still prunes as the range 5–20
-  during solving, and the exact membership is enforced only by `validate` once
-  every cell is filled.
-
 ### ForbiddenCandidates (`class ForbiddenCandidatesComponent extends ConstraintComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -2224,26 +2340,6 @@ One-shot removal of a digit set from cells (`bundle.claude.js:5555`).
 - **Notes** The mask arithmetic is subtraction, not `& ~`. That is only correct
   when every forbidden bit is actually set in `allDigitsMask`; a stray bit
   outside the digit range corrupts the result rather than being ignored.
-
-### FriendDigitTable (`class FriendDigitTable`)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-Not a component: the memoized lookup table behind every `PairComponent`
-subclass (`bundle.claude.js:3774`).
-
-- **Constructor** `(callback, paramType)` — `callback(paramValue, digit)`
-  returns the mask of digits that may sit opposite `digit`. `paramType` is a
-  `FriendCacheKeyKind` selecting how the cache key is built (`None` for
-  parameterless relations like greater-than, `Number` for a numeric parameter
-  like a difference).
-- **getFriends(paramValue)** Returns an array indexed by digit, built once per
-  (param, minDigit, maxDigit) triple and cached.
-- **Notes** The cache is keyed on the digit range too, so the same table object
-  is safe across puzzles of different sizes. `friendMasksFromDigitSets` and
-  `friendMasksFromPredicate` (just below it) are the two other ways to build the
-  same array — `PairComponent` accepts either an array of masks or a
-  `(d1, d2) => boolean` predicate, memoizing the predicate by identity.
 
 ### GreaterThan / LessThan (`class GreaterThanComponent extends PairComponent`)
 
@@ -2400,89 +2496,6 @@ Two cells differ by at least `minDifference` (`bundle.claude.js:6073`).
   digit is its own friend, so `unique` is true and the pair also acts as an
   exclusion.
 
-### MultiProductComponent (`class MultiProductComponent extends ConstraintComponent`)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-Unregistered leaf that `ProductComponent` uses when its product argument is an
-array (`bundle.claude.js:6601`; dispatch at `bundle.claude.js:6578`). A single
-positive product goes to `SingleProductComponent`, and a product of 0 becomes a
-`RequiredDigitsComponent` for digit 0. Field: `products` (array of numbers).
-
-- **Constructor** `(name, products, cellIdList)`.
-- **initialize** Builds the set of digits that could ever participate: 1 always,
-  plus every digit that divides at least one product (a product of 0 admits every
-  digit). Yields one `FilterCandidatesAtCells`. It does not retire itself.
-- **update** Not defined, so after `initialize` the component only validates.
-- **validate** `validateDuringSolve` is true, but it returns valid until every
-  cell has a value, then multiplies them and checks membership in `products`.
-- **Notes** The divisibility filter is the whole of its propagation — it is a
-  one-shot domain narrowing, not an ongoing product deduction. `product % digit`
-  with `digit` 0 yields `NaN`, which fails the `=== 0` test, so digit 0 is only
-  admitted through the `product === 0` branch.
-
-
-## Built-in components, N to Z
-
-Every constructor registered by `defineComponent` is injected as a global into
-custom component and main code under its **`...Component`** name — `defineComponent`
-appends the suffix if the display name lacks it, and the solver spreads
-`getComponentConstructorsByName()` into the custom-code globals
-(`bundle.claude.js:2745`, `bundle.claude.js:10069`). So the display name `Sum`
-is reached as `new SumComponent(name, sums, cells)`; `RatioComponent` is
-registered with the suffix already present and is reached the same way. This
-section covers the registered names sorting at or after "N", the unregistered
-internal components they delegate to, and the two abstract bases
-(`PairComponent`, `CompositeComponent`).
-
-Two conventions used throughout. A component's `update` and `initialize` are
-generators that `yield` change objects (`{type: N, …}`); the change-type names
-below are the app's own enum names, and the factory helpers map to them as:
-`filterCandidatesAtCellChange`/`keepOnlyDigitAtCell` → type 1
-FilterCandidatesAtCell, `filterCandidatesAtCellsChange` → type 2,
-`removeDigitFromCellChange`/`removeCandidatesFromCellChange` → type 3,
-`removeDigitFromCellsChange`/`removeCandidatesFromCellsChange` → type 4,
-`abortSolverChange` → type 5 AbortSolver, `replaceComponentChange` → type 6
-ReplaceComponent, and `removeComponentChange()` is `replaceComponentChange([])`
-(`bundle.claude.js:1863`). And a built-in `validate` returns
-`ValidResult = {valid: true}` (`bundle.claude.js:2675`) or
-`{valid: false, message}` — not a boolean.
-
-### PairComponent (global `PairComponent`, aliased `AsymmetricalPairComponent`)
-
-Access: **public** — registered as `PairComponent` and `AsymmetricalPairComponent`, so `new PairComponent(...)` works in custom code.
-
-Abstract two-cell base, `class extends ConstraintComponent` at
-`bundle.claude.js:3849`. Almost every two-cell built-in (Difference, Ratio,
-GreaterThan(OrEquals), MaximumDifference, MinimumDifference, NegativeDifference,
-NegativeRatio, NegativeSumPair, SumPair) subclasses it and supplies only a
-friend table plus a `validate`. Fields: `cellId1`, `cellId2`, `friendsFor1` and
-`friendsFor2` (arrays indexed by digit, each entry a digit mask of partners
-allowed in the other cell), `unique` (true when no digit is its own friend).
-
-#### `constructor(name, filterOrMapping, cellId1, cellId2)`
-Builds the two friend tables from either a ready-made array of DigitSets
-(index = digit in cell 1, value = allowed digits in cell 2) or a predicate
-`(d1, d2) => boolean`.
-- **Notes:** the array form is *asymmetrical* — `friendsFor2` is derived by
-  inverting it (`friendMasksFromDigitSets`). Subclasses pass a cached table from
-  a `FriendDigitTable`, which memoises per parameter value, so constructing
-  thousands of Kropki-style pairs costs one table build.
-
-#### `*update({cells})`
-Unions the friend masks of every live candidate in each cell and filters the
-other cell to that union. Yields two FilterCandidatesAtCell changes.
-
-#### `getExclusionGroup()`
-Returns `this.cellIds` when `unique` is set, otherwise `[]`. A non-empty
-exclusion group makes the base `initialize` strip the set value from the partner
-cell.
-
-#### `getIsDone({cells})`
-True once every candidate of cell 1 permits the whole current candidate set of
-cell 2 — i.e. the pair can no longer prune.
-
-
 ### NegativeBetween (`NegativeBetweenComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -2569,23 +2582,39 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 - **initialize** Replaces itself with `NegativeSumPairComponent` when exactly two
   cells, otherwise `NegativeSumGroupComponent`.
 
-### NegativeSumPairComponent (internal)
+### PairComponent (global `PairComponent`, aliased `AsymmetricalPairComponent`)
 
-Access: **internal** — not reachable from custom code.
+Access: **public** — registered as `PairComponent` and `AsymmetricalPairComponent`, so `new PairComponent(...)` works in custom code.
 
-`bundle.claude.js:6430`, extends PairComponent. Friends from
-`negativeSumFriendTable`: full digit set minus `sum − digit` for each forbidden
-sum. `validate` fails when the two values add to a listed sum. This is the only
-negative-sum path that actually prunes candidates.
+Abstract two-cell base, `class extends ConstraintComponent` at
+`bundle.claude.js:3849`. Almost every two-cell built-in (Difference, Ratio,
+GreaterThan(OrEquals), MaximumDifference, MinimumDifference, NegativeDifference,
+NegativeRatio, NegativeSumPair, SumPair) subclasses it and supplies only a
+friend table plus a `validate`. Fields: `cellId1`, `cellId2`, `friendsFor1` and
+`friendsFor2` (arrays indexed by digit, each entry a digit mask of partners
+allowed in the other cell), `unique` (true when no digit is its own friend).
 
-### NegativeSumGroupComponent (internal)
+#### `constructor(name, filterOrMapping, cellId1, cellId2)`
+Builds the two friend tables from either a ready-made array of DigitSets
+(index = digit in cell 1, value = allowed digits in cell 2) or a predicate
+`(d1, d2) => boolean`.
+- **Notes:** the array form is *asymmetrical* — `friendsFor2` is derived by
+  inverting it (`friendMasksFromDigitSets`). Subclasses pass a cached table from
+  a `FriendDigitTable`, which memoises per parameter value, so constructing
+  thousands of Kropki-style pairs costs one table build.
 
-Access: **internal** — not reachable from custom code.
+#### `*update({cells})`
+Unions the friend masks of every live candidate in each cell and filters the
+other cell to that union. Yields two FilterCandidatesAtCell changes.
 
-`bundle.claude.js:6404`. Three-or-more-cell fallback. `validateDuringSolve` is
-true, but it defines **no `update`** — it only checks, once every cell in the
-group is filled, that the total is not a forbidden sum. Expect zero propagation
-from a NegativeSum over three or more cells.
+#### `getExclusionGroup()`
+Returns `this.cellIds` when `unique` is set, otherwise `[]`. A non-empty
+exclusion group makes the base `initialize` strip the set value from the partner
+cell.
+
+#### `getIsDone({cells})`
+True once every candidate of cell 1 permits the whole current candidate set of
+cell 2 — i.e. the pair can no longer prune.
 
 ### PredefinedCandidates (`PredefinedCandidatesComponent`)
 
@@ -2614,35 +2643,6 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
   `SingleProductComponent`; a product of `0` (or negative) →
   `new RequiredDigitsComponent(name, [0], cells)`, i.e. "some cell must be 0",
   which only makes sense on a 0-based digit spec.
-
-### SingleProductComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:6499`. The propagating product component.
-
-- **update** Divides the target by every filled value in turn; a value that does
-  not divide the remainder yields AbortSolver immediately. Builds a digit set of
-  divisors of the remaining product and filters every unfilled cell to it, while
-  accumulating running min/max products from the surviving candidate extremes.
-  Aborts if the running minimum exceeds the target, or at the end if the maximum
-  falls short.
-- **Notes:** the min/max accumulation is order-dependent and interleaved with the
-  filter yields, so it reads the pre-change candidate masks. `createFilteredDigitSet`
-  is called with each candidate digit, so a 0-based spec divides by zero — the
-  `remainingProduct % 0` is `NaN`, and 0 is excluded from the divisor set.
-
-### MultiProductComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:6601`. Used when several products are allowed.
-
-- **initialize** Builds the union of digits dividing any allowed product (plus 1,
-  always) and filters all cells to it. One FilterCandidatesAtCells change.
-- **validate** `validateDuringSolve` is true; once all cells are filled, checks
-  the product is in the list. No `update` — after the initial filter this
-  component is a pure checker.
 
 ### RatioComponent (`RatioComponent`)
 
@@ -2791,31 +2791,6 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 - **initialize** Replaces itself with a pair: a `RequiredDigitsComponent` forcing
   both crust digits onto the line, and a `SandwichSumInnerComponent`.
 
-### SandwichSumInnerComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:7363`. Fields: `combinations` (every subset of the non-crust
-digits summing to `sum`, enumerated once in the constructor by
-`iterateSubsetsSummingTo`), `minDistance`/`maxDistance` (shortest and longest
-crust-to-crust gap, subset length + 1), `sandwichDigitsMask`.
-
-- **initialize** `minDistance === Infinity` (no subset sums to the target) yields
-  AbortSolver. If the minimum gap exceeds half the line, the cells that could
-  never be a crust — `cellIds.slice(len − minDistance, minDistance)` — lose both
-  crust digits. Then runs `update`.
-- **update** Three passes: for each crust digit, if some cell is pinned to it,
-  every cell at a distance outside `[minDistance, maxDistance]` loses the *other*
-  crust digit; then, if exactly two cells can still hold crust digits,
-  replaces the whole component with a plain `SumComponent` over the cells
-  strictly between them.
-- **validate** Walks the line, sums the cells between the first and second crust
-  value, and fails only when that stretch is fully filled and mis-sums.
-- **Notes:** `sum === 0` short-circuits the combination enumeration and sets
-  `maxDistance` to 2 only on a 0-based spec. The constructor's enumeration is
-  exponential in the digit count for large targets; it happens once per
-  component, not per tick.
-
 ### SelfCounting (`SelfCountingComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -2831,61 +2806,6 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
   solve differently under verbose solving than under a normal solve. Worth
   knowing before reading a step trace.
 
-### SelfCountingStateComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:7553`. The non-verbose engine. Immutable-state style: instead
-of mutating, it builds a replacement of itself via `transitionTo` and yields a
-ReplaceComponent change. Fields: `state` (`{required, forbidden, housed,
-combinations}`) and `misc` (house bookkeeping, built once).
-
-- **initialize** Reads `puzzle.getHouseComponents()`, splits each house into its
-  circled (in `cellIds`) and uncircled cells, pre-builds a `RequiredDigitsComponent`
-  per digit, and seeds `combinations` with every multiset of positive digits of
-  the right size (`iterateCombinationsForSum`), capped by the largest circled
-  count in any house. Then runs `houseAnalysis` and `update`.
-- **update** Derives `required` (digits pinned in some cell, plus digits in every
-  surviving combination) and `forbidden` (digits no cell can take, plus digits in
-  no combination). If neither changed, falls through to `houseAnalysis`.
-  Otherwise removes the forbidden digits from all cells and yields a
-  ReplaceComponent carrying a `RequiredDigitsComponent` per newly required digit
-  and a successor state component.
-- **houseAnalysis** Per digit and per house type (row, column, region): if fewer
-  than `d` houses can hold `d` among their circled cells, `d` is impossible
-  everywhere; if exactly `d` houses have no uncircled cell able to take `d`, then
-  those houses must supply it from their circles — a RequiredDigits per house —
-  and every *other* house's circles lose `d`.
-- **Notes:** `transitionTo` filters `combinations` to those disjoint from
-  forbidden and superset of required, so the state monotonically shrinks. There
-  is no `validate`; the MaxDigitCount siblings and RequiredDigits children do the
-  checking.
-
-### SelfCountingSumComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:3345`. The verbose-solving engine. Fields: `helperComponents`
-(the DifferentDigits/House components overlapping the cells, discovered lazily in
-`initialize` via `sudoku.getConstraintComponents()`), `excludedDigits` and
-`addedComponentsFor` (masks), `possibleSums`/`possibleDigits` (recomputed each
-tick).
-
-- **initialize** An empty cell list removes the component. Otherwise finds the
-  helper components and defers to the base.
-- **update** Recomputes the possible digit multisets from the union of live
-  candidates, bounded by the largest overlap with any helper house. No
-  combination left → AbortSolver. One combination left → emit a RequiredDigits
-  per newly determined digit, plus a successor carrying the widened
-  `addedComponentsFor` mask. Otherwise: filter all cells to `possibleDigits`,
-  then per digit `v` seen in a filled cell — if `v` now occupies exactly `v`
-  cells, strip `v` from the rest and shrink the component onto the remaining
-  cells; else register a RequiredDigits for `v` once. Finally aborts if any digit
-  present in a cell has fewer than `d` cells that could hold it.
-- **Notes:** `iterateCombinationsForSum(unionCandidates, cellCount, maxRepeats,
-  maxDigit)` is re-enumerated on **every** tick — this is the expensive engine,
-  which is why it is gated behind verbose solving.
-
 ### Sequence (`SequenceComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -2896,24 +2816,6 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 - **initialize** Scans for any two listed cells that see each other; if found,
   the minimum step is 1 (a flat sequence is impossible), else 0. Replaces itself
   with `SequenceStepComponent(name, cells, minimumDifference)`.
-
-### SequenceStepComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:7877`. Arithmetic progression along the cell order.
-
-- **update** Returns immediately for lines of two or fewer cells — a
-  two-cell Sequence prunes nothing. Otherwise computes, for the forward and the
-  reversed reading, the set of digits each position can take under *some* valid
-  common step, and filters each cell to the union of the two direction masks.
-- **getValidValuesForDirection(puzzle, reversed)** Brute force: for each start
-  digit and each step from `minimumDifference` up to
-  `floor(maxSpan / (len − 1))`, walks the whole line and, if every position's
-  candidate survives, ORs the realised digits into the per-position masks.
-- **Notes:** cost is `O(digits × steps × length)` per direction per tick, cheap
-  for real lines. Negative steps are covered by the reversed pass, not by
-  negative step values. There is no `validate`.
 
 ### Skyscraper (`SkyscraperComponent`)
 
@@ -2958,87 +2860,6 @@ constraint funnels through.
   means "these cells may legally hold the same digit", which is the opposite
   polarity of `getCellsSeeEachOther`.
 
-### SumPairComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:6861`, extends PairComponent. Constructor takes
-`(name, sums, allowRepeats, cellIdA, cellIdB)` and picks between two friend
-tables: the repeat table allows `sum − digit === digit`, the distinct table
-excludes it. `validate` fails when the two values are filled and their total is
-not in `sums`.
-
-### ExactSumComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:4251`. Used when the allowed totals are not contiguous.
-`validateDuringSolve` is true. `update` delegates the whole job to
-`SumCandidateUpdater` over `[min(sums), max(sums)]`; `validate` checks the exact
-total against the list once every cell is filled.
-- **Notes:** because `update` only enforces the *range*, gaps in `sums` are
-  caught by `validate` alone, not by propagation.
-
-### SumRangeComponent (internal)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:4292`. Used when the allowed totals form a contiguous run.
-`update` runs `SumCandidateUpdater` with a `resolvedFlag`; if the updater found
-exactly one surviving digit combination, the component removes itself after
-applying it. `validate` (note: no `validateDuringSolve` override, so it runs only
-at a leaf) compares the sums helper's reachable min/max against the window.
-
-### SumCandidateUpdater (internal helper, not a component)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:4108`. Shared by ExactSum, SumRange and SameSum's list groups.
-`updateCandidates(allowRepeats, resolvedFlag)` picks one of two strategies.
-
-- **Without repeats:** subtracts filled values from the window, enumerates
-  `helpers.sums.getCombinationsForSumWithoutRepeat(target, unsolvedCount)` for
-  every target in the remaining window, keeps only combinations whose digits are
-  all still available, and filters the unsolved cells to the union — or, when a
-  single combination survives, to exactly that combination and sets
-  `resolvedFlag.value`.
-- **With repeats:** per-cell bounds only. For each unsolved cell, removes digits
-  that cannot fit between the min and max achievable by the *other* unsolved
-  cells.
-- **Notes:** the combination enumeration is the expensive path and scales with
-  the window width — a wide `SumRange` enumerates once per target sum in the
-  range. With all cells solved, both paths yield AbortSolver if the total misses
-  the window.
-
-### WeightedSum (`WeightedSumComponent`)
-
-Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
-
-`bundle.claude.js:6905`. Cells with per-cell multipliers summing to a target.
-
-- **Registered as** `"WeightedSum"`, params `sumOrSums: NumberOrNumberArray`,
-  `cellWeightMapping: Map<CellId, number>`; the description warns that only
-  positive whole-number weights are supported.
-- **Constructor** `(name, sumOrSums, cellWeightMapping)` — `cellIds` comes from
-  the map's key order; `minSum`/`maxSum` are the extremes of the allowed totals.
-- **update** Delegates to `WeightedSumCandidateUpdater` over `[minSum, maxSum]`.
-- **validate** `validateDuringSolve` is true; once every cell is filled, checks
-  the weighted total is in `sums`.
-- **Notes:** as with ExactSum, only the range propagates; gaps between allowed
-  sums are caught at validate time. Negative weights break the bound arithmetic.
-
-### WeightedSumCandidateUpdater (internal helper, not a component)
-
-Access: **internal** — not reachable from custom code.
-
-`bundle.claude.js:6781`. The weighted twin of `SumCandidateUpdater`'s
-with-repeats path, and its only strategy: subtract filled contributions from the
-window, then for each open cell remove digits where
-`minOtherSum + digit*weight > remainingMax` or
-`maxOtherSum + digit*weight < remainingMin`. No combination enumeration, so it
-is cheap and correspondingly weak — it never notices that two cells cannot both
-take their extremes.
-
 ### WeakLink (`WeakLinkComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -3073,6 +2894,23 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
   fires earlier than WeakLink's `onValueSet`. There is no `validate`, and the
   component removes itself after firing once.
 
+### WeightedSum (`WeightedSumComponent`)
+
+Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
+
+`bundle.claude.js:6905`. Cells with per-cell multipliers summing to a target.
+
+- **Registered as** `"WeightedSum"`, params `sumOrSums: NumberOrNumberArray`,
+  `cellWeightMapping: Map<CellId, number>`; the description warns that only
+  positive whole-number weights are supported.
+- **Constructor** `(name, sumOrSums, cellWeightMapping)` — `cellIds` comes from
+  the map's key order; `minSum`/`maxSum` are the extremes of the allowed totals.
+- **update** Delegates to `WeightedSumCandidateUpdater` over `[minSum, maxSum]`.
+- **validate** `validateDuringSolve` is true; once every cell is filled, checks
+  the weighted total is in `sums`.
+- **Notes:** as with ExactSum, only the range propagates; gaps between allowed
+  sums are caught at validate time. Negative weights break the bound arithmetic.
+
 ### XSum (`XSumComponent`)
 
 Access: **public** — registered built-in; construct it as `new <Name>Component(...)` and hand it to `puzzle.addConstraintComponent` or `replaceComponent`.
@@ -3084,6 +2922,391 @@ Access: **public** — registered built-in; construct it as `new <Name>Component
 - **initialize** Chooses `XSumFullLineComponent` only when all of: 1-based digits,
   the X cell is the line's first cell, the line is a full `digitCount` long, and
   `!puzzle.getCellsCanHaveRepeats(cells)`. Otherwise `XSumPrefixComponent`.
+
+## Internal component pieces
+
+The classes the built-ins delegate to. None is registered, so none is a global
+you can construct; they are here because a built-in's entry names them, and
+because their `update` bodies are where the actual sum, product and counting
+logic lives. Same conventions as the section above.
+
+### CompositeComponent (`class CompositeComponent extends ConstraintComponent`)
+
+Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
+The base for every component that is just a bundle of other components
+(`bundle.claude.js:4998`). Unregistered; you reach it only by subclassing or by
+reading one of its concrete subclasses. Field: `getComponents`, a thunk taking
+the solver state.
+
+- **Constructor** `(name, cellIds, getComponents)` — `getComponents` is
+  `(state) => Component | Component[]`, called once.
+- **initialize** Yields exactly one `ReplaceComponent` change carrying
+  `getComponents(state)`. The composite is gone after that; it never sees
+  `update`.
+- **Notes** The thunk runs at initialize time, not construction time, so it can
+  branch on puzzle geometry (`state.getCellsCanHaveRepeats`, `puzzleSpec.digitCount`).
+  This is the pattern to copy when your constraint decomposes into built-ins.
+
+### ExactSumComponent (`class ExactSumComponent extends ConstraintComponent`)
+
+Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
+Unregistered leaf that `SumComponent` and friends delegate to
+(`bundle.claude.js:4251`). Fields: `sums` (array), `repeat` (bool), `minSum`,
+`maxSum`, `sumsDescription`.
+
+- **Constructor** `(name, sums, cellIds, repeat)`.
+- **update** Delegates wholesale to `new SumCandidateUpdater(state, minSum,
+  maxSum, cellIds, name).updateCandidates(repeat)`; it holds no sum logic of its
+  own. See the sums section for that updater.
+- **validate** `validateDuringSolve` is true. Returns valid as soon as it hits an
+  unfilled cell; otherwise checks the total against `sums`.
+- **Notes** `SumComponent` picks this class only when the requested sums are
+  *not* a contiguous range; a contiguous list goes to `SumRangeComponent`
+  instead (`bundle.claude.js:7019`). Only `minSum` and `maxSum` reach the
+  updater, so a disjoint list such as `[5, 20]` still prunes as the range 5–20
+  during solving, and the exact membership is enforced only by `validate` once
+  every cell is filled.
+
+### FriendDigitTable (`class FriendDigitTable`)
+
+Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
+Not a component: the memoized lookup table behind every `PairComponent`
+subclass (`bundle.claude.js:3774`).
+
+- **Constructor** `(callback, paramType)` — `callback(paramValue, digit)`
+  returns the mask of digits that may sit opposite `digit`. `paramType` is a
+  `FriendCacheKeyKind` selecting how the cache key is built (`None` for
+  parameterless relations like greater-than, `Number` for a numeric parameter
+  like a difference).
+- **Notes** The cache is keyed on the digit range too, so the same table object
+  is safe across puzzles of different sizes. `friendMasksFromDigitSets` and
+  `friendMasksFromPredicate` (just below it) are the two other ways to build the
+  same array — `PairComponent` accepts either an array of masks or a
+  `(d1, d2) => boolean` predicate, memoizing the predicate by identity.
+
+#### `getFriends(paramValue)`
+
+Returns the memoized per-digit "friend" table for `paramValue`, an array indexed
+by digit from `puzzleSpec.minDigit` to `puzzleSpec.maxDigit` holding whatever the
+table's callback produced for that digit (typically a digit mask of partners).
+- **Notes:** the memo key comes from `getFriendCacheKeyBuilder(paramType)` and
+  folds in the live min/max digit, so the same table is safe across puzzle specs.
+  Digits below `minDigit` are holes in the returned array. **[read]**
+
+### MultiProductComponent (`class MultiProductComponent extends ConstraintComponent`)
+
+Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
+
+Unregistered leaf that `ProductComponent` uses when its product argument is an
+array (`bundle.claude.js:6601`; dispatch at `bundle.claude.js:6578`). A single
+positive product goes to `SingleProductComponent`, and a product of 0 becomes a
+`RequiredDigitsComponent` for digit 0. Field: `products` (array of numbers).
+
+- **Constructor** `(name, products, cellIdList)`.
+- **initialize** Builds the set of digits that could ever participate: 1 always,
+  plus every digit that divides at least one product (a product of 0 admits every
+  digit). Yields one `FilterCandidatesAtCells`. It does not retire itself.
+- **update** Not defined, so after `initialize` the component only validates.
+- **validate** `validateDuringSolve` is true, but it returns valid until every
+  cell has a value, then multiplies them and checks membership in `products`.
+- **Notes** The divisibility filter is the whole of its propagation — it is a
+  one-shot domain narrowing, not an ongoing product deduction. `product % digit`
+  with `digit` 0 yields `NaN`, which fails the `=== 0` test, so digit 0 is only
+  admitted through the `product === 0` branch.
+
+### NegativeSumGroupComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:6404`. Three-or-more-cell fallback. `validateDuringSolve` is
+true, but it defines **no `update`** — it only checks, once every cell in the
+group is filled, that the total is not a forbidden sum. Expect zero propagation
+from a NegativeSum over three or more cells.
+
+### NegativeSumPairComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:6430`, extends PairComponent. Friends from
+`negativeSumFriendTable`: full digit set minus `sum − digit` for each forbidden
+sum. `validate` fails when the two values add to a listed sum. This is the only
+negative-sum path that actually prunes candidates.
+
+### SandwichSumInnerComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:7363`. Fields: `combinations` (every subset of the non-crust
+digits summing to `sum`, enumerated once in the constructor by
+`iterateSubsetsSummingTo`), `minDistance`/`maxDistance` (shortest and longest
+crust-to-crust gap, subset length + 1), `sandwichDigitsMask`.
+
+- **initialize** `minDistance === Infinity` (no subset sums to the target) yields
+  AbortSolver. If the minimum gap exceeds half the line, the cells that could
+  never be a crust — `cellIds.slice(len − minDistance, minDistance)` — lose both
+  crust digits. Then runs `update`.
+- **update** Three passes: for each crust digit, if some cell is pinned to it,
+  every cell at a distance outside `[minDistance, maxDistance]` loses the *other*
+  crust digit; then, if exactly two cells can still hold crust digits,
+  replaces the whole component with a plain `SumComponent` over the cells
+  strictly between them.
+- **validate** Walks the line, sums the cells between the first and second crust
+  value, and fails only when that stretch is fully filled and mis-sums.
+- **Notes:** `sum === 0` short-circuits the combination enumeration and sets
+  `maxDistance` to 2 only on a 0-based spec. The constructor's enumeration is
+  exponential in the digit count for large targets; it happens once per
+  component, not per tick.
+
+#### `*updatePossibleCellsForSandwichDigits(puzzle, knownDigit, otherDigit)`
+
+Generator: once `knownDigit` is placed (some cell's candidates equal exactly that
+digit's bit), it removes `otherDigit` from every cell whose index distance from
+the anchor is outside `[minDistance, maxDistance]`.
+- **Notes:** no-op when `knownDigit` is not yet resolved to a single cell.
+  Distance is measured in positions along `cellIds`, not geometrically. **[read]**
+
+#### `*updateCandidatesBetweenSandwichDigits(puzzle)`
+
+Generator: when exactly two cells can still hold the sandwich digits, it replaces
+the whole component with a `SumComponent` over the cells strictly between them.
+- **Notes:** if the union of those two cells' candidates, masked to the sandwich
+  digits, does not hold exactly two digits, it yields AbortSolver instead. The
+  replacement is a one-way transition: the sandwich logic is gone afterwards.
+  **[read]**
+
+#### `getSandwichIndices(puzzle)`
+
+Returns the positions in `cellIds` (indices, not cell ids) of cells whose
+candidates are a subset of the sandwich-digit mask, meaning they can hold nothing
+but a sandwich digit. **[read]**
+
+### SelfCountingStateComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:7553`. The non-verbose engine. Immutable-state style: instead
+of mutating, it builds a replacement of itself via `transitionTo` and yields a
+ReplaceComponent change. Fields: `state` (`{required, forbidden, housed,
+combinations}`) and `misc` (house bookkeeping, built once).
+
+- **initialize** Reads `puzzle.getHouseComponents()`, splits each house into its
+  circled (in `cellIds`) and uncircled cells, pre-builds a `RequiredDigitsComponent`
+  per digit, and seeds `combinations` with every multiset of positive digits of
+  the right size (`iterateCombinationsForSum`), capped by the largest circled
+  count in any house. Then runs `houseAnalysis` and `update`.
+- **update** Derives `required` (digits pinned in some cell, plus digits in every
+  surviving combination) and `forbidden` (digits no cell can take, plus digits in
+  no combination). If neither changed, falls through to `houseAnalysis`.
+  Otherwise removes the forbidden digits from all cells and yields a
+  ReplaceComponent carrying a `RequiredDigitsComponent` per newly required digit
+  and a successor state component.
+- **houseAnalysis** Per digit and per house type (row, column, region): if fewer
+  than `d` houses can hold `d` among their circled cells, `d` is impossible
+  everywhere; if exactly `d` houses have no uncircled cell able to take `d`, then
+  those houses must supply it from their circles — a RequiredDigits per house —
+  and every *other* house's circles lose `d`.
+- **Notes:** `transitionTo` filters `combinations` to those disjoint from
+  forbidden and superset of required, so the state monotonically shrinks. There
+  is no `validate`; the MaxDigitCount siblings and RequiredDigits children do the
+  checking.
+
+#### `getCandidatesUnion(puzzle, cellIdsToUnion)`
+
+Returns a `SudokuDigitSet` holding every digit still a candidate in any of
+`cellIdsToUnion`. **[read]**
+
+#### `getSingletons(puzzle, cellIdsToScan)`
+
+Returns a `SudokuDigitSet` of the digits that are the sole candidate in some cell
+of `cellIdsToScan`.
+- **Notes:** a filled cell reads as a singleton mask here, so placed digits are
+  included. **[read]**
+
+### SelfCountingSumComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:3345`. The verbose-solving engine. Fields: `helperComponents`
+(the DifferentDigits/House components overlapping the cells, discovered lazily in
+`initialize` via `sudoku.getConstraintComponents()`), `excludedDigits` and
+`addedComponentsFor` (masks), `possibleSums`/`possibleDigits` (recomputed each
+tick).
+
+- **initialize** An empty cell list removes the component. Otherwise finds the
+  helper components and defers to the base.
+- **update** Recomputes the possible digit multisets from the union of live
+  candidates, bounded by the largest overlap with any helper house. No
+  combination left → AbortSolver. One combination left → emit a RequiredDigits
+  per newly determined digit, plus a successor carrying the widened
+  `addedComponentsFor` mask. Otherwise: filter all cells to `possibleDigits`,
+  then per digit `v` seen in a filled cell — if `v` now occupies exactly `v`
+  cells, strip `v` from the rest and shrink the component onto the remaining
+  cells; else register a RequiredDigits for `v` once. Finally aborts if any digit
+  present in a cell has fewer than `d` cells that could hold it.
+- **Notes:** `iterateCombinationsForSum(unionCandidates, cellCount, maxRepeats,
+  maxDigit)` is re-enumerated on **every** tick — this is the expensive engine,
+  which is why it is gated behind verbose solving.
+
+#### `updatePossibleSums(state)`
+
+Recomputes `this.possibleSums` and `this.possibleDigits` from the current
+candidate union over the component's cells, enumerating digit combinations of
+length `cellIds.length` and discarding any that touch `excludedDigits`.
+- **Mutates:** the receiver's `possibleSums` and `possibleDigits`.
+- **Notes:** the repeat allowance is derived first — it is the largest overlap
+  between the component's cells and any of its helper house components, so cells
+  spread across two houses may repeat a digit that many times. Enumeration cost
+  grows with the cell count. Returns nothing; it is not a generator and yields no
+  changes. **[read]**
+
+### SequenceStepComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:7877`. Arithmetic progression along the cell order.
+
+- **update** Returns immediately for lines of two or fewer cells — a
+  two-cell Sequence prunes nothing. Otherwise computes, for the forward and the
+  reversed reading, the set of digits each position can take under *some* valid
+  common step, and filters each cell to the union of the two direction masks.
+- **Notes:** cost is `O(digits × steps × length)` per direction per tick, cheap
+  for real lines. Negative steps are covered by the reversed pass, not by
+  negative step values. There is no `validate`.
+
+#### `getValidValuesForDirection(puzzle, reversed = false)`
+
+Returns an array of digit masks, one per cell, holding every digit that appears
+in some arithmetic progression consistent with the current candidates when the
+sequence is read from one end.
+- **Params:** `reversed` – false reads from `cellIds[0]` forward, true from the
+  last cell backward.
+- **Returns:** array of digit masks parallel to `cellIds`; the empty array when
+  the span between the ends is negative.
+- **Notes:** step sizes run from `minimumDifference` up to
+  `floor(span / (cellIds.length - 1))`, so only non-decreasing runs are found in
+  one direction — `update` ORs the forward and reverse results to cover both. A
+  progression is kept only if every cell still holds its digit. **[read]**
+
+### SingleProductComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:6499`. The propagating product component.
+
+- **update** Divides the target by every filled value in turn; a value that does
+  not divide the remainder yields AbortSolver immediately. Builds a digit set of
+  divisors of the remaining product and filters every unfilled cell to it, while
+  accumulating running min/max products from the surviving candidate extremes.
+  Aborts if the running minimum exceeds the target, or at the end if the maximum
+  falls short.
+- **Notes:** the min/max accumulation is order-dependent and interleaved with the
+  filter yields, so it reads the pre-change candidate masks. `createFilteredDigitSet`
+  is called with each candidate digit, so a 0-based spec divides by zero — the
+  `remainingProduct % 0` is `NaN`, and 0 is excluded from the divisor set.
+
+### SumCandidateUpdater (internal helper, not a component)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:4108`. Shared by ExactSum, SumRange and SameSum's list groups.
+`updateCandidates(allowRepeats, resolvedFlag)` picks one of two strategies.
+
+- **Without repeats:** subtracts filled values from the window, enumerates
+  `helpers.sums.getCombinationsForSumWithoutRepeat(target, unsolvedCount)` for
+  every target in the remaining window, keeps only combinations whose digits are
+  all still available, and filters the unsolved cells to the union — or, when a
+  single combination survives, to exactly that combination and sets
+  `resolvedFlag.value`.
+- **With repeats:** per-cell bounds only. For each unsolved cell, removes digits
+  that cannot fit between the min and max achievable by the *other* unsolved
+  cells.
+- **Notes:** the combination enumeration is the expensive path and scales with
+  the window width — a wide `SumRange` enumerates once per target sum in the
+  range. With all cells solved, both paths yield AbortSolver if the total misses
+  the window.
+
+#### `*updateCandidatesWithoutRepeats(resolvedFlag)`
+
+Generator implementing the no-repeat branch of `updateCandidates`: it subtracts
+filled values from the `[minimumSum, maximumSum]` window, enumerates every
+non-repeating digit combination for each remaining target, keeps those whose
+digits are all still available somewhere among the unsolved cells, and filters
+the unsolved cells to the union of the survivors.
+- **Notes:** when exactly one combination survives it filters to that mask and
+  sets `resolvedFlag.value = true` so the caller can retire the component. With
+  no unsolved cells left it yields AbortSolver if the total misses the window.
+  The remaining minimum is clamped up to `puzzleSpec.minDigit` before
+  enumerating. **[read]**
+
+#### `*updateCandidatesWithRepeats()`
+
+Generator implementing the repeats-allowed branch: per unsolved cell it removes
+any candidate digit that cannot fit between the minimum and maximum totals
+achievable by the *other* unsolved cells.
+- **Notes:** no combination enumeration, so it is much cheaper and much weaker
+  than the no-repeat path. Same AbortSolver behaviour when every cell is filled.
+  **[read]**
+
+#### `getMinSum(state, cellIdSet, excludedCellId)`
+
+Returns the smallest total the cells in `cellIdSet` can reach, skipping
+`excludedCellId`, taking each cell's value if filled and otherwise its smallest
+candidate.
+- **Notes:** a cell with an empty candidate mask contributes 0, not a failure.
+  **[read]**
+
+#### `getMaxSum(state, cellIdSet, excludedCellId)`
+
+The largest-total mirror of `getMinSum`, using each unfilled cell's largest
+candidate. **[read]**
+
+### SumPairComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:6861`, extends PairComponent. Constructor takes
+`(name, sums, allowRepeats, cellIdA, cellIdB)` and picks between two friend
+tables: the repeat table allows `sum − digit === digit`, the distinct table
+excludes it. `validate` fails when the two values are filled and their total is
+not in `sums`.
+
+### SumRangeComponent (internal)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:4292`. Used when the allowed totals form a contiguous run.
+`update` runs `SumCandidateUpdater` with a `resolvedFlag`; if the updater found
+exactly one surviving digit combination, the component removes itself after
+applying it. `validate` (note: no `validateDuringSolve` override, so it runs only
+at a leaf) compares the sums helper's reachable min/max against the window.
+
+### WeightedSumCandidateUpdater (internal helper, not a component)
+
+Access: **internal** — not reachable from custom code.
+
+`bundle.claude.js:6781`. The weighted twin of `SumCandidateUpdater`'s
+with-repeats path, and its only strategy: subtract filled contributions from the
+window, then for each open cell remove digits where
+`minOtherSum + digit*weight > remainingMax` or
+`maxOtherSum + digit*weight < remainingMin`. No combination enumeration, so it
+is cheap and correspondingly weak — it never notices that two cells cannot both
+take their extremes.
+
+#### `getMinSum(state, cellWeights, excludedCellId)`
+
+Returns the smallest weighted total over the `Map` of cell id to weight, skipping
+`excludedCellId`, multiplying each cell's value (or its smallest candidate) by
+that cell's weight.
+- **Notes:** takes a `Map`, not an array of ids, which is the only real
+  difference from the unweighted version. **[read]**
+
+#### `getMaxSum(state, cellWeights, excludedCellId)`
+
+The largest-weighted-total mirror, using each unfilled cell's largest candidate
+times its weight. **[read]**
 
 ### XSumFullLineComponent (internal)
 
@@ -3124,13 +3347,13 @@ Access: **internal** — not reachable from custom code.
 ## Solver internals: state, change application, worker messages
 
 The machinery between a component's yielded change and a cell actually losing a
-candidate: the `SolverState` that holds the grid, the two change appliers that
-apply a logic step's changes, the search driver, the constraint-handler registry
-that builds a puzzle from its constraint list, and the worker message handlers.
+candidate: the two change appliers that apply a logic step's changes, the search
+driver, the constraint-handler registry that builds a puzzle from its constraint
+list, and the worker message handlers.
 None of this is reachable from custom-constraint code unless an entry says
 otherwise — a component sees only the `puzzle` facade and the change factory
-functions. Cell ids are 0-based integers (`x + y * width`); a digit mask has
-bit *d* set for digit *d*.
+functions. `SolverState` itself is with the puzzle object above. Cell ids are
+0-based integers (`x + y * width`); a digit mask has bit *d* set for digit *d*.
 
 ### ChangeApplier (internal)
 
@@ -3313,7 +3536,7 @@ Returns the live array of set-infos for that digit, shortest first. **[read]**
 #### `sortSets(sets)`
 Sorts a set-info array ascending by `cells.length`, so the most constrained set is first. **[read]**
 
-### Solver (additional members)
+### Solver (internal)
 
 Access: **internal** — not reachable from custom code.
 
@@ -3346,75 +3569,7 @@ Returns `applier.getVerboseResults()` for a `VerboseChangeApplier`, and `[]` for
 #### `log(message)`
 Prints `message` to the console indented by two spaces per search depth. **[read]**
 
-### SolverState (additional members)
-
-Access: **reachable, not documented** — see the `SolverState` section above.
-
-`bundle.claude.js:8630`. The already-documented state object; these are the
-members the existing "When the solver calls what" section does not cover.
-
-#### `static create()`
-Returns a fresh empty `SolverState` — every cell valueless with all digits as candidates, no regions, no components. **[read]**
-
-#### `setRegions(regionIdByCellId)`
-Installs the region layout and creates one component per region: a `HouseComponent` when the region holds exactly as many cells as there are digits, otherwise a `DifferentDigitsComponent`.
-- **Params:** `regionIdByCellId` – array indexed by cell id giving its region id, `-1` for none.
-- **Mutates:** `regions`, `regionsByCellId`, and the component set.
-- **Notes:** names the regions `box N` when `regionsAreRectangularBoxes` says the layout is rectangular boxes, else `region N`. Reached from setup code as `puzzle.setRegions`. **[read]**
-
-#### `handleRequiredDigitsComponent(component)`
-Registers a `RequiredDigitsComponent`'s digits with the candidate-set map. If the component's values are all distinct it marks them in one mask; otherwise it marks each value separately with that value's repeat count, so "two 5s in here" is recorded as a repeat rather than collapsing to one.
-- **Notes:** called from `addConstraintComponent`, not directly. **[read]**
-
-#### `getConstraintComponents()`
-Returns the live `Set` of every registered component. **[read]**
-
-#### `getHouseComponents()`
-Returns the live `Set` of registered `HouseComponent`s only. **[read]**
-
-#### `addComponentListener(listener)`
-Subscribes `listener` to the `"change"` event, called with `{ type: "add" | "delete", component }` on every registration and unregistration. Used by `ComponentSubscription.bind`. **[read]**
-
-#### `getCellsSeenByCells(cellIds, includeClones = true)`
-The set of cells seen by **every** cell in `cellIds` — the intersection of their `getCellsSeenByCell` sets.
-- **Returns:** a `Set` of cell ids; empty `Set` for an empty input.
-- **Notes:** short-circuits as soon as the running intersection empties. This is what a naked-subset style elimination calls to find its targets; reached from a component as `puzzle.getCellsSeenByCells`. **[read]**
-
-#### `filterCandidatesAtCell(digitMask, cellId)` / `*filterCandidatesAtCells(digitMask, cellIds)`
-Intersects the candidate mask of one cell, or of each listed cell in turn, with `digitMask`, telling the candidate-set map about each digit removed and marking the cell dirty.
-- **Returns:** for one cell, `UnchangedResult` if nothing was removed, a failed result for the cell if the mask emptied, otherwise `ChangedResult`; the plural form is a generator yielding one such result per cell.
-- **Mutates:** the cell's `candidates`, `candidateSetMap`, `updateSet`. **[read]**
-
-#### `markDigitsAsRequiredForCells(digitMask, componentName, cellIds, { repeatCount = 0, houseType })`
-Records "each digit in `digitMask` must appear in `cellIds`", keyed by `` `${componentName}_${cellIds}` `` so repeated calls for the same group only add newly required digits.
-- **Returns:** `true` if any digit was newly required.
-- **Mutates:** `requiredDigitsForComponent`, and adds one set per newly required digit to `candidateSetMap`.
-- **Notes:** a digit already placed enough times (`placedCount >= repeatCount + 1`) or with no candidate cells left records no set. **[read]**
-
-#### `markDigitsAsRequiredForComponent(digitMask, component, cellIds = component.cellIds, repeatCount = 0)`
-The same, keyed by the component's name and carrying the component's `houseType` when it is a `HouseComponent`.
-- **Notes:** this is the call a component makes to tell the solver its cells must contain certain digits; `addConstraintComponent` uses it to require all digits in every house. **[read]**
-
-#### `getSetsForCandidate(digit)`
-Returns that digit's required-digit sets from the candidate-set map, shortest first. Read by hidden-single and pointing logic steps. **[read]**
-
-#### `getCloneSet(cellId)`
-Returns the `Set` of cell ids that always hold the same digit as `cellId`, including itself. Non-empty even with no clone constraints. **[read]**
-
-#### `addClonedCells(cellSet)`
-Expands `cellSet` in place with every clone partner of its members, and returns it.
-- **Mutates:** the argument. **[read]**
-
-#### `isSolved()`
-True when every cell has a value. Says nothing about validity — `findSolutions` pairs it with `validate()`. **[read]**
-
-#### `clone()`
-Returns `new SolverState(this)`: per-cell value and candidates copied, `constraintComponentByCell` and `candidateSetMap` structurally copied, `clonedCellsMap` deep-copied, and the component set copied **by reference**, so every search node shares one component object. **[read]**
-
-#### `isTerminalChange(change)`
-True for `ReplaceComponent` and `AbortSolver` — the two change types after which the solver stops draining a component's generator. **[read]**
-
-### ConstraintHandlerRegistry (additional members)
+### ConstraintHandlerRegistry (internal)
 
 Access: **internal** — not reachable from custom code.
 
@@ -3428,36 +3583,6 @@ Stores `handler` under `constraintType`, defaulting `handler.priority` to `0`. A
 #### `setupPuzzle(spec, state, constraints)`
 Builds the whole puzzle: creates the helper bundle and a `PuzzleSetupView` over `state`, drops constraints with no registered handler, sorts the rest by handler priority, calls every handler's `register`, then every handler's optional `postRegister` in the same order.
 - **Notes:** the two passes are why a handler can look at components other handlers created (anti-king checks `getCellsSeeEachOther` before adding its own). All handlers share one `puzzle` view and one `helpers` object. **[read]**
-
-### PuzzleSetupView (additional members)
-
-Access: **public** — more members of the `puzzle` object.
-
-`bundle.claude.js:9318`. The `puzzle` object a constraint handler receives
-during setup; extends `PuzzleAccessorBase` with the mutating methods.
-
-#### `setRegions(regionIdByCellId)`
-Forwards straight to `SolverState.setRegions`, creating the region components. **[read]**
-
-### PuzzleAccessorBase (additional members)
-
-Access: **public** — more members of the `puzzle` object.
-
-`bundle.claude.js:9222`. The read-only geometry and grid base under both
-`PuzzleSetupView` and `SolverPuzzleView`, so these are available on the `puzzle`
-object inside a custom component.
-
-#### `*getCellsOrthogonallyAdjacentToCoords(x, y)`
-The orthogonal neighbours of the cell at `(x, y)`, by converting the coords to a cell id and delegating to `getCellsOrthogonallyAdjacentToCell`.
-- **Returns:** generator of cell ids, edges omitted rather than out-of-range. **[read]**
-
-#### `*getCellsDiagonallyAdjacentToCell(cellId)`
-The up-to-four diagonal neighbours of `cellId`, delegating to `helpers.geometry.getDiagonallyAdjacentCells`.
-- **Returns:** generator of cell ids. **[inferred]** — read this wrapper only, not `getDiagonallyAdjacentCells` itself; the edge-clipping claim comes from the helper's name and its orthogonal twin.
-
-#### `*getCellsDiagonallyAdjacentToCoords(x, y)`
-The same for the cell at `(x, y)`, via `helpers.cellIds.getIdFromCoords`.
-- **Returns:** generator of cell ids. **[read]**
 
 ### Top-level functions (solver internals)
 
@@ -3790,7 +3915,7 @@ every cell they jointly see.
 #### `clone(newSudoku)`
 New instance with the same `groupSize`. **[read]**
 
-### `ConsecutiveSetsLogicStep` (additional members)
+### `ConsecutiveSetsLogicStep`
 
 Access: **internal** — not reachable from custom code.
 
@@ -4044,11 +4169,9 @@ Delegates straight to the wrapped standard generator. **[read]**
 
 ## Utility functions and graph classes
 
-This appendix covers the two undirected/directed graph classes the solver uses
-for lines and thermometers, the remaining members of `LineGraph`,
-`SmallNumberSet` and `Vector2`, and the ~65 free functions that sit underneath
-the utility namespaces. A custom component reaches almost none of these by
-name. `getCustomConstraintGlobals` (`bundle.claude.js:9971`) injects exactly
+This section covers the directed graph class the solver uses for thermometers,
+the mutable `Vector2` class, and the ~65 free functions that sit underneath the
+utility namespaces. A custom component reaches almost none of these by name. `getCustomConstraintGlobals` (`bundle.claude.js:9971`) injects exactly
 `MathUtils`, `Vector2Funcs`, `CombinatoricUtils`, `ArrayUtils`, `SetUtils`,
 `IterationUtils`, `SudokuDigitSet`, `SmallNumberSet`, `DigitSet`,
 `DiagonalType` and `OuterPosition` — so the top-level functions below are
@@ -4056,7 +4179,8 @@ reachable only through the namespace member that aliases them, and most of this
 section exists so you can read a namespace member's real behaviour. Neither
 graph class is a global; you can still hold a `LineGraph` instance, because
 `helpers.connectivity.getOrthogonallyConnectedGroups` yields them
-(`bundle.claude.js:486`). `Vector2` is not reachable at all — use `Vector2Funcs`.
+(`bundle.claude.js:486`), and `LineGraph` is described there. `Vector2` is not
+reachable at all — use `Vector2Funcs`.
 
 Points in both graph classes are interned through `internStructuredValue`, so
 `{x, y}` coords and other plain objects compare structurally rather than by
@@ -4183,88 +4307,7 @@ Rebuilds a graph from `getEdges()`.
 - **Returns:** a new `DirectedLineGraph`. **Mutates:** nothing. Points are
   shared, not deep-copied, which is safe because they are interned. **[read]**
 
-### `LineGraph` (additional members)
-
-Access: **reachable, not documented** — instances come back from `helpers.connectivity.getOrthogonallyConnectedGroups`, but the class is not injected.
-
-Members of the undirected graph at `bundle.claude.js:250` not covered earlier.
-Its one field is `pointsConnected`, a `Map` from interned point to a `Set` of
-neighbours; the constructor's second argument is an `isGreaterThan(a, b)`
-comparator (default `a > b`) used only to emit each undirected edge once.
-
-#### `addLine(line)`
-Adds an undirected edge for each consecutive pair in `line`.
-- **Returns:** `this`. **Mutates:** the receiver. A one-point line adds
-  nothing; use `addPoint` for that. **[read]**
-
-#### `addPoint(point)` / `addPoints(points)`
-Ensures the point, or each point of an iterable, exists with an empty neighbour
-set.
-- **Returns:** `undefined`. **Mutates:** the receiver.
-- **Notes:** this is the one entry point that does **not** intern its argument,
-  so an object point added here and then queried via `hasPoint` may miss. Pass
-  cell ids, or intern yourself. **[read]**
-
-#### `addEdge(pointA, pointB)`
-Interns both points, creates their neighbour sets if needed, and links them
-both ways.
-- **Returns:** `this`. **Mutates:** the receiver. **[read]**
-
-#### `removeEdge(pointA, pointB, pruneIsolated = true)`
-Removes the link in both directions, and by default deletes either endpoint
-that is left with no neighbours.
-- **Returns:** `this`. **Mutates:** the receiver. Pass `false` as the third
-  argument to keep now-isolated points in the graph. A no-op when either point
-  is absent. **[read]**
-
-#### `removePoint(point)`
-Removes every edge at `point`, which with default pruning also removes the
-point.
-- **Returns:** `this`. **Mutates:** the receiver.
-- **Notes:** it iterates the point's live neighbour set while `removeEdge`
-  deletes from it. Sets tolerate this in JS, but a point whose last edge is
-  removed disappears mid-loop. **[read]**
-
-#### `hasPoint(point)`
-Whether the interned point is present. **Returns:** boolean. **[read]**
-
-#### `getAllComponents()`
-Splits the whole graph into connected components.
-- **Returns:** generator of new `LineGraph` objects, each carrying the original
-  comparator. **Mutates:** nothing.
-- **Notes:** this is what `helpers.connectivity.getOrthogonallyConnectedGroups`
-  hands you — a generator, so spread it if you need two passes. **[read]**
-
-#### `getConnectedPointSets(points)`
-Groups the given points by which component they fall in, without building
-graphs.
-- **Params:** `points` – iterable, interned; omit it to use every point in the
-  graph.
-- **Returns:** generator of arrays of points. **Mutates:** nothing.
-- **Notes:** each yielded array is the *full* connected set reachable from a
-  seed, so it can include points that were not in your input. **[read]**
-
-#### `getPointsConnectedTo(startPoint)`
-Breadth-style flood fill from `startPoint` over neighbour sets.
-- **Returns:** a new `Set` of reachable points. **Mutates:** nothing.
-- **Notes:** a `startPoint` not in the graph yields an empty set, since the
-  loop skips points with no entry. **[read]**
-
-#### `getComponentContainingPoint(startPoint)` / `getComponentsContainingPoints(points)`
-The single component containing `startPoint`, or the union of the components
-containing any of `points`, as one graph.
-- **Returns:** a new `LineGraph` with the same comparator, holding those points
-  and the edges among them. **Mutates:** nothing. An unknown start point gives
-  an empty graph; in the plural form the requested points are added explicitly,
-  so isolated ones survive (unlike the `DirectedLineGraph` twin). **[read]**
-
-#### `clone()`
-Rebuilds from `getEdges()` with the same comparator.
-- **Returns:** a new `LineGraph`. **Mutates:** nothing.
-- **Notes:** edges only — a point with no edges is lost by the clone, and so
-  by `toArrays()`, which clones first. **[read]**
-
-### `Vector2` (additional members)
+### `Vector2` (the class behind `helpers.outerCellIds` results)
 
 Access: **reachable, not documented** — instances come back from `helpers.outerCellIds`, but the class is not injected.
 
@@ -4678,7 +4721,7 @@ walk from each point with no predecessors.
   (`bundle.claude.js:11324`). Path count is exponential in the branching, which
   is fine for thermometers and would not be for a dense graph. **[read]**
 
-## Constraint handlers, layouts, and component internals
+## Constraint handlers and layouts
 
 Every built-in constraint type in a puzzle document has a registered handler. At
 `setupPuzzle` the solver walks the document's constraints and calls each
@@ -4686,156 +4729,8 @@ handler's `register`, which adds the constraint components that actually do the
 deducing; `validate` runs alongside it to report document-level problems. All of
 this happens before any custom main code runs. A custom constraint never calls
 these functions, but they are the map from "the document says killer cage 17" to
-"the solver holds a `DifferentDigitsComponent` and a `SumComponent`". The rest
-of the section documents members of already-covered helper and component classes
-that the reference did not reach. Cell ids are 0-based; in a digit mask, bit *d*
-is digit *d*.
-
-### FriendDigitTable (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `getFriends(paramValue)`
-
-Returns the memoized per-digit "friend" table for `paramValue`, an array indexed
-by digit from `puzzleSpec.minDigit` to `puzzleSpec.maxDigit` holding whatever the
-table's callback produced for that digit (typically a digit mask of partners).
-- **Notes:** the memo key comes from `getFriendCacheKeyBuilder(paramType)` and
-  folds in the live min/max digit, so the same table is safe across puzzle specs.
-  Digits below `minDigit` are holes in the returned array. **[read]**
-
-### SumCandidateUpdater (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `*updateCandidatesWithoutRepeats(resolvedFlag)`
-
-Generator implementing the no-repeat branch of `updateCandidates`: it subtracts
-filled values from the `[minimumSum, maximumSum]` window, enumerates every
-non-repeating digit combination for each remaining target, keeps those whose
-digits are all still available somewhere among the unsolved cells, and filters
-the unsolved cells to the union of the survivors.
-- **Notes:** when exactly one combination survives it filters to that mask and
-  sets `resolvedFlag.value = true` so the caller can retire the component. With
-  no unsolved cells left it yields AbortSolver if the total misses the window.
-  The remaining minimum is clamped up to `puzzleSpec.minDigit` before
-  enumerating. **[read]**
-
-#### `*updateCandidatesWithRepeats()`
-
-Generator implementing the repeats-allowed branch: per unsolved cell it removes
-any candidate digit that cannot fit between the minimum and maximum totals
-achievable by the *other* unsolved cells.
-- **Notes:** no combination enumeration, so it is much cheaper and much weaker
-  than the no-repeat path. Same AbortSolver behaviour when every cell is filled.
-  **[read]**
-
-#### `getMinSum(state, cellIdSet, excludedCellId)`
-
-Returns the smallest total the cells in `cellIdSet` can reach, skipping
-`excludedCellId`, taking each cell's value if filled and otherwise its smallest
-candidate.
-- **Notes:** a cell with an empty candidate mask contributes 0, not a failure.
-  **[read]**
-
-#### `getMaxSum(state, cellIdSet, excludedCellId)`
-
-The largest-total mirror of `getMinSum`, using each unfilled cell's largest
-candidate. **[read]**
-
-### WeightedSumCandidateUpdater (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `getMinSum(state, cellWeights, excludedCellId)`
-
-Returns the smallest weighted total over the `Map` of cell id to weight, skipping
-`excludedCellId`, multiplying each cell's value (or its smallest candidate) by
-that cell's weight.
-- **Notes:** takes a `Map`, not an array of ids, which is the only real
-  difference from the unweighted version. **[read]**
-
-#### `getMaxSum(state, cellWeights, excludedCellId)`
-
-The largest-weighted-total mirror, using each unfilled cell's largest candidate
-times its weight. **[read]**
-
-### SandwichSumInnerComponent (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `*updatePossibleCellsForSandwichDigits(puzzle, knownDigit, otherDigit)`
-
-Generator: once `knownDigit` is placed (some cell's candidates equal exactly that
-digit's bit), it removes `otherDigit` from every cell whose index distance from
-the anchor is outside `[minDistance, maxDistance]`.
-- **Notes:** no-op when `knownDigit` is not yet resolved to a single cell.
-  Distance is measured in positions along `cellIds`, not geometrically. **[read]**
-
-#### `*updateCandidatesBetweenSandwichDigits(puzzle)`
-
-Generator: when exactly two cells can still hold the sandwich digits, it replaces
-the whole component with a `SumComponent` over the cells strictly between them.
-- **Notes:** if the union of those two cells' candidates, masked to the sandwich
-  digits, does not hold exactly two digits, it yields AbortSolver instead. The
-  replacement is a one-way transition: the sandwich logic is gone afterwards.
-  **[read]**
-
-#### `getSandwichIndices(puzzle)`
-
-Returns the positions in `cellIds` (indices, not cell ids) of cells whose
-candidates are a subset of the sandwich-digit mask, meaning they can hold nothing
-but a sandwich digit. **[read]**
-
-### SelfCountingStateComponent (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `getCandidatesUnion(puzzle, cellIdsToUnion)`
-
-Returns a `SudokuDigitSet` holding every digit still a candidate in any of
-`cellIdsToUnion`. **[read]**
-
-#### `getSingletons(puzzle, cellIdsToScan)`
-
-Returns a `SudokuDigitSet` of the digits that are the sole candidate in some cell
-of `cellIdsToScan`.
-- **Notes:** a filled cell reads as a singleton mask here, so placed digits are
-  included. **[read]**
-
-### SelfCountingSumComponent (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `updatePossibleSums(state)`
-
-Recomputes `this.possibleSums` and `this.possibleDigits` from the current
-candidate union over the component's cells, enumerating digit combinations of
-length `cellIds.length` and discarding any that touch `excludedDigits`.
-- **Mutates:** the receiver's `possibleSums` and `possibleDigits`.
-- **Notes:** the repeat allowance is derived first — it is the largest overlap
-  between the component's cells and any of its helper house components, so cells
-  spread across two houses may repeat a digit that many times. Enumeration cost
-  grows with the cell count. Returns nothing; it is not a generator and yields no
-  changes. **[read]**
-
-### SequenceStepComponent (additional members)
-
-Access: **internal** — a base class or helper the built-ins use; not registered under a name you can construct.
-
-#### `getValidValuesForDirection(puzzle, reversed = false)`
-
-Returns an array of digit masks, one per cell, holding every digit that appears
-in some arithmetic progression consistent with the current candidates when the
-sequence is read from one end.
-- **Params:** `reversed` – false reads from `cellIds[0]` forward, true from the
-  last cell backward.
-- **Returns:** array of digit masks parallel to `cellIds`; the empty array when
-  the span between the ends is negative.
-- **Notes:** step sizes run from `minimumDifference` up to
-  `floor(span / (cellIds.length - 1))`, so only non-decreasing runs are found in
-  one direction — `update` ORs the forward and reverse results to cover both. A
-  progression is kept only if every cell still holds its digit. **[read]**
+"the solver holds a `DifferentDigitsComponent` and a `SumComponent`". Cell ids
+are 0-based; in a digit mask, bit *d* is digit *d*.
 
 ### Top-level functions (constraint handlers, layouts, digit groups, sum caches)
 
