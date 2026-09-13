@@ -71,13 +71,13 @@ nav .h3>a{padding-left:16px}
 nav .h4>a{padding-left:30px;font-family:var(--vt-mono-font);font-size:.74rem;color:var(--vt-muted)}
 nav li[hidden]{display:none}
 nav .count{color:var(--vt-muted);font-size:.75rem;margin:4px 8px 8px}
-main{padding-block:28px;min-width:0}
+main{padding-block:28px;min-width:0;max-width:940px}
 main h1{font-family:var(--vt-serif-font);font-weight:600;font-size:2.2rem;line-height:1.1;margin:0 0 .6rem;text-wrap:balance}
 main h2{font-family:var(--vt-serif-font);font-weight:600;font-size:1.6rem;margin:3rem 0 .8rem;padding-top:1.2rem;border-top:2px solid var(--vt-rule);text-wrap:balance}
 main h3{font-family:var(--vt-serif-font);font-weight:600;font-size:1.2rem;margin:2.2rem 0 .5rem}
 main h4{font-family:var(--vt-mono-font);font-weight:600;font-size:.92rem;margin:1.6rem 0 .3rem;padding:6px 10px;background:var(--vt-accent-soft);border-left:3px solid var(--vt-accent);border-radius:0 6px 6px 0}
 main h4 code{background:none;padding:0;font-size:inherit}
-main p,main li{max-width:74ch}
+main p,main li{max-width:none}
 main p{margin:0 0 .8rem}
 main ul{padding-left:1.2rem;margin:0 0 .8rem}
 main li{margin-bottom:.3rem}
@@ -86,7 +86,7 @@ code{font-family:var(--vt-mono-font);font-size:.85em;background:var(--vt-soft);p
 p.access{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;font-size:.92rem;color:var(--vt-muted);margin:0 0 1rem}
 p.access .vt-pill{flex:none;font-weight:600;letter-spacing:.02em}
 .vt-pill.tag{font-family:var(--vt-mono-font);font-size:.68rem;padding:.02rem .45rem;vertical-align:baseline}
-.vt-callout{max-width:80ch;font-family:var(--vt-ui-font)}
+.vt-callout{max-width:none;font-family:var(--vt-ui-font)}
 .vt-callout p{margin:0}
 .vt-callout p+p{margin-top:.5rem}
 .vt-table-wrap{max-width:100%}
