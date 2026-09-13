@@ -49,7 +49,10 @@ runs the base `initialize`, which ends in `update`. So an `update` whose yield
 produces a failed change (for example emptying a cell's candidates) does
 highlight through loop 2. Whether the solver state turns "remove the only
 candidate of an entered cell" into a `failed` change is what the live probe
-has to establish.
+has to establish. Answer, from the update-only row below: it does. Removing
+the entered value's only candidate is reported as a failed change, and the
+component's cells go red. So an `update`-only component highlights too, as
+long as its pruning actually empties the wrong cell.
 
 ## Live probe
 
@@ -65,17 +68,24 @@ Digit 2 duplicates r1c1 and checks the detector.
 | validate-only, returns bare boolean | **red** | black | red |
 | validate-only, returns `{ valid, message }` | black | black | red |
 | update + validate, bare boolean | **red** | black | red |
+| update only, no `validate` | **red** | black | red |
 
 So the editor does consult a custom `validate`, and a bare `false` highlights
 the component's cells. Returning the built-in-style object silences it
-completely. The old "no conflict" report is explained.
+completely. The old "no conflict" report is explained. The update-only row shows the
+other route: an `update` that empties the wrong cell highlights without any
+`validate`.
 
 Run: `node docs/research/validate-only-probe/probe-highlight.mjs <link.txt>`
 with any `PUZZLE_LINK_*.txt` in that directory; `validate-object.json` is the
 object-returning variant.
 
-## Open
+## Disabled constraints
 
-- Whether disabled constraints are filtered before `getConstraintComponents`.
-- Whether an `update` alone (no `validate`) can highlight through the
-  `initialize` loop; the probe boards all carry a `validate`.
+They never reach the worker. The editor's solver input is built from
+`getConstraintsForSolver`, which is
+`allConstraints.filter(e => e.enabled && !e.solverIgnored)`, and the input
+then drops any constraint whose own validation is in the error state
+(`main.js`, `getConstraintsForSolver` and the `solverInputData` computed).
+Disabling a constraint, or marking it solver-ignored, also removes its
+highlighting.
