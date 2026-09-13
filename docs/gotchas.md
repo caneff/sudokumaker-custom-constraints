@@ -34,7 +34,7 @@ that was wrong.
 The editor's red-cell highlight is a separate path that calls `validate` and
 uses your return value only as truthy or falsy, so **return a bare `false`,
 never `{ valid: false }`**: an object is truthy and reads as satisfied
-(`research/ui-conflict-highlight.md`, bundle read, live probe pending).
+(`research/ui-conflict-highlight.md`, live probe 2026-09-13). **[verified]**
 
 **Fix:** always give the component a real `update` that removes at least some
 candidates. Keep `validate` as the exact final check. See

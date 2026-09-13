@@ -1,8 +1,8 @@
 # How the editor decides which cells to paint red
 
 Static read of the app's UI bundles (`main-D44ZZMA9.js`, `puzzleQueries-DKblPzGJ.js`
-from `examples/_shared/sudokumaker.har`), 2026-09-13. **Not yet confirmed
-against a live session**; the live probe is the next step.
+from `examples/_shared/sudokumaker.har`), 2026-09-13, **confirmed live the
+same day** by `validate-only-probe/probe-highlight.mjs` (results at the end).
 
 ## The path
 
@@ -51,8 +51,31 @@ highlight through loop 2. Whether the solver state turns "remove the only
 candidate of an entered cell" into a `failed` change is what the live probe
 has to establish.
 
+## Live probe
+
+`probe-highlight.mjs` loads each board from the recorded app, selects r1c2
+(the probe component's cell, which the component says must be 4), types a
+digit, and reads the cell text's fill; the app paints an invalid cell `#f00`.
+Digit 5 is legal for every house, so only the custom component can flag it.
+Digit 2 duplicates r1c1 and checks the detector.
+
+| Board | typed 5 | typed 4 | typed 2 |
+|-|-|-|-|
+| control (no custom component) | black | black | red |
+| validate-only, returns bare boolean | **red** | black | red |
+| validate-only, returns `{ valid, message }` | black | black | red |
+| update + validate, bare boolean | **red** | black | red |
+
+So the editor does consult a custom `validate`, and a bare `false` highlights
+the component's cells. Returning the built-in-style object silences it
+completely. The old "no conflict" report is explained.
+
+Run: `node docs/research/validate-only-probe/probe-highlight.mjs <link.txt>`
+with any `PUZZLE_LINK_*.txt` in that directory; `validate-object.json` is the
+object-returning variant.
+
 ## Open
 
-- Live confirmation of both claims: object-returning `validate` never
-  highlights; bare-boolean `validate` does.
 - Whether disabled constraints are filtered before `getConstraintComponents`.
+- Whether an `update` alone (no `validate`) can highlight through the
+  `initialize` loop; the probe boards all carry a `validate`.
