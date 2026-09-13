@@ -210,16 +210,15 @@ function extractDigitSetClassName (fns) {
 // update that drops the override empties this instead of throwing.
 const EXTENDED_ONLY_KEYS = ['geometry', 'lines', 'misc']
 
-function findExtendedHelpersLiteral (ast) {
+function extractExtendedHelperClassNames (ast) {
   const literals = collect(ast, n =>
     n.type === 'ObjectExpression' &&
     n.properties.some(p => p.type === 'SpreadElement') &&
     n.properties.some(p => p.type === 'Property' && p.key && p.key.name === 'geometry'))
-  return literals[0] || null
-}
-
-function extractExtendedHelperClassNames (ast) {
-  const literal = findExtendedHelpersLiteral(ast)
+  if (literals.length > 1) {
+    throw new Error(`createExtendedHelpers-shaped object literal: found ${literals.length}, expected at most 1`)
+  }
+  const literal = literals[0]
   if (!literal) return {}
   const result = {}
   for (const prop of literal.properties) {
@@ -529,10 +528,15 @@ function render (index) {
   lines.push('')
   for (const key of Object.keys(index.helperMembers)) {
     const overrideMembers = index.extendedHelperMembers[key] || []
+    const overrideNames = new Set(overrideMembers.map(m => m.name))
+    // A name the override redeclares shows only the override's row -- the
+    // base row would otherwise carry the same "main code only" mark as a
+    // false claim about a member the base factory also defines.
+    const baseMembers = index.helperMembers[key].filter(m => !overrideNames.has(m.name))
     lines.push(`### helpers.${key} (\`${index.helperClasses[key]}\`)`)
     lines.push('')
     lines.push(membersTable(
-      [...index.helperMembers[key], ...overrideMembers],
+      [...baseMembers, ...overrideMembers],
       markAll(overrideMembers, MAIN_CODE_ONLY),
       'Note'
     ))

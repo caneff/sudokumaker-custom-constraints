@@ -84,7 +84,9 @@ assert.ok(generated.includes('44 registered component names (42 constructors, 2 
 // (h) #417: helpers.geometry lists the base class's own members plus the
 // main-code-only RegionAwareGeometryHelper's getSubsetsPerRegion, marked as
 // such; helpers.lines and helpers.misc get their own sections, same marker.
-assert.ok(/getSubsetsPerRegion\(arg0\)` \| method \| main code only \|/.test(generated),
+const geometrySection = generated.slice(
+  generated.indexOf('### helpers.geometry ('), generated.indexOf('### helpers.sums ('))
+assert.ok(/getSubsetsPerRegion\(arg0\)` \| method \| main code only \|/.test(geometrySection),
   'getSubsetsPerRegion should appear under helpers.geometry marked main code only')
 assert.ok(generated.includes('### helpers.lines ('),
   'helpers.lines should have its own section')
