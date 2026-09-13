@@ -83,10 +83,11 @@ function validate (instance, puzzle) {
 }
 ```
 
-**A component needs a working `update` to be active.** In every working example
-we found, a component that defines `validate` also defines `update`. A
-validate-only component appears inert — the solver neither prunes nor rejects
-through it. See `gotchas.md`. **[verified]**
+**A component needs a working `update` to prune.** A validate-only component
+does run: the solver calls `validate` on every state and rejects the ones it
+refuses (`research/validate-only-probe.md`). But it never removes a candidate,
+so the search learns the rule only by trying values and failing. See
+`gotchas.md` §2. **[verified]**
 
 ## `instance` lives for the whole solve, not one search node
 

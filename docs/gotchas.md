@@ -21,18 +21,19 @@ component** and register it directly in the main code. Give it both the clue
 cell and the line, and let its own `update`/`validate` do everything. The
 Running Start example takes this shape.
 
-## 2. A validate-only component is inert
+## 2. A validate-only component rejects but never prunes
 
-Defining only `validate` (no `update`) looks reasonable — the solver should call
-it to reject wrong states. It does not appear to. In every working example we
-found, each component that has `validate` also has `update`. Symptoms of a
-validate-only component: outside/target cells keep their full candidate set, and
-entering a wrong value raises no conflict. **[verified]**
+Defining only `validate` (no `update`) does work: the solver calls it on every
+state it builds and rejects the ones it refuses (probe in
+`research/validate-only-probe.md`). What such a component never does is remove
+a candidate, so outside/target cells keep their full candidate set, the player
+sees no eliminations, and the search only learns your rule by trying values
+and failing. An earlier version of this note said the component was inert;
+that was wrong.
 
 **Fix:** always give the component a real `update` that removes at least some
 candidates. Keep `validate` as the exact final check. See
 `component-contract.md`.
-
 ## 3. Groups carry the reading direction — do not re-derive it
 
 For an edge/line rule, the author's group already lists the line cells in the
