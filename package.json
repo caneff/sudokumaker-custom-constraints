@@ -27,6 +27,7 @@
       "PredefinedCandidatesComponent",
       "HouseComponent",
       "DifferentDigitsComponent",
+      "HouseGacComponent",
       "helpers",
       "input",
       "puzzle",
