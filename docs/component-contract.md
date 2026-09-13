@@ -83,6 +83,20 @@ function validate (instance, puzzle) {
 }
 ```
 
+**The boolean is a custom-component convenience.** The solver itself expects a
+result object: the shared `{ valid: true }` or `{ valid: false, message, cells? }`.
+The custom-code wrapper converts your return with
+`validateWrapper() ? __VALID : { valid: false, message: \`unable to satisfy ${this.name}\` }`,
+and a throw inside `validate` is caught, logged, and treated as `false`. So a
+custom component's failure message is always "unable to satisfy" plus its
+name, whatever went wrong. The wrapper also forces `validateDuringSolve` to
+`true` whenever the segment defines `validate`; the base class default is
+`false` and the built-ins opt in by hand. If you hand a **built-in** class to
+`replaceComponent`, its `validate` returns the object form directly, with a
+specific message, and only runs if that class opted in. **[verified]** (bundle:
+wrapper at `bundle.claude.js:10049-10062`, base class at 2675-2712,
+`SolverState.validate` at 9045, in `docs/research/humanify-pedagogy/`)
+
 **A component needs a working `update` to prune.** A validate-only component
 does run: the solver calls `validate` on every state and rejects the ones it
 refuses (`research/validate-only-probe.md`). But it never removes a candidate,
