@@ -36,8 +36,8 @@ scoping intact. `docs/research/bundle-api-reference.md` was written from it.
 | `tools/apply.mjs` | Apply a `{bindingId: newName}` map to the source through the AST. |
 | `tools/verify.mjs` | Prove the output equals the input modulo identifier names. |
 | `tools/bugcheck.mjs` | Node harness that evaluates the bundle with worker stubs and probes it. |
-| `tools/build-ref.mjs` | Build the reference page; styles inlined from `tools/vt/`. |
-| `reference/` | The section drafts the reference was assembled from, and `BRIEF.md`. |
+| `tools/build-ref.mjs` | Build the reference page; styles inlined from `tools/vt/`. The nav collapses each class's members until it is on screen, the tier buttons hide public, reachable or internal entries, and the filter searches headings and each entry's first paragraph. |
+| `reference/` | The section drafts the reference was assembled from, and `BRIEF.md`. The drafts keep the original split (components A to M and N to Z, appendices per topic); the assembled reference has since been reorganised to one entry per class, so edit the reference, not a draft. |
 
 The reading and renaming pipeline runs `enumerate → summary → (name) →
 fixnames → apply → verify`; it is only needed again when the app ships a new
