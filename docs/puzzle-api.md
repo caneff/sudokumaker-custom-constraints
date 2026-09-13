@@ -74,6 +74,9 @@ The bundle builds `helpers` twice, and only the main code gets the bigger one.
 | Main code (`setupPuzzle`) | `createExtendedHelpers` | everything below **plus** `helpers.lines` (`getLineEnds`), `helpers.misc` (`MiscHelper`: `getCellGroupsFromLines(lines)`, `*getEdgesForNegativeConstraint(clues)`), and a region-aware `helpers.geometry` that adds `getSubsetsPerRegion(cells)` |
 | A component segment, and `puzzle.helpers` inside `initialize` / `update` / `validate` | plain `createHelpers` | `cellIds`, `cornerIds`, `edgeIds`, `outerCellIds`, `geometry` (base class only), `sums`, `xSums`, `digits`, `naming`, `connectivity` |
 
+(`helpers.misc` is handed the base geometry, not the region-aware one, but
+neither of its methods uses it, so nothing observable follows.)
+
 So inside a component, `helpers.lines` and `helpers.misc` are `undefined` and
 `helpers.geometry.getSubsetsPerRegion` does not exist. Compute line ends,
 connected groups, or per-region splits in the main code and pass the result
