@@ -29,6 +29,13 @@ Caveats:
   `initialize` and `validate` get the plain one without them.
 - Mangled names are per-build. Everything here is for the bundle above and
   should be re-derived after the app ships a new one.
+- Confidence. The sections up to and including the built-in components were
+  written under a brief that required reading every function body before
+  writing a sentence, so their entries carry no tag. The appendix sections
+  after them tag every entry: **[read]** means the whole body was read and the
+  text follows from it; **[inferred]** means the writer went from the name,
+  the call sites, or a partial read, and the entry says what was not read.
+  Treat an **[inferred]** entry as a best guess to verify before relying on it.
 
 ## Discrepancies found against the existing docs
 
@@ -511,6 +518,7 @@ out-of-range id yields garbage rather than `undefined`.
 Row of the cell, `Math.floor(cellId / width)`.
 
 #### `getCoordsFromId(cellId)`
+Converts a cell id to its 0-based column and row via `getX`/`getY`. **[read]**
 - **Returns:** a plain object `{x, y}` (not a `Vector2`).
 
 #### `getIdFromCoords(coords)`
@@ -529,6 +537,7 @@ True when the coords lie on the board. The bounds test behind
 `getIdFromCoordsSafe`.
 
 #### `getAllCellIds()`
+Lists every cell id on the board. **[read]**
 - **Returns:** a fresh `Array` `[0, 1, …, width*height - 1]`, in reading order.
   An array, not a generator, so it can be reused and indexed.
 
@@ -552,6 +561,7 @@ from the `getIdFromCoords` used by the other three helpers.
 - **Notes:** unchecked; no Safe variant exists.
 
 #### `getCoordsFromId(cornerId)`
+Converts a corner id to grid-point coordinates on the (width+1) by (height+1) lattice of cell corners. **[read]**
 - **Returns:** `{x: cornerId % (width + 1), y: Math.floor(cornerId / (width + 1))}`,
   a plain object.
 - **Notes:** the consumer that fixes this convention is
@@ -613,12 +623,14 @@ TopRight 5, BottomRight 6, BottomLeft 7`.
 `coords.x + 1 + (coords.y + 1) * (width + 2)`. Unchecked; no Safe variant.
 
 #### `getCoordsFromId(outerCellId)`
+Converts an outer-cell id to its coordinates in the ring around the board. **[read]**
 - **Returns:** a **`Vector2` instance**, not a plain object — unlike
   `cellIds.getCoordsFromId`. It still reads as `{x, y}` but carries the
   `Vector2` mutating methods (`add`, `scale`, …), so cloning it before
   arithmetic matters.
 
 #### `getCellCenterFromId(outerCellId)`
+Gives the centre point of an outer-cell slot. **[read]**
 - **Returns:** `Vector2(x + 0.5, y + 0.5)`, the centre of the outer slot in the
   same board units as `cellIds.getCellCenterFromId`.
 
@@ -678,10 +690,12 @@ by structural key, so `{x, y}` objects compare by value.
 cells are actually adjacent.
 
 #### `getLineEnds(lineCells)`
+Picks the first and last cell of a line. **[read]**
 - **Returns:** `[lineCells[0], lineCells.at(-1)]`. On a one-cell line both
   entries are that same cell; on an empty array both are `undefined`.
 
 #### `getCellsBetweenLineEnds(lineCells)`
+Drops a line's two end cells and keeps the interior. **[read]**
 - **Returns:** `lineCells.slice(1, -1)` — a new array of the interior cells,
   empty for lines of length 2 or less.
 
@@ -753,16 +767,6 @@ available. Fields: `spec` (the puzzle spec), `width` and `height` (copied from
 `spec.size` at construction, so a component can read `geometry.width` directly),
 and the four id helpers `cellIdHelper`, `edgeIdHelper`, `cornerIdHelper`,
 `outerCellIdHelper`; the subclass adds `sudoku` (the solver's sudoku state).
-
-> Discrepancy: `docs/research/bundle-api-index.md:70` indexes
-> `helpers.geometry` as the base class `gs` and lists only the base members, so
-> `getSubsetsPerRegion` is missing from it. The instance is the region-aware
-> subclass (`bundle.claude.js:9205`).
-
-> Discrepancy: `createExtendedHelpers` hands `MiscHelper` the *base*
-> `baseHelpers.geometry`, not the region-aware one it just built
-> (`bundle.claude.js:9218`). `helpers.misc`'s internal geometry therefore has
-> no `getSubsetsPerRegion`. Only matters if you reach into `helpers.misc`.
 
 #### `getAdjacentCells(cellId, includeDiagonals = false)`
 Yields the cells touching `cellId`, orthogonals first, then diagonals if asked.
@@ -1290,7 +1294,7 @@ In-place OR of `otherSet` into the receiver.
   set. `a.union(b)` changes `a`. Copy first: `new DigitSet(a).union(b)`.
 
 #### `intersect(otherSet)`
-In-place AND.
+Keeps only the digits present in both sets, by ANDing the masks in place. **[read]**
 - **Returns:** `this`. **Mutates:** the receiver.
 
 #### `xor(otherSet)`
@@ -1532,6 +1536,7 @@ Adds every item of an iterable.
 - **Returns:** `targetSet`. **Mutates:** `targetSet`.
 
 #### `union(leftSet, rightSet)`
+Copies the left set and adds every element of the right one (`unionOfSets`, `bundle.claude.js:99`). **[read]**
 - **Returns:** a new `Set` with both sides' elements. **Mutates:** nothing.
 
 #### `isEqual(leftSet, rightSet, options?)`
@@ -1739,16 +1744,6 @@ supplying only `validate` and a constructor.
 
 This section covers every such class whose registered display name (or class
 name, when unregistered) sorts before `N`, in that order.
-
-> Discrepancy: `../../bundle-api-index.md` lists 34 registered components. This
-> bundle contains 42 `defineComponent` calls. The eight the index omits are
-> `Pair`/`AsymmetricalPair`, `DifferentGroups`, `RequiredGroups`,
-> `DiverseGroups`, `GreaterThan`/`LessThan`, `SameGroup`, `SandwichSum` and
-> `WeightedSum`; four of those (`DifferentGroups`, `DiverseGroups`,
-> `GreaterThan`, plus the `Pair` base) fall in this section. The cause is
-> the index generator's filter, which rejects an array of names and a
-> template-literal description (sudokumaker-custom-constraints #415); all eight
-> are in the same chunk and in `docs/builtin-components.md`.
 
 ### Between (`class BetweenComponent extends ConstraintComponent`)
 
