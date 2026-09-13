@@ -10,6 +10,8 @@
 //   > Discrepancy … / > Note …   → risk / info callouts
 //   tables                       → .vt-table.compact in a scroll wrapper
 //   fenced code                  → .vt-code with a copy button
+//   fenced mermaid               → <pre class="mermaid"> in a .vt-diagram panel
+//                                  (the artifact host renders mermaid itself)
 import { readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
@@ -44,7 +46,13 @@ function stripLineRefs (text) {
     .replace(/\(\)/g, '')
     .replace(/ \.(?=\s)/g, '.')
 }
-const md = stripLineRefs(readFileSync(process.argv[2], 'utf8')).replace(/<\/script/gi, '<\\/script')
+// Mermaid fences are left alone: their labels carry no citations and the
+// stripper would eat the empty parens of a method name.
+const md = readFileSync(process.argv[2], 'utf8')
+  .split(/(```mermaid\n[\s\S]*?\n```)/)
+  .map((part, i) => (i % 2 ? part : stripLineRefs(part)))
+  .join('')
+  .replace(/<\/script/gi, '<\\/script')
 
 const html = `<title>SudokuMaker Constraint API</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -98,6 +106,9 @@ p.access .vt-pill{flex:none;font-weight:600;letter-spacing:.02em}
 .vt-table-wrap{max-width:100%}
 .vt-table{font-size:.9rem}
 .vt-code{max-width:100%}
+.vt-diagram{background:var(--vt-soft);border:1px solid var(--vt-rule);border-radius:12px;padding:1.5rem;margin:1.4rem 0;overflow-x:auto}
+.vt-diagram pre.mermaid{margin:0;display:flex;justify-content:center;font-family:var(--vt-mono-font);font-size:.8rem}
+.vt-diagram svg{display:block;max-width:100%;height:auto}
 a{color:var(--vt-accent)}
 @media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--vt-rule);padding-right:0;max-height:40vh}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
@@ -129,6 +140,7 @@ ${md}
       rows=tok.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td>'+marked.parseInline(c.text)+'</td>'}).join('')+'</tr>'}).join('')}
     return '<div class="vt-table-wrap"><table class="vt-table compact"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table></div>'};
   r.code=function(tok){var code=typeof tok==='string'?tok:tok.text;var lang=(typeof tok==='string'?arguments[1]:tok.lang)||'';
+    if(lang==='mermaid')return '<div class="vt-diagram"><pre class="mermaid">'+esc(code)+'</pre></div>';
     return '<div class="vt-code"><div class="vt-code-head"><span>'+esc(lang||'code')+'</span><button class="vt-code-copy" type="button" aria-label="Copy code"></button></div><pre><code>'+esc(code)+'</code></pre></div>'};
   marked.use({renderer:r,gfm:true});
   var doc=document.getElementById('doc');
