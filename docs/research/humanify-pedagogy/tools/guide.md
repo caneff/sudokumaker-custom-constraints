@@ -1,18 +1,18 @@
 ## Guide: writing a custom constraint
 
-A custom constraint is two kinds of code segment. **Main code** runs once, when
+A custom constraint is two kinds of code segment. Main code runs once, when
 the solver is set up: it reads the puzzle and registers component instances.
-**Component code** is a class the solver calls during the search: it reads
-candidates and yields deductions. Everything in the reference below hangs off
-that split, and every fact here is drawn from a reference entry, which the
-links point at.
+Component code is a class the solver calls during the search: it reads
+candidates and yields deductions. The reference below is organised around that
+split. Each fact in this guide comes from a reference entry, and the links go
+there.
 
 ### 1. Where your code runs
 
 Main code receives `puzzle`, `input` and `helpers` as plain names in scope.
-`puzzle` is a [PuzzleSetupView](#puzzlesetupview): it can read the board
-geometry and register or remove components, and that is all. The component
-segment defines up to five free functions, and
+`puzzle` is a [PuzzleSetupView](#puzzlesetupview). It can read the board
+geometry and register or remove components; it cannot read candidates. The
+component segment defines up to five free functions, and
 [compileCustomComponentClass](#how-your-code-becomes-a-class-compilecustomcomponentclass)
 copies them onto a class for you:
 
@@ -54,10 +54,9 @@ goes straight to the search node's cells:
 | cells that must differ from one cell | [getCellsSeenByCell](#puzzleaccessorbase-getcellsseenbycell) | a fresh `Set` |
 | whether cells are pairwise distinct | [getCellsSeeEachOther](#puzzleaccessorbase-getcellsseeeachother) | boolean |
 
-Two things to know about "seen by". It is built at call time from the
-components registered so far, so in main code it sees only constraints ordered
-before yours; from `update` every house is already registered. And a custom
-component never contributes to it, because
+"Seen by" is built at call time from the components registered so far. In main
+code that means only the constraints ordered before yours; from `update` every
+house is already registered. A custom component never contributes to it, because
 [getExclusionGroup](#constraintcomponent-getexclusiongroup) is not one of the
 five functions you can define.
 
@@ -71,8 +70,8 @@ and call it again rather than iterate it twice.
 
 `update` and `initialize` are generators. They never write to the grid; they
 `yield` change objects that the solver applies. The solver view has one method
-per change, and in every one **the digit or digit set comes first, the cell or
-cells second**:
+per change. In every one of them the digit or digit set comes first and the
+cell or cells second:
 
 ```js
 function * update (instance, puzzle) {
@@ -105,8 +104,8 @@ of change shapes is the [Change objects](#change-objects) table.
 > rules the answer out. Every deduction should follow from the rules alone, not
 > from a guess about how the puzzle will resolve.
 
-`replaceComponent` and `removeComponent` are **terminal**: the solver stops
-draining your generator after either, so yield them last.
+`replaceComponent` and `removeComponent` are terminal changes. The solver stops
+draining your generator after either one, so yield them last.
 
 ### 4. When update runs, and when you are done
 
@@ -152,11 +151,11 @@ or from `update`, when a condition has resolved and a built-in can take over:
 yield puzzle.replaceComponent(new HouseComponent(instance.name, instance.cells))
 ```
 
-Three shapes recur among the built-ins, and they are the reference
-implementation of the `update` / `validate` split. A **leaf** extends
-[ConstraintComponent](#constraintcomponent) and prunes in `update`. A
-**composite** extends [CompositeComponent](#compositecomponent), builds leaf
-components in `initialize`, and deletes itself. A **pair** extends
+Three shapes recur among the built-ins, and they show how the app itself splits
+work between `update` and `validate`. A leaf extends
+[ConstraintComponent](#constraintcomponent) and prunes in `update`. A composite
+extends [CompositeComponent](#compositecomponent), builds leaf components in
+`initialize`, and deletes itself. A pair extends
 [PairComponent](#paircomponent) and delegates all pruning to a precomputed friend
 table, supplying only a constructor and `validate`. The components index below is
 grouped by what each one constrains.
@@ -181,11 +180,12 @@ call `getPoints()` on each.
 ### 7. Sums, combinations and digit sets
 
 [helpers.sums](#sumshelper) has two families. The `ExtremeSums` methods take
-per-cell candidate **masks** and answer what range the cells can sum to, with or
-without repeats; the `Combinations` methods ignore candidates and enumerate digit
-combinations for a target. The without-repeat range search can return `null`
-when no distinct-digit assignment exists, which is a broken constraint.
-Combination lists are memoized and **shared**: never mutate one.
+per-cell candidate masks and answer what range the cells can sum to, with or
+without repeats. The `Combinations` methods ignore candidates and enumerate digit
+combinations for a target. The without-repeat range search returns `null` when
+no distinct-digit assignment exists, which means the constraint is already
+broken. Combination lists are memoized and shared between callers, so never
+mutate one.
 
 [SudokuDigitSet](#sudokudigitset) is a bitmask with set algebra, and
 [helpers.digits](#digitshelper) builds the common ones (all, odds, evens, a
@@ -202,7 +202,7 @@ loop; [processChange](#solverstate-processchange) is what happens to each change
 you yield. The logic steps run beside your component and never call it; they only see
 the candidates it has narrowed.
 
-Cost matters. `update` reruns on every dirtied cell in every node of the search,
-so a deduction that takes longer than the branching it saves makes the puzzle
-slower. Read bitmasks in hot loops, hoist anything that does not depend on the
-node, and keep combinatorial searches to what one node needs.
+`update` reruns on every dirtied cell in every node of the search, so a
+deduction that costs more than the branching it saves makes the puzzle slower.
+Read bitmasks in hot loops, and hoist anything that does not depend on the
+node.
