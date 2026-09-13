@@ -41,8 +41,14 @@ component's `update`), then only the naked-single cascade. No set logic step
 runs there. Inside a trial, a `HouseComponent` gives singles only, while a
 component whose `update` filters to GAC gives GAC. That is where the 53/81 ->
 81/81 AutoStep gap comes from, and why the stalled state itself is already
-GAC-clean. The same holds for the solver's search nodes, which also propagate
-with `update` before taking logic steps.
+GAC-clean.
+
+Search ("Find all solutions", `Solver.findSolutions`, 8364) is close to the
+same. Each node runs `updateConstraintsAndValidate`, then `step()`: the first
+logic step that changes anything, which is naked singles when any exist. Then
+it branches, unless verbose solving is on (`deductionResults` present, which
+loops back for another step). So a search node usually gets every component's
+`update` plus one step, and set steps rarely run there either.
 
 `DifferentDigitsComponent` on as many cells as digits replaces itself with a
 `HouseComponent` at `initialize`. Shorter, it only stops when its pooled
