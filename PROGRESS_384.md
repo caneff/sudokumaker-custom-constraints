@@ -1,0 +1,30 @@
+- 17 clues, sample 0: 100001 nodes CAPPED, 0 sol, lost 0, 125.647s
+- 17 clues, sample 1: 100002 nodes CAPPED, 0 sol, lost 0, 161.398s
+- 17 clues, sample 2: 100001 nodes CAPPED, 0 sol, lost 0, 161.868s
+- 17 clues, sample 3: 100003 nodes CAPPED, 0 sol, lost 0, 215.35s
+- 17 clues, sample 4: 100001 nodes CAPPED, 0 sol, lost 0, 183.058s
+- 17 clues, sample 5: 100001 nodes CAPPED, 0 sol, lost 0, 192.943s
+- 18 clues, sample 0: 100002 nodes CAPPED, 0 sol, lost 0, 189.741s
+- 18 clues, sample 1: 100002 nodes CAPPED, 0 sol, lost 0, 208.8s
+- 18 clues, sample 2: 100002 nodes CAPPED, 0 sol, lost 0, 171.942s
+- 18 clues, sample 3: 100001 nodes CAPPED, 0 sol, lost 0, 236.658s
+- 18 clues, sample 4: 100001 nodes CAPPED, 0 sol, lost 0, 220.172s
+- 18 clues, sample 5: 100001 nodes CAPPED, 0 sol, lost 0, 216.722s
+- 19 clues, sample 0: 100002 nodes CAPPED, 1 sol, lost 0, 286.672s
+- 19 clues, sample 1: 77117 nodes, 1 sol, lost 0, 267.207s
+- 19 clues, sample 2: 100003 nodes CAPPED, 0 sol, lost 0, 244.806s
+- 19 clues, sample 3: 100006 nodes CAPPED, 0 sol, lost 0, 232.343s
+- 19 clues, sample 4: 100001 nodes CAPPED, 0 sol, lost 0, 166.635s
+- 19 clues, sample 5: 100002 nodes CAPPED, 0 sol, lost 0, 148.277s
+- 20 clues, sample 0: 17537 nodes, 1 sol, lost 0, 32.995s
+- 20 clues, sample 1: 100002 nodes CAPPED, 1 sol, lost 0, 201.485s
+- 20 clues, sample 2: 100001 nodes CAPPED, 1 sol, lost 0, 179.947s
+- 20 clues, sample 3: 55618 nodes, 1 sol, lost 0, 134.588s
+- 20 clues, sample 4: 35021 nodes, 1 sol, lost 0, 90.16s
+- 20 clues, sample 5: 78716 nodes, 1 sol, lost 0, 169.084s
+- 21 clues, sample 0: 366 nodes, 1 sol, lost 0, 1.018s
+- 21 clues, sample 1: 450 nodes, 1 sol, lost 0, 1.011s
+- 21 clues, sample 2: 7726 nodes, 1 sol, lost 0, 20.092s
+- 21 clues, sample 3: 41422 nodes, 1 sol, lost 0, 54.267s
+- 21 clues, sample 4: 732 nodes, 1 sol, lost 0, 1.046s
+- 21 clues, sample 5: 18258 nodes, 1 sol, lost 0, 25.814s
