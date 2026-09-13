@@ -63,7 +63,7 @@ p.access .vt-pill{flex:none;font-weight:600;letter-spacing:.02em}
 .vt-callout p+p{margin-top:.5rem}
 .vt-table-wrap{max-width:100%}
 .vt-table{font-size:.9rem}
-.vt-code{max-width:80ch}
+.vt-code{max-width:100%}
 a{color:var(--vt-accent)}
 @media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--vt-rule);padding-right:0;max-height:40vh}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
