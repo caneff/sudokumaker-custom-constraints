@@ -3,15 +3,13 @@
 An explanatory reference for everything a custom constraint can reach: the
 `puzzle` object, change objects, the component contract, every `helpers.*`
 namespace, the utility globals, and all built-in components. Each entry was
-written by reading the function body in the deobfuscated solver bundle
-(`solver-Bv75x3BJ.js`, captured in `examples/_shared/sudokumaker.har`), not
-inferred from its name. It complements `bundle-api-index.md`, which is the
-generated, mangled-name-anchored signature list; this document explains what
-the signatures do.
+written by reading the function body in the app's solver bundle
+(`solver-Bv75x3BJ.js` as served by sudokumaker.app), not inferred from its
+name.
 
-Source: `docs/research/humanify-pedagogy/bundle.claude.js`, the bundle with
-every mangled identifier renamed (AST-verified to be the same program). Line
-citations point into it.
+Line citations (`bundle.claude.js:<line>`) point into a copy of that bundle
+with every mangled identifier renamed to a readable one, verified by AST
+comparison to be the same program.
 
 Caveats:
 
@@ -153,8 +151,7 @@ write nothing — they build and return a plain change object for you to `yield`
 
 > Note: the six change-building methods here are bare positional pass-throughs
 > to the factories at `bundle.claude.js:1866-1881`, whose bodies fix the order:
-> **the digit or digit mask comes first, the cell or cells second**, as
-> `docs/puzzle-api.md` says.
+> **the digit or digit mask comes first, the cell or cells second**.
 
 #### `getValue(cellId)` / `hasValue(cellId)`
 The solved digit, and whether there is one. `getValue` is
@@ -671,8 +668,8 @@ by structural key, so `{x, y}` objects compare by value.
 ### helpers.lines (class LinesHelper)
 
 `bundle.claude.js:9135`. **Extended helpers only** (`createExtendedHelpers`,
-`bundle.claude.js:9201`); absent from the base `createHelpers` result and from
-`docs/research/bundle-api-index.md`. Stateless — no constructor, no fields. A
+`bundle.claude.js:9201`); absent from the base `createHelpers` result.
+Stateless — no constructor, no fields. A
 "line" here is just an ordered `Array` of cell ids; nothing validates that the
 cells are actually adjacent.
 
@@ -820,8 +817,9 @@ Yields each row of the board as an array.
   `width` long and in left-to-right order.
 - **Notes:** the arrays are materialised (`[...getCellsInRow(i)]`), the outer
   sequence is not. Rows span the board edge to edge, including any frame/ring
-  cells. Matches `docs/puzzle-api.md:71` (verified there by live probe), which
-  also warns to coerce the yielded ids with `| 0` before heavy use.
+  cells (verified by live probe). Coerce the yielded ids with `| 0` before
+  heavy use: ids derived from board arithmetic cost the solver about 1.2x per
+  candidate read until they are plain integers again.
 
 #### `getAllColumns()`
 Yields each column as an array of cell ids, leftmost first, top-to-bottom
