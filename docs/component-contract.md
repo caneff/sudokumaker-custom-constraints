@@ -1,5 +1,9 @@
 # The component contract
 
+How the solver drives these hooks, with the call order drawn out:
+`docs/research/bundle-api-reference.md`, sections "When the solver calls what"
+and "How your code becomes a class".
+
 A custom constraint has two parts:
 
 1. A **main (backend) code segment**. It runs once at setup. It reads the

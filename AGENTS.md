@@ -69,6 +69,23 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   that sets `comment` itself must add the sentence. Exception: isofill is not
   sudoku and skips the line.
 
+## The solver bundle is on file — read it, do not guess (always on)
+
+- **Before you write a call against `puzzle` or `helpers`, or state what the
+  solver does with a change, look it up in
+  `docs/research/bundle-api-reference.md`.** It describes every reachable
+  method, change type and built-in component from the function body, tagged
+  `[read]` or `[inferred]`, with the bundle line beside it. The three diagrams
+  there (solve loop, the two `puzzle` views, change types) are the shortest
+  route to the call order.
+- **When the reference is not enough, read the body**: the renamed bundle is
+  `docs/research/humanify-pedagogy/bundle.claude.js`; `sed -n` the cited
+  range. To run it in Node, copy the loading trick in
+  `docs/research/humanify-pedagogy/tools/bugcheck.mjs`. Never assert solver
+  behaviour from a method name or from memory when the body is one command away.
+- Folder guide, page build and the artifact link:
+  `docs/research/humanify-pedagogy/README.md`.
+
 ## Commands
 
 - **Full gate — run before calling any task done:** `just check`
@@ -90,6 +107,7 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/research/bundle-api-index.md`
+- The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`

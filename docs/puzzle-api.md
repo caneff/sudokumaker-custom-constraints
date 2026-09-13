@@ -2,6 +2,9 @@
 
 Full extracted surface: `docs/research/bundle-api-index.md`, regenerate with
 `node examples/_shared/bundle-index.mjs`.
+What each method actually does, read from the bundle body:
+`docs/research/bundle-api-reference.md`. Look there first when a signature
+below is marked **[docs]** or is missing.
 
 The solving object is available as `puzzle` or `sudoku`. `helpers` is also
 reachable as `puzzle.helpers`, but **the main code and a component get two
