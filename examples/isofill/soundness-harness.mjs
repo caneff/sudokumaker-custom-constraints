@@ -94,7 +94,7 @@ function once (truth, seed) {
 }
 
 // ---- Fuzz: true values survive, on all fixtures ----
-// ponytail: 2,000 per fixture keeps `just check-full` at ~10 s now that cut
+// ponytail: 2,000 per fixture keeps this harness at ~10 s now that cut
 // pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
 const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0

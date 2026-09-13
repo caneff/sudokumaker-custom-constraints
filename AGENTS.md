@@ -97,7 +97,8 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
 - Python runs in the one project environment (`pyproject.toml`, `uv.lock`):
-  `uv run <file>`, no `--with`.
+  `uv run <file>`. The `uv run --with ...` usage lines in older file headers
+  and READMEs still work; the justfile never passes `--with`.
 - Real-app timing for one example: `just time <example>` — prints a
   paste-ready row; drives the live site, so it stays out of both gates. See
   `docs/real-app-timing.md`.

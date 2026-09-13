@@ -16,9 +16,7 @@ that the three agree on ONE board -- the proof, the component and the link
 cannot drift apart quietly.
 
 The generator arm -- a sampled 9x9 grid is the only one matching all 81 of its
-own cells -- used to run here too. It never touched the shipped board, and
-`generate.self_check()` makes the same assertion on the same 9x9 shape, run by
-generate.test.py, so it left this test in #411.
+own cells -- is `generate.self_check()`'s, run by generate.test.py.
 
 Costs about 17 s: one proof and a 151k-node offline solve.
 

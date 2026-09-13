@@ -8,10 +8,9 @@
 # E701/E702 (the compact one-liner style), S101 (asserts are fine in a script).
 # The full typed-package stack is a separate pass.
 #
-# No `ty`: 21 of its 22 diagnostics here were unresolved-import — ortools and
-# lzstring were on-demand deps then (they are in pyproject.toml since #411), and
-# the _shared helpers load through a runtime sys.path.insert ty cannot follow.
-# Type-checking these scripts would mean fighting sys.path for no real coverage.
+# No `ty`: the _shared helpers load through a runtime sys.path.insert ty cannot
+# follow, so type-checking these scripts would mean fighting sys.path for no
+# real coverage.
 line-length = 88
 
 [lint]
