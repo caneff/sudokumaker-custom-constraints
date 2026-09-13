@@ -341,39 +341,8 @@ couple of fields; there is no class and no method on it. The solver reads
 `change.type` in `SolverState.processChange`. The `ChangeType` enum is not
 exposed to custom code — build changes through `puzzle`, never by hand.
 
-Each `puzzle` write method maps to one `type`, and each type to what the
-applier does with it. Emptying a cell's candidate mask through types 1 to 4
-produces a `failed` result. Type 6 is the one a logic step cannot issue:
-`ChangeApplier` has no arm for it, only `SolverState.processChange` does.
-
-```mermaid
-flowchart LR
-  rc["removeCandidateFromCell(digit, cell) / removeCandidatesFromCell(digits, cell)"] --> t3["type 3 RemoveCandidatesFromCell"]
-  rcs["removeCandidateFromCells(digit, cells) / removeCandidatesFromCells(digits, cells)"] --> t4["type 4 RemoveCandidatesFromCells"]
-  fc["filterCandidatesInCell(digits, cell)"] --> t1["type 1 FilterCandidatesAtCell"]
-  fcs["filterCandidatesInCells(digits, cells)"] --> t2["type 2 FilterCandidatesAtCells"]
-  st["stop(message, cells)"] --> t5["type 5 AbortSolver"]
-  rp["replaceComponent(component, replacement) / removeComponent()"] --> t6["type 6 ReplaceComponent"]
-  none["no puzzle method"] -.-> t0["type 0 SetValue"]
-  subgraph both ["applied by SolverState.processChange and by ChangeApplier"]
-    a0["setValueAtCell: set the digit, propagate to seen cells, fire onValueSet"]
-    a1["intersect one cell's candidates with the mask"]
-    a2["intersect each listed cell's candidates with the mask"]
-    a3["clear the mask bits from one cell"]
-    a4["clear the mask bits from each listed cell"]
-    a5["failed result carrying the cells and message"]
-  end
-  subgraph only ["SolverState.processChange only"]
-    a6["unregister the yielding component, register each replacement and drain its initialize; terminal"]
-  end
-  t0 --> a0
-  t1 --> a1
-  t2 --> a2
-  t3 --> a3
-  t4 --> a4
-  t5 --> a5
-  t6 --> a6
-```
+Type 6 is the one a logic step cannot issue: `ChangeApplier` has no arm for
+it, only `SolverState.processChange` does.
 
 | Factory (1860-1891) | `type` | Fields on the object |
 |-|-|-|
