@@ -4,7 +4,9 @@ Full extracted surface: `docs/research/bundle-api-index.md`, regenerate with
 `node examples/_shared/bundle-index.mjs`.
 
 The solving object is available as `puzzle` or `sudoku`. `helpers` is also
-reachable as `puzzle.helpers`. Signatures below are from the community docs
+reachable as `puzzle.helpers`, but **the main code and a component get two
+different `helpers` objects** (see "Two helpers objects" below). Signatures
+below are from the community docs
 ([Chris-Tophski repo][src]) plus what we verified in use. Many methods there are
 marked TODO; this file keeps the ones you actually reach for. Tags: **[verified]**
 = we used it; **[verified]** (bundle) = read in the app's own JS bundle, not
@@ -61,13 +63,31 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 | `createFullDigitSet()` | DigitSet of all digits. **[docs]** |
 | `createOddsDigitSet()` / `createEvensDigitSet()` | Odd / even DigitSet. **[docs]** |
 
+## Two helpers objects
+
+The bundle builds `helpers` twice, and only the main code gets the bigger one.
+
+| Segment | Factory (bundle) | What it has |
+|-|-|-|
+| Main code (`setupPuzzle`) | `createExtendedHelpers` | everything below **plus** `helpers.lines` (`getLineEnds`), `helpers.misc` (`MiscHelper`: `getOrthogonallyConnectedGroups` and friends), and a region-aware `helpers.geometry` that adds `getSubsetsPerRegion(cells)` |
+| A component segment, and `puzzle.helpers` inside `initialize` / `update` / `validate` | plain `createHelpers` | `cellIds`, `cornerIds`, `edgeIds`, `outerCellIds`, `geometry` (base class only), `sums`, `xSums`, `digits`, `naming`, `connectivity` |
+
+So inside a component, `helpers.lines` and `helpers.misc` are `undefined` and
+`helpers.geometry.getSubsetsPerRegion` does not exist. Compute line ends,
+connected groups, or per-region splits in the main code and pass the result
+in as a constructor parameter. **[verified]** (bundle: `createHelpers` at
+`bundle.claude.js:1614`, `createExtendedHelpers` at 9201, `setupPuzzle` at
+9349, `compileCustomComponentClass` at 9994 and its `SolverPuzzleView` facade
+at 10072, in `docs/research/humanify-pedagogy/`)
+
 ## helpers.geometry / helpers.lines
 
 Mostly TODO in the source docs; useful for global constraints. Known members
 include `getOrthogonallyAdjacentCells`, `getDiagonallyAdjacentCells`,
 `getAllRows`, `getAllColumns`, `getAllKnightMovePairs`, `getAllDominoes`,
-`getCellsPointedAtByOuterClue`, and `helpers.lines.getLineEnds`. Verify the
-exact signature before relying on one. **[docs]**
+`getCellsPointedAtByOuterClue`, and, **main code only**,
+`helpers.lines.getLineEnds` and `helpers.geometry.getSubsetsPerRegion`.
+Verify the exact signature before relying on one. **[docs]**
 
 **`getAllRows()` / `getAllColumns()` return a GENERATOR, not an array**, and
 each line it yields is a plain `Array` of cell ids covering the whole board
