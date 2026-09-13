@@ -1,0 +1,58 @@
+{
+  "//": "Page-only structure for build-ref.mjs. The markdown stays in bundle order for agents; this file says how the page reorders and groups it. Section keys are h2 titles. Family members are component display names (the h3 text before the parenthesis).",
+  "sectionOrder": [
+    "The puzzle object, change objects and the component contract",
+    "Coordinates, ids and connectivity",
+    "Geometry",
+    "Sums, X-sums, digits and naming",
+    "Digit sets and utility globals",
+    "Built-in components",
+    "Bundle bugs"
+  ],
+  "underTheHood": [
+    "Internal component pieces",
+    "Solver internals",
+    "Logic steps: the app's own deductions",
+    "Utility functions and graph classes",
+    "Constraint handlers and layouts"
+  ],
+  "componentFamilies": [
+    { "name": "Two-cell relations", "blurb": "One relation between two cells, pruned from a precomputed friend table. All but the WeakLinks extend PairComponent.",
+      "members": ["PairComponent", "Difference", "RatioComponent", "GreaterThan / LessThan", "GreaterThanOrEquals", "MaximumDifference", "MinimumDifference", "NegativeDifference", "NegativeRatio", "WeakLink", "WeakLinks"] },
+    { "name": "Lines and orderings", "blurb": "Constraints that read cells in order: ends and middles, runs, visibility, indexing.",
+      "members": ["Between", "NegativeBetween", "Sequence", "ConsecutiveDigits", "ConsecutiveDigitsSet", "Skyscraper", "SandwichSum", "XSum", "Index", "NegativeIndex"] },
+    { "name": "Cages, sums and houses", "blurb": "A set of cells with a total, a product, or a distinctness rule.",
+      "members": ["House", "DifferentDigits", "DifferentCombinations", "Sum", "NegativeSum", "WeightedSum", "Product", "SameSum"] },
+    { "name": "Digit groups and equality", "blurb": "Cells that must agree, or must take digits from the same or different groups.",
+      "members": ["SameDigit", "SameGroup", "DifferentGroups", "DiverseGroups", "RequiredGroups"] },
+    { "name": "Counting digits", "blurb": "How many times a digit, or a set of digits, appears in a set of cells.",
+      "members": ["CountDigit", "CountDigits", "MaxDigitCount", "ExactDigitCount", "SelfCounting", "RequiredDigits"] },
+    { "name": "Candidate rules", "blurb": "Direct restrictions on which digits a cell may hold.",
+      "members": ["ForbiddenCandidates", "PredefinedCandidates"] }
+  ],
+  "tasks": [
+    ["read a cell's solved digit", "#solverpuzzleview-getvalue"],
+    ["read a cell's remaining candidates as a set", "#solverpuzzleview-getcandidates"],
+    ["read candidates as a bitmask, no allocation", "#solverpuzzleview-getcandidatesbitmask"],
+    ["find every cell that must differ from this one", "#puzzleaccessorbase-getcellsseenbycell"],
+    ["ask whether a set of cells is a house (all distinct)", "#puzzleaccessorbase-getcellsseeeachother"],
+    ["remove digits from a cell or cells", "#solverpuzzleview-removecandidatefromcell"],
+    ["keep only some digits in a cell or cells", "#solverpuzzleview-filtercandidatesincell"],
+    ["declare the branch dead", "#solverpuzzleview-stop"],
+    ["hand the rest of the work to a built-in", "#solverpuzzleview-replacecomponent"],
+    ["retire the component", "#solverpuzzleview-removecomponent"],
+    ["turn N cells into a house", "#housecomponent"],
+    ["register a component from main code", "#puzzlesetupview-addconstraintcomponent"],
+    ["convert between cell ids and (x, y)", "#cellids-getidfromcoords"],
+    ["find the cells around a cell", "#regionawaregeometryhelper-getadjacentcells"],
+    ["walk a row, column or box", "#regionawaregeometryhelper-getcellsinrow"],
+    ["split cells into connected groups", "#connectivityhelper-getorthogonallyconnectedgroups"],
+    ["bound what a set of cells can sum to", "#sumshelper-getextremesumswithrepeat"],
+    ["enumerate digit combinations for a sum", "#sumshelper-getcombinationsforsumwithoutrepeat"],
+    ["build a digit set", "#sudokudigitset"],
+    ["name cells in a message", "#naminghelper-getcellsdescription"],
+    ["understand when update runs", "#solverstate-updateconstraints"],
+    ["understand how a change is applied", "#solverstate-processchange"],
+    ["see how your functions are wired into a class", "#how-your-code-becomes-a-class-compilecustomcomponentclass"]
+  ]
+}
