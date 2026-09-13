@@ -225,18 +225,17 @@ The cell's friendly digits intersected with its live candidates.
 - **Returns:** a `SudokuDigitSet`. Note the body mutates the friendly set in
   place and returns it, so the result is a fresh set you may keep mutating.
 
-#### `removeCandidateFromCell(digit, cellId)`, `removeCandidateFromCells(digit, cells)`
-Change: drop one digit from one cell, or from every listed cell.
-- **Returns:** `{ type: 3, value: 1 << digit, cell }` for one cell;
-  `{ type: 4, value: 1 << digit, cells: [...cells] }` for a list. The cell list
-  is copied at build time, so mutating your array afterwards is harmless.
-
-#### `removeCandidatesFromCell(digits, cellId)`, `removeCandidatesFromCells(digits, cells)`
-Change: drop a set of digits from one cell, or from every listed cell.
-- **Params:** `digits` — a bitmask or a `DigitSet` (it is stored raw and later
-  used under `&`, which calls `valueOf`).
-- **Returns:** `{ type: 3, value: digits, cell }` for one cell;
-  `{ type: 4, value: digits, cells: [...cells] }` for a list.
+#### `removeCandidateFromCell(digit, cellId)`, `removeCandidateFromCells(digit, cells)`, `removeCandidatesFromCell(digits, cellId)`, `removeCandidatesFromCells(digits, cells)`
+Change: drop one digit, or a set of digits, from one cell or from every listed
+cell. The four are one operation; the name picks the digit form and the cell
+form.
+- **Params:** `digit` — one digit, turned into the mask `1 << digit`.
+  `digits` — a bitmask or a `DigitSet` (stored raw and later used under `&`,
+  which calls `valueOf`). `cells` — an array of cell ids.
+- **Returns:** `{ type: 3, value, cell }` for one cell;
+  `{ type: 4, value, cells: [...cells] }` for a list, where `value` is the mask.
+  The cell list is copied at build time, so mutating your array afterwards is
+  harmless.
 
 #### `filterCandidatesInCell(digits, cellId)`, `filterCandidatesInCells(digits, cells)`
 Change: keep only these digits in one cell, or in every listed cell.
