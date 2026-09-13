@@ -1108,21 +1108,17 @@ Smallest weighted total achievable with all cells on distinct digits.
 Mirror of the above, taking the largest unused digit at each step.
 - **Returns:** a number, or `null` if no distinct-digit assignment exists.
 
-#### `getCombinationsForSumWithoutRepeat(sum, cellCount)`
+#### `getCombinationsForSumWithoutRepeat(sum, cellCount)` / `getCombinationsForSumsWithoutRepeat(sums, cellCount)`
 Every set of `cellCount` distinct digits from `minDigit..maxDigit` that adds to
-`sum`.
+`sum`; the plural form concatenates that over each entry of `sums`.
 - **Returns:** array of arrays of digits (ascending within each combination),
   `[]` when `cellCount` is `0` or nothing matches.
 - **Notes:** this ignores candidates — it is pure digit arithmetic. It enumerates
   **all** `C(maxDigit-minDigit+1, cellCount)` combinations and filters by sum, so
   it is the expensive call in this class; memoized per `(sum, cellCount)`, and the
   cached array is shared — copy before mutating. Convert to masks with
-  `.map(toDigitMask)` if you want to intersect against candidates.
-
-#### `getCombinationsForSumsWithoutRepeat(sums, cellCount)`
-Concatenation of `getCombinationsForSumWithoutRepeat` over each entry of `sums`.
-- **Returns:** array of digit arrays; `[]` when `cellCount` is `0`.
-- **Notes:** no de-duplication — a repeated value in `sums` yields duplicate
+  `.map(toDigitMask)` if you want to intersect against candidates. The plural
+  form does no de-duplication — a repeated value in `sums` yields duplicate
   combinations.
 
 Private `#e(candidateMasks, weights, search)` backs both extreme-sum searches.
@@ -3850,16 +3846,13 @@ Adds an undirected edge for each consecutive pair in `line`.
 - **Returns:** `this`. **Mutates:** the receiver. A one-point line adds
   nothing; use `addPoint` for that. **[read]**
 
-#### `addPoint(point)`
-Ensures the point exists with an empty neighbour set.
+#### `addPoint(point)` / `addPoints(points)`
+Ensures the point, or each point of an iterable, exists with an empty neighbour
+set.
 - **Returns:** `undefined`. **Mutates:** the receiver.
 - **Notes:** this is the one entry point that does **not** intern its argument,
   so an object point added here and then queried via `hasPoint` may miss. Pass
   cell ids, or intern yourself. **[read]**
-
-#### `addPoints(points)`
-`addPoint` over an iterable. **Returns:** `undefined`. **Mutates:** the
-receiver. Same no-interning caveat. **[read]**
 
 #### `addEdge(pointA, pointB)`
 Interns both points, creates their neighbour sets if needed, and links them
@@ -3906,17 +3899,13 @@ Breadth-style flood fill from `startPoint` over neighbour sets.
 - **Notes:** a `startPoint` not in the graph yields an empty set, since the
   loop skips points with no entry. **[read]**
 
-#### `getComponentContainingPoint(startPoint)`
-The single component containing `startPoint`, as a graph.
+#### `getComponentContainingPoint(startPoint)` / `getComponentsContainingPoints(points)`
+The single component containing `startPoint`, or the union of the components
+containing any of `points`, as one graph.
 - **Returns:** a new `LineGraph` with the same comparator, holding those points
   and the edges among them. **Mutates:** nothing. An unknown start point gives
-  an empty graph. **[read]**
-
-#### `getComponentsContainingPoints(points)`
-The union of the components containing any of `points`, as one graph.
-- **Returns:** a new `LineGraph`; the requested points are added explicitly, so
-  isolated ones survive here (unlike the `DirectedLineGraph` twin).
-  **Mutates:** nothing. **[read]**
+  an empty graph; in the plural form the requested points are added explicitly,
+  so isolated ones survive (unlike the `DirectedLineGraph` twin). **[read]**
 
 #### `clone()`
 Rebuilds from `getEdges()` with the same comparator.
