@@ -32,16 +32,19 @@ def test_timeout_never_a_verdict():
 
 
 def test_cap_wider_than_side():
-    # 4x4 board, digits 1-6: a valid grid must use a digit above 4 somewhere,
-    # since a 4-cell board side alone cannot hold a region of, say, 5 cells
-    # unless the region snakes across rows -- the point is the cap, not the
-    # side, bounds the digit. A 4x4 samples in hundredths of a second where the
-    # 9x9/cap-12 board this used to draw took ten (#411); the claim does not
-    # depend on the side.
-    grid = sample(Board.of(4, 6), seed=1, pins=4)
-    digits = {d for row in grid for d in row}
-    assert max(digits) <= 6, f"digit above the cap 6: {digits}"
-    assert any(d > 4 for d in digits), f"no digit above 4 in {sorted(digits)}"
+    # When the cap exceeds the side, `sample` forces one pin above the side, so
+    # every grid it draws uses a digit the side alone would not reach, and none
+    # above the cap. One pin per draw on a 5x5 with digits 1-6: without the
+    # forced pin, about 60% of draws still reach a 6 by chance, so thirty seeds
+    # all reaching one by chance is about a 2-in-10-million event.
+    board = Board.of(5, 6)
+    for seed in range(1, 31):
+        grid = sample(board, seed=seed, pins=1)
+        digits = {d for row in grid for d in row}
+        assert max(digits) <= 6, f"seed {seed}: digit above the cap 6: {digits}"
+        assert any(d > 5 for d in digits), (
+            f"seed {seed}: no digit above 5 in {sorted(digits)}"
+        )
 
 
 def test_model_and_rows_read_the_board_they_are_given():

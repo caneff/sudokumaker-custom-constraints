@@ -9,18 +9,20 @@ check: lint test
 # soundness fuzz. Covers every step `check` runs.
 check-full: check test-heavy soundness
 
-# The heavy tests: each takes seconds to tens of seconds (an end-to-end
-# generation run or a recovery probe over many boards). `test` skips them by
-# path and `test-heavy` runs them; examples/_shared/gate.test.py fails if a
-# test file drops out of both.
+# The heavy tests: an end-to-end generation run or a recovery probe over many
+# boards, ten to twenty seconds each. `test` skips them by path and
+# `test-heavy` runs them; examples/_shared/gate.test.py fails if a test file
+# drops out of both, or if this list and the ruling in #411 part ways.
 heavy := "examples/fillomino/pipeline.test.py examples/fillomino/generate.test.py examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
 
 # Lint the Node code (StandardJS) and the Python generators (ruff check +
-# format check). The verbatim original/ snippets are excluded.
+# format check), and fail when uv.lock no longer matches pyproject.toml. The
+# verbatim original/ snippets are excluded.
 lint:
     npx standard
     uvx ruff check examples
     uvx ruff format --check examples
+    uv lock --check
 
 # Auto-fix + format in place.
 fmt:
@@ -29,8 +31,9 @@ fmt:
     uvx ruff format examples
 
 # Every example's own tests except the heavy ones above, discovered by file
-# name so a new example needs no edit here. See docs/example-layout.md. Builders (build_*.py) do not run here — only files
-# named *.test.mjs / *.test.py. A verify.py runs here only when it is cheap:
+# name so a new example needs no edit here. See docs/example-layout.md.
+# Builders (build_*.py) do not run here — only files named *.test.mjs /
+# *.test.py. A verify.py runs here only when it is cheap:
 # skyscraper's is one solve and is wired in below, isofill's searches for
 # minutes and stays behind `just verify-isofill` (see there).
 #

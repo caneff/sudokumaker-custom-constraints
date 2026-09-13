@@ -6,9 +6,11 @@
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
 #     under examples/, lint, and the two plain scripts the gate runs, so a new
 #     or renamed test cannot drop out of both tiers;
-#   - check runs none of the heavy tests the ruling moved out, and no
-#     soundness harness;
+#   - what check-full adds over check is exactly the heavy tests the ruling
+#     names and the soundness harnesses -- nothing heavy runs in check, and
+#     nothing light is moved out of it;
 #   - every command check runs, check-full runs too;
+#   - lint fails when uv.lock no longer matches pyproject.toml;
 #   - no Python step passes --with, so every call uses the one synced project
 #     environment and nothing resolves per call.
 #
@@ -34,6 +36,7 @@ LINT = {
     "npx standard",
     "uvx ruff check examples",
     "uvx ruff format --check examples",
+    "uv lock --check",
 }
 
 SCRIPTS = {
@@ -96,10 +99,11 @@ if __name__ == "__main__":
     missing = (on_disk() | LINT | SCRIPTS) - set(full)
     assert not missing, f"check-full does not run: {sorted(missing)}"
 
-    heavy_in_fast = HEAVY & set(fast)
-    assert not heavy_in_fast, f"check runs heavy tests: {sorted(heavy_in_fast)}"
-    harness_in_fast = [c for c in fast if c.endswith("soundness-harness.mjs")]
-    assert not harness_in_fast, f"check runs soundness harnesses: {harness_in_fast}"
+    harnesses = {c for c in on_disk() if c.endswith("soundness-harness.mjs")}
+    added = set(full) - set(fast)
+    assert added == HEAVY | harnesses, (
+        f"check-full adds {sorted(added)}, not the heavy tests and harnesses"
+    )
 
     only_fast = set(fast) - set(full)
     assert not only_fast, f"check runs steps check-full skips: {sorted(only_fast)}"

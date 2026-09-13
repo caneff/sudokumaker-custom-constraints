@@ -26,6 +26,7 @@ Costs about 17 s: one proof and a 151k-node offline solve.
 """
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -51,13 +52,18 @@ assert generate.unique(BOARD, {p: int(SPEC["grid"][p[0]][p[1]]) for p in CLUES})
 # ---- 2. the shipped component closes the shipped clue set, offline ----
 # `hunt.mjs board` reads the LINK (not gen.json), solves from its givens with
 # FillominoComponent.js as the only propagator, and refuses to write anything
-# unless the verdict is `unique`.
+# unless the verdict is `unique`. It runs from a directory outside the repo and
+# without the VIRTUAL_ENV this test's own `uv run` exports, the way a user
+# launches it, so its Python half has to find the project environment from its
+# own path.
 with tempfile.TemporaryDirectory() as tmp:
     out = pathlib.Path(tmp) / "solved.json"
     r = subprocess.run(
         ["node", str(HERE / "hunt.mjs"), "board", str(HERE / "PUZZLE_LINK.txt"), out],
         capture_output=True,
         text=True,
+        cwd=tmp,
+        env={k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"},
     )
     assert r.returncode == 0, r.stderr
     assert "\tunique\t" in r.stdout, r.stdout

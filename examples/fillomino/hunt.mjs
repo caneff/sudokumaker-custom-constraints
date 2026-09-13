@@ -30,8 +30,9 @@ import { loadComponent, score, stripOffline, givensOf } from './hunt-lib.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const mod = loadComponent(HERE)
 
+// --project: the repo's one uv environment, wherever this script is launched from.
 const py = (script, args, input) =>
-  JSON.parse(execFileSync('uv', ['run', join(HERE, script), ...args],
+  JSON.parse(execFileSync('uv', ['run', '--project', join(HERE, '..', '..'), join(HERE, script), ...args],
     { input, encoding: 'utf8', maxBuffer: 1 << 26 }))
 
 // `--node-cap N` raises the search budget for a board the default cannot
