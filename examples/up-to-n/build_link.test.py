@@ -27,6 +27,7 @@ sys.path.insert(0, str(HERE))
 
 import cpsat
 from build_link import CONSTRAINT_NAME, SPEC, add_up_to_n, build
+from build_size import MINIMAL_9X9, SHIPPED_9X9_CLUES, shipped_9x9
 from framebuild import board_files, load_board, make_lines, rebuild, unique
 from link_codec import decode_puzzle
 from link_swap import blanked
@@ -159,6 +160,7 @@ def shipped_board_matches_its_link(link_name, gen_name):
 # Every committed board: (link, gen JSON, size, box).
 BOARDS = [
     ("PUZZLE_LINK.txt", "gen.json", 9, (3, 3)),
+    ("PUZZLE_LINK_9x9.txt", "gen_9x9.json", 9, (3, 3)),
     ("PUZZLE_LINK_4x4.txt", "gen_4x4.json", 4, (2, 2)),
     ("PUZZLE_LINK_6x6.txt", "gen_6x6.json", 6, (2, 3)),
 ]
@@ -169,17 +171,37 @@ def test_every_committed_board_is_unique_and_rebuilds_without_a_search():
         link for link, *_ in BOARDS
     )
     for link_name, gen_name, n, box in BOARDS:
-        assert board_files(SPEC, n, local=True) == (HERE / link_name, HERE / gen_name)
+        files = (HERE / link_name, HERE / gen_name)
+        named = files == MINIMAL_9X9
+        assert named or board_files(SPEC, n, local=True) == files
         board = shipped_board_matches_its_link(link_name, gen_name)
         assert board.n == n and board.box == box, link_name
         assert unique(add_up_to_n, board) is True, link_name
         # And not by accident: with no clue shown the givens alone do not pin it.
         assert unique(add_up_to_n, replace(board, active=set())) is False, link_name
         link = (HERE / link_name).read_text()
-        assert rebuild(SPEC, n, local=True) + "\n" == link, (
+        assert rebuild(SPEC, n, local=True, files=files) + "\n" == link, (
             f"{link_name} is not what --rebuild makes of {gen_name}: regenerate "
-            f"it with `build_size.py --rebuild {n} --local`"
+            f"it with `build_size.py "
+            f"{'--rebuild-minimal-9x9' if named else f'--rebuild {n} --local'}`"
         )
+
+
+def test_shipped_9x9_is_the_minimal_board_with_clues_added():
+    # The live app times out on the minimal 9x9, so the shipped board is the
+    # same solution with more clues shown and still no givens
+    # (docs/research/368-up-to-n-setup-throw.md, finding 5).
+    minimal = load_board(HERE / "gen_9x9.json")
+    shipped = load_board(HERE / "gen.json")
+    assert (shipped.seed, shipped.grid, shipped.clue) == (
+        minimal.seed,
+        minimal.grid,
+        minimal.clue,
+    )
+    assert shipped.givens == minimal.givens == {}
+    assert len(minimal.active) == 13 and len(shipped.active) == SHIPPED_9X9_CLUES == 18
+    assert minimal.active < shipped.active
+    assert shipped == shipped_9x9(minimal)
 
 
 def test_component_swap_changes_only_that_component():

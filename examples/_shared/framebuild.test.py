@@ -551,6 +551,18 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         finally:
             framebuild.grid_backend_constraint = real
         assert edited() in relinked["puzzle"]["constraints"]
+        # A second board of the same size keeps its own named pair; `files`
+        # points the rebuild at it instead of the size's default names.
+        other_link = spec.dir / "PUZZLE_LINK_9x9.txt"
+        other_gen = spec.dir / "gen_9x9.json"
+        link_path.rename(other_link)
+        gen_path.rename(other_gen)
+        files = (other_link, other_gen)
+        assert (
+            rebuild(spec, n, local=True, files=files) + "\n" == other_link.read_text()
+        )
+        other_link.rename(link_path)
+        other_gen.rename(gen_path)
         # A no-ring board's shown clues live only in its groups' typed values:
         # hide one in the gen JSON and the rebuilt groups no longer match.
         g = json.loads(gen_path.read_text())

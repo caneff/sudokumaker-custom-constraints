@@ -944,7 +944,7 @@ def run(spec, n, bh, bw, seeds, local=False):
     print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
 
 
-def rebuild(spec, n, local=False):
+def rebuild(spec, n, local=False, files=None):
     """The link for a committed board, re-encoded against the code in the tree
     right now, with no fresh CP-SAT search.
 
@@ -954,8 +954,11 @@ def rebuild(spec, n, local=False):
     component snapshot from whenever its search last ran. Asserts exactly that
     against the link it replaces, and returns the new link without writing it,
     so a test can compare bytes without touching the tree.
+
+    `files` names the (link, gen) pair for a board that does not own its
+    size's default names (`board_files`) -- a second board of one size.
     """
-    link_path, gen_path = board_files(spec, n, local)
+    link_path, gen_path = files or board_files(spec, n, local)
     assert gen_path.exists(), (
         f"{gen_path.name} does not exist: this example ships no framebuild "
         f"board at n={n} on the {'local' if local else 'global'} lane. A link "
