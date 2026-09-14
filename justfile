@@ -54,6 +54,7 @@ test:
     shopt -s nullglob
     node examples/_shared/recovery-lib.test.mjs
     node examples/_shared/app-solve-lib.test.mjs
+    node examples/_shared/bundle-solve.test.mjs
     node examples/_shared/app-strip-lib.test.mjs
     node examples/_shared/harness-lib.test.mjs
     node examples/_shared/frame-rowcol.test.mjs
