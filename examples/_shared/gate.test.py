@@ -36,7 +36,9 @@ HEAVY = {
 LINT = {
     "npx standard",
     "uvx ruff check examples",
+    "uvx ruff check finders",
     "uvx ruff format --check examples",
+    "uvx ruff format --check finders",
     "uv lock --check",
 }
 

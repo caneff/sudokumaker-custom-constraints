@@ -13,5 +13,17 @@
 # real coverage.
 line-length = 88
 
+# One-off hunt scripts (#469): each was written for a single overnight run,
+# most hardcode an absolute path into a sibling `tang` checkout that does not
+# exist in this repo, and none are imported by anything else. Linting or
+# reformatting them for real would mean rewriting dozens of throwaway
+# scripts' open()/os.path calls and hand-packed one-liners with no behavior
+# to verify against -- the move here (#469) is "stop committing them
+# unreviewed to docs/research", not "make them a maintained package". The
+# core finder modules (renbanana_cpsat.py, renbanana_verify.py,
+# renbanana_render.py, zombo_brainanas_cpsat.py, zombo_brainanas_render.py,
+# and finders/renbanana/tools/) are held to the normal rules below.
+extend-exclude = ["finders/zombo-brainanas/tools"]
+
 [lint]
 select = ["F", "I", "B", "UP", "SIM", "C4", "PIE", "PERF", "RET", "PTH", "RUF"]
