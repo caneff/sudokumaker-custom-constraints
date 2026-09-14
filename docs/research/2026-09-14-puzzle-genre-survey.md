@@ -641,13 +641,20 @@ combined in practice.
 - https://www.puzzles.wiki/wiki/Star_Battle
 - https://wpcunofficial.miraheze.org/wiki/Star_Battle
 - LMD portal hybrid searches (see each genre entry for the puzzle IDs found)
-- https://logic-masters.de/Raetselportal/?chlang=en — the portal's own genre tag list,
-  which is itself evidence of which pencil genres are routinely combined with Sudoku
-  there (it carries tags for Cave, Coral, Country Road, Fillomino, Galaxies, Geradeweg,
-  Hakyuu, Heyawake, Hitori, Kuromasu, Kurotto, LITS, Masyu, Mid-loop, Minesweeper,
-  Moon-or-Sun, Myopia, Nanro, Nonogram, Norinori, Number Link, Nurikabe, Nurimisaki,
-  Pentominous, Pentopia, Sashigane, Shakashaka, Shikaku, Shimaguni, Slitherlink, Snake,
-  Star Battle, Stostone, Tapa, Yajilin, Yin and Yang, among others).
+- https://logic-masters.de/Raetselportal/?chlang=en — the portal's tag cloud, read once
+  to get the numeric `tag_id` of every genre below. It is **not** evidence of anything:
+  a genre having a tag says only that the tag exists. Hybrid evidence in this document
+  comes from the tag *listings*, below.
+- The LMD tag listings, `Suche/erweitert.php?tag_id=<id>&start=<0|20|40>&chlang=en`,
+  20 puzzles per page, newest first. 46 genre tags were walked three pages deep on
+  2026-09-14 — 138 requests, one every 10 seconds, no retries, all HTTP 200 — and every
+  listed title scanned for Sudoku. Tags holding fewer than 60 puzzles were therefore read
+  in full, and the entries below say which. Where a title looked like a hybrid but did not
+  prove it, the puzzle page itself was opened: that was done for *Pac-Man Sudoku* (000E4Q)
+  and *Sudoku Variants Series (483) - Coral* (000UPH), both quoted from their own pages.
+  There is no tag-intersection query on the portal — a second `tag_id` by GET is ignored —
+  which is why the method is a title scan rather than a set intersection, and why a
+  negative here means "no Sudoku in the title on the pages read", not "no hybrid exists".
 
 ---
 
@@ -761,13 +768,20 @@ report enormous solution counts on the shading layer.
 nothing for the solver to decide. The inverted form (a larger given grid whose
 unshaded survivors form a latin square) is a different puzzle and a different model.
 
-**Existing hybrids:** LMD carries a Hitori tag and the wiki carries composite genres
-*Kuromasu-Hitori* (https://wiki.logic-masters.de/index.php/Kuromasu-Hitori) and
-*Rundweg-Hitori* (https://wiki.logic-masters.de/index.php/Rundweg-Hitori), i.e. Hitori
-crossed with Kuromasu and with a loop genre, not with Sudoku. No Hitori x Sudoku hybrid
-found (searched: LMD portal for "Hitori Sudoku", GM Puzzles, general web). The
-vacuousness argument above is the likely reason. [Hybrid absence verified by search
-only, so: unverified as an absolute claim.]
+**Existing hybrids:** they exist, which corrects this entry's earlier reading. The
+vacuousness argument above says a *direct* overlay has nothing to decide, and every
+published hybrid works around that rather than ignoring it — they solve a Hitori grid
+and a Sudoku grid together rather than shading the Sudoku itself.
+- *Sudokitori*, LMD 000AOX by britboy3456, 2 August 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000AOX).
+- *Sudoku & Hitori*, LMD 0001E5 by RobertBe, 26 August 2013
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0001E5), and
+  *Sudoku & Hitori II*, LMD 0001H3, 4 September 2013
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0001H3).
+- The LMD wiki also carries the composite genres *Kuromasu-Hitori*
+  (https://wiki.logic-masters.de/index.php/Kuromasu-Hitori) and *Rundweg-Hitori*
+  (https://wiki.logic-masters.de/index.php/Rundweg-Hitori) — Hitori crossed with Kuromasu
+  and with a loop genre.
 
 ## 1.3 LITS (formerly ヌルオミノ "Nuruomino")
 
@@ -826,10 +840,9 @@ enumerate legal LITS shadings, stage 2 fit digits on each fixed shading.
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000IKY): LITS x Star
   Battle, tagged "Doppelstern, LITS", with black stars on tetrominoes and white stars off
   them.
-- LMD carries a LITS tag alongside its Sudoku tag
-  (https://logic-masters.de/Raetselportal/?chlang=en). A pure "LITS Sudoku" title was
-  not found in this search round — the LITS hybrids that exist are with other pencil
-  genres. [unverified as an absolute absence]
+- No LMD puzzle tagged LITS has Sudoku in its title: the LITS tag holds 28 puzzles in
+  total and all 28 were read (tag listing checked 2026-09-14). The LITS hybrids that exist are
+  with other pencil genres, as above.
 
 ## 1.4 Tapa
 
@@ -873,9 +886,9 @@ blowup. This is the single cleanest clue-equals-digit encoding in the survey.
 cost is the standard flow.
 
 **Existing hybrids:**
-- LMD carries a Tapa tag beside the Sudoku tag
-  (https://logic-masters.de/Raetselportal/?chlang=en), and the portal's genre list
-  includes a *Variables Tapasyu* entry — Tapa crossed with Masyu.
+- *Cover Up (Tapa Sudoku)*, LMD 000MHQ by tallcat, 3 April 2025
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000MHQ): a Tapa shading
+  and a sudoku on one grid, the Tapa clues reading off the digits.
 - The LMD wiki carries a large family of Tapa variants as first-class genres —
   *Compass Tapa*, *Encoded Tapa*, *Hungarian Tapa*, *Irregular Tapa*, *Mastermind Tapa*,
   *Easy As Tapa*, *Tapa Borders*, *Tapa Chess*, *Tapa Line*, *Tapa Logic*, *Tapa Place*,
@@ -929,12 +942,15 @@ read off a pair of cells.
 if you insist on four-way digit sums, because products of a bool and an int per
 sight step are the costliest device in this survey.
 
-**Existing hybrids:** the LMD portal carries a Kuromasu tag alongside Sudoku
-(https://logic-masters.de/Raetselportal/?chlang=en), and the wiki carries the composite
-genre *Kuromasu-Hitori* (https://wiki.logic-masters.de/index.php/Kuromasu-Hitori). The
-directly analogous and heavily-set hybrid is Cave Sudoku (1.11 below), which uses the
-same visibility clue with the opposite connectivity rules. No titled "Kurodoko Sudoku"
-surfaced in this round (searched: LMD portal, GM Puzzles, general web). [unverified]
+**Existing hybrids:**
+- *Kuromasudoku*, LMD 0004SG by Phistomefel, 26 November 2020
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0004SG): the genre's
+  visibility clue driving a sudoku, by the setter who set most of this survey's shading
+  hybrids.
+- The LMD wiki carries the composite genre *Kuromasu-Hitori*
+  (https://wiki.logic-masters.de/index.php/Kuromasu-Hitori).
+- The directly analogous and heavily-set hybrid is Cave Sudoku (1.11 below), which uses
+  the same visibility clue with the opposite connectivity rules.
 
 ## 1.6 Heyawake (へやわけ, "divided rooms")
 
@@ -976,8 +992,15 @@ presolve likes.
 *Verdict.* **Good.** Native linear coupling, a static clause list for the hard
 rule, one flow. Among the best value in the shading family.
 
-**Existing hybrids:** LMD carries a Heyawake tag beside the Sudoku tag
-(https://logic-masters.de/Raetselportal/?chlang=en). The documented composite is
+**Existing hybrids:**
+- *Heyawake Sudoku*, LMD 000R4D by SennyK, 22 January 2026
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000R4D), and its sequel
+  *Heyawake Sudoku (Given Regions)*, LMD 000R76, 28 January 2026
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000R76) — the second
+  hands the solver the room partition, the first does not.
+- *Heyawake Sudoku*, LMD 000DYC by rockratzero, 23 May 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000DYC).
+- The documented non-sudoku composite is
 *Starwacky*, Star Battle x Heyawake with non-rectangular regions, from WPC 2018 Round 6
 by Jan Zvěřina (https://wpcunofficial.miraheze.org/wiki/Star_Battle) — object placement
 plus Heyawake's rule 3, which is the exact structural move a Sudoku hybrid would make.
@@ -1044,7 +1067,6 @@ digits, exactly as `renbanana_cpsat.py` splits shading from digits.
   deconstructed 11x11, with killer cages summing either the shaded or the unshaded cells;
   part of a series the setter describes as "combining deconstruction with various shading
   puzzle genres (cave, nurikabe)".
-- LMD carries a "Yin and Yang" tag (https://logic-masters.de/Raetselportal/?chlang=en).
 
 ## 1.8 Nurimisaki (ぬりみさき, "painted cape")
 
@@ -1092,8 +1114,13 @@ complete-marking rule gives the solver free pruning.
   line from the circle, including the circle itself". The setter explicitly names
   nurimisaki as the source genre; a solver comment reads "Managed to bring a lot of
   nurimisaki logic into the world of sudoku".
-- LMD carries a Nurimisaki tag beside the Sudoku tag
-  (https://logic-masters.de/Raetselportal/?chlang=en).
+- *Nurimisaki Sudoku - Whispers*, LMD 000BY8 by Mark Sweep, 9 November 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000BY8), and
+  *Sasayaki Misaki (Whispering Cape)*, LMD 000BL0 by rockratzero, 10 October 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000BL0): both pair the
+  cape rule with a German-whispers line over the digits.
+- *Nurimisaki Squishdoku*, LMD 000LZX by Nell Gwyn, 13 February 2025
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000LZX).
 
 ## 1.9 Shakashaka (シャカシャカ)
 
@@ -1130,9 +1157,9 @@ to equal, so coupling is wholly invented.
 
 *Verdict.* **Poor.** Skip it.
 
-**Existing hybrids:** LMD carries a Shakashaka tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No Shakashaka x Sudoku hybrid found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** none. No LMD puzzle tagged Shakashaka has Sudoku in its title: the
+tag holds 19 puzzles in total and all 19 were read (tag listing checked 2026-09-14). The
+five-state decision layer is the likely reason.
 
 ## 1.10 Star Battle (Doppelstern, Two Not Touch, Sternenschlacht)
 
@@ -1182,7 +1209,11 @@ survey; a natural first CP-SAT hybrid to build.
 - *Starwacky*, WPC 2018 Round 6 by Jan Zvěřina
   (https://wpcunofficial.miraheze.org/wiki/Star_Battle): Star Battle x Heyawake. The same
   page documents further Star Battle hybrids (Regions Star Battle, a borderless variant).
-- LMD carries a Star Battle tag (https://logic-masters.de/Raetselportal/?chlang=en).
+- *Star Battle Sandwich Sudoku*, LMD 000EGS by panthchesh, 13 July 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000EGS): stars and
+  sandwich sums over one grid, the stars bounding the sandwich.
+- *Easy Peasy Sudoku Advent (07) - Star Battle Sandwich*, LMD 000QEX by Richard,
+  7 December 2025 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000QEX).
 
 ## 1.11 Cave / Corral / Bag / Höhle
 
@@ -1321,7 +1352,12 @@ content is entirely in the clue-to-digit link, which is exactly what a hybrid wa
   https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00087H) and *Shikasudoku
   2* (LMD 00093U, https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00093U) —
   a Kurotto x Sudoku hybrid by the most prolific setter of this kind of hybrid.
-- LMD carries a Kurotto tag (https://logic-masters.de/Raetselportal/?chlang=en).
+- *Sudokurotto*, LMD 0007M6 by Phistomefel, 15 September 2021
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0007M6) — the puzzle the
+  Shikaku hybrids below name as their inspiration, now with its id.
+- *Kurotto Killer Sudoku*, LMD 000AMF by KNT, 29 July 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000AMF): the Kurotto
+  block-size sum doubling as a killer cage total.
 
 ## 1.14 Mochikoro and Mochinyoro (もちこ / もちにょろ)
 
@@ -1483,9 +1519,8 @@ relaxation** — and a relaxation changes the puzzle, so it must be declared.
 *Verdict.* **Workable.** Also note 9 is odd, so "bottom half" is undefined on a
 9x9 without a board change. Model it on 9x10 or accept the relaxation.
 
-**Existing hybrids:** LMD carries a Stostone tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No Stostone x Sudoku hybrid found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** none. No LMD puzzle tagged Stostone has Sudoku in its title: the
+tag holds 10 puzzles in total and all 10 were read (tag listing checked 2026-09-14).
 
 ## 1.18 Nuribou (ぬりぼう)
 
@@ -1561,10 +1596,14 @@ domino variables give the coupling a natural carrier that raw shading bools do n
 *Verdict.* **Good.** Trivially cheap model, and the domino-bool encoding gives the
 invented coupling a clean home. Unclaimed as a published hybrid.
 
-**Existing hybrids:** LMD carries a Norinori tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled "Norinori Sudoku" surfaced
-this round (searched: LMD portal, GM Puzzles, general web). Given how clean the fit is,
-this reads as an opportunity rather than a warning. [unverified as absence]
+**Existing hybrids:** three, all pairing the domino layer with killer cages rather than
+with a bare sudoku — which is the coupling this entry predicts a setter would have to add.
+- *Norinori Killer Sudoku*, LMD 0005DD by SudokuExplorer, 9 February 2021
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0005DD).
+- *Nori Nori Killer Sudoku*, LMD 0008EY by MavericksJD, 29 November 2021
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0008EY).
+- *Innocuous Dom (Norinori / Killer Sudoku)*, LMD 000E7T by rockratzero, 19 June 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000E7T).
 
 ## 1.20 Choco Banana (チョコバナナ)
 
@@ -1648,9 +1687,16 @@ than sitting beside it.
 constraint decomposes to the sudoku's own box structure and therefore costs
 almost nothing.
 
-**Existing hybrids:** LMD carries a Shimaguni tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled Shimaguni Sudoku found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** four, all by way of rockratzero.
+- *Shimadoku*, LMD 000B4R by rockratzero, 7 September 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000B4R).
+- *X-Sumaguni Sudoku*, LMD 000DM8 by rockratzero, 15 April 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000DM8): island sizes with
+  X-sums outside the grid.
+- *Islands Countdown (Ambiguous Kropki Sudoku/Shimaguni)*, LMD 000BF5, 28 September 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000BF5).
+- *In the throes of chaos (Calcudoku/Shimaguni/Kaero/Cipher)*, LMD 000GSM by dumediat,
+  2 February 2024 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000GSM).
 
 ## 1.22 Aqre
 
@@ -1769,9 +1815,11 @@ and an unrelated minesweeper.
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=000CW1):
   "Each value in the sudoku that is not a mine gives the number of mines around the cell.
   Note, mine cells can have any value", plus arrow, killer-cage and 2x2 rules.
-- GM Puzzles has a Minesweeper category with 65 posts
-  (https://www.gmpuzzles.com/blog/category/objectplacement/minesweeper/), and LMD carries
-  a Minesweeper tag (https://logic-masters.de/Raetselportal/?chlang=en).
+- *Minesweeper-Sudoku*, LMD 000KFJ by Vara9850, 24 October 2024
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000KFJ).
+- *Splitting the Estate (Sudoku with sweeper cells)*, LMD 000L7A by Qodec,
+  20 December 2024 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000L7A): named cells act as mine counters over
+  their 8 neighbours while still carrying a digit.
 
 ## 1.25 Battleships (Bimaru, Solitaire Battleships)
 
@@ -1818,13 +1866,25 @@ weakness under this lens is that the coupling is additive rather than emergent.
   with rules at Erasable Games (https://erasablegames.com/battleship-sudoku/): "Two games
   in one: Battleship and Sudoku. There are fewer Sudoku clues and added Battleship clues.
   Use both sources to solve both objectives."
-- GM Puzzles runs Battleship Sudoku as a standing category with 7 posts
-  (https://www.gmpuzzles.com/blog/category/sudoku/battleship-sudoku/) alongside 109
-  classic Battleships posts
-  (https://www.gmpuzzles.com/blog/category/objectplacement/battleships/).
-- LMD carries a Battleships tag (https://logic-masters.de/Raetselportal/?chlang=en), and
-  the wiki carries eight derived Battleship genres including *Japanese Battleships* and
-  *Numerical Battleships* (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en).
+- *Sunday Stumper: Battleship Sudoku* by Serkan Yürekli, GM Puzzles, June 2022
+  (https://www.gmpuzzles.com/blog/2022/06/sunday-stumper-battleship-sudoku-by-serkan-yurekli/),
+  and the *Dr. Sudoku Prescribes* Battleship Sudoku run of 2013, numbers 44, 46 and 48
+  (https://www.gmpuzzles.com/blog/2013/02/dr-sudoku-prescribes-44-battleship-sudoku/,
+  https://www.gmpuzzles.com/blog/2013/02/dr-sudoku-prescribes-46-battleship-sudoku/,
+  https://www.gmpuzzles.com/blog/2013/02/dr-sudoku-prescribes-48-battleship-sudoku/),
+  plus *From the Foxger's Den #39: Battleship Sudoku*, July 2013
+  (https://www.gmpuzzles.com/blog/2013/07/from-the-foxgers-den-39-battleship-sudoku/).
+  Seven posts in the standing category
+  (https://www.gmpuzzles.com/blog/category/sudoku/battleship-sudoku/).
+- *BattleShip Sudoku*, LMD 0008JK by scherz0, 15 December 2021
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0008JK).
+- *Battleship Sums [LK Battleship Sudoku]*, LMD 000A7E by wisty, 11 June 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000A7E), and *Sum Battle X Ships (Battleships/X-Sums Sudoku)*,
+  LMD 000E4T by rockratzero, 10 June 2023 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000E4T): both read the
+  fleet through digit sums rather than plain occupancy counts.
+- The LMD wiki carries eight derived Battleship genres including *Japanese Battleships*
+  and *Numerical Battleships*
+  (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en).
 
 ## 1.26 Akari / Light Up (美術館, "Bijutsukan")
 
@@ -1868,8 +1928,11 @@ expensive exactly when you make it interesting.
 
 **Existing hybrids:** *Akari (Light Up) on Sudoku*, Erasable Games, 2007-12-24 by Robert
 Katz (https://erasablegames.com/akari-light-up-on-sudoku/) — an adapted Akari on a Sudoku
-frame. LMD carries an Akari tag (https://logic-masters.de/Raetselportal/?chlang=en). Thin
-evidence compared with the genres above.
+frame. On LMD the genre has a small but real hybrid line: *Akari Sudoku*, LMD 00042F by Ringo,
+10 August 2020 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00042F), followed by *Akari Sudoku 2*, 3 and 4
+(https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00043V, https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00070J,
+https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0007EV), and a separate *Akari Sudoku*, LMD 000DJB by Scojo,
+8 April 2023 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000DJB).
 
 ## 1.27 Dominion
 
@@ -1907,9 +1970,9 @@ weakening is a design decision, not a modelling one.
 *Verdict.* **Workable.** The encoding is routine; the coupling needs designing
 before it is worth a model.
 
-**Existing hybrids:** LMD carries a Dominion tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No Dominion x Sudoku hybrid found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** none. No LMD puzzle tagged Dominion has Sudoku in its title: the tag
+holds 12 puzzles in total and all 12 were read (tag listing checked 2026-09-14). The over-tight
+letters-as-digits reading above is the likely reason.
 
 ## 1.28 Cross the Streams
 
@@ -1920,7 +1983,7 @@ to right or top to bottom. 2. A question mark represents a block of any length (
 1). 3. An asterisk represents an unknown amount of blocks of any length. An asterisk may
 also be meaningless, i.e. represent no blocks at all. 4. The shaded cells cannot form a
 2x2 square. 5. All shaded cells form an orthogonally contiguous area." Invented by Grant
-Fikes; GM Puzzles runs it as a standing category with 95 posts
+Fikes; GM Puzzles runs it as a standing category with 95 posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/shading/cross-the-streams/).
 
 **Structure.** Decision: binary shade. Global: connected shaded set, no 2x2 shaded. Clues:
@@ -1950,9 +2013,16 @@ cell and the DFA gets large.
 *Verdict.* **Workable.** `AddAutomaton` is the right tool and worth knowing about;
 the coupling is invented and the widened-alphabet version is the expensive part.
 
-**Existing hybrids:** LMD carries a Cross the Streams tag
-(https://logic-masters.de/Raetselportal/?chlang=en). The direct number-placement analogue,
-Japanese Sums, is a standing GM Puzzles genre with 30 posts
+**Existing hybrids:**
+- *Cross the Streams (Nonogram) Odd/Even Sudoku*, LMD 0003PN by Eggr, 20 June 2020
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0003PN): the run-length clues shade the grid while the shading
+  fixes each cell's parity, which is exactly the coupling this entry argues for.
+- The wider nonogram tag carries a further nine sudoku hybrids, among them *Sudokross*,
+  LMD 000PH4 by Lyouke, 3 October 2025 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000PH4), *Nonodoku*,
+  LMD 000K2B by xaviercastle (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000K2B), and *Nonogram Thermosudoku*,
+  LMD 0003PM by RockyRoer (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0003PM).
+- The direct number-placement analogue,
+Japanese Sums, is a standing GM Puzzles genre with 30 posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/numberplacement/japanese-sums/) and is in effect
 Cross the Streams with digits instead of shading — the clearest evidence that this clue
 type carries a hybrid. No titled Cross the Streams x Sudoku found. [unverified as absence]
@@ -1993,11 +2063,16 @@ ordered ones, and there are two connectivity conditions.
 *Verdict.* **Workable**, and strictly more expensive than Cross the Streams for
 the same puzzle content. If you build one of the two, build Cross the Streams.
 
-**Existing hybrids:** LMD carries a Coral tag
-(https://logic-masters.de/Raetselportal/?chlang=en), and the wiki carries *Easy As
-Coralfinder* as a derived genre
-(https://wiki.logic-masters.de/index.php/Easy_As_Coralfinder/en). No Coral x Sudoku hybrid
-found. [unverified as absence]
+**Existing hybrids:**
+- *Sudoku Variants Series (483) - Coral*, LMD 000UPH by Richard, 4 September 2026
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000UPH): "Apply classic sudoku rules. Shade some cells to create
+  a single group of connected cells (the coral), without enclosing any white cells. No 2x2
+  area may be fully shaded. Clues outside the grid indicate the sums of separate blocks of
+  shaded cells in the corresponding row or column... Clues are given in ascending order."
+  Rules read from the puzzle page. Note the clue is a digit *sum*, not a run length —
+  exactly the remap this entry predicts a setter would need.
+- The wiki carries *Easy As Coralfinder* as a derived genre
+  (https://wiki.logic-masters.de/index.php/Easy_As_Coralfinder/en).
 
 ## 1.30 Creek
 
@@ -2090,7 +2165,7 @@ for; it is a routing note, not a verdict, and none of these was analysed in full
 | Genre | Rule core (puzz.link) | Devices a model would need |
 | --- | --- | --- |
 | Akichiwake (`akichi`) | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the size o... | flow to a root, region ids or placements, count clue, position vars |
-| Aquarium (`aquarium`) | The grid represents an aquarium viewed from the side, which must be partially filled with water. 1. The numbers around the grid indicate the number of shaded cells in... | position vars — **Workable / cheap.** Per-region gravity plus outside counts, both linear. Invented by Inaba Naoki; LMD carries an Aquarium tag. |
+| Aquarium (`aquarium`) | The grid represents an aquarium viewed from the side, which must be partially filled with water. 1. The numbers around the grid indicate the number of shaded cells in... | position vars — **Workable / cheap.** Per-region gravity plus outside counts, both linear. Invented by Inaba Naoki. Five sudoku hybrids on LMD, the earliest *Aquarium Sudoku*, 0003PR by Sam Knott, 20 June 2020 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0003PR), then *Skyscraper Aquarium Sudoku* 0003QG and *Unique Aquarium Sudoku* 0004DS by the same setter, *Nuriquarium Sudoku* 000CQJ by Jay Dyer, and *Go Fish (Aquarium Sudoku)* 000S6Z by damo_89, 2 June 2026 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000S6Z). |
 | Ayeheya (`ayeheya`) | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount... | flow to a root, region ids or placements, count clue, position vars |
 | Box (`box`) | Shade some cells on the board. 1. Each row and column has a certain value, indicated by the circled numbers in the right and bottom of the grid. 2. The numbers at the... | none of the standard devices — **Workable / cheap.** Pure linear arithmetic over a binary layer; flavourless but trivial to encode. |
 | Chained Block (`chainedb`) | Shade some cells on the board to form blocks of any shape. 1. Each block must contain exactly one number or a question mark. 2. A number indicates the size of the bloc... | region ids or placements, count clue |
@@ -2208,9 +2283,12 @@ one. Budget the most solver time of any shading-family entry.
   the same page lists *Filtered Out (fillomino/slitherlink)* by jwsinclair and *Japanese
   Slitherlink* by KNT, i.e. Slitherlink crossed with a region genre and with a
   number-placement clue type.
-- LMD carries a Slitherlink tag (https://logic-masters.de/Raetselportal/?chlang=en); GM
-  Puzzles has 121 Slitherlink posts
-  (https://www.gmpuzzles.com/blog/category/loop/slitherlink/).
+- *Colossal Slitherlink Sudoku*, LMD 000F15 by Agent, 5 September 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000F15), and *Slitherlink Cave Sudoku*, LMD 000ETY by RockyRoer,
+  16 August 2023 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000ETY) — the second stacks a third ruleset on top.
+- *Slither-Kropki-Doku*, LMD 000H9S, and *Slither-kropki-doku 2*, LMD 000J8W, both by
+  The Bard, 2024 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000H9S, https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000J8W): the loop
+  decides which Kropki dots are active.
 
 ## 2.2 Masyu (ましゅ, "Mashu"; Pearl Necklace, White and Black Pearls)
 
@@ -2265,17 +2343,21 @@ reuses it.
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000SRW): a Masyu grid
   beside a Region-Sum-Lines Sudoku, with the interaction "the digits in the RSL sudoku
   grid state how many cells the loop visits in the corresponding 2x3 area of the Masyu".
+- *Colossal Masyu Masyu-Sudoku*, LMD 000FF3 by Christounet, 8 October 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000FF3); *Masyudoku [Region Sum Line, Masyu]*, LMD 000F09 by
+  3good5you, 1 September 2023 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000F09); and *Masyun Yang (Yin-Yang
+  Masyu Sudoku)*, LMD 000CJO by Samish, 8 January 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000CJO), which stacks Masyu on a Yin-Yang colouring.
+- *Kropki-Masyudoku*, LMD 000GNK by Lizzy01, 21 January 2024
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000GNK).
 - *Masyu-Slitherlink* is also a wiki genre
-  (https://wiki.logic-masters.de/index.php/Masyu-Slitherlink/en), and the portal carries a
-  *Variables Tapasyu* (Tapa x Masyu) entry
-  (https://logic-masters.de/Raetselportal/?chlang=en).
+  (https://wiki.logic-masters.de/index.php/Masyu-Slitherlink/en).
 - *Polysemy (Castle wall/Masyu/Knapp daneben)*, LMD 000OUD
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000OUD), from the Sudoku
   Skunkworks Discord's Puzzle Agency Contest.
 - GM Puzzles runs *Castle Wall (Masyu)* hybrids as a standing form
   (https://www.gmpuzzles.com/blog/2021/08/castle-wall-masyu-by-mark-sweep/,
-  https://www.gmpuzzles.com/images/puzzles/190618-CastleWall-Masyu.pdf), and has 121 Masyu
-  posts (https://www.gmpuzzles.com/blog/category/loop/masyu/).
+  https://www.gmpuzzles.com/images/puzzles/190618-CastleWall-Masyu.pdf), and has 121 Masyu posts (genre volume, not hybrid evidence) (https://www.gmpuzzles.com/blog/category/loop/masyu/).
 
 ## 2.3 Country Road (カントリーロード)
 
@@ -2315,9 +2397,10 @@ the genre's own clue rather than an added rule.
 nearly free, and the coupling is native. Best value in the loop family after Masyu
 and Geradeweg.
 
-**Existing hybrids:** LMD carries a Country Road tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled Country Road x Sudoku
-hybrid found (searched: LMD portal, GM Puzzles, CTC, general web). [unverified as absence]
+**Existing hybrids:** *Country Road Killer Sudoku*, LMD 0006CM by SenatorGronk,
+21 May 2021 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0006CM) — the per-region visit count meeting killer
+cages, which is the coupling this entry argues is native. It is the only sudoku hybrid in
+the tag: 31 puzzles carry it in total and all 31 were read (tag listing checked 2026-09-14).
 
 ## 2.4 Yajilin (ヤジリン, "Arrow Ring"; also Yajirin)
 
@@ -2359,8 +2442,15 @@ clues on the same machinery.
 *Verdict.* **Workable.** Two entangled decision layers with a near-Hamiltonian
 coverage rule is the worst cost/coupling ratio among the well-known loop genres.
 
-**Existing hybrids:** LMD carries a Yajilin tag
-(https://logic-masters.de/Raetselportal/?chlang=en); GM Puzzles has 114 Yajilin posts
+**Existing hybrids:**
+- *Never (Yajilin/Sudoku)*, LMD 000BX9 by Wessel Strijkstra, 6 November 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000BX9).
+- *Regional Yajilin Sudoku*, LMD 000L1A by Myxo, 7 December 2024
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000L1A) — and note this is the per-region variant 2.28 flags as
+  the better hybrid, set as a sudoku hybrid four years before this survey guessed at it.
+- *Yajilin Linesweeper Sudoku*, LMD 0006BM by Lizzy01, 19 May 2021
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0006BM), which pairs Yajilin with Linesweeper (2.27) over a sudoku.
+- GM Puzzles has 114 Yajilin posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/loop/yajilin/); the wiki carries *Yajilin Plus*
 and *Majilin* as derived genres
 (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en). *Koburin* (2.13) is the
@@ -2458,10 +2548,15 @@ and the encoding for it is 144 XORs.
   (https://www.gmpuzzles.com/images/puzzles/190618-CastleWall-Masyu.pdf).
 - *Polysemy (Castle wall/Masyu/Knapp daneben)*, LMD 000OUD
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000OUD).
-- LMD carries a Castle Wall tag (https://logic-masters.de/Raetselportal/?chlang=en); GM
-  Puzzles has 66 Castle Wall posts
-  (https://www.gmpuzzles.com/blog/category/loop/castle-wall/). No titled Castle Wall x
-  Sudoku found. [unverified as absence]
+- *Defending Digits (Castle Sudoku)*, LMD 0004I4 by Mark Sweep, 14 October 2020
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0004I4).
+- *Castle Woku (Castle Wall/Sudoku)*, LMD 000CC1 by Wessel Strijkstra, 16 December 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000CC1), and *Invisible Whisper Castle (Castle Wall + German
+  Whisper Sudoku)*, LMD 000CB4 by rockratzero, 13 December 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000CB4) — the inside/outside split carrying a digit rule, which is
+  the coupling this entry recommends.
+- GM Puzzles has 66 Castle Wall posts (genre volume, not hybrid evidence)
+  (https://www.gmpuzzles.com/blog/category/loop/castle-wall/).
 
 ## 2.7 Balance Loop
 
@@ -2500,7 +2595,7 @@ compose with sudoku reasoning natively.
 the prefix device is shared with Geradeweg and the sight-clue genres.
 
 **Existing hybrids:** none titled found (searched: LMD portal, GM Puzzles, CTC, general
-web). GM Puzzles has 51 Balance Loop posts
+web). GM Puzzles has 51 Balance Loop posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/loop/balance-loop/), so the genre is established
 even though the hybrid is not. [unverified as absence]
 
@@ -2604,10 +2699,10 @@ the digit layer keeps real freedom.
 *Verdict.* **Good.** Best coupling-to-cost ratio of any loop genre, and no
 published hybrid exists. The strongest loop pick.
 
-**Existing hybrids:** LMD carries a **Geradeweg tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en), which is the portal's own signal that
-the genre is in circulation there. No titled Geradeweg x Sudoku hybrid surfaced this round
-(searched: LMD portal, GM Puzzles, CTC, general web). [unverified as absence]
+**Existing hybrids:** none, and this is now a checked negative rather than a failed search:
+no LMD puzzle tagged Geradeweg has Sudoku in its title, the tag holding 15 puzzles in total,
+all 15 read (tag listing checked 2026-09-14). Given that the segment-length clue lands exactly on
+the digit range, that absence is the clearest opportunity in this survey.
 
 ## 2.11 Maxi Loop
 
@@ -2669,9 +2764,9 @@ is real but does not by itself create coupling.
 *Verdict.* **Workable.** Strictly weaker than Geradeweg on coupling, at similar
 cost.
 
-**Existing hybrids:** LMD carries a **Mid-loop tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled hybrid found.
-[unverified as absence]
+**Existing hybrids:** *Rockingham (Mid Loop/Sudoku)*, LMD 000S1H by damo_89,
+25 March 2026 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000S1H) — the only sudoku hybrid among the tag's 22
+puzzles, all of which were read (tag listing checked 2026-09-14).
 
 ## 2.13 Koburin (こぶりん)
 
@@ -2733,10 +2828,11 @@ distance" is the obvious fix, linear and in range, but it changes the genre.
 *Verdict.* **Workable.** Slitherlink's expensive layer with a harder clue and no
 native digit. Low priority.
 
-**Existing hybrids:** LMD carries a **Myopia tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en), and the wiki has a Myopia page in
-three languages (https://wiki.logic-masters.de/index.php/Myopia). No titled hybrid found.
-[unverified as absence]
+**Existing hybrids:** *Lucerna (Large Myopia with Small Cave-Sudoku)*, LMD 000P7I by
+sfushidahardy, 20 September 2025 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000P7I) — a large Myopia grid
+driving a smaller Cave sudoku, the only sudoku hybrid among the tag's 14 puzzles, all read
+(tag listing checked 2026-09-14). The wiki has a Myopia page in three languages
+(https://wiki.logic-masters.de/index.php/Myopia).
 
 ## 2.15 Onsen-Meguri (温泉めぐり)
 
@@ -2848,7 +2944,7 @@ length. That is a prefix scan plus a conditional length, ~2 chains per clue.
 consider putting outside clues on a no-crossing genre instead.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web). GM
-Puzzles has 18 Round Trip posts
+Puzzles has 18 Round Trip posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/loop/round-trip/). [unverified as absence]
 
 ## 2.18 Tapa-Like Loop
@@ -2881,12 +2977,13 @@ ordering structure that plain Tapa lacks.
 *Verdict.* **Good.** Tapa's best-in-class clue encoding mounted on the standard
 loop layer — the most under-explored Good entry in the loop family.
 
-**Existing hybrids:** the LMD portal carries a *Variables Tapasyu* entry — Tapa x Masyu
-(https://logic-masters.de/Raetselportal/?chlang=en). *Regional Necklace Tapa Loop* by
+**Existing hybrids:** no sudoku hybrid. The portal's *Variables Tapasyu* tag (Tapa x Masyu)
+holds 16 puzzles and none has Sudoku in its title, all 16 read (tag listing checked 2026-09-14).
+*Regional Necklace Tapa Loop* by
 swaroop guggilam (https://swaroopg92.blogspot.com/2021/07/puzzle-no-167-regional-necklace-tapa.html)
 combines a Tapa clue set, a shading layer and a loop that alternates between shaded and
 unshaded cells, with a per-region turn count — a live example of Tapa clues driving a loop.
-GM Puzzles has 33 Tapa-Like Loop posts
+GM Puzzles has 33 Tapa-Like Loop posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/loop/tapa-like-loop/). No titled Sudoku hybrid
 found. [unverified as absence]
 
@@ -2928,9 +3025,9 @@ two-way interaction with no invented arithmetic.
 *Verdict.* **Good.** The alternation rule reduces to adjacent-box mode bools, which
 is far cheaper than it first appears.
 
-**Existing hybrids:** LMD carries a **Moon-or-Sun tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled hybrid found.
-[unverified as absence]
+**Existing hybrids:** *Spanta (Moon-or-Sun Sudoku)*, LMD 000R55 by mnasti2,
+24 January 2026 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000R55) — the only sudoku hybrid among the tag's 12
+puzzles, all read (tag listing checked 2026-09-14).
 
 ## 2.20 Numberlink (ナンバーリンク) and Arukone
 
@@ -2962,9 +3059,12 @@ over-tight in the same way Dominion's letter rule is.
 
 *Verdict.* **Poor.** Expensive encoding, weak coupling, bad uniqueness behaviour.
 
-**Existing hybrids:** LMD carries a Number Link tag
-(https://logic-masters.de/Raetselportal/?chlang=en). No Sudoku hybrid found.
-[unverified as absence]
+**Existing hybrids:** two, against this entry's Poor verdict — which stands on encoding
+cost, not on whether anyone has tried it.
+- *Number Link Sudoku*, LMD 000SKL by Kutsumi Hane, 30 April 2026
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000SKL).
+- *Sudoku + Arukone ... coded*, LMD 0002TG by DarkBeamIta, 20 June 2018
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0002TG), which uses the full-coverage Arukone form.
 
 ## 2.21 Nagenawa (なげなわ) and Ring-Ring
 
@@ -3043,8 +3143,14 @@ reusable part.
 native clue, and a published hybrid tradition to calibrate against.
 
 **Existing hybrids:**
-- LMD carries **both a Snake tag and a Snake (Variant) tag** alongside its Sudoku tag
-  (https://logic-masters.de/Raetselportal/?chlang=en).
+- *Pac-Man Sudoku*, LMD 000E4Q by mathpesto, 10 June 2023
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000E4Q): "Starting in R5C2, Pac-Man must travel orthogonally
+  through the grid. His path may not touch itself orthogonally" over a sudoku with a
+  connected no-2x2 shading and killer clues on the unshaded regions. Rules read from the
+  puzzle page.
+- *Shading Sudoku Collection*, LMD 000AR6 by KNT, 10 August 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000AR6), and *Xmas Sudoku*, LMD 000L9K by Scruffamudda,
+  24 December 2024 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000L9K).
 - *Yin-Yang Sudoku*, LMD 0004X6, names "Quarterthru's wonderful Snake-Sum series" as its
   inspiration (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0004X6) — a
   snake-plus-digit-sum sudoku series.
@@ -3092,8 +3198,9 @@ under an invented convention, as with Creek.
 
 *Verdict.* **Workable.** Tiny model, a nice lazy-cut exercise, weak coupling.
 
-**Existing hybrids:** the LMD portal carries the *Slalom* genre and a *Landvermessung* tag
-(https://logic-masters.de/Raetselportal/?chlang=en). A Gokigen-style clue appears in a
+**Existing hybrids:** none on LMD. No puzzle tagged Landvermessung — the portal's
+German-tradition tag for this family — has Sudoku in its title; the tag holds 16 puzzles
+and all 16 were read (tag listing checked 2026-09-14). A Gokigen-style clue appears in a
 Sudoku hybrid on meander lawn — "Draw a diagonal in every cell. Point clues [give] the
 diagonals meeting at the point"
 (http://meanderlawn.blogspot.com/search/label/puzzle). [Rules text partially recovered;
@@ -3396,11 +3503,12 @@ self-check against brute force, and the runtime profile are all recorded.
 - *Filtered Out (fillomino/slitherlink)* by jwsinclair, 2025-02-23, and
   *Wichtels Rätselherbst 2025 (12): Fillomino-Eckenrundweg* by wichtel, both on the LMD
   loop collection (https://logic-masters.de/Raetselportal/Suche/spezial.php?chlang=en&listname=rundwege).
-- LMD carries **Fillomino and Checkered Fillomino tags** beside its Sudoku tag
-  (https://logic-masters.de/Raetselportal/?chlang=en); the wiki carries *Fillomino
-  Skyscrapers* and *Doppelstern-Fillomino* as registered genres
-  (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en); GM Puzzles has 158
-  Fillomino posts (https://www.gmpuzzles.com/blog/category/regiondivision/fillomino/).
+- *Twins (Sudoku/Fortress Fillomino)*, LMD 000TJZ by damo_89, 20 August 2026
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000TJZ) — the fortress variant this entry's "what this does not
+  answer" note in `docs/research/fillomino-cpsat.md` asks about, set as a sudoku hybrid.
+- The wiki carries *Fillomino Skyscrapers* and *Doppelstern-Fillomino* as registered
+  genres
+  (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en); GM Puzzles has 158 Fillomino posts (genre volume, not hybrid evidence) (https://www.gmpuzzles.com/blog/category/regiondivision/fillomino/).
 
 ## 3.2 Symmetry Area (`symmarea`) — Fillomino with symmetry
 
@@ -3526,8 +3634,11 @@ The best cost-to-value ratio in the region family.
   inside a shikaku rectangle".
 - *Shikaku Fillomino #2 (9x9)*, LMD 000B8V
   (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000B8V).
-- LMD carries a Shikaku tag (https://logic-masters.de/Raetselportal/?chlang=en); the wiki
-  carries *Pentomino Shikaku* (https://wiki.logic-masters.de/index.php/Pentomino_Shikaku/en).
+- *Killer Shikadoku*, LMD 0009VR by Emphyrio, 10 May 2022
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0009VR), and *Dr. Sudoku*, LMD 000B5L by Hecspeed,
+  9 September 2022 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000B5L).
+- The wiki carries *Pentomino Shikaku*
+  (https://wiki.logic-masters.de/index.php/Pentomino_Shikaku/en).
 
 ## 3.5 Cave — see 1.11
 
@@ -3574,9 +3685,8 @@ digit with no Nanro role.
 *Verdict.* **Good.** Native in-range linear coupling, one flow, and a cheap static
 clause list for the separation rule.
 
-**Existing hybrids:** LMD carries a **Nanro tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled Nanro Sudoku found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** none, checked rather than merely unfound: no LMD puzzle tagged Nanro
+has Sudoku in its title, the tag holding 14 puzzles in total, all 14 read (tag listing checked 2026-09-14).
 
 ## 3.7 Spiral Galaxies (天体ショー "Tentai Show", Galaxies, Tentaisho)
 
@@ -3642,8 +3752,11 @@ WPC record to calibrate against.
   Hrdina, plus *Spiral Galaxies^2* by Rohan Rao at WPC 2017 Round 20 — the WPC unofficial
   wiki lists Spiral Galaxies appearances across WPC 2013 through 2024
   (https://wpcunofficial.miraheze.org/wiki/Spiral_Galaxies).
-- LMD carries a Galaxies tag (https://logic-masters.de/Raetselportal/?chlang=en); GM
-  Puzzles has 31 Spiral Galaxies posts
+- *Spiral Fillodoku (Spiral Galaxy, Fillomino, Killer sudoku hybrid)*, LMD 000DFS by
+  AnalyticalNinja, 29 March 2023 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000DFS), and *Sandwich Cosmic
+  Sudoku - Follow the North Galaxy*, LMD 00050U by DiMono, 27 December 2020
+  (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00050U).
+- GM Puzzles has 31 Spiral Galaxies posts (genre volume, not hybrid evidence)
   (https://www.gmpuzzles.com/blog/category/regiondivision/spiral-galaxies/).
 
 ## 3.8 Pentominous
@@ -3691,8 +3804,10 @@ modelling one, and every hybrid pays it.
   (Variant), Region Sum Lines (Variant)".
 - *Galaxies and Pentominoes*, WPC 2018 Round 6 by Jiří Hrdina
   (https://wpcunofficial.miraheze.org/wiki/Spiral_Galaxies).
-- LMD carries Pentominous and Pentopia tags
-  (https://logic-masters.de/Raetselportal/?chlang=en); GM Puzzles has 109 Pentominous posts
+- No further sudoku hybrid in the tag: *Pentomino Sudoku* above is the only one among the
+  Pentominous tag's newest 60 puzzles, and the Pentopia tag's 21 puzzles hold none at all,
+  both read (tag listing checked 2026-09-14).
+- GM Puzzles has 109 Pentominous posts (genre volume, not hybrid evidence)
   (https://www.gmpuzzles.com/blog/category/regiondivision/pentominous/); the wiki carries a
   dozen pentomino genres including *Pentomino Shikaku*, *Pentomino Fences* and *Pentomino
   Borders* (https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en).
@@ -3770,7 +3885,7 @@ coupling.
 **Existing hybrids:** *Double Statue Park Twilight* by swaroop guggilam
 (https://swaroopg92.blogspot.com/2021/08/puzzle-number-170-double-statue-park.html), a
 Statue Park with Minesweeper clues, set in a Cracking The Cryptic Discord speed-setting
-contest. GM Puzzles has 87 Statue Park posts
+contest. GM Puzzles has 87 Statue Park posts (genre volume, not hybrid evidence)
 (https://www.gmpuzzles.com/blog/category/objectplacement/statue-park/). No titled Statue
 Park x Sudoku found. [unverified as absence]
 
@@ -3853,9 +3968,9 @@ static filters rather than constraints.
 in-range clue — structurally the same win as Shikaku, on a richer shape family.
 Unclaimed as a published hybrid.
 
-**Existing hybrids:** LMD carries a **Sashigane tag alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en). No titled Sashigane Sudoku found
-(searched: LMD portal, GM Puzzles, general web). [unverified as absence]
+**Existing hybrids:** *Carpenter's square: Sashigane sudoku*, LMD 000QVE by Killer Joe,
+4 January 2026 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000QVE) — the only sudoku hybrid among the tag's 14
+puzzles, all read (tag listing checked 2026-09-14).
 
 ## 3.13 Snake Pit (`snakepit`)
 
@@ -3896,9 +4011,10 @@ position variables if wanted, at the usual cost.
 *Verdict.* **Good.** Fillomino's coupling and collapse, a local shape rule, and an
 ordering bonus — a strong and entirely unclaimed target.
 
-**Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web). LMD
-carries Snake and Snake (Variant) tags but those are the shading genre
-(https://logic-masters.de/Raetselportal/?chlang=en). [unverified as absence]
+**Existing hybrids:** none. Snake Pit has no tag of its own on the LMD portal, and the two
+Snake tags cover the shading genre of 2.22, not this one. The nearest published thing is
+*Pac-Man Sudoku*, LMD 000E4Q (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000E4Q), which puts a single
+self-avoiding path over a sudoku rather than partitioning the grid into several.
 
 ## 3.14 Nawabari (なわばり, "Territory")
 
@@ -3932,9 +4048,9 @@ rectangle enumeration, a different clue family.
 *Verdict.* **Good.** Cheapest region model with a native clue, and it shares its
 enumeration with Shikaku.
 
-**Existing hybrids:** the LMD portal carries a *Landvermessung* ("land survey") tag
-(https://logic-masters.de/Raetselportal/?chlang=en), which is the German-tradition
-territory-division genre. No titled Nawabari x Sudoku found. [unverified as absence]
+**Existing hybrids:** none. The portal's *Landvermessung* ("land survey") tag is the
+German-tradition name for this territory-division family; none of its 16 puzzles has Sudoku
+in its title, all 16 read (tag listing checked 2026-09-14).
 
 ## 3.15 Tatamibari (たたみばり)
 
@@ -4011,9 +4127,10 @@ regions. Fix it by applying the distance rule globally or by using non-box regio
 *Verdict.* **Good** as a constraint to add cheaply; weak as a standalone hybrid
 unless the region partition departs from the boxes.
 
-**Existing hybrids:** LMD carries **Hakyuu and Suguru tags alongside its Sudoku tag**
-(https://logic-masters.de/Raetselportal/?chlang=en) — Suguru is the closely related
-region-with-1..N genre.
+**Existing hybrids:** *[Episode 1] The Fog Logic Puzzle (Sudoku + Ripple Effect variant)*,
+LMD 000CBZ by AstralSky, 16 December 2022 (https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000CBZ) — the only
+sudoku hybrid among the Hakyuu tag's 25 puzzles. The closely related Suguru tag holds 49
+puzzles and none has Sudoku in its title; both tags read (tag listing checked 2026-09-14).
 
 ## 3.17 Suraromu (スラローム)
 
