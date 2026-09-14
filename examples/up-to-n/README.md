@@ -157,4 +157,14 @@ the component stronger.
 
 ## Timing
 
-No `just time` row yet.
+| 2026-09-14 | v2026.08.14-d47fc4b | up-to-n | 14500ms | — | — | BASELINE |
+| 2026-09-14 | v2026.08.14-d47fc4b | up-to-n after-logical | 10900ms | — | — | BASELINE |
+
+`just time up-to-n` on the shipped 18-clue 9×9, 3 reps, non-deterministic
+solve off. Candidate code is byte-equal to the committed link, so only baseline
+rows print: this is the floor a later component change is judged against.
+
+`PUZZLE_LINK_9x9.txt`, the minimal 13-clue board, has no row: the live app
+found no solution to it within 300 s in one rep
+(`docs/research/368-up-to-n-setup-throw.md`, finding 5), and a DNF on record is
+not re-measured.
