@@ -12,9 +12,9 @@ code = (
 )
 
 
-def doc(kind, custom):
+def doc(kind, pinned):
     cons = [{"type": 1, "regions": regions}, {"type": 0}]
-    if custom:
+    if pinned:
         cons.append(
             {
                 "name": "Pin",

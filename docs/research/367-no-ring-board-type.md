@@ -27,8 +27,8 @@ backend reads `input.groups` and pins cell 0 to the group's value `"1"` with a
 real bundle (`examples/_shared/bundle-solve-lib.mjs`).
 
 ```
-uv run docs/research/367-no-ring-board-type/build_docs.py > docs.json
-node docs/research/367-no-ring-board-type/count.mjs docs.json
+uv run docs/research/367-no-ring-board-type/build_docs.py > .scratch/367-docs.json
+node docs/research/367-no-ring-board-type/count.mjs .scratch/367-docs.json
 ```
 
 | Document | Solutions | Reading |
