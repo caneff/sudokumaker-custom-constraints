@@ -51,6 +51,26 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
   assert.strictEqual(msg.spec.maxDigit, 9)
 }
 
+// ---- buildStartMessage: a two-digit maxDigit throws up front, before any
+// solve runs -- not only once a solution is found to stringify. A shipped
+// board already reaches this (examples/skyscraper/PUZZLE_LINK_10x10.txt
+// declares maxDigit 10), so a zero-solution run on such a board must still
+// fail loud rather than report a clean "0 solutions". ----
+{
+  const doc = {
+    puzzle: {
+      type: 'custom',
+      width: 10,
+      height: 10,
+      maxDigit: 10,
+      cells: Array(100).fill({}),
+      constraints: []
+    }
+  }
+  assert.throws(() => buildStartMessage(doc), /maxDigit 10 is not a single digit/)
+}
+console.log('bundle-solve-lib: buildStartMessage two-digit-maxDigit guard ok')
+
 // ---- buildStartMessage: a non-given value (an outside clue on a frame
 // board) still populates the grid. The worker protocol makes no given/
 // non-given distinction (bundle.claude.js:11479 applyInitialGridToState);

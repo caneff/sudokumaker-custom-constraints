@@ -67,6 +67,14 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // (bundle-solve.test.mjs).
   const minDigit = p.minDigit ?? 1
   const maxDigit = p.maxDigit ?? p.width
+  // gridBufferToDigits stringifies one character per cell (bottom of this
+  // file), so a two-digit maxDigit would make two distinct solutions
+  // stringify the same -- a shipped board already reaches this: the
+  // skyscraper 10x10 frame link declares maxDigit 10. Check it here, once,
+  // before any solve runs, rather than per solution found: a two-digit board
+  // with zero solutions would otherwise report a clean "0 solutions" instead
+  // of failing loud.
+  if (maxDigit > 9) throw new Error(`buildStartMessage: maxDigit ${maxDigit} is not a single digit`)
   const spec = {
     size: { width: p.width, height: p.height },
     minDigit,
@@ -198,7 +206,7 @@ export async function solveDocument (doc) {
 
     const solutions = updates
       .filter(m => m.type === 'update' && m.sudokuData)
-      .map(m => gridBufferToDigits(m.sudokuData, doc.puzzle.width * doc.puzzle.height, start.spec.maxDigit))
+      .map(m => gridBufferToDigits(m.sudokuData, doc.puzzle.width * doc.puzzle.height))
     return { solutions, ms }
   } finally {
     console.error = realConsoleError
@@ -208,10 +216,9 @@ export async function solveDocument (doc) {
 // A solved grid's two-word buffer, read back as a plain digit string (one
 // digit per cell, row-major) -- the same shape as a CP-SAT solution string,
 // so a test can compare the two directly. One character per cell only holds
-// for a single-digit domain; a two-digit `maxDigit` would make two distinct
-// solutions stringify the same, so this fails loud instead.
-function gridBufferToDigits (buffer, cellCount, maxDigit) {
-  if (maxDigit > 9) throw new Error(`gridBufferToDigits: maxDigit ${maxDigit} is not a single digit`)
+// for a single-digit domain; buildStartMessage's maxDigit guard (above) is
+// what stops a two-digit board reaching here at all.
+function gridBufferToDigits (buffer, cellCount) {
   let out = ''
   for (let i = 0; i < cellCount; i++) out += String(buffer[i * 2])
   return out
