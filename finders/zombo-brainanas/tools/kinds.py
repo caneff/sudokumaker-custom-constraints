@@ -1,11 +1,7 @@
 """Per feasible pair class: can both circles be infected (II) / both uninfected (UU)? -> kinds2.log"""
-import os
-import sys
-import time
-
+import sys, time, os, itertools
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 shard, n = int(sys.argv[1]), int(sys.argv[2])
 reps = [((7, 7), (7, 8)), ((7, 7), (8, 8)), ((7, 7), (9, 8)), ((7, 8), (8, 7)), ((7, 8), (9, 7)), ((7, 9), (8, 7)), ((7, 9), (9, 7)), ((8, 7), (8, 8)), ((8, 7), (9, 8)), ((8, 8), (9, 7)), ((8, 9), (9, 7)), ((9, 7), (9, 8)), ((7, 7), (8, 7)), ((7, 7), (9, 7)), ((7, 8), (8, 9)), ((7, 8), (9, 9)), ((7, 9), (8, 9)), ((7, 9), (9, 9)), ((8, 9), (9, 9)), ((9, 8), (9, 9)), ((7, 7), (7, 9)), ((7, 7), (8, 9)), ((7, 7), (9, 9)), ((7, 8), (8, 8)), ((7, 8), (9, 8)), ((7, 9), (8, 8)), ((7, 9), (9, 8)), ((8, 7), (8, 9)), ((8, 7), (9, 9)), ((9, 7), (9, 9))]

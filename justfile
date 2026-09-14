@@ -82,9 +82,11 @@ test:
     uv run examples/_shared/framebuild.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
-    # finders/renbanana's own tests, all well under a second each (#469).
-    # test_probe_finds_known_grids.py solves a CP-SAT model per known grid and
-    # stays out of this gate; see `just test-finders-slow`.
+    # finders/renbanana's own tests (#469): three well under a second,
+    # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
+    # worker -- this box is shared). test_probe_finds_known_grids.py solves
+    # a CP-SAT model per known grid and stays out of this gate; see
+    # `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py

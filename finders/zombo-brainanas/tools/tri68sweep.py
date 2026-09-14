@@ -1,10 +1,8 @@
 """White-dot feasibility sweep: circles r6c8+r9c7+r9c9, kind fixed, one edge forced white (both uninfected, consecutive).
 usage: tri68sweep.py kind r1 c1 r2 c2 (0-based)"""
-import sys
-
+import sys, os
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 kind = sys.argv[1]; P, Q = (int(sys.argv[2]), int(sys.argv[3])), (int(sys.argv[4]), int(sys.argv[5]))
 zb.WORKERS = 2; zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 A, B, C = (8, 6), (8, 8), (5, 7)

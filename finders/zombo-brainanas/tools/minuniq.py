@@ -1,14 +1,9 @@
 """Minimal clue set (irreducible, greedy) that makes one found fill the unique solution, using only circles, white dots
 and black dots, no givens, no negative constraint on dots. r9c7, r9c9 and the opener white dot r4c6-r5c6 are always kept.
 usage: minuniq.py <found name> [limit] Dots are stripped first with every circle kept, then circles. -> hunt/minuniq/<name>.json + PROGRESS.md"""
-import json
-import os
-import sys
-import time
-
+import sys, os, json, time
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/minuniq/"; os.makedirs(OUT, exist_ok=True)
 F = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/"

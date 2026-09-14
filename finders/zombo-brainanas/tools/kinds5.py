@@ -1,11 +1,7 @@
 """Per box-9 pair kind: can the grid have >= 5 brainanas? No avoid, no objective. usage: kinds5.py shard nshards"""
-import re
-import sys
-import time
-
+import sys, time, os, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/scratch-zombo/"
 zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 shard, n = int(sys.argv[1]), int(sys.argv[2])

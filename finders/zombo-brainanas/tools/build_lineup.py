@@ -1,8 +1,5 @@
 """Rebuild lineup.html from the repo's found grids: DATA line spliced into lineup_template.html."""
-import glob
-import json
-import os
-
+import json, glob, os
 Z = os.path.dirname(os.path.abspath(__file__))
 TPL_DIR = os.path.normpath(os.path.join(Z, "..", "..", "..", "docs", "research", "zombo-brainanas", "tools"))
 F = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found"

@@ -1,13 +1,8 @@
 """Circles r9c7 + r9c9 (UI), >= 2 circles in box 8, a black dot on some edge inside box 1, >= `groups` pockets,
 circles + chocolate maximized. usage: pair99b8d1.py [nseeds] [limit] [stall] [groups] -> hunt/pair99b8d1/full_UI_w<3|6>_s<seed>[_g<groups>].json"""
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pair99b8d1/"; os.makedirs(OUT, exist_ok=True)
 nseeds = int(sys.argv[1]) if len(sys.argv) > 1 else 4
@@ -40,7 +35,7 @@ for seed in range(nseeds):
     if os.path.exists(OUT + f"full_{name}.json"):
         d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
     t = time.time(); log(f"{name}: start")
-    bonus = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // w)
+    bonus = {p: zb.CIRCLE_WEIGHT // w for p in zb.CELLS}
     found = zb.solve_valid(circles={A: None, B: None}, seed=100 + seed, limit=limit, min_pockets=1, objective=True, min_per_box={8: 2},
                            avoid=avoid, min_distance=12, log=log, stall=stall, stop_at=99, fix_shade=sh, bonus=bonus, min_groups=groups)
     if found is None:

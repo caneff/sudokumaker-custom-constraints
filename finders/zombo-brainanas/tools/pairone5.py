@@ -3,22 +3,16 @@ For each box-9 cell (r8c8 excluded) x shading I/U: fix that cell's shading, open
 on it, require >= 5 uninfected groups, maximize circles (10k each) plus chocolate
 (CIRCLE_WEIGHT//3 per infected cell anywhere). usage: pairone5.py shard nshards [limit] [stall]
 -> hunt/pairone5/full_<cell>_<I|U>.json"""
-import glob
-import json
-import os
-import sys
-import time
-
+import sys, time, os, glob, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pairone5/"; os.makedirs(OUT, exist_ok=True)
 FOUND = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/*.json"
 shard, n = int(sys.argv[1]), int(sys.argv[2])
 limit = int(sys.argv[3]) if len(sys.argv) > 3 else 400
 stall = int(sys.argv[4]) if len(sys.argv) > 4 else 90
-BONUS = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // 3)  # chocolate everywhere
+BONUS = {p: zb.CIRCLE_WEIGHT // 3 for p in zb.CELLS}  # chocolate everywhere
 zb.WORKERS = int(os.environ.get("ZB_WORKERS", zb.WORKERS))
 zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 cases = [(f"r{r+1}c{c+1}_{k}", (r, c), {(r, c): int(k == "I")})

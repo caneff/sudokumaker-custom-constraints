@@ -1,14 +1,9 @@
 """Variety around r9c7 + r9c9 circles: per kind (IU / UI), several seeds, each grid >= 12 shading cells
 from the earlier grids of this run; objective circles + chocolate, chocolate weight alternating 1/3 and 1/6 circle.
 usage: pair99var.py shard nshards [nseeds] [limit] [stall] -> hunt/pair99var/full_<kind>_w<3|6>_s<seed>.json"""
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pair99var/"; os.makedirs(OUT, exist_ok=True)
 shard, n = int(sys.argv[1]), int(sys.argv[2])
@@ -29,7 +24,7 @@ for i, (kind, sh) in enumerate(kinds):
         if os.path.exists(OUT + f"full_{name}.json"):
             d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
         t = time.time(); log(f"{name}: start")
-        bonus = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // w)
+        bonus = {p: zb.CIRCLE_WEIGHT // w for p in zb.CELLS}
         found = zb.solve_valid(circles={A: None, B: None}, seed=100 + seed, limit=limit, min_pockets=1, objective=True,
                                avoid=avoid, min_distance=12, log=log, stall=stall, stop_at=99, fix_shade=sh, bonus=bonus)
         if found is None:

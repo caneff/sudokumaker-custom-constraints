@@ -1,11 +1,8 @@
 """render_unique.py unique.json out.png — two panels: the puzzle as presented (circles + dots on an empty grid)
 and the solution (digits, shading: green infected, red patient zero, cream uninfected) with the chosen clues in full
 strength and every other possible circle, white dot and black dot drawn faintly."""
-import json
-import sys
-
+import json, sys, os
 from PIL import Image, ImageDraw, ImageFont
-
 F = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/"
 u = json.load(open(sys.argv[1])); d = json.load(open(F + u["fill"] + ".json"))
 N = 9; C = 64; M = 24; W = N * C + 2 * M

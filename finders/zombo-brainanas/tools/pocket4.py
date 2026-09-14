@@ -1,10 +1,7 @@
 """Circles r9c7 r8c9 r6c8, one forced white dot, shading free: is a 4-pocket grid feasible? usage: pocket4.py r6c5 r7c5"""
-import re
-import sys
-
+import sys, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 zb.WORKERS = 2; zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 A, B, C = (8, 6), (7, 8), (5, 7)
 cell = lambda s: tuple(int(v) - 1 for v in re.findall(r"\d", s))

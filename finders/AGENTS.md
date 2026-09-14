@@ -1,8 +1,9 @@
 # finders/AGENTS.md
 
 Grid finders: JavaScript-adjacent Python code that hunts, verifies, and
-renders candidate grids for constraint prototypes. Code lives here; notes,
-hunt outputs, and precomputed catalogues stay under `docs/research/` (#469).
+renders candidate grids for constraint prototypes. The `.py` finder code
+lives here; notes, hunt outputs, precomputed catalogues, and the `.sh`
+drivers that launch a hunt overnight stay under `docs/research/` (#469).
 
 ## Renbanana chocolate facts are precalculated (always on)
 

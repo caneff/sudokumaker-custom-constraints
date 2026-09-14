@@ -1,14 +1,8 @@
 """Every box-9 pair as two open circles (rect in-model, pocket by lazy cut, any size).
 usage: pairs.py shard nshards [limit]  -> pairs_<shard>.json, pairs.log"""
-import itertools
-import json
-import os
-import sys
-import time
-
+import sys, json, itertools, time, os
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 shard, n = int(sys.argv[1]), int(sys.argv[2]); limit = int(sys.argv[3]) if len(sys.argv) > 3 else 120
 TOTAL = int(sys.argv[4]) if len(sys.argv) > 4 else 600  # seconds per pair across all rounds

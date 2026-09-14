@@ -1,13 +1,8 @@
 """Digit variants of pair99g4 UI_w3_s0: the whole shading fixed, circles open on r9c7 + r9c9, maximize circles,
 each solution excluded from the next. usage: pair99digits.py 0 1 [nseeds] [limit] [stall] -> hunt/pair99digits/full_UI_d<seed>.json"""
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pair99digits/"; os.makedirs(OUT, exist_ok=True)
 nseeds = int(sys.argv[3]) if len(sys.argv) > 3 else 6

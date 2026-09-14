@@ -1,7 +1,6 @@
 """Can a valid grid have >= K uninfected groups (brainanas)? Exact count, no pocket library. usage: groups.py K [limit] [workers]"""
 import sys, time; sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 zb.WORKERS = int(sys.argv[3]) if len(sys.argv) > 3 else 8
 K = int(sys.argv[1]); limit = int(sys.argv[2]) if len(sys.argv) > 2 else 900

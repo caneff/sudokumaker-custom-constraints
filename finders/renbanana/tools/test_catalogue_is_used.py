@@ -93,6 +93,11 @@ def main():
                         if p not in allowed:
                             unpredicted += 1
     check(
+        "the candidate pool is not empty -- an empty glob would pass every check below vacuously",
+        cells > 0,
+        f"DATA_ROOT={DATA_ROOT}",
+    )
+    check(
         "no accepted grid holds a placement the catalogue calls dead",
         dead == 0,
         f"{cells} rectangle cells, {circles} circles",

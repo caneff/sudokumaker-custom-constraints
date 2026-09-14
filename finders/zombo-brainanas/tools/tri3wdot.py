@@ -1,14 +1,8 @@
 """As tri3 (circles r9c7 r8c9 r6c8) with a forced white dot on one edge (both cells uninfected, consecutive digits).
 usage: tri3wdot.py kind r1c1 r2c2 [nseeds] [limit] [stall] [groups]  (cells 1-based like r6c5) -> hunt/tri3wdot/full_<edge>_<kind>_w<3|6>_s<seed>.json"""
-import json
-import os
-import re
-import sys
-import time
-
+import sys, time, os, json, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/tri3wdot/"; os.makedirs(OUT, exist_ok=True)
 kind = sys.argv[1]
@@ -36,7 +30,7 @@ for seed in range(nseeds):
     if os.path.exists(OUT + f"full_{name}.json"):
         d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
     t = time.time(); log(f"{name}: start")
-    bonus = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // w)
+    bonus = {p: zb.CIRCLE_WEIGHT // w for p in zb.CELLS}
     found = zb.solve_valid(circles={A: None, B: None, C: None}, seed=100 + seed, limit=limit, min_pockets=1, objective=True,
                            avoid=avoid, min_distance=12, log=log, stall=stall, stop_at=99, fix_shade=sh, bonus=bonus, min_groups=groups)
     if found is None:

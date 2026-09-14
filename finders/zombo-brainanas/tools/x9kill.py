@@ -1,13 +1,8 @@
 """For a hunt/x9 grid: which of its white dots make r9c7 = 9 impossible? Circles r9c7 + X, r9c7 given 9, one white dot
 forced (both uninfected, consecutive), everything else free. usage: x9kill.py full_r8c9_w3_s0.json -> RESULT lines"""
-import json
-import os
-import re
-import sys
-
+import sys, os, json, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 zb.WORKERS = int(os.environ.get("ZB_WORKERS", 2)); zb.BIG_POCKET_CELLS = frozenset(p for p in zb.CELLS if zb.box(*p) == 9)
 f = sys.argv[1]; d = json.load(open(Z + "hunt/x9/" + f))

@@ -1,10 +1,6 @@
-import json
-import sys
-import time
-
+import sys, json, time
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 d = json.load(open(sys.argv[1])); shade = {p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}
 t = time.time()
 r = zb.solve_valid(circles={(6, 7): None, (8, 6): None}, seed=0, limit=120, shade=shade, log=print)

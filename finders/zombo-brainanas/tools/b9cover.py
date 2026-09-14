@@ -2,16 +2,10 @@
 Cover loop, model built once: each round maximises the number of still-open
 pairs realised; every pair the witness realises is feasible. INFEASIBLE settles
 the rest. Resumes from b9cover.json; rounds append to b9cover.log."""
-import itertools
-import json
-import os
-import sys
-import time
-
+import sys, time, json, itertools, os
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
 from ortools.sat.python import cp_model as cp
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 cells = [(r, c) for r in range(6, 9) for c in range(6, 9)]
 key = lambda a, b: f"r{a[0]+1}c{a[1]+1}+r{b[0]+1}c{b[1]+1}"

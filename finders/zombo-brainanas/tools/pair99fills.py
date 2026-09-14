@@ -1,15 +1,9 @@
 """Every digit fill of the four UI four-pocket shadings (pair99g4 UI_w3_s0 and its three neighbours):
 shading fixed, circles open on r9c7 + r9c9, each fill excluded from the next, until INFEASIBLE or a cap.
 usage: pair99fills.py [cap] -> hunt/pair99fills/full_<shading>_f<k>.json"""
-import glob
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json, glob
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pair99fills/"; os.makedirs(OUT, exist_ok=True)
 cap = int(sys.argv[1]) if len(sys.argv) > 1 else 30

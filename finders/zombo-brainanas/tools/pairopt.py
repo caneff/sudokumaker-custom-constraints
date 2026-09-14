@@ -1,16 +1,9 @@
 """Optimal grid per box-9 pair kind: fix the pair's shading, both circles open,
 maximize circles. usage: pairopt.py shard nshards [limit] [stall] [quad|b24]  -> hunt/pairopt/full_<pair>_<kind>.json
 quad: also reward chocolate in rows 1-5 x cols 1-5 (-> hunt/pairquad/); b24: reward chocolate in boxes 2 and 4 (-> hunt/pairb24/); pock: reward every uninfected group (-> hunt/pairpock/); g5: require five brainanas (-> hunt/pairg5/)."""
-import glob
-import json
-import os
-import re
-import sys
-import time
-
+import sys, time, os, glob, json, re
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 MODE = sys.argv[5] if len(sys.argv) > 5 else ""
 OUT = Z + {"quad": "hunt/pairquad/", "b24": "hunt/pairb24/", "pock": "hunt/pairpock/", "g5": "hunt/pairg5/"}.get(MODE, "hunt/pairopt/"); os.makedirs(OUT, exist_ok=True)

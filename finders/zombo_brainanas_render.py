@@ -1,5 +1,6 @@
-"""render.py full.json out.png — shaded grid: green infected, red patient zero, cream uninfected,
-circles, and every possible Cocci Dot (white dot on an edge between consecutive uninfected digits)."""
+"""zombo_brainanas_render.py full.json out.png — shaded grid: green infected, red patient zero,
+cream uninfected, circles, and every possible Cocci Dot (white dot on an edge between
+consecutive uninfected digits)."""
 
 import json
 import sys

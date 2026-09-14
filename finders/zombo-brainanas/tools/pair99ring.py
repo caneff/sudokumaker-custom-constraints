@@ -3,14 +3,9 @@ r7c9-r9c9 are a 7-cell green block, so any kropki domino adjacent to that block 
 At least one such domino carries a white dot (both uninfected, consecutive) or a black dot (one infected, the uninfected
 one holds the double). >= `groups` pockets, circles + chocolate maximized.
 usage: pair99ring.py [nseeds] [limit] [stall] [groups] -> hunt/pair99ring/full_UI_w<3|6>_s<seed>[_g<groups>].json"""
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pair99ring/"; os.makedirs(OUT, exist_ok=True)
 nseeds = int(sys.argv[1]) if len(sys.argv) > 1 else 6
@@ -54,7 +49,7 @@ for seed in range(nseeds):
     if os.path.exists(OUT + f"full_{name}.json"):
         d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
     t = time.time(); log(f"{name}: start")
-    bonus = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // w)
+    bonus = {p: zb.CIRCLE_WEIGHT // w for p in zb.CELLS}
     found = zb.solve_valid(circles={A: None, B: None}, seed=100 + seed, limit=limit, min_pockets=1, objective=True,
                            avoid=avoid, min_distance=12, log=log, stall=stall, stop_at=99, fix_shade=sh, bonus=bonus, min_groups=groups)
     if found is None:

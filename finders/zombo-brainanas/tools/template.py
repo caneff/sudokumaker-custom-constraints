@@ -5,16 +5,10 @@
 
 Template: 9 rows of '#' infected, '.' uninfected, '?' free; then 'circles: r7c8 r9c7'.
 A circle's digit must equal its group size (rectangle in-model, pocket by CEGAR)."""
-import glob
-import json
-import sys
-import time
-
+import sys, json, glob, os, time
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
-from pathlib import Path
-
 import zombo_brainanas_cpsat as zb
-
+from pathlib import Path
 FOUND = "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research/zombo-brainanas/found/*.json"
 rc = lambda s: (int(s[1]) - 1, int(s[3]) - 1)
 

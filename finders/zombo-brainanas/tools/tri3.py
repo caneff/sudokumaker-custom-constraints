@@ -1,14 +1,9 @@
 """Three fixed circles (default r9c7 r8c9 r6c8), the two box-9 ones shading-fixed per kind (II IU UI UU),
 circles + chocolate maximized (CIRCLE_WEIGHT//w per infected cell, w alternates 3/6), >= `groups` uninfected groups.
 usage: tri3.py shard nshards [nseeds] [limit] [stall] [groups] -> hunt/tri3/full_<kind>_w<3|6>_s<seed>.json"""
-import json
-import os
-import sys
-import time
-
+import sys, time, os, json
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/tri3/"; os.makedirs(OUT, exist_ok=True)
 shard, n = int(sys.argv[1]), int(sys.argv[2])
@@ -30,7 +25,7 @@ for i, (kind, sh) in enumerate(kinds):
         if os.path.exists(OUT + f"full_{name}.json"):
             d = json.load(open(OUT + f"full_{name}.json")); avoid.append({p: int(d["infected"][p[0]][p[1]] == "*") for p in zb.CELLS}); continue
         t = time.time(); log(f"{name}: start")
-        bonus = dict.fromkeys(zb.CELLS, zb.CIRCLE_WEIGHT // w)
+        bonus = {p: zb.CIRCLE_WEIGHT // w for p in zb.CELLS}
         found = zb.solve_valid(circles={A: None, B: None, C: None}, seed=100 + seed, limit=limit, min_pockets=1, objective=True,
                                avoid=avoid, min_distance=12, log=log, stall=stall, stop_at=99, fix_shade=sh, bonus=bonus, min_groups=groups)
         if found is None:

@@ -1,11 +1,7 @@
 """Which cells have forced shading in every valid grid? usage: forced.py shard nshards -> forced.log"""
-import os
-import sys
-import time
-
+import sys, time, os
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 shard, n = int(sys.argv[1]), int(sys.argv[2])
 for i, p in enumerate(zb.CELLS):

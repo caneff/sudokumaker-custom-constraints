@@ -1,13 +1,9 @@
 """Which non-box-9 circle pins the r9c7/r9c9 shading? For each cell X outside box 9 and each kind (IU / UI):
 is a valid grid with open circles on r9c7, r9c9 and X feasible? A kind infeasible for X means a circle on X pins the other kind.
 usage: pinx.py shard(0=IU,1=UI) [limit] -> hunt/pinx/<kind>.log"""
-import os
-import sys
-import time
-
+import sys, time, os
 sys.path.insert(0, "/home/caneff/orca/workspaces/sudokumaker-custom-constraints/tang/docs/research")
 import zombo_brainanas_cpsat as zb
-
 Z = os.path.dirname(os.path.abspath(__file__)) + "/"
 OUT = Z + "hunt/pinx/"; os.makedirs(OUT, exist_ok=True)
 shard = int(sys.argv[1]); limit = int(sys.argv[2]) if len(sys.argv) > 2 else 120
