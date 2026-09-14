@@ -97,18 +97,14 @@ RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 # is the puzzle, so there is no inner grid to name.
 NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
 
-# The constraint name a no-ring board ships its whole-grid rows and columns
-# under (framebuild.no_ring_doc). Carrying it is what marks a board as no-ring:
-# its rows and columns are declared in JS, and its edge cells are real cells,
-# not a clue ring.
-GRID_ROWCOL_CONSTRAINT = GRID_BACKEND[1]
-
 
 def is_no_ring(puzzle):
-    """Does this link carry the whole-grid rows-and-columns backend, whatever
-    code is embedded there?"""
+    """Does this link carry the whole-grid rows-and-columns backend
+    (framebuild.no_ring_doc), whatever code is embedded there? Carrying it is
+    what marks a board as no-ring: its rows and columns are declared in JS, and
+    its edge cells are real cells, not a clue ring."""
     return any(
-        (c.get("definition") or {}).get("name") == GRID_ROWCOL_CONSTRAINT
+        (c.get("definition") or {}).get("name") == GRID_BACKEND[1]
         for c in puzzle.get("constraints", [])
     )
 
@@ -325,14 +321,15 @@ def check_share_ready(example_dir, link):
             f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
         )
 
-    ring_filled, ring_total = _ring_state(puzzle) if not is_no_ring(puzzle) else (0, 0)
+    no_ring = is_no_ring(puzzle)
+    ring_filled, ring_total = (0, 0) if no_ring else _ring_state(puzzle)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
             f"{name}: {link.name} fills all {ring_total} ring cells -- curate "
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
-    prefix = NO_RING_RULES_PREFIX if is_no_ring(puzzle) else RULES_PREFIX
+    prefix = NO_RING_RULES_PREFIX if no_ring else RULES_PREFIX
     if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(prefix):
         violations.append(f"{name}: {link.name} comment missing rules prefix")
 

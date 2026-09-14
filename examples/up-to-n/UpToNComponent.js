@@ -36,10 +36,9 @@ function highBit (mask) {
 
 // Every position the first N can still take, with the prefix sum bounds at
 // each: `at[k]` is the position, `lo[k]` and `hi[k]` its bounds. Position p is
-// feasible when the
-// cell there allows N, every earlier cell can avoid N, and the clue lies
-// between the smallest and largest sum the prefix can make: N plus each earlier
-// cell's smallest (largest) digit other than N.
+// feasible when the cell there allows N, every earlier cell can avoid N, and
+// the clue lies between the smallest and largest sum the prefix can make: N
+// plus each earlier cell's smallest (largest) digit other than N.
 //
 // Sound: in the true solution the first N sits at some p*, every cell before
 // it holds a digit other than N, and their sum plus N is the clue -- so p* is
@@ -70,7 +69,9 @@ function * update (instance, puzzle) {
   const { line, target, clue } = instance
   const { at, lo, hi } = feasiblePositions(instance, puzzle)
   if (at.length === 0) {
-    yield puzzle.stop(`${helpers.naming.getCageName('Up to N clue', line)} cannot reach its sum`)
+    // Named by the border cell the clue reads from; getCageName would name the
+    // line's lowest cell id, the far end for a bottom or right marker.
+    yield puzzle.stop(`the Up to N clue read from ${helpers.naming.getCellName(line[0])} cannot reach its sum`)
     return
   }
 

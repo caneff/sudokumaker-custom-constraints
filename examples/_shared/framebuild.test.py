@@ -394,6 +394,28 @@ def test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row():
         )
 
 
+def test_clue_labels_refuse_a_group_they_cannot_place():
+    # A label sits half a cell beyond a group's first cell, away from its
+    # second, which only lands outside the grid for a marker's shape: two
+    # cells with the first on the border. Anything else is refused rather
+    # than drawn over the puzzle's own cells.
+    n = 4
+    assert framebuild.clue_labels([{"cells": [0, 4], "value": "3"}], n) is not None
+    for cells, why in (
+        ([5], "a one-cell group"),
+        ([5, 9], "a group away from the border"),
+        ([1, 0], "a border cell listed second"),
+    ):
+        try:
+            framebuild.clue_labels([{"cells": cells, "value": "3"}], n)
+        except ValueError as e:
+            assert str(cells) in str(e), (why, e)
+        else:
+            raise AssertionError(f"labelled {why}")
+    # an empty group is never labelled, so its shape is not this check's job
+    assert framebuild.clue_labels([{"cells": [5], "value": ""}], n) is None
+
+
 def test_build_doc_refuses_a_group_cell_off_the_grid():
     # (0, 5) on a 4x4 would encode as cell 5, which is (1, 1): a real cell the
     # caller never drew
@@ -587,9 +609,9 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         )
         other_link.rename(link_path)
         other_gen.rename(gen_path)
-        # The labels are drawn from the groups the rebuild already guards, so
-        # a committed link written before them rebuilds into one that has
-        # them rather than failing the board comparison.
+        # The labels are drawn from the groups the rebuild already guards, so a
+        # committed link without them rebuilds into one that has them rather
+        # than failing the board comparison.
         old = link_codec.decode_puzzle(link_path.read_text().strip())
         old["puzzle"]["constraints"] = [
             c for c in old["puzzle"]["constraints"] if c.get("type") != 2002
@@ -1049,6 +1071,7 @@ if __name__ == "__main__":
     test_build_doc_house_gac_names_one_board_not_the_whole_example()
     test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups()
     test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
+    test_clue_labels_refuse_a_group_they_cannot_place()
     test_build_doc_refuses_a_group_cell_off_the_grid()
     test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()

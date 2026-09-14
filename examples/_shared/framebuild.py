@@ -608,13 +608,24 @@ def clue_labels(groups, n):
     Wire shape (docs/research/368-up-to-n-setup-throw.md): `params` holds one
     style per label, `symbols` one point per label in cell units from the
     grid's top-left corner, the third entry indexing `params` (absent for 0).
+
+    Raises on a clued group of fewer than two cells, or one whose label would
+    land on the grid: that is not a marker, and its label would cover a cell.
     """
     params, symbols = [], []
     for g in groups:
         if g["value"] == "":
             continue
+        if len(g["cells"]) < 2:
+            raise ValueError(f"cannot label the group {g['cells']}: it has one cell")
         (r0, c0), (r1, c1) = (divmod(cell, n) for cell in g["cells"][:2])
         point = [c0 + 0.5 + (c0 - c1), r0 + 0.5 + (r0 - r1)]
+        if 0 < point[0] < n and 0 < point[1] < n:
+            raise ValueError(
+                f"cannot label the group {g['cells']}: its label would sit on the "
+                "grid, so its first cell is not on the border facing away from "
+                "its second"
+            )
         symbols.append(point + ([len(params)] if params else []))
         params.append({**LABEL_STYLE, "text": g["value"]})
     return {"type": 2002, "params": params, "symbols": symbols} if params else None
@@ -1044,7 +1055,7 @@ def rebuild(spec, n, local=False, files=None):
         else [title for _, title in FRAME_BACKENDS]
     )
 
-    def _without_house_gac(d):
+    def _without_generated_constraints(d):
         """Drop the House GAC constraint entirely, rather than blank it in
         place: unlike the two always-on frame backends, it is opt-in
         (`spec.house_gac`), so a rebuild that turns it on for the first time
@@ -1055,8 +1066,8 @@ def rebuild(spec, n, local=False, files=None):
         same call: not board data (#421).
 
         A no-ring board's clue labels go too: `check` holds them to the drawn
-        groups, and the groups are compared above, so a link written before
-        the labels existed rebuilds into one that carries them."""
+        groups, and the groups are compared above, so the labels are not
+        board data either."""
         d = dict(d)
         d["puzzle"] = dict(d["puzzle"])
         d["puzzle"]["constraints"] = [
@@ -1067,9 +1078,9 @@ def rebuild(spec, n, local=False, files=None):
         ]
         return d
 
-    assert _without_house_gac(
+    assert _without_generated_constraints(
         frame_and_comment_only(before, spec.constraint_name, frame_names)
-    ) == _without_house_gac(
+    ) == _without_generated_constraints(
         frame_and_comment_only(doc, spec.constraint_name, frame_names)
     ), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "

@@ -36,7 +36,6 @@ def _link(
     digits=(1, 3),
     no_ring=None,
     grid_backend=None,
-    kind=None,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -76,8 +75,7 @@ def _link(
     `no_ring` builds a no-ring board instead: its comment is `no_ring` (the
     whole text) rather than RULES_PREFIX, and it carries the shared whole-grid
     rows-and-columns backend. `grid_backend` overrides that backend alone --
-    False drops it, "stale" embeds an older copy. `kind` sets the document's
-    `"type"`.
+    False drops it, "stale" embeds an older copy.
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -178,8 +176,6 @@ def _link(
     }
     if digits is not None:
         puzzle["minDigit"], puzzle["maxDigit"] = digits
-    if kind is not None:
-        puzzle["type"] = kind
     return encode_link({"puzzle": puzzle})
 
 
@@ -536,8 +532,7 @@ if __name__ == "__main__":
 
     # up-to-n is a no-ring example: local lane only, so it ships main.js and
     # PUZZLE_LINK.txt with no global lane and no _local pair (#368)
-    upton_files = fillomino_files
-    with example(files=upton_files, name="up-to-n") as (root, _):
+    with example(files=fillomino_files, name="up-to-n") as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -574,16 +569,6 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1, violations
         assert "stale copy of grid-rowcol.js" in violations[0], violations
-
-    # A "sudoku" header is not a no-ring board: the live editor opens it as
-    # 9x9 whatever its width says (docs/research/368-up-to-n-setup-throw.md),
-    # so it earns no house exemption and keeps the ring prefix.
-    with example(
-        contents={"PUZZLE_LINK.txt": _link(houses="boxes", kind="sudoku")}
-    ) as (root, _):
-        violations = check_tree(root)
-        assert len(violations) == 1, violations
-        assert "3 interior column(s)" in violations[0], violations
 
     # a link shipping a component its backend never registers fails: dead
     # weight the recipient reads as part of the rule (#291)

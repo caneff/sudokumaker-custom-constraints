@@ -80,12 +80,16 @@ const built = comp => {
   })
 }
 
-// Every cell id handed to a component is a plain integer, however the group
-// carried it (#276).
+// A board wider than it is tall: a row runs the width and a column the
+// height, so reading one dimension for both walks off the board.
 {
-  // eslint-disable-next-line no-new-wrappers -- a boxed id is what the check is for
-  const [c] = setup([{ cells: [new Number(id(0, 1)), new Number(id(1, 1))], value: '4' }])
-  for (const cell of built(c).line) assert.strictEqual(typeof cell, 'number')
+  const W = 5
+  const H = 3
+  const opts = { W, H, lo: 1, hi: 5 }
+  const [row] = setup([{ cells: [id(4, 1, W), id(3, 1, W)], value: '4' }], opts)
+  assert.deepStrictEqual(built(row).line, [9, 8, 7, 6, 5])
+  const [col] = setup([{ cells: [id(2, 2, W), id(2, 1, W)], value: '4' }], opts)
+  assert.deepStrictEqual(built(col).line, [12, 7, 2])
 }
 
 // ---- Empty value: the marker registers nothing ----

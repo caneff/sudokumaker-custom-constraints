@@ -2,7 +2,7 @@
 // the same link after main.js is made to throw at setup
 // (docs/research/368-up-to-n-setup-throw.md).
 //
-//   node docs/research/368-up-to-n-setup-throw/probe.mjs examples/up-to-n/PUZZLE_LINK.txt
+//   node docs/research/368-up-to-n-setup-throw/probe.mjs examples/up-to-n/PUZZLE_LINK_4x4.txt
 import { decodeLinkFile, solveDocument } from '../../../examples/_shared/bundle-solve-lib.mjs'
 
 const base = decodeLinkFile(process.argv[2])

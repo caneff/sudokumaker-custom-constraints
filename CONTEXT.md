@@ -62,6 +62,8 @@ Use these terms exactly. Do not drift to synonyms.
 - **line** — the ordered cells of a group after the clue. A line promises
   nothing about its digits: any length, repeats allowed, digits may be absent.
   `n` in a README or comment is the line length; the group has `n + 1` cells.
+  In `examples/up-to-n/` a group is a **marker** instead, and its line is the
+  whole row or column the marker names, read from the marker's border cell.
 - **frame line** — a line that is one whole row or column of the grid, clued
   at one end. The global variant builds all of them itself, from the board's
   width and height. A frame line is always a full house, which is why a board

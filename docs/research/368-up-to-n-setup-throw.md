@@ -8,7 +8,7 @@
    constraint is then dropped whole and the board solves without it.
    **[verified live, v2026.08.14-d47fc4b, HAR replay]** The headless bundle
    agrees on the solve: one `console.error`, and 288 solutions on the 4x4
-   (a plain 4x4 sudoku) where the shipped board has 1. **[verified headless]**
+   (a plain 4x4 sudoku) where the Up to N 4x4 has 1. **[verified headless]**
 2. **A `"type": "sudoku"` document opens as 9x9 in the live editor whatever
    its `width` and `height` say.** On the 4x4 Up to N link the editor draws a
    9x9 grid, spreads the 16-entry `regions` array over its first two rows, and
@@ -30,8 +30,9 @@
    in either document type. A player opening the link sees no clue. **[verified
    live]**
 
-5. **The live app cannot solve the 9x9 board within 300 s.** The shipped 9x9
-   (seed 102: no givens, 13 of 36 clues, CP-SAT-unique) under
+5. **The live app cannot solve the carve's minimal 9x9 within 300 s.** That
+   board (seed 102: no givens, 13 of 36 clues, CP-SAT-unique, now
+   `PUZZLE_LINK_9x9.txt`; it was `PUZZLE_LINK.txt` when timed) under
    `app-solve.mjs PUZZLE_LINK.txt 1`, #369's component embedded, printed
    `no first solve, no verdict [timeout]`, `repsTimedOut: 1`
    (v2026.08.14-d47fc4b, 2026-09-14, box load 1.2). The 4x4 and 6x6 boards
@@ -43,7 +44,7 @@
 
    | Clues shown | Live-app result |
    |---|---|
-   | 13 (shipped) | no first solve, no verdict, timeout at 300 s |
+   | 13 (the minimal carve) | no first solve, no verdict, timeout at 300 s |
    | 15 | first solve 35.0 s, no verdict, timeout at 300 s |
    | 18 | unique, 15.0 s (first 2.0 s + uniqueness 13.0 s) |
    | 24 | unique, 13.0 s (first 4.6 s + uniqueness 8.4 s) |
@@ -52,7 +53,7 @@
 6. **A text label is a type-2002 "Cosmetic symbols" constraint, and it can
    sit outside the grid.** Made in the live editor (Add element, "Cosmetic
    symbols", Text tab, a click on a cell centre, "Custom value") and read back
-   from the page URL:
+   from the page URL, driven by `368-up-to-n-setup-throw/editor-steps.mjs`:
 
    ```json
    {"type": 2002,
@@ -71,16 +72,17 @@
 ## How to rerun
 
 ```
-node docs/research/368-up-to-n-setup-throw/probe.mjs examples/up-to-n/PUZZLE_LINK.txt
+node docs/research/368-up-to-n-setup-throw/probe.mjs examples/up-to-n/PUZZLE_LINK_4x4.txt
 node docs/research/368-up-to-n-setup-throw/live-probe.mjs <link_file> [screenshot tag]
 ```
 
-`probe.mjs` runs the real bundle headless on the shipped link, on a copy with
+`probe.mjs` runs the real bundle headless on the 4x4 link (then named
+`PUZZLE_LINK.txt`, now `PUZZLE_LINK_4x4.txt`), on a copy with
 one three-cell marker, and on a copy with every marker empty:
 
 | Variant | Solutions | console.error |
 |---|---|---|
-| shipped | 1 | 0 |
+| the 4x4 as built | 1 | 0 |
 | one malformed marker | 288 | 1: "Up to N: the marker at R4C1 and R3C1 and R3C2 must be exactly two cells" |
 | every marker empty | 288 | 0 |
 
@@ -91,5 +93,5 @@ with a throw of `JSON.stringify` over `puzzle.spec.size`, `puzzle.spec.type`,
 the first four groups, and `helpers.naming.getCellName` of cells 0, 1, 3, 4,
 15. It printed `{"width":9,"height":9}`, `"sudoku"`, the groups unchanged
 (`[12, 8]` ...), and names `R1C1, R1C2, R1C4, R1C5, R2C7` -- a 9-wide board.
-The finding-3 link is the shipped document with `"type": "custom"` and two
+The finding-3 link is the 4x4 document with `"type": "custom"` and two
 type-301 constraints, "Rows" and "Columns", one cage per line.

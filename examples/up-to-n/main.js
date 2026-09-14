@@ -10,10 +10,10 @@
 // nothing.
 //
 // Every marker is checked before any component is registered. A throw in main
-// code reaches only the browser console and the puzzle solves as if the
-// constraint were absent (docs/research/bundle-api-reference.md,
-// `registerCustomConstraint`); checking first means a refusal never leaves the
-// constraint half-registered.
+// code shows the author a "Registering custom constraint 'Up to N' failed"
+// banner with the message, and the puzzle solves as if the constraint were
+// absent (docs/research/368-up-to-n-setup-throw.md); checking first means a
+// refusal never leaves the constraint half-registered.
 
 const W = puzzle.spec.size.width
 const H = puzzle.spec.size.height
@@ -65,7 +65,7 @@ for (const g of input.groups) {
     throw new Error(`Up to N: the marker at ${m.where} is a second marker on the same line and end`)
   }
   seen.add(m.key)
-  const text = g.value === undefined || g.value === null ? '' : String(g.value).trim()
+  const text = String(g.value ?? '').trim()
   if (text === '') continue
   if (!/^[1-9][0-9]*$/.test(text)) {
     throw new Error(`Up to N: the marker at ${m.where} holds "${text}", not a positive integer`)

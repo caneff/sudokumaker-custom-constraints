@@ -42,7 +42,7 @@ export function installGlobals (minDigit, maxDigit) {
   globalThis.SudokuDigitSet = DigitSet
   globalThis.helpers = {
     digits: { minDigit, maxDigit },
-    naming: { getCageName: (name, cells) => `the ${name} at ${cells[0]}` }
+    naming: { getCageName: (name, cells) => `the ${name} at ${cells[0]}`, getCellName: cell => `cell ${cell}` }
   }
 }
 

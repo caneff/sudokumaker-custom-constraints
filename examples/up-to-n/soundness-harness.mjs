@@ -141,6 +141,17 @@ for (const D of SIZES) {
 }
 console.log('update/validate agreement on filled lines:', runs, 'lines,', disagree, 'disagreements')
 
+// A dead line's stop names its marker: the line's first cell, the border cell
+// the clue is read from, even when that is the line's highest cell id.
+{
+  installGlobals(1, 4)
+  const inst = {}
+  mod.setParams(inst, [3, 2, 1, 0], 4, 1)
+  const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { kind: 'fullHouse', digitCount: 4 })
+  fixpoint(mod, inst, p)
+  assert.match(String(p._stopped), /cell 3\b/, 'the stop names the marker, not the lowest cell id')
+}
+
 console.log('UpToNComponent:', bad, 'violations')
 assert.strictEqual(bad, 0)
 assert.strictEqual(disagree, 0)
