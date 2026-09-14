@@ -547,6 +547,14 @@ def check_frame_backends(example_dir, link):
     checked against the line and not merely for being there. None of it shows
     on the board or in the source text.
 
+    The component staleness check is keyed on the shipped component's own
+    name, not the constraint's title: house-gac's standalone board splices in
+    HouseGacComponent.js under a title of its own ("House GAC (standalone)",
+    to avoid the reserved "House GAC" -- see build_link.py's module
+    docstring) with a backend that is legitimately not house-gac.js, so only
+    the component -- the one thing that board does share -- is compared
+    against the tree (#439).
+
     `minify_js` drops comments, so editing a backend file's prose leaves every
     committed link valid; only a real code change makes them stale, and a stale
     link genuinely runs different code from the one under review.
@@ -558,40 +566,45 @@ def check_frame_backends(example_dir, link):
 
     name = example_dir.name
     current = frame_backend_files()
+    comp_name, comp_source, comp_want = house_gac_component_file()
     violations = []
     carried = []
     for constraint in puzzle.get("constraints", []):
         definition = constraint.get("definition") or {}
         title = definition.get("name")
-        if title not in current:
-            continue
-        carried.append(title)
-        source, want = current[title]
-        if definition.get("backend", {}).get("code") != want:
-            violations.append(
-                f"{name}: {link.name} embeds a stale copy of {source} -- "
-                f"rebuild it in the same commit as the change (the example's "
-                f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
-                f"for a hand-built board)"
-            )
-        if title == HOUSE_GAC_BACKEND_TITLE:
-            # A MISSING component is not this check's job: `check_components`
-            # already flags any constraint whose backend registers a name its
-            # own `components` list omits (shipped-minus-registered mismatch,
-            # checked for every constraint, House GAC included), so guarding
-            # it again here would just double-report the same link.
-            comp_name, comp_source, comp_want = house_gac_component_file()
-            comp = next(
-                (c for c in definition.get("components", []) if c["name"] == comp_name),
-                None,
-            )
-            if comp is not None and comp.get("code") != comp_want:
+        if title in current:
+            carried.append(title)
+            source, want = current[title]
+            if definition.get("backend", {}).get("code") != want:
                 violations.append(
-                    f"{name}: {link.name} embeds a stale copy of {comp_source} -- "
+                    f"{name}: {link.name} embeds a stale copy of {source} -- "
                     f"rebuild it in the same commit as the change (the example's "
                     f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                     f"for a hand-built board)"
                 )
+        # Keyed on the COMPONENT's own name, not the constraint's title: a
+        # board that splices HouseGacComponent.js under a title of its own
+        # (house-gac's standalone board renames away from the reserved
+        # "House GAC" -- see build_link.py's module docstring) still ships
+        # this exact shared file, and a title-keyed lookup here is exactly
+        # the miss #439 was filed about -- a second title literal to keep in
+        # sync with build_link.py's own rename would only reopen it the next
+        # time either name changes. A MISSING component is not this check's
+        # job: `check_components` already flags any constraint whose backend
+        # registers a name its own `components` list omits (shipped-minus-
+        # registered mismatch, checked for every constraint), so guarding it
+        # again here would just double-report the same link.
+        comp = next(
+            (c for c in definition.get("components", []) if c["name"] == comp_name),
+            None,
+        )
+        if comp is not None and comp.get("code") != comp_want:
+            violations.append(
+                f"{name}: {link.name} embeds a stale copy of {comp_source} -- "
+                f"rebuild it in the same commit as the change (the example's "
+                f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
+                f"for a hand-built board)"
+            )
 
     if not carried:
         return violations
