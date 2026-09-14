@@ -149,7 +149,8 @@ console.log('update/validate agreement on filled lines:', runs, 'lines,', disagr
   mod.setParams(inst, [3, 2, 1, 0], 4, 1)
   const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { kind: 'fullHouse', digitCount: 4 })
   fixpoint(mod, inst, p)
-  assert.match(String(p._stopped), /cell 3\b/, 'the stop names the marker, not the lowest cell id')
+  // cell 3 is R1C4 on the mock's 9-wide naming; the lowest cell id, 0, is R1C1.
+  assert.match(String(p._stopped), /R1C4/, 'the stop names the marker, not the lowest cell id')
 }
 
 console.log('UpToNComponent:', bad, 'violations')

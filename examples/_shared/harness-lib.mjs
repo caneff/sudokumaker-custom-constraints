@@ -35,14 +35,23 @@ export class DigitSet {
 }
 
 // Set the globals a component reads. minDigit/maxDigit differ per example
-// (Hit Counts allows a 0 clue, Running Start does not). `naming.getCageName`
-// only builds a message string, so the text is free -- a component that
-// yields a stop reads it, nothing asserts on it.
+// (Hit Counts allows a 0 clue, Running Start does not). The naming helpers
+// only build message strings, but they build them the way the app does: a
+// cage is named after its SMALLEST cell id, not its first
+// (docs/research/bundle-api-reference.md, `getCageName`), so a component that
+// names the wrong cell reads wrong here too.
+// A cell's `R#C#` label as the app builds it, from the 9-wide board the
+// harness lines stand in for: enough for a message to name the right cell.
+const getCellName = cell => `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1}`
+
 export function installGlobals (minDigit, maxDigit) {
   globalThis.SudokuDigitSet = DigitSet
   globalThis.helpers = {
     digits: { minDigit, maxDigit },
-    naming: { getCageName: (name, cells) => `the ${name} at ${cells[0]}`, getCellName: cell => `cell ${cell}` }
+    naming: {
+      getCageName: (name, cells) => `the ${name} at ${getCellName(Math.min(...cells))}`,
+      getCellName
+    }
   }
 }
 

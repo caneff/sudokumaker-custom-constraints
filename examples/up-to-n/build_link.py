@@ -113,6 +113,9 @@ SPEC = Spec(
     groups_fn=markers,
     # a marker names a whole row or column, so the lines never bend
     bent_lines=False,
+    # The board has no ring, so no "inner grid" to name. The Spec is where this
+    # sentence is chosen; `check_layout.NO_RING_RULES_PREFIX` holds the copy the
+    # gate compares committed links against, and says there why it is a copy.
     rules_prefix="Normal sudoku rules apply. ",
 )
 
