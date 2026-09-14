@@ -5,10 +5,12 @@
 #    fixed is satisfiable exactly when `validate` accepts the filled line, and
 #    both match the sum worked out by hand. The lines include bare ones -- a
 #    repeated digit, a repeated target, the target absent.
-# 2. The shipped board: its link decodes to a bare n x n sudoku whose drawn
-#    markers carry the clues gen.json records, every clue is the true one for
-#    the recorded solution, and CP-SAT proves the givens and shown clues have
-#    exactly one solution.
+# 2. Every committed board -- the shipped 9x9 and the 4x4 and 6x6 variants:
+#    its link decodes to a bare n x n sudoku whose drawn markers carry the
+#    clues its gen JSON records, every clue is the true one for the recorded
+#    solution, CP-SAT proves the givens and shown clues have exactly one
+#    solution, and `build_size.py --rebuild` re-encodes it, with no search, to
+#    the committed link byte for byte.
 #
 #   uv run examples/up-to-n/build_link.test.py
 
@@ -25,7 +27,7 @@ sys.path.insert(0, str(HERE))
 
 import cpsat
 from build_link import CONSTRAINT_NAME, SPEC, add_up_to_n, build
-from framebuild import load_board, make_lines, unique
+from framebuild import board_files, load_board, make_lines, rebuild, unique
 from link_codec import decode_puzzle
 from link_swap import blanked
 from minify import minify_file
@@ -154,12 +156,30 @@ def shipped_board_matches_its_link(link_name, gen_name):
     return board
 
 
-def test_shipped_board_is_unique():
-    board = shipped_board_matches_its_link("PUZZLE_LINK.txt", "gen.json")
-    assert board.n == 4 and board.box == (2, 2)
-    assert unique(add_up_to_n, board) is True
-    # And not by accident: with no clue shown the givens alone do not pin it.
-    assert unique(add_up_to_n, replace(board, active=set())) is False
+# Every committed board: (link, gen JSON, size, box).
+BOARDS = [
+    ("PUZZLE_LINK.txt", "gen.json", 9, (3, 3)),
+    ("PUZZLE_LINK_4x4.txt", "gen_4x4.json", 4, (2, 2)),
+    ("PUZZLE_LINK_6x6.txt", "gen_6x6.json", 6, (2, 3)),
+]
+
+
+def test_every_committed_board_is_unique_and_rebuilds_without_a_search():
+    assert sorted(f.name for f in HERE.glob("PUZZLE_LINK*.txt")) == sorted(
+        link for link, *_ in BOARDS
+    )
+    for link_name, gen_name, n, box in BOARDS:
+        assert board_files(SPEC, n, local=True) == (HERE / link_name, HERE / gen_name)
+        board = shipped_board_matches_its_link(link_name, gen_name)
+        assert board.n == n and board.box == box, link_name
+        assert unique(add_up_to_n, board) is True, link_name
+        # And not by accident: with no clue shown the givens alone do not pin it.
+        assert unique(add_up_to_n, replace(board, active=set())) is False, link_name
+        link = (HERE / link_name).read_text()
+        assert rebuild(SPEC, n, local=True) + "\n" == link, (
+            f"{link_name} is not what --rebuild makes of {gen_name}: regenerate "
+            f"it with `build_size.py --rebuild {n} --local`"
+        )
 
 
 def test_component_swap_changes_only_that_component():
@@ -174,6 +194,7 @@ def test_component_swap_changes_only_that_component():
 def test_spec_is_a_no_ring_spec():
     assert SPEC.groups_fn is not None
     assert SPEC.rules_prefix == "Normal sudoku rules apply. "
+    assert SPEC.bent_lines is False, "a marker names a straight row or column"
 
 
 if __name__ == "__main__":

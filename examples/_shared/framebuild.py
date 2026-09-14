@@ -849,8 +849,13 @@ def board_files(spec, n, local=False):
     with `Spec.plain_global_9x9 = False`, and its framebuild 9x9 global board
     keeps the `9x9` tag. Nothing else claims the local plain names, so the
     local 9x9 is plain-named either way.
+
+    A no-ring example has only the local lane, so no name carries a lane tag:
+    its 9x9 is plain-named and every other size is tagged by size alone.
     """
-    if n == 9 and (local or spec.plain_global_9x9):
+    if spec.groups_fn is not None:
+        tag = "" if n == 9 else f"{n}x{n}"
+    elif n == 9 and (local or spec.plain_global_9x9):
         tag = "local" if local else ""
     else:
         tag = f"{n}x{n}_local" if local else f"{n}x{n}"

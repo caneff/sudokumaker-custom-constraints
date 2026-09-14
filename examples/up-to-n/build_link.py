@@ -1,19 +1,12 @@
 # Up to N: the rule's Python half and the board builder.
 #
 # Holds the Spec every Up to N board is built from -- the clue rule, its CP-SAT
-# model, the rules text, and the drawn markers -- and two commands:
-#
-#   uv run examples/up-to-n/build_link.py generate 4 2 2
-#
-# searches seeds for a fresh 4x4 board (2x2 boxes) through the shared frame
-# builder's no-ring mode, carves it to a unique minimal set of givens and shown
-# clues, and writes PUZZLE_LINK.txt and gen.json next to this script.
+# model, the rules text, and the drawn markers. build_size.py builds and
+# rebuilds boards from it. Run directly, this builds a same-board comparison
+# link for `just time` (docs/real-app-timing.md): the committed PUZZLE_LINK.txt
+# (or --board) with the named component's code swapped for the given file's.
 #
 #   uv run examples/up-to-n/build_link.py --component UpToNComponent.js --out <file>
-#
-# builds a same-board comparison link for `just time` (docs/real-app-timing.md):
-# the committed PUZZLE_LINK.txt (or --board) with the named component's code
-# swapped for the given file's.
 #
 # The board is a bare n x n sudoku with no ring. All 4n marker slots are drawn
 # as two-cell groups at the ends of every row and column; a shown clue is the
@@ -24,8 +17,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-import link_codec
-from framebuild import Spec, build_doc, check, generate, save_board
+from framebuild import Spec
 from link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
 from minify import minify_file
@@ -38,6 +30,8 @@ TIMED_COMPONENT = "UpToNComponent"
 # marker. Row 2 aims at the 2.
 RULE_EXAMPLES = {
     4: "a clue of 6 at the left end of row 2 is true of the row 3124, since 3 + 1 + 2 = 6",
+    6: "a clue of 13 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 + 2 = 13",
+    9: "a clue of 17 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 + 5 = 17",
 }
 
 
@@ -117,6 +111,8 @@ SPEC = Spec(
     cp_sat_clue_fn=add_up_to_n,
     comment_fn=rule_text,
     groups_fn=markers,
+    # a marker names a whole row or column, so the lines never bend
+    bent_lines=False,
     rules_prefix="Normal sudoku rules apply. ",
 )
 
@@ -130,31 +126,11 @@ def build(component_path, out_path, board_path=None):
     return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
 
 
-def generate_board(n, bh, bw, seed_count):
-    assert bh * bw == n, "box_height * box_width must equal n"
-    board = generate(SPEC, n, bh, bw, range(101, 101 + seed_count))
-    doc = build_doc(SPEC, board, local=True)
-    link = link_codec.encode_link(doc)
-    check(SPEC, link, doc, board, local=True)
-    (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")
-    save_board(board, HERE / "gen.json")
-    print(f"wrote PUZZLE_LINK.txt ({len(link)} chars) and gen.json")
-
-
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["generate"]:
-        p = argparse.ArgumentParser(prog="build_link.py generate")
-        p.add_argument("n", type=int)
-        p.add_argument("box_height", type=int)
-        p.add_argument("box_width", type=int)
-        p.add_argument("seed_count", type=int, nargs="?", default=40)
-        a = p.parse_args(sys.argv[2:])
-        generate_board(a.n, a.box_height, a.box_width, a.seed_count)
-    else:
-        p = argparse.ArgumentParser()
-        p.add_argument("--component", required=True)
-        p.add_argument("--out", required=True)
-        p.add_argument("--board")
-        args = p.parse_args()
-        build(args.component, args.out, board_path=args.board)
-        print(f"wrote {args.out}")
+    p = argparse.ArgumentParser()
+    p.add_argument("--component", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--board")
+    args = p.parse_args()
+    build(args.component, args.out, board_path=args.board)
+    print(f"wrote {args.out}")

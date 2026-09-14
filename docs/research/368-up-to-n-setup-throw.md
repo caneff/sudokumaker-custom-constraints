@@ -30,6 +30,25 @@
    in either document type. A player opening the link sees no clue. **[verified
    live]**
 
+5. **The live app cannot solve the 9x9 board within 300 s.** The shipped 9x9
+   (seed 102: no givens, 13 of 36 clues, CP-SAT-unique) under
+   `app-solve.mjs PUZZLE_LINK.txt 1`, #369's component embedded, printed
+   `no first solve, no verdict [timeout]`, `repsTimedOut: 1`
+   (v2026.08.14-d47fc4b, 2026-09-14, box load 1.2). The 4x4 and 6x6 boards
+   come back unique in under a second. **[verified live, 1 rep]**
+
+   The same solution with zero givens and more clues shown, extra clues added
+   in a fixed seeded order (`368-up-to-n-setup-throw/probe_clues.py <count>`,
+   links written to `.scratch/370/`, never shipped), one rep each:
+
+   | Clues shown | Live-app result |
+   |---|---|
+   | 13 (shipped) | no first solve, no verdict, timeout at 300 s |
+   | 15 | first solve 35.0 s, no verdict, timeout at 300 s |
+   | 18 | unique, 15.0 s (first 2.0 s + uniqueness 13.0 s) |
+   | 24 | unique, 13.0 s (first 4.6 s + uniqueness 8.4 s) |
+   | 36 | unique, 0 ms |
+
 ## How to rerun
 
 ```

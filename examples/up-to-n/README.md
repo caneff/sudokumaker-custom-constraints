@@ -19,17 +19,19 @@ board with no groups has no clues to read.
   marker inward.
 - `UpToNComponent.js` — the line component: `update` and `validate`.
 - `build_link.py` — the rule's Python half (`up_to_n`, the CP-SAT model
-  `add_up_to_n`, the rules text and the drawn markers, together as `SPEC`), the
-  board generator, and the component swap `just time` uses.
+  `add_up_to_n`, the rules text and the drawn markers, together as `SPEC`), and
+  the component swap `just time` uses.
+- `build_size.py` — builds a board at any size, or re-encodes a committed one.
 - `build_link.test.py` — the CP-SAT model and `validate` agree on hand-built
-  lines; the shipped board decodes to what `gen.json` records and CP-SAT proves
-  it unique.
+  lines; every committed board decodes to what its gen JSON records, CP-SAT
+  proves it unique, and `--rebuild` reproduces its link byte for byte.
 - `marker-contract.test.mjs` — what `main.js` accepts and refuses.
 - `soundness-harness.mjs` — zero removed true candidates.
 - `update-strength.test.mjs` — never weaker than the frozen floor in
   `.golden/UpToNComponent.floor.js` (below).
-- `PUZZLE_LINK.txt`, `gen.json` — the shipped 4×4 board (2×2 boxes) and its
-  record.
+- `PUZZLE_LINK.txt`, `gen.json` — the shipped 9×9 board and its record.
+- `PUZZLE_LINK_4x4.txt`, `gen_4x4.json` — a 4×4 (2×2 boxes).
+- `PUZZLE_LINK_6x6.txt`, `gen_6x6.json` — a 6×6 (2×3 boxes).
 
 ## The marker contract
 
@@ -84,14 +86,25 @@ drawn. The live editor opens a `"sudoku"` document as 9×9 whatever its width
 says, so the header cannot supply them
 (`docs/research/368-up-to-n-setup-throw.md`). The carve fills every clue from
 the solution, removes givens while CP-SAT still proves one solution, then
-blanks clue values the same way. The shipped 4×4 needs no givens and three
-clues.
+blanks clue values the same way.
 
-Regenerate it (overwrites `PUZZLE_LINK.txt` and `gen.json`):
+A fresh search overwrites that size's pair; 40 seeds take about 4 minutes at
+9×9 and seconds at 4×4 and 6×6:
 
 ```
-uv run examples/up-to-n/build_link.py generate 4 2 2
+uv run examples/up-to-n/build_size.py 9 3 3 --local
+uv run examples/up-to-n/build_size.py 6 2 3 --local
+uv run examples/up-to-n/build_size.py 4 2 2 --local
 ```
+
+After a change to `main.js`, the component, `grid-rowcol.js` or the rules text,
+re-encode the committed boards instead, with no search:
+
+```
+uv run examples/up-to-n/build_size.py --rebuild 9 --local
+```
+
+`--local` is required: a no-ring board has only the drawn-groups lane.
 
 **Known gap.** A drawn group renders nothing, so the markers and their clues
 do not show on the board.

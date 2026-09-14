@@ -717,6 +717,18 @@ def test_board_files_plain_names_the_9x9_and_tags_every_other_size():
             d / "PUZZLE_LINK_local.txt",
             d / "gen_local.json",
         )
+    # a no-ring example has one lane, so its names carry no lane tag: the 9x9
+    # is plain-named and every other size is tagged by size alone (#370)
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        d = spec.dir
+        assert board_files(spec, 9, local=True) == (
+            d / "PUZZLE_LINK.txt",
+            d / "gen.json",
+        )
+        assert board_files(spec, 4, local=True) == (
+            d / "PUZZLE_LINK_4x4.txt",
+            d / "gen_4x4.json",
+        )
 
 
 def test_save_board_and_load_board_round_trip_a_frame_board():
