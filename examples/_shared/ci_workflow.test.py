@@ -39,6 +39,7 @@ if __name__ == "__main__":
         "uses: actions/setup-node@v4",
         "run: npm ci",
         "uses: astral-sh/setup-uv@v5",
+        "run: uv sync",
     ):
         assert text.count(step) == 1, (
             f"expected one shared '{step}' step, found {text.count(step)}"

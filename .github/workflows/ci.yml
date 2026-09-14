@@ -35,6 +35,9 @@ jobs:
         with:
           enable-cache: true
 
+      - name: uv sync
+        run: uv sync
+
       - name: Gate (${{ matrix.recipe }})
         if: github.event_name == 'pull_request' || matrix.recipe == 'check'
         run: uvx --from rust-just just ${{ matrix.recipe }}
