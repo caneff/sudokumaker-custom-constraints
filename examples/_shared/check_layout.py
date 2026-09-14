@@ -419,24 +419,28 @@ def carries_frame_rowcol(puzzle):
     )
 
 
-# The name docs/research/406-gac-demo's own (non-frame) rows/columns backend
-# ships its constraint under -- carried unmodified into examples/house-gac's
-# board (#428). Its houses come from a `postprocessJSON` function that only
-# runs inside the app, invisible to a static decode the way declared_houses
-# reads them, the same blind spot the frame's row/col backend has. house-gac
-# does not own or rebuild this backend, so there is nothing here for
-# check_frame_backends to compare against -- declares_rows_and_columns_in_js
-# just tells check_houses to stand down, same as it does for a frame board.
-ROWS_COLUMNS_BACKEND_NAME = "Rows & Columns"
+# An example whose board carries a non-frame rows/columns backend that
+# builds its houses in JS at postprocessJSON time -- invisible to
+# declared_houses' static read of the document, the same blind spot the
+# frame's own row/col backend has -- mapped to the constraint name it ships
+# that backend under. house-gac's board is docs/research/406-gac-demo's own
+# "Rows & Columns" backend, carried unmodified (#428); house-gac does not own
+# or rebuild it, so there is nothing here for check_frame_backends to compare
+# against. Scoped per example, not by name alone: a name match on some other
+# example's own unrelated constraint must not silently exempt it too.
+RESEARCH_ROWCOL_BACKENDS = {"house-gac": "Rows & Columns"}
 
 
-def declares_rows_and_columns_in_js(puzzle):
+def declares_rows_and_columns_in_js(example_name, puzzle):
     """Does this link carry a constraint that builds its own row and column
     houses in JS, invisible to declared_houses' static read of the document?
-    Either the frame's shared row/col backend, or house-gac's borrowed
-    research one under its own name."""
-    return carries_frame_rowcol(puzzle) or any(
-        (c.get("definition") or {}).get("name") == ROWS_COLUMNS_BACKEND_NAME
+    Either the frame's shared row/col backend, or the one research backend
+    RESEARCH_ROWCOL_BACKENDS names for this example."""
+    if carries_frame_rowcol(puzzle):
+        return True
+    name = RESEARCH_ROWCOL_BACKENDS.get(example_name)
+    return name is not None and any(
+        (c.get("definition") or {}).get("name") == name
         for c in puzzle.get("constraints", [])
     )
 
@@ -500,7 +504,7 @@ def check_houses(example_dir, link):
     # `check_frame_backends`' question, with its own message and its own fix
     # (house-gac's borrowed "Rows & Columns" backend has no such check -- see
     # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(puzzle):
+    if declares_rows_and_columns_in_js(name, puzzle):
         return []
 
     houses = declared_houses(puzzle)

@@ -136,11 +136,15 @@ component is unmodified from its shipped form, so the run times the baseline
 against itself (`time_example.py`: byte-equal candidate code times the
 baseline only).
 
-| date | app version | fixture | cold | after-logical |
-| --- | --- | --- | --- | --- |
-| 2026-09-13 | v2026.08.14-d47fc4b | house-gac | 0ms | 0ms |
+| date | app version | fixture | time | ratio | vs baseline | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-13 | v2026.08.14-d47fc4b | house-gac | 0ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | house-gac after-logical | 0ms | — | — | BASELINE |
 
-Zero on both rows: the plain 9x9's own search finishes instantly either way
+The component's working-tree code is byte-equal to the committed link's, so
+`time_example.py` times the baseline alone on both rows and prints
+`BASELINE` rather than a ratio. Zero on both: the plain 9x9's own search
+finishes instantly either way
 (docs/research/all-different-gac.md — every classic 9x9 on record lands at or
 near zero under "Find all solutions", GAC filter or not). The filter's real
 payoff is AutoStep reach (the table above), not search cost; #427 is the

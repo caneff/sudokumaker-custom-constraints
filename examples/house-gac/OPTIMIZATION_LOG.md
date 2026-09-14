@@ -8,3 +8,7 @@ has changed the component itself, so there is no attempt to log yet.
 
 `just time house-gac` gives the two-row gate for this registration, same as
 any other example; see the README's `## Timing` for the recorded row.
+
+| Variant | Kept / rejected | Numbers | Commit |
+|---|---|---|---|
+| (none attempted yet) | — | — | — |

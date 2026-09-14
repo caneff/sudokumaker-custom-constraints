@@ -81,4 +81,17 @@ if __name__ == "__main__":
         ), "--board must carry the candidate component's code"
 
     assert BACKEND.name == "main.js"
+
+    # the double-splice guard: a base link that already carries a House GAC
+    # constraint must refuse rather than double it (AGENTS.md: a splicing
+    # generator run twice on one file duplicates the scene silently)
+    try:
+        build(base_link=HERE / "PUZZLE_LINK.txt")
+    except AssertionError as e:
+        assert "already carries a House GAC constraint" in str(e)
+    else:
+        raise AssertionError(
+            "build() did not refuse a base link that already has the filter"
+        )
+
     print("ok")

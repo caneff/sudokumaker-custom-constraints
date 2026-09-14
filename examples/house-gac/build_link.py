@@ -1,5 +1,5 @@
-# Build the standalone House GAC link (#425, moved into examples/ by #428): a
-# plain 9x9 with no clue ring and no frame constraint, whose only constraint
+# Build the standalone House GAC link: a plain 9x9 with no clue ring and no
+# frame constraint, whose only constraint
 # beyond the board's own rows-and-columns and region declarations is the
 # shipped `examples/_shared/HouseGacComponent.js`, registered on all 27 houses
 # by this folder's own `main.js` (examples/_shared/house-gac.js assumes a
@@ -42,7 +42,7 @@ sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
 from cpsat import SOLVED, has_second_solution, solver
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
-from link_swap import check_and_write, swap_component_code
+from link_swap import check_and_write, find_constraint, swap_component_code
 from minify import minify_file
 
 
@@ -70,7 +70,7 @@ def build(component_path=COMPONENT, backend_path=BACKEND, base_link=BASE_LINK):
     """Rebuild the standalone House GAC link from `base_link`'s board and
     givens, re-proving uniqueness with CP-SAT, and splicing in the House GAC
     constraint via `backend_path`/`component_path`. Returns (link, doc,
-    n_givens)."""
+    solution, n_givens)."""
     base = decode_puzzle(pathlib.Path(base_link).read_text().strip())
     width = base["puzzle"]["width"]
     assert width == base["puzzle"]["height"] == 9, "expected the plain 9x9 board"
@@ -113,7 +113,8 @@ def check(link, doc):
     back = decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
     names = [
-        c["name"] for c in doc["puzzle"]["constraints"][-1]["definition"]["components"]
+        c["name"]
+        for c in find_constraint(doc, CONSTRAINT_NAME)["definition"]["components"]
     ]
     assert names == [TIMED_COMPONENT], f"expected one {TIMED_COMPONENT}, got {names}"
 

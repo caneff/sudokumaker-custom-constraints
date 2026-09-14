@@ -1,8 +1,7 @@
 // The shipped `HouseGacComponent` on every row, column and box of a plain 9x9
-// with no clue ring (#425, moved here from docs/research/425-standalone-house-gac
-// by #428). `examples/_shared/house-gac.js` cannot register this board -- it
-// assumes a frame board's ring and would clip two houses and a cell off each
-// of the rest; see this folder's README, "Why its own backend".
+// with no clue ring. `examples/_shared/house-gac.js` cannot register this
+// board -- it assumes a frame board's ring and would clip two houses and a
+// cell off each of the rest; see this folder's README, "Why its own backend".
 const rows = [...helpers.geometry.getAllRows()].map(line => line.map(cell => cell | 0))
 const cols = [...helpers.geometry.getAllColumns()].map(line => line.map(cell => cell | 0))
 const boxes = puzzle.getRegions()
