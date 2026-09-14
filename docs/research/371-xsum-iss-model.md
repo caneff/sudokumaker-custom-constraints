@@ -4,111 +4,136 @@ Read against `~/src/iss-stuff/Interactive-Sudoku-Solver` commit
 `ed5688d50b39746cada47b8ef9fce904dfb33bc5`, per the reading process in
 `docs/agents/iss.md`.
 
-Most of the builder-level decomposition here is already documented in
-`docs/research/190-one-sided-clues-ties-non-house-lines.md` §4 and its closing
-table. This note answers the five questions #371 asks, adds the one thing #190
-did not need — the runtime state the generic `Or`/`And` handlers propagate —
-and closes with what transfers to Up to N.
+**Questions this note answers** (from #371): how ISS models X-sums, what
+state it propagates, whether it runs a subset DP or bounds, how it handles
+the first-cell digit that fixes the length, and what of that transfers to
+Up to N.
+
+Most of the build-time decomposition (§1, §4) is already documented in
+`docs/research/190-one-sided-clues-ties-non-house-lines.md` §4 — see that
+note for the byte-faithful quote of `sudoku_builder.js:566`; §1 here cites
+the same lines rather than re-quoting the block. This note's addition over
+#190 is the runtime state the generic `Or`/`And` handlers propagate (§2),
+which changes the answer to "subset DP or bounds" (§3) and "does it
+constrain the real grid" (§4) from what a build-time-only read would
+suggest.
 
 ## 1. How ISS models X-sums
 
 ISS does not give X-sum its own handler. `SudokuBuilder` expands the `XSum`
-constraint into a disjunction of fixed-length cases at **build time**, before
-solving starts (`js/solver/sudoku_builder.js:566`, quoted in #190 §4):
-
-```js
-case 'XSum': {
-  const cells = constraint.getCells(geometry).map(c => geometry.parseCellId(c).cellIndex);
-  const sum = constraint.value;
-  const controlCell = cells[0];
-  if (sum === 1) { yield this._givenHandler(controlCell, 1); break; }
-  const branches = [];
-  for (let i = 2; i <= cells.length; i++) {
-    const sumRem = sum - i;
-    if (sumRem < 0) break;
-    branches.push([
-      this._givenHandler(controlCell, i),
-      new SumHandlerModule.Sum(cells.slice(1, i), sumRem),
-    ]);
-  }
-  yield* this._yieldOr(branches);
-}
-```
-
-One branch per candidate length `i` (2..cells.length, capped once `sum - i <
-0`). Each branch is an `And` of two ordinary handlers: `GivenCandidates`
-pinning the control cell to `i`, and a plain `Sum` over `cells[1..i-1]`
-targeting `sum - i` (the control cell's own value `i` is part of the sum, so
-the remaining `i-1` cells must make up the rest). `_yieldOr` (line 1096)
-wraps the branch list in a generic `Or` handler, or short-circuits to `And`/
-`False`/pass-through when there are 0 or 1 branches. `sum === 1` is a
-degenerate one-cell case handled as a bare given, skipping `Or` entirely.
+constraint into a disjunction of fixed-length cases at **build time**,
+before solving starts (`js/solver/sudoku_builder.js:566`, quoted in #190
+§4): for `sum === 1` it yields a bare given pinning the control cell (the
+line's first cell) to `1`; otherwise it builds one branch per candidate
+length `i` from `2` to `cells.length` (stopping once `sum - i < 0`), each
+branch an `And` of a `GivenCandidates` handler pinning the control cell to
+`i` and a plain `Sum` handler over `cells[1..i-1]` targeting `sum - i` (the
+control cell's own value `i` counts toward the sum, so the remaining `i-1`
+cells make up the rest). `_yieldOr` (`sudoku_builder.js:1096`) wraps the
+branch list in a generic `Or` handler, or short-circuits to a bare
+pass-through / `False` when there are 0 or 1 branches.
 
 So "how ISS models X-sums" is: **it doesn't model X-sums** as a domain
-concept past construction. It compiles the rule into generic disjunction-of-
-conjunction search structure and hands the actual arithmetic to the existing
-`Sum` handler.
+concept past construction. It compiles the rule into a generic
+disjunction-of-conjunction search structure and hands the arithmetic to the
+existing `Sum` handler — which, as §3 below corrects, is not always doing
+bounds-only work.
 
 ## 2. What state it propagates
 
-Two layers of state, since two different handlers are involved.
+Two layers of state, since two different handler types are involved.
 
-**The `Or` handler's own state** (`js/solver/handlers.js:4057`) is a per-node
-bitmask tracking which branches are still possibly valid, plus a fast path
-once only one is left:
+**The `Or` handler's own state** (`js/solver/handlers.js:4057`) is a
+per-node bitmask tracking which branches are still possibly valid, plus a
+fast path once only one is left: `state[0]` holds either a live count of
+remaining valid branches, or — once only one remains — a flag
+(`_FLAG_FINAL = 1<<15`) OR'd with that branch's index; `state[1..]` packs
+one bit per branch, 16 per word, set while the branch has not yet been
+proven invalid.
 
-- `state[0]`: either a live count of remaining valid branches, or — once only
-  one remains — a flag (`_FLAG_FINAL = 1<<15`) OR'd with that branch's index.
-- `state[1..]`: one bit per branch, packed 16 per word, set while the branch
-  has not yet been proven invalid.
+On each `enforceConsistency` call, every still-valid branch is replayed on
+a scratch copy of the grid; a branch that returns `false` is marked invalid
+via `_markAsInvalid`, which decrements the live count and, on hitting
+exactly one survivor, calls `_setFinalHandler` to record which branch
+index survived. The result the caller sees is the **bitwise OR of every
+surviving branch's candidate sets** (`resultGrid[j] |= scratchGrid[j]`) —
+the union of what each remaining length says is possible, not an
+intersection. Once collapsed to one final handler, subsequent calls skip
+the fan-out (`handlers.js:4197`, `grid[stateOffset] & _FLAG_FINAL`) and
+apply that one branch's fixed values directly to the real grid — see §4,
+this is where §4 in an earlier draft of this note got it backwards.
 
-On each `enforceConsistency` call, every still-valid branch is replayed on a
-scratch copy of the grid (`this._scratchGrid`); a branch that returns
-`false` is marked invalid via `_markAsInvalid`, which decrements the live
-count and, on hitting exactly one survivor, calls `_setFinalHandler` to find
-and record which branch index survived. The result grid the caller sees is
-the **bitwise OR of every surviving branch's candidate sets**
-(`resultGrid[j] |= scratchGrid[j]`), i.e. the union of what each remaining
-length says is possible — not an intersection, not a sum. Once collapsed to
-one final handler, subsequent calls skip the fan-out and enforce that
-handler directly (`grid[stateOffset] & _FLAG_FINAL` check at the top of
-`enforceConsistency`).
-
-**Each branch's `Sum` handler state** is the ordinary aggregate from
-`handler_docs/sum.md` §2.2–2.3: per-group `minSum`/`maxSum`/`fixedSum`/
-`numUnfixed`, recomputed from the cell candidates on every call — no
-persisted DP table, no memory of prior calls beyond what is already encoded
-in the grid's candidate sets.
+**Each branch's `Sum` handler state** is the aggregate from
+`handler_docs/sum.md` §2.2–2.3 (`rangeInfo`'s packed `minSum`/`maxSum`/
+`fixedSum`/`numUnfixed`), recomputed from the cell candidates on every
+call, plus — per §3 below — a `killerCageSums` lookup when the branch
+qualifies as a cage.
 
 So the propagated state is: *which lengths are still alive* (the `Or`'s
-bitmask) crossed with *is this length's remainder sum still reachable* (each
-branch's live min/max interval, recomputed fresh).
+bitmask) crossed with *what each surviving length's `Sum` handler can
+currently prove* about its remainder (bounds, or an exact subset table —
+§3).
 
-## 3. Subset DP, or bounds?
+## 3. Subset DP, or bounds? — corrected
 
-Bounds, at both layers. The `Or` handler does no subset search of its own —
-it just replays each of the `O(n)` branches and unions the results. The
-`Sum` handler inside each branch is itself the interval-bounds propagator
-from `handler_docs/sum.md` §3–4 (`sum < minSum or maxSum < sum` feasibility
-check, then per-cell range tightening by slack), not the exact-subset path
-(§6–7, `killerCageSums`), which only activates for very small unfixed-cell
-counts or an attached exact-cage constraint — neither applies here since a
-plain `Sum` handler is what each branch constructs. There is no DP table
-indexed by "sum achievable using the first k cells" anywhere in this path;
-the fixed-length **case split** is doing the work a subset DP would do in a
-single-handler design, at the cost of replaying every candidate length on
-every propagation call.
+**Both, depending on the branch's shape; not bounds-only.** Each branch's
+`Sum` handler self-classifies at `initialize` time
+(`sum_handler.js:229–237`):
 
-## 4. How it handles the first-cell digit that fixes the length
+```js
+if (this.onlyUnitCoeffs()
+    && this._coeffGroups.length === 1
+    && this._coeffGroups[0].exclusionGroups.length === 1) {
+  this._flags |= this.constructor._FLAG_CAGE;
+}
+```
 
-It doesn't gate on the first cell's value at solve time at all — it forks
-the search **at construction time**, once, before any solving happens. Every
-legal value `i` of the control cell becomes its own branch, each carrying a
-`GivenCandidates` handler that pins the control cell to exactly `i` inside
-that branch's scratch grid (`this._assignInitializations`, called before
-each branch's `enforceConsistency`). The real grid's control cell is never
-directly constrained to a length by this handler; the `Or`'s union of
-surviving branches is what narrows it, indirectly, as branches die.
+`XSum`'s branches build `new SumHandlerModule.Sum(cells.slice(1, i), sumRem)`
+with no coefficients (unit coeffs) over a **contiguous prefix of the same
+line**. On a line where those cells mutually exclude (a house, or any run
+within one), that is exactly one coefficient group with exactly one
+exclusion group, so `_FLAG_CAGE` is set. `enforceConsistency`
+(`sum_handler.js:892–898`) then dispatches such branches to
+`_restrictCellsSingleExclusionGroup`, which enumerates
+`this._sumData.killerCageSums[numUnfixed][sum - fixedSum]`
+(`sum_handler.js:764`) — the precomputed table of every distinct-value mask
+of a given size summing to a given target. That *is* the subset-sum DP
+(computed once per `numValues`, looked up per call), not a bounds check.
+
+The bounds path (`handler_docs/sum.md` §3–4: the `minSum`/`maxSum`
+feasibility test, then per-cell range tightening by slack) still runs
+first, and still runs alone whenever a branch's cells are **not** one
+exclusion group — e.g. an X-sum line that is not a house, where prefix
+cells don't all mutually exclude. So the honest answer is: ISS picks
+whichever of the two the branch's own cell shape supports, at
+`initialize`, per branch — a plain X-sum on a full-house line gets the
+exact `killerCageSums` treatment on every branch that stays small enough to
+matter; a bare-line X-sum (the common case, since most X-sum lines are not
+full houses) gets bounds only, because its branches are not single
+exclusion groups.
+
+The build-time **case split over lengths** is still doing separate work
+from either of these: it's what turns "unknown length" into "several
+fixed-length sub-problems," each of which then gets bounds and/or exact
+treatment on its own terms.
+
+## 4. How it handles the first-cell digit that fixes the length — corrected
+
+It forks the search **at construction time**, once, before any solving
+happens: every legal value `i` of the control cell becomes its own branch,
+carrying a `GivenCandidates` handler pinning the control cell to exactly
+`i`. Earlier in this note's drafting, §4 claimed the real grid's control
+cell is "never directly constrained" by this handler and only narrows
+indirectly through the `Or`'s union. That's wrong: once the `Or` collapses
+to a single surviving branch (`_FLAG_FINAL` set), every subsequent
+`enforceConsistency` call applies that branch's `GivenCandidates`
+initialization **directly to the real grid**
+(`handlers.js:4202`, `this._assignInitializations(grid, handlerIndex)` —
+note the argument is `grid`, not a scratch copy). So the control cell does
+get pinned directly by this handler, but only after enough branches have
+died elsewhere that one length is the last one standing; before that point,
+narrowing is indeed only indirect, through the unioned result of the
+still-competing branches.
 
 This is also why `sum === 1` short-circuits to a bare given: with only one
 possible length (`i = 1`, an empty remainder), there is nothing to branch
@@ -118,37 +143,41 @@ over.
 
 Up to N's length is fixed by the position of the **first occurrence of a
 known digit D**, not by the value written in the first cell — so the
-control-cell-as-length-selector trick (§4 above) has no direct analogue: no
+control-cell-as-length-selector trick (§4) has no direct analogue: no
 single cell's value enumerates the candidate lengths, the *position* of a
 value along the line does.
 
-What still transfers:
+What transfers:
 
-- **The case split, not the branch mechanism.** ISS's real move is compiling
-  "the length is unknown but ranges over a small set" into one
-  bounds-interval check per candidate length, unioned. That idea ports even
-  though SudokuMaker has no `Or`/`And` handler to build it out of (#190's
-  table already says this: "SudokuMaker has no `Or` handler" — confirmed
-  again here from the runtime side, not just the builder side).
-- **Bounds over exact subset search.** Nothing here justifies reaching for a
-  subset-sum DP; ISS gets useful propagation from min/max sum aggregates
-  alone, recomputed per call, for the same shape of problem (sum over a
-  prefix of unknown length).
+- **The case split, not the branch mechanism.** ISS's real move is
+  compiling "the length is unknown but ranges over a small set" into one
+  per-length sub-problem, unioned. That idea ports even though
+  SudokuMaker has no `Or`/`And` handler to build it out of (#190 already
+  notes this absence at the builder level; §2–4 above confirm it again
+  from the runtime side).
+- **Per-branch treatment can vary by cell shape, not just use bounds.**
+  §3's correction matters here: if Up to N's prefix cells for a given
+  candidate length happen to form a single exclusion group, an exact
+  subset-count table is the ISS-precedented move for that case, not
+  bounds-only. Whether that shape actually arises for Up to N's typical
+  boards is not established by this note and would need checking against
+  real Up to N examples, not assumed from the X-sum case.
 
-What does not transfer, and is the actual design gap Up to N has to close
-that ISS ducked: ISS's branches are independent and re-verified from
-scratch every call, which is only affordable because `Or` is a generic
-engine primitive amortizing the replay cost across every constraint type.
-SudokuMaker's `update` runs once per component per call with no such
-scaffold, so a direct port would mean each `update` re-deriving, in one
-pass, both (a) which candidate positions can still be the first occurrence
-of D, and (b) for each such position, whether the resulting prefix sum
-range still admits the target.
+What does not transfer: ISS's branches are independent handlers replayed
+in full every call, which is affordable there because `Or` is a generic
+engine primitive amortizing the replay cost across every constraint type
+that uses it. SudokuMaker's `update` runs once per component per call with
+no such fan-out scaffold. Porting the *case-split idea* without the `Or`
+machinery means a direct port isn't available — some single-pass
+alternative is needed instead. The following is a design sketch for that,
+**not a verified or measured design** — per `docs/agents/iss.md` #4, a
+ported idea gets timed on our fixtures before it's trusted, and this note
+does no timing:
 
-### Candidate DP state for Up to N
+### Candidate DP state for Up to N (unverified sketch — a future ticket's design work, not this one's)
 
-A single running structure per call, keyed by candidate length `i` (the
-line position where D could first occur):
+One possible shape, keyed by candidate length `i` (the line position where
+D could first occur), computed in a single pass down the line:
 
 ```
 for each i where digit D can still first-occur at position i:
@@ -157,24 +186,41 @@ for each i where digit D can still first-occur at position i:
                    and minSum(cells[0..i]) ≤ target ≤ maxSum(cells[0..i])
 ```
 
-`minSum`/`maxSum` over the prefix can be accumulated incrementally as `i`
-grows (running totals, same shape as `handler_docs/sum.md` §2.2's
-per-group aggregation, just extended one cell at a time instead of summed
-over a fixed group), so this is one linear pass down the line, not a
-branch replay — cheaper than ISS's approach, and the natural translation of
-"union over surviving lengths" into a single-pass table because
-SudokuMaker's `update` has no fan-out primitive to lean on instead.
+`minSum`/`maxSum` over the prefix could be accumulated incrementally as `i`
+grows, in the same shape as `handler_docs/sum.md` §2.2's per-group
+aggregation extended one cell at a time. Whether this bounds-only table is
+sufficient, or whether some candidate lengths need the exact
+`killerCageSums`-style treatment §3 found ISS reaching for on house lines,
+is an open question for whoever builds this — not settled by this note.
+
+## What was read but judged not applicable
+
+`handler_docs/sum.md` §5 (uniqueness-aware tightening) and §8 (complement
+optimization) apply to multi-group weighted sums with attached complement
+sets — no X-sum branch has more than one coefficient group or a complement,
+so neither path is reachable here; not ported. §9 (implementation notes) is
+performance bookkeeping for the `Sum` handler generally, orthogonal to the
+X-sum question. §6 (exact small cases, ≤2–3 unfixed cells) and §7 (general
+killer-cage filtering beyond the single-exclusion-group case in §3) are
+generalizations of the §3 cage path for shapes an X-sum branch's prefix
+slice doesn't produce (multiple exclusion groups, non-unit coefficients);
+recorded as read, not applicable to this ticket's question.
 
 ## Sources
 
 - `js/solver/sudoku_builder.js:566` (`XSum` case), `:1096` (`_yieldOr`),
   `:204` (`_givenHandler`) — build-time branch construction.
 - `js/solver/handlers.js:123` (`False`), `:136` (`And`), `:184`
-  (`GivenCandidates`), `:4057` (`Or`, full runtime state machine) — the
+  (`GivenCandidates`), `:4057`–`4245` (`Or`, full runtime state machine,
+  including `:4197`–`4205` for the collapsed-to-final-handler path) — the
   generic disjunction engine each branch runs inside.
-- `js/solver/handler_docs/sum.md` §2.2–2.4 (packed aggregates), §3
-  (feasibility + dispatch), §4 (bounds consistency by slack) — what each
-  branch's `Sum` handler actually propagates.
+- `js/solver/sum_handler.js:229`–`237` (`_FLAG_CAGE` self-classification),
+  `:764` (`killerCageSums` lookup), `:892`–`898` (dispatch) — the exact-
+  subset path §3 found ISS actually uses for house-line X-sum branches.
+- `js/solver/handler_docs/sum.md` §2.2–2.3 (packed aggregates), §3
+  (feasibility + dispatch), §4 (bounds consistency by slack), §5–§9 read,
+  judged not applicable (see above) — what each branch's `Sum` handler
+  propagates.
 - `docs/agents/iss.md` — reading process followed here.
 - `docs/research/190-one-sided-clues-ties-non-house-lines.md` §4 — prior
   read of the same `XSum` build-time decomposition and SudokuMaker's own
