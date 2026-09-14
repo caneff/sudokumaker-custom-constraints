@@ -586,6 +586,40 @@ def no_ring_groups(spec, board):
     return groups
 
 
+# The editor's text symbol, as the live editor writes one (a type-2002
+# "Cosmetic symbols" entry), at a size that reads as an outside clue.
+LABEL_STYLE = {
+    "type": "text",
+    "size": 0.35,
+    "angle": 0,
+    "strokeWidth": 0.02,
+    "stroke": "#ffffff",
+    "fill": "#000000",
+}
+
+
+def clue_labels(groups, n):
+    """The text labels that show a no-ring board's clues, or None when no group
+    is clued. A drawn group renders nothing in the app, so each clued group's
+    typed value is drawn as text half a cell outside the grid, beyond the
+    group's first cell and away from its second: a two-cell marker's border
+    cell first, so the label sits where an outside clue would.
+
+    Wire shape (docs/research/368-up-to-n-setup-throw.md): `params` holds one
+    style per label, `symbols` one point per label in cell units from the
+    grid's top-left corner, the third entry indexing `params` (absent for 0).
+    """
+    params, symbols = [], []
+    for g in groups:
+        if g["value"] == "":
+            continue
+        (r0, c0), (r1, c1) = (divmod(cell, n) for cell in g["cells"][:2])
+        point = [c0 + 0.5 + (c0 - c1), r0 + 0.5 + (r0 - r1)]
+        symbols.append(point + ([len(params)] if params else []))
+        params.append({**LABEL_STYLE, "text": g["value"]})
+    return {"type": 2002, "params": params, "symbols": symbols} if params else None
+
+
 def refuse_no_ring_global_lane(spec, local):
     """A no-ring board's clues live only in its drawn groups, and the global
     lane ships none: raise before a search or a build is spent on a board with
@@ -639,11 +673,14 @@ def no_ring_doc(spec, board):
         for c in range(n)
     ]
     regions = [(r // bh) * (n // bw) + (c // bw) for r in range(n) for c in range(n)]
+    groups = no_ring_groups(spec, board)
+    labels = clue_labels(groups, n)
     constraints = [
         {"type": 1, "regions": regions},
         {"type": 0},
         grid_backend_constraint(),
-        example_constraint(spec, no_ring_groups(spec, board)),
+        example_constraint(spec, groups),
+        *([labels] if labels else []),
     ]
     comment = spec.rules_prefix + spec.comment_fn(n)
     return _document(spec, board, "custom", n, cells, constraints, comment)
@@ -793,6 +830,12 @@ def check(spec, link, doc, board, local=False):
         assert grid_backend_constraint() in doc["puzzle"]["constraints"], (
             "a no-ring board must carry the current grid-rowcol.js, or its rows "
             "and columns are not houses"
+        )
+        shown = [c for c in doc["puzzle"]["constraints"] if c.get("type") == 2002]
+        want = clue_labels(no_ring_groups(spec, board), n)
+        assert shown == ([want] if want else []), (
+            "the clue labels are not the drawn groups' values: a player would "
+            "read a different clue from the one the constraint enforces"
         )
     elif local:
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
@@ -1009,13 +1052,18 @@ def rebuild(spec, n, local=False, files=None):
         code in place would still leave that structural difference for the
         equality check below to trip on. Its code is generated the same as
         the always-on backends', so dropping it from this comparison is the
-        same call: not board data (#421)."""
+        same call: not board data (#421).
+
+        A no-ring board's clue labels go too: `check` holds them to the drawn
+        groups, and the groups are compared above, so a link written before
+        the labels existed rebuilds into one that carries them."""
         d = dict(d)
         d["puzzle"] = dict(d["puzzle"])
         d["puzzle"]["constraints"] = [
             c
             for c in d["puzzle"]["constraints"]
             if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+            and not (spec.groups_fn is not None and c.get("type") == 2002)
         ]
         return d
 

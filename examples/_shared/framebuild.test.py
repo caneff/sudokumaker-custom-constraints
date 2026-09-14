@@ -355,7 +355,9 @@ def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
         # neither ships.
         assert p["type"] == "custom"
         names = [c.get("definition", {}).get("name") for c in p["constraints"]]
-        assert names == [None, None, "Grid Rows and Columns", "Widget Lines"], names
+        assert names == [None, None, "Grid Rows and Columns", "Widget Lines", None], (
+            names
+        )
         grid = p["constraints"][2]["definition"]
         shared = pathlib.Path(__file__).parent
         assert grid["backend"]["code"] == minify_js(
@@ -365,6 +367,16 @@ def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
         assert not [c for c in p["constraints"] if c.get("type") == 301], (
             "no cage outlines: the lines are houses, not drawn cages"
         )
+        # A drawn group renders nothing, so each clued group gets a text label:
+        # one cosmetic symbol per shown clue, half a cell outside the grid
+        # beyond the group's first cell, reading the group's own value. The
+        # markers at the top of columns 1 and 3 are clued 10 and 12; the two
+        # empty ones get none (docs/research/368-up-to-n-setup-throw.md).
+        labels = p["constraints"][4]
+        assert labels["type"] == 2002
+        assert labels["symbols"] == [[0.5, -0.5], [2.5, -0.5, 1]]
+        assert [q["type"] for q in labels["params"]] == ["text", "text"]
+        assert [q["text"] for q in labels["params"]] == ["10", "12"]
 
 
 def _regions(puzzle):
@@ -463,6 +475,18 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
         )
         lc["input"]["groups"][0]["value"] = "11"
         _check_fails(spec, retyped, board, "drawn group")
+        # the labels are the groups' values drawn: a label that says something
+        # else, or a missing one, is a board that shows the wrong clue
+        relabelled = json.loads(json.dumps(doc))
+        next(c for c in relabelled["puzzle"]["constraints"] if c.get("type") == 2002)[
+            "params"
+        ][0]["text"] = "11"
+        _check_fails(spec, relabelled, board, "label")
+        unlabelled = json.loads(json.dumps(doc))
+        unlabelled["puzzle"]["constraints"] = [
+            c for c in unlabelled["puzzle"]["constraints"] if c.get("type") != 2002
+        ]
+        _check_fails(spec, unlabelled, board, "label")
         # its rows and columns are only houses while it carries the grid
         # backend in the tree: dropped or stale, the board is boxes only
         for fault in ("dropped", "stale"):
@@ -563,6 +587,16 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         )
         other_link.rename(link_path)
         other_gen.rename(gen_path)
+        # The labels are drawn from the groups the rebuild already guards, so
+        # a committed link written before them rebuilds into one that has
+        # them rather than failing the board comparison.
+        old = link_codec.decode_puzzle(link_path.read_text().strip())
+        old["puzzle"]["constraints"] = [
+            c for c in old["puzzle"]["constraints"] if c.get("type") != 2002
+        ]
+        link_path.write_text(link_codec.encode_link(old) + "\n")
+        relabelled = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+        assert [c for c in relabelled["puzzle"]["constraints"] if c["type"] == 2002]
         # A no-ring board's shown clues live only in its groups' typed values:
         # hide one in the gen JSON and the rebuilt groups no longer match.
         g = json.loads(gen_path.read_text())

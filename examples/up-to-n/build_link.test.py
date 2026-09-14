@@ -144,6 +144,30 @@ def shipped_board_matches_its_link(link_name, gen_name):
             shown[key] = int(g["value"])
     assert set(shown) == board.active
 
+    # Each clued marker shows its number as a text label half a cell outside
+    # the grid beyond its border cell; an empty marker shows none.
+    symbols = [c for c in puzzle["constraints"] if c.get("type") == 2002]
+    assert len(symbols) == 1, "one cosmetic-symbols constraint holds every label"
+    params, points = symbols[0]["params"], symbols[0]["symbols"]
+    assert len(points) == len(shown)
+    drawn = {}
+    for point in points:
+        x, y, i = (*point, 0) if len(point) == 2 else point
+        assert params[i]["type"] == "text"
+        # the grid cell the label sits next to, and which side it is on
+        r, c = min(max(int(y), 0), n - 1), min(max(int(x), 0), n - 1)
+        side = "L" if x < 0 else "R" if x > n else "T" if y < 0 else "B"
+        assert (x, y) == {
+            "L": (-0.5, r + 0.5),
+            "R": (n + 0.5, r + 0.5),
+            "T": (c + 0.5, -0.5),
+            "B": (c + 0.5, n + 0.5),
+        }[side], point
+        key = (side, r if side in "LR" else c)
+        assert key not in drawn, f"two labels for {key}"
+        drawn[key] = int(params[i]["text"])
+    assert drawn == shown, (drawn, shown)
+
     # Each shown clue is the true one, read off the recorded solution by hand.
     for key, clue in shown.items():
         cells = lines[key]
