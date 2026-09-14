@@ -198,7 +198,7 @@ export async function solveDocument (doc) {
 
     const solutions = updates
       .filter(m => m.type === 'update' && m.sudokuData)
-      .map(m => gridBufferToDigits(m.sudokuData, doc.puzzle.width * doc.puzzle.height))
+      .map(m => gridBufferToDigits(m.sudokuData, doc.puzzle.width * doc.puzzle.height, start.spec.maxDigit))
     return { solutions, ms }
   } finally {
     console.error = realConsoleError
@@ -207,8 +207,11 @@ export async function solveDocument (doc) {
 
 // A solved grid's two-word buffer, read back as a plain digit string (one
 // digit per cell, row-major) -- the same shape as a CP-SAT solution string,
-// so a test can compare the two directly.
-function gridBufferToDigits (buffer, cellCount) {
+// so a test can compare the two directly. One character per cell only holds
+// for a single-digit domain; a two-digit `maxDigit` would make two distinct
+// solutions stringify the same, so this fails loud instead.
+function gridBufferToDigits (buffer, cellCount, maxDigit) {
+  if (maxDigit > 9) throw new Error(`gridBufferToDigits: maxDigit ${maxDigit} is not a single digit`)
   let out = ''
   for (let i = 0; i < cellCount; i++) out += String(buffer[i * 2])
   return out
