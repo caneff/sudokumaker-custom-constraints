@@ -35,7 +35,13 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import builtin_components, registered_components
-from framebuild import FRAME_BACKENDS, frame_backend_code
+from framebuild import (
+    FRAME_BACKENDS,
+    HOUSE_GAC_BACKEND_TITLE,
+    HOUSE_GAC_COMPONENT_NAME,
+    frame_backend_code,
+    house_gac_backend_code,
+)
 from link_codec import decode_puzzle
 from minify import minify_file
 
@@ -365,9 +371,25 @@ FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 
 def frame_backend_files():
     """`{constraint name: (source file name, its minified code in the tree)}`
-    for both of the frame's shared backends."""
+    for the frame's two always-on shared backends, plus the opt-in house-GAC
+    filter (#421) when a link carries it -- `check_frame_backends` only checks
+    a title it finds in a link's own constraints, so an opt-in backend needs
+    no separate gate here."""
     code = dict(frame_backend_code())
-    return {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
+    files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
+    gac_title, gac_backend_code, _ = house_gac_backend_code()
+    files[gac_title] = ("house-gac.js", gac_backend_code)
+    return files
+
+
+def house_gac_component_file():
+    """(component name, source file name, its minified code in the tree) for
+    the house-GAC filter's one component -- `check_frame_backends` compares
+    it against a link's own copy the same way it compares the backend, since
+    HouseGacComponent.js is not a per-example file `check_components` would
+    ever look for."""
+    _, _, code = house_gac_backend_code()
+    return (HOUSE_GAC_COMPONENT_NAME, f"{HOUSE_GAC_COMPONENT_NAME}.js", code)
 
 
 def carries_frame_rowcol(puzzle):
@@ -506,6 +528,19 @@ def check_frame_backends(example_dir, link):
                 f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                 f"for a hand-built board)"
             )
+        if title == HOUSE_GAC_BACKEND_TITLE:
+            comp_name, comp_source, comp_want = house_gac_component_file()
+            comp = next(
+                (c for c in definition.get("components", []) if c["name"] == comp_name),
+                None,
+            )
+            if comp is not None and comp.get("code") != comp_want:
+                violations.append(
+                    f"{name}: {link.name} embeds a stale copy of {comp_source} -- "
+                    f"rebuild it in the same commit as the change (the example's "
+                    f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
+                    f"for a hand-built board)"
+                )
 
     if not carried:
         return violations
@@ -553,7 +588,7 @@ def check_gen_frame_backends(example_dir):
     Keep the field empty.
     """
     name = example_dir.name
-    titles = {title for _, title in FRAME_BACKENDS}
+    titles = {title for _, title in FRAME_BACKENDS} | {HOUSE_GAC_BACKEND_TITLE}
     violations = []
     for gen in sorted(example_dir.glob("gen*.json")):
         try:

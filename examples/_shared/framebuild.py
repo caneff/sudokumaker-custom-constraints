@@ -72,6 +72,13 @@ class Spec:
     # numbered-rooms and running-start, whose PUZZLE_LINK.txt is a different,
     # hand-built board that claimed those names first.
     plain_global_9x9: bool = True
+    # Does this board carry the shared house-GAC filter (house-gac.js +
+    # HouseGacComponent.js) on every interior row, column and box? Opt-in per
+    # example: the filter is a real strength upgrade (#406) but only pays for
+    # itself in real-app solve time on some boards (docs/real-app-timing.md,
+    # #421). `build_doc` refuses a board whose houses exceed the filter's
+    # 9-cell cap rather than ship a link it silently under-solves.
+    house_gac: bool = False
 
 
 def component_files(spec, local):
@@ -432,6 +439,77 @@ def refresh_frame_backends(doc):
     return doc
 
 
+# The shared house-GAC filter (#406, #408, #421): opt-in per board
+# (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
+# entries are always-on and whose absence `refresh_frame_backends` treats as
+# an error.
+HOUSE_GAC_BACKEND_TITLE = "House GAC"
+HOUSE_GAC_COMPONENT_NAME = "HouseGacComponent"
+
+# HouseGacComponent.js's own MAX_CELLS: the largest house it will register on.
+# `build_doc` reads it here, not from the JS, so a board past this size fails
+# loud at build time instead of registering a component that refuses itself
+# at solve time on a link already shipped.
+HOUSE_GAC_MAX_CELLS = 9
+
+
+def house_gac_backend_code():
+    """`(constraint name, minified backend code, minified component code)` for
+    the shared house-GAC filter, read from the working tree."""
+    shared = pathlib.Path(__file__).parent
+    return (
+        HOUSE_GAC_BACKEND_TITLE,
+        minify_file(shared / "house-gac.js"),
+        minify_file(shared / f"{HOUSE_GAC_COMPONENT_NAME}.js"),
+    )
+
+
+def house_gac_constraint():
+    """The house-GAC constraint block `build_doc` appends when `spec.house_gac`
+    is set: the shared backend plus its one component, no input."""
+    title, backend_code, component_code = house_gac_backend_code()
+    return {
+        "type": 1000,
+        "definition": {
+            "name": title,
+            "input": [],
+            "backend": {"type": "code", "code": backend_code},
+            "components": [
+                {
+                    "type": "code",
+                    "name": HOUSE_GAC_COMPONENT_NAME,
+                    "code": component_code,
+                }
+            ],
+        },
+        "input": {},
+        "style": {},
+    }
+
+
+def refresh_house_gac_backend(doc):
+    """Point a decoded document's house-GAC backend and component at the code
+    in the tree, in place -- and do nothing when the document carries no such
+    constraint, since it is opt-in per board (unlike `refresh_frame_backends`,
+    which requires both of its backends)."""
+    title, backend_code, component_code = house_gac_backend_code()
+    constraint = next(
+        (
+            c
+            for c in doc["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") == title
+        ),
+        None,
+    )
+    if constraint is None:
+        return doc
+    constraint["definition"]["backend"]["code"] = backend_code
+    for comp in constraint["definition"]["components"]:
+        if comp["name"] == HOUSE_GAC_COMPONENT_NAME:
+            comp["code"] = component_code
+    return doc
+
+
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -446,6 +524,13 @@ def build_doc(spec, board, local=False):
     all, so it is never bent.
     """
     n, bh, bw = board.n, board.bh, board.bw
+    if spec.house_gac and n > HOUSE_GAC_MAX_CELLS:
+        raise ValueError(
+            f"{spec.dir.name}: house_gac is set but n={n} exceeds "
+            f"HouseGacComponent's {HOUSE_GAC_MAX_CELLS}-cell house cap -- "
+            "every interior row, column and box on this board would be that "
+            "many cells, so the filter refuses to register at all (#421)"
+        )
     bent = local and board.lines != make_lines(n)
     W = n + 2
     idx = lambda r, c: r * W + c
@@ -542,6 +627,7 @@ def build_doc(spec, board, local=False):
             }
             for name, code in frame_backends
         ),
+        *([house_gac_constraint()] if spec.house_gac else []),
         *cosmetics(W, cells),
     ]
 

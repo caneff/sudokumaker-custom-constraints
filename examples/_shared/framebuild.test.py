@@ -34,6 +34,7 @@ from framebuild import (
     make_lines,
     make_paths,
     rebuild,
+    refresh_house_gac_backend,
     repeating_lines,
     run,
     save_board,
@@ -178,6 +179,80 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
             assert "maxDigit" in str(e), e
         else:
             raise AssertionError("a document of the wrong size was not caught")
+
+
+def test_build_doc_ships_no_house_gac_constraint_by_default():
+    # `Spec.house_gac` defaults False, so every already-shipped link stays
+    # byte-unchanged until a board opts in (#421).
+    with _spec(["FooComponent.js"]) as spec:
+        _, doc, _ = _build(spec)
+        names = [
+            c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" not in names
+
+
+def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
+    # Opting in adds one more constraint: the shared house-gac.js backend,
+    # carrying HouseGacComponent.js as its one component (#421, following
+    # docs/research/408-house-gac/house_gac_links.py's shape).
+    with _spec(["FooComponent.js"], house_gac=True) as spec:
+        _, doc, _ = _build(spec)
+        gac = next(
+            c
+            for c in doc["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") == "House GAC"
+        )
+        shared = pathlib.Path(__file__).parent
+        assert gac["definition"]["backend"]["code"] == minify_js(
+            (shared / "house-gac.js").read_text()
+        )
+        assert gac["definition"]["components"] == [
+            {
+                "type": "code",
+                "name": "HouseGacComponent",
+                "code": minify_js((shared / "HouseGacComponent.js").read_text()),
+            }
+        ]
+
+
+def test_build_doc_refuses_house_gac_above_nine_cells():
+    # HouseGacComponent.js refuses to register past a 9-cell house at setup
+    # (MAX_CELLS); a board that would silently ship a house past that size
+    # fails loud here instead, at build time (#421).
+    with _spec(["FooComponent.js"], house_gac=True) as spec:
+        board = _board(n=10, bh=2, bw=5)
+        try:
+            build_doc(spec, board, local=False)
+            raise AssertionError("build_doc accepted a house_gac board above 9 cells")
+        except ValueError as e:
+            assert "9" in str(e)
+
+
+def test_refresh_house_gac_backend_updates_in_place_and_no_ops_when_absent():
+    # Opt-in, unlike the two always-on frame backends: a doc that never
+    # carries House GAC is left alone rather than raising (#421).
+    with _spec(["FooComponent.js"]) as spec:
+        _, plain_doc, _ = _build(spec)
+        assert refresh_house_gac_backend(plain_doc) == plain_doc
+
+    with _spec(["FooComponent.js"], house_gac=True) as spec:
+        _, doc, _ = _build(spec)
+        gac = next(
+            c
+            for c in doc["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") == "House GAC"
+        )
+        gac["definition"]["backend"]["code"] += "// stale"
+        gac["definition"]["components"][0]["code"] += "// stale"
+        refresh_house_gac_backend(doc)
+        shared = pathlib.Path(__file__).parent
+        assert gac["definition"]["backend"]["code"] == minify_js(
+            (shared / "house-gac.js").read_text()
+        )
+        assert gac["definition"]["components"][0]["code"] == minify_js(
+            (shared / "HouseGacComponent.js").read_text()
+        )
 
 
 def test_build_doc_leaves_the_frame_corners_empty():
@@ -618,6 +693,10 @@ if __name__ == "__main__":
     test_check_accepts_a_backend_that_reaches_for_a_built_in_component()
     test_build_doc_leaves_the_frame_corners_empty()
     test_build_doc_declares_the_interior_rows_and_columns_in_its_backends()
+    test_build_doc_ships_no_house_gac_constraint_by_default()
+    test_build_doc_house_gac_wires_the_shared_filter_onto_every_house()
+    test_build_doc_refuses_house_gac_above_nine_cells()
+    test_refresh_house_gac_backend_updates_in_place_and_no_ops_when_absent()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
