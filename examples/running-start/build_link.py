@@ -119,7 +119,7 @@ def build_from_template():
         for c in cons
         if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
     ]
-    cons.append(house_gac_constraint())
+    cons.append(house_gac_constraint(9))
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
     # pin the digit range to 9 (the app defaults a custom puzzle to 0..9) and
     # match the rule wording used by the 4x4/6x6 builder

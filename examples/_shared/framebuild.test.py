@@ -28,6 +28,7 @@ from framebuild import (
     build_doc,
     check,
     generate,
+    house_gac_constraint,
     load_board,
     main,
     make_grid,
@@ -226,6 +227,20 @@ def test_build_doc_refuses_house_gac_above_nine_cells():
             raise AssertionError("build_doc accepted a house_gac board above 9 cells")
         except ValueError as e:
             assert "9" in str(e)
+
+
+def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
+    # build_doc's own cap check (test above) is not the only caller: a
+    # hand-built board (running-start/build_link.py's build_from_template)
+    # appends `house_gac_constraint()` directly, bypassing build_doc
+    # entirely, so the cap has to live in the one function every caller goes
+    # through, not just in build_doc (#421 review round 1).
+    house_gac_constraint(9)  # does not raise
+    try:
+        house_gac_constraint(10)
+        raise AssertionError("house_gac_constraint accepted n=10")
+    except ValueError as e:
+        assert "9" in str(e)
 
 
 def test_build_doc_house_gac_names_one_board_not_the_whole_example():
@@ -716,6 +731,7 @@ if __name__ == "__main__":
     test_build_doc_ships_no_house_gac_constraint_by_default()
     test_build_doc_house_gac_wires_the_shared_filter_onto_every_house()
     test_build_doc_refuses_house_gac_above_nine_cells()
+    test_house_gac_constraint_refuses_above_nine_cells_on_its_own()
     test_build_doc_house_gac_names_one_board_not_the_whole_example()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()

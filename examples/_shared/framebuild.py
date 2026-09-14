@@ -467,9 +467,19 @@ def house_gac_backend_code():
     )
 
 
-def house_gac_constraint():
-    """The house-GAC constraint block `build_doc` appends on a board named in
-    `spec.house_gac`: the shared backend plus its one component, no input."""
+def house_gac_constraint(n):
+    """The house-GAC constraint block for an `n`-cell interior: the shared
+    backend plus its one component, no input. `n` is every caller's board
+    size, checked here -- not only in `build_doc` -- because a hand-built
+    board (running-start's `build_link.py`) appends this constraint directly
+    and never calls `build_doc` at all."""
+    if n > HOUSE_GAC_MAX_CELLS:
+        raise ValueError(
+            f"house_gac_constraint: n={n} exceeds HouseGacComponent's "
+            f"{HOUSE_GAC_MAX_CELLS}-cell house cap -- every interior row, "
+            "column and box on this board would be that many cells, so the "
+            "filter refuses to register at all (#421)"
+        )
     title, backend_code, component_code = house_gac_backend_code()
     return {
         "type": 1000,
@@ -506,15 +516,10 @@ def build_doc(spec, board, local=False):
     n, bh, bw = board.n, board.bh, board.bw
     # Local lane never carries it: no measured local board cleared the timing
     # bar (docs/research/421-frame-link-timing.md), and `spec.house_gac` names
-    # sizes on the global lane only.
+    # sizes on the global lane only. The cap itself is `house_gac_constraint`'s
+    # to enforce -- it raises below when this is true and n is too big -- so
+    # it is checked once, for every caller, not duplicated here.
     apply_house_gac = not local and n in spec.house_gac
-    if apply_house_gac and n > HOUSE_GAC_MAX_CELLS:
-        raise ValueError(
-            f"{spec.dir.name}: house_gac names n={n} but that exceeds "
-            f"HouseGacComponent's {HOUSE_GAC_MAX_CELLS}-cell house cap -- "
-            "every interior row, column and box on this board would be that "
-            "many cells, so the filter refuses to register at all (#421)"
-        )
     bent = local and board.lines != make_lines(n)
     W = n + 2
     idx = lambda r, c: r * W + c
@@ -611,7 +616,7 @@ def build_doc(spec, board, local=False):
             }
             for name, code in frame_backends
         ),
-        *([house_gac_constraint()] if apply_house_gac else []),
+        *([house_gac_constraint(n)] if apply_house_gac else []),
         *cosmetics(W, cells),
     ]
 
