@@ -32,6 +32,7 @@ def _link(
     frame_backend=False,
     corners_backend=False,
     house_gac_backend=False,
+    house_gac_renamed=False,
     digits=(1, 3),
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
@@ -58,7 +59,13 @@ def _link(
     the shared house-GAC filter constraint the same way, with its
     HouseGacComponent.js as the one component it ships (#421); "stale" stales
     the backend, "stale_component" stales the component instead, and
-    "no_component" ships the backend with no component at all. `digits` is the
+    "no_component" ships the backend with no component at all.
+    `house_gac_renamed` builds house-gac's own standalone shape instead: the
+    filter spliced under a backend that is legitimately not house-gac.js (so
+    its own staleness check does not apply) and a constraint name other than
+    "House GAC" (examples/house-gac/build_link.py renames it to avoid the
+    reserved title -- #439); "stale_component" stales the shared component the
+    same way `house_gac_backend` does. `digits` is the
     document's declared range -- None leaves it off, which is what makes the
     app default the board to 0..9 and silently weaken both frame backends
     (#394).
@@ -124,6 +131,27 @@ def _link(
                     "name": title,
                     "backend": {"type": "code", "code": code},
                     "components": components,
+                },
+            }
+        )
+    if house_gac_renamed:
+        # A backend of its own (never house-gac.js -- that is the point of
+        # the rename), carrying only the shared HouseGacComponent.js.
+        comp_code = minify_js((HERE / "HouseGacComponent.js").read_text())
+        if house_gac_renamed == "stale_component":
+            comp_code += "\n// an older copy"
+        extra.append(
+            {
+                "type": 1000,
+                "definition": {
+                    "name": "House GAC (standalone)",
+                    "backend": {
+                        "type": "code",
+                        "code": "puzzle.addConstraintComponent(new HouseGacComponent('a'))",
+                    },
+                    "components": [
+                        {"type": "code", "name": "HouseGacComponent", "code": comp_code}
+                    ],
                 },
             }
         )
@@ -585,6 +613,35 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "House GAC" in violations[0], violations[0]
         assert "HouseGacComponent" in violations[0], violations[0]
+
+    # A constraint renamed away from "House GAC" (examples/house-gac's own
+    # standalone board, which cannot keep the reserved title since its
+    # backend is legitimately not house-gac.js -- #439) still ships the
+    # shared HouseGacComponent.js, and a stale copy of it must still be
+    # caught: `check_components` cannot see it (component names still
+    # agree), and this check used to skip the constraint entirely because its
+    # title was not the one key ("House GAC") it looked up.
+    renamed_stale_component = _link(house_gac_renamed="stale_component")
+    with example(
+        name="house-gac",
+        contents={"PUZZLE_LINK.txt": renamed_stale_component},
+    ) as (root, d):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "HouseGacComponent.js").write_text("x")
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "HouseGacComponent.js" in violations[0], violations[0]
+
+    # ...and a fresh copy under the renamed title is fine.
+    renamed_fresh = _link(house_gac_renamed=True)
+    with example(name="house-gac", contents={"PUZZLE_LINK.txt": renamed_fresh}) as (
+        root,
+        d,
+    ):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "HouseGacComponent.js").write_text("x")
+        assert check_tree(root) == [], check_tree(root)
 
     # A frame link that declares no digit range is silently weakened: the app
     # defaults a custom puzzle to 0..9 whatever the grid size, the interior
