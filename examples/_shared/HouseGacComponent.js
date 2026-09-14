@@ -21,8 +21,9 @@
 //! pools fewer than k, and a group that pools exactly k holds all k itself.
 //!
 //! Two kinds of bitmask. A set of DIGITS: bit d is digit d, the app's own
-//! candidate mask. A GROUP of cells: bit i is the i-th cell of the house. There
-//! are 2^n groups, numbered 1 to 2^n - 1, and counting up visits each once.
+//! candidate mask. A GROUP of cells: bit i is the i-th FREE cell of the
+//! house, in house order. There are 2^n groups over n free cells, numbered 1
+//! to 2^n - 1, and counting up visits each once.
 //!
 //! Why counting up is cheap. A group without its lowest cell is a smaller
 //! number, so it has already been visited and its pooled digits are on record.
@@ -31,11 +32,20 @@
 //! One pass is enough. Removals made during the walk only take away digits no
 //! filling uses, so a group that pools exactly k digits pools the same k
 //! digits before and after them.
+//!
+//! Placed cells (one candidate left) are stripped from the house and skipped
+//! by the walk (#435). Their digit is removed from every other cell first, so
+//! a group that would have included a placed cell owns its digits iff the
+//! rest of the group does, and that digit is already gone from everywhere
+//! else -- the free-cell walk removes exactly what walking the whole house
+//! would remove. On a mid-search house with 4-5 free cells that is 16-32
+//! groups instead of 511.
 
-//! 2^n groups per call: about 2 us at n=9 against 26 us for a matching
-//! filter, but the cost doubles with each cell and matching is cheaper from
-//! n=12 or 13 on (docs/research/all-different-gac.md). A larger house is a
-//! registration mistake, refused at setup where the author sees it.
+//! 2^n groups per call over the free cells: about 2 us at n=9 free cells
+//! against 26 us for a matching filter, but the cost doubles with each free
+//! cell and matching is cheaper from n=12 or 13 on
+//! (docs/research/all-different-gac.md). A larger house is a registration
+//! mistake, refused at setup where the author sees it.
 //! The same rule in three other forms, and what each costs, is in
 //! docs/research/408-house-gac/.
 const MAX_CELLS = 9
@@ -105,10 +115,30 @@ function * update (instance, puzzle) {
   const candidates = cells.map(cell => puzzle.getCandidatesBitMask(cell))
   const startingCandidates = candidates.slice()
 
-  const wholeHouse = (1 << cellCount) - 1
-  for (let group = 1; group <= wholeHouse; group++) {
+  //! Strip each placed cell's digit from the rest of the house before the
+  //! walk, then walk only the cells still free. A group that includes a
+  //! placed cell owns its digits iff the rest of the group does, and its only
+  //! extra removal is the placed digit -- already stripped here -- so the
+  //! free-cell walk below removes exactly what walking every group of the
+  //! whole house would remove (#435).
+  const freePositions = []
+  for (let position = 0; position < cellCount; position++) {
+    if (digitCountOf[candidates[position]] === 1) {
+      const placedDigit = candidates[position]
+      for (let other = 0; other < cellCount; other++) {
+        if (other !== position) candidates[other] &= ~placedDigit
+      }
+    } else {
+      freePositions.push(position)
+    }
+  }
+
+  const freeCount = freePositions.length
+  const wholeGroup = (1 << freeCount) - 1
+  for (let group = 1; group <= wholeGroup; group++) {
     const newestCellBit = lowestBit(group)
-    const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[positionOf(newestCellBit)]
+    const newestPosition = freePositions[positionOf(newestCellBit)]
+    const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[newestPosition]
     pooledDigitsOf[group] = pooledDigits
 
     const cellsInGroup = cellsInGroupOf[group]
@@ -121,9 +151,10 @@ function * update (instance, puzzle) {
 
     const groupOwnsItsDigits = digitsInGroup === cellsInGroup
     if (groupOwnsItsDigits) {
-      const cellsOutside = wholeHouse & ~group
+      const cellsOutside = wholeGroup & ~group
       for (let rest = cellsOutside; rest !== 0; rest = withoutLowestBit(rest)) {
-        candidates[positionOf(lowestBit(rest))] &= ~pooledDigits
+        const restPosition = freePositions[positionOf(lowestBit(rest))]
+        candidates[restPosition] &= ~pooledDigits
       }
     }
   }

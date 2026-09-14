@@ -183,6 +183,20 @@ for (let size = 1; size <= 8; size++) {
   for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'the triple and the single are not removed from the rest')
 }
 
+// ---- placed cells are stripped from the house and skipped by the walk ----
+// Cells 0 and 1 are already solved (1, then 2). Their digits must reach every
+// other cell before the walk runs (#435), so cells 2 and 3 -- a naked pair on
+// {3, 4} -- lose 1 and 2 as well as leaving the pair itself in place, and the
+// pair then clears 3 and 4 from the rest of the house.
+{
+  const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const cands = [[1], [2], [1, 2, 3, 4], [1, 2, 3, 4], all, all, all, all, all]
+  const got = runOnce(gac, cands)
+  assert.deepStrictEqual(got.slice(0, 4), [[1], [2], [3, 4], [3, 4]])
+  for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'placed digits or the pair were not fully cleared from the rest')
+  assert.deepStrictEqual(got, runOnce(ref, cands), 'disagrees with matching GAC once cells are pre-filled')
+}
+
 // ---- gated: a line that may repeat is left alone --------------------------
 // docs/line-contract.md: all-different only holds where the app says the cells
 // cannot repeat. The same Hall set on a bare line removes nothing.
