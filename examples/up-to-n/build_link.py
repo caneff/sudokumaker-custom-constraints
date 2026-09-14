@@ -17,7 +17,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from framebuild import Spec
+from framebuild import NO_RING_RULES_PREFIX, Spec
 from link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
 from minify import minify_file
@@ -113,10 +113,8 @@ SPEC = Spec(
     groups_fn=markers,
     # a marker names a whole row or column, so the lines never bend
     bent_lines=False,
-    # The board has no ring, so no "inner grid" to name. The Spec is where this
-    # sentence is chosen; `check_layout.NO_RING_RULES_PREFIX` holds the copy the
-    # gate compares committed links against, and says there why it is a copy.
-    rules_prefix="Normal sudoku rules apply. ",
+    # the board has no ring, so no "inner grid" to name
+    rules_prefix=NO_RING_RULES_PREFIX,
 )
 
 

@@ -36,8 +36,10 @@ from minify import minify_file
 
 # Every generated link opens with a rules sentence (project rule). The Spec
 # picks it (`Spec.rules_prefix`); this is the default, and every choice opens
-# with REQUIRED_RULES_OPENING.
+# with REQUIRED_RULES_OPENING. A no-ring board has no inner grid to name, so
+# it opens with NO_RING_RULES_PREFIX instead.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
 REQUIRED_RULES_OPENING = "Normal sudoku rules apply"
 
 
@@ -642,7 +644,7 @@ def refuse_no_ring_global_lane(spec, local):
         )
 
 
-def _document(spec, board, kind, width, cells, constraints, comment):
+def _document(spec, board, width, cells, constraints, comment):
     """The document around one board's cells and constraints: the header
     fields every framebuild link shares, in the order they are encoded."""
     n = board.n
@@ -654,7 +656,7 @@ def _document(spec, board, kind, width, cells, constraints, comment):
             "comment": comment,
             # minDigit/maxDigit pin the digit range to n; the app otherwise
             # defaults a custom puzzle to 0..9 regardless of grid size.
-            "type": kind,
+            "type": "custom",
             "width": width,
             "height": width,
             "minDigit": spec.min_digit,
@@ -694,7 +696,7 @@ def no_ring_doc(spec, board):
         *([labels] if labels else []),
     ]
     comment = spec.rules_prefix + spec.comment_fn(n)
-    return _document(spec, board, "custom", n, cells, constraints, comment)
+    return _document(spec, board, n, cells, constraints, comment)
 
 
 def build_doc(spec, board, local=False):
@@ -804,7 +806,7 @@ def build_doc(spec, board, local=False):
     comment = (
         spec.rules_prefix + spec.comment_fn(n) + (LOCAL_RULES_SUFFIX if bent else "")
     )
-    return _document(spec, board, "custom", W, cells, constraints, comment)
+    return _document(spec, board, W, cells, constraints, comment)
 
 
 def check(spec, link, doc, board, local=False):
