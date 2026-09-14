@@ -50,7 +50,7 @@ have drawn one end and not the other, is where a lone clue is handled.
   variable.
 - **One component, gated rules.** Each rule starts with its gate
   (`if (instance.kind < HOUSE) …`). No per-kind component files, no
-  `replaceComponent` swap (built-in targets only, gotcha).
+  `replaceComponent` swap.
 
 ## Ties
 

@@ -200,9 +200,9 @@ These shape every constraint; breaking one costs an afternoon. Detail in
 - **A `validate`-only component is inert.** The solver neither prunes nor rejects
   through a component with no `update`. Always pair `validate` with an `update`
   that removes at least some candidates. (gotcha 2)
-- **`replaceComponent` targets built-ins only.** Swapping in another custom
-  component silently does nothing. Write one self-contained component instead.
-  (gotcha 1)
+- **A sibling custom class is `customComponents.Name`.** Inside a component
+  segment a bare custom class name is a ReferenceError the wrapper swallows, so
+  the rule goes dead. `replaceComponent` itself accepts any target. (gotcha 1)
 - **The whole puzzle is in the URL.** Long component code can truncate the
   puzzle — silent data loss. Keep component code lean. (gotcha 7)
 - **The app supports rectangular boards; this suite ships only square ones.**

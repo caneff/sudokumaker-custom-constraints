@@ -2,24 +2,31 @@
 
 The expensive lessons. The first two each cost real debugging time.
 
-## 1. `replaceComponent` only works with built-in components
+## 1. A sibling custom component is `customComponents.Name`, never a bare name
 
-`puzzle.replaceComponent(instance, new X(...))` swaps `instance` for a new
-component `X`. This works when `X` is a **built-in** (e.g. `SkyscraperComponent`,
-`GreaterThanComponent`, `IndexComponent`). It does **not** work when `X` is
-another **custom** component from a sibling code segment — the swap silently
-produces nothing, and your rule never enforces. **[verified]**
+`puzzle.replaceComponent(instance, new X(...))` swaps `instance` for `X`, and
+the swap accepts any component, built-in or custom: the solver unregisters
+`instance`, registers `X`, and drains its `initialize`
+(`docs/research/bundle-api-reference.md`, the ReplaceComponent branch). What
+does **not** work is naming a sibling custom class directly. Inside a component
+code segment the compiled custom classes are in scope only as
+`customComponents.Name`; built-in constructors are bare globals, custom ones
+are not (`compileCustomComponentClass`, bundle line 10068). `new
+MyCustomComponent(...)` throws a ReferenceError, the custom-code wrapper
+catches it, prints it with `console.error`, and the generator ends. The rule
+goes dead with nothing in the UI. **[read]** (bundle body; an earlier version
+of this note blamed `replaceComponent` and said the console stayed silent, and
+both claims were wrong)
 
-The trap is seductive because the built-in edge-clue template does exactly this:
-a small wrapper watches the clue cell, then
+The trap is seductive because the built-in edge-clue template does exactly this
+shape: a small wrapper watches the clue cell, then
 `replaceComponent(instance, new SkyscraperComponent(name, value, cells))` once
-the clue has a value. Copy that shape for your own rule and swap in
-`new MyCustomComponent(...)`, and the whole constraint goes dead.
+the clue has a value. Copy it with a custom target and only the spelling of the
+class name changes.
 
-**Fix:** do not split across two custom components. Write **one self-contained
-component** and register it directly in the main code. Give it both the clue
-cell and the line, and let its own `update`/`validate` do everything. The
-Running Start example takes this shape.
+**Fix:** write `customComponents.MyCustomComponent`, and open the console when a
+rule goes dead. Or keep to one self-contained component registered from the
+main code, which is what the Running Start example does.
 
 ## 2. A validate-only component rejects but never prunes
 

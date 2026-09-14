@@ -73,9 +73,9 @@ re-scanning. Clock Faces collapses to `GreaterThanComponent`s, Ziffer to
 you want to bank partial deductions; reach for one-way collapse when the rule
 reduces to a primitive.
 
-Note the Running Start gotcha still holds: `replaceComponent` with a *custom*
-target that is not built-in does nothing (see `gotchas.md`). These collapses work
-because they target built-ins, or re-register through `addConstraintComponent`.
+Gotcha 1 still holds: a custom target inside a component segment is spelled
+`customComponents.Name`, never a bare class name (see `gotchas.md`). These
+collapses target built-ins, which are bare globals.
 
 ## 3. Enumerate every legal filling (generalized arc consistency)
 

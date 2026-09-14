@@ -42,7 +42,7 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 | `puzzle.removeCandidateFromCell(digit, cell)` | Drop one candidate from one cell. **[verified]** |
 | `puzzle.removeCandidatesFromCell(digitSet, cell)` | Drop a set of candidates from one cell. **[verified]** |
 | `puzzle.removeCandidatesFromCells(digitSet, cells)` | Drop a set from several cells. **[docs]** |
-| `puzzle.replaceComponent(instance, newComponent)` | Swap this component for another. **Built-in target only** (see gotchas). **[verified]** |
+| `puzzle.replaceComponent(instance, newComponent)` | Swap this component for another. Any target; a sibling custom class must be spelled `customComponents.Name` (gotcha 1). **[read]** |
 | `puzzle.addConstraintComponent(component)` | Register a component (used in the main code). **[verified]** |
 | `puzzle.removeConstraintComponent(component)` | Remove a component. **[docs]** |
 | `puzzle.stop(message)` | Signal a contradiction / halt. **[docs]** |
@@ -129,6 +129,13 @@ document cages they replaced; the identical construction with
 `.map(c => c | 0)` ran **0.97x** (#394). Nothing about the id looks different
 from JS -- `Array.isArray` is true and the values compare `===` -- so the
 coercion is not optional decoration.
+
+**The id type is not a contract.** The maintainer has said cell ids may stop
+being numbers in a later release. `| 0` is a bet on the current
+representation: on a non-numeric id it yields `0`, a real cell, silently. When
+the app version pinned in `docs/real-app-timing.md` moves, re-run `just time`
+on one shipped frame example before trusting any `| 0` in
+`examples/_shared/frame-lines.js`, `frame-rowcol.js` or `house-gac.js`.
 
 ## spec
 
