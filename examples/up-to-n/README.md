@@ -164,6 +164,17 @@ the component stronger.
 solve off. Candidate code is byte-equal to the committed link, so only baseline
 rows print: this is the floor a later component change is judged against.
 
+**The prefix-cell prune (#369) pays for itself.** `just time up-to-n` with
+the prune stripped from the working-tree component (the committed link, with
+the prune, as baseline) refused on its cold row, 2026-09-14:
+
+```
+RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+```
+
+Without the prune the shipped board does not solve inside 300 s; with it, it
+solves in 14.5 s. The refusal is the record: there is no ratio to print.
+
 `PUZZLE_LINK_9x9.txt`, the minimal 13-clue board, has no row: the live app
 found no solution to it within 300 s in one rep
 (`docs/research/368-up-to-n-setup-throw.md`, finding 5), and a DNF on record is
