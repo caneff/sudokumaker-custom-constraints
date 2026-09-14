@@ -552,6 +552,19 @@ just time hit-counts
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (stopped-prune memo, #329) after-logical | 8400ms | 9000ms | 1.07 | gate: PASS |
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (uncached `oneToN`, #336) | 9000ms | 8900ms | 0.99 | gate: PASS |
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (uncached `oneToN`, #336) after-logical | 7400ms | 7600ms | 1.03 | gate: PASS |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC, #421) | 7600ms | 6300ms | 0.83 | SHIP |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC, #421) after-logical | 6400ms | 3900ms | 0.61 | SHIP |
+
+The #421 pair is a link-vs-link comparison, not a component-code diff: the
+shared house-GAC filter (`examples/_shared/house-gac.js` +
+`HouseGacComponent.js`, #406/#408) is now a third constraint on this board
+(`Spec.house_gac=True`), filtering every interior row, column and box to
+generalized arc consistency. Both rows clear 0.9x, well inside 1.1x on the
+other -- full numbers and the same pass/fail read on every other shipped
+frame board are in `docs/research/421-frame-link-timing.md`. The local board
+stays as it was: its cold baseline is the DNF two rows up, so the two-row
+rule has no baseline to judge a candidate against there, and it does not
+carry the filter.
 
 The #336 pair stops `lineKind` caching `instance.oneToN`. The union of a
 line's live candidates is a fact about one search node, and the component

@@ -102,6 +102,9 @@ SPEC = Spec(
     cp_sat_clue_fn=add_hit_count,
     comment_fn=comment_text,
     extra_cages=no_zero_cage,
+    # Real-app timing clears the two-row bar on this board (0.83x cold,
+    # 0.61x after-logical -- docs/research/421-frame-link-timing.md, #421).
+    house_gac=True,
 )
 
 if __name__ == "__main__":

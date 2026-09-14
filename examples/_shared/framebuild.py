@@ -861,9 +861,30 @@ def rebuild(spec, n, local=False):
     # all three carry code generated from the working tree, and a rebuild
     # exists precisely to refresh it.
     frame_names = [title for _, title in FRAME_BACKENDS]
-    assert frame_and_comment_only(
-        before, spec.constraint_name, frame_names
-    ) == frame_and_comment_only(doc, spec.constraint_name, frame_names), (
+
+    def _without_house_gac(d):
+        """Drop the House GAC constraint entirely, rather than blank it in
+        place: unlike the two always-on frame backends, it is opt-in
+        (`spec.house_gac`), so a rebuild that turns it on for the first time
+        adds a whole constraint the OLD link never carried -- blanking its
+        code in place would still leave that structural difference for the
+        equality check below to trip on. Its code is generated the same as
+        the always-on backends', so dropping it from this comparison is the
+        same call: not board data (#421)."""
+        d = dict(d)
+        d["puzzle"] = dict(d["puzzle"])
+        d["puzzle"]["constraints"] = [
+            c
+            for c in d["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+        ]
+        return d
+
+    assert _without_house_gac(
+        frame_and_comment_only(before, spec.constraint_name, frame_names)
+    ) == _without_house_gac(
+        frame_and_comment_only(doc, spec.constraint_name, frame_names)
+    ), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "
         "seed must only change the constraint code and comment"
     )

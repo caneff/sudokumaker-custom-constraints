@@ -637,6 +637,24 @@ def test_rebuild_reproduces_a_committed_link_byte_for_byte():
         assert rebuild(spec, n) + "\n" == link_path.read_text()
 
 
+def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
+    # A board that never carried House GAC turning it on is not board drift:
+    # the guard must not read "new constraint appeared" as "the puzzle
+    # changed" (#421).
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    ) as spec:
+        main(spec, [str(n), str(bh), str(bw), "2"])
+        opted_in = dataclasses.replace(spec, house_gac=True)
+        link = rebuild(opted_in, n)
+        doc = link_codec.decode_puzzle(link)
+        names = [
+            c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" in names
+
+
 def test_rebuild_refuses_a_gen_json_that_moved_the_board():
     n, bh, bw = 4, 2, 2
     with _spec(
@@ -709,6 +727,7 @@ if __name__ == "__main__":
     test_a_spec_whose_local_lines_stay_straight_draws_the_frame()
     test_the_rules_text_follows_the_board_not_the_spec()
     test_rebuild_names_the_file_it_cannot_find()
+    test_rebuild_opts_a_board_into_house_gac_for_the_first_time()
     test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines()
     test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search()
     test_rebuild_reproduces_a_committed_link_byte_for_byte()

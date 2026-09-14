@@ -40,7 +40,13 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_size import rule_text
 from frame import cosmetics
-from framebuild import RULES_PREFIX, frame_backend_code, refresh_frame_backends
+from framebuild import (
+    HOUSE_GAC_BACKEND_TITLE,
+    RULES_PREFIX,
+    frame_backend_code,
+    house_gac_constraint,
+    refresh_frame_backends,
+)
 from link_codec import decode_puzzle, encode_link
 from link_swap import check_and_write, find_constraint, swap_component_code
 from minify import minify_file
@@ -102,6 +108,18 @@ def build_from_template():
     # outlines box exactly the given outside cells (same rule as the 4x4/6x6)
     cons = doc["puzzle"]["constraints"]
     cons[:] = [c for c in cons if c.get("type") != 2000]
+    # The shared house-GAC filter, on this board only (real-app timing clears
+    # the two-row bar here: 0.71x cold, ~0x after-logical --
+    # docs/research/421-frame-link-timing.md, #421). This is the GLOBAL 9x9's
+    # own template, not framebuild's Spec (running-start's local/4x4/6x6
+    # lanes are framebuild-native and unaffected -- their timing was not
+    # measured, so they do not carry it).
+    cons[:] = [
+        c
+        for c in cons
+        if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+    ]
+    cons.append(house_gac_constraint())
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
     # pin the digit range to 9 (the app defaults a custom puzzle to 0..9) and
     # match the rule wording used by the 4x4/6x6 builder
