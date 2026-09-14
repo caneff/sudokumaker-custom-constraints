@@ -12,9 +12,9 @@ component, standing alone, on the simplest board there is.
 
 A second link, `PUZZLE_LINK_annotated.txt`, is the same board and the same 25
 givens with its embedded code kept uncompressed instead of minified: every
-comment survives (only blank lines go; indentation is untouched), for a reader who
-opens the link in SudokuMaker and reads the filter's own commentary in its
-code box (#433, "Rebuilding" below).
+comment survives (only blank lines go; indentation is untouched), for a
+reader who opens the link in SudokuMaker and reads the filter's own
+commentary in its code box (#433, "Rebuilding" below).
 
 Moved here from `docs/research/425-standalone-house-gac/` by #428, so the
 standalone GAC demo lives with the other examples rather than under research
@@ -100,8 +100,8 @@ uv run --with lzstring examples/house-gac/build_link.py
 `--keep-comments` builds `PUZZLE_LINK_annotated.txt` instead: same board, same
 givens, same `main.js` and `HouseGacComponent.js`, but the embedded code goes
 through `minify_js`'s comment-keeping mode (`examples/_shared/minify.py`)
-rather than the usual full strip -- only blank lines go, every
-comment survives:
+rather than the usual full strip -- only blank lines go, every comment
+survives:
 
 ```
 uv run --with lzstring examples/house-gac/build_link.py \
