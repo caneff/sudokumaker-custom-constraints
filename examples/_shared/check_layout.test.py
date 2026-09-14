@@ -617,10 +617,10 @@ if __name__ == "__main__":
     # A constraint renamed away from "House GAC" (examples/house-gac's own
     # standalone board, which cannot keep the reserved title since its
     # backend is legitimately not house-gac.js -- #439) still ships the
-    # shared HouseGacComponent.js, and a stale copy of it must still be
-    # caught: `check_components` cannot see it (component names still
-    # agree), and this check used to skip the constraint entirely because its
-    # title was not the one key ("House GAC") it looked up.
+    # shared HouseGacComponent.js, and a stale copy of it is caught the same
+    # way: `check_components` cannot see it (component names still agree),
+    # so this check keys the component comparison on its own name rather
+    # than the constraint's title.
     renamed_stale_component = _link(house_gac_renamed="stale_component")
     with example(
         name="house-gac",
@@ -633,7 +633,7 @@ if __name__ == "__main__":
         assert "stale" in violations[0].lower(), violations[0]
         assert "HouseGacComponent.js" in violations[0], violations[0]
 
-    # ...and a fresh copy under the renamed title is fine.
+    # A fresh copy under the renamed title raises no false positive.
     renamed_fresh = _link(house_gac_renamed=True)
     with example(name="house-gac", contents={"PUZZLE_LINK.txt": renamed_fresh}) as (
         root,
