@@ -6,10 +6,17 @@ shading puzzles, path/loop-drawing puzzles, and region-building puzzles — what
 the exact rules of each genre, which of them make good Sudoku hybrids, and which
 hybrids have actually been built and published?
 
-**Why this repo cares:** every genre here is a candidate for a SudokuMaker custom
-constraint component: a decision layer (shaded / unshaded, loop segment, region id)
-laid over the 9x9 candidate grid, where the component's `update` prunes digit
-candidates from the decision layer and vice versa.
+**Why this repo cares:** every genre here is a candidate for a **CP-SAT model** — an
+OR-Tools generator plus uniqueness checker in Python, in the style this repo already
+runs for fillomino (`examples/fillomino/generate.py`,
+`docs/research/fillomino-cpsat.md`), Renbanana (`docs/research/renbanana_cpsat.py`)
+and Zombo Brainanas (`docs/research/zombo_brainanas_cpsat.py`). Each genre adds a
+decision layer — shaded / unshaded, loop edges, region ids — over the 81 digit
+variables, and the question this survey answers for each is: what variables does the
+model need, which globals are expensive and how would this repo encode them, what does
+that cost on a 9x9, and does the digit layer couple to it as linear or reified
+constraints without blowing up. Section 6 collects the reusable encoding devices;
+section 7 ranks the genres by what they are worth to build.
 
 ## Sources consulted
 
@@ -76,8 +83,9 @@ this run are marked `[unverified]`.
 # 1. Shading puzzles
 
 The decision layer is one bit per cell. That is the cheapest possible extra layer to
-put on a SudokuMaker candidate grid, and it is the family with by far the most existing
-Sudoku hybrid practice.
+add to a CP-SAT model — 81 booleans — and it is the family with by far the most existing
+Sudoku hybrid practice. The cost in this family is almost never the shading itself; it is
+whatever connectivity, shape or sight rule sits on top of it.
 
 ## 1.1 Nurikabe (ぬりかべ; "Islands in the Stream", "Cell Structure")
 
@@ -94,18 +102,39 @@ Communication Nikoli vol. 33.
 2x2 shaded, unshaded set partitions into islands. Clues: a size number inside an
 island, exactly one per island.
 
-**Sudoku hybrid suitability: Good — the strongest in the family.** Three independent
-hooks into digits, all of them used in practice: the clue number *is* a digit (island
-size = the digit in that cell), island contents can be constrained (no repeats within
-an island, island sum), and the shaded/unshaded split can be tied to parity. Island
-size is bounded by 9 in a 9x9, which is exactly the digit range — that coincidence is
-why this hybrid works so well and why it fits the grid without contortion. The 2x2 and
-connectivity constraints are strong enough that the shading is not free, but not so
-strong that the shading solves itself independently of the digits. Implementation note:
-`update` must be careful — island size deduction needs a connected-component
-propagator, not just local pruning, and connectivity is the classic source of unsound
-candidate removal. This repo already has `docs/research/connectivity-techniques.md`
-and `docs/research/infection-shading-model.md` for exactly this.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — model it.**
+
+*Variables.* 81 digit ints `x[p]` in 1..9; 81 shading bools `w[p]` (water);
+for the island layer, 81 region-id ints `rid[p]` in 0..80 and 81 root bools,
+exactly the fillomino shape. Water connectivity wants its own single-commodity
+flow: 288 directed-arc ints plus one water root.
+
+*Expensive globals.* Two connectivity proofs at once, in opposite directions.
+Water is one connected set — single-commodity flow to a root over water arcs,
+per `docs/research/fillomino-cpsat.md`. Islands are *many* connected sets with
+sizes — that is the fillomino problem exactly, and the fillomino trick does not
+transfer unmodified, because Nurikabe has no "equal sizes may not touch" rule to
+make components derivable from the digits. You need real `rid` variables with a
+second flow whose root emits the island size. No-2x2 on water is 64 window
+constraints, trivial. One-clue-per-island is a linear sum over `root` bools.
+
+*Size and cost on 9x9.* Roughly 81+81+81 ints, ~160 bools, ~576 flow ints across
+two networks, plus the sudoku core. **Heavy** — the only entry in the survey
+needing two flow networks, and the island flow's emit value is a variable
+(the size), which is the part that made fillomino's worst proof 69 s.
+
+*Digit coupling.* Native and strong, which is why it is worth the cost. Island
+size equals the digit in its clue cell: `emit == x[root]`, one line, the same
+device fillomino uses. "No repeats within an island" is an AllDifferent over a
+variable-membership set, which does *not* express directly — encode it as
+pairwise `x[p] != x[q]` reified on "same rid", 3240 reified pairs if written
+naively, so restrict it to pairs within a bounded window or drop it. Island digit
+sums are linear over reified membership. Parity coupling (water odd, island even)
+is one linear constraint per cell and costs nothing.
+
+*Verdict.* **Good.** The coupling is the best in the family and the encoding is
+known; budget for a slow uniqueness proof and keep the 600 s cap with
+`TimeoutError` treated as no verdict.
 
 **Existing hybrids:** abundant, and the tightest-integrated hybrids in the whole survey.
 - *Colossal Nurikabe Sudoku*, LMD 000DZI
@@ -140,15 +169,26 @@ board form an orthogonally connected area." Nikoli vol. 29. LMD wiki agrees
 **Structure.** Decision: binary shade. Global: shaded cells non-adjacent, unshaded set
 connected. Clues: the grid is pre-filled with numbers; there is no separate clue layer.
 
-**Sudoku hybrid suitability: Poor as a direct overlay, Workable as a twist.** The
-problem is that Hitori's *entire* clue content is the pre-filled number grid, and a
-Sudoku's grid is by construction already free of row/column repeats. Rule 2 is
-therefore vacuous on a completed Sudoku: nothing ever needs shading. Any hybrid must
-break the coincidence — e.g. shade so that the *unshaded* cells satisfy Sudoku while a
-9x9 grid of given numbers with repeats is reduced, which is really "Hitori that yields
-a Latin square" rather than a Sudoku with an extra layer. That inverted form is the one
-worth building if you want Hitori: a larger given grid whose unshaded survivors form
-the Sudoku. It does not fit SudokuMaker's fixed 9x9 candidate grid comfortably.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* 81 digits, 81 shading bools, plus a flow network for white
+connectivity.
+
+*Expensive globals.* White connectivity (one flow, 288 arc ints); shaded
+non-adjacency is 144 binary clauses, free.
+
+*Size and cost.* Cheap to state, **cheap** to solve.
+
+*Digit coupling.* This is where it dies. Hitori's content is rule 2, "no two
+unshaded cells with identical numbers in a row or column", and on a Sudoku grid
+that constraint is implied by the sudoku itself — the model would post 648 clauses
+that presolve deletes as trivially satisfied. The generator would then be sampling
+a sudoku with a free, almost unconstrained shading, and the uniqueness check would
+report enormous solution counts on the shading layer.
+
+*Verdict.* **Poor.** Not a modelling difficulty, a modelling *vacuity*: there is
+nothing for the solver to decide. The inverted form (a larger given grid whose
+unshaded survivors form a latin square) is a different puzzle and a different model.
 
 **Existing hybrids:** LMD carries a Hitori tag and the wiki carries composite genres
 *Kuromasu-Hitori* (https://wiki.logic-masters.de/index.php/Kuromasu-Hitori) and
@@ -174,17 +214,32 @@ forming an L/I/T/S tetromino. Global: connected shaded set, no 2x2 shaded, no tw
 edge-adjacent congruent tetrominoes. Clues: the region partition itself is the clue;
 classic LITS has no numbers at all.
 
-**Sudoku hybrid suitability: Workable, with one caveat.** The natural region partition
-on a 9x9 is the nine boxes, which makes "one tetromino per box" a clean fit: exactly
-36 shaded cells, four per box. The digit hook is not built in, so the setter must add
-one — typically "the four digits in a tetromino sum to X", "shaded cells contain only
-even digits", or "the tetromino letter is encoded by a digit". That is an added rule,
-not an emergent interaction, which is what keeps this off "Good". The caveat: LITS on
-the nine boxes is quite constrained on its own and can solve independently of the
-digits, producing the two-puzzles-glued-together failure mode unless the setter
-deliberately underdetermines the shading. Implementation is pleasant: per-box tetromino
-placement is a small finite domain (the 9 boxes x ~50 placements each), which propagates
-well and is much cheaper than Nurikabe's unbounded island sizes.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and cheap to encode.**
+
+*Variables.* 81 digits, 81 shading bools, and — the useful move — one bool per
+*placement* rather than per cell. With the nine boxes as regions there are 19
+tetromino placements in a 3x3 box; 9 boxes x 19 = 171 placement bools, with
+`AddExactlyOne` per box and a channelling constraint tying each placement to its
+four cells. That is a much better encoding than shape-detection over raw shading
+bools, and it makes rule 2 (adjacent congruent tetrominoes banned) a direct
+pairwise clause over placement bools: enumerate the offending placement pairs
+across each box border once, in Python, and post them as clauses.
+
+*Expensive globals.* One connectivity proof over the 36 shaded cells — single
+flow, 288 arc ints. No-2x2 is 64 windows. Nothing else.
+
+*Size and cost on 9x9.* ~171 placement bools + 81 shading bools + 288 flow ints.
+**Cheap to moderate.** The placement encoding collapses most of the search before
+the solver starts.
+
+*Digit coupling.* Not native — the genre has no numbers. Everything must be added:
+tetromino digit sums equal across boxes (linear over placement bools, cheap), or
+shaded cells restricted by parity (one clause per cell). Workable, but you are
+authoring the interaction rather than discovering it, and a joint hunt risks the
+shading solving itself. Run it staged, as `renbanana_cpsat.py` does: stage 1
+enumerate legal LITS shadings, stage 2 fit digits on each fixed shading.
+
+*Verdict.* **Workable.** Cheap encoding, invented coupling.
 
 **Existing hybrids:**
 - *HöhlenSTIL*, LMD 000J1E by Phistomefel
@@ -221,16 +276,30 @@ around a clue must be separated by at least one white cell
 Clues: a multiset of run lengths in the 8-neighbourhood of a clue cell, clue cells
 themselves unshaded.
 
-**Sudoku hybrid suitability: Good.** The clue is a *multiset of small numbers in one
-cell*, and a Sudoku cell holds exactly one digit — so the natural hybrid is "the digit
-in a clue cell is its Tapa clue", which is a one-number Tapa clue and gives a genuine
-two-way interaction: the shading constrains the digit and the digit constrains the
-shading. A single-number Tapa clue in a cell with 8 neighbours ranges 1..8, inside the
-digit range. GM Puzzles alone has 203 Tapa posts, so the genre is well understood and
-clue-tuning is a solved art. Implementation: the per-clue constraint is a lookup over
-the 256 shadings of the 8-neighbourhood, filtered by the clue — cheap, local, and
-exactly the shape SudokuMaker's `update` wants. The global connectivity and no-2x2
-constraints are the expensive parts, shared with Nurikabe.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints for the shaded
+connectivity, 64 no-2x2 windows.
+
+*Expensive globals.* Connectivity only. The Tapa clue itself is the cheapest
+non-trivial clue in this survey to encode *exactly*: for a clue cell, enumerate in
+Python all 256 shadings of its 8-neighbourhood, keep those whose run multiset
+matches, and post the allowed set with `AddAllowedAssignments` over the 8
+neighbour bools. That is a table constraint CP-SAT handles natively, no reification
+chain, no auxiliary run-length variables.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + one ≤256-row table per clue.
+**Cheap to moderate**, dominated by connectivity as always.
+
+*Digit coupling.* Native and two-way. A single-number Tapa clue ranges 1..8, so
+"the digit in this cell is its Tapa clue" is expressed by making the allowed-
+assignment table include the clue cell's own digit variable as a tuple column:
+`AddAllowedAssignments([x[p]] + nbr_bools, rows)` where each row pairs a digit
+value with a neighbourhood pattern. One constraint per clue cell, exact, no
+blowup. This is the single cleanest clue-equals-digit encoding in the survey.
+
+*Verdict.* **Good.** The table-constraint trick makes the clue free, and the only
+cost is the standard flow.
 
 **Existing hybrids:**
 - LMD carries a Tapa tag beside the Sudoku tag
@@ -261,15 +330,33 @@ including the square itself. Blackened cells block the view and they cannot be a
 **Structure.** Decision: binary shade. Global: shaded non-adjacent, unshaded connected.
 Clues: a visibility count (a four-way X-sums-style count of unshaded cells).
 
-**Sudoku hybrid suitability: Good, and this repo is already close to it.** The clue is
-a visibility count, which is the same shape as the X-sums / skyscraper machinery this
-repo already has (`docs/research/371-xsum-iss-model.md`, the skyscraper builtin
-baseline). The obvious digit hook is "the digit in a clue cell equals its Kurodoko
-number", but the count on a 9x9 ranges up to 17, overshooting the digit range badly —
-that is the one real friction. Workarounds that setters actually use: make the clue a
-*sum* of seen digits rather than a count (as Cave Sums does), or restrict visibility to
-one direction. The non-adjacency rule is cheap and local, and unshaded connectivity is
-the only expensive global.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, with a sight-clue cost.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints for white
+connectivity.
+
+*Expensive globals.* White connectivity (flow). Shaded non-adjacency is 144
+clauses. The real cost is the **visibility clue**: "unshaded cells seen in a
+straight line, including itself". Encode with prefix-visibility bools — `see[p,d,k]`
+true iff the k-th cell in direction d from p is visible, with
+`see[p,d,k] => see[p,d,k-1] AND not shaded`, a chain of implications. That is up
+to 4 x 8 = 32 bools per clue cell, and the clue is then a linear sum of them.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + ~32 sight bools per clue. With
+10 clues that is ~320 extra bools. **Moderate.** Sight chains are linear-sized and
+propagate well; they are nowhere near as bad as a quadratic encoding.
+
+*Digit coupling.* The friction is arithmetic, not structural: the count reaches 17
+on a 9x9 while digits stop at 9. Three fixes, all linear: cap the clue to one
+direction; make the clue a *sum of seen digits* rather than a count, which is a
+linear sum of reified `see[p,d,k] * x[q]` products — note that needs 32
+multiplication vars per clue via `AddMultiplicationEquality` or a reified-table
+per pair, which is the one place this genre gets expensive; or use two-digit clues
+read off a pair of cells.
+
+*Verdict.* **Good** if you take the one-direction or two-digit fix; **Workable**
+if you insist on four-way digit sums, because products of a bool and an int per
+sight step are the costliest device in this survey.
 
 **Existing hybrids:** the LMD portal carries a Kuromasu tag alongside Sudoku
 (https://logic-masters.de/Raetselportal/?chlang=en), and the wiki carries the composite
@@ -293,14 +380,30 @@ and notes that rooms with no number may have any number of painted cells
 and the distinctive rule 3 — a white run may cross at most one room border. Clues: a
 shaded count per room.
 
-**Sudoku hybrid suitability: Good.** The room partition maps onto the nine boxes for
-free, and "a number indicates the amount of shaded cells in a region" becomes "the digit
-in this cell says how many cells in its box are shaded" — a per-box count in 0..9, i.e.
-in the digit range, with no contortion. Rule 3 is the genre's signature and is a genuine
-long-range constraint that a solver can exploit; it is also the rule most likely to be
-mis-implemented, because it is a run-length constraint across a partition rather than a
-neighbourhood check. Verdict Good, with the note that rule 3 makes the shading layer
-fairly rigid, so the digit layer must carry the ambiguity.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints for white
+connectivity.
+
+*Expensive globals.* White connectivity (flow) and rule 3, the signature rule:
+a horizontal or vertical white run may not cross two room borders. With the nine
+boxes as rooms, enumerate in Python every maximal straight segment that spans
+three boxes — on a 9x9 that is a short list, every full row and column plus the
+segments straddling two borders — and post, for each, `AddBoolOr` of the shading
+bools along it. Rule 3 is therefore a **static clause list**, not a propagator:
+cheap, exact, and computed once before the solve.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + a few dozen clauses.
+**Cheap to moderate.**
+
+*Digit coupling.* Native: "the digit in this cell counts the shaded cells in its
+box" is `x[p] == sum(w[q] for q in box(p))`, one linear constraint per clue, range
+0..9, no remapping. That is the cheapest possible coupling — a plain linear
+equality between an int and a sum of bools, which is exactly the shape CP-SAT
+presolve likes.
+
+*Verdict.* **Good.** Native linear coupling, a static clause list for the hard
+rule, one flow. Among the best value in the shading family.
 
 **Existing hybrids:** LMD carries a Heyawake tag beside the Sudoku tag
 (https://logic-masters.de/Raetselportal/?chlang=en). The documented composite is
@@ -323,13 +426,34 @@ circles." The LMD wiki gives the identical rule
 *both* colour classes connected, no monochrome 2x2. Clues: some cells pre-coloured; all
 other clue content comes from whatever the hybrid adds.
 
-**Sudoku hybrid suitability: Good — the best pure-overlay candidate.** Yin-Yang has no
-native clue type at all, which sounds like a weakness and is actually the decisive
-strength for hybrids: the setter supplies every clue from the Sudoku side, so the two
-layers cannot decouple. The constraint is symmetric, cheap to state, two-sided
-connectivity plus a 2x2 ban — and it colours *every* cell, so every digit participates.
-This is why it is the single most-set shading hybrid in modern variant sudoku. Fits 9x9
-exactly. Implementation cost is dominated by the double connectivity check.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — but pay for two flows.**
+
+*Variables.* 81 digits, 81 colour bools, and **two** single-commodity flow
+networks, one per colour, because both colour classes must be connected: ~576 arc
+ints total, each arc gated on both endpoints sharing the colour.
+
+*Expensive globals.* The double connectivity is the whole cost. Unlike Nurikabe's
+second network, neither root emits a variable amount — each is a fixed-size
+connected set of unknown cardinality, so the emit is `1` at the root and the
+conservation equation is the plain isofill form. Simpler per network than
+fillomino's, just doubled. No monochrome 2x2 is 64 x 2 = 128 window constraints,
+free.
+
+*Size and cost on 9x9.* 81 bools + ~576 flow ints + 128 windows. **Moderate.**
+Two flows is more than any single-colour genre but each is the easy variety.
+
+*Digit coupling.* Nothing native, everything added — and that is the modelling
+virtue here, because every added rule is linear. Outside clues summing grey cells
+per row: `sum(w[p] * x[p])` needs 9 products per clue, so prefer the reified form
+`AddMultiplicationEquality` only where needed, or better, state the clue over a
+*fixed* colour assignment in a staged hunt. Kropki-colour coupling (grey dot means
+same colour, ratio 1:2 on black cells) is per-edge reified arithmetic, cheap.
+Sum-frame coupling is a linear sum over the first three cells of one colour, which
+needs sight bools.
+
+*Verdict.* **Good.** The best-evidenced hybrid in the survey and the encoding is
+two textbook flows. Stage it: sample legal yin-yang colourings first, then fit
+digits, exactly as `renbanana_cpsat.py` splits shading from digits.
 
 **Existing hybrids:** the richest evidence base in this survey.
 - *Yin-Yang Sudoku*, LMD 0004X6 by Phistomefel
@@ -365,12 +489,28 @@ Clues: circled "cape" cells (unshaded with exactly one unshaded orthogonal neigh
 optionally carrying a visibility count. The "every instance" wording matters: circles
 are a *complete* marking, so an uncircled cell is forbidden from being a cape.
 
-**Sudoku hybrid suitability: Good.** The complete-marking rule is the valuable part — it
-turns every uncircled cell into an active negative constraint, which is exactly the
-property that keeps a shading layer from solving itself while giving the digit layer
-leverage. The visibility count again exceeds 9 in the worst case, so the usual hybrid
-move is to put the count in a circle where it is naturally small, or to use a digit sum.
-Fits 9x9. Implementation is local apart from unshaded connectivity.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints (white connectivity),
+plus 81 "is a cape" bools.
+
+*Expensive globals.* White connectivity. The cape definition is purely local and
+exactly reified: `cape[p] <=> (not w[p]) AND (sum of unshaded orthogonal
+neighbours == 1)`, one reified linear constraint per cell. The *completeness* of
+the circle marking — an uncircled cell may not be a cape — is then a unit clause
+per uncircled cell, which is 70-odd free negative constraints doing real pruning.
+That completeness is the genre's value and it costs nothing to encode.
+
+*Size and cost on 9x9.* 81 + 81 bools, 288 flow ints, 81 reified linears, 128
+no-monochrome-2x2 windows. **Moderate.**
+
+*Digit coupling.* The visibility count in a circle has the same range overshoot
+and the same three fixes as Kurodoko (1.5), but circles sit at cape cells where
+the count is naturally small, so the plain "digit == count" linear works more often
+here without a remap. Sight bools as in 1.5.
+
+*Verdict.* **Good.** A cheap, exactly-reified local rule plus one flow, and the
+complete-marking rule gives the solver free pruning.
 
 **Existing hybrids:**
 - *Santa Pesto, Pt. 2 (9x9)*, LMD 000GBW by SamuPiano
@@ -397,12 +537,27 @@ adjacent to the clue contain triangles." Nikoli vol. 123. LMD wiki agrees
 orientations) — not binary. Global: every maximal white area is an axis-aligned or
 45°-rotated rectangle. Clues: a count of adjacent triangles.
 
-**Sudoku hybrid suitability: Poor.** The five-state decision layer is the problem. It is
-not a colouring, the global rule is a geometric property of the white regions that no
-local propagator captures cheaply, and there is no natural place for a digit: a triangle
-is an orientation, not a quantity. A hybrid would have to invent the digit hook wholesale
-("digits in a white rectangle must ..."), and the rotated-rectangle rule is expensive to
-enforce in an `update`. Skip.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* Not a binary layer: 5 states per cell (empty, or four triangle
+orientations), so 405 bools with `AddExactlyOne` per cell, or 81 ints in 0..4.
+
+*Expensive globals.* Rule 1 is the killer. "Every maximal white region is a
+rectangle, possibly rotated 45°" is a property of half-cell geometry, not of the
+cell graph — the white region boundaries run diagonally through cells. There is no
+analogue of the repo's rectangle lemma ("connected + no 2x2 window with exactly
+three of the colour"), because the objects are not cell sets. Encoding it exactly
+means either enumerating admissible local configurations over a 2x2 window in the
+*half-cell* grid, or a lazy cut loop over discovered non-rectangular regions with
+no compact cut to post.
+
+*Size and cost.* **Heavy**, and heavy for a bad reason: the cost buys geometry,
+not puzzle content.
+
+*Digit coupling.* A triangle is an orientation. There is no quantity for a digit
+to equal, so coupling is wholly invented.
+
+*Verdict.* **Poor.** Skip it.
 
 **Existing hybrids:** LMD carries a Shakashaka tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No Shakashaka x Sudoku hybrid found
@@ -422,14 +577,28 @@ form is a 2-star battle on 10x10
 an exact count per row, per column, and per region. No connectivity, no 2x2 rule.
 Clues: only the region partition and the star count.
 
-**Sudoku hybrid suitability: Good, and cheap.** This is the easiest entry in the whole
-survey to implement. Non-adjacency is a king-move constraint SudokuMaker-style
-components already express, and "exactly k per row/column/box" is a counting constraint
-over a binary layer. The digit hook is direct and much-used: the digits on stars are
-constrained (a fixed set, a sum, no repeats), or the count of stars is read off a digit.
-On a 9x9 the historical variant simply places stars *instead of* two of the digits —
-place 1-7 plus two stars in every row, column and box — which is the neatest fit in this
-survey because the star count and the digit count balance exactly.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the cheapest model here.**
+
+*Variables.* 81 digits and 81 star bools. That is all.
+
+*Expensive globals.* **None.** King-move non-adjacency is 81 x 4 = ~200 binary
+clauses (or, tighter, `AddAtMostOne` over each 2x2 window: 64 constraints).
+"Exactly k stars per row, column and region" is 27 linear equalities over bools.
+No connectivity, no flow, no shape rule, no sight chain.
+
+*Size and cost on 9x9.* 81 bools, ~90 linear constraints. **Cheap** — by a wide
+margin the least work of any genre in this survey, and a uniqueness proof should
+run in well under a second.
+
+*Digit coupling.* Native in the published form: place 1..7 plus two stars per
+house, i.e. the digit variable takes a "star" value. Model it as `x[p]` in 0..7
+with 0 meaning star, then `AddExactlyOne`-style counting per house — the star bool
+is just `x[p] == 0` reified, and the whole thing is one variable per cell with no
+second layer at all. That collapse is the same move fillomino makes with region
+ids and is what makes this model tiny.
+
+*Verdict.* **Good.** Highest ratio of puzzle interest to solver cost in the
+survey; a natural first CP-SAT hybrid to build.
 
 **Existing hybrids:**
 - *Sudoku Variants Series (138) - Star Battle Sudoku*, LMD 0002G5
@@ -459,12 +628,31 @@ two standard variants — banning 2x2 blocks of either colour, and a hexagonal g
 the border* (equivalently: no enclosed wall). Clues: the same visibility count as
 Kurodoko, but with the connectivity rules swapped.
 
-**Sudoku hybrid suitability: Good — the best-evidenced hybrid in this family after
-Yin-Yang.** The visibility clue is the X-sums/skyscraper shape this repo already models,
-and the setters' standard fix for the 1..17 range overshoot is to make the clue a digit
-*sum* rather than a count, which lands naturally in Sudoku territory. Both connectivity
-rules are one-sided-ish and tractable; the "connected to the border" rule is cheaper than
-full two-sided connectivity because the border is a fixed anchor.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints for the cave (white)
+connectivity, plus sight bools per clue.
+
+*Expensive globals.* Two connectivity conditions, but only one needs a flow. White
+must be connected — one flow to a root. Shaded cells must reach the grid border —
+that is *cheaper* than a free root, because the border is a fixed anchor: give
+every border shaded cell a supply and run one flow whose sinks are the border, or
+equivalently post a reachability flow with a virtual outside node. No 2x2 rule in
+the base genre.
+
+*Size and cost on 9x9.* 81 bools, ~576 flow ints across the two networks (the
+border-anchored one is the easy kind), ~32 sight bools per clue. **Moderate.**
+
+*Digit coupling.* The published hybrids solve the range problem for you, and their
+fix is linear-friendly: Cave Sums makes the clue a *digit sum* over the field of
+vision. That needs bool x int products along each sight chain, ~32 per clue — the
+one genuinely costly device — so prefer the Twilight Cave form where a shaded
+clue sums its own connected group, which is a sum over reified region membership
+and no cheaper, or restrict sums to one direction. "Digits may not repeat within a
+field of vision" is pairwise reified inequality, ~36 pairs per clue.
+
+*Verdict.* **Good.** Strong published coupling and a border-anchored flow that is
+easier than a free one; budget for the sight-sum products.
 
 **Existing hybrids:**
 - *Cave Sums Sudoku*, LMD 000QU3
@@ -497,11 +685,22 @@ from the cell. These lines are in the four cardinal directions (up, down, left, 
 Clues: the count of shaded cells in the four runs radiating from the clue — the shaded
 mirror image of Kurodoko's clue.
 
-**Sudoku hybrid suitability: Workable.** Same shape as Kurodoko and Cave, with the same
-range problem (a clue can exceed 9) and the same fix. It is a less distinctive genre than
-either — Canal View is essentially Nurikabe's wall with Kurodoko's clue — so if you build
-one of the visibility-clue shading genres, build Cave or Kurodoko first and get Canal
-View as a rule tweak on the same component.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints, sight bools per clue.
+
+*Expensive globals.* One flow (shaded connectivity), 64 no-2x2 windows, and the
+four-direction shaded-run sight chains — the same prefix-bool device as Kurodoko,
+counting shaded rather than unshaded cells.
+
+*Size and cost.* Identical in shape and cost to Kurodoko (1.5). **Moderate.**
+
+*Digit coupling.* Same range overshoot, same fixes. Nothing here that Kurodoko or
+Cave does not already give you.
+
+*Verdict.* **Workable.** Build Cave or Kurodoko and get Canal View as a flag on
+the same model — the sight-chain code and the flow are shared verbatim, only the
+polarity of the counted cell and the connectivity target change.
 
 **Existing hybrids:** none found under that name (searched: LMD portal, GM Puzzles,
 general web). The Nurikabe Sudoku LMD 000MU6 and Colossal Nurikabe Sudoku 000DZI both use
@@ -521,13 +720,29 @@ blocks that share at least one border with the circle." Nikoli vol. 138.
 **Structure.** Decision: binary shade. Global: none — no connectivity, no 2x2 rule. Clues:
 per-circle, the summed size of all orthogonally adjacent shaded blocks.
 
-**Sudoku hybrid suitability: Good, and unusually cheap.** Kurotto has *no global
-constraint at all*, which means the whole puzzle lives in the clues. That is ideal for a
-constraint component: no connectivity propagator, no 2x2 scan, just a block-size sum per
-clue cell. The digit hook is immediate — the digit in a circled cell is its Kurotto
-number — and the sum can exceed 9, which setters handle by using it as a cage-sum-like
-quantity rather than a single digit. It is the shading genre whose difficulty profile
-depends most on the digits, since with no global rule the shading cannot self-solve.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — no global at all.**
+
+*Variables.* 81 digits, 81 shading bools, and — the only real cost — component
+sizes. Use the `renbanana_cpsat.py` stage-1 device: 81 component-label ints, with
+adjacent shaded cells forced to share a label, and a size int per label. Or, since
+clue neighbourhoods are local, 81 `rid` ints plus one flow.
+
+*Expensive globals.* **None from the rules.** Kurotto has no connectivity
+requirement, no 2x2 rule, no shape rule. The only structure is the clue: "the sum
+of the sizes of all blocks bordering this circle", which needs block identity and
+therefore one region-labelling device — a flow, or labels — to be exact.
+
+*Size and cost on 9x9.* 81 bools + 81 label ints + 288 flow ints. **Moderate**,
+and would be **cheap** if the clue did not need block sizes.
+
+*Digit coupling.* Native: the digit in a circle equals its clue. The clue is a sum
+of distinct adjacent block sizes, which needs de-duplication (two neighbours in the
+same block count once) — encode as a sum over blocks reified on "this block touches
+this circle", not as a sum over neighbours. That de-duplication is the one fiddly
+part of the model and is the reason to prefer explicit labels over flow here.
+
+*Verdict.* **Good.** A rules-free global section is rare and valuable: the puzzle
+content is entirely in the clue-to-digit link, which is exactly what a hybrid wants.
 
 **Existing hybrids:**
 - *Sudokurotto* by Phistomefel is named as the direct inspiration for the Shikaku-Sudoku
@@ -552,12 +767,29 @@ white regions are *diagonally* connected as a set; no 2x2 shaded. Clues: optiona
 numbers, at most one per rectangle — note the "no more than one", which allows unclued
 rectangles, unlike Nurikabe.
 
-**Sudoku hybrid suitability: Workable.** The rectangle rule is a real structural hook
-(rectangle area = digit, digits in a rectangle don't repeat) and a 9-cell rectangle is
-1x9, 3x3 or 9x1 — all meaningful shapes on a Sudoku grid. Against it: diagonal
-connectivity of regions is an awkward global to propagate, unclued rectangles weaken the
-clue chain, and Shikaku (3.4) already gives you "digit = rectangle area" with a cleaner
-ruleset and real hybrid evidence. Build Shikaku instead.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and the rectangle
+lemma does half the work.**
+
+*Variables.* 81 digits, 81 shading bools, region labels or a flow for the white
+rectangles.
+
+*Expensive globals.* "Every white region is a rectangle" is exactly the repo's
+rectangle lemma from `renbanana_cpsat.py`: *connected + no 2x2 window holding
+exactly three cells of the colour <=> every group is a rectangle*. That is 64
+window constraints plus the connectivity you already have — a purely local, exact
+encoding of a shape rule, and the single most reusable device in this document.
+The awkward part is rule 6: the white rectangles are **diagonally** connected as a
+set, which needs a second flow over a diagonal adjacency graph (8 arcs per cell,
+~512 arc ints) on the *quotient* graph of rectangles, not cells.
+
+*Size and cost on 9x9.* **Heavy**, and heavy for the least interesting rule in the
+genre.
+
+*Digit coupling.* Rectangle area equals a digit, 1..9. Fine, but Shikaku (3.4)
+gives the identical coupling with an exact tiling and no diagonal-quotient flow.
+
+*Verdict.* **Workable**, but dominated. Model Shikaku or Chocona instead and
+reuse the rectangle lemma there.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -572,12 +804,29 @@ size of the area of shaded or unshaded cells that the clue belongs to."
 **Structure.** Decision: binary shade. Global: *both* colours partition into areas, each
 containing exactly one clue. Clues: area size, given on a pre-coloured cell.
 
-**Sudoku hybrid suitability: Good.** This is Nurikabe made symmetric — both colours are
-regions with size clues — and symmetry is what makes a hybrid layer engage every cell.
-Area size in 1..9 is exactly the digit range, so "the digit in a clue cell is the size of
-its area" works on both colours without overshoot. No 2x2 rule and no global connectivity
-means the propagator is just connected-component sizing, the same machinery as Nurikabe
-but with no wall constraint. Underexplored and worth building.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and structurally the
+nicest fit to the fillomino encoding.**
+
+*Variables.* 81 digits, 81 colour bools, 81 `rid` ints, 81 root bools, 288 flow
+arc ints.
+
+*Expensive globals.* One flow only — and it is the *fillomino* flow, not a plain
+connectivity flow. Both colours partition into areas, each area holds exactly one
+clue, and the clue is the area's size: that is precisely `emit == size at the
+root, conservation absorbing one unit per cell`, with arcs gated on "same colour"
+instead of "same digit". No 2x2 rule, no border anchor, no second network.
+
+*Size and cost on 9x9.* The fillomino model's variable count, plus 81 colour
+bools. **Moderate** — and the measured fillomino profile is the right expectation:
+sampling in well under a second, uniqueness proofs in seconds with a long tail.
+
+*Digit coupling.* Native and in range: area size 1..9 equals the digit in its
+clue cell, on *both* colours, so every cell participates. One line, the same line
+fillomino uses.
+
+*Verdict.* **Good.** The closest thing in the survey to "fillomino with a colour
+layer", which means the repo's best-understood encoding transfers almost verbatim.
+Unclaimed as a published hybrid, which makes it the strongest under-explored pick.
 
 **Existing hybrids:** none found under this name (searched: LMD portal, GM Puzzles,
 general web). The closest published thing is the Nurikabe Sudoku family (1.1), which uses
@@ -593,15 +842,28 @@ shaded cells."
 **Structure.** Decision: binary shade. Global: every shaded block is a filled rectangle.
 Clues: a shaded-cell count per outlined region.
 
-**Sudoku hybrid suitability: Good, and directly relevant to this repo.** The clue is a
-per-region shaded count, which on a 9x9 maps to "the digit says how many cells in this
-box are shaded" — in range, no contortion, exactly the Heyawake hook without Heyawake's
-awkward rule 3. The rectangle rule is a purely local shape property (a block is a
-rectangle iff it has no notch), which propagates well. This repo already has a
-rectangle-shading body of work — the Renbanana chocolate rectangle catalogue at
-`docs/research/renbanana/rectangle-catalogue.json` and
-`docs/research/choco-banana-propagation.md` — so a Chocona component would reuse existing
-machinery rather than start cold.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — pure lemma reuse.**
+
+*Variables.* 81 digits, 81 shading bools. Optionally labels if you want block
+sizes, but the base rules do not need them.
+
+*Expensive globals.* Only the rectangle rule, and the repo already has it exactly:
+every shaded block is a filled rectangle iff the shaded set is locally free of
+"2x2 window with exactly three shaded cells" **and** each block is connected — and
+here you do not even need the connectivity half stated separately, because a block
+*is* a connected component by definition. In practice post the 64 window
+constraints and you have the shape rule. No global connectivity, no flow, no sight
+chains.
+
+*Size and cost on 9x9.* 81 bools + 64 windows + the sudoku core. **Cheap.** This
+is the second-cheapest full model in the survey after Star Battle.
+
+*Digit coupling.* Native and linear: "the digit says how many cells of its box are
+shaded" is `x[p] == sum(s[q] for q in box(p))`, range 0..9. One linear equality per
+clue — the same shape as Heyawake's, with none of Heyawake's rule-3 clause list.
+
+*Verdict.* **Good.** Cheapest good coupling in the family, and every line of the
+shape encoding is already written in `renbanana_cpsat.py`.
 
 **Existing hybrids:** none found under the name Chocona (searched: LMD portal, GM
 Puzzles, general web), but the rectangle-shading-plus-sudoku idea is live in this repo's
@@ -620,12 +882,35 @@ half of the grid." Nikoli vol. 156.
 across region borders, and the gravity rule — the blocks tile the bottom half exactly.
 Clues: block size per region.
 
-**Sudoku hybrid suitability: Workable, and distinctive.** Block size per region = digit
-per box is a clean hook (1..9, in range). The gravity rule is genuinely novel and would
-make an unusual constraint, but it is global, non-local and awkward: it constrains the
-multiset of column heights after a simulated fall, which no candidate-grid propagator
-expresses naturally. On a 9x9, "fill the bottom half" is ill-defined for an odd height —
-the genre expects an even number of rows. That mismatch alone argues against 9x9.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and the gravity rule
+is the interesting part to encode.**
+
+*Variables.* 81 digits, 81 shading bools, one flow per region for block
+connectivity (or 81 labels), plus per-column fall counters.
+
+*Expensive globals.* One block per region with a size is cheap: a linear count of
+shaded cells per box, plus connectivity within the box, which on a 3x3 box is a
+small enough graph to encode by allowed-assignment tables over the 9 cells rather
+than a flow. Rule 3, no shaded cells adjacent across region borders, is a clause
+list over border pairs. **Rule 4 is the one that needs thought**: "if all blocks
+fell straight down they would fill the bottom half exactly". Blocks fall as rigid
+bodies, so the landing position of a block depends on what is below it — a
+sequential, order-dependent simulation, which CP-SAT cannot express directly. The
+tractable reformulation is the column-count identity: a block falling straight
+down preserves each column's contribution, so the bottom-half fill condition is
+equivalent to "every column contains exactly h shaded cells", where h is half the
+height. That turns rule 4 into 9 linear equalities — but only if you accept the
+column-count reading, which is a *weaker* statement than the genre's (it does not
+force the blocks to stack without gaps). Getting rule 4 exactly means encoding the
+stacking order, which is where the cost lands.
+
+*Size and cost on 9x9.* **Heavy if exact, cheap if you take the column-count
+relaxation** — and a relaxation changes the puzzle, so it must be declared.
+
+*Digit coupling.* Block size per box equals a digit, in range. Fine.
+
+*Verdict.* **Workable.** Also note 9 is odd, so "bottom half" is undefined on a
+9x9 without a board change. Model it on 9x10 or accept the relaxation.
 
 **Existing hybrids:** LMD carries a Stostone tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No Stostone x Sudoku hybrid found
@@ -642,11 +927,29 @@ the same size cannot be diagonally adjacent." Nikoli vol. 68.
 **Structure.** Decision: binary shade. Global: every shaded block is a 1-wide bar; equal
 bars not diagonally adjacent. Clues: white region sizes, one per region.
 
-**Sudoku hybrid suitability: Workable.** It is Nurikabe with the wall replaced by bars,
-which swaps a connectivity global for a shape global — cheaper to propagate and arguably
-more interesting. The digit hooks are the same as Nurikabe's (region size = digit) with
-the bonus that bar *length* is also a number in 1..9. Not obviously better than Nurikabe,
-which has the hybrid track record, so this is a second-wave candidate.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and a clean lemma
+target.**
+
+*Variables.* 81 digits, 81 shading bools, `rid`/root/flow for the white regions
+(the fillomino set).
+
+*Expensive globals.* White regions with sizes is the fillomino flow again. The
+shaded side is where this genre is pleasant: "every shaded block is a 1-wide
+rectangular bar" has a local characterisation in the same spirit as the rectangle
+lemma — a shaded set is a union of 1-wide bars iff no 2x2 window holds three or
+more shaded cells. That is 64 window constraints, exact, no connectivity needed on
+the shaded side at all. Rule 5, equal-size bars not diagonally adjacent, needs bar
+identity and so a label or flow on the shaded side too.
+
+*Size and cost on 9x9.* Fillomino's model plus 64 windows plus a shaded labelling.
+**Moderate to heavy**, dominated by having region machinery on both colours.
+
+*Digit coupling.* White region size equals a digit (native, in range), and bar
+length is a second in-range number if you want it.
+
+*Verdict.* **Workable.** The bar lemma is a genuinely nice find and worth
+recording, but Nurikabe and Light and Shadow give better coupling for the same
+region machinery.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -663,13 +966,29 @@ dominoes (every shaded cell in exactly one horizontal or vertical pair), and exa
 shaded per region. Dominoes may cross region borders — that is the whole trick. Clues:
 the region partition only.
 
-**Sudoku hybrid suitability: Good, and very cheap.** Two shaded per box on a 9x9 is
-exactly 18 shaded cells in 9 dominoes. No connectivity, no 2x2, no counting clues — the
-entire constraint is local (a cell's shaded neighbours number exactly one) plus a per-box
-count of two. That is the cheapest non-trivial `update` in this survey. The digit hook has
-to be added by the setter, and the obvious ones are strong: the two digits of a domino
-sum to a constant, or the two shaded digits in each box are a fixed pair. Fits 9x9
-exactly; the box partition is free.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and almost free.**
+
+*Variables.* 81 digits, 81 shading bools. Optionally 144 domino bools, one per
+adjacent pair, which is the better encoding.
+
+*Expensive globals.* **None.** With domino bools: each shaded cell is covered by
+exactly one selected domino (`sum of incident domino bools == s[p]`), each domino
+implies both its cells shaded, and each box has exactly two shaded cells — 81 + 81
++ 9 linear constraints. That is a **matching** problem, which CP-SAT handles
+extremely well. No connectivity, no shape rule, no 2x2, no sight chain.
+
+*Size and cost on 9x9.* 144 domino bools, 81 shading bools, ~170 linear
+constraints. **Cheap.** Alongside Star Battle and Chocona, one of the three models
+here a uniqueness proof should finish in under a second.
+
+*Digit coupling.* Not native — the genre has no numbers — but every natural
+addition is linear over the domino bools, which is the ideal case: "the two digits
+of each domino sum to a constant" is one linear constraint per domino reified on
+its bool; "the shaded digits in each box are a fixed pair" is a clause list. The
+domino variables give the coupling a natural carrier that raw shading bools do not.
+
+*Verdict.* **Good.** Trivially cheap model, and the domino-bool encoding gives the
+invented coupling a clean home. Unclaimed as a published hybrid.
 
 **Existing hybrids:** LMD carries a Norinori tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled "Norinori Sudoku" surfaced
@@ -688,12 +1007,33 @@ all." Nikoli vol. 176.
 unshaded group is *not* a rectangle. Clues: group size on either colour; a group may carry
 several clues or none.
 
-**Sudoku hybrid suitability: Good, and this repo has already done the work.** The clue is
-a group size in the digit range, applying to both colours, so every digit can participate.
-The anti-rectangle rule on the white side is the unusual half and is what stops the
-shading from collapsing. This repo has `docs/research/choco-banana-propagation.md` and the
-Renbanana rectangle catalogue, i.e. the propagation study for this exact genre is on file
-— read it before building.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the repo has already
+built this model.**
+
+*Variables.* 81 digits, 81 shading bools, component labels for group sizes. See
+`docs/research/renbanana_cpsat.py` and `docs/research/choco-banana-propagation.md`.
+
+*Expensive globals.* Two halves with opposite difficulty, and the repo has
+measured both. The **positive** rule (shaded groups are rectangles) is exact and
+local via the lemma: connected + no 2x2 window with exactly three of the colour.
+The **negative** rule (white groups are *not* rectangles) has no positive
+encoding, and the repo's answer is a lazy cut loop: solve, find a rectangular
+white component, forbid exactly that pattern — its cells one colour, its
+orthogonal border the other — and re-solve. Every cut excludes only invalid
+solutions, so uniqueness proofs stay exact. Note the recorded negative result:
+capping component size by cutting oversized components one at a time did **not**
+work (2313 cuts found nothing in 150 s); size caps go in structurally with labels.
+
+*Size and cost on 9x9.* Measured in the repo's own hunts. **Moderate to heavy**,
+driven by the cut loop, and the reason those hunts run staged.
+
+*Digit coupling.* Native: a clue is a group size on either colour, in digit range.
+The repo's shipped variant additionally couples adjacent chocolate digits (differ
+by >= 5) and banana groups (distinct and consecutive) — both linear or
+AllDifferent, both cheap.
+
+*Verdict.* **Good**, and uniquely cheap in engineering terms because the model,
+the lazy-cut discipline and an independent verifier already exist here.
 
 **Existing hybrids:** this repo's own Renbanana work is the closest instance on hand
 (`docs/research/renbanana/`). No external Choco Banana x Sudoku hybrid found (searched:
@@ -710,12 +1050,32 @@ share a border must have islands of different sizes." Nikoli vol. 117.
 **Structure.** Decision: binary shade. Global: one connected island per region, islands
 separated across borders, neighbouring regions' islands differ in size. Clues: island size.
 
-**Sudoku hybrid suitability: Good.** Island size per box = digit, in range 1..9, and rule
-4 is *exactly* the Fillomino/Sudoku-style "adjacent regions differ" logic that variant
-setters already like. On a 9x9 with the nine boxes as regions, rule 4 becomes a small
-graph-colouring-style constraint on nine numbers — the same shape as a Latin-square
-argument, which composes with Sudoku logic rather than sitting beside it. Cheaper than
-Stostone (no gravity), more interesting than Chocona (rule 4 adds cross-box reasoning).
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, one size int per box (9 of them), plus
+per-box connectivity for the single island.
+
+*Expensive globals.* Connectivity is *per box*, not global — nine independent
+3x3 connectivity problems. A 3x3 box has 512 shading patterns, of which the
+connected non-empty ones are a short list, so encode each box's island with
+`AddAllowedAssignments` over its 9 bools paired with the size int: one table
+constraint per box, exact, no flow anywhere in the model. That is a decisive
+simplification over every genre whose connectivity is grid-wide. Rule 3 (no shaded
+adjacency across box borders) is a clause list over the 54 border pairs. Rule 4
+(neighbouring boxes have different island sizes) is 12 `!=` constraints on the
+nine size ints.
+
+*Size and cost on 9x9.* 81 bools, 9 ints, 9 table constraints, ~66 clauses.
+**Cheap.** The per-box decomposition is what buys it.
+
+*Digit coupling.* Native: island size equals the digit in the clue cell, 1..9.
+And rule 4 becomes a constraint over nine numbers with an adjacency graph — the
+same shape as a latin-square argument, so it composes with sudoku reasoning rather
+than sitting beside it.
+
+*Verdict.* **Good.** The best example in the survey of a genre whose global
+constraint decomposes to the sudoku's own box structure and therefore costs
+almost nothing.
 
 **Existing hybrids:** LMD carries a Shimaguni tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled Shimaguni Sudoku found
@@ -731,13 +1091,26 @@ shaded cells form an orthogonally contiguous area." Invented by Eric Fox.
 **Structure.** Decision: binary shade. Global: connected shaded set; no run of 4 in either
 colour. Clues: shaded count per region.
 
-**Sudoku hybrid suitability: Good.** Rule 2 is the star: a run-length bound in both
-colours is a strictly local, cheap, highly constraining rule that forces shading to
-alternate on a scale that a 9-wide row notices — three-on, one-off patterns and their
-consequences. Combined with "the digit says how many cells in its box are shaded" (in
-range), this is one of the better modern shading genres for a hybrid, and Eric Fox's own
-puzzles show it composes. Implementation: run-length constraints are the easiest thing in
-this entire survey to write soundly, and the only global is one-sided connectivity.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints (shaded
+connectivity).
+
+*Expensive globals.* One flow, and rule 2 — no run of four in either colour — is
+a **static clause list**: every horizontal and vertical window of 4 cells gives two
+clauses (not all shaded, not all unshaded). On a 9x9 that is 2 x 2 x 6 x 9 = 216
+clauses, computed once, no auxiliary variables. Run-length bounds are the cheapest
+non-trivial rule type in this document and they prune hard, which is exactly the
+combination a generator wants.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + 216 clauses. **Moderate**,
+dominated as usual by the flow, and the clause list actively speeds the search.
+
+*Digit coupling.* Native and linear: shaded count per box equals a digit, as
+Heyawake and Chocona. `x[p] == sum(s[q] for q in box(p))`.
+
+*Verdict.* **Good.** Cheap hard-pruning rule, native linear coupling, one flow.
+A strong and entirely unclaimed target.
 
 **Existing hybrids:** none found under the name Aqre (searched: LMD portal, GM Puzzles,
 general web). Eric Fox is also the author of the genre-fusion *Tapa / Nurikabe* LMD 00043P
@@ -755,11 +1128,28 @@ cells on the board form an orthogonally connected area." Invented by Walker Ande
 **Structure.** Decision: binary shade. Global: shaded orthogonally non-adjacent but
 *diagonally* grouped, unshaded connected with no white 2x2. Clues: diagonal-group size.
 
-**Sudoku hybrid suitability: Workable.** Diagonal connectivity is a genuinely different
-adjacency and makes for unusual logic; group size is in the digit range. Against it: the
-no-white-2x2 rule combined with orthogonal non-adjacency of shaded cells forces a high
-shading density that leaves the digit layer little room, and diagonal component sizing is
-a second connectivity propagator on top of the orthogonal one. A second-wave candidate.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* 81 digits, 81 shading bools, two adjacency structures — orthogonal
+(for white connectivity) and diagonal (for shaded group sizes) — so a flow over
+288 orthogonal arcs plus a labelling or second flow over ~512 diagonal arcs.
+
+*Expensive globals.* Two different adjacency relations in one model is the cost.
+White connectivity is the standard flow; shaded groups are *diagonally* connected
+with sizes, so they need their own `rid`/emit machinery on the diagonal graph —
+fillomino's device on a denser graph. Shaded orthogonal non-adjacency is 144
+clauses; no white 2x2 is 64 windows.
+
+*Size and cost on 9x9.* ~800 flow ints across two networks on two graphs.
+**Heavy.**
+
+*Digit coupling.* Diagonal group size equals a digit, in range. Native and fine —
+but the rule combination (shaded orthogonally isolated, white with no 2x2) forces
+a dense shading that leaves little digit freedom, so a generator will find the
+digit layer over-determined.
+
+*Verdict.* **Workable.** Interesting logic, two graphs' worth of machinery, and a
+cramped digit layer. Second wave at best.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -775,13 +1165,29 @@ total mine count is normally given and that grid size and mine count vary
 **Structure.** Decision: binary (mine / no mine). Global: usually a total mine count; no
 connectivity, no shape rule. Clues: 8-neighbourhood mine counts, on non-mine cells.
 
-**Sudoku hybrid suitability: Good.** The clue is a count in 0..8 in a single cell —
-squarely in digit range — so "the digit in a non-mine cell counts the mines around it" is
-a direct, natural, two-way hook, and it is the form actually published. No global
-connectivity at all, so implementation is pure local propagation over the 8-neighbourhood:
-cheap and sound. The one design risk is that Minesweeper counting and Sudoku counting can
-decouple if the setter is not careful, so the interaction rules (mines occupy digits, or
-rows/columns/boxes each hold a fixed number of mines) carry the puzzle.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — and it is pure linear
+algebra.**
+
+*Variables.* 81 digits, 81 mine bools. Nothing else.
+
+*Expensive globals.* **None.** Every clue is `sum of the 8 neighbour mine bools ==
+value`, a plain linear equality. A total mine count is one more. No connectivity,
+no shape, no sight chain, no flow.
+
+*Size and cost on 9x9.* 81 bools, one linear constraint per clue. **Cheap** —
+CP-SAT's presolve is very strong on pure 0/1 linear systems, and this is nothing
+but.
+
+*Digit coupling.* Native, two-way and linear: `x[p] == sum(m[q] for q in
+neighbours8(p))` on non-mine cells, range 0..8. The published GM Puzzles hybrid
+adds "exactly three mines per row, column and region", which is 27 more linear
+equalities. Everything in this genre is a sum of bools equalling an int — the
+friendliest possible shape.
+
+*Verdict.* **Good.** Cheapest coupling in the survey to encode exactly, with real
+published hybrids to calibrate against. The design risk is puzzle-side, not
+solver-side: keep the two layers entangled or the generator will produce a sudoku
+and an unrelated minesweeper.
 
 **Existing hybrids:**
 - *Minesweeper (Sudoku)* by Serkan Yürekli, GM Puzzles, 2022-07-21
@@ -811,12 +1217,30 @@ ships."
 an exact fleet multiset, king-move separation between distinct ships. Clues: outside
 row/column occupancy counts, plus given segments.
 
-**Sudoku hybrid suitability: Good, and long-established.** Outside counts are exactly the
-outside-clue idiom Sudoku variants already use, the fleet gives a strong global that is
-easy to state and to propagate as a placement enumeration, and separation is a king-move
-rule. The published hybrid is old enough to have appeared at a world championship. Digit
-hooks in use: digits on ship cells, digits summing per ship, ship cells being a fixed
-parity.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, via placement bools.**
+
+*Variables.* 81 digits, 81 occupancy bools, and one bool per *ship placement* —
+for a standard fleet on a 9x9 that is a few hundred, enumerated in Python.
+Channelling ties each placement bool to its cells.
+
+*Expensive globals.* **None of the hard kind.** The fleet is `AddExactlyOne`-style
+counting over placement bools per ship length. King-move separation between
+distinct ships is a clause list, or more simply "no two occupied cells diagonally
+adjacent unless in the same ship", enumerable over placements. Outside counts are
+linear sums. No connectivity, no flow.
+
+*Size and cost on 9x9.* ~300 placement bools, 81 occupancy bools, ~50 linear
+constraints. **Cheap to moderate.** Placement enumeration is the standard, and
+best, encoding for object-placement genres, and it is the same move that makes
+LITS and Statue Park tractable.
+
+*Digit coupling.* Added, not native, but all linear: digits on ship cells obey a
+rule, a ship's digits sum to something, ship cells carry one parity. The published
+1980s-to-2007 hybrids simply interleave the clue sets, which is the loosest
+coupling and the easiest to model.
+
+*Verdict.* **Good.** Cheap, well-understood, with a long hybrid record. Its one
+weakness under this lens is that the coupling is additive rather than emergent.
 
 **Existing hybrids:**
 - *Battleship Sudoku*, from the 2007 Sudoku Championship instruction booklet, reproduced
@@ -846,13 +1270,30 @@ wiki is the source here.
 is lit, no two bulbs see each other. Clues: orthogonal bulb counts (0..4) on black cells,
 plus the black-cell layout, which is given.
 
-**Sudoku hybrid suitability: Workable.** The clue range 0..4 is comfortably inside the
-digit range and the "no two bulbs see each other" rule is a row/column visibility
-constraint that Sudoku machinery handles. The obstacle is structural: Akari needs a given
-set of black cells to be interesting, and a Sudoku grid has no black cells to give — so
-the hybrid must either derive the blockers from the digits (a second decision layer) or
-overlay a fixed pattern, which makes the two halves sit beside each other. Real but
-second-tier.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* 81 digits, 81 bulb bools, plus sight structure.
+
+*Expensive globals.* No connectivity and no flow, but two sight-driven rules over
+the same prefix chains: every white cell is lit (`AddBoolOr` over the bulbs
+visible from it) and no two bulbs see each other (pairwise clauses along each
+maximal run). Both are **static clause lists** once the black-cell layout is
+fixed: for each maximal horizontal and vertical run of white cells, "at most one
+bulb in the run" plus "the run's cells are lit iff the run holds a bulb". That is
+a clean, cheap encoding — much better than generic sight bools — precisely because
+the blockers are *given*.
+
+*Size and cost on 9x9.* 81 bools and a few hundred clauses. **Cheap.**
+
+*Digit coupling.* Here is the problem, and it is structural rather than
+arithmetic. Akari needs a given black-cell layout to be a puzzle, and a sudoku grid
+has no black cells. Derive the blockers from the digits and the sight runs stop
+being static — every clause becomes conditional on the blocker pattern, which turns
+a few hundred clauses into a reified mess and reintroduces per-cell sight chains.
+Overlay a fixed pattern instead and the two halves barely interact.
+
+*Verdict.* **Workable.** Cheap only in the form where the interaction is weakest;
+expensive exactly when you make it interesting.
 
 **Existing hybrids:** *Akari (Light Up) on Sudoku*, Erasable Games, 2007-12-24 by Robert
 Katz (https://erasablegames.com/akari-light-up-on-sudoku/) — an adapted Akari on a Sudoku
@@ -872,13 +1313,28 @@ any letter, as long as it appears elsewhere on the grid." Invented by Inaba Naok
 Norinori), unshaded cells partition into regions with a letter-consistency condition.
 Clues: letters.
 
-**Sudoku hybrid suitability: Workable.** Replace letters with digits and rule 3 becomes
-"all cells holding the same digit are in one unshaded region", rule 4 "different digits in
-different regions" — which on a Sudoku grid means the nine cells of each digit would have
-to be co-regional, a very strong and probably over-tight condition. Restrict the letters
-to a subset of the grid and it becomes workable and genuinely novel. The domino rule is
-the cheap part (shared with Norinori). Interesting, but needs design work before it is a
-component.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* 81 digits, 81 shading bools, 144 domino bools (as Norinori), plus
+`rid`/flow for the white regions.
+
+*Expensive globals.* The domino half is the cheap Norinori matching. The white
+half needs region identity with a letter-consistency condition — one flow, plus
+reified "same region" constraints tying equal letters together and different
+letters apart.
+
+*Size and cost on 9x9.* 144 + 81 bools, 288 flow ints. **Moderate.**
+
+*Digit coupling.* The natural reading — letters are digits — makes rule 3 say all
+nine cells holding a given digit are co-regional, and rule 4 that distinct digits
+are in distinct regions. Together that forces the white cells to partition into at
+most nine regions, one per digit, each containing all nine of its digit: an
+extremely tight and probably infeasible condition alongside sudoku. It must be
+weakened (letters on a subset of cells) before the model has solutions, and the
+weakening is a design decision, not a modelling one.
+
+*Verdict.* **Workable.** The encoding is routine; the coupling needs designing
+before it is worth a model.
 
 **Existing hybrids:** LMD carries a Dominion tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No Dominion x Sudoku hybrid found
@@ -900,12 +1356,28 @@ Fikes; GM Puzzles runs it as a standing category with 95 posts
 ordered run-length sequences outside the grid, with wildcards — i.e. a nonogram clue plus
 two global rules.
 
-**Sudoku hybrid suitability: Workable.** Outside run-length clues are an established
-Sudoku idiom (Japanese Sums is the number-placement cousin), and the wildcard mechanism
-means the clue layer can be as loose as the setter wants — useful for keeping the shading
-from self-solving. The digit hook is not native, so the setter supplies it; the natural one
-is "the shaded digits in each row, in order, are the run lengths", which closes the loop
-nicely. Implementation is a line-solver per row and column plus the two globals.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints, plus per-line
+run-pattern machinery.
+
+*Expensive globals.* One flow, 64 no-2x2 windows, and the nonogram line clue. The
+right encoding for an ordered run-length clue with wildcards is **not** a chain of
+reified run variables but an automaton: `AddAutomaton` over the 9 shading bools of
+a line, with a DFA built in Python from the clue (including `?` and `*`
+wildcards). One automaton constraint per clued line, 18 lines maximum, each over 9
+literals. Exact, compact, and CP-SAT propagates automata well.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + up to 18 automata. **Moderate.**
+
+*Digit coupling.* Not native. The natural hybrid rule — "the shaded digits in a
+row, in order, are that row's run lengths" — couples an ordered digit sequence to
+an ordered run sequence, which the automaton can carry if you widen its alphabet
+to (shaded, digit) pairs. That is elegant but the alphabet grows to 10 symbols per
+cell and the DFA gets large.
+
+*Verdict.* **Workable.** `AddAutomaton` is the right tool and worth knowing about;
+the coupling is invented and the widened-alphabet version is the expensive part.
 
 **Existing hybrids:** LMD carries a Cross the Streams tag
 (https://logic-masters.de/Raetselportal/?chlang=en). The direct number-placement analogue,
@@ -929,10 +1401,26 @@ and cannot have any holes inside it"
 **Structure.** As Cross the Streams, but the run lengths are unordered and the white set
 must reach the border (no holes). Clues: unordered multisets outside the grid.
 
-**Sudoku hybrid suitability: Workable.** Same verdict as Cross the Streams; the unordered
-clue is weaker per clue but the no-holes rule is a strong global that a solver can use.
-Pick one of the two if you build this family; Cross the Streams has the better wildcard
-vocabulary for tuning a hybrid.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* As Cross the Streams, but the clue is an **unordered** multiset of
+run lengths, so an automaton over one line no longer suffices — a DFA cannot count
+an unordered multiset compactly. Encode instead with per-run-start bools and a
+cardinality constraint per length value: `starts[p]` reified as "shaded here,
+unshaded to the left", then for each clue value v, "the number of runs of length
+exactly v equals its multiplicity". That is a few dozen reified bools per line.
+
+*Expensive globals.* Two flows in effect: shaded connectivity, and "white reaches
+the border", the same border-anchored reachability as Cave. Plus 64 no-2x2
+windows.
+
+*Size and cost on 9x9.* **Moderate to heavy** — unordered clues cost more than
+ordered ones, and there are two connectivity conditions.
+
+*Digit coupling.* Not native, same invented hooks as Cross the Streams.
+
+*Verdict.* **Workable**, and strictly more expensive than Cross the Streams for
+the same puzzle content. If you build one of the two, build Cross the Streams.
 
 **Existing hybrids:** LMD carries a Coral tag
 (https://logic-masters.de/Raetselportal/?chlang=en), and the wiki carries *Easy As
@@ -950,12 +1438,26 @@ grid *vertices*, so "overlap the clue" means the up-to-four cells touching that 
 **Structure.** Decision: binary shade. Global: unshaded connected. Clues: a 0..4 count at
 each grid vertex.
 
-**Sudoku hybrid suitability: Workable, with one real attraction.** The clue lives on a
-vertex, not a cell — so a Creek hybrid puts its clues in the *gaps* between digits, which
-is the same real estate Kropki dots and XV pairs use and which therefore costs the Sudoku
-nothing. Count range 0..4, in digit range. Against it: the only global is white
-connectivity, so the shading is loosely determined and needs many clues, which clutters
-the vertex layer. Genuinely novel placement, moderate payoff.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and cheap.**
+
+*Variables.* 81 digits, 81 shading bools, 288 flow arc ints.
+
+*Expensive globals.* One flow (white connectivity) and nothing else. Each clue is
+`sum of the up-to-four cells touching this vertex == value`, a linear equality over
+bools. There are 64 interior vertices plus border ones, so at most ~100 possible
+clue positions, each a one-line constraint.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + ~20 linear clues. **Cheap to
+moderate.**
+
+*Digit coupling.* The attraction is positional: clues live on grid *vertices*, the
+same real estate Kropki dots and XV pairs use, so they cost the sudoku no cell
+space. But a vertex is not a cell, so "clue == digit" needs a rule saying *which*
+cell's digit a vertex clue reads — typically the cell down-right of it. That works
+and is linear, but it is an invented convention, and with only white connectivity
+as a global the shading stays loosely determined, needing many clues.
+
+*Verdict.* **Workable.** Cheap model, novel clue placement, weak determination.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -973,10 +1475,25 @@ corners must have different shapes, counting rotations and reflections as the sa
 diagonal chain connectivity, orthogonal separation, corner-touching shapes differ. Clues:
 directional counts from a clue cell.
 
-**Sudoku hybrid suitability: Poor.** It is LITS with the region partition removed and
-replaced by a diagonal-chain global, which trades the one thing that made LITS fit a 9x9
-(the box partition) for a harder global. The directional clue is fine; everything else is
-expensive. Build LITS instead.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* 81 digits, 81 occupancy bools, plus tetromino placement bools over
+the whole grid (not per box) — several hundred, since placements are unrestricted.
+
+*Expensive globals.* Rule 5 is a **diagonal** connectivity requirement over the
+set of tetrominoes, i.e. a flow on the quotient graph of placements under diagonal
+adjacency — the same awkward construction as Mochikoro's, and the quotient graph
+is itself determined by the decision variables, which is the hard case. Rule 1
+(orthogonal separation) and rule 4 (corner-touching shapes differ) are clause lists
+over placement pairs, cheap. Directional count clues are linear.
+
+*Size and cost on 9x9.* **Heavy**, dominated by a connectivity flow over a
+variable graph.
+
+*Digit coupling.* Only the directional count clue, which is in range but weak.
+
+*Verdict.* **Poor.** It is LITS without the box partition that made LITS's
+placement encoding small, plus a harder global. Model LITS instead.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -1012,11 +1529,18 @@ ones not treated above and their one-line rules, all from
 
 The decision layer is an edge set, not a cell set: per cell, which of its four sides the
 line uses (or, for Slitherlink, which of the grid's vertex-to-vertex edges are on the
-loop). Two structural facts dominate this family. First, "single closed loop" is a global
-connectivity-plus-degree constraint that no purely local propagator settles, so every
-component here pays a connectivity cost. Second, and more important for hybrid design: a
-loop imposes an *order* on the cells it visits, and order is the one thing a Sudoku grid
-does not otherwise have. That is the hook worth chasing.
+loop). Three facts dominate this family under the CP-SAT lens. First, `AddCircuit` with a
+self-loop literal per cell states "one closed loop, some cells unvisited" in a single
+constraint with subtour elimination built in — that one device carries most of this
+section, and forcing the self-loops false upgrades it to full coverage. Second, coverage
+is what costs: a loop that must visit every cell is a Hamiltonian circuit on 81 nodes and
+the loop layer will then dominate the solve, so the genres that let the loop skip cells
+(Masyu, Geradeweg, Balance Loop, Linesweeper) are markedly cheaper than those that do not
+(Detour, Maxi Loop, Yajilin, Haisu). Third, and the reason to pay at all: a loop imposes an
+*order* on the cells it visits, and order is the one thing a Sudoku grid does not otherwise
+have — but expressing that order needs position variables, 81 ints and ~290 reified
+equalities, which is the most expensive device in this document. Only Haisu's clue pays for
+it natively.
 
 ## 2.1 Slitherlink (スリザーリンク; Fences, Rundweg, Loop the Loop, Number Line)
 
@@ -1035,14 +1559,40 @@ edge set is connected. Clues: a per-cell count 0..3 of used surrounding edges. D
 structure worth exploiting: the loop partitions cells into inside and outside, which is a
 free binary shading layer.
 
-**Sudoku hybrid suitability: Good.** Two hooks, both used in published puzzles. The direct
-one: the digit in a cell is its Slitherlink clue — but the clue range is 0..3 and digits
-run 1..9, so setters remap (the LMD puzzle below makes 4s behave as 0s and leaves 5-9
-inert). The better one: use the inside/outside partition the loop induces as a shading
-layer and constrain digits by it, which sidesteps the range mismatch entirely. Cost:
-180 edge variables plus a connectivity propagator — the most expensive decision layer in
-this survey, and `update` soundness is genuinely hard, because "this edge cannot be used"
-usually follows from a global parity or connectivity argument, not a local one.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and the edge layer is
+smaller than it looks.**
+
+*Variables.* 81 digits plus 180 **edge bools** (2 x 9 x 10 on a 9x9), not per-cell
+loop-shape variables. Optionally 81 inside/outside bools.
+
+*Expensive globals.* The single-loop condition. On an edge layer the clean
+encoding is: every vertex has degree 0 or 2 (100 vertices, each a linear
+constraint over its ≤4 incident edges with the domain {0,2}), plus subtour
+elimination. Vertex degree alone permits multiple disjoint loops, so you need one
+of: a single-commodity flow over selected edges to one chosen root, which is the
+device the repo already runs; or `AddCircuit` on the *vertex* graph with arc
+literals, which handles subtour elimination natively but needs a Hamiltonian
+framing (self-loop literals for unvisited vertices) that fits Slitherlink well.
+`AddCircuit` is the better first try here because the loop lives on vertices and
+the genre allows vertices off the loop.
+
+*The inside/outside bonus.* Add 81 parity bools with `inside[p] XOR inside[q] ==
+edge between p and q` across every cell border, and the grid border pinned outside.
+That is 144 XOR constraints and it hands you a free binary shading layer — plus it
+is a strong redundant constraint that helps the solver, not just the puzzle.
+
+*Size and cost on 9x9.* 180 edge bools + 100 degree constraints + circuit or flow
++ 81 inside bools + 144 XORs. **Moderate to heavy** — the largest decision layer
+in the survey, and loop models are where CP-SAT time goes.
+
+*Digit coupling.* Two options. Direct: the digit is the cell's edge count, but the
+count is 0..3 and digits are 1..9, so the published hybrid remaps (4 acts as 0,
+5-9 inert). That remap is a table constraint, fine. Better: couple through the
+free inside/outside bools — "inside cells are even", "cages sum only their inside
+cells" — all linear, no remap, and every digit participates.
+
+*Verdict.* **Good**, with the inside/outside coupling rather than the clue-count
+one. Budget the most solver time of any shading-family entry.
 
 **Existing hybrids:** well attested.
 - *Slitherlink Sudoku*, LMD 000H6A
@@ -1074,13 +1624,36 @@ English page gives the same four rules (https://www.nikoli.co.jp/en/puzzles/masy
 turns). Global: one closed loop, not required to visit every cell. Clues: white and black
 circles constraining the loop's behaviour at and adjacent to a cell.
 
-**Sudoku hybrid suitability: Good.** The Masyu clue is about *shape at a cell*, which
-composes with digits in an obvious way: the circle colour is decided by the digit's parity,
-or a digit says how long the straight segment through it is, or the loop's visit order
-through the circles is read off as digits. It does not need every cell on the loop, which
-leaves the unused cells free for pure Sudoku work — that is what keeps a Masyu hybrid from
-feeling like two puzzles. The published hybrid form is the cleanest in the loop family:
-digits in some cells, loop through the rest.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the best loop entry.**
+
+*Variables.* Per-cell loop shape as 6 bools (two straights, four turns) plus an
+"unused" bool, `AddExactlyOne` per cell: 81 x 7 = 567 bools. Equivalently 162
+half-edge bools with degree constraints, which is smaller and preferred: each cell
+has degree 0 or 2 over its 4 sides, and the shape bools are derived only where a
+clue needs them.
+
+*Expensive globals.* One loop. `AddCircuit` over the 81 cells with 4 directed arc
+literals each plus a self-loop literal per unvisited cell — ~370 literals, and
+subtour elimination comes free from the constraint. This is the single most useful
+fact for the whole loop family: **`AddCircuit` with self-loops is the right device
+whenever the loop need not cover every cell**, which is Masyu, Geradeweg, Balance
+Loop, Country Road, Moon or Sun, Castle Wall and Linesweeper.
+
+*Size and cost on 9x9.* ~370 arc literals, 81 degree constraints, a handful of
+clue constraints. **Moderate.** Cheaper than Slitherlink because the loop lives on
+cells, matching the sudoku's own index space.
+
+*Digit coupling.* The clue is shape-at-a-cell, which reifies directly: "black
+circle" is `turn[p] AND straight[before] AND straight[after]`, a clause over
+neighbouring shape bools. Coupling options are all cheap — circle colour decided by
+digit parity is one reified clause per circle; "the digit gives the length of the
+straight segment through this cell" is a sum of consecutive straight bools, linear;
+the published Massive Masyudoku coupling ("the digit counts the cells the loop
+visits in the corresponding box") is `x[p] == sum(on_loop[q] for q in box)`, a
+plain linear equality and the cheapest coupling in the loop family.
+
+*Verdict.* **Good.** Build the loop machinery here first; the rest of the family
+reuses it.
 
 **Existing hybrids:** the strongest evidence in the loop family.
 - *Masyudoku* is a **named genre in its own right** on the LMD wiki
@@ -1116,11 +1689,30 @@ be unused by the loop." Nikoli vol. 65. LMD wiki agrees
 exactly once (a strong regional constraint); no two unused cells adjacent across a region
 border. Clues: a per-region visit count.
 
-**Sudoku hybrid suitability: Good.** "A number indicates how many cells inside the country
-are visited" becomes "the digit says how many cells of its box the loop visits", which is
-in range 1..9 and reads naturally. Rule 2 — each region visited exactly once — is a strong,
-box-shaped global that gives the solver real leverage without needing many clues. Of the
-region-flavoured loop genres this is the best fit for a 9x9 with the boxes as regions.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* Masyu's layer: 81 on-loop bools, per-cell degree over 4 sides,
+`AddCircuit` arc literals with self-loops.
+
+*Expensive globals.* One loop, plus rule 2 — each region visited exactly once.
+"Visited exactly once" means the loop's intersection with a box is a single
+contiguous path, which is *not* the same as "the box contains loop cells". Encode
+it as: the number of loop edges crossing each box's boundary is exactly 2. That is
+9 linear constraints over the border-crossing edge bools, exact and cheap, and it
+is a much better encoding than any connectivity-within-box argument. Rule 4 (no
+two unused cells adjacent across a region border) is a clause list over the 54
+border pairs.
+
+*Size and cost on 9x9.* ~370 arc literals + 9 linear + 54 clauses. **Moderate**,
+the same as Masyu.
+
+*Digit coupling.* Native and linear: `x[p] == sum(on_loop[q] for q in box(p))`,
+range 1..9. Identical in shape to the published Masyudoku coupling, but here it is
+the genre's own clue rather than an added rule.
+
+*Verdict.* **Good.** The boundary-crossing-count trick makes the signature rule
+nearly free, and the coupling is native. Best value in the loop family after Masyu
+and Geradeweg.
 
 **Existing hybrids:** LMD carries a Country Road tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled Country Road x Sudoku
@@ -1143,14 +1735,28 @@ grid" (https://swaroopg92.blogspot.com/2022/08/puzzle-no-173-yajilin.html).
 unshaded, unclued cell. Global: one loop covering all non-shaded non-clue cells, shaded
 cells non-adjacent. Clues: directional shaded counts on cells that are outside both layers.
 
-**Sudoku hybrid suitability: Workable, verging on Good, but expensive.** The attraction is
-that Yajilin already carries both a shading and a loop layer, so a Sudoku hybrid gets two
-hooks for one genre: digits on shaded cells, and the loop's visiting order over the
-unshaded ones. The cost is that the loop must cover *every* unshaded cell, which is a very
-tight Hamiltonian-flavoured condition on a 9x9 and leaves little slack for digit logic; and
-the clue cells are excluded from the loop, which on a Sudoku grid means clue cells are
-digit cells whose digits are doing double duty awkwardly. Build Masyu or Country Road
-first; come back to Yajilin when the loop propagator is mature.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and expensive.**
+
+*Variables.* 81 digits, 81 shading bools, and a loop layer over the unshaded
+non-clue cells: arc literals plus self-loops.
+
+*Expensive globals.* The loop must cover **every** unshaded, unclued cell. Under
+`AddCircuit` that is stated by forcing each such cell's self-loop literal false —
+straightforward to write, but it makes the circuit near-Hamiltonian over a set the
+solver is simultaneously choosing, which is the hardest combination in this
+document. Shaded non-adjacency is 144 clauses. The directional clue is a linear sum
+of shading bools along a ray, cheap.
+
+*Size and cost on 9x9.* ~370 arc literals + 81 shading bools, with the coverage
+condition coupling the two layers. **Heavy.**
+
+*Digit coupling.* Awkward. Clue cells are outside both layers, so their digits do
+double duty; the directional shaded count can exceed 9. The natural fixes push you
+toward Koburin (2.13) or Regional Yajilin (2.28), both of which have in-range
+clues on the same machinery.
+
+*Verdict.* **Workable.** Two entangled decision layers with a near-Hamiltonian
+coverage rule is the worst cost/coupling ratio among the well-known loop genres.
 
 **Existing hybrids:** LMD carries a Yajilin tag
 (https://logic-masters.de/Raetselportal/?chlang=en); GM Puzzles has 114 Yajilin posts
@@ -1172,12 +1778,31 @@ cells moving horizontally or vertically. The loop cannot cross itself"
 **Structure.** Decision: per-cell loop shape. Global: a Hamiltonian circuit on the unshaded
 cells. Clues: only the given shaded pattern.
 
-**Sudoku hybrid suitability: Workable, and useful as scaffolding.** On its own it is
-clueless, which — as with Yin-Yang — is exactly why it composes: the setter provides all
-the clue content from the Sudoku side, typically "digits along the loop, read in order,
-obey X". That is the *order* hook, and Simple Loop is the cheapest way to get it since
-there is no extra clue vocabulary to implement. It is also the right first loop component
-to build, because everything harder in this family is Simple Loop plus clues.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and the right
+scaffold to build first.**
+
+*Variables.* 81 on-loop bools (all forced true on unshaded cells), arc literals,
+degree constraints.
+
+*Expensive globals.* A Hamiltonian circuit on the unshaded cells. `AddCircuit`
+with every self-loop literal forced false on unshaded cells states it exactly in
+one constraint — this is the cleanest use of `AddCircuit` in the survey, because
+the node set is *given* rather than chosen.
+
+*Size and cost on 9x9.* ~370 arc literals and nothing else. **Moderate**, and a
+Hamiltonian circuit on 81 nodes is a real search, but with a fixed node set CP-SAT's
+circuit propagator does the heavy lifting.
+
+*Digit coupling.* Nothing native, everything supplied — which is the virtue.
+"Digits along the loop in visit order obey X" is the interesting one and it needs a
+**position variable** per cell: `pos[p]` in 0..80 with `pos[q] == pos[p] + 1`
+reified on the arc literal `p -> q`, plus one cell pinned to 0. That is 81 ints and
+~290 reified constraints, and it is the general device for any order-based coupling
+(see Haisu, 2.25). It is not cheap, but it is the only way to express loop order,
+and it is worth building once and reusing.
+
+*Verdict.* **Workable.** Build this model first as the loop scaffold: fixed node
+set, one constraint, and the position-variable device that the ordering genres need.
 
 **Existing hybrids:** none found under this name (searched: LMD portal, GM Puzzles, CTC,
 general web). The idiom is nonetheless ubiquitous in variant sudoku under other names —
@@ -1200,13 +1825,30 @@ count the number of cell borders crossed by the loop in that direction.)"
 condition on clue cells. Clues: directional segment counts, each carrying an inside/outside
 colour.
 
-**Sudoku hybrid suitability: Good.** Castle Wall is the loop genre that makes the
-inside/outside partition *explicit* rather than derived, and inside/outside is a free
-binary shading layer over the digits. The clue is a directional count that can be large,
-so it works better as a cage-sum-style quantity than a single digit; but the colour half
-of the clue (inside vs outside) maps onto a digit property (parity, high/low) at no cost.
-GM Puzzles' standing Castle Wall x Masyu form is direct evidence the clue vocabulary
-composes.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* Masyu's loop layer, plus the inside/outside parity bools that
+Slitherlink gets for free — here they are required by the rules rather than
+optional.
+
+*Expensive globals.* One loop (`AddCircuit` with self-loops), plus the
+inside/outside determination. Compute inside/outside with the crossing-parity
+device: `inside[p] XOR inside[q] == (the loop edge separating p and q is used)`,
+144 XOR constraints with the outside pinned at the border. Clue cells are then
+pinned inside or outside by unit clauses. Rule 3's directional segment counts are
+linear sums of edge-crossing bools along a ray.
+
+*Size and cost on 9x9.* ~370 arc literals + 81 inside bools + 144 XORs.
+**Moderate.** The XOR layer is cheap and, as in Slitherlink, acts as a strong
+redundant constraint.
+
+*Digit coupling.* Two halves, and the colour half is the cheap one: a clue's
+inside/outside status maps to a digit property (parity, high/low) with one reified
+clause. The count half can exceed 9 and is better used as a cage-sum-like quantity
+than a single digit.
+
+*Verdict.* **Good.** The genre hands you an explicit binary layer over the digits
+and the encoding for it is 144 XORs.
 
 **Existing hybrids:**
 - *Castle Wall (Masyu)*, a repeated GM Puzzles form — by Mark Sweep, 2021-08-20
@@ -1232,11 +1874,29 @@ Invented by Prasanna Seshadri.
 **Structure.** Decision: per-cell loop shape. Global: one loop through every circle. Clues:
 per-circle equality/inequality of the two arm lengths, plus an optional arm-length sum.
 
-**Sudoku hybrid suitability: Good.** Rule 4 is already a number in a cell, and arm-length
-sums on a 9x9 land in a usable range, so "the digit in a circle is its Balance Loop number"
-is a direct hook with no remapping. Rules 2 and 3 are equality/inequality constraints — the
-same shape as Kropki and inequality clues, which Sudoku solvers read fluently. This is the
-loop genre whose clue vocabulary translates into Sudoku terms with the least friction.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* Masyu's loop layer plus, per circle, two **arm-length ints** in
+0..8.
+
+*Expensive globals.* One loop. The arm lengths need a segment-length device:
+`len[p,d] == sum of consecutive straight-through bools from p in direction d`,
+encoded as a chain of reified implications (the k-th cell counts only if all
+earlier ones do) — the same prefix device as a sight clue, ~8 bools per direction
+per circle. Then rules 2 and 3 are `len_a == len_b` or `len_a != len_b`, one
+constraint each.
+
+*Size and cost on 9x9.* ~370 arc literals + ~32 prefix bools and 2 ints per
+circle. **Moderate.**
+
+*Digit coupling.* The best in the loop family for directness: rule 4's "numbers
+indicate the sum of the segment lengths" is `x[p] == len_a + len_b`, a plain linear
+equality between a digit and two ints, in range on a 9x9. Rules 2 and 3 are
+equality and inequality — the same shape as Kropki and inequality clues, which
+compose with sudoku reasoning natively.
+
+*Verdict.* **Good.** Native in-range linear coupling on a standard loop layer, and
+the prefix device is shared with Geradeweg and the sight-clue genres.
 
 **Existing hybrids:** none titled found (searched: LMD portal, GM Puzzles, CTC, general
 web). GM Puzzles has 51 Balance Loop posts
@@ -1253,12 +1913,22 @@ Palmer Mebane.
 **Structure.** Simple Loop plus a per-region visit count fixed at two. Clues: the region
 partition only.
 
-**Sudoku hybrid suitability: Workable.** With the nine boxes as regions, "the loop enters
-and leaves each box exactly twice" is a crisp global that interacts with box structure —
-the Sudoku's own unit. It is clueless otherwise, which as before is a virtue for hybrids.
-It is strictly less flexible than Country Road (which lets the count vary per region and
-therefore be a digit), so prefer Country Road unless you specifically want the fixed-two
-rhythm.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Simple Loop's layer (Hamiltonian on unshaded cells).
+
+*Expensive globals.* The Hamiltonian circuit, plus "the loop visits each region
+exactly twice", which by the Country Road argument is "exactly 4 loop edges cross
+each box boundary" — 9 linear constraints, cheap and exact.
+
+*Size and cost on 9x9.* As Simple Loop plus 9 linears. **Moderate.**
+
+*Digit coupling.* None native; the region count is fixed at two rather than being
+a per-box number, so there is no digit to read off. Country Road gives the same
+machinery with a *variable* per-box count, which is a digit.
+
+*Verdict.* **Workable**, and dominated by Country Road for hybrid purposes. Build
+Country Road.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1272,12 +1942,28 @@ times the loop turns inside the outlined region."
 **Structure.** Hamiltonian loop over all cells, plus a per-region turn count. Clues: turn
 counts.
 
-**Sudoku hybrid suitability: Good.** "How many times the loop turns inside this box" is a
-count in 0..9 on a 9x9 box, so the digit hook is direct and in range. Counting turns is a
-purely local property of the loop shape at each cell, so the clue propagates cheaply even
-though the loop itself does not. The one hard constraint is rule 1's requirement that the
-loop cover *every* cell, which on 9x9 is a Hamiltonian circuit on 81 cells — very tight,
-and it means the loop layer carries most of the puzzle. Pair it with light Sudoku clues.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, but the loop is the
+tightest in the family.**
+
+*Variables.* Loop layer with every self-loop literal false (Hamiltonian on all 81
+cells), plus 81 turn bools.
+
+*Expensive globals.* A Hamiltonian circuit on all 81 cells — the tightest global
+here, and the loop layer will dominate the solve. The turn count is cheap: `turn[p]`
+is reified from the cell's two incident directions being perpendicular, one
+constraint per cell, and the clue is `sum(turn[q] for q in box) == value`.
+
+*Size and cost on 9x9.* ~370 arc literals, 81 turn bools, 9 linear clues.
+**Heavy**, entirely because of Hamiltonicity.
+
+*Digit coupling.* Native and linear: `x[p] == sum(turn[q] for q in box(p))`, range
+0..9. One of the cleanest couplings in the loop family — it is just that the loop
+carries most of the puzzle, so the generator must keep sudoku clues light or the
+two layers will over-determine each other.
+
+*Verdict.* **Good** on coupling, **heavy** on search. Worth a prototype precisely
+to measure how a full-coverage circuit behaves at 81 nodes, which is a number the
+repo does not yet have.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1293,12 +1979,29 @@ number."
 **Structure.** Decision: per-cell loop shape. Global: one loop through every circle. Clues:
 a segment-length equality at each circle.
 
-**Sudoku hybrid suitability: Good.** Segment lengths on a 9x9 run 1..9 — the digit range
-exactly — and the clue is one number in one cell. "The digit in a circled cell is the
-length of every straight segment touching it" is about as clean a digit hook as this survey
-contains, needing no remapping and no invented rule. The loop need not visit every cell, so
-there is slack for pure Sudoku deduction. Of the clued loop genres, this is the one I would
-build first after Masyu.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the first loop genre to
+model.**
+
+*Variables.* Masyu's loop layer (arc literals with self-loops, degree
+constraints), plus one segment-length int per circle in 1..9 and the prefix bools
+that compute it.
+
+*Expensive globals.* One loop, and nothing else. Rule 2 — "every straight segment
+touching a clue has length equal to the clue" — is a per-circle constraint over the
+same prefix-length device as Balance Loop, and because it pins *both* arms to the
+same value it prunes harder per clue than any other loop clue in the survey.
+
+*Size and cost on 9x9.* ~370 arc literals + ~32 prefix bools and one int per
+circle. **Moderate**, at the cheap end of the loop family.
+
+*Digit coupling.* The cleanest in the whole document: segment length on a 9x9 runs
+1..9, exactly the digit range, and the clue is one number in one cell. `x[p] ==
+len[p]` — a bare equality between a digit variable and a model int, no remap, no
+reification chain at the coupling itself. The loop need not cover every cell, so
+the digit layer keeps real freedom.
+
+*Verdict.* **Good.** Best coupling-to-cost ratio of any loop genre, and no
+published hybrid exists. The strongest loop pick.
 
 **Existing hybrids:** LMD carries a **Geradeweg tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en), which is the portal's own signal that
@@ -1314,10 +2017,23 @@ the longest visit to that region." Invented by Inaba Naoki.
 **Structure.** Hamiltonian loop over all cells; per-region, the longest single contiguous
 visit. Clues: that maximum.
 
-**Sudoku hybrid suitability: Workable.** "Longest visit to this box" is in 1..9, in range,
-so the digit hook works. But a maximum is a weaker clue than a count or a length equality
-— it constrains one visit and says nothing about the others — and the Hamiltonian
-requirement is as tight as Detour's. Detour gives more per clue for the same cost.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Hamiltonian loop layer plus per-box visit-run lengths.
+
+*Expensive globals.* Hamiltonicity on 81 cells (as Detour), plus a **maximum**
+over the lengths of the loop's contiguous visits to a box. A max is
+`AddMaxEquality` over a set of run-length ints, and the runs themselves must be
+identified — which needs entry/exit detection per box and a length per run. That
+is markedly more machinery than Detour's turn count for a weaker clue.
+
+*Size and cost on 9x9.* **Heavy.**
+
+*Digit coupling.* `x[p] == max run length in box`, in range. Native, but a maximum
+constrains one run and says nothing about the others, so each clue prunes less than
+Detour's turn count for more encoding.
+
+*Verdict.* **Workable**, dominated by Detour.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1333,11 +2049,24 @@ segment of even length has its "centre" on a border.
 **Structure.** Decision: per-cell loop shape. Global: one loop through every circle. Clues:
 a midpoint assertion — geometric, not numeric.
 
-**Sudoku hybrid suitability: Workable.** The clue carries no number, so a hybrid must add
-the digit hook (e.g. the digit at a circle is the length of its segment, which combines
-Mid-Loop with Geradeweg). The midpoint rule is elegant and strongly constraining, and it
-lives partly on cell borders — the same real estate Kropki dots use, so it costs the Sudoku
-nothing visually. A reasonable second-wave pick.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Masyu's loop layer plus prefix arm lengths per circle.
+
+*Expensive globals.* One loop. The midpoint rule is `len_a == len_b` measured from
+the circle's position — the Balance Loop white-circle constraint — except that
+circles may sit on cell borders as well as centres, so the model needs two circle
+geometries. Handle that by placing circles on a half-integer index and computing
+arm lengths in half-cells, which doubles the prefix chains.
+
+*Size and cost on 9x9.* **Moderate.**
+
+*Digit coupling.* None native — the clue carries no number. Adding one turns it
+into Geradeweg. The positional virtue (circles on borders use Kropki real estate)
+is real but does not by itself create coupling.
+
+*Verdict.* **Workable.** Strictly weaker than Geradeweg on coupling, at similar
+cost.
 
 **Existing hybrids:** LMD carries a **Mid-loop tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled hybrid found.
@@ -1351,10 +2080,23 @@ cells." Nikoli vol. 116.
 
 **Structure.** As Yajilin (2.4), with a neighbourhood clue in place of a directional one.
 
-**Sudoku hybrid suitability: Workable — better than Yajilin on the clue, same cost on the
-loop.** The 0..4 neighbourhood count is squarely in digit range and is the Minesweeper-style
-clue that hybrids handle best. Everything else — the Hamiltonian-on-unshaded requirement —
-is Yajilin's cost. If you build one of the two, build Koburin.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable — Yajilin's cost,
+Minesweeper's clue.**
+
+*Variables.* As Yajilin: 81 shading bools plus a loop covering every unshaded
+unclued cell.
+
+*Expensive globals.* The same near-Hamiltonian coverage over a chosen node set
+that makes Yajilin heavy. No relief here.
+
+*Size and cost on 9x9.* **Heavy**, as Yajilin.
+
+*Digit coupling.* Much better than Yajilin's: the clue is `sum of the ≤4
+orthogonal neighbours' shading bools`, range 0..4, a plain linear equality with the
+digit — the Minesweeper shape, the friendliest in the document.
+
+*Verdict.* **Workable.** If you model anything in the Yajilin family, model this
+one: identical solver cost, a strictly better coupling.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1370,11 +2112,25 @@ or not have a line in that direction."
 **Structure.** Slitherlink's edge decision layer, with a nearest-line directional clue
 instead of an edge count.
 
-**Sudoku hybrid suitability: Workable.** The clue is about *which direction is nearest*,
-i.e. an argmin — a relational clue, not a count. That is unusual and interesting, and it
-composes with digits if you say the digit gives the distance. It inherits Slitherlink's
-expensive edge layer without Slitherlink's simple local clue, so it is a harder build for
-a comparable payoff.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Slitherlink's 180 edge bools, degree constraints, circuit or flow.
+
+*Expensive globals.* The loop, plus an **argmin** clue: the arrowed directions are
+those whose nearest loop edge is closest, and unarrowed directions must be strictly
+further or empty. Encode with a per-clue distance int per direction — computed by a
+prefix chain over edges — then `dist_arrowed == min over all`, plus strict
+inequalities for the unarrowed ones. `AddMinEquality` handles the min; the strictness
+needs care when a direction has no edge at all, which wants a sentinel value.
+
+*Size and cost on 9x9.* Slitherlink's layer plus 4 distance ints and ~4 prefix
+chains per clue. **Heavy.**
+
+*Digit coupling.* Not native — the clue is relational. "The digit gives the
+distance" is the obvious fix, linear and in range, but it changes the genre.
+
+*Verdict.* **Workable.** Slitherlink's expensive layer with a harder clue and no
+native digit. Low priority.
 
 **Existing hybrids:** LMD carries a **Myopia tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en), and the wiki has a Myopia page in
@@ -1394,12 +2150,29 @@ each room." Nikoli vol. 155.
 **Structure.** Multiple disjoint loops, one per circle. Global: per-room visit counts
 constant within a loop (rule 5 is the genre's signature). Clues: that constant.
 
-**Sudoku hybrid suitability: Workable.** Rule 5 — "the same amount of cells in every room"
-— is structurally the Region Sum Lines constraint that modern variant Sudoku already uses
-heavily, only counting cells rather than summing digits. Swap the count for a digit sum and
-you have a ruleset a CTC audience would recognise instantly. That makes it a promising but
-derivative pick; it is doing what Region Sum Lines already does, with a loop attached.
-Multi-loop bookkeeping is more implementation work than single-loop.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor to Workable — multi-loop
+is the problem.**
+
+*Variables.* A loop layer that must support **several disjoint loops**, which
+`AddCircuit` cannot express: one circuit constraint means one circuit. Multi-loop
+needs either one `AddMultipleCircuit` (CP-SAT has it, but it permits any number of
+circuits, so "exactly one loop per circle" must then be imposed separately) or a
+loop-id int per cell with reified equality across arcs plus a per-id flow.
+
+*Expensive globals.* Loop identity per cell is the cost, and it is the same
+quotient-graph awkwardness as the diagonal-connectivity genres: a labelling whose
+classes the solver is choosing. Rules 4 and 5 (a loop enters a room once, and
+visits the same number of cells in every room it enters) then need per-loop,
+per-room counts — a two-index family of ints.
+
+*Size and cost on 9x9.* **Heavy.**
+
+*Digit coupling.* Rule 5 is structurally Region Sum Lines, which is appealing, and
+rule 6's per-room visit count is a digit in range. But you can get the Region Sum
+Lines flavour from a single-loop genre at a fraction of the cost.
+
+*Verdict.* **Poor to Workable.** Multi-loop models are the most expensive shape in
+this survey; the puzzle content does not justify it.
 
 **Existing hybrids:** none found under this name (searched: LMD portal, GM Puzzles, CTC,
 general web). The Region Sum Lines analogy is visible in *Massive Masyudoku*, LMD 000SRW
@@ -1420,11 +2193,25 @@ numbers must be in different loops." Nikoli vol. 57.
 is larger than the other loop genres. Global: Hamiltonian coverage (Pipelink), or loop
 identity classes (Loop Special).
 
-**Sudoku hybrid suitability: Poor to Workable.** Crossings multiply the per-cell state
-without adding a digit hook, and Pipelink has essentially no clue vocabulary beyond given
-segments. Loop Special's "same number, same loop" is the more interesting half and is a
-genuine digit hook — digits as loop identifiers — but it needs several loops to be
-meaningful, which crowds a 9x9. Low priority.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* Crossings break the clean degree-2 formulation: a crossed cell has
+degree 4, so the per-cell shape domain grows and `AddCircuit` no longer applies
+directly — the loop is no longer a simple circuit on the cell graph. The standard
+workaround splits each cell into two independent channels (horizontal and
+vertical), doubling the node count to 162 and requiring a matching between them.
+Loop Special additionally needs loop-id labels (see 2.15).
+
+*Expensive globals.* A circuit over a split graph, plus, for Loop Special,
+multi-loop identity.
+
+*Size and cost on 9x9.* **Heavy.**
+
+*Digit coupling.* Pipelink has no clue vocabulary at all beyond given segments.
+Loop Special's "same number, same loop" is a genuine digit hook but it needs the
+expensive loop-id layer to say it.
+
+*Verdict.* **Poor.** Crossings cost real encoding and buy no coupling.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1442,10 +2229,22 @@ travels vertically in that column." Invented by Craig Kasper.
 **Structure.** Loop with crossings allowed, plus outside clues counting the length of the
 nearest parallel segment.
 
-**Sudoku hybrid suitability: Workable.** Outside clues are the standard Sudoku idiom, and
-"length of the nearest segment" is a 1..9 number — in range. The "nearest" qualifier makes
-it a skyscraper-flavoured visibility clue, which this repo already models. Crossings are
-the awkward part. A reasonable candidate if you want an outside-clue loop.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* A loop with crossings (split-cell graph as in 2.16), plus per-row and
+per-column nearest-segment length ints.
+
+*Expensive globals.* The split-cell circuit, plus a "nearest section" clue which
+is an argmin-then-length: find the closest horizontal run in the row, report its
+length. That is a prefix scan plus a conditional length, ~2 chains per clue.
+
+*Size and cost on 9x9.* **Heavy**, mostly from crossings.
+
+*Digit coupling.* Outside clues are the standard sudoku idiom and the length is
+1..9, in range — the coupling is good. It is the decision layer that is expensive.
+
+*Verdict.* **Workable.** Good clue, costly loop. If you want an outside-clue loop,
+consider putting outside clues on a no-crossing genre instead.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web). GM
 Puzzles has 18 Round Trip posts
@@ -1462,11 +2261,24 @@ number is allowed to be zero."
 
 **Structure.** Loop decision layer with Tapa's 8-neighbourhood run-length clue.
 
-**Sudoku hybrid suitability: Good.** It is Tapa's clue — the best clue type in the shading
-family — mounted on a loop. Everything said about Tapa's digit hook (the digit in a clue
-cell is its single-number clue, range 1..8) carries over, and the loop adds the ordering
-structure that shading lacks. The per-clue constraint is again a lookup over the
-8-neighbourhood, so the clue side is cheap; only the loop global is expensive.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* Masyu's loop layer plus, per clue, the 8 neighbour on-loop bools.
+
+*Expensive globals.* One loop. The clue is Tapa's, and it gets Tapa's encoding:
+enumerate the 256 patterns of the 8-neighbourhood in Python, keep those whose
+run multiset matches the clue, post with `AddAllowedAssignments`. Exact, one table
+per clue, no auxiliary run variables — and as in Tapa, the clue cell's own digit
+can be a column of the table, making "digit == clue" free.
+
+*Size and cost on 9x9.* ~370 arc literals + a ≤256-row table per clue.
+**Moderate.** The clue side is free; the loop side is the standard cost.
+
+*Digit coupling.* Native via the table trick, range 1..8. Plus the loop supplies
+ordering structure that plain Tapa lacks.
+
+*Verdict.* **Good.** Tapa's best-in-class clue encoding mounted on the standard
+loop layer — the most under-explored Good entry in the loop family.
 
 **Existing hybrids:** the LMD portal carries a *Variables Tapasyu* entry — Tapa x Masyu
 (https://logic-masters.de/Raetselportal/?chlang=en). *Regional Necklace Tapa Loop* by
@@ -1489,12 +2301,31 @@ consecutively used regions." Nikoli vol. 154.
 **Structure.** Loop with per-region single visit; a binary choice per region (moons or
 suns) that must alternate along the loop's region sequence.
 
-**Sudoku hybrid suitability: Good.** Rule 5 is the interesting one: it forces an
-alternation along the loop's *order of regions*, which is precisely the ordering structure
-that a Sudoku grid lacks and that a hybrid wants. Map moon/sun onto a digit property
-(odd/even, high/low) and the alternation becomes a statement about digits, not an extra
-symbol layer — a genuinely two-way interaction with no invented rule. Per-region single
-visit keeps the loop tractable.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* Masyu's loop layer, plus one **choice bool per region** (this box
+takes moons or suns) and the box-boundary crossing counts.
+
+*Expensive globals.* One loop; "every region visited exactly once" is the Country
+Road trick — exactly 2 loop edges cross each box boundary, 9 linear constraints.
+Rule 3 is then a clause per clue: if the box is in moon mode, every moon in it is
+on the loop and every sun is off. Rule 5 — no two *consecutively visited* regions
+share a clue type — is the only rule needing the loop's region order, and it is
+expressible without full position variables: because each box is entered once, the
+loop induces a cyclic sequence of boxes, and consecutive boxes are those joined by
+a loop edge across their shared border. So rule 5 becomes: for each pair of
+adjacent boxes, if a loop edge crosses their shared border then their mode bools
+differ. That is ~12 reified clauses, and it is the neat encoding of this genre.
+
+*Size and cost on 9x9.* ~370 arc literals + 9 mode bools + ~21 linear/clauses.
+**Moderate.**
+
+*Digit coupling.* Map moon/sun onto a digit property (parity, high/low) and the
+alternation becomes a statement about digits with one reified clause per clue — a
+two-way interaction with no invented arithmetic.
+
+*Verdict.* **Good.** The alternation rule reduces to adjacent-box mode bools, which
+is far cheaper than it first appears.
 
 **Existing hybrids:** LMD carries a **Moon-or-Sun tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled hybrid found.
@@ -1513,12 +2344,22 @@ vertically from field to field. Every field can be used only once"
 **Structure.** Decision: per-cell, which path (if any) occupies it and in what shape.
 Global: disjointness; for Arukone, full coverage. Clues: the endpoint pairs.
 
-**Sudoku hybrid suitability: Poor.** Numberlink is notorious for admitting many solutions
-unless full coverage is imposed, and its logic is topological routing rather than
-arithmetic — there is no count, length or ordering that a digit naturally supplies. The
-one appealing move, "the endpoints are digits and identical digits are connected", forces
-the nine cells of each digit into one path, which is over-tight in exactly the way
-Dominion's letter rule is. Skip.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* A path-id int per cell plus per-cell shape, or one flow network *per
+endpoint pair* — with nine digit-pairs that is nine commodities, ~2600 flow ints.
+
+*Expensive globals.* Multi-commodity flow is the most expensive connectivity shape
+in this document. Numberlink also famously admits many solutions without a full
+coverage rule, so uniqueness proofs will be slow and often negative.
+
+*Size and cost on 9x9.* **Heavy.**
+
+*Digit coupling.* The only natural hook — endpoints are digits, identical digits
+connected — forces all nine cells of each digit onto one path, which is
+over-tight in the same way Dominion's letter rule is.
+
+*Verdict.* **Poor.** Expensive encoding, weak coupling, bad uniqueness behaviour.
 
 **Existing hybrids:** LMD carries a Number Link tag
 (https://logic-masters.de/Raetselportal/?chlang=en). No Sudoku hybrid found.
@@ -1537,11 +2378,26 @@ empty cell with a rectangular loop" — full coverage, no numeric clue. Nikoli v
 non-overlap, no shared corners, crossings allowed. Clues: per-region usage counts
 (Nagenawa) or none (Ring-Ring).
 
-**Sudoku hybrid suitability: Workable.** Rectangles are a much smaller decision space than
-free loops, so this is cheaper to implement than any other entry in the loop family, and
-Nagenawa's per-region count is a digit-range number on a 9x9 box. The genre feels closer to
-Shikaku (3.4) than to a loop puzzle, which is a point in its favour for a candidate-grid
-implementation. Modest but real.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and cheaper than it
+looks.**
+
+*Variables.* Not a free loop layer: **rectangle placement bools**. Every loop is a
+rectangle, so enumerate all rectangles on a 9x9 (2025 of them, or fewer with a
+minimum side of 2) and pick a subset. That converts a loop genre into a placement
+genre, which is the single biggest cost saving available in this family.
+
+*Expensive globals.* No circuit constraint at all. Non-overlap and no-shared-corner
+are pairwise clauses over placement bools, enumerated once in Python; crossings are
+permitted, so only the forbidden pairs are listed. Per-region usage counts are
+linear sums.
+
+*Size and cost on 9x9.* ~2000 placement bools with a large but static clause list.
+**Moderate** — big but shallow, and CP-SAT presolve reduces placement models well.
+
+*Digit coupling.* Nagenawa's per-region usage count is a digit in range, linear.
+
+*Verdict.* **Workable**, and notable as the one loop-family genre with no loop
+constraint in its model.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1562,11 +2418,28 @@ grid represent the amount of snake segments in the corresponding directions"
 no diagonal self-contact. Global: path connectivity plus the king-move non-touching rule.
 Clues: outside row/column counts, given head and tail.
 
-**Sudoku hybrid suitability: Good, and already established in variant sudoku.** The snake
-gives an *ordered* sequence of cells — the ordering hook — and the outside counts are the
-standard Sudoku outside-clue idiom. The non-touching rule is a king-move constraint,
-cheap and familiar. Digits along the snake obeying a rule (increasing, summing per segment,
-non-repeating) is the standard hybrid form and reads naturally.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 occupancy bools plus a path structure. `AddCircuit` models a
+*circuit*, not a path, so use the standard trick: add a virtual node joined to the
+two given endpoints, turning the path into a circuit — one constraint, no flow.
+Position ints if the coupling needs order.
+
+*Expensive globals.* The circuit (with the virtual node) and the no-diagonal-
+self-touch rule, which is a clause list: for every diagonally adjacent pair not
+consecutive on the path, not both occupied. Stated over occupancy bools it is 128
+clauses with a small exception list at each turn.
+
+*Size and cost on 9x9.* ~370 arc literals + 81 bools + ~128 clauses. **Moderate.**
+
+*Digit coupling.* Outside row and column counts are linear sums of occupancy bools
+— the standard sudoku outside-clue idiom, exactly in range. Order-based couplings
+("digits along the snake increase") need the position ints and the reified
+`pos[q] == pos[p] + 1` device from Simple Loop (2.5), which is the expensive but
+reusable part.
+
+*Verdict.* **Good.** A well-understood placement-plus-path model, an in-range
+native clue, and a published hybrid tradition to calibrate against.
 
 **Existing hybrids:**
 - LMD carries **both a Snake tag and a Snake (Variant) tag** alongside its Sudoku tag
@@ -1595,12 +2468,28 @@ this circle" (https://wiki.logic-masters.de/index.php/Slalom/en) — while puzz.
 **Structure.** Decision: two states per cell (the `/` or `\` diagonal). Global: acyclicity
 of the resulting graph. Clues: vertex degree counts 0..4.
 
-**Sudoku hybrid suitability: Workable, and unusually cheap.** A binary decision per cell
-with a 0..4 count clue on vertices — the same vertex real estate as Creek and Kropki, so
-it costs the Sudoku nothing. The acyclicity global is a union-find check, much cheaper than
-loop connectivity. The obstacle is the digit hook: a diagonal is an orientation, and
-orientation does not naturally encode a quantity, so the setter must invent one ("digits in
-cells with `/` are odd"). Cheap to build, moderate payoff.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and very cheap.**
+
+*Variables.* 81 diagonal bools (one per cell: `/` or `\`). That is the entire
+decision layer — the smallest in the loop family.
+
+*Expensive globals.* The vertex degree clue is a linear sum of the ≤4 incident
+cells' diagonal bools, one constraint per clued vertex. The global is **acyclicity**
+of the graph the diagonals form, which is the one genuinely awkward part: CP-SAT has
+no native acyclicity constraint over an undirected edge selection. Options: encode a
+spanning-forest with parent pointers and ranks (the cspuz device recorded in
+`docs/research/connectivity-techniques.md` §1); or run it as a lazy cut loop —
+solve, find a cycle, forbid exactly that cycle's diagonal pattern, re-solve — which
+is the repo's own discipline from `renbanana_cpsat.py` and is exact.
+
+*Size and cost on 9x9.* 81 bools, ~100 linear clues, plus the acyclicity device.
+**Cheap to moderate** with lazy cuts, since cycles are rare in a well-clued grid.
+
+*Digit coupling.* A diagonal is an orientation, not a quantity, so coupling is
+wholly invented ("cells with `/` are odd"). The vertex clue could equal a digit
+under an invented convention, as with Creek.
+
+*Verdict.* **Workable.** Tiny model, a nice lazy-cut exercise, weak coupling.
 
 **Existing hybrids:** the LMD portal carries the *Slalom* genre and a *Landvermessung* tag
 (https://logic-masters.de/Raetselportal/?chlang=en). A Gokigen-style clue appears in a
@@ -1621,9 +2510,21 @@ be visited at least once." Nikoli vol. 108.
 **Structure.** Directed path from IN to OUT; icy cells force straight travel and permit
 crossings; arrows force direction.
 
-**Sudoku hybrid suitability: Poor.** The genre's content is a movement/direction puzzle
-over a given terrain of icy cells, and the terrain must be given — a Sudoku grid supplies
-no terrain. Directions are not quantities. Skip.
+**Sudoku hybrid suitability under the CP-SAT lens: Poor.**
+
+*Variables.* A *directed* path with crossings permitted only on icy cells — so the
+split-cell graph of 2.16 plus arc direction, plus per-icebarn visit bookkeeping.
+
+*Expensive globals.* Directed path with terrain-conditional crossing rules, forced
+directions at arrows, and "every icebarn visited at least once" over a
+component-labelled terrain.
+
+*Size and cost on 9x9.* **Heavy.**
+
+*Digit coupling.* Directions are not quantities and the terrain must be given, so
+a sudoku grid supplies neither clue content nor structure.
+
+*Verdict.* **Poor.** Highest encoding cost, lowest coupling.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1640,13 +2541,31 @@ visit the line must go through exactly N circles, or go through no circles."
 **Structure.** Hamiltonian path from a fixed start to a fixed goal; clues index the visit
 ordinal of a region.
 
-**Sudoku hybrid suitability: Good — the purest expression of the ordering hook.** The clue
-*is* an ordinal: "this cell is on the Nth visit to its box". On a 9x9 with boxes as regions,
-N lands in the digit range, and "the digit in this cell is the visit number of its box"
-is a direct, native, two-way hook with no remapping. It gives the Sudoku grid a total
-order over cells, which is the thing digits alone cannot express. Against it: Hamiltonian
-coverage on 81 cells is very tight and the path layer will dominate the solve, so clue
-counts need care. Implementation is a path propagator plus per-region visit counting.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and the one genre that
+justifies position variables.**
+
+*Variables.* A Hamiltonian path from S to G — `AddCircuit` with a virtual node
+joining G back to S — plus the **position int** `pos[p]` in 0..80 for every cell,
+with `pos[q] == pos[p] + 1` reified on each arc literal. Then a per-box visit
+ordinal: `visit[p]` in 1..9, the index of the box-visit that contains p.
+
+*Expensive globals.* Hamiltonicity on 81 cells (as Detour, the tightest global
+here) plus the position chain, ~290 reified equalities. The visit ordinal is
+derived from position: a new visit starts at p iff p is in box b and its
+predecessor is not, so `visit[p] == sum of visit-starts in box b at or before p` —
+a prefix count over the path order, which is the expensive derived quantity.
+
+*Size and cost on 9x9.* ~370 arc literals + 81 position ints + 81 visit ints +
+~600 reified constraints. **Heavy** — the largest model in the survey.
+
+*Digit coupling.* The best in the document, and the reason to pay: the clue *is*
+an ordinal. `x[p] == visit[p]`, a bare equality, range 1..9 on a 9x9 with boxes as
+regions. It gives the grid a total order over cells, which digits alone cannot
+express, and nothing else here does that natively.
+
+*Verdict.* **Good** on coupling, **heavy** on cost — the one genre where the
+expensive position machinery buys something no cheaper genre offers. Build the
+position device once in Simple Loop (2.5), then come here.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 Haisu is a young genre (William Hu is a current-generation setter), which is a plausible
@@ -1663,9 +2582,23 @@ a corner or a straight line. 4. The loop cannot go through a shaded circle." Nik
 **Structure.** Loop; per-region, the circles agree on turn-vs-straight. Clues: circles, some
 shaded (loop-forbidden).
 
-**Sudoku hybrid suitability: Workable.** Rule 3 is a per-region uniformity condition, which
-is the same shape as a "all these cells share a property" Sudoku rule and maps onto a digit
-property per box. No numeric clue, so a digit hook must be added. Middling.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Masyu's loop layer plus one mode bool per region (this box's circles
+all turn, or all go straight).
+
+*Expensive globals.* One loop. Rule 3 is then one reified clause per circle
+against its box's mode bool — the same neat device as Moon or Sun's mode bools,
+and equally cheap. Shaded circles are unit clauses forcing the cell off the loop.
+
+*Size and cost on 9x9.* ~370 arc literals + 9 mode bools. **Moderate**, at the
+cheap end.
+
+*Digit coupling.* No numeric clue, so invented. Mapping the mode bool to a digit
+property per box is the natural move and is one reified clause.
+
+*Verdict.* **Workable.** Cheap on top of a loop layer you have already built, but
+nothing native to couple to.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, CTC, general web).
 [unverified as absence]
@@ -1688,16 +2621,26 @@ https://www.logic-puzzles.ropeko.ch/php/db/puzzle.php?id=158.
 closed loop. Clues: an 8-neighbourhood count of loop cells, on cells the loop avoids — a
 Minesweeper clue over a loop.
 
-**Sudoku hybrid suitability: Good.** The clue is 0..8, in the digit range, strictly local,
-and identical in shape to the Minesweeper clue that has the best hybrid track record in this
-survey. "The digit in a clue cell counts the loop cells around it" is a direct two-way hook
-needing no remapping. The loop need not cover every cell, so there is slack for pure Sudoku
-deduction — the property that makes Masyu and Geradeweg work and that Yajilin and Detour
-lack. The only expensive part is loop connectivity, shared with every entry in this family.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
 
-This is the same clue-over-a-loop idea as **Bosnian Road** (3.18); the two differ in that
-Bosnian Road forbids the loop from touching itself while Linesweeper only forbids revisiting
-a cell. Build one component and the other is a rule flag on it.
+*Variables.* 81 on-loop bools plus Masyu's arc literals with self-loops — the loop
+may skip cells, which is exactly the case `AddCircuit` with self-loop literals
+handles best.
+
+*Expensive globals.* One loop, and nothing else. Clue cells are forced off the
+loop by unit clauses.
+
+*Size and cost on 9x9.* ~370 arc literals, one linear constraint per clue.
+**Moderate** — at the cheapest end of the loop family, because there is no
+coverage requirement, no region structure and no prefix chain anywhere.
+
+*Digit coupling.* Native, linear and in range: `x[p] == sum(on_loop[q] for q in
+neighbours8(p))`, 0..8 — the Minesweeper shape, the friendliest coupling in the
+document, mounted on a loop. This is the cheapest way to get an order-bearing
+decision layer with a native digit clue.
+
+*Verdict.* **Good.** The same model serves Bosnian Road (3.18) with one rule flag
+changed, so one build covers two genres.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -1762,7 +2705,14 @@ edge. This family has the most natural digit interaction of the three, because a
 has a *size*, and size is a number. On a 9x9 the sizes that matter run 1..9, which is the
 digit range, so "the digit is its region's size" needs no remapping. That single coincidence
 is why the region family produces the cleanest Sudoku hybrids, and why Fillomino and
-Shikaku hybrids are the ones that actually get set.
+Shikaku hybrids are the ones that actually get set. Under the CP-SAT lens the family splits
+sharply in two by encoding cost. Where the regions have a **fixed shape family** —
+rectangles, L-shapes, polyominoes from a bank — enumerate the placements in Python and the
+model becomes exact cover with no connectivity machinery at all (Shikaku, Nawabari,
+Sashigane, Tatamibari, Statue Park). Where regions are **free-form**, you need region ids
+and a flow (Araf, Nanro, Light and Shadow) — unless the genre forbids equal-sized regions
+from touching, in which case the fillomino collapse makes the region derivable from the
+digits and the whole layer disappears (Fillomino, Symmetry Area, Snake Pit).
 
 ## 3.1 Fillomino (フィルオミノ; Allied Occupation, Polyominous)
 
@@ -1781,15 +2731,33 @@ same-size regions share an edge — a colouring-style condition on the *sizes*, 
 makes the genre. Clues: numbers that are simultaneously the region size and, in classic
 Fillomino, written in every cell of the region.
 
-**Sudoku hybrid suitability: Good — jointly the best in the survey with Yin-Yang and
-Nurikabe.** Fillomino's numbers *are* digits: every cell holds a number, and that number is
-its region size. A Sudoku grid already puts a number in every cell. The hybrid is therefore
-not an overlay at all but an identification — "the sudoku digit is the Fillomino number" —
-and rule 2 becomes a strong constraint on the digit grid directly. This is the rare case
-where the two rulesets fuse instead of stacking, which is exactly the "pleasant combined
-solve" criterion. This repo already has substantial Fillomino work on file:
-`docs/research/fillomino-cpsat.md`, `docs/research/fillomino-prior-art.md`,
-`docs/research/fillomino-isofill-transfer.md`, and a heavy test in `just check-full`.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the repo has already
+built and measured this model.**
+
+*Variables.* Exactly the set in `docs/research/fillomino-cpsat.md`: 81 digit ints
+`x[p]`, 81 region-id ints `rid[p]`, 81 root bools, 144 `eq[p,q]` edge bools, 288
+directed flow ints, 81 `emit` ints.
+
+*Expensive globals.* One, and it does triple duty. The separation rule makes
+regions **derivable from the digits** — a region is an orthogonally connected
+component of equal digits — so there are no region objects, no region count and no
+separation constraint written out. A single-commodity flow whose root emits its own
+digit then delivers connectivity *and* digit-equals-size from one conservation
+equation. That collapse is the most valuable encoding idea in this repo and the
+reason Fillomino is cheaper to model than its rules suggest.
+
+*Size and cost on 9x9.* ~324 ints, ~225 bools, 288 flow ints. **Moderate, and
+measured**: sampling 0.1-1 s, uniqueness proofs 0.3-69 s across twelve seeds, median
+10.4 s, worst 68.9 s against a 600 s cap. A strip loop is minutes to tens of minutes.
+No extrapolation needed — the numbers are on file.
+
+*Digit coupling.* There is no coupling to build, because there is no second layer:
+the sudoku digit **is** the fillomino number. Adding sudoku to the model is 27
+AllDifferent constraints on variables the fillomino model already has. That is the
+limiting case of good coupling.
+
+*Verdict.* **Good.** Lowest engineering risk of any entry — the model, the
+self-check against brute force, and the runtime profile are all recorded.
 
 **Existing hybrids:** the best-attested in the region family.
 - *Fillomino sudoku*, LMD 000HFV, 2024-03-26
@@ -1818,9 +2786,25 @@ solve" criterion. This repo already has substantial Fillomino work on file:
 **Rules** (https://puzz.link/js/pzpr-samples/symmarea.js): Fillomino's two rules plus
 "3. Every region must have 180° rotational symmetry around its center."
 
-**Sudoku hybrid suitability: Workable.** Everything Fillomino offers, plus a geometric
-constraint that prunes hard. The symmetry rule is cheap to check and is the same rule
-Spiral Galaxies uses, so a single symmetry propagator serves both. Build after Fillomino.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and nearly free on top of
+Fillomino.**
+
+*Variables.* Fillomino's set, plus a centre position per region — or, better, no
+new variables at all: state the symmetry as a constraint over `rid`.
+
+*Expensive globals.* Fillomino's flow, plus 180° symmetry. The cheap encoding
+avoids naming centres: for every pair of cells p, q and every candidate centre, a
+region containing p must contain its reflection. Enumerate reflections lazily
+instead — solve, find an asymmetric region, forbid that exact membership pattern,
+re-solve — which is the repo's lazy-cut discipline and is exact. Symmetry violations
+are rare in a clued grid so the loop should be short.
+
+*Size and cost on 9x9.* Fillomino's model plus a cut loop. **Moderate.**
+
+*Digit coupling.* Fillomino's, unchanged and native.
+
+*Verdict.* **Good.** A strict extension of the model the repo already runs, and a
+good place to exercise lazy cuts on a region genre.
 
 **Existing hybrids:** none found under this name (searched: LMD portal, GM Puzzles, general
 web). [unverified as absence]
@@ -1838,12 +2822,29 @@ Neighbours* as a genre (https://wiki.logic-masters.de/index.php/Different_Neighb
 **Structure.** Decision: region partition. Global: exactly two clues per region. Clues: a
 pair of numbers bracketing the region size strictly.
 
-**Sudoku hybrid suitability: Good.** The clue is a strict inequality on the region size,
-which is a *range*, not an equality — that looseness is valuable, because it stops the
-region layer from solving independently and forces the digits to finish it. Two digits per
-region bracketing that region's size is a clean, wholly native rule with everything in the
-digit range. It is the natural second pick after Fillomino if you want region logic that
-leans on the digits rather than replacing them.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 `rid` ints, 81 root bools, 288 flow ints, and a size
+int per region.
+
+*Expensive globals.* One flow. Unlike Fillomino there is no separation rule, so
+regions are **not** derivable from the digits and real `rid` variables are needed —
+but the flow is the plain kind (root emits the region size, cells absorb one),
+which is the same conservation equation. Rule 1, exactly two clues per region, is a
+linear sum over reified membership of clue cells.
+
+*Size and cost on 9x9.* Fillomino's shape without the `eq` edge bools.
+**Moderate.**
+
+*Digit coupling.* Native and, unusually, a **range** rather than an equality: the
+region's size is strictly between its two clue digits, `min(a,b) < size <
+max(a,b)`, which is two linear inequalities over ints the model already has. The
+looseness is the point — it stops the region layer from solving independently and
+forces the digits to finish the puzzle, which is exactly the property that keeps a
+hybrid from splitting into two puzzles.
+
+*Verdict.* **Good.** Fillomino's machinery with a strictly looser clue, which is
+better for hybrid design and no harder to encode. Unclaimed as a published hybrid.
 
 **Existing hybrids:** none titled found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -1861,14 +2862,33 @@ piece and that the numbers represent the number of cells of the piece"
 **Structure.** Decision: a rectangle placement per clue — a much smaller space than a free
 partition. Global: the rectangles tile the grid exactly. Clues: area per rectangle.
 
-**Sudoku hybrid suitability: Good, and the cheapest good one in this family.** Rectangles
-are enumerable: for a clue at a given cell with area a, the candidate rectangles are the
-divisor pairs of a that cover that cell — a small finite set, perfect for a candidate-grid
-propagator, with none of Fillomino's unbounded-shape search. The digit hook is native
-("the digit in the circle is the area") and areas 1..9 are exactly the digit range, giving
-rectangles 1x1 through 3x3 and 1x9 — all of which have meaning on a Sudoku grid. This repo's
-Renbanana rectangle catalogue is directly reusable machinery
-(`docs/research/renbanana/rectangle-catalogue.json`).
+**Sudoku hybrid suitability under the CP-SAT lens: Good — placement bools, no
+flow at all.**
+
+*Variables.* 81 digits, plus one bool per **candidate rectangle placement**. For a
+clue at cell p with area a, the candidates are the rectangles of area a covering p:
+a small set, enumerated in Python from the divisor pairs of a. Across a board with
+~15 clues that is a few hundred bools.
+
+*Expensive globals.* **None of the hard kind.** `AddExactlyOne` over each clue's
+placements; each cell covered exactly once is a linear equality over the placements
+containing it (81 constraints). No connectivity, no flow, no region ids, no 2x2
+lemma — a rectangle is connected by construction. This is the cleanest encoding in
+the whole region family.
+
+*Size and cost on 9x9.* A few hundred placement bools, 81 cover equalities, ~15
+exactly-ones. **Cheap.** An exact-cover model is the shape CP-SAT is best at.
+
+*Digit coupling.* Native and in range: the digit in the circle is the rectangle's
+area, 1..9 — which on a 9x9 means 1x1, 1x2, 1x3, 2x2, 2x3, 3x3, 1x9 and friends,
+all meaningful shapes. When the area is a *variable* rather than a given, enumerate
+placements for every (cell, area) pair and tie the placement bool to `x[p] == a`;
+that is still a static table. "Digits do not repeat inside a rectangle" is pairwise
+inequality reified on the placement bool, cheap because placements are explicit.
+
+*Verdict.* **Good.** Exact cover over enumerated rectangles, no connectivity
+machinery anywhere, native coupling, and published hybrids to calibrate against.
+The best cost-to-value ratio in the region family.
 
 **Existing hybrids:** well attested, by a strong setter.
 - *Shikasudoku*, LMD 00087H, 2021-11-08 by Qodec
@@ -1909,13 +2929,29 @@ vol. 92. The LMD wiki has a Nanro page but its English instructions section is e
 itself, which is determined by the region's filled count. Global: numbered cells connected,
 no numbered 2x2, no equal numbers adjacent across region borders. Clues: some given numbers.
 
-**Sudoku hybrid suitability: Good.** Nanro's number in a cell is a count of filled cells in
-its box — in 1..9 on a 9x9 — so the identification "the sudoku digit is the Nanro number,
-where the cell is filled" is direct. Rule 3 (equal numbers not adjacent across borders) is
-the Fillomino-style adjacency rule that composes well with Sudoku reasoning, and rule 5's
-connectivity is the one expensive part. The wrinkle: only *some* cells carry numbers, so a
-hybrid must decide what the digits in unnumbered cells mean — the usual move is to shade
-them, which turns Nanro into a shading-plus-count hybrid.
+**Sudoku hybrid suitability under the CP-SAT lens: Good.**
+
+*Variables.* 81 digits, 81 "filled" bools, 288 flow ints for the connectivity of
+the filled set, plus one count int per box.
+
+*Expensive globals.* One flow — the filled cells form a single connected area.
+No-filled-2x2 is 64 windows. Rule 3 (equal numbers from different regions not
+orthogonally adjacent) needs to know which box a cell is in, which is static, so it
+is a clause list over the 54 border pairs: if both filled and in different boxes,
+their counts differ.
+
+*Size and cost on 9x9.* 81 bools + 288 flow ints + 64 windows + 54 clauses.
+**Moderate.**
+
+*Digit coupling.* Native: the number in a filled cell equals the count of filled
+cells in its box, so `x[p] == sum(f[q] for q in box(p))` **reified on `f[p]`** —
+one linear constraint per cell under an enforcement literal, range 1..9. The
+wrinkle a designer must settle is what an *unfilled* cell's digit means; the clean
+answer is that unfilled cells are the shading layer and carry an ordinary sudoku
+digit with no Nanro role.
+
+*Verdict.* **Good.** Native in-range linear coupling, one flow, and a cheap static
+clause list for the separation rule.
 
 **Existing hybrids:** LMD carries a **Nanro tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled Nanro Sudoku found
@@ -1937,12 +2973,36 @@ center of rotational symmetry." Note the circle may sit on a cell, an edge or a 
 about its given centre — a strong, purely geometric constraint that pairs cells up. Clues:
 the circle positions.
 
-**Sudoku hybrid suitability: Good.** The symmetry rule pairs cells, and a pairing is
-exactly what a digit rule can bite on ("symmetric cells within a galaxy have different
-parity", as the published hybrid does). The centres are given, so the clue layer is spatial
-rather than numeric — which means the digit content must be supplied by the hybrid, and the
-published hybrids do so with sums and parities. The symmetry propagator is cheap: knowing a
-cell is in a galaxy immediately forces its mirror.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — symmetry does the work
+a flow would otherwise do.**
+
+*Variables.* 81 digits and one membership bool per (cell, galaxy) pair. Because the
+centres are **given**, the galaxy set is known up front — say k centres — so this is
+81 x k bools, not a labelling the solver must invent. With k around 10 that is ~810
+bools.
+
+*Expensive globals.* Much less than the region family average. The symmetry rule
+pairs cells: `member[p, g] == member[reflect(p, g), g]`, one equality per cell per
+galaxy, and any cell whose reflection falls off the board simply cannot belong.
+That single constraint family removes roughly half the freedom before search
+starts. Each cell belongs to exactly one galaxy: 81 linear equalities.
+Connectivity still needs a flow per galaxy in principle — but in practice the
+symmetry plus the exact-cover condition leaves few disconnected candidates, so the
+repo's lazy-cut discipline fits well: solve, find a disconnected galaxy, forbid that
+membership pattern, re-solve.
+
+*Size and cost on 9x9.* ~810 membership bools, ~400 symmetry equalities, 81 cover
+equalities, plus a short cut loop. **Moderate.**
+
+*Digit coupling.* Not native — the clue is a position, not a number — but the
+published hybrids show the good moves and all are linear: "symmetric cells within a
+galaxy have different parity" is one reified clause per symmetric pair; "a galaxy
+behaves as a killer cage" is a linear sum over membership bools; "the digits along
+each tail are equal in sum" is a linear sum per tail.
+
+*Verdict.* **Good.** Given centres turn a region-labelling problem into an
+exact-cover problem with a strong pairing constraint. Real hybrid evidence and a
+WPC record to calibrate against.
 
 **Existing hybrids:** well attested, including at world-championship level.
 - *Spiral Galaxy Sudoku with clues*, LMD 000897
@@ -1978,13 +3038,26 @@ inventory may be shown but not all shapes need be used
 **Structure.** Decision: region partition, every region exactly 5 cells with a named shape.
 Global: adjacent regions differ in shape. Clues: shape letters.
 
-**Sudoku hybrid suitability: Workable.** A 9x9 has 81 cells, which is not divisible by 5 —
-so a pure Pentominous cannot tile the Sudoku grid, and any hybrid must leave cells out (as
-the published one does, placing a fixed set of pentominoes rather than tiling). That is a
-real structural friction, and it is why the published hybrid is "place the twelve
-pentominoes" rather than "divide the grid". The clue is a shape letter, not a number, so
-the digit hook must be invented. Tetrominous (3.9) has the same problem — 81 is not
-divisible by 4 either.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Placement bools: every position of every pentomino on a 9x9, a few
+thousand, filtered by the letter clues.
+
+*Expensive globals.* Exact cover is cheap (81 linear equalities). Rule 1 — adjacent
+pentominoes differ in shape — is a pairwise clause list over placements sharing an
+edge, enumerated once in Python; large but static.
+
+*Size and cost on 9x9.* A few thousand placement bools with a big static clause
+list. **Moderate to heavy**, mostly from the clause list's size.
+
+*Digit coupling.* Two problems. 81 is not divisible by 5, so a pure tiling is
+infeasible and the model must allow uncovered cells — which the published hybrid
+does by placing exactly the twelve pentominoes and leaving the rest bare. And the
+clue is a shape letter, not a number, so coupling is invented; the published hybrid
+supplies German-whispers and region-sum rules, both linear over placement bools.
+
+*Verdict.* **Workable.** The arithmetic mismatch is a genuine design tax, not a
+modelling one, and every hybrid pays it.
 
 **Existing hybrids:**
 - *Pentomino Sudoku*, LMD 000A76
@@ -2014,12 +3087,27 @@ vol. 133. Heteromino (https://puzz.link/js/pzpr-samples/heteromino.js): "Divide 
 into triminoes. 1. Triminoes cannot use shaded cells. 2. Two triminoes that share a border
 must have different shape or different orientation." Invented by Inaba Naoki.
 
-**Sudoku hybrid suitability: Workable for Fourcells/Fivecells, Poor for the rest.** The
-Fourcells/Fivecells clue — "how many of this cell's four sides are region borders", 0..4 —
-is a genuinely good hybrid clue: in digit range, purely local, and it says something about
-the partition that no other genre's clue says. It is the same clue Nawabari uses (3.14).
-The divisibility problem bites again for the fixed-size tilings on 81 cells; Heteromino
-(3 cells) does divide 81 evenly and is the exception worth noting.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable for Fourcells and
+Fivecells, Poor for the rest.**
+
+*Variables.* Placement bools as Pentominous.
+
+*Expensive globals.* Exact cover plus a static adjacency clause list. Heteromino
+is the one that tiles 81 evenly (3 cells x 27), so it alone avoids the divisibility
+problem — but its rule ("adjacent triminoes differ in shape *or* orientation") is a
+weak constraint that leaves an enormous solution space, which is bad for uniqueness
+proofs.
+
+*Size and cost on 9x9.* **Moderate.**
+
+*Digit coupling.* Fourcells and Fivecells carry the genuinely good clue: "how many
+of this cell's four sides are region borders", 0..4, which under a placement
+encoding is a linear sum of reified "my neighbour is in a different placement"
+bools — one constraint per clue, in digit range, native. That is the same clue as
+Nawabari (3.14) and it is the reason to prefer these over the letter-clued tilings.
+
+*Verdict.* **Workable** for the border-count pair; **Poor** for Tetrominous and
+Heteromino, on divisibility and weak determination respectively.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2037,13 +3125,26 @@ Palmer Mebane. A setter's phrasing confirms the same four rules
 **Structure.** Decision: placement of a fixed bank of polyominoes. Global: exact use of the
 bank, orthogonal separation, connected complement. Clues: black and white circles.
 
-**Sudoku hybrid suitability: Workable.** The bank is a strong global that a placement
-enumerator handles well, and the "connected complement" rule is the one expensive part. The
-digit hook is not native — circles are binary, not numeric — so it must be added. The
-documented Statue Park hybrid instead borrows Minesweeper's clue ("The number clues act as
-minesweeper clues... if there is a number in a white circle it gives the number of black
-circles around it"), which is exactly the move a Sudoku hybrid would make and shows the
-genre takes numeric clues gracefully.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Placement bools for the fixed bank of shapes, plus 81 occupancy
+bools.
+
+*Expensive globals.* The bank is `AddExactlyOne` per shape — cheap and strong.
+Orthogonal separation between shapes is a static clause list over placement pairs.
+The cost is rule 4: **the complement must be connected**, which is a flow over the
+unoccupied cells — 288 arc ints gated on `not occupied`, the standard device.
+
+*Size and cost on 9x9.* ~1000 placement bools + 81 occupancy + 288 flow ints.
+**Moderate to heavy.**
+
+*Digit coupling.* Not native — circles are binary. The documented hybrid borrows
+Minesweeper's clue instead ("a number in a white circle counts the black circles
+around it"), which is a linear sum of bools and the friendliest coupling available.
+That substitution is the move a sudoku hybrid should copy.
+
+*Verdict.* **Workable.** Good placement model, one complement flow, borrowed
+coupling.
 
 **Existing hybrids:** *Double Statue Park Twilight* by swaroop guggilam
 (https://swaroopg92.blogspot.com/2021/08/puzzle-number-170-double-statue-park.html), a
@@ -2066,11 +3167,31 @@ daneben)*.
 **Structure.** Decision: placements of 1x2 and 1x3 blocks. Global: non-overlap. Clues: a
 sliding-freedom number — a distance, not a size.
 
-**Sudoku hybrid suitability: Workable.** The clue is a distance in 0..8 on a 9x9 — in digit
-range — and "how far could this block slide" is an unusual, appealing quantity that no other
-genre in this survey uses. The pieces are tiny, so placement enumeration is cheap. Against
-it: the sliding rule is a *derived* property requiring a scan per block per direction, and
-the genre is obscure enough that there is no hybrid tradition to borrow from.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, with one derived
+quantity that costs.**
+
+*Variables.* Placement bools for every 1x2 and 1x3 block position — a few hundred
+— plus 81 occupancy bools.
+
+*Expensive globals.* Non-overlap is a linear cover inequality per cell; no
+connectivity, no flow, no shape lemma. Cheap so far. The cost is the clue, which is
+a **derived** quantity: "how many spaces this block can slide" depends on the
+nearest blocking block in its direction, so it is a prefix scan over the occupancy
+bools from the block's end — ~8 reified steps per block per direction, and the
+answer is a min over the two directions or a per-direction count depending on the
+reading.
+
+*Size and cost on 9x9.* A few hundred placement bools plus prefix chains per
+clued block. **Moderate.**
+
+*Digit coupling.* The sliding distance is 0..8, in digit range, and "how far could
+this block move" is a quantity no other genre here uses — genuinely novel. But it
+is a derived scan, not a plain sum, so each clue costs more than a Minesweeper or
+box-count clue.
+
+*Verdict.* **Workable.** Small pieces, cheap cover, interesting in-range clue, one
+moderately expensive derived quantity. Obscure enough that there is no hybrid
+tradition to borrow from.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2087,10 +3208,29 @@ contained in the L shape." Nikoli vol. 134. The LMD wiki gives the same four num
 **Structure.** Decision: region partition into 1-wide L shapes. Global: exact tiling. Clues:
 corner circles, endpoint arrows, and region sizes.
 
-**Sudoku hybrid suitability: Good.** Three clue types on one layer — a size number (digit
-range), a corner marker, and a direction — which gives a setter far more tuning room than
-most genres here. L-shapes of width 1 are a small enumerable family per corner cell, so the
-propagator is cheap. The size number is native and in range. Underused and worth building.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — placement bools again.**
+
+*Variables.* One bool per candidate L-shape: an elbow cell, an arm length each way,
+both arms 1-wide. Enumerating all L placements on a 9x9 gives a few thousand, and
+the circle and arrow clues cut that hard before the solve.
+
+*Expensive globals.* **None.** Exact cover over cells is 81 linear equalities; each
+circle is the elbow of exactly one chosen L; each arrow is an arm tip pointing at
+its elbow, which filters the candidate list in Python rather than constraining the
+model. No connectivity — an L is connected by construction — no flow, no lemma.
+
+*Size and cost on 9x9.* A few thousand placement bools, 81 cover equalities.
+**Cheap to moderate**, and the three clue types prune the enumeration before CP-SAT
+sees it.
+
+*Digit coupling.* Native and in range: the number in a circle is the L's cell
+count, 1..9, tied directly to the placement bool. Three clue types on one layer
+gives a setter far more tuning room than a single size clue, and all three are
+static filters rather than constraints.
+
+*Verdict.* **Good.** Exact cover with no connectivity machinery and a native
+in-range clue — structurally the same win as Shikaku, on a richer shape family.
+Unclaimed as a published hybrid.
 
 **Existing hybrids:** LMD carries a **Sashigane tag alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en). No titled Sashigane Sudoku found
@@ -2109,11 +3249,31 @@ indicates an endpoint of a snake, while a gray cell must not be on the endpoints
 **Structure.** Decision: region partition into self-avoiding 1-wide paths. Global: rule 3 is
 Fillomino's adjacency rule on lengths. Clues: lengths and endpoint markers.
 
-**Sudoku hybrid suitability: Good.** It is Fillomino with the regions constrained to be
-snakes — so you keep Fillomino's perfect digit hook (the number in a cell is its region's
-length, in range) and gain both an *ordering* along each snake and endpoint clues. The
-ordering is the loop family's best property arriving in the region family without a loop's
-connectivity cost. Strong, underexplored candidate.
+**Sudoku hybrid suitability under the CP-SAT lens: Good, but the snake shape costs
+more than a rectangle.**
+
+*Variables.* 81 digits, 81 `rid` ints, 81 roots, 288 flow ints — the Fillomino
+set, since regions have sizes and "equal lengths may not be adjacent" is Fillomino's
+separation rule.
+
+*Expensive globals.* The Fillomino collapse applies in part: rule 3 makes
+equal-length snakes non-adjacent, so a component of equal digits is a single
+region and the `eq`-edge trick transfers. What does **not** transfer is the shape
+rule: each region must be a 1-wide self-avoiding path with no diagonal
+self-contact. The 1-wide part has the same local characterisation as Nuribou's bars
+(no 2x2 window with three or more cells of one region), and the no-diagonal-contact
+part is a clause list over diagonal pairs in the same region. Together they are
+exact and local — no path enumeration needed.
+
+*Size and cost on 9x9.* Fillomino's model plus 64 windows plus ~128 diagonal
+clauses. **Moderate to heavy.**
+
+*Digit coupling.* Fillomino's, unchanged: the digit is the snake's length, native
+and in range. Plus the snake gives an ordering along each region, available via
+position variables if wanted, at the usual cost.
+
+*Verdict.* **Good.** Fillomino's coupling and collapse, a local shape rule, and an
+ordering bonus — a strong and entirely unclaimed target.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web). LMD
 carries Snake and Snake (Variant) tags but those are the shading genre
@@ -2129,12 +3289,27 @@ vol. 51.
 **Structure.** Decision: rectangle partition (as Shikaku). Clues: a per-cell border count
 0..4 — a *local* clue about the partition, not a size.
 
-**Sudoku hybrid suitability: Good, and complementary to Shikaku.** The border count 0..4
-sits in digit range and is strictly local, which makes it the cheapest region clue in the
-survey to propagate: it constrains only the four edges around one cell. Combined with the
-rectangle global (reusing this repo's rectangle catalogue machinery), it is a
-low-implementation-cost, high-interaction hybrid. Where Shikaku's clue is global (an area),
-Nawabari's is local, so the two tune differently and a component could offer both.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — Shikaku's model with a
+local clue.**
+
+*Variables.* Rectangle placement bools as Shikaku (3.4), plus per-edge "is a
+border" bools derived from the placements.
+
+*Expensive globals.* **None.** Exact cover over rectangles, and the clue is the
+cheapest region clue in the survey: "how many of this cell's four sides are region
+borders" is a linear sum of four border bools, each of which is reified from
+"my neighbour is in a different placement". Strictly local, one constraint per clue.
+
+*Size and cost on 9x9.* A few hundred placement bools, 81 cover equalities, 144
+border bools. **Cheap.**
+
+*Digit coupling.* Native, linear, in range 0..4. And it complements Shikaku
+usefully: Shikaku's clue is global to a region (its area), Nawabari's is local to a
+cell, so the two tune differently and one model with a flag serves both — the same
+rectangle enumeration, a different clue family.
+
+*Verdict.* **Good.** Cheapest region model with a native clue, and it shares its
+enumeration with Shikaku.
 
 **Existing hybrids:** the LMD portal carries a *Landvermessung* ("land survey") tag
 (https://logic-masters.de/Raetselportal/?chlang=en), which is the German-tradition
@@ -2152,11 +3327,26 @@ borders must not form 4-way intersections." Nikoli vol. 107.
 **Structure.** Rectangle partition with shape-class clues (tall, wide, square) and the
 tatami rule 5 forbidding four-way border crossings.
 
-**Sudoku hybrid suitability: Workable.** Rule 5 is the distinctive part and is a purely
-local check on each interior vertex — cheap and unusual. The clues are shape classes, not
-numbers, so the digit hook must be added; the natural one is to let a digit's parity or
-magnitude choose the clue type, which is the "ambiguous clue" idiom that hybrid setters
-already use (see Colossal Nurikabe Sudoku, 1.1). Reasonable second-wave pick.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* Rectangle placement bools as Shikaku, filtered per clue by shape
+class (taller than wide, wider than tall, square).
+
+*Expensive globals.* Exact cover, plus rule 5, the tatami rule: region borders may
+not form a four-way intersection. That is a check on each interior vertex — of the
+four edges meeting there, not all four are borders — so 64 linear constraints over
+the border bools Nawabari already defines. Purely local, cheap, and unusual enough
+to be worth having in the toolkit.
+
+*Size and cost on 9x9.* A few hundred placement bools + 64 vertex constraints.
+**Cheap to moderate.**
+
+*Digit coupling.* Not native: the clue is a shape class, not a number. The natural
+fix is the ambiguous-clue idiom the published Nurikabe hybrids use — let the digit's
+parity or magnitude choose the clue type, one reified clause per clue. That works
+and is cheap, but it is an invented rule.
+
+*Verdict.* **Workable.** Cheap model, nice local vertex rule, invented coupling.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2176,13 +3366,29 @@ least four cells between those"
 **Structure.** This is a *number-placement* genre with a given region partition, not a
 region-building one. Decision: a digit per cell. Clues: givens.
 
-**Sudoku hybrid suitability: Good — it is already a Sudoku-shaped genre.** With the nine
-boxes as regions, rule 2 is exactly the Sudoku box rule, and rule 3 is a distance
-constraint on repeated digits — a rule the variant-sudoku audience knows as a "Distance"
-or anti-clone constraint. On a proper Sudoku, though, rule 3 is nearly vacuous for large
-digits (no digit repeats in a row anyway), so a hybrid must apply it across the *whole* grid
-or use irregular regions. As a standalone constraint to add to a Sudoku it is trivial to
-implement and cheap: a pairwise distance check.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — there is barely a model
+to write.**
+
+*Variables.* 81 digits. No second layer at all: the region partition is **given**,
+so there is nothing to decide but numbers.
+
+*Expensive globals.* **None.** Rule 2 is AllDifferent per region, which with the
+nine boxes is the sudoku box rule already. Rule 3 is a pairwise constraint: for
+each pair of cells in the same row or column at distance d, forbid both holding a
+value v > d — which is a clause per (pair, value), or more compactly a reified
+`x[p] == x[q] => distance >= x[p]`. On a 9x9 that is a few thousand small clauses,
+all static.
+
+*Size and cost on 9x9.* 81 ints and a static clause list. **Cheap.**
+
+*Digit coupling.* There is no coupling to build — like Fillomino, the genre's
+numbers are the sudoku's digits. The caveat is puzzle-side rather than
+solver-side: on a proper sudoku no digit repeats in a row at all, so rule 3 is
+vacuous within a row and only bites across the whole grid or under irregular
+regions. Fix it by applying the distance rule globally or by using non-box regions.
+
+*Verdict.* **Good** as a constraint to add cheaply; weak as a standalone hybrid
+unless the region partition departs from the boxes.
 
 **Existing hybrids:** LMD carries **Hakyuu and Suguru tags alongside its Sudoku tag**
 (https://logic-masters.de/Raetselportal/?chlang=en) — Suguru is the closely related
@@ -2202,9 +3408,26 @@ Nikoli genre.
 **Structure.** A loop genre, not a region one — the "regions" are gates (line segments).
 Clues: gate visit ordinals.
 
-**Sudoku hybrid suitability: Workable.** The ordinal clue is the same ordering hook as Haisu
-(2.25) and sits in digit range, but the gate geometry has no natural expression on a Sudoku
-grid, where every cell already means something. Lower priority than Haisu for the same idea.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable.**
+
+*Variables.* A loop layer (arc literals, self-loops) plus position ints, because
+the clue is a visit ordinal over gates.
+
+*Expensive globals.* One loop, plus the gate structure: each gate crossed exactly
+once and straight through, which is a linear constraint per gate over the loop
+edges in it. The ordinal clue then needs the position-variable device from Simple
+Loop (2.5) restricted to gates — cheaper than Haisu's per-cell ordering, since only
+the gates need an index.
+
+*Size and cost on 9x9.* ~370 arc literals + one int per gate + the position chain.
+**Moderate to heavy.**
+
+*Digit coupling.* The ordinal is in digit range, as with Haisu, but gates are line
+segments between cells and a sudoku grid has no natural gate geometry — every cell
+already means something. The coupling is therefore bolted on rather than native.
+
+*Verdict.* **Workable.** Haisu (2.25) gets the same ordering hook with a geometry
+that fits the grid. Prefer Haisu.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2218,13 +3441,25 @@ grid indicate the number of cells occupied by the loop in the 8 neighbouring cel
 **Structure.** A loop on cells (not edges) that may not touch itself, with an
 8-neighbourhood count clue — i.e. a Minesweeper clue over a loop.
 
-**Sudoku hybrid suitability: Good.** The clue is 0..8, in digit range, purely local, and
-the same shape as the Minesweeper clue that has the best hybrid track record in this survey.
-The non-self-touching rule is a king-move constraint, cheap. The only expensive part is loop
-connectivity. This is the loop genre with the most Sudoku-friendly clue. Linesweeper (2.27)
-is now confirmed to carry the identical clue; the two differ only in that Bosnian Road
-forbids the loop from touching itself while Linesweeper forbids only revisiting a cell, so
-one component with a rule flag serves both.
+**Sudoku hybrid suitability under the CP-SAT lens: Good — the same model as
+Linesweeper.**
+
+*Variables.* 81 on-loop bools plus arc literals with self-loops.
+
+*Expensive globals.* One loop, plus the non-self-touching rule: no two on-loop
+cells are diagonally adjacent unless consecutive on the loop, and no two are
+orthogonally adjacent unless joined by a chosen arc. Both are clause lists over the
+arc literals, ~250 clauses, static.
+
+*Size and cost on 9x9.* ~370 arc literals, one linear constraint per clue, ~250
+clauses. **Moderate**, at the cheap end of the loop family.
+
+*Digit coupling.* Native, linear, in range: `x[p] == sum(on_loop[q] for q in
+neighbours8(p))`, 0..8 — the Minesweeper shape again.
+
+*Verdict.* **Good**, and it shares its model with Linesweeper (2.27): the two
+differ only in whether the loop may touch itself, so one build with a rule flag
+covers both.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2239,11 +3474,25 @@ diagonal run of 3 adjacent circles of the same color." Nikoli vol. 152.
 **Structure.** Decision: binary recolouring of a given circle set. Global: one black per
 region; no three-in-a-line of one colour among *adjacent* circles. Clues: the circle layout.
 
-**Sudoku hybrid suitability: Workable, and very cheap.** One black circle per box is a
-Star-Battle-flavoured count over nine boxes; the no-three-in-a-row rule is local and
-includes diagonals, which the Sudoku grid does not otherwise use. No numeric clue, so the
-digit hook is added. Cheap enough to be worth building as a small component even though the
-payoff is moderate.
+**Sudoku hybrid suitability under the CP-SAT lens: Workable, and very cheap.**
+
+*Variables.* 81 digits plus one bool per **given circle** — typically 20-30, not
+81, because the circle set is given and only their colour is decided.
+
+*Expensive globals.* **None.** One black per box is 9 linear equalities. The
+no-three-in-a-line rule is a clause per collinear triple of *adjacent* circles,
+enumerated in Python across rows, columns and both diagonals — a static list of a
+few dozen clauses. No connectivity, no flow, no shape rule.
+
+*Size and cost on 9x9.* ~30 bools and a few dozen constraints. **Cheap** — the
+smallest decision layer in the region family.
+
+*Digit coupling.* Not native. The diagonal reach of the no-three rule is the
+interesting part, since the sudoku does not otherwise use diagonals, but a digit
+hook must be invented.
+
+*Verdict.* **Workable.** Almost free to model, moderate payoff — a good warm-up
+model rather than a destination.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2257,11 +3506,30 @@ form a pair. All arrows must be paired. 2. Paired arrows must not be in adjacent
 (https://puzz.link/js/pzpr-samples/toichika2.js) replaces arrows with numbers: "4. A pair of
 numbers N must have exactly N cells between them", plus a pairing rule in row or column.
 
-**Sudoku hybrid suitability: Toichika Poor, Toichika 2 Good.** Toichika's arrows are
-directions with no quantity. Toichika 2's "a pair of numbers N has exactly N cells between
-them" is a *digit-determined distance* — one of the most natural digit hooks in this entire
-survey, and structurally the same as the sudoku "distance" constraints already in
-circulation. One number per box, in range, with a strong long-range consequence.
+**Sudoku hybrid suitability under the CP-SAT lens: Toichika Poor, Toichika 2 Good.**
+
+*Variables.* One placement per box: which cell carries the arrow or number, plus
+its direction (Toichika) or value (Toichika 2). That is 9 cell choices, a tiny
+layer.
+
+*Expensive globals.* Toichika's pairing — all arrows form mutually pointing pairs
+with nothing between them — is a matching over 9 objects with emptiness conditions
+along each ray: a clause list, cheap. Toichika 2 replaces it with a distance
+condition.
+
+*Size and cost on 9x9.* Tiny either way. **Cheap.**
+
+*Digit coupling.* Toichika 2 carries what is, under this lens, one of the most
+appealing couplings in the document: **"a pair of numbers N has exactly N cells
+between them"** — a digit determining a geometric distance. Encode as: for the two
+cells holding the pair, `|col_q - col_p| == x[p] + 1` (or the row form), one linear
+constraint reified on the pairing bool. A digit that fixes a distance is a strong,
+long-range constraint that sudoku solvers and CP-SAT both exploit well, and it costs
+one linear equality. Toichika's arrows are directions with no quantity and offer
+nothing.
+
+*Verdict.* **Toichika 2 Good**, on a tiny model with an unusually strong native
+coupling; **Toichika Poor**.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2279,11 +3547,29 @@ Invented by Inaba Naoki. The LMD wiki carries a *Doppelblock-Sudoku* page
 **Structure.** A number-placement genre with a two-shaded-per-line rule. Decision: digits
 plus a binary shading. Clues: outside sums.
 
-**Sudoku hybrid suitability: Good, and it is already half a Sudoku.** Rules 1-3 are a Latin
-square with two blanks per line; rule 4 is a sandwich-sum clue, which variant sudoku uses
-constantly. The 9x9 form places 1..7 plus two blanks per row and column — structurally
-identical to the published Star Battle Sudoku (1..7 plus two stars). The shading layer is
-trivially cheap (exactly two per line).
+**Sudoku hybrid suitability under the CP-SAT lens: Good, and it is already a
+sudoku model.**
+
+*Variables.* 81 ints in 0..7 where 0 means "blank", or 81 digits plus 81 blank
+bools — the former collapses the two layers into one variable, the same move that
+makes Star Battle tiny.
+
+*Expensive globals.* **None.** Exactly two blanks per row and column is 18 linear
+equalities. Rules 2 and 3 are AllDifferent over the non-blank values per line. The
+outside clue — the sum of the numbers strictly between the two blanks — is the one
+derived quantity, and it needs a sandwich-style encoding: a prefix "after the first
+blank" bool and a "before the second blank" bool per cell, then a linear sum of the
+products. Variant sudoku has done sandwich sums for years and the encoding is
+standard.
+
+*Size and cost on 9x9.* 81 ints, 18 linear equalities, ~18 sandwich chains.
+**Cheap to moderate.**
+
+*Digit coupling.* There is nothing to couple — the genre's numbers are the grid's
+numbers, as with Fillomino and Ripple Effect. That is the limiting case.
+
+*Verdict.* **Good.** A named hybrid already exists on the LMD wiki, the model is
+essentially a sudoku with two blanks per line, and sandwich sums are well-trodden.
 
 **Existing hybrids:** **Doppelblock-Sudoku is a registered genre on the LMD wiki**
 (https://wiki.logic-masters.de/index.php/Doppelblock-Sudoku), alongside
@@ -2309,7 +3595,7 @@ above, with rule cores, all at `https://puzz.link/js/pzpr-samples/<pid>.js`:
 | Lapaz (`lapaz`) | Shade non-adjacent cells; divide the rest into dominoes; a clue in a horizontal domino counts shaded cells in its row | Row/column counts on a domino layer — cheap, digit-range. Workable. By Shye |
 | Lohkous (`lohkous`) | Blocks each carrying a cell with one or more numbers; every horizontal run in the block has a length from the clue list, and every listed number appears | A multiset-of-run-lengths clue. Rich but fiddly. Workable. By Hempuli |
 | Slash Pack (`slashpack`) | Diagonal lines divide the grid; each region contains exactly one of each number on the board | A Latin-square-per-region rule on a diagonal partition. **Good** in principle, awkward geometry |
-| Meandering Numbers (`meander`), Cojun (`cojun`), Makaro (`makaro`), Kazunori (`kazunori`), Sukoro Room (`sukororoom`), Renban (`renban`), Hanare (`hanare`), Putteria (`putteria`) | Region-plus-number genres: fill each region with 1..N under an adjacency, ordering or sum rule | These are *number-placement* genres, already Sudoku-adjacent. Renban's "numbers in each region form a consecutive sequence" is literally the Renban line constraint of variant sudoku; Makaro's arrows point at the largest neighbour; Meandering Numbers requires consecutive numbers to be orthogonally adjacent. All **Good** as constraint components, and several are already standard variant-sudoku rules under other names |
+| Meandering Numbers (`meander`), Cojun (`cojun`), Makaro (`makaro`), Kazunori (`kazunori`), Sukoro Room (`sukororoom`), Renban (`renban`), Hanare (`hanare`), Putteria (`putteria`) | Region-plus-number genres: fill each region with 1..N under an adjacency, ordering or sum rule | These are *number-placement* genres, already Sudoku-adjacent. Renban's "numbers in each region form a consecutive sequence" is literally the Renban line constraint of variant sudoku; Makaro's arrows point at the largest neighbour; Meandering Numbers requires consecutive numbers to be orthogonally adjacent. All **Good / cheap** under the CP-SAT lens: no second decision layer at all, just digits with an extra static constraint family, and several are already standard variant-sudoku rules under other names |
 | Tentai Show variants, Kramma/Kramman (`kramma`, `kramman`), Shikaku Wolf (`shwolf`), Choco Block (`cbblock`), Loute (`loute`), Voxas (`voxas`), Tajmahal (`tajmahal`), Mirror Block (`mirrorbk`), Family Photo (`familyphoto`), Fractional Division (`fracdiv`), Sashikazune (`sashikazune`), Tachibk (`tachibk`), Triplace (`triplace`), Aho-ni-Narikire (`aho`), Hebi (`hebi`), Wafusuma (`wafusuma`), Tontti (`tontti`) | Rules at the cited URL pattern | Either no numeric hook, a non-grid geometry, or a rule set that duplicates a stronger entry above. None recommended now; rules are on file |
 
 ---
@@ -2395,170 +3681,293 @@ already on disk by then; the later work was four requests in total.
 
 # 5. Summary table
 
-Verdict key: **Good** = build it, the digit interaction is native or nearly so;
-**Workable** = real hybrid, but the digit hook must be invented or the cost is high;
-**Poor** = don't. "Evidence" counts distinct published Sudoku hybrids found in this run;
-a "—" means none found after searching the LMD portal, GM Puzzles and the open web.
+Verdict key, now under the CP-SAT lens: **Good** = worth writing a generator and
+uniqueness checker for — the digit coupling is native (typically an int equal to a sum
+of bools, or no second layer at all) and the globals encode exactly at acceptable cost;
+**Workable** = encodable, but the coupling is invented or a global is expensive;
+**Poor** = don't. The cost tag is the expected solve and uniqueness-proof burden:
+*cheap* (no connectivity, no flow, static clause lists), *moderate* (one flow or one
+circuit), *heavy* (two networks, Hamiltonian coverage, multi-loop, multi-commodity flow,
+two adjacency graphs, or order-dependent derived quantities). "Evidence" counts distinct
+published Sudoku hybrids found in this run; a "—" means none found after searching the
+LMD portal, GM Puzzles and the open web.
 
 | Genre | Family | Decision layer | Global constraints | Verdict | Sudoku-hybrid evidence |
 | --- | --- | --- | --- | --- | --- |
-| Nurikabe | Shading | binary shade | shaded connected, no 2x2 shaded, one clue per island | Good | yes (5) |
-| Hitori | Shading | binary shade | shaded non-adjacent, white connected | Poor | — |
-| LITS | Shading | tetromino per region | connected, no 2x2, congruent neighbours banned | Workable | via LITS x Cave/Fillomino/Star Battle (3) |
-| Tapa | Shading | binary shade | connected, no 2x2 | Good | via Tapa x Masyu/Nurikabe (2) |
-| Kurodoko / Kuromasu | Shading | binary shade | shaded non-adjacent, white connected | Good | — (tag only) |
-| Heyawake | Shading | binary shade | shaded non-adjacent, white connected, white run crosses ≤1 border | Good | via Starwacky (1) |
-| Yin-Yang | Shading | binary colour, all cells | both colours connected, no monochrome 2x2 | Good | yes (4+) |
-| Nurimisaki | Shading | binary shade | white connected, no monochrome 2x2, complete cape marking | Good | yes (1) |
-| Shakashaka | Shading | 5-state per cell | white areas are rectangles (incl. 45°) | Poor | — |
-| Star Battle | Shading/placement | binary star | king-move separation, exact count per row/col/region | Good | yes (3) |
-| Cave / Corral | Shading | binary shade | white connected, walls reach border | Good | yes (4) |
-| Canal View | Shading | binary shade | shaded connected, no 2x2 | Workable | clue type in use (2) |
-| Kurotto | Shading | binary shade | none | Good | via Sudokurotto (1) |
-| Mochikoro / Mochinyoro | Shading | binary shade | white regions rectangles, diagonally connected, no 2x2 | Workable | — |
-| Light and Shadow | Shading | binary shade | both colours partition, one clue per area | Good | — |
-| Chocona | Shading | binary shade | shaded blocks are rectangles | Good | — (repo work) |
-| Stostone | Shading | binary shade | one block per region, gravity fills bottom half | Workable | — (tag only) |
-| Nuribou | Shading | binary shade | shaded blocks are 1-wide bars, equal bars not diagonal | Workable | — |
-| Norinori | Shading | binary shade | shaded set is dominoes, two per region | Good | — (tag only) |
-| Choco Banana | Shading | binary shade | shaded groups rectangles, white groups not | Good | — (repo work) |
-| Shimaguni | Shading | binary shade | one island per region, separated, neighbours differ in size | Good | — (tag only) |
-| Aqre | Shading | binary shade | shaded connected, no run of 4 in either colour | Good | — |
-| Aquapelago | Shading | binary shade | shaded non-adjacent but diagonally grouped, white connected, no white 2x2 | Workable | — |
-| Minesweeper | Shading/placement | binary mine | total count only | Good | yes (2) |
-| Battleships | Shading/placement | binary occupancy | exact fleet, king-move separation | Good | yes (2+) |
-| Akari | Shading/placement | binary bulb | all white lit, bulbs don't see each other | Workable | yes (1) |
-| Dominion | Shading | binary shade | shaded set is dominoes, letter-consistent white regions | Workable | — (tag only) |
-| Cross the Streams | Shading | binary shade | connected, no 2x2 | Workable | — (tag only) |
-| Coral | Shading | binary shade | connected, no 2x2, white reaches border | Workable | — (tag only) |
-| Creek | Shading | binary shade | white connected | Workable | — |
-| Tetrochain | Shading | tetromino placement | diagonal chain, orthogonal separation | Poor | — |
-| Slitherlink | Loop | edge on/off | single closed loop | Good | yes (3) |
-| Masyu | Loop | per-cell loop shape | single closed loop through every circle | Good | yes (3+, incl. a named genre) |
-| Country Road | Loop | per-cell loop shape | one loop, each region visited once | Good | — (tag only) |
-| Yajilin | Loop + shading | shade + loop | loop covers all unshaded, shaded non-adjacent | Workable | — (tag only) |
-| Simple Loop | Loop | per-cell loop shape | Hamiltonian on unshaded | Workable | — |
-| Castle Wall | Loop | per-cell loop shape | one loop, explicit inside/outside | Good | via Castle Wall x Masyu (3) |
-| Balance Loop | Loop | per-cell loop shape | one loop through every circle | Good | — |
-| Double Back | Loop | per-cell loop shape | Hamiltonian on unshaded, two visits per region | Workable | — |
-| Detour | Loop | per-cell loop shape | Hamiltonian on all cells | Good | — |
-| Geradeweg | Loop | per-cell loop shape | one loop through every circle | Good | — (tag only) |
-| Maxi Loop | Loop | per-cell loop shape | Hamiltonian on all cells | Workable | — |
-| Mid-Loop | Loop | per-cell loop shape | one loop through every circle | Workable | — (tag only) |
-| Koburin | Loop + shading | shade + loop | as Yajilin | Workable | — |
-| Myopia | Loop | edge on/off | single closed loop | Workable | — (tag only) |
-| Onsen-Meguri | Loop | multi-loop | one loop per circle, equal visit length per room | Workable | — |
-| Pipelink / Loop Special | Loop | loop shape with crossings | Hamiltonian / loop identity classes | Poor–Workable | — |
-| Round Trip | Loop | loop with crossings | single loop | Workable | — |
-| Tapa-Like Loop | Loop | per-cell loop shape | single closed loop | Good | via Tapa x Masyu, Necklace (2) |
-| Moon or Sun | Loop | per-cell loop shape | one loop, one visit per region, moon/sun alternation | Good | — (tag only) |
-| Numberlink / Arukone | Path | path id per cell | disjointness (+ coverage) | Poor | — (tag only) |
-| Nagenawa / Ring-Ring | Loop | rectangle loops | non-overlap, no shared corners | Workable | — |
-| Snake | Path | binary occupancy | single self-avoiding path, no diagonal contact | Good | yes (2+, tags) |
-| Slalom / Gokigen | Line | binary diagonal | acyclicity | Workable | partial (1, unverified) |
-| Icebarn | Path | directed path with crossings | terrain-driven | Poor | — |
-| Haisu / Kaisu | Path | Hamiltonian path | region visit ordinals | Good | — |
-| Dotchi-Loop | Loop | per-cell loop shape | per-region turn/straight uniformity | Workable | — |
-| Linesweeper | Loop | per-cell loop shape | single closed loop, loop avoids clue cells | Good | — |
-| Regional Yajilin | Loop + shading | shade + loop | loop covers all white, shaded non-adjacent, per-region shaded count | Good [unverified rules] | — |
-| Bosnian Road | Loop | cell loop | non-self-touching loop, 8-neighbour count clue | Good | — |
-| Fillomino | Region | region id | equal-size regions not adjacent | Good | yes (4+) |
-| Symmetry Area | Region | region id | as Fillomino + 180° symmetry | Workable | — |
-| Araf | Region | region id | two clues per region, size strictly between | Good | — |
-| Shikaku | Region | rectangle placement | exact tiling | Good | yes (4) |
-| Nanro | Region + number | filled/empty + count | connected, no 2x2, equal counts not adjacent across borders | Good | — (tag only) |
-| Spiral Galaxies | Region | region id | 180° symmetry about a given centre | Good | yes (2 + WPC hybrids) |
-| Pentominous | Region | pentomino tiling | adjacent shapes differ | Workable | yes (2) |
-| Tetrominous / Fourcells / Fivecells | Region | fixed-size tiling | adjacent shapes differ / border-count clues | Workable | — |
-| Statue Park | Region/placement | polyomino placement | exact bank, separation, connected complement | Workable | yes (1, Minesweeper-clued) |
-| Tren | Region/placement | 1x2, 1x3 placements | non-overlap; clue is sliding freedom | Workable | — |
-| Sashigane | Region | 1-wide L tiling | exact tiling | Good | — (tag only) |
-| Snake Pit | Region | snake tiling | equal-length snakes not adjacent | Good | — |
-| Nawabari | Region | rectangle tiling | per-cell border count clue | Good | — (Landvermessung tag) |
-| Tatamibari | Region | rectangle tiling | shape-class clues, no 4-way border crossings | Workable | — |
-| Ripple Effect / Hakyuu | Number placement | digit per cell | 1..N per region, distance rule on repeats | Good | yes (tags: Hakyuu, Suguru) |
-| Suraromu | Loop | loop + gate ordinals | single loop through every gate once | Workable | — |
-| Nondango | Region/placement | binary recolour | one black per region, no three-in-line | Workable | — |
-| Toichika | Region/placement | arrow per region | pairing | Poor | — |
-| Toichika 2 | Region + number | number per region | pair separated by exactly N cells | Good | — |
-| Doppelblock | Number placement | digit + 2 blanks per line | Latin square with blanks, outside sums | Good | yes (a named LMD genre) |
-| Compass | Region | region id | four directional counts per clue | Good | — (tag) |
-| Square Jam | Region | square tiling | side-length clues, no 4-way intersections | Good | — |
-| Double Choco | Region | region id | two congruent halves per region | Good | — |
-| Renban / Makaro / Meandering Numbers / Cojun | Region + number | digit per cell | 1..N per region under an ordering/adjacency rule | Good | already standard variant-sudoku rules |
+| Nurikabe | Shading | binary shade | shaded connected, no 2x2 shaded, one clue per island | Good / heavy | yes (5) |
+| Hitori | Shading | binary shade | shaded non-adjacent, white connected | Poor / cheap | — |
+| LITS | Shading | tetromino per region | connected, no 2x2, congruent neighbours banned | Workable / cheap | via LITS x Cave/Fillomino/Star Battle (3) |
+| Tapa | Shading | binary shade | connected, no 2x2 | Good / moderate | via Tapa x Masyu/Nurikabe (2) |
+| Kurodoko / Kuromasu | Shading | binary shade | shaded non-adjacent, white connected | Good / moderate | — (tag only) |
+| Heyawake | Shading | binary shade | shaded non-adjacent, white connected, white run crosses ≤1 border | Good / moderate | via Starwacky (1) |
+| Yin-Yang | Shading | binary colour, all cells | both colours connected, no monochrome 2x2 | Good / moderate | yes (4+) |
+| Nurimisaki | Shading | binary shade | white connected, no monochrome 2x2, complete cape marking | Good / moderate | yes (1) |
+| Shakashaka | Shading | 5-state per cell | white areas are rectangles (incl. 45°) | Poor / heavy | — |
+| Star Battle | Shading/placement | binary star | king-move separation, exact count per row/col/region | Good / cheap | yes (3) |
+| Cave / Corral | Shading | binary shade | white connected, walls reach border | Good / moderate | yes (4) |
+| Canal View | Shading | binary shade | shaded connected, no 2x2 | Workable / moderate | clue type in use (2) |
+| Kurotto | Shading | binary shade | none | Good / moderate | via Sudokurotto (1) |
+| Mochikoro / Mochinyoro | Shading | binary shade | white regions rectangles, diagonally connected, no 2x2 | Workable / heavy | — |
+| Light and Shadow | Shading | binary shade | both colours partition, one clue per area | Good / moderate | — |
+| Chocona | Shading | binary shade | shaded blocks are rectangles | Good / cheap | — (repo work) |
+| Stostone | Shading | binary shade | one block per region, gravity fills bottom half | Workable / heavy | — (tag only) |
+| Nuribou | Shading | binary shade | shaded blocks are 1-wide bars, equal bars not diagonal | Workable / heavy | — |
+| Norinori | Shading | binary shade | shaded set is dominoes, two per region | Good / cheap | — (tag only) |
+| Choco Banana | Shading | binary shade | shaded groups rectangles, white groups not | Good / moderate | — (repo work) |
+| Shimaguni | Shading | binary shade | one island per region, separated, neighbours differ in size | Good / cheap | — (tag only) |
+| Aqre | Shading | binary shade | shaded connected, no run of 4 in either colour | Good / moderate | — |
+| Aquapelago | Shading | binary shade | shaded non-adjacent but diagonally grouped, white connected, no white 2x2 | Workable / heavy | — |
+| Minesweeper | Shading/placement | binary mine | total count only | Good / cheap | yes (2) |
+| Battleships | Shading/placement | binary occupancy | exact fleet, king-move separation | Good / cheap | yes (2+) |
+| Akari | Shading/placement | binary bulb | all white lit, bulbs don't see each other | Workable / cheap | yes (1) |
+| Dominion | Shading | binary shade | shaded set is dominoes, letter-consistent white regions | Workable / moderate | — (tag only) |
+| Cross the Streams | Shading | binary shade | connected, no 2x2 | Workable / moderate | — (tag only) |
+| Coral | Shading | binary shade | connected, no 2x2, white reaches border | Workable / heavy | — (tag only) |
+| Creek | Shading | binary shade | white connected | Workable / cheap | — |
+| Tetrochain | Shading | tetromino placement | diagonal chain, orthogonal separation | Poor / heavy | — |
+| Slitherlink | Loop | edge on/off | single closed loop | Good / heavy | yes (3) |
+| Masyu | Loop | per-cell loop shape | single closed loop through every circle | Good / moderate | yes (3+, incl. a named genre) |
+| Country Road | Loop | per-cell loop shape | one loop, each region visited once | Good / moderate | — (tag only) |
+| Yajilin | Loop + shading | shade + loop | loop covers all unshaded, shaded non-adjacent | Workable / heavy | — (tag only) |
+| Simple Loop | Loop | per-cell loop shape | Hamiltonian on unshaded | Workable / moderate | — |
+| Castle Wall | Loop | per-cell loop shape | one loop, explicit inside/outside | Good / moderate | via Castle Wall x Masyu (3) |
+| Balance Loop | Loop | per-cell loop shape | one loop through every circle | Good / moderate | — |
+| Double Back | Loop | per-cell loop shape | Hamiltonian on unshaded, two visits per region | Workable / moderate | — |
+| Detour | Loop | per-cell loop shape | Hamiltonian on all cells | Good / heavy | — |
+| Geradeweg | Loop | per-cell loop shape | one loop through every circle | Good / moderate | — (tag only) |
+| Maxi Loop | Loop | per-cell loop shape | Hamiltonian on all cells | Workable / heavy | — |
+| Mid-Loop | Loop | per-cell loop shape | one loop through every circle | Workable / moderate | — (tag only) |
+| Koburin | Loop + shading | shade + loop | as Yajilin | Workable / heavy | — |
+| Myopia | Loop | edge on/off | single closed loop | Workable / heavy | — (tag only) |
+| Onsen-Meguri | Loop | multi-loop | one loop per circle, equal visit length per room | Poor / heavy | — |
+| Pipelink / Loop Special | Loop | loop shape with crossings | Hamiltonian / loop identity classes | Poor / heavy | — |
+| Round Trip | Loop | loop with crossings | single loop | Workable / heavy | — |
+| Tapa-Like Loop | Loop | per-cell loop shape | single closed loop | Good / moderate | via Tapa x Masyu, Necklace (2) |
+| Moon or Sun | Loop | per-cell loop shape | one loop, one visit per region, moon/sun alternation | Good / moderate | — (tag only) |
+| Numberlink / Arukone | Path | path id per cell | disjointness (+ coverage) | Poor / heavy | — (tag only) |
+| Nagenawa / Ring-Ring | Loop | rectangle loops | non-overlap, no shared corners | Workable / moderate | — |
+| Snake | Path | binary occupancy | single self-avoiding path, no diagonal contact | Good / moderate | yes (2+, tags) |
+| Slalom / Gokigen | Line | binary diagonal | acyclicity | Workable / cheap | partial (1, unverified) |
+| Icebarn | Path | directed path with crossings | terrain-driven | Poor / heavy | — |
+| Haisu / Kaisu | Path | Hamiltonian path | region visit ordinals | Good / heavy | — |
+| Dotchi-Loop | Loop | per-cell loop shape | per-region turn/straight uniformity | Workable / moderate | — |
+| Linesweeper | Loop | per-cell loop shape | single closed loop, loop avoids clue cells | Good / moderate | — |
+| Regional Yajilin | Loop + shading | shade + loop | loop covers all white, shaded non-adjacent, per-region shaded count | Good / heavy [unverified rules] | — |
+| Bosnian Road | Loop | cell loop | non-self-touching loop, 8-neighbour count clue | Good / moderate | — |
+| Fillomino | Region | region id | equal-size regions not adjacent | Good / moderate (measured) | yes (4+) |
+| Symmetry Area | Region | region id | as Fillomino + 180° symmetry | Good / moderate | — |
+| Araf | Region | region id | two clues per region, size strictly between | Good / moderate | — |
+| Shikaku | Region | rectangle placement | exact tiling | Good / cheap | yes (4) |
+| Nanro | Region + number | filled/empty + count | connected, no 2x2, equal counts not adjacent across borders | Good / moderate | — (tag only) |
+| Spiral Galaxies | Region | region id | 180° symmetry about a given centre | Good / moderate | yes (2 + WPC hybrids) |
+| Pentominous | Region | pentomino tiling | adjacent shapes differ | Workable / moderate | yes (2) |
+| Tetrominous / Fourcells / Fivecells | Region | fixed-size tiling | adjacent shapes differ / border-count clues | Workable / moderate | — |
+| Statue Park | Region/placement | polyomino placement | exact bank, separation, connected complement | Workable / heavy | yes (1, Minesweeper-clued) |
+| Tren | Region/placement | 1x2, 1x3 placements | non-overlap; clue is sliding freedom | Workable / moderate | — |
+| Sashigane | Region | 1-wide L tiling | exact tiling | Good / cheap | — (tag only) |
+| Snake Pit | Region | snake tiling | equal-length snakes not adjacent | Good / heavy | — |
+| Nawabari | Region | rectangle tiling | per-cell border count clue | Good / cheap | — (Landvermessung tag) |
+| Tatamibari | Region | rectangle tiling | shape-class clues, no 4-way border crossings | Workable / cheap | — |
+| Ripple Effect / Hakyuu | Number placement | digit per cell | 1..N per region, distance rule on repeats | Good / cheap | yes (tags: Hakyuu, Suguru) |
+| Suraromu | Loop | loop + gate ordinals | single loop through every gate once | Workable / heavy | — |
+| Nondango | Region/placement | binary recolour | one black per region, no three-in-line | Workable / cheap | — |
+| Toichika | Region/placement | arrow per region | pairing | Poor / cheap | — |
+| Toichika 2 | Region + number | number per region | pair separated by exactly N cells | Good / cheap | — |
+| Doppelblock | Number placement | digit + 2 blanks per line | Latin square with blanks, outside sums | Good / cheap | yes (a named LMD genre) |
+| Compass | Region | region id | four directional counts per clue | Good / moderate | — (tag) |
+| Square Jam | Region | square tiling | side-length clues, no 4-way intersections | Good / cheap | — |
+| Double Choco | Region | region id | two congruent halves per region | Good / moderate | — |
+| Renban / Makaro / Meandering Numbers / Cojun | Region + number | digit per cell | 1..N per region under an ordering/adjacency rule | Good / cheap | already standard variant-sudoku rules |
 
-# 6. Ranked recommendations for this repo
+# 6. Encoding building blocks
 
-**Build these ten, in this order.** The ranking weighs three things: how native the digit
-interaction is (does the setter have to invent the hook?), implementation cost in a
-SudokuMaker `update` over a candidate grid, and whether published hybrids prove the combined
-solve is pleasant rather than two puzzles glued together.
+Every model in this document is assembled from eight devices. Build each once and
+the genres name themselves. The repo's own practice is the reference:
+`docs/research/fillomino-cpsat.md` for flow, `docs/research/renbanana_cpsat.py` and
+`docs/research/zombo_brainanas_cpsat.py` for the rectangle lemma, lazy cuts and
+staged hunts, `examples/_shared/cpsat.py` for the solve/forbid/re-solve discipline,
+`docs/research/ortools-tuning.md` for the solver settings.
 
-1. **Yin-Yang.** No native clues, so every clue comes from the Sudoku side and the layers
-   cannot decouple. Colours every cell. The most-set shading hybrid in modern variant
-   sudoku, with four distinct published examples found here. Cost: two connectivity
-   propagators, nothing else.
-2. **Fillomino.** The only genre where the hybrid is an identification rather than an
-   overlay — the Sudoku digit *is* the region size. Featured on Cracking The Cryptic. The
-   repo already holds Fillomino CP-SAT, prior-art and isofill-transfer research.
-3. **Shikaku.** Rectangles are a small enumerable domain, so the propagator is cheap and
-   sound; area equals digit with no remapping; four published hybrids by a strong setter.
-   Reuses the Renbanana rectangle catalogue.
-4. **Nurikabe.** The deepest hybrid tradition in the survey (five examples, including a
-   "colossal" and a setter's debut), three independent digit hooks, island size bounded by 9.
-   Cost: the hardest connectivity propagator here — budget for it.
-5. **Star Battle.** The cheapest Good entry. King-move separation plus exact counts is
-   already SudokuMaker-shaped, and the published 9x9 form (1-7 plus two stars per house)
-   balances the grid exactly.
-6. **Cave.** Visibility clues are the X-sums/skyscraper machinery this repo already models,
-   and the setter community's digit-sum variant solves the range overshoot. Four published
-   hybrids, including a WPC-derived Twilight Cave.
-7. **Geradeweg.** The first loop component worth building: segment length 1..9 equals the
-   digit range exactly, one number per circle, no invented rule, and the loop need not cover
-   every cell so there is slack for pure Sudoku deduction. Build the loop propagator here
-   and Masyu, Country Road and Balance Loop follow almost free.
-8. **Masyu.** *Masyudoku* is a registered genre and a 2026 LMD puzzle pairs it with Region
-   Sum Lines. The clue is about shape at a cell, which composes with parity and length
-   hooks, and unvisited cells stay free for Sudoku work.
-9. **Chocona or Choco Banana.** Both are rectangle-shading with a size or count clue in
-   digit range, and both reuse this repo's existing Renbanana and choco-banana propagation
-   work. Pick Choco Banana if you want the anti-rectangle rule's bite, Chocona for the
-   per-box count hook.
-10. **Haisu.** The only genre whose clue is natively an *ordinal* — "this cell is on the Nth
-    visit to its box" — which gives a Sudoku grid the one thing digits cannot express, a
-    total order. No published hybrid found, which makes it the most interesting unclaimed
-    idea in this survey. Build it after the loop/path propagator from #7 exists.
+**Single-commodity flow to a root.** One int per directed edge (288 on a 9x9), a
+root bool per cell, conservation `inflow - outflow == 1 - emit` at every cell, arcs
+gated on the cells sharing the property being connected. Proves a set is connected;
+when the root emits a *variable* amount it also proves size-equals-that-amount in
+the same equation, which is the fillomino trick. Used by: Nurikabe (twice), Yin-Yang
+(twice), Tapa, Kurodoko, Heyawake, Cave, Canal View, Nurimisaki, Aqre, Coral, Creek,
+Cross the Streams, Nanro, Araf, Fillomino, Light and Shadow, Snake Pit, Statue Park.
+Rejected alternatives are on file: parent-pointer spanning forests need an extra
+region id to stay correct, and lazy no-good cuts on disconnection turn one solve
+into an unbounded loop.
 
-**Strong second wave, if the first ten land well:** Heyawake (per-box shaded count, plus the
-distinctive white-run rule), Norinori (cheapest non-trivial `update` in the survey),
-Nanro, Spiral Galaxies (symmetry pairs cells, two published hybrids plus a long WPC record),
-Sashigane, Snake Pit, Nawabari, Aqre, Toichika 2, Square Jam, Double Choco, Light and Shadow,
-Country Road, Bosnian Road, Minesweeper.
+**Region ids made free by the separation rule.** When a genre forbids equal-sized
+regions from touching, a region *is* a connected component of equal digits, so no
+region objects, no region count and no separation constraint need be written —
+everything follows from one statement per component. Used by: Fillomino, Symmetry
+Area, Snake Pit, and partially Nuribou. This is the cheapest region encoding known
+here and the first thing to check for in any new region genre.
 
-**Avoid, and why:**
+**Loop via `AddCircuit` with self-loops.** Arc literals for the four directions out
+of each cell plus a self-loop literal per cell, ~370 literals on a 9x9. Subtour
+elimination is native to the constraint. Force a self-loop literal false to require
+coverage of that cell; leave it free when the loop may skip cells. A path instead of
+a loop is a circuit with one virtual node joining the endpoints. Used by: Masyu,
+Geradeweg, Balance Loop, Country Road, Moon or Sun, Castle Wall, Dotchi-Loop,
+Tapa-Like Loop, Linesweeper, Bosnian Road, Simple Loop, Double Back, Detour, Maxi
+Loop, Yajilin, Koburin, Haisu, Snake. Slitherlink's variant lives on the vertex
+graph over 180 edge bools with degree-0-or-2 constraints.
 
-- **Hitori** — rule 2 is vacuous on a completed Sudoku. The only interesting form inverts
-  the puzzle and does not fit a fixed 9x9 candidate grid.
-- **Shakashaka** — five-state decision layer, a geometric global no local propagator
-  captures, and a triangle is an orientation, not a quantity.
-- **Numberlink / Arukone** — topological routing with no count, length or order for a digit
-  to carry; the one natural hook forces all nine cells of a digit into one path.
-- **Icebarn and Nagare** — both need a given terrain of special cells that a Sudoku grid
-  does not supply, and both encode directions rather than quantities.
-- **Tetrochain** — LITS without the box partition that made LITS fit, plus a harder global.
-- **Pipelink** — crossings multiply per-cell state without adding a digit hook.
-- **Toichika (v1)** — arrows are directions with no quantity; use Toichika 2 instead.
-- **Stostone** — the gravity rule needs an even grid height and does not express in a
-  candidate-grid propagator.
-- **Pentominous / Tetrominous as tilings** — 81 is divisible by neither 5 nor 4, so a pure
-  tiling is impossible and every hybrid has to work around it.
+**Placement bools instead of cell states.** Enumerate the legal placements of a
+shape in Python, one bool each, `AddExactlyOne` per clue or per bank item, and a
+linear cover equality per cell. Turns a shape-detection problem into exact cover,
+which is CP-SAT's best case, and makes pairwise shape rules a static clause list
+computed before the solve. Used by: Shikaku, Nawabari, Tatamibari, Sashigane,
+Pentominous, Fourcells, Fivecells, Statue Park, Battleships, LITS (per box), Tren,
+Nagenawa and Ring-Ring. This device removes the need for a flow entirely wherever
+the shape is connected by construction.
 
-**One implementation warning that applies to every entry above.** The repo's standing
-invariant is that a component's `update` must never remove a candidate the true solution
-needs, and the genres here fail that invariant in one specific way: connectivity. "This cell
-cannot be shaded because shading it would disconnect the white region" is sound only if the
-reasoning accounts for every cell still undecided, and a propagator that reasons over the
-*current* partial grid instead of every completion will silently over-prune. Read
-`docs/research/connectivity-techniques.md` and `docs/research/infection-shading-model.md`
-before writing any of the connected-set genres, and run the soundness harness on every
-change, expecting zero violations.
+**The rectangle lemma, and its 1-wide cousin.** A colour's groups are all filled
+rectangles iff the colour is connected and no 2x2 window holds exactly three cells
+of it — 64 window constraints, exact and local, already written in
+`renbanana_cpsat.py`. The same style of window argument gives 1-wide bars: no 2x2
+window holds three or more. Used by: Chocona, Choco Banana, Mochikoro, Mochinyoro,
+Tasquare, Lookair, Nuribou, Snake Pit, Square Jam.
+
+**No-2x2 and run-length clause lists.** Both are static clauses computed once. No
+monochrome 2x2 is 64 windows per colour. A run-length bound (Aqre's "no four in a
+row of either colour") is two clauses per window of four, 216 on a 9x9. They cost
+nothing and prune hard, which is the best combination a generator can get. Used by:
+Nurikabe, Tapa, Canal View, Yin-Yang, Nurimisaki, Aqre, Coral, Cross the Streams,
+Nanro, Aquapelago, Heyawake's rule 3 (as a segment clause list).
+
+**Count clues as linear sums of bools.** `x[p] == sum(b[q] for q in some set)` — an
+int equal to a sum of booleans — is the friendliest constraint shape in this
+document and the one CP-SAT presolve handles best. It covers every per-box shaded
+count (Heyawake, Chocona, Aqre, Shimaguni, Stostone, Nanro), every 8-neighbourhood
+count (Minesweeper, Koburin, Linesweeper, Bosnian Road), every outside row/column
+count (Battleships, Snake, Aquarium), and every per-box loop-visit or turn count
+(Country Road, Detour, Masyudoku's published coupling). When a genre's clue is a
+count, the hybrid is cheap.
+
+**Sight and segment chains.** A visibility clue needs prefix bools:
+`see[p,d,k] => see[p,d,k-1] AND the k-th cell is the right colour`, ~8 per direction
+per clue, then a linear sum. The same chain measures a straight loop segment's
+length. Cheap in bool form; the expensive variant is a *sum of the digits seen*,
+which needs a bool-times-int product per step and is the costliest device here —
+prefer one direction, a two-digit clue, or a group sum instead. Used by: Kurodoko,
+Cave, Canal View, Nurimisaki, Coral, Akari, Myopia, Geradeweg, Balance Loop,
+Mid-Loop, Round Trip, Doppelblock's sandwich sums.
+
+**Position variables for order.** `pos[p]` in 0..80 with `pos[q] == pos[p] + 1`
+reified on each arc literal, one cell pinned to 0: 81 ints and ~290 reified
+equalities. The only way to express "in the order the loop visits them", and the
+most expensive device in the toolkit. Build it once in Simple Loop. Used by: Haisu
+and Kaisu (where the ordinal *is* the clue and pays for itself), Suraromu, and any
+"digits along the line increase" coupling on Snake or Simple Loop.
+
+**Two disciplines, not devices, that the repo already enforces.** First, **stage the
+hunt**: sample the decision layer alone, then fit digits on each fixed layer, never
+a joint search — `renbanana_cpsat.py` says so explicitly and the Zombo prototype
+agrees. Second, **forbid on the answer variables only**. `enumerate_all_solutions`
+is a trap for exactly these models: auxiliary flow, region-id and placement
+variables produce phantom second solutions, and it reported n=2 on a unique
+fillomino. Use solve, read back, forbid on the cells, solve again — and treat a
+`TimeoutError` as no verdict, never as unique.
+
+# 7. Ranked recommendations for this repo
+
+**The lens:** would I want to write a CP-SAT generator and uniqueness checker for
+this genre as a sudoku hybrid, in the style of `examples/fillomino/generate.py`,
+`renbanana_cpsat.py` and `zombo_brainanas_cpsat.py`? The ranking weighs three
+things: how naturally the digit layer couples (ideally an int equal to a sum of
+bools, or no second layer at all), how expensive the global constraints are to
+encode exactly, and whether the genre is unclaimed enough to be worth the build.
+
+**Build these ten, in this order.**
+
+1. **Star Battle.** The smallest model in the survey and the best warm-up: no
+   connectivity, no shape rule, no flow. Place 1..7 plus two stars per house and the
+   two layers collapse into one variable per cell — 81 ints, ~90 linear constraints,
+   sub-second proofs. Published hybrid exists to check against.
+2. **Chocona.** The rectangle lemma alone, 64 windows, plus `x[p] == sum of shaded
+   in box`. No flow anywhere. Cheapest *good* coupling in the document, and every
+   line of the shape encoding is already in `renbanana_cpsat.py`. Unclaimed.
+3. **Geradeweg.** The loop family's best coupling-to-cost ratio: segment length is
+   1..9, exactly the digit range, so the clue is a bare equality with no remap. One
+   `AddCircuit`, one prefix chain per circle, and the loop need not cover every cell
+   so the digit layer keeps freedom. No published hybrid anywhere — the strongest
+   unclaimed pick in the survey.
+4. **Light and Shadow.** Fillomino's flow with a colour layer: both colours
+   partition into clued areas whose size equals a digit, 1..9, on every cell. The
+   repo's best-understood encoding transfers almost verbatim and the genre has no
+   published hybrid at all.
+5. **Shikaku.** Exact cover over enumerated rectangles — no connectivity machinery
+   of any kind — with a native in-range area clue and four published hybrids to
+   calibrate against. The best cost-to-value ratio in the region family.
+6. **Minesweeper.** Pure 0/1 linear algebra: every clue is a sum of eight bools
+   equalling a digit. CP-SAT presolve eats this. Two published hybrids, including a
+   Serkan Yürekli GM Puzzles piece, so the design space is charted.
+7. **Linesweeper, and Bosnian Road with it.** One `AddCircuit`, no coverage rule, no
+   region structure, no prefix chain, and a Minesweeper clue mounted on a loop — the
+   cheapest way to get an order-bearing decision layer with a native digit clue. One
+   build with a rule flag covers both genres, neither of which has a hybrid.
+8. **Shimaguni.** The one genre whose global constraint decomposes onto the sudoku's
+   own boxes: nine independent 3x3 connectivity problems, each an
+   `AddAllowedAssignments` table, so the model contains no flow at all. Island size
+   equals a digit, and the neighbouring-boxes-differ rule reads like a latin-square
+   argument.
+9. **Sashigane.** Exact cover over enumerated L-shapes with three clue types —
+   size, elbow, arrow — of which the size is a native in-range digit and the other
+   two are static filters on the enumeration rather than constraints. Unclaimed.
+10. **Araf.** Fillomino's machinery with a strictly *looser* clue: the region size
+    is bracketed between two digits rather than pinned. That looseness is what stops
+    the region layer solving itself, which is the single most common failure mode of
+    a hybrid. Unclaimed.
+
+**Cheap because the repo already has the encoding.** These reuse a device that is
+written, debugged and measured here, so the build is assembly rather than research:
+**Fillomino** and **Symmetry Area** (the flow-plus-equal-digit collapse, with a
+recorded runtime profile — 0.3-69 s proofs, median 10.4 s); **Choco Banana** (the
+rectangle lemma, the lazy-cut loop, and an independent verifier all exist);
+**Chocona**, **Mochikoro**, **Square Jam**, **Tasquare** and **Nuribou** (the
+rectangle lemma and its 1-wide cousin); **Nawabari** and **Tatamibari** (Shikaku's
+rectangle enumeration with a different clue family); **Snake Pit** (Fillomino's
+collapse plus two local shape rules); **Doppelblock** and **Ripple Effect** (no
+second layer at all — they are sudoku variants wearing another name).
+
+**Avoid, and why — under this lens the reasons are encoding costs, not taste.**
+
+- **Multi-loop genres** — Onsen-Meguri, Loop Special, Pipelink. `AddCircuit` means
+  *one* circuit; several loops need per-cell loop-id labels whose classes the solver
+  is choosing, which is the most expensive shape in this document. Pipelink's
+  crossings additionally force a split-cell graph at double the node count.
+- **Multi-commodity flow** — Numberlink and Arukone. Nine endpoint pairs means nine
+  commodities, ~2600 flow ints, and the genre admits many solutions without full
+  coverage, so uniqueness proofs are slow *and* usually negative.
+- **Two adjacency graphs in one model** — Aquapelago (orthogonal white connectivity
+  plus diagonal shaded groups), Mochikoro and Tetrochain (a flow on the quotient
+  graph of regions under diagonal adjacency, where the graph itself is a decision
+  variable).
+- **Sums along a sight line** — the bool-times-int product per prefix step is the
+  costliest coupling device here. Cave Sums and four-way Kurodoko digit sums want
+  it; take the one-direction, two-digit or group-sum fix instead.
+- **Order-dependent simulation** — Stostone's gravity. Rigid blocks falling is
+  sequential, and the tractable column-count reformulation is a strict relaxation
+  that changes the puzzle. 9 is also odd, so "bottom half" needs a board change.
+- **Half-cell geometry** — Shakashaka. The white regions' boundaries run diagonally
+  through cells, so the rectangle lemma has no analogue and there is no compact cut
+  to post lazily. Heavy cost for geometry rather than puzzle content.
+- **Weak or vacuous coupling** — Hitori (its no-repeats rule is implied by the
+  sudoku and presolve deletes it, leaving an unconstrained shading), Numberlink and
+  Dominion (the natural digit reading forces all nine cells of a digit into one
+  region or path, which is over-tight), Icebarn and Nagare (directions and given
+  terrain, neither of which a sudoku grid supplies), Toichika v1 (arrows carry no
+  quantity — model Toichika 2 instead, whose "a pair of N has exactly N cells
+  between them" is a digit fixing a distance in one linear constraint).
+- **Fixed-size tilings that do not divide 81** — Pentominous (5) and Tetrominous
+  (4). Every hybrid pays a design tax working around it.
+
+**One note carried over.** If any of these is ever also built as a SudokuMaker
+constraint component rather than only as a CP-SAT model, the repo's `update`
+soundness invariant applies and connectivity is where it fails — see
+`docs/research/connectivity-techniques.md` and
+`docs/research/infection-shading-model.md`.
