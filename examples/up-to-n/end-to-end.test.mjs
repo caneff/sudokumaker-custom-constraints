@@ -110,12 +110,15 @@ for (const [link, gen] of BOARDS) {
     ['a marker one step in from the end', (d, g) => { g.cells = g.cells.map(c => c + inward(g)) }, /Up to N: .* not at either end/],
     ['a second marker on the same end', (d, g) => markers(d).push({ ...g, value: '1' }), /Up to N: .* same line and end/],
     ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a positive integer/],
-    // Digits stop one short of the board, and the marker at the top of the
-    // last column is clued: its target digit is one the board cannot hold.
+    // Digits stop one short of the board, every clue is cleared, and only the
+    // marker at the top of the last column is clued: its target digit is one
+    // the board cannot hold, and the refusal names that marker.
     ['a target digit past maxDigit', d => {
-      d.puzzle.maxDigit = board.n - 1
-      markers(d).find(m => m.cells[0] === board.n - 1 && m.cells[1] === 2 * board.n - 1).value = '1'
-    }, /Up to N: .* target digit \d+, outside 1\.\.\d+/]
+      const n = board.n
+      d.puzzle.maxDigit = n - 1
+      for (const m of markers(d)) m.value = ''
+      markers(d).find(m => m.cells[0] === n - 1 && m.cells[1] === 2 * n - 1).value = '1'
+    }, new RegExp(`Up to N: the marker at R1C${board.n} and R2C${board.n} aims at target digit ${board.n}, outside 1\\.\\.${board.n - 1}`)]
   ]) {
     const bad = copy(doc)
     edit(bad, markers(bad)[0])
