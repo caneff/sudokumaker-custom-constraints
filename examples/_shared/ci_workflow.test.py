@@ -1,10 +1,10 @@
-# #424: check-full's heavy groups run as separate CI jobs (a matrix), side
-# by side with `just check`, instead of one long "Gate" step. This proves the
-# split without re-implementing YAML parsing: the workflow's matrix recipe
-# list is read with a narrow regex (this file's format is ours to keep
-# simple), then the actual coverage claim is checked the same way
-# gate.test.py checks it -- by running each recipe for real through
-# gate_lib.commands() and diffing against `just check-full`.
+# check-full's heavy groups run as separate CI jobs (a matrix), side by side
+# with `just check`. This proves the split without re-implementing YAML
+# parsing: the workflow's matrix recipe list is read with a narrow regex
+# (this file's format is ours to keep simple), then the actual coverage
+# claim is checked the same way gate.test.py checks it -- by running each
+# recipe for real through gate_lib.commands() and diffing against
+# `just check-full`.
 #
 #   uv run examples/_shared/ci_workflow.test.py
 
@@ -45,9 +45,19 @@ if __name__ == "__main__":
         )
 
     # `just check` still runs alone on a push to main; the rest are PR-only.
-    assert "matrix.recipe == 'check'" in text, (
-        "push to main must still be able to run just `check`, "
-        "skipping the other matrix legs"
+    # The guard has to sit on the Gate *step* -- `matrix` isn't in scope for
+    # a job-level `if`, so pin the guard immediately above the line that
+    # actually runs `just <recipe>`, not just anywhere in the file (a
+    # job-level `if:` -- which GitHub silently mis-evaluates rather than
+    # rejects -- would satisfy a bare substring search).
+    step_guard = re.search(
+        r"if:\s*.*matrix\.recipe == 'check'.*\n\s*run: uvx --from rust-just just \$\{\{ matrix\.recipe \}\}",
+        text,
+    )
+    assert step_guard, (
+        "the push-to-main guard must be the `if:` on the Gate step itself, "
+        "immediately before `run: uvx --from rust-just just ${{ matrix.recipe }}` -- "
+        "a job-level `if:` can't see `matrix` and would skip every leg on push"
     )
 
     # The coverage claim: running every matrix recipe once, together, must

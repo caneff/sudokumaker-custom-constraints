@@ -6,14 +6,14 @@ on:
   pull_request:
 
 jobs:
-  # A pull request runs `check-full`'s coverage as four side-by-side legs
-  # instead of one long step; a push to main runs only `check` (#411, split
-  # into parallel jobs in #424). `examples/_shared/ci_workflow.test.py` fails
-  # if this matrix stops covering exactly what `just check-full` runs -- the
-  # justfile recipes below are the source of truth, not this list of names.
+  # A pull request runs `check-full`'s coverage as four side-by-side legs;
+  # a push to main runs only the `check` leg. `matrix` isn't in scope for a
+  # job-level `if`, so the push-to-main guard sits on the Gate step, not the
+  # job. `examples/_shared/ci_workflow.test.py` fails if this matrix stops
+  # covering exactly what `just check-full` runs -- the justfile recipes
+  # below are the source of truth, not this list of names.
   gate:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || matrix.recipe == 'check'
     strategy:
       fail-fast: false
       matrix:
@@ -36,4 +36,5 @@ jobs:
           enable-cache: true
 
       - name: Gate (${{ matrix.recipe }})
+        if: github.event_name == 'pull_request' || matrix.recipe == 'check'
         run: uvx --from rust-just just ${{ matrix.recipe }}
