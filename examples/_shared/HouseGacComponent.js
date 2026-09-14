@@ -34,12 +34,8 @@
 //! digits before and after them.
 //!
 //! Placed cells (one candidate left) are stripped from the house and skipped
-//! by the walk (#435). Their digit is removed from every other cell first, so
-//! a group that would have included a placed cell owns its digits iff the
-//! rest of the group does, and that digit is already gone from everywhere
-//! else -- the free-cell walk removes exactly what walking the whole house
-//! would remove. On a mid-search house with 4-5 free cells that is 16-32
-//! groups instead of 511.
+//! by the walk (#435; the argument for why that loses nothing is with the
+//! strip loop in `update`, below).
 
 //! 2^n groups per call over the free cells: about 2 us at n=9 free cells
 //! against 26 us for a matching filter, but the cost doubles with each free
@@ -50,10 +46,11 @@
 //! docs/research/408-house-gac/.
 const MAX_CELLS = 9
 
-//! `pooledDigitsOf[group]` is every digit the cells of `group` could hold.
-//! Shared between calls, so it is fully used before `update` first yields: the
-//! solver may run another component's `update` at a yield point.
-const pooledDigitsOf = new Int32Array(1 << MAX_CELLS)
+//! Memo: slot g holds group g's pooled digits once the walk has reached g,
+//! and junk before that. Shared between calls, so it is fully used before
+//! `update` first yields: the solver may run another component's `update`
+//! at a yield point.
+const pooledDigitsOf = new Int32Array(2 ** MAX_CELLS)
 
 //! Bit counts looked up rather than counted: two counts per group, 511 groups
 //! per call, and a lookup halves the call (docs/research/all-different-gac.md,
@@ -62,8 +59,10 @@ const pooledDigitsOf = new Int32Array(1 << MAX_CELLS)
 //! with each digit, 131 KB at 16, so a board past 16 is refused at setup; its
 //! table is capped so that loading the code on such a board still works.
 const MAX_DIGIT = 16
-const cellsInGroupOf = countTable(1 << MAX_CELLS)
-const digitCountOf = countTable(1 << (Math.min(helpers.digits.maxDigit, MAX_DIGIT) + 1))
+//! Set-bit count of every group index: how many cells a group holds.
+const cellsInGroupOf = countTable(2 ** MAX_CELLS)
+//! Set-bit count of every digit mask the board can make: how many digits a pool holds.
+const digitCountOf = countTable(2 ** (Math.min(helpers.digits.maxDigit, MAX_DIGIT) + 1))
 
 function getAffectedCells (cells) {
   return cells
@@ -134,10 +133,15 @@ function * update (instance, puzzle) {
   }
 
   const freeCount = freePositions.length
-  const wholeGroup = (1 << freeCount) - 1
+  const wholeGroup = (2 ** freeCount) - 1
   for (let group = 1; group <= wholeGroup; group++) {
     const newestCellBit = lowestBit(group)
     const newestPosition = freePositions[positionOf(newestCellBit)]
+    //! pooledDigitsOf is a memo: slot g holds group g's pool once the loop has
+    //! reached g, and junk before that. Storing this group's pool here is what
+    //! lets later groups skip re-pooling their cells: every group that is this
+    //! group plus one lower cell reads this slot instead. Group 7 (cells
+    //! 0,1,2) reads slot 6 (cells 1,2) and ORs in cell 0.
     const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[newestPosition]
     pooledDigitsOf[group] = pooledDigits
 
@@ -151,6 +155,11 @@ function * update (instance, puzzle) {
 
     const groupOwnsItsDigits = digitsInGroup === cellsInGroup
     if (groupOwnsItsDigits) {
+      //! The cells not in this group, as a mask: flip the group's bits and keep
+      //! only the house's. The loop then visits just those cells: each pass
+      //! takes the lowest set bit, turns it into the cell's position, strips the
+      //! group's digits there, and drops that bit from `rest`. Mask 10100 is
+      //! cells 2 and 4, two passes, nothing tested in between.
       const cellsOutside = wholeGroup & ~group
       for (let rest = cellsOutside; rest !== 0; rest = withoutLowestBit(rest)) {
         const restPosition = freePositions[positionOf(lowestBit(rest))]
@@ -159,6 +168,10 @@ function * update (instance, puzzle) {
     }
   }
 
+  //! Hand the removals to the app, one change per cell that shrank. The walk
+  //! only clears bits, so snapshot minus working mask is the whole difference.
+  //! Yielding here and not inside the walk keeps pooledDigitsOf ours until the
+  //! walk is done: a yield lets the solver run another house's update.
   for (let position = 0; position < cellCount; position++) {
     if (candidates[position] !== startingCandidates[position]) {
       const removedDigits = startingCandidates[position] & ~candidates[position]
