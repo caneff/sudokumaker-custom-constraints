@@ -29,7 +29,10 @@ board with no groups has no clues to read.
 - `soundness-harness.mjs` — zero removed true candidates.
 - `update-strength.test.mjs` — never weaker than the frozen floor in
   `.golden/UpToNComponent.floor.js` (below).
-- `PUZZLE_LINK.txt`, `gen.json` — the shipped 9×9 board and its record.
+- `PUZZLE_LINK.txt`, `gen.json` — the shipped 9×9: 18 clues, no givens.
+- `PUZZLE_LINK_9x9.txt`, `gen_9x9.json` — the carve's minimal 9×9: the same
+  solution with 13 clues, no givens. Unique by CP-SAT, but the live app times
+  out on it (below). It is the benchmark for a stronger component.
 - `PUZZLE_LINK_4x4.txt`, `gen_4x4.json` — a 4×4 (2×2 boxes).
 - `PUZZLE_LINK_6x6.txt`, `gen_6x6.json` — a 6×6 (2×3 boxes).
 
@@ -89,25 +92,46 @@ the solution, removes givens while CP-SAT still proves one solution, then
 blanks clue values the same way.
 
 A fresh search overwrites that size's pair; 40 seeds take about 4 minutes at
-9×9 and seconds at 4×4 and 6×6:
+9×9 and seconds at 4×4 and 6×6. A fresh 9×9 lands on the plain names, so move
+it to the `_9x9` pair and derive the shipped board from it:
 
 ```
-uv run examples/up-to-n/build_size.py 9 3 3 --local
 uv run examples/up-to-n/build_size.py 6 2 3 --local
 uv run examples/up-to-n/build_size.py 4 2 2 --local
+uv run examples/up-to-n/build_size.py 9 3 3 --local
+git mv examples/up-to-n/PUZZLE_LINK.txt examples/up-to-n/PUZZLE_LINK_9x9.txt
+git mv examples/up-to-n/gen.json examples/up-to-n/gen_9x9.json
+uv run examples/up-to-n/build_size.py --derive-shipped-9x9
 ```
 
-After a change to `main.js`, the component, `grid-rowcol.js` or the rules text,
-re-encode the committed boards instead, with no search:
+After a change to `main.js`, the component, `grid-rowcol.js`, the labels or
+the rules text, re-encode every committed board instead, with no search:
 
 ```
+uv run examples/up-to-n/build_size.py --rebuild 4 --local
+uv run examples/up-to-n/build_size.py --rebuild 6 --local
 uv run examples/up-to-n/build_size.py --rebuild 9 --local
+uv run examples/up-to-n/build_size.py --rebuild-minimal-9x9
 ```
 
 `--local` is required: a no-ring board has only the drawn-groups lane.
 
-**Known gap.** A drawn group renders nothing, so the markers and their clues
-do not show on the board.
+**Clue labels.** A drawn group renders nothing in the app, so the builder
+draws each clued marker's number as a text label half a cell outside the grid,
+beyond the marker's border cell (a type-2002 cosmetic symbol,
+`framebuild.clue_labels`). The label is written from the group's own value,
+and `framebuild.check` and `build_link.test.py` hold the two equal; a blank
+marker gets no label. The labels exist only on generated boards: a setter who
+draws a marker by hand in the editor must add a text cosmetic for its clue by
+hand (Add element, "Cosmetic symbols", Text).
+
+**Two 9×9 boards.** The carve's minimal 9×9 shows 13 clues and no givens, and
+the live app finds no solution to it within 300 s. The same solution with more
+clues shown, still no givens, was timed at 15 (timeout), 18 (unique, 15 s) and
+24 (unique, 13 s) clues (`docs/research/368-up-to-n-setup-throw.md`, finding
+5). The shipped board is the 18-clue one, derived from the minimal one by
+`build_size.py --derive-shipped-9x9`; the minimal one stays as
+`PUZZLE_LINK_9x9.txt`.
 
 ## Run the tests
 
