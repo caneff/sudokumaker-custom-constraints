@@ -28,6 +28,7 @@ from framebuild import (
     build_doc,
     check,
     generate,
+    house_gac_constraint,
     load_board,
     main,
     make_grid,
@@ -178,6 +179,97 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
             assert "maxDigit" in str(e), e
         else:
             raise AssertionError("a document of the wrong size was not caught")
+
+
+def test_build_doc_ships_no_house_gac_constraint_by_default():
+    # `Spec.house_gac` defaults False, so every already-shipped link stays
+    # byte-unchanged until a board opts in (#421).
+    with _spec(["FooComponent.js"]) as spec:
+        _, doc, _ = _build(spec)
+        names = [
+            c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" not in names
+
+
+def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
+    # Opting in adds one more constraint: the shared house-gac.js backend,
+    # carrying HouseGacComponent.js as its one component (#421, following
+    # docs/research/408-house-gac/house_gac_links.py's shape).
+    with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
+        _, doc, _ = _build(spec)
+        gac = next(
+            c
+            for c in doc["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") == "House GAC"
+        )
+        shared = pathlib.Path(__file__).parent
+        assert gac["definition"]["backend"]["code"] == minify_js(
+            (shared / "house-gac.js").read_text()
+        )
+        assert gac["definition"]["components"] == [
+            {
+                "type": "code",
+                "name": "HouseGacComponent",
+                "code": minify_js((shared / "HouseGacComponent.js").read_text()),
+            }
+        ]
+
+
+def test_build_doc_refuses_house_gac_above_nine_cells():
+    # HouseGacComponent.js refuses to register past a 9-cell house at setup
+    # (MAX_CELLS); a board that would silently ship a house past that size
+    # fails loud here instead, at build time (#421).
+    with _spec(["FooComponent.js"], house_gac=frozenset({10})) as spec:
+        board = _board(n=10, bh=2, bw=5)
+        try:
+            build_doc(spec, board, local=False)
+            raise AssertionError("build_doc accepted a house_gac board above 9 cells")
+        except ValueError as e:
+            assert "9" in str(e)
+
+
+def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
+    # build_doc's own cap check (test above) is not the only caller: a
+    # hand-built board (running-start/build_link.py's build_from_template)
+    # appends `house_gac_constraint()` directly, bypassing build_doc
+    # entirely, so the cap has to live in the one function every caller goes
+    # through, not just in build_doc (#421 review round 1).
+    house_gac_constraint(9)  # does not raise
+    try:
+        house_gac_constraint(10)
+        raise AssertionError("house_gac_constraint accepted n=10")
+    except ValueError as e:
+        assert "9" in str(e)
+
+
+def test_build_doc_house_gac_names_one_board_not_the_whole_example():
+    # A Spec is shared by every size and both lanes a build_size.py builds
+    # (framebuild.main), so naming one size must not silently carry onto a
+    # rebuild of another size or of the local lane -- a real bug caught in
+    # review (#421): the same Spec's 9x9 was measured and shipped, but a
+    # plain bool put it on every rebuild of that example, sizes and lanes
+    # that were never timed included.
+    with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
+        _, doc, _ = _build(spec, board=_board(n=4))
+        names = [
+            c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" in names
+
+        _, other_size, _ = _build(spec, board=_board(n=6, bh=2, bw=3))
+        names = [
+            c.get("definition", {}).get("name")
+            for c in other_size["puzzle"]["constraints"]
+        ]
+        assert "House GAC" not in names
+
+        local_doc = build_doc(spec, _board(n=4), local=True)
+        names = [
+            c.get("definition", {}).get("name")
+            for c in local_doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" not in names
 
 
 def test_build_doc_leaves_the_frame_corners_empty():
@@ -562,6 +654,24 @@ def test_rebuild_reproduces_a_committed_link_byte_for_byte():
         assert rebuild(spec, n) + "\n" == link_path.read_text()
 
 
+def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
+    # A board that never carried House GAC turning it on is not board drift:
+    # the guard must not read "new constraint appeared" as "the puzzle
+    # changed" (#421).
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    ) as spec:
+        main(spec, [str(n), str(bh), str(bw), "2"])
+        opted_in = dataclasses.replace(spec, house_gac=frozenset({n}))
+        link = rebuild(opted_in, n)
+        doc = link_codec.decode_puzzle(link)
+        names = [
+            c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
+        ]
+        assert "House GAC" in names
+
+
 def test_rebuild_refuses_a_gen_json_that_moved_the_board():
     n, bh, bw = 4, 2, 2
     with _spec(
@@ -618,6 +728,11 @@ if __name__ == "__main__":
     test_check_accepts_a_backend_that_reaches_for_a_built_in_component()
     test_build_doc_leaves_the_frame_corners_empty()
     test_build_doc_declares_the_interior_rows_and_columns_in_its_backends()
+    test_build_doc_ships_no_house_gac_constraint_by_default()
+    test_build_doc_house_gac_wires_the_shared_filter_onto_every_house()
+    test_build_doc_refuses_house_gac_above_nine_cells()
+    test_house_gac_constraint_refuses_above_nine_cells_on_its_own()
+    test_build_doc_house_gac_names_one_board_not_the_whole_example()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
@@ -630,6 +745,7 @@ if __name__ == "__main__":
     test_a_spec_whose_local_lines_stay_straight_draws_the_frame()
     test_the_rules_text_follows_the_board_not_the_spec()
     test_rebuild_names_the_file_it_cannot_find()
+    test_rebuild_opts_a_board_into_house_gac_for_the_first_time()
     test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines()
     test_main_refuses_a_rebuild_that_also_asks_for_a_fresh_search()
     test_rebuild_reproduces_a_committed_link_byte_for_byte()

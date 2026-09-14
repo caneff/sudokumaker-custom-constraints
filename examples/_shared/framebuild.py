@@ -72,6 +72,16 @@ class Spec:
     # numbered-rooms and running-start, whose PUZZLE_LINK.txt is a different,
     # hand-built board that claimed those names first.
     plain_global_9x9: bool = True
+    # Which GLOBAL-lane sizes carry the shared house-GAC filter (house-gac.js
+    # + HouseGacComponent.js) on every interior row, column and box. Per
+    # BOARD, not per example: the filter is a real strength upgrade (#406)
+    # but only pays for itself in real-app solve time on some boards
+    # (docs/real-app-timing.md, #421), so a size not in this set -- the local
+    # lane at any size, always -- never carries it, and a routine rebuild of
+    # one size cannot silently add it to another. `build_doc` refuses a size
+    # in this set that exceeds the filter's 9-cell cap rather than ship a
+    # link it silently under-solves.
+    house_gac: frozenset[int] = frozenset()
 
 
 def component_files(spec, local):
@@ -432,6 +442,64 @@ def refresh_frame_backends(doc):
     return doc
 
 
+# The shared house-GAC filter (#406, #408, #421): opt-in per board
+# (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
+# entries are always-on and whose absence `refresh_frame_backends` treats as
+# an error.
+HOUSE_GAC_BACKEND_TITLE = "House GAC"
+HOUSE_GAC_COMPONENT_NAME = "HouseGacComponent"
+
+# HouseGacComponent.js's own MAX_CELLS: the largest house it will register on.
+# `build_doc` reads it here, not from the JS, so a board past this size fails
+# loud at build time instead of registering a component that refuses itself
+# at solve time on a link already shipped.
+HOUSE_GAC_MAX_CELLS = 9
+
+
+def house_gac_backend_code():
+    """`(constraint name, minified backend code, minified component code)` for
+    the shared house-GAC filter, read from the working tree."""
+    shared = pathlib.Path(__file__).parent
+    return (
+        HOUSE_GAC_BACKEND_TITLE,
+        minify_file(shared / "house-gac.js"),
+        minify_file(shared / f"{HOUSE_GAC_COMPONENT_NAME}.js"),
+    )
+
+
+def house_gac_constraint(n):
+    """The house-GAC constraint block for an `n`-cell interior: the shared
+    backend plus its one component, no input. `n` is every caller's board
+    size, checked here -- not only in `build_doc` -- because a hand-built
+    board (running-start's `build_link.py`) appends this constraint directly
+    and never calls `build_doc` at all."""
+    if n > HOUSE_GAC_MAX_CELLS:
+        raise ValueError(
+            f"house_gac_constraint: n={n} exceeds HouseGacComponent's "
+            f"{HOUSE_GAC_MAX_CELLS}-cell house cap -- every interior row, "
+            "column and box on this board would be that many cells, so the "
+            "filter refuses to register at all (#421)"
+        )
+    title, backend_code, component_code = house_gac_backend_code()
+    return {
+        "type": 1000,
+        "definition": {
+            "name": title,
+            "input": [],
+            "backend": {"type": "code", "code": backend_code},
+            "components": [
+                {
+                    "type": "code",
+                    "name": HOUSE_GAC_COMPONENT_NAME,
+                    "code": component_code,
+                }
+            ],
+        },
+        "input": {},
+        "style": {},
+    }
+
+
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -446,6 +514,12 @@ def build_doc(spec, board, local=False):
     all, so it is never bent.
     """
     n, bh, bw = board.n, board.bh, board.bw
+    # Local lane never carries it: no measured local board cleared the timing
+    # bar (docs/research/421-frame-link-timing.md), and `spec.house_gac` names
+    # sizes on the global lane only. The cap itself is `house_gac_constraint`'s
+    # to enforce -- it raises below when this is true and n is too big -- so
+    # it is checked once, for every caller, not duplicated here.
+    apply_house_gac = not local and n in spec.house_gac
     bent = local and board.lines != make_lines(n)
     W = n + 2
     idx = lambda r, c: r * W + c
@@ -542,6 +616,7 @@ def build_doc(spec, board, local=False):
             }
             for name, code in frame_backends
         ),
+        *([house_gac_constraint(n)] if apply_house_gac else []),
         *cosmetics(W, cells),
     ]
 
@@ -775,9 +850,30 @@ def rebuild(spec, n, local=False):
     # all three carry code generated from the working tree, and a rebuild
     # exists precisely to refresh it.
     frame_names = [title for _, title in FRAME_BACKENDS]
-    assert frame_and_comment_only(
-        before, spec.constraint_name, frame_names
-    ) == frame_and_comment_only(doc, spec.constraint_name, frame_names), (
+
+    def _without_house_gac(d):
+        """Drop the House GAC constraint entirely, rather than blank it in
+        place: unlike the two always-on frame backends, it is opt-in
+        (`spec.house_gac`), so a rebuild that turns it on for the first time
+        adds a whole constraint the OLD link never carried -- blanking its
+        code in place would still leave that structural difference for the
+        equality check below to trip on. Its code is generated the same as
+        the always-on backends', so dropping it from this comparison is the
+        same call: not board data (#421)."""
+        d = dict(d)
+        d["puzzle"] = dict(d["puzzle"])
+        d["puzzle"]["constraints"] = [
+            c
+            for c in d["puzzle"]["constraints"]
+            if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+        ]
+        return d
+
+    assert _without_house_gac(
+        frame_and_comment_only(before, spec.constraint_name, frame_names)
+    ) == _without_house_gac(
+        frame_and_comment_only(doc, spec.constraint_name, frame_names)
+    ), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "
         "seed must only change the constraint code and comment"
     )

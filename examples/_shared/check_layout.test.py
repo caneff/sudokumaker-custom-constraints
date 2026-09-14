@@ -31,6 +31,7 @@ def _link(
     houses="full",
     frame_backend=False,
     corners_backend=False,
+    house_gac_backend=False,
     digits=(1, 3),
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
@@ -53,9 +54,14 @@ def _link(
     quad-rank work (#335); "none" drops both. `frame_backend` adds a constraint
     carrying the shared frame row/column backend, which declares the interior
     lines in JS instead of in the document, and `corners_backend` the corner-pin
-    one; either takes "stale" to embed an older copy. `digits` is the document's
-    declared range -- None leaves it off, which is what makes the app default
-    the board to 0..9 and silently weaken both frame backends (#394).
+    one; either takes "stale" to embed an older copy. `house_gac_backend` adds
+    the shared house-GAC filter constraint the same way, with its
+    HouseGacComponent.js as the one component it ships (#421); "stale" stales
+    the backend, "stale_component" stales the component instead, and
+    "no_component" ships the backend with no component at all. `digits` is the
+    document's declared range -- None leaves it off, which is what makes the
+    app default the board to 0..9 and silently weaken both frame backends
+    (#394).
     """
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if full_ring:
@@ -89,22 +95,35 @@ def _link(
             }
         )
     extra = []
-    for wanted, source, title in (
-        (frame_backend, "frame-rowcol.js", "Frame Rows and Columns"),
-        (corners_backend, "frame-corners.js", "Frame Corners"),
+    for wanted, source, title, component in (
+        (frame_backend, "frame-rowcol.js", "Frame Rows and Columns", None),
+        (corners_backend, "frame-corners.js", "Frame Corners", None),
+        (house_gac_backend, "house-gac.js", "House GAC", "HouseGacComponent"),
     ):
         if not wanted:
             continue
         code = minify_js((HERE / source).read_text())
         if wanted == "stale":
             code = code + "\n// an older copy"
+        components = (
+            [
+                {
+                    "type": "code",
+                    "name": component,
+                    "code": minify_js((HERE / f"{component}.js").read_text())
+                    + ("\n// an older copy" if wanted == "stale_component" else ""),
+                }
+            ]
+            if component and wanted != "no_component"
+            else []
+        )
         extra.append(
             {
                 "type": 1000,
                 "definition": {
                     "name": title,
                     "backend": {"type": "code", "code": code},
-                    "components": [],
+                    "components": components,
                 },
             }
         )
@@ -530,6 +549,43 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": fresh_corners}) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
+    # The house-GAC filter is opt-in per board (#421), so a link that never
+    # carries it is fine -- and one that does gets the same staleness check as
+    # the other two shared backends, with its component checked too since it
+    # ships one where the other two ship none.
+    stale_house_gac = _link(house_gac_backend="stale")
+    with example(contents={"PUZZLE_LINK.txt": stale_house_gac}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "house-gac.js" in violations[0], violations[0]
+
+    fresh_house_gac = _link(house_gac_backend=True)
+    with example(contents={"PUZZLE_LINK.txt": fresh_house_gac}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # The backend can be fresh while the COMPONENT it ships alongside is a
+    # stale copy -- the same failure mode as frame-rowcol/frame-corners, but
+    # nothing catches it unless the component's own code is compared too.
+    stale_component = _link(house_gac_backend="stale_component")
+    with example(contents={"PUZZLE_LINK.txt": stale_component}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "HouseGacComponent.js" in violations[0], violations[0]
+
+    # And the backend can be fresh while the component is missing outright --
+    # worse than stale, since house-gac.js calls `new HouseGacComponent(...)`
+    # at setup. `check_components` (not this check) already covers it: it
+    # flags any constraint whose backend registers a name its own
+    # `components` list omits, House GAC included.
+    no_component = _link(house_gac_backend="no_component")
+    with example(contents={"PUZZLE_LINK.txt": no_component}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "House GAC" in violations[0], violations[0]
+        assert "HouseGacComponent" in violations[0], violations[0]
+
     # A frame link that declares no digit range is silently weakened: the app
     # defaults a custom puzzle to 0..9 whatever the grid size, the interior
     # lines stop matching digitCount and fall back to plain all-different, and
@@ -566,7 +622,7 @@ if __name__ == "__main__":
     # tree at build time, so a copy kept in a gen JSON is dead data no build
     # reads and nothing rebuilds -- it can only drift from the file it copies
     # (#394).
-    def _gen(code):
+    def _gen(code, name="Frame Rows and Columns"):
         return json.dumps(
             {
                 "puzzle": {
@@ -574,7 +630,7 @@ if __name__ == "__main__":
                         {
                             "type": 1000,
                             "definition": {
-                                "name": "Frame Rows and Columns",
+                                "name": name,
                                 "backend": {"type": "code", "code": code},
                                 "components": [],
                             },
@@ -601,6 +657,18 @@ if __name__ == "__main__":
         contents={"gen_6x6.json": _gen("")},
     ) as (root, _):
         assert check_tree(root) == [], check_tree(root)
+
+    # The house-GAC filter is opt-in, but once a board carries it, a gen JSON
+    # that records its code goes stale the same way (#421).
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": _gen("// a copy", name="House GAC")},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "gen_6x6.json" in violations[0], violations[0]
+        assert "House GAC" in violations[0], violations[0]
 
     # ...and a board with no frame backend at all is not asked for one
     plain = _link(digits=None)

@@ -102,6 +102,12 @@ SPEC = Spec(
     cp_sat_clue_fn=add_hit_count,
     comment_fn=comment_text,
     extra_cages=no_zero_cage,
+    # Real-app timing clears the two-row bar on the shipped 9x9's GLOBAL
+    # lane only (0.83x cold, 0.61x after-logical --
+    # docs/research/421-frame-link-timing.md, #421); the 4x4, 6x6 and every
+    # local board were never measured and must not pick it up on a routine
+    # rebuild, hence a set of sizes rather than a bool.
+    house_gac=frozenset({9}),
 )
 
 if __name__ == "__main__":

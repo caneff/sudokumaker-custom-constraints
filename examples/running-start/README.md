@@ -195,6 +195,18 @@ branch.
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt) after-logical | 1600ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (cell-id coercion, #276) | 2000ms | 1600ms | 0.80 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (cell-id coercion, #276) after-logical | 500ms | 400ms | 0.80 | gate: PASS |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) | 1400ms | 1000ms | 0.71 | SHIP |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) after-logical | 300ms | 0ms | ~0 | SHIP |
+
+The #421 pair is a link-vs-link comparison, not a component-code diff: the
+shared house-GAC filter (`examples/_shared/house-gac.js` +
+`HouseGacComponent.js`, #406/#408) is now a third constraint on this board,
+added in `build_link.py`'s `build_from_template` (this example's global 9x9
+is hand-templated, not `framebuild`-native, so it is not `Spec.house_gac`
+here). Both rows clear 0.9x -- full numbers and the same pass/fail read on
+every other shipped frame board are in
+`docs/research/421-frame-link-timing.md`. Its local board, 4x4 and 6x6 are
+`framebuild`-native and were not measured, so they do not carry the filter.
 
 The last pair is #276, which makes `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. A cell id built that way is numerically
