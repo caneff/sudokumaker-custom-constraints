@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 :root{
-  --paper:#F5F7F4; --sheet:#FFFFFF; --ink:#1C232B; --muted:#56606B; --rule:#D6DCD5; --grid:#E6EAE4;
+  --paper:#F5F7F4; --sheet:#FFFFFF; --ink:#1C232B; --muted:#56606B; --rule:#D6DCD5;
   --accent:#2C5AA0;
   --t1:#D0342C; --t1-bg:#FBE9E7;
   --t2:#A96A12; --t2-bg:#FBF1DF;
@@ -17,14 +17,14 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#12171C; --sheet:#181E24; --ink:#E4E8EC; --muted:#99A3AD; --rule:#2C353E; --grid:#20272E;
+    --paper:#12171C; --sheet:#181E24; --ink:#E4E8EC; --muted:#99A3AD; --rule:#2C353E;
     --accent:#7FA6E6;
     --t1:#FF7B6E; --t1-bg:#3A1F1D; --t2:#E3AA4E; --t2-bg:#352A17;
     --t3:#7FA6E6; --t3-bg:#1D2A3D; --t4:#86C08E; --t4-bg:#1D3021; --code-bg:#222A31;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#12171C; --sheet:#181E24; --ink:#E4E8EC; --muted:#99A3AD; --rule:#2C353E; --grid:#20272E;
+  --paper:#12171C; --sheet:#181E24; --ink:#E4E8EC; --muted:#99A3AD; --rule:#2C353E;
   --accent:#7FA6E6;
   --t1:#FF7B6E; --t1-bg:#3A1F1D; --t2:#E3AA4E; --t2-bg:#352A17;
   --t3:#7FA6E6; --t3-bg:#1D2A3D; --t4:#86C08E; --t4-bg:#1D3021; --code-bg:#222A31;
@@ -41,7 +41,7 @@ code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);padding:.
 h3 code{background:none;padding:0}
 
 /* the index strip: one cell per issue, like a row of a grid */
-.strip{display:grid;grid-template-columns:repeat(25,1fr);border-top:2px solid var(--ink);border-left:2px solid var(--ink);max-width:100%}
+.strip{display:grid;grid-template-columns:repeat(18,1fr);border-top:2px solid var(--ink);border-left:2px solid var(--ink);max-width:100%}
 .strip a{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
   font-family:var(--mono);font-size:13px;font-weight:600;text-decoration:none;color:var(--c);background:var(--sheet);font-variant-numeric:tabular-nums}
 .strip a:hover,.strip a:focus-visible{background:var(--cbg);outline:none}
@@ -69,7 +69,6 @@ dt{font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:
 dd{margin:0;max-width:66ch}
 dd.ev{font-size:15px;color:var(--muted)}
 .num{white-space:nowrap;font-family:var(--mono);font-size:.88em;color:var(--ink);font-variant-numeric:tabular-nums}
-.open{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--c);color:var(--c);padding:1px 6px;margin-left:8px;vertical-align:3px}
 
 footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--rule);font-size:14.5px;color:var(--muted);max-width:70ch}
 a{color:var(--accent)}
@@ -81,46 +80,46 @@ a{color:var(--accent)}
   .id{padding-top:0;margin-bottom:6px}.id span{display:inline;margin-left:10px}
   dl{grid-template-columns:1fr;gap:2px}
   dt{padding-top:10px}
-  .strip{grid-template-columns:repeat(5,1fr)}
+  .strip{grid-template-columns:repeat(6,1fr)}
 }
 @media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth} }
 </style>
 
 <div class="wrap">
 <header>
-  <p class="eyebrow">Field report · app v2026.08.14-d47fc4b · 2026-09-13</p>
+  <p class="eyebrow">Field report · app v2026.08.14-d47fc4b · solver bundle solver-Bv75x3BJ.js · 2026-09-13</p>
   <h1>SudokuMaker Fix List</h1>
-  <p class="lede">Twenty-five problems in the SudokuMaker app that a custom-constraint author runs into, ranked by how badly they hurt. Each one cost this repo debugging time and has a probe, a measurement, or a bundle read behind it. <em>Bugs in this repo's own components are left out.</em></p>
+  <p class="lede">Eighteen problems in the SudokuMaker app, found while writing custom constraints against it. They are ranked by how badly they hurt a setter or constraint author. Each one comes from a live probe, a timed run, or a read of the solver bundle's function body. <em>Internal function names below are descriptive labels for minified code; <code>puzzle.*</code>, <code>helpers.*</code> and component class names are the app's own.</em></p>
   <nav class="strip" aria-label="Jump to issue">
-    <a class="t1" href="#sm-01">1</a><a class="t1" href="#sm-02">2</a><a class="t1" href="#sm-03">3</a><a class="t1" href="#sm-04">4</a><a class="t1" href="#sm-05">5</a><a class="t1" href="#sm-06">6</a><a class="t1" href="#sm-07">7</a><a class="t1" href="#sm-08">8</a><a class="t1" href="#sm-09">9</a><a class="t1" href="#sm-10">10</a>
-    <a class="t2" href="#sm-11">11</a><a class="t2" href="#sm-12">12</a><a class="t2" href="#sm-13">13</a><a class="t2" href="#sm-14">14</a><a class="t2" href="#sm-15">15</a>
-    <a class="t3" href="#sm-16">16</a><a class="t3" href="#sm-17">17</a><a class="t3" href="#sm-18">18</a><a class="t3" href="#sm-19">19</a><a class="t3" href="#sm-20">20</a><a class="t3" href="#sm-21">21</a>
-    <a class="t4" href="#sm-22">22</a><a class="t4" href="#sm-23">23</a><a class="t4" href="#sm-24">24</a><a class="t4" href="#sm-25">25</a>
+    <a class="t1" href="#sm-01">1</a><a class="t1" href="#sm-02">2</a><a class="t1" href="#sm-03">3</a><a class="t1" href="#sm-04">4</a><a class="t1" href="#sm-05">5</a><a class="t1" href="#sm-06">6</a><a class="t1" href="#sm-07">7</a>
+    <a class="t2" href="#sm-08">8</a><a class="t2" href="#sm-09">9</a><a class="t2" href="#sm-10">10</a>
+    <a class="t3" href="#sm-11">11</a><a class="t3" href="#sm-12">12</a><a class="t3" href="#sm-13">13</a><a class="t3" href="#sm-14">14</a><a class="t3" href="#sm-15">15</a><a class="t3" href="#sm-16">16</a>
+    <a class="t4" href="#sm-17">17</a><a class="t4" href="#sm-18">18</a>
   </nav>
   <ul class="legend">
-    <li class="t1"><i></i>Silent wrong answer — 10</li>
-    <li class="t2"><i></i>Solver strength &amp; speed — 5</li>
+    <li class="t1"><i></i>Silent wrong answer — 7</li>
+    <li class="t2"><i></i>Solver speed &amp; strength — 3</li>
     <li class="t3"><i></i>Authoring API — 6</li>
-    <li class="t4"><i></i>Editor &amp; sharing — 4</li>
+    <li class="t4"><i></i>Editor — 2</li>
   </ul>
 </header>
 
 <!-- ============ TIER 1 ============ -->
 <section class="tier t1" id="tier-wrong">
   <div class="tier-head">
-    <h2>Silent wrong answers</h2><span class="count">10 issues</span>
-    <p>The app shows no error. A rule stops enforcing, a solution count is wrong, or a helper returns the wrong cells. These matter most because nobody notices.</p>
+    <h2>Silent wrong answers</h2><span class="count">7 issues</span>
+    <p>The app shows no error. A helper returns the wrong cells, a rule stops enforcing, or the same puzzle solves two ways. These matter most because nobody notices.</p>
   </div>
 
   <article id="sm-01">
     <div class="id">SM-01<span>correctness</span></div>
     <div>
-      <h3>A custom-type board has no rows or columns, and nothing says so</h3>
+      <h3>The low/high digit-group check builds both masks from the low half</h3>
       <dl>
-        <dt>What happens</dt><dd>The solver adds its row and column houses only when the puzzle header's <code>type</code> is <code>"sudoku"</code> or absent. A <code>"custom"</code> board with a region constraint enforces boxes and givens only. The app still solves, times, and counts solutions on that looser puzzle.</dd>
-        <dt>Measured</dt><dd>A 9x9 with 44 givens that CP-SAT proves unique in <span class="num">0.01 s</span> timed out at <span class="num">300 s</span>. A 6x6 whose true count is 2 came back as <span class="num">5</span> solutions. Adding rows and columns fixed both. It cost three tickets of quad-rank work.</dd>
-        <dt>Suggest</dt><dd>Warn in the editor when a custom-type board has regions but no row or column constraint, or make row/column houses an explicit toggle on custom boards.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §9 · <code>docs/research/validate-only-probe.md</code> · issues #324, #328, #335, #339</dd>
+        <dt>What happens</dt><dd>The function that recognises a two-group digit list as “polarity (low/high)” (labelled <code>groupsArePolarityPair</code>) builds its high mask with the same <code>digit &lt; midpoint</code> test as its low mask. Both masks are the low half, so it only asks whether the low group is one of the two groups.</dd>
+        <dt>Repro</dt><dd>On a 1–9 spec: <code>[{1,2,3,4}, {6,7,8,9}]</code> → true, as expected. <code>[{1,2,3,4}, {5}]</code> → true. <code>[{1,2,3,4}, {1,2,3,4}]</code> → true. <code>[{6,7,8,9}, {1}]</code> → false. Present in the minified bundle as served.</dd>
+        <dt>Fix</dt><dd>Use <code>digit &gt; midpoint</code> (or <code>&gt;=</code>, per the intended split) for the high mask.</dd>
+        <dt>Where</dt><dd class="ev">Next to the parity-pair, modular-class and entropy-set checks used to describe digit groups.</dd>
       </dl>
     </div>
   </article>
@@ -128,12 +127,12 @@ a{color:var(--accent)}
   <article id="sm-02">
     <div class="id">SM-02<span>correctness</span></div>
     <div>
-      <h3><code>replaceComponent</code> with a custom component does nothing</h3>
+      <h3><code>getCellsTouchingEdge</code> returns a wrong cell id on a border edge</h3>
       <dl>
-        <dt>What happens</dt><dd><code>puzzle.replaceComponent(instance, new X(...))</code> works when <code>X</code> is a built-in such as <code>SkyscraperComponent</code>. When <code>X</code> is a custom component from a sibling code segment, the swap produces nothing and the rule never enforces. No error appears in the UI or the console.</dd>
-        <dt>Why it bites</dt><dd>The app's own edge-clue template uses exactly this shape: a watcher waits for the clue, then swaps itself out. Copying the template with a custom target kills the whole constraint.</dd>
-        <dt>Suggest</dt><dd>Support custom targets, or throw a visible error when the replacement is not a built-in.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §1 (verified live)</dd>
+        <dt>What happens</dt><dd><code>helpers.geometry.getCellsTouchingEdge(edgeId)</code> converts coordinates with the unchecked <code>getIdFromCoords</code>. For an edge on the board's border, one of the two coordinates is off the grid, and the unchecked formula <code>x + y * width</code> turns it into a real, in-range id of an unrelated cell instead of <code>undefined</code>.</dd>
+        <dt>Repro</dt><dd>The same formula gives <code>{x: -1, y: 3}</code> → the last cell of row 2. A left-border edge therefore “touches” a cell on the far right of the row above.</dd>
+        <dt>Fix</dt><dd>Use <code>getIdFromCoordsSafe</code> and drop <code>undefined</code>.</dd>
+        <dt>Where</dt><dd class="ev"><code>helpers.geometry.getCellsTouchingEdge</code>; <code>helpers.cellIds.getIdFromCoords</code> vs <code>getIdFromCoordsSafe</code></dd>
       </dl>
     </div>
   </article>
@@ -141,50 +140,50 @@ a{color:var(--accent)}
   <article id="sm-03">
     <div class="id">SM-03<span>correctness</span></div>
     <div>
-      <h3>A custom <code>validate</code> that returns <code>{ valid: false }</code> reads as satisfied</h3>
+      <h3><code>replaceComponent</code> with a custom component does nothing</h3>
       <dl>
-        <dt>What happens</dt><dd>The custom-code wrapper tests the author's return value for truthiness: <code>validateWrapper() ? __VALID : { valid: false, … }</code>. An object is truthy. So the exact result shape the built-in components return is treated as a pass, every time.</dd>
-        <dt>Measured</dt><dd>Live probe, typing a digit the component forbids: a bare <code>false</code> turns the cells red; <code>{ valid: false, message }</code> leaves them black. The same return also never rejects a state in the solver.</dd>
-        <dt>Suggest</dt><dd>Accept the object form (read <code>.valid</code>), or reject non-boolean returns with a console error.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/ui-conflict-highlight.md</code> (live probe table) · <code>docs/gotchas.md</code> §2</dd>
+        <dt>What happens</dt><dd><code>puzzle.replaceComponent(instance, new X(...))</code> works when <code>X</code> is a built-in such as <code>SkyscraperComponent</code>. When <code>X</code> is a custom component from a sibling code segment, the swap produces nothing and the rule never enforces. No error appears in the UI or the console.</dd>
+        <dt>Why it bites</dt><dd>The app's own edge-clue template uses exactly this shape: a watcher waits for the clue cell's value, then swaps itself for the real component. Copying the template with a custom target silently disables the whole constraint.</dd>
+        <dt>Fix</dt><dd>Support custom targets, or throw a visible error when the replacement is not a built-in.</dd>
+        <dt>Where</dt><dd class="ev">The component-swap handling for <code>ReplaceComponent</code> changes; built-in targets swap in, custom-class targets do not.</dd>
       </dl>
     </div>
   </article>
 
   <article id="sm-04">
-    <div class="id">SM-04<span>soundness</span></div>
+    <div class="id">SM-04<span>correctness</span></div>
     <div>
-      <h3>Component objects are shared by every search branch, and nothing warns authors</h3>
+      <h3>A custom <code>validate</code> that returns <code>{ valid: false }</code> counts as a pass</h3>
       <dl>
-        <dt>What happens</dt><dd><code>SolverState.clone()</code> copies the component set by reference. Candidate state is cloned per branch and thrown away on backtrack; anything a component writes on <code>instance</code> survives. A cached flag computed from one branch's candidates then fires in a parent state where it is false, and the component removes a true candidate.</dd>
-        <dt>Measured</dt><dd>This repo shipped that bug twice: a latched <code>instance.oneToN</code> gate (#336, unsound) and a memo written after <code>puzzle.stop()</code> that stopped re-declaring a dead branch (#329).</dd>
-        <dt>Suggest</dt><dd>Document it in the custom-constraint help. Better: give components a per-state scratch slot that is cloned with the state.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/component-contract.md</code> · <code>docs/research/bundle-api-reference.md</code> (<code>clone()</code>) · issues #329, #336</dd>
+        <dt>What happens</dt><dd>The custom-code wrapper tests the author's return value for truthiness: <code>validateWrapper() ? VALID : { valid: false, message: `unable to satisfy ${this.name}` }</code>. An object is truthy. So the result shape the built-in components return is read as satisfied, every time, in the solver and in the editor.</dd>
+        <dt>Repro</dt><dd>One custom component on r1c2 that requires a 4. Type 5 into r1c2. With <code>return false</code>, the cell turns red. With <code>return { valid: false, message }</code>, it stays black.</dd>
+        <dt>Fix</dt><dd>Accept the object form (read <code>.valid</code> when the return is an object), or log an error for any non-boolean return.</dd>
       </dl>
     </div>
   </article>
 
   <article id="sm-05">
-    <div class="id">SM-05<span>soundness · latent</span></div>
+    <div class="id">SM-05<span>soundness</span></div>
     <div>
-      <h3>The fish step assumes every row house spans the whole board</h3>
+      <h3>Every search branch shares the same component objects</h3>
       <dl>
-        <dt>What happens</dt><dd>The X-Wing / Fishes step walks every board row <code>0..height-1</code> and treats each <code>Row</code>-tagged house as covering the full row. On a board with an outer clue ring, those houses cover the interior only, so the step would push eliminations onto ring cells.</dd>
-        <dt>Why it is quiet today</dt><dd>The step set for <code>type: "custom"</code> puzzles leaves out <code>XWings</code>, <code>Fishes</code> and <code>AlmostXWings</code>. That gate is unrelated to the bug. Enabling fish for custom puzzles, or building a ringed board as <code>type: "sudoku"</code>, makes it a live soundness break.</dd>
-        <dt>Suggest</dt><dd>Iterate the house's own cells instead of board rows, or check that the houses partition the rows before running the step.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/394-fish-on-frame-boards.md</code> (bundle read, step-type set <code>qn</code>)</dd>
+        <dt>What happens</dt><dd>Cloning the solver state copies each cell's value and candidates but copies the component set by reference. Candidate state is thrown away on backtrack; anything a component stored on <code>instance</code> is not. A flag computed from one branch's candidates stays set in a parent state where it is false, and the component then removes a true candidate.</dd>
+        <dt>Second form</dt><dd>A memo written on the path that called <code>puzzle.stop()</code> outlives the branch the stop killed. The next visit to that state matches the memo, returns early, and never stops again, so the dead branch is searched.</dd>
+        <dt>Fix</dt><dd>Say so in the custom-constraint documentation. Better: give components a per-state scratch slot that is cloned with the state.</dd>
+        <dt>Where</dt><dd class="ev">The solver state's copy constructor: <code>constraintComponents = new Set(other.constraintComponents)</code>; the per-cell component map clones its Sets but not their members.</dd>
       </dl>
     </div>
   </article>
 
   <article id="sm-06">
-    <div class="id">SM-06<span>correctness</span><span class="open">unresolved</span></div>
+    <div class="id">SM-06<span>correctness</span></div>
     <div>
-      <h3>Four outside-sudoku boards read “not unique” in the app; CP-SAT proves them unique</h3>
+      <h3><code>getCoordsPointedAtByOuterClue</code> swaps the two bottom corners</h3>
       <dl>
-        <dt>What happens</dt><dd>Every shipped <code>examples/outside-sudoku</code> link (4x4, 6x6, 9x9, local) reports not-unique in the app, in <span class="num">200–900 ms</span>. The generator's CP-SAT model proves each unique. The disagreement predates the frame-reader change.</dd>
-        <dt>Status</dt><dd>Not yet attributed. It is either a missing constraint in the app or a mismatch in the generator's encoding. It is on this list because it reproduces in seconds and needs someone who can read the solver's solution output.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/frame-link-verdicts.md</code> “The nine” · issue #398 (open)</dd>
+        <dt>What happens</dt><dd>In the straight-ray branch, <code>BottomRight</code> yields <code>{x: i, y: height-1-i}</code>, which starts at the bottom-left cell. <code>BottomLeft</code> yields <code>{x: width-1-i, y: height-1-i}</code>, which starts at the bottom-right. <code>TopLeft</code> and <code>TopRight</code> are correct. All four corner cases also run <code>min(width, height)</code> steps, which is not the corner-to-corner diagonal on a non-square grid.</dd>
+        <dt>Repro</dt><dd>On a 9x9, the bottom-right outer clue's ray starts at <span class="num">(0,8)</span>; the bottom-left ray starts at <span class="num">(8,8)</span>.</dd>
+        <dt>Fix</dt><dd>Swap the two bottom cases.</dd>
+        <dt>Where</dt><dd class="ev"><code>helpers.geometry.getCoordsPointedAtByOuterClue(outerCellId)</code> with <code>diagonalType</code> omitted</dd>
       </dl>
     </div>
   </article>
@@ -192,120 +191,54 @@ a{color:var(--accent)}
   <article id="sm-07">
     <div class="id">SM-07<span>correctness</span></div>
     <div>
-      <h3><code>getCoordsPointedAtByOuterClue</code> swaps the two bottom corners</h3>
+      <h3>SelfCounting uses a different engine when verbose solving is on</h3>
       <dl>
-        <dt>What happens</dt><dd>The <code>BottomRight</code> ray starts at the bottom-left cell and the <code>BottomLeft</code> ray at the bottom-right. All four corner cases also run <code>min(width, height)</code> steps, which is not the visual diagonal on a non-square grid.</dd>
-        <dt>Measured</dt><dd>Run against the bundle on a 9x9: the bottom-right ray starts at <span class="num">(0,8)</span>, the bottom-left ray at <span class="num">(8,8)</span>.</dd>
-        <dt>Suggest</dt><dd>Swap the two start corners; walk the true diagonal of the board's shape.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> “Bundle bugs” #1</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-08">
-    <div class="id">SM-08<span>correctness</span></div>
-    <div>
-      <h3>SelfCounting solves with a different engine when verbose solving is on</h3>
-      <dl>
-        <dt>What happens</dt><dd><code>SelfCountingComponent.initialize</code> emits <code>SelfCountingSumComponent</code> when <code>verboseSolvingEnabled</code> is set and <code>SelfCountingStateComponent</code> otherwise. The two prune differently, so the same puzzle can step and time differently depending on a display setting.</dd>
-        <dt>Suggest</dt><dd>Use one engine and gate only the explanation text on the flag.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> (SelfCounting section)</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-09">
-    <div class="id">SM-09<span>correctness</span></div>
-    <div>
-      <h3><code>groupsArePolarityPair</code> builds both masks from the low half</h3>
-      <dl>
-        <dt>What happens</dt><dd>The high mask uses the same <code>digit &lt; midpoint</code> test as the low mask. On digits 1–9, <code>{1..4}</code> with <code>{5}</code>, or with itself, passes as a low/high pair; <code>{6..9}</code> with anything but the low half fails.</dd>
-        <dt>Suggest</dt><dd>Flip the comparison for the high mask. Confirmed in the minified original, so it is not a deobfuscation artifact.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> “Bundle bugs” #2 · <code>bundle.claude.js:10382</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-10">
-    <div class="id">SM-10<span>correctness</span></div>
-    <div>
-      <h3>Geometry helpers return a wrong in-range id instead of <code>undefined</code></h3>
-      <dl>
-        <dt>What happens</dt><dd><code>getCellsTouchingEdge</code> uses the unchecked <code>getIdFromCoords</code>, so a border edge yields a bogus cell id. Other off-grid coordinate paths do the same. <code>getCellAt</code> already has a safe variant; these do not use it.</dd>
-        <dt>Suggest</dt><dd>Route every helper through <code>getIdFromCoordsSafe</code> and skip <code>undefined</code>.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> (<code>getCellsTouchingEdge</code>, coordinate notes)</dd>
+        <dt>What happens</dt><dd><code>SelfCountingComponent.initialize</code> emits a sum-based engine when verbose solving is enabled and a state-based engine otherwise. The two prune differently, so the same puzzle can step, time and rate differently depending on whether explanations are being produced.</dd>
+        <dt>Fix</dt><dd>Use one engine and gate only the explanation text on the flag.</dd>
+        <dt>Where</dt><dd class="ev"><code>SelfCountingComponent.initialize</code>, alongside its per-digit <code>MaxDigitCountComponent</code>s</dd>
       </dl>
     </div>
   </article>
 </section>
 
 <!-- ============ TIER 2 ============ -->
-<section class="tier t2" id="tier-strength">
+<section class="tier t2" id="tier-speed">
   <div class="tier-head">
-    <h2>Solver strength &amp; speed</h2><span class="count">5 issues</span>
-    <p>Answers are right, but the solver is weaker or slower than it needs to be. Puzzles time out, and AutoStep under-reports what logic can reach.</p>
+    <h2>Solver speed &amp; strength</h2><span class="count">3 issues</span>
+    <p>Answers are right, but the solver is slower or weaker than it needs to be.</p>
   </div>
 
-  <article id="sm-11">
-    <div class="id">SM-11<span>strength</span></div>
-    <div>
-      <h3>Sudoku houses are below arc consistency inside trials</h3>
-      <dl>
-        <dt>What happens</dt><dd><code>HouseComponent</code> and <code>DifferentDigitsComponent</code> have no set-based <code>update</code>. Their Hall-set strength comes from the naked/hidden set logic steps, which run only at the top level. Inside <code>ByContradictionLogicStep</code>'s hypotheses a house gives singles only.</dd>
-        <dt>Measured</dt><dd>A plain 9x9, 25 givens, no custom rule: AutoStep reaches <span class="num">53/81</span>. The same board with a matching-based all-different filter per house reaches <span class="num">81/81</span>, checked against CP-SAT.</dd>
-        <dt>Suggest</dt><dd>Give the house components a bitmask GAC <code>update</code> (a Régin filter on 9 cells is cheap), or run set steps inside trials.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §12 · <code>docs/research/all-different-gac.md</code> · <code>docs/research/406-gac-demo/</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-12">
-    <div class="id">SM-12<span>strength</span></div>
-    <div>
-      <h3>The native Skyscraper constraint deduces nothing while its clue is unsolved</h3>
-      <dl>
-        <dt>What happens</dt><dd><code>SkyscraperComponent(name, amount, cells)</code> reasons from a known <code>amount</code> only. With the clue cell blank it prunes nothing, so solver-filled outside clues get no help from the built-in.</dd>
-        <dt>Measured</dt><dd>Shipped Skyscrapers 9x9 (20 outside clues, 7 givens): this repo's two-sided component proves it unique in <span class="num">8.3 s</span>. The native type <code>503</code> constraint on the same board finds no first solution inside the app's <span class="num">300 s</span> limit, cold or after logic.</dd>
-        <dt>Suggest</dt><dd>Prune the clue cell's candidates from the line, and the line from the clue's candidate range.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>examples/skyscraper/README.md</code> timing rows · <code>docs/research/skyscraper-builtin-constraint-baseline.md</code> · <code>docs/builtin-components.md</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-13">
-    <div class="id">SM-13<span>speed</span></div>
+  <article id="sm-08">
+    <div class="id">SM-08<span>speed</span></div>
     <div>
       <h3>Cell ids from the geometry helpers slow the solver until coerced with <code>| 0</code></h3>
       <dl>
-        <dt>What happens</dt><dd>Ids from <code>getCellAt</code>, <code>getAllRows()</code> and <code>getAllColumns()</code> look like plain numbers: <code>typeof</code> is <code>"number"</code> and they compare <code>===</code> to JSON ids. The solver still runs slower on them.</dd>
-        <dt>Measured</dt><dd>Eighteen <code>HouseComponent</code>s built straight from <code>getAllRows()</code> ran <span class="num">1.18×</span> the cages they replaced; the same code with <code>.map(c =&gt; c | 0)</code> ran <span class="num">0.97×</span>. Candidate reads through <code>getCellAt</code> ids cost about <span class="num">1.3×</span>. Four interleaved rounds, cold.</dd>
-        <dt>Suggest</dt><dd>Coerce ids to small integers inside the helpers. While there: the two row/column helpers are one-shot generators that include the clue ring, which the docs do not say.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §10 · <code>docs/puzzle-api.md</code> · issues #276, #394</dd>
+        <dt>What happens</dt><dd>Ids from <code>puzzle.getCellAt</code>, <code>helpers.geometry.getAllRows()</code> and <code>getAllColumns()</code> look like plain integers: <code>typeof</code> is <code>"number"</code> and they compare <code>===</code> to ids from the puzzle JSON. The solver still runs slower when a component is built on them. A likely cause is the JS engine treating them as doubles rather than small integers.</dd>
+        <dt>Measured</dt><dd>A 9x9 board with eighteen <code>HouseComponent</code>s for rows and columns, built straight from <code>getAllRows()</code>/<code>getAllColumns()</code>: <span class="num">1.18×</span> the time of the same houses as cages. The identical code with <code>.map(c =&gt; c | 0)</code>: <span class="num">0.97×</span>. Ids derived through <code>getCellAt</code> cost about <span class="num">1.3×</span> per candidate read. Four interleaved rounds, cold, non-deterministic solve off.</dd>
+        <dt>Fix</dt><dd>Coerce ids to small integers inside the helpers. The two line helpers are also one-shot generators, not arrays, which the documentation does not say.</dd>
       </dl>
     </div>
   </article>
 
-  <article id="sm-14">
-    <div class="id">SM-14<span>strength · speed</span></div>
+  <article id="sm-09">
+    <div class="id">SM-09<span>strength · speed</span></div>
     <div>
-      <h3>Built-in sum propagation is weaker than a standard killer-cage propagator</h3>
+      <h3>Built-in sum propagation is weaker than a standard cage propagator</h3>
       <dl>
-        <dt>What happens</dt><dd>Compared with the closest public solver's sum handler: no required-digit reasoning; no cage/house complement; a multi-target cage relaxes to the whole <code>[min, max]</code> interval; repeat-allowed and weighted sums get bounds only. The bounds pass rescans every other cell per cell, <span class="num">O(n²)</span> per cage, with a fresh <code>Set</code> each call. Whether a placed digit is excluded also depends on <code>cellIds</code> order.</dd>
-        <dt>Also</dt><dd><code>WeightedSumComponent</code> accepts positive whole weights only, so a difference or negative coefficient needs a custom component.</dd>
-        <dt>Suggest</dt><dd>Precompute per-cage combination masks, then filter by required digits and allowed sums rather than the interval.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/sm-vs-iss-sum.md</code> · <code>docs/research/iss-sum-handler.md</code></dd>
+        <dt>What happens</dt><dd>Compared with the sum handler in Interactive Sudoku Solver (<code>sigh/Interactive-Sudoku-Solver</code>), SudokuMaker's sum components have no required-digit reasoning; no cage/house complement; a multi-target cage relaxed to the whole <code>[min, max]</code> interval, so a sum between the allowed targets is admitted; bounds only for repeat-allowed and weighted sums. The bounds pass rescans every other cell for each cell, <span class="num">O(n²)</span> per cage, and allocates a fresh <code>Set</code> per call. In a no-repeat cage, whether a placed digit is excluded from the remaining combinations depends on the order of <code>cellIds</code>.</dd>
+        <dt>Also</dt><dd><code>WeightedSumComponent</code> accepts positive whole weights only, so a difference or a negative coefficient needs a custom component.</dd>
+        <dt>Fix</dt><dd>Precompute per-cage combination masks and filter by required digits and the actual allowed sums rather than the interval.</dd>
       </dl>
     </div>
   </article>
 
-  <article id="sm-15">
-    <div class="id">SM-15<span>speed</span></div>
+  <article id="sm-10">
+    <div class="id">SM-10<span>speed</span></div>
     <div>
       <h3>“Which cells see each other” is an unindexed walk</h3>
       <dl>
-        <dt>What happens</dt><dd><code>getCellsCanHaveRepeats</code> makes <span class="num">O(n)</span> calls to <code>getCellsSeenByCell</code>, and each walks every component on that cell. Components that need peer information call it in <code>update</code>, which runs thousands of times per solve.</dd>
-        <dt>Suggest</dt><dd>Build a peer bitmask per cell once after registration and expose it read-only.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> (<code>getCellsCanHaveRepeats</code> notes) · <code>docs/gotchas.md</code> §6</dd>
+        <dt>What happens</dt><dd><code>getCellsCanHaveRepeats</code> makes <span class="num">O(n)</span> calls to <code>getCellsSeenByCell</code>, and each call walks every component on that cell. A component that needs peer information calls these from <code>update</code>, which runs thousands of times per solve.</dd>
+        <dt>Fix</dt><dd>Build a peer bitmask per cell once after all constraints are registered, and expose it read-only.</dd>
       </dl>
     </div>
   </article>
@@ -315,78 +248,72 @@ a{color:var(--accent)}
 <section class="tier t3" id="tier-api">
   <div class="tier-head">
     <h2>Authoring API</h2><span class="count">6 issues</span>
-    <p>Nothing breaks at runtime, but each of these sent an author the wrong way first. Most need a sentence of documentation or a thrown error.</p>
+    <p>Nothing breaks at runtime, but each of these sends a constraint author the wrong way first. Most need a sentence of documentation or a thrown error.</p>
   </div>
+
+  <article id="sm-11">
+    <div class="id">SM-11<span>api</span></div>
+    <div>
+      <h3>A component cannot tell a trial placement from the real board</h3>
+      <dl>
+        <dt>What happens</dt><dd>AutoStep places digits hypothetically, propagates, and removes the digit when the branch dies. Custom <code>update</code> runs inside those trials and gets no signal that it is in one. Most of what it observes is a branch, and its last observation is often a branch being torn down.</dd>
+        <dt>Measured</dt><dd>A logging component on a uniquely solvable 9x9 variant recorded <span class="num">55,537</span> house snapshots; <span class="num">25,832</span> held states impossible for the solution. A plain sudoku with no custom rule shows the same, <span class="num">1,393 of 3,274</span>. Anyone debugging a rule by logging from <code>update</code> reads branch states as board states.</dd>
+        <dt>Fix</dt><dd>Document the call context. A read such as <code>puzzle.isHypothetical</code> would let diagnostics filter.</dd>
+      </dl>
+    </div>
+  </article>
+
+  <article id="sm-12">
+    <div class="id">SM-12<span>api</span></div>
+    <div>
+      <h3>Main code and components get two different <code>helpers</code> objects</h3>
+      <dl>
+        <dt>What happens</dt><dd>Main code receives the extended helpers. Inside a component, <code>helpers.lines</code> and <code>helpers.misc</code> are <code>undefined</code> and <code>helpers.geometry.getSubsetsPerRegion</code> does not exist. Nothing in the documentation mentions the split; an author finds it only when the call fails at solve time.</dd>
+        <dt>Fix</dt><dd>Expose the same read-only helpers in both, or document the split beside the helper list.</dd>
+      </dl>
+    </div>
+  </article>
+
+  <article id="sm-13">
+    <div class="id">SM-13<span>api</span></div>
+    <div>
+      <h3>An exception in <code>validate</code> reads as “unable to satisfy &lt;name&gt;”</h3>
+      <dl>
+        <dt>What happens</dt><dd>A throw inside a custom <code>validate</code> is caught, logged to the console, and treated as <code>false</code>. The verdict then reads “This puzzle is broken: unable to satisfy &lt;name&gt;”, the same text as a genuine rule violation. A typo looks like a broken puzzle.</dd>
+        <dt>Fix</dt><dd>Show the exception text in the verdict, or label it as a code error.</dd>
+      </dl>
+    </div>
+  </article>
+
+  <article id="sm-14">
+    <div class="id">SM-14<span>api</span></div>
+    <div>
+      <h3>Custom components cannot set a value; built-ins can</h3>
+      <dl>
+        <dt>What happens</dt><dd>The puzzle view handed to <code>update</code> has no way to build a <code>SetValue</code> change. Built-ins such as <code>SameGroupComponent</code> yield one directly from <code>onValueSet</code>. A custom component must remove candidates down to one instead, which is more changes and more code.</dd>
+        <dt>Fix</dt><dd>Add a <code>setValueChange(value, cell)</code> builder to the solver-time <code>puzzle</code>.</dd>
+      </dl>
+    </div>
+  </article>
+
+  <article id="sm-15">
+    <div class="id">SM-15<span>api</span></div>
+    <div>
+      <h3><code>DigitSet</code> set operations change the set they are called on</h3>
+      <dl>
+        <dt>What happens</dt><dd><code>a.intersect(b)</code>, <code>union</code>, <code>subtract</code> and <code>xor</code> modify <code>a</code> and return it. The chaining shape reads as pure. <code>puzzle.getCandidates</code> returns a <code>DigitSet</code>, so intersecting it in place is an easy mistake.</dd>
+        <dt>Fix</dt><dd>Document it on the type, or add non-mutating variants.</dd>
+      </dl>
+    </div>
+  </article>
 
   <article id="sm-16">
     <div class="id">SM-16<span>api</span></div>
     <div>
-      <h3>A component cannot tell a hypothesis from the real board</h3>
-      <dl>
-        <dt>What happens</dt><dd>AutoStep places digits hypothetically and propagates. Custom <code>update</code> runs inside those trials and gets no signal. Most of what it observes is a branch, and its last observation is a branch teardown.</dd>
-        <dt>Measured</dt><dd>A logging component on the Skyscrapers board recorded <span class="num">55,537</span> snapshots; <span class="num">25,832</span> held states impossible for the unique solution. A plain board with no custom rule shows the same (<span class="num">1,393 of 3,274</span>). Reading them as board states produced four wrong diagnoses in a row.</dd>
-        <dt>Suggest</dt><dd>Document the call context. A <code>puzzle.isHypothetical</code> read would let diagnostics filter.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §11 · issue #406</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-17">
-    <div class="id">SM-17<span>api</span></div>
-    <div>
-      <h3>Main code and components get two different <code>helpers</code> objects</h3>
-      <dl>
-        <dt>What happens</dt><dd>Inside a component, <code>helpers.lines</code> and <code>helpers.misc</code> are <code>undefined</code> and <code>helpers.geometry.getSubsetsPerRegion</code> does not exist. The same names work in main code. The split was found only by reading the bundle.</dd>
-        <dt>Suggest</dt><dd>Expose the same read-only helpers in both, or document the split beside the helper list.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/puzzle-api.md</code> “Two helpers objects”</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-18">
-    <div class="id">SM-18<span>api</span></div>
-    <div>
-      <h3>A thrown error in <code>validate</code> becomes “unable to satisfy &lt;name&gt;”</h3>
-      <dl>
-        <dt>What happens</dt><dd>A throw inside a custom <code>validate</code> is caught, logged, and treated as <code>false</code>. The puzzle reports “This puzzle is broken: unable to satisfy …”, the same text as a real rule violation. A typo reads as a broken puzzle.</dd>
-        <dt>Suggest</dt><dd>Surface the exception text in the verdict, or label it as a code error.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/component-contract.md</code> · <code>docs/research/validate-only-probe.md</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-19">
-    <div class="id">SM-19<span>api</span></div>
-    <div>
-      <h3>Custom components cannot set a value; built-ins can</h3>
-      <dl>
-        <dt>What happens</dt><dd><code>SolverPuzzleView</code> has no way to yield a <code>SetValue</code> change. Built-ins such as <code>SameGroupComponent.onValueSet</code> yield one directly. A custom component must remove candidates down to one instead, which is more changes and more code.</dd>
-        <dt>Suggest</dt><dd>Add <code>puzzle.setValueChange(value, cell)</code> to the solver view.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> (change types)</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-20">
-    <div class="id">SM-20<span>api</span></div>
-    <div>
-      <h3><code>DigitSet</code> set algebra mutates the receiver</h3>
-      <dl>
-        <dt>What happens</dt><dd><code>a.intersect(b)</code>, <code>union</code>, <code>subtract</code> and <code>xor</code> change <code>a</code> and return it. The chaining shape reads as pure. <code>getCandidates</code> returns a <code>DigitSet</code>, so intersecting it in place is an easy mistake.</dd>
-        <dt>Suggest</dt><dd>Document it on the type, or add non-mutating variants.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/puzzle-api.md</code> · <code>docs/gotchas.md</code> §4</dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-21">
-    <div class="id">SM-21<span>api</span></div>
-    <div>
       <h3>A local <code>const</code> silently hides an injected global</h3>
       <dl>
-        <dt>What happens</dt><dd>Code segments receive globals with generic names (<code>SudokuDigitSet</code>, <code>MathUtils</code>, <code>ArrayUtils</code>, <code>SetUtils</code>). A top-level <code>const</code> of the same name is legal and shadows the injected one with no warning.</dd>
-        <dt>Suggest</dt><dd>Namespace the injected utilities, or warn on shadowing at load time.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/bundle-api-reference.md</code> (code-segment wrapper)</dd>
+        <dt>What happens</dt><dd>Custom code is compiled as <code>new Function(...Object.keys(globals), code)</code>, so the injected utilities (<code>SudokuDigitSet</code>, <code>DigitSet</code>, <code>MathUtils</code>, <code>ArrayUtils</code>, <code>SetUtils</code>, …) are plain parameters. A top-level <code>const</code> with one of those generic names is legal and shadows the utility with no warning.</dd>
+        <dt>Fix</dt><dd>Namespace the injected utilities, or warn at load time when a segment redeclares one.</dd>
       </dl>
     </div>
   </article>
@@ -395,60 +322,36 @@ a{color:var(--accent)}
 <!-- ============ TIER 4 ============ -->
 <section class="tier t4" id="tier-editor">
   <div class="tier-head">
-    <h2>Editor &amp; sharing</h2><span class="count">4 issues</span>
+    <h2>Editor</h2><span class="count">2 issues</span>
     <p>What a setter or solver sees on screen.</p>
   </div>
 
-  <article id="sm-22">
-    <div class="id">SM-22<span>ux</span></div>
+  <article id="sm-17">
+    <div class="id">SM-17<span>ux</span></div>
     <div>
       <h3>No keyboard entry past 9, and the wide pad swallows keys</h3>
       <dl>
-        <dt>What happens</dt><dd>The app supports digits above 9 but has no hotkey for them; they need the on-screen pad. While the pad's second screen (10–12) shows, keys <kbd>1</kbd>–<kbd>9</kbd> do nothing at all. Found on a fillomino board with digits 1–12.</dd>
-        <dt>Suggest</dt><dd>Accept multi-key or modifier entry for 10+, and keep 1–9 hotkeys live on every pad screen.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/real-app-timing.md</code> · issues #293, #307</dd>
+        <dt>What happens</dt><dd>The app supports digits above 9 but has no hotkey for them; they need the on-screen pad. While the pad's second screen (10–12) is showing, keys <kbd>1</kbd>–<kbd>9</kbd> do nothing at all.</dd>
+        <dt>Repro</dt><dd>A 9x9 custom puzzle with digits 1–12. Open the wide pad, page to the second screen, press <kbd>2</kbd> on the keyboard with a cell selected: nothing is entered.</dd>
+        <dt>Fix</dt><dd>Keep 1–9 hotkeys live on every pad screen, and accept a multi-key or modifier entry for 10 and up.</dd>
       </dl>
     </div>
   </article>
 
-  <article id="sm-23">
-    <div class="id">SM-23<span>ux</span></div>
+  <article id="sm-18">
+    <div class="id">SM-18<span>ux</span></div>
     <div>
       <h3>A conflict paints the whole component red</h3>
       <dl>
-        <dt>What happens</dt><dd>The conflict highlight marks every cell in the component's <code>cellIds</code>. No cell list on a validate result is read, for built-ins either. One wrong digit on a long custom line turns the whole line red. A disabled or solver-ignored constraint also loses its highlight with no indication.</dd>
-        <dt>Suggest</dt><dd>Read an optional <code>cells</code> field from the validate result and highlight only those.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/research/ui-conflict-highlight.md</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-24">
-    <div class="id">SM-24<span>ux</span></div>
-    <div>
-      <h3>“Unique based on entered values” is easy to read as a proof</h3>
-      <dl>
-        <dt>What happens</dt><dd>A uniqueness check run with digits already on the grid proves uniqueness of that partial position, not the puzzle. The verdict says “based on already entered values and pencil marks” in running text. This repo built tooling to catch the case.</dd>
-        <dt>Suggest</dt><dd>Show that verdict in a distinct style, with a one-click “check from givens only”.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/real-app-timing.md</code></dd>
-      </dl>
-    </div>
-  </article>
-
-  <article id="sm-25">
-    <div class="id">SM-25<span>sharing</span></div>
-    <div>
-      <h3>The whole puzzle lives in the URL, with no size warning</h3>
-      <dl>
-        <dt>What happens</dt><dd>There is no server store; the link is lz-string JSON. Custom-constraint links here run around <span class="num">10 KB</span>. A large component can push a link past browser or chat length limits and truncate it, which loses the puzzle silently.</dd>
-        <dt>Suggest</dt><dd>Show the link length on share and warn above common limits; offer a stored short link.</dd>
-        <dt>Evidence</dt><dd class="ev"><code>docs/gotchas.md</code> §7–8 · <code>AGENTS.md</code> (link-size rule)</dd>
+        <dt>What happens</dt><dd>The conflict highlight marks every cell in the component's <code>cellIds</code>. No cell list on a validate result is read, for built-ins either. One wrong digit on a long custom line turns the whole line red. A disabled or solver-ignored constraint also loses its highlighting, with nothing on screen to say so.</dd>
+        <dt>Fix</dt><dd>Read an optional <code>cells</code> field from the validate result and highlight only those.</dd>
+        <dt>Where</dt><dd class="ev">The puzzle-queries worker's <code>validateGrid</code>, which collects <code>invalidCells</code> per component</dd>
       </dl>
     </div>
   </article>
 </section>
 
 <footer>
-  Compiled from this repo's research docs, live probes, and the renamed solver bundle (<code>docs/research/humanify-pedagogy/bundle.claude.js</code>). Paths refer to the <code>sudokumaker-custom-constraints</code> repo. SM-06 is the one item not yet attributed to the app. Deliberately left out: bugs in this repo's own components (#45, #329 and #336's code), its tooling (#231's detector, #415, #417), and minor bundle notes with no author impact.
+  All findings are against SudokuMaker v2026.08.14-d47fc4b. Solver behaviour was read from the served solver bundle and confirmed in the live app where a repro is given; timings are cold runs with non-deterministic solve off. Internal function names are descriptive and will not match the minified identifiers; the behaviour described will.
 </footer>
 </div>
