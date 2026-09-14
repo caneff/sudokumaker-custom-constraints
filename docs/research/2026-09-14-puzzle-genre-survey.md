@@ -1702,14 +1702,36 @@ a cell. Build one component and the other is a rule flag on it.
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
 
-## 2.28 Every Second Turn, Loop de Loop, Regional Yajilin
+## 2.28 Regional Yajilin, Every Second Turn, Loop de Loop
 
-Not found at a primary source in this run. None appears in the puzz.link genre list or as
-an LMD wiki page under these names. **Rules not found at a primary source.** Regional
-Yajilin in particular is widely set but is a variant naming rather than a registered
-genre; the LMD wiki's *Yajilin Plus* and *Majilin*
-(https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en) are the registered
-Yajilin derivatives.
+**Regional Yajilin** (also "Yajilin (regions)"). Rules as stated by GridPuzzle
+(https://fr.gridpuzzle.com/regional-yajilin, in French; my translation): the grid is
+divided into regions; shade some cells and draw a single non-intersecting loop through all
+white cells; a number in a region gives the count of shaded cells in that region; a region
+without a number may contain any number of shaded cells; no two shaded cells may share a
+border; the loop may visit numbered cells, and numbered cells may themselves be shaded.
+**Source caveat: GridPuzzle is a puzzle-play site, not a rules authority of the standing of
+puzz.link, the LMD wiki, Nikoli or a WPC booklet.** Regional Yajilin appears in neither the
+puzz.link corpus nor the LMD wiki, and the LMD wiki's registered Yajilin derivatives are
+*Yajilin Plus* and *Majilin* instead
+(https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en). Treat the statement above
+as [unverified at a primary source]. It is in active circulation — Puzzle Duel ran Regional
+Yajilin 9x9 and 8x8 dailies in December 2025 and January 2026
+(https://www.puzzleduel.club/archive).
+
+*If that statement is right*, the hybrid verdict is **Good, and better than plain
+Yajilin (2.4)**: "a number in a region gives the shaded count in that region" is the
+per-box count hook that works so well for Heyawake, Chocona and Shimaguni, in digit range,
+and it replaces Yajilin's awkward directional clue on loop-excluded cells. Verify the rules
+at a primary source before building.
+
+**Every Second Turn** (also "Alternate Corners") and **Loop de Loop**: **rules not found at
+a primary source.** Neither is in the puzz.link genre corpus (244 ids checked) nor has an
+LMD wiki page. Both are in circulation — Puzzle Duel ran Every Second Turn 10x12 and 12x12
+dailies in 2025 (https://www.puzzleduel.club/archive) and Fit For Puzzle lists both in its
+tutorial catalogue (https://fitforpuzzle.com/puzzle-tutorials/) — but that catalogue page
+serves only its heading index to a fetcher, no rules bodies, so no rules text was recovered
+and it was not retried. Dropped rather than reconstructed from memory.
 
 ## 2.29 Others on the loop index worth naming
 
@@ -2199,9 +2221,10 @@ grid indicate the number of cells occupied by the loop in the 8 neighbouring cel
 **Sudoku hybrid suitability: Good.** The clue is 0..8, in digit range, purely local, and
 the same shape as the Minesweeper clue that has the best hybrid track record in this survey.
 The non-self-touching rule is a king-move constraint, cheap. The only expensive part is loop
-connectivity. This is the loop genre with the most Sudoku-friendly clue; the relation to
-Linesweeper (2.27) is close enough that verifying Linesweeper's rules would probably reveal
-them to be the same family.
+connectivity. This is the loop genre with the most Sudoku-friendly clue. Linesweeper (2.27)
+is now confirmed to carry the identical clue; the two differ only in that Bosnian Road
+forbids the loop from touching itself while Linesweeper forbids only revisiting a cell, so
+one component with a rule flag serves both.
 
 **Existing hybrids:** none found (searched: LMD portal, GM Puzzles, general web).
 [unverified as absence]
@@ -2339,6 +2362,11 @@ Appended as the run progressed, after the initial block near the top.
 - https://wiki.logic-masters.de/index.php/Kategorie:Puzzletype/en (290 English genre pages)
 - https://logic-masters.de/Raetselportal/Suche/erweitert.php?tag_id=4002 (Cave tag, 233 puzzles)
 
+**Fetch discipline.** From the point the rate limit was set, requests ran one at a time,
+at most one per host per ten seconds, with no URL retried after a failure and index pages
+preferred over per-genre pages wherever an index states the rules. The bulk rules corpus was
+already on disk by then; the later work was four requests in total.
+
 **Could not reach or could not use:**
 - https://puzz.link/rules.html and https://puzz.link/list.html rendered pages — JS-only.
   Worked around via the `data-pid` attributes in the raw list HTML and the per-genre
@@ -2355,6 +2383,10 @@ Appended as the run progressed, after the initial block near the top.
   ignored a title-text filter in every POST form I tried, so hybrid evidence was gathered
   by web search against the portal rather than by a tag-intersection query. A
   tag-intersection query would be a better method if someone works out the parameter.
+- https://fitforpuzzle.com/puzzle-tutorials/ — a large tutorial catalogue covering ~250
+  genres including Every Second Turn, Regional Yajilin and Loop de Loop, but it serves only
+  its heading index to a fetcher; no rules bodies were returned. Not retried. Worth a look
+  in a browser by a human.
 - Puzzle Square JP (https://puzsq.logicpuzzle.app/) was not needed once the puzz.link
   corpus was in hand, and was not fetched.
 - WPF Sudoku GP instruction booklets were not fetched directly; WPC evidence here comes
@@ -2427,7 +2459,8 @@ a "—" means none found after searching the LMD portal, GM Puzzles and the open
 | Icebarn | Path | directed path with crossings | terrain-driven | Poor | — |
 | Haisu / Kaisu | Path | Hamiltonian path | region visit ordinals | Good | — |
 | Dotchi-Loop | Loop | per-cell loop shape | per-region turn/straight uniformity | Workable | — |
-| Linesweeper | Loop | — | rules not found at a primary source | unrated | — |
+| Linesweeper | Loop | per-cell loop shape | single closed loop, loop avoids clue cells | Good | — |
+| Regional Yajilin | Loop + shading | shade + loop | loop covers all white, shaded non-adjacent, per-region shaded count | Good [unverified rules] | — |
 | Bosnian Road | Loop | cell loop | non-self-touching loop, 8-neighbour count clue | Good | — |
 | Fillomino | Region | region id | equal-size regions not adjacent | Good | yes (4+) |
 | Symmetry Area | Region | region id | as Fillomino + 180° symmetry | Workable | — |
