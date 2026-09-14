@@ -57,6 +57,60 @@ One run at a time; `uptime`/`free -g` checked before starting (load average
   `build_link.py`'s `build_from_template()` for running-start) so the shipped
   link carries the new component code.
 
+## Driver output
+
+Raw `just time` stdout for all eight rows above, verbatim, in run order.
+
+```
+$ just time numbered-rooms --ring-clues
+uv run examples/_shared/time_example.py numbered-rooms --ring-clues
+| 2026-09-13 | v2026.08.14-d47fc4b | numbered-rooms | 1800ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | numbered-rooms after-logical | 1500ms | — | — | BASELINE |
+
+$ just time numbered-rooms --ring-clues --board PUZZLE_LINK_house_gac_candidate.txt
+uv run examples/_shared/time_example.py numbered-rooms --ring-clues --board PUZZLE_LINK_house_gac_candidate.txt
+| 2026-09-13 | v2026.08.14-d47fc4b | numbered-rooms (PUZZLE_LINK_house_gac_candidate.txt) | 1800ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | numbered-rooms (PUZZLE_LINK_house_gac_candidate.txt) after-logical | 1400ms | — | — | BASELINE |
+
+$ just time outside-sudoku
+uv run examples/_shared/time_example.py outside-sudoku
+| 2026-09-13 | v2026.08.14-d47fc4b | outside-sudoku | 500ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
+
+$ just time outside-sudoku --board PUZZLE_LINK_house_gac_candidate.txt
+uv run examples/_shared/time_example.py outside-sudoku --board PUZZLE_LINK_house_gac_candidate.txt
+| 2026-09-13 | v2026.08.14-d47fc4b | outside-sudoku (PUZZLE_LINK_house_gac_candidate.txt) | 500ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | outside-sudoku (PUZZLE_LINK_house_gac_candidate.txt) after-logical | 300ms | — | — | BASELINE |
+
+$ just time hit-counts
+uv run examples/_shared/time_example.py hit-counts
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts | 6400ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts after-logical | 3800ms | — | — | BASELINE |
+
+$ just time hit-counts --board PUZZLE_LINK_house_gac_candidate.txt
+uv run examples/_shared/time_example.py hit-counts --board PUZZLE_LINK_house_gac_candidate.txt
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_house_gac_candidate.txt) | 5900ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (PUZZLE_LINK_house_gac_candidate.txt) after-logical | 3600ms | — | — | BASELINE |
+
+$ just time running-start
+uv run examples/_shared/time_example.py running-start
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start | 1000ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start after-logical | 0ms | — | — | BASELINE |
+
+$ just time running-start --board PUZZLE_LINK_house_gac_candidate.txt
+uv run examples/_shared/time_example.py running-start --board PUZZLE_LINK_house_gac_candidate.txt
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_house_gac_candidate.txt) | 800ms | — | — | BASELINE |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_house_gac_candidate.txt) after-logical | 0ms | — | — | BASELINE |
+```
+
+Every row above the driver actually ran (no fixture skipped); the scratch
+`PUZZLE_LINK_house_gac_candidate.txt` files were deleted after this run
+(not committed, per the #421 method), so re-verifying means re-splicing:
+`docs/research/408-house-gac/house_gac_links.py`'s shape via
+`framebuild.house_gac_constraint(9)` for numbered-rooms/outside-sudoku, and
+`link_swap.swap_component_code` on the committed link's House GAC
+constraint for hit-counts/running-start.
+
 ## Decision
 
 No `Spec.house_gac` opt-in changes. hit-counts and running-start's committed
