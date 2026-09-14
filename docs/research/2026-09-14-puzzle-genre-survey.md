@@ -9,8 +9,8 @@ hybrids have actually been built and published?
 **Why this repo cares:** every genre here is a candidate for a **CP-SAT model** — an
 OR-Tools generator plus uniqueness checker in Python, in the style this repo already
 runs for fillomino (`examples/fillomino/generate.py`,
-`docs/research/fillomino-cpsat.md`), Renbanana (`docs/research/renbanana_cpsat.py`)
-and Zombo Brainanas (`docs/research/zombo_brainanas_cpsat.py`). Each genre adds a
+`docs/research/fillomino-cpsat.md`), Renbanana (`finders/renbanana_cpsat.py`)
+and Zombo Brainanas (`finders/zombo_brainanas_cpsat.py`). Each genre adds a
 decision layer — shaded / unshaded, loop edges, region ids — over the 81 digit
 variables, and the question this survey answers for each is: what variables does the
 model need, which globals are expensive and how would this repo encode them, what does
@@ -1623,7 +1623,7 @@ several clues or none.
 built this model.**
 
 *Variables.* 81 digits, 81 shading bools, component labels for group sizes. See
-`docs/research/renbanana_cpsat.py` and `docs/research/choco-banana-propagation.md`.
+`finders/renbanana_cpsat.py` and `docs/research/choco-banana-propagation.md`.
 
 *Expensive globals.* Two halves with opposite difficulty, and the repo has
 measured both. The **positive** rule (shaded groups are rectangles) is exact and
@@ -4549,8 +4549,8 @@ LMD portal, GM Puzzles and the open web.
 
 Every model in this document is assembled from eight devices. Build each once and
 the genres name themselves. The repo's own practice is the reference:
-`docs/research/fillomino-cpsat.md` for flow, `docs/research/renbanana_cpsat.py` and
-`docs/research/zombo_brainanas_cpsat.py` for the rectangle lemma, lazy cuts and
+`docs/research/fillomino-cpsat.md` for flow, `finders/renbanana_cpsat.py` and
+`finders/zombo_brainanas_cpsat.py` for the rectangle lemma, lazy cuts and
 staged hunts, `examples/_shared/cpsat.py` for the solve/forbid/re-solve discipline,
 `docs/research/ortools-tuning.md` for the solver settings.
 

@@ -26,14 +26,18 @@ heavy := heavy-fillomino + " " + heavy-recovery
 lint:
     npx standard
     uvx ruff check examples
+    uvx ruff check finders
     uvx ruff format --check examples
+    uvx ruff format --check finders
     uv lock --check
 
 # Auto-fix + format in place.
 fmt:
     npx standard --fix
     uvx ruff check --fix examples
+    uvx ruff check --fix finders
     uvx ruff format examples
+    uvx ruff format finders
 
 # Every example's own tests except the heavy ones above, discovered by file
 # name so a new example needs no edit here. See docs/example-layout.md.
@@ -78,6 +82,13 @@ test:
     uv run examples/_shared/framebuild.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
+    # finders/renbanana's own tests, all well under a second each (#469).
+    # test_probe_finds_known_grids.py solves a CP-SAT model per known grid and
+    # stays out of this gate; see `just test-finders-slow`.
+    uv run finders/renbanana/tools/test_catalogue_is_used.py
+    uv run finders/renbanana/tools/test_canon.py
+    uv run finders/renbanana/tools/test_max_house_circles.py
+    uv run finders/renbanana/tools/test_probe_known_solution.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue
@@ -92,6 +103,12 @@ test:
     uv run examples/_shared/check_layout.test.py
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
+
+# finders/renbanana's slow test: an inverted CP-SAT solve per known grid, one
+# to several seconds each and minutes overall. Not part of check/check-full;
+# run by hand after touching probe_inverted.py.
+test-finders-slow:
+    uv run finders/renbanana/tools/test_probe_finds_known_grids.py
 
 # Run one space-separated list of test files, dispatching by extension.
 _run-tests files:
