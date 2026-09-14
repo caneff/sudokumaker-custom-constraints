@@ -34,6 +34,12 @@ from frame import corner_cells, cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
 from minify import minify_file
 
+# Every generated link opens with a rules sentence (project rule). The Spec
+# picks it (`Spec.rules_prefix`); this is the default, and every choice opens
+# with REQUIRED_RULES_OPENING.
+RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+REQUIRED_RULES_OPENING = "Normal sudoku rules apply"
+
 
 @dataclass
 class Spec:
@@ -82,6 +88,15 @@ class Spec:
     # in this set that exceeds the filter's 9-cell cap rather than ship a
     # link it silently under-solves.
     house_gac: frozenset[int] = frozenset()
+    # groups_fn(board) -> [(cells, value), ...]: set, it makes this a no-ring
+    # example. Its board is the bare n x n grid with no clue ring around it
+    # (`no_ring_doc`), its clues are typed into drawn groups, and this names
+    # them: grid (row, column) cells and the value typed into each group
+    # (None for an empty one). None, the default, is a ring example.
+    groups_fn: Callable | None = None
+    # The sentence the rules text opens with. A no-ring board has no "inner
+    # grid" to name, so its example passes its own.
+    rules_prefix: str = RULES_PREFIX
 
 
 def component_files(spec, local):
@@ -95,9 +110,6 @@ def stem(filename):
     """A component file's registered name: `FooComponent.js` -> `FooComponent`."""
     return filename[: -len(".js")]
 
-
-# Every generated link opens with this sentence (project rule).
-RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 # Seconds per solve in `unique`. A frame board this size is proved in
 # milliseconds, so a solve anywhere near the cap is a carve that has gone
@@ -500,6 +512,118 @@ def house_gac_constraint(n):
     }
 
 
+def example_constraint(spec, groups):
+    """The example's own custom constraint. `groups` is the drawn groups a
+    local board ships, read by main.js; None is the global lane, whose
+    main-global.js reads no input and builds its lines itself."""
+    local = groups is not None
+    return {
+        "name": spec.constraint_name,
+        "type": 1000,
+        "definition": {
+            "name": spec.constraint_name,
+            "input": (
+                [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
+                if local
+                else []
+            ),
+            "backend": {
+                "type": "code",
+                "code": minify_file(
+                    spec.dir / ("main.js" if local else "main-global.js")
+                ),
+            },
+            "components": [
+                {"type": "code", "name": stem(f), "code": minify_file(spec.dir / f)}
+                for f in component_files(spec, local)
+            ],
+        },
+        "input": {"groups": groups} if local else {},
+        "style": {},
+    }
+
+
+def no_ring_groups(spec, board):
+    """`spec.groups_fn`'s groups in the document's own shape: cell ids on the
+    n-wide grid, and the typed value as the string the app reads (an empty
+    group's is ""). Raises on a cell off the grid, which would otherwise wrap
+    onto some other real cell's id."""
+    n = board.n
+    groups = []
+    for cells, value in spec.groups_fn(board):
+        off = [cell for cell in cells if not (0 <= cell[0] < n and 0 <= cell[1] < n)]
+        if off:
+            raise ValueError(f"a drawn group's cells {off} are off the {n}x{n} grid")
+        groups.append(
+            {
+                "cells": [r * n + c for r, c in cells],
+                "value": "" if value is None else str(value),
+            }
+        )
+    return groups
+
+
+def refuse_no_ring_global_lane(spec, local):
+    """A no-ring board's clues live only in its drawn groups, and the global
+    lane ships none: raise before a search or a build is spent on a board with
+    no clues at all."""
+    if spec.groups_fn is not None and not local:
+        raise ValueError(
+            "a no-ring board ships its clues as drawn groups, so it has no "
+            "global lane: build it with local=True"
+        )
+
+
+def _document(spec, board, kind, width, cells, constraints, comment):
+    """The document around one board's cells and constraints: the header
+    fields every framebuild link shares, in the order they are encoded."""
+    n = board.n
+    return {
+        "formatVersion": "1.6.0",
+        "puzzle": {
+            "name": f"{spec.title} {n}x{n}",
+            "author": "",
+            "comment": comment,
+            # minDigit/maxDigit pin the digit range to n; the app otherwise
+            # defaults a custom puzzle to 0..9 regardless of grid size.
+            "type": kind,
+            "width": width,
+            "height": width,
+            "minDigit": spec.min_digit,
+            "maxDigit": n,
+            "cells": cells,
+            "constraints": constraints,
+            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
+        },
+    }
+
+
+def no_ring_doc(spec, board):
+    """The whole document for a no-ring board: the bare n x n grid, its boxes
+    and givens, and the example's constraint reading `spec.groups_fn`'s groups.
+
+    None of the ring's machinery applies. There are no corners to pin and no
+    ring to paint over, and the rows and columns come from the header: a
+    `"sudoku"` puzzle gets the app's own row and column houses, which a
+    `"custom"` one does not (docs/gotchas.md #9; the headless check is
+    docs/research/367-no-ring-board-type.md).
+    """
+    n, bh, bw = board.n, board.bh, board.bw
+    cells = [
+        {"value": board.grid[r][c], "given": True} if (r, c) in board.givens else {}
+        for r in range(n)
+        for c in range(n)
+    ]
+    regions = [(r // bh) * (n // bw) + (c // bw) for r in range(n) for c in range(n)]
+    constraints = [
+        {"type": 1, "regions": regions},
+        {"type": 0},
+        example_constraint(spec, no_ring_groups(spec, board)),
+    ]
+    comment = spec.rules_prefix + spec.comment_fn(n)
+    return _document(spec, board, "sudoku", n, cells, constraints, comment)
+
+
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -512,7 +636,12 @@ def build_doc(spec, board, local=False):
     is read off `board` itself, so a link never tells a solver a digit may
     repeat along cells that are a plain row. The global lane draws no lines at
     all, so it is never bent.
+
+    A Spec with a `groups_fn` builds the bare grid instead (`no_ring_doc`).
     """
+    refuse_no_ring_global_lane(spec, local)
+    if spec.groups_fn is not None:
+        return no_ring_doc(spec, board)
     n, bh, bw = board.n, board.bh, board.bw
     # Local lane never carries it: no measured local board cleared the timing
     # bar (docs/research/421-frame-link-timing.md), and `spec.house_gac` names
@@ -562,17 +691,7 @@ def build_doc(spec, board, local=False):
     # itself from the grid at solve time. Local: each line ships as a group
     # whose cells are the clue then the line inward, which is the order
     # main.js reads (docs/example-layout.md).
-    backend_code = minify_file(spec.dir / ("main.js" if local else "main-global.js"))
-    definition_input = (
-        [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
-        if local
-        else []
-    )
-    constraint_input = {"groups": frame_groups(n, board.lines)} if local else {}
-    components = [
-        {"type": "code", "name": stem(f), "code": minify_file(spec.dir / f)}
-        for f in component_files(spec, local)
-    ]
+    groups = frame_groups(n, board.lines) if local else None
 
     # The frame's own two backends, shared by every example (their rules live
     # in the files' own headers):
@@ -590,18 +709,7 @@ def build_doc(spec, board, local=False):
         {"type": 1, "regions": regions},
         {"type": 0},
         *(spec.extra_cages(interior) if spec.extra_cages else []),
-        {
-            "name": spec.constraint_name,
-            "type": 1000,
-            "definition": {
-                "name": spec.constraint_name,
-                "input": definition_input,
-                "backend": {"type": "code", "code": backend_code},
-                "components": components,
-            },
-            "input": constraint_input,
-            "style": {},
-        },
+        example_constraint(spec, groups),
         *(
             {
                 "type": 1000,
@@ -620,26 +728,10 @@ def build_doc(spec, board, local=False):
         *cosmetics(W, cells),
     ]
 
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
-            "name": f"{spec.title} {n}x{n}",
-            "author": "",
-            "comment": RULES_PREFIX
-            + spec.comment_fn(n)
-            + (LOCAL_RULES_SUFFIX if bent else ""),
-            # minDigit/maxDigit pin the digit range to n; the app otherwise
-            # defaults a custom puzzle to 0..9 regardless of grid size.
-            "type": "custom",
-            "width": W,
-            "height": W,
-            "minDigit": spec.min_digit,
-            "maxDigit": n,
-            "cells": cells,
-            "constraints": constraints,
-            "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
-        },
-    }
+    comment = (
+        spec.rules_prefix + spec.comment_fn(n) + (LOCAL_RULES_SUFFIX if bent else "")
+    )
+    return _document(spec, board, "custom", W, cells, constraints, comment)
 
 
 def check(spec, link, doc, board, local=False):
@@ -651,7 +743,12 @@ def check(spec, link, doc, board, local=False):
     n = board.n
     back = link_codec.decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
-    assert doc["puzzle"]["comment"].startswith(RULES_PREFIX), (
+    # The Spec picks the sentence, so the builder cannot be the only witness
+    # to it: whatever an example chooses still opens with the project rule.
+    assert spec.rules_prefix.startswith(REQUIRED_RULES_OPENING), (
+        f"the Spec's rules prefix must open with {REQUIRED_RULES_OPENING!r}"
+    )
+    assert doc["puzzle"]["comment"].startswith(spec.rules_prefix), (
         "the rules text must open with the required sentence"
     )
     # A cell holds a value only when it is a given: a non-given value ships as
@@ -664,7 +761,11 @@ def check(spec, link, doc, board, local=False):
         for c in doc["puzzle"]["constraints"]
         if c.get("definition", {}).get("name") == spec.constraint_name
     )
-    if local:
+    if spec.groups_fn is not None:
+        assert lc["input"]["groups"] == no_ring_groups(spec, board), (
+            "the drawn groups are not the ones the Spec's groups_fn draws"
+        )
+    elif local:
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
     else:
         assert lc["input"] == {}, "the global board reads no drawn groups"
@@ -798,6 +899,7 @@ def run(spec, n, bh, bw, seeds, local=False):
     names the lane and the example names its own geometry.
     """
     assert bh * bw == n, "box_height * box_width must equal n"
+    refuse_no_ring_global_lane(spec, local)
     board = generate(spec, n, bh, bw, seeds, paths=local and spec.bent_lines)
     doc = build_doc(spec, board, local=local)
     link = link_codec.encode_link(doc)
@@ -840,16 +942,24 @@ def rebuild(spec, n, local=False):
         # drawn board's lines appear in the document. Compare it here, or a
         # gen JSON whose "paths" moved rebuilds into a link drawing lines the
         # shown clues no longer describe, and the guard below sees nothing.
+        # A no-ring board's groups carry its shown clues as well, as their
+        # typed values, so the same comparison guards those.
         drawn = find_constraint(before, spec.constraint_name)["input"].get("groups")
-        assert drawn == frame_groups(board.n, board.lines), (
+        assert drawn == (
+            no_ring_groups(spec, board)
+            if spec.groups_fn is not None
+            else frame_groups(board.n, board.lines)
+        ), (
             "the committed link draws different lines from the recorded "
             "board's -- a rebuild from the recorded seed must not move the "
             "geometry"
         )
     # The frame backends are blanked alongside the example's own constraint:
     # all three carry code generated from the working tree, and a rebuild
-    # exists precisely to refresh it.
-    frame_names = [title for _, title in FRAME_BACKENDS]
+    # exists precisely to refresh it. A no-ring board ships no frame backends.
+    frame_names = (
+        [] if spec.groups_fn is not None else [title for _, title in FRAME_BACKENDS]
+    )
 
     def _without_house_gac(d):
         """Drop the House GAC constraint entirely, rather than blank it in

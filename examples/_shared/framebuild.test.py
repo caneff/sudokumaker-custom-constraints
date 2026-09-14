@@ -310,6 +310,218 @@ def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
         )
 
 
+# A no-ring caller's groups: a two-cell marker at the top of every column,
+# typed with that column's clue when the clue is shown and left empty when it
+# is not. The shape up-to-n draws (#366), which is all these cases need.
+def _column_markers(board):
+    return [
+        ([(0, c), (1, c)], board.clue[("T", c)] if ("T", c) in board.active else None)
+        for c in range(len(board.grid))
+    ]
+
+
+def _no_ring_board():
+    return _board(
+        givens={(3, 3): 3},
+        clue={("T", c): 10 + c for c in range(4)},
+        active={("T", 0), ("T", 2)},
+    )
+
+
+def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        board = _no_ring_board()
+        p = build_doc(spec, board, local=True)["puzzle"]
+        assert (p["width"], p["height"]) == (4, 4), "no ring cells around the grid"
+        assert len(p["cells"]) == 16
+        # cell ids are row * n + column: the given at (3, 3) is the last cell
+        assert p["cells"][15] == {"value": 3, "given": True}
+        assert p["cells"][:15] == [{}] * 15
+        assert _regions(p) == [0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 2, 2, 3, 3]
+        lc = next(c for c in p["constraints"] if c.get("name") == "Widget Lines")
+        assert lc["input"]["groups"] == [
+            {"cells": [0, 4], "value": "10"},
+            {"cells": [1, 5], "value": ""},
+            {"cells": [2, 6], "value": "12"},
+            {"cells": [3, 7], "value": ""},
+        ]
+        # A region constraint gives boxes only; a "sudoku" header is what gives
+        # the bare grid its rows and columns (docs/gotchas.md #9). The frame's
+        # own backends would strip a ring that is not there and pin four real
+        # cells as corners, so none ships.
+        assert p["type"] == "sudoku"
+        names = [c.get("definition", {}).get("name") for c in p["constraints"]]
+        assert names == [None, None, "Widget Lines"], names
+
+
+def _regions(puzzle):
+    return next(c["regions"] for c in puzzle["constraints"] if "regions" in c)
+
+
+def test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row():
+    # 2x3 boxes on a 6x6: two rows tall, three columns wide, so a square-box
+    # board cannot tell box height from box width
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        board = _board(n=6, bh=2, bw=3, clue={("T", c): 0 for c in range(6)})
+        p = build_doc(spec, board, local=True)["puzzle"]
+        assert _regions(p) == (
+            [0, 0, 0, 1, 1, 1] * 2 + [2, 2, 2, 3, 3, 3] * 2 + [4, 4, 4, 5, 5, 5] * 2
+        )
+
+
+def test_build_doc_refuses_a_group_cell_off_the_grid():
+    # (0, 5) on a 4x4 would encode as cell 5, which is (1, 1): a real cell the
+    # caller never drew
+    def off_grid(board):
+        return [([(0, 3), (0, 5)], None)]
+
+    with _spec(["FooComponent.js"], groups_fn=off_grid) as spec:
+        try:
+            build_doc(spec, _no_ring_board(), local=True)
+        except ValueError as e:
+            assert "(0, 5)" in str(e), e
+        else:
+            raise AssertionError("a group cell off the grid was encoded")
+
+
+def test_build_doc_opens_the_rules_text_with_the_spec_s_prefix():
+    with _spec(["FooComponent.js"]) as spec:
+        _, doc, _ = _build(spec)
+        assert doc["puzzle"]["comment"] == (
+            "Normal sudoku rules apply on the inner grid. test rules"
+        )
+    with _spec(["FooComponent.js"], rules_prefix="Normal sudoku rules apply. ") as spec:
+        _, doc, _ = _build(spec)
+        assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
+    with _spec(
+        ["FooComponent.js"],
+        groups_fn=_column_markers,
+        rules_prefix="Normal sudoku rules apply. ",
+    ) as spec:
+        doc = build_doc(spec, _no_ring_board(), local=True)
+        assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
+
+
+def _check_fails(spec, doc, board, fault):
+    """`check` on `doc` raises an AssertionError naming `fault`."""
+    try:
+        check(spec, link_codec.encode_link(doc), doc, board, local=True)
+    except AssertionError as e:
+        assert fault in str(e), e
+    else:
+        raise AssertionError(f"check passed a document with a fault: {fault}")
+
+
+def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
+    with _spec(
+        ["FooComponent.js"],
+        groups_fn=_column_markers,
+        rules_prefix="Normal sudoku rules apply. ",
+    ) as spec:
+        board = _no_ring_board()
+        doc = build_doc(spec, board, local=True)
+        check(spec, link_codec.encode_link(doc), doc, board, local=True)
+
+        # the same faults `check` rejects on a ring board
+        wrong_range = json.loads(json.dumps(doc))
+        wrong_range["puzzle"]["maxDigit"] = 9
+        _check_fails(spec, wrong_range, board, "maxDigit")
+        entered = json.loads(json.dumps(doc))
+        entered["puzzle"]["cells"][0] = {"value": 2}
+        _check_fails(spec, entered, board, "non-given cell")
+        unprefixed = json.loads(json.dumps(doc))
+        unprefixed["puzzle"]["comment"] = "test rules"
+        _check_fails(spec, unprefixed, board, "required sentence")
+        dropped = json.loads(json.dumps(doc))
+        lc = next(
+            c
+            for c in dropped["puzzle"]["constraints"]
+            if c.get("name") == "Widget Lines"
+        )
+        lc["input"]["groups"].pop()
+        _check_fails(spec, dropped, board, "drawn group")
+        # a group's typed value is a shown clue: a changed one is a changed
+        # puzzle, not a changed count
+        retyped = json.loads(json.dumps(doc))
+        lc = next(
+            c
+            for c in retyped["puzzle"]["constraints"]
+            if c.get("name") == "Widget Lines"
+        )
+        lc["input"]["groups"][0]["value"] = "11"
+        _check_fails(spec, retyped, board, "drawn group")
+    # the Spec chooses the sentence, but not one without the project rule
+    with _spec(
+        ["FooComponent.js"], groups_fn=_column_markers, rules_prefix="Rules. "
+    ) as spec:
+        board = _no_ring_board()
+        _check_fails(
+            spec, build_doc(spec, board, local=True), board, "Normal sudoku rules apply"
+        )
+    with _spec(
+        ["FooComponent.js", "BarComponent.js"], groups_fn=_column_markers
+    ) as spec:
+        board = _no_ring_board()
+        _check_fails(spec, build_doc(spec, board, local=True), board, "BarComponent")
+
+
+def test_build_doc_refuses_a_no_ring_board_on_the_global_lane():
+    # The global lane reads no drawn groups, and a no-ring board's clues live
+    # nowhere else: built that way it would ship a board with no clues at all.
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        try:
+            build_doc(spec, _no_ring_board(), local=False)
+        except ValueError as e:
+            assert "local=True" in str(e), e
+        else:
+            raise AssertionError("a no-ring board built on the global lane")
+
+
+def test_main_refuses_a_no_ring_global_lane_before_searching():
+    # The refusal costs nothing only if it comes first: a 9x9 search is
+    # minutes of CP-SAT spent on a board that is then thrown away.
+    def searched(*args):
+        raise AssertionError("the search ran before the lane was refused")
+
+    with _spec(
+        ["FooComponent.js"], groups_fn=_column_markers, cp_sat_clue_fn=searched
+    ) as spec:
+        try:
+            main(spec, ["4", "2", "2", "2"])
+        except ValueError as e:
+            assert "local=True" in str(e), e
+        else:
+            raise AssertionError("a no-ring board ran on the global lane")
+        assert not board_files(spec, 4)[1].exists()
+
+
+def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"],
+        clue_fn=_first_digit,
+        cp_sat_clue_fn=_post_first_digit,
+        groups_fn=_column_markers,
+        rules_prefix="Normal sudoku rules apply. ",
+    ) as spec:
+        main(spec, [str(n), str(bh), str(bw), "2", "--local"])
+        link_path, gen_path = board_files(spec, n, local=True)
+        assert rebuild(spec, n, local=True) + "\n" == link_path.read_text()
+        # A no-ring board's shown clues live only in its groups' typed values:
+        # hide one in the gen JSON and the rebuilt groups no longer match.
+        g = json.loads(gen_path.read_text())
+        g["active"] = [k for k in g["active"] if k != "T0"] + (
+            [] if "T0" in g["active"] else ["T0"]
+        )
+        gen_path.write_text(json.dumps(g))
+        try:
+            rebuild(spec, n, local=True)
+        except AssertionError as e:
+            assert "draws different lines" in str(e), e
+        else:
+            raise AssertionError("a no-ring board's typed clue moved without complaint")
+
+
 def test_make_grid_is_a_real_sudoku_reproducible_from_its_seed():
     for seed in (1, 7, 101):
         g = make_grid(random.Random(seed), 6, 2, 3)
@@ -733,6 +945,14 @@ if __name__ == "__main__":
     test_build_doc_refuses_house_gac_above_nine_cells()
     test_house_gac_constraint_refuses_above_nine_cells_on_its_own()
     test_build_doc_house_gac_names_one_board_not_the_whole_example()
+    test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups()
+    test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
+    test_build_doc_refuses_a_group_cell_off_the_grid()
+    test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
+    test_check_accepts_a_no_ring_board_and_still_catches_its_faults()
+    test_build_doc_refuses_a_no_ring_board_on_the_global_lane()
+    test_main_refuses_a_no_ring_global_lane_before_searching()
+    test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
