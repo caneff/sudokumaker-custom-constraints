@@ -94,7 +94,7 @@ const results = JSON.parse(out)
 // A page with too few main-body ref links (a bad path, a 404, a page that
 // changed shape) must fail loudly rather than report PASS on zero evidence.
 if (results.length < 3) {
-  console.log(`FAIL: only found ${results.length} eligible link(s) to test (need 3) — check the built file and URL`)
+  console.error(`FAIL: only found ${results.length} eligible link(s) to test (need 3) — check the built file and URL`)
   process.exit(1)
 }
 
