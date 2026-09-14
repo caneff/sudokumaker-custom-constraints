@@ -42,10 +42,14 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 ## Fail loud, never silently no-op
 
 - **A call that can silently do nothing is a trap — verify it or avoid it.** The
-  SudokuMaker API has calls that fail without a word: `replaceComponent` with a
-  *custom* target silently does nothing (see `docs/gotchas.md`). Prefer a design
-  that cannot misbehave in silence; where the API gives no signal, prove the
-  behavior off the app before relying on it.
+  SudokuMaker API fails without a word in the UI: a throw in main code or in
+  `update` is caught and goes to `console.error` only, so a "fail loud" `throw`
+  is loud in the Node harness and invisible in the app, and a throw inside a
+  registration loop leaves the constraint half-registered. A sibling custom
+  class spelled bare instead of `customComponents.Name` throws the same way
+  (`docs/gotchas.md` #1). Prefer a design that cannot misbehave in silence:
+  a build-time check, `puzzle.stop()` for a solve-time refusal, and where the
+  API gives no signal, prove the behavior off the app before relying on it.
 
 ## Argue design calls on merits, not "no puzzle uses it"
 

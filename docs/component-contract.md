@@ -143,8 +143,10 @@ Two consequences:
   fires on a line it does not hold for: unsound, and silently so (#336). Only a
   fact geometry fixes may be cached, `getCellsCanHaveRepeats` being the one we
   rely on — houses are registered once and a backtrack cannot un-register one.
-  A memo keyed on the state itself (`instance.sig`) is the other safe shape: it
-  describes the state it was written for, so a match is a genuine repeat.
+  A memo keyed on a signature of the state (`instance.sig`, a 32-bit hash of
+  the masks) is the other safe shape: it describes the state it was written
+  for, so a match is a repeat, or a hash collision that skips one sweep, which
+  costs strength and never soundness.
 
 ## Local vs global
 

@@ -49,8 +49,8 @@ clue cell `cell` collapsed to one value, then swapped the built-in in. Two costs
 
 ## What this does instead
 
-`NumberedRoomsComponent.js` is one self-contained component (the pattern
-`docs/gotchas.md` #1 requires). Its `update` prunes candidates every pass, in
+`NumberedRoomsComponent.js` is one self-contained component (the simpler of
+the two routes `docs/gotchas.md` #1 offers). Its `update` prunes candidates every pass, in
 both directions, before the clue is solved:
 
 1. Prune the indexer `line[0]`: drop any index that points at a cell whose

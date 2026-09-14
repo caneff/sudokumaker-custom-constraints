@@ -156,8 +156,8 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 
 ## Files
 
-- `main.js` — the local backend segment: one running-cap component per drawn
-  group. A group of one cell is a clue an author has started and not finished,
+- `main.js` — the local backend segment: one `SkyscraperOneSidedComponent`
+  per drawn group. A group of one cell is a clue an author has started and not finished,
   so it is skipped.
 - `main-global.js` — the global backend segment: reads all 4n frame lines off
   the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,

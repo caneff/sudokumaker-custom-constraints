@@ -166,14 +166,14 @@ than in the main code or once at load:
 - These boards run `minDigit 0` so the clue ring can hold a `0`, with a
   look-and-say cage keeping `0` off the inner grid. Until that cage bites, `0`
   is still a live candidate on every line cell, so the line is not yet a full
-  house of `{1..n}`. The kind is re-tested each `update` until the digit set
-  proves out, then cached on the instance.
+  house of `{1..n}`. The kind is re-tested on every `update` and never cached:
+  a kind latched deep in a branch would survive the backtrack to a parent
+  state whose line has regained the `0` (#336). Only the repeats answer, which
+  geometry fixes, is cached.
 
 A digit set of `{0..8}` is the case that makes the count alone insufficient: nine
 different digits over nine cells passes any full-house test, yet such a line can
-hit `n - 1` times. So the rule tests the digit set itself — and the answer is
-cached on that test, not on the kind, which would hold the gate shut for good
-once the cage removed the `0`.
+hit `n - 1` times. So the rule tests the digit set itself, on every call.
 
 A `0` on a line is also an ordinary miss for the sweep: it is neither of the
 position's two target digits, so it keeps the "hit for neither" case open like

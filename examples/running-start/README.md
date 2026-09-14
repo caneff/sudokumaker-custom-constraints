@@ -105,11 +105,12 @@ one pair component for every line clued on both ends.
 ## Why one self-contained component
 
 The Skyscraper Lines template uses a wrapper that, once the clue cell has a
-value, calls `replaceComponent(instance, new SkyscraperComponent(...))`. That
-works only because `SkyscraperComponent` is **built-in**. Swapping in a *custom*
-component that way silently does nothing (see `../../docs/gotchas.md`). So
-Running Start is a single component that holds the clue cell and the line and
-does everything itself.
+value, calls `replaceComponent(instance, new SkyscraperComponent(...))`. The
+swap works for a custom target too, but only spelled
+`customComponents.Name`; a bare class name throws a ReferenceError the app
+prints to the console and nowhere else (`../../docs/gotchas.md` #1). Running
+Start avoids the split altogether: a single component holds the clue cell and
+the line and does everything itself.
 
 ## What the component deduces
 
