@@ -21,22 +21,26 @@ const DECODE_CLI = join(HERE, 'link_codec_cli.py')
 // (bundle.claude.js:4860, `EmptyValueSentinel = 4294967295`).
 const EMPTY_VALUE = 4294967295
 
-// Every LogicStepType string (bundle.claude.js:4752-4768). The search itself
-// (`Solver.findSolutions`) is correct with any subset enabled or none at all
-// -- these only pick which cheap deductions run between branch points, via
-// `StandardLogicStepsGenerator`/`CustomLogicStepsGenerator`
-// (bundle-api-reference.md "Solver internals") -- so running every step is
-// the safe, fast default; nothing here trades correctness for speed.
-const ALL_STEP_TYPES = [
+// Every LogicStepType string, read off the live bundle at load time
+// (loadWorker's `__expose.LogicStepType`) rather than hand-copied here, so a
+// bundle refresh can never drift this out of sync with bundle.claude.js:4752-
+// 4768. The search itself (`Solver.findSolutions`) is correct with any subset
+// enabled or none at all -- these only pick which cheap deductions run
+// between branch points (bundle-api-reference.md "Solver internals") -- so
+// running every step is the safe, fast default; nothing here trades
+// correctness for speed. Kept only as the default `buildStartMessage` falls
+// back to when called without a bundle-derived list (its unit tests).
+const FALLBACK_STEP_TYPES = [
   'nakedSets', 'hiddenSets', 'pointingSets', 'xWings', 'fishes', 'yWings',
   'skyscrapers', 'unorthodoxNakedSets', 'simpleSumsLogic', 'consecutiveSetsLogic',
   'kropkiDotsLogic', 'unorthodoxFishes', 'countingCircles', 'byContradiction'
 ]
 
-// There is no JS LZString decoder in this repo -- `pyproject.toml`'s
-// `lzstring` (used by examples/_shared/link_codec.py) is the only codec
-// dependency (#429) -- so decoding shells out to the existing Python codec
-// rather than adding one.
+// Decodes a SudokuMaker link into its puzzle document. There is no JS
+// LZString decoder in this repo -- `pyproject.toml`'s `lzstring` (used by
+// examples/_shared/link_codec.py) is the only codec dependency (#429) -- so
+// this shells out to the existing Python codec (link_codec_cli.py) rather
+// than adding one.
 export function decodeLinkFile (linkFile) {
   const out = execFileSync('uv', ['run', DECODE_CLI, linkFile], { encoding: 'utf8' })
   return JSON.parse(out)
@@ -44,10 +48,14 @@ export function decodeLinkFile (linkFile) {
 
 // Maps a decoded puzzle document straight onto the worker's "start" message
 // (bundle.claude.js:11511 `handleStartMessage({ spec, grid, constraints,
-// strategy, verbose })`).
-export function buildStartMessage (doc) {
+// strategy, verbose })`). `stepTypes` defaults to FALLBACK_STEP_TYPES for
+// standalone/test use; solveDocument passes the live bundle's own list.
+export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}) {
   const p = doc.puzzle
   const cellCount = p.width * p.height
+  if (p.cells.length !== cellCount) {
+    throw new Error(`${p.cells.length} cells for a ${p.width}x${p.height} board`)
+  }
 
   // spec: puzzle-api.md "spec" -- size, minDigit, maxDigit, type. A document
   // that does not declare minDigit/maxDigit defaults to 1..width: every
@@ -71,15 +79,18 @@ export function buildStartMessage (doc) {
   }
 
   // grid: two words per cell, value then candidate-filter mask
-  // (bundle.claude.js:11479 applyInitialGridToState). A given cell carries
-  // its value; an ungiven cell carries EMPTY_VALUE and no extra filter --
-  // component `initialize` supplies the starting candidates.
+  // (bundle.claude.js:11479 applyInitialGridToState). A cell carries its
+  // value whenever it has one, `given` or not: outside clues on a frame
+  // board live in the cell array as a non-given value
+  // (examples/numbered-rooms/build_clued.py's `fill_ring`,
+  // docs/real-app-timing.md "Numbered Rooms, Skyscraper"), and the worker
+  // protocol itself makes no given/non-given distinction -- only the
+  // document does, for the app's own display and export. A cell with
+  // neither carries EMPTY_VALUE and no extra filter; component `initialize`
+  // supplies its starting candidates.
   const grid = []
   for (const cell of p.cells) {
-    grid.push(cell.given ? cell.value : EMPTY_VALUE, 0)
-  }
-  if (grid.length !== cellCount * 2) {
-    throw new Error(`${p.cells.length} cells for a ${p.width}x${p.height} board`)
+    grid.push(cell.value ?? EMPTY_VALUE, 0)
   }
 
   // constraints: setupPuzzle reads `constraint.config.type`
@@ -94,54 +105,49 @@ export function buildStartMessage (doc) {
     spec,
     grid,
     constraints,
-    strategy: { stepTypes: ALL_STEP_TYPES, useRandomness: false },
+    strategy: { stepTypes, useRandomness: false },
     verbose: false
   }
 }
 
 // Loads the trimmed solver bundle into stubbed worker globals and returns
-// `{ onmessage, handleStartMessage, drain }`. `onmessage` is the bundle's own
-// dispatcher (bundle.claude.js:11461), used for "findAll" (a plain, blocking
-// function -- bundle.claude.js:11578 -- so a thrown-and-caught component
-// error surfaces synchronously through the console.error override in
-// solveDocument). `handleStartMessage` is exposed separately, the way
-// bugcheck.mjs exposes internals with a trailing `globalThis.__probe = ...`
-// before the bundle's closing `})();`: it is itself `async` with no internal
-// `await` (bundle.claude.js:11511), so calling it through `onmessage`'s
-// fire-and-forget dispatch turns a thrown error into an unobserved rejected
-// promise instead of a catchable throw. Awaiting it directly avoids that.
+// `{ onmessage, handleStartMessage, LogicStepType, drain }`. `onmessage` is
+// the bundle's own dispatcher (bundle.claude.js:11461), used for "findAll" (a
+// plain, blocking function -- bundle.claude.js:11578 -- so a thrown-and-
+// caught component error surfaces synchronously through the console.error
+// override in solveDocument). `handleStartMessage` and `LogicStepType` are
+// exposed separately, the way bugcheck.mjs exposes internals with a trailing
+// `globalThis.__probe = ...` before the bundle's closing `})();`:
+// `handleStartMessage` is itself `async` with no internal `await`
+// (bundle.claude.js:11511), so calling it through `onmessage`'s fire-and-
+// forget dispatch turns a thrown error into an unobserved rejected promise
+// instead of a catchable throw -- awaiting it directly avoids that; and
+// `LogicStepType` is module-local (bundle.claude.js:4752), so this is the
+// only way to build a `strategy.stepTypes` list pinned to the loaded bundle.
 function loadWorker () {
   let src = readFileSync(BUNDLE_PATH, 'utf8')
   const tail = '})();'
   if (!src.trimEnd().endsWith(tail)) throw new Error('unexpected bundle tail')
   src = src.trimEnd().slice(0, -tail.length) +
-    '\n  __expose.handleStartMessage = handleStartMessage\n' + tail
+    '\n  __expose.handleStartMessage = handleStartMessage\n' +
+    '\n  __expose.LogicStepType = LogicStepType\n' + tail
 
   const posted = []
   const expose = {}
-  const sandbox = {
-    self: undefined,
-    onmessage: null,
-    postMessage: (msg) => posted.push(msg),
-    addEventListener: () => {}
-  }
-  sandbox.self = sandbox
   // `new Function` runs in global scope (bundle-api-reference.md:1577), so
   // `onmessage = ...` and `postMessage(...)` in the bundle resolve as bare
-  // identifiers against whichever globals are in scope when it runs -- give
-  // it its own scope via a `with`-free indirection: bind the names as
-  // parameters instead of relying on `globalThis`, so this bundle load never
-  // clobbers another one running in the same process.
+  // identifiers against whichever globals are in scope when it runs -- bind
+  // the names as parameters instead of relying on `globalThis`, so this
+  // bundle load never clobbers another one running in the same process.
   const fn = new Function('self', 'onmessage', 'postMessage', 'addEventListener', '__expose', // eslint-disable-line no-new-func
     src + '\nreturn onmessage')
-  const onmessage = fn(sandbox.self, sandbox.onmessage, sandbox.postMessage, sandbox.addEventListener, expose)
+  const self = {}
+  const onmessage = fn(self, null, (msg) => posted.push(msg), () => {}, expose)
   return {
     onmessage,
     handleStartMessage: expose.handleStartMessage,
-    drain () {
-      const out = posted.splice(0)
-      return out
-    }
+    LogicStepType: expose.LogicStepType,
+    drain: () => posted.splice(0)
   }
 }
 
@@ -150,7 +156,7 @@ function loadWorker () {
 // every solution found plus the wall-clock time of the whole run.
 export async function solveDocument (doc) {
   const worker = loadWorker()
-  const start = buildStartMessage(doc)
+  const start = buildStartMessage(doc, { stepTypes: Object.values(worker.LogicStepType) })
 
   // Every error path in the bundle -- a bad initial grid, a custom
   // component's `initialize`/`update`/`validate` throwing, the main backend
@@ -159,7 +165,9 @@ export async function solveDocument (doc) {
   // worker's own postMessage protocol. A batch scorer cannot afford that: a
   // broken constraint would silently score every puzzle as "no solutions"
   // instead of failing loud. So `console.error` is made to throw for the
-  // duration of the run, restored after.
+  // duration of the run, restored after. This is a process-global patch, so
+  // two overlapping `solveDocument` calls in the same process are not safe;
+  // fine for this CLI's one-run-at-a-time use, not for a worker pool.
   const realConsoleError = console.error
   console.error = (error) => { throw error instanceof Error ? error : new Error(String(error)) }
 
@@ -172,8 +180,16 @@ export async function solveDocument (doc) {
     const initMessages = worker.drain()
     const init = initMessages.find(m => m.type === 'init')
     if (!init) throw new Error('no init message from the bundle')
-    if (init.changed === false && init.error) {
-      throw new Error(`solver rejected the initial grid: ${init.error}`)
+    // Success and failure are told apart by which fields are present, not by
+    // `changed` (bundle.claude.js:11518-11537): success always posts
+    // `sudoku` (`changed` there is a legitimate `false`, meaning setup
+    // changed nothing -- not a failure); failure never does, and its
+    // `error` can itself be `undefined` (`createFailedResultForCell` builds
+    // a failed result with no message, bundle-api-reference.md:3659-3663).
+    // Keying on `sudoku`'s absence catches that case instead of letting a
+    // message-less failure through to a silent zero-solutions `findAll`.
+    if (!('sudoku' in init)) {
+      throw new Error(`solver rejected the initial grid: ${init.error ?? '(no message)'}`)
     }
 
     worker.onmessage({ data: { type: 'findAll' } })

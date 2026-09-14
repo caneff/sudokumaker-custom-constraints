@@ -14,9 +14,8 @@
 //   node examples/_shared/bundle-solve.mjs <link_file> [reps]
 //
 // Prints the solution count and the median solve time in ms over `reps`
-// (default 3) reps. Decoding shells out to the existing Python link codec
-// (examples/_shared/link_codec.py via link_codec_cli.py) -- there is no JS
-// LZString decompressor in this repo, and this avoids adding one.
+// (default 3) reps. Decoding shells out to Python -- see
+// bundle-solve-lib.mjs's decodeLinkFile for why.
 
 import { decodeLinkFile, solveDocument } from './bundle-solve-lib.mjs'
 import { median } from './app-solve-lib.mjs'
@@ -24,7 +23,11 @@ import { median } from './app-solve-lib.mjs'
 function parseArgs (argv) {
   const linkFile = argv[0]
   if (!linkFile) throw new Error('usage: bundle-solve.mjs <link_file> [reps]')
-  return { linkFile, reps: parseInt(argv[1] || '3', 10) }
+  const reps = argv[1] === undefined ? 3 : parseInt(argv[1], 10)
+  if (!Number.isInteger(reps) || reps < 1) {
+    throw new Error(`reps must be a positive integer, got ${JSON.stringify(argv[1])}`)
+  }
+  return { linkFile, reps }
 }
 
 const { linkFile, reps } = parseArgs(process.argv.slice(2))

@@ -7,7 +7,7 @@
 // (docs/research/humanify-pedagogy/bundle.claude.js) and runs it for real.
 
 import assert from 'assert'
-import { buildStartMessage, solveDocument } from './bundle-solve-lib.mjs'
+import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve-lib.mjs'
 
 // ---- buildStartMessage: spec, grid, constraints, strategy ----
 {
@@ -32,38 +32,73 @@ import { buildStartMessage, solveDocument } from './bundle-solve-lib.mjs'
 }
 
 // ---- buildStartMessage: declared minDigit/maxDigit pass through unchanged ----
+// minDigit 0 (the real examples/hit-counts value), not 1 -- 1 would equal the
+// undeclared default and pass whether or not the declared value is read.
 {
   const doc = {
     puzzle: {
       type: 'custom',
       width: 11,
       height: 11,
-      minDigit: 1,
+      minDigit: 0,
       maxDigit: 9,
       cells: Array(121).fill({}),
       constraints: []
     }
   }
   const msg = buildStartMessage(doc)
-  assert.strictEqual(msg.spec.minDigit, 1)
+  assert.strictEqual(msg.spec.minDigit, 0)
   assert.strictEqual(msg.spec.maxDigit, 9)
+}
+
+// ---- buildStartMessage: a non-given value (an outside clue on a frame
+// board) still populates the grid. The worker protocol makes no given/
+// non-given distinction (bundle.claude.js:11479 applyInitialGridToState);
+// only the document does, for the app's own display. See
+// examples/numbered-rooms/build_clued.py's `fill_ring` and
+// docs/real-app-timing.md's "Numbered Rooms, Skyscraper" note. ----
+{
+  const doc = {
+    puzzle: {
+      type: 'custom',
+      width: 2,
+      height: 1,
+      cells: [{ value: 3 }, {}],
+      constraints: []
+    }
+  }
+  const msg = buildStartMessage(doc)
+  assert.deepStrictEqual(msg.grid, [3, 0, 4294967295, 0])
 }
 
 console.log('bundle-solve-lib: buildStartMessage ok')
 
 // ---- solveDocument: the 406 GAC-demo without-GAC link has exactly one
-// solution, matching CP-SAT (docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt,
-// solved independently in this ticket's build, see the commit body) ----
+// solution, matching CP-SAT. The solve, the CP-SAT model and the derivation
+// of this literal are docs/research/429-headless-solver-calibration.md's
+// "CP-SAT cross-check" section, not re-run here. ----
 {
   const CPSAT_SOLUTION = '265783149387149562941562783594627831726831495138495627413956278872314956659278314'
-  const { decodeLinkFile } = await import('./bundle-solve-lib.mjs')
   const doc = decodeLinkFile(new URL('../../docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt', import.meta.url).pathname)
   const { solutions, ms } = await solveDocument(doc)
   assert.strictEqual(solutions.length, 1)
   assert.strictEqual(solutions[0], CPSAT_SOLUTION)
-  assert.ok(typeof ms === 'number' && ms >= 0)
+  assert.ok(Number.isFinite(ms) && ms > 0)
 }
 console.log('bundle-solve-lib: solveDocument unique-solution ok')
+
+// ---- solveDocument: a link whose clues are non-given entered values (a
+// frame board's outside clues, not blank/interactive here) still solves as
+// the puzzle it encodes, not as the unclued board. Regression for the bug
+// buildStartMessage's `cell.given ? ... : EMPTY_VALUE` line had: it dropped
+// every non-given value, so this link ran unconstrained and never
+// terminated. Recorded verdict: unique (docs/frame-link-verdicts.md). ----
+{
+  const doc = decodeLinkFile(new URL('../../examples/numbered-rooms/PUZZLE_LINK_clued.txt', import.meta.url).pathname)
+  const { solutions } = await solveDocument(doc)
+  assert.strictEqual(solutions.length, 1)
+}
+console.log('bundle-solve-lib: solveDocument non-given-values ok')
 
 // A plain 4x4 sudoku (2x2 boxes) whose rows and columns are declared by the
 // same "Rows & Columns" backend the shipped boards use
