@@ -92,12 +92,19 @@ def find_component_file(example_dir, base_doc, component=None):
                 f"a registered component ({', '.join(names)})"
             )
         component_file = example_dir / f"{declared}.js"
-        if not component_file.exists():
-            raise FileNotFoundError(
-                f"{example_dir.name}'s {source} ({declared!r}) has no "
-                f"working-tree file at {component_file}"
-            )
-        return component_file
+        if component_file.exists():
+            return component_file
+        # A component whose canonical file lives in `_shared/` (house-gac:
+        # HouseGacComponent.js, shared with #421's frame boards) has no
+        # working-tree copy of its own to drift from its committed one --
+        # follow that copy instead of demanding a duplicate.
+        shared_file = example_dir.parent / "_shared" / f"{declared}.js"
+        if shared_file.exists():
+            return shared_file
+        raise FileNotFoundError(
+            f"{example_dir.name}'s {source} ({declared!r}) has no "
+            f"working-tree file at {component_file} or {shared_file}"
+        )
 
     matches = [n for n in names if (example_dir / f"{n}.js").exists()]
     if not matches:
