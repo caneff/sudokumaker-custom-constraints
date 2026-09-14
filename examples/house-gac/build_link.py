@@ -15,6 +15,15 @@
 #   uv run --with lzstring examples/house-gac/build_link.py \
 #       --component /path/HouseGacComponent.js --out /tmp/candidate.txt
 #
+# --keep-comments builds the annotated sibling link (#433): same board, same
+# givens, same component and backend files, but the embedded code keeps every
+# comment (only blank lines go; indentation is untouched) instead of the
+# usual full strip -- for a reader who opens the link in SudokuMaker and
+# reads the code in its own box. Regenerate PUZZLE_LINK_annotated.txt with
+#
+#   uv run --with lzstring examples/house-gac/build_link.py \
+#       --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
+#
 # --board names a committed link instead: the candidate component's code is
 # swapped into that link and nothing else changes, the way
 # `just time house-gac --board <fixture>` reaches a fixture other than the
@@ -76,11 +85,22 @@ def prove_unique(givens):
     return first
 
 
-def build(component_path=COMPONENT, backend_path=BACKEND, base_link=BASE_LINK):
+def build(
+    component_path=COMPONENT,
+    backend_path=BACKEND,
+    base_link=BASE_LINK,
+    keep_comments=False,
+):
     """Rebuild the standalone House GAC link from `base_link`'s board and
     givens, re-proving uniqueness with CP-SAT, and splicing in the House GAC
     constraint via `backend_path`/`component_path`. Returns (link, doc,
-    solution, n_givens)."""
+    solution, n_givens).
+
+    `keep_comments=True` is the annotated-link build (#433): the embedded
+    component and backend code keep every comment (only blank lines go;
+    indentation is untouched), instead of the usual full comment strip. Board,
+    givens and every other constraint are unaffected -- only how this one
+    constraint's code is minified changes."""
     base = decode_puzzle(pathlib.Path(base_link).read_text().strip())
     width = base["puzzle"]["width"]
     assert width == base["puzzle"]["height"] == 9, "expected the plain 9x9 board"
@@ -104,7 +124,10 @@ def build(component_path=COMPONENT, backend_path=BACKEND, base_link=BASE_LINK):
     )
 
     doc = with_filter(
-        base, pathlib.Path(component_path), backend=pathlib.Path(backend_path)
+        base,
+        pathlib.Path(component_path),
+        backend=pathlib.Path(backend_path),
+        keep_comments=keep_comments,
     )
     # with_filter always names the constraint "House GAC"; rename it to this
     # example's own name (see the module docstring for why) before it is
@@ -148,12 +171,20 @@ if __name__ == "__main__":
     p.add_argument("--backend", default=BACKEND)
     p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
     p.add_argument("--board", help="committed link to swap the component into")
+    p.add_argument(
+        "--keep-comments",
+        action="store_true",
+        help="build the annotated link: embedded code keeps every comment "
+        "instead of the usual full strip (#433)",
+    )
     args = p.parse_args()
     if args.board:
         link = build_on_board(args.component, args.out, args.board)
         print(f"wrote {args.out} ({len(link)} chars, from {args.board})")
     else:
-        link, doc, sol, n_givens = build(args.component, args.backend)
+        link, doc, sol, n_givens = build(
+            args.component, args.backend, keep_comments=args.keep_comments
+        )
         check(link, doc)
         pathlib.Path(args.out).write_text(link + "\n")
         print(f"givens carried over: {n_givens}")

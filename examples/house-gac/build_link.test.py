@@ -1,7 +1,10 @@
 # build_link.py: decode the output and assert it matches the committed
 # PUZZLE_LINK.txt exactly, that a candidate component's code round-trips
-# through --component/--out, and that --board swaps a candidate's code into
-# another committed link while changing nothing else.
+# through --component/--out, that --board swaps a candidate's code into
+# another committed link while changing nothing else, and that --keep-comments
+# reproduces the committed PUZZLE_LINK_annotated.txt with the same board and
+# givens and code that differs from the plain link only by comments and
+# whitespace (#433).
 #
 #   uv run --with lzstring examples/house-gac/build_link.test.py
 
@@ -16,6 +19,7 @@ sys.path.insert(0, str(HERE))
 from build_link import BACKEND, COMPONENT, CONSTRAINT_NAME, build, build_on_board, check
 from link_codec import decode_puzzle
 from link_swap import blanked, find_constraint
+from minify import minify_js
 
 if __name__ == "__main__":
     base_text = (HERE / "PUZZLE_LINK.txt").read_text().strip()
@@ -79,6 +83,46 @@ if __name__ == "__main__":
                 0
             ]["code"]
         ), "--board must carry the candidate component's code"
+
+    # --keep-comments: the annotated link (#433) reproduces the committed
+    # PUZZLE_LINK_annotated.txt exactly, carries the same board and givens as
+    # the plain link, and its embedded code differs from the plain link's
+    # only by comments and whitespace -- stripping both down to a full
+    # minify makes them equal.
+    annotated_text = (HERE / "PUZZLE_LINK_annotated.txt").read_text().strip()
+    annotated_link, annotated_doc, _annotated_sol, annotated_n_givens = build(
+        keep_comments=True
+    )
+    check(annotated_link, annotated_doc)
+    assert annotated_n_givens == 25
+    assert annotated_link == annotated_text, (
+        "the committed component/backend must reproduce "
+        "PUZZLE_LINK_annotated.txt exactly"
+    )
+    assert blanked(annotated_doc, CONSTRAINT_NAME) == blanked(base, CONSTRAINT_NAME), (
+        "the annotated link must carry the same board and givens as the plain one"
+    )
+    plain_component_code = find_constraint(base, CONSTRAINT_NAME)["definition"][
+        "components"
+    ][0]["code"]
+    annotated_component_code = find_constraint(annotated_doc, CONSTRAINT_NAME)[
+        "definition"
+    ]["components"][0]["code"]
+    assert annotated_component_code != plain_component_code, (
+        "the annotated component code must actually carry its comments"
+    )
+    assert minify_js(annotated_component_code) == minify_js(plain_component_code), (
+        "the annotated component's code, stripped, must match the plain link's"
+    )
+    plain_backend_code = find_constraint(base, CONSTRAINT_NAME)["definition"][
+        "backend"
+    ]["code"]
+    annotated_backend_code = find_constraint(annotated_doc, CONSTRAINT_NAME)[
+        "definition"
+    ]["backend"]["code"]
+    assert minify_js(annotated_backend_code) == minify_js(plain_backend_code), (
+        "the annotated backend's code, stripped, must match the plain link's"
+    )
 
     assert BACKEND.name == "main.js"
 

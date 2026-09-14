@@ -23,15 +23,22 @@ FORMS = [
 ]
 
 
-def with_filter(doc, component, backend=None):
+def with_filter(doc, component, backend=None, keep_comments=False):
     """A copy of `doc` with one more constraint carrying `component`, registered
     by `backend`, or by house-gac.js with its constructor renamed to `component`'s
-    stem when no backend is given."""
+    stem when no backend is given.
+
+    `keep_comments=True` embeds both files' code with every comment kept
+    (only blank lines dropped) instead of the usual full strip -- the
+    annotated-link path (#433)."""
     name = pathlib.Path(component).stem
     if backend is None:
-        code = minify_js(BACKEND.read_text().replace("HouseGacComponent", name))
+        code = minify_js(
+            BACKEND.read_text().replace("HouseGacComponent", name),
+            keep_comments=keep_comments,
+        )
     else:
-        code = minify_file(pathlib.Path(backend))
+        code = minify_file(pathlib.Path(backend), keep_comments=keep_comments)
     out = json.loads(json.dumps(doc))
     out["puzzle"]["constraints"].append({
         "type": 1000,
@@ -39,7 +46,11 @@ def with_filter(doc, component, backend=None):
             "name": "House GAC",
             "input": [],
             "backend": {"type": "code", "code": code},
-            "components": [{"type": "code", "name": name, "code": minify_file(pathlib.Path(component))}],
+            "components": [{
+                "type": "code",
+                "name": name,
+                "code": minify_file(pathlib.Path(component), keep_comments=keep_comments),
+            }],
         },
         "input": {},
         "style": {},

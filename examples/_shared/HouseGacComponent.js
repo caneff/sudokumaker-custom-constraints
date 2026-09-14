@@ -1,6 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! All-different at full strength (generalized arc consistency) over one house
-//! of at most 9 cells.
+//! of at most 9 cells. A house is any one of the board's fixed groups that
+//! must all hold different digits -- a row, a column, or a box; one instance
+//! of this file runs per house, so a plain 9x9 wires up 27 of them, one per
+//! row, column and box.
 //!
 //! A candidate survives only if some filling of the whole house with different
 //! digits uses it. The app's own `HouseComponent` and `DifferentDigitsComponent`
@@ -149,6 +152,9 @@ function * update (instance, puzzle) {
     const digitsInGroup = digitCountOf[pooledDigits]
 
     if (digitsInGroup < cellsInGroup) {
+      //! puzzle.stop tells the solver this branch is a dead end, full stop --
+      //! it fails only the search node currently being tried, so the solver
+      //! backs up and tries the next candidate elsewhere on the board.
       yield puzzle.stop(`the cells of ${instance.name} cannot all hold different digits`, cells)
       return
     }
@@ -172,6 +178,9 @@ function * update (instance, puzzle) {
   //! only clears bits, so snapshot minus working mask is the whole difference.
   //! Yielding here and not inside the walk keeps pooledDigitsOf ours until the
   //! walk is done: a yield lets the solver run another house's update.
+  //! puzzle.removeCandidatesFromCell narrows one cell's candidates and hands
+  //! that narrower board back to the app, which re-runs every component's
+  //! `update` (this one included) over it looking for the next deduction.
   for (let position = 0; position < cellCount; position++) {
     if (candidates[position] !== startingCandidates[position]) {
       const removedDigits = startingCandidates[position] & ~candidates[position]

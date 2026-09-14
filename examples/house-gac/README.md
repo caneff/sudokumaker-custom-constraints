@@ -10,6 +10,12 @@ box. #421 only ever adds this filter on top of a frame board; #406's demo pair
 reference the shipped component is checked against. This link is the shipped
 component, standing alone, on the simplest board there is.
 
+A second link, `PUZZLE_LINK_annotated.txt`, is the same board and the same 25
+givens with its embedded code kept uncompressed instead of minified: every
+comment survives (only blank lines go; indentation is untouched), for a
+reader who opens the link in SudokuMaker and reads the filter's own
+commentary in its code box (#433, "Rebuilding" below).
+
 Moved here from `docs/research/425-standalone-house-gac/` by #428, so the
 standalone GAC demo lives with the other examples rather than under research
 (#425, #426, #427).
@@ -18,6 +24,7 @@ standalone GAC demo lives with the other examples rather than under research
 | --- | --- |
 | `docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt` (same board, no GAC) | 25 -> **53/81** |
 | `PUZZLE_LINK.txt` | 25 -> **81/81** |
+| `PUZZLE_LINK_annotated.txt` (same board, comments kept) | 25 -> **81/81** |
 
 The 81/81 grid matches CP-SAT's unique solution cell for cell:
 
@@ -90,8 +97,19 @@ one component:
 uv run --with lzstring examples/house-gac/build_link.py
 ```
 
+`--keep-comments` builds `PUZZLE_LINK_annotated.txt` instead: same board, same
+givens, same `main.js` and `HouseGacComponent.js`, but the embedded code goes
+through `minify_js`'s comment-keeping mode (`examples/_shared/minify.py`)
+rather than the usual full strip -- only blank lines go, every comment
+survives:
+
+```
+uv run --with lzstring examples/house-gac/build_link.py \
+    --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
+```
+
 `docs/research/406-gac-demo/tools/logic9.mjs <link>` runs AutoStep in the
-recorded app and prints the grid it reached, for both rows of the table above:
+recorded app and prints the grid it reached, for every row of the table above:
 
 ```
 $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LINK.txt
@@ -99,11 +117,19 @@ $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LIN
 
 $ node docs/research/406-gac-demo/tools/logic9.mjs docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt
 {"file":"PUZZLE_LINK_without_gac.txt","before":25,"after":53,"grid":[...]}
+
+$ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LINK_annotated.txt
+{"file":"PUZZLE_LINK_annotated.txt","before":25,"after":81,"grid":["265783149","387149562","941562783","594627831","726831495","138495627","413956278","872314956","659278314"]}
 ```
 
+Size against the minified link: `PUZZLE_LINK.txt` is 4,755 characters,
+`PUZZLE_LINK_annotated.txt` is 9,554 -- roughly double, the commentary being
+about as large a share of the embedded code as #385 found it elsewhere.
+
 The pre-share decode check (`sm-link` skill, gridfind's `inspect_link.py`)
-reports `entered: 0` and `types {0,1,1000}` for `PUZZLE_LINK.txt` -- no
-non-given cell holds a value or mark.
+reports `entered: 0` and `types {0,1,1000}` for both `PUZZLE_LINK.txt` and
+`PUZZLE_LINK_annotated.txt` -- no non-given cell holds a value or mark on
+either link.
 
 A harder fixture is tracked separately (#427: a classic 9x9 that makes the
 app's own solver search, so GAC alone can be timed on search cost, not just
@@ -115,8 +141,11 @@ already takes a second committed link with no code change needed here.
 ## Tests
 
 - `build_link.test.py` — the committed link reproduces `build()` exactly, a
-  candidate component's code round-trips through `--component`/`--out`, and
-  `--board` swaps a candidate's code into another committed link.
+  candidate component's code round-trips through `--component`/`--out`,
+  `--board` swaps a candidate's code into another committed link, and
+  `--keep-comments` reproduces `PUZZLE_LINK_annotated.txt` exactly with the
+  same board and givens as the plain link and code that, fully stripped,
+  matches it too.
 - `soundness-harness.mjs` — this example's own use of the shared component:
   `main.js` registers exactly the 27 houses a plain 9x9 has (correctly
   numbered, in order), a short geometry throws rather than registering fewer
