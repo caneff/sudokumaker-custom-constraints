@@ -96,7 +96,7 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=(), keep_comments=Fal
     return "\n".join(text for text, _included in lines) + "\n"
 
 
-def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments=False):
+def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
     """`(line, included)` pairs for `src`, includes spliced in and comments
     stripped (unless `keep_comments`). `included` is true for every line that
     came from a `#include` (at any depth), false for the top-level file's own
@@ -126,7 +126,7 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments=False):
     return out
 
 
-def _include(rest, drop_blocks, base_dir, stack, keep_comments=False):
+def _include(rest, drop_blocks, base_dir, stack, keep_comments):
     """The minified `(line, included)` pairs for the file one `// #include`
     names -- the caller splices them straight into its own list."""
     rel = rest.strip()

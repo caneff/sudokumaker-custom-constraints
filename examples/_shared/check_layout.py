@@ -572,8 +572,11 @@ def check_frame_backends(example_dir, link):
     # The annotated link (#433) embeds the same component file through the
     # comment-keeping minify mode, not the usual full strip -- compare it
     # against that copy instead, or every rebuild would read as stale.
-    is_annotated_link = "annotated" in link.stem.split("_")
-    if is_annotated_link:
+    # Scoped to house-gac, the only example that builds one today: a bare
+    # "annotated" tag on some other example's link is not this carve-out's
+    # business, and comparing it against a keep-comments copy it never
+    # embedded would be its own false stale reading.
+    if name == "house-gac" and "annotated" in link.stem.split("_"):
         comp_want = minify_file(
             pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
         )
