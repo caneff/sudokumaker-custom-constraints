@@ -13,7 +13,12 @@ check-full: check test-heavy soundness
 # boards, ten to twenty seconds each. `test` skips them by path and
 # `test-heavy` runs them; examples/_shared/gate.test.py fails if a test file
 # drops out of both, or if this list and the ruling in #411 part ways.
-heavy := "examples/fillomino/pipeline.test.py examples/fillomino/generate.test.py examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
+# Split into two named groups (#424) so CI can run them as separate jobs
+# instead of one long step; `test-heavy` still runs both, in order, for
+# `just check-full` locally.
+heavy-fillomino := "examples/fillomino/pipeline.test.py examples/fillomino/generate.test.py"
+heavy-recovery := "examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
+heavy := heavy-fillomino + " " + heavy-recovery
 
 # Lint the Node code (StandardJS) and the Python generators (ruff check +
 # format check), and fail when uv.lock no longer matches pyproject.toml. The
@@ -70,6 +75,7 @@ test:
     uv run examples/_shared/cpsat.test.py
     uv run examples/_shared/framebuild.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
+    JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue
@@ -85,16 +91,30 @@ test:
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
-# The heavy tests `test` skips, run by `check-full`.
-test-heavy:
+# The heavy tests `test` skips, run by `check-full`, as two CI-sized groups
+# (#424): the fillomino pipeline (37s) and the two recovery probes (21s).
+test-heavy-fillomino:
     #!/usr/bin/env bash
     set -euo pipefail
-    for f in {{heavy}}; do
+    for f in {{heavy-fillomino}}; do
         case "$f" in
             *.mjs) node "$f" ;;
             *) uv run "$f" ;;
         esac
     done
+
+test-heavy-recovery:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for f in {{heavy-recovery}}; do
+        case "$f" in
+            *.mjs) node "$f" ;;
+            *) uv run "$f" ;;
+        esac
+    done
+
+# Both heavy groups, in order -- what `check-full` runs locally.
+test-heavy: test-heavy-fillomino test-heavy-recovery
 
 # A shipped Skyscrapers board, proved: the committed link still decodes to the
 # board its gen JSON records, that recorded solution really solves it, and it
