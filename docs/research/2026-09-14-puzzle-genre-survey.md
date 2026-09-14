@@ -38,6 +38,577 @@ genre. Where a page could not be fetched, the genre entry says so and falls back
 to the next source in the list above. Claims not confirmed at a primary source in
 this run are marked `[unverified]`.
 
+## Complete genre index
+
+**This index is the point of the document as much as the verdicts are.** The three
+families below are where the modelling analysis went, but the corpus is an idea bank
+and nothing was dropped from it: every genre encountered in this run has a row here,
+including the ones rated Poor, the ones outside the three families, and the ones whose
+rules were never read. A row says where to find more — a full entry's section number,
+or "overflow" for a genre that appears only in a section's closing table or only here.
+
+It is split by **source**, because the sources differ in what they could give. Table A
+is the puzz.link corpus, where rules were actually read for every genre. Table B is the
+Logic Masters Deutschland Puzzlewiki's English category minus everything already in
+table A — real genres, mostly with rules not read in this run. Table C is what came
+from GM Puzzles, the WPC unofficial wiki and the setter sources. Splitting by source
+keeps the provenance of each rule core visible; a merged table would hide which rows
+are read and which are names only.
+
+Families are named as: **shading** (a per-cell colour decision), **loop** (a loop or
+path, including the connecting-line genres), **region** (a partition into regions),
+**placement** (objects placed into cells), **number** (a digit per cell), **other**
+(anything else — moving pieces, bridges, drawing genres), and **not classified** where
+the rules were not read and the name alone does not settle it. Where a rule core says
+**not read**, no rules were read at a primary source in this run and none is guessed.
+
+### A. The puzz.link corpus — 244 genres, rules read for every one
+
+Rule cores are condensed from `https://puzz.link/js/pzpr-samples/<id>.js`, the data
+file behind puzz.link's rules page, and truncated where long. Aliases give the puzz.link
+id, the Japanese name, and any alias the engine records.
+
+| Genre | Aliases | Family | Rule core (from the cited puzz.link rules file) | Entry | CP-SAT verdict |
+| --- | --- | --- | --- | --- | --- |
+| Aho-ni-Narikire | `aho`, アホになり切れ | region | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one black circle. 2. A number indicates the size of the block, in cells. 3. If the number of cells in... | overflow | unrated |
+| Akari | `akari`, 美術館, Light Up, Bijutsukan | placement | Place a lightbulb in some cells so all cells are lit. Bulbs light in straight lines until a black cell or the grid edge. Bulbs may not light each other. A digit in a black cell counts the bulbs orthogonally adjacent to it. (LMD wiki; puzz.link ships no parseable rules string for `akari`.) | 1.26 | Workable / cheap |
+| Akichiwake | `akichi`, Akichiwake | shading | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the size of the largest group of connected unshade... | overflow | unrated |
+| All or Nothing | `nothing`, オールｏｒナッシング | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. If a country is visited by the loop, it must visit all cells. 3. Countries cannot be visited m... | 2.29 | unrated |
+| Alternation | `alter`, オルタネーション | placement | Place a triangle, square or circle in some of the cells. 1. Each outlined region contains exactly one of each possible symbol. 2. Every row and column contains exactly 2 kinds of symbol, which appear in alte... | overflow | unrated |
+| Amibo | `amibo`, あみぼー | other | Draw 1 or 2 orthogonal lines in some of the cells, connecting two opposite edges and going through the center. 1. Cells with circles can not contain lines. 2. Every circle must connect to exactly one line. 3... | overflow | unrated |
+| Angle Loop | `angleloop`, 鋭直鈍ループ | loop | Draw lines between every symbol to form a loop. 1. Lines go straight from symbol to symbol, and can be drawn at any angle. 2. The loop can not branch off or intersect. Symbols must be visited exactly once. 3... | overflow | unrated |
+| Anglers | `anglers`, フィッシング | loop | Draw lines so each person (represented by a number) is connected to a fish. 1. Lines cannot branch off or cross. A number or fish can not have more than one line. 2. A number shows the length of the connecte... | 2.29 | Workable / cheap |
+| Ant Mill | `antmill`, Ant Mill | loop | Shade some dominoes on the board to form a loop. 1. Two dominoes may not be orthogonally adjacent. 2. Every domino is diagonally adjacent to exactly two other dominoes. 3. All dominoes form a diagonally conn... | overflow | unrated |
+| Aqre | `aqre`, Aqre | shading | Shade some cells on the board. 1. Numbered regions must contain the indicated amount of shaded cells. 2. There may not be a horizontal or vertical run of 4 or more consecutive shaded or unshaded cells. 3. Al... | 1.22 | Good / moderate |
+| Aquapelago | `aquapelago`, Aquapelago | shading | Shade some cells on the board. Some shaded cells may be given. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. The unshaded cells cannot form a 2x2 square. 3. A number indicates the amount... | 1.23 | Workable / heavy |
+| Aquarium | `aquarium`, アクアプレース | shading | The grid represents an aquarium viewed from the side, which must be partially filled with water. 1. The numbers around the grid indicate the number of shaded cells in that row/column. 2. All shaded cells mus... | 1.34 | Workable / cheap |
+| Araf | `araf`, 相ダ部屋 | region | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly two numbers. 2. The size of the block must be between the two numbers, exclusive. 3. Question marks ca... | 3.3 | Good / moderate |
+| Army Ants | `armyants`, ぐんたいあり | other | Draw lines to move some of the numbers. 1. Movement lines cannot cross or overlap each other. Lines can also not go through the start- or endpoint of other numbers. 2. Numbers must form sequences starting at... | overflow | unrated |
+| Arukone | `arukone`, アルコネ | loop | Draw paths going through the cells to connect identical letters. 1. Two paths cannot occupy the same cell. 2. All cells must be used by a path connecting two letters. | 2.20 | Poor / heavy |
+| Ayeheya | `ayeheya`, ∀人∃ＨＥＹＡ | shading | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount of shaded cells in a region. 3. The sha... | overflow | unrated |
+| Balance Loop | `balance`, Balance Loop | loop | Draw lines through orthogonally adjacent cells to form a loop that goes through every circle. 1. The loop cannot branch off or cross itself. 2. The straight line segments coming out of a white circle must ha... | 2.7 | Good / moderate |
+| Barns | `barns`, バーンズ | loop | Draw a loop that goes through every cell. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branch or otherwise overlap. 2. The loop may not turn on icy cell... | overflow | unrated |
+| Battleship | `battleship`, Battleship | placement | Place every ship from the fleet into the grid. Ships can be rotated or mirrored. 1. All ships must be used exactly once. There cannot be ships in the grid that aren't present in the bank. 2. Two ships cannot... | 1.25 | Good / cheap |
+| Bonsan | `bonsan`, ぼんさん | other | Draw lines to move some of the circles. 1. A circle can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the st... | overflow | unrated |
+| Border Block | `bdblock`, ボーダーブロック | region | Draw lines over the dotted lines to divide the board into several blocks. 1. All identical numbers must be in the same block, and different numbers must be in different blocks. There can be no blocks without... | 3.22 | unrated |
+| Bosanowa | `bosanowa`, ボサノワ, bossanova | number | Place a positive number inside every circle. 1. Each number must be equal to the sum of the differences between itself and each orthogonally adjacent number. | overflow | unrated |
+| Box | `box`, ボックス | shading | Shade some cells on the board. 1. Each row and column has a certain value, indicated by the circled numbers in the right and bottom of the grid. 2. The numbers at the top indicate the sum of the values of th... | 1.34 | Workable / cheap |
+| Brownies | `brownies`, ブラウニー | other | Draw lines to move some of the circles. 1. A circle can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the st... | overflow | unrated |
+| Building Walk | `bdwalk`, ビルウォーク | loop | You're given a top-down view of a building. Grey cells represent elevators. 1. Draw a path from S to G that doesn't branch off or overlap itself at any cell. 2. The path must visit every number and elevator.... | overflow | unrated |
+| Canal View | `canal`, Canal View | shading | Shade some cells on the board. 1. The number on a cell indicates how many cells are shaded in a continuous line starting from the cell. These lines are in the four cardinal directions (up, down, left, right)... | 1.12 | Workable / moderate |
+| Castle Wall | `castle`, Castle Wall | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. Lines cannot go through bold borders. 2. White cells must be inside the loop, and black cells must be outside the loop. 3. A number with an a... | 2.6 | Good / moderate |
+| Cave | `cave`, バッグ, bag | shading | Shade some cells on the board to form a cave. 1. All shaded cells are connected through other shaded cells to the outside of the grid. 2. Numbers cannot be shaded. 3. Clues represent the total number of unsh... | 1.11 | Good / moderate |
+| Chained Block | `chainedb`, チェンブロ | shading | Shade some cells on the board to form blocks of any shape. 1. Each block must contain exactly one number or a question mark. 2. A number indicates the size of the block that contains it. 3. Diagonally adjace... | overflow | unrated |
+| Choco Banana | `cbanana`, チョコバナナ | shading | Shade some cells on the board. 1. A group of shaded cells must form a rectangle or square. 2. A group of unshaded cells must not form a rectangle or square. 3. A number indicates the size of the (shaded or u... | 1.20 | Good / moderate |
+| Chocona | `chocona`, チョコナ | shading | Shade some cells on the board. 1. A group of orthogonally connected shaded cells is called a block. Each block must be a filled rectangle or square. 2. Numbered regions must contain the indicated amount of s... | 1.16 | Good / cheap |
+| Circles and Squares | `circlesquare`, Circles and Squares | shading | Shade some cells on the board. 1. Black circles must be shaded, while white circles must not be shaded. 2. The shaded cells cannot form a 2x2 square. 3. All shaded cells form an orthogonally contiguous area.... | overflow | unrated |
+| Cocktail Lamp | `cocktail`, カクテルランプ | shading | Shade some cells on the board to form blocks. 1. Regions contain no more than one block, which is an orthogonally connected group of shaded cells. 2. A number indicates the size of the block in the region. 3... | overflow | unrated |
+| Coffee Milk | `coffeemilk`, コーヒー牛乳 | other | Draw lines between the circles to form groups. 1. Lines must be horizontal or vertical, and cannot turn. 2. Lines cannot cross each other. 3. Each group of circles must contain exactly one gray circle, and a... | overflow | unrated |
+| Cojun | `cojun`, コージュン | number | Place a number in each cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one of each number. 3. Two equal numbers cannot be... | 3.22 | Good / cheap |
+| Combi Block | `cbblock`, コンビブロック | region | Draw lines over the dotted lines to divide the board into blocks. 1. Each block must contain exactly two outlined regions. 2. Two adjacent blocks cannot have the same shape, counting rotations and reflection... | overflow | unrated |
+| Compass | `compass`, Compass | region | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one cell with a compass. 2. A number in a compass indicates how many cells belong to its region that a... | 3.22 | Good / moderate |
+| Context | `context`, Context | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. An unshaded number shows the amount of orthogonally adjacent shaded cells. 3. A shaded number shows the amount... | overflow | unrated |
+| Coral | `coral`, Coral | shading | Shade some cells on the board according to the numbers. 1. Clues outside the grid represent the lengths of each of the blocks of consecutive shaded cells in the corresponding row or column, not necessarily i... | 1.29 | Workable / heavy |
+| Country Road | `country`, カントリーロード | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. Every country must be visited exactly once. 3. A number indicates how many cells inside the co... | 2.3 | Good / moderate |
+| Creek | `creek`, クリーク | shading | Shade some cells on the board. 1. Numbers indicate the amount of shaded cells which overlap the clue. 2. All unshaded cells on the board form an orthogonally connected area. | 1.30 | Workable / cheap |
+| Cross the Streams | `cts`, Cross the Streams | shading | Shade some cells on the board according to the numbers. 1. Clues outside the grid represent the lengths of each of the blocks of consecutive shaded cells in the corresponding row or column, in order from lef... | 1.28 | Workable / moderate |
+| Crossing Ichimaga | `ichimagax`, 一回曲がって交差もするの | other | Draw lines over the dotted lines to connect the circles into one network. 1. A line must connect two circles, and can turn no more than once. 2. Two lines are allowed to cross if they both go straight throug... | overflow | unrated |
+| Crossstitch | `crossstitch`, Crossstitch | loop | Draw diagonal lines to make two loops. 1. A shaded cell is not part of any loop. 2. Loops cannot branch off or cross themselves, but they can cross each other. 3. Two cells where the loops intersect cannot b... | overflow | unrated |
+| Curve Data | `curvedata`, カーブデータ | other | Draw orthogonal lines between cells to form figures. 1. Every unshaded cell must have a line. Shaded cells cannot contain lines. 2. Lines cannot go through bold borders. 3. Every figure must overlap exactly... | overflow | unrated |
+| Detour | `detour`, Detour | loop | Draw a loop that goes through every cell. 1. The loop cannot branch off or cross itself. 2. A number indicates how many times the loop turns inside the outlined region. | 2.9 | Good / heavy |
+| Disorderly Loop | `disloop`, Disorderly Loop | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through gray cells. 3. Arrows point from a gray cell to an adjacent cell wh... | 2.29 | unrated |
+| Dominion | `dominion`, ドミニオン | shading | Shade some cells on the board to divide all unshaded cells into regions. 1. All shaded cells are orthogonally adjacent to exactly one other shaded cell. 2. Cells with letters cannot be shaded. 3. All identic... | 1.27 | Workable / moderate |
+| Doppelblock | `doppelblock`, Doppelblock | number | Place a number in some cells, and shade the other cells. 1. Every row and column has exactly 2 shaded cells. 2. Numbers must be between 1 and N-2, where N is the width of the board. 3. Each row and column co... | 3.21 | Good / cheap |
+| Dosun-Fuwari | `dosufuwa`, ドッスンフワリ | placement | Place iron balls (shaded circles) and balloons (unshaded circles) in some of the empty cells. 1. Each outlined region contains exactly one iron ball and one balloon. 2. An iron ball not in the bottom row mus... | overflow | unrated |
+| Dotchi-Loop | `dotchi`, ドッチループ | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. The loop goes through all unshaded circles. 3. Within a region, all unshaded circles contain e... | 2.26 | Workable / moderate |
+| Double Back | `doubleback`, Double Back | loop | Draw a loop that goes through every unshaded cell. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through shaded cells. 3. The loop visits each outlined region exactly twice. | 2.8 | Workable / moderate |
+| Double Choco | `dbchoco`, ダブルチョコ | region | Divide the grid into regions of any size. 1. Each region contains one white and one grey contiguous area. Both areas must be the same size and shape. They can be rotated or mirrored. 2. A number indicates th... | 3.22 | Good / moderate |
+| Easy as ABC | `easyasabc`, ABCプレース | number | Place letters from the given range into some of the cells. 1. Each row and column contains exactly one of each letter. Some cells remain empty. 2. A clue outside the grid represents the first letter seen in... | overflow | unrated |
+| Evolmino | `evolmino`, シンカミノ | placement | Place squares in some of the unshaded cells. 1. Orthogonally adjacent squares form blocks. Every block must have exactly one square overlapping an arrow. 2. Each arrow must pass through two or more blocks. 3... | overflow | unrated |
+| Family Photo | `familyphoto`, 家族写真 | region | Divide the grid into rectangular regions of orthogonally connected cells. 1. Each region must contain exactly one number, which indicates how many circles are in the region. 2. Orthogonally adjacent circles... | overflow | unrated |
+| Fillmat | `fillmat`, フィルマット | region | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1, and a length between 1 and 4. 2. Two regions of the same size cannot... | 3.22 | unrated |
+| Fillomino | `fillomino`, フィルオミノ | number | Divide the grid into regions. 1. A number indicates the size of the region, in cells. Regions can have any amount of identical numbers, or none at all. 2. Two regions of the same size cannot be orthogonally... | 3.1 | Good / moderate (measured) |
+| FiveCells | `fivecells`, ファイブセルズ | region | Divide the board into pentominoes (blocks of 5 cells). 1. A number indicates the amount of edges surrounding the cell which contain a border. 2. All borders must be used to divide two blocks, there can not b... | 3.9 | Workable / moderate |
+| FourCells | `fourcells`, フォーセルズ | region | Divide the board into tetrominoes (blocks of 4 cells). 1. A number indicates the amount of edges surrounding the cell which contain a border. 2. All borders must be used to divide two blocks, there can not b... | 3.9 | Workable / moderate |
+| Fractional Division | `fracdiv`, 分数分割 | region | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one cell with a number. 2. A number indicates the ratio of circles to cells in the area. | overflow | unrated |
+| Geradeweg | `geradeweg`, グラーデヴェグ | loop | Draw lines through orthogonally adjacent cells to form a loop that goes through every circle. 1. The loop cannot branch off or cross itself. 2. Every straight line segment that touches a clue must have a len... | 2.10 | Good / moderate |
+| Goats and Wolves | `shwolf`, ヤギとオオカミ | region | Draw lines over the dotted lines to divide the board into cages. 1. Each cage contains at least one animal. 2. A cage cannot contain both goats and wolves. 3. Lines cannot turn, except where marked with a do... | overflow | unrated |
+| Goishi | `goishi`, 碁石ひろい | other | You're given a grid filled with stones. Collect the stones in the correct order by marking each stone with a number. 1. Each stone must be in the same row or column as the previous stone, and not have other... | overflow | unrated |
+| Guide Arrow | `guidearrow`, ガイドアロー | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. All unshaded cells on the board form an orthogonally connected area. 3. Unshaded cells cannot form a loop. Thi... | overflow | unrated |
+| Haisu | `haisu`, Haisu | loop | Draw a path from S to G that goes through all cells. 1. The path cannot branch off or cross itself. 2. An outlined region can be entered and exited multiple times. A number N indicates that the path must go... | 2.25 | Good / heavy |
+| Hakoiri-masashi | `hakoiri`, はこいり○△□ | placement | Place a triangle, square or circle in some of the cells. 1. Each outlined region contains exactly one of each possible symbol. 2. Identical symbols can not be horizontally, vertically or diagonally adjacent.... | overflow | unrated |
+| Hanare-gumi | `hanare`, はなれ組 | number | Place one number in a cell of each region on the board. 1. The number in the region should be equal to the size of the region. 2. If two numbers share a row or column, and have no other numbers between them,... | 3.22 | unrated |
+| Hashiwokakero | `hashikake`, 橋をかけろ, bridges | other | Draw bridges to connect the islands into one network. 1. Bridges must be horizontal or vertical lines between two islands, and cannot make a turn. 2. Bridges cannot intersect. 3. There can be at most two bri... | overflow | unrated |
+| Hebi-Ichigo | `hebi`, へびいちご | placement | Place numbers into some of the empty cells to form snakes. 1. Each snake consists of a sequence of 5 consecutive numbers which are orthogonally adjacent. 2. Two snakes cannot share a border. 3. The number 1... | overflow | unrated |
+| Herugolf | `herugolf`, ヘルゴルフ | other | Draw lines to move all of the balls into a hole, marked by an H. 1. A ball’s first move must be in a straight line of the number of cells indicated by the number inside it, and each successive move must be o... | overflow | unrated |
+| Heteromino | `heteromino`, ヘテロミノ | region | Divide the board into triminoes (blocks of 3 cells). 1. Triminoes cannot use shaded cells. 2. Two triminoes that share a border must have different shape or different orientation. | 3.9 | Poor / moderate |
+| Heya-Bon | `heyabon`, へやぼん | other | Draw lines to move some of the circles. 1. A circle can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the st... | overflow | unrated |
+| Heyablock | `heyablock`, へやブロ | shading | Shade some cells on the board. 1. All shaded cells in one region must be connected. 2. A number indicates the amount of shaded cells in a region. 3. If a region has no number, it must have at least one shade... | overflow | unrated |
+| Heyapin | `heyapin`, へやピン | other | Place a pin in some grid vertices, including on the edge of the grid. 1. A number in a region indicates how many pins overlap the region, either fully or partially. 2. All regions must be joined by pins to f... | overflow | unrated |
+| Heyawake | `heyawake`, へやわけ, heyawacky | shading | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount of shaded cells in a region. 3. There c... | 1.6 | Good / moderate |
+| Hinge | `hinge`, ちょうつがい | shading | Shade some cells on the board. 1. A group of orthogonally connected shaded cells is called a block. Each block is cut exactly once by a single straight segment of region borders, across which it must have re... | overflow | unrated |
+| Hitori | `hitori`, ひとりにしてくれ | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A row or column may not contain two unshaded cells with identical numbers. 3. All unshaded cells on the board... | 1.2 | Poor / cheap |
+| Hotaru Beam | `firefly`, ホタルビーム | other | Draw a line from every firefly to make one connected network. 1. A black dot indicates where each firefly's path must start. 2. A path cannot connect directly between two black dots. 3. Paths cannot branch,... | overflow | unrated |
+| Ice Walk | `icewalk`, アイスウォーク | loop | Draw a loop that goes through every numbered cell. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branch or otherwise overlap. 2. The loop may not turn on... | overflow | unrated |
+| Icebarn | `icebarn`, アイスバーン | loop | Draw a line that starts at the IN arrow, and goes through every arrow before reaching the OUT arrow. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branch... | 2.24 | Poor / heavy |
+| Icelom | `icelom`, アイスローム | loop | Draw a line that starts at the IN arrow, and goes through every white cell before reaching the OUT arrow. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not b... | overflow | unrated |
+| Icelom 2 | `icelom2`, アイスローム２ | loop | Draw a line that starts at the IN arrow, and goes through every number before reaching the OUT arrow. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branc... | overflow | unrated |
+| Ichimaga | `ichimaga`, イチマガ | other | Draw lines over the dotted lines to connect the circles into one network. 1. A line must connect two circles, and can turn no more than once. 2. Lines cannot branch or overlap. 3. Numbers indicate the total... | overflow | unrated |
+| International Borders | `interbd`, International Borders | shading | Shade some cells to divide the grid into countries. 1. Some cells have a number. The number indicates the amount of shaded cells orthogonally adjacent to this cell. 2. Some cells have a color. All identical... | overflow | unrated |
+| Inverse LITSO | `invlitso`, Inverse LITSO | shading | Place a tetromino (a block of 4 unshaded cells) in every outlined region, and shade the rest of the cells. 1. The shaded cells cannot form a 2x2 square. 2. Two identical tetrominoes cannot share an edge, cou... | overflow | unrated |
+| Islands | `shimaguni`, 島国 | shading | Shade some cells on the board to form islands. 1. All regions contain exactly one island, which is an orthogonally connected group of shaded cells. 2. A number indicates the size of the island in the region.... | 1.21 | Good / cheap |
+| Juosan | `juosan`, 縦横さん | other | Draw an orthogonal line in every cell, connecting two opposite edges and going through the center. 1. There cannot be a run of 3 or more parallel lines. 2. Numbers indicate either the amount of cells with a... | overflow | unrated |
+| Kaisu | `kaisu`, Kaisu | loop | Draw a path from S to G that goes through all cells. 1. The path cannot branch off or cross itself. 2. An outlined region can be entered and exited multiple times. On the region's Nth visit the line must go... | 2.25 | Good / heavy |
+| KaitoRamma | `kramma`, 快刀乱麻 | region | Draw lines over the dotted lines to divide the board into blocks. 1. Each block contains at least one circle. 2. A block cannot contain both white and black circles. 3. Lines must be drawn straight from one... | overflow | unrated |
+| Kakuro | `kakuro`, カックロ | number | Place a number between 1 and 9 into every empty cell. 1. A clue on the bottom of a cell indicates the sum of numbers below the clue, up to the next clue. 2. A clue on the right of a cell indicates the sum of... | overflow | unrated |
+| Kakuru | `kakuru`, カックル | number | Place a number between 1 and 9 into every unshaded cell. 1. Identical numbers cannot be horizontally, vertically or diagonally adjacent. 2. Clues indicate the sum of the orthogonally and diagonally adjacent... | overflow | unrated |
+| Kazunori Room | `kazunori`, かずのりのへや | number | Place a number into every cell. 1. Each region contains every number between 1 to N exactly twice, where N is half the number of cells in the region. 2. Two numbers of the same value within a region must be... | 3.22 | unrated |
+| Kin-Kon-Kan | `kinkonkan`, キンコンカン | placement | Place a mirror in some of the cells by drawing a diagonal line connecting two opposite corners. 1. Every outlined region contains exactly one mirror. 2. Symbols outside the grid indicate a light source. The... | overflow | unrated |
+| Kissing Polyominoes | `kissing`, Kissing Polyominoes | other | not read | overflow | unrated |
+| Koburin | `koburin`, コブリン | loop | Shade some cells on the board, and draw a single loop that goes through all remaining cells. 1. The loop cannot branch off or cross itself. 2. Shaded cells cannot be orthogonally adjacent. 3. Cells with numb... | 2.13 | Workable / heavy |
+| Kouchoku | `kouchoku`, 交差は直角に限る | loop | Draw lines between every node to form a loop. 1. Lines go straight from node to node, and can be drawn at any angle. 2. The loop can not branch off. Nodes must be visited exactly once. 3. The loop may inters... | overflow | unrated |
+| Kropki | `kropki`, Kropki | number | Place a number in each cell. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row and column contains exactly one of each number. 3. A white dot indicates that the two adjacent... | overflow | unrated |
+| Kurochute | `kurochute`, クロシュート | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. Numbers cannot be shaded. 3. There must exist exactly one shaded cell with the indicated distance in a straigh... | overflow | unrated |
+| Kuroclone | `kuroclone`, クロクローン | shading | Shade some cells on the board. 1. Numbers cannot be shaded. 2. Each region must include exactly two units (shaded blocks) and these units must have the same shape, counting rotations and reflections as the s... | overflow | unrated |
+| Kurodoko | `kurodoko`, 黒どこ(黒マスはどこだ) | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. Numbers cannot be shaded. 3. Clues represent the total number of unshaded cells that can be seen in a straight... | 1.5 | Good / moderate |
+| Kurotto | `kurotto`, クロット | shading | Shade some cells on the board. 1. Cells with circles cannot be shaded. 2. Numbers indicate the sum of the size of all blocks that share at least one border with the circle. | 1.13 | Good / moderate |
+| Kusabi | `kusabi`, クサビリンク | loop | Draw lines between the circles to form pairs. 1. Lines must turn exactly twice, and each turn must be in the same direction. 2. Lines cannot cross or overlap each other. 3. A circle labeled '短' indicates tha... | overflow | unrated |
+| L-route | `loute`, エルート | region | Divide the grid into regions of orthogonally connected cells. 1. Each region must be an L shape with a width of one cell. 2. A circle must be located in the corner of an L shape. 3. Arrows must be located on... | overflow | unrated |
+| La Paz | `lapaz`, La Paz | region | Shade some cells on the board, and divide the rest into regions of 2 cells. 1. No two shaded cells are horizontally or vertically adjacent. 2. Numbers must be contained in a 1x2 region. It's possible for a r... | 3.22 | unrated |
+| Ladders | `ladders`, はしごをかけろ | other | Draw ladders of length 1 through the centers of some cells. 1. Each ladder overlaps two borders of distinct regions. 2. The endpoints of two ladders cannot touch. 3. Numbers indicate how many ladders overlap... | overflow | unrated |
+| Light and Shadow | `lightshadow`, Light and Shadow | shading | Shade some cells on the board to form shaded and unshaded areas. 1. Each orthogonally connected area contains exactly one clue. 2. The color of clued cells cannot be changed. 3. A clue represents the size of... | 1.15 | Good / moderate |
+| Line of Sight | `lineofsight`, サイトライン | loop | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number represents the length of the first straight line segment seen in the indicated direction. | 2.29 | unrated |
+| Litherslink | `lither`, Litherslink | other | Draw lines along the edges of some cells to form trees. 1. There must be more than one tree. 2. A tree must branch or terminate at every grid vertex. In other words, each grid vertex must have 1, 3, or 4 con... | overflow | unrated |
+| LITS | `lits`, ＬＩＴＳ | shading | Place a tetromino (a block of 4 cells) in every outlined region. 1. There can not be a 2x2 square of cells occupied by tetrominoes. 2. Two identical tetrominoes cannot share an edge, counting rotations and r... | 1.3 | Workable / cheap |
+| Lohkous | `lohkous`, Lohkous | region | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block must contain exactly one square with one or more numbers on it. 2. All lines must be used to divide two regions, there... | 3.22 | unrated |
+| Lollipops | `lollipops`, ペロペロキャンディ | placement | Place several lollipops of size 1x2 into the grid. 1. A lollipop consists of a circle and a connected horizontal or vertical line. Some parts are given. 2. Two lollipops cannot be orthogonally adjacent. 3. T... | overflow | unrated |
+| Look-Air | `lookair`, るっくえあ | shading | Shade some cells on the board. 1. Every group of shaded cells must form a filled square. 2. Clues represent how many of the five cells forming a cross around the clue (including itself) are shaded. 3. Two sq... | 1.34 | Workable / moderate |
+| Loop Special | `loopsp`, 環状線スペシャル | loop | Draw multiple loops so that every cell is used by at least one loop. 1. Two perpendicular line segments may intersect each other, but they may not turn at their intersection or otherwise overlap. 2. Some cel... | 2.16 | Poor / heavy |
+| Magnetic Ichimaga | `ichimagam`, 磁石イチマガ | other | Draw lines over the dotted lines to connect the circles into one network. 1. A line must connect two circles, and can turn no more than once. 2. Lines cannot branch or overlap. 3. Numbers indicate the total... | overflow | unrated |
+| Magnets | `magnets`, Magnets | placement | Place several magnets into the grid. A magnet consists of a 1x2 domino and has a positive and negative pole. 1. An outlined region contains one whole magnet, or stays empty. 2. Equal poles cannot be adjacent... | overflow | unrated |
+| Makaro | `makaro`, マカロ | number | Place a number in each empty cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one of each number. 3. Two equal numbers cann... | 3.22 | Good / cheap |
+| Mannequin Gate | `mannequin`, マネキンゲート | shading | Shade exactly two cells in each outlined region. 1. A number indicates how many empty cells are between the two shaded cells in the region, when following the shortest possible path between the cells that do... | overflow | unrated |
+| Martini | `martini`, マティーニ | shading | Shade some cells on the board to form blocks of orthogonally adjacent cells. 1. Black circles must overlap a block, while white circles must not overlap a block. 2. Outlined regions contain no more than one... | overflow | unrated |
+| Masyu | `mashu`, ましゅ, pearl | loop | Draw lines through orthogonally adjacent cells to form a loop that goes through every circle. 1. The loop cannot branch off or cross itself. 2. The loop must turn on black circles and travel straight through... | 2.2 | Good / moderate |
+| Maxi Loop | `maxi`, Maxi Loop | loop | Draw a loop that goes through every cell. 1. The loop cannot branch off or cross itself. 2. A number indicates the length of the longest visit to that region. | 2.11 | Workable / heavy |
+| Meandering Numbers | `meander`, にょろにょろナンバー | number | Place a number in each cell to make a path in each region. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one of each number. 3... | 3.22 | Good / cheap |
+| Mejilink | `mejilink`, メジリンク | loop | Draw lines over the dotted lines to form a loop. 1. The loop cannot branch off or cross itself. 2. The amount of cells in a region must equal the number of borders surrounding it that don’t belong to the loop. | 2.29 | unrated |
+| Mid-loop | `midloop`, ミッドループ | loop | Draw lines through orthogonally adjacent cells to form a loop that goes through every circle. 1. The loop cannot branch off or cross itself. 2. Each circle marks the center of the straight line segment it li... | 2.12 | Workable / moderate |
+| Minarism | `minarism`, マイナリズム | number | Place a number in each cell. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row and column contains exactly one of each number. 3. An arrow points from a larger number to a sm... | overflow | unrated |
+| Minesweeper | `mines`, マインスイーパ | placement | Locate the cells containing a mine in the grid. 1. Numbers indicate the amount of mines in the orthogonally and diagonally adjacent cells. 2. A number cannot contain a mine. | 1.24 | Good / cheap |
+| Mirror Block | `mirrorbk`, ミラーブロック | region | Draw lines over the dotted lines to divide the board into regions. 1. A number indicates the size of the region that contains it. 2. Regions can have no more than 1 number. 3. A thick line represents a mirro... | overflow | unrated |
+| Mirroring Tile | `mrtile`, ミラーリングタイル | shading | Shade some cells on the board to form blocks of any shape. Some shaded cells are given. 1. A number indicates the size of the block that contains it. A block can have any amount of identical numbers. 2. Ever... | overflow | unrated |
+| Mochikoro | `mochikoro`, モチコロ | shading | Shade some cells on the board to form regions of unshaded cells. 1. All regions must be rectangular in shape. 2. A region can have no more than one number. 3. A number indicates the size of the region that c... | 1.14 | Workable / heavy |
+| Mochinyoro | `mochinyoro`, モチにょろ | shading | Shade some cells on the board to form regions of unshaded cells. 1. Shaded blocks must not form rectangles or squares. 2. All regions must be rectangular in shape. 3. A region can have no more than one numbe... | 1.14 | Workable / heavy |
+| Moon or Sun | `moonsun`, 月か太陽 | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. Every region must be visited exactly once. 3. Within a region, the loop must pass through all... | 2.19 | Good / moderate |
+| Mukkonn Enn | `mukkonn`, Mukkonn Enn | loop | Draw a loop that goes through every cell. 1. The loop cannot branch off or cross itself. 2. When the loop exits a clued cell from a side with a number, it must travel in a straight line for the indicated num... | 2.29 | unrated |
+| Myopia | `myopia`, Myopia | loop | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. Arrows point towards the lines closest to the clue. If a clue has multiple arrows, the distance to t... | 2.14 | Workable / heavy |
+| Nagareru-Loop | `nagare`, 流れるループ | loop | Draw lines through orthogonally adjacent cells to form a directional loop. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through a shaded cell. 3. The loop must visit all black arrows... | 2.29 | unrated |
+| Nagenawa | `nagenawa`, なげなわ | loop | Draw lines through the center of some cells to make rectangular loops. 1. Loops may cross each other, but may not overlap or share a corner. 2. Numbers indicate how many cells in the outlined region are used... | 2.21 | Workable / moderate |
+| Nanameguri | `nanameguri`, ななめぐり | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. Cells can not be entered more than once. 2. Every outlined region must be visited exactly once. 3... | 2.29 | unrated |
+| Nanro | `nanro`, ナンロー | number | Place a number into some of the cells. Some numbers are given. 1. Each number must be equal to the amount of cells with numbers inside the outlined region. 2. Every region must contain at least one number. 3... | 3.6 | Good / moderate |
+| Nawabari | `nawabari`, なわばり | region | Draw lines over the dotted lines to divide the board into rectangles. 1. Each rectangle contains exactly one number. 2. A number indicates the amount of edges surrounding the cell which contain a border. | 3.14 | Good / cheap |
+| New KaitoRamma | `kramman`, 新・快刀乱麻 | region | Draw lines over the dotted lines to divide the board into blocks. 1. Each block contains at least one circle. 2. A block cannot contain both white and black circles. 3. Lines cannot turn, except where marked... | overflow | unrated |
+| NEWS | `news`, NEWS | placement | Place a letter N, E, W, or S in some of the cells. 1. Each region contains exactly two letters. 2. Letters may not repeat in a row or column. 3. Cells with a cross must remain unused. 4. Each letter must be... | overflow | unrated |
+| NIKOJI | `nikoji`, NIKOJI | region | Divide the grid into regions, with each region containing one letter. 1. Regions with the same letter must be identical in shape and orientation, and must have the letter in the same relative position. 2. Re... | 3.22 | unrated |
+| No Three | `nothree`, ノースリー | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A circle overlaps exactly one shaded cell. 3. Three consecutive shaded cells in a row/column must have differe... | 1.34 | Workable / moderate |
+| Nondango | `nondango`, ノンダンゴ | other | You're given a grid with circles in some of the cells. Change some of the circles from white to black. 1. Each outlined region must contain exactly one black circle. 2. There cannot be a horizontal, vertical... | 3.19 | Workable / cheap |
+| Nonogram | `nonogram`, ののぐらむ | shading | Shade some cells on the board according to the numbers. 1. Clues outside the grid represent the lengths of each of the blocks of consecutive shaded cells in the corresponding row or column, in order from lef... | overflow | unrated |
+| Norinori | `norinori`, のりのり | shading | Shade some cells on the board. 1. Each shaded cell is orthogonally adjacent to exactly one other shaded cell. 2. Each outlined region contains exactly 2 shaded cells. | 1.19 | Good / cheap |
+| Norinuri | `norinuri`, 海苔ぬり | shading | Shade some cells on the board to form regions of unshaded cells. 1. Each region contains exactly one number. 2. A number indicates the size of the region that contains it. 3. You cannot shade a cell with a n... | overflow | unrated |
+| Number Rope | `numrope`, ナンバーロープ | number | Place a number between 1 and 9 into every unshaded cell. 1. Each gray line should contain a sequence of numbers which increases by 1. 2. Numbers on shaded cells indicate the sum of numbers in the (up to four... | overflow | unrated |
+| Numberlink | `numlin`, ナンバーリンク | loop | Draw paths going through the cells to connect identical numbers. 1. Two paths cannot occupy the same cell. | 2.20 | Poor / heavy |
+| Nuri-Maze | `nurimaze`, ぬりめいず | shading | You're given a grid divided into tiles. Shade some tiles on the board to form a maze. 1. A tile is either completely shaded or unshaded. 2. Tiles containing a clue cannot be shaded. 3. There can not be a 2x2... | overflow | unrated |
+| Nuri-uzu | `nuriuzu`, ぬりうず | shading | Shade some cells on the board. 1. The unshaded areas must form blocks with exactly one star. You cannot shade a cell overlapping a star. 2. Unshaded areas must be rotationally symmetric, with a star at the c... | overflow | unrated |
+| Nuribou | `nuribou`, ぬりぼう | shading | Shade some cells on the board to form regions of unshaded cells. 1. Each region contains exactly one number. 2. A number indicates the size of the region that contains it. 3. You cannot shade a cell with a n... | 1.18 | Workable / heavy |
+| Nurikabe | `nurikabe`, ぬりかべ | shading | Shade some cells on the board to form regions of unshaded cells. 1. Each region contains exactly one number. 2. A number indicates the size of the region that contains it. 3. You cannot shade a cell with a n... | 1.1 | Good / heavy |
+| Nurimisaki | `nurimisaki`, ぬりみさき | shading | Shade some cells on the board. 1. There cannot be a 2x2 square of all shaded or unshaded cells. 2. Circles mark every instance of a cell which is unshaded and orthogonally adjacent to exactly one other unsha... | 1.8 | Good / moderate |
+| One Room One Door | `oneroom`, ワンルームワンドア | shading | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number inside a room indicates how many cells inside the room are s... | overflow | unrated |
+| Onsen-meguri | `onsen`, 温泉めぐり | loop | Draw lines through the center of some cells to form multiple loops. 1. Loops cannot branch or overlap, and cannot cross themselves or each other. 2. Every loop goes through exactly one circle, and every circ... | 2.15 | Poor / heavy |
+| Ovotovata | `ovotovata`, Ovotovata | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. When the loop exits a numbered region in any direction, it must travel in a straight line for... | 2.29 | unrated |
+| Oyakodori | `oyakodori`, おやこどり | other | You're given a grid with small birds (black circles) and large birds (white circles). Draw lines to move each bird into a nest, represented by adjacent gray cells. 1. Movement lines cannot cross or overlap e... | overflow | unrated |
+| Paintarea | `paintarea`, ペイントエリア | shading | You're given a grid divided into tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. There can not be a 2x2 square of all shaded or all unshaded cells. 3. Numbers indi... | overflow | unrated |
+| Parquet | `parquet`, Parquet | shading | You're given a grid divided into regions and tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. Within each thick-outlined region, exactly one tile is shaded. 3. All... | overflow | unrated |
+| Patchwork | `patchwork`, パッチワーク | shading | Divide the grid into square-shaped regions, then shade some cells. 1. A number indicates how many shaded cells are in the region. Regions can have any amount of identical numbers, or none at all. 2. Gray cel... | overflow | unrated |
+| Pencils | `pencils`, ペンシルズ | placement | Place several pencils into the grid, and draw lines into the other cells. 1. A pencil consists of a rectangle with a width of 1. One of the short ends is attached to the pencil tip, which occupies another ce... | overflow | unrated |
+| Penta Touch | `pentatouch`, Penta Touch | placement | Place every shape from the bank into the grid. Shapes can be rotated or mirrored. 1. All shapes must be used exactly once. There cannot be shapes in the grid that aren't present in the bank. 2. Two shapes ca... | overflow | unrated |
+| Pentominous | `pentominous`, Pentominous | region | Divide the grid into pentominoes (regions of 5 cells). You can use each pentomino any number of times (including zero). 1. Two adjacent pentominoes cannot have the same shape, counting rotations and reflecti... | 3.8 | Workable / moderate |
+| Pentopia | `pentopia`, Pentopia | placement | Place some shapes from the bank into the grid. Shapes can be rotated or mirrored. 1. A shape can be used no more than once. There cannot be shapes in the grid that aren't present in the bank. 2. Two shapes c... | overflow | unrated |
+| Pipelink | `pipelink`, パイプリンク | loop | Draw a loop that goes through every cell. 1. Two perpendicular line segments may intersect each other, but they may not turn at their intersection or otherwise overlap. 2. Some cells have given loop segments... | 2.16 | Poor / heavy |
+| Pipelink Returns | `pipelinkr`, 帰ってきたパイプリンク | loop | Draw a loop that goes through every cell. 1. Two perpendicular line segments may intersect each other only inside a circle, but the loop may not branch or otherwise overlap. 2. The loop cannot turn on a circ... | overflow | unrated |
+| Putteria | `putteria`, プッテリア | number | Place one number in a cell of each region on the board. 1. The number in the region should be equal to the size of the region. 2. Numbers cannot be orthogonally adjacent. 3. Identical numbers cannot be place... | 3.22 | unrated |
+| Ququ | `ququ`, 区区 | shading | Shade some triangles on the board. 1. Triangles with numbers or question marks cannot be shaded. 2. Unshaded triangles which share an edge form regions. Each region contains exactly one number or a question... | overflow | unrated |
+| Rail Pool | `railpool`, Rail Pool | loop | Draw a loop that visits every cell. 1. The loop cannot branch off or cross itself. 2. A line segment that overlaps a region must have a length indicated by one of the numbers in that region. For segments con... | 2.29 | unrated |
+| Rassi Silai | `rassi`, Rassi Silai | loop | Draw multiple lines through orthogonally adjacent cells. 1. Each region contains exactly one line covering all of the region's cells. 2. Lines cannot branch off or cross themselves. 3. Lines cannot form loop... | overflow | unrated |
+| Rectangle-Slider | `rectslider`, 四角スライダー | other | Draw lines to move some of the panels. 1. A panel can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the star... | overflow | unrated |
+| Reflect Link | `reflect`, リフレクトリンク | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or overlap. 2. All cells where the loop crosses itself are given. The loop cannot cross itself in other places. 3.... | overflow | unrated |
+| Remembered Length | `remlen`, Remembered Length | loop | Draw lines through orthogonally adjacent cells to form a directional loop. 1. All unshaded cells must be visited. 2. The loop cannot branch off or cross itself. 3. Each time the loop exits a region containin... | 2.29 | unrated |
+| Renban-Madoguchi | `renban`, 連番窓口 | number | Place a positive number into every cell. 1. The numbers in each region must all form a consecutive sequence, in any order. 2. The difference between two numbers separated by a bold border must be equal to th... | 3.22 | Good / cheap |
+| Return Home | `kaero`, お家に帰ろう | other | Draw lines to move some of the letters. 1. Movement lines cannot cross or overlap each other. Lines can also not go through the start- or endpoint of other letters. 2. All identical letters must be inside th... | overflow | unrated |
+| Ring-ring | `ringring`, リングリング | loop | Draw lines through the center of cells to fill each empty cell with a rectangular loop. 1. Loops may cross each other, but may not overlap or share a corner. 2. Loops cannot go through shaded cells. | 2.21 | Workable / moderate |
+| Ripple Effect | `ripple`, 波及効果 | number | Place a number in each cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one of each number. 3. Two equal numbers N in the s... | 3.16 | Good / cheap |
+| Roma | `roma`, ろーま, rome | placement | Place an arrow in every empty cell. Some arrows are given. 1. Every outlined area contains different arrows. 2. Following the arrows must lead to one of the circled goals. | overflow | unrated |
+| Rooms of Factors | `factors`, 因子の部屋 | number | Place a number in each cell. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row and column contains exactly one of each number. 3. Clues indicate the product of all numbers in... | overflow | unrated |
+| Round Trip | `roundtrip`, Round Trip | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or retrace itself. When the loop visits a cell twice, it must travel in a straight line each time. 2. The numbers... | 2.17 | Workable / heavy |
+| Sashigane | `sashigane`, さしがね | region | Divide the grid into regions of orthogonally connected cells. 1. Each region must be an L shape with a width of one cell. 2. A circle must be located in the corner of an L shape. 3. Arrows must be located on... | 3.12 | Good / cheap |
+| Sashikazune | `sashikazune`, さしカズね | region | Divide the grid into regions of orthogonally connected cells. 1. Each region must be an L shape with a width of one cell. 2. A number indicates the distance between its cell and the corner of its L-shaped re... | overflow | unrated |
+| Satogaeri | `satogaeri`, さとがえり, sato | other | Draw lines to move some of the circles. 1. A circle can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the st... | overflow | unrated |
+| School Trip | `shugaku`, 修学旅行の夜 | placement | Place some 1x2 beds in the grid, each with a pillow on one side and shade all of the remaining empty cells. 1. Shaded cells cannot form a 2x2 square. 2. All shaded cells form an orthogonally contiguous area.... | overflow | unrated |
+| Scrin | `scrin`, スクリン | loop | Place several rectangles into the grid, where the corners are located on the dots. 1. Rectangles cannot overlap or have a border in common. 2. A rectangle can contain no more than one circle. 3. A number ind... | overflow | unrated |
+| Shakashaka | `shakashaka`, シャカシャカ | other | Shade a right triangle in some empty cells, each of which occupies exactly half the cell it’s in. 1. Each unshaded area must be rectangular in shape. The rectangle can be upright, or rotated at a 45° angle.... | 1.9 | Poor / heavy |
+| Shikaku | `shikaku`, 四角に切れ | region | Draw lines over the dotted lines to divide the board into rectangles. 1. Each rectangle contains exactly one black circle. 2. A number indicates the size of the rectangle, in cells. | 3.4 | Good / cheap |
+| Shirokuro-link | `wblink`, シロクロリンク | loop | Draw lines between the circles to form pairs. 1. Lines must be horizontal or vertical, and cannot turn. 2. Lines cannot cross or overlap each other. 3. Each pair consists of a black circle and a white circle. | overflow | unrated |
+| Simple Gako | `simplegako`, シンプルガコ | number | Place a number into each cell such that each number indicates how many copies of itself appear in the same row or column, including itself. | overflow | unrated |
+| Simple Loop | `simpleloop`, Simple Loop | loop | Draw a loop that goes through every unshaded cell. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through shaded cells. | 2.5 | Workable / moderate |
+| Skyscrapers | `skyscrapers`, ビルディングパズル, building | number | Place a number in each cell. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row and column contains exactly one of each number. 3. Every number inside the grid represents a bu... | overflow | unrated |
+| Slalom | `slalom`, スラローム, suraromu | loop | Draw lines through orthogonally adjacent cells to form a directional loop, starting at the circle. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through shaded cells. 3. The loop must... | overflow | unrated |
+| Slant | `gokigen`, ごきげんななめ | other | Draw a diagonal line in every cell, connecting two opposite corners. 1. A number indicates how many lines meet at that corner. 2. Lines cannot form loops. | 2.23 | Workable / cheap |
+| Slash Pack | `slashpack`, Slash Pack | region | Draw diagonal lines through the center of some cells to divide the board into regions. 1. Two lines cannot overlap within a cell. All lines must be drawn from one corner to the opposite corner of the cell. 2... | 3.22 | unrated |
+| Slitherlink | `slither`, スリザーリンク | loop | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number indicates the amount of edges surrounding the cell that are visited by the loop. | 2.1 | Good / heavy |
+| Snake | `snake`, Snake | shading | Shade some cells into the grid to form a snake. 1. The snake cannot loop back on itself and visit a cell that's orthogonally or diagonally adjacent to a cell it has visited before. 2. Black circles must lie... | 2.22 | Good / moderate |
+| Snake Pit | `snakepit`, Snake Pit | number | Divide the grid into regions, where each region represents a snake. 1. A snake is a path that is at least 2 cells long and exactly 1 cell wide, and can have any amount of turns. 2. A snake cannot loop back o... | 3.13 | Good / heavy |
+| Square Jam | `squarejam`, Square Jam | region | Draw lines over the dotted lines to divide the grid into square-shaped regions. 1. A number indicates the side length of the square it's contained in. Squares may have any amount of identical numbers. 2. Reg... | 3.22 | Good / cheap |
+| Stairwell | `kaidan`, かいだんしばり | other | Draw several rectangles of length 1xN (at least 2) and draw a circle in all remaining cells. 1. Rectangles and circles cannot overlap shaded cells. 2. A number indicates the amount of circles in the 4 orthog... | overflow | unrated |
+| Star Battle | `starbattle`, スターバトル | placement | Place a star into some of the cells. 1. Stars cannot be horizontally, vertically or diagonally adjacent. 2. The number at the top of the grid indicates how many stars are in each row, column and outlined reg... | 1.10 | Good / cheap |
+| Statue Park | `statuepark`, Statue Park | placement | Place every shape from the bank into the grid. Shapes can be rotated or mirrored. 1. All shapes must be used exactly once. There cannot be shapes in the grid that aren't present in the bank. 2. Two shapes ca... | 3.10 | Workable / heavy |
+| Stostone | `stostone`, ストストーン | shading | Shade some cells on the board to form blocks. 1. All regions contain exactly one block, which is an orthogonally connected group of shaded cells. 2. A number indicates the size of the block in the region. 3.... | 1.17 | Workable / heavy |
+| Sudoku | `sudoku`, 数独 | number | Place a number in each cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row, column and outlined block contains exactly one of each number. | overflow | unrated |
+| Sukoro | `sukoro`, 数コロ | number | Place a number between 1 and 4 into some of the cells. Some numbers are given. 1. Each number is equal to the amount of (up to 4) orthogonally adjacent cells that also contain a number. 2. Identical numbers... | overflow | unrated |
+| Sukoro-room | `sukororoom`, 数コロ部屋 | number | Place a number between 1 and 4 into some of the cells. Some numbers are given. 1. Each number is equal to the amount of (up to 4) orthogonally adjacent cells that also contain a number. 2. Every outlined reg... | 3.22 | unrated |
+| Symmetry Area | `symmarea`, シンメトリーエリア | number | Divide the grid into regions. 1. A number indicates the size of the region, in cells. Regions can have any amount of identical numbers, or none at all. 2. Two regions of the same size cannot be orthogonally... | 3.2 | Good / moderate |
+| Tachiawase Block | `tachibk`, たちあわせブロック | region | Draw lines over the dotted lines to divide the two grids into several blocks. 1. A number indicates the size of the block in cells. A block can contain one or more numbers, or none at all. 2. Both grids must... | overflow | unrated |
+| Taj Mahal | `tajmahal`, タージ・マハル | region | Draw a square around each given circle. 1. All squares must have a circle in the center. The square's corners must be located on the grid points. 2. Two squares may not intersect or overlap, but they can tou... | overflow | unrated |
+| Takoyaki | `takoyaki`, たこ焼き | other | Draw lines through all unshaded cells, then place circles on top of them. 1. Every line goes through exactly three circles: One on each endpoint, and another somewhere in the middle. 2. Lines cannot cross or... | overflow | unrated |
+| Tapa | `tapa`, Tapa | shading | Shade some cells on the board. 1. You cannot shade a cell with a number. 2. Numbers represent the lengths of the blocks of consecutive shaded cells in the (up to) eight cells surrounding the clue. Numbers ar... | 1.4 | Good / moderate |
+| Tapa-Like Loop | `tapaloop`, Tapa-Like Loop | loop | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through clues. 3. Clues represent the numbers of consecutive cells occupied... | 2.18 | Good / moderate |
+| Tasquare | `tasquare`, たすくえあ | shading | Shade some cells on the board. 1. Shaded cells must form filled squares. 2. Cells with clues cannot be shaded. 3. Numbers indicate the sum of the size of all blocks that share a border with the clue. 4. Clue... | 1.34 | Workable / moderate |
+| Tatamibari | `tatamibari`, タタミバリ | region | Draw lines over the dotted lines to divide the board into regions. 1. Each region contains exactly one clue. 2. A vertical line indicates that the region is a rectangle where the height is larger than the wi... | 3.15 | Workable / cheap |
+| Tatebo-Yokobo | `tateyoko`, タテボーヨコボー | other | Draw an orthogonal line in every unshaded cell, connecting two opposite edges and going through the center. 1. A number overlapping a line indicates the length of that line. 2. A line can't overlap more than... | overflow | unrated |
+| Tawamurenga | `tawa`, たわむれんが | shading | Shade several cells in the hexagonal grid. 1. Each shaded cell must have at least one shaded cell below it (unless it's on the bottom row). 2. There can not be a horizontal run of 3 or more shaded cells. 3.... | overflow | unrated |
+| Tentaisho | `tentaisho`, 天体ショー | region | Divide the grid into regions. 1. Every region contains exactly one star. 2. Lines cannot go through stars. 3. Every region must be rotationally symmetric, with a star at the center. | 3.7 | Good / moderate |
+| Tents | `tents`, Tents | placement | Place tents into some of the empty cells. 1. Every tent must be paired up with an orthogonally adjacent tree. 2. Tents cannot be horizontally, vertically or diagonally adjacent. 3. The numbers around the gri... | overflow | unrated |
+| Tetrochain | `tetrochain`, テトロチェーン | shading | Place several tetrominoes (blocks of 4 cells) in the grid. 1. Tetrominoes cannot be orthogonally adjacent. 2. Tetrominoes cannot overlap a number. 3. A number indicates the amount of cells used by tetrominoe... | 1.31 | Poor / heavy |
+| Tetrominous | `tetrominous`, Tetrominous | region | Divide the grid into tetrominoes (regions of 4 cells). You can use each tetromino any number of times (including zero). 1. Two adjacent tetrominoes cannot have the same shape, counting rotations and reflecti... | 3.9 | Workable / moderate |
+| Tilepaint | `tilepaint`, タイルペイント | shading | You're given a grid divided into tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. A clue on the bottom of a cell indicates the amount of shaded cells below the clue... | overflow | unrated |
+| Toichika | `toichika`, 遠い誓い | placement | Place an arrow in one cell of each country. Some arrows are given. 1. Two arrows which point toward each other form a pair. All arrows must be paired. 2. Paired arrows must not be in adjacent countries. 3. A... | 3.20 | Poor / cheap |
+| Toichika 2 | `toichika2`, 遠い誓い２ | number | Place a number in one cell of each country. 1. If a country has a clue, the number must match the clue. Other countries can have any number. 2. A number must have an identical number in the same row or colum... | 3.20 | Good / cheap |
+| Tontonbeya | `tontonbeya`, とんとんべや | placement | Place a triangle, square or circle in every empty cell. 1. All instances of the same symbol within a room must be adjacent. This is called a cluster. 2. A room can have 1, 2 or 3 different clusters. These mu... | overflow | unrated |
+| Tonttiraja | `tontti`, Tonttiraja | region | Draw horizontal and vertical lines from the points to divide the grid into regions. You can connect two points, or draw from a point to the outer border. 1. Cells can contain a straight line, a corner or a T... | overflow | unrated |
+| Touch Slitherlink | `tslither`, Touch Slitherlink | loop | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number indicates how many times the loop visits the set of edges and vertices adjacent to the cell. | 2.29 | unrated |
+| Train Stations | `trainstations`, Train Stations | loop | Draw a loop that goes through every cell. 1. The loop cannot branch off or overlap. 2. All cells where the loop crosses itself are given. The loop cannot cross itself in other places. 3. Numbers denote train... | overflow | unrated |
+| Tren | `tren`, パーキング | placement | Place several 1x2 and 1x3 blocks on the board, which don't overlap each other. 1. Each number is contained in a block. Blocks must contain exactly one number. 2. Horizontally oriented blocks can slide left a... | 3.11 | Workable / moderate |
+| Tri-place | `triplace`, トリプレイス | region | Draw lines along the dotted lines to divide the grid into triminoes (blocks of 3 cells). 1. Clue cells are not part of any block. 2. A clue on the bottom of a cell indicates the amount of I-shaped blocks bel... | overflow | unrated |
+| Uso-one | `usoone`, ウソワン | shading | You're given a board divided into region. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. Numbers cannot be shaded. 3. A number indicates how many of the (up... | overflow | unrated |
+| Uso-tatami | `usotatami`, ウソタタミ | region | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1. 2. A region must have exactly one number. 3. A number must be differ... | 3.22 | unrated |
+| Vertex Slitherlink | `vslither`, Vertex Slitherlink | loop | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number indicates the amount of vertices surrounding the cell that are visited by the loop. | 2.29 | unrated |
+| View | `view`, ヴィウ | number | Place a number into some of the cells. Some numbers are given. 1. Each number is equal to the total number of empty cells that can be seen in a straight line vertically or horizontally. 2. Identical numbers... | overflow | unrated |
+| Voxas | `voxas`, Voxas | region | Draw lines over the dotted lines to divide the board into several areas. Some lines are given. 1. All areas must be rectangular in shape, and must be 2 or 3 cells in size. 2. Two rectangles divided by a whit... | overflow | unrated |
+| Wafusuma | `wafusuma`, 和フスマ | number | Divide the grid into regions. 1. A circle must divide two different regions. 2. A number on a circle indicates the sum of the sizes of the two adjacent regions. 3. Two regions of the same size cannot be orth... | overflow | unrated |
+| Wagiri | `wagiri`, ごきげんななめ・輪切 | other | Draw a diagonal line in every cell, connecting two opposite corners. 1. A number indicates how many lines meet at that corner. 2. Cells with a '輪' must overlap a loop. 3. Cells with a '切' must not overlap a... | overflow | unrated |
+| Wall Logic | `walllogic`, ウォールロジック | other | Draw one or more straight arrows extending from each clue. 1. Arrows may not cross or go through other clues. 2. A number indicates the sum of the lengths of the arrows extending from it. | overflow | unrated |
+| Water Walk | `waterwalk`, ウォーターウォーク | loop | Draw a loop that goes through every numbered cell. 1. The loop cannot branch off or cross itself. 2. Blue cells represent water, while regular cells represent ground. The loop may not go through more than 2... | 2.29 | unrated |
+| Wittgenstein Briquet | `wittgen`, Wittgenstein Briquet | placement | Place several rectangles of size 1x3 into the grid. 1. A number indicates the amount of rectangles in the 4 orthogonally adjacent cells. 2. Rectangles cannot overlap numbers. 3. All cells not used by rectang... | overflow | unrated |
+| Yajilin | `yajilin`, ヤジリン, yajirin | loop | Shade some cells on the board, and draw a single loop that goes through all remaining cells. 1. The loop cannot branch off or cross itself. 2. Shaded cells cannot be orthogonally adjacent. 3. Cells with numb... | 2.4 | Workable / heavy |
+| Yajisan-Kazusan | `yajikazu`, やじさんかずさん | shading | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount of shaded cells in the given direction. If a clue is shaded, the number becomes... | overflow | unrated |
+| Yajisan-Sokoban | `yajisoko`, やじさん倉庫番 | other | Draw lines to move some of the boxes. 1. A box can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap each other. Lines can also not go through the start-... | overflow | unrated |
+| Yajitatami | `yajitatami`, ヤジタタミ | region | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1 and a length of at least 2. 2. There must be a border immediately in... | 3.22 | unrated |
+| Yin-Yang | `yinyang`, しろまるくろまる | placement | Place a black or white circle in every cell. Some circles are given. 1. All circles of the same color must be orthogonally contiguous. 2. There can not be a 2x2 square of all black or all white circles. | 1.7 | Good / moderate |
+| Yosenabe | `yosenabe`, よせなべ | other | Draw lines to move every circle into one of the pots (denoted by a group of gray cells). 1. A circle can be moved horizontally or vertically, but cannot make a turn. 2. Movement lines cannot cross or overlap... | overflow | unrated |
+
+### B. Logic Masters Deutschland Puzzlewiki, English category — 247 further genres
+
+Every page in `Kategorie:Puzzletype/en` that is not already in table A. These are real,
+documented genres, many of them variants of a table A genre (the Tapa and Battleship
+families alone contribute a dozen). Rules were read for the ones marked; the rest say
+"not read" and are listed because the names themselves are the idea bank.
+
+| Genre (LMD Puzzlewiki page) | Aliases | Family | Rule core | Entry | CP-SAT verdict |
+| --- | --- | --- | --- | --- | --- |
+| 3x3 Patience | LMD `3x3_Patience/en` | not classified | not read | overflow | unrated |
+| 4x4 Minesweeper | LMD `4x4_Minesweeper/en` | not classified | not read | overflow | unrated |
+| ABC | LMD `ABC/en` | not classified | not read | overflow | unrated |
+| ABC dissection | LMD `ABC_dissection/en` | not classified | not read | overflow | unrated |
+| ABC Snake | LMD `ABC_Snake/en` | not classified | not read | overflow | unrated |
+| ABCD Puzzle | LMD `ABCD_Puzzle/en` | not classified | not read | overflow | unrated |
+| Akari Builder | LMD `Akari_Builder/en` | not classified | not read | overflow | unrated |
+| Almost Simple Loop | LMD `Almost_Simple_Loop/en` | not classified | not read | overflow | unrated |
+| Alphametik | LMD `Alphametik/en` | not classified | not read | overflow | unrated |
+| Alternate Corners | LMD `Alternate_Corners/en` | not classified | not read | overflow | unrated |
+| Alternative Loop | LMD `Alternative_Loop/en` | not classified | not read | overflow | unrated |
+| Areasums | LMD `Areasums/en` | not classified | not read | overflow | unrated |
+| Arrow Sudoku | LMD `Arrow_Sudoku/en` | not classified | not read | overflow | unrated |
+| Arrow Web | LMD `Arrow_Web/en` | not classified | not read | overflow | unrated |
+| Arrows | LMD `Arrows/en` | not classified | not read | overflow | unrated |
+| Arrows with Numbers | LMD `Arrows_with_Numbers/en` | not classified | not read | overflow | unrated |
+| As easy as ABC | LMD `As_easy_as_ABC/en` | not classified | not read | overflow | unrated |
+| Banknotes | LMD `Banknotes/en` | not classified | not read | overflow | unrated |
+| Basic | LMD `Basic/en` | not classified | not read | overflow | unrated |
+| Battleships Crosswordreconstruction | LMD `Battleships_Crosswordreconstruction/en` | not classified | not read | overflow | unrated |
+| Battleships Even/Odd | LMD `Battleships_Even/Odd/en` | not classified | not read | overflow | unrated |
+| Battlestar | LMD `Battlestar/en` | not classified | not read | overflow | unrated |
+| Bending Paths | LMD `Bending_Paths/en` | not classified | not read | overflow | unrated |
+| Bent between | LMD `Bent_between/en` | not classified | not read | overflow | unrated |
+| Black Domino | LMD `Black_Domino/en` | not classified | not read | overflow | unrated |
+| Black Or White | LMD `Black_Or_White/en` | not classified | not read | overflow | unrated |
+| Blackout Math | LMD `Blackout_Math/en` | not classified | not read | overflow | unrated |
+| Boggle | LMD `Boggle/en` | not classified | not read | overflow | unrated |
+| Briquet | LMD `Briquet/en` | not classified | not read | overflow | unrated |
+| Build A Maze | LMD `Build_A_Maze/en` | not classified | not read | overflow | unrated |
+| Calculations | LMD `Calculations/en` | not classified | not read | overflow | unrated |
+| Capsules | LMD `Capsules/en` | not classified | not read | overflow | unrated |
+| Catwalk | LMD `Catwalk/en` | not classified | not read | overflow | unrated |
+| Chain Sudoku | LMD `Chain_Sudoku/en` | not classified | not read | overflow | unrated |
+| Chaotic Skyscrapers | LMD `Chaotic_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Chess placement | LMD `Chess_placement/en` | not classified | not read | overflow | unrated |
+| Chess Sweeper | LMD `Chess_Sweeper/en` | not classified | not read | overflow | unrated |
+| City loop | LMD `City_loop/en` | not classified | not read | overflow | unrated |
+| Clockwise Words | LMD `Clockwise_Words/en` | not classified | not read | overflow | unrated |
+| Compass Tapa | LMD `Compass_Tapa/en` | not classified | not read | overflow | unrated |
+| Consecutive Sudoku | LMD `Consecutive_Sudoku/en` | not classified | not read | overflow | unrated |
+| Corners Loop | LMD `Corners_Loop/en` | not classified | not read | overflow | unrated |
+| Crack It On | LMD `Crack_It_On/en` | not classified | not read | overflow | unrated |
+| Crapes | LMD `Crapes/en` | not classified | not read | overflow | unrated |
+| Crisscross | LMD `Crisscross/en` | not classified | not read | overflow | unrated |
+| Crossword | LMD `Crossword/en` | not classified | not read | overflow | unrated |
+| Crosswordreconstruction | LMD `Crosswordreconstruction/en` | not classified | not read | overflow | unrated |
+| Crosswordreconstruction Loop | LMD `Crosswordreconstruction_Loop/en` | not classified | not read | overflow | unrated |
+| Daisho | LMD `Daisho/en` | not classified | not read | overflow | unrated |
+| Dead End Cells | LMD `Dead_End_Cells/en` | not classified | not read | overflow | unrated |
+| Diagonal Sudoku | LMD `Diagonal_Sudoku/en` | not classified | not read | overflow | unrated |
+| Different Neighbours | LMD `Different_Neighbours/en` | not classified | not read | overflow | unrated |
+| Digitile | LMD `Digitile/en` | not classified | not read | overflow | unrated |
+| Dilemma | LMD `Dilemma/en` | not classified | not read | overflow | unrated |
+| Dissection | LMD `Dissection/en` | not classified | not read | overflow | unrated |
+| Domino Extra | LMD `Domino_Extra/en` | not classified | not read | overflow | unrated |
+| Domino search | LMD `Domino_search/en` | not classified | not read | overflow | unrated |
+| Dominosnake | LMD `Dominosnake/en` | not classified | not read | overflow | unrated |
+| Dot-a-Pix | LMD `Dot-a-Pix/en` | not classified | not read | overflow | unrated |
+| Dotami | LMD `Dotami/en` | not classified | not read | overflow | unrated |
+| Dotted Skyscrapers | LMD `Dotted_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Dotted Snake | LMD `Dotted_Snake/en` | not classified | not read | overflow | unrated |
+| Double Easy As ABC | LMD `Double_Easy_As_ABC/en` | not classified | not read | overflow | unrated |
+| Double Minesweeper | LMD `Double_Minesweeper/en` | not classified | not read | overflow | unrated |
+| Doublemaze | LMD `Doublemaze/en` | not classified | not read | overflow | unrated |
+| Easy As ABC Sudoku | LMD `Easy_As_ABC_Sudoku/en` | not classified | not read | overflow | unrated |
+| Easy As ABCDot | LMD `Easy_As_ABCDot/en` | not classified | not read | overflow | unrated |
+| Easy As Battleships | LMD `Easy_As_Battleships/en` | not classified | not read | overflow | unrated |
+| Easy As Coralfinder | LMD `Easy_As_Coralfinder/en` | not classified | not read | overflow | unrated |
+| Easy As Skyscrapers | LMD `Easy_As_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Easy As Tapa | LMD `Easy_As_Tapa/en` | not classified | not read | overflow | unrated |
+| EGER Loop | LMD `EGER_Loop/en` | not classified | not read | overflow | unrated |
+| Elastic Bands | LMD `Elastic_Bands/en` | not classified | not read | overflow | unrated |
+| Encoded Tapa | LMD `Encoded_Tapa/en` | not classified | not read | overflow | unrated |
+| Enter-Exit | LMD `Enter-Exit/en` | not classified | not read | overflow | unrated |
+| Escher maze | LMD `Escher_maze/en` | not classified | not read | overflow | unrated |
+| Even-not-even-diagonally-Rundweg | LMD `Even-not-even-diagonally-Rundweg/en` | not classified | not read | overflow | unrated |
+| Even/odd Sudoku | LMD `Even/odd_Sudoku/en` | not classified | not read | overflow | unrated |
+| False Fences | LMD `False_Fences/en` | not classified | not read | overflow | unrated |
+| False Kakuro | LMD `False_Kakuro/en` | not classified | not read | overflow | unrated |
+| False Skyscrapers | LMD `False_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Fill-a-Pix | LMD `Fill-a-Pix/en` | not classified | not read | overflow | unrated |
+| Fillomino Skyscrapers | LMD `Fillomino_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| First or Last Easy As ABC | LMD `First_or_Last_Easy_As_ABC/en` | not classified | not read | overflow | unrated |
+| Fishermen At War | LMD `Fishermen_At_War/en` | not classified | not read | overflow | unrated |
+| Five Letters | LMD `Five_Letters/en` | not classified | not read | overflow | unrated |
+| Four Snails | LMD `Four_Snails/en` | not classified | not read | overflow | unrated |
+| Four Winds | LMD `Four_Winds/en` | not classified | not read | overflow | unrated |
+| Frameless Sudoku | LMD `Frameless_Sudoku/en` | not classified | not read | overflow | unrated |
+| From 1 to n (areas) | LMD `From_1_to_n_(areas)/en` | not classified | not read | overflow | unrated |
+| From 1 to n (arrows) | LMD `From_1_to_n_(arrows)/en` | not classified | not read | overflow | unrated |
+| Futoshiki | LMD `Futoshiki/en` | not classified | not read | overflow | unrated |
+| Gapped Kakuro | LMD `Gapped_Kakuro/en` | not classified | not read | overflow | unrated |
+| Gappy Skyscrapers | LMD `Gappy_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Graffiti | LMD `Graffiti/en` | not classified | not read | overflow | unrated |
+| Greater Than Diagonal Sudoku | LMD `Greater_Than_Diagonal_Sudoku/en` | not classified | not read | overflow | unrated |
+| Haido Skyscrapers | LMD `Haido_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Half Dominoes | LMD `Half_Dominoes/en` | not classified | not read | overflow | unrated |
+| Halved Squares Sudoku | LMD `Halved_Squares_Sudoku/en` | not classified | not read | overflow | unrated |
+| Hamilton maze | LMD `Hamilton_maze/en` | not classified | not read | overflow | unrated |
+| Hexa Islands | LMD `Hexa_Islands/en` | not classified | not read | overflow | unrated |
+| Hexagonal fences | LMD `Hexagonal_fences/en` | not classified | not read | overflow | unrated |
+| Honeycomb | LMD `Honeycomb/en` | not classified | not read | overflow | unrated |
+| Horse Snake | LMD `Horse_Snake/en` | not classified | not read | overflow | unrated |
+| Hundred | LMD `Hundred/en` | not classified | not read | overflow | unrated |
+| Hungarian Tapa | LMD `Hungarian_Tapa/en` | not classified | not read | overflow | unrated |
+| Hunted | LMD `Hunted/en` | not classified | not read | overflow | unrated |
+| In-Out | LMD `In-Out/en` | not classified | not read | overflow | unrated |
+| Increase | LMD `Increase/en` | not classified | not read | overflow | unrated |
+| Irregular Easy As ABC | LMD `Irregular_Easy_As_ABC/en` | not classified | not read | overflow | unrated |
+| Irregular Skyscrapers | LMD `Irregular_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Irregular Sudoku | LMD `Irregular_Sudoku/en` | not classified | not read | overflow | unrated |
+| Irregular Tapa | LMD `Irregular_Tapa/en` | not classified | not read | overflow | unrated |
+| Japanese Battleships | LMD `Japanese_Battleships/en` | not classified | not read | overflow | unrated |
+| Japanese Loop | LMD `Japanese_Loop/en` | not classified | not read | overflow | unrated |
+| Japanese sums | LMD `Japanese_sums/en` | not classified | not read | overflow | unrated |
+| Japanese Sums Battleships | LMD `Japanese_Sums_Battleships/en` | not classified | not read | overflow | unrated |
+| Jumping Crossword | LMD `Jumping_Crossword/en` | not classified | not read | overflow | unrated |
+| Kaku Rouge | LMD `Kaku_Rouge/en` | not classified | not read | overflow | unrated |
+| Kakuro Equations | LMD `Kakuro_Equations/en` | not classified | not read | overflow | unrated |
+| Killer Sudoku | LMD `Killer_Sudoku/en` | not classified | not read | overflow | unrated |
+| Laser | LMD `Laser/en` | not classified | not read | overflow | unrated |
+| Liar Loop | LMD `Liar_Loop/en` | not classified | not read | overflow | unrated |
+| Liar Slitherlink | LMD `Liar_Slitherlink/en` | not classified | not read | overflow | unrated |
+| Lighthouses | LMD `Lighthouses/en` | not classified | not read | overflow | unrated |
+| Lines | LMD `Lines/en` | not classified | not read | overflow | unrated |
+| Link-a-Pix | LMD `Link-a-Pix/en` | not classified | not read | overflow | unrated |
+| Longest Loop | LMD `Longest_Loop/en` | not classified | not read | overflow | unrated |
+| Looper | LMD `Looper/en` | not classified | not read | overflow | unrated |
+| Loopfinder | LMD `Loopfinder/en` | not classified | not read | overflow | unrated |
+| Lost Sums | LMD `Lost_Sums/en` | not classified | not read | overflow | unrated |
+| Magic Pyramid | LMD `Magic_Pyramid/en` | not classified | not read | overflow | unrated |
+| Magic Square With Words | LMD `Magic_Square_With_Words/en` | not classified | not read | overflow | unrated |
+| Magic Summer | LMD `Magic_Summer/en` | not classified | not read | overflow | unrated |
+| Magicmaze | LMD `Magicmaze/en` | not classified | not read | overflow | unrated |
+| Majilin | LMD `Majilin/en` | not classified | not read | overflow | unrated |
+| Mastermind | LMD `Mastermind/en` | not classified | not read | overflow | unrated |
+| Mastermind Tapa | LMD `Mastermind_Tapa/en` | not classified | not read | overflow | unrated |
+| Masyu-Slitherlink | LMD `Masyu-Slitherlink/en` | not classified | not read | overflow | unrated |
+| Masyudoku | LMD `Masyudoku/en` | number | Fill some cells with digits 1..6 so each appears once per row, column and region; every cell not filled with a digit is traversed by a Masyu loop. A published Sudoku hybrid genre in its own right. | overflow | unrated |
+| Matches | LMD `Matches/en` | not classified | not read | overflow | unrated |
+| Matchmaker | LMD `Matchmaker/en` | not classified | not read | overflow | unrated |
+| Math Square | LMD `Math_Square/en` | not classified | not read | overflow | unrated |
+| Maze-a-Pix | LMD `Maze-a-Pix/en` | not classified | not read | overflow | unrated |
+| Naval Minesweeper | LMD `Naval_Minesweeper/en` | not classified | not read | overflow | unrated |
+| New Style Crossword | LMD `New_Style_Crossword/en` | not classified | not read | overflow | unrated |
+| Non Consecutive Kakuro | LMD `Non_Consecutive_Kakuro/en` | not classified | not read | overflow | unrated |
+| Nontouching Easy As ABC | LMD `Nontouching_Easy_As_ABC/en` | not classified | not read | overflow | unrated |
+| Nontouching Skyscrapers | LMD `Nontouching_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Nontouching Sudoku | LMD `Nontouching_Sudoku/en` | not classified | not read | overflow | unrated |
+| Number maze | LMD `Number_maze/en` | not classified | not read | overflow | unrated |
+| Number Sea | LMD `Number_Sea/en` | not classified | not read | overflow | unrated |
+| Number spiral | LMD `Number_spiral/en` | not classified | not read | overflow | unrated |
+| Number Stairs | LMD `Number_Stairs/en` | not classified | not read | overflow | unrated |
+| Numerical Battleships | LMD `Numerical_Battleships/en` | not classified | not read | overflow | unrated |
+| Nurikabe Loop | LMD `Nurikabe_Loop/en` | not classified | not read | overflow | unrated |
+| Octagon Word Snake | LMD `Octagon_Word_Snake/en` | not classified | not read | overflow | unrated |
+| ORuKakuro | LMD `ORuKakuro/en` | not classified | not read | overflow | unrated |
+| Outside Sudoku | LMD `Outside_Sudoku/en` | not classified | not read | overflow | unrated |
+| P-Pentomino dissection | LMD `P-Pentomino_dissection/en` | not classified | not read | overflow | unrated |
+| Paint By 3 | LMD `Paint_By_3/en` | not classified | not read | overflow | unrated |
+| Paint By Numbers | LMD `Paint_By_Numbers/en` | not classified | not read | overflow | unrated |
+| Pairs By Sums | LMD `Pairs_By_Sums/en` | not classified | not read | overflow | unrated |
+| Palindrome Sudoku | LMD `Palindrome_Sudoku/en` | not classified | not read | overflow | unrated |
+| Paper Ships | LMD `Paper_Ships/en` | not classified | not read | overflow | unrated |
+| Parthenon | LMD `Parthenon/en` | not classified | not read | overflow | unrated |
+| Pathfinder Snake | LMD `Pathfinder_Snake/en` | not classified | not read | overflow | unrated |
+| Penta-Gluing | LMD `Penta-Gluing/en` | not classified | not read | overflow | unrated |
+| Pentapa | LMD `Pentapa/en` | not classified | not read | overflow | unrated |
+| Pentominesweeper | LMD `Pentominesweeper/en` | not classified | not read | overflow | unrated |
+| Pentomino Borders | LMD `Pentomino_Borders/en` | not classified | not read | overflow | unrated |
+| Pentomino Dissection | LMD `Pentomino_Dissection/en` | not classified | not read | overflow | unrated |
+| Pentomino Fences | LMD `Pentomino_Fences/en` | not classified | not read | overflow | unrated |
+| Pentomino Paint By Numbers | LMD `Pentomino_Paint_By_Numbers/en` | not classified | not read | overflow | unrated |
+| Pentomino Puddles | LMD `Pentomino_Puddles/en` | not classified | not read | overflow | unrated |
+| Pentomino Restore | LMD `Pentomino_Restore/en` | not classified | not read | overflow | unrated |
+| Pentomino Shikaku | LMD `Pentomino_Shikaku/en` | not classified | not read | overflow | unrated |
+| Pentomino sums | LMD `Pentomino_sums/en` | not classified | not read | overflow | unrated |
+| Pentominosearch | LMD `Pentominosearch/en` | not classified | not read | overflow | unrated |
+| Pentoroll | LMD `Pentoroll/en` | not classified | not read | overflow | unrated |
+| Pills | LMD `Pills/en` | not classified | not read | overflow | unrated |
+| Pipe Fiction | LMD `Pipe_Fiction/en` | not classified | not read | overflow | unrated |
+| Pointing At The Crowd | LMD `Pointing_At_The_Crowd/en` | not classified | not read | overflow | unrated |
+| Polygraph | LMD `Polygraph/en` | not classified | not read | overflow | unrated |
+| Products | LMD `Products/en` | not classified | not read | overflow | unrated |
+| Psycho Killer | LMD `Psycho_Killer/en` | not classified | not read | overflow | unrated |
+| Pyramid | LMD `Pyramid/en` | not classified | not read | overflow | unrated |
+| Quad Max Sudoku | LMD `Quad_Max_Sudoku/en` | not classified | not read | overflow | unrated |
+| Quadrant Battleships | LMD `Quadrant_Battleships/en` | not classified | not read | overflow | unrated |
+| Quadruple Sudoku | LMD `Quadruple_Sudoku/en` | not classified | not read | overflow | unrated |
+| Radar | LMD `Radar/en` | not classified | not read | overflow | unrated |
+| Radioactive Four Winds | LMD `Radioactive_Four_Winds/en` | not classified | not read | overflow | unrated |
+| Rectangular dissection | LMD `Rectangular_dissection/en` | not classified | not read | overflow | unrated |
+| Rekuto | LMD `Rekuto/en` | not classified | not read | overflow | unrated |
+| Relation Fences | LMD `Relation_Fences/en` | not classified | not read | overflow | unrated |
+| Renban Grouped Windoku | LMD `Renban_Grouped_Windoku/en` | not classified | not read | overflow | unrated |
+| Retrograde Battleships | LMD `Retrograde_Battleships/en` | not classified | not read | overflow | unrated |
+| Scales | LMD `Scales/en` | not classified | not read | overflow | unrated |
+| Searchdoku | LMD `Searchdoku/en` | not classified | not read | overflow | unrated |
+| Second Easy As ABC | LMD `Second_Easy_As_ABC/en` | not classified | not read | overflow | unrated |
+| Sightseeing Tour | LMD `Sightseeing_Tour/en` | not classified | not read | overflow | unrated |
+| Single Letter | LMD `Single_Letter/en` | not classified | not read | overflow | unrated |
+| Sky of stars | LMD `Sky_of_stars/en` | not classified | not read | overflow | unrated |
+| Skyscrapers Either/Or | LMD `Skyscrapers_Either/Or/en` | not classified | not read | overflow | unrated |
+| Skyscrapers Sudoku | LMD `Skyscrapers_Sudoku/en` | not classified | not read | overflow | unrated |
+| Slalom | LMD `Slalom/en`; = Gokigen Naname, Slant | other | Put a diagonal wall into every cell so that no completely closed area occurs; a circled number counts the walls touching that vertex. **Name collision:** this LMD genre is Gokigen Naname, while puzz.link's `slalom` is a different gate-ordering loop genre. | 2.23 (as Gokigen) | Workable / cheap |
+| Snail Sudoku | LMD `Snail_Sudoku/en` | not classified | not read | overflow | unrated |
+| Spiral Battleships | LMD `Spiral_Battleships/en` | not classified | not read | overflow | unrated |
+| Spokes | LMD `Spokes/en` | not classified | not read | overflow | unrated |
+| Step By Step | LMD `Step_By_Step/en` | not classified | not read | overflow | unrated |
+| Sudoku Builder | LMD `Sudoku_Builder/en` | not classified | not read | overflow | unrated |
+| Sudokuro | LMD `Sudokuro/en` | not classified | not read | overflow | unrated |
+| Sum Skyscrapers | LMD `Sum_Skyscrapers/en` | not classified | not read | overflow | unrated |
+| Sum Snake | LMD `Sum_Snake/en` | not classified | not read | overflow | unrated |
+| Symbolism | LMD `Symbolism/en` | not classified | not read | overflow | unrated |
+| Symmetric Unequal Sudoku | LMD `Symmetric_Unequal_Sudoku/en` | not classified | not read | overflow | unrated |
+| Symmetrical even-odd Sudoku | LMD `Symmetrical_even-odd_Sudoku/en` | not classified | not read | overflow | unrated |
+| Symmetry | LMD `Symmetry/en` | not classified | not read | overflow | unrated |
+| Tank | LMD `Tank/en` | not classified | not read | overflow | unrated |
+| Tapa Borders | LMD `Tapa_Borders/en` | not classified | not read | overflow | unrated |
+| Tapa Chess | LMD `Tapa_Chess/en` | not classified | not read | overflow | unrated |
+| Tapa Distiller | LMD `Tapa_Distiller/en` | not classified | not read | overflow | unrated |
+| Tapa Line | LMD `Tapa_Line/en` | not classified | not read | overflow | unrated |
+| Tapa Logic | LMD `Tapa_Logic/en` | not classified | not read | overflow | unrated |
+| Tapa Place | LMD `Tapa_Place/en` | not classified | not read | overflow | unrated |
+| Tapa Rectangles | LMD `Tapa_Rectangles/en` | not classified | not read | overflow | unrated |
+| Tetris dissection | LMD `Tetris_dissection/en` | not classified | not read | overflow | unrated |
+| Thermo-Sudoku | LMD `Thermo-Sudoku/en` | not classified | not read | overflow | unrated |
+| Thermometer-Yin Yang | LMD `Thermometer-Yin_Yang/en` | not classified | not read | overflow | unrated |
+| Thermometers | LMD `Thermometers/en` | not classified | not read | overflow | unrated |
+| Tiger In The Woods | LMD `Tiger_In_The_Woods/en` | not classified | not read | overflow | unrated |
+| TomTom | LMD `TomTom/en` | not classified | not read | overflow | unrated |
+| Top-Heavy Number Place | LMD `Top-Heavy_Number_Place/en` | not classified | not read | overflow | unrated |
+| Train Loop | LMD `Train_Loop/en` | not classified | not read | overflow | unrated |
+| Trid | LMD `Trid/en` | not classified | not read | overflow | unrated |
+| Triplets | LMD `Triplets/en` | not classified | not read | overflow | unrated |
+| Turning Fences | LMD `Turning_Fences/en` | not classified | not read | overflow | unrated |
+| Underground | LMD `Underground/en` | not classified | not read | overflow | unrated |
+| Unknown Fleet | LMD `Unknown_Fleet/en` | not classified | not read | overflow | unrated |
+| Vabyrinth | LMD `Vabyrinth/en` | not classified | not read | overflow | unrated |
+| Var-Yok | LMD `Var-Yok/en` | not classified | not read | overflow | unrated |
+| Watches | LMD `Watches/en` | not classified | not read | overflow | unrated |
+| Wind Distances | LMD `Wind_Distances/en` | not classified | not read | overflow | unrated |
+| Word Search | LMD `Word_Search/en` | not classified | not read | overflow | unrated |
+| XO | LMD `XO/en` | not classified | not read | overflow | unrated |
+| Yajilin Plus | LMD `Yajilin_Plus/en` | not classified | not read | overflow | unrated |
+| Zigzag path | LMD `Zigzag_path/en` | not classified | not read | overflow | unrated |
+
+### C. GM Puzzles, the WPC unofficial wiki, and setter sources — 26 further genres
+
+Genres encountered outside puzz.link and the LMD wiki. The GM Puzzles rows are that
+site's own standing categories, which are largely sudoku variants and so sit in the
+number family; the WPC rows are competition hybrids that show how these rule sets get
+combined in practice.
+
+| Genre | Aliases / source | Family | Rule core | Entry | CP-SAT verdict |
+| --- | --- | --- | --- | --- | --- |
+| Arrow Sudoku | GM Puzzles category (72 posts) | number | A circled cell holds the sum of the digits along its arrow. A standard variant-sudoku constraint. | overflow | unrated |
+| Battleship Sudoku | GM Puzzles category (7 posts); 2007 Sudoku Championship IB | placement | Sudoku and Battleships on one grid, each clue set feeding the other. | 1.25 | Good / cheap |
+| Consecutive Pairs Sudoku | GM Puzzles category (40 posts) | number | Marked adjacent pairs hold consecutive digits; only marked pairs do. | overflow | unrated |
+| Deficit / Surplus Sudoku | GM Puzzles category (9 posts) | number | Regions hold fewer or more cells than the digit range, so some digits are missing or repeated. | overflow | unrated |
+| Even/Odd Sudoku | GM Puzzles category (48 posts) | number | Marked cells are constrained to even or to odd digits. | overflow | unrated |
+| Every Second Turn | Alternate Corners; Puzzle Duel dailies 2025; Fit For Puzzle catalogue | loop | not read — rules not found at a primary source (see 2.28) | 2.28 | unrated |
+| Galaxies and Pentominoes | WPC 2018 R6, Jiří Hrdina (WPC wiki) | region | Place the twelve pentominoes so none touch even diagonally, with outside counts; divide the remaining cells into rotationally symmetric regions each holding one dot. | overflow | unrated |
+| Galaxies and Tetrominoes | WPC 2018 R6 / Individual Playoffs, Jiří Hrdina (WPC wiki) | region | As Galaxies and Pentominoes, with the tetromino set. | overflow | unrated |
+| Japanese Sums | GM Puzzles category (30 posts) | number | Outside clues give, in order, the sums of the blocks of digits in that line, separated by blanks. The number-placement twin of Cross the Streams. | overflow | unrated |
+| Just One Cell Sudoku | GM Puzzles category (42 posts) | number | Solve for a single named cell rather than the whole grid. A presentation format, not a rule set. | overflow | unrated |
+| Killer Sudoku | GM Puzzles category (49 posts) | number | Caged cells sum to the cage clue and do not repeat. | overflow | unrated |
+| Linesweeper | WPC 2019 IB via WPC wiki; Jak Marshall 2010 | loop | A closed loop through each cell at most once, never through a numbered cell; a number counts the loop cells among its 8 neighbours. | 2.27 | Good / moderate |
+| Loop de Loop | Fit For Puzzle catalogue | loop | not read — rules not found at a primary source (see 2.28) | 2.28 | unrated |
+| Necklace (speed-setting ruleset) | Cracking The Cryptic Discord, via swaroopg92 | loop | Shade cells into one connected region with no full 2x2; draw a non-intersecting loop whose path alternates between shaded and unshaded cells. | overflow | unrated |
+| Outside Sudoku | GM Puzzles category (15 posts) | number | Digits outside the grid appear somewhere in the first three cells of that row or column. | overflow | unrated |
+| Pata | Tapa variant, via swaroopg92 | shading | Tapa with the clue counting *unshaded* runs among the 8 neighbours; clue cells count as unshaded. | overflow | unrated |
+| Regional Yajilin | Yajilin (regions); GridPuzzle; Puzzle Duel dailies | loop | Shade cells and loop through all white cells; a region number counts its shaded cells; shaded cells never share a border. **Rules unverified at a primary source** (see 2.28). | 2.28 | Good / heavy [unverified rules] |
+| Shape Sudoku | GM Puzzles category (18 posts) | number | Shapes stand in for digit sets or constraints on their cells. | overflow | unrated |
+| Skyscrapers | GM Puzzles category (132 posts); also puzz.link `skyscrapers` | number | Outside clues count the visible increasing digits in that line. | overflow | unrated |
+| Spiral Galaxies squared | WPC 2017 R20, Rohan Rao (WPC wiki) | region | Spiral Galaxies where some cells belong to no region, and the used cells together form one connected, 180-degree symmetric area. | overflow | unrated |
+| Starwacky | WPC 2018 R6, Jan Zvěřina (WPC wiki) | placement | Star Battle with non-rectangular regions plus Heyawake's rule: a straight line without a star may not cross more than one thick border. | overflow | unrated |
+| Statue Park Twilight | CTC Discord speed-setting, via swaroopg92 | region | Statue Park with a double pentomino set, where number clues act as Minesweeper clues over the circles. | 3.10 | Workable / heavy |
+| Tight Fit Sudoku | GM Puzzles category (50 posts) | number | Split cells hold two digits, read as the smaller then the larger. | overflow | unrated |
+| TomTom | GM Puzzles category (150 posts) | number | Cages carry a target and an operation; the caged digits combine to it. A Latin-square genre. | overflow | unrated |
+| Twilight Cave | WPC 2019 IB p. 48, via LMD 000ALC | shading | Cave where a number clue may itself be shaded and then gives the size of its connected shaded group. | 1.11 | Good / moderate |
+| Thermo-Sudoku | GM Puzzles category (76 posts) | number | Digits increase along each thermometer from its bulb. | overflow | unrated |
+
+
 ## Sources read
 
 (running list, appended as each URL is read)
@@ -1508,20 +2079,50 @@ region family and is covered there.
 Yajilin has a shading layer (unused cells are shaded, and shaded cells may not be
 adjacent) but its primary decision layer is a loop, so it is covered in the loop section.
 
-## 1.34 Others found on the shading index worth naming
+## 1.34 Every other shading genre on the puzz.link index
 
-The puzz.link shading index (https://puzz.link/list.html) carries 61 shading genres. The
-ones not treated above and their one-line rules, all from
-`https://puzz.link/js/pzpr-samples/<pid>.js`:
+Complete, not selective: every genre in the puzz.link shading sections (Shading
+Puzzles, Areas and Shading Puzzles, No Adjacent No Divide) that has no full entry above.
+Rule cores are condensed from `https://puzz.link/js/pzpr-samples/<id>.js`. The devices
+column names which of the section 6 encoding building blocks a CP-SAT model would reach
+for; it is a routing note, not a verdict, and none of these was analysed in full.
 
-| Genre | Rule core | Hybrid note |
+| Genre | Rule core (puzz.link) | Devices a model would need |
 | --- | --- | --- |
-| Tasquare (`tasquare`) | Shaded blocks are filled squares; a clue is the summed size of all blocks bordering it; unshaded connected | Kurotto with a square-shape rule. Same hooks as Kurotto, slightly tighter. Workable |
-| Lookair (`lookair`) | Every shaded group is a filled square; a clue counts shaded cells in the 5-cell plus-shape around it; equal squares may not see each other in a row or column | The "see each other" rule is Sudoku-shaped. Workable |
-| Nothree (`nothree`) | Shaded cells non-adjacent; each circle overlaps exactly one shaded cell; three shaded in a line must have distinct gaps; unshaded connected | The distinct-gaps rule is a genuinely arithmetic constraint, unusual and Sudoku-compatible. Workable |
-| Box (`box`) | Row and column values given; top/left clues sum the values of rows/columns with a shaded cell in that line | Pure arithmetic over a binary layer. Workable but flavourless |
-| Aquarium (`aquarium`) | Grid is a side-view aquarium; outside clues count shaded cells per row/column; water fills from the bottom of each tank and levels out | Gravity per region. The level rule is a nice global; outside counts are the standard Sudoku idiom. Workable. Invented by Inaba Naoki. LMD carries an Aquarium tag |
-| Norinuri (`norinuri`), Nuriuzu (`nuriuzu`), Chained Block (`chainedb`), International Borders (`interbd`), Circles and Squares (`circlesquare`), Mr. Tile (`mrtile`), Tilepaint (`tilepaint`), Paint Area (`paintarea`), Parquet (`parquet`), Hinge (`hinge`), Cocktail Lamp (`cocktail`), Kuroclone (`kuroclone`), Martini (`martini`), Patchwork (`patchwork`), Mannequin Gate (`mannequin`), Usoone (`usoone`), Kurochute (`kurochute`), One Room One Door (`oneroom`), Context (`context`), Akichiwake (`akichi`), Guide Arrow (`guidearrow`), Nuri-Maze (`nurimaze`), Invasion LITS (`invlitso`) | Rules at the cited URL pattern | None reached the bar for a full entry: either the rule set is a minor variation on one above, or the decision layer is not a per-cell binary, or no plausible digit hook exists. Rules are on file at the URL pattern above if any is wanted later |
+| Akichiwake (`akichi`) | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the size o... | flow to a root, region ids or placements, count clue, position vars |
+| Aquarium (`aquarium`) | The grid represents an aquarium viewed from the side, which must be partially filled with water. 1. The numbers around the grid indicate the number of shaded cells in... | position vars — **Workable / cheap.** Per-region gravity plus outside counts, both linear. Invented by Inaba Naoki; LMD carries an Aquarium tag. |
+| Ayeheya (`ayeheya`) | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount... | flow to a root, region ids or placements, count clue, position vars |
+| Box (`box`) | Shade some cells on the board. 1. Each row and column has a certain value, indicated by the circled numbers in the right and bottom of the grid. 2. The numbers at the... | none of the standard devices — **Workable / cheap.** Pure linear arithmetic over a binary layer; flavourless but trivial to encode. |
+| Chained Block (`chainedb`) | Shade some cells on the board to form blocks of any shape. 1. Each block must contain exactly one number or a question mark. 2. A number indicates the size of the bloc... | region ids or placements, count clue |
+| Circles and Squares (`circlesquare`) | Shade some cells on the board. 1. Black circles must be shaded, while white circles must not be shaded. 2. The shaded cells cannot form a 2x2 square. 3. All shaded cel... | flow to a root, no-2x2 windows, rectangle lemma |
+| Cocktail Lamp (`cocktail`) | Shade some cells on the board to form blocks. 1. Regions contain no more than one block, which is an orthogonally connected group of shaded cells. 2. A number indicate... | flow to a root, no-2x2 windows, rectangle lemma, region ids or placements, count clue, position vars |
+| Context (`context`) | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. An unshaded number shows the amount of orthogonally adjacent shaded ce... | flow to a root, count clue |
+| Guide Arrow (`guidearrow`) | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. All unshaded cells on the board form an orthogonally connected area. 3... | flow to a root, AddCircuit, no-2x2 windows, rectangle lemma |
+| Heyablock (`heyablock`) | Shade some cells on the board. 1. All shaded cells in one region must be connected. 2. A number indicates the amount of shaded cells in a region. 3. If a region has no... | flow to a root, count clue, position vars |
+| Hinge (`hinge`) | Shade some cells on the board. 1. A group of orthogonally connected shaded cells is called a block. Each block is cut exactly once by a single straight segment of regi... | region ids or placements, count clue, position vars |
+| International Borders (`interbd`) | Shade some cells to divide the grid into countries. 1. Some cells have a number. The number indicates the amount of shaded cells orthogonally adjacent to this cell. 2.... | region ids or placements, count clue |
+| Inverse LITSO (`invlitso`) | Place a tetromino (a block of 4 unshaded cells) in every outlined region, and shade the rest of the cells. 1. The shaded cells cannot form a 2x2 square. 2. Two identic... | flow to a root, no-2x2 windows, rectangle lemma, placement bools |
+| Kurochute (`kurochute`) | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. Numbers cannot be shaded. 3. There must exist exactly one shaded cell... | flow to a root, sight chain |
+| Kuroclone (`kuroclone`) | Shade some cells on the board. 1. Numbers cannot be shaded. 2. Each region must include exactly two units (shaded blocks) and these units must have the same shape, cou... | region ids or placements, count clue, position vars |
+| Look-Air (`lookair`) | Shade some cells on the board. 1. Every group of shaded cells must form a filled square. 2. Clues represent how many of the five cells forming a cross around the clue... | rectangle lemma, count clue — **Workable / moderate.** The "equal squares may not see each other" rule is sudoku-shaped; needs a sight chain. |
+| Mannequin Gate (`mannequin`) | Shade exactly two cells in each outlined region. 1. A number indicates how many empty cells are between the two shaded cells in the region, when following the shortest... | flow to a root, region ids or placements, count clue, position vars |
+| Martini (`martini`) | Shade some cells on the board to form blocks of orthogonally adjacent cells. 1. Black circles must overlap a block, while white circles must not overlap a block. 2. Ou... | flow to a root, region ids or placements, count clue, position vars |
+| Mirroring Tile (`mrtile`) | Shade some cells on the board to form blocks of any shape. Some shaded cells are given. 1. A number indicates the size of the block that contains it. A block can have... | region ids or placements, count clue |
+| No Three (`nothree`) | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A circle overlaps exactly one shaded cell. 3. Three consecutive shaded... | flow to a root — **Workable / moderate.** The distinct-gaps rule is genuinely arithmetic and couples to digits well. |
+| Nonogram (`nonogram`) | Shade some cells on the board according to the numbers. 1. Clues outside the grid represent the lengths of each of the blocks of consecutive shaded cells in the corres... | region ids or placements, position vars |
+| Norinuri (`norinuri`) | Shade some cells on the board to form regions of unshaded cells. 1. Each region contains exactly one number. 2. A number indicates the size of the region that contains... | region ids or placements, count clue |
+| Nuri-Maze (`nurimaze`) | You're given a grid divided into tiles. Shade some tiles on the board to form a maze. 1. A tile is either completely shaded or unshaded. 2. Tiles containing a clue can... | flow to a root, AddCircuit, no-2x2 windows, rectangle lemma, region ids or placements |
+| Nuri-uzu (`nuriuzu`) | Shade some cells on the board. 1. The unshaded areas must form blocks with exactly one star. You cannot shade a cell overlapping a star. 2. Unshaded areas must be rota... | no-2x2 windows, rectangle lemma, region ids or placements |
+| One Room One Door (`oneroom`) | You're given a board divided into rooms. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number inside a room indica... | flow to a root, region ids or placements, count clue, position vars |
+| Paintarea (`paintarea`) | You're given a grid divided into tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. There can not be a 2x2 square of all shade... | flow to a root, no-2x2 windows, rectangle lemma, region ids or placements, count clue |
+| Parquet (`parquet`) | You're given a grid divided into regions and tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. Within each thick-outlined reg... | flow to a root, AddCircuit, no-2x2 windows, rectangle lemma, region ids or placements |
+| Patchwork (`patchwork`) | Divide the grid into square-shaped regions, then shade some cells. 1. A number indicates how many shaded cells are in the region. Regions can have any amount of identi... | rectangle lemma, region ids or placements, count clue, position vars |
+| Ququ (`ququ`) | Shade some triangles on the board. 1. Triangles with numbers or question marks cannot be shaded. 2. Unshaded triangles which share an edge form regions. Each region co... | region ids or placements, count clue |
+| Tasquare (`tasquare`) | Shade some cells on the board. 1. Shaded cells must form filled squares. 2. Cells with clues cannot be shaded. 3. Numbers indicate the sum of the size of all blocks th... | flow to a root, rectangle lemma, region ids or placements, position vars — **Workable / moderate.** Kurotto with a square-shape rule: same block-size-sum clue, tighter shape. |
+| Tawamurenga (`tawa`) | Shade several cells in the hexagonal grid. 1. Each shaded cell must have at least one shaded cell below it (unless it's on the bottom row). 2. There can not be a horiz... | count clue |
+| Tilepaint (`tilepaint`) | You're given a grid divided into tiles. Shade some tiles on the board. 1. A tile is either completely shaded or unshaded. 2. A clue on the bottom of a cell indicates t... | region ids or placements, count clue |
+| Uso-one (`usoone`) | You're given a board divided into region. Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. Numbers cannot be shaded. 3.... | flow to a root, region ids or placements, count clue |
+| Yajisan-Kazusan (`yajikazu`) | Shade some cells on the board. 1. Shaded cells cannot be horizontally or vertically adjacent. 2. A number indicates the amount of shaded cells in the given direction.... | flow to a root, count clue |
 
 ---
 
@@ -2676,25 +3277,45 @@ tutorial catalogue (https://fitforpuzzle.com/puzzle-tutorials/) — but that cat
 serves only its heading index to a fetcher, no rules bodies, so no rules text was recovered
 and it was not retried. Dropped rather than reconstructed from memory.
 
-## 2.29 Others on the loop index worth naming
+## 2.29 Every other loop and line genre on the puzz.link index
 
-The puzz.link loop and line indexes carry 79 genres. Those not treated above, with their
-rule cores, all at `https://puzz.link/js/pzpr-samples/<pid>.js`:
+Complete: every genre in the puzz.link loop and line sections (Make a Loop, Make a
+Crossing Loop, Icebarn-like, Connecting Puzzles) with no full entry above. Devices as in
+1.34.
 
-| Genre | Rule core | Hybrid note |
+| Genre | Rule core (puzz.link) | Devices a model would need |
 | --- | --- | --- |
-| Nagare (`nagare`) | Directional loop; black arrows force direction, white arrows in shaded cells are fans that blow wind the loop cannot travel against and must turn into | Rich but heavily terrain-dependent. Poor for a digit grid |
-| Vertex/Total Slitherlink (`vslither`, `tslither`) | Slitherlink where the clue counts visited *vertices*, or visited edges and vertices together | Same layer as Slitherlink, a different count. Workable |
-| Mejilink (`mejilink`) | Loop on cell borders; a region's cell count equals the number of its surrounding borders *not* on the loop | A counting identity per region — a genuine arithmetic hook. Workable |
-| Ovotovata (`ovotovata`), Mukkonn (`mukkonn`), Remlen (`remlen`) | On leaving a clued region/cell, the loop must run straight for exactly the clued number of cells, then turn | A length-in-cells clue in digit range. Workable to Good; Eric Fox and Palmer Mebane genres |
-| Railpool (`railpool`) | Hamiltonian loop; every segment overlapping a region has a length drawn from that region's number list, each used at least once | A multiset-of-lengths clue per region — strong, and digit-range. Workable to Good. By Martin Ender |
-| Disloop (`disloop`) | Arrows from grey cells give the lengths of the next N loop segments in order | Ordered length list; digit-range. Workable |
-| Waterwalk (`waterwalk`) | Loop through numbered cells; at most 2 consecutive water cells; a number gives the length of its continuous grounded section | Two terrains plus a length clue. Workable. By Martin Ender |
-| Nanameguri (`nanameguri`) | Loop visiting each region exactly once and every diagonal-marked cell, without crossing the diagonals | Country Road with a diagonal obstacle. Workable |
-| Nothing (`nothing`) | If a country is visited, all its cells are visited; countries visited at most once; no two unused countries adjacent | An all-or-nothing per-region rule — clean, box-shaped. Workable. By Inaba Naoki |
-| Line of Sight (`lineofsight`) | Slitherlink layer; a clue gives the length of the first straight segment seen in a direction | Visibility clue in digit range, on the Slitherlink layer. Workable. By Inaba Naoki |
-| Scrin (`scrin`), Antmill (`antmill`), Reflect Link (`reflect`), Kouchoku (`kouchoku`), Angle Loop (`angleloop`), Cross Stitch (`crossstitch`), Train Stations (`trainstations`), Building Walk (`bdwalk`), Icelom/Icelom2/Icewalk/Barns/Pipelink Returns (`icelom`, `icelom2`, `icewalk`, `barns`, `pipelinkr`) | Rules at the cited URL pattern | Each either uses a non-grid geometry (angles, diagonals, floors), needs given terrain, or has no numeric hook. None recommended |
-| Anglers (`anglers`) | Numbers outside the grid are anglers; each line runs from an angler to a fish, the number gives the line's length; lines may not touch or cross | Outside clue, length in digit range, no loop global — cheap. Workable. LMD: https://wiki.logic-masters.de/index.php/Anglers/en; LMD carries an Anglers tag |
+| All or Nothing (`nothing`) | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. If a country is visited by the loop, it must visit all... | AddCircuit — **Workable.** An all-or-nothing per-region rule, cleanly box-shaped. By Inaba Naoki. |
+| Angle Loop (`angleloop`) | Draw lines between every symbol to form a loop. 1. Lines go straight from symbol to symbol, and can be drawn at any angle. 2. The loop can not branch off or intersect.... | AddCircuit, rectangle lemma |
+| Anglers (`anglers`) | Draw lines so each person (represented by a number) is connected to a fish. 1. Lines cannot branch off or cross. A number or fish can not have more than one line. 2. A... | none of the standard devices — **Workable / cheap.** Outside clue, length in digit range, and no loop global at all. LMD carries an Anglers tag. |
+| Ant Mill (`antmill`) | Shade some dominoes on the board to form a loop. 1. Two dominoes may not be orthogonally adjacent. 2. Every domino is diagonally adjacent to exactly two other dominoes... | flow to a root, AddCircuit, rectangle lemma |
+| Barns (`barns`) | Draw a loop that goes through every cell. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branch or otherwise overl... | AddCircuit, position vars |
+| Building Walk (`bdwalk`) | You're given a top-down view of a building. Grey cells represent elevators. 1. Draw a path from S to G that doesn't branch off or overlap itself at any cell. 2. The pa... | count clue |
+| Crossstitch (`crossstitch`) | Draw diagonal lines to make two loops. 1. A shaded cell is not part of any loop. 2. Loops cannot branch off or cross themselves, but they can cross each other. 3. Two... | AddCircuit, count clue |
+| Disorderly Loop (`disloop`) | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through gray cells. 3. Arrows point... | AddCircuit, count clue, position vars — **Workable.** An ordered list of the next N segment lengths; digit-range but needs position-ish bookkeeping. |
+| Ice Walk (`icewalk`) | Draw a loop that goes through every numbered cell. 1. Two perpendicular line segments may intersect each other only on icy cells, but the loop may not branch or otherw... | AddCircuit, count clue |
+| Icelom (`icelom`) | Draw a line that starts at the IN arrow, and goes through every white cell before reaching the OUT arrow. 1. Two perpendicular line segments may intersect each other o... | AddCircuit, position vars |
+| Icelom 2 (`icelom2`) | Draw a line that starts at the IN arrow, and goes through every number before reaching the OUT arrow. 1. Two perpendicular line segments may intersect each other only... | AddCircuit, position vars |
+| Kouchoku (`kouchoku`) | Draw lines between every node to form a loop. 1. Lines go straight from node to node, and can be drawn at any angle. 2. The loop can not branch off. Nodes must be visi... | AddCircuit |
+| Kusabi (`kusabi`) | Draw lines between the circles to form pairs. 1. Lines must turn exactly twice, and each turn must be in the same direction. 2. Lines cannot cross or overlap each othe... | none of the standard devices |
+| Line of Sight (`lineofsight`) | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number represents the length of the first straight line se... | AddCircuit, count clue, sight chain — **Workable.** A visibility clue in digit range on the Slitherlink layer. By Inaba Naoki. |
+| Mejilink (`mejilink`) | Draw lines over the dotted lines to form a loop. 1. The loop cannot branch off or cross itself. 2. The amount of cells in a region must equal the number of borders sur... | AddCircuit, count clue, position vars — **Workable.** A counting identity per region — a real arithmetic hook. |
+| Mukkonn Enn (`mukkonn`) | Draw a loop that goes through every cell. 1. The loop cannot branch off or cross itself. 2. When the loop exits a clued cell from a side with a number, it must travel... | AddCircuit, sight chain — **Workable to Good.** As ovotovata, clued per cell. From the 2017 WPC organisers. |
+| Nagareru-Loop (`nagare`) | Draw lines through orthogonally adjacent cells to form a directional loop. 1. The loop cannot branch off or cross itself. 2. The loop cannot go through a shaded cell.... | AddCircuit — **Poor.** Rich but wholly terrain-dependent, and directions are not quantities. |
+| Nanameguri (`nanameguri`) | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. Cells can not be entered more than once. 2. Every outline... | AddCircuit — **Workable.** Country Road with a diagonal obstacle. |
+| Ovotovata (`ovotovata`) | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or cross itself. 2. When the loop exits a numbered region in any direction... | AddCircuit, region ids or placements, sight chain — **Workable to Good.** A run-straight-then-turn length clue, in digit range. By Eric Fox. |
+| Pipelink Returns (`pipelinkr`) | Draw a loop that goes through every cell. 1. Two perpendicular line segments may intersect each other only inside a circle, but the loop may not branch or otherwise ov... | AddCircuit |
+| Rail Pool (`railpool`) | Draw a loop that visits every cell. 1. The loop cannot branch off or cross itself. 2. A line segment that overlaps a region must have a length indicated by one of the... | AddCircuit, region ids or placements — **Workable to Good.** A multiset of segment lengths per region — strong and digit-range. By Martin Ender. |
+| Rassi Silai (`rassi`) | Draw multiple lines through orthogonally adjacent cells. 1. Each region contains exactly one line covering all of the region's cells. 2. Lines cannot branch off or cro... | AddCircuit, position vars |
+| Reflect Link (`reflect`) | Draw lines through orthogonally adjacent cells to form a loop. 1. The loop cannot branch off or overlap. 2. All cells where the loop crosses itself are given. The loop... | AddCircuit |
+| Remembered Length (`remlen`) | Draw lines through orthogonally adjacent cells to form a directional loop. 1. All unshaded cells must be visited. 2. The loop cannot branch off or cross itself. 3. Eac... | AddCircuit — **Workable to Good.** Next-region visit length, in digit range. By Palmer Mebane. |
+| Scrin (`scrin`) | Place several rectangles into the grid, where the corners are located on the dots. 1. Rectangles cannot overlap or have a border in common. 2. A rectangle can contain... | AddCircuit, rectangle lemma, placement bools, count clue, position vars |
+| Shirokuro-link (`wblink`) | Draw lines between the circles to form pairs. 1. Lines must be horizontal or vertical, and cannot turn. 2. Lines cannot cross or overlap each other. 3. Each pair consi... | none of the standard devices |
+| Slalom (`slalom`) | Draw lines through orthogonally adjacent cells to form a directional loop, starting at the circle. 1. The loop cannot branch off or cross itself. 2. The loop cannot go... | AddCircuit, position vars |
+| Touch Slitherlink (`tslither`) | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number indicates how many times the loop visits the set of... | AddCircuit, count clue — **Workable.** As vslither, counting edges and vertices together. |
+| Train Stations (`trainstations`) | Draw a loop that goes through every cell. 1. The loop cannot branch off or overlap. 2. All cells where the loop crosses itself are given. The loop cannot cross itself... | AddCircuit, position vars |
+| Vertex Slitherlink (`vslither`) | Draw lines along the edges of some cells to form a loop. 1. The loop cannot branch off or cross itself. 2. A number indicates the amount of vertices surrounding the ce... | AddCircuit, count clue — **Workable.** Slitherlink's 180-edge layer with a vertex count instead of an edge count. |
+| Water Walk (`waterwalk`) | Draw a loop that goes through every numbered cell. 1. The loop cannot branch off or cross itself. 2. Blue cells represent water, while regular cells represent ground.... | AddCircuit, count clue — **Workable.** Two terrains plus a grounded-run length clue. By Martin Ender. |
 
 ---
 
@@ -3577,26 +4198,52 @@ essentially a sudoku with two blanks per line, and sandwich sums are well-trodde
 (https://wiki.logic-masters.de/index.php/Doppelblock-Hochh%C3%A4user). That is direct,
 primary-source evidence of the hybrid existing as a named type.
 
-## 3.22 Others on the region index worth naming
+## 3.22 Every other region and area-number genre on the puzz.link index
 
-The puzz.link region-division and area-number indexes carry 54 genres. Those not treated
-above, with rule cores, all at `https://puzz.link/js/pzpr-samples/<pid>.js`:
+Complete: every genre in the puzz.link region sections (Divide into Areas, Divide
+into Areas without number, Tatami Puzzles, Areas and Numbers) with no full entry above.
+Devices as in 1.34. The Areas-and-Numbers rows repay reading first: several are already
+standard variant-sudoku constraints under another name.
 
-| Genre | Rule core | Hybrid note |
+| Genre | Rule core (puzz.link) | Devices a model would need |
 | --- | --- | --- |
-| Compass (`compass`) | Each block holds one compass; its four numbers count the block's cells strictly further in each direction | Four numbers per clue cell; digit-range counts. **Good** — and LMD carries Compass and Compass (Variant) tags |
-| Square Jam (`squarejam`) | Divide into squares; a number is its square's side length; no 4-way border intersections | Side length 1..9, native. Cheap (squares are a tiny family). **Good.** By Eric Fox |
-| Fillmat (`fillmat`) | 1-wide rectangles of length 1-4; equal sizes may not share a border; no 4-way intersections | Nuribou as a partition. Workable |
-| Usotatami (`usotatami`) | 1-wide rectangles; the number in a region is *different* from its size | A negative size clue — unusual, and a strong pruning shape. Workable |
-| Yajitatami (`yajitatami`) | 1-wide rectangles; an arrow number gives both the region's size and how many other regions lie in the arrow direction | Two facts per clue, both in digit range. Workable to Good |
-| Double Choco (`dbchoco`) | Each region splits into one white and one grey area of equal size and shape; a number gives its area's size | Congruence between two halves — an unusual and strong rule; size in range. **Good** |
-| Nikoji (`nikoji`) | Same-letter regions are congruent with the letter in the same relative position; different letters differ in shape | Congruence again, but letter-clued. Workable |
-| Bosnian Road (`bdblock` is a different genre: Border Block) | Border Block: identical numbers in one block, different numbers in different blocks; all branch points given | The "all dots given" completeness rule is a strong negative constraint. Workable |
-| Lapaz (`lapaz`) | Shade non-adjacent cells; divide the rest into dominoes; a clue in a horizontal domino counts shaded cells in its row | Row/column counts on a domino layer — cheap, digit-range. Workable. By Shye |
-| Lohkous (`lohkous`) | Blocks each carrying a cell with one or more numbers; every horizontal run in the block has a length from the clue list, and every listed number appears | A multiset-of-run-lengths clue. Rich but fiddly. Workable. By Hempuli |
-| Slash Pack (`slashpack`) | Diagonal lines divide the grid; each region contains exactly one of each number on the board | A Latin-square-per-region rule on a diagonal partition. **Good** in principle, awkward geometry |
-| Meandering Numbers (`meander`), Cojun (`cojun`), Makaro (`makaro`), Kazunori (`kazunori`), Sukoro Room (`sukororoom`), Renban (`renban`), Hanare (`hanare`), Putteria (`putteria`) | Region-plus-number genres: fill each region with 1..N under an adjacency, ordering or sum rule | These are *number-placement* genres, already Sudoku-adjacent. Renban's "numbers in each region form a consecutive sequence" is literally the Renban line constraint of variant sudoku; Makaro's arrows point at the largest neighbour; Meandering Numbers requires consecutive numbers to be orthogonally adjacent. All **Good / cheap** under the CP-SAT lens: no second decision layer at all, just digits with an extra static constraint family, and several are already standard variant-sudoku rules under other names |
-| Tentai Show variants, Kramma/Kramman (`kramma`, `kramman`), Shikaku Wolf (`shwolf`), Choco Block (`cbblock`), Loute (`loute`), Voxas (`voxas`), Tajmahal (`tajmahal`), Mirror Block (`mirrorbk`), Family Photo (`familyphoto`), Fractional Division (`fracdiv`), Sashikazune (`sashikazune`), Tachibk (`tachibk`), Triplace (`triplace`), Aho-ni-Narikire (`aho`), Hebi (`hebi`), Wafusuma (`wafusuma`), Tontti (`tontti`) | Rules at the cited URL pattern | Either no numeric hook, a non-grid geometry, or a rule set that duplicates a stronger entry above. None recommended now; rules are on file |
+| Aho-ni-Narikire (`aho`) | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one black circle. 2. A number indicates the size of the block,... | rectangle lemma, region ids or placements, count clue |
+| Border Block (`bdblock`) | Draw lines over the dotted lines to divide the board into several blocks. 1. All identical numbers must be in the same block, and different numbers must be in differen... | region ids or placements, position vars — **Workable.** The "all branch points given" completeness rule is a strong negative constraint. |
+| Cojun (`cojun`) | Place a number in each cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one of each... | placement bools — **Good / cheap.** Region 1..N with a vertical ordering rule. |
+| Combi Block (`cbblock`) | Draw lines over the dotted lines to divide the board into blocks. 1. Each block must contain exactly two outlined regions. 2. Two adjacent blocks cannot have the same... | rectangle lemma, region ids or placements |
+| Compass (`compass`) | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one cell with a compass. 2. A number in a compass indicates ho... | region ids or placements, count clue — **Good / moderate.** Four directional counts in one clue cell, all digit-range. LMD carries Compass tags. |
+| Double Choco (`dbchoco`) | Divide the grid into regions of any size. 1. Each region contains one white and one grey contiguous area. Both areas must be the same size and shape. They can be rotat... | flow to a root, region ids or placements, count clue — **Good / moderate.** Congruence between a region's two halves is a strong, unusual rule; size in range. |
+| Family Photo (`familyphoto`) | Divide the grid into rectangular regions of orthogonally connected cells. 1. Each region must contain exactly one number, which indicates how many circles are in the r... | region ids or placements, count clue |
+| Fillmat (`fillmat`) | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1, and a length between 1 and 4... | rectangle lemma, region ids or placements, count clue, position vars — **Workable.** Nuribou as a partition; the 1-wide bar lemma applies. |
+| Fractional Division (`fracdiv`) | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block contains exactly one cell with a number. 2. A number indicates the ratio of cir... | region ids or placements, count clue |
+| Goats and Wolves (`shwolf`) | Draw lines over the dotted lines to divide the board into cages. 1. Each cage contains at least one animal. 2. A cage cannot contain both goats and wolves. 3. Lines ca... | AddCircuit, region ids or placements |
+| Hanare-gumi (`hanare`) | Place one number in a cell of each region on the board. 1. The number in the region should be equal to the size of the region. 2. If two numbers share a row or column,... | placement bools — **Good / cheap.** One number per region equal to its size, with a digit-determined separation rule. |
+| KaitoRamma (`kramma`) | Draw lines over the dotted lines to divide the board into blocks. 1. Each block contains at least one circle. 2. A block cannot contain both white and black circles. 3... | region ids or placements |
+| Kazunori Room (`kazunori`) | Place a number into every cell. 1. Each region contains every number between 1 to N exactly twice, where N is half the number of cells in the region. 2. Two numbers of... | no-2x2 windows, placement bools — **Good / cheap.** Each value twice per region, adjacent, with touching-cell sum clues. |
+| L-route (`loute`) | Divide the grid into regions of orthogonally connected cells. 1. Each region must be an L shape with a width of one cell. 2. A circle must be located in the corner of... | region ids or placements |
+| La Paz (`lapaz`) | Shade some cells on the board, and divide the rest into regions of 2 cells. 1. No two shaded cells are horizontally or vertically adjacent. 2. Numbers must be containe... | region ids or placements, count clue — **Workable.** Row/column counts over a domino layer — cheap and digit-range. By Shye. |
+| Lohkous (`lohkous`) | Draw lines over the dotted lines to divide the board into several blocks. 1. Each block must contain exactly one square with one or more numbers on it. 2. All lines mu... | rectangle lemma, region ids or placements — **Workable.** A multiset of run lengths per block: rich but fiddly. By Hempuli. |
+| Makaro (`makaro`) | Place a number in each empty cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each region contains exactly one o... | placement bools — **Good / cheap.** Arrows point at the largest neighbour; region 1..N. |
+| Meandering Numbers (`meander`) | Place a number in each cell to make a path in each region. Some numbers are given. 1. Numbers must be between 1 and N, where N is the size of the region. 2. Each regio... | placement bools — **Good / cheap.** Consecutive numbers must be orthogonally adjacent — already a variant-sudoku idiom. |
+| Mirror Block (`mirrorbk`) | Draw lines over the dotted lines to divide the board into regions. 1. A number indicates the size of the region that contains it. 2. Regions can have no more than 1 nu... | region ids or placements, count clue |
+| New KaitoRamma (`kramman`) | Draw lines over the dotted lines to divide the board into blocks. 1. Each block contains at least one circle. 2. A block cannot contain both white and black circles. 3... | region ids or placements |
+| NIKOJI (`nikoji`) | Divide the grid into regions, with each region containing one letter. 1. Regions with the same letter must be identical in shape and orientation, and must have the let... | region ids or placements — **Workable.** Congruence again, but letter-clued rather than numeric. |
+| Putteria (`putteria`) | Place one number in a cell of each region on the board. 1. The number in the region should be equal to the size of the region. 2. Numbers cannot be orthogonally adjace... | placement bools — **Good / cheap.** One number per region equal to its size, non-adjacent, not repeated in a line. |
+| Renban-Madoguchi (`renban`) | Place a positive number into every cell. 1. The numbers in each region must all form a consecutive sequence, in any order. 2. The difference between two numbers separa... | placement bools, sight chain, position vars — **Good / cheap.** "Numbers in each region form a consecutive sequence" is literally the Renban line of variant sudoku. |
+| Rooms of Factors (`factors`) | Place a number in each cell. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row and column contains exactly one of each number. 3. Clue... | placement bools |
+| Sashikazune (`sashikazune`) | Divide the grid into regions of orthogonally connected cells. 1. Each region must be an L shape with a width of one cell. 2. A number indicates the distance between it... | region ids or placements, count clue |
+| Slash Pack (`slashpack`) | Draw diagonal lines through the center of some cells to divide the board into regions. 1. Two lines cannot overlap within a cell. All lines must be drawn from one corn... | region ids or placements — **Good in principle.** A latin-square-per-region rule, but on an awkward diagonal partition. |
+| Square Jam (`squarejam`) | Draw lines over the dotted lines to divide the grid into square-shaped regions. 1. A number indicates the side length of the square it's contained in. Squares may have... | rectangle lemma, region ids or placements, count clue, position vars — **Good / cheap.** Side length 1..9, native, and squares are a tiny placement family. By Eric Fox. |
+| Sudoku (`sudoku`) | Place a number in each cell. Some numbers are given. 1. Numbers must be between 1 and N, where N is the width of the board. 2. Each row, column and outlined block cont... | placement bools |
+| Sukoro-room (`sukororoom`) | Place a number between 1 and 4 into some of the cells. Some numbers are given. 1. Each number is equal to the amount of (up to 4) orthogonally adjacent cells that also... | flow to a root, placement bools, count clue — **Good / cheap.** A neighbour-count number, Minesweeper-shaped. |
+| Tachiawase Block (`tachibk`) | Draw lines over the dotted lines to divide the two grids into several blocks. 1. A number indicates the size of the block in cells. A block can contain one or more num... | region ids or placements, count clue |
+| Taj Mahal (`tajmahal`) | Draw a square around each given circle. 1. All squares must have a circle in the center. The square's corners must be located on the grid points. 2. Two squares may no... | rectangle lemma, count clue |
+| Tonttiraja (`tontti`) | Draw horizontal and vertical lines from the points to divide the grid into regions. You can connect two points, or draw from a point to the outer border. 1. Cells can... | region ids or placements, count clue, sight chain, position vars |
+| Tri-place (`triplace`) | Draw lines along the dotted lines to divide the grid into triminoes (blocks of 3 cells). 1. Clue cells are not part of any block. 2. A clue on the bottom of a cell ind... | region ids or placements, count clue |
+| Uso-tatami (`usotatami`) | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1. 2. A region must have exactl... | rectangle lemma, region ids or placements, position vars — **Workable.** A negative size clue — the number differs from the region size — which prunes unusually. |
+| Voxas (`voxas`) | Draw lines over the dotted lines to divide the board into several areas. Some lines are given. 1. All areas must be rectangular in shape, and must be 2 or 3 cells in s... | rectangle lemma, region ids or placements |
+| Wafusuma (`wafusuma`) | Divide the grid into regions. 1. A circle must divide two different regions. 2. A number on a circle indicates the sum of the sizes of the two adjacent regions. 3. Two... | region ids or placements |
+| Yajitatami (`yajitatami`) | Draw lines over the dotted lines to divide the board into several regions. 1. All regions must be a rectangle or square with a width of 1 and a length of at least 2. 2... | rectangle lemma, region ids or placements, count clue, position vars — **Workable to Good.** Each clue carries two facts, both digit-range. |
 
 ---
 
