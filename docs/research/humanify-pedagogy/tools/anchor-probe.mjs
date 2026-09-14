@@ -5,7 +5,8 @@
 // reads tens of thousands of px off.
 //
 // Usage: node anchor-probe.mjs <built.html>
-// Requires `shot-scraper` on PATH (installed separately, not an npm dep).
+// Requires `shot-scraper` and `python3` on PATH (installed separately, not
+// npm deps).
 
 import { execFileSync, spawn } from 'node:child_process'
 import path from 'node:path'
@@ -24,8 +25,28 @@ const file = path.basename(resolved)
 // a throwaway local HTTP server instead.
 const port = 20000 + Math.floor(Math.random() * 10000)
 const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: dir, stdio: 'ignore' })
-await new Promise((resolve) => setTimeout(resolve, 500))
-const url = `http://127.0.0.1:${port}/${file}`
+server.on('error', (err) => {
+  console.error(`could not start python3 -m http.server: ${err.message}`)
+  process.exit(2)
+})
+await waitForServer(port)
+const url = `http://127.0.0.1:${port}/${encodeURIComponent(file)}`
+
+async function waitForServer (p, deadlineMs = 5000) {
+  const start = Date.now()
+  while (Date.now() - start < deadlineMs) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${p}/`)
+      await res.arrayBuffer()
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 50))
+    }
+  }
+  server.kill()
+  console.error(`http.server on port ${p} never came up within ${deadlineMs}ms`)
+  process.exit(2)
+}
 
 const js = `
 new Promise(async (resolve) => {
@@ -43,8 +64,7 @@ new Promise(async (resolve) => {
       .filter(Boolean)
     links.sort(function (x, y) { return x.top - y.top })
     if (links.length < 3) return links
-    var picks = [links[0], links[Math.floor(links.length / 2)], links[links.length - 1]]
-    return picks
+    return [links[0], links[Math.floor(links.length / 2)], links[links.length - 1]]
   }
   var picks = farApartLinks()
   var results = []
@@ -70,6 +90,13 @@ try {
   server.kill()
 }
 const results = JSON.parse(out)
+
+// A page with too few main-body ref links (a bad path, a 404, a page that
+// changed shape) must fail loudly rather than report PASS on zero evidence.
+if (results.length < 3) {
+  console.log(`FAIL: only found ${results.length} eligible link(s) to test (need 3) — check the built file and URL`)
+  process.exit(1)
+}
 
 let allLanded = true
 for (const r of results) {

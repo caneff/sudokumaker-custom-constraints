@@ -531,8 +531,8 @@ ${body}
     // Artifacts render on their own origin inside the claude.ai page, so
     // location.href there is the frame's URL, not the shareable
     // claude.ai/code/artifact/... URL. When embedded, use the parent
-    // document's URL (document.referrer) instead; otherwise fall back to
-    // location.href as before.
+    // document's URL (document.referrer) instead; otherwise use
+    // location.href.
     var base=(window.top!==window&&document.referrer)?document.referrer:location.href;
     var url=base.split('#')[0]+a.getAttribute('href');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){a.classList.add('copied');setTimeout(function(){a.classList.remove('copied')},1500)}).catch(function(){})}})});
   // A link into the collapsed internals opens them first.
