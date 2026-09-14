@@ -1,9 +1,9 @@
 # Build the standalone House GAC link: a plain 9x9 with no clue ring and no
-# frame constraint, whose only constraint
-# beyond the board's own rows-and-columns and region declarations is the
-# shipped `examples/_shared/HouseGacComponent.js`, registered on all 27 houses
-# by this folder's own `main.js` (examples/_shared/house-gac.js assumes a
-# frame board's ring and cannot register a bare 9x9 -- see the README).
+# frame constraint, whose only constraint beyond the board's own
+# rows-and-columns and region declarations is the shipped
+# `examples/_shared/HouseGacComponent.js`, registered on all 27 houses by
+# this folder's own `main.js` (examples/_shared/house-gac.js assumes a frame
+# board's ring and cannot register a bare 9x9 -- see the README).
 #
 # Reuses the plain-9x9 board and givens from
 # docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt (25 givens, boxes as
@@ -20,6 +20,16 @@
 # `just time house-gac --board <fixture>` reaches a fixture other than the
 # default board (the room #428 leaves for the harder #427 fixture, kept
 # beside this one under its own name once it lands).
+#
+# The constraint ships under the name "House GAC (standalone)", not the bare
+# "House GAC" `house_gac_links.with_filter` writes by default: #421/#434
+# (landed while this ticket was in flight) made "House GAC" a reserved title
+# meaning ONE specific thing repo-wide -- the shared `examples/_shared/
+# house-gac.js` backend on a frame board, always checked for staleness and a
+# declared digit range (`check_layout.py`'s `check_frame_backends`). This
+# board's backend is a different file (`main.js`, no ring to slice), so it is
+# not that thing and must not answer to that name -- `build()` renames the
+# spliced constraint below before returning it.
 
 import argparse
 import pathlib
@@ -33,7 +43,7 @@ BASE_LINK = REPO / "docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt"
 COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 
-CONSTRAINT_NAME = "House GAC"
+CONSTRAINT_NAME = "House GAC (standalone)"
 TIMED_COMPONENT = "HouseGacComponent"
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
@@ -96,6 +106,10 @@ def build(component_path=COMPONENT, backend_path=BACKEND, base_link=BASE_LINK):
     doc = with_filter(
         base, pathlib.Path(component_path), backend=pathlib.Path(backend_path)
     )
+    # with_filter always names the constraint "House GAC"; rename it to this
+    # example's own name (see the module docstring for why) before it is
+    # checked against anything that title means repo-wide.
+    find_constraint(doc, "House GAC")["definition"]["name"] = CONSTRAINT_NAME
     doc["puzzle"]["name"] = "Standalone House GAC"
     doc["puzzle"]["comment"] = (
         RULES_PREFIX

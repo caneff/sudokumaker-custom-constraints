@@ -62,12 +62,19 @@ example alongside isofill and fillomino, for a different reason (no drawn
 lines at all, not a whole-grid rule).
 
 The one component this example needs, `HouseGacComponent.js`, is also the
-component #421's frame-board examples will register through
+component #421/#434's shipped frame boards register through
 `examples/_shared/house-gac.js` — it lives in `examples/_shared/` on purpose,
 not copied into this directory, so there is exactly one file to keep sound
 (`check_layout.py`'s `SHARED_COMPONENT`; `time_example.py`'s
 `find_component_file` follows the same name into `_shared/` when no local
 copy exists).
+
+`#421`/`#434` also made the constraint name "House GAC" mean one specific
+thing repo-wide: a frame board carrying `examples/_shared/house-gac.js`
+itself, always checked for staleness and a declared digit range
+(`check_layout.py`'s `check_frame_backends`). This board's backend is a
+different file (`main.js`, no ring to slice — see above), so its constraint
+ships under its own name, "House GAC (standalone)", instead.
 
 ## Rebuilding
 
