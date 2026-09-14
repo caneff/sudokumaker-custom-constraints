@@ -513,7 +513,6 @@ details.hood[open]>summary h2::before{content:'▾ '}
 details.hood>summary p{color:var(--vt-muted)}
 a{color:var(--vt-accent)}
 @media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--vt-rule);padding-right:0;max-height:40vh}}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 <div class="shell">
 <nav aria-label="Contents"><div class="brand">Constraint API</div><input id="q" type="search" placeholder="Filter entries… ( / )" aria-label="Filter entries"><div class="tiers" role="group" aria-label="Show tiers in the reference"><button type="button" data-tier="public" aria-pressed="true">public</button><button type="button" data-tier="reachable" aria-pressed="true">reachable</button><button type="button" data-tier="internal" aria-pressed="false">internal</button></div><div class="count" id="count"></div><ul id="toc">${nav}</ul></nav>
@@ -528,7 +527,14 @@ ${body}
   var CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
   doc.querySelectorAll('.vt-code').forEach(function(block){var btn=block.querySelector('.vt-code-copy'),pre=block.querySelector('pre');btn.innerHTML=COPY;
     btn.addEventListener('click',function(){if(!(navigator.clipboard&&navigator.clipboard.writeText))return;navigator.clipboard.writeText(pre.textContent||'').then(function(){btn.innerHTML=CHECK;setTimeout(function(){btn.innerHTML=COPY},2000)}).catch(function(){})})});
-  doc.querySelectorAll('a.anchor').forEach(function(a){a.addEventListener('click',function(){var url=location.href.split('#')[0]+a.getAttribute('href');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){a.classList.add('copied');setTimeout(function(){a.classList.remove('copied')},1500)}).catch(function(){})}})});
+  doc.querySelectorAll('a.anchor').forEach(function(a){a.addEventListener('click',function(){
+    // Artifacts render on their own origin inside the claude.ai page, so
+    // location.href there is the frame's URL, not the shareable
+    // claude.ai/code/artifact/... URL. When embedded, use the parent
+    // document's URL (document.referrer) instead; otherwise fall back to
+    // location.href as before.
+    var base=(window.top!==window&&document.referrer)?document.referrer:location.href;
+    var url=base.split('#')[0]+a.getAttribute('href');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){a.classList.add('copied');setTimeout(function(){a.classList.remove('copied')},1500)}).catch(function(){})}})});
   // A link into the collapsed internals opens them first.
   var hood=document.getElementById('under-the-hood');
   function reveal(id){var t=id&&document.getElementById(id);if(t&&hood&&hood.contains(t)&&!hood.open){hood.open=true;return true}return false}
