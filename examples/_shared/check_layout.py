@@ -40,6 +40,7 @@ from framebuild import (
     GRID_BACKEND,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
+    NO_RING_RULES_PREFIX,
     frame_backend_code,
     grid_backend_constraint,
     house_gac_backend_code,
@@ -92,10 +93,6 @@ MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
 # check does not pull in ortools -- framebuild.py imports it at module load,
 # and check_layout.py runs with just `--with lzstring`.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
-
-# The sentence a no-ring board's rules text opens with instead: the whole grid
-# is the puzzle, so there is no inner grid to name.
-NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
 
 
 def is_no_ring(puzzle):

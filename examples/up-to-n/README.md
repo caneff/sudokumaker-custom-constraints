@@ -26,6 +26,9 @@ board with no groups has no clues to read.
   lines; every committed board decodes to what its gen JSON records, CP-SAT
   proves it unique, and `--rebuild` reproduces its link byte for byte.
 - `marker-contract.test.mjs` — what `main.js` accepts and refuses.
+- `end-to-end.test.mjs` — the committed 4×4 and 6×6 links through the app's own
+  solver bundle in Node: one solution, the recorded one; empty markers ignored;
+  a wrong clue and malformed markers refused.
 - `soundness-harness.mjs` — zero removed true candidates.
 - `update-strength.test.mjs` — never weaker than the frozen floor in
   `.golden/UpToNComponent.floor.js` (below).
@@ -137,6 +140,7 @@ clues shown, still no givens, was timed at 15 (timeout), 18 (unique, 15 s) and
 
 ```
 node examples/up-to-n/marker-contract.test.mjs
+node examples/up-to-n/end-to-end.test.mjs
 node examples/up-to-n/soundness-harness.mjs
 node examples/up-to-n/update-strength.test.mjs
 uv run examples/up-to-n/build_link.test.py

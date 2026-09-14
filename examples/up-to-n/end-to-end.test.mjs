@@ -11,6 +11,16 @@
 // Expected answers come from the board's gen JSON, which CP-SAT built and
 // proved unique -- never from the JS rule.
 //
+// It witnesses the rule as a whole, not each half: the search still finds the
+// one solution with `update` pruning nothing (validate alone refuses every
+// wrong grid), and with `validate` always true (update's stop kills the
+// branch). How much `update` prunes is update-strength.test.mjs's job; that
+// it never prunes a true candidate is soundness-harness.mjs's.
+//
+// It runs the code embedded in the committed links, not the tree:
+// build_link.test.py fails when a link's code drifts from main.js or the
+// component, and `build_size.py --rebuild` refreshes it.
+//
 // The 4x4 and 6x6 boards run here, in well under a second each. The shipped
 // 9x9 takes over a minute headless, so it stays with build_link.test.py's
 // CP-SAT proof and the README's `just time` row.
@@ -92,12 +102,23 @@ for (const [link, gen] of BOARDS) {
 
   // A malformed marker is refused at setup with the marker contract's own
   // message, not solved as though it were absent or read as some other clue.
+  // Each edit takes the document and its first marker, two cells [a, b] with
+  // b one step inward from the border cell a.
+  const inward = g => g.cells[1] - g.cells[0]
   for (const [what, edit, message] of [
-    ['a three-cell marker', g => g.cells.push(g.cells[1] + (g.cells[1] - g.cells[0])), /Up to N: .* must be exactly two cells/],
-    ['a non-numeric value', g => { g.value = 'x' }, /Up to N: .* not a positive integer/]
+    ['a three-cell marker', (d, g) => g.cells.push(g.cells[1] + inward(g)), /Up to N: .* must be exactly two cells/],
+    ['a marker one step in from the end', (d, g) => { g.cells = g.cells.map(c => c + inward(g)) }, /Up to N: .* not at either end/],
+    ['a second marker on the same end', (d, g) => markers(d).push({ ...g, value: '1' }), /Up to N: .* same line and end/],
+    ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a positive integer/],
+    // Digits stop one short of the board, and the marker at the top of the
+    // last column is clued: its target digit is one the board cannot hold.
+    ['a target digit past maxDigit', d => {
+      d.puzzle.maxDigit = board.n - 1
+      markers(d).find(m => m.cells[0] === board.n - 1 && m.cells[1] === 2 * board.n - 1).value = '1'
+    }, /Up to N: .* target digit \d+, outside 1\.\.\d+/]
   ]) {
     const bad = copy(doc)
-    edit(markers(bad)[0])
+    edit(bad, markers(bad)[0])
     await assert.rejects(solveDocument(bad), message, `${link}: ${what}`)
   }
 }
