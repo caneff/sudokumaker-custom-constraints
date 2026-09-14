@@ -68,7 +68,8 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
   that sets `comment` itself must add the sentence. Exceptions: isofill and
   fillomino are not sudoku and skip the line (`NO_RULES_PREFIX` in
-  `check_layout.py`).
+  `check_layout.py`); up-to-n has no ring, so its text opens "Normal sudoku
+  rules apply." (`NO_RING_RULES_PREFIX`).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 

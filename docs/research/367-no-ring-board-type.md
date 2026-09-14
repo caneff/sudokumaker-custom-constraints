@@ -1,5 +1,11 @@
 # A no-ring board's rows and columns come from a `"sudoku"` header (#367)
 
+> **Superseded for shipping (#368).** The live editor opens a `"sudoku"`
+> document as 9x9 whatever its width says, so this header is wrong at every
+> size but 9 (`368-up-to-n-setup-throw.md`). A no-ring board now ships
+> `"custom"` with `examples/_shared/grid-rowcol.js`. The headless result below
+> still stands.
+
 **Finding.** A bare n x n document with `"type": "sudoku"` gets the solver's
 own row and column houses, and a custom constraint (type 1000) on it still
 registers and prunes. That is the header `framebuild.no_ring_doc` writes.

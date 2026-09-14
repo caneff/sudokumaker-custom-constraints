@@ -45,6 +45,7 @@
       "NumberedRoomsLinesComponent",
       "NumberedRoomsPairComponent",
       "RunningStartComponent",
+      "UpToNComponent",
       "RunningStartPairComponent",
       "CustomSkyscraperLineComponent",
       "CustomIndexComponent",

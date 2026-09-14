@@ -454,6 +454,29 @@ def refresh_frame_backends(doc):
     return doc
 
 
+# A no-ring board's one shared backend: every row and column of the whole grid
+# as a house. It takes the place of both frame backends there, since a board
+# with no ring has no ring lines to drop and no corners to pin.
+GRID_BACKEND = ("grid-rowcol", "Grid Rows and Columns")
+
+
+def grid_backend_constraint():
+    """The whole-grid rows-and-columns constraint a no-ring board ships, its
+    code read from the working tree."""
+    name, title = GRID_BACKEND
+    return {
+        "type": 1000,
+        "definition": {
+            "name": title,
+            "backend": {
+                "type": "code",
+                "code": minify_file(pathlib.Path(__file__).parent / f"{name}.js"),
+            },
+            "components": [],
+        },
+    }
+
+
 # The shared house-GAC filter (#406, #408, #421): opt-in per board
 # (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
 # entries are always-on and whose absence `refresh_frame_backends` treats as
@@ -602,11 +625,12 @@ def no_ring_doc(spec, board):
     """The whole document for a no-ring board: the bare n x n grid, its boxes
     and givens, and the example's constraint reading `spec.groups_fn`'s groups.
 
-    None of the ring's machinery applies. There are no corners to pin and no
-    ring to paint over, and the rows and columns come from the header: a
-    `"sudoku"` puzzle gets the app's own row and column houses, which a
-    `"custom"` one does not (docs/gotchas.md #9; the headless check is
-    docs/research/367-no-ring-board-type.md).
+    None of the ring's machinery applies: there are no corners to pin and no
+    ring to paint over. The document is `"custom"`, because the live editor
+    opens a `"sudoku"` document as 9x9 whatever its width says
+    (docs/research/368-up-to-n-setup-throw.md). A custom document's region
+    constraint gives boxes only (docs/gotchas.md #9), so the rows and columns
+    ship as `grid-rowcol.js`.
     """
     n, bh, bw = board.n, board.bh, board.bw
     cells = [
@@ -618,10 +642,11 @@ def no_ring_doc(spec, board):
     constraints = [
         {"type": 1, "regions": regions},
         {"type": 0},
+        grid_backend_constraint(),
         example_constraint(spec, no_ring_groups(spec, board)),
     ]
     comment = spec.rules_prefix + spec.comment_fn(n)
-    return _document(spec, board, "sudoku", n, cells, constraints, comment)
+    return _document(spec, board, "custom", n, cells, constraints, comment)
 
 
 def build_doc(spec, board, local=False):
@@ -764,6 +789,10 @@ def check(spec, link, doc, board, local=False):
     if spec.groups_fn is not None:
         assert lc["input"]["groups"] == no_ring_groups(spec, board), (
             "the drawn groups are not the ones the Spec's groups_fn draws"
+        )
+        assert grid_backend_constraint() in doc["puzzle"]["constraints"], (
+            "a no-ring board must carry the current grid-rowcol.js, or its rows "
+            "and columns are not houses"
         )
     elif local:
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
@@ -956,9 +985,12 @@ def rebuild(spec, n, local=False):
         )
     # The frame backends are blanked alongside the example's own constraint:
     # all three carry code generated from the working tree, and a rebuild
-    # exists precisely to refresh it. A no-ring board ships no frame backends.
+    # exists precisely to refresh it. A no-ring board ships the grid backend in
+    # their place.
     frame_names = (
-        [] if spec.groups_fn is not None else [title for _, title in FRAME_BACKENDS]
+        [GRID_BACKEND[1]]
+        if spec.groups_fn is not None
+        else [title for _, title in FRAME_BACKENDS]
     )
 
     def _without_house_gac(d):

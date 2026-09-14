@@ -19,6 +19,7 @@ import pathlib
 import random
 import tempfile
 
+import framebuild
 import link_codec
 from framebuild import (
     LOCAL_RULES_SUFFIX,
@@ -345,13 +346,25 @@ def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
             {"cells": [2, 6], "value": "12"},
             {"cells": [3, 7], "value": ""},
         ]
-        # A region constraint gives boxes only; a "sudoku" header is what gives
-        # the bare grid its rows and columns (docs/gotchas.md #9). The frame's
-        # own backends would strip a ring that is not there and pin four real
-        # cells as corners, so none ships.
-        assert p["type"] == "sudoku"
+        # A "custom" document, which the live editor opens at its own size (a
+        # "sudoku" one opens as 9x9 whatever its width says --
+        # docs/research/368-up-to-n-setup-throw.md). Its region constraint
+        # gives boxes only, so the rows and columns come from the whole-grid
+        # backend (docs/gotchas.md #9). The frame's own backends would strip a
+        # ring that is not there and pin four real cells as corners, so
+        # neither ships.
+        assert p["type"] == "custom"
         names = [c.get("definition", {}).get("name") for c in p["constraints"]]
-        assert names == [None, None, "Widget Lines"], names
+        assert names == [None, None, "Grid Rows and Columns", "Widget Lines"], names
+        grid = p["constraints"][2]["definition"]
+        shared = pathlib.Path(__file__).parent
+        assert grid["backend"]["code"] == minify_js(
+            (shared / "grid-rowcol.js").read_text()
+        )
+        assert grid["components"] == [], "it registers built-in houses only"
+        assert not [c for c in p["constraints"] if c.get("type") == 301], (
+            "no cage outlines: the lines are houses, not drawn cages"
+        )
 
 
 def _regions(puzzle):
@@ -450,6 +463,21 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
         )
         lc["input"]["groups"][0]["value"] = "11"
         _check_fails(spec, retyped, board, "drawn group")
+        # its rows and columns are only houses while it carries the grid
+        # backend in the tree: dropped or stale, the board is boxes only
+        for fault in ("dropped", "stale"):
+            broken = json.loads(json.dumps(doc))
+            cons = broken["puzzle"]["constraints"]
+            i = next(
+                i
+                for i, c in enumerate(cons)
+                if c.get("definition", {}).get("name") == "Grid Rows and Columns"
+            )
+            if fault == "dropped":
+                del cons[i]
+            else:
+                cons[i]["definition"]["backend"]["code"] += ";"
+            _check_fails(spec, broken, board, "grid-rowcol.js")
     # the Spec chooses the sentence, but not one without the project rule
     with _spec(
         ["FooComponent.js"], groups_fn=_column_markers, rules_prefix="Rules. "
@@ -507,6 +535,22 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
         link_path, gen_path = board_files(spec, n, local=True)
         assert rebuild(spec, n, local=True) + "\n" == link_path.read_text()
+        # The grid backend is code from the tree, not board data: a changed
+        # grid-rowcol.js rebuilds into the new code instead of failing the
+        # board comparison.
+        real = framebuild.grid_backend_constraint
+
+        def edited():
+            c = real()
+            c["definition"]["backend"]["code"] += ";"
+            return c
+
+        framebuild.grid_backend_constraint = edited
+        try:
+            relinked = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+        finally:
+            framebuild.grid_backend_constraint = real
+        assert edited() in relinked["puzzle"]["constraints"]
         # A no-ring board's shown clues live only in its groups' typed values:
         # hide one in the gen JSON and the rebuilt groups no longer match.
         g = json.loads(gen_path.read_text())

@@ -49,7 +49,16 @@ Use these terms exactly. Do not drift to synonyms.
   For an outside-clue rule the group is the **clue** cell first, then the
   **line**.
 - **clue** — the first cell of an outside-clue group. It holds the clue value
-  and never counts as part of the line.
+  and never counts as part of the line. `examples/up-to-n/` has no ring and no
+  clue cell: its clues are **fixed outside clues**.
+- **marker** — a two-cell group at one end of a whole row or column. It names
+  the line and its reading end (the cell on the border), and carries no digit
+  of its own. Up to N only. See `examples/up-to-n/README.md`.
+- **fixed outside clue** — a clue that lives in a group's typed value, with no
+  ring cell. Never blank at solve time and never read by the solver: a marker
+  with no value is not a clue at all.
+- **target digit** — the digit N a marker aims at: the 1-based index of the
+  marked row or column (a marker on column 5 aims at 5).
 - **line** — the ordered cells of a group after the clue. A line promises
   nothing about its digits: any length, repeats allowed, digits may be absent.
   `n` in a README or comment is the line length; the group has `n + 1` cells.

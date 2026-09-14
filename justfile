@@ -60,6 +60,7 @@ test:
     node examples/_shared/frame-rowcol.test.mjs
     node examples/_shared/house-gac.test.mjs
     node examples/_shared/frame-corners.test.mjs
+    node examples/_shared/grid-rowcol.test.mjs
     node examples/_shared/include.test.mjs
     node examples/_shared/frame-geometry.test.mjs
     node examples/_shared/frame-lines.test.mjs

@@ -37,9 +37,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import builtin_components, registered_components
 from framebuild import (
     FRAME_BACKENDS,
+    GRID_BACKEND,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
     frame_backend_code,
+    grid_backend_constraint,
     house_gac_backend_code,
 )
 from link_codec import decode_puzzle
@@ -67,8 +69,10 @@ REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 # (spec #303). house-gac is a different shape again but lands in the same
 # place: it filters fixed board geometry (every row, column and box), not a
 # line an author draws, so there is no per-line group to split a local lane
-# out of either (#428). Every other example needs both lanes (#194, #235, #268).
-NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino", "house-gac"}
+# out of either (#428). up-to-n has drawn groups but no global lane: its clues
+# are typed into them, and a board with no groups has no clue to read (spec
+# #366). Every other example needs both lanes (#194, #235, #268).
+NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino", "house-gac", "up-to-n"}
 
 # An example whose one required component lives in `_shared/` on purpose,
 # shared across every board that carries the same filter, rather than a copy
@@ -88,6 +92,26 @@ MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
 # check does not pull in ortools -- framebuild.py imports it at module load,
 # and check_layout.py runs with just `--with lzstring`.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
+
+# The sentence a no-ring board's rules text opens with instead: the whole grid
+# is the puzzle, so there is no inner grid to name.
+NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
+
+# The constraint name a no-ring board ships its whole-grid rows and columns
+# under (framebuild.no_ring_doc). Carrying it is what marks a board as no-ring:
+# its rows and columns are declared in JS, and its edge cells are real cells,
+# not a clue ring.
+GRID_ROWCOL_CONSTRAINT = GRID_BACKEND[1]
+
+
+def is_no_ring(puzzle):
+    """Does this link carry the whole-grid rows-and-columns backend, whatever
+    code is embedded there?"""
+    return any(
+        (c.get("definition") or {}).get("name") == GRID_ROWCOL_CONSTRAINT
+        for c in puzzle.get("constraints", [])
+    )
+
 
 # An example whose rules are not sudoku rules, so its link comment must not
 # carry RULES_PREFIX. isofill is not sudoku (spec #232) and its rules text
@@ -301,16 +325,15 @@ def check_share_ready(example_dir, link):
             f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
         )
 
-    ring_filled, ring_total = _ring_state(puzzle)
+    ring_filled, ring_total = _ring_state(puzzle) if not is_no_ring(puzzle) else (0, 0)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
             f"{name}: {link.name} fills all {ring_total} ring cells -- curate "
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
-    if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(
-        RULES_PREFIX
-    ):
+    prefix = NO_RING_RULES_PREFIX if is_no_ring(puzzle) else RULES_PREFIX
+    if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(prefix):
         violations.append(f"{name}: {link.name} comment missing rules prefix")
 
     return violations
@@ -392,13 +415,15 @@ FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 def frame_backend_files():
     """`{constraint name: (source file name, its minified code in the tree)}`
     for the frame's two always-on shared backends, plus the opt-in house-GAC
-    filter (#421) when a link carries it -- `check_frame_backends` only checks
-    a title it finds in a link's own constraints, so an opt-in backend needs
-    no separate gate here."""
+    filter (#421) and a no-ring board's whole-grid rows and columns when a link
+    carries them -- `check_frame_backends` only checks a title it finds in a
+    link's own constraints, so an opt-in backend needs no separate gate here."""
     code = dict(frame_backend_code())
     files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
     gac_title, gac_backend_code, _ = house_gac_backend_code()
     files[gac_title] = ("house-gac.js", gac_backend_code)
+    grid = grid_backend_constraint()["definition"]
+    files[grid["name"]] = (f"{GRID_BACKEND[0]}.js", grid["backend"]["code"])
     return files
 
 
@@ -436,9 +461,9 @@ RESEARCH_ROWCOL_BACKENDS = {"house-gac": "Rows & Columns"}
 def declares_rows_and_columns_in_js(example_name, puzzle):
     """Does this link carry a constraint that builds its own row and column
     houses in JS, invisible to declared_houses' static read of the document?
-    Either the frame's shared row/col backend, or the one research backend
-    RESEARCH_ROWCOL_BACKENDS names for this example."""
-    if carries_frame_rowcol(puzzle):
+    The frame's shared row/col backend, a no-ring board's whole-grid one, or
+    the one research backend RESEARCH_ROWCOL_BACKENDS names for this example."""
+    if carries_frame_rowcol(puzzle) or is_no_ring(puzzle):
         return True
     name = RESEARCH_ROWCOL_BACKENDS.get(example_name)
     return name is not None and any(
