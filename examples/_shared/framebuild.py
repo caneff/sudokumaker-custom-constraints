@@ -454,6 +454,29 @@ def refresh_frame_backends(doc):
     return doc
 
 
+# A no-ring board's one shared backend: every row and column of the whole grid
+# as a house. It takes the place of both frame backends there, since a board
+# with no ring has no ring lines to drop and no corners to pin.
+GRID_BACKEND = ("grid-rowcol", "Grid Rows and Columns")
+
+
+def grid_backend_constraint():
+    """The whole-grid rows-and-columns constraint a no-ring board ships, its
+    code read from the working tree."""
+    name, title = GRID_BACKEND
+    return {
+        "type": 1000,
+        "definition": {
+            "name": title,
+            "backend": {
+                "type": "code",
+                "code": minify_file(pathlib.Path(__file__).parent / f"{name}.js"),
+            },
+            "components": [],
+        },
+    }
+
+
 # The shared house-GAC filter (#406, #408, #421): opt-in per board
 # (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
 # entries are always-on and whose absence `refresh_frame_backends` treats as
@@ -563,6 +586,51 @@ def no_ring_groups(spec, board):
     return groups
 
 
+# The editor's text symbol, as the live editor writes one (a type-2002
+# "Cosmetic symbols" entry), at a size that reads as an outside clue.
+LABEL_STYLE = {
+    "type": "text",
+    "size": 0.35,
+    "angle": 0,
+    "strokeWidth": 0.02,
+    "stroke": "#ffffff",
+    "fill": "#000000",
+}
+
+
+def clue_labels(groups, n):
+    """The text labels that show a no-ring board's clues, or None when no group
+    is clued. A drawn group renders nothing in the app, so each clued group's
+    typed value is drawn as text half a cell outside the grid, beyond the
+    group's first cell and away from its second: a two-cell marker's border
+    cell first, so the label sits where an outside clue would.
+
+    Wire shape (docs/research/368-up-to-n-setup-throw.md): `params` holds one
+    style per label, `symbols` one point per label in cell units from the
+    grid's top-left corner, the third entry indexing `params` (absent for 0).
+
+    Raises on a clued group of fewer than two cells, or one whose label would
+    land on the grid: that is not a marker, and its label would cover a cell.
+    """
+    params, symbols = [], []
+    for g in groups:
+        if g["value"] == "":
+            continue
+        if len(g["cells"]) < 2:
+            raise ValueError(f"cannot label the group {g['cells']}: it has one cell")
+        (r0, c0), (r1, c1) = (divmod(cell, n) for cell in g["cells"][:2])
+        point = [c0 + 0.5 + (c0 - c1), r0 + 0.5 + (r0 - r1)]
+        if 0 < point[0] < n and 0 < point[1] < n:
+            raise ValueError(
+                f"cannot label the group {g['cells']}: its label would sit on the "
+                "grid, so its first cell is not on the border facing away from "
+                "its second"
+            )
+        symbols.append(point + ([len(params)] if params else []))
+        params.append({**LABEL_STYLE, "text": g["value"]})
+    return {"type": 2002, "params": params, "symbols": symbols} if params else None
+
+
 def refuse_no_ring_global_lane(spec, local):
     """A no-ring board's clues live only in its drawn groups, and the global
     lane ships none: raise before a search or a build is spent on a board with
@@ -602,11 +670,12 @@ def no_ring_doc(spec, board):
     """The whole document for a no-ring board: the bare n x n grid, its boxes
     and givens, and the example's constraint reading `spec.groups_fn`'s groups.
 
-    None of the ring's machinery applies. There are no corners to pin and no
-    ring to paint over, and the rows and columns come from the header: a
-    `"sudoku"` puzzle gets the app's own row and column houses, which a
-    `"custom"` one does not (docs/gotchas.md #9; the headless check is
-    docs/research/367-no-ring-board-type.md).
+    None of the ring's machinery applies: there are no corners to pin and no
+    ring to paint over. The document is `"custom"`, because the live editor
+    opens a `"sudoku"` document as 9x9 whatever its width says
+    (docs/research/368-up-to-n-setup-throw.md). A custom document's region
+    constraint gives boxes only (docs/gotchas.md #9), so the rows and columns
+    ship as `grid-rowcol.js`.
     """
     n, bh, bw = board.n, board.bh, board.bw
     cells = [
@@ -615,13 +684,17 @@ def no_ring_doc(spec, board):
         for c in range(n)
     ]
     regions = [(r // bh) * (n // bw) + (c // bw) for r in range(n) for c in range(n)]
+    groups = no_ring_groups(spec, board)
+    labels = clue_labels(groups, n)
     constraints = [
         {"type": 1, "regions": regions},
         {"type": 0},
-        example_constraint(spec, no_ring_groups(spec, board)),
+        grid_backend_constraint(),
+        example_constraint(spec, groups),
+        *([labels] if labels else []),
     ]
     comment = spec.rules_prefix + spec.comment_fn(n)
-    return _document(spec, board, "sudoku", n, cells, constraints, comment)
+    return _document(spec, board, "custom", n, cells, constraints, comment)
 
 
 def build_doc(spec, board, local=False):
@@ -765,6 +838,16 @@ def check(spec, link, doc, board, local=False):
         assert lc["input"]["groups"] == no_ring_groups(spec, board), (
             "the drawn groups are not the ones the Spec's groups_fn draws"
         )
+        assert grid_backend_constraint() in doc["puzzle"]["constraints"], (
+            "a no-ring board must carry the current grid-rowcol.js, or its rows "
+            "and columns are not houses"
+        )
+        shown = [c for c in doc["puzzle"]["constraints"] if c.get("type") == 2002]
+        want = clue_labels(no_ring_groups(spec, board), n)
+        assert shown == ([want] if want else []), (
+            "the clue labels are not the drawn groups' values: a player would "
+            "read a different clue from the one the constraint enforces"
+        )
     elif local:
         assert len(lc["input"]["groups"]) == 4 * n, "one drawn group per line"
     else:
@@ -820,8 +903,13 @@ def board_files(spec, n, local=False):
     with `Spec.plain_global_9x9 = False`, and its framebuild 9x9 global board
     keeps the `9x9` tag. Nothing else claims the local plain names, so the
     local 9x9 is plain-named either way.
+
+    A no-ring example has only the local lane, so no name carries a lane tag:
+    its 9x9 is plain-named and every other size is tagged by size alone.
     """
-    if n == 9 and (local or spec.plain_global_9x9):
+    if spec.groups_fn is not None:
+        tag = "" if n == 9 else f"{n}x{n}"
+    elif n == 9 and (local or spec.plain_global_9x9):
         tag = "local" if local else ""
     else:
         tag = f"{n}x{n}_local" if local else f"{n}x{n}"
@@ -910,7 +998,7 @@ def run(spec, n, bh, bw, seeds, local=False):
     print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
 
 
-def rebuild(spec, n, local=False):
+def rebuild(spec, n, local=False, files=None):
     """The link for a committed board, re-encoded against the code in the tree
     right now, with no fresh CP-SAT search.
 
@@ -920,8 +1008,11 @@ def rebuild(spec, n, local=False):
     component snapshot from whenever its search last ran. Asserts exactly that
     against the link it replaces, and returns the new link without writing it,
     so a test can compare bytes without touching the tree.
+
+    `files` names the (link, gen) pair for a board that does not own its
+    size's default names (`board_files`) -- a second board of one size.
     """
-    link_path, gen_path = board_files(spec, n, local)
+    link_path, gen_path = files or board_files(spec, n, local)
     assert gen_path.exists(), (
         f"{gen_path.name} does not exist: this example ships no framebuild "
         f"board at n={n} on the {'local' if local else 'global'} lane. A link "
@@ -956,12 +1047,15 @@ def rebuild(spec, n, local=False):
         )
     # The frame backends are blanked alongside the example's own constraint:
     # all three carry code generated from the working tree, and a rebuild
-    # exists precisely to refresh it. A no-ring board ships no frame backends.
+    # exists precisely to refresh it. A no-ring board ships the grid backend in
+    # their place.
     frame_names = (
-        [] if spec.groups_fn is not None else [title for _, title in FRAME_BACKENDS]
+        [GRID_BACKEND[1]]
+        if spec.groups_fn is not None
+        else [title for _, title in FRAME_BACKENDS]
     )
 
-    def _without_house_gac(d):
+    def _without_generated_constraints(d):
         """Drop the House GAC constraint entirely, rather than blank it in
         place: unlike the two always-on frame backends, it is opt-in
         (`spec.house_gac`), so a rebuild that turns it on for the first time
@@ -969,19 +1063,24 @@ def rebuild(spec, n, local=False):
         code in place would still leave that structural difference for the
         equality check below to trip on. Its code is generated the same as
         the always-on backends', so dropping it from this comparison is the
-        same call: not board data (#421)."""
+        same call: not board data (#421).
+
+        A no-ring board's clue labels go too: `check` holds them to the drawn
+        groups, and the groups are compared above, so the labels are not
+        board data either."""
         d = dict(d)
         d["puzzle"] = dict(d["puzzle"])
         d["puzzle"]["constraints"] = [
             c
             for c in d["puzzle"]["constraints"]
             if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
+            and not (spec.groups_fn is not None and c.get("type") == 2002)
         ]
         return d
 
-    assert _without_house_gac(
+    assert _without_generated_constraints(
         frame_and_comment_only(before, spec.constraint_name, frame_names)
-    ) == _without_house_gac(
+    ) == _without_generated_constraints(
         frame_and_comment_only(doc, spec.constraint_name, frame_names)
     ), (
         "grid, givens, or shown clues changed -- a rebuild from the recorded "

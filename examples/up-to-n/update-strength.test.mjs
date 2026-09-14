@@ -1,0 +1,107 @@
+// Strength check for UpToNComponent.update. Soundness (never remove a true
+// value) lives in soundness-harness.mjs; this file checks the other direction:
+// that a rewrite does not quietly prune LESS than the floor.
+//
+//   node examples/up-to-n/update-strength.test.mjs
+//
+// On random states the current update must leave a subset of what the floor
+// left, cell for cell.
+//
+// The floor is a frozen copy, `.golden/UpToNComponent.floor.js`, not a
+// `REF_COMMIT` read with `loadAt` as the siblings do. The component and its
+// floor land in one squash-merged pull request, and a squash rewrites every
+// commit on the branch: a sha pinned there names a commit main never holds, so
+// `git show` would fail on main. Raising the floor means replacing that copy in
+// the same commit as the stronger component.
+
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+import assert from 'assert'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const { load } = makeIo(HERE)
+
+const NAMES = ['setParams', 'update']
+const cur = load('UpToNComponent.js', NAMES)
+const ref = load('.golden/UpToNComponent.floor.js', NAMES)
+
+const { rnd } = makeRng(3680)
+const REPS = 5000
+
+// States are drawn around a real line so few of them die: a line of the kind
+// declared, a target it holds, the clue that line gives, and every cell's
+// candidates keeping its digit. Both kinds run, because the line-kind gate
+// decides how far the N prune reaches.
+function upToN (digits, target) {
+  let sum = 0
+  for (const d of digits) {
+    sum += d
+    if (d === target) return sum
+  }
+  return null
+}
+
+let states = 0
+let weaker = 0
+for (const D of [4, 6, 9]) {
+  installGlobals(1, D)
+  const LINE = Array.from({ length: D }, (_, i) => i)
+  for (const kind of ['fullHouse', 'bare']) {
+    let poolStates = 0
+    let poolWeaker = 0
+    for (let rep = 0; rep < REPS; rep++) {
+      const digits = makeLine(rnd, kind, D, D)
+      const target = digits[(rnd() * D) | 0]
+      const clue = upToN(digits, target)
+      const start = new Map()
+      for (const c of LINE) start.set(c, randomCandidates(rnd, 1, D, digits[c]))
+      const apply = (mod, p) => {
+        const inst = {}
+        mod.setParams(inst, LINE, target, clue)
+        fixpoint(mod, inst, p)
+      }
+      const w = compareStrength(cur, ref, apply, start, { kind, digitCount: D })
+      if (w === null) continue
+      poolStates++
+      poolWeaker += w.length
+      if (w.length > 0 && poolWeaker <= 5) console.log(kind, D, 'weaker at', w[0], 'start', [...start])
+    }
+    console.log(`up-to-n ${kind} ${D}:`, poolStates, 'states,', poolWeaker, 'weaker cells')
+    states += poolStates
+    weaker += poolWeaker
+  }
+}
+
+// Every state keeps a real solution, so none may die.
+assert.strictEqual(states, 3 * 2 * REPS, 'a state built around a solution must never die')
+assert.strictEqual(weaker, 0)
+
+// ---- Worked states: the prefix-cell prune (#369) ----
+//
+// A cell before every feasible position of N keeps only the digits some
+// feasible position admits within its sum bounds. Worked by hand on a bare
+// 4-cell line over 1..4, every cell open.
+function settle (target, clue) {
+  installGlobals(1, 4)
+  const LINE = [0, 1, 2, 3]
+  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4], { kind: 'bare', digitCount: 4 })
+  const inst = {}
+  cur.setParams(inst, LINE, target, clue)
+  fixpoint(cur, inst, p)
+  return LINE.map(c => [...p._cand.get(c)].sort())
+}
+
+// N = 4, clue 5. The first 4 can only be the second cell (4 alone is 4, and
+// three cells sum at least 4 + 1 + 1 = 6), so the first cell is 5 - 4 = 1.
+assert.deepStrictEqual(settle(4, 5)[0], [1])
+
+// N = 3, clue 6. The first 3 sits second (3 + d = 6 needs d = 3, itself N, so
+// not there), third (two cells summing 3: {1, 2}) or fourth (1 + 1 + 1). So
+// the first two cells hold 1 or 2 and nothing else.
+{
+  const [c0, c1] = settle(3, 6)
+  assert.deepStrictEqual(c0, [1, 2])
+  assert.deepStrictEqual(c1, [1, 2])
+}
+console.log('PASS')

@@ -16,7 +16,7 @@ so a missing required file or a bad link name fails the gate.
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
-| `update-strength.test.mjs` | Never-weaker fuzz; floor pinned at the commit that adds it |
+| `update-strength.test.mjs` | Never-weaker fuzz; floor pinned at the commit that adds it, or frozen as a committed copy when the floor lands in the same squash-merged PR as the component (up-to-n's `.golden/UpToNComponent.floor.js`) |
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
 | `PUZZLE_LINK_local.txt` | The local-lane board |
@@ -27,8 +27,10 @@ every example except one with no local/global duality: `isofill` and
 `fillomino` (whole-grid constraints, no drawn groups at all) and `house-gac`
 (a fixed-geometry filter over every row, column and box — no drawn group to
 split a local lane from either, for a different reason) each ship `main.js`
-alone. `examples/_shared/check_layout.py` holds this list as
-`NO_LOCAL_GLOBAL_SPLIT`.
+alone, and so does `up-to-n`, which draws groups but has no global lane: its
+clues are typed into them, so a board with no groups has none. Its
+`PUZZLE_LINK.txt` is a drawn-groups board. `examples/_shared/check_layout.py`
+holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
 
 ## Which lane a link runs (#268)
 
@@ -107,7 +109,8 @@ pre-share criteria: the link opens clean (no entered values on non-given
 cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the
 inner grid" — except an example in `NO_RULES_PREFIX` (isofill and fillomino
-are not sudoku, and their rules text must not mention sudoku). See
+are not sudoku, and their rules text must not mention sudoku), and a no-ring
+board (below), whose comment starts "Normal sudoku rules apply." instead. See
 `docs/share-checklist.md` for the full pre-share list.
 
 The **name** grammar above binds `PUZZLE_LINK*.txt` only, but the share
@@ -134,6 +137,16 @@ that carries the row/column backend, rather than counting missing rows at it.
 Both backends need this sweep, and `frame-corners.js` needs it most: it
 registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
 component file and the component check above has no set to compare it against.
+
+A **no-ring** board (`framebuild.no_ring_doc`, up-to-n's) is a bare n x n
+`"custom"` document with no clue ring, and its shared backend is
+`_shared/grid-rowcol.js`, which declares every whole row and column. A link
+carrying it is what `check_layout.py` treats as no-ring: `check_frame_backends`
+checks its copy for staleness and its digit range the same way, `check_houses`
+steps aside for it, the filled-ring check does not apply (its edge cells are
+the puzzle), and its comment opens with the no-ring sentence above. The live
+editor opens a `"sudoku"` document as 9x9 whatever its width says, which is
+why the header is not used (`docs/research/368-up-to-n-setup-throw.md`).
 
 `check_houses` steps aside the same way for house-gac's board, which carries
 docs/research/406-gac-demo's own non-frame "Rows & Columns" backend instead —
@@ -186,7 +199,11 @@ in the live app and record what it said:
   `framebuild.board_files(spec, n, local)`. The 9x9 is plain-named on both
   lanes (`PUZZLE_LINK.txt` / `PUZZLE_LINK_local.txt`), every other size carries
   its `NxN` tag, and an example whose `PUZZLE_LINK.txt` is some other,
-  hand-built board says so with `Spec.plain_global_9x9 = False`.
+  hand-built board says so with `Spec.plain_global_9x9 = False`. A no-ring
+  example has only the drawn-groups lane, so its names carry no lane tag: its
+  9x9 is `PUZZLE_LINK.txt` and every other size `PUZZLE_LINK_<n>x<n>.txt`. A
+  second board of one size takes a size tag on its own and is rebuilt through
+  `framebuild.rebuild(..., files=...)` (up-to-n's `PUZZLE_LINK_9x9.txt`).
 - The pairing runs both ways where a link is generated: `check_layout.py`
   flags a `gen*.json` with no matching link, and a link with no matching
   `gen*.json`, same as above. Three kinds of link are exempt from needing one

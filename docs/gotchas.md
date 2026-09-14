@@ -99,9 +99,11 @@ in the app says so: the solver runs, reports times, and counts solutions on a
 puzzle that is not the one you meant. Add them explicitly. The switch is the
 puzzle header, not the constraint list: the solver prepends its row-and-column
 houses only when `"type"` is `"sudoku"` (or absent, the classic default), and
-every frame board here is `"type": "custom"` (a no-ring board, which has no
-ring to hide, takes `"sudoku"` instead: `framebuild.no_ring_doc`, research
-`367-no-ring-board-type.md`). Wire type 0 is the givens, type 1
+every frame board here is `"type": "custom"`. A no-ring board is `"custom"`
+too, with every whole row and column declared by
+`examples/_shared/grid-rowcol.js`: the live editor opens a `"sudoku"` document
+as 9x9 whatever its width says, so the header only works at 9x9
+(`research/368-up-to-n-setup-throw.md`). Wire type 0 is the givens, type 1
 the regions (`research/validate-only-probe.md`, last section). `framebuild.py` registers one named component per
 interior line (`examples/_shared/frame-rowcol.js`), which is how a line gets a
 name the app can use in an explanation -- a `type: 301` cage cannot be named,

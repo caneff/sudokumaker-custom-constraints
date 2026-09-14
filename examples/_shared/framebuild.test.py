@@ -19,6 +19,7 @@ import pathlib
 import random
 import tempfile
 
+import framebuild
 import link_codec
 from framebuild import (
     LOCAL_RULES_SUFFIX,
@@ -345,13 +346,37 @@ def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
             {"cells": [2, 6], "value": "12"},
             {"cells": [3, 7], "value": ""},
         ]
-        # A region constraint gives boxes only; a "sudoku" header is what gives
-        # the bare grid its rows and columns (docs/gotchas.md #9). The frame's
-        # own backends would strip a ring that is not there and pin four real
-        # cells as corners, so none ships.
-        assert p["type"] == "sudoku"
+        # A "custom" document, which the live editor opens at its own size (a
+        # "sudoku" one opens as 9x9 whatever its width says --
+        # docs/research/368-up-to-n-setup-throw.md). Its region constraint
+        # gives boxes only, so the rows and columns come from the whole-grid
+        # backend (docs/gotchas.md #9). The frame's own backends would strip a
+        # ring that is not there and pin four real cells as corners, so
+        # neither ships.
+        assert p["type"] == "custom"
         names = [c.get("definition", {}).get("name") for c in p["constraints"]]
-        assert names == [None, None, "Widget Lines"], names
+        assert names == [None, None, "Grid Rows and Columns", "Widget Lines", None], (
+            names
+        )
+        grid = p["constraints"][2]["definition"]
+        shared = pathlib.Path(__file__).parent
+        assert grid["backend"]["code"] == minify_js(
+            (shared / "grid-rowcol.js").read_text()
+        )
+        assert grid["components"] == [], "it registers built-in houses only"
+        assert not [c for c in p["constraints"] if c.get("type") == 301], (
+            "no cage outlines: the lines are houses, not drawn cages"
+        )
+        # A drawn group renders nothing, so each clued group gets a text label:
+        # one cosmetic symbol per shown clue, half a cell outside the grid
+        # beyond the group's first cell, reading the group's own value. The
+        # markers at the top of columns 1 and 3 are clued 10 and 12; the two
+        # empty ones get none (docs/research/368-up-to-n-setup-throw.md).
+        labels = p["constraints"][4]
+        assert labels["type"] == 2002
+        assert labels["symbols"] == [[0.5, -0.5], [2.5, -0.5, 1]]
+        assert [q["type"] for q in labels["params"]] == ["text", "text"]
+        assert [q["text"] for q in labels["params"]] == ["10", "12"]
 
 
 def _regions(puzzle):
@@ -367,6 +392,28 @@ def test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row():
         assert _regions(p) == (
             [0, 0, 0, 1, 1, 1] * 2 + [2, 2, 2, 3, 3, 3] * 2 + [4, 4, 4, 5, 5, 5] * 2
         )
+
+
+def test_clue_labels_refuse_a_group_they_cannot_place():
+    # A label sits half a cell beyond a group's first cell, away from its
+    # second, which only lands outside the grid for a marker's shape: two
+    # cells with the first on the border. Anything else is refused rather
+    # than drawn over the puzzle's own cells.
+    n = 4
+    assert framebuild.clue_labels([{"cells": [0, 4], "value": "3"}], n) is not None
+    for cells, why in (
+        ([5], "a one-cell group"),
+        ([5, 9], "a group away from the border"),
+        ([1, 0], "a border cell listed second"),
+    ):
+        try:
+            framebuild.clue_labels([{"cells": cells, "value": "3"}], n)
+        except ValueError as e:
+            assert str(cells) in str(e), (why, e)
+        else:
+            raise AssertionError(f"labelled {why}")
+    # an empty group is never labelled, so its shape is not this check's job
+    assert framebuild.clue_labels([{"cells": [5], "value": ""}], n) is None
 
 
 def test_build_doc_refuses_a_group_cell_off_the_grid():
@@ -450,6 +497,33 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
         )
         lc["input"]["groups"][0]["value"] = "11"
         _check_fails(spec, retyped, board, "drawn group")
+        # the labels are the groups' values drawn: a label that says something
+        # else, or a missing one, is a board that shows the wrong clue
+        relabelled = json.loads(json.dumps(doc))
+        next(c for c in relabelled["puzzle"]["constraints"] if c.get("type") == 2002)[
+            "params"
+        ][0]["text"] = "11"
+        _check_fails(spec, relabelled, board, "label")
+        unlabelled = json.loads(json.dumps(doc))
+        unlabelled["puzzle"]["constraints"] = [
+            c for c in unlabelled["puzzle"]["constraints"] if c.get("type") != 2002
+        ]
+        _check_fails(spec, unlabelled, board, "label")
+        # its rows and columns are only houses while it carries the grid
+        # backend in the tree: dropped or stale, the board is boxes only
+        for fault in ("dropped", "stale"):
+            broken = json.loads(json.dumps(doc))
+            cons = broken["puzzle"]["constraints"]
+            i = next(
+                i
+                for i, c in enumerate(cons)
+                if c.get("definition", {}).get("name") == "Grid Rows and Columns"
+            )
+            if fault == "dropped":
+                del cons[i]
+            else:
+                cons[i]["definition"]["backend"]["code"] += ";"
+            _check_fails(spec, broken, board, "grid-rowcol.js")
     # the Spec chooses the sentence, but not one without the project rule
     with _spec(
         ["FooComponent.js"], groups_fn=_column_markers, rules_prefix="Rules. "
@@ -507,6 +581,44 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
         link_path, gen_path = board_files(spec, n, local=True)
         assert rebuild(spec, n, local=True) + "\n" == link_path.read_text()
+        # The grid backend is code from the tree, not board data: a changed
+        # grid-rowcol.js rebuilds into the new code instead of failing the
+        # board comparison.
+        real = framebuild.grid_backend_constraint
+
+        def edited():
+            c = real()
+            c["definition"]["backend"]["code"] += ";"
+            return c
+
+        framebuild.grid_backend_constraint = edited
+        try:
+            relinked = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+        finally:
+            framebuild.grid_backend_constraint = real
+        assert edited() in relinked["puzzle"]["constraints"]
+        # A second board of the same size keeps its own named pair; `files`
+        # points the rebuild at it instead of the size's default names.
+        other_link = spec.dir / "PUZZLE_LINK_9x9.txt"
+        other_gen = spec.dir / "gen_9x9.json"
+        link_path.rename(other_link)
+        gen_path.rename(other_gen)
+        files = (other_link, other_gen)
+        assert (
+            rebuild(spec, n, local=True, files=files) + "\n" == other_link.read_text()
+        )
+        other_link.rename(link_path)
+        other_gen.rename(gen_path)
+        # The labels are drawn from the groups the rebuild already guards, so a
+        # committed link without them rebuilds into one that has them rather
+        # than failing the board comparison.
+        old = link_codec.decode_puzzle(link_path.read_text().strip())
+        old["puzzle"]["constraints"] = [
+            c for c in old["puzzle"]["constraints"] if c.get("type") != 2002
+        ]
+        link_path.write_text(link_codec.encode_link(old) + "\n")
+        relabelled = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+        assert [c for c in relabelled["puzzle"]["constraints"] if c["type"] == 2002]
         # A no-ring board's shown clues live only in its groups' typed values:
         # hide one in the gen JSON and the rebuilt groups no longer match.
         g = json.loads(gen_path.read_text())
@@ -672,6 +784,18 @@ def test_board_files_plain_names_the_9x9_and_tags_every_other_size():
         assert board_files(spec, 9, local=True) == (
             d / "PUZZLE_LINK_local.txt",
             d / "gen_local.json",
+        )
+    # a no-ring example has one lane, so its names carry no lane tag: the 9x9
+    # is plain-named and every other size is tagged by size alone (#370)
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        d = spec.dir
+        assert board_files(spec, 9, local=True) == (
+            d / "PUZZLE_LINK.txt",
+            d / "gen.json",
+        )
+        assert board_files(spec, 4, local=True) == (
+            d / "PUZZLE_LINK_4x4.txt",
+            d / "gen_4x4.json",
         )
 
 
@@ -947,6 +1071,7 @@ if __name__ == "__main__":
     test_build_doc_house_gac_names_one_board_not_the_whole_example()
     test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups()
     test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
+    test_clue_labels_refuse_a_group_they_cannot_place()
     test_build_doc_refuses_a_group_cell_off_the_grid()
     test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()

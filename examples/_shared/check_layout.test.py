@@ -34,6 +34,8 @@ def _link(
     house_gac_backend=False,
     house_gac_renamed=False,
     digits=(1, 3),
+    no_ring=None,
+    grid_backend=None,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -69,13 +71,22 @@ def _link(
     document's declared range -- None leaves it off, which is what makes the
     app default the board to 0..9 and silently weaken both frame backends
     (#394).
+
+    `no_ring` builds a no-ring board instead: its comment is `no_ring` (the
+    whole text) rather than RULES_PREFIX, and it carries the shared whole-grid
+    rows-and-columns backend. `grid_backend` overrides that backend alone --
+    False drops it, "stale" embeds an older copy.
     """
+    if grid_backend is None:
+        grid_backend = no_ring is not None
     cells = [{"given": True, "value": 1}] + [{} for _ in range(8)]
     if full_ring:
         cells = [{"given": True, "value": 1} for _ in range(9)]
     if entered:
         cells[1] = {"value": 2}
     comment = (RULES_PREFIX if prefix else "") + "test rules"
+    if no_ring is not None:
+        comment = no_ring
     registers = ships if registers is None else registers
     lines = [f"puzzle.addConstraintComponent(new {n}('a'))" for n in registers]
     if note:
@@ -106,6 +117,7 @@ def _link(
         (frame_backend, "frame-rowcol.js", "Frame Rows and Columns", None),
         (corners_backend, "frame-corners.js", "Frame Corners", None),
         (house_gac_backend, "house-gac.js", "House GAC", "HouseGacComponent"),
+        (grid_backend, "grid-rowcol.js", "Grid Rows and Columns", None),
     ):
         if not wanted:
             continue
@@ -517,6 +529,46 @@ if __name__ == "__main__":
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
+
+    # up-to-n is a no-ring example: local lane only, so it ships main.js and
+    # PUZZLE_LINK.txt with no global lane and no _local pair (#368)
+    with example(files=fillomino_files, name="up-to-n") as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # A no-ring board carries the whole-grid rows-and-columns backend: its
+    # rows and columns are declared in JS, so a link whose document holds only
+    # boxes is not missing a house, and every edge cell is a real cell, so a
+    # board given along its whole edge is not a filled clue ring. Its rules
+    # text opens on the plain sentence -- there is no inner grid to name
+    # (#368).
+    no_ring = _link(
+        houses="boxes", full_ring=True, no_ring="Normal sudoku rules apply. Up to N."
+    )
+    with example(contents={"PUZZLE_LINK.txt": no_ring}) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+
+    # ...but it still owes the sentence: a no-ring comment without it fails,
+    # and so does one naming an inner grid the board does not have
+    for comment in ("Up to N.", RULES_PREFIX + "Up to N."):
+        with example(
+            contents={"PUZZLE_LINK.txt": _link(houses="boxes", no_ring=comment)}
+        ) as (root, _):
+            violations = check_tree(root)
+            assert len(violations) == 1, violations
+            assert "rules prefix" in violations[0], violations
+
+    # a stale copy of the grid backend is stale like a frame backend's
+    stale_grid = _link(
+        houses="boxes",
+        no_ring="Normal sudoku rules apply. Up to N.",
+        grid_backend="stale",
+    )
+    with example(contents={"PUZZLE_LINK.txt": stale_grid}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale copy of grid-rowcol.js" in violations[0], violations
 
     # a link shipping a component its backend never registers fails: dead
     # weight the recipient reads as part of the rule (#291)
