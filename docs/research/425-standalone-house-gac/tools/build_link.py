@@ -1,8 +1,9 @@
 """Build the standalone House GAC link (#425): a plain 9x9 with no clue ring
-and no frame constraint, whose only custom constraint is the shipped
+and no frame constraint, whose only constraint beyond the board's own
+rows-and-columns and region declarations is the shipped
 `examples/_shared/HouseGacComponent.js`, registered on all 27 houses by this
 folder's own `house-gac9-main.js` (examples/_shared/house-gac.js assumes a
-frame board's ring and cannot register a bare 9x9 -- see that file's header).
+frame board's ring and cannot register a bare 9x9 -- see the README).
 
 Reuses the plain-9x9 board and givens from
 docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt (25 givens, boxes as
@@ -70,15 +71,22 @@ print("unique; solution rows:")
 for r in range(9):
     print("  " + "".join(str(sol[r, c]) for c in range(9)))
 
+# Splicing `with_filter` onto a base that already carries a "House GAC"
+# constraint would double it silently (AGENTS.md: a splicing generator run
+# twice on one file duplicates the scene) -- refuse instead.
+existing_names = {c.get("definition", {}).get("name") for c in base["puzzle"]["constraints"]}
+assert "House GAC" not in existing_names, "base link already carries a House GAC constraint"
+
 doc = with_filter(base, COMPONENT, backend=BACKEND)
 doc["puzzle"]["name"] = "Standalone House GAC"
 doc["puzzle"]["comment"] = (
     RULES_PREFIX
-    + "The only custom constraint is the shipped House GAC filter -- a "
-    "generalized-arc-consistency all-different check on every row, column "
-    "and box. It adds no rule (every house is already all-different) and "
-    "only filters harder. Press the AutoStep button (the run-to-fixpoint "
-    "logical solver) to see it clear the grid."
+    + "The only constraint beyond the board's own rows, columns and boxes "
+    "is the shipped House GAC filter -- a generalized-arc-consistency "
+    "all-different check on every row, column and box. It adds no rule "
+    "(every house is already all-different) and only filters harder. Press "
+    "the AutoStep button (the run-to-fixpoint logical solver) to see it "
+    "clear the grid."
 )
 
 link = encode_link(doc)
