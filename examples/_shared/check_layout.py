@@ -64,8 +64,20 @@ REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 # An example whose constraint has no local/global duality ships main.js
 # alone, and no local board: isofill is a whole-grid constraint with no drawn
 # groups at all (spec #232, Out of Scope), and fillomino is the same shape
-# (spec #303). Every other example needs both lanes (#194, #235, #268).
-NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino"}
+# (spec #303). house-gac is a different shape again but lands in the same
+# place: it filters fixed board geometry (every row, column and box), not a
+# line an author draws, so there is no per-line group to split a local lane
+# out of either (#428). Every other example needs both lanes (#194, #235, #268).
+NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino", "house-gac"}
+
+# An example whose one required component lives in `_shared/` on purpose,
+# shared across every board that carries the same filter, rather than a copy
+# owned by this example: house-gac's `HouseGacComponent.js` is also the
+# backend #421's frame boards will register (#408, #422). A copy pasted into
+# the example dir would only drift from that shared original, so the
+# `*Component.js` check below follows the name into `_shared/` instead of
+# requiring a local file.
+SHARED_COMPONENT = {"house-gac": "HouseGacComponent"}
 
 # An example folded into another and deleted. One rule has one example, so
 # the directory must not come back -- a second one would drift from the
@@ -111,7 +123,13 @@ NO_GENERATOR_TAGS = {"clued", "original"}
 # A link with no generator at all: numbered-rooms/PUZZLE_LINK.txt is
 # hand-made, its own README's "Not covered" section says so -- no gen.json
 # has ever paired with it (#294).
-NO_GENERATOR_LINKS = {("numbered-rooms", "PUZZLE_LINK.txt")}
+NO_GENERATOR_LINKS = {
+    ("numbered-rooms", "PUZZLE_LINK.txt"),
+    # house-gac's board and givens come from another committed link
+    # (docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt), re-proved
+    # unique with CP-SAT, not from a gen*.json this example owns (#428).
+    ("house-gac", "PUZZLE_LINK.txt"),
+}
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
@@ -401,6 +419,32 @@ def carries_frame_rowcol(puzzle):
     )
 
 
+# An example whose board carries a non-frame rows/columns backend that
+# builds its houses in JS at postprocessJSON time -- invisible to
+# declared_houses' static read of the document, the same blind spot the
+# frame's own row/col backend has -- mapped to the constraint name it ships
+# that backend under. house-gac's board is docs/research/406-gac-demo's own
+# "Rows & Columns" backend, carried unmodified (#428); house-gac does not own
+# or rebuild it, so there is nothing here for check_frame_backends to compare
+# against. Scoped per example, not by name alone: a name match on some other
+# example's own unrelated constraint must not silently exempt it too.
+RESEARCH_ROWCOL_BACKENDS = {"house-gac": "Rows & Columns"}
+
+
+def declares_rows_and_columns_in_js(example_name, puzzle):
+    """Does this link carry a constraint that builds its own row and column
+    houses in JS, invisible to declared_houses' static read of the document?
+    Either the frame's shared row/col backend, or the one research backend
+    RESEARCH_ROWCOL_BACKENDS names for this example."""
+    if carries_frame_rowcol(puzzle):
+        return True
+    name = RESEARCH_ROWCOL_BACKENDS.get(example_name)
+    return name is not None and any(
+        (c.get("definition") or {}).get("name") == name
+        for c in puzzle.get("constraints", [])
+    )
+
+
 def interior_cells(puzzle, width, height):
     """The ids of the cells a region constraint places in a region.
 
@@ -454,11 +498,13 @@ def check_houses(example_dir, link):
 
     inside = interior_cells(puzzle, width, height)
 
-    # A board carrying the row/column backend declares its lines in JS, so
+    # A board carrying a row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
     # is already present. Whether the copy embedded there is the current one is
-    # `check_frame_backends`' question, with its own message and its own fix.
-    if carries_frame_rowcol(puzzle):
+    # `check_frame_backends`' question, with its own message and its own fix
+    # (house-gac's borrowed "Rows & Columns" backend has no such check -- see
+    # declares_rows_and_columns_in_js).
+    if declares_rows_and_columns_in_js(name, puzzle):
         return []
 
     houses = declared_houses(puzzle)
@@ -631,7 +677,14 @@ def check_example(example_dir):
         if not (example_dir / required).is_file()
     ]
 
-    if not list(example_dir.glob("*Component.js")):
+    if name in SHARED_COMPONENT:
+        shared_file = example_dir.parent / "_shared" / f"{SHARED_COMPONENT[name]}.js"
+        if not shared_file.is_file():
+            violations.append(
+                f"{name}: declared shared component {SHARED_COMPONENT[name]!r} "
+                f"has no file at {shared_file}"
+            )
+    elif not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
     if name not in NO_LOCAL_GLOBAL_SPLIT:

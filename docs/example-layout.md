@@ -12,7 +12,7 @@ so a missing required file or a bad link name fails the gate.
 | `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
 | `main.js` | The SudokuMaker constraint definition for the **local** link (paste target); registers the line component per drawn group |
 | `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194). It does not build the frame itself: it splices in the one shared reader (below) |
-| `*Component.js` (at least one) | The pasted constraint snippet(s) |
+| `*Component.js` (at least one) | The pasted constraint snippet(s). One example, `house-gac`, ships none of its own: its one component lives in `examples/_shared/` on purpose, shared with every other board that registers the same filter, and `check_layout.py`'s `SHARED_COMPONENT` names it there instead of demanding a local copy that could drift |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
@@ -23,9 +23,12 @@ so a missing required file or a bad link name fails the gate.
 | `gen_local.json` | The board data behind `PUZZLE_LINK_local.txt` |
 
 `main-global.js`, `PUZZLE_LINK_local.txt` and `gen_local.json` are required on
-every example except one with no local/global duality: `isofill` (a whole-grid
-constraint, no drawn groups at all) ships `main.js` alone.
-`examples/_shared/check_layout.py` holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
+every example except one with no local/global duality: `isofill` and
+`fillomino` (whole-grid constraints, no drawn groups at all) and `house-gac`
+(a fixed-geometry filter over every row, column and box — no drawn group to
+split a local lane from either, for a different reason) each ship `main.js`
+alone. `examples/_shared/check_layout.py` holds this list as
+`NO_LOCAL_GLOBAL_SPLIT`.
 
 ## Which lane a link runs (#268)
 
@@ -124,6 +127,15 @@ Both backends need this sweep, and `frame-corners.js` needs it most: it
 registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
 component file and the component check above has no set to compare it against.
 
+`check_houses` steps aside the same way for house-gac's board, which carries
+docs/research/406-gac-demo's own non-frame "Rows & Columns" backend instead —
+it declares its houses in a `postprocessJSON` function too, the same blind
+spot a static decode has for the frame's backend. house-gac does not own or
+rebuild that backend, so there is no `check_frame_backends`-style staleness
+check for it; `check_layout.py`'s `RESEARCH_ROWCOL_BACKENDS` names the one
+constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
+recognizes.
+
 The same check requires a frame link to declare `minDigit`/`maxDigit`. The app
 defaults a custom puzzle to 0..9 whatever the grid size, and both backends read
 `helpers.digits`: undeclared, a 9-cell interior line stops matching the digit
@@ -169,11 +181,16 @@ in the live app and record what it said:
   hand-built board says so with `Spec.plain_global_9x9 = False`.
 - The pairing runs both ways where a link is generated: `check_layout.py`
   flags a `gen*.json` with no matching link, and a link with no matching
-  `gen*.json`, same as above. Two kinds of link are exempt from needing one
+  `gen*.json`, same as above. Three kinds of link are exempt from needing one
   back: a `_clued`/`_original` twin (`build_clued.py`/`build_original.py`
   re-encode an already-generated board with different wrapper code or extra
-  clues, never their own fresh gen JSON), and numbered-rooms' hand-made
-  `PUZZLE_LINK.txt`, which its own README says no generator produces at all.
+  clues, never their own fresh gen JSON), numbered-rooms' hand-made
+  `PUZZLE_LINK.txt`, which its own README says no generator produces at all,
+  and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
+  committed link (`docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt`),
+  re-proved unique with CP-SAT rather than generated from a `gen*.json` this
+  example owns. `check_layout.py` holds these last two by `(example, link
+  name)` pair as `NO_GENERATOR_LINKS`.
 
 ## The `original/` baseline
 
