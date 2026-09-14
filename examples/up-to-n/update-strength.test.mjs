@@ -17,7 +17,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -76,4 +76,32 @@ for (const D of [4, 6, 9]) {
 // Every state keeps a real solution, so none may die.
 assert.strictEqual(states, 3 * 2 * REPS, 'a state built around a solution must never die')
 assert.strictEqual(weaker, 0)
+
+// ---- Worked states: the prefix-cell prune (#369) ----
+//
+// A cell before every feasible position of N keeps only the digits some
+// feasible position admits within its sum bounds. Worked by hand on a bare
+// 4-cell line over 1..4, every cell open.
+function settle (target, clue) {
+  installGlobals(1, 4)
+  const LINE = [0, 1, 2, 3]
+  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4], { kind: 'bare', digitCount: 4 })
+  const inst = {}
+  cur.setParams(inst, LINE, target, clue)
+  fixpoint(cur, inst, p)
+  return LINE.map(c => [...p._cand.get(c)].sort())
+}
+
+// N = 4, clue 5. The first 4 can only be the second cell (4 alone is 4, and
+// three cells sum at least 4 + 1 + 1 = 6), so the first cell is 5 - 4 = 1.
+assert.deepStrictEqual(settle(4, 5)[0], [1])
+
+// N = 3, clue 6. The first 3 sits second (3 + d = 6 needs d = 3, itself N, so
+// not there), third (two cells summing 3: {1, 2}) or fourth (1 + 1 + 1). So
+// the first two cells hold 1 or 2 and nothing else.
+{
+  const [c0, c1] = settle(3, 6)
+  assert.deepStrictEqual(c0, [1, 2])
+  assert.deepStrictEqual(c1, [1, 2])
+}
 console.log('PASS')

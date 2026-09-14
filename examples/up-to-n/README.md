@@ -64,6 +64,10 @@ forced to N, and the clue lies inside those bounds.
 - On a house, where the first N is the only N, N leaves every infeasible
   position. On a bare line a later cell may hold a second N the sum never
   reads, so it keeps N.
+- A cell before every feasible position keeps only the digits d some
+  feasible position admits: with that position's bounds lo..hi and the cell's
+  own smallest and largest non-N digits, lo - smallest + d <= clue <=
+  hi - largest + d.
 - No feasible position at all stops the branch.
 - `validate` walks a filled line to the first N and compares the sum, and
   refuses a line with no N.
