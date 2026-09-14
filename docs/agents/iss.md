@@ -55,5 +55,6 @@ not redo the read.
 | `chaos_construction.md` §7.4 (the general cut rule ISS dropped) | whether their heuristic warning applies to SudokuMaker | #169: it does not. Both halves of cut ship; each half alone is worse, and starve alone times the app out. `examples/isofill/README.md` § Cut split |
 | `chaos_construction.md` §8 (dirty-region tracking); `connected_values.md` §7.4 read as one articulation pass | whether either can replace cut's per-cell re-walks | #170: neither built. Cut is 36-45% of `update` on the hard fixtures, under the 50% bar both were parked behind. Re-open conditions in `examples/isofill/README.md` § Cut profile |
 | `nfa.md` | — | not yet read |
+| `sudoku_builder.js` `XSum` case, `_yieldOr`, `_givenHandler`; `handlers.js` `Or`/`And`/`GivenCandidates` runtime state; `sum_handler.js` `_FLAG_CAGE`/`killerCageSums`; `sum.md` §2–9 | X-sums as prior art for Up to N | `docs/research/371-xsum-iss-model.md` (#371). Build-time length-branch decomposition; each branch gets bounds or the exact `killerCageSums` subset table depending on whether its cells form one exclusion group. No `Or`/`And` primitive to port, only the case-split idea. |
 
 Add a row when you read more.
