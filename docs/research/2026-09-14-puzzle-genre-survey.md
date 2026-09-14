@@ -18,7 +18,7 @@ that cost on a 9x9, and does the digit layer couple to it as linear or reified
 constraints without blowing up. Section 6 collects the reusable encoding devices;
 section 7 ranks the genres by what they are worth to build.
 
-**Every sudoku-titled puzzle the LMD tag scan found, all 96 hits across 34 tags, is kept in `2026-09-14-lmd-hybrid-scan.md`; the per-genre entries below cite a selection.**
+**Every sudoku hybrid the LMD tag scan found (Sudoku tag, or a sudoku mention in title or rules), all 618 hits across 45 tags from 1533 puzzle pages, is kept in `2026-09-14-lmd-hybrid-scan.md`; the per-genre entries below cite a selection.**
 
 ## Sources consulted
 
