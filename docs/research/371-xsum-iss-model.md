@@ -59,7 +59,7 @@ index survived. The result the caller sees is the **bitwise OR of every
 surviving branch's candidate sets** (`resultGrid[j] |= scratchGrid[j]`) —
 the union of what each remaining length says is possible, not an
 intersection. Once collapsed to one final handler, subsequent calls skip
-the fan-out (`handlers.js:4197`, `grid[stateOffset] & _FLAG_FINAL`) and
+the fan-out (`handlers.js:4198`, `grid[stateOffset] & _FLAG_FINAL`) and
 apply that one branch's fixed values directly to the real grid — see §4,
 this is where §4 in an earlier draft of this note got it backwards.
 
@@ -102,15 +102,20 @@ of a given size summing to a given target. That *is* the subset-sum DP
 
 The bounds path (`handler_docs/sum.md` §3–4: the `minSum`/`maxSum`
 feasibility test, then per-cell range tightening by slack) still runs
-first, and still runs alone whenever a branch's cells are **not** one
-exclusion group — e.g. an X-sum line that is not a house, where prefix
-cells don't all mutually exclude. So the honest answer is: ISS picks
-whichever of the two the branch's own cell shape supports, at
-`initialize`, per branch — a plain X-sum on a full-house line gets the
-exact `killerCageSums` treatment on every branch that stays small enough to
-matter; a bare-line X-sum (the common case, since most X-sum lines are not
-full houses) gets bounds only, because its branches are not single
-exclusion groups.
+first as a cheap pre-check even on cage branches, before any exact table
+lookup. It runs **alone** only when a branch's cells are not one exclusion
+group. For ISS's own `XSum`, that case does not arise: `XSum` is defined as
+a row/column outside clue (`js/sudoku_constraint.js:2310–2323`,
+`CLUE_TYPE_DOUBLE_LINE`, "X is the number in the first cell in the
+direction of the row or column") — every ISS X-sum line is a house, so
+every branch's prefix slice is a single exclusion group and `_FLAG_CAGE`
+always fires. The bounds-only path exists in the `Sum` handler generally
+(for the non-cage shapes other constraints build), but it is not reachable
+from ISS's own `XSum` decomposition specifically — an earlier draft of
+this note got this backwards by assuming X-sum lines are typically bare;
+ISS's `XSum` has no bare-line case at all, only SudokuMaker's `XSum` gate
+does (`docs/research/190-one-sided-clues-ties-non-house-lines.md` §4's
+weak-path `hM`).
 
 The build-time **case split over lengths** is still doing separate work
 from either of these: it's what turns "unknown length" into "several
@@ -128,7 +133,7 @@ indirectly through the `Or`'s union. That's wrong: once the `Or` collapses
 to a single surviving branch (`_FLAG_FINAL` set), every subsequent
 `enforceConsistency` call applies that branch's `GivenCandidates`
 initialization **directly to the real grid**
-(`handlers.js:4202`, `this._assignInitializations(grid, handlerIndex)` —
+(`handlers.js:4203`, `this._assignInitializations(grid, handlerIndex)` —
 note the argument is `grid`, not a scratch copy). So the control cell does
 get pinned directly by this handler, but only after enough branches have
 died elsewhere that one length is the last one standing; before that point,
@@ -164,12 +169,14 @@ What transfers:
   real Up to N examples, not assumed from the X-sum case.
 
 What does not transfer: ISS's branches are independent handlers replayed
-in full every call, which is affordable there because `Or` is a generic
-engine primitive amortizing the replay cost across every constraint type
-that uses it. SudokuMaker's `update` runs once per component per call with
-no such fan-out scaffold. Porting the *case-split idea* without the `Or`
-machinery means a direct port isn't available — some single-pass
-alternative is needed instead. The following is a design sketch for that,
+in full every call. This note has not measured whether that replay cost is
+actually amortized well in ISS's engine (an unverified guess would be:
+generic engine machinery reused across every constraint that builds on
+`Or`, not just `XSum` — but that is speculation, not a sourced claim).
+What is certain is the structural fact: SudokuMaker's `update` runs once
+per component per call with no `Or`-style fan-out scaffold at all, so a
+direct port of ISS's per-branch replay isn't available regardless of its
+cost in ISS — some single-pass alternative is needed instead. The following is a design sketch for that,
 **not a verified or measured design** — per `docs/agents/iss.md` #4, a
 ported idea gets timed on our fixtures before it's trusted, and this note
 does no timing:
@@ -212,7 +219,7 @@ recorded as read, not applicable to this ticket's question.
   `:204` (`_givenHandler`) — build-time branch construction.
 - `js/solver/handlers.js:123` (`False`), `:136` (`And`), `:184`
   (`GivenCandidates`), `:4057`–`4245` (`Or`, full runtime state machine,
-  including `:4197`–`4205` for the collapsed-to-final-handler path) — the
+  including `:4198`–`4205` for the collapsed-to-final-handler path) — the
   generic disjunction engine each branch runs inside.
 - `js/solver/sum_handler.js:229`–`237` (`_FLAG_CAGE` self-classification),
   `:764` (`killerCageSums` lookup), `:892`–`898` (dispatch) — the exact-
