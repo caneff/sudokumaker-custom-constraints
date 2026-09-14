@@ -529,6 +529,11 @@ def check_frame_backends(example_dir, link):
                 f"for a hand-built board)"
             )
         if title == HOUSE_GAC_BACKEND_TITLE:
+            # A MISSING component is not this check's job: `check_components`
+            # already flags any constraint whose backend registers a name its
+            # own `components` list omits (shipped-minus-registered mismatch,
+            # checked for every constraint, House GAC included), so guarding
+            # it again here would just double-report the same link.
             comp_name, comp_source, comp_want = house_gac_component_file()
             comp = next(
                 (c for c in definition.get("components", []) if c["name"] == comp_name),

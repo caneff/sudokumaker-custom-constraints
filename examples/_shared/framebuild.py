@@ -72,13 +72,16 @@ class Spec:
     # numbered-rooms and running-start, whose PUZZLE_LINK.txt is a different,
     # hand-built board that claimed those names first.
     plain_global_9x9: bool = True
-    # Does this board carry the shared house-GAC filter (house-gac.js +
-    # HouseGacComponent.js) on every interior row, column and box? Opt-in per
-    # example: the filter is a real strength upgrade (#406) but only pays for
-    # itself in real-app solve time on some boards (docs/real-app-timing.md,
-    # #421). `build_doc` refuses a board whose houses exceed the filter's
-    # 9-cell cap rather than ship a link it silently under-solves.
-    house_gac: bool = False
+    # Which GLOBAL-lane sizes carry the shared house-GAC filter (house-gac.js
+    # + HouseGacComponent.js) on every interior row, column and box. Per
+    # BOARD, not per example: the filter is a real strength upgrade (#406)
+    # but only pays for itself in real-app solve time on some boards
+    # (docs/real-app-timing.md, #421), so a size not in this set -- the local
+    # lane at any size, always -- never carries it, and a routine rebuild of
+    # one size cannot silently add it to another. `build_doc` refuses a size
+    # in this set that exceeds the filter's 9-cell cap rather than ship a
+    # link it silently under-solves.
+    house_gac: frozenset[int] = frozenset()
 
 
 def component_files(spec, local):
@@ -465,8 +468,8 @@ def house_gac_backend_code():
 
 
 def house_gac_constraint():
-    """The house-GAC constraint block `build_doc` appends when `spec.house_gac`
-    is set: the shared backend plus its one component, no input."""
+    """The house-GAC constraint block `build_doc` appends on a board named in
+    `spec.house_gac`: the shared backend plus its one component, no input."""
     title, backend_code, component_code = house_gac_backend_code()
     return {
         "type": 1000,
@@ -487,29 +490,6 @@ def house_gac_constraint():
     }
 
 
-def refresh_house_gac_backend(doc):
-    """Point a decoded document's house-GAC backend and component at the code
-    in the tree, in place -- and do nothing when the document carries no such
-    constraint, since it is opt-in per board (unlike `refresh_frame_backends`,
-    which requires both of its backends)."""
-    title, backend_code, component_code = house_gac_backend_code()
-    constraint = next(
-        (
-            c
-            for c in doc["puzzle"]["constraints"]
-            if c.get("definition", {}).get("name") == title
-        ),
-        None,
-    )
-    if constraint is None:
-        return doc
-    constraint["definition"]["backend"]["code"] = backend_code
-    for comp in constraint["definition"]["components"]:
-        if comp["name"] == HOUSE_GAC_COMPONENT_NAME:
-            comp["code"] = component_code
-    return doc
-
-
 def build_doc(spec, board, local=False):
     """Assemble the whole SudokuMaker document for `board`.
 
@@ -524,9 +504,13 @@ def build_doc(spec, board, local=False):
     all, so it is never bent.
     """
     n, bh, bw = board.n, board.bh, board.bw
-    if spec.house_gac and n > HOUSE_GAC_MAX_CELLS:
+    # Local lane never carries it: no measured local board cleared the timing
+    # bar (docs/research/421-frame-link-timing.md), and `spec.house_gac` names
+    # sizes on the global lane only.
+    apply_house_gac = not local and n in spec.house_gac
+    if apply_house_gac and n > HOUSE_GAC_MAX_CELLS:
         raise ValueError(
-            f"{spec.dir.name}: house_gac is set but n={n} exceeds "
+            f"{spec.dir.name}: house_gac names n={n} but that exceeds "
             f"HouseGacComponent's {HOUSE_GAC_MAX_CELLS}-cell house cap -- "
             "every interior row, column and box on this board would be that "
             "many cells, so the filter refuses to register at all (#421)"
@@ -627,7 +611,7 @@ def build_doc(spec, board, local=False):
             }
             for name, code in frame_backends
         ),
-        *([house_gac_constraint()] if spec.house_gac else []),
+        *([house_gac_constraint()] if apply_house_gac else []),
         *cosmetics(W, cells),
     ]
 

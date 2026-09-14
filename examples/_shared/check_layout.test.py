@@ -56,7 +56,9 @@ def _link(
     lines in JS instead of in the document, and `corners_backend` the corner-pin
     one; either takes "stale" to embed an older copy. `house_gac_backend` adds
     the shared house-GAC filter constraint the same way, with its
-    HouseGacComponent.js as the one component it ships (#421). `digits` is the
+    HouseGacComponent.js as the one component it ships (#421); "stale" stales
+    the backend, "stale_component" stales the component instead, and
+    "no_component" ships the backend with no component at all. `digits` is the
     document's declared range -- None leaves it off, which is what makes the
     app default the board to 0..9 and silently weaken both frame backends
     (#394).
@@ -108,10 +110,11 @@ def _link(
                 {
                     "type": "code",
                     "name": component,
-                    "code": minify_js((HERE / f"{component}.js").read_text()),
+                    "code": minify_js((HERE / f"{component}.js").read_text())
+                    + ("\n// an older copy" if wanted == "stale_component" else ""),
                 }
             ]
-            if component
+            if component and wanted != "no_component"
             else []
         )
         extra.append(
@@ -560,6 +563,28 @@ if __name__ == "__main__":
     fresh_house_gac = _link(house_gac_backend=True)
     with example(contents={"PUZZLE_LINK.txt": fresh_house_gac}) as (root, _):
         assert check_tree(root) == [], check_tree(root)
+
+    # The backend can be fresh while the COMPONENT it ships alongside is a
+    # stale copy -- the same failure mode as frame-rowcol/frame-corners, but
+    # nothing catches it unless the component's own code is compared too.
+    stale_component = _link(house_gac_backend="stale_component")
+    with example(contents={"PUZZLE_LINK.txt": stale_component}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "stale" in violations[0].lower(), violations[0]
+        assert "HouseGacComponent.js" in violations[0], violations[0]
+
+    # And the backend can be fresh while the component is missing outright --
+    # worse than stale, since house-gac.js calls `new HouseGacComponent(...)`
+    # at setup. `check_components` (not this check) already covers it: it
+    # flags any constraint whose backend registers a name its own
+    # `components` list omits, House GAC included.
+    no_component = _link(house_gac_backend="no_component")
+    with example(contents={"PUZZLE_LINK.txt": no_component}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "House GAC" in violations[0], violations[0]
+        assert "HouseGacComponent" in violations[0], violations[0]
 
     # A frame link that declares no digit range is silently weakened: the app
     # defaults a custom puzzle to 0..9 whatever the grid size, the interior
