@@ -58,6 +58,45 @@ def test_keeps_block_comments_when_asked_to():
     assert kept == "const x = 1\n", repr(kept)
 
 
+def test_keeps_every_comment_when_asked_to():
+    # keep_comments=True is the annotated-link mode (#433): line and block
+    # comments both survive, drop_blocks is ignored, and only blank lines go.
+    src = (
+        "/* eslint-disable no-unused-vars -- the component API */\n"
+        "// ordinary comment, kept\n"
+        "  //! marked comment, kept too\n"
+        "const x = 1        // inline note, kept\n"
+        "\n"
+        "  const u = 'http://a/b'\n"
+    )
+    got = minify_js(src, keep_comments=True)
+    assert got == (
+        "/* eslint-disable no-unused-vars -- the component API */\n"
+        "// ordinary comment, kept\n"
+        "  //! marked comment, kept too\n"
+        "const x = 1        // inline note, kept\n"
+        "  const u = 'http://a/b'\n"
+    ), repr(got)
+    # drop_blocks is ignored in this mode
+    assert minify_js(src, drop_blocks=True, keep_comments=True) == got
+
+
+def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
+    # The annotated mode is still a real build, not a raw concatenation: an
+    # include still resolves, and a spliced function nothing calls still
+    # drops -- only the comment strip is skipped.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "// kept commentary\nfunction used () { return 1 }\n"
+            "function unused () { return 2 }\n"
+        )
+        (root / "main.js").write_text("// #include seg.js\nused()\n")
+        got = minify_file(root / "main.js", keep_comments=True)
+    assert "// kept commentary" in got, repr(got)
+    assert "function used" in got and "function unused" not in got, repr(got)
+
+
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
     # This is a regex strip, not a scanner, so anything it cannot pair on one
     # line -- a block spanning lines, or a "/*" living inside a string -- is
@@ -234,6 +273,8 @@ if __name__ == "__main__":
     test_drops_a_marked_comment_that_trails_code()
     test_drops_a_block_comment()
     test_keeps_block_comments_when_asked_to()
+    test_keeps_every_comment_when_asked_to()
+    test_keep_comments_still_splices_includes_and_prunes_dead_ones()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
     test_splices_an_include_relative_to_the_including_file()

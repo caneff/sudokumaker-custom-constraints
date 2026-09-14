@@ -9,7 +9,9 @@
 # fraction of both the shipped code and the link it goes into (#385; the
 # measured shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
 # The source files keep those blocks; how a reuser gets the commentary is a
-# separate question.
+# separate question -- `keep_comments=True` is that answer for a link that
+# wants it: every comment survives (only blank lines go), for the rare link
+# built to be read inside the app's own code box (#433).
 #
 # One source file can splice in another with a line reading
 #
@@ -67,29 +69,38 @@ _DYNAMIC_RE = re.compile(
 )
 
 
-def minify_file(path):
+def minify_file(path, keep_comments=False):
     """`minify_js` on `path`'s text, with includes resolved against its own
     directory. Every caller that ships a file's code into a link uses this."""
     path = pathlib.Path(path)
-    return minify_js(path.read_text(), base_dir=path.parent)
+    return minify_js(
+        path.read_text(), base_dir=path.parent, keep_comments=keep_comments
+    )
 
 
-def minify_js(src, drop_blocks=True, base_dir=None, _stack=()):
+def minify_js(src, drop_blocks=True, base_dir=None, _stack=(), keep_comments=False):
     """`drop_blocks=False` keeps block comments, for vendored code that has to
     round-trip byte-for-byte: the fillomino baseline carries `/* : Generator
     <Change> */` type annotations, and its whole point is being the author's
-    own file. Everything shipped from examples/ takes the default."""
-    lines = _splice_and_strip(src, drop_blocks, base_dir, _stack)
+    own file. Everything shipped from examples/ takes the default.
+
+    `keep_comments=True` is the annotated-link mode: every comment survives
+    (line and block alike, `drop_blocks` is ignored), and only blank lines
+    are dropped -- for a link whose whole point is a reader inside the app's
+    code box learning the filter from its own commentary. Includes still
+    resolve and dead top-level functions still prune the same way; a
+    computed-dispatch site still refuses the prune rather than guessing."""
+    lines = _splice_and_strip(src, drop_blocks, base_dir, _stack, keep_comments)
     if not _stack:  # the outermost call sees the whole assembled script
         lines = _prune_dead_includes(lines)
     return "\n".join(text for text, _included in lines) + "\n"
 
 
-def _splice_and_strip(src, drop_blocks, base_dir, stack):
+def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments=False):
     """`(line, included)` pairs for `src`, includes spliced in and comments
-    stripped. `included` is true for every line that came from a `#include`
-    (at any depth), false for the top-level file's own lines -- the split
-    `_prune_dead_includes` scopes itself to."""
+    stripped (unless `keep_comments`). `included` is true for every line that
+    came from a `#include` (at any depth), false for the top-level file's own
+    lines -- the split `_prune_dead_includes` scopes itself to."""
     included = bool(stack)
     out = []
     for line in src.splitlines():
@@ -97,20 +108,25 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack):
         if directive:
             # An include that minifies to nothing appends nothing: every blank
             # line is dropped, an included file's included.
-            out.extend(_include(directive.group(1), drop_blocks, base_dir, stack))
-            continue
-        if drop_blocks:
-            line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
-            assert "/*" not in line and "*/" not in line, (
-                f"unpaired block-comment marker, which this strip cannot read: {line!r}"
+            out.extend(
+                _include(
+                    directive.group(1), drop_blocks, base_dir, stack, keep_comments
+                )
             )
-        line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
+            continue
+        if not keep_comments:
+            if drop_blocks:
+                line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
+                assert "/*" not in line and "*/" not in line, (
+                    f"unpaired block-comment marker, which this strip cannot read: {line!r}"
+                )
+            line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
         if line.strip():
             out.append((line.rstrip(), included))
     return out
 
 
-def _include(rest, drop_blocks, base_dir, stack):
+def _include(rest, drop_blocks, base_dir, stack, keep_comments=False):
     """The minified `(line, included)` pairs for the file one `// #include`
     names -- the caller splices them straight into its own list."""
     rel = rest.strip()
@@ -125,7 +141,7 @@ def _include(rest, drop_blocks, base_dir, stack):
     assert target.is_file(), f"#include {rel} resolves to no file: {target}"
     assert target not in stack, f"#include cycle through {target}"
     return _splice_and_strip(
-        target.read_text(), drop_blocks, target.parent, (*stack, target)
+        target.read_text(), drop_blocks, target.parent, (*stack, target), keep_comments
     )
 
 

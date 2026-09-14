@@ -117,8 +117,10 @@ DIGITS_EXCEED_LINES = {"hit-counts"}
 # PUZZLE_LINK_original.txt reads gen.json the same way -- or, for
 # numbered-rooms' PUZZLE_LINK.txt, no gen JSON at all (NO_GENERATOR_LINKS
 # below). Either way, a link whose suffix carries either tag never gets its
-# own separate gen*.json (#294).
-NO_GENERATOR_TAGS = {"clued", "original"}
+# own separate gen*.json (#294). "annotated" is the same shape: house-gac's
+# PUZZLE_LINK_annotated.txt is the same board as PUZZLE_LINK.txt with only its
+# embedded code's minification changed, not a fresh generation (#433).
+NO_GENERATOR_TAGS = {"clued", "original", "annotated"}
 
 # A link with no generator at all: numbered-rooms/PUZZLE_LINK.txt is
 # hand-made, its own README's "Not covered" section says so -- no gen.json
@@ -135,7 +137,7 @@ NO_GENERATOR_LINKS = {
 SIZE = r"\d+"
 # Tags chain in this fixed order; each is optional, but present tags must
 # keep this relative order (PUZZLE_LINK_original_clued.txt is rejected).
-TAGS = ("clued", "original", "silent", "local")
+TAGS = ("clued", "original", "silent", "local", "annotated")
 LINK_RE = re.compile(
     rf"^PUZZLE_LINK(_({SIZE})x\2)?(_\d+g)?"
     + "".join(f"(_{t})?" for t in TAGS)
@@ -567,6 +569,14 @@ def check_frame_backends(example_dir, link):
     name = example_dir.name
     current = frame_backend_files()
     comp_name, comp_source, comp_want = house_gac_component_file()
+    # The annotated link (#433) embeds the same component file through the
+    # comment-keeping minify mode, not the usual full strip -- compare it
+    # against that copy instead, or every rebuild would read as stale.
+    is_annotated_link = "annotated" in link.stem.split("_")
+    if is_annotated_link:
+        comp_want = minify_file(
+            pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
+        )
     violations = []
     carried = []
     for constraint in puzzle.get("constraints", []):
