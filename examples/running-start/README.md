@@ -197,6 +197,8 @@ branch.
 | 2026-08-31 | v2026.08.14-d47fc4b | running-start (cell-id coercion, #276) after-logical | 500ms | 400ms | 0.80 | gate: PASS |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) | 1400ms | 1000ms | 0.71 | SHIP |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) after-logical | 300ms | 0ms | ~0 | SHIP |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) | 1000ms | 800ms | 0.80 | gate: PASS |
+| 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) after-logical | 0ms | 0ms | — | gate: PASS |
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
@@ -207,6 +209,15 @@ here). Both rows clear 0.9x -- full numbers and the same pass/fail read on
 every other shipped frame board are in
 `docs/research/421-frame-link-timing.md`. Its local board, 4x4 and 6x6 are
 `framebuild`-native and were not measured, so they do not carry the filter.
+
+The #435 pair confirms the #421 win holds once `HouseGacComponent.js` walks
+only the house's unfilled cells instead of every group: baseline is the
+shipped link with the old (whole-house) filter, candidate is the same link
+with the component code swapped for the new one
+(`docs/research/435-free-cell-walk-timing.md`). No deduction changed, so
+this is the gate-change bar (`docs/real-app-timing.md`): cold clears 0.9x
+outright and after-logical stays at 0ms on both sides, which places no
+constraint.
 
 The last pair is #276, which makes `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. A cell id built that way is numerically

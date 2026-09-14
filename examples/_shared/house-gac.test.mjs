@@ -183,6 +183,25 @@ for (let size = 1; size <= 8; size++) {
   for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'the triple and the single are not removed from the rest')
 }
 
+// ---- placed cells are stripped from the house before the free-cell walk --
+// Cells 0 and 1 are already solved (1, then 2), and the walk itself only ever
+// runs over cells 2-8 (#435: filled cells are excluded from the subset walk
+// entirely). Cells 2 and 3 hold {1, 2, 3, 4} apiece: that is a naked pair on
+// {3, 4} only once 1 and 2 are gone, so this fails without the strip step --
+// cells 2 and 3 would stay {1, 2, 3, 4}, no pair would be found, and 1, 2, 3, 4
+// would all still sit in cells 4-8's candidates too. Checked directly: with
+// the strip loop deleted from `update` (keeping the free-cell walk), this
+// suite's earlier 3000-state property check already disagrees with matching
+// GAC on 668 of 3000 states, well before this block runs.
+{
+  const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const cands = [[1], [2], [1, 2, 3, 4], [1, 2, 3, 4], all, all, all, all, all]
+  const got = runOnce(gac, cands)
+  assert.deepStrictEqual(got.slice(0, 4), [[1], [2], [3, 4], [3, 4]])
+  for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'placed digits or the pair were not fully cleared from the rest')
+  assert.deepStrictEqual(got, runOnce(ref, cands), 'disagrees with matching GAC once cells are pre-filled')
+}
+
 // ---- gated: a line that may repeat is left alone --------------------------
 // docs/line-contract.md: all-different only holds where the app says the cells
 // cannot repeat. The same Hall set on a bare line removes nothing.

@@ -554,6 +554,8 @@ just time hit-counts
 | 2026-09-04 | v2026.08.14-d47fc4b | hit-counts (uncached `oneToN`, #336) after-logical | 7400ms | 7600ms | 1.03 | gate: PASS |
 | 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC, #421) | 7600ms | 6300ms | 0.83 | SHIP |
 | 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC, #421) after-logical | 6400ms | 3900ms | 0.61 | SHIP |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC free-cell walk, #435) | 6400ms | 5900ms | 0.92 | gate: PASS |
+| 2026-09-13 | v2026.08.14-d47fc4b | hit-counts (house-GAC free-cell walk, #435) after-logical | 3800ms | 3600ms | 0.95 | gate: PASS |
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
@@ -565,6 +567,14 @@ frame board are in `docs/research/421-frame-link-timing.md`. The local board
 stays as it was: its cold baseline is the DNF two rows up, so the two-row
 rule has no baseline to judge a candidate against there, and it does not
 carry the filter.
+
+The #435 pair confirms the #421 win holds once `HouseGacComponent.js` walks
+only the house's unfilled cells instead of every group: baseline is the
+shipped link with the old (whole-house) filter, candidate is the same link
+with the component code swapped for the new one
+(`docs/research/435-free-cell-walk-timing.md`). No deduction changed, so
+this is the gate-change bar (`docs/real-app-timing.md`): both rows land
+comfortably inside 1.1x.
 
 The #336 pair stops `lineKind` caching `instance.oneToN`. The union of a
 line's live candidates is a fact about one search node, and the component
