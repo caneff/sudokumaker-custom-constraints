@@ -49,6 +49,25 @@
    | 24 | unique, 13.0 s (first 4.6 s + uniqueness 8.4 s) |
    | 36 | unique, 0 ms |
 
+6. **A text label is a type-2002 "Cosmetic symbols" constraint, and it can
+   sit outside the grid.** Made in the live editor (Add element, "Cosmetic
+   symbols", Text tab, a click on a cell centre, "Custom value") and read back
+   from the page URL:
+
+   ```json
+   {"type": 2002,
+    "params": [{"type": "text", "text": "12", "size": 0.25, "angle": 0,
+                "strokeWidth": 0.02, "stroke": "#ffffff", "fill": "#000000"},
+               {"type": "text", "text": "7", ...}],
+    "symbols": [[0.5, 0.5], [1.5, 0.5, 1]]}
+   ```
+
+   A point is `[x, y]` in cell units from the grid's top-left corner (r1c2's
+   centre is `[1.5, 0.5]`), with an optional third entry indexing `params`
+   (absent means 0). A document with several points and one `params` entry
+   draws that one text at every point. Points outside the grid render: the
+   board shrinks to make room. **[verified live]**
+
 ## How to rerun
 
 ```

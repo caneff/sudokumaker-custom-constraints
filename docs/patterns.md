@@ -107,6 +107,7 @@ a bare `puzzle["maxDigit"]` raises on a link that is otherwise fine.
 | `304` | Named cage rule; `name` + `cages`. Hit Counts ships one as "Disallow 0 in the main grid". |
 | `1000` | **Custom constraint** — `definition` (main code + components), `input.groups`. |
 | `2000` | Cosmetic line drawings; `lines` (arrays of `{x, y}` points) + `style`. |
+| `2002` | Cosmetic symbols (the editor's "Cosmetic symbols": circle, rectangle, text, arrow). `params`: one style entry per distinct symbol, a text one `{ type: "text", text, size, angle, strokeWidth, stroke, fill }`; `symbols`: points `[x, y]` or `[x, y, i]` in cell units, `(0, 0)` the grid's top-left corner, `i` indexing `params` (0 when absent). A point may sit outside the grid; the board shrinks to show it. [verified live, `research/368-up-to-n-setup-throw.md`] |
 
 A `type: 1000` constraint carries `definition.backend.code` (the main segment)
 and `definition.components[]` (each `{ type: "code", name, code }`), plus
