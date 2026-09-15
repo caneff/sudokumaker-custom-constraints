@@ -8,15 +8,12 @@ directory holds the sync/logging drivers; results sync into `../found/`.
 - `sync.sh` / `sync_loop.sh` — dedupe hits, render PNGs, commit + push every 30 min
 - `memlog.sh` — RSS log per solver process
 
-The one-off hunt scripts themselves (`arm.sh`'s and `memlog.sh`'s targets,
-plus the shading/pair/triple/pocket search scripts once kept alongside them —
-`b9cover.py`, `build_lineup.py`, `ceiling.py`, `forced.py`, `groups.py`,
-`kill9.py`, `kinds.py`, `kinds5.py`, `minuniq.py`, the `pair99*.py` family,
-`pairone5.py`, `pairopt.py`, `pairs.py`, `pairs8.py`, `pinx.py`, `plant.py`,
-`pocket4.py`, `render_unique.py`, `sanity.py`, `template.py`, the `tri3*.py`
-and `tri68*.py` family, `x9hunt.py`, `x9kill.py`) were deleted in #471: each
-hardcoded a `sys.path.insert` into a sibling `tang` checkout that no longer
-exists, so none of them could run. Their results are recorded in
-`BRAINANAS.md`, `DOTS.md`, `FORCED.md`, `PAIRS.md`, `SWAP.md` and
-`UPPER_LEFT.md` in the directory above; the scripts themselves are on file at
+The one-off shading/pair/triple/pocket hunt scripts that once lived in
+`finders/zombo-brainanas/tools/` (not `arm.sh`'s or `memlog.sh`'s own
+target, `zb_bal.py`, which lives in the git-ignored `scratch-zombo/` and was
+untouched) were deleted in #471: each hardcoded an absolute path into a
+sibling `tang` checkout that no longer exists, so most could not run at all.
+Their results are recorded in `BRAINANAS.md`, `DOTS.md`, `FORCED.md`,
+`PAIRS.md`, `SWAP.md` and `UPPER_LEFT.md` in the directory above; the
+scripts themselves are on file at
 `git show 59335b1:finders/zombo-brainanas/tools/<name>.py`.
