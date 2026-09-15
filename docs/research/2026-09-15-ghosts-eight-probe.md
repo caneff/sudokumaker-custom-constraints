@@ -37,3 +37,5 @@ passed. `*` marks a ghost; the 8-ghost is r4c3.
   at most 5.
 - A ghost 8 cannot be a box centre (r2c2, r2c5, …, 0-based box middles): its
   whole 3×3 would be ghosts in one box, needing nine distinct digits ≤ 8.
+
+![grid](ghosts/eight-probe.png) — `uv run --with pillow docs/research/ghosts/render.py <out.png>`
