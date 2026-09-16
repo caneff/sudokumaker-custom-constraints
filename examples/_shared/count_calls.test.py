@@ -37,6 +37,10 @@ def _stubbed(stdout, returncode=0):
 
     def fake_build(example_dir, probe, link, board=None):
         seen["build"] = (example_dir, pathlib.Path(probe).read_text(), board)
+        # a component's `// #include ../_shared/...` must resolve from the probe
+        seen["include_root"] = (
+            pathlib.Path(probe).parent / "../_shared/line-kind.js"
+        ).is_file()
         pathlib.Path(link).write_text("LINK")
 
     def fake_empty(src, out, mode):
@@ -133,6 +137,7 @@ if __name__ == "__main__":
         # unhooked probe would time the component and count nothing
         example_dir, probe_src, board = seen["build"]
         assert COUNTER in probe_src, "main must build from the hooked source"
+        assert seen["include_root"], "the probe copy must still resolve its includes"
         assert example_dir == count_calls.EXAMPLES / "widget"
         assert board is None
         # the built link is what gets emptied, and no ring clues means `strip`

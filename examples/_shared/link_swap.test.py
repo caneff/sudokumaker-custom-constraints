@@ -180,7 +180,11 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         out = tmp / "out.txt"
-        candidate = tmp / "HitCountsJointComponent.js"
+        # a candidate beside its example's own `../_shared`, which its
+        # `// #include` resolves against
+        (tmp / "_shared").symlink_to(HERE)
+        (tmp / "hit-counts").mkdir()
+        candidate = tmp / "hit-counts" / "HitCountsJointComponent.js"
         candidate.write_text(
             (hc / "HitCountsJointComponent.js").read_text()
             + "\nconst CANDIDATE_EDIT = 1\n"

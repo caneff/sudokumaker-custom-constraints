@@ -78,7 +78,12 @@ def main(example, component, ring_clues, board=None):
         sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        probe = tmp / component.name  # build_link.py swaps by basename
+        # build_link.py swaps by basename, and the probe sits in an example
+        # directory beside a `_shared`, where a `// #include
+        # ../_shared/...` in the component still resolves
+        (tmp / "_shared").symlink_to(EXAMPLES / "_shared")
+        (tmp / "probe").mkdir()
+        probe = tmp / "probe" / component.name
         probe.write_text(hooked)
         link = tmp / "probe.txt"
         build_candidate(EXAMPLES / example, probe, link, board=board)
