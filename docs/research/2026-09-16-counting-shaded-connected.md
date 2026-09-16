@@ -401,6 +401,8 @@ Chris: "what if we drop 2x2". `gridenum.py --unshaded-connected` without
 
 | shaded | sudoku 2x3: shapes / with a grid / unique | Latin: shapes / with a grid / unique |
 |---|---|---|
+| 5-6 | (below the 8-given floor) | 0 |
+| 7 | (below the floor) | 10 / 10 / 0 |
 | 8 | 45 / 43 / 0 | 36 / 36 / 0 |
 | 9 | 53 / 46 / 0 | 41 / 41 / 0 |
 | 10 | 19 / 13 / 0 | 26 / 26 / 0 |
@@ -408,6 +410,7 @@ Chris: "what if we drop 2x2". `gridenum.py --unshaded-connected` without
 | 12 | 2 / 2 / 0 | 6 / 6 / 0 |
 | 13 | 1 / 1 / 0 | 5 / 5 / **2** |
 | 14-30 | 0 | 0 |
+| 31-36 | (not run) | 0 |
 
 Requiring the unshaded cells to be connected too keeps shadings alive (the
 unshaded region needs a path around the shape), but under sudoku boxes none
@@ -416,4 +419,6 @@ region in two. Under Latin rules two 13-cell shadings are all-visible unique,
 re-checked by the independent CP-SAT model (rows and columns only). Shapes with
 grids in `counting_shaded/six-by-six-latin-both-connected-unique.jsonl`, sheet
 `counting_shaded/six-by-six-latin-both-connected-unique.png` (outer border only,
-no box lines).
+no box lines). Latin sizes 5-36 are all exhausted, so these two are the
+complete list of all-visible-unique both-connected 6x6 Latin shadings, up to
+the 8 dihedral images.
