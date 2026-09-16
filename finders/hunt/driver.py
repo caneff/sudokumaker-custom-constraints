@@ -408,16 +408,25 @@ def _load_state(finder, out):
     load(json.loads(state_path.read_text())["state"])
 
 
-def _render_example(finder, out, seed, candidate):
+def _render_example(finder, out, seed, candidate, event):
     """Write the finder's optional picture of an accepted example to
     renders/<seed>.png -- a finder with no `render` writes nothing, so the
-    renders/ directory only ever appears for a finder that offers one."""
+    renders/ directory only ever appears for a finder that offers one.
+
+    The example is already durable in examples.jsonl by the time this runs
+    (#490 correctness review C1), so a presentation-layer fault -- a
+    missing font, a full disk, a bug in the finder's own render() -- must
+    not take the whole hunt down with it: it's recorded on the seed's own
+    event instead, the same way a rejection's reason is."""
     render = getattr(finder, "render", None)
     if render is None:
         return
-    renders_dir = out / "renders"
-    renders_dir.mkdir(exist_ok=True)
-    render(candidate).save(renders_dir / f"{seed}.png")
+    try:
+        renders_dir = out / "renders"
+        renders_dir.mkdir(exist_ok=True)
+        render(candidate).save(renders_dir / f"{seed}.png")
+    except Exception as e:
+        event["render_error"] = f"{type(e).__name__}: {e}"
 
 
 def _process_seed(
@@ -467,7 +476,7 @@ def _process_seed(
                 examples_f.flush()
                 counts["examples"] += 1
                 event["outcome"] = "example"
-                _render_example(finder, out, seed, candidate)
+                _render_example(finder, out, seed, candidate, event)
 
     progress_f.write(json.dumps(event) + "\n")
     progress_f.flush()

@@ -78,4 +78,62 @@ check(
     canvas_lines.image.getpixel((22, 10)) == (255, 255, 255),
 )
 
+# --- box_lines: the outer edge is always thick, even when n_rows/n_cols
+# isn't a multiple of box_rows/box_cols (#490 correctness review C3) ---
+
+canvas_uneven = GridCanvas(5, 5, cell=20, margin=0, background="white")
+canvas_uneven.box_lines(box_rows=3, box_cols=3, thin=1, thick=5)
+check(
+    "the bottom edge is thick even when n_rows % box_rows != 0",
+    canvas_uneven.image.getpixel((10, 98)) == (0, 0, 0),
+)
+check(
+    "the right edge is thick even when n_cols % box_cols != 0",
+    canvas_uneven.image.getpixel((98, 10)) == (0, 0, 0),
+)
+
+value_error_raised = False
+try:
+    GridCanvas(4, 4, cell=10).box_lines(box_rows=0, box_cols=4)
+except ValueError:
+    value_error_raised = True
+check(
+    "box_lines(box_rows=0, ...) raises ValueError, not a bare ZeroDivisionError",
+    value_error_raised,
+)
+
+# --- circle: centred in the cell, sampled at its own ring pixel ---
+
+canvas_circle = GridCanvas(2, 2, cell=40, margin=0, background="white")
+canvas_circle.circle(0, 0, color=(0, 0, 255), width=4, radius_frac=0.4)
+check(
+    "a circle's ring pixel (top of the circle) is the given colour",
+    canvas_circle.image.getpixel((20, 4)) == (0, 0, 255),
+)
+check(
+    "a circle's own centre is untouched when it has no fill",
+    canvas_circle.image.getpixel((20, 20)) == (255, 255, 255),
+)
+
+canvas_circle_fill = GridCanvas(1, 1, cell=40, margin=0, background="white")
+canvas_circle_fill.circle(0, 0, color="black", fill=(255, 0, 0), radius_frac=0.4)
+check(
+    "a filled circle's centre pixel is the fill colour",
+    canvas_circle_fill.image.getpixel((20, 20)) == (255, 0, 0),
+)
+
+# --- digit: draws something other than background in the cell (text
+# anti-aliasing makes an exact colour match at a chosen pixel unreliable,
+# so this checks the cell actually changed, not a specific pixel) ---
+
+canvas_digit = GridCanvas(1, 1, cell=40, margin=0, background="white")
+canvas_digit.digit(0, 0, "5", color="black")
+cell_pixels = [
+    canvas_digit.image.getpixel((x, y)) for x in range(40) for y in range(40)
+]
+check(
+    "drawing a digit changes at least one pixel in its cell",
+    any(p != (255, 255, 255) for p in cell_pixels),
+)
+
 sys.exit(0 if ok else 1)

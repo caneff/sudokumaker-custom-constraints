@@ -6,9 +6,19 @@ returns `.image` to the driver. Standalone, usable without the driver -- see
 `finders/AGENTS.md`.
 """
 
+from functools import lru_cache
+
 from PIL import Image, ImageDraw, ImageFont
 
 DEFAULT_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
+
+@lru_cache
+def _load_font(font_path, size):
+    """Cache the parsed font by (path, size): `digit()` is called once per
+    filled cell, and re-parsing the same TTF from disk every time is
+    wasted work on every render (#490 correctness review)."""
+    return ImageFont.truetype(font_path, size)
 
 
 class GridCanvas:
@@ -41,24 +51,35 @@ class GridCanvas:
 
     def box_lines(self, box_rows, box_cols, thin=1, thick=4, color="black"):
         """Grid lines over the whole board: thick every `box_rows`/`box_cols`
-        cells (and on the outer edge), thin otherwise."""
+        cells and always on the outer edge (even when `n_rows`/`n_cols`
+        isn't a multiple of `box_rows`/`box_cols`), thin otherwise. Draws
+        the line centred on the boundary, so a `margin` under `thick / 2`
+        clips the outer edge -- match the margin to the line weight, as the
+        existing board renderers in `finders/` do (`MARGIN=24` for a
+        `width=5` box line)."""
+        if box_rows <= 0 or box_cols <= 0:
+            raise ValueError(
+                f"box_rows and box_cols must be positive, got {box_rows}, {box_cols}"
+            )
         left = self.margin
         top = self.margin
         right = self.margin + self.n_cols * self.cell
         bottom = self.margin + self.n_rows * self.cell
         for i in range(self.n_rows + 1):
-            width = thick if i % box_rows == 0 else thin
+            is_boundary = i in (0, self.n_rows) or i % box_rows == 0
+            width = thick if is_boundary else thin
             y = self.margin + i * self.cell
             self.draw.line((left, y, right, y), fill=color, width=width)
         for j in range(self.n_cols + 1):
-            width = thick if j % box_cols == 0 else thin
+            is_boundary = j in (0, self.n_cols) or j % box_cols == 0
+            width = thick if is_boundary else thin
             x = self.margin + j * self.cell
             self.draw.line((x, top, x, bottom), fill=color, width=width)
 
     def digit(self, r, c, text, color="black", font_size=None, font_path=DEFAULT_FONT):
         """A centred digit (or short string) in cell (r, c)."""
         size = font_size or int(self.cell * 0.6)
-        font = ImageFont.truetype(font_path, size)
+        font = _load_font(font_path, size)
         cx, cy = self._cell_center(r, c)
         self.draw.text((cx, cy), str(text), fill=color, font=font, anchor="mm")
 

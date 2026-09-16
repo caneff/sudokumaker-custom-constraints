@@ -56,6 +56,17 @@ with tempfile.TemporaryDirectory() as tmp:
         len(png_files) == len(examples),
     )
 
+    progress = [
+        json.loads(line)
+        for line in (out / "progress.jsonl").read_text().splitlines()
+        if line
+    ]
+    accepted_seeds = {e["seed"] for e in progress if e.get("outcome") == "example"}
+    check(
+        "each PNG is named after the seed it belongs to, not a running index",
+        {p.stem for p in png_files} == {str(s) for s in accepted_seeds},
+    )
+
 with tempfile.TemporaryDirectory() as tmp:
     out = Path(tmp) / "hunt-out"
     result = subprocess.run(
@@ -70,6 +81,76 @@ with tempfile.TemporaryDirectory() as tmp:
     check(
         "a finder with no render writes no renders/ directory",
         not (out / "renders").exists(),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A finder whose render() raises must not take the whole hunt down with
+    # it (#490 correctness review C1): the example itself is still real and
+    # already durable in examples.jsonl by the time render() runs, so a
+    # presentation-layer fault gets recorded on the seed's event, not
+    # treated as a search failure.
+    out = Path(tmp) / "hunt-out"
+    raising_render_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class RaisingRenderFinder:
+    symmetry = "IDENTITY"
+
+    def propose(self, rng):
+        return tuple(rng.randint(0, 1) for _ in range(4))
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+    def render(self, candidate):
+        raise RuntimeError("boom")
+
+sys.exit(run(RaisingRenderFinder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            raising_render_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a raising render() still exits 0 (stderr: {result.stderr[-500:]})",
+        result.returncode == 0,
+    )
+    examples = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
+    progress = [
+        json.loads(line)
+        for line in (out / "progress.jsonl").read_text().splitlines()
+        if line
+    ]
+    example_events = [e for e in progress if e.get("outcome") == "example"]
+    check(
+        "at least one example is still written despite render() raising",
+        len(examples) > 0 and len(examples) == len(example_events),
+    )
+    check(
+        "every example's event records the render failure instead of silently dropping it",
+        all(e.get("render_error") for e in example_events),
     )
 
 sys.exit(0 if ok else 1)
