@@ -253,4 +253,63 @@ sys.exit(run(TypoSymmetryFinder(), sys.argv[1:]))
         not out.exists(),
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A structurally valid, closed custom group (#511's own checks all pass)
+    # whose maps are simply the wrong length for the finder's real key()
+    # must not reach canonical_key uncaught mid-loop, after run.json and
+    # summary.json already exist (#509). `validate_group`'s pre-flight
+    # derives n from the group's own maps (4 here) and never sees the
+    # finder's actual 9-cell key, so it passes cleanly -- the mismatch only
+    # surfaces inside canonical_key on the first verified candidate.
+    out = Path(tmp) / "hunt-out"
+    mismatched_length_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class MismatchedLengthFinder:
+    symmetry = [(0, 1, 2, 3), (1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)]
+
+    def propose(self, rng):
+        return (0,) * 9
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+sys.exit(run(MismatchedLengthFinder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            mismatched_length_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a symmetry group whose map length doesn't match key() exits 2 "
+        f"(stderr: {result.stderr[-300:]})",
+        result.returncode == 2,
+    )
+    check(
+        "the refusal names the length mismatch",
+        "invalid symmetry group" in result.stderr,
+    )
+    check(
+        "a mismatched-length symmetry group leaves no partial output behind",
+        not out.exists(),
+    )
+
 sys.exit(0 if ok else 1)

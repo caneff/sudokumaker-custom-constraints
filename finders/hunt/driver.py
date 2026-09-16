@@ -34,6 +34,7 @@ import fcntl
 import json
 import os
 import random
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -103,6 +104,20 @@ def _write_text_atomic(path, text):
 def _refuse(out_arg, why):
     print(f"hunt: refusing to run -- {out_arg} already has {why}", file=sys.stderr)
     return 2
+
+
+class SymmetryMismatch(Exception):
+    """A custom symmetry group that passed `validate_group`'s pre-flight
+    (structurally closed, every map the group's own length) but whose maps
+    are the wrong length for the finder's actual `key()` output (#509).
+
+    `validate_group` derives n from the group's own maps, since the driver
+    has no candidate yet to measure -- so this mismatch only surfaces inside
+    `canonical_key` on the first verified candidate, deep in the seed loop.
+    A driver-local type (not ValueError, which `_process_seed` lets pass
+    through unmodified for any other cause) so `run` can single it out
+    without swallowing an unrelated finder bug.
+    """
 
 
 def _to_hashable(value):
@@ -251,7 +266,10 @@ def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
             if verdict.reason:
                 event["rejected_reason"] = verdict.reason
         else:
-            key = canonical_key(finder.key(candidate), symmetry)
+            try:
+                key = canonical_key(finder.key(candidate), symmetry)
+            except ValueError as e:
+                raise SymmetryMismatch(str(e)) from e
             if key in seen:
                 counts["duplicates"] += 1
                 event["outcome"] = "duplicate"
@@ -411,6 +429,15 @@ def run(finder, argv):
         if other_files:
             return _refuse(args.out, ", ".join(other_files))
         return _fresh(finder, argv, args, out)
+    except SymmetryMismatch as e:
+        # Same clean refusal `_validate_symmetry`'s pre-flight gives a
+        # structurally-broken group -- this one only surfaces once a real
+        # candidate exists, after run.json/summary.json (and possibly more)
+        # are already on disk, so the directory is torn down rather than
+        # left holding a hunt that can never produce a valid key.
+        print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
+        shutil.rmtree(out, ignore_errors=True)
+        return 2
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
