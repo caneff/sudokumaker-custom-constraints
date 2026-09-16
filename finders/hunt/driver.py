@@ -10,10 +10,14 @@ state.json. A differing argv versus the recorded run refuses to start; a
 differing git sha only warns. `--no-verify` skips `finder.verify` while
 searching, and `hunt verify DIR` (#489) runs it afterwards over everything
 `--no-verify` saved, writing one verdict per examples.jsonl line to
-verified.jsonl. `--workers` (default 3, set on the finder before the first
-seed) and the 1-minute load gate (refuses above 24 unless `--force-load`)
-are #488. The render hook is the other later ticket (#490) under the
-parent spec (#483).
+verified.jsonl. A finder's optional `render` (#490) gets a picture saved to
+renders/<seed>.png right after that seed's example is accepted; a finder
+with no `render` gets no renders/ directory at all. `--workers` (default 3,
+set on the finder before the first seed) and the 1-minute load gate
+(refuses above 24 unless `--force-load`) are #488. This is the last ticket
+under the parent spec (#483) -- an unresumed killed hunt's renders/ can
+still hold a seed with no matching examples.jsonl line (#522), tracked
+separately.
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
@@ -58,6 +62,7 @@ OUTPUT_FILES = (
     "run.json",
     "state.json",
     "verified.jsonl",
+    "renders",  # a directory, not a file -- (out / name).exists() covers both
 )
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -403,8 +408,20 @@ def _load_state(finder, out):
     load(json.loads(state_path.read_text())["state"])
 
 
+def _render_example(finder, out, seed, candidate):
+    """Write the finder's optional picture of an accepted example to
+    renders/<seed>.png -- a finder with no `render` writes nothing, so the
+    renders/ directory only ever appears for a finder that offers one."""
+    render = getattr(finder, "render", None)
+    if render is None:
+        return
+    renders_dir = out / "renders"
+    renders_dir.mkdir(exist_ok=True)
+    render(candidate).save(renders_dir / f"{seed}.png")
+
+
 def _process_seed(
-    finder, seed, seen, symmetry, examples_f, progress_f, counts, no_verify
+    finder, seed, seen, symmetry, examples_f, progress_f, counts, out, no_verify
 ):
     """Run one seed and append its outcome to examples.jsonl/progress.jsonl,
     updating `seen` and `counts` in place. Shared by the fresh and resumed
@@ -450,6 +467,7 @@ def _process_seed(
                 examples_f.flush()
                 counts["examples"] += 1
                 event["outcome"] = "example"
+                _render_example(finder, out, seed, candidate)
 
     progress_f.write(json.dumps(event) + "\n")
     progress_f.flush()
@@ -475,6 +493,7 @@ def _hunt_loop(
                 examples_f,
                 progress_f,
                 counts,
+                out,
                 no_verify=no_verify,
             )
             _write_json_atomic(out / "summary.json", dict(counts))

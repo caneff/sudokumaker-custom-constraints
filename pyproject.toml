@@ -5,7 +5,7 @@
 name = "sudokumaker-custom-constraints"
 version = "0"
 requires-python = ">=3.11"
-dependencies = ["lzstring", "ortools"]
+dependencies = ["lzstring", "ortools", "pillow"]
 
 [tool.uv]
 package = false
