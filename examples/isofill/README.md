@@ -86,9 +86,11 @@ exists to teach.
   both are the #143 rows in `## Timing` below.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `gen.json`, `main.js`, and
   the component file. Run it after changing any of them:
-  `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
-  swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
-  builds another instance (`gen_44g.json` for timing).
+  `uv run examples/isofill/build_link.py`. Flags: `--out` writes elsewhere,
+  `--puzzle` builds another instance (`gen_44g.json`); `--component` with
+  `--out` instead swaps a candidate component into `PUZZLE_LINK.txt`, or into
+  `--board`. The two paths do not mix: a flag the path cannot honour is
+  refused.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,

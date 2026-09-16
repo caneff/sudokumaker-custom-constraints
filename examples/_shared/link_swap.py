@@ -200,8 +200,12 @@ def swap_main(example_dir, parser=None, rebuild=None):
     is omitted. Without `--component`, `rebuild(args, parser)` runs instead --
     the example's own from-source build -- and an example with none refuses.
 
-    `parser` carries an example's own flags; the four above are added to it."""
+    `parser` carries an example's own flags; the four above are added to it.
+    A flag the chosen path cannot honour is refused, never ignored: an
+    example's own flag beside --component (it belongs to the rebuild), and
+    --board without --component (there is nothing to swap into it)."""
     p = parser or argparse.ArgumentParser()
+    own = [a.dest for a in p._actions if a.dest != "help"]
     p.add_argument("--component", help="component file to swap into the board")
     p.add_argument("--out", help="where to write the swapped link")
     p.add_argument("--board", help="committed link to swap into (PUZZLE_LINK.txt)")
@@ -210,8 +214,15 @@ def swap_main(example_dir, parser=None, rebuild=None):
     if args.component is None:
         if rebuild is None:
             p.error("give --component with --out")
+        if args.board is not None:
+            p.error("--board names the link a --component swaps into; give --component")
         rebuild(args, p)
         return
+    for dest in own:
+        if getattr(args, dest) != p.get_default(dest):
+            p.error(
+                f"--{dest.replace('_', '-')} belongs to the rebuild; drop it or --component"
+            )
     if args.out is None:
         p.error("--component needs --out")
     board = args.board or pathlib.Path(example_dir) / "PUZZLE_LINK.txt"

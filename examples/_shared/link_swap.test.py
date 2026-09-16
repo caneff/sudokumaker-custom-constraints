@@ -10,6 +10,8 @@
 
 import itertools
 import pathlib
+import subprocess
+import sys
 import tempfile
 
 from link_codec import decode_puzzle, encode_link
@@ -251,5 +253,48 @@ if __name__ == "__main__":
             raise AssertionError("expected a failure for an unregistered component")
         except ValueError as e:
             assert "NotRegisteredComponent" in str(e), e
+
+    # swap_main refuses a flag the path it takes cannot honour, rather than
+    # write a link for a board nobody asked for: an example's own flag beside
+    # --component (isofill's --puzzle names a board to build, not swap into;
+    # numbered-rooms' --refresh rewrites PUZZLE_LINK.txt), and --board with no
+    # --component to swap into it.
+    ex = HERE.parent
+    with tempfile.TemporaryDirectory() as tmp:
+        out = str(pathlib.Path(tmp) / "out.txt")
+        refused = [
+            [
+                "isofill",
+                "--component",
+                str(ex / "isofill/IsofillComponent.js"),
+                "--out",
+                out,
+                "--puzzle",
+                str(ex / "isofill/gen_24g.json"),
+            ],
+            [
+                "isofill",
+                "--board",
+                str(ex / "isofill/PUZZLE_LINK_24g.txt"),
+                "--out",
+                out,
+            ],
+            [
+                "numbered-rooms",
+                "--refresh",
+                "--component",
+                str(ex / "numbered-rooms/NumberedRoomsComponent.js"),
+                "--out",
+                out,
+            ],
+        ]
+        for example, *argv in refused:
+            run = subprocess.run(
+                [sys.executable, str(ex / example / "build_link.py"), *argv],
+                capture_output=True,
+                text=True,
+            )
+            assert run.returncode != 0, f"{example} {argv} was accepted: {run.stdout}"
+            assert not pathlib.Path(out).exists(), f"{example} {argv} wrote a link"
 
     print("ok")

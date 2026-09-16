@@ -57,8 +57,6 @@ export function GRIDS (here) {
   return out
 }
 
-const clone = m => structuredClone(m)
-
 // Run the component once over a candidate map. Returns the new map, or null
 // when a cell empties (a dead search node).
 function propagate (mod, fx, cand) {
@@ -93,21 +91,21 @@ export function snapshots (fx, want, seed = 12345) {
   const root = new Map()
   for (const c of CELLS) root.set(c, fx.given.has(c) ? [fx.truth[c]] : ALL.slice())
   const trail = []
-  const reset = () => { const s = clone(root); branch(rnd, s); return s }
-  let cand = clone(root)
+  const reset = () => { const s = structuredClone(root); branch(rnd, s); return s }
+  let cand = structuredClone(root)
   const out = []
   while (out.length < want) {
-    out.push(clone(cand))
+    out.push(structuredClone(cand))
     const next = propagate(mod, fx, cand)
     if (next === null) { // dead node: go back up and pin something else
-      cand = trail.length ? trail.pop() : clone(root)
+      cand = trail.length ? trail.pop() : structuredClone(root)
       if (!branch(rnd, cand)) cand = reset()
       continue
     }
     const settled = CELLS.every(c => next.get(c).length === cand.get(c).length)
     cand = next
     if (!settled) continue
-    trail.push(clone(cand))
+    trail.push(structuredClone(cand))
     if (!branch(rnd, cand)) cand = reset()
   }
   return out

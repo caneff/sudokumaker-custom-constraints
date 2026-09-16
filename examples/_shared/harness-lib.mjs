@@ -173,7 +173,7 @@ export function compareStrength (cur, ref, apply, start, opts = {}, params) {
 // The share of drawn states a strength sweep must get to compare. A state
 // either version empties has no solution, so it compares nothing; a sweep
 // whose states mostly die has proved little, whatever its weaker count.
-export const MIN_COMPARED = 0.25
+const MIN_COMPARED = 0.25
 
 // The never-weaker contract (docs/example-layout.md, update-strength): over
 // every state in `states` -- an iterable, or a generator function to call --
@@ -181,7 +181,11 @@ export const MIN_COMPARED = 0.25
 // start map (cell -> candidate array), or `{ start, params }` when `apply`
 // needs something per state. Logs one summary line under `label`, throws on a
 // weaker cell or on too few states compared, and returns the counts.
-export function strengthSweep (label, { cur, ref, apply, states, opts = {} }) {
+//
+// `solvable`: every state is built around a real solution, so none may die --
+// a death is a version emptying a cell the solution needs, and the sweep
+// throws on the first, not at MIN_COMPARED.
+export function strengthSweep (label, { cur, ref, apply, states, opts = {}, solvable = false }) {
   let drawn = 0
   let compared = 0
   let weaker = 0
@@ -195,6 +199,7 @@ export function strengthSweep (label, { cur, ref, apply, states, opts = {} }) {
     if (w.length > 0 && weaker <= 5) console.log(label, 'weaker at', w[0], 'start', [...start])
   }
   console.log(`${label}:`, compared, 'of', drawn, 'states compared,', weaker, 'weaker cells')
+  if (solvable) assert.strictEqual(compared, drawn, `${label}: ${drawn - compared} states built around a solution died`)
   assert.ok(compared >= drawn * MIN_COMPARED, `${label}: ${compared} of ${drawn} states compared; the rest died`)
   assert.strictEqual(weaker, 0, `${label}: ${weaker} weaker cells`)
   return { drawn, compared, weaker }
@@ -233,8 +238,11 @@ export function makeLine (rnd, kind, n, D) {
 // wholesale (recovery-lib's makeCandidateState) alike.
 //
 // `houses` are the cell groups the board declares all-different. They answer
-// `getCellsCanHaveRepeats` as the app does (docs/puzzle-api.md): false exactly
-// when one house holds every queried cell. Declared, never inferred from the
+// `getCellsCanHaveRepeats` for a query of distinct cells, the only kind a line
+// component makes: false exactly when one house holds every one of them. The
+// app's own answer is pairwise -- every two cells see each other -- and true
+// for a list that repeats a cell id (docs/research/bundle-api-reference.md);
+// a query that needs either difference needs more than this mock. Declared, never inferred from the
 // digits seeded, so a test cannot pass by accident (docs/line-contract.md) --
 // and a clue cell is in no house with its line, so a component that passes it
 // into the query reads "may repeat" and stands its gate down. No houses: every

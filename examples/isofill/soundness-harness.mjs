@@ -298,10 +298,7 @@ const badInst = {}
 mod.setParams(badInst, CELLS9)
 let threw = false
 try { Array.from(mod.update(badInst, makePuzzle(rows9, () => ALL))) } catch { threw = true }
-console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
 
-console.log('validate:', validateOk)
-console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
 // The directed checks, by name: each one's line in the verdict, and all of
 // them in the pass.
 const CHECKS = {
@@ -322,10 +319,15 @@ const CHECKS = {
   'budget prune fired': pruneOk,
   'silent fired': silentOk,
   'silent dead fired': silentDeadOk,
-  'one pass': onePassOk
+  'one pass': onePassOk,
+  '9x9 cap fired': cap9Ok,
+  'uneven board throws': threw,
+  'perimeter arc fired': arcOk,
+  'perimeter flank fired': flankOk,
+  validate: validateOk
 }
 console.log(Object.entries(CHECKS).map(([name, pass]) => `${name}: ${pass}`).join(' | '), `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && arcOk && flankOk && validateOk && Object.values(CHECKS).every(Boolean)
+const ok = bad === 0 && bad9 === 0 && Object.values(CHECKS).every(Boolean)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

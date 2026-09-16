@@ -59,6 +59,7 @@ const apply = (mod, p) => {
 
 for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
   strengthSweep(`isofill ${name} fixture`, {
+    solvable: true,
     cur,
     ref,
     apply,

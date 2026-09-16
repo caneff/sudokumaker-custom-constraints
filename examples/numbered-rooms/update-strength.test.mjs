@@ -98,6 +98,7 @@ for (const [kind, sizes] of [['bare', [[4, 6], [5, 5], [6, 6]]], ['house', [[4, 
     installGlobals(1, D)
     const line = lineCells(m)
     strengthSweep(`never-weaker ${kind} m=${m} D=${D}`, {
+      solvable: true,
       cur,
       ref,
       apply: applyOn(kind, line),

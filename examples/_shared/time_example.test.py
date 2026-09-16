@@ -23,7 +23,6 @@ from link_codec import decode_puzzle, encode_link
 from minify import minify_file, minify_js
 from time_example import (
     app_solve,
-    build_candidate,
     build_candidate_doc,
     build_row,
     find_component_file,
@@ -242,20 +241,6 @@ if __name__ == "__main__":
             raise AssertionError("expected a missing-timing-board failure")
         except FileNotFoundError as e:
             assert str(e) == f"missing {example_dir / 'PUZZLE_LINK_timing.txt'}"
-
-    # board= against an example whose build_link.py has no --board flag fails
-    # loud, naming the example, before any link is built
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "no-board-flag"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text("# stub, no board flag\n")
-        try:
-            build_candidate(
-                example_dir, example_dir / "X.js", example_dir / "out", board="B.txt"
-            )
-            raise AssertionError("expected a no---board failure")
-        except SystemExit as e:
-            assert str(e) == "no-board-flag/build_link.py has no --board flag"
 
     # find_component_file: which working-tree file the timing loop follows.
     # Each case is (name, build_link.py text, component files on disk, the

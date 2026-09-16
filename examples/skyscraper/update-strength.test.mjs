@@ -52,6 +52,7 @@ for (const m of [4, 6, 9]) {
   installGlobals(1, m)
   const LINE = Array.from({ length: m }, (_, i) => i)
   strengthSweep(`skyscraper line ${m}`, {
+    solvable: true,
     cur,
     ref,
     apply: (mod, p) => {
@@ -80,6 +81,7 @@ for (const m of [4, 6, 9]) {
   installGlobals(1, m)
   const LINE = Array.from({ length: m }, (_, i) => i)
   strengthSweep(`skyscraper one-sided ${m}`, {
+    solvable: true,
     cur: oneSidedCur,
     ref: oneSidedRef,
     apply: (mod, p) => {

@@ -128,6 +128,13 @@ const { rnd } = makeRng()
   assert.throws(() => strengthSweep('weaker', { cur: idle, ref: dropThree, apply, states: states(10) }), /weaker/)
   const killer = { * update (inst, p) { p.removeCandidateFromCell(2, 1); p.removeCandidateFromCell(3, 1) } }
   assert.throws(() => strengthSweep('dead', { cur: dropThree, ref: killer, apply, states: states(10) }), /compared/)
+  // states each built around a solution: a single death is a version emptying
+  // a cell the solution needs, and fails however many states compared
+  const killsOne = {
+    * update (inst, p) { if (p.getCandidates(1).size === 2 && ++killsOne.calls === 3) { p.removeCandidateFromCell(2, 1); p.removeCandidateFromCell(3, 1) } },
+    calls: 0
+  }
+  assert.throws(() => strengthSweep('solvable', { cur: dropThree, ref: killsOne, apply, states: states(10), solvable: true }), /died/)
   // per-state params reach apply
   const seen = []
   strengthSweep('params', {

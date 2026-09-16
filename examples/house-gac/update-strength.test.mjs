@@ -40,6 +40,7 @@ const apply = (mod, p) => {
 
 const REPS = 6000
 strengthSweep('house-gac', {
+  solvable: true,
   cur,
   ref,
   apply,

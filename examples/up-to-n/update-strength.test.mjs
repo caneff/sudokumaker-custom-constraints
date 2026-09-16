@@ -47,6 +47,7 @@ for (const D of [4, 6, 9]) {
   const LINE = Array.from({ length: D }, (_, i) => i)
   for (const kind of ['fullHouse', 'bare']) {
     strengthSweep(`up-to-n ${kind} ${D}`, {
+      solvable: true,
       cur,
       ref,
       apply: (mod, p, { target, clue }) => {

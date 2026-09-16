@@ -403,7 +403,35 @@ const backP = makePuzzle(backTruth, (c, v) => (c === CA || c === CB ? unclued : 
 const lineLatchBad = violates(mod, latchInst, backP, backTruth)
 console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(lineLatchBad)}`)
 
-const ok = bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
+// ---- a clue cell in the house query (#357) ----
+// The mock answers getCellsCanHaveRepeats from the houses a case declares,
+// and a clue cell is in no house with its line -- as in the app. So the same
+// DP, loaded with its clue cell passed into the gate's query, reads every full
+// house as "may repeat" and never fires: the fuzz above would report zero
+// prune firings and fail. This runs that mistake and holds the harness to
+// seeing it.
+const clueInQuery = load('SkyscraperLineComponent.js', ['setParams', 'update'], src => patchSource(src,
+  'lineKind(instance, puzzle, line).oneToN) return\n', 'lineKind(instance, puzzle, [clueA, ...line]).oneToN) return\n'))
+installGlobals(1, N)
+let clueQueryFired = 0
+let lineQueryFired = 0 // the shipped DP on the same states: the control
+for (let iter = 0; iter < 300; iter++) {
+  const perm = shuffled()
+  const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
+  for (const i of LINE) truth[i] = perm[i]
+  const start = makePuzzle(truth, seeder, FULL)
+  for (const [version, count] of [[clueInQuery, 'clue'], [mod, 'line']]) {
+    const p = copyOf(start)
+    const inst = {}
+    version.setParams(inst, CA, CB, LINE)
+    const before = total(p)
+    fixpoint(version, inst, p)
+    if (total(p) < before) { if (count === 'clue') clueQueryFired++; else lineQueryFired++ }
+  }
+}
+console.log('clue cell in the house query:', clueQueryFired, 'states pruned, against', lineQueryFired, 'for the line alone')
+
+const ok = clueQueryFired === 0 && lineQueryFired > 0 && bad === 0 && fired > 0 && interleaveBad === 0 && exactBad === 0 && exactRuns > 0 &&
   oneSidedBad === 0 && oneSidedSilent === 0 && oneSidedValidateBad === 0 &&
   oneSidedExactBad === 0 && oneSidedExactRuns > 0 &&
   bareRemovals === 0 && bareRepeats > 0 &&
