@@ -184,6 +184,27 @@ it; the pair r9c1 + r9c8 already is, and only under connectivity:
 A connected shading cannot hold two bottom-row cells six or more columns
 apart. Not hand-proved; the solver's INFEASIBLE is the record.
 
+### The 22-cell maximum for r9c1 + r9c2, the grid itself
+
+`joint.build(2, 26, maximize=True, force=(72, 73))`, 8 workers, OPTIMAL in 8 s
+with objective 22 and bound 22. Checked by an independent rule-text checker
+(sudoku, connectivity, digit == shaded king-neighbours). `*` marks shaded.
+
+```
+3  1  2  9  4  6  7  8  5
+6  7  4  3  8  5  9  2* 1
+5  9  8  7  1  2* 4* 3* 6
+4  6  3  2  9  8  5* 1  7
+7  8  5  1  3* 4* 2* 6  9
+9  2* 1  5* 6* 7  8  4  3
+8  4* 7* 6* 5* 3* 1* 9  2
+1  5* 6* 4* 2  9  3  7  8
+2* 3* 9  8  7  1  6  5  4
+```
+
+shape (0-based cell indices): 16 23 24 25 33 40 41 42 46 48 49 55 56 57 58 59
+60 64 65 66 72 73. Digits 1-7 only; no 8, as the table above says.
+
 ## Method, and why
 
 Following the idiom that produced the 234 examples and the repo's other
