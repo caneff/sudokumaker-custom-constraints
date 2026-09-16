@@ -458,3 +458,48 @@ and no shading is shown.
 
 So grid 1 is a puzzle with four circled cells and nothing else; grid 2 needs
 its four marks plus one shaded cell revealed.
+
+## 6x6, self-counting variant
+
+Chris: "also count ourselves in the count", 6x6 only. `gridenum.py --self`:
+a shaded cell's digit is its shaded king-neighbour count plus one. Sizes 5-36
+exhausted with symmetry, at least 5 distinct digits; shapes / with a grid /
+unique, only non-empty sizes shown.
+
+| shaded | sudoku 2x3 | sudoku, both connected | Latin | Latin, both connected |
+|---|---|---|---|---|
+| 7 | 14 / 12 / 0 | 12 / 11 / 0 | 12 / 12 / 0 | 10 / 10 / 0 |
+| 8 | 36 / 32 / 0 | 23 / 21 / 0 | 26 / 26 / 0 | 17 / 17 / 0 |
+| 9 | 30 / 27 / 0 | 11 / 10 / 0 | 18 / 18 / 0 | 6 / 6 / 0 |
+| 10 | 24 / 20 / 0 | 3 / 3 / 0 | 20 / 20 / 0 | 4 / 4 / 0 |
+| 11 | 38 / 20 / 0 | 11 / 9 / 0 | 34 / 30 / 0 | 9 / 9 / 0 |
+| 12 | 10 / 1 / **1** | 0 | 23 / 16 / 0 | 0 |
+| 13 | 1 / 0 / 0 | 0 | 4 / 2 / 0 | 0 |
+| 14 | 6 / 5 / **1** | 0 | 9 / 6 / 0 | 0 |
+
+Two uniques, both under plain sudoku boxes: the 12-cell shape [3, 9, 10, 11,
+15, 20, 21, 22, 26, 30, 31, 32] and the 14-cell shape [3, 4, 5, 7, 9, 13, 14,
+15, 16, 20, 26, 32, 33, 34], the same two cell sets that were unique under
+the plain count (every digit one higher). Nothing under both-connected or
+Latin.
+
+### The two Latin uniques cut into six regions
+
+Chris: "do either of the 2 unique LS ones we found before permit a division
+into 6 irregular regions". Both do, abundantly: CP-SAT (region labels,
+six cells each, every digit once per region, BFS-distance connectivity,
+regions ordered by first cell) found 50 partitions for each grid before the
+cap, the trivial rows and columns among them. Example irregular partitions:
+
+```
+grid 1              grid 2
+A A A A A A         A A A A A A
+B C D D D D         B B B B B B
+B C C D D E         C C C C C C
+B C E E E E         D D D D E E
+B C C F F E         D D E E E E
+B B F F F F         F F F F F F
+```
+
+Tool `.scratch/counting_shaded/six/tools/regions.py`; the first 50 partitions
+of each grid in `.scratch/counting_shaded/six/regions.json`.

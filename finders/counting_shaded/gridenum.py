@@ -28,6 +28,7 @@ from ortools.sat.python import cp_model
 N = 6
 BR, BC = 2, 3
 LATIN = False  # rows and columns only, no boxes; set by --latin
+SELF = False  # a shaded cell counts itself too (digit = neighbours + 1); --self
 CELLS = NEIGH = ORTH = BOX = None
 
 
@@ -121,9 +122,9 @@ def build(
     nn = N * N
     m = cp_model.CpModel()
     g = [m.new_bool_var(f"g{i}") for i in range(nn)]
-    n = [m.new_int_var(0, 8, f"n{i}") for i in range(nn)]
+    n = [m.new_int_var(0, 9, f"n{i}") for i in range(nn)]
     for i in range(nn):
-        m.add(n[i] == sum(g[j] for j in NEIGH[i]))
+        m.add(n[i] == sum(g[j] for j in NEIGH[i]) + (g[i] if SELF else 0))
         m.add(n[i] >= 1).only_enforce_if(g[i])
         m.add(n[i] <= N).only_enforce_if(g[i])
         for j in range(i + 1, nn):
@@ -334,6 +335,9 @@ def main():
     ap.add_argument("--symmetry", action="store_true")
     ap.add_argument("--latin", action="store_true", help="no boxes: Latin square")
     ap.add_argument(
+        "--self", action="store_true", help="shaded digit counts itself too"
+    )
+    ap.add_argument(
         "--unshaded-connected", action="store_true", help="unshaded cells connected too"
     )
     ap.add_argument(
@@ -343,8 +347,9 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     geometry(a.n, a.box_rows, a.box_cols)
-    global LATIN
+    global LATIN, SELF
     LATIN = a.latin
+    SELF = a.self
     a.out.mkdir(parents=True, exist_ok=True)
     force, ban = parse_cells(a.force), parse_cells(a.ban)
     progress = a.out / "progress.log"
@@ -358,7 +363,7 @@ def main():
     log(
         f"enumerate {a.n}x{a.n} box {a.box_rows}x{a.box_cols} size {a.size} "
         f"force={force} ban={ban} symmetry={a.symmetry} "
-        f"unshaded_connected={a.unshaded_connected} no_2x2={a.no_2x2} latin={a.latin}"
+        f"unshaded_connected={a.unshaded_connected} no_2x2={a.no_2x2} latin={a.latin} self={a.self}"
     )
     enumerate_native(
         a.size,
