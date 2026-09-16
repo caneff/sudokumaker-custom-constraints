@@ -137,7 +137,7 @@ def _read_valid_lines(path):
 
 
 def _truncate_to_valid(path, valid_lines):
-    if not path.exists() and not valid_lines:
+    if not path.exists():
         return
     _write_text_atomic(path, "".join(valid_lines))
 
