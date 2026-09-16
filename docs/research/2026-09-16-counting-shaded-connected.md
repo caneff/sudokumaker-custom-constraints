@@ -157,6 +157,32 @@ throughout: three CP-SAT encodings agree; no second engine yet (#506).
 Solve-then-forbid on the same size 21 found 70 of the at most 104 images in
 10 minutes on 8 workers without finishing; native enumeration is the tool.
 
+## Latin squares (no boxes), r9c1 + r9c2 pinned, all eight digits
+
+Chris asked for the high-count cases again as Latin squares. `--latin` on the
+C counter, the joint model and `shapeenum.py` drops the box constraint
+everywhere (the C side gives every cell its own box, so the box masks are
+vacuous; verified on a shape whose only clash is inside a box). Native
+enumeration, one worker, each size exhausted in under 25 s:
+
+| size | shapes | with a grid | unique |
+|---|---|---|---|
+| 21 | 14 | 14 | 0 |
+| 22 | 22 | 22 | 0 |
+| 23 | 16 | 16 | 0 |
+| 24 | 48 | 48 | 0 |
+| 25 | 63 | 60 | 0 |
+| 26 | 86 | 83 | 0 |
+| 27 | 95 | 70 | 0 |
+| 28 | 130 | 102 | 0 |
+| 29 | 137 | 100 | 0 |
+| 30 | 128 | 83 | 0 |
+
+Two things differ from sudoku: the counts grow with size rather than
+collapsing (the sudoku ceiling of 26 is a box effect), and a Latin square is
+far looser, so a unique completion from 20-30 givens is even less likely.
+None found. Sizes 31 and up: see the next table when it lands.
+
 ## Symmetry
 
 The symmetry group is the 8 dihedral images and nothing else: they preserve the
