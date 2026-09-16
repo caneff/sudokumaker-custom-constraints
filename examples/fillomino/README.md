@@ -406,6 +406,20 @@ different grid and a different stripper.
 
 ## Timing
 
+### The rule seam (#361)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | fillomino | 6100ms | 6200ms | 1.02 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time fillomino`, 3 reps per arm, non-deterministic solve off. The
+candidate splits `update` into named rule generators and scans once for cut
+starve instead of twice; it adds no deduction (the strength test's output is
+byte-identical), so the `NO SHIP` line reads the 0.9x deduction rule. The bar
+it answers to is the gate-change bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it: the after-logical row is
+0ms on both sides and places no constraint.
+
 The app opens `PUZZLE_LINK.txt` and reaches a verdict on it: **unique**.
 
 | Date | App version | Board | Cold (median of 3) | After logical (median of 3) |
