@@ -150,10 +150,8 @@ with tempfile.TemporaryDirectory() as tmp:
 with tempfile.TemporaryDirectory() as tmp:
     # A finder whose record() differs from its candidate (SlowToyFinder's
     # {"grid": [...]} wrapper) must still verify through inheritance, not
-    # just on the one finder the review happened to touch first (#489
-    # review, correctness C3: this crashed with a raw TypeError on
-    # toy_stateful_finder.py before candidate_from_record moved onto
-    # SlowToyFinder).
+    # just on the one finder that happens to define candidate_from_record
+    # directly.
     out = Path(tmp) / "hunt-out"
     result = subprocess.run(
         [
@@ -243,6 +241,43 @@ sys.exit(run(WrappedRecordFinder(), sys.argv[1:]))
         "the refusal names candidate_from_record, not a raw traceback",
         "candidate_from_record" in verify_result.stderr
         and "Traceback" not in verify_result.stderr,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A record partway through examples.jsonl that fails to verify must not
+    # discard the verdicts already computed for the records before it
+    # (#489 review, correctness V1).
+    out = Path(tmp) / "hunt-out"
+    out.mkdir()
+    (out / "examples.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps({"grid": [0, 0, 0, 0], "__dedupe_key__": [0, 0, 0, 0]}),
+                json.dumps({"grid": [1, 1, 1, 1], "__dedupe_key__": [1, 1, 1, 1]}),
+                json.dumps({"broken": True}),
+            ]
+        )
+        + "\n"
+    )
+    verify_result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "verify", str(out)],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a mid-file verify failure still refuses (exit "
+        f"{verify_result.returncode}, stderr: {verify_result.stderr[-500:]})",
+        verify_result.returncode == 2,
+    )
+    verified = [
+        json.loads(line)
+        for line in (out / "verified.jsonl").read_text().splitlines()
+        if line
+    ]
+    check(
+        "the two verdicts computed before the failing record were kept, "
+        "not thrown away with it",
+        len(verified) == 2,
     )
 
 sys.exit(0 if ok else 1)

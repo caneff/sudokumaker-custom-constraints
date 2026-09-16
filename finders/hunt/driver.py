@@ -540,16 +540,15 @@ def _run_verify(finder, argv):
     code: 0 on success, 2 when DIR has no examples.jsonl to verify.
 
     Reads examples.jsonl through `_read_valid_lines` -- the same kill
-    tolerance `run`'s own resume gives progress.jsonl/examples.jsonl -- so a
-    hunt killed mid-write leaves this able to verify everything durable
-    instead of dying on one half-written trailing line and losing every
-    verdict already computed (#489 review, correctness C1). Each verified.jsonl
-    line carries its own record, not just position, so it still joins back to
-    examples.jsonl after a resume appends more lines (#489 review, standards
-    S4 / spec P1 / correctness C4). A finder without `candidate_from_record`
-    whose record() isn't itself verify-able fails loud with a named cause
-    instead of a raw traceback into `finder.verify`'s own internals (#489
-    review, correctness C3)."""
+    tolerance `run`'s own resume gives progress.jsonl/examples.jsonl. Each
+    verified.jsonl line carries its own record, not just position, so it
+    still joins back to examples.jsonl after a resume appends more lines.
+    A record that fails to turn into a candidate and verify (most likely a
+    finder with no `candidate_from_record` whose record() isn't itself
+    verify-able, but possibly a genuine bug in `verify` itself -- the
+    driver can't tell which) refuses with both named as possible causes,
+    rather than propagating a raw traceback; everything already verified
+    for earlier records is kept, not thrown away with it."""
     args = _parse_verify_args(argv)
     out = Path(args.dir)
     examples_path = out / "examples.jsonl"
@@ -564,16 +563,22 @@ def _run_verify(finder, argv):
     _, records = _read_valid_lines(examples_path)
     verified_path = out / "verified.jsonl"
     tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
+    verified_count = 0
     with tmp.open("w") as verified_f:
         for record in records:
             try:
                 verdict = finder.verify(to_candidate(record))
             except Exception as e:
+                verified_f.flush()
+                tmp.replace(verified_path)
                 print(
-                    "hunt verify: refusing -- finder.verify raised on a "
-                    f"record from examples.jsonl ({type(e).__name__}: {e}). "
-                    "If record() isn't itself a verify-able candidate, "
-                    "define candidate_from_record on the finder.",
+                    "hunt verify: refusing -- turning a record from "
+                    f"examples.jsonl into a candidate and verifying it raised "
+                    f"({type(e).__name__}: {e}). Either record() isn't itself "
+                    "a verify-able candidate and the finder needs a "
+                    "candidate_from_record, or this is a bug in verify() "
+                    f"itself -- {verified_count} verdict(s) already computed "
+                    "were kept.",
                     file=sys.stderr,
                 )
                 return 2
@@ -581,6 +586,7 @@ def _run_verify(finder, argv):
             if verdict.reason:
                 entry["reason"] = verdict.reason
             verified_f.write(json.dumps(entry) + "\n")
+            verified_count += 1
     tmp.replace(verified_path)
     return 0
 
