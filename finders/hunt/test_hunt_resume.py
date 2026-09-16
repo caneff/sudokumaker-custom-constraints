@@ -23,6 +23,7 @@ its own comment for why). Kinds of interruption exercised:
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, canonical_key
+from subprocess_env import success_env
 
 HERE = Path(__file__).resolve().parent
 SLOW_FINDER = HERE / "toy_slow_finder.py"
@@ -59,6 +61,7 @@ def run_cli(finder, out, seeds):
         [sys.executable, str(finder), "--out", str(out), f"--seeds={seeds}"],
         capture_output=True,
         text=True,
+        env=success_env(),
     )
 
 
@@ -77,6 +80,7 @@ def kill_partway(finder, out, seeds, min_seed_done_events=3):
         [sys.executable, str(finder), "--out", str(out), f"--seeds={seeds}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=success_env(),
     )
     progress_path = out / "progress.jsonl"
     deadline = time.time() + 10
@@ -285,6 +289,7 @@ with tempfile.TemporaryDirectory() as tmp:
         [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "-3:-1"],
         capture_output=True,
         text=True,
+        env=success_env(),
     )
     check(
         f"--seeds and a negative range as two argv tokens exits 0 "
@@ -507,6 +512,13 @@ with tempfile.TemporaryDirectory() as tmp:
 
     driver_module.fcntl.flock = _patched_flock
     b_result = {}
+    # This drives driver.run() in-process, so it reads the real
+    # HUNT_FAKE_LOAD1/os.environ at call time, not a subprocess env dict --
+    # force the gate idle here too so a busy box doesn't refuse either
+    # thread's hunt (#526).
+    had_fake_load1 = "HUNT_FAKE_LOAD1" in os.environ
+    old_fake_load1 = os.environ.get("HUNT_FAKE_LOAD1")
+    os.environ["HUNT_FAKE_LOAD1"] = "0"
     try:
         b_thread = threading.Thread(
             target=lambda: b_result.__setitem__(
@@ -529,6 +541,10 @@ with tempfile.TemporaryDirectory() as tmp:
         b_thread.join(timeout=15)
     finally:
         driver_module.fcntl.flock = real_flock
+        if had_fake_load1:
+            os.environ["HUNT_FAKE_LOAD1"] = old_fake_load1
+        else:
+            os.environ.pop("HUNT_FAKE_LOAD1", None)
 
     check("thread B's call returned", "code" in b_result)
     final_progress = read_jsonl(out / "progress.jsonl")

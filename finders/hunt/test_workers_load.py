@@ -9,11 +9,12 @@ production argv never carries a test-only knob.
 """
 
 import json
-import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from subprocess_env import success_env
 
 HERE = Path(__file__).resolve().parent
 
@@ -51,9 +52,7 @@ def check(name, cond):
 
 
 def run_cli(out, extra_args, env=None):
-    full_env = dict(os.environ)
-    if env:
-        full_env.update(env)
+    full_env = success_env(env)
     return subprocess.run(
         [
             sys.executable,
@@ -140,12 +139,11 @@ with tempfile.TemporaryDirectory() as tmp:
         f"base hunt for genuine-mismatch check exits 0 (stderr: {first.stderr[-500:]})",
         first.returncode == 0,
     )
-    full_env = dict(os.environ)
     mismatched = subprocess.run(
         [sys.executable, "-c", WORKERS_FINDER, "--out", str(out), "--seeds", "0:5"],
         capture_output=True,
         text=True,
-        env=full_env,
+        env=success_env(),
     )
     check(
         "a genuinely differing --seeds still refuses",
