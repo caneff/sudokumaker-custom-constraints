@@ -76,14 +76,18 @@ test:
     uv run finders/renbanana/tools/test_prove_two_stage.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
-    # finders/hunt's own tests (#484, #485): the dedupe key's public
+    # finders/hunt's own tests (#484, #485, #486): the dedupe key's public
     # function, neighbours and connected components on hand-drawn boards,
-    # the text printer's output, and the `hunt` CLI run in a subprocess
-    # with the toy finder -- all well under a second.
+    # the text printer's output, the `hunt` CLI run in a subprocess with the
+    # toy finder, and the CP-SAT helpers (uniqueness, minimizer, watchdog)
+    # on tiny models -- all well under a few seconds, workers pinned to 1.
     uv run finders/hunt/test_dedupe.py
     uv run finders/hunt/test_grid.py
     uv run finders/hunt/test_printer.py
     uv run finders/hunt/test_toy_hunt.py
+    uv run finders/hunt/test_uniqueness.py
+    uv run finders/hunt/test_minimizer.py
+    uv run finders/hunt/test_watchdog.py
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles ghosts_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
