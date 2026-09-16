@@ -1,6 +1,6 @@
 """Merge, deduplicate and independently verify all-visible shaded cell examples.
 
-    uv run finders/shaded/verify_all.py OUT.jsonl IN.jsonl [IN.jsonl ...]
+    uv run finders/counting_shaded/verify_all.py OUT.jsonl IN.jsonl [IN.jsonl ...]
 
 Each input line needs a "shape" (cell indices 0-80). The check shares no code
 with the finders: givens are recomputed as shaded-neighbour counts, must be

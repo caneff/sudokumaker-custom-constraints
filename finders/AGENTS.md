@@ -27,4 +27,4 @@ drivers that launch a hunt overnight stay under `docs/research/` (#469).
   The doc also covers what to search, when cuts beat a counter, reading solver
   status honestly, profiling the loop, the `ctypes` C port and counting what
   you found. A worked log:
-  `docs/research/2026-09-16-shaded-connected-decision-log.md`.
+  `docs/research/2026-09-16-counting-shaded-connected-decision-log.md`.

@@ -1,6 +1,6 @@
 """Largest shaded cell grid containing a given set of pinned cells. Uniqueness aside.
 
-    uv run finders/shaded/maxpinned.py --force r9c1,r9c2 [--no-connect]
+    uv run finders/counting_shaded/maxpinned.py --force r9c1,r9c2 [--no-connect]
 
 Maximises the shaded cell count subject to the pins, so the answer is the biggest
 configuration those cells can sit in. Uniqueness is not tested and not wanted

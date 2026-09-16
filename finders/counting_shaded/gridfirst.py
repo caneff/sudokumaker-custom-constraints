@@ -1,6 +1,6 @@
-"""Shaded, connected: search the shape inside a fixed solved grid. BROKEN SAMPLER.
+"""counting shaded, connected: search the shape inside a fixed solved grid. BROKEN SAMPLER.
 
-    uv run finders/shaded/gridfirst.py --seconds 300 --min-shaded 20
+    uv run finders/counting_shaded/gridfirst.py --seconds 300 --min-shaded 20
 
 DO NOT TRUST THIS FILE'S NUMBERS. `random_grid()` below builds grids by
 relabelling, moving rows within bands, swapping bands and stacks and
@@ -13,7 +13,7 @@ sampling.
 It is kept as a recorded dead end. Its reported ceiling of 9 shaded cells over 38,064
 "random" grids is an artefact; `joint.py --maximize` proves the true ceiling is
 26, confirmed by a second encoding in `recheck_ceiling.py`. Full account:
-`docs/research/2026-09-16-shaded-connected-decision-log.md`, entries 3 and 4.
+`docs/research/2026-09-16-counting-shaded-connected-decision-log.md`, entries 3 and 4.
 Use `joint.py` or `census.py`, which hold the grid as a variable instead.
 
 The shape-only model (connected.py) keeps returning connected shapes whose

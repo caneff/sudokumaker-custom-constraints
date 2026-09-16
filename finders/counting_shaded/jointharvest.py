@@ -1,6 +1,6 @@
-"""Shaded, all visible and connected: enumerate joint seeds, keep the unique ones.
+"""counting shaded, all visible and connected: enumerate joint seeds, keep the unique ones.
 
-    uv run finders/shaded/jointharvest.py --seconds 1800 --min-shaded 20 --out DIR
+    uv run finders/counting_shaded/jointharvest.py --seconds 1800 --min-shaded 20 --out DIR
 
 Follows the idiom that produced the 234 disconnected examples and the repo's
 other working finders: a CP-SAT model states everything except uniqueness, and

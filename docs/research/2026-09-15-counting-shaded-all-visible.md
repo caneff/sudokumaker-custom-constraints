@@ -1,4 +1,4 @@
-# Shaded, all visible: a unique 31-cell grid with an 8 [verified]
+# Counting shaded, all visible: a unique 31-cell grid with an 8 [verified]
 
 Target (Chris, 2026-09-15): every shaded cell is visible and shows its digit; those
 digits are the only givens and make the sudoku unique; one shaded cell holds 8.
@@ -7,8 +7,8 @@ is a search over shaded cell shapes.
 
 ## Result
 
-`docs/research/shaded/allvisible-hits.jsonl` line 0: 31 shaded cells, one 8 (r7c3).
-`uv run --with pillow finders/shaded/check_hit.py docs/research/shaded/allvisible-hits.jsonl 0 sol.png puz.png`
+`docs/research/counting_shaded/allvisible-hits.jsonl` line 0: 31 shaded cells, one 8 (r7c3).
+`uv run --with pillow finders/counting_shaded/check_hit.py docs/research/counting_shaded/allvisible-hits.jsonl 0 sol.png puz.png`
 recomputes the counts, checks the 8, and has CP-SAT (all-different model, no
 code shared with the finder) enumerate solutions: exactly 1.
 
@@ -32,7 +32,7 @@ millisecond bitmask count, while the CEGAR master re-solves a large CP-SAT
 model per cut. Seeds come from the grid+shaded cell CP-SAT model so every seed is
 solvable.
 
-Run: `uv run finders/shaded/shapes.py --seconds 240 --climb-seconds 40 --min-shaded 26 --seed 3 --out DIR`
+Run: `uv run finders/counting_shaded/shapes.py --seconds 240 --climb-seconds 40 --min-shaded 26 --seed 3 --out DIR`
 
 ## Next
 
@@ -54,7 +54,7 @@ such shapes exist at all is untested. Box load average was 5-6 during the run.
 
 - **Max density** (8-worker CP-SAT, 300 s): best 35 shaded cells, bound 39; the
   35-cell shape had 8 solutions. Density alone does not give uniqueness.
-- **C climb** (`shaded_fast.c` via `fastclimb.py`, parity-tested against
+- **C climb** (`counting_shaded_fast.c` via `fastclimb.py`, parity-tested against
   `shapes.py` on 20 000 shapes): ~500k moves/s, ~90x the Python climb. With
   the Python cooling it froze in <1 s; cooling over the run (T 2 -> 0.05) with
   king-walk moves of up to 6 toggles gave 2 hits in 6 x 10 s climbs.

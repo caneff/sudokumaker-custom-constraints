@@ -1,6 +1,6 @@
-"""Shaded, all visible: the shaded cell digits alone make the sudoku unique.
+"""counting shaded, all visible: the shaded cell digits alone make the sudoku unique.
 
-    uv run finders/shaded/allvisible.py --seed 1 --seconds 600 --out DIR
+    uv run finders/counting_shaded/allvisible.py --seed 1 --seconds 600 --out DIR
 
 Every shaded cell is shown with its digit, and those digits are the only givens. A
 shaded cell's digit is its shaded-neighbour count, so a shaded cell shape plus the grid fix
@@ -8,7 +8,7 @@ the givens. One shaded cell must hold 8. Uniqueness is plain sudoku uniqueness o
 those givens: hidden shaded cells, if the rules allowed them, only add constraints.
 
 CEGAR over grid and shape together (fixing the grid first leaves 1-13 shapes,
-see 2026-09-15-shaded-all-visible.md):
+see 2026-09-15-counting-shaded-all-visible.md):
   master  digits x, shaded cells g; g ⇒ Σ g(neighbours) = digit; some shaded cell holds 8;
           necessary conditions for a unique sudoku (≥ 17 givens, digits 1-8
           all given, ≤ 1 unshaded row per band and column per stack);

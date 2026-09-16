@@ -1,4 +1,4 @@
-# Shaded, all visible and orthogonally connected
+# Counting shaded, all visible and orthogonally connected
 
 Target: a grid whose shaded cells are all visible (every shaded cell shows its
 shaded-neighbour count as a given), those givens alone make the sudoku unique,
@@ -6,12 +6,12 @@ and the shaded cells form one orthogonally connected region. The 8-given
 requirement is off for this hunt.
 
 Prior state: 234 verified examples with no connectivity requirement
-(`docs/research/shaded/examples-verified.jsonl`, 25-33 shaded cells). Zero of them
+(`docs/research/counting_shaded/examples-verified.jsonl`, 25-33 shaded cells). Zero of them
 are connected, so they validate nothing about this target.
 
 ## The ceiling: 26 shaded cells, proven
 
-`finders/shaded/joint.py --maximize` puts the digits, the shaded cell booleans, the
+`finders/counting_shaded/joint.py --maximize` puts the digits, the shaded cell booleans, the
 all-visible link and exact flow connectivity in one model and maximizes the
 shaded cell count. **OPTIMAL at 26 shaded cells in 50s.** No connected all-visible shaded cell
 set of 27 or more exists on any grid.
@@ -32,7 +32,7 @@ which is why the band is worth enumerating rather than abandoning.
 
 ## Connectivity: flow beats lazy cuts here
 
-Both encodings are in `finders/shaded/connected.py` behind `--conn flow|lazy`.
+Both encodings are in `finders/counting_shaded/connected.py` behind `--conn flow|lazy`.
 
 | encoding | result |
 |---|---|
@@ -55,7 +55,7 @@ the grid being the witness.
 
 ## A sampler that only samples one grid (recorded so it is not rebuilt)
 
-`finders/shaded/gridfirst.py` fixes a solved grid, then solves for a shaded cell set
+`finders/counting_shaded/gridfirst.py` fixes a solved grid, then solves for a shaded cell set
 inside it. Sound idea, broken generator: `random_grid()` builds grids by
 relabelling, in-band row moves, band and stack swaps and transposition of one
 `BASE` grid. Those are exactly the sudoku-preserving symmetries, so every
@@ -122,7 +122,7 @@ breaking on:
 | 26 | **no** | INFEASIBLE |
 | >=27 | no configuration at all | INFEASIBLE, three encodings |
 
-**A unique connected all-visible Shaded puzzle has between 17 and 21 shaded cells, or
+**A unique connected all-visible counting shaded puzzle has between 17 and 21 shaded cells, or
 does not exist.** The wall at 22 is structural: a connected blob that large has
 a high-count interior, so its digits crowd into 5-8 and the low counts vanish.
 A big connected region and a 1 or 2 on it are incompatible.
@@ -169,7 +169,7 @@ problem, which makes its INFEASIBLE carry up to the real problem.
 
 Following the idiom that produced the 234 examples and the repo's other
 working finders: CP-SAT states everything except uniqueness, and uniqueness is
-decided outside it by the bounded bitmask counter. `finders/shaded/jointharvest.py`
+decided outside it by the bounded bitmask counter. `finders/counting_shaded/jointharvest.py`
 enumerates joint seeds by solve-then-forbid within a fixed shaded cell count and
 counts solutions for each.
 

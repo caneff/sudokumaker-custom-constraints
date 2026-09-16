@@ -1,6 +1,6 @@
-"""Shaded, all visible: search shaded cell shapes directly.
+"""counting shaded, all visible: search shaded cell shapes directly.
 
-    uv run finders/shaded/shapes.py --seconds 120 --seed 1 --out DIR
+    uv run finders/counting_shaded/shapes.py --seconds 120 --seed 1 --out DIR
 
 A shape fixes its givens: each shaded cell shows its shaded-neighbour count. So the
 search needs no grid variables. A shape is admissible when its counts are

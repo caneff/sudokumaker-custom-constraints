@@ -1,6 +1,6 @@
-"""Shaded, all visible and connected: solve for the grid and the shape together.
+"""counting shaded, all visible and connected: solve for the grid and the shape together.
 
-    uv run finders/shaded/joint.py --seconds 600 [--min-shaded 20] [--maximize]
+    uv run finders/counting_shaded/joint.py --seconds 600 [--min-shaded 20] [--maximize]
 
 Why not fix the grid first: the obvious sampler (relabel a base grid, shuffle
 rows within bands, swap bands and stacks, transpose) only walks one grid's

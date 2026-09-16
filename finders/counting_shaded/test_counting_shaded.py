@@ -1,6 +1,6 @@
-"""Soundness suite for the Shaded finder.
+"""Soundness suite for the counting shaded finder.
 
-    uv run pytest finders/shaded
+    uv run pytest finders/counting_shaded
 
 Covers the places this hunt actually went wrong: a filter that disagreed
 between C and Python, a hand-rolled solution counter with no independent
@@ -24,8 +24,14 @@ import verify_all
 from ortools.sat.python import cp_model
 
 HERE = Path(__file__).resolve().parent
-# Notes, hit logs and images stayed under docs/research/shaded when the code moved.
-EXAMPLES = HERE.parents[1] / "docs" / "research" / "shaded" / "examples-verified.jsonl"
+# Notes, hit logs and images stayed under docs/research/counting_shaded when the code moved.
+EXAMPLES = (
+    HERE.parents[1]
+    / "docs"
+    / "research"
+    / "counting_shaded"
+    / "examples-verified.jsonl"
+)
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,6 @@
-"""Shaded, all visible: dense shapes straight from CP-SAT, then a uniqueness check.
+"""counting shaded, all visible: dense shapes straight from CP-SAT, then a uniqueness check.
 
-    uv run finders/shaded/dense.py --seconds 300 --seed 1 --out DIR
+    uv run finders/counting_shaded/dense.py --seconds 300 --seed 1 --out DIR
 
 Uniqueness is monotone in the givens, so many shaded cells help. Each round builds
 the grid+shaded cell model (shaded cell digit = shaded-neighbour count, some shaded cell holds 8),

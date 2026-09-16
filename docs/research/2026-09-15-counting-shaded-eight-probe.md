@@ -1,6 +1,6 @@
-# Shaded: a valid grid with a shaded cell holding 8 exists [verified]
+# Counting shaded: a valid grid with a shaded cell holding 8 exists [verified]
 
-Rule (Shaded POC, Michael Lefkowitz): normal sudoku; a digit on a shaded cell equals
+Rule (counting shaded POC, Michael Lefkowitz): normal sudoku; a digit on a shaded cell equals
 the number of shaded cells in its up-to-8 king-move neighbours. Only shaded cells
 carry a clue. Not all shaded cells are visible. Rulings from Chris, 2026-09-15: an
 isolated shaded cell is impossible (no digit 0); uniqueness is out of scope for now;
@@ -8,7 +8,7 @@ the first goal is any valid grid plus shaded cell set where one shaded cell hold
 
 ## Result
 
-`uv run finders/shaded/probe.py` — CP-SAT, one worker, OPTIMAL in 1.40 s.
+`uv run finders/counting_shaded/probe.py` — CP-SAT, one worker, OPTIMAL in 1.40 s.
 An independent Python recheck of sudoku rows/columns/boxes and the shaded cell count
 passed. `*` marks a shaded cell; the 8-cell is r4c3.
 
@@ -38,4 +38,4 @@ passed. `*` marks a shaded cell; the 8-cell is r4c3.
 - A shaded cell 8 cannot be a box centre (r2c2, r2c5, …, 0-based box middles): its
   whole 3×3 would be shaded cells in one box, needing nine distinct digits ≤ 8.
 
-![grid](shaded cells/eight-probe.png) — `uv run --with pillow finders/shaded/render.py <out.png>`
+![grid](shaded cells/eight-probe.png) — `uv run --with pillow finders/counting_shaded/render.py <out.png>`

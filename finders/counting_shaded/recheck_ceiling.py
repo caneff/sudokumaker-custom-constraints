@@ -1,7 +1,7 @@
 """Second opinion on the 26-cell ceiling, sharing no encoding with joint.py.
 
-    uv run finders/shaded/recheck_ceiling.py --seconds 300
-    uv run finders/shaded/recheck_ceiling.py --exactly 27   # expect INFEASIBLE
+    uv run finders/counting_shaded/recheck_ceiling.py --seconds 300
+    uv run finders/counting_shaded/recheck_ceiling.py --exactly 27   # expect INFEASIBLE
 
 `joint.py` says the largest connected all-visible shaded cell set is 26, OPTIMAL.
 That is a proof about one model, so this rebuilds the question three different

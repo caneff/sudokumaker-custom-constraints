@@ -1,6 +1,6 @@
 """Possible shaded cell grids: connected all-visible configurations, uniqueness aside.
 
-    uv run finders/shaded/census.py --seconds 600 --out DIR
+    uv run finders/counting_shaded/census.py --seconds 600 --out DIR
 
 A configuration here is a (grid, shape) pair where the grid is a valid sudoku,
 the shape is an orthogonally connected set of shaded cells, and every shaded cell's

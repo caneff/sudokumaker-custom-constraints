@@ -1,4 +1,4 @@
-# Decision log: Shaded, connected all-visible hunt (2026-09-16)
+# Decision log: counting shaded, connected all-visible hunt (2026-09-16)
 
 Every decision taken during the hunt, what it rested on, and what it cost.
 Written because the same lessons keep being re-derived: **six of the errors
@@ -168,7 +168,7 @@ treat a timeout as "keep the clue".
 the reason needs stating carefully. The 17-givens minimum (McGuire, Tugemann &
 Civario, 2012) holds for a board carrying digit givens **and nothing else**. A
 board with any other clue type can be unique with far fewer, which is the usual
-case in this repo. It applies here only because all-visible Shaded reduces to
+case in this repo. It applies here only because all-visible counting shaded reduces to
 exactly that: the shaded cell rule is redundant once every shaded cell is visible, so the
 board is a plain sudoku whose givens are the shaded cell digits.
 **New lesson:** look up the base puzzle's known bounds before choosing a search

@@ -1,7 +1,7 @@
-"""Shaded, all visible: harvest as many unique shapes (with an 8) as possible.
+"""counting shaded, all visible: harvest as many unique shapes (with an 8) as possible.
 
-    uv run finders/shaded/harvest.py --seconds 1800 --seed 1 --out DIR \
-        [--roots docs/research/shaded/allvisible-hits.jsonl]
+    uv run finders/counting_shaded/harvest.py --seconds 1800 --seed 1 --out DIR \
+        [--roots docs/research/counting_shaded/allvisible-hits.jsonl]
 
 Roots: shapes from --roots first, then shapes.climb runs (the settings that
 produced the first hit). Each root's plateau is walked breadth-first: a move
@@ -14,7 +14,7 @@ Shapes are deduplicated up to the 8 square symmetries (they preserve houses
 and king adjacency). DIR/examples.jsonl gets one line per example with its
 root id and its toggle distance from the root; DIR/summary.json is rewritten
 after each root. Earlier experiments (aimed climb, windowed CP-SAT repair)
-are in commit 6157c6e; see 2026-09-15-shaded-all-visible.md.
+are in commit 6157c6e; see 2026-09-15-counting-shaded-all-visible.md.
 """
 
 import argparse

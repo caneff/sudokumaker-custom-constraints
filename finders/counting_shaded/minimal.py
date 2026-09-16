@@ -1,6 +1,6 @@
-"""Shaded: hunt minimal clue sets whose digit solution is unique.
+"""counting shaded: hunt minimal clue sets whose digit solution is unique.
 
-    uv run finders/shaded/minimal.py --grids 20 --seed 1 --out DIR
+    uv run finders/counting_shaded/minimal.py --grids 20 --seed 1 --out DIR
 
 Per grid: a random solution + shaded cell set with a visible shaded cell holding 8. Clues
 are visible shaded cells (circle, no digit) and given digits, weighted equally. The

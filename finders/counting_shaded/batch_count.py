@@ -1,7 +1,7 @@
 """Merge the census output and annotate every configuration with its solution count.
 
-    uv run finders/shaded/batch_count.py .scratch/shaded/*/configurations.jsonl \
-        --out docs/research/shaded/connected-corpus.jsonl
+    uv run finders/counting_shaded/batch_count.py .scratch/counting_shaded/*/configurations.jsonl \
+        --out docs/research/counting_shaded/connected-corpus.jsonl
 
 Nothing is rejected. A configuration with 40,000 solutions is as much a part of
 the corpus as a unique one -- it is a valid connected all-visible shaded cell grid
@@ -16,7 +16,7 @@ themselves) and, with --canonical, under the 8 square symmetries as well.
 The counter runs over the givens alone, which is correct here: with every shaded cell
 visible the shaded cell rule is redundant, since all solutions agree on the shaded cell
 cells, so the board is a plain sudoku whose givens are the shaded cell digits. See
-docs/research/2026-09-16-shaded-connected.md.
+docs/research/2026-09-16-counting-shaded-connected.md.
 """
 
 import argparse

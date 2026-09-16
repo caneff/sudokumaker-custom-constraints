@@ -91,11 +91,11 @@ test:
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
-    # finders/shaded' soundness suite, the one pytest suite in the repo: 21
-    # tests, about 3s. It compiles shaded_fast.c with the system cc and
+    # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
+    # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
     # divergence between the two fails here.
-    uv run pytest finders/shaded -q
+    uv run pytest finders/counting_shaded -q
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue

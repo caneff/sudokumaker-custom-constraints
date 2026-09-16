@@ -1,6 +1,6 @@
-"""ctypes wrapper for shaded_fast.c, plus a parity test against shapes.py.
+"""ctypes wrapper for counting_shaded_fast.c, plus a parity test against shapes.py.
 
-    uv run finders/shaded/fastclimb.py --test
+    uv run finders/counting_shaded/fastclimb.py --test
 
 The .so is built on first import into the worktree's git-ignored .scratch.
 """
@@ -12,11 +12,13 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SRC = HERE / "shaded_fast.c"
+SRC = HERE / "counting_shaded_fast.c"
 REPO = HERE.parents[1]
-DATA = REPO / "docs" / "research" / "shaded"  # notes, hits and images stayed there
-BUILD = REPO / ".scratch" / "shaded" / "build"
-SO = BUILD / "shaded_fast.so"
+DATA = (
+    REPO / "docs" / "research" / "counting_shaded"
+)  # notes, hits and images stayed there
+BUILD = REPO / ".scratch" / "counting_shaded" / "build"
+SO = BUILD / "counting_shaded_fast.so"
 
 
 def _load():

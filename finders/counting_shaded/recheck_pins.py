@@ -1,6 +1,6 @@
 """Double-check the claim that r9c1+r9c2+r9c8 shaded cells with r7c4 banned is impossible.
 
-    uv run finders/shaded/recheck_pins.py
+    uv run finders/counting_shaded/recheck_pins.py
 
 Independent of connected.py: house distinctness is posted as add_all_different
 over one variable per cell, where a unshaded gets its own dummy value instead

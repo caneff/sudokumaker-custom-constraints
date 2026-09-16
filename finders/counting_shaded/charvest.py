@@ -1,6 +1,6 @@
-"""Shaded, all visible: harvest unique shapes with the C climb.
+"""counting shaded, all visible: harvest unique shapes with the C climb.
 
-    uv run finders/shaded/charvest.py --seconds 1200 --seed 1 --out DIR
+    uv run finders/counting_shaded/charvest.py --seconds 1200 --seed 1 --out DIR
 
 Each loop starts from a fresh CP-SAT seed (probability --fresh) or from a
 random shape in this process's pool of climb endpoints, then runs gf_climb

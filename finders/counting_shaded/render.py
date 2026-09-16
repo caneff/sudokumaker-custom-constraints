@@ -1,8 +1,8 @@
-"""Picture of a Shaded grid: digits on white, shaded cells circled.
+"""Picture of a counting shaded grid: digits on white, shaded cells circled.
 
-    uv run --with pillow finders/shaded/render.py out.png
+    uv run --with pillow finders/counting_shaded/render.py out.png
 
-The grid is the probe's 8-cell solution (2026-09-15-shaded-eight-probe.md);
+The grid is the probe's 8-cell solution (2026-09-15-counting-shaded-eight-probe.md);
 `*` after a digit marks a shaded cell.
 """
 

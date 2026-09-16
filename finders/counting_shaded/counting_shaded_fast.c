@@ -1,6 +1,6 @@
-// Hot loop of the Shaded all-visible shape climb, in C (loaded via ctypes).
+// Hot loop of the counting shaded all-visible shape climb, in C (loaded via ctypes).
 //
-//   gcc -O2 -shared -fPIC -o shaded_fast.so shaded_fast.c -lm
+//   gcc -O2 -shared -fPIC -o counting_shaded_fast.so counting_shaded_fast.c -lm
 //
 // Same rules as shapes.py: a shaded cell's given is its shaded-neighbour count
 // (1-8), givens are distinct within every row, column and box, and the shaded cells

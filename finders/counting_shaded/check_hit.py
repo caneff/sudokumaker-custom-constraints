@@ -1,6 +1,6 @@
 """Independently verify an all-visible shaded cell shape and render it.
 
-    uv run --with pillow finders/shaded/check_hit.py hits.jsonl LINE out.png puzzle.png
+    uv run --with pillow finders/counting_shaded/check_hit.py hits.jsonl LINE out.png puzzle.png
 
 Checks, with no code shared with shapes.py: each shaded cell's digit equals its
 shaded-neighbour count, some shaded cell shows 8, and CP-SAT finds exactly one sudoku
