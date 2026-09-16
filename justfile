@@ -57,7 +57,7 @@ test:
     set -euo pipefail
     shopt -s nullglob
     # Every shared test, by glob: a new one needs no edit here. JUST is for
-    # gate.test.py and ci_workflow.test.py, which run recipes themselves.
+    # the tests that run recipes themselves (gate_lib.commands).
     export JUST="{{just_executable()}}"
     for f in examples/_shared/*.test.mjs; do node "$f"; done
     for f in examples/_shared/*.test.py; do uv run "$f"; done

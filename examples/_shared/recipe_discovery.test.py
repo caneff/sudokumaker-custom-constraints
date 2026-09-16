@@ -1,10 +1,9 @@
-# Two recipes find their files by glob, not by a hand-kept list (#351):
+# Two recipes find their files by glob, not by a hand-kept list:
 #
 #   - `just test` runs every examples/_shared/*.test.mjs and *.test.py;
 #   - `just verify-isofill` proves every examples/isofill/gen*.json.
 #
-# A list drifts: gen_32g.json shipped for weeks with no uniqueness proof
-# because nobody added it to verify-isofill. So each recipe runs against a
+# A hand-kept list lets a new file go unrun. So each recipe runs against a
 # copy of the justfile in a scratch tree holding a file no list could name,
 # and must pick it up; verify-isofill must also name every gen file in the
 # real tree.
@@ -23,7 +22,7 @@ from gate_lib import commands
 
 if __name__ == "__main__":
     gens = sorted(ROOT.glob("examples/isofill/gen*.json"))
-    assert any(g.name == "gen_32g.json" for g in gens), "gen_32g.json is gone"
+    assert gens, "no isofill gen files found"
     ran = commands("verify-isofill")
     unproved = [
         g.name

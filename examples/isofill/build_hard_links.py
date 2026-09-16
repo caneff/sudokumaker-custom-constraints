@@ -34,7 +34,7 @@ def write_links(out_dir=HERE):
         # A hard-fixture link never ships the solution: every non-given cell is {}.
         stripped = strip_to_givens(doc)
         check_stripped(stripped)
-        (Path(out_dir) / out_name).write_text(encode_link(stripped))
+        (out_dir / out_name).write_text(encode_link(stripped))
         print(f"{out_name}: {n_clues} givens, rest empty")
 
 
