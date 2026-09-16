@@ -1,8 +1,11 @@
 """check_uniqueness on tiny CpModels, each outcome exercised directly (#486).
 
 Covers a one-solution model, a two-solution model, an invalid model (an
-IntVar with lb > ub), and a solve that times out -- the four statuses
-`check_uniqueness` can report.
+IntVar with lb > ub), and a solve that times out through real CP-SAT
+solves; `_terminal`'s own table (all five statuses, on both the first
+solve and the retry) is checked directly against fed-in status constants,
+since forcing a real second-solve timeout deterministically would need a
+model asymmetric enough to be flaky across machines.
 
     uv run finders/hunt/test_uniqueness.py
 """
@@ -14,7 +17,7 @@ from pathlib import Path
 from ortools.sat.python import cp_model
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uniqueness import check_uniqueness
+from uniqueness import _terminal, check_uniqueness
 
 ok = True
 
@@ -82,5 +85,45 @@ m4.Add(sum(w * x for w, x in zip(weights, xs, strict=True)) == target)
 result4 = check_uniqueness(m4, xs, time_limit=0.001, workers=1)
 check("a solve that times out is reported as timeout", result4.status == "timeout")
 check("timeout is never reported as unique", not result4.unique)
+
+# _terminal's table, every status on both the first solve (first=None) and
+# the retry (first=(1, 2)), including the branch a real second solve can't
+# deterministically reach: the retry timing out or coming back invalid.
+WITNESS = (1, 2)
+
+
+def matches(result, status, first):
+    return result.status == status and result.first == first and result.second is None
+
+
+check(
+    "MODEL_INVALID on the first solve is invalid, no witness",
+    matches(_terminal(cp_model.MODEL_INVALID, None), "invalid", None),
+)
+check(
+    "MODEL_INVALID on the retry is invalid, first witness kept",
+    matches(_terminal(cp_model.MODEL_INVALID, WITNESS), "invalid", WITNESS),
+)
+check(
+    "UNKNOWN on the first solve is timeout, no witness",
+    matches(_terminal(cp_model.UNKNOWN, None), "timeout", None),
+)
+check(
+    "UNKNOWN on the retry is timeout, first witness kept",
+    matches(_terminal(cp_model.UNKNOWN, WITNESS), "timeout", WITNESS),
+)
+check(
+    "INFEASIBLE on the first solve is infeasible, no witness",
+    matches(_terminal(cp_model.INFEASIBLE, None), "infeasible", None),
+)
+check(
+    "INFEASIBLE on the retry is unique, first witness kept",
+    matches(_terminal(cp_model.INFEASIBLE, WITNESS), "unique", WITNESS),
+)
+check(
+    "OPTIMAL/FEASIBLE on either solve signals success, not a terminal result",
+    _terminal(cp_model.OPTIMAL, None) is None
+    and _terminal(cp_model.FEASIBLE, WITNESS) is None,
+)
 
 sys.exit(0 if ok else 1)

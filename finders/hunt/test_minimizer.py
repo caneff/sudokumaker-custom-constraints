@@ -54,8 +54,12 @@ stripped = strip(SOLUTION, keep=set(), test=is_unique)
 check("at least one given was removed", len(stripped) < len(SOLUTION))
 check("the stripped puzzle is still unique", is_unique(stripped))
 check(
-    "every remaining given still matches the solution",
-    all(SOLUTION[c] == v for c, v in stripped.items()),
+    "every remaining given is a real given, not an invented value",
+    set(stripped.items()) <= set(SOLUTION.items()),
+)
+check(
+    "stripping this 2x2 Latin square reaches its true minimum: one clue",
+    len(stripped) == 1,
 )
 
 # A `keep` cell is never removed even when the puzzle would stay unique

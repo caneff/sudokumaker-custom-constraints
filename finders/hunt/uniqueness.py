@@ -1,11 +1,8 @@
 """Uniqueness check on a raw CpModel (#483/#486): solve, exclude the
 solution found, re-solve, and expect infeasible. Works on any `CpModel` and
 list of decision variables -- no gridfind, no finder-specific structure.
-
-Generalizes zombo-brainanas's `unique()`/`solve_valid()` loop
-(finders/zombo_brainanas_cpsat.py) with its circle-hunt plumbing stripped
-out: no objective, no cut-and-retry repair, no `release_heap` (#483 leaves
-those to the finder that needs them).
+See `finders/zombo_brainanas_cpsat.py`'s `unique()`/`solve_valid()` for the
+circle-hunt version this generalizes.
 """
 
 from typing import NamedTuple
@@ -15,9 +12,11 @@ from ortools.sat.python import cp_model
 
 class UniquenessResult(NamedTuple):
     """`status` is one of "unique", "not_unique", "infeasible", "timeout",
-    "invalid". `first`/`second` are witnesses -- tuples of values aligned
-    with the `variables` passed to `check_uniqueness` -- with `second` set
-    only when `status` is "not_unique"."""
+    "invalid" -- five outcomes, since a model with no givens at all is a
+    real, distinct case from one with two solutions. `first`/`second` are
+    witnesses -- tuples of values aligned with the `variables` passed to
+    `check_uniqueness` -- with `second` set only when `status` is
+    "not_unique"."""
 
     status: str
     first: tuple | None = None
@@ -35,6 +34,26 @@ def _solve(model, time_limit, workers):
     return solver.Solve(model), solver
 
 
+def _terminal(status, first):
+    """The `UniquenessResult` for a status that isn't feasible/optimal, or
+    `None` when the solve succeeded and the caller should extract a
+    witness and continue. `first` is the witness from the first solve, or
+    `None` when classifying that first solve itself -- its presence is
+    what tells an INFEASIBLE retry (unique) apart from an INFEASIBLE first
+    solve (no solution at all)."""
+    if status == cp_model.MODEL_INVALID:
+        return UniquenessResult("invalid", first)
+    if status == cp_model.UNKNOWN:
+        return UniquenessResult("timeout", first)
+    if status == cp_model.INFEASIBLE:
+        return (
+            UniquenessResult("unique", first)
+            if first is not None
+            else UniquenessResult("infeasible")
+        )
+    return None
+
+
 def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
     """True (via `.unique`) iff `model` has exactly one solution over
     `variables`. A timeout or an invalid model is reported as such and
@@ -47,12 +66,9 @@ def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
     """
     variables = list(variables)
     status, solver = _solve(model, time_limit, workers)
-    if status == cp_model.MODEL_INVALID:
-        return UniquenessResult("invalid")
-    if status == cp_model.UNKNOWN:
-        return UniquenessResult("timeout")
-    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return UniquenessResult("infeasible")
+    terminal = _terminal(status, None)
+    if terminal is not None:
+        return terminal
     first = tuple(solver.Value(v) for v in variables)
 
     diffs = []
@@ -64,11 +80,8 @@ def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
     model.AddBoolOr(diffs)
 
     status, solver = _solve(model, time_limit, workers)
-    if status == cp_model.MODEL_INVALID:
-        return UniquenessResult("invalid", first)
-    if status == cp_model.UNKNOWN:
-        return UniquenessResult("timeout", first)
-    if status == cp_model.INFEASIBLE:
-        return UniquenessResult("unique", first)
+    terminal = _terminal(status, first)
+    if terminal is not None:
+        return terminal
     second = tuple(solver.Value(v) for v in variables)
     return UniquenessResult("not_unique", first, second)

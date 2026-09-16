@@ -57,6 +57,38 @@ check("stalled once the window elapses with no new solution", cb.stalled())
 cb.now = 7.5
 cb.on_solution_callback()
 check("a new solution clears the stall", not cb.stalled())
+check(
+    "first_at still holds the first solution's time, not the second's",
+    cb.first_at == 1.0,
+)
+
+# A solve that never finds any solution still has to end: `stalled()` is
+# polled from the very first check, before any solution exists, so it
+# anchors its own clock there instead of waiting on a solution that may
+# never come.
+never_found = FakeClockCallback(stall=5)
+never_found.now = 0.0
+check(
+    "the first poll sets a baseline rather than reporting stalled",
+    not never_found.stalled(),
+)
+never_found.now = 4.0
+check("still within the window, no solution ever found", not never_found.stalled())
+never_found.now = 6.0
+check(
+    "a solve making no progress at all stalls once its own window elapses",
+    never_found.stalled(),
+)
+
+# stall=0 disables the watchdog entirely, matching zombo-brainanas's own
+# "0 means never stall" convention.
+disabled = FakeClockCallback(stall=0)
+disabled.now = 0.0
+disabled.stalled()  # would set a baseline if stall=0 didn't short-circuit
+disabled.now = 10_000.0
+check(
+    "stall=0 never reports stalled, however long the solve runs", not disabled.stalled()
+)
 
 
 class FakeSolver:
@@ -89,15 +121,40 @@ class FakeStalledAfter:
 
 
 solver = FakeSolver()
-callback = FakeStalledAfter(calls_before=2)
+callback = FakeStalledAfter(calls_before=0)
 start = time.monotonic()
 status = solve_with_watchdog(solver, model=None, callback=callback)
 elapsed = time.monotonic() - start
 check("a stalled solve is stopped, not left to finish on its own", status == "STOPPED")
 check(
     "the watchdog stops it near its own poll interval, not the solver's timeout",
-    elapsed < 4,
+    elapsed < 3,
 )
+
+
+class FakeRaisingSolver:
+    """A solve that dies mid-search (a callback exception, a solver crash)
+    instead of returning a status."""
+
+    def Solve(self, model, callback):
+        raise RuntimeError("solver crashed")
+
+    def StopSearch(self):
+        pass
+
+
+try:
+    solve_with_watchdog(
+        FakeRaisingSolver(), model=None, callback=FakeStalledAfter(calls_before=999)
+    )
+    check("an exception in the solve thread propagates out, not KeyError", False)
+except RuntimeError as exc:
+    check(
+        "an exception in the solve thread propagates out, not KeyError",
+        str(exc) == "solver crashed",
+    )
+except KeyError:
+    check("an exception in the solve thread propagates out, not KeyError", False)
 
 # Real CP-SAT smoke test: an instantly-solved model finds its one solution
 # and stops cleanly, without ever looking stalled.
