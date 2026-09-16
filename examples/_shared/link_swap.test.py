@@ -287,6 +287,17 @@ if __name__ == "__main__":
                 "--out",
                 out,
             ],
+            # --backend on a rebuild that never reads it: the bare boards and
+            # running-start's template take their backend from the tree
+            ["isofill", "--backend", str(ex / "isofill/main.js"), "--out", out],
+            ["fillomino", "--backend", str(ex / "fillomino/main.js"), "--out", out],
+            [
+                "running-start",
+                "--backend",
+                str(ex / "running-start/main-global.js"),
+                "--out",
+                out,
+            ],
         ]
         for example, *argv in refused:
             run = subprocess.run(
@@ -296,5 +307,24 @@ if __name__ == "__main__":
             )
             assert run.returncode != 0, f"{example} {argv} was accepted: {run.stdout}"
             assert not pathlib.Path(out).exists(), f"{example} {argv} wrote a link"
+
+        # house-gac's rebuild does read --backend, so there it is accepted
+        run = subprocess.run(
+            [
+                sys.executable,
+                str(ex / "house-gac/build_link.py"),
+                "--backend",
+                str(ex / "house-gac/main.js"),
+                "--out",
+                out,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert run.returncode == 0, run.stderr
+        assert (
+            pathlib.Path(out).read_text()
+            == (ex / "house-gac/PUZZLE_LINK.txt").read_text()
+        )
 
     print("ok")

@@ -192,13 +192,15 @@ def swap_build(board, component, out, backend=None):
     return check_and_write(base, doc, name, out)
 
 
-def swap_main(example_dir, parser=None, rebuild=None):
+def swap_main(example_dir, parser=None, rebuild=None, rebuild_reads_backend=False):
     """The command line every build_link.py shares.
 
     `--component FILE --out FILE [--board LINK] [--backend FILE]` runs
     `swap_build` against `--board`, or the example's PUZZLE_LINK.txt when it
     is omitted. Without `--component`, `rebuild(args, parser)` runs instead --
     the example's own from-source build -- and an example with none refuses.
+    A rebuild that builds its backend from a file named by --backend says so
+    with `rebuild_reads_backend`; every other rebuild refuses the flag.
 
     `parser` carries an example's own flags; the four above are added to it.
     A flag the chosen path cannot honour is refused, never ignored: an
@@ -216,6 +218,10 @@ def swap_main(example_dir, parser=None, rebuild=None):
             p.error("give --component with --out")
         if args.board is not None:
             p.error("--board names the link a --component swaps into; give --component")
+        if args.backend is not None and not rebuild_reads_backend:
+            p.error(
+                "--backend swaps a backend in beside --component; this rebuild reads its own"
+            )
         rebuild(args, p)
         return
     for dest in own:

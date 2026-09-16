@@ -179,4 +179,4 @@ if __name__ == "__main__":
         help="build the annotated link: embedded code keeps every comment "
         "instead of the usual full strip (#433)",
     )
-    swap_main(HERE, p, rebuild)
+    swap_main(HERE, p, rebuild, rebuild_reads_backend=True)
