@@ -147,6 +147,14 @@ Use these terms exactly. Do not drift to synonyms.
   where a comparison actually uses it. Not to be confused with the baseline
   half of a same-board pair, which need not live under `original/`. See
   `docs/example-layout.md`.
+- **finder** — code that searches for grids fitting a rule, under `finders/`.
+  Unlike **generation**, which builds one example's puzzle, a finder explores a
+  rule's space for candidates worth building on.
+- **hunt** — one run of a finder: it writes candidates and a summary to an
+  output directory. Not a finder: one finder runs many hunts.
+- **finder rule** — a rule a finder states itself because gridfind has no layer
+  for it. It stays a finder rule until it is **promoted**: turned into a
+  gridfind layer with its fixtures, once a second finder needs it.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 
