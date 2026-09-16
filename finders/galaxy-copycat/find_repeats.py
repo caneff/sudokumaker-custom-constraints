@@ -2,7 +2,7 @@
 whether some shared value's repeat count is CP-SAT-feasible on the paired
 lines; writes survivors to .scratch/copycat-rsl/p22/repeats.json.
 
-Usage: uv run find_repeats.py
+Run from the repo root: uv run finders/galaxy-copycat/find_repeats.py
 """
 
 import json

@@ -1,8 +1,9 @@
 """Solution stats for the five p22 copycat-RSL setups in
 .scratch/copycat-rsl/p22/: solution count, distinct digit grids, single-given
-uniqueness, and which grids see more than one copycat placement.
+uniqueness, and which grids see more than one copycat placement. The five
+p{i}.json setups are hand-built, not produced by a script in this repo.
 
-Usage: uv run distinct_grids.py
+Run from the repo root: uv run finders/galaxy-copycat/distinct_grids.py
 """
 
 import json

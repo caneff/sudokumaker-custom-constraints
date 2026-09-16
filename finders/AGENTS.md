@@ -24,6 +24,5 @@ drivers that launch a hunt overnight stay under `docs/research/` (#469).
   profiling the loop, the `ctypes` C port, counting what you found:
   `docs/agents/grid-finder-lessons.md`.
 - `finders/galaxy-copycat/`'s write-ups live in `docs/research/2026-09-14-copycat-scan.md`
-  and `docs/research/2026-09-14-galaxy-copycat-design.md`; its boards, at the
-  path `find_repeats.py` hardcodes, are
+  and `docs/research/2026-09-14-galaxy-copycat-design.md`; its boards are
   `docs/research/2026-09-14-galaxy-copycat/boards/`.
