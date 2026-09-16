@@ -1,14 +1,15 @@
-"""Toy finder for the hunt protocol's own tests (#484/#487): random 4x4 shadings.
+"""Slow toy finder for the hunt resume tests (#487): sleeps briefly per seed.
 
-Not a real finder rule -- it exists so test_toy_hunt.py can drive the `hunt`
-CLI end to end without a real search. `verify` is trivial: an even number of
-shaded cells passes, odd is rejected, so a fresh hunt has real rejects to
-prove `examples.jsonl` never gets one.
+Same trivial rule as toy_finder.py (an even shaded-cell count passes), but
+`propose` sleeps a few milliseconds so a subprocess kill lands reliably
+mid-hunt in a test, instead of racing a hunt that finishes before the test
+can send the signal.
 
-    uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
+    uv run finders/hunt/toy_slow_finder.py --out DIR --seeds START:END
 """
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -17,12 +18,14 @@ from driver import run
 from protocol import Verdict
 
 SIDE = 4
+SLEEP_SECONDS = 0.01
 
 
-class ToyFinder:
+class SlowToyFinder:
     symmetry = D4
 
     def propose(self, rng):
+        time.sleep(SLEEP_SECONDS)
         return tuple(rng.randint(0, 1) for _ in range(SIDE * SIDE))
 
     def verify(self, candidate):
@@ -38,4 +41,4 @@ class ToyFinder:
 
 
 if __name__ == "__main__":
-    sys.exit(run(ToyFinder(), sys.argv[1:]))
+    sys.exit(run(SlowToyFinder(), sys.argv[1:]))
