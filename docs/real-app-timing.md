@@ -58,8 +58,8 @@ The rest of this doc is the mechanics behind that command: how the driver
 reads the app's readout, how to strip a link so the solver searches, and how
 the offline recording works.
 
-For an example with a `build_link.py` (hit-counts, isofill, numbered-rooms,
-running-start, skyscraper), `just time <example>` runs the whole loop below in
+For an example with a `build_link.py` (every example; each one's command line
+is `examples/_shared/link_swap.swap_main`), `just time <example>` runs the whole loop below in
 one command: it builds a candidate link from the working-tree component,
 times baseline and candidate 3 reps each in both modes, and prints one
 paste-ready row per mode (date, app version, board, both medians, ratio, and
@@ -73,8 +73,8 @@ judged against no longer exists in the tree — and `just time` refuses rather
 than time the change against itself. Commit the regenerated link, or time first
 and rebuild after.
 `--board <file>` times a different committed link in the example dir instead
-of `PUZZLE_LINK.txt`; only an example whose `build_link.py` takes `--board`
-accepts it, and the row's board column then names the file. The
+of `PUZZLE_LINK.txt` (`link_swap.swap_build` swaps the candidate into it),
+and the row's board column then names the file. The
 manual steps below are what it automates, and still apply to an example with
 no `build_link.py` yet.
 

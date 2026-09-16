@@ -27,7 +27,7 @@ const mod = load('UpToNComponent.js', ['setParams', 'update', 'validate'])
 // The rule, stated a third time (CODING_STANDARDS.md, "The rule has one
 // home"): the sum of the digits up to and including the first `target`, or
 // null when the line never holds it. It must agree with the component and
-// with build_link.py's `up_to_n` and its CP-SAT model.
+// with build_size.py's `up_to_n` and its CP-SAT model.
 function upToN (digits, target) {
   let sum = 0
   for (const d of digits) {

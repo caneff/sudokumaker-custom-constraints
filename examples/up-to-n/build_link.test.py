@@ -1,4 +1,4 @@
-# Checks on the Up to N builder and the board it ships.
+# Checks on the Up to N rule (build_size.SPEC) and the boards it ships.
 #
 # 1. The rule's CP-SAT model and the JS component's `validate` agree on
 #    hand-built lines: for each line, target and clue, the model with the line
@@ -26,11 +26,24 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 import cpsat
-from build_link import CONSTRAINT_NAME, SPEC, add_up_to_n, build
-from build_size import MINIMAL_9X9, SHIPPED_9X9_CLUES, shipped_9x9
-from framebuild import board_files, load_board, make_lines, rebuild, unique
+from build_size import (
+    CONSTRAINT_NAME,
+    MINIMAL_9X9,
+    SHIPPED_9X9_CLUES,
+    SPEC,
+    add_up_to_n,
+    shipped_9x9,
+)
+from framebuild import (
+    NO_RING_RULES_PREFIX,
+    board_files,
+    load_board,
+    make_lines,
+    rebuild,
+    unique,
+)
 from link_codec import decode_puzzle
-from link_swap import blanked
+from link_swap import swap_build
 from minify import minify_file
 from ortools.sat.python import cp_model
 
@@ -115,16 +128,14 @@ def shipped_board_matches_its_link(link_name, gen_name):
     names = [c.get("definition", {}).get("name") for c in puzzle["constraints"]]
     assert "Grid Rows and Columns" in names
     assert (puzzle["width"], puzzle["height"]) == (n, n), "no ring around the grid"
-    assert puzzle["comment"].startswith("Normal sudoku rules apply. ")
     assert (puzzle["minDigit"], puzzle["maxDigit"]) == (1, n)
 
-    # Givens: exactly the recorded ones, and nothing entered anywhere else.
+    # Givens: exactly the recorded ones. Nothing entered elsewhere is
+    # check_layout's rule.
     for i, cell in enumerate(puzzle["cells"]):
         r, c = divmod(i, n)
         if (r, c) in board.givens:
             assert cell == {"value": board.grid[r][c], "given": True}
-        else:
-            assert "value" not in cell, f"r{r}c{c} carries a value"
 
     lc = next(
         c
@@ -228,18 +239,17 @@ def test_shipped_9x9_is_the_minimal_board_with_clues_added():
     assert shipped == shipped_9x9(minimal)
 
 
-def test_component_swap_changes_only_that_component():
+def test_committed_component_swaps_back_to_the_board():
+    board = HERE / "PUZZLE_LINK.txt"
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "candidate.txt"
-        build(HERE / "UpToNComponent.js", out)
-        base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-        cand = decode_puzzle(out.read_text().strip())
-        assert blanked(cand, CONSTRAINT_NAME) == blanked(base, CONSTRAINT_NAME)
+        link = swap_build(board, HERE / "UpToNComponent.js", out)
+        assert link == board.read_text().strip()
 
 
 def test_spec_is_a_no_ring_spec():
     assert SPEC.groups_fn is not None
-    assert SPEC.rules_prefix == "Normal sudoku rules apply. "
+    assert SPEC.rules_prefix == NO_RING_RULES_PREFIX
     assert SPEC.bent_lines is False, "a marker names a straight row or column"
 
 

@@ -75,6 +75,7 @@ test:
     uv run examples/_shared/link_codec.test.py
     uv run examples/_shared/probe_link.test.py
     uv run examples/_shared/link_swap.test.py
+    uv run examples/_shared/board_checks.test.py
     uv run examples/_shared/time_example.test.py
     uv run examples/_shared/component_scan.test.py
     uv run examples/_shared/count_calls.test.py

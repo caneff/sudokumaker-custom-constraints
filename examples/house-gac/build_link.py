@@ -24,8 +24,8 @@
 #   uv run --with lzstring examples/house-gac/build_link.py \
 #       --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
 #
-# --board names a committed link instead: the candidate component's code is
-# swapped into that link and nothing else changes, the way
+# --component swaps a candidate's code into PUZZLE_LINK.txt, or into --board,
+# and nothing else changes (_shared/link_swap.swap_main) -- the way
 # `just time house-gac --board <fixture>` reaches a fixture other than the
 # default board (the room #428 leaves for the harder #427 fixture, kept
 # beside this one under its own name once it lands).
@@ -54,15 +54,14 @@ BACKEND = HERE / "main.js"
 
 CONSTRAINT_NAME = "House GAC (standalone)"
 TIMED_COMPONENT = "HouseGacComponent"
-RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 sys.path.insert(0, str(REPO / "examples/_shared"))
 sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
 from cpsat import SOLVED, has_second_solution, solver
+from framebuild import RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
-from link_swap import check_and_write, find_constraint, swap_component_code
-from minify import minify_file
+from link_swap import find_constraint, swap_main
 
 
 def prove_unique(givens):
@@ -156,39 +155,28 @@ def check(link, doc):
     assert names == [TIMED_COMPONENT], f"expected one {TIMED_COMPONENT}, got {names}"
 
 
-def build_on_board(component_path, out_path, board_path):
-    """Swap the component's code into a committed link, changing nothing
-    else -- the path `just time house-gac --board <link>` takes."""
-    base = decode_puzzle(pathlib.Path(board_path).read_text().strip())
-    code = minify_file(pathlib.Path(component_path))
-    doc = swap_component_code(base, CONSTRAINT_NAME, TIMED_COMPONENT, code)
-    return check_and_write(base, doc, CONSTRAINT_NAME, out_path)
+def rebuild(args, _parser):
+    """No --component: rebuild the link from source, to --out or
+    PUZZLE_LINK.txt."""
+    out = args.out or HERE / "PUZZLE_LINK.txt"
+    link, doc, sol, n_givens = build(
+        COMPONENT, args.backend or BACKEND, keep_comments=args.keep_comments
+    )
+    check(link, doc)
+    pathlib.Path(out).write_text(link + "\n")
+    print(f"givens carried over: {n_givens}")
+    print("unique; solution rows:")
+    for r in range(9):
+        print("  " + "".join(str(sol[r, c]) for c in range(9)))
+    print(f"wrote {out}: {len(link)} characters")
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--component", default=COMPONENT)
-    p.add_argument("--backend", default=BACKEND)
-    p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
-    p.add_argument("--board", help="committed link to swap the component into")
     p.add_argument(
         "--keep-comments",
         action="store_true",
         help="build the annotated link: embedded code keeps every comment "
         "instead of the usual full strip (#433)",
     )
-    args = p.parse_args()
-    if args.board:
-        link = build_on_board(args.component, args.out, args.board)
-        print(f"wrote {args.out} ({len(link)} chars, from {args.board})")
-    else:
-        link, doc, sol, n_givens = build(
-            args.component, args.backend, keep_comments=args.keep_comments
-        )
-        check(link, doc)
-        pathlib.Path(args.out).write_text(link + "\n")
-        print(f"givens carried over: {n_givens}")
-        print("unique; solution rows:")
-        for r in range(9):
-            print("  " + "".join(str(sol[r, c]) for c in range(9)))
-        print(f"wrote {args.out}: {len(link)} characters")
+    swap_main(HERE, p, rebuild)

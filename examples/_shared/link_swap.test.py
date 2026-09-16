@@ -12,15 +12,17 @@ import itertools
 import pathlib
 import tempfile
 
-from link_codec import decode_puzzle
+from link_codec import decode_puzzle, encode_link
 from link_swap import (
     blanked,
     check_and_write,
     find_constraint,
     frame_and_comment_only,
     replace_constraint_code,
+    swap_build,
     swap_component_code,
 )
+from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK.txt"
@@ -166,5 +168,84 @@ if __name__ == "__main__":
     assert frame_and_comment_only(shifted, CONSTRAINT_NAME) != frame_and_comment_only(
         base, CONSTRAINT_NAME
     ), "a decoration line that actually moved must compare unequal"
+
+    # swap_build: the one path every build_link.py takes to a same-board pair.
+    # It finds the constraint by the component it registers -- hit-counts
+    # registers three on one constraint, and numbered-rooms' local boards call
+    # theirs by another name -- swaps that component's code (and, given one,
+    # the backend's), and writes a link that differs from the board only there.
+    hc = HERE.parent / "hit-counts"
+    hc_board = hc / "PUZZLE_LINK.txt"
+    hc_base = decode_puzzle(hc_board.read_text().strip())
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        out = tmp / "out.txt"
+        candidate = tmp / "HitCountsJointComponent.js"
+        candidate.write_text(
+            (hc / "HitCountsJointComponent.js").read_text()
+            + "\nconst CANDIDATE_EDIT = 1\n"
+        )
+
+        link = swap_build(hc_board, candidate, out)
+        doc = decode_puzzle(out.read_text().strip())
+        assert decode_puzzle(link) == doc, "swap_build must write the link it returns"
+        assert blanked(doc, "Hit Counts") == blanked(hc_base, "Hit Counts")
+
+        def codes(d):
+            defn = find_constraint(d, "Hit Counts")["definition"]
+            return defn["backend"]["code"], {
+                c["name"]: c["code"] for c in defn["components"]
+            }
+
+        (base_backend, base_comps), (new_backend, new_comps) = (
+            codes(hc_base),
+            codes(doc),
+        )
+        assert new_backend == base_backend, "no backend given: backend untouched"
+        assert new_comps.keys() == base_comps.keys()
+        changed = [n for n in new_comps if new_comps[n] != base_comps[n]]
+        assert changed == ["HitCountsJointComponent"], changed
+        assert new_comps["HitCountsJointComponent"] == minify_file(candidate)
+
+        # the shipped component swapped back in is the board, byte for byte
+        assert (
+            swap_build(hc_board, hc / "HitCountsJointComponent.js", out)
+            == hc_board.read_text().strip()
+        )
+
+        # a backend file swaps the backend too, and nothing else
+        backend = tmp / "main-global.js"
+        backend.write_text("const BACKEND_EDIT = 1\n")
+        both = decode_puzzle(swap_build(hc_board, candidate, out, backend=backend))
+        assert codes(both)[0] == minify_file(backend) != base_backend
+        assert codes(both)[1] == new_comps
+
+        # the board argument is the board swapped into, not PUZZLE_LINK.txt
+        other = decode_puzzle(hc_board.read_text().strip())
+        other["puzzle"]["name"] += " (other board)"
+        other_board = tmp / "other.txt"
+        other_board.write_text(encode_link(other) + "\n")
+        on_other = decode_puzzle(swap_build(other_board, candidate, out))
+        assert blanked(on_other, "Hit Counts") == blanked(other, "Hit Counts")
+
+        # found by component, whatever the constraint is called on this board
+        nr = HERE.parent / "numbered-rooms"
+        local = decode_puzzle(
+            swap_build(
+                nr / "PUZZLE_LINK_local.txt", nr / "NumberedRoomsComponent.js", out
+            )
+        )
+        assert local == decode_puzzle(
+            (nr / "PUZZLE_LINK_local.txt").read_text().strip()
+        )
+
+        # a component no constraint registers fails loud
+        stranger = tmp / "NotRegisteredComponent.js"
+        stranger.write_text("function update () {}\n")
+        try:
+            swap_build(hc_board, stranger, out)
+            raise AssertionError("expected a failure for an unregistered component")
+        except ValueError as e:
+            assert "NotRegisteredComponent" in str(e), e
 
     print("ok")
