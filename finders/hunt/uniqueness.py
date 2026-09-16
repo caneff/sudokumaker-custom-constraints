@@ -60,9 +60,9 @@ def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
     never as unique -- a stripper that trusted either would keep a clue
     that isn't actually load-bearing: sound, never lean.
 
-    Mutates `model`: adds the exclusion constraint that rules the first
-    solution out, so a caller that needs the model unchanged afterwards
-    should pass a copy (`fresh = cp_model.CpModel(); fresh.CopyFrom(model)`).
+    Never mutates `model`: the exclusion constraint that rules the first
+    solution out is added to an internal copy, so the caller's model is
+    safe to reuse across repeated calls.
     """
     variables = list(variables)
     status, solver = _solve(model, time_limit, workers)
@@ -71,17 +71,23 @@ def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
         return terminal
     first = tuple(solver.Value(v) for v in variables)
 
-    diffs = []
-    for v, value in zip(variables, first, strict=True):
-        d = model.NewBoolVar("")
-        model.Add(v != value).OnlyEnforceIf(d)
-        model.Add(v == value).OnlyEnforceIf(d.Not())
-        diffs.append(d)
-    model.AddBoolOr(diffs)
+    retry_model = cp_model.CpModel()
+    retry_model.Proto().copy_from(model.Proto())
+    retry_variables = [
+        retry_model.GetIntVarFromProtoIndex(v.Index()) for v in variables
+    ]
 
-    status, solver = _solve(model, time_limit, workers)
+    diffs = []
+    for v, value in zip(retry_variables, first, strict=True):
+        d = retry_model.NewBoolVar("")
+        retry_model.Add(v != value).OnlyEnforceIf(d)
+        retry_model.Add(v == value).OnlyEnforceIf(d.Not())
+        diffs.append(d)
+    retry_model.AddBoolOr(diffs)
+
+    status, solver = _solve(retry_model, time_limit, workers)
     terminal = _terminal(status, first)
     if terminal is not None:
         return terminal
-    second = tuple(solver.Value(v) for v in variables)
+    second = tuple(solver.Value(v) for v in retry_variables)
     return UniquenessResult("not_unique", first, second)
