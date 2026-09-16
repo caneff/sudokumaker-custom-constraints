@@ -616,3 +616,10 @@ feasible (two 2s and four 4s in a 2x4 block), so the house rule is what
 forbids it: digit d must sit d times in d different rows and d different
 columns while each of those cells sees exactly d shaded neighbours, and on a
 6x6 that never closes. Probe output in `.scratch/counting_shaded/six/cc_probe.txt`.
+
+### Counting circles on 7x7 and 8x8
+
+7x7 Latin: 0 shapes, every size exhausted (`.scratch/counting_shaded/six/cc7.txt`).
+8x8 Latin: stopped by Chris after 33 minutes with no shape found and no
+exhaustion proof (the script logged only hits, so the size reached is
+unknown); the 8x8 2x4-box run never started. Open, not disproved.
