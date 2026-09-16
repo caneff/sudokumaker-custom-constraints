@@ -14,8 +14,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 STUB = '#!/bin/sh\necho "$(basename "$0") $*" >> "$GATE_LOG"\n'
 
 
-def commands(recipe):
-    """The commands `just <recipe>` runs, one string each, in order."""
+def commands(recipe, root=ROOT):
+    """The commands `just <recipe>` runs from `root`, one string each, in order."""
     just = os.environ.get("JUST") or shutil.which("just")
     assert just, "no just executable: set JUST or put just on PATH"
     with tempfile.TemporaryDirectory() as tmp:
@@ -33,8 +33,8 @@ def commands(recipe):
             "GATE_LOG": str(log),
         }
         r = subprocess.run(
-            [just, "--justfile", str(ROOT / "justfile"), recipe],
-            cwd=ROOT,
+            [just, "--justfile", str(root / "justfile"), recipe],
+            cwd=root,
             env=env,
             capture_output=True,
             text=True,

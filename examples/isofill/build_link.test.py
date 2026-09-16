@@ -4,14 +4,15 @@
 # sibling component to leave untouched (contrast the local-groups examples).
 # Mirrors examples/skyscraper/build_link.test.py.
 #
-# Also covers build_hard_links.py's FIXTURES: each hard-fixture link
-# (PUZZLE_LINK_30g.txt and friends) must reproduce build+strip of its own
-# gen_*.json exactly, so drift in a fixture is caught without running
-# build_hard_links.py itself.
+# Also covers build_hard_links.py's FIXTURES: write_links, run into a temp
+# dir with every subprocess call made to fail, must write each hard-fixture
+# link (PUZZLE_LINK_30g.txt and friends) byte-equal to the committed one, so
+# drift in a fixture is caught and the build stays in-process.
 #
 #   uv run --with lzstring examples/isofill/build_link.test.py
 
 import pathlib
+import subprocess
 import sys
 import tempfile
 
@@ -19,11 +20,11 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import build_hard_links
 from build_hard_links import FIXTURES
 from build_link import CONSTRAINT_NAME, build, build_on_board, check
-from link_codec import decode_puzzle, encode_link
+from link_codec import decode_puzzle
 from link_swap import blanked, find_constraint
-from probe_link import strip_to_givens
 
 if __name__ == "__main__":
     base_text = (HERE / "PUZZLE_LINK.txt").read_text().strip()
@@ -90,14 +91,20 @@ if __name__ == "__main__":
             ]["code"]
         ), "--board must carry the candidate component's code"
 
-    # each hard-fixture link matches build+strip of its own gen_*.json
-    for gen_name, link_name in FIXTURES.items():
-        committed = (HERE / link_name).read_text().strip()
-        link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / gen_name)
-        check(link, doc, n_clues)
-        stripped_text = encode_link(strip_to_givens(decode_puzzle(link)))
-        assert stripped_text == committed, (
-            f"{link_name} does not match build+strip of {gen_name}"
+    # build_hard_links writes the committed links byte for byte, spawning nothing
+    def no_subprocess(*args, **kwargs):
+        raise AssertionError(f"build_hard_links spawned a process: {args}")
+
+    subprocess.run = subprocess.Popen = no_subprocess
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        build_hard_links.write_links(tmp)
+        for link_name in FIXTURES.values():
+            assert (tmp / link_name).read_bytes() == (HERE / link_name).read_bytes(), (
+                f"build_hard_links wrote a {link_name} that differs from the committed one"
+            )
+        assert sorted(p.name for p in tmp.iterdir()) == sorted(FIXTURES.values()), (
+            "build_hard_links left extra files behind"
         )
 
     print("ok")
