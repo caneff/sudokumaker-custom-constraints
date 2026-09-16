@@ -82,4 +82,41 @@ with tempfile.TemporaryDirectory() as tmp:
     keys = [canonical_key(tuple(ex["grid"]), D4) for ex in examples]
     check("no two examples are equal under D4", len(keys) == len(set(keys)))
 
+    # A fresh hunt only: rerunning on the same --out must refuse rather than
+    # silently mix in more output (dedupe isn't reloaded across runs; #487
+    # is where a real resume makes that safe).
+    rerun = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+    )
+    check("rerunning on the same --out refuses (nonzero exit)", rerun.returncode != 0)
+    check(
+        "a refused rerun leaves examples.jsonl untouched",
+        len(
+            [line for line in (out / "examples.jsonl").read_text().splitlines() if line]
+        )
+        == len(examples),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # An empty seed range is a completed hunt that found nothing, not an
+    # error: all four files must still exist, summary.json's counts zero.
+    out = Path(tmp) / "hunt-out"
+    result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "5:5"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"empty range exits 0 (stderr: {result.stderr[-500:]})", result.returncode == 0
+    )
+    for name in ("examples.jsonl", "summary.json", "progress.jsonl", "run.json"):
+        check(f"empty range still writes {name}", (out / name).exists())
+    summary = json.loads((out / "summary.json").read_text())
+    check(
+        "empty range's summary.json has zero seeds_done and examples",
+        summary.get("seeds_done") == 0 and summary.get("examples") == 0,
+    )
+
 sys.exit(0 if ok else 1)

@@ -11,12 +11,14 @@ any list of such maps, for a rule whose symmetry is not the whole square.
 keys mean the same candidate up to that symmetry.
 """
 
+from functools import lru_cache
 from math import isqrt
 
 D4 = "D4"
 IDENTITY = "IDENTITY"
 
 
+@lru_cache
 def _d4_cell_maps(n):
     """The eight index maps of the n x n dihedral group, flat row-major."""
 
@@ -36,9 +38,6 @@ def _d4_cell_maps(n):
     return maps
 
 
-_D4_CACHE = {}
-
-
 def canonical_key(grid, group):
     grid = tuple(grid)
     if group == IDENTITY:
@@ -47,10 +46,7 @@ def canonical_key(grid, group):
         n = isqrt(len(grid))
         if n * n != len(grid):
             raise ValueError(f"D4 needs a square grid, got {len(grid)} cells")
-        maps = _D4_CACHE.get(n)
-        if maps is None:
-            maps = _d4_cell_maps(n)
-            _D4_CACHE[n] = maps
+        maps = _d4_cell_maps(n)
     else:
         maps = group
     return min(tuple(grid[i] for i in cell_map) for cell_map in maps)

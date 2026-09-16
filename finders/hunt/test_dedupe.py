@@ -77,9 +77,13 @@ check(
 
 # A custom group over a 2x2 grid: identity plus a diagonal transpose only
 # (not the full D4 of a 2x2 board), so a rotation-only duplicate must NOT
-# be merged even though a 90-degree rotation is in D4.
+# be merged even though a 90-degree rotation is in D4. The live cell sits
+# off the transpose's diagonal (not a fixed point of the map), so a broken
+# handler that silently drops the transpose and dedupes by identity alone
+# gives a different answer than the real one -- a live cell on the
+# diagonal would pass either way and prove nothing.
 tiny = [
-    [1, 0],
+    [0, 1],
     [0, 0],
 ]
 tiny_rotated_90 = rotate90(tiny)

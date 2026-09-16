@@ -1,11 +1,16 @@
 """The finder contract every hunt drives (#483/#484).
 
 A finder states only its rule and its search; `driver.run` supplies the
-output directory, dedupe and the CLI. See `finders/AGENTS.md` and
-docs/agents/... for the pointer from a new finder to this package.
+output directory, dedupe and the CLI. See `finders/AGENTS.md` for the
+pointer from a new finder to this package.
 """
 
+import sys
+from pathlib import Path
 from typing import Any, NamedTuple, Protocol
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dedupe import D4
 
 
 class Verdict(NamedTuple):
@@ -18,12 +23,13 @@ class Verdict(NamedTuple):
 class Finder(Protocol):
     """A finder rule: propose a candidate, verify it, say how to record it.
 
-    `symmetry` is the group `key()`'s grid dedupes under: `dedupe.D4`
-    (default expectation for a square-board rule), `dedupe.IDENTITY`, or a
-    custom list of cell maps (see dedupe.py).
+    `symmetry` is the group `key()`'s grid dedupes under: `dedupe.D4`,
+    `dedupe.IDENTITY`, or a custom list of cell maps (see dedupe.py). A
+    finder that leaves `symmetry` unset gets `dedupe.D4` from the driver --
+    the common, square-board case needs no code.
     """
 
-    symmetry: Any
+    symmetry: Any = D4
 
     def propose(self, rng) -> Any | None:
         """One candidate for this seed's rng, or None if this seed found
