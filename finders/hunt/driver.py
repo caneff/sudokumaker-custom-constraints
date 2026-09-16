@@ -46,6 +46,7 @@ import json
 import math
 import os
 import random
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -225,12 +226,20 @@ def _cleanup_partial_output(out):
     removed (a symlink, a read-only parent, ...) is reported instead of
     silently left behind (#509 review, C2) -- swallowing that failure
     would violate "no partial output files" with no signal it happened.
+
+    `renders/` (#490) is the one OUTPUT_FILES entry that's a directory, not
+    a file -- `unlink()` raises `IsADirectoryError` on it, so it gets
+    `rmtree` instead.
     """
     failures = []
     for name in (*OUTPUT_FILES, ".lock"):
         path = out / name
         try:
-            path.unlink()
+            if name == "renders":
+                if path.is_dir():
+                    shutil.rmtree(path)
+            else:
+                path.unlink()
         except FileNotFoundError:
             pass
         except OSError as e:
@@ -769,9 +778,16 @@ def run(finder, argv):
             # whatever the loop itself did (#509 Codex pass 1, finding 1).
             # Restoring this snapshot on that failure is what makes "left
             # exactly as found" true byte-for-byte, not just "not deleted".
+            # `renders/` (#490) is skipped: it's a directory, not a byte
+            # string to snapshot/restore, and it's a picture cache rather
+            # than a source of truth (examples.jsonl is) -- a render
+            # written during a resume attempt that then hits
+            # SymmetryMismatch is left as-is rather than rolled back, the
+            # same accepted gap as #522.
             resume_snapshot = {
                 name: (out / name).read_bytes() if (out / name).exists() else None
                 for name in OUTPUT_FILES
+                if name != "renders"
             }
             prior = json.loads(run_path.read_text())
             prior_argv = prior.get("argv")

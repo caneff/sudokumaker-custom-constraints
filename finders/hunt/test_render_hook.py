@@ -317,4 +317,74 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A render-providing finder that accepts (and renders) an example on
+    # one seed, then hits a SymmetryMismatch (#509/#511) on a later one,
+    # must still clean up fully: `_cleanup_partial_output` iterates
+    # OUTPUT_FILES and renders/ is the one entry there that's a directory,
+    # not a file -- `path.unlink()` raises `IsADirectoryError` on it if not
+    # special-cased, once a render has actually been written. Caught by
+    # rebasing this PR onto #488/#509 landing on main, not by the original
+    # render-hook review. Seed 0's candidate has a key() the length the
+    # symmetry group expects (4), so it's accepted and rendered; seed 1's
+    # has a different length, which is what canonical_key rejects.
+    out = Path(tmp) / "hunt-out"
+    render_symmetry_mismatch_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+from render import GridCanvas
+
+class RenderMismatchedLengthFinder:
+    symmetry = [(0, 1, 2, 3), (1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)]
+
+    def __init__(self):
+        self.calls = 0
+
+    def propose(self, rng):
+        # Seeds run 0, 1, 2, ... in order within one process (a fresh hunt
+        # never reorders them), so this counter is exactly the seed number
+        # -- just a marker `key()` below reads to alternate deterministically.
+        marker = self.calls
+        self.calls += 1
+        return marker
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"marker": candidate}}
+
+    def key(self, candidate):
+        return (0, 1, 2, 3) if candidate % 2 == 0 else (0, 1, 2, 3, 4)
+
+    def render(self, candidate):
+        return GridCanvas(3, 3, cell=10).image
+
+sys.exit(run(RenderMismatchedLengthFinder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            render_symmetry_mismatch_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a render-providing finder hitting a symmetry mismatch exits 2 "
+        f"(stderr: {result.stderr[-500:]})",
+        result.returncode == 2,
+    )
+    check(
+        "renders/ being a directory doesn't stop full cleanup after the mismatch",
+        not out.exists(),
+    )
+
 sys.exit(0 if ok else 1)
