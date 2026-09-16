@@ -31,7 +31,11 @@ there with the code.
 - **One hunt at a time, and `--workers 1` unless told otherwise.** This box is
   a WSL2 VM other agents share; oversubscribing it has hung the desktop. Check
   `uptime` before launching anything, and never let the total worker count
-  approach the core count — leave most of the cores for everyone else.
+  approach the core count — leave most of the cores for everyone else. The one
+  exception is the `finders/hunt/` driver's own `--workers` flag: it defaults
+  to 3 on its own (#488) and refuses to start above a 1-minute load of 24
+  unless `--force-load` is given, so a hunt built on the protocol and launched
+  with no `--workers` at all is already box-safe without the reminder.
 - Long runs go under `job-run --name <n>` and append to a progress file, so a
   kill does not lose the result.
 - Reprioritise a running hunt with SIGSTOP/SIGCONT rather than kill, and sync
