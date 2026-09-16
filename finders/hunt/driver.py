@@ -43,6 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, IDENTITY, canonical_key, validate_group
+from protocol import DEFAULT_WORKERS
 
 OUTPUT_FILES = (
     "examples.jsonl",
@@ -74,15 +75,23 @@ def _load1():
     production-visible CLI flag.
     """
     override = os.environ.get("HUNT_FAKE_LOAD1")
-    if override is not None:
-        return float(override)
-    return os.getloadavg()[0]
+    if not override:
+        return os.getloadavg()[0]
+    return float(override)
 
 
-def _check_load(args, load1):
+def _check_load(args):
     if args.force_load:
         return None
-    load = load1()
+    try:
+        load = _load1()
+    except ValueError:
+        print(
+            f"hunt: refusing to run -- HUNT_FAKE_LOAD1={os.environ.get('HUNT_FAKE_LOAD1')!r} "
+            "is not a number",
+            file=sys.stderr,
+        )
+        return 2
     if load > LOAD_LIMIT:
         print(
             f"hunt: refusing to run -- 1-minute load {load} is above {LOAD_LIMIT} "
@@ -129,7 +138,7 @@ def _parse_args(argv):
     parser = argparse.ArgumentParser(prog="hunt")
     parser.add_argument("--out", required=True)
     parser.add_argument("--seeds", required=True, type=_parse_seeds)
-    parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--force-load", action="store_true")
     return parser.parse_args(_merge_seeds_token(argv))
 
@@ -157,6 +166,17 @@ def _write_text_atomic(path, text):
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text)
     tmp.replace(path)
+
+
+def _resume_key(argv):
+    """The parts of `argv` that define a hunt's search space: `--out` and
+    `--seeds`. Box-safety knobs (`--workers`, `--force-load`) are excluded
+    on purpose (#488 review C1/P2) -- the box's load or a chosen worker
+    count differing between two invocations of the same hunt is not a
+    differing search, and the load gate's own "use --force-load" advice
+    must not be something the resume check then refuses."""
+    args = _parse_args(argv)
+    return (args.out, args.seeds)
 
 
 def _refuse(out_arg, why):
@@ -417,12 +437,8 @@ def _resume(finder, argv, args, out, prior):
     return 0
 
 
-def run(finder, argv, load1=_load1):
+def run(finder, argv):
     """Run or resume a hunt for `finder` over the seed range in `argv`.
-
-    `load1` is the 1-minute load average source, injectable so an in-process
-    caller (a test) can hand in a fake without going through the
-    `HUNT_FAKE_LOAD1` env var `_load1`'s default reads for the CLI seam.
 
     A fresh `--out` (no run.json) starts a new hunt, refusing when it
     already holds any other output file with no run.json to explain it. An
@@ -439,7 +455,13 @@ def run(finder, argv, load1=_load1):
     --out's lock).
     """
     args = _parse_args(argv)
-    refusal = _check_load(args, load1)
+    if args.workers < 1:
+        print(
+            f"hunt: refusing to run -- --workers must be at least 1, got {args.workers}",
+            file=sys.stderr,
+        )
+        return 2
+    refusal = _check_load(args)
     if refusal is not None:
         return refusal
     finder.workers = args.workers
@@ -472,10 +494,11 @@ def run(finder, argv, load1=_load1):
         run_path = out / "run.json"
         if run_path.exists():
             prior = json.loads(run_path.read_text())
-            if prior.get("argv") != list(argv):
+            prior_argv = prior.get("argv")
+            if prior_argv is None or _resume_key(prior_argv) != _resume_key(argv):
                 print(
                     "hunt: refusing to resume -- argv differs from the recorded run "
-                    f"({prior.get('argv')!r} vs {list(argv)!r})",
+                    f"({prior_argv!r} vs {list(argv)!r})",
                     file=sys.stderr,
                 )
                 return 2

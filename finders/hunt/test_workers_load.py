@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory() as tmp:
         for line in (out / "examples.jsonl").read_text().splitlines()
         if line
     ]
-check("without --workers, the finder receives 3", examples[0]["workers"] == 3)
+    check("without --workers, the finder receives 3", examples[0]["workers"] == 3)
 
 with tempfile.TemporaryDirectory() as tmp:
     out = Path(tmp) / "hunt-out"
@@ -114,5 +114,92 @@ with tempfile.TemporaryDirectory() as tmp:
         result.returncode == 0,
     )
     check("load 25 with --force-load runs the seed", (out / "progress.jsonl").exists())
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A box-safety flag added on resume must not read as a differing search
+    # (#488 review C1/P2): the box's load, not the search, changed between
+    # the two invocations, and #487's argv-equality resume check must not
+    # conflate the two -- otherwise the gate's own "use --force-load" advice
+    # is advice resume then refuses to take.
+    out = Path(tmp) / "hunt-out"
+    first = run_cli(out, [])
+    check(f"base hunt exits 0 (stderr: {first.stderr[-500:]})", first.returncode == 0)
+    resumed = run_cli(out, ["--force-load"])
+    check(
+        f"resuming with --force-load added is not an argv mismatch "
+        f"(stderr: {resumed.stderr[-500:]})",
+        resumed.returncode == 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A genuine search-space change (--seeds) must still refuse -- box-safety
+    # flags are excluded from the resume comparison, not argv equality itself.
+    out = Path(tmp) / "hunt-out"
+    first = run_cli(out, [])
+    check(
+        f"base hunt for genuine-mismatch check exits 0 (stderr: {first.stderr[-500:]})",
+        first.returncode == 0,
+    )
+    full_env = dict(os.environ)
+    mismatched = subprocess.run(
+        [sys.executable, "-c", WORKERS_FINDER, "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+        env=full_env,
+    )
+    check(
+        "a genuinely differing --seeds still refuses",
+        mismatched.returncode != 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # An exported-but-empty HUNT_FAKE_LOAD1 (the ordinary shape of
+    # `export HUNT_FAKE_LOAD1=$X` with X unset) is not an override -- it
+    # must read as "no override", never crash (#488 review C2).
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, [], env={"HUNT_FAKE_LOAD1": ""})
+    check(
+        f"empty HUNT_FAKE_LOAD1 does not crash (stderr: {result.stderr[-500:]})",
+        result.returncode == 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A non-numeric override is a broken test setup, not a real load --
+    # refuse cleanly rather than an uncaught traceback (#488 review C2).
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, [], env={"HUNT_FAKE_LOAD1": "not-a-number"})
+    check(
+        f"non-numeric HUNT_FAKE_LOAD1 refuses cleanly, no traceback "
+        f"(stderr: {result.stderr[-500:]})",
+        result.returncode == 2 and "Traceback" not in result.stderr,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # LOAD_LIMIT's boundary: exactly 24 must run (refusal is "above 24").
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, [], env={"HUNT_FAKE_LOAD1": "24"})
+    check(
+        f"load exactly 24 runs (stderr: {result.stderr[-500:]})",
+        result.returncode == 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # --workers 0 would hand a CP-SAT finder "pick automatically" -- the
+    # whole box, the exact failure this ticket exists to prevent
+    # (#488 review C3).
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, ["--workers", "0"])
+    check(
+        f"--workers 0 refuses (stderr: {result.stderr[-500:]})",
+        result.returncode != 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, ["--workers", "-1"])
+    check(
+        f"--workers -1 refuses (stderr: {result.stderr[-500:]})",
+        result.returncode != 0,
+    )
 
 sys.exit(0 if ok else 1)
