@@ -16,6 +16,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 TOY_FINDER = HERE / "toy_finder.py"
+TOY_STATEFUL_FINDER = HERE / "toy_stateful_finder.py"
 
 ok = True
 
@@ -92,5 +93,95 @@ with tempfile.TemporaryDirectory() as tmp:
         "every rejected line carries a reason",
         all(v.get("reason") for v in verified if not v["ok"]),
     )
+    check(
+        "each verified.jsonl line carries its own record, not just position "
+        "(#489 review S4/P1/C4)",
+        all(v.get("record") == ex for v, ex in zip(verified, examples, strict=True)),
+    )
+
+    # A dir already holding verified.jsonl must refuse a fresh --out the same
+    # way it refuses one already holding examples.jsonl -- otherwise a second
+    # hunt into the same --out silently leaves this run's verdicts beside a
+    # different search's examples.jsonl (#489 review, correctness C2).
+    (out / "does-not-exist").mkdir()
+    (out / "does-not-exist" / "verified.jsonl").write_text('{"ok": true}\n')
+    refused = subprocess.run(
+        [
+            sys.executable,
+            str(TOY_FINDER),
+            "--out",
+            str(out / "does-not-exist"),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        "a fresh --out already holding verified.jsonl refuses",
+        refused.returncode == 2,
+    )
+
+    # A trailing half-written line in examples.jsonl (a kill mid-write) must
+    # not crash `hunt verify` and lose every verdict already computed for the
+    # good lines before it (#489 review, correctness C1).
+    with (out / "examples.jsonl").open("a") as f:
+        f.write('{"grid": [0, 0')  # deliberately unterminated
+    corrupted_verify = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "verify", str(out)],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"hunt verify tolerates a half-written trailing line (stderr: "
+        f"{corrupted_verify.stderr[-500:]})",
+        corrupted_verify.returncode == 0,
+    )
+    reverified = [
+        json.loads(line)
+        for line in (out / "verified.jsonl").read_text().splitlines()
+        if line
+    ]
+    check(
+        "a half-written trailing line is dropped, not counted",
+        len(reverified) == len(examples),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A finder whose record() differs from its candidate (SlowToyFinder's
+    # {"grid": [...]} wrapper) must still verify through inheritance, not
+    # just on the one finder the review happened to touch first (#489
+    # review, correctness C3: this crashed with a raw TypeError on
+    # toy_stateful_finder.py before candidate_from_record moved onto
+    # SlowToyFinder).
+    out = Path(tmp) / "hunt-out"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOY_STATEFUL_FINDER),
+            "--out",
+            str(out),
+            "--seeds",
+            "0:50",
+            "--no-verify",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"stateful finder --no-verify exits 0 (stderr: {result.stderr[-500:]})",
+        result.returncode == 0,
+    )
+    verify_result = subprocess.run(
+        [sys.executable, str(TOY_STATEFUL_FINDER), "verify", str(out)],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        "hunt verify on a finder inheriting candidate_from_record exits 0 "
+        f"(stderr: {verify_result.stderr[-500:]})",
+        verify_result.returncode == 0,
+    )
+    check("verified.jsonl was written", (out / "verified.jsonl").exists())
 
 sys.exit(0 if ok else 1)

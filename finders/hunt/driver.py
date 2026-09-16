@@ -57,6 +57,7 @@ OUTPUT_FILES = (
     "progress.jsonl",
     "run.json",
     "state.json",
+    "verified.jsonl",
 )
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -379,7 +380,7 @@ def _load_state(finder, out):
 
 
 def _process_seed(
-    finder, seed, seen, symmetry, examples_f, progress_f, counts, no_verify=False
+    finder, seed, seen, symmetry, examples_f, progress_f, counts, no_verify
 ):
     """Run one seed and append its outcome to examples.jsonl/progress.jsonl,
     updating `seen` and `counts` in place. Shared by the fresh and resumed
@@ -432,7 +433,7 @@ def _process_seed(
 
 
 def _hunt_loop(
-    finder, out, seed_start, seed_end, seen, counts, skip=frozenset(), no_verify=False
+    finder, out, seed_start, seed_end, seen, counts, no_verify, skip=frozenset()
 ):
     symmetry = getattr(finder, "symmetry", D4)
     with (
@@ -536,7 +537,16 @@ def _run_verify(finder, argv):
     """`hunt verify DIR` (#489): run `finder.verify` over every line in
     DIR/examples.jsonl and write one verdict per line to DIR/verified.jsonl
     -- the deferred half of a `--no-verify` hunt. Returns the process exit
-    code: 0 on success, 2 when DIR has no examples.jsonl to verify."""
+    code: 0 on success, 2 when DIR has no examples.jsonl to verify.
+
+    Reads examples.jsonl through `_read_valid_lines` -- the same kill
+    tolerance `run`'s own resume gives progress.jsonl/examples.jsonl -- so a
+    hunt killed mid-write leaves this able to verify everything durable
+    instead of dying on one half-written trailing line and losing every
+    verdict already computed (#489 review, correctness C1). Each verified.jsonl
+    line carries its own record, not just position, so it still joins back to
+    examples.jsonl after a resume appends more lines (#489 review, standards
+    S4 / spec P1 / correctness C4)."""
     args = _parse_verify_args(argv)
     out = Path(args.dir)
     examples_path = out / "examples.jsonl"
@@ -548,15 +558,13 @@ def _run_verify(finder, argv):
         return 2
 
     to_candidate = getattr(finder, "candidate_from_record", lambda record: record)
+    _, records = _read_valid_lines(examples_path)
     verified_path = out / "verified.jsonl"
     tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
-    with examples_path.open() as examples_f, tmp.open("w") as verified_f:
-        for line in examples_f:
-            if not line.strip():
-                continue
-            record = json.loads(line)
+    with tmp.open("w") as verified_f:
+        for record in records:
             verdict = finder.verify(to_candidate(record))
-            entry = {"ok": verdict.ok}
+            entry = {"record": record, "ok": verdict.ok}
             if verdict.reason:
                 entry["reason"] = verdict.reason
             verified_f.write(json.dumps(entry) + "\n")
