@@ -257,6 +257,9 @@ def main():
     ap.add_argument(
         "--symmetry", action="store_true", help="keep one of 8 images (no pins)"
     )
+    ap.add_argument(
+        "--latin", action="store_true", help="Latin square: no box constraint"
+    )
     ap.add_argument("--seconds", type=float, default=600)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--out", type=Path, required=True)
