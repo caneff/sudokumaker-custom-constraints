@@ -581,6 +581,41 @@ def _fresh(finder, argv, args, out):
     return 0
 
 
+def _check_symmetry_before_mutation(finder, symmetry, seed_start, seed_end, done_seeds):
+    """Probe the first not-yet-done seed's key against `symmetry` before
+    `_resume` reconciles anything, so a `SymmetryMismatch` (#509) surfaces
+    before any hunt file is mutated (#525) instead of after reconciliation
+    has already trimmed the logs and rewritten summary.json. Mirrors the
+    same propose/verify/key sequence `_process_seed` runs -- deterministic
+    per seed (a fresh `random.Random(seed)` each call), so re-running it
+    here and again for real in `_hunt_loop` once this passes is
+    side-effect-free. Stops at the first seed with a verified candidate:
+    that's the one key the ticket asks to check ("the first key obtained
+    before reconciling") -- an empty or rejected seed has no key to test,
+    so it's skipped rather than treated as a pass.
+    """
+    for seed in range(seed_start, seed_end):
+        if seed in done_seeds:
+            continue
+        candidate = finder.propose(random.Random(seed))
+        if candidate is None:
+            continue
+        verdict = finder.verify(candidate)
+        if not verdict.ok:
+            continue
+        cell_values = finder.key(candidate)
+        try:
+            canonical_key(cell_values, symmetry)
+        except ValueError as e:
+            # Same D4-is-out-of-scope carve-out as `_process_seed` (#509
+            # review, C3): D4's own ValueError is a separate bug, not a
+            # symmetry mismatch, so it propagates uncaught here too.
+            if symmetry in (D4, IDENTITY):
+                raise
+            raise SymmetryMismatch(str(e)) from e
+        return
+
+
 def _resume(finder, argv, args, out, prior):
     current_sha = _git_sha()
     if prior.get("git_sha") != current_sha:
@@ -594,6 +629,15 @@ def _resume(finder, argv, args, out, prior):
 
     progress_lines, progress_events = _read_valid_lines(out / "progress.jsonl")
     examples_lines, examples_records = _read_valid_lines(out / "examples.jsonl")
+
+    raw_done_seeds = {
+        e["seed"] for e in progress_events if e.get("event") == "seed_done"
+    }
+    symmetry = getattr(finder, "symmetry", D4)
+    _check_symmetry_before_mutation(
+        finder, symmetry, seed_start, seed_end, raw_done_seeds
+    )
+
     progress_lines, progress_events, examples_lines, examples_records = _reconcile(
         finder, out, progress_lines, progress_events, examples_lines, examples_records
     )
@@ -765,30 +809,10 @@ def run(finder, argv):
         return _refuse(args.out, "an active hunt (locked)")
 
     is_resume = False
-    resume_snapshot = None
     try:
         run_path = out / "run.json"
         if run_path.exists():
             is_resume = True
-            # Taken before `_resume` touches anything: reconciliation
-            # truncates progress.jsonl/examples.jsonl and rewrites
-            # summary.json before `_hunt_loop` ever runs, so a
-            # SymmetryMismatch raised deep inside that loop finds those
-            # files already mutated by reconciliation alone, independent of
-            # whatever the loop itself did (#509 Codex pass 1, finding 1).
-            # Restoring this snapshot on that failure is what makes "left
-            # exactly as found" true byte-for-byte, not just "not deleted".
-            # `renders/` (#490) is skipped: it's a directory, not a byte
-            # string to snapshot/restore, and it's a picture cache rather
-            # than a source of truth (examples.jsonl is) -- a render
-            # written during a resume attempt that then hits
-            # SymmetryMismatch is left as-is rather than rolled back, the
-            # same accepted gap as #522.
-            resume_snapshot = {
-                name: (out / name).read_bytes() if (out / name).exists() else None
-                for name in OUTPUT_FILES
-                if name != "renders"
-            }
             prior = json.loads(run_path.read_text())
             prior_argv = prior.get("argv")
             if prior_argv is None or _resume_key(prior_argv) != _resume_key(argv):
@@ -810,23 +834,15 @@ def run(finder, argv):
     except SymmetryMismatch as e:
         # Same clean refusal `_validate_symmetry`'s pre-flight gives a
         # structurally-broken group -- this one only surfaces once a real
-        # candidate exists, after run.json/summary.json (and possibly more)
-        # are already on disk. On a fresh hunt that output is only this
-        # attempt's own, so it's torn down; on a resume it can hold a prior
-        # attempt's genuine completed results (#509 review, finding V1 --
-        # e.g. the finder's key() shape changed since the run being resumed
-        # last succeeded), so the pre-`_resume` snapshot is restored
-        # verbatim instead, undoing both reconciliation's own rewrite and
-        # anything any seed processed successfully before the crash.
+        # candidate exists. On a fresh hunt that output is only this
+        # attempt's own, so it's torn down. On a resume, `_resume` checks
+        # the symmetry group against the first un-done seed's key before
+        # touching any hunt file (#525), so this can only fire before
+        # reconciliation or any write has happened -- there is nothing to
+        # undo, and a prior attempt's genuine completed results are left
+        # exactly as found with no restore step.
         print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
-        if is_resume:
-            for name, content in resume_snapshot.items():
-                path = out / name
-                if content is None:
-                    path.unlink(missing_ok=True)
-                else:
-                    path.write_bytes(content)
-        else:
+        if not is_resume:
             _cleanup_partial_output(out)
         return 2
     finally:
