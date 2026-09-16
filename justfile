@@ -61,7 +61,7 @@ test:
     export JUST="{{just_executable()}}"
     for f in examples/_shared/*.test.mjs; do node "$f"; done
     for f in examples/_shared/*.test.py; do uv run "$f"; done
-    # finders/renbanana's own tests (#469): three well under a second,
+    # finders/renbanana's own tests (#469): four well under two seconds,
     # test_probe_circle_cost.py about a second (two model builds, no solve),
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
     # worker -- this box is shared). The known-grid tests solve a CP-SAT
@@ -73,6 +73,7 @@ test:
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
+    uv run finders/renbanana/tools/test_prove_two_stage.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
@@ -96,11 +97,12 @@ test:
 
 # finders/renbanana's slow tests: a CP-SAT solve per known grid, about a
 # second to several seconds each and minutes overall. Not part of
-# check/check-full; run by hand after touching probe_inverted.py or
-# probe_circle_pattern.py.
+# check/check-full; run by hand after touching probe_inverted.py,
+# probe_circle_pattern.py or prove_two_stage.py.
 test-finders-slow:
     uv run finders/renbanana/tools/test_probe_finds_known_grids.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py
+    uv run finders/renbanana/tools/test_prove_two_stage_slow.py
 
 # Run one space-separated list of test files, dispatching by extension.
 _run-tests files:
