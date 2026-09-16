@@ -23,73 +23,16 @@
 //
 // The engine pieces that do not vary per example (the all-different floor, the
 // component loader, the fixpoint runner, the DFS uniqueness search) live in
-// ../_shared/recovery-lib.mjs. This file keeps only the Hit Counts glue: the
-// frame geometry, the gen-JSON seeding, the matching-bound extra propagator, and
-// the hit-count leaf check.
+// ../_shared/recovery-lib.mjs, and the frame-probe skeleton (geometry, seeding,
+// report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file keeps only
+// the Hit Counts glue: the matching-bound extra propagator and the hit-count
+// leaf check.
 
-import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { installGlobals, makeIo } from '../_shared/harness-lib.mjs'
-import {
-  makeCandidateState, makeAllDifferentFloor, loadComponents,
-  runToFixpoint, search, countLost, reportLine
-} from '../_shared/recovery-lib.mjs'
-import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { dirname } from 'path'
+import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const file = process.argv[2] || 'gen_6x6.json'
-const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
-const { n, box: [bh, bw], grid, clue, active } = gen
-const activeSet = new Set(active)
-const givens = gen.givens || {}
-
-installGlobals(0, n)
-globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
-
-// ---- geometry (mirrors build_size.py) ----
-const { W, H, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
-
-// ---- the shared candidate state ----
-const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
-// The all-different groups are the board's houses: the line components gate on
-// them through getCellsCanHaveRepeats (docs/line-contract.md).
-const st = makeCandidateState({ houses: alldiffGroups })
-
-function freshState () {
-  st.cand = new Map()
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const g = givens[`${r},${c}`]
-      st.cand.set(interior(r, c), g != null ? new Set([g]) : RANGE(1, n))
-    }
-  }
-  for (const k of keys) {
-    const side = k[0]; const i = +k.slice(1)
-    st.cand.set(clueCell(side, i), activeSet.has(k) ? new Set([clue[k]]) : RANGE(0, n))
-  }
-}
-
-// ---- load the real components + the real main-global.js wiring ----
-// main-global.js builds the frame itself (no groups input), so it needs the
-// puzzle mock's getCellAt/spec.size -- `frame: { W, H, idx }` ties those
-// to the same W/idx this probe already uses, so main-global.js's own
-// frame-building produces the identical `groups` list computed above.
-const { read } = makeIo(HERE)
-const mainSrc = read('main-global.js')
-function buildComps () {
-  return loadComponents({
-    here: HERE,
-    mainSrc,
-    input: {},
-    frame: { W, H, idx },
-    files: [
-      { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
-      { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
-      { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'SideHitMatchingComponent' }
-    ]
-  })
-}
 
 // The candidate deduction under test: the Régin-style matching clue bound. A legal
 // line is a perfect matching of positions to values (each from its candidates); a
@@ -98,7 +41,7 @@ function buildComps () {
 // [forced, possible] — or null when no matching exists. matchingReverse applies it
 // as an extra propagator: it tightens each unpinned clue to that range, exactly
 // what a component-level matching bound would do, without touching the component.
-function matchingBounds (line) {
+function matchingBounds (st, line) {
   const nn = line.length
   const cands = line.map(cell => [...st.cand.get(cell)].filter(v => v >= 1 && v <= nn))
   const SIZE = 1 << nn
@@ -124,44 +67,14 @@ function matchingBounds (line) {
   const full = SIZE - 1
   return curMax[full] === -Infinity ? null : { min: curMin[full], max: curMax[full] }
 }
-function matchingReverse () {
+function matchingReverse ({ st, groups }) {
   for (const g of groups) {
     const clueId = g.cells[0]
     if (st.cand.get(clueId).size === 1) continue // pinned: the component's !hasValue guard
-    const mb = matchingBounds(g.cells.slice(1))
+    const mb = matchingBounds(st, g.cells.slice(1))
     if (!mb) continue
     for (const d of [...st.cand.get(clueId)]) if (d < mb.min || d > mb.max) st.cand.get(clueId).delete(d)
   }
-}
-
-// ---- Régin (GAC) all-different floor ----
-const FLOOR = (process.argv.find(a => a.startsWith('--floor=')) || '--floor=regin').split('=')[1]
-const floorGroup = makeAllDifferentFloor(st, { kind: FLOOR, maxDigit: n })
-
-// ---- measure one run ----
-const hiddenKeys = keys.filter(k => !activeSet.has(k))
-// mode: 'floor' runs the all-different floor alone (no hit-counts components) —
-// the baseline before any hit-counts deduction; 'off' adds the shipped components
-// (naive clue bound); 'on' also applies the candidate matching bound.
-function report (label, mode) {
-  freshState()
-  const start = st.total()
-  const comps = mode === 'floor' ? [] : buildComps()
-  const passes = runToFixpoint(st, comps, alldiffGroups, floorGroup, { init: true, extra: mode === 'on' ? matchingReverse : null })
-  const hiddenRecovered = hiddenKeys.filter(k => {
-    const side = k[0]; const i = +k.slice(1)
-    return st.cand.get(clueCell(side, i)).size === 1
-  }).length
-  let interiorSolved = 0
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (st.cand.get(interior(r, c)).size === 1) interiorSolved++
-  // soundness: every true value must survive
-  const truth = []
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth.push([interior(r, c), grid[r][c]])
-  for (const k of keys) { const side = k[0]; const i = +k.slice(1); truth.push([clueCell(side, i), clue[k]]) }
-  const lost = countLost(st, truth)
-  const removed = start - st.total()
-  console.log(reportLine(label, { extra: `hidden ${hiddenRecovered}/${hiddenKeys.length}, interior ${interiorSolved}/${n * n}, `, removed, passes, lost }))
-  return { hiddenRecovered, interiorSolved, removed, lost }
 }
 
 // Diagnostic: does the matching bound have any teeth on this puzzle? Count the
@@ -172,7 +85,7 @@ function report (label, mode) {
 // The naive bound the matching is compared against: a cell is a forced hit once
 // it is pinned to its target digit, and a possible hit while that digit is still
 // a candidate, so the hit count lies in [forced, possible].
-function naiveBounds (line) {
+function naiveBounds (st, line) {
   let forced = 0
   let possible = 0
   for (let i = 0; i < line.length; i++) {
@@ -183,32 +96,22 @@ function naiveBounds (line) {
   }
   return { forced, possible }
 }
-function tighterLines () {
+function tighterLines ({ st, groups }) {
   let count = 0
   for (const g of groups) {
     const line = g.cells.slice(1)
-    const naive = naiveBounds(line)
-    const mb = matchingBounds(line)
+    const naive = naiveBounds(st, line)
+    const mb = matchingBounds(st, line)
     if (mb && (mb.min > naive.forced || mb.max < naive.possible)) count++
   }
   return count
 }
 
-// ---- search: does the matching cut backtracking? ----
-// Root recovery is only half the story: during search, cells get pinned and the
-// line domains turn partial — exactly where the matching bites. So run a full
-// DFS that proves uniqueness (finds every solution, expecting one) and count the
-// nodes explored, matching on vs off. Fewer nodes = the matching pruned dead
-// branches earlier. Same MRV branching (fewest candidates first, values
-// ascending) both runs, so the count reflects the puzzles the solver actually
-// meets in search, not a synthetic state.
-const INT = []
-for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) INT.push(interior(r, c))
 // A full interior is a real solution only if every line's hit count equals its
 // clue. update prunes toward this but does not reject a completed line on its own
 // (it skips the reverse check once the clue is pinned), so the real solver leans
 // on validate at the leaf; this is that leaf check, model-independent.
-function validLeaf () {
+function validLeaf ({ st, groups }) {
   for (const g of groups) {
     const clueCellId = g.cells[0]
     const line = g.cells.slice(1)
@@ -220,39 +123,37 @@ function validLeaf () {
   }
   return true
 }
-function searchRun (mode) {
-  freshState()
-  const matching = mode === 'on'
-  const comps = buildComps()
-  const extra = matching ? matchingReverse : null
-  runToFixpoint(st, comps, alldiffGroups, floorGroup, { init: true, extra })
-  return search(st, { interior: INT, comps, alldiffGroups, floorGroup, extra, validLeaf })
-}
 
-console.log(`${file}: n=${n}, box ${bh}x${bw}, ${active.length}/${keys.length} clues shown, ${hiddenKeys.length} hidden, ${Object.keys(givens).length} interior givens (floor: ${FLOOR})`)
-
-if (process.argv.includes('--search')) {
-  // Only off vs on: the full constraint set has the one true solution, so the tree
-  // is bounded. (A floor-only run has no clue constraints and countless solutions,
-  // so it never terminates — it is not a meaningful search baseline.)
-  // --only=on / --only=off runs a single mode (each is slow on n=9).
-  const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1]
-  const modes = [['matching OFF', 'off'], ['matching ON ', 'on']].filter(([, m]) => !only || m === only)
-  for (const [label, mode] of modes) {
-    const r = searchRun(mode)
-    const note = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions}!)`)
-    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}${note}`)
-  }
-} else {
-  freshState()
-  const tightStart = tighterLines()
-  for (let pass = 0; pass < 500; pass++) { const b = st.total(); for (const g of alldiffGroups) floorGroup(g); if (st.total() === b) break }
-  const tightAfterFloor = tighterLines()
-  console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${FLOOR} floor`)
-  const floor = report('floor only  ', 'floor')
-  const off = report('matching OFF', 'off')
-  const on = report('matching ON ', 'on')
-  console.log(`  DELTA components over floor (off - floor): hidden +${off.hiddenRecovered - floor.hiddenRecovered}, interior +${off.interiorSolved - floor.interiorSolved}, removed +${off.removed - floor.removed}`)
-  console.log(`  DELTA matching over naive  (on - off):    hidden +${on.hiddenRecovered - off.hiddenRecovered}, interior +${on.interiorSolved - off.interiorSolved}, removed +${on.removed - off.removed}`)
-  if (on.lost || off.lost || floor.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }
-}
+makeFrameProbe({
+  here: HERE,
+  clueRange: n => [0, n],
+  files: [
+    { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
+    { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
+    { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'SideHitMatchingComponent' }
+  ],
+  blankWord: 'hidden',
+  headerNote: ({ floorKind }) => ` (floor: ${floorKind})`,
+  // 'floor' runs the all-different floor alone (no hit-counts components) — the
+  // baseline before any hit-counts deduction; 'off' adds the shipped components
+  // (naive clue bound); 'on' also applies the candidate matching bound. Search
+  // runs only off vs on: a floor-only run has no clue constraints and countless
+  // solutions, so it never terminates.
+  modes: [
+    { key: 'floor', label: 'floor only  ', build: () => [], search: false },
+    { key: 'off', label: 'matching OFF' },
+    { key: 'on', label: 'matching ON ', extra: matchingReverse }
+  ],
+  deltas: [
+    ['components over floor (off - floor):', 'floor', 'off'],
+    ['matching over naive  (on - off):   ', 'off', 'on']
+  ],
+  beforeReport: p => {
+    const { st, keys, alldiffGroups, floorGroup, floorKind } = p
+    const tightStart = tighterLines(p)
+    for (let pass = 0; pass < 500; pass++) { const b = st.total(); for (const g of alldiffGroups) floorGroup(g); if (st.total() === b) break }
+    const tightAfterFloor = tighterLines(p)
+    console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${floorKind} floor`)
+  },
+  validLeaf
+})
