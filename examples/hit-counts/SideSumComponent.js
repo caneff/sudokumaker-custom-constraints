@@ -5,6 +5,16 @@
 //! hit per line, n in all. So the rule needs all n clues of the side AND the n
 //! perpendicular lines they cross.
 
+// The clue cells alone, though the gate reads every perpendicular line. Stale
+// is safe here: a missed wake only delays a deduction, never makes a wrong
+// one. The gate is re-read in full on every call (lineKind latches only the
+// house fact, which a backtrack cannot undo), so whenever the app does run
+// `update` -- on any later change to a clue -- it judges the lines as they
+// stand then, never as they stood at some earlier call. A line cell that
+// opens the gate without waking the component costs nothing until a clue
+// moves; one a backtrack restores is read restored. The soundness harness
+// holds this with a wake-driven run ("side-sum stale wake", #362). Widening
+// the list to the lines would buy earlier firing, not soundness.
 function getAffectedCells (cells, target, lines) {
   return cells
 }

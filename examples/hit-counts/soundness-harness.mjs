@@ -27,7 +27,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, shuffle, total, fixpoint, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, violates } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -41,7 +41,8 @@ installGlobals(0, 9)
 
 const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'initialize', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 'validate'])
-const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
+const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
+const sideMod = load('SideSumComponent.js', SIDE_NAMES)
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
 
 // A random candidate seed keeping the true value: pinned a third of the time,
@@ -552,7 +553,57 @@ const backSide = sideSumState([3, 1, 1, 1, 1, 1, 1, 1, 1], v => [0, v], (c, v) =
 const sideLatchBad = violates(sideMod, sideLatchInst, backSide.p, backSide.truth)
 console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
 
-const ok = full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
+// ---- side-sum: the stale wake (#362) ----
+// `getAffectedCells` names the side's clue cells only, while the gate reads
+// every perpendicular line. So the app never wakes the component when a line
+// cell alone changes, and the component can run on a line state it was never
+// told about. The case: a solver that calls `update` only when an affected
+// cell has lost a candidate since the last call, and restores the whole state
+// on a backtrack without waking anyone. A branch opens the gate (a line cell
+// loses its 0, then a clue narrows, which wakes the component), the search
+// backtracks to a state whose line has its 0 again, and a clue narrows there.
+// The truth has the 0 in that line, so the side need not sum to N: a gate
+// still open would force the first clue to 1 and take its true 3 away.
+function staleWakeRun (mod) {
+  const inst = {}
+  mod.setParams(inst, SIDE, N, PERP)
+  const affected = mod.getAffectedCells(SIDE, N, PERP)
+  const truth = {}
+  const vals = [3, 1, 1, 1, 1, 1, 1, 1, 1]
+  for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
+  truth[PERP[0][0]] = 0 // line 0 holds a 0, so it is no house of 1..N
+  const start = c => (c === SIDE[0] ? [0, 1, 3] : c === SIDE[2] ? [1, 2] : c === PERP[0][0] ? [0, 1] : [truth[c]])
+  const p = makePuzzle(truth, start, { houses: PERP })
+  const snapshot = () => affected.map(c => p.getCandidatesBitMask(c)).join()
+  let seen = null
+  const wake = () => {
+    if (snapshot() === seen) return
+    Array.from(mod.update(inst, p))
+    seen = snapshot()
+  }
+  const restore = () => { for (const [c] of p._cand) p._cand.set(c, new Set(start(c))); seen = snapshot() }
+  wake() // the root: 0 live on line 0, the gate shut
+  p._cand.get(PERP[0][0]).delete(0) // branch: no affected cell moved, no wake
+  wake()
+  p._cand.get(SIDE[2]).delete(2) // a clue narrows in the branch: woken, gate open
+  wake()
+  restore() // backtrack: the 0 is back, and nobody is woken
+  p._cand.get(SIDE[0]).delete(0) // a clue narrows in the parent: woken
+  wake()
+  return [...p._cand].find(([c, set]) => !set.has(truth[c])) || null
+}
+const staleWakeLost = staleWakeRun(sideMod)
+// The same run against a gate that latches once open, to show the case bites.
+const latchedSide = load('SideSumComponent.js', SIDE_NAMES, src => patchSource(src,
+  '  for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false\n  return true\n',
+  '  if (instance.latched) return true\n  for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false\n  instance.latched = true\n  return true\n'))
+const staleWakeBites = staleWakeRun(latchedSide) !== null
+console.log('side-sum stale wake:', staleWakeLost === null ? 'sound' : `LOST ${JSON.stringify(staleWakeLost)}`,
+  '/ a latched gate:', staleWakeBites ? 'loses a true value' : 'DOES NOT BITE')
+
+const ok = staleWakeLost === null && staleWakeBites &&
+  full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
   lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
   gBad === 0 && exBad === 0 && permBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&

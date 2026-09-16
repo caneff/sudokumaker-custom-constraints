@@ -30,7 +30,7 @@ const CELLS = Array.from({ length: N * N }, (_, i) => i)
 // The line the filter's verdict is read on, and the first re-walk every cell
 // the filter did not clear reaches. Both are unique in the component.
 const SKIP = '  if (skip[x]) return false // the filter cleared this cell: no cut\n'
-const WALKED = '  let cut = reach(instance, placed, depth, allowed, size).size < size\n'
+const WALKED = '  let cut = reachSize(instance, placed, depth, allowed, size).size < size\n'
 
 // Drop the filter's verdict: every open cell falls through to the re-walks.
 function unfiltered (src) {
