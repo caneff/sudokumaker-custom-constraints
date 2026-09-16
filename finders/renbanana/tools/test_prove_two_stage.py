@@ -35,9 +35,7 @@ GRID, SHADING, _ = rv.load(CAND)
 
 def size_reading(grid, is_choc):
     """Every cell whose digit equals its group size: the 12-circle pick."""
-    size = {
-        p: len(g) for c in (True, False) for g in rv.components(is_choc, c) for p in g
-    }
+    size = rv.group_sizes(is_choc)
     return [p for p in R.CELLS if grid[p] == size[p]]
 
 
@@ -161,6 +159,26 @@ def test_digit_fills_finds_only_the_known_grid_and_exhausts():
     exhausted, grids = pts.digit_fills(SHADING, CIRCLES, 2, 60.0, 1)
     assert exhausted, "the search must finish, not merely return a grid"
     assert grids == [GRID]
+
+
+def test_digit_fills_out_of_time_is_never_exhausted():
+    exhausted, grids = pts.digit_fills(SHADING, CIRCLES, 2, 0.0, 1)
+    assert (exhausted, grids) == (False, [])
+
+
+def test_digit_fills_on_a_solver_timeout_is_never_exhausted():
+    real = pts.cp.CpSolver
+
+    class TimesOut(real):
+        def solve(self, model):
+            return cp.UNKNOWN
+
+    pts.cp.CpSolver = TimesOut
+    try:
+        exhausted, grids = pts.digit_fills(SHADING, CIRCLES, 2, 60.0, 1)
+    finally:
+        pts.cp.CpSolver = real
+    assert (exhausted, grids) == (False, [])
 
 
 if __name__ == "__main__":

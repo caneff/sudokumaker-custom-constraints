@@ -90,11 +90,12 @@ test:
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
-# finders/renbanana's slow test: an inverted CP-SAT solve per known grid, one
+# finders/renbanana's slow tests: an inverted CP-SAT solve per known grid, one
 # to several seconds each and minutes overall. Not part of check/check-full;
-# run by hand after touching probe_inverted.py.
+# run by hand after touching probe_inverted.py or prove_two_stage.py.
 test-finders-slow:
     uv run finders/renbanana/tools/test_probe_finds_known_grids.py
+    uv run finders/renbanana/tools/test_prove_two_stage_slow.py
 
 # Run one space-separated list of test files, dispatching by extension.
 _run-tests files:

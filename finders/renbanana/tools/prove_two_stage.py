@@ -54,28 +54,15 @@ def pin_circle_sizes(model, circled):
     circled banana cell needs nothing new -- the model already caps banana
     groups at 9 cells.
     """
-    m = model.m
     for x in circled:
-        options = [model.choc[x].negated()]
-        for a, b in R.SHAPES:
-            for r in range(max(0, x[0] - a + 1), min(x[0], R.N - a) + 1):
-                for c in range(max(0, x[1] - b + 1), min(x[1], R.N - b) + 1):
-                    if (x[0] - r, x[1] - c) not in R.circle_cells_at(
-                        a, b, r % 3, c % 3
-                    ):
-                        continue
-                    inside = [(r + i, c + j) for i in range(a) for j in range(b)]
-                    border = {
-                        q for p in inside for q in R.neighbours(*p) if q not in inside
-                    }
-                    # One way only: the spot true forces this maximal rectangle.
-                    spot = m.new_bool_var(f"circ{x}_{a}x{b}@{r},{c}")
-                    for p in inside:
-                        m.add_implication(spot, model.choc[p])
-                    for q in border:
-                        m.add_implication(spot, model.choc[q].negated())
-                    options.append(spot)
-        m.add_bool_or(options)
+        spots = [
+            model.spot(a, b, r, c)
+            for a, b in R.SHAPES
+            for r in range(max(0, x[0] - a + 1), min(x[0], R.N - a) + 1)
+            for c in range(max(0, x[1] - b + 1), min(x[1], R.N - b) + 1)
+            if (x[0] - r, x[1] - c) in R.circle_cells_at(a, b, r % 3, c % 3)
+        ]
+        model.m.add_bool_or([model.choc[x].negated(), *spots])
 
 
 def digit_fills(is_choc, circled, limit, seconds, workers):
@@ -84,9 +71,7 @@ def digit_fills(is_choc, circled, limit, seconds, workers):
     `grids` is every fill there is, so a cap or a timeout is never exhausted.
     """
     m, d, _ = R.digit_model(is_choc)
-    size = {
-        p: len(g) for c in (True, False) for g in rv.components(is_choc, c) for p in g
-    }
+    size = rv.group_sizes(is_choc)
     for x in circled:
         m.add(d[x] == size[x])
     s = cp.CpSolver()
