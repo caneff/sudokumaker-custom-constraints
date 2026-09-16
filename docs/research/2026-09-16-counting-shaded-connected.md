@@ -545,3 +545,19 @@ likewise only at 17. Witness (digits are counts, 7 allowed now):
 The extra digit (7) and the extra column are what the 6x6 argument lacked:
 the two corner wedges still collide in the bottom rows, but a 7 absorbs the
 cell that had to see seven shaded neighbours.
+
+### 8x8 Latin: feasible at sizes 21, 23 and 24
+
+Same shape-only model, geometry 8 Latin, sizes 2-64: r8c1+r8c8 feasible at
+21, 23, 24 only; r1c1+r8c1 the same. Size-21 witness:
+
+```
+. . . . . . . .
+. . . . . . . .
+. . . . . . 2 .
+. . . . 4 5 3 .
+. . 3 4 5 6 . .
+. 5 6 . . 3 4 2
+4 6 5 2 . . . 3
+3 4 . . . . . 1
+```
