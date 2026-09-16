@@ -63,25 +63,39 @@ check(
     result2.first[0] == result2.first[1] and result2.second[0] == result2.second[1],
 )
 
-# Reuse (#514): check_uniqueness must not mutate the caller's model, so a
-# second call on the same two-solution model reports the same verdict
-# instead of "unique" once the first call's exclusion constraint sticks.
-m2b = cp_model.CpModel()
-a2b = m2b.NewIntVar(0, 1, "a")
-b2b = m2b.NewIntVar(0, 1, "b")
-m2b.Add(a2b == b2b)
-constraint_count_before = len(m2b.Proto().constraints)
-result2b_first = check_uniqueness(m2b, [a2b, b2b])
-constraint_count_after = len(m2b.Proto().constraints)
-result2b_second = check_uniqueness(m2b, [a2b, b2b])
+# check_uniqueness must leave the caller's model untouched, so a repeat
+# call on the same model reports the same verdict, not "unique" once a
+# stray exclusion constraint from a prior call stuck around.
+constraint_count_before = len(m2.Proto().constraints)
+result2_repeat = check_uniqueness(m2, [a2, b2])
+constraint_count_after = len(m2.Proto().constraints)
 check(
     "calling check_uniqueness twice on the same two-solution model returns "
     "not_unique both times",
-    result2b_first.status == "not_unique" and result2b_second.status == "not_unique",
+    result2.status == "not_unique" and result2_repeat.status == "not_unique",
 )
 check(
     "the caller's model has the same constraint count before and after a call",
     constraint_count_after == constraint_count_before,
+)
+
+# A negated boolean literal (`.Not()`) has a negative proto index -- the
+# variable remap for the retry model must resolve it back to the same
+# literal instead of raising on a negative index.
+m2c = cp_model.CpModel()
+a2c = m2c.NewBoolVar("a")
+b2c = m2c.NewBoolVar("b")
+m2c.Add(a2c != b2c)
+result2c = check_uniqueness(m2c, [a2c, b2c.Not()])
+check(
+    "a negated boolean literal among the variables is handled, not an error",
+    result2c.status == "not_unique",
+)
+check(
+    "the witnesses reflect the negated literal, not the raw variable",
+    result2c.first is not None
+    and result2c.second is not None
+    and result2c.first != result2c.second,
 )
 
 # MODEL_INVALID: an IntVar built with lb > ub is invalid at solve time, no

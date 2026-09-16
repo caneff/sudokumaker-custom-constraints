@@ -54,6 +54,17 @@ def _terminal(status, first):
     return None
 
 
+def _remap(retry_model, v):
+    """The `retry_model` literal for `v` -- a plain variable's proto index
+    is non-negative, but a negated literal (`.Not()`) carries a negative
+    one, so it resolves through the positive base variable and gets
+    negated back rather than being looked up directly."""
+    index = v.Index()
+    if index >= 0:
+        return retry_model.GetIntVarFromProtoIndex(index)
+    return retry_model.GetIntVarFromProtoIndex(-index - 1).Not()
+
+
 def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
     """True (via `.unique`) iff `model` has exactly one solution over
     `variables`. A timeout or an invalid model is reported as such and
@@ -71,11 +82,8 @@ def check_uniqueness(model, variables, *, time_limit=10.0, workers=1):
         return terminal
     first = tuple(solver.Value(v) for v in variables)
 
-    retry_model = cp_model.CpModel()
-    retry_model.Proto().copy_from(model.Proto())
-    retry_variables = [
-        retry_model.GetIntVarFromProtoIndex(v.Index()) for v in variables
-    ]
+    retry_model = model.clone()
+    retry_variables = [_remap(retry_model, v) for v in variables]
 
     diffs = []
     for v, value in zip(retry_variables, first, strict=True):
