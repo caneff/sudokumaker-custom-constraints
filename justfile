@@ -88,6 +88,7 @@ test:
     uv run finders/hunt/test_printer.py
     uv run finders/hunt/test_toy_hunt.py
     uv run finders/hunt/test_hunt_resume.py
+    uv run finders/hunt/test_workers_load.py
     uv run finders/hunt/test_uniqueness.py
     uv run finders/hunt/test_minimizer.py
     uv run finders/hunt/test_watchdog.py

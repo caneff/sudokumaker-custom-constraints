@@ -7,9 +7,11 @@ new hunt; an `--out` that already has one resumes it: seeds with a
 `seed_done` event are skipped, the dedupe set is rebuilt from the durable
 log, and a finder's optional `save_state`/`load_state` round-trip through
 state.json. A differing argv versus the recorded run refuses to start; a
-differing git sha only warns. The grid helpers, CP-SAT helpers, the
-`--workers`/load gate, deferred verification and the render hook are the
-other later tickets (#485-#490) under the parent spec (#483).
+differing git sha only warns. The grid helpers, CP-SAT helpers,
+deferred verification and the render hook are the other later tickets
+(#485-#490) under the parent spec (#483). `--workers` (default 3, set on
+the finder before the first seed) and the 1-minute load gate (refuses above
+24 unless `--force-load`) are #488.
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
 
@@ -60,6 +62,36 @@ _OUTCOME_COUNT_KEY = {
 
 _DEDUPE_KEY_FIELD = "__dedupe_key__"
 
+LOAD_LIMIT = 24
+
+
+def _load1():
+    """The 1-minute load average, or `HUNT_FAKE_LOAD1` when set.
+
+    The env var is the injection point for tests (#488): a hunt started
+    through the CLI in a subprocess has no way to hand in a fake load
+    function, so the override travels as an env var instead of a
+    production-visible CLI flag.
+    """
+    override = os.environ.get("HUNT_FAKE_LOAD1")
+    if override is not None:
+        return float(override)
+    return os.getloadavg()[0]
+
+
+def _check_load(args, load1):
+    if args.force_load:
+        return None
+    load = load1()
+    if load > LOAD_LIMIT:
+        print(
+            f"hunt: refusing to run -- 1-minute load {load} is above {LOAD_LIMIT} "
+            "(use --force-load to run anyway)",
+            file=sys.stderr,
+        )
+        return 2
+    return None
+
 
 def _parse_seeds(text):
     start, _, end = text.partition(":")
@@ -97,6 +129,8 @@ def _parse_args(argv):
     parser = argparse.ArgumentParser(prog="hunt")
     parser.add_argument("--out", required=True)
     parser.add_argument("--seeds", required=True, type=_parse_seeds)
+    parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--force-load", action="store_true")
     return parser.parse_args(_merge_seeds_token(argv))
 
 
@@ -383,8 +417,12 @@ def _resume(finder, argv, args, out, prior):
     return 0
 
 
-def run(finder, argv):
+def run(finder, argv, load1=_load1):
     """Run or resume a hunt for `finder` over the seed range in `argv`.
+
+    `load1` is the 1-minute load average source, injectable so an in-process
+    caller (a test) can hand in a fake without going through the
+    `HUNT_FAKE_LOAD1` env var `_load1`'s default reads for the CLI seam.
 
     A fresh `--out` (no run.json) starts a new hunt, refusing when it
     already holds any other output file with no run.json to explain it. An
@@ -401,6 +439,10 @@ def run(finder, argv):
     --out's lock).
     """
     args = _parse_args(argv)
+    refusal = _check_load(args, load1)
+    if refusal is not None:
+        return refusal
+    finder.workers = args.workers
     refusal = _validate_symmetry(finder)
     if refusal is not None:
         return refusal

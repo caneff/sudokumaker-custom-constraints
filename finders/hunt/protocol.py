@@ -27,9 +27,15 @@ class Finder(Protocol):
     `dedupe.IDENTITY`, or a custom list of cell maps (see dedupe.py). A
     finder that leaves `symmetry` unset gets `dedupe.D4` from the driver --
     the common, square-board case needs no code.
+
+    `workers` is set by the driver from `--workers` (default 3) before the
+    first seed runs (#488) -- a finder that solves with CP-SAT reads
+    `self.workers` for its own solver's worker count, so a hunt started
+    without `--workers` still leaves cores for the rest of the box.
     """
 
     symmetry: Any = D4
+    workers: int = 3
 
     def propose(self, rng) -> Any | None:
         """One candidate for this seed's rng, or None if this seed found
