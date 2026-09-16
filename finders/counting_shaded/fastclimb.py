@@ -41,6 +41,7 @@ def _load():
     lib = ctypes.CDLL(str(SO))
     lib.gf_count.argtypes = [ctypes.c_char_p, ctypes.c_int]
     lib.gf_require_eight.argtypes = [ctypes.c_int]
+    lib.gf_set_latin.argtypes = [ctypes.c_int]
     lib.gf_set_pins.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     lib.gf_climb.argtypes = [
         ctypes.c_char_p,
@@ -62,6 +63,11 @@ def _buf(shape):
     return ctypes.create_string_buffer(
         bytes(1 if i in shape else 0 for i in range(81)), 81
     )
+
+
+def latin(on):
+    """Latin-square mode: rows and columns only, no boxes (C filter and counter)."""
+    LIB.gf_set_latin(1 if on else 0)
 
 
 def require_eight(on):

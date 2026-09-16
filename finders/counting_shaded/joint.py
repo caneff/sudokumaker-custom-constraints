@@ -143,7 +143,9 @@ def build(
     force=(),
     ban=(),
     break_symmetry=False,
+    latin=False,
 ):
+    """`latin=True` drops the box constraint: the grid is a Latin square."""
     m = cp_model.CpModel()
     v = [m.new_int_var(1, 9, f"v{i}") for i in range(81)]
     for r in range(9):
@@ -151,6 +153,8 @@ def build(
         m.add_all_different([v[c * 9 + r] for c in range(9)])
     for br in range(3):
         for bc in range(3):
+            if latin:
+                break
             m.add_all_different(
                 [v[(br * 3 + r) * 9 + bc * 3 + c] for r in range(3) for c in range(3)]
             )

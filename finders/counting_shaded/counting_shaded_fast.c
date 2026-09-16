@@ -17,6 +17,12 @@
 static int NB[81][8], NBN[81], ORTH[81][4], ORTHN[81], ROW[81], COL[81], BOX[81];
 static int ready;
 static int need_eight;  // gf_require_eight; off by default
+static int latin;       // gf_set_latin; off by default
+
+// Latin-square mode (1): rows and columns only, no boxes. Implemented by giving
+// every cell its own "box" (BOX[i] = i, masks sized 81), so the box constraint
+// is vacuous and nothing else changes.
+void gf_set_latin(int on) { latin = on; ready = 0; }
 static uint8_t force_on[81], force_off[81];  // gf_set_pins
 
 // Pin cells on and off: two 81-byte masks, 1 = pinned.
@@ -34,7 +40,7 @@ static void init(void) {
     if (ready) return;
     for (int i = 0; i < 81; i++) {
         int r = i / 9, c = i % 9;
-        ROW[i] = r; COL[i] = c; BOX[i] = (r / 3) * 3 + c / 3;
+        ROW[i] = r; COL[i] = c; BOX[i] = latin ? i : (r / 3) * 3 + c / 3;
         NBN[i] = ORTHN[i] = 0;
         for (int a = -1; a <= 1; a++)
             for (int b = -1; b <= 1; b++) {
@@ -76,7 +82,7 @@ static int connected(const uint8_t *sh) {
 // Fill giv (0 = no given). Returns 1 if admissible and connected (and, under
 // gf_require_eight(1), showing an 8).
 static int givens(const uint8_t *sh, uint8_t *giv) {
-    uint16_t rm[9] = {0}, cm[9] = {0}, bm[9] = {0};
+    uint16_t rm[9] = {0}, cm[9] = {0}, bm[81] = {0};
     int eight = 0;
     for (int i = 0; i < 81; i++)
         if ((force_on[i] && !sh[i]) || (force_off[i] && sh[i])) return 0;
@@ -97,7 +103,7 @@ static int givens(const uint8_t *sh, uint8_t *giv) {
 }
 
 typedef struct {
-    uint16_t rm[9], cm[9], bm[9];
+    uint16_t rm[9], cm[9], bm[81];
     uint8_t grid[81];
     int found, cap;
 } Search;

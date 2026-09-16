@@ -19,10 +19,21 @@ import json
 import time
 from pathlib import Path
 
+import fastclimb
 from fastclimb import count, pins
 from joint import add_flow_connectivity, add_symmetry_breaking
 from ortools.sat.python import cp_model
 from shapes import BOX, CELLS, NEIGH, ORTH
+
+LATIN = False  # rows and columns only; set by --latin, mirrored into the C counter
+
+
+def same_house(i, j):
+    return (
+        CELLS[i][0] == CELLS[j][0]
+        or CELLS[i][1] == CELLS[j][1]
+        or (not LATIN and BOX[i] == BOX[j])
+    )
 
 
 def build(size, force=(), ban=(), all_digits=True):
@@ -33,11 +44,7 @@ def build(size, force=(), ban=(), all_digits=True):
         m.add(n[i] == sum(g[j] for j in NEIGH[i]))
         m.add(n[i] >= 1).only_enforce_if(g[i])
         for j in range(i + 1, 81):
-            if (
-                CELLS[i][0] == CELLS[j][0]
-                or CELLS[i][1] == CELLS[j][1]
-                or BOX[i] == BOX[j]
-            ):
+            if same_house(i, j):
                 m.add(n[i] != n[j]).only_enforce_if([g[i], g[j]])
     for i in force:
         m.add(g[i] == 1)
@@ -81,11 +88,7 @@ def build_determined(size, force=(), ban=(), all_digits=True, symmetry=False):
         m.add(n[i] == sum(g[j] for j in NEIGH[i]))
         m.add(n[i] >= 1).only_enforce_if(g[i])
         for j in range(i + 1, 81):
-            if (
-                CELLS[i][0] == CELLS[j][0]
-                or CELLS[i][1] == CELLS[j][1]
-                or BOX[i] == BOX[j]
-            ):
+            if same_house(i, j):
                 m.add(n[i] != n[j]).only_enforce_if([g[i], g[j]])
     for i in force:
         m.add(g[i] == 1)
@@ -261,6 +264,9 @@ def main():
     a.out.mkdir(parents=True, exist_ok=True)
     force, ban = parse_cells(a.force), parse_cells(a.ban)
     pins(force, ban)
+    global LATIN
+    LATIN = a.latin
+    fastclimb.latin(a.latin)
     progress = a.out / "progress.log"
 
     def log(msg):
@@ -271,7 +277,7 @@ def main():
 
     log(
         f"shape-only enumerate size {a.size} force={force} ban={ban} mode={a.mode} "
-        f"symmetry={a.symmetry} workers={a.workers}"
+        f"symmetry={a.symmetry} latin={a.latin} workers={a.workers}"
     )
     if a.mode == "native":
         enumerate_native(
