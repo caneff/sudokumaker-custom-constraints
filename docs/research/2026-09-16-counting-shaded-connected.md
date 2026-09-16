@@ -422,3 +422,25 @@ grids in `counting_shaded/six-by-six-latin-both-connected-unique.jsonl`, sheet
 no box lines). Latin sizes 5-36 are all exhausted, so these two are the
 complete list of all-visible-unique both-connected 6x6 Latin shadings, up to
 the 8 dihedral images.
+
+### The two Latin uniques as cave-clue puzzles
+
+Chris: "circle all valid cave clues" on both colours, then "either of those
+unique by just some cave clues being given". A cave clue is a cell whose digit
+equals the number of same-colour cells it sees orthogonally, itself included.
+Sheet `counting_shaded/six-by-six-latin-cave-clues.png`.
+
+Puzzle model (`.scratch/counting_shaded/six/tools/cave_unique.py`, CP-SAT,
+solutions are grid+shading pairs, solve-then-forbid at cap 2): Latin square
+1-6; shaded and unshaded each orthogonally connected; a shaded cell's digit is
+its shaded king-neighbour count; every given digit is a cave clue in whichever
+colour it lands. No shading is shown and no distinct-count floor is imposed.
+With no clues the model has 3+ solutions, and with any single clue 3+, so it
+is not over-constrained.
+
+| grid | cave clues | unique from all | minimal unique subsets |
+|---|---|---|---|
+| 1 | r1c3=6, r4c4=5, r4c5=4, r6c1=2, r6c3=4 | yes | {r4c5, r6c1}; {r1c3, r4c4, r4c5}; {r1c3, r4c4, r6c1}; {r1c3, r6c1, r6c3}; {r4c4, r4c5, r6c3}; {r4c4, r6c1, r6c3} |
+| 2 | r2c5=2, r4c5=4, r5c3=5, r6c3=4 | yes | {r2c5, r6c3} |
+
+Both puzzles are unique from two given digits and nothing else shown.
