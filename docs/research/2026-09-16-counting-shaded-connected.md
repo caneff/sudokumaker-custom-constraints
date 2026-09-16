@@ -582,3 +582,12 @@ Scripts and logs in `.scratch/counting_shaded/corners9/`.
 Not monotone in the grid size: on 9x9 the digit cap no longer binds (counts
 are at most 8) but the corners are eight columns apart, so the connecting
 band is longer and puts more cells with near-equal counts into each row.
+
+### r6c1 + r6c5 shaded on 6x6
+
+Chris: "can you show a 6x6 where r6c1 and r6c5 are both shaded". Shape-only
+enumeration with the pair forced, no distinct floor, sizes 4-24. Sudoku 2x3:
+one shape (size 12) and it has no grid. Latin: two shapes at 12 and two at 13,
+all four with a grid (none unique), plus two grid-less shapes at 17. Sheet
+`counting_shaded/six-by-six-r6c1-r6c5.png` (Latin, outer border only), shapes
+in the doc's scratch folder `.scratch/counting_shaded/six-pin3034/`.
