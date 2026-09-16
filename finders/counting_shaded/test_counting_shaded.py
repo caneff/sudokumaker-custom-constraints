@@ -280,3 +280,19 @@ def test_lazy_connectivity_cuts_return_a_connected_shape():
     assert len(connected.components(shape)) == 1
     assert shapes.connected(shape)
     assert shapes.givens(shape) is not None
+
+
+def test_gridenum_six_by_six_counter_and_size_12(tmp_path):
+    """The 6x6 enumerator: counter agrees with a full grid, size 12 has exactly
+    two unique shapes up to symmetry (docs/research/counting_shaded/six-by-six-unique.jsonl)."""
+    import gridenum
+
+    gridenum.geometry(6, 2, 3)
+    full = [1, 2, 3, 4, 5, 6, 4, 5, 6, 1, 2, 3, 2, 3, 1, 5, 6, 4]
+    full += [5, 6, 4, 2, 3, 1, 3, 1, 2, 6, 4, 5, 6, 4, 5, 3, 1, 2]
+    assert gridenum.count(dict(enumerate(full)), 2) == 1
+    assert gridenum.count({}, 2) == 2
+    status, shapes, solvable, unique = gridenum.enumerate_native(
+        12, (), (), 120, tmp_path, lambda _m: None, symmetry=True
+    )
+    assert (status, shapes, solvable, unique) == ("exhausted", 66, 19, 2)

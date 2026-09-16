@@ -319,3 +319,42 @@ counts solutions for each.
 
 Note on reading its output: CP-SAT `UNKNOWN` is a timeout, not a proof that
 the size band is exhausted. Only `INFEASIBLE` proves that.
+
+## 6x6 sudoku (2x3 boxes): six unique puzzles exist
+
+Chris (2026-09-16): "Can we try exploring 6x6?", sudoku with 2x3 boxes, and
+"just 5 distinct" counts on the shading (the uniqueness floor for a 6-digit
+grid; a sixth distinct digit is allowed but not required). Tool:
+`finders/counting_shaded/gridenum.py`, the shape-only native enumeration of
+`shapeenum.py` generalised to an N x N grid with any box shape, plus a Python
+bitmask counter (checked against CP-SAT on 200 random givens sets, zero
+mismatches). Symmetry breaking keeps one of the 4 images that preserve 2x3
+boxes (half turn and the two axis flips). Every size from 8 (the 6x6 givens
+floor) to 36 exhausted, each in about a second.
+
+| shaded | shapes | with a grid | unique |
+|---|---|---|---|
+| 8 | 62 | 58 | 0 |
+| 9 | 85 | 73 | 0 |
+| 10 | 59 | 38 | 0 |
+| 11 | 58 | 32 | 0 |
+| 12 | 66 | 19 | **2** |
+| 13 | 54 | 16 | **1** |
+| 14 | 40 | 11 | **3** |
+| 15 | 3 | 0 | 0 |
+| 16 | 7 | 0 | 0 |
+| 17 | 6 | 1 | 0 |
+| 18-36 | 0 | 0 | 0 |
+
+So under 6x6 sudoku rules, unlike 9x9, the shading alone can force the grid:
+six shapes up to symmetry, at 12, 13 and 14 shaded cells, none larger (17 is
+the largest shading with any grid at all). Each of the six was re-checked by an
+independent CP-SAT model written from the rule text: shading fixed, digits
+free, exactly one grid, every shaded digit equal to its shaded king-neighbour
+count, shape orthogonally connected. Shapes with their grids in
+`counting_shaded/six-by-six-unique.jsonl`; sheet
+`counting_shaded/six-by-six-unique.png` (top row: the two 12s and the 13;
+bottom row: the three 14s).
+
+Caveat: these are all-visible uniques. A playable puzzle shows only some
+shaded cells, and which subset still forces the shading is the next question.
