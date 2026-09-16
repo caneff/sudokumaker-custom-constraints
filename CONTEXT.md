@@ -152,6 +152,9 @@ Use these terms exactly. Do not drift to synonyms.
   rule's space for candidates worth building on.
 - **hunt** — one run of a finder: it writes candidates and a summary to an
   output directory. Not a finder: one finder runs many hunts.
+- **hunt protocol** — the shared contract a finder follows so every hunt writes
+  the same output directory, dedupes the same way, and can resume after a
+  kill. It carries no finder rule.
 - **finder rule** — a rule a finder states itself because gridfind has no layer
   for it. It stays a finder rule until it is **promoted**: turned into a
   gridfind layer with its fixtures.
