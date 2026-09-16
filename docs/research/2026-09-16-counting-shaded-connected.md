@@ -524,3 +524,24 @@ then "what about r1c1 and r6c1". Neither pair admits any solution at all.
   shaded neighbours.
 - Feasible partners for r6c1 (sudoku, plain count, at least 5 distinct, sizes
   8-18): every cell except r1c1, r1c6, r2c1 and r6c6.
+
+### 7x7 Latin: the same two corners are feasible, at one size only
+
+Chris: "is that also true for a 7x7 latin square?" Shape-only model
+(`gridenum`, geometry 7 with Latin mode, pair forced, no distinct floor),
+sizes 2-49: r7c1+r7c7 is feasible at size 17 and at no other size; r1c1+r7c1
+likewise only at 17. Witness (digits are counts, 7 allowed now):
+
+```
+. . . . . . .
+. . . . . . .
+. . . . . . .
+. . 3 5 4 . .
+. . 6 7 5 4 2
+. 5 7 6 . . 3
+2 4 5 3 . . 1
+```
+
+The extra digit (7) and the extra column are what the 6x6 argument lacked:
+the two corner wedges still collide in the bottom rows, but a 7 absorbs the
+cell that had to see seven shaded neighbours.
