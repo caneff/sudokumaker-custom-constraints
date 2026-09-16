@@ -14,7 +14,12 @@ import subprocess
 import sys
 import tempfile
 
-from check_layout import RULES_PREFIX, check_tree
+from check_layout import (
+    GRANDFATHERED_RESEARCH_PY,
+    RULES_PREFIX,
+    check_research_python,
+    check_tree,
+)
 from link_codec import encode_link
 from minify import minify_js
 
@@ -882,5 +887,26 @@ if __name__ == "__main__":
         contents={"hunt-cold-times.tsv.txt": "board\tms\ncap9-seed3\t1000\n"},
     ) as (root, _):
         assert check_tree(root) == [], check_tree(root)
+
+    # a grandfathered docs/research/*.py path passes -- it was already on the
+    # tree when this rule landed
+    grandfathered = sorted(GRANDFATHERED_RESEARCH_PY)[0]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        target = root / grandfathered
+        target.parent.mkdir(parents=True)
+        target.write_text("# grandfathered\n")
+        assert check_research_python(root) == [], check_research_python(root)
+
+    # a new docs/research/*.py path fails and names it, plus finders/
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        target = root / "docs" / "research" / "zzz" / "x.py"
+        target.parent.mkdir(parents=True)
+        target.write_text("# new\n")
+        violations = check_research_python(root)
+        assert len(violations) == 1, violations
+        assert "docs/research/zzz/x.py" in violations[0], violations[0]
+        assert "finders/" in violations[0], violations[0]
 
     print("ok")
