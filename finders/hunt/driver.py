@@ -546,7 +546,10 @@ def _run_verify(finder, argv):
     verdict already computed (#489 review, correctness C1). Each verified.jsonl
     line carries its own record, not just position, so it still joins back to
     examples.jsonl after a resume appends more lines (#489 review, standards
-    S4 / spec P1 / correctness C4)."""
+    S4 / spec P1 / correctness C4). A finder without `candidate_from_record`
+    whose record() isn't itself verify-able fails loud with a named cause
+    instead of a raw traceback into `finder.verify`'s own internals (#489
+    review, correctness C3)."""
     args = _parse_verify_args(argv)
     out = Path(args.dir)
     examples_path = out / "examples.jsonl"
@@ -563,7 +566,17 @@ def _run_verify(finder, argv):
     tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
     with tmp.open("w") as verified_f:
         for record in records:
-            verdict = finder.verify(to_candidate(record))
+            try:
+                verdict = finder.verify(to_candidate(record))
+            except Exception as e:
+                print(
+                    "hunt verify: refusing -- finder.verify raised on a "
+                    f"record from examples.jsonl ({type(e).__name__}: {e}). "
+                    "If record() isn't itself a verify-able candidate, "
+                    "define candidate_from_record on the finder.",
+                    file=sys.stderr,
+                )
+                return 2
             entry = {"record": record, "ok": verdict.ok}
             if verdict.reason:
                 entry["reason"] = verdict.reason

@@ -184,4 +184,65 @@ with tempfile.TemporaryDirectory() as tmp:
     )
     check("verified.jsonl was written", (out / "verified.jsonl").exists())
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A finder with no candidate_from_record whose record() isn't itself
+    # verify-able must fail loud with a named cause, not a raw traceback
+    # into finder.verify's own internals (#489 review, correctness C3).
+    out = Path(tmp) / "hunt-out"
+    wrapped_finder_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class WrappedRecordFinder:
+    def propose(self, rng):
+        return (rng.randint(0, 1),)
+
+    def verify(self, candidate):
+        return Verdict(ok=sum(candidate) % 2 == 0)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+sys.exit(run(WrappedRecordFinder(), sys.argv[1:]))
+"""
+    seed_result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            wrapped_finder_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"seeding the no-candidate_from_record fixture exits 0 (stderr: "
+        f"{seed_result.stderr[-300:]})",
+        seed_result.returncode == 0,
+    )
+    verify_result = subprocess.run(
+        [sys.executable, "-c", wrapped_finder_script, "verify", str(out)],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        "hunt verify on a finder without candidate_from_record refuses "
+        f"(exit {verify_result.returncode}, stderr: "
+        f"{verify_result.stderr[-300:]})",
+        verify_result.returncode == 2,
+    )
+    check(
+        "the refusal names candidate_from_record, not a raw traceback",
+        "candidate_from_record" in verify_result.stderr
+        and "Traceback" not in verify_result.stderr,
+    )
+
 sys.exit(0 if ok else 1)
