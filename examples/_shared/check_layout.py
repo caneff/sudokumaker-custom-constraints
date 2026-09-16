@@ -281,17 +281,6 @@ GRANDFATHERED_RESEARCH_PY = frozenset(
         "docs/research/408-house-gac/house_gac_links.py",
         "docs/research/408-house-gac/link-delta-house-gac.py",
         "docs/research/fillomino-baseline/build_link.py",
-        "docs/research/ghosts/allvisible.py",
-        "docs/research/ghosts/charvest.py",
-        "docs/research/ghosts/check_hit.py",
-        "docs/research/ghosts/dense.py",
-        "docs/research/ghosts/fastclimb.py",
-        "docs/research/ghosts/harvest.py",
-        "docs/research/ghosts/minimal.py",
-        "docs/research/ghosts/probe.py",
-        "docs/research/ghosts/render.py",
-        "docs/research/ghosts/shapes.py",
-        "docs/research/ghosts/verify_all.py",
     }
 )
 

@@ -8,7 +8,7 @@ the first goal is any valid grid plus ghost set where one ghost holds an 8.
 
 ## Result
 
-`uv run docs/research/ghosts/probe.py` — CP-SAT, one worker, OPTIMAL in 1.40 s.
+`uv run finders/ghosts/probe.py` — CP-SAT, one worker, OPTIMAL in 1.40 s.
 An independent Python recheck of sudoku rows/columns/boxes and the ghost count
 passed. `*` marks a ghost; the 8-ghost is r4c3.
 
@@ -38,4 +38,4 @@ passed. `*` marks a ghost; the 8-ghost is r4c3.
 - A ghost 8 cannot be a box centre (r2c2, r2c5, …, 0-based box middles): its
   whole 3×3 would be ghosts in one box, needing nine distinct digits ≤ 8.
 
-![grid](ghosts/eight-probe.png) — `uv run --with pillow docs/research/ghosts/render.py <out.png>`
+![grid](ghosts/eight-probe.png) — `uv run --with pillow finders/ghosts/render.py <out.png>`
