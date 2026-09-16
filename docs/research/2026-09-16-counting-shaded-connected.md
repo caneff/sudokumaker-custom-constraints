@@ -393,3 +393,27 @@ either, sizes 8-30 exhausted with symmetry: 0 shapes at every size. The
 free-size model without boxes agrees: no 2x2 + shaded connected + counts 1-6
 + distinct within row and column is INFEASIBLE on its own; the row/column
 rule alone already clashes with the thin shapes no-2x2 forces.
+
+### Both colours connected, 2x2 allowed
+
+Chris: "what if we drop 2x2". `gridenum.py --unshaded-connected` without
+`--no-2x2`, sizes 8-30 exhausted with symmetry, at least 5 distinct counts.
+
+| shaded | sudoku 2x3: shapes / with a grid / unique | Latin: shapes / with a grid / unique |
+|---|---|---|
+| 8 | 45 / 43 / 0 | 36 / 36 / 0 |
+| 9 | 53 / 46 / 0 | 41 / 41 / 0 |
+| 10 | 19 / 13 / 0 | 26 / 26 / 0 |
+| 11 | 19 / 16 / 0 | 19 / 19 / 0 |
+| 12 | 2 / 2 / 0 | 6 / 6 / 0 |
+| 13 | 1 / 1 / 0 | 5 / 5 / **2** |
+| 14-30 | 0 | 0 |
+
+Requiring the unshaded cells to be connected too keeps shadings alive (the
+unshaded region needs a path around the shape), but under sudoku boxes none
+of them forces the grid: the six 12-14 uniques above all cut the unshaded
+region in two. Under Latin rules two 13-cell shadings are all-visible unique,
+re-checked by the independent CP-SAT model (rows and columns only). Shapes with
+grids in `counting_shaded/six-by-six-latin-both-connected-unique.jsonl`, sheet
+`counting_shaded/six-by-six-latin-both-connected-unique.png` (outer border only,
+no box lines).
