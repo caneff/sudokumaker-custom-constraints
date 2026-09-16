@@ -86,13 +86,16 @@ test:
     # test_probe_circle_cost.py about a second (two model builds, no solve),
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
     # worker -- this box is shared). The known-grid tests solve a CP-SAT
-    # model per known grid and stay out of this gate; see
-    # `just test-finders-slow`.
+    # model per known grid and stay out of this gate, except the circle
+    # pattern's --cover subset: six grids, about 7s, one per circled group
+    # shape, so an over-constrained size encoding fails CI. The full runs
+    # are `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
+    uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles ghosts_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
