@@ -7,13 +7,17 @@ new hunt; an `--out` that already has one resumes it: seeds with a
 `seed_done` event are skipped, the dedupe set is rebuilt from the durable
 log, and a finder's optional `save_state`/`load_state` round-trip through
 state.json. A differing argv versus the recorded run refuses to start; a
-differing git sha only warns. The grid helpers, CP-SAT helpers,
-deferred verification and the render hook are the other later tickets
-(#485-#490) under the parent spec (#483). `--workers` (default 3, set on
-the finder before the first seed) and the 1-minute load gate (refuses above
-24 unless `--force-load`) are #488.
+differing git sha only warns. `--no-verify` skips `finder.verify` while
+searching, and `hunt verify DIR` (#489) runs it afterwards over everything
+`--no-verify` saved, writing one verdict per examples.jsonl line to
+verified.jsonl. `--workers` (default 3, set on the finder before the first
+seed) and the 1-minute load gate (refuses above 24 unless `--force-load`)
+are #488. The render hook is the other later ticket (#490) under the
+parent spec (#483).
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
+    uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
+    uv run finders/hunt/toy_finder.py verify DIR
 
 Every accepted example carries a driver-owned `__dedupe_key__` field
 alongside whatever `finder.record()` returned, so the dedupe set can be
@@ -45,7 +49,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, IDENTITY, canonical_key, validate_group
-from protocol import DEFAULT_WORKERS
+from protocol import DEFAULT_WORKERS, Verdict
 
 OUTPUT_FILES = (
     "examples.jsonl",
@@ -147,7 +151,14 @@ def _parse_args(argv):
     parser.add_argument("--seeds", required=True, type=_parse_seeds)
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--force-load", action="store_true")
+    parser.add_argument("--no-verify", action="store_true")
     return parser.parse_args(_merge_seeds_token(argv))
+
+
+def _parse_verify_args(argv):
+    parser = argparse.ArgumentParser(prog="hunt verify")
+    parser.add_argument("dir")
+    return parser.parse_args(argv)
 
 
 def _git_sha():
@@ -367,17 +378,23 @@ def _load_state(finder, out):
     load(json.loads(state_path.read_text())["state"])
 
 
-def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
+def _process_seed(
+    finder, seed, seen, symmetry, examples_f, progress_f, counts, no_verify=False
+):
     """Run one seed and append its outcome to examples.jsonl/progress.jsonl,
     updating `seen` and `counts` in place. Shared by the fresh and resumed
-    loops so the two can't drift apart on what a seed's outcome means."""
+    loops so the two can't drift apart on what a seed's outcome means.
+
+    `no_verify` (#489) skips the call to `finder.verify` -- a candidate
+    that would be rejected is recorded anyway, so `hunt verify DIR` can
+    check it later over everything the search saved."""
     candidate = finder.propose(random.Random(seed))
     event = {"event": "seed_done", "seed": seed}
     if candidate is None:
         counts["empty"] += 1
         event["outcome"] = "empty"
     else:
-        verdict = finder.verify(candidate)
+        verdict = Verdict(ok=True) if no_verify else finder.verify(candidate)
         if not verdict.ok:
             counts["rejected"] += 1
             event["outcome"] = "rejected"
@@ -414,7 +431,9 @@ def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
     counts["seeds_done"] += 1
 
 
-def _hunt_loop(finder, out, seed_start, seed_end, seen, counts, skip=frozenset()):
+def _hunt_loop(
+    finder, out, seed_start, seed_end, seen, counts, skip=frozenset(), no_verify=False
+):
     symmetry = getattr(finder, "symmetry", D4)
     with (
         (out / "examples.jsonl").open("a") as examples_f,
@@ -423,7 +442,16 @@ def _hunt_loop(finder, out, seed_start, seed_end, seen, counts, skip=frozenset()
         for seed in range(seed_start, seed_end):
             if seed in skip:
                 continue
-            _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts)
+            _process_seed(
+                finder,
+                seed,
+                seen,
+                symmetry,
+                examples_f,
+                progress_f,
+                counts,
+                no_verify=no_verify,
+            )
             _write_json_atomic(out / "summary.json", dict(counts))
             _save_state(finder, out, seed)
 
@@ -448,7 +476,9 @@ def _fresh(finder, argv, args, out):
     }
     _write_json_atomic(out / "summary.json", dict(counts))
 
-    _hunt_loop(finder, out, seed_start, seed_end, set(), counts)
+    _hunt_loop(
+        finder, out, seed_start, seed_end, set(), counts, no_verify=args.no_verify
+    )
     return 0
 
 
@@ -489,12 +519,55 @@ def _resume(finder, argv, args, out, prior):
     _write_json_atomic(out / "summary.json", dict(counts))
     _load_state(finder, out)
 
-    _hunt_loop(finder, out, seed_start, seed_end, seen, counts, skip=done_seeds)
+    _hunt_loop(
+        finder,
+        out,
+        seed_start,
+        seed_end,
+        seen,
+        counts,
+        skip=done_seeds,
+        no_verify=args.no_verify,
+    )
+    return 0
+
+
+def _run_verify(finder, argv):
+    """`hunt verify DIR` (#489): run `finder.verify` over every line in
+    DIR/examples.jsonl and write one verdict per line to DIR/verified.jsonl
+    -- the deferred half of a `--no-verify` hunt. Returns the process exit
+    code: 0 on success, 2 when DIR has no examples.jsonl to verify."""
+    args = _parse_verify_args(argv)
+    out = Path(args.dir)
+    examples_path = out / "examples.jsonl"
+    if not examples_path.exists():
+        print(
+            f"hunt verify: refusing -- {args.dir} has no examples.jsonl",
+            file=sys.stderr,
+        )
+        return 2
+
+    to_candidate = getattr(finder, "candidate_from_record", lambda record: record)
+    verified_path = out / "verified.jsonl"
+    tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
+    with examples_path.open() as examples_f, tmp.open("w") as verified_f:
+        for line in examples_f:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            verdict = finder.verify(to_candidate(record))
+            entry = {"ok": verdict.ok}
+            if verdict.reason:
+                entry["reason"] = verdict.reason
+            verified_f.write(json.dumps(entry) + "\n")
+    tmp.replace(verified_path)
     return 0
 
 
 def run(finder, argv):
-    """Run or resume a hunt for `finder` over the seed range in `argv`.
+    """Run or resume a hunt for `finder` over the seed range in `argv`, or
+    (`argv[0] == "verify"`) run deferred verification -- see
+    `_run_verify`.
 
     A fresh `--out` (no run.json) starts a new hunt, refusing when it
     already holds any other output file with no run.json to explain it. An
@@ -510,6 +583,9 @@ def run(finder, argv):
     match the recorded run, or a second process already holding this
     --out's lock).
     """
+    if argv and argv[0] == "verify":
+        return _run_verify(finder, argv[1:])
+
     args = _parse_args(argv)
     if args.workers < 1:
         print(
