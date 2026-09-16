@@ -8,7 +8,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint, strengthSweep } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -98,51 +98,35 @@ const reference = {
 }
 
 const { rnd } = makeRng(4242)
-let states = 0
-let weaker = 0
 for (const [N, bh, bw] of [[9, 3, 3], [6, 2, 3], [4, 2, 2]]) {
   installGlobals(1, N)
   const geo = gridGeometry(N, bh, bw)
-  for (let rep = 0; rep < 4000; rep++) {
-    // a row or a column line, starting anywhere, of any length that fits
-    const down = rnd() < 0.5
-    const from = (rnd() * N) | 0
-    const len = 1 + ((rnd() * (N - from)) | 0)
-    const i = (rnd() * N) | 0
-    const line = down ? geo.columnLine(i, from, len) : geo.rowLine(i, from, len)
-    const w = Math.min(down ? bh : bw, len)
-    const start = new Map([[geo.clue, randomCandidates(rnd, 1, N)]])
-    for (const c of line) start.set(c, randomCandidates(rnd, 1, N))
-
-    const runOne = version => {
-      const truth = Object.fromEntries([...start.keys()].map(c => [c, 0]))
-      const p = makePuzzle(truth, c => start.get(c))
+  strengthSweep(`never-weaker ${N}x${N}`, {
+    cur: mod,
+    ref: reference,
+    apply: (version, p, { line, w }) => {
       Object.assign(p, geo.api)
       const inst = {}
       // The extra `w` is the reference's; the component ignores it and reads
       // the window off the geometry, which is the point of the comparison.
       version.setParams(inst, geo.clue, line, w)
       fixpoint(version, inst, p)
-      return p
-    }
-    const pNew = runOne(mod)
-    const pRef = runOne(reference)
-    // A dead state (some cell emptied by either side) has no solution, so
-    // "weaker" means nothing there; skip it.
-    if ([...pNew._cand.values(), ...pRef._cand.values()].some(s => s.size === 0)) continue
-    states++
-    for (const c of start.keys()) {
-      for (const d of pNew._cand.get(c)) {
-        if (!pRef._cand.get(c).has(d)) {
-          weaker++
-          if (weaker <= 5) console.log('weaker at cell', c, 'digit', d, 'line', line, 'w', w)
-        }
+    },
+    * states () {
+      for (let rep = 0; rep < 4000; rep++) {
+        // a row or a column line, starting anywhere, of any length that fits
+        const down = rnd() < 0.5
+        const from = (rnd() * N) | 0
+        const len = 1 + ((rnd() * (N - from)) | 0)
+        const i = (rnd() * N) | 0
+        const line = down ? geo.columnLine(i, from, len) : geo.rowLine(i, from, len)
+        const w = Math.min(down ? bh : bw, len)
+        const start = new Map([[geo.clue, randomCandidates(rnd, 1, N)]])
+        for (const c of line) start.set(c, randomCandidates(rnd, 1, N))
+        yield { start, params: { line, w } }
       }
     }
-  }
+  })
 }
-console.log('never-weaker:', states, 'states,', weaker, 'weaker cells')
-assert.ok(states > 6000, 'the dead-state filter must leave most states to compare')
-assert.strictEqual(weaker, 0)
 
 console.log('PASS')

@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -267,5 +267,28 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.throws(() => parseArgs([]), /usage: app-solve.mjs/)
   assert.throws(() => parseArgs(['--ring-clues']), /usage: app-solve.mjs/)
 }
+
+// ---- VERDICT_PATTERN: the one readout the drivers wait for ----
+// app-solve.mjs and app-strip.mjs both wait in the page for a verdict. Every
+// readout readVerdict classifies must end that wait, and nothing else may: a
+// wait that ends on a first-solve "took" times half the run.
+{
+  const readouts = {
+    unique: 'This is a unique solution. took 0.4s',
+    'not-unique': 'Found 10,000 solutions',
+    timeout: 'Stopped solving (time limit reached)'
+  }
+  for (const [want, text] of Object.entries(readouts)) {
+    assert.ok(VERDICT_PATTERN.test(text), `the wait must end on a ${want} readout`)
+    assert.strictEqual(parseReadout(text).verdict, want)
+  }
+  assert.ok(!VERDICT_PATTERN.test('\u2728 Solved took 3.7s'), 'a first solve is no verdict')
+  // the source travels into the page as a string and is rebuilt there
+  assert.ok(new RegExp(VERDICT_PATTERN.source, VERDICT_PATTERN.flags).test('multiple solutions'))
+}
+
+// ---- ALREADY_ENTERED: the phrase marksRejected reads ----
+assert.ok(marksRejected(`a unique solution (${ALREADY_ENTERED} and pencil marks.)`, false))
+assert.ok(!marksRejected('a unique solution', false))
 
 console.log('app-solve-lib.test.mjs: all seams pass')

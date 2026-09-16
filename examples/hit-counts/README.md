@@ -533,6 +533,29 @@ previous commit keeps.
 
 ## Timing
 
+### The SideSum stale-wake case (#362)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts | 6500ms | — | — | BASELINE |
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts after-logical | 4000ms | — | — | BASELINE |
+
+`just time hit-counts`. The soundness case passed on the shipped
+`SideSumComponent`, so the only code change is the comment beside
+`getAffectedCells` saying why a stale wake is safe; the minified component is
+byte-equal and the driver timed the baseline alone.
+
+### One line-kind gate across the components (#360)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts | 6500ms | 6400ms | 0.98 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts after-logical | 3900ms | 4000ms | 1.03 | FAIL |
+two-row rule: NO SHIP
+
+`just time hit-counts`, 3 reps per arm, non-deterministic solve off. The candidate reads its
+line kind through `_shared/line-kind.js` instead of a per-file gate and adds
+no deduction (the soundness harness output is byte-identical), so the `NO
+SHIP` line reads the 0.9x deduction rule; the bar it answers to is the
+gate-change bar, 1.1x or under on both rows (`../../docs/real-app-timing.md`),
+and it clears it.
+
 ```
 just time hit-counts
 ```

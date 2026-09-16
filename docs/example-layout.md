@@ -16,7 +16,7 @@ so a missing required file or a bad link name fails the gate.
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
-| `update-strength.test.mjs` | Never-weaker fuzz; floor pinned at the commit that adds it, or frozen as a committed copy when the floor lands in the same squash-merged PR as the component (up-to-n's `.golden/UpToNComponent.floor.js`) |
+| `update-strength.test.mjs` | Never-weaker fuzz through `harness-lib.strengthSweep`; floor pinned at the commit that adds it, or frozen as a committed copy when the floor lands in the same squash-merged PR as the component (up-to-n's `.golden/UpToNComponent.floor.js`) |
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
 | `PUZZLE_LINK_local.txt` | The local-lane board |

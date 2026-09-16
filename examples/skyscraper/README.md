@@ -296,6 +296,19 @@ segment.
 
 ## Timing
 
+### One line-kind gate across the components (#360)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | skyscraper | 7700ms | 7800ms | 1.01 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time skyscraper --ring-clues`, 3 reps per arm, non-deterministic solve off. The candidate reads its
+line kind through `_shared/line-kind.js` instead of a per-file gate and adds
+no deduction (the soundness harness output is byte-identical), so the `NO
+SHIP` line reads the 0.9x deduction rule; the bar it answers to is the
+gate-change bar, 1.1x or under on both rows (`../../docs/real-app-timing.md`),
+and it clears it.
+
 ### Removing the per-side count (#404)
 
 | 2026-09-10 | v2026.08.14-d47fc4b | skyscraper | 8300ms | 7700ms | 0.93 | PASS |

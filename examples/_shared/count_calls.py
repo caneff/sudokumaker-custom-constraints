@@ -17,17 +17,16 @@
 # The two pure halves -- `probe_source` (splice the counter in) and
 # `summarize` (the report line) -- are tested directly in count_calls.test.py.
 # `main` is tested there too, with `build_candidate`, `empty_link_file` and
-# `subprocess.run` stubbed: what it orchestrates is a real Chromium against
-# the live sudokumaker.app, so a run with the real three stays manual.
+# the `app_solve` adapter stubbed: what it orchestrates is a real Chromium
+# against the live sudokumaker.app, so a run with the real three stays manual.
 
 import argparse
 import pathlib
-import subprocess
 import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from time_example import APP_SOLVE, build_candidate, empty_link_file
+from time_example import app_solve, build_candidate, empty_link_file
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 HOOK = "function * update (instance, puzzle) {"
@@ -79,22 +78,25 @@ def main(example, component, ring_clues, board=None):
         sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        probe = tmp / component.name  # build_link.py swaps by basename
+        # build_link.py swaps by basename, and the probe sits in an example
+        # directory beside a `_shared`, where a `// #include
+        # ../_shared/...` in the component still resolves
+        (tmp / "_shared").symlink_to(EXAMPLES / "_shared")
+        (tmp / "probe").mkdir()
+        probe = tmp / "probe" / component.name
         probe.write_text(hooked)
         link = tmp / "probe.txt"
         build_candidate(EXAMPLES / example, probe, link, board=board)
         emptied = tmp / "probe_empty.txt"
         empty_link_file(link, emptied, "empty" if ring_clues else "strip")
-        cmd = ["node", str(APP_SOLVE), str(emptied), "1"]
-        if ring_clues:
-            cmd.append("--ring-clues")
-        out = subprocess.run(cmd, capture_output=True, text=True)
-    if out.returncode != 0:
-        sys.exit(f"app-solve.mjs failed:\n{out.stdout[-800:]}{out.stderr[-800:]}")
+        try:
+            stdout = app_solve(emptied, 1, ring_clues)
+        except RuntimeError as e:
+            sys.exit(str(e))
     try:
-        print(summarize(out.stdout, component.name, board))
+        print(summarize(stdout, component.name, board))
     except ValueError as e:
-        sys.exit(f"{e}:\n{out.stdout[-800:]}{out.stderr[-800:]}")
+        sys.exit(f"{e}:\n{stdout[-800:]}")
 
 
 if __name__ == "__main__":

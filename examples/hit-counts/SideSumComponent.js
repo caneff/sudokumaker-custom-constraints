@@ -5,6 +5,16 @@
 //! hit per line, n in all. So the rule needs all n clues of the side AND the n
 //! perpendicular lines they cross.
 
+// The clue cells alone, though the gate reads every perpendicular line. Stale
+// is safe here: a missed wake only delays a deduction, never makes a wrong
+// one. The gate is re-read in full on every call (lineKind latches only the
+// house fact, which a backtrack cannot undo), so whenever the app does run
+// `update` -- on any later change to a clue -- it judges the lines as they
+// stand then, never as they stood at some earlier call. A line cell that
+// opens the gate without waking the component costs nothing until a clue
+// moves; one a backtrack restores is read restored. The soundness harness
+// holds this with a wake-driven run ("side-sum stale wake", #362). Widening
+// the list to the lines would buy earlier firing, not soundness.
 function getAffectedCells (cells, target, lines) {
   return cells
 }
@@ -25,22 +35,13 @@ function setParams (instance, cells, target, lines) {
 // answer is never cached: the app shares one component object across every
 // search node, so a gate latched open deep in a branch stays open after the
 // backtrack to a parent state whose perpendiculars have regained a 0 (#336).
-// The digit-set test is the same one HitCountsComponent's lineKind makes: the
-// app pastes each component as its own segment, so the two cannot share code.
-function gateOpen (instance, puzzle) {
+// lineKind's `oneToN` is that test, per line.
+// #include ../_shared/line-kind.js
+
+function sumsToN (instance, puzzle) {
   const { cells, target, lines } = instance
   if (!lines || lines.length !== cells.length || target !== lines.length) return false
-  // The repeats answer is structural -- a house is registered once and a
-  // backtrack cannot un-register it -- so it is cached once every line is one.
-  if (!instance.noRepeats) {
-    for (const line of lines) if (puzzle.getCellsCanHaveRepeats(line)) return false
-    instance.noRepeats = true
-  }
-  for (const line of lines) {
-    let mask = 0
-    for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-    if (mask !== (1 << (line.length + 1)) - 2) return false // bits 1..n set, bit 0 clear
-  }
+  for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false
   return true
 }
 
@@ -72,14 +73,14 @@ function * initialize (instance, puzzle) {
 }
 
 function * update (instance, puzzle) {
-  if (!gateOpen(instance, puzzle)) return
+  if (!sumsToN(instance, puzzle)) return
   yield * propagate(instance.cells, instance.target, puzzle)
 }
 
 function validate (instance, puzzle) {
   const { cells, target } = instance
   if (!puzzle.getCellsAreFilled(cells)) return true
-  if (!gateOpen(instance, puzzle)) return true
+  if (!sumsToN(instance, puzzle)) return true
   let sum = 0
   for (const c of cells) sum += puzzle.getValue(c)
   return sum === target

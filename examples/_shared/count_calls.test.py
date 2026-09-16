@@ -1,7 +1,7 @@
 # count_calls.py: the two pure seams -- splicing the call counter into a
 # component's `update`, and turning the driver's stdout into the one report
 # line -- plus main()'s orchestration, run against stubbed `build_candidate`,
-# `empty_link_file` and `subprocess.run`. Only a real Chromium against the
+# `empty_link_file` and the `app_solve` adapter. Only a real Chromium against the
 # live sudokumaker.app is out of reach here; every decision main() makes
 # about what to build and what argv to hand the driver is not.
 #
@@ -9,7 +9,6 @@
 
 import contextlib
 import pathlib
-import subprocess
 import sys
 import tempfile
 
@@ -24,40 +23,46 @@ WIDGET = f"class Widget {{\n  {HOOK}\n    yield 1\n  }}\n}}\n"
 def _stubbed(stdout, returncode=0):
     """Replace main's three impure dependencies and record how it called them.
 
-    Yields a dict with the `build_candidate` and `empty_link_file` argument
-    tuples and the `node` argv, so a case can assert on what main decided
+    Yields a dict with the `build_candidate`, `empty_link_file` and
+    `app_solve` argument tuples, so a case can assert on what main decided
     rather than on a browser it cannot run. `build_candidate` writes the file
     main hands it, because main goes on to read that path.
     """
     real = (
         count_calls.build_candidate,
         count_calls.empty_link_file,
-        count_calls.subprocess.run,
+        count_calls.app_solve,
     )
     seen = {}
 
     def fake_build(example_dir, probe, link, board=None):
         seen["build"] = (example_dir, pathlib.Path(probe).read_text(), board)
+        # a component's `// #include ../_shared/...` must resolve from the probe
+        seen["include_root"] = (
+            pathlib.Path(probe).parent / "../_shared/line-kind.js"
+        ).is_file()
         pathlib.Path(link).write_text("LINK")
 
     def fake_empty(src, out, mode):
         seen["empty"] = (pathlib.Path(src).read_text(), mode)
         pathlib.Path(out).write_text("EMPTIED")
 
-    def fake_run(cmd, **kwargs):
-        seen["cmd"] = list(cmd)
-        return subprocess.CompletedProcess(cmd, returncode, stdout, "")
+    def fake_solve(link, reps, ring_clues=False, after_logical=False):
+        seen["solve"] = (pathlib.Path(link).name, reps, ring_clues, after_logical)
+        if returncode != 0:
+            raise RuntimeError(f"app-solve.mjs failed on {link}:\nboom")
+        return stdout
 
     count_calls.build_candidate = fake_build
     count_calls.empty_link_file = fake_empty
-    count_calls.subprocess.run = fake_run
+    count_calls.app_solve = fake_solve
     try:
         yield seen
     finally:
         (
             count_calls.build_candidate,
             count_calls.empty_link_file,
-            count_calls.subprocess.run,
+            count_calls.app_solve,
         ) = real
 
 
@@ -132,23 +137,20 @@ if __name__ == "__main__":
         # unhooked probe would time the component and count nothing
         example_dir, probe_src, board = seen["build"]
         assert COUNTER in probe_src, "main must build from the hooked source"
+        assert seen["include_root"], "the probe copy must still resolve its includes"
         assert example_dir == count_calls.EXAMPLES / "widget"
         assert board is None
         # the built link is what gets emptied, and no ring clues means `strip`
         assert seen["empty"] == ("LINK", "strip")
-        # the driver is handed the EMPTIED link, one rep, and no ring flag
-        assert seen["cmd"][0] == "node"
-        assert seen["cmd"][1] == str(count_calls.APP_SOLVE)
-        assert pathlib.Path(seen["cmd"][2]).name == "probe_empty.txt"
-        assert seen["cmd"][3] == "1"
-        assert "--ring-clues" not in seen["cmd"]
+        # the driver is handed the EMPTIED link, one rep, cold, no ring flag
+        assert seen["solve"] == ("probe_empty.txt", 1, False, False)
 
         # --ring-clues reaches both the empty mode and the driver argv: an
         # edge-clue board stripped to its givens loses the clues it is timing
         with _stubbed(stdout) as seen:
             main("widget", str(component), ring_clues=True, board="PUZZLE_LINK_28g.txt")
         assert seen["empty"][1] == "empty", "--ring-clues must keep the ring"
-        assert seen["cmd"][-1] == "--ring-clues"
+        assert seen["solve"][2] is True, "--ring-clues must reach the driver"
         assert seen["build"][2] == "PUZZLE_LINK_28g.txt", "--board must reach the build"
 
         # a driver that failed exits, never prints a report off partial output

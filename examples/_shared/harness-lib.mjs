@@ -7,6 +7,7 @@
 // A component reads two globals at update time: SudokuDigitSet.from(array) and
 // helpers.digits.{minDigit,maxDigit}. Call installGlobals once before running.
 
+import assert from 'assert'
 import { join } from 'path'
 import { execFileSync } from 'child_process'
 import { Script } from 'vm'
@@ -19,13 +20,12 @@ export class DigitSet {
   static from (digits) { let m = 0; for (const d of digits) m |= 1 << d; return new this(m) }
   get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
   has (d) { return (this.mask & (1 << d)) !== 0 }
-  valueOf () { return this.mask }
   // Copied from the bundle's SmallNumberSet (bundle.claude.js:558-617);
   // `getUnion` returns a fresh set. Their callers are the digit-set forms in
   // docs/research/408-house-gac/, run by its bench through this harness.
-  union (other) { this.mask |= other.valueOf(); return this }
-  subtract (other) { this.mask &= ~other.valueOf(); return this }
-  equals (other) { return this.mask === +other }
+  union (other) { this.mask |= other.mask; return this }
+  subtract (other) { this.mask &= ~other.mask; return this }
+  equals (other) { return this.mask === other.mask }
   static getUnion (sets) { const u = new this(); for (const s of sets) u.union(s); return u }
   // ponytail: the rest of SmallNumberSet (intersect, xor, add, delete, clear,
   // the is*/intersects tests, getSmallest/LargestNumber, getIntersection) is
@@ -59,7 +59,9 @@ export function installGlobals (minDigit, maxDigit) {
 // Bind file reads to the example's own directory. `read` returns a file's text
 // with its `// #include` directives spliced in (include.mjs), so a probe runs
 // the same assembled paste target the link ships;
-// `load` evals a component file and returns the named functions from it;
+// `load` evals a component file and returns the named functions from it,
+// after `patch(source)` when one is given -- the file keeps its own name
+// either way, so V8 coverage (c8) still attributes the run to it;
 // `loadSource` does the same for source a caller already holds, which is how a
 // harness runs one component twice with a flag at the top of the file flipped;
 // `loadAt` does the same for the file as it stood at a git commit, which is how
@@ -70,7 +72,7 @@ export function makeIo (here) {
   // execution to its own file, not to this harness.
   const evalNamed = (src, names, filename = 'loadSource.js') =>
     new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
-  const load = (file, names) => evalNamed(read(file), names, join(here, file))
+  const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
   const loadAt = (commit, file, names) => {
     const src = git(['show', `${commit}:${git(['rev-parse', '--show-prefix']).trim()}${file}`])
@@ -85,6 +87,24 @@ export function makeIo (here) {
   }
   return { read, load, loadAt, loadSource: evalNamed }
 }
+
+// Edit component source at an anchor that has to be there exactly once: a
+// string, or a RegExp. The app pastes each file as its own segment, so a flag
+// is a source edit, not a parameter, and a harness makes the same edit. An
+// anchor that moved would otherwise patch nothing, silently, and the harness
+// would test the component against itself.
+export function patchSource (src, anchor, replacement) {
+  const hits = typeof anchor === 'string'
+    ? src.split(anchor).length - 1
+    : (src.match(new RegExp(anchor.source, anchor.flags.replace('g', '') + 'g')) || []).length
+  if (hits === 0) throw new Error(`patchSource: no ${anchor} in the source`)
+  if (hits > 1) throw new Error(`patchSource: ${anchor} is not unique in the source`)
+  return src.replace(anchor, replacement)
+}
+
+// The tie flag a line component carries at the top of its file
+// (docs/line-contract.md); patch it to run the component under either reading.
+export const TIES_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
 
 // A random candidate set over lo..hi: pinned, the full range, or a random
 // subset. With `keep` given, that digit is in every set, so the state still
@@ -101,18 +121,44 @@ export function randomCandidates (rnd, lo, hi, keep = null) {
   return [...s]
 }
 
+// A seed function for makePuzzle over `digits`: each call draws a mode --
+// 'pin' (the true value alone), 'full' (every digit), or 'subset' (the true
+// value plus each digit at even odds) -- uniformly from `modes`. The even
+// three-way mix is the distribution the examples' soundness pools were tuned
+// on; repeat a mode in `modes` to weight it.
+export function makeSeeder (rnd, digits, modes = ['pin', 'full', 'subset']) {
+  return (c, v) => {
+    const mode = modes[(rnd() * modes.length) | 0]
+    if (mode === 'pin') return [v]
+    if (mode === 'full') return [...digits]
+    const s = new Set([v])
+    for (const d of digits) if (rnd() < 0.5) s.add(d)
+    return [...s]
+  }
+}
+
+// Fisher-Yates, in place, off the harness's own RNG.
+export function shuffle (rnd, a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] }
+  return a
+}
+
+// The candidates left on a mock puzzle, summed over its cells.
+export const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
+
 // Run one starting state (cell -> candidate array) through two versions of a
 // component and report the candidates `cur` keeps that `ref` removed — the
 // cells where `cur` prunes less. `apply` sets a version's params and runs it.
 // Returns null for a dead state (some cell emptied by either side): that state
 // has no solution, so "weaker" means nothing there. `opts` is passed to
-// `makePuzzle`: a gated component only prunes on a state whose declared kind
-// opens its gate, so compare it on one (docs/line-contract.md).
-export function compareStrength (cur, ref, apply, start, opts = {}) {
+// `makePuzzle`: a gated component only prunes on a state whose declared houses
+// open its gate, so compare it on one (docs/line-contract.md). `params` is
+// handed to `apply` as its third argument.
+export function compareStrength (cur, ref, apply, start, opts = {}, params) {
   const cells = {}; for (const c of start.keys()) cells[c] = 0
   const seed = c => start.get(c)
-  const pCur = makePuzzle(cells, seed, opts); apply(cur, pCur)
-  const pRef = makePuzzle(cells, seed, opts); apply(ref, pRef)
+  const pCur = makePuzzle(cells, seed, opts); apply(cur, pCur, params)
+  const pRef = makePuzzle(cells, seed, opts); apply(ref, pRef, params)
   // A stop() is the same dead-state signal as an emptied cell (older pinned
   // versions empty a cell where current code stops).
   if (pCur._stopped !== null || pRef._stopped !== null) return null
@@ -122,6 +168,41 @@ export function compareStrength (cur, ref, apply, start, opts = {}) {
     for (const d of pCur._cand.get(c)) if (!pRef._cand.get(c).has(d)) weaker.push({ cell: c, digit: d })
   }
   return weaker
+}
+
+// The share of drawn states a strength sweep must get to compare. A state
+// either version empties has no solution, so it compares nothing; a sweep
+// whose states mostly die has proved little, whatever its weaker count.
+const MIN_COMPARED = 0.25
+
+// The never-weaker contract (docs/example-layout.md, update-strength): over
+// every state in `states` -- an iterable, or a generator function to call --
+// `cur` keeps no candidate `ref` removed. A state is a
+// start map (cell -> candidate array), or `{ start, params }` when `apply`
+// needs something per state. Logs one summary line under `label`, throws on a
+// weaker cell or on too few states compared, and returns the counts.
+//
+// `solvable`: every state is built around a real solution, so none may die --
+// a death is a version emptying a cell the solution needs, and the sweep
+// throws on the first, not at MIN_COMPARED.
+export function strengthSweep (label, { cur, ref, apply, states, opts = {}, solvable = false }) {
+  let drawn = 0
+  let compared = 0
+  let weaker = 0
+  for (const state of (typeof states === 'function' ? states() : states)) {
+    const { start, params } = state instanceof Map ? { start: state } : state
+    drawn++
+    const w = compareStrength(cur, ref, apply, start, opts, params)
+    if (w === null) continue
+    compared++
+    weaker += w.length
+    if (w.length > 0 && weaker <= 5) console.log(label, 'weaker at', w[0], 'start', [...start])
+  }
+  console.log(`${label}:`, compared, 'of', drawn, 'states compared,', weaker, 'weaker cells')
+  if (solvable) assert.strictEqual(compared, drawn, `${label}: ${drawn - compared} states built around a solution died`)
+  assert.ok(compared >= drawn * MIN_COMPARED, `${label}: ${compared} of ${drawn} states compared; the rest died`)
+  assert.strictEqual(weaker, 0, `${label}: ${weaker} weaker cells`)
+  return { drawn, compared, weaker }
 }
 
 // Deterministic RNG. `rnd` returns a float in [0,1); `pick` chooses from an array.
@@ -140,11 +221,10 @@ export function makeRng (seed = 12345) {
 //   fullHouse — every digit 1..D exactly once, in random order (`n` is unused).
 export function makeLine (rnd, kind, n, D) {
   const all = []; for (let d = 1; d <= D; d++) all.push(d)
-  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
-  if (kind === 'fullHouse') return shuffle(all)
+  if (kind === 'fullHouse') return shuffle(rnd, all)
   if (kind === 'house') {
-    if (n >= D) throw new RangeError(`a house needs n < digitCount (n=${n}, D=${D})`)
-    return shuffle(all).slice(0, n)
+    if (n >= D) throw new RangeError(`a house needs n < D (n=${n}, D=${D})`)
+    return shuffle(rnd, all).slice(0, n)
   }
   if (kind === 'bare') {
     const line = []; for (let i = 0; i < n; i++) line.push(1 + ((rnd() * D) | 0))
@@ -153,33 +233,53 @@ export function makeLine (rnd, kind, n, D) {
   throw new RangeError(`unknown line kind: ${kind}`)
 }
 
+// The puzzle API a component calls, over cell -> Set<digit> read live through
+// `getSet`, so it serves a fixed map (makePuzzle) and a map a search reassigns
+// wholesale (recovery-lib's makeCandidateState) alike.
+//
+// `houses` are the cell groups the board declares all-different. They answer
+// `getCellsCanHaveRepeats` for a query of distinct cells, the only kind a line
+// component makes: false exactly when one house holds every one of them. The
+// app's own answer is pairwise -- every two cells see each other -- and true
+// for a list that repeats a cell id (docs/research/bundle-api-reference.md);
+// a query that needs either difference needs more than this mock. Declared, never inferred from the
+// digits seeded, so a test cannot pass by accident (docs/line-contract.md) --
+// and a clue cell is in no house with its line, so a component that passes it
+// into the query reads "may repeat" and stands its gate down. No houses: every
+// line is bare.
+export function makePuzzleApi (getSet, { houses = [] } = {}) {
+  const houseSets = houses.map(h => new Set(h))
+  return {
+    hasValue: c => getSet(c).size === 1,
+    // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
+    getValue: c => (getSet(c).size === 1 ? [...getSet(c)][0] : undefined),
+    // A fresh DigitSet per call, as in the app -- mutating it is safe.
+    getCandidates: c => DigitSet.from(getSet(c)),
+    getCandidatesBitMask: c => { let m = 0; for (const d of getSet(c)) m |= 1 << d; return m },
+    getCellsAreFilled: cs => cs.every(c => getSet(c).size === 1),
+    getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
+    removeCandidateFromCell: (d, c) => { getSet(c).delete(d) },
+    // The app takes a DigitSet here and nothing else; a plain array passes in
+    // Node and silently removes nothing in the app (a rule went dead that way).
+    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = getSet(c); for (const d of s) set.delete(d) },
+    removeCandidateFromCells: (d, cs) => { for (const c of cs) getSet(c).delete(d) },
+    filterCandidatesInCells: (s, cs) => { for (const c of cs) for (const d of getSet(c)) if (!s.has(d)) getSet(c).delete(d) }
+  }
+}
+
 // A mock puzzle over a truth map (cell -> true value). Each cell starts with a
 // candidate set that always contains its true value. `seed(cell, value)` returns
-// the starting candidate array. `kind` ('bare', 'house', or 'fullHouse',
-// default 'bare') and `digitCount` answer `getCellsCanHaveRepeats` and
-// `spec.digitCount` as the app would for a line of that declared kind — never
-// inferred from the digits actually seeded, so a test cannot pass by accident
-// (docs/line-contract.md).
-export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
+// the starting candidate array; `houses` is makePuzzleApi's.
+export function makePuzzle (truth, seed, { houses = [] } = {}) {
   const cand = new Map()
   for (const [c, v] of Object.entries(truth)) cand.set(+c, new Set(seed(+c, v)))
   const p = {
+    ...makePuzzleApi(c => cand.get(c), { houses }),
     _cand: cand,
     _stopped: null,
     // The app's stop() aborts the branch as a contradiction. Recording at call
     // time is enough here: every component yields the stop it just built.
     stop: (message = '', cells = []) => { p._stopped = message || 'stopped'; return { message, cells } },
-    hasValue: c => cand.get(c).size === 1,
-    // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
-    getValue: c => (cand.get(c).size === 1 ? [...cand.get(c)][0] : undefined),
-    // A fresh DigitSet per call, as in the app — mutating it is safe.
-    getCandidates: c => DigitSet.from(cand.get(c)),
-    getCandidatesBitMask: c => { let m = 0; for (const d of cand.get(c)) m |= 1 << d; return m },
-    getCellsAreFilled: cs => cs.every(c => cand.get(c).size === 1),
-    removeCandidateFromCell: (d, c) => { cand.get(c).delete(d) },
-    // The app takes a DigitSet here and nothing else; a plain array passes in
-    // Node and silently removes nothing in the app (a rule went dead that way).
-    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = cand.get(c); for (const d of s) set.delete(d) },
     // The whole-grid calls a region-building component makes. Neighbours come
     // from the square the cells form, row-major, the way the app numbers a
     // custom board.
@@ -193,23 +293,24 @@ export function makePuzzle (truth, seed, { kind = 'bare', digitCount } = {}) {
       if (c >= side) out.push(c - side)
       if (c + side < n) out.push(c + side)
       return out
-    },
-    removeCandidateFromCells: (d, cs) => { for (const c of cs) cand.get(c).delete(d) },
-    filterCandidatesInCells: (s, cs) => { for (const c of cs) for (const d of cand.get(c)) if (!s.has(d)) cand.get(c).delete(d) },
-    getCellsCanHaveRepeats: () => kind === 'bare',
-    spec: { digitCount }
+    }
   }
   return p
 }
 
-// Run a component's update until a pass removes nothing (bounded at 20 passes).
+// The houses a harness line declares for one of docs/line-contract.md's three
+// kinds: none for a bare line, the line itself for a house or a full house.
+export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
+
+// Run a component's update until a pass removes nothing, at most MAX_PASSES
+// times.
+const MAX_PASSES = 20
 export function fixpoint (mod, inst, p) {
-  const total = () => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
-  for (let pass = 0; pass < 20; pass++) {
-    const before = total()
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const before = total(p)
     Array.from(mod.update(inst, p)) // drain
     if (p._stopped !== null) break // the branch was declared dead; stop propagating
-    if (total() === before) break
+    if (total(p) === before) break
   }
 }
 

@@ -191,7 +191,7 @@ function * update (instance, puzzle) {
 // Visible buildings reading `cells` in order: the running maxima, with a tie
 // counted or not per ALLOW_TIES. The running max starts below every digit, so a
 // board whose digits start at 0 reads the same as any other.
-function visibleCount (puzzle, cells) {
+function visibleCountTies (puzzle, cells) {
   let count = 0
   let max = -1
   for (const cell of cells) {
@@ -206,5 +206,5 @@ function validate (instance, puzzle) {
   const { clue, line } = instance
   if (line.length === 0) return true
   if (!puzzle.getCellsAreFilled([clue, ...line])) return true
-  return puzzle.getValue(clue) === visibleCount(puzzle, line)
+  return puzzle.getValue(clue) === visibleCountTies(puzzle, line)
 }

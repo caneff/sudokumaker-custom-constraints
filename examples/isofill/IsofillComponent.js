@@ -102,14 +102,13 @@ function neighbours (i, side) {
   return out
 }
 
-// Cells reachable from `starts` in at most `depth` steps through `allowed`.
-// Returns { size, stamp }: `instance.mask[i] === stamp` marks a visited cell
-// until the next walk. Mask and stamp live on `instance` so a walk allocates nothing — this is the hot
-// loop of every search node. `limit` stops the walk once it holds that many
-// cells; `targets` (a stamped set of `want` cells) stops it once every target
-// is seen. Both callers only ask a yes/no, so they need no more of the walk.
-function reach (instance, starts, depth, allowed, limit = Infinity, targets = null, want = 0) {
-  const { nbrs, mask, targetStamp } = instance
+// How far a walk from `starts` spreads: the cells reachable in at most `depth`
+// steps through `allowed`, stopping once it holds `limit` cells. Returns
+// { size, stamp }: `instance.mask[i] === stamp` marks a visited cell until the
+// next walk. Mask and stamp live on `instance` so a walk allocates nothing --
+// this is the hot loop of every search node.
+function reachSize (instance, starts, depth, allowed, limit = Infinity) {
+  const { nbrs, mask } = instance
   const stamp = ++instance.stamp
   let size = 0
   let [frontier, next] = instance.frontier
@@ -117,23 +116,46 @@ function reach (instance, starts, depth, allowed, limit = Infinity, targets = nu
   for (const i of starts) {
     if (mask[i] === stamp) continue
     mask[i] = stamp; size++; frontier[len++] = i
-    if (targets && targets[i] === targetStamp) want--
   }
-  if (targets && want <= 0) return { size, stamp, done: true }
   for (let step = 0; step < depth && len && size < limit; step++) {
     let nextLen = 0
     for (let f = 0; f < len; f++) {
       for (const n of nbrs[frontier[f]]) {
         if (allowed[n] && mask[n] !== stamp) {
           mask[n] = stamp; size++; next[nextLen++] = n
-          if (targets && targets[n] === targetStamp && --want === 0) return { size, stamp, done: true }
-          if (size >= limit) return { size, stamp, done: false }
+          if (size >= limit) return { size, stamp }
         }
       }
     }
     [frontier, next, len] = [next, frontier, nextLen]
   }
-  return { size, stamp, done: false }
+  return { size, stamp }
+}
+
+// Does a walk from `start`, at most `depth` steps through `allowed`, reach all
+// `want` cells of the stamped target set `instance.targets`? Stops the moment
+// it has seen them all.
+function reachesAll (instance, start, depth, allowed, want) {
+  const { nbrs, mask, targets, targetStamp } = instance
+  const stamp = ++instance.stamp
+  let [frontier, next] = instance.frontier
+  mask[start] = stamp
+  frontier[0] = start
+  let len = 1
+  if (targets[start] === targetStamp && --want <= 0) return true
+  for (let step = 0; step < depth && len; step++) {
+    let nextLen = 0
+    for (let f = 0; f < len; f++) {
+      for (const n of nbrs[frontier[f]]) {
+        if (allowed[n] && mask[n] !== stamp) {
+          mask[n] = stamp; next[nextLen++] = n
+          if (targets[n] === targetStamp && --want === 0) return true
+        }
+      }
+    }
+    [frontier, next, len] = [next, frontier, nextLen]
+  }
+  return false
 }
 
 // The seed walk: a 0-1 BFS from `start`, one placed cell of digit `d`. A cell
@@ -372,8 +394,8 @@ function cutsRegion (instance, x, placed, allowed, near, size, depth, skip) {
   if (ways <= 1) return near.size - 1 < size
   if (skip[x]) return false // the filter cleared this cell: no cut
   allowed[x] = 0
-  let cut = reach(instance, placed, depth, allowed, size).size < size
-  if (!cut && placed.length > 1) cut = !reach(instance, [placed[0]], size - 1, allowed, Infinity, instance.targets, placed.length).done
+  let cut = reachSize(instance, placed, depth, allowed, size).size < size
+  if (!cut && placed.length > 1) cut = !reachesAll(instance, placed[0], size - 1, allowed, placed.length)
   allowed[x] = 1
   return cut
 }
@@ -404,11 +426,11 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
   for (let i = 0; i < cells.length; i++) near.mask[i] = instance.mask[i] === walk.stamp ? 1 : 0
   if (placed.length > 1 && tourBoundIsDead(instance, placed, open, allowed, near, size)) {
     yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
-    return
+    return null
   }
-  state[d].near = near.mask // budget limits this digit to its walk
   for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
   yield * cutRule(instance, puzzle, state, d, size, near)
+  return near.mask // budget limits this digit to its walk
 }
 
 //! Silent: d has no seed, so it needs one component of size cells or more.
@@ -425,19 +447,20 @@ function * noSeedRule (instance, puzzle, state, d, size) {
   let big = false
   for (const start of open) {
     if (near[start]) continue
-    const comp = reach(instance, [start], Infinity, allowed)
+    const comp = reachSize(instance, [start], Infinity, allowed)
     for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) small.push(i) }
     if (comp.size >= size) big = true
   }
   // No component fits the region: a dead branch, so empty a cell.
-  if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); return }
+  if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); return null }
   for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
-  state[d].near = near // budget limits this digit to the components that fit
+  return near // budget limits this digit to the components that fit
 }
 
 // Everything one digit's own region says, in order: the seed walk that bounds
 // it, then whichever of cap, force, the seeded rules or the no-seed component
-// search applies.
+// search applies. Returns the digit's `near` bound for the budget -- a mask of
+// the cells its region can still reach -- or null when no rule drew one.
 function * digitRule (instance, puzzle, state, d, size) {
   const { cells } = instance
   const { placed, open, allowed } = state[d]
@@ -446,7 +469,7 @@ function * digitRule (instance, puzzle, state, d, size) {
     walk = seedWalk(instance, placed[0], size - placed.length, allowed, instance.value, d)
     if (seedIsDead(instance, placed, walk, size)) {
       yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
-      return
+      return null
     }
   }
   if (placed.length === size) {
@@ -457,10 +480,11 @@ function * digitRule (instance, puzzle, state, d, size) {
     const others = instance.others[d]
     for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
   } else if (placed.length > 0) {
-    yield * seededRule(instance, puzzle, state, d, size, walk)
+    return yield * seededRule(instance, puzzle, state, d, size, walk)
   } else if (open.length > 0) {
-    yield * noSeedRule(instance, puzzle, state, d, size)
+    return yield * noSeedRule(instance, puzzle, state, d, size)
   }
+  return null
 }
 
 function * update (instance, puzzle) {
@@ -470,11 +494,12 @@ function * update (instance, puzzle) {
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
   if (!Number.isInteger(size)) throw new Error(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`)
   const state = scanBoard(instance, puzzle, lo, hi)
-  for (let d = lo; d <= hi; d++) yield * digitRule(instance, puzzle, state, d, size)
+  const near = []
+  for (let d = lo; d <= hi; d++) near[d] = yield * digitRule(instance, puzzle, state, d, size)
   // Budget: every open cell needs a digit, and digit d can take at most
   // (size - placed) more cells, all inside its walk. If no assignment covers
   // every open cell the branch is dead: empty that cell.
-  const { dead, drops } = budget(state, lo, hi, size)
+  const { dead, drops } = budget(state, near, lo, hi, size)
   if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[dead])
   for (const [x, d] of drops) yield puzzle.removeCandidateFromCell(d, cells[x])
   yield * perimeterRule(instance, puzzle, lo, hi)
@@ -552,7 +577,7 @@ function * perimeterRule (instance, puzzle, lo, hi) {
 // so `drops` lists them as [cell, digit].
 //! Budget: match open cells to the digits' free slots. No full matching is a
 //! dead branch; a pair no matching can use loses that candidate.
-function budget (state, lo, hi, size) {
+function budget (state, near, lo, hi, size) {
   const n = state[lo].allowed.length
   const isOpen = new Uint8Array(n)
   const options = [] // cell -> digits whose walk holds it
@@ -562,10 +587,9 @@ function budget (state, lo, hi, size) {
   for (let d = lo; d <= hi; d++) {
     taken[d] = []
     slots += size - state[d].placed.length
-    const near = state[d].near
     for (const i of state[d].open) {
       isOpen[i] = 1
-      if (!near || near[i]) (options[i] || (options[i] = [])).push(d)
+      if (!near[d] || near[d][i]) (options[i] || (options[i] = [])).push(d)
     }
   }
   const augment = (x, seen) => {
@@ -646,7 +670,7 @@ function validate (instance, puzzle) {
       count++
       if (first < 0) first = i
     }
-    if (count !== size || reach(instance, [first], size, allowed).size !== size) return false
+    if (count !== size || reachSize(instance, [first], size, allowed).size !== size) return false
   }
   return true
 }

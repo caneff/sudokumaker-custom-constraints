@@ -16,14 +16,8 @@ function setParams (instance, line, target, clue) {
   instance.clue = clue
 }
 
-// Is the line a house? Asked in `update`, never at register time, because main
-// code runs before the built-in row and column houses exist (gotcha 6). A
-// house never becomes bare, so the true answer caches on the instance.
-function isHouse (instance, puzzle) {
-  if (instance.house) return true
-  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)
-  return instance.house
-}
+// The line's kind: lineKind(instance, puzzle, cells).
+// #include ../_shared/line-kind.js
 
 // The smallest and largest digit in a candidate mask, or -1 for an empty one.
 function lowBit (mask) {
@@ -80,7 +74,7 @@ function * update (instance, puzzle) {
   // first feasible position may hold a second N the sum never reads, so only
   // the cells before it lose N. Both prefix bounds only grow along the line, so
   // no cell that allows N sits infeasible between two feasible positions.
-  const end = isHouse(instance, puzzle) ? line.length : at[0]
+  const end = lineKind(instance, puzzle, line).kind >= HOUSE ? line.length : at[0]
   const bitN = 1 << target
   let next = 0
   for (let p = 0; p < end; p++) {

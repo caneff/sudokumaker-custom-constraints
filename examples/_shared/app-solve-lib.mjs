@@ -38,11 +38,22 @@ export function parseArgs (argv) {
   }
 }
 
-export function readVerdict (text) {
-  if (/stopped (solving|counting)/i.test(text)) return 'timeout'
-  if (/unique solution/i.test(text)) return 'unique'
-  if (/multiple solutions|not unique|no solution|found [\d,]+ solutions/i.test(text)) return 'not-unique'
-  return '?'
+// Each verdict the app can print, in the order readVerdict tries them: a
+// timeout first, since a stopped search can still have printed "unique".
+const VERDICTS = [
+  ['timeout', /stopped (solving|counting)/i],
+  ['unique', /unique solution/i],
+  ['not-unique', /multiple solutions|not unique|no solution|found [\d,]+ solutions/i]
+]
+
+// Any verdict at all: what a driver waits for in the page before it reads the
+// readout. A page function cannot close over it, so pass `.source` and
+// `.flags` in and rebuild it there.
+export const VERDICT_PATTERN = new RegExp(VERDICTS.map(([, re]) => re.source).join('|'), 'i')
+
+function readVerdict (text) {
+  const hit = VERDICTS.find(([, re]) => re.test(text))
+  return hit ? hit[0] : '?'
 }
 
 // Split the two "took" readouts into first-solve time and uniqueness-search
@@ -62,7 +73,7 @@ export function parseReadout (text) {
   return { first, unique, sum, verdict }
 }
 
-export const median = xs => {
+const median = xs => {
   const s = xs.filter(x => x != null).sort((a, b) => a - b)
   return s.length ? s[Math.floor(s.length / 2)] : null
 }
@@ -120,8 +131,10 @@ export function parseVersion (text) {
 // `marksExpected`: --ring-clues, for an edge-clue puzzle whose clues live as
 // ring values, and --after-logical, for marks the app's own logical solver
 // made earlier in the same driver run.
+export const ALREADY_ENTERED = 'based on already entered values'
+
 export function marksRejected (text, marksExpected) {
-  return /based on already entered values/i.test(text) && !marksExpected
+  return text.toLowerCase().includes(ALREADY_ENTERED) && !marksExpected
 }
 
 // A cell's own digit -- given or entered -- renders as an <svg text> whose

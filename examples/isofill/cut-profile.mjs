@@ -22,7 +22,7 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeRng, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
 
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
@@ -33,24 +33,16 @@ const CUT_START = '  const depth = size - placed.length\n'
 const CUT_END = '      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])\n    }\n  }\n'
 
 // Patch the component so the cut loop accumulates its wall time. Throws when
-// an anchor is missing or no longer unique.
+// an anchor is missing or no longer unique (patchSource).
 export function instrument (src) {
-  for (const [name, anchor] of [['CUT_START', CUT_START], ['CUT_END', CUT_END]]) {
-    const at = src.indexOf(anchor)
-    if (at < 0) throw new Error(`cut-profile: ${name} anchor not found in IsofillComponent.js`)
-    if (src.indexOf(anchor, at + 1) >= 0) throw new Error(`cut-profile: ${name} anchor is not unique`)
-  }
-  return src
-    .replace(CUT_START, '  const _cutT0 = performance.now()\n' + CUT_START)
-    .replace(CUT_END, CUT_END + '  globalThis.__cutMs += performance.now() - _cutT0\n')
+  src = patchSource(src, CUT_START, '  const _cutT0 = performance.now()\n' + CUT_START)
+  return patchSource(src, CUT_END, CUT_END + '  globalThis.__cutMs += performance.now() - _cutT0\n')
 }
 
-// Load the component, optionally through a source transform. This is
-// `harness-lib`'s `load` with the transform added; the shared harness API is
-// out of scope for spec #165, so the eval lives here instead.
+// Load the component, optionally through a source transform, with the shared
+// loader: the run is attributed to IsofillComponent.js, so c8 counts it.
 export function loadComponent (here, transform = s => s) {
-  const src = transform(readFileSync(join(here, 'IsofillComponent.js'), 'utf8'))
-  return eval('(function(){' + src + '\n return {setParams,update};})()') // eslint-disable-line no-eval
+  return makeIo(here).load('IsofillComponent.js', ['setParams', 'update'], transform)
 }
 
 // The hard fixtures (#166), each as its true grid plus its given cells.
@@ -64,8 +56,6 @@ export function GRIDS (here) {
   }
   return out
 }
-
-const clone = m => { const o = new Map(); for (const [k, v] of m) o.set(k, v.slice()); return o }
 
 // Run the component once over a candidate map. Returns the new map, or null
 // when a cell empties (a dead search node).
@@ -101,21 +91,21 @@ export function snapshots (fx, want, seed = 12345) {
   const root = new Map()
   for (const c of CELLS) root.set(c, fx.given.has(c) ? [fx.truth[c]] : ALL.slice())
   const trail = []
-  const reset = () => { const s = clone(root); branch(rnd, s); return s }
-  let cand = clone(root)
+  const reset = () => { const s = structuredClone(root); branch(rnd, s); return s }
+  let cand = structuredClone(root)
   const out = []
   while (out.length < want) {
-    out.push(clone(cand))
+    out.push(structuredClone(cand))
     const next = propagate(mod, fx, cand)
     if (next === null) { // dead node: go back up and pin something else
-      cand = trail.length ? trail.pop() : clone(root)
+      cand = trail.length ? trail.pop() : structuredClone(root)
       if (!branch(rnd, cand)) cand = reset()
       continue
     }
     const settled = CELLS.every(c => next.get(c).length === cand.get(c).length)
     cand = next
     if (!settled) continue
-    trail.push(clone(cand))
+    trail.push(structuredClone(cand))
     if (!branch(rnd, cand)) cand = reset()
   }
   return out

@@ -50,3 +50,30 @@ def registered_components(backend_code):
         line for line in backend_code.splitlines() if not line.lstrip().startswith("//")
     )
     return set(_NEW_COMPONENT.findall(code))
+
+
+def mismatch(shipped, backend_code):
+    """Compare the component names a link ships with the ones its backend
+    registers, and return `(unshipped, dead)`, each sorted.
+
+    Unshipped: registered but not shipped -- it fails inside the app, where
+    the author never sees it. Dead: shipped but never registered -- dead
+    weight the recipient still reads as part of the rule (#287, #289, #290,
+    #291). SudokuMaker's built-ins are subtracted first: the app provides
+    those classes, so a backend that constructs one ships no file for it
+    (#394). The one comparison `framebuild.check` asserts at build time and
+    `check_layout.check_components` sweeps over committed links.
+    """
+    registered = registered_components(backend_code) - builtin_components()
+    return sorted(registered - set(shipped)), sorted(set(shipped) - registered)
+
+
+def describe_mismatch(unshipped, dead):
+    """One sentence per non-empty half of a `mismatch`, in the words both
+    callers report it in."""
+    out = []
+    if unshipped:
+        out.append(f"the backend registers components the link omits: {unshipped}")
+    if dead:
+        out.append(f"the link ships components the backend never registers: {dead}")
+    return out

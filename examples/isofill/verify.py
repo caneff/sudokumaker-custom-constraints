@@ -21,6 +21,7 @@ verify.test.py and `just verify-isofill` do.
 """
 
 import json
+import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -127,8 +128,6 @@ def strip(board, grid, seed):
     Hundreds of solves, none of them the proof that ships: the clue set this
     lands on is written to a gen JSON and re-proved by `unique` before the
     link is shared, so these run on the portfolio."""
-    import random
-
     givens = {(r, c): int(grid[r][c]) for r, c in board.cells}
     order = list(board.cells)
     random.Random(seed).shuffle(order)
@@ -163,7 +162,10 @@ def unique(board, givens, limit=LIMIT, reproducible=True):
 def self_check(board):
     n = board.n
     banded = ["".join(str(r) for _ in range(n)) for r in range(n)]
-    given = lambda *rs: {(r, c): int(banded[r][c]) for r in rs for c in range(n)}
+
+    def given(*rs):
+        return {(r, c): int(banded[r][c]) for r in rs for c in range(n)}
+
     # Every row but the first given: the free row's cells must all be the
     # one missing digit.
     assert unique(board, given(*range(1, n))) is True

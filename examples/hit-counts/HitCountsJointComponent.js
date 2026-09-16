@@ -41,12 +41,10 @@ const CASE_L = 0
 const CASE_R = 1
 const CASE_M = 2
 
-// Line kinds, ordered (docs/line-contract.md): a rule that needs one kind also
-// holds on every kind above it. The mirrored-pair exclusion needs a house; the
-// no-n-1 rule needs a full house whose digit set is {1..n}.
-const BARE = 0
-const HOUSE = 1
-const FULL_HOUSE = 2
+// The line's kind: lineKind(instance, puzzle, cells). The mirrored-pair
+// exclusion needs a house; the no-n-1 rule and the permutation sweep need a
+// full house whose digit set is {1..n}, which is lineKind's `oneToN`.
+// #include ../_shared/line-kind.js
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -132,46 +130,15 @@ function pairCombos (a, b, house) {
 // solve. The kind is in the hash because it can climb while no candidate moves,
 // and a higher kind opens a stronger rule -- which is also what picks the sweep,
 // so one hash cannot be mistaken for the other.
-function signature (puzzle, instance, exact) {
+function signature (puzzle, instance, exact, lk) {
   const { clueA, clueB, line, n } = instance
-  const kind = (instance.kind || 0) * 2 + (instance.oneToN ? 1 : 0)
+  const kind = lk.kind * 2 + (lk.oneToN ? 1 : 0)
   let h = (Math.imul(puzzle.getCandidatesBitMask(clueA), 31) + puzzle.getCandidatesBitMask(clueB)) | 0
   for (let j = 0; j < n; j++) {
     const m = puzzle.getCandidatesBitMask(line[j])
     h = (Math.imul(h, 31) + (exact ? m : caseBits(m, j, n))) | 0
   }
   return (Math.imul(h, 31) + kind) | 0
-}
-
-// The line's kind, asked at solve time and re-tested until it settles. Two
-// reasons it cannot be asked once: main code runs before the built-in
-// row/column houses are registered and would read every line as bare (gotcha
-// 6), and a hit-counts board runs minDigit 0 for its clue ring with a cage that
-// takes 0 off the inner grid during solving, so the line's digit set only
-// settles after the first update. Query the line alone -- a ring cell in the
-// list flips getCellsCanHaveRepeats to true.
-// `instance.oneToN` rides along: the union of the line's live candidates is
-// exactly {1..n}, the extra fact the no-n-1 rule needs. Both are read fresh
-// every call and neither is cached. The app shares one component object across
-// every search node, so a fact latched deep in a branch survives the backtrack
-// to a parent state where the union has regained digits -- and the no-n-1 rule
-// then fires on a line that is not a permutation of 1..n (#336).
-// The same test lives in HitCountsComponent and SideSumComponent: the app
-// pastes each component as its own segment, so the copies cannot share code.
-function lineKind (instance, puzzle) {
-  const line = instance.line
-  instance.oneToN = false
-  if (!instance.noRepeats) {
-    if (puzzle.getCellsCanHaveRepeats(line)) { instance.kind = BARE; return BARE }
-    instance.noRepeats = true // structural: a house is registered once and a backtrack cannot un-register it
-  }
-  let mask = 0
-  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-  let live = 0
-  for (let m = mask; m; m &= m - 1) live++
-  instance.oneToN = mask === (1 << (line.length + 1)) - 2 // bits 1..n set, bit 0 clear
-  instance.kind = live === line.length ? FULL_HOUSE : HOUSE
-  return instance.kind
 }
 
 // The permutation sweep holds two tables of 2^n * (n + 1) counts and walks them
@@ -344,9 +311,9 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
 // nth hit. The hit matching does not see this, so it is its own rule. Returns
 // true when it fired: yielding makes both clue masks stale, so `update` leaves
 // the sweep to the next pass.
-function * noNMinusOne (instance, puzzle, maskA, maskB, kind) {
+function * noNMinusOne (instance, puzzle, maskA, maskB, lk) {
   const { clueA, clueB, n } = instance
-  if (kind !== FULL_HOUSE || !instance.oneToN || n < 2) return false
+  if (!lk.oneToN || n < 2) return false
   if ((((maskA | maskB) >> (n - 1)) & 1) === 0) return false
   if ((maskA >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueA)
   if ((maskB >> (n - 1)) & 1) yield puzzle.removeCandidateFromCell(n - 1, clueB)
@@ -361,15 +328,15 @@ function * update (instance, puzzle) {
   if (maskA === 0 || maskB === 0) return
   const cm = []
   for (let j = 0; j < n; j++) cm.push(puzzle.getCandidatesBitMask(line[j]))
-  const kind = lineKind(instance, puzzle)
+  const lk = lineKind(instance, puzzle, line)
 
-  if (yield * noNMinusOne(instance, puzzle, maskA, maskB, kind)) return
+  if (yield * noNMinusOne(instance, puzzle, maskA, maskB, lk)) return
 
   // On a line that holds 1..n once each the permutation sweep answers everything
   // the case sweep answers and more -- every case it keeps is realised by a real
   // permutation -- so the line takes one sweep or the other, never both.
-  const exact = kind === FULL_HOUSE && instance.oneToN && n <= PERM_MAX
-  const sig = signature(puzzle, instance, exact)
+  const exact = lk.oneToN && n <= PERM_MAX
+  const sig = signature(puzzle, instance, exact, lk)
   if (sig === instance.sig) return
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
@@ -377,8 +344,8 @@ function * update (instance, puzzle) {
   // epilogue so neither can drift back to memoising a state it stopped on.
   const stopped = yield * (exact
     ? permutationPrune(instance, puzzle, cm, maskA, maskB)
-    : caseSweep(instance, puzzle, cm, maskA, maskB, kind, all))
-  if (!stopped) instance.sig = signature(puzzle, instance, exact)
+    : caseSweep(instance, puzzle, cm, maskA, maskB, lk.kind, all))
+  if (!stopped) instance.sig = signature(puzzle, instance, exact, lk)
 }
 
 // F[u][a] — bitmask of the B counts reachable with A count a, over the units
@@ -527,7 +494,7 @@ function * initialize (instance, puzzle) {
 // that holds 1..n once each.
 function validate (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
-  if (n >= 2 && lineKind(instance, puzzle) === FULL_HOUSE && instance.oneToN) {
+  if (n >= 2 && lineKind(instance, puzzle, line).oneToN) {
     if (puzzle.hasValue(clueA) && puzzle.getValue(clueA) === n - 1) return false
     if (puzzle.hasValue(clueB) && puzzle.getValue(clueB) === n - 1) return false
   }

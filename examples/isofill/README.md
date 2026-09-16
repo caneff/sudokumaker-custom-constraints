@@ -86,9 +86,11 @@ exists to teach.
   both are the #143 rows in `## Timing` below.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `gen.json`, `main.js`, and
   the component file. Run it after changing any of them:
-  `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
-  swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
-  builds another instance (`gen_44g.json` for timing).
+  `uv run examples/isofill/build_link.py`. Flags: `--out` writes elsewhere,
+  `--puzzle` builds another instance (`gen_44g.json`); `--component` with
+  `--out` instead swaps a candidate component into `PUZZLE_LINK.txt`, or into
+  `--board`. The two paths do not mix: a flag the path cannot honour is
+  refused.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
@@ -413,6 +415,19 @@ so it runs by hand through `just verify-isofill`. The proof of the shipped
 instance stays valid as long as its board and clue set do not change.
 
 ## Timing
+
+### The reach split (#362)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill | 600ms | 600ms | 1.00 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time isofill`, 3 reps per arm, non-deterministic solve off. The candidate
+splits `reach` into `reachSize` and `reachesAll` and has `digitRule` return
+its `near` bound; it adds no deduction (the soundness and strength outputs are
+byte-identical), so the `NO SHIP` line reads the 0.9x deduction rule. The bar
+it answers to is the gate-change bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it.
 
 ### Twenty-grid strip batch (#166, 2026-08-28)
 

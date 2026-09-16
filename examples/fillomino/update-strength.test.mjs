@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
@@ -56,8 +56,6 @@ const gridOf = rows => {
 }
 const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
 const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
-
-const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
 
 // One version's whole run on a state. The baseline sets its scratch up in
 // `initialize` off `instance.cells`; ours does it in `setParams`. The baseline

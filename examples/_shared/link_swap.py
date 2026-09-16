@@ -3,12 +3,16 @@
 # variants can be timed on the same grid, givens, and clues
 # (docs/real-app-timing.md). Every example's build_link.py and build_original.py
 # use these functions; only the constraint's code changes, never the frame.
+# A build_link.py is a manifest over `swap_main`, which swaps through
+# `swap_build`.
 
+import argparse
 import copy
 import pathlib
 
 from frame import UndescribableInk, segments
 from link_codec import decode_puzzle, encode_link
+from minify import minify_file
 
 
 def find_constraint(doc, constraint_name):
@@ -23,6 +27,22 @@ def find_constraint(doc, constraint_name):
         if c.get("definition", {}).get("name") == constraint_name:
             return c
     raise ValueError(f"the document has no constraint named {constraint_name!r}")
+
+
+def constraint_with(doc, component_name):
+    """The name of doc's constraint that registers `component_name`. Raises if
+    none does -- a typo'd component must not silently no-op.
+
+    A board is searched by component, not by constraint name, because one
+    example's boards need not agree on the name: numbered-rooms' hand-built
+    board says "Custom Numbered Rooms", its generated ones "Numbered Rooms"."""
+    for c in doc["puzzle"]["constraints"]:
+        definition = c.get("definition", {})
+        if any(
+            comp["name"] == component_name for comp in definition.get("components", [])
+        ):
+            return definition["name"]
+    raise ValueError(f"no constraint registers a component named {component_name!r}")
 
 
 def blanked(doc, constraint_name):
@@ -150,3 +170,67 @@ def check_and_write(base_doc, new_doc, constraint_name, out_path):
         "frames differ beyond the constraint code"
     )
     return write_link(new_doc, out_path)
+
+
+def swap_build(board, component, out, backend=None):
+    """Swap one component file's code into the committed link `board` and
+    write the result to `out`: the same-board pair `just time` compares
+    (docs/real-app-timing.md).
+
+    The component is named by the file's stem and found on whichever
+    constraint registers it; `backend`, when given, replaces that constraint's
+    backend code as well. Nothing else changes, and `check_and_write` asserts
+    so before writing. Returns the link."""
+    component = pathlib.Path(component)
+    base = decode_puzzle(pathlib.Path(board).read_text().strip())
+    name = constraint_with(base, component.stem)
+    doc = swap_component_code(base, name, component.stem, minify_file(component))
+    if backend is not None:
+        doc = replace_constraint_code(
+            doc, name, backend_code=minify_file(pathlib.Path(backend))
+        )
+    return check_and_write(base, doc, name, out)
+
+
+def swap_main(example_dir, parser=None, rebuild=None, rebuild_reads_backend=False):
+    """The command line every build_link.py shares.
+
+    `--component FILE --out FILE [--board LINK] [--backend FILE]` runs
+    `swap_build` against `--board`, or the example's PUZZLE_LINK.txt when it
+    is omitted. Without `--component`, `rebuild(args, parser)` runs instead --
+    the example's own from-source build -- and an example with none refuses.
+    A rebuild that builds its backend from a file named by --backend says so
+    with `rebuild_reads_backend`; every other rebuild refuses the flag.
+
+    `parser` carries an example's own flags; the four above are added to it.
+    A flag the chosen path cannot honour is refused, never ignored: an
+    example's own flag beside --component (it belongs to the rebuild), and
+    --board without --component (there is nothing to swap into it)."""
+    p = parser or argparse.ArgumentParser()
+    own = [a.dest for a in p._actions if a.dest != "help"]
+    p.add_argument("--component", help="component file to swap into the board")
+    p.add_argument("--out", help="where to write the swapped link")
+    p.add_argument("--board", help="committed link to swap into (PUZZLE_LINK.txt)")
+    p.add_argument("--backend", help="backend file to swap in as well")
+    args = p.parse_args()
+    if args.component is None:
+        if rebuild is None:
+            p.error("give --component with --out")
+        if args.board is not None:
+            p.error("--board names the link a --component swaps into; give --component")
+        if args.backend is not None and not rebuild_reads_backend:
+            p.error(
+                "--backend swaps a backend in beside --component; this rebuild reads its own"
+            )
+        rebuild(args, p)
+        return
+    for dest in own:
+        if getattr(args, dest) != p.get_default(dest):
+            p.error(
+                f"--{dest.replace('_', '-')} belongs to the rebuild; drop it or --component"
+            )
+    if args.out is None:
+        p.error("--component needs --out")
+    board = args.board or pathlib.Path(example_dir) / "PUZZLE_LINK.txt"
+    link = swap_build(board, args.component, args.out, args.backend)
+    print(f"wrote {args.out} ({len(link)} chars, from {board})")

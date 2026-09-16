@@ -13,8 +13,7 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import assert from 'assert'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
@@ -58,25 +57,19 @@ const apply = (mod, p) => {
   fixpoint(mod, inst, p)
 }
 
-let states = 0
-let weaker = 0
 for (const [name, truth] of [['rows', rows], ['bent', bent], ['shipped', shipped]]) {
-  let fixtureWeaker = 0
-  for (let rep = 0; rep < REPS; rep++) {
-    const start = new Map()
-    for (const c of CELLS) start.set(c, randomCandidates(rnd, 0, 9, truth[c]))
-    const w = compareStrength(cur, ref, apply, start)
-    if (w === null) continue
-    states++
-    fixtureWeaker += w.length
-    if (w.length > 0 && fixtureWeaker <= 5) console.log(name, 'weaker at', w[0])
-  }
-  console.log('isofill', name, 'fixture:', REPS, 'states,', fixtureWeaker, 'weaker cells')
-  weaker += fixtureWeaker
+  strengthSweep(`isofill ${name} fixture`, {
+    solvable: true,
+    cur,
+    ref,
+    apply,
+    * states () {
+      for (let rep = 0; rep < REPS; rep++) {
+        const start = new Map()
+        for (const c of CELLS) start.set(c, randomCandidates(rnd, 0, 9, truth[c]))
+        yield start
+      }
+    }
+  })
 }
-console.log('isofill never-weaker:', states, 'states,', weaker, 'weaker cells')
-// Every state keeps a real solution, so no state may die: a dead one would mean
-// a version emptied a cell the solution needs.
-assert.strictEqual(states, 3 * REPS, 'a state built around a solution must never die')
-assert.strictEqual(weaker, 0)
 console.log('PASS')

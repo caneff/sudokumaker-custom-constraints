@@ -35,6 +35,12 @@ have drawn one end and not the other, is where a lone clue is handled.
 
 ## How a component gates
 
+Every outside-clue component asks through one snippet,
+`examples/_shared/line-kind.js`, spliced in by `// #include
+../_shared/line-kind.js`: `lineKind(instance, puzzle, cells)` returns
+`{ kind, oneToN }` and follows every rule below. Change the rule there, not in
+a component.
+
 - **Ask in `update`, never in main code.** `getCellsCanHaveRepeats` walks the
   exclusion groups registered so far; main code runs at register time and can
   miss the built-in houses, `update` runs at solve time and sees them all
@@ -117,13 +123,16 @@ DP is a pair shape, global only, gated on full house.
 ## Harness
 
 A component with an `ALLOW_TIES` constant is fuzzed under both readings:
-`makeIo(here).loadSource(src, names)` evaluates source the harness has already
-edited, so a run flips the constant the way an author would in the pasted
-segment.
+`makeIo(here).load(file, names, src => patchSource(src, TIES_FLAG, ...))`
+loads the file with the constant flipped the way an author would flip it in
+the pasted segment, and `patchSource` throws if the flag line is gone.
 
-`harness-lib.mjs` adds `getCellsCanHaveRepeats(cells)` and `spec.digitCount`
-to the mock, answered from the case's kind (via `makePuzzle(..., { kind,
-digitCount })`), never inferred from the digits. One shared
+`harness-lib.mjs`'s `makePuzzleApi` answers `getCellsCanHaveRepeats(cells)`
+from the houses the case declares (`makePuzzle(..., { houses })`, with
+`housesOf(kind, cells)` for one line), never inferred from the digits: false
+exactly when one house holds every queried cell, so a clue cell passed into
+the query reads as "may repeat", as in the app. Both the soundness mock and
+recovery-lib's candidate state serve that one API. One shared
 `makeLine(rnd, kind, n, D)` builds a bare line (random digits, any length,
 may repeat), a house (`n` distinct digits, `n < D`), or a full house (a
 permutation of `1..D`). Every example's soundness harness fuzzes all three
