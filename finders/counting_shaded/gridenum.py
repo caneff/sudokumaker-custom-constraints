@@ -77,7 +77,41 @@ def _reify_eq(m, expr, value, name):
     return b
 
 
-def build(size, force=(), ban=(), symmetry=False):
+def add_connectivity(m, g, size, tag):
+    """g's true cells are orthogonally connected: exact BFS distance from the
+    lowest true cell, so every helper is a function of g."""
+    nn = N * N
+    pre = [m.new_bool_var(f"{tag}pre{i}") for i in range(nn)]
+    m.add(pre[0] == 0)
+    for i in range(1, nn):
+        m.add_max_equality(pre[i], [pre[i - 1], g[i - 1]])
+    root = [m.new_bool_var(f"{tag}root{i}") for i in range(nn)]
+    for i in range(nn):
+        m.add_min_equality(root[i], [g[i], pre[i].Not()])
+    d = [m.new_int_var(0, size, f"{tag}d{i}") for i in range(nn)]
+    for i in range(nn):
+        m.add(d[i] == 0).only_enforce_if(g[i].Not())
+        m.add(d[i] == 0).only_enforce_if(root[i])
+        m.add(d[i] >= 1).only_enforce_if([g[i], root[i].Not()])
+        steps = []
+        for j in ORTH[i]:
+            m.add(d[i] <= d[j] + 1).only_enforce_if([g[i], g[j]])
+            e = _reify_eq(m, d[i] - d[j], 1, f"{tag}e{i}_{j}")
+            q = m.new_bool_var(f"{tag}q{i}_{j}")
+            m.add_min_equality(q, [g[i], g[j], e])
+            steps.append(q)
+        m.add_bool_or([*steps, g[i].Not(), root[i]])
+
+
+def build(
+    size,
+    force=(),
+    ban=(),
+    symmetry=False,
+    unshaded_connected=False,
+    no_2x2=False,
+    min_distinct=None,
+):
     """Every auxiliary variable is a function of the shape: one assignment per shape."""
     nn = N * N
     m = cp_model.CpModel()
@@ -96,26 +130,20 @@ def build(size, force=(), ban=(), symmetry=False):
         m.add(g[i] == 0)
     m.add(sum(g) == size)
 
-    pre = [m.new_bool_var(f"pre{i}") for i in range(nn)]
-    m.add(pre[0] == 0)
-    for i in range(1, nn):
-        m.add_max_equality(pre[i], [pre[i - 1], g[i - 1]])
-    root = [m.new_bool_var(f"root{i}") for i in range(nn)]
-    for i in range(nn):
-        m.add_min_equality(root[i], [g[i], pre[i].Not()])
-    d = [m.new_int_var(0, size, f"d{i}") for i in range(nn)]
-    for i in range(nn):
-        m.add(d[i] == 0).only_enforce_if(g[i].Not())
-        m.add(d[i] == 0).only_enforce_if(root[i])
-        m.add(d[i] >= 1).only_enforce_if([g[i], root[i].Not()])
-        steps = []
-        for j in ORTH[i]:
-            m.add(d[i] <= d[j] + 1).only_enforce_if([g[i], g[j]])
-            e = _reify_eq(m, d[i] - d[j], 1, f"e{i}_{j}")
-            q = m.new_bool_var(f"q{i}_{j}")
-            m.add_min_equality(q, [g[i], g[j], e])
-            steps.append(q)
-        m.add_bool_or([*steps, g[i].Not(), root[i]])
+    add_connectivity(m, g, size, "s")
+    if unshaded_connected:
+        add_connectivity(m, [x.Not() for x in g], nn - size, "u")
+    if no_2x2:
+        for r in range(N - 1):
+            for c in range(N - 1):
+                block = [
+                    g[r * N + c],
+                    g[r * N + c + 1],
+                    g[(r + 1) * N + c],
+                    g[(r + 1) * N + c + 1],
+                ]
+                m.add_bool_or([x.Not() for x in block])
+                m.add_bool_or(block)
 
     # at least N-1 distinct counts on the shape (Chris: "just 5 distinct" on a 6x6)
     present = []
@@ -129,7 +157,7 @@ def build(size, force=(), ban=(), symmetry=False):
         p = m.new_bool_var(f"present{v}")
         m.add_max_equality(p, shows)
         present.append(p)
-    m.add(sum(present) >= N - 1)
+    m.add(sum(present) >= (N - 1 if min_distinct is None else min_distinct))
 
     if symmetry:
         if force or ban:
@@ -251,8 +279,18 @@ class _Collector(cp_model.CpSolverSolutionCallback):
             )
 
 
-def enumerate_native(size, force, ban, seconds, out, log, symmetry):
-    m, g, n = build(size, force, ban, symmetry)
+def enumerate_native(
+    size,
+    force,
+    ban,
+    seconds,
+    out,
+    log,
+    symmetry,
+    unshaded_connected=False,
+    no_2x2=False,
+):
+    m, g, n = build(size, force, ban, symmetry, unshaded_connected, no_2x2)
     s = cp_model.CpSolver()
     s.parameters.num_workers = 1
     s.parameters.enumerate_all_solutions = True
@@ -285,6 +323,12 @@ def main():
     ap.add_argument("--force", default="")
     ap.add_argument("--ban", default="")
     ap.add_argument("--symmetry", action="store_true")
+    ap.add_argument(
+        "--unshaded-connected", action="store_true", help="unshaded cells connected too"
+    )
+    ap.add_argument(
+        "--no-2x2", action="store_true", help="no 2x2 block all shaded or all unshaded"
+    )
     ap.add_argument("--seconds", type=float, default=3600)
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
@@ -301,9 +345,20 @@ def main():
 
     log(
         f"enumerate {a.n}x{a.n} box {a.box_rows}x{a.box_cols} size {a.size} "
-        f"force={force} ban={ban} symmetry={a.symmetry}"
+        f"force={force} ban={ban} symmetry={a.symmetry} "
+        f"unshaded_connected={a.unshaded_connected} no_2x2={a.no_2x2}"
     )
-    enumerate_native(a.size, force, ban, a.seconds, a.out, log, a.symmetry)
+    enumerate_native(
+        a.size,
+        force,
+        ban,
+        a.seconds,
+        a.out,
+        log,
+        a.symmetry,
+        a.unshaded_connected,
+        a.no_2x2,
+    )
 
 
 if __name__ == "__main__":

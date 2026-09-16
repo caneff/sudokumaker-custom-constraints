@@ -358,3 +358,26 @@ bottom row: the three 14s).
 
 Caveat: these are all-visible uniques. A playable puzzle shows only some
 shaded cells, and which subset still forces the shading is the next question.
+
+## 6x6 with both colours connected and no 2x2 of either: nothing exists
+
+Chris (2026-09-16): "do any solutions at all exist under the condition that
+all shadeds are connected, all unshadeds are connected, and no 2x2 of either",
+6x6 only. `gridenum.py` gained `--unshaded-connected` (a second BFS-distance
+connectivity on the complement) and `--no-2x2` (every 2x2 window holds both
+colours). Sizes 8-36 exhausted with symmetry: 0 shapes at every size, each in
+under a second. The distinct-count floor is not the cause; isolating the rules
+in one CP-SAT model (size free, 1-35):
+
+| rules on the shading | result |
+|---|---|
+| no 2x2 + shaded connected, no counting | feasible (25 cells) |
+| no 2x2 + both connected, no counting | feasible (18 cells) |
+| no 2x2 + shaded connected + counts 1-6 on shaded cells, no house rule | feasible (24 cells) |
+| no 2x2 + shaded connected + counts + distinct within row/column/box | INFEASIBLE |
+| unshaded connected only (no 2x2 rule), 5 distinct | feasible at 7 sizes |
+
+So the no-2x2 rule and the house-distinct rule are incompatible on 6x6 with
+counting-shaded digits: a shading with no solid 2x2 is thin, its cells mostly
+count 2 with ends counting 1, and every row must still hold distinct counts.
+All verdicts are CP-SAT (single encoding); no second engine.
