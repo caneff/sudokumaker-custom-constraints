@@ -69,6 +69,11 @@ check(
     "king bottom-right corner has 3 neighbours",
     sorted(neighbors_king(2, 4, 3, 5)) == [(1, 3), (1, 4), (2, 3)],
 )
+check(
+    "king top edge (not corner) has 5 neighbours",
+    sorted(neighbors_king(0, 2, 3, 5))
+    == sorted([(0, 1), (0, 3), (1, 1), (1, 2), (1, 3)]),
+)
 
 # --- connected_components, hand-drawn 4x4 board ---
 #
@@ -78,9 +83,11 @@ check(
 #   0 0 0 0
 #
 # orthogonal adjacency: the two 1s in row 0 join the 1 below-left of them
-# (one group of three), the two 1s at (1,3)/(2,3)/(2,2) form a second group
-# of two (note (1,3) is NOT orthogonally adjcent to (0,3)=0, and is not
-# adjacent to (2,2) directly but shares the group via (2,3)).
+# (one group of three, since (0,0)-(0,1) and (0,0)-(1,0) are each
+# orthogonally adjacent); the two 1s at (2,2)/(2,3) join (1,3) below-right
+# of the first (via (2,3)) into a second group of three. (1,3) is diagonal
+# to (2,2), not orthogonally adjacent to it -- the group only holds together
+# because (2,3) is orthogonally adjacent to both.
 BOARD = [
     [1, 1, 0, 0],
     [1, 0, 0, 1],
@@ -95,6 +102,30 @@ check(
     sorted_components == [[(0, 0), (0, 1), (1, 0)], [(1, 3), (2, 2), (2, 3)]],
 )
 
+# A diagonal-only touch must NOT merge components under orthogonal
+# adjacency (it would under king adjacency), so this board is the one that
+# tells the two apart:
+#
+#   1 0 1 0
+#   0 1 0 1
+#   0 0 0 0
+#   0 0 0 0
+#
+# (0,0), (0,2), (1,1), (1,3) touch each other only diagonally -- four
+# singleton components, not one group of four.
+DIAGONAL_ONLY_BOARD = [
+    [1, 0, 1, 0],
+    [0, 1, 0, 1],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+]
+diagonal_components = connected_components(DIAGONAL_ONLY_BOARD)
+check(
+    "diagonally-touching cells stay in separate components (orthogonal, not king)",
+    sorted(sorted(comp) for comp in diagonal_components)
+    == [[(0, 0)], [(0, 2)], [(1, 1)], [(1, 3)]],
+)
+
 empty_components = connected_components([[0, 0], [0, 0]])
 check("an all-empty board has no components", empty_components == [])
 
@@ -104,5 +135,12 @@ check(
     sorted(full_components[0]) == [(0, 0), (0, 1), (1, 0), (1, 1)]
     and len(full_components) == 1,
 )
+
+ragged_raised = False
+try:
+    connected_components([[1, 1, 1], [1, 0]])
+except ValueError:
+    ragged_raised = True
+check("a ragged grid raises ValueError instead of dropping cells", ragged_raised)
 
 sys.exit(0 if ok else 1)

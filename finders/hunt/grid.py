@@ -33,11 +33,19 @@ def connected_components(labels):
     """The orthogonally-connected groups of truthy cells in `labels`.
 
     `labels` is a rows-of-cells sequence of any truthy/falsy values (bool,
-    0/1, ...). Returns a list of components, each a list of (r, c) cells;
-    an all-empty board returns an empty list.
+    0/1, ...). Every row must be the same length -- a ragged grid raises
+    `ValueError` rather than silently dropping cells past the first row's
+    width. Returns a list of components, each a list of (r, c) cells; an
+    all-empty board returns an empty list.
     """
     n_rows = len(labels)
     n_cols = len(labels[0]) if n_rows else 0
+    for row in labels:
+        if len(row) != n_cols:
+            raise ValueError(
+                f"connected_components needs equal-length rows, got "
+                f"{n_cols} and {len(row)}"
+            )
     seen = set()
     components = []
     for r in range(n_rows):
