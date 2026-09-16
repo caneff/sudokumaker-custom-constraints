@@ -242,6 +242,84 @@ def check_gen_link_pairing(example_dir):
     return violations
 
 
+# Exactly the docs/research/*.py paths present at the commit that landed this
+# rule (#474): docs/research reads as not-code to the global gate, so finder
+# code kept landing there instead of finders/ and ruff never saw it. This
+# list only SHRINKS as paths move to finders/ -- a new directory must not be
+# added to it; new finder code goes in finders/ from the start.
+GRANDFATHERED_RESEARCH_PY = frozenset(
+    {
+        "docs/research/2026-09-14-copycat-scan/parse_copycat.py",
+        "docs/research/2026-09-14-galaxy-copycat/copycat_rsl_solver.py",
+        "docs/research/2026-09-14-galaxy-copycat/distinct_grids.py",
+        "docs/research/2026-09-14-galaxy-copycat/distinct_values.py",
+        "docs/research/2026-09-14-galaxy-copycat/find_l4_all.py",
+        "docs/research/2026-09-14-galaxy-copycat/find_pair4.py",
+        "docs/research/2026-09-14-galaxy-copycat/find_pair7.py",
+        "docs/research/2026-09-14-galaxy-copycat/find_quad4.py",
+        "docs/research/2026-09-14-galaxy-copycat/find_repeats.py",
+        "docs/research/2026-09-14-galaxy-copycat/line_multisets_on_grid.py",
+        "docs/research/2026-09-14-galaxy-copycat/other_pair_sums.py",
+        "docs/research/2026-09-14-galaxy-copycat/rank_l4.py",
+        "docs/research/2026-09-14-galaxy-copycat/rank_pair4.py",
+        "docs/research/2026-09-14-galaxy-copycat/rank_residual.py",
+        "docs/research/2026-09-14-galaxy-copycat/residual.py",
+        "docs/research/2026-09-14-galaxy-copycat/segment_openers.py",
+        "docs/research/2026-09-14-galaxy-copycat/symmetric_region_tilings.py",
+        "docs/research/2026-09-14-lmd-hybrid-scan/fetch_pages.py",
+        "docs/research/2026-09-14-lmd-hybrid-scan/parse_pages.py",
+        "docs/research/367-no-ring-board-type/build_docs.py",
+        "docs/research/368-up-to-n-setup-throw/probe_clues.py",
+        "docs/research/406-gac-demo/tools/build9.py",
+        "docs/research/406-gac-demo/tools/build_hard.py",
+        "docs/research/406-gac-demo/tools/build_plain.py",
+        "docs/research/406-gac-demo/tools/build_variant.py",
+        "docs/research/406-gac-demo/tools/gap2.py",
+        "docs/research/406-gac-demo/tools/hard.py",
+        "docs/research/406-gac-demo/tools/subset_gac_equivalence.py",
+        "docs/research/408-house-gac/build-house-gac-links.py",
+        "docs/research/408-house-gac/house_gac_links.py",
+        "docs/research/408-house-gac/link-delta-house-gac.py",
+        "docs/research/fillomino-baseline/build_link.py",
+        "docs/research/ghosts/allvisible.py",
+        "docs/research/ghosts/charvest.py",
+        "docs/research/ghosts/check_hit.py",
+        "docs/research/ghosts/dense.py",
+        "docs/research/ghosts/fastclimb.py",
+        "docs/research/ghosts/harvest.py",
+        "docs/research/ghosts/minimal.py",
+        "docs/research/ghosts/probe.py",
+        "docs/research/ghosts/render.py",
+        "docs/research/ghosts/shapes.py",
+        "docs/research/ghosts/verify_all.py",
+    }
+)
+
+
+def check_research_python(repo_root):
+    """Return one violation string per `.py` file under `repo_root`'s
+    docs/research/ that is not in GRANDFATHERED_RESEARCH_PY.
+
+    docs/research/ reads as not-code to the global gate (it is not code per
+    AGENTS.md's Gate 2), so finder code landing there skips the code lane and
+    ruff never sees it. Finder code belongs in finders/ instead (#469, #474).
+    """
+    repo_root = pathlib.Path(repo_root)
+    research_dir = repo_root / "docs" / "research"
+    if not research_dir.is_dir():
+        return []
+
+    violations = []
+    for path in sorted(research_dir.rglob("*.py")):
+        rel = path.relative_to(repo_root).as_posix()
+        if rel in GRANDFATHERED_RESEARCH_PY:
+            continue
+        violations.append(
+            f"{rel}: new .py file under docs/research/ -- finder code goes in finders/"
+        )
+    return violations
+
+
 # The prefix every SudokuMaker link starts with. A committed .txt beside an
 # example is a link when it starts with this and nothing else is; a golden or a
 # note is not decoded and not checked.
@@ -778,6 +856,10 @@ def check_tree(root):
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
+    # docs/research/ sits beside examples/ at the repo root, not inside the
+    # argv root, so it is found relative to this file rather than `root`.
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
+    violations.extend(check_research_python(repo_root))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")
