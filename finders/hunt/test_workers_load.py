@@ -202,4 +202,25 @@ with tempfile.TemporaryDirectory() as tmp:
         result.returncode != 0,
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # `nan` parses as a float and `nan > LOAD_LIMIT` is False, so the naive
+    # comparison lets a hunt start unconditionally regardless of the real
+    # box load (Codex pass 1, PR 520). A negative override is equally
+    # nonsensical and must not silently pass the gate either.
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, [], env={"HUNT_FAKE_LOAD1": "nan"})
+    check(
+        f"HUNT_FAKE_LOAD1=nan refuses instead of bypassing the gate "
+        f"(stderr: {result.stderr[-500:]})",
+        result.returncode != 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    out = Path(tmp) / "hunt-out"
+    result = run_cli(out, [], env={"HUNT_FAKE_LOAD1": "-1"})
+    check(
+        f"HUNT_FAKE_LOAD1=-1 refuses (stderr: {result.stderr[-500:]})",
+        result.returncode != 0,
+    )
+
 sys.exit(0 if ok else 1)

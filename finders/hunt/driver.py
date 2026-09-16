@@ -34,6 +34,7 @@ ahead of anything, before resume rebuilds anything from the logs.
 import argparse
 import fcntl
 import json
+import math
 import os
 import random
 import subprocess
@@ -77,7 +78,12 @@ def _load1():
     override = os.environ.get("HUNT_FAKE_LOAD1")
     if not override:
         return os.getloadavg()[0]
-    return float(override)
+    value = float(override)
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(
+            f"HUNT_FAKE_LOAD1={override!r} is not a finite, non-negative load"
+        )
+    return value
 
 
 def _check_load(args):
@@ -88,7 +94,7 @@ def _check_load(args):
     except ValueError:
         print(
             f"hunt: refusing to run -- HUNT_FAKE_LOAD1={os.environ.get('HUNT_FAKE_LOAD1')!r} "
-            "is not a number",
+            "is not a valid load",
             file=sys.stderr,
         )
         return 2
