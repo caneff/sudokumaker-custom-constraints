@@ -591,3 +591,13 @@ one shape (size 12) and it has no grid. Latin: two shapes at 12 and two at 13,
 all four with a grid (none unique), plus two grid-less shapes at 17. Sheet
 `counting_shaded/six-by-six-r6c1-r6c5.png` (Latin, outer border only), shapes
 in the doc's scratch folder `.scratch/counting_shaded/six-pin3034/`.
+
+### r2c6 + r6c1 shaded on 6x6
+
+Chris: "r2c6 and r6c1?". Same enumeration (`.scratch/counting_shaded/six/tools/pairsheet.py`),
+pair forced, no distinct floor, sizes 4-24. Sudoku 2x3: 10 shapes, 4 with a
+grid, one unique (the 12-cell shape [3, 9, 10, 11, 15, 20, 21, 22, 26, 30,
+31, 32], already on the unpinned unique list). Latin: 103 shapes, 38 with a
+grid, four unique, all at 19 cells. Sheet
+`counting_shaded/six-by-six-r2c6-r6c1.png`: top row sudoku (the unique first),
+bottom row the four Latin uniques.
