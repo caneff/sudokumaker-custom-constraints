@@ -76,11 +76,15 @@ test:
     uv run finders/renbanana/tools/test_prove_two_stage.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
-    # finders/hunt's own tests (#484/#487): the dedupe key's public
-    # function, and the `hunt` CLI run in a subprocess with the toy finders
-    # -- fresh hunts well under a second, resume (which sleeps briefly per
-    # seed so a kill lands mid-hunt without a timing race) a couple more.
+    # finders/hunt's own tests (#484, #485, #487): the dedupe key's public
+    # function, neighbours and connected components on hand-drawn boards,
+    # the text printer's output, and the `hunt` CLI run in a subprocess
+    # with the toy finders -- fresh hunts and resume's (which sleeps
+    # briefly per seed so a kill lands mid-hunt without a timing race) both
+    # well under a couple seconds.
     uv run finders/hunt/test_dedupe.py
+    uv run finders/hunt/test_grid.py
+    uv run finders/hunt/test_printer.py
     uv run finders/hunt/test_toy_hunt.py
     uv run finders/hunt/test_hunt_resume.py
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21

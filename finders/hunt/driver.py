@@ -37,7 +37,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dedupe import D4, canonical_key
+from dedupe import D4, IDENTITY, canonical_key, validate_group
 
 OUTPUT_FILES = (
     "examples.jsonl",
@@ -134,6 +134,22 @@ def _read_valid_lines(path):
             valid_lines.append(line if line.endswith("\n") else line + "\n")
             parsed.append(obj)
     return valid_lines, parsed
+
+
+def _validate_symmetry(finder):
+    """Refuse before any output exists if `finder.symmetry` is a custom
+    group that doesn't form one (#508/#511) -- a resume validates it again
+    since it reruns `canonical_key` on every un-skipped seed the same as a
+    fresh hunt would."""
+    symmetry = getattr(finder, "symmetry", D4)
+    if symmetry in (D4, IDENTITY):
+        return None
+    try:
+        validate_group(symmetry)
+    except ValueError as e:
+        print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
+        return 2
+    return None
 
 
 def _truncate_to_valid(path, valid_lines):
@@ -329,6 +345,9 @@ def run(finder, argv):
     process already holding this --out's lock).
     """
     args = _parse_args(argv)
+    refusal = _validate_symmetry(finder)
+    if refusal is not None:
+        return refusal
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     run_path = out / "run.json"
