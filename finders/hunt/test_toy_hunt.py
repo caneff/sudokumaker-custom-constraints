@@ -1,0 +1,85 @@
+"""A fresh toy hunt through the `hunt` CLI, black-box (#484).
+
+Runs finders/hunt/toy_finder.py as a subprocess and checks only what a
+caller of the hunt CLI can see: exit code, the four output files, and their
+contents -- never an internal of driver.py or toy_finder.py.
+
+    uv run finders/hunt/test_toy_hunt.py
+"""
+
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dedupe import D4, canonical_key
+
+HERE = Path(__file__).resolve().parent
+TOY_FINDER = HERE / "toy_finder.py"
+
+ok = True
+
+
+def check(name, cond):
+    global ok
+    status = "ok" if cond else "FAIL"
+    if not cond:
+        ok = False
+    print(f"{status}: {name}")
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    out = Path(tmp) / "hunt-out"
+    result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "0:200"],
+        capture_output=True,
+        text=True,
+    )
+    check(f"exit code 0 (stderr: {result.stderr[-500:]})", result.returncode == 0)
+
+    for name in ("examples.jsonl", "summary.json", "progress.jsonl", "run.json"):
+        check(f"{name} was written", (out / name).exists())
+
+    examples = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
+    summary = json.loads((out / "summary.json").read_text())
+    run_info = json.loads((out / "run.json").read_text())
+    progress = [
+        json.loads(line)
+        for line in (out / "progress.jsonl").read_text().splitlines()
+        if line
+    ]
+
+    check(
+        "summary.json's example count matches examples.jsonl's line count",
+        summary.get("examples") == len(examples),
+    )
+    check(
+        "run.json records the argv used",
+        run_info.get("argv") == ["--out", str(out), "--seeds", "0:200"],
+    )
+    check(
+        "progress.jsonl has one seed_done event per seed in the range",
+        sum(1 for e in progress if e.get("event") == "seed_done") == 200,
+    )
+
+    # Toy finder's own trivial verifier rejects an odd shading count -- see
+    # toy_finder.py. A candidate it rejects must be absent from
+    # examples.jsonl: recheck the rule ourselves against every line written.
+    all_even = all(sum(ex["grid"]) % 2 == 0 for ex in examples)
+    check("no rejected (odd-count) candidate reached examples.jsonl", all_even)
+
+    check(
+        "at least one example was found over 200 seeds",
+        len(examples) > 0,
+    )
+
+    keys = [canonical_key(tuple(ex["grid"]), D4) for ex in examples]
+    check("no two examples are equal under D4", len(keys) == len(set(keys)))
+
+sys.exit(0 if ok else 1)
