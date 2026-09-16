@@ -441,9 +441,11 @@ def run(finder, argv):
         os.close(lock_fd)
         return _refuse(args.out, "an active hunt (locked)")
 
+    is_resume = False
     try:
         run_path = out / "run.json"
         if run_path.exists():
+            is_resume = True
             prior = json.loads(run_path.read_text())
             if prior.get("argv") != list(argv):
                 print(
@@ -465,10 +467,15 @@ def run(finder, argv):
         # Same clean refusal `_validate_symmetry`'s pre-flight gives a
         # structurally-broken group -- this one only surfaces once a real
         # candidate exists, after run.json/summary.json (and possibly more)
-        # are already on disk, so this run's own output is torn down rather
-        # than left behind.
+        # are already on disk. On a fresh hunt that output is only this
+        # attempt's own, so it's torn down; on a resume it can hold a prior
+        # attempt's genuine completed results (#509 review, finding V1 --
+        # e.g. the finder's key() shape changed since the run being resumed
+        # last succeeded), so cleanup is skipped and whatever the resumed
+        # hunt already had on disk is left exactly as found.
         print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
-        _cleanup_partial_output(out)
+        if not is_resume:
+            _cleanup_partial_output(out)
         return 2
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)

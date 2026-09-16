@@ -493,4 +493,58 @@ with tempfile.TemporaryDirectory() as tmp:
         not (out / "run.json").exists() and not (out / "summary.json").exists(),
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A symmetry mismatch that surfaces on a *resume*, not a fresh hunt,
+    # must not delete a prior attempt's genuine completed results -- only
+    # this attempt's own output, if any (#509 review, finding V1). Hand-
+    # built the same way test_hunt_resume.py hand-corrupts its resume
+    # fixtures: a completed, confirmed seed 0 (matching progress.jsonl and
+    # examples.jsonl, the way an uninterrupted prior run would leave them)
+    # and an untouched seed 1, so resuming over the same 2-seed range must
+    # reprocess only seed 1 -- with a finder whose key() no longer matches
+    # the declared group.
+    out = Path(tmp) / "hunt-out"
+    out.mkdir()
+    argv = ["--out", str(out), "--seeds", "0:2"]
+    (out / "run.json").write_text(
+        json.dumps(
+            {
+                "argv": argv,
+                "git_sha": "0" * 40,
+                "start_time": "2026-01-01T00:00:00+00:00",
+            }
+        )
+    )
+    (out / "progress.jsonl").write_text(
+        json.dumps({"event": "seed_done", "seed": 0, "outcome": "example"}) + "\n"
+    )
+    base_examples = (
+        json.dumps({"grid": [0, 1, 2, 3], "__dedupe_key__": [0, 1, 2, 3]}) + "\n"
+    )
+    (out / "examples.jsonl").write_text(base_examples)
+    (out / "summary.json").write_text(
+        json.dumps(
+            {"seeds_done": 1, "examples": 1, "rejected": 0, "duplicates": 0, "empty": 0}
+        )
+    )
+
+    resumed = subprocess.run(
+        [sys.executable, "-c", mismatched_length_script, *argv],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"resuming into a symmetry mismatch still exits 2 (stderr: "
+        f"{resumed.stderr[-300:]})",
+        resumed.returncode == 2,
+    )
+    check(
+        "the prior run's genuine example survives a resume-time symmetry mismatch",
+        out.exists() and (out / "examples.jsonl").read_text() == base_examples,
+    )
+    check(
+        "run.json from the base hunt is left in place, not deleted",
+        (out / "run.json").exists(),
+    )
+
 sys.exit(0 if ok else 1)
