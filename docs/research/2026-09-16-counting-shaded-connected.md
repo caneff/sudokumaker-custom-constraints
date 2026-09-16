@@ -444,3 +444,17 @@ is not over-constrained.
 | 2 | r2c5=2, r4c5=4, r5c3=5, r6c3=4 | yes | {r2c5, r6c3} |
 
 Both puzzles are unique from two given digits and nothing else shown.
+
+### Cave marks without digits
+
+Chris: "no without givens in the clues". Same model, but a marked cell only
+promises that its digit is a valid cave clue; the digit itself is not shown
+and no shading is shown.
+
+| grid | marks | unique from all marks | notes |
+|---|---|---|---|
+| 1 | r1c3, r4c4, r4c5, r6c1, r6c3 | **yes** | minimal: {r1c3, r4c4, r4c5, r6c1} and {r1c3, r4c4, r4c5, r6c3}; no 3-mark set works |
+| 2 | r2c5, r4c5, r5c3, r6c3 | no (4+ solutions, the others on a different 8-cell shading) | unique once r6c3 is also shown shaded |
+
+So grid 1 is a puzzle with four circled cells and nothing else; grid 2 needs
+its four marks plus one shaded cell revealed.
