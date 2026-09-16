@@ -533,6 +533,16 @@ previous commit keeps.
 
 ## Timing
 
+### The SideSum stale-wake case (#362)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts | 6500ms | — | — | BASELINE |
+| 2026-09-16 | v2026.08.14-d47fc4b | hit-counts after-logical | 4000ms | — | — | BASELINE |
+
+`just time hit-counts`. The soundness case passed on the shipped
+`SideSumComponent`, so the only code change is the comment beside
+`getAffectedCells` saying why a stale wake is safe; the minified component is
+byte-equal and the driver timed the baseline alone.
+
 ### One line-kind gate across the components (#360)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | hit-counts | 6500ms | 6400ms | 0.98 | FAIL |

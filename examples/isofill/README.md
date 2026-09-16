@@ -414,6 +414,19 @@ instance stays valid as long as its board and clue set do not change.
 
 ## Timing
 
+### The reach split (#362)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill | 600ms | 600ms | 1.00 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time isofill`, 3 reps per arm, non-deterministic solve off. The candidate
+splits `reach` into `reachSize` and `reachesAll` and has `digitRule` return
+its `near` bound; it adds no deduction (the soundness and strength outputs are
+byte-identical), so the `NO SHIP` line reads the 0.9x deduction rule. The bar
+it answers to is the gate-change bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it.
+
 ### Twenty-grid strip batch (#166, 2026-08-28)
 
 Twenty fresh grids, sampled and stripped once each to find boards the app
