@@ -26,6 +26,7 @@ import random
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from pathlib import PurePath
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
@@ -106,11 +107,6 @@ def component_files(spec, local):
     if local and spec.local_components is not None:
         return spec.local_components
     return spec.components
-
-
-def stem(filename):
-    """A component file's registered name: `FooComponent.js` -> `FooComponent`."""
-    return filename[: -len(".js")]
 
 
 # Seconds per solve in `unique`. A frame board this size is proved in
@@ -559,7 +555,11 @@ def example_constraint(spec, groups):
                 ),
             },
             "components": [
-                {"type": "code", "name": stem(f), "code": minify_file(spec.dir / f)}
+                {
+                    "type": "code",
+                    "name": PurePath(f).stem,
+                    "code": minify_file(spec.dir / f),
+                }
                 for f in component_files(spec, local)
             ],
         },
@@ -865,7 +865,7 @@ def check(spec, link, doc, board, local=False):
         if local and spec.local_components is not None
         else spec.components
     )
-    assert names == [stem(f) for f in want], (
+    assert names == [PurePath(f).stem for f in want], (
         f"the link carries the wrong lane's components (local={local}): {names}"
     )
     # A lane's own link must ship exactly what its backend registers, in both

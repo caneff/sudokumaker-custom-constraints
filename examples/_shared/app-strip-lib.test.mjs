@@ -52,7 +52,10 @@ import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
     ['link.txt', 'out.json'], // no --grid
     ['link.txt', '--grid', 'puzzle.json'], // no out file
     ['--grid', 'puzzle.json'], // no link file
-    ['link.txt', 'out.json', '--grid'] // --grid with no value
+    ['link.txt', 'out.json', '--grid'], // --grid with no value
+    // a mistyped flag, read as a positional or a seed, is no run either
+    ['link.txt', 'out.json', '--gird', 'puzzle.json'],
+    ['link.txt', 'out.json', '--grid', 'puzzle.json', '--seed', '3']
   ]
   for (const argv of incomplete) {
     assert.throws(() => parseArgs(argv), /usage: app-strip.mjs/, `accepted ${JSON.stringify(argv)}`)

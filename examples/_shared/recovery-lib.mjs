@@ -42,7 +42,7 @@ export function makeCandidateState ({ houses = [] } = {}) {
 // Kuhn augmenting-path matching between `cells` and the values `getCand`
 // offers each one. For a group of size <= 9 the brute per-edge recheck below
 // (in makeAllDifferentFloor) is GAC by definition and plenty fast.
-export function maxMatch (cells, getCand) {
+function maxMatch (cells, getCand) {
   const byVal = new Map()
   function aug (cell, seen) {
     for (const v of getCand(cell)) {

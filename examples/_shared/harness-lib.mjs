@@ -20,13 +20,12 @@ export class DigitSet {
   static from (digits) { let m = 0; for (const d of digits) m |= 1 << d; return new this(m) }
   get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
   has (d) { return (this.mask & (1 << d)) !== 0 }
-  valueOf () { return this.mask }
   // Copied from the bundle's SmallNumberSet (bundle.claude.js:558-617);
   // `getUnion` returns a fresh set. Their callers are the digit-set forms in
   // docs/research/408-house-gac/, run by its bench through this harness.
-  union (other) { this.mask |= other.valueOf(); return this }
-  subtract (other) { this.mask &= ~other.valueOf(); return this }
-  equals (other) { return this.mask === +other }
+  union (other) { this.mask |= other.mask; return this }
+  subtract (other) { this.mask &= ~other.mask; return this }
+  equals (other) { return this.mask === other.mask }
   static getUnion (sets) { const u = new this(); for (const s of sets) u.union(s); return u }
   // ponytail: the rest of SmallNumberSet (intersect, xor, add, delete, clear,
   // the is*/intersects tests, getSmallest/LargestNumber, getIntersection) is
@@ -295,9 +294,11 @@ export function makePuzzle (truth, seed, { houses = [] } = {}) {
 // kinds: none for a bare line, the line itself for a house or a full house.
 export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
 
-// Run a component's update until a pass removes nothing (bounded at 20 passes).
+// Run a component's update until a pass removes nothing, at most MAX_PASSES
+// times.
+const MAX_PASSES = 20
 export function fixpoint (mod, inst, p) {
-  for (let pass = 0; pass < 20; pass++) {
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = total(p)
     Array.from(mod.update(inst, p)) // drain
     if (p._stopped !== null) break // the branch was declared dead; stop propagating

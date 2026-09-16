@@ -302,8 +302,30 @@ console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
 
 console.log('validate:', validateOk)
 console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| cut starve fired:', cutStarveOk, '| cut strand fired:', cutStrandOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+// The directed checks, by name: each one's line in the verdict, and all of
+// them in the pass.
+const CHECKS = {
+  'cap fired': capOk,
+  'force fired': forceOk,
+  'outside walk': outsideOk,
+  stranded: strandedOk,
+  'stranded at cap': capStrandedOk,
+  starved: starvedOk,
+  'far dead': farDeadOk,
+  'far live': farLiveOk,
+  'linked walk tighter': linkedOk,
+  'walled off': walledOk,
+  'cut starve fired': cutStarveOk,
+  'cut strand fired': cutStrandOk,
+  'tour fired': tourOk,
+  'budget fired': budgetOk,
+  'budget prune fired': pruneOk,
+  'silent fired': silentOk,
+  'silent dead fired': silentDeadOk,
+  'one pass': onePassOk
+}
+console.log(Object.entries(CHECKS).map(([name, pass]) => `${name}: ${pass}`).join(' | '), `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && cutStarveOk && cutStrandOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && arcOk && flankOk && validateOk && Object.values(CHECKS).every(Boolean)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)

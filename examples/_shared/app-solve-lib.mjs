@@ -51,7 +51,7 @@ const VERDICTS = [
 // `.flags` in and rebuild it there.
 export const VERDICT_PATTERN = new RegExp(VERDICTS.map(([, re]) => re.source).join('|'), 'i')
 
-export function readVerdict (text) {
+function readVerdict (text) {
   const hit = VERDICTS.find(([, re]) => re.test(text))
   return hit ? hit[0] : '?'
 }
@@ -73,7 +73,7 @@ export function parseReadout (text) {
   return { first, unique, sum, verdict }
 }
 
-export const median = xs => {
+const median = xs => {
   const s = xs.filter(x => x != null).sort((a, b) => a - b)
   return s.length ? s[Math.floor(s.length / 2)] : null
 }

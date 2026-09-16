@@ -185,14 +185,7 @@ def test_the_local_board_is_share_ready():
 
 
 if __name__ == "__main__":
-    test_window_length_is_the_box_extent_along_the_line()
-    test_window_never_runs_past_the_line()
-    test_clue_is_the_largest_digit_of_the_window()
-    test_the_window_follows_the_direction_on_a_6x6()
-    test_rebuild_reproduces_every_shipped_link_byte_for_byte()
-    test_every_recorded_clue_is_its_window_s_largest_digit()
-    test_the_two_python_window_lengths_agree_on_a_shipped_board()
-    test_every_shipped_link_is_share_ready()
-    test_the_two_lanes_ship_the_boards_their_names_promise()
-    test_the_local_board_is_share_ready()
+    for name, fn in list(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn()
     print("ok")

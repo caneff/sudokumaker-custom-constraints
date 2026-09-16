@@ -57,7 +57,7 @@ export function GRIDS (here) {
   return out
 }
 
-const clone = m => { const o = new Map(); for (const [k, v] of m) o.set(k, v.slice()); return o }
+const clone = m => structuredClone(m)
 
 // Run the component once over a candidate map. Returns the new map, or null
 // when a cell empties (a dead search node).
