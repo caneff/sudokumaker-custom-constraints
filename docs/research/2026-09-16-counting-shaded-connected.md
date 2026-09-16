@@ -131,6 +131,32 @@ This also closes the earlier hunt at 25-26 -- which the corpus had suggested was
 the only viable band, itself an artefact of a generator floor. See the decision
 log, entries 9 and 15.
 
+## No connected all-visible-unique shading exists under sudoku rules (exhaustive)
+
+Every size in the 17-21 window enumerated to exhaustion with
+`finders/counting_shaded/shapeenum.py --symmetry` (native CP-SAT enumeration,
+shape-determined BFS connectivity, one of each shape's 8 images, all eight
+digits required, the C counter judging each shape at cap 2):
+
+| size | shapes (up to symmetry) | with a grid | unique | time |
+|---|---|---|---|---|
+| 21 | 13 | 4 | 0 | 50 s |
+| 20 | 16 | 6 | 0 | 42 s |
+| 19 | 34 | 12 | 0 | 52 s |
+| 18 | 32 | 16 | 0 | 60 s |
+| 17 | 26 | 12 | 0 | 76 s |
+
+With the theorem sides (below 17 too few givens; above 21 no shape carries
+all of 1-8) this closes the question: **no orthogonally connected shading
+exists whose neighbour counts, taken as the only givens, force a sudoku.**
+Since any counting-shaded puzzle's solution shading must have that property
+(a second grid agreeing on the shaded cells is a second solution), no
+counting-shaded puzzle exists under sudoku rules. Solver caveat as
+throughout: three CP-SAT encodings agree; no second engine yet (#506).
+
+Solve-then-forbid on the same size 21 found 70 of the at most 104 images in
+10 minutes on 8 workers without finishing; native enumeration is the tool.
+
 ## Symmetry
 
 The symmetry group is the 8 dihedral images and nothing else: they preserve the
