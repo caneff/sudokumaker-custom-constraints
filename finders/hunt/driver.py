@@ -240,6 +240,30 @@ def _cleanup_partial_output(out):
         out.rmdir()  # unrelated content still present, or already gone
 
 
+def _acquire_lock(out):
+    """Exclusive, non-blocking flock on out/.lock -- the one lock a hunt
+    and `hunt verify` (#489/#523 Codex pass 1) both take, so `hunt verify`
+    can't read examples.jsonl mid-write by a running hunt and publish a
+    verified.jsonl that silently omits the tail, and two verify runs can't
+    race on the same verified.jsonl.tmp. `flock` is tied to the open fd, so
+    a SIGKILLed holder releases it the instant the process dies -- no stale
+    lock to clean up before the next run. Returns the lock fd, or None if
+    another process already holds it."""
+    out.mkdir(parents=True, exist_ok=True)
+    lock_fd = os.open(out / ".lock", os.O_CREAT | os.O_RDWR)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(lock_fd)
+        return None
+    return lock_fd
+
+
+def _release_lock(lock_fd):
+    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    os.close(lock_fd)
+
+
 def _to_hashable(value):
     """Undo JSON's list-ifying of a dedupe key's tuple(s) on the way back
     in, so a key nested more than one level deep still hashes."""
@@ -548,47 +572,65 @@ def _run_verify(finder, argv):
     verify-able, but possibly a genuine bug in `verify` itself -- the
     driver can't tell which) refuses with both named as possible causes,
     rather than propagating a raw traceback; everything already verified
-    for earlier records is kept, not thrown away with it."""
+    for earlier records is kept, not thrown away with it.
+
+    Takes the same out/.lock a hunt takes (`_acquire_lock`), before
+    examples.jsonl is even opened -- so this can't read a hunt's
+    still-being-written examples.jsonl and publish a verified.jsonl that
+    silently omits the tail, and two `hunt verify` runs can't race on the
+    same verified.jsonl.tmp (#489/#523 Codex pass 1)."""
     args = _parse_verify_args(argv)
     out = Path(args.dir)
-    examples_path = out / "examples.jsonl"
-    if not examples_path.exists():
+
+    lock_fd = _acquire_lock(out)
+    if lock_fd is None:
         print(
-            f"hunt verify: refusing -- {args.dir} has no examples.jsonl",
+            f"hunt verify: refusing -- {args.dir} is locked (a hunt or "
+            "another verify is using it)",
             file=sys.stderr,
         )
         return 2
+    try:
+        examples_path = out / "examples.jsonl"
+        if not examples_path.exists():
+            print(
+                f"hunt verify: refusing -- {args.dir} has no examples.jsonl",
+                file=sys.stderr,
+            )
+            return 2
 
-    to_candidate = getattr(finder, "candidate_from_record", lambda record: record)
-    _, records = _read_valid_lines(examples_path)
-    verified_path = out / "verified.jsonl"
-    tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
-    verified_count = 0
-    with tmp.open("w") as verified_f:
-        for record in records:
-            try:
-                verdict = finder.verify(to_candidate(record))
-            except Exception as e:
-                verified_f.flush()
-                tmp.replace(verified_path)
-                print(
-                    "hunt verify: refusing -- turning a record from "
-                    f"examples.jsonl into a candidate and verifying it raised "
-                    f"({type(e).__name__}: {e}). Either record() isn't itself "
-                    "a verify-able candidate and the finder needs a "
-                    "candidate_from_record, or this is a bug in verify() "
-                    f"itself -- {verified_count} verdict(s) already computed "
-                    "were kept.",
-                    file=sys.stderr,
-                )
-                return 2
-            entry = {"record": record, "ok": verdict.ok}
-            if verdict.reason:
-                entry["reason"] = verdict.reason
-            verified_f.write(json.dumps(entry) + "\n")
-            verified_count += 1
-    tmp.replace(verified_path)
-    return 0
+        to_candidate = getattr(finder, "candidate_from_record", lambda record: record)
+        _, records = _read_valid_lines(examples_path)
+        verified_path = out / "verified.jsonl"
+        tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
+        verified_count = 0
+        with tmp.open("w") as verified_f:
+            for record in records:
+                try:
+                    verdict = finder.verify(to_candidate(record))
+                except Exception as e:
+                    verified_f.flush()
+                    tmp.replace(verified_path)
+                    print(
+                        "hunt verify: refusing -- turning a record from "
+                        "examples.jsonl into a candidate and verifying it "
+                        f"raised ({type(e).__name__}: {e}). Either record() "
+                        "isn't itself a verify-able candidate and the finder "
+                        "needs a candidate_from_record, or this is a bug in "
+                        f"verify() itself -- {verified_count} verdict(s) "
+                        "already computed were kept.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                entry = {"record": record, "ok": verdict.ok}
+                if verdict.reason:
+                    entry["reason"] = verdict.reason
+                verified_f.write(json.dumps(entry) + "\n")
+                verified_count += 1
+        tmp.replace(verified_path)
+        return 0
+    finally:
+        _release_lock(lock_fd)
 
 
 def run(finder, argv):
@@ -628,7 +670,6 @@ def run(finder, argv):
     if refusal is not None:
         return refusal
     out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
 
     # Taken before anything about --out's state is inspected, not just
     # before anything is written: classifying --out as fresh or resumed by
@@ -639,14 +680,9 @@ def run(finder, argv):
     # process's complete fresh hunt has already finished and released it.
     # Acting on that stale "no run.json" belief overwrites the finished
     # hunt and replays every seed. Locking first makes every read below an
-    # authoritative one. `flock` is tied to the open fd, so a SIGKILLed
-    # holder releases it the instant the process dies -- no stale lock to
-    # clean up before the next, real resume.
-    lock_fd = os.open(out / ".lock", os.O_CREAT | os.O_RDWR)
-    try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        os.close(lock_fd)
+    # authoritative one.
+    lock_fd = _acquire_lock(out)
+    if lock_fd is None:
         return _refuse(args.out, "an active hunt (locked)")
 
     is_resume = False
@@ -708,5 +744,4 @@ def run(finder, argv):
             _cleanup_partial_output(out)
         return 2
     finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        os.close(lock_fd)
+        _release_lock(lock_fd)

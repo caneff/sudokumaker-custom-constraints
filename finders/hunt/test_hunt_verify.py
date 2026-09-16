@@ -8,7 +8,9 @@ one verdict per line to verified.jsonl.
     uv run finders/hunt/test_hunt_verify.py
 """
 
+import fcntl
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -278,6 +280,55 @@ with tempfile.TemporaryDirectory() as tmp:
         "the two verdicts computed before the failing record were kept, "
         "not thrown away with it",
         len(verified) == 2,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # hunt verify must not read examples.jsonl while a hunt still holds
+    # out/.lock -- otherwise it can publish a verified.jsonl that silently
+    # omits whatever the hunt appends after the read (#489/#523 Codex pass
+    # 1). Simulate a running hunt by holding the same lock file ourselves.
+    out = Path(tmp) / "hunt-out"
+    result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"seeding for the lock test exits 0 (stderr: {result.stderr[-300:]})",
+        result.returncode == 0,
+    )
+
+    lock_fd = os.open(out / ".lock", os.O_CREAT | os.O_RDWR)
+    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        blocked = subprocess.run(
+            [sys.executable, str(TOY_FINDER), "verify", str(out)],
+            capture_output=True,
+            text=True,
+        )
+        check(
+            f"hunt verify refuses while out/.lock is held (exit "
+            f"{blocked.returncode}, stderr: {blocked.stderr[-300:]})",
+            blocked.returncode == 2,
+        )
+        check(
+            "no verified.jsonl was written while locked out",
+            not (out / "verified.jsonl").exists(),
+        )
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
+
+    # Released, verify now succeeds.
+    unblocked = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "verify", str(out)],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"hunt verify succeeds once the lock is released (stderr: "
+        f"{unblocked.stderr[-300:]})",
+        unblocked.returncode == 0,
     )
 
 sys.exit(0 if ok else 1)
