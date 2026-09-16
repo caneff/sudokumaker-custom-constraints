@@ -561,3 +561,24 @@ Same shape-only model, geometry 8 Latin, sizes 2-64: r8c1+r8c8 feasible at
 4 6 5 2 . . . 3
 3 4 . . . . . 1
 ```
+
+### 9x9: infeasible again, Latin and sudoku alike
+
+Chris: "9x9?" then "any 9x9 with sudoku regions?". Shape-only model, geometry
+9, pairs r9c1+r9c9 and r1c1+r9c1, sizes 2-50, no distinct floor, 120 s per
+solve: every size INFEASIBLE, none timed out, for Latin and for sudoku 3x3.
+The Latin verdict was cross-checked with the flow-connectivity encoding
+(`shapeenum.build`, Latin, sizes 10-44): also INFEASIBLE throughout.
+Scripts and logs in `.scratch/counting_shaded/corners9/`.
+
+| grid | same-side corners both shaded |
+|---|---|
+| 6x6 | never |
+| 7x7 Latin | size 17 only |
+| 8x8 Latin | sizes 21, 23, 24 |
+| 9x9 Latin | never (sizes 2-50) |
+| 9x9 sudoku | never (sizes 2-50) |
+
+Not monotone in the grid size: on 9x9 the digit cap no longer binds (counts
+are at most 8) but the corners are eight columns apart, so the connecting
+band is longer and puts more cells with near-equal counts into each row.
