@@ -93,6 +93,78 @@ unique examples is a real property of the target, not an artefact of choosing
 a hard variant, and moving to the hidden-ghost rule would make it strictly
 worse -- fewer clues, and the surviving clues stop being digits.
 
+## The size window: 17-21, closed on both sides by proof
+
+Every ghost digit is a neighbour count, so it lies in 1-8 and **9 can never
+appear on a ghost**. Combine that with a standard fact: a sudoku whose givens
+omit two or more digits always has several solutions, because swapping the two
+missing digits throughout any solution relabels it into another solution that
+agrees with every given. So a unique puzzle needs at least 8 distinct given
+digits -- and since 9 is unavailable, **all eight of 1-8 must appear**. No
+slack.
+
+That is cheap to post as a constraint (`joint.add_all_digits`) and it decides
+the whole question. Asking the solver one size at a time, with symmetry
+breaking on:
+
+| ghosts | all eight digits possible? | basis |
+|---|---|---|
+| <=16 | irrelevant | below the 17-given minimum (all-visible reduces to plain sudoku) |
+| 17 | yes | witness, 5s |
+| 18 | yes | witness, 23s |
+| 19 | yes | witness, 6s |
+| 20 | yes | witness, 21s |
+| 21 | yes | witness, 13s |
+| 22 | **no** | INFEASIBLE |
+| 23 | **no** | INFEASIBLE |
+| 24 | **no** | INFEASIBLE |
+| 25 | **no** | INFEASIBLE |
+| 26 | **no** | INFEASIBLE |
+| >=27 | no configuration at all | INFEASIBLE, three encodings |
+
+**A unique connected all-visible Ghosts puzzle has between 17 and 21 ghosts, or
+does not exist.** The wall at 22 is structural: a connected blob that large has
+a high-count interior, so its digits crowd into 5-8 and the low counts vanish.
+A big connected region and a 1 or 2 on it are incompatible.
+
+This also closes the earlier hunt at 25-26 -- which the corpus had suggested was
+the only viable band, itself an artefact of a generator floor. See the decision
+log, entries 9 and 15.
+
+## Symmetry
+
+The symmetry group is the 8 dihedral images and nothing else: they preserve the
+sudoku houses and both adjacencies, king for counting and orthogonal for
+connectivity. Band and stack swaps preserve houses but scramble adjacency;
+digit relabelling is not a symmetry because digits are counts.
+
+`joint.add_symmetry_breaking` keeps only the lexicographically smallest image,
+verified against explicit enumeration (`joint.py --check-symmetry`): 300/300
+agreement, and 200/200 orbits keep exactly one representative, which is the
+property that makes it lossless. **Never combine it with pinned cells** -- a pin
+already fixes the orientation, so demanding canonical form on top forbids real
+solutions. `build()` raises rather than allowing the combination.
+
+Before it existed the corpus carried 29 symmetric duplicates in 197 rows.
+
+## Pinned cells: r9c1 + r9c2
+
+| | max ghosts | digits | solutions |
+|---|---|---|---|
+| connected | 22 (proved) | 1-7, no 8 | 1000+ |
+| connected, all digits required | 21 (proved) | 1-8 | 1000+ |
+| not connected | **34** (proved) | 1-8 | **9** |
+
+The unconnected 34 is the closest anything has come to unique. Connectivity
+costs 12 ghosts here, and at the maximum it also costs the digit 8, which alone
+makes that configuration permanently non-unique.
+
+Separately, r9c1+r9c2+r9c8 with r7c4 banned is infeasible outright -- no valid
+grid at all, at any ghost count, connected or not. That is an existence result,
+not a uniqueness one: `recheck_pins.py` posts only necessary conditions (counts
+1-8, digits distinct within each house) and so is a relaxation of the real
+problem, which makes its INFEASIBLE carry up to the real problem.
+
 ## Method, and why
 
 Following the idiom that produced the 234 examples and the repo's other

@@ -24,7 +24,7 @@ from pathlib import Path
 
 from joint import build
 from ortools.sat.python import cp_model
-from shapes import BOX, NEIGH, connected
+from shapes import BOX, NEIGH, connected, count_solutions
 
 
 def verify(grid, shape):
@@ -58,6 +58,22 @@ def main():
     ap.add_argument("--min-ghosts", type=int, default=1)
     ap.add_argument("--max-ghosts", type=int, default=26)
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument(
+        "--prove-optimal",
+        action="store_true",
+        help="let CP-SAT prove the random objective optimal (slow, buys nothing)",
+    )
+    ap.add_argument(
+        "--all-digits",
+        action="store_true",
+        help="require all of 1-8 on ghosts; necessary for a unique puzzle",
+    )
+    ap.add_argument("--cap", type=int, default=2, help="solution counting cap")
+    ap.add_argument(
+        "--break-symmetry",
+        action="store_true",
+        help="keep only the lex-smallest of each shape's 8 images; not with pins",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -69,13 +85,46 @@ def main():
         if left <= 1:
             break
         weights = [rng.randint(-100, 100) for _ in range(81)]
-        m, v, g = build(a.min_ghosts, a.max_ghosts, maximize=False, weights=weights)
+        m, v, g = build(
+            a.min_ghosts,
+            a.max_ghosts,
+            maximize=False,
+            weights=weights,
+            all_digits=a.all_digits,
+            break_symmetry=a.break_symmetry,
+        )
         s = cp_model.CpSolver()
         s.parameters.num_workers = a.workers
         s.parameters.random_seed = rng.randrange(1 << 30)
         s.parameters.max_time_in_seconds = left
+        if not a.prove_optimal:
+            # Any feasible configuration is a valid corpus entry, so the
+            # optimality proof is pure waste -- and it is nearly all of the
+            # cost. Pinned runs at 24, 25 and 26 each returned at exactly their
+            # 300s budget, the signature of a solver finishing the search early
+            # and then proving. The random-weight objective still steers which
+            # region the search lands in; only the proof is dropped.
+            s.parameters.stop_after_first_solution = True
         st = s.solve(m)
+        if st == cp_model.INFEASIBLE:
+            # A proof, and the only status that is one. Stop and say so rather
+            # than looping: no configuration of this size exists at all.
+            # Name every restriction in play. Without "--all-digits" in this
+            # message, an INFEASIBLE at 25 reads as "no 25-ghost configuration
+            # exists", flatly contradicting the 25-ghost configurations already
+            # in the corpus. The claim is only ever about the model as posted.
+            limits = [f"{a.min_ghosts}-{a.max_ghosts} ghosts", "connected"]
+            if a.all_digits:
+                limits.append("all digits 1-8 present")
+            print(
+                "INFEASIBLE: no all-visible configuration exists with "
+                + ", ".join(limits),
+                flush=True,
+            )
+            break
         if st not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            # UNKNOWN is a timeout. Not a proof of anything; try another seed.
+            print(f"{s.status_name(st)} after {left:.0f}s, retrying", flush=True)
             continue
         shape = sorted(i for i in range(81) if s.value(g[i]))
         grid = [s.value(x) for x in v]
@@ -86,12 +135,25 @@ def main():
             continue
         found += 1
         sizes[len(shape)] += 1
+        gv = {i: sum(j in set(shape) for j in NEIGH[i]) for i in shape}
+        nsol = count_solutions(gv, a.cap)
+        if nsol == 1:
+            print(f"*** UNIQUE *** {len(shape)} ghosts: {shape}", flush=True)
+            print(f"    grid: {grid}", flush=True)
         key = (tuple(shape), tuple(grid))
         if key not in seen:
             seen.add(key)
             with (a.out / "configurations.jsonl").open("a") as fh:
                 fh.write(
-                    json.dumps({"ghosts": len(shape), "shape": shape, "grid": grid})
+                    json.dumps(
+                        {
+                            "ghosts": len(shape),
+                            "shape": shape,
+                            "grid": grid,
+                            "solutions": nsol,
+                            "digits": sorted(set(gv.values())),
+                        }
+                    )
                     + "\n"
                 )
         (a.out / "summary.json").write_text(

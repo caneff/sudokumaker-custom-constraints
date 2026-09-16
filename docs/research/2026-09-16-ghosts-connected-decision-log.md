@@ -190,6 +190,49 @@ at all. All-visible is the *maximally* clued variant.
 mechanism here was right and the conclusion drawn from it was inverted; stating
 them as one claim hid that.
 
+## 15. Naming a size window from sampled data, twice
+
+**Decided:** reported the viable band as 25-26, then as 18-21.
+**Rested on:** the first came from the 234-example catalogue (entry 9). The
+second came from the corpus maximum of distinct digits per size -- 7 at 22, 6
+at 23, 6 at 24 -- off twelve configurations at those sizes.
+**Outcome:** both wrong. Asking the solver directly, one size at a time, took
+seconds per size: 17 through 21 all have witnesses, 22 through 26 are all
+INFEASIBLE. 17 is in and 22 is out, and neither guess had it.
+**Caught by:** Chris, twice ("did you rule out 22-24?", then "fix your
+reasoning").
+**New lesson, and the important one in this file:** **when a solver can answer
+the question directly, never report the answer from sampled data.** This is
+distinct from the biased-generator lessons above -- the generator was fine, the
+sample was simply not the question. A sample maximum is a fact about the sample.
+The oracle was available and cheap the entire time.
+
+## 16. An INFEASIBLE message that omitted its own constraints
+
+**Decided:** printed "no connected all-visible configuration exists with 25-25
+ghosts" when the run also had `--all-digits` posted.
+**Outcome:** flatly contradicts the four 25-ghost configurations already in the
+corpus. The result was right; the sentence was false.
+**New lesson:** an INFEASIBLE is a claim about the model *as posted*. Print
+every restriction in play, or the log will contradict the rest of the evidence
+and nobody will know which to believe.
+
+## 17. Misdiagnosing the solve budget
+
+**Decided:** argued that the pinned runs were wasting their 300s budget proving
+optimality, and recommended cutting it.
+**Rested on:** all three sizes returning at exactly 300s, which does look like
+budget exhaustion.
+**Outcome:** backwards. A 20s budget found nothing in 240s of trying, and
+`stop_after_first_solution` found nothing in 180s, while the 300s runs produced
+steadily. These were **search-bound**: finding the first feasible configuration
+takes nearly the whole budget at those sizes. Cutting it would have killed the
+top-band corpus.
+**Saved by:** running the probe instead of acting on the argument.
+**New lesson:** "returns at exactly the budget" is consistent with both a wasted
+proof and a search that only just finishes. The two are distinguished by a
+probe, not by reasoning.
+
 ---
 
 ## What actually worked

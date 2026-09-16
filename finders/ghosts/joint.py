@@ -20,8 +20,32 @@ import json
 import time
 from pathlib import Path
 
+from harvest import SYMS
 from ortools.sat.python import cp_model
 from shapes import NEIGH, ORTH, count_solutions, givens
+
+
+def images(shape):
+    """The 8 dihedral images of a shape, as 81-bit indicator tuples."""
+    out = []
+    for f in SYMS:
+        bits = [0] * 81
+        for i in shape:
+            nr, nc = f(*divmod(i, 9))
+            bits[nr * 9 + nc] = 1
+        out.append(tuple(bits))
+    return out
+
+
+def is_lex_min(shape):
+    """Is this shape's indicator vector the smallest of its 8 images?
+
+    Note this is lex order on the 81-bit INDICATOR, which is not the same
+    ordering as harvest.canonical() (that one sorts cell indices). Either is a
+    valid canonical form; they must not be mixed, and the model uses this one.
+    """
+    imgs = images(shape)
+    return imgs[0] == min(imgs)
 
 
 def add_flow_connectivity(m, g, cap=81):
@@ -51,7 +75,75 @@ def add_flow_connectivity(m, g, cap=81):
         )
 
 
-def build(min_ghosts, max_ghosts, maximize, weights=None, connect=True):
+def add_all_digits(m, v, g):
+    """Every digit 1-8 appears on at least one ghost -- necessary for uniqueness.
+
+    A sudoku whose givens omit two or more digits always has several solutions:
+    take one, swap the two missing digits throughout, and relabelling gives
+    another solution agreeing with every given. So a unique puzzle needs at
+    least 8 distinct given digits. Here a ghost's digit is its neighbour count,
+    so it lies in 1-8 and 9 can never appear -- which leaves no slack at all.
+    All eight of 1-8 must be present.
+    """
+    for d in range(1, 9):
+        shows_d = []
+        for i in range(81):
+            b = m.new_bool_var(f"d{i}_{d}")
+            m.add_implication(b, g[i])
+            m.add(v[i] == d).only_enforce_if(b)
+            shows_d.append(b)
+        m.add_bool_or(shows_d)
+
+
+def _lex_leq(m, a, b, tag):
+    """Post a <= b lexicographically, for equal-length lists of booleans."""
+    eq = m.new_bool_var(f"eq{tag}_0")
+    m.add(eq == 1)
+    for k in range(len(a)):
+        # while the prefixes agree, a[k] may not exceed b[k]
+        m.add_bool_or([eq.Not(), a[k].Not(), b[k]])
+        if k == len(a) - 1:
+            break
+        ne = m.new_bool_var(f"ne{tag}_{k}")
+        m.add_bool_xor([a[k], b[k], ne.Not()])  # ne <=> a[k] != b[k]
+        nxt = m.new_bool_var(f"eq{tag}_{k + 1}")
+        m.add_implication(nxt, eq)
+        m.add_implication(nxt, ne.Not())
+        m.add_bool_or([nxt, eq.Not(), ne])  # eq and not ne => nxt
+        eq = nxt
+
+
+def add_symmetry_breaking(m, g):
+    """Keep only the lexicographically smallest of each shape's 8 images.
+
+    The symmetry group is the 8 dihedral images and nothing else: they preserve
+    the sudoku houses AND both adjacencies -- king for counting, orthogonal for
+    connectivity. Band and stack swaps preserve houses but scramble adjacency,
+    and digit relabelling is not a symmetry here because digits are counts.
+
+    NEVER combine this with pinned cells. Forcing a cell already picks an
+    orientation, and demanding canonical form on top forbids real solutions.
+    """
+    for s, f in enumerate(SYMS[1:], start=1):
+        image = [None] * 81
+        for i in range(81):
+            r, c = divmod(i, 9)
+            nr, nc = f(r, c)
+            image[nr * 9 + nc] = g[i]
+        _lex_leq(m, g, image, f"s{s}")
+
+
+def build(
+    min_ghosts,
+    max_ghosts,
+    maximize,
+    weights=None,
+    connect=True,
+    all_digits=False,
+    force=(),
+    ban=(),
+    break_symmetry=False,
+):
     m = cp_model.CpModel()
     v = [m.new_int_var(1, 9, f"v{i}") for i in range(81)]
     for r in range(9):
@@ -65,10 +157,23 @@ def build(min_ghosts, max_ghosts, maximize, weights=None, connect=True):
     g = [m.new_bool_var(f"g{i}") for i in range(81)]
     for i in range(81):
         m.add(v[i] == sum(g[j] for j in NEIGH[i])).only_enforce_if(g[i])
+    for i in force:
+        m.add(g[i] == 1)
+    for i in ban:
+        m.add(g[i] == 0)
     m.add(sum(g) >= min_ghosts)
     m.add(sum(g) <= max_ghosts)
     if connect:
         add_flow_connectivity(m, g, cap=max_ghosts)
+    if all_digits:
+        add_all_digits(m, v, g)
+    if break_symmetry:
+        if force or ban:
+            raise ValueError(
+                "symmetry breaking with pinned cells would forbid real solutions: "
+                "a pin already fixes the orientation"
+            )
+        add_symmetry_breaking(m, g)
     if maximize:
         m.maximize(sum(g))
     elif weights is not None:
@@ -80,6 +185,50 @@ def build(min_ghosts, max_ghosts, maximize, weights=None, connect=True):
     return m, v, g
 
 
+def check_symmetry(trials):
+    """The symmetry-breaking encoding vs an explicit enumeration of the 8 images.
+
+    Also checks the property that makes it safe: exactly one shape per orbit is
+    accepted, so no solution is lost -- only duplicates.
+    """
+    import random
+
+    rng = random.Random(17)
+    bad = kept = 0
+    for _ in range(trials):
+        n = rng.randint(1, 30)
+        shape = set(rng.sample(range(81), n))
+        m = cp_model.CpModel()
+        g = [m.new_bool_var(f"g{i}") for i in range(81)]
+        for i in range(81):
+            m.add(g[i] == (1 if i in shape else 0))
+        add_symmetry_breaking(m, g)
+        s = cp_model.CpSolver()
+        s.parameters.num_workers = 1
+        s.parameters.max_time_in_seconds = 10
+        got = s.solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        want = is_lex_min(shape)
+        kept += got
+        if got != want:
+            bad += 1
+            print(f"MISMATCH {sorted(shape)}: enumeration {want}, model {got}")
+    print(f"symmetry breaking vs enumeration: {trials - bad}/{trials} agree")
+    print(f"  {kept} of {trials} random shapes are canonical")
+
+    # every orbit keeps exactly one representative
+    orbits = 0
+    for _ in range(200):
+        shape = set(rng.sample(range(81), rng.randint(1, 20)))
+        reps = sum(
+            is_lex_min({p // 9 * 9 + p % 9 for p, b in enumerate(img) if b})
+            for img in set(images(shape))
+        )
+        if reps != 1:
+            print(f"ORBIT ERROR {sorted(shape)}: {reps} representatives, want 1")
+            orbits += 1
+    print(f"  orbit check: {200 - orbits}/200 orbits keep exactly one shape")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=600)
@@ -88,7 +237,11 @@ def main():
     ap.add_argument("--maximize", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--check-symmetry", type=int, default=0)
     a = ap.parse_args()
+    if a.check_symmetry:
+        check_symmetry(a.check_symmetry)
+        return
     t0 = time.monotonic()
     m, v, g = build(a.min_ghosts, a.max_ghosts, a.maximize)
     s = cp_model.CpSolver()

@@ -39,6 +39,17 @@ what it cost.
 5. **What would make your result an artefact, and what control rules that
    out?** Then check the control actually changes the model — a control that
    cannot turn the constraint off is not a control.
+6. **Can the solver answer this directly? Then do not answer it from your
+   data.** The costliest habit in the Ghosts hunt was reporting bounds read off
+   a corpus — "no unique example below 25", "the window is 18–21" — when one
+   feasibility solve per size settled it in seconds and contradicted both
+   guesses. A sample maximum is a fact about the sample. Ask the oracle, and
+   quote the sample only when no oracle exists.
+7. **Derive the cheap necessary conditions before searching.** They prune far
+   more than they cost. In Ghosts, "every digit 1–8 must appear on a ghost" —
+   two lines of reasoning from the digit-swap argument — turned the search from
+   one configuration per 300 s into thirteen per 150 s, *and* proved five sizes
+   impossible outright.
 
 ## Model
 
