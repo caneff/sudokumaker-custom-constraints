@@ -205,6 +205,45 @@ with objective 22 and bound 22. Checked by an independent rule-text checker
 shape (0-based cell indices): 16 23 24 25 33 40 41 42 46 48 49 55 56 57 58 59
 60 64 65 66 72 73. Digits 1-7 only; no 8, as the table above says.
 
+### No unique shading exists under r9c1 + r9c2 (exhaustive)
+
+Question (Chris): the largest connected shading containing r9c1 and r9c2 whose
+digits, as the only givens, force the sudoku. Answer: **none, at any size.**
+
+- 22 and above: no shape carries all of 1-8 (table above), so none is unique.
+- 16 and below: fewer givens than the 17 minimum for a plain sudoku.
+- 17-21: `finders/counting_shaded/pinharvest.py --enumerate` (joint model, all
+  digits required, solve-then-forbid until INFEASIBLE) exhausts every size in
+  under 2 s each. Re-counted by the independent distance-label encoding: same
+  shapes.
+
+| size | shapes with all of 1-8 | unique |
+|---|---|---|
+| 21 | 2 | 0 |
+| 20 | 2 | 0 |
+| 19 | 0 | - |
+| 18 | 0 | - |
+| 17 | 0 | - |
+
+The four shapes are one family: a blob in rows 4-9, columns 1-7, differing by
+r5c1 vs r6c1 and by r7c8 present or not (0-based indices 36/45 and 61). Each
+has 1000+ sudoku solutions. Shapes on record in
+`counting_shaded/pinned-r9c12-alldigits.jsonl`.
+
+A 21-cell witness with an 8 (r6c4 ringed), 1000+ solutions:
+
+```
+5  6  8  2  9  4  1  3  7
+4  7  1  3  8  6  5  9  2
+9  2  3  5  1  7  6  4  8
+8  1  9  4* 3* 2  7  6  5
+2* 4* 6* 7* 5* 9  3  8  1
+3  5* 7* 8* 6* 1  9  2  4
+7  8  5* 6* 4* 3* 2* 1* 9
+6  9  4* 1  2  5  8  7  3
+1* 3* 2* 9  7  8  4  5  6
+```
+
 ## Method, and why
 
 Following the idiom that produced the 234 examples and the repo's other
