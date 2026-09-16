@@ -83,14 +83,16 @@ test:
     JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
     JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
     # finders/renbanana's own tests (#469): three well under a second,
+    # test_probe_circle_cost.py about a second (two model builds, no solve),
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
-    # worker -- this box is shared). test_probe_finds_known_grids.py solves
-    # a CP-SAT model per known grid and stays out of this gate; see
+    # worker -- this box is shared). The known-grid tests solve a CP-SAT
+    # model per known grid and stay out of this gate; see
     # `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
+    uv run finders/renbanana/tools/test_probe_circle_cost.py
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles ghosts_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
@@ -111,11 +113,13 @@ test:
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
-# finders/renbanana's slow test: an inverted CP-SAT solve per known grid, one
-# to several seconds each and minutes overall. Not part of check/check-full;
-# run by hand after touching probe_inverted.py.
+# finders/renbanana's slow tests: a CP-SAT solve per known grid, about a
+# second to several seconds each and minutes overall. Not part of
+# check/check-full; run by hand after touching probe_inverted.py or
+# probe_circle_pattern.py.
 test-finders-slow:
     uv run finders/renbanana/tools/test_probe_finds_known_grids.py
+    uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py
 
 # Run one space-separated list of test files, dispatching by extension.
 _run-tests files:
