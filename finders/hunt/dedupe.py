@@ -38,6 +38,17 @@ def _d4_cell_maps(n):
     return maps
 
 
+def _validate_custom_group(maps, n):
+    if not maps:
+        raise ValueError("a custom symmetry group must not be empty")
+    for cell_map in maps:
+        if len(cell_map) != n or sorted(cell_map) != list(range(n)):
+            raise ValueError(
+                f"a custom cell map must be a permutation of range({n}), "
+                f"got {cell_map!r}"
+            )
+
+
 def canonical_key(grid, group):
     grid = tuple(grid)
     if group == IDENTITY:
@@ -48,5 +59,6 @@ def canonical_key(grid, group):
             raise ValueError(f"D4 needs a square grid, got {len(grid)} cells")
         maps = _d4_cell_maps(n)
     else:
+        _validate_custom_group(group, len(grid))
         maps = group
     return min(tuple(grid[i] for i in cell_map) for cell_map in maps)

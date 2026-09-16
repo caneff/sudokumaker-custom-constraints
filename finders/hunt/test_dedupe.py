@@ -104,4 +104,26 @@ check(
     key_tiny == key_transposed,
 )
 
+# A custom group that isn't a set of permutations must be rejected before
+# any output is written -- a non-bijective map like (0, 0, 0, 0) collapses
+# unrelated grids onto the same key, so a verified candidate would be
+# silently dropped as a false duplicate (#507 review).
+try:
+    canonical_key(flat(tiny), [(0, 0, 0, 0)])
+    check("a non-permutation cell map is rejected", False)
+except ValueError:
+    check("a non-permutation cell map is rejected", True)
+
+try:
+    canonical_key(flat(tiny), [(0, 1, 2)])
+    check("a cell map of the wrong length is rejected", False)
+except ValueError:
+    check("a cell map of the wrong length is rejected", True)
+
+try:
+    canonical_key(flat(tiny), [])
+    check("an empty custom group is rejected", False)
+except ValueError:
+    check("an empty custom group is rejected", True)
+
 sys.exit(0 if ok else 1)

@@ -13,7 +13,9 @@ under the parent spec (#483).
 """
 
 import argparse
+import errno
 import json
+import os
 import random
 import subprocess
 import sys
@@ -60,35 +62,52 @@ def _write_json_atomic(path, data):
     tmp.replace(path)
 
 
+def _refuse(out_arg, why):
+    print(
+        f"hunt: refusing to run -- {out_arg} already has {why} "
+        "(this ticket is fresh hunts only; resuming into it is #487)",
+        file=sys.stderr,
+    )
+    return 2
+
+
 def run(finder, argv):
     """Run one fresh hunt for `finder` over the seed range in `argv`.
 
     Writes examples.jsonl, summary.json, progress.jsonl and run.json under
     --out. Refuses when --out already holds any of those (fresh hunts only
-    -- #487 is where resuming into an existing one becomes safe). Returns
-    the process exit code: 0 on a completed hunt, 2 on that refusal.
+    -- #487 is where resuming into an existing one becomes safe). The claim
+    on a fresh --out is atomic (an exclusive create of run.json), so two
+    processes racing on the same absent --out can't both pass the check and
+    both start writing. Returns the process exit code: 0 on a completed
+    hunt, 2 on either refusal.
     """
     args = _parse_args(argv)
     out = Path(args.out)
-    existing = [name for name in OUTPUT_FILES if (out / name).exists()]
-    if existing:
-        print(
-            f"hunt: refusing to run -- {args.out} already has {', '.join(existing)} "
-            "(this ticket is fresh hunts only; resuming into it is #487)",
-            file=sys.stderr,
-        )
-        return 2
+    other_files = [
+        name for name in OUTPUT_FILES if name != "run.json" and (out / name).exists()
+    ]
+    if other_files:
+        return _refuse(args.out, ", ".join(other_files))
     out.mkdir(parents=True, exist_ok=True)
     seed_start, seed_end = args.seeds
 
-    _write_json_atomic(
-        out / "run.json",
-        {
-            "argv": list(argv),
-            "git_sha": _git_sha(),
-            "start_time": datetime.now(UTC).isoformat(),
-        },
-    )
+    try:
+        run_fd = os.open(out / "run.json", os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        return _refuse(args.out, "run.json")
+    with os.fdopen(run_fd, "w") as run_f:
+        run_f.write(
+            json.dumps(
+                {
+                    "argv": list(argv),
+                    "git_sha": _git_sha(),
+                    "start_time": datetime.now(UTC).isoformat(),
+                }
+            )
+        )
 
     seen = set()
     counts = {

@@ -100,6 +100,38 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
+    # Two processes racing on the same fresh --out must not both start: the
+    # existence check alone has a TOCTOU window, so this launches both
+    # without waiting between them and lets the OS-level exclusive create
+    # decide the winner (#507 review).
+    out = Path(tmp) / "hunt-out"
+    procs = [
+        subprocess.Popen(
+            [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "0:50"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        for _ in range(2)
+    ]
+    for p in procs:
+        p.communicate()
+    exit_codes = sorted(p.returncode for p in procs)
+    check(
+        f"racing on a fresh --out: exactly one wins (exit codes {exit_codes})",
+        exit_codes == [0, 2],
+    )
+    examples = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
+    summary = json.loads((out / "summary.json").read_text())
+    check(
+        "the loser's seeds never reached the winner's output",
+        summary.get("seeds_done") == 50 and summary.get("examples") == len(examples),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
     # An empty seed range is a completed hunt that found nothing, not an
     # error: all four files must still exist, summary.json's counts zero.
     out = Path(tmp) / "hunt-out"
