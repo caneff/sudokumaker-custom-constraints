@@ -601,3 +601,18 @@ grid, one unique (the 12-cell shape [3, 9, 10, 11, 15, 20, 21, 22, 26, 30,
 grid, four unique, all at 19 cells. Sheet
 `counting_shaded/six-by-six-r2c6-r6c1.png`: top row sudoku (the unique first),
 bottom row the four Latin uniques.
+
+### Counting circles on 6x6: none
+
+Chris: "are there any that follow counting circle rules?", read as the
+Counting Circles rule: a digit in a shaded cell says how many shaded cells
+hold that digit. Since shaded digits are the counts, it is a property of the
+shape. None of the 694 6x6 shapes with a grid on record satisfy it (most miss
+on 3-5 digits). Searched directly as a constraint in the shape model, sizes
+2-36, no distinct floor: 0 shapes under sudoku 2x3, Latin, and both with the
+unshaded cells connected. Still 0 with connectivity dropped and with digits
+allowed up to 8. Dropping the row/column distinctness makes it trivially
+feasible (two 2s and four 4s in a 2x4 block), so the house rule is what
+forbids it: digit d must sit d times in d different rows and d different
+columns while each of those cells sees exactly d shaded neighbours, and on a
+6x6 that never closes. Probe output in `.scratch/counting_shaded/six/cc_probe.txt`.
