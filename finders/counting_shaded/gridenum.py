@@ -27,6 +27,7 @@ from ortools.sat.python import cp_model
 
 N = 6
 BR, BC = 2, 3
+LATIN = False  # rows and columns only, no boxes; set by --latin
 CELLS = NEIGH = ORTH = BOX = None
 
 
@@ -50,7 +51,11 @@ def geometry(n, br, bc):
 
 
 def same_house(i, j):
-    return CELLS[i][0] == CELLS[j][0] or CELLS[i][1] == CELLS[j][1] or BOX[i] == BOX[j]
+    return (
+        CELLS[i][0] == CELLS[j][0]
+        or CELLS[i][1] == CELLS[j][1]
+        or (not LATIN and BOX[i] == BOX[j])
+    )
 
 
 def symmetries():
@@ -60,7 +65,7 @@ def symmetries():
         lambda r, c: (n - 1 - r, c),
         lambda r, c: (r, n - 1 - c),
     ]
-    if BR == BC:
+    if LATIN or BR == BC:
         maps += [
             lambda r, c: (c, r),
             lambda r, c: (n - 1 - c, n - 1 - r),
@@ -183,11 +188,13 @@ def count(givens, cap=2):
     for i, v in givens.items():
         b = 1 << (v - 1)
         r, c = CELLS[i]
-        if rowm[r] & b or colm[c] & b or boxm[BOX[i]] & b:
+        bx = BOX[i]
+        if rowm[r] & b or colm[c] & b or boxm[bx] & b:
             return 0
         rowm[r] |= b
         colm[c] |= b
-        boxm[BOX[i]] |= b
+        if not LATIN:
+            boxm[bx] |= b
         grid[i] = v
     empty = [i for i in range(nn) if not grid[i]]
     found = 0
@@ -217,13 +224,15 @@ def count(givens, cap=2):
             cand ^= b
             rowm[r] |= b
             colm[c] |= b
-            boxm[BOX[bi]] |= b
+            if not LATIN:
+                boxm[BOX[bi]] |= b
             grid[bi] = 1
             rec()
             grid[bi] = 0
             rowm[r] ^= b
             colm[c] ^= b
-            boxm[BOX[bi]] ^= b
+            if not LATIN:
+                boxm[BOX[bi]] ^= b
 
     rec()
     return found
@@ -323,6 +332,7 @@ def main():
     ap.add_argument("--force", default="")
     ap.add_argument("--ban", default="")
     ap.add_argument("--symmetry", action="store_true")
+    ap.add_argument("--latin", action="store_true", help="no boxes: Latin square")
     ap.add_argument(
         "--unshaded-connected", action="store_true", help="unshaded cells connected too"
     )
@@ -333,6 +343,8 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     geometry(a.n, a.box_rows, a.box_cols)
+    global LATIN
+    LATIN = a.latin
     a.out.mkdir(parents=True, exist_ok=True)
     force, ban = parse_cells(a.force), parse_cells(a.ban)
     progress = a.out / "progress.log"
@@ -346,7 +358,7 @@ def main():
     log(
         f"enumerate {a.n}x{a.n} box {a.box_rows}x{a.box_cols} size {a.size} "
         f"force={force} ban={ban} symmetry={a.symmetry} "
-        f"unshaded_connected={a.unshaded_connected} no_2x2={a.no_2x2}"
+        f"unshaded_connected={a.unshaded_connected} no_2x2={a.no_2x2} latin={a.latin}"
     )
     enumerate_native(
         a.size,

@@ -381,3 +381,15 @@ So the no-2x2 rule and the house-distinct rule are incompatible on 6x6 with
 counting-shaded digits: a shading with no solid 2x2 is thin, its cells mostly
 count 2 with ends counting 1, and every row must still hold distinct counts.
 All verdicts are CP-SAT (single encoding); no second engine.
+
+### Dropping the boxes changes nothing
+
+Chris: "what about dropping the region part". `gridenum.py --latin` drops the
+box from the house rule and from the counter (counter checked against CP-SAT
+on 150 random Latin givens sets, zero mismatches; the first Latin sweep was
+invalid because a formatter had collapsed `same_house` before the edit landed,
+and was rerun after the fix). 6x6 Latin, both colours connected, no 2x2 of
+either, sizes 8-30 exhausted with symmetry: 0 shapes at every size. The
+free-size model without boxes agrees: no 2x2 + shaded connected + counts 1-6
++ distinct within row and column is INFEASIBLE on its own; the row/column
+rule alone already clashes with the thin shapes no-2x2 forces.
