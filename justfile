@@ -76,18 +76,22 @@ test:
     uv run finders/renbanana/tools/test_prove_two_stage.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
-    # finders/hunt's own tests (#484, #485, #486, #487, #489): the dedupe
-    # key's public function, neighbours and connected components on
-    # hand-drawn boards, the text printer's output, the `hunt` CLI run in a
+    # finders/hunt's own tests (#484, #485, #486, #487, #488, #489, #490):
+    # the dedupe key's public function, neighbours and connected components
+    # on hand-drawn boards, the text printer's output, the grid-drawing
+    # base's image size and sampled pixels, the `hunt` CLI run in a
     # subprocess with the toy finders (fresh hunts and resume, resume's
     # sleeping briefly per seed so a kill lands mid-hunt without a timing
-    # race; --no-verify then hunt verify DIR), and the CP-SAT helpers
+    # race; --no-verify then hunt verify DIR; the render hook writing one
+    # PNG per example), the `--workers`/load gate, and the CP-SAT helpers
     # (uniqueness, minimizer, watchdog) on tiny models -- all well under a
     # few seconds, workers pinned to 1.
     uv run finders/hunt/test_dedupe.py
     uv run finders/hunt/test_grid.py
     uv run finders/hunt/test_printer.py
+    uv run finders/hunt/test_render.py
     uv run finders/hunt/test_toy_hunt.py
+    uv run finders/hunt/test_render_hook.py
     uv run finders/hunt/test_hunt_resume.py
     uv run finders/hunt/test_workers_load.py
     uv run finders/hunt/test_hunt_verify.py
