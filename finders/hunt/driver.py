@@ -161,10 +161,9 @@ def _truncate_to_valid(path, valid_lines):
 
 def _state_seed(finder, out):
     """The seed number the finder's last saved state reflects, or None if
-    this finder doesn't save state or hasn't saved any yet. None, not a
-    numeric sentinel: `--seeds` accepts negative integers, so a sentinel
-    like -1 would be indistinguishable from a real negative seed and let
-    reconciliation treat an absent state.json as state-confirmed (#516)."""
+    this finder doesn't save state or hasn't saved any yet -- None, since
+    `--seeds` accepts negative integers and no numeric sentinel is safe
+    from colliding with a real one (#516)."""
     if not hasattr(finder, "load_state"):
         return None
     state_path = out / "state.json"
@@ -208,7 +207,13 @@ def _reconcile(
             1 for e in progress_events if e.get("outcome") == "example"
         )
         examples_ok = example_confirmed <= len(examples_records)
-        last_seed = progress_events[-1].get("seed", -1)
+        # A seed_done event always carries "seed" (_process_seed sets it
+        # unconditionally); this default only guards a line corrupted in a
+        # way _read_valid_lines still parses. It must not default to a
+        # numeric sentinel -- that's the exact collision #516 fixed for
+        # state_seed -- so an event missing "seed" reads as "always ahead
+        # of any real state_seed," never confirmed, always rerun.
+        last_seed = progress_events[-1].get("seed", float("inf"))
         state_ok = not tracks_state or (
             state_seed is not None and last_seed <= state_seed
         )

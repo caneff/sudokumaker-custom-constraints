@@ -50,8 +50,13 @@ def check(name, cond):
 
 
 def run_cli(finder, out, seeds):
+    # `--seeds`, `seeds` as two argv items reads a negative seeds range
+    # (e.g. "-3:-2") as an unrecognized option on argparse versions that
+    # don't special-case a leading "-" followed by a digit (Python <3.14
+    # here) -- the single `--seeds=<value>` token sidesteps that ambiguity
+    # on every version (#516).
     return subprocess.run(
-        [sys.executable, str(finder), "--out", str(out), "--seeds", seeds],
+        [sys.executable, str(finder), "--out", str(out), f"--seeds={seeds}"],
         capture_output=True,
         text=True,
     )
@@ -69,7 +74,7 @@ def kill_partway(finder, out, seeds, min_seed_done_events=3):
     (see toy_slow_finder.py) so this doesn't race a hunt that finishes
     before the kill lands."""
     proc = subprocess.Popen(
-        [sys.executable, str(finder), "--out", str(out), "--seeds", seeds],
+        [sys.executable, str(finder), "--out", str(out), f"--seeds={seeds}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -221,14 +226,11 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # #516: a negative --seeds range collides with the old "-1 means no
-    # state saved" sentinel. A kill between a negative seed's own
-    # progress.jsonl event and its state.json save leaves state.json
-    # entirely absent -- the old sentinel read that as state_seed == -1,
-    # and any last seed <= -1 passed `last_seed <= state_seed`, so the seed
-    # stayed marked done with its state contribution silently lost.
-    # Simulated by hand: a completed negative-seed hunt with state.json
-    # then removed, as if its one save never landed.
+    # #516: simulates a kill between negative seed -3's progress.jsonl
+    # event and its state.json save by removing state.json after a
+    # completed run, as if that one save never landed. progress.jsonl's
+    # seed_done event for -3 survives either way, so the witness is
+    # whether state.json comes back at all, not whether -3 reappears there.
     out = Path(tmp) / "negative-seed-no-state"
     result = run_cli(STATEFUL_FINDER, out, "-3:-2")
     check(
@@ -249,17 +251,26 @@ with tempfile.TemporaryDirectory() as tmp:
         f"resume after a negative-seed state gap exits 0 (stderr: {rerun.stderr[-300:]})",
         rerun.returncode == 0,
     )
-    final_progress = read_jsonl(out / "progress.jsonl")
-    seeds_seen = [e["seed"] for e in final_progress if e.get("event") == "seed_done"]
     check(
-        "seed -3 reran since state.json had no confirmation of it, not zero times",
-        seeds_seen == [-3],
+        "state.json exists again after resume, proving seed -3 actually reran "
+        "instead of staying done on the absent-state sentinel collision",
+        state_path.exists(),
     )
-    final_state = json.loads(state_path.read_text())
-    check(
-        "state.json exists again and reflects the negative seed",
-        final_state.get("seed") == -3 and final_state["state"].get("seeds_seen") == 1,
-    )
+    if state_path.exists():
+        final_state = json.loads(state_path.read_text())
+        check(
+            "state.json reflects the negative seed again",
+            final_state.get("seed") == -3
+            and final_state["state"].get("seeds_seen") == 1,
+        )
+        final_progress = read_jsonl(out / "progress.jsonl")
+        seeds_seen = [
+            e["seed"] for e in final_progress if e.get("event") == "seed_done"
+        ]
+        check(
+            "exactly one seed_done event for the negative seed after resume",
+            seeds_seen == [-3],
+        )
 
 with tempfile.TemporaryDirectory() as tmp:
     # Only two possible keys exist for this finder, so a broken dedupe
