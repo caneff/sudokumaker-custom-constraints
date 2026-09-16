@@ -211,9 +211,9 @@ def test_counter_counts_a_known_unique_example():
 def test_verifier_accepts_every_stored_example():
     rows = [json.loads(line) for line in EXAMPLES.read_text().splitlines()]
     assert len(rows) >= 200
-    for row in rows[:20]:
+    for row in rows:
         sol, _given = verify_all.check([divmod(i, 9) for i in row["shape"]])
-        assert sol is not None and sol == row["solution"]
+        assert sol is not None and sol == row["solution"], row["shape"]
 
 
 def test_verifier_rejects_a_non_unique_shape():
