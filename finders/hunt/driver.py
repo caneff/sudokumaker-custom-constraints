@@ -442,10 +442,23 @@ def run(finder, argv):
         return _refuse(args.out, "an active hunt (locked)")
 
     is_resume = False
+    resume_snapshot = None
     try:
         run_path = out / "run.json"
         if run_path.exists():
             is_resume = True
+            # Taken before `_resume` touches anything: reconciliation
+            # truncates progress.jsonl/examples.jsonl and rewrites
+            # summary.json before `_hunt_loop` ever runs, so a
+            # SymmetryMismatch raised deep inside that loop finds those
+            # files already mutated by reconciliation alone, independent of
+            # whatever the loop itself did (#509 Codex pass 1, finding 1).
+            # Restoring this snapshot on that failure is what makes "left
+            # exactly as found" true byte-for-byte, not just "not deleted".
+            resume_snapshot = {
+                name: (out / name).read_bytes() if (out / name).exists() else None
+                for name in OUTPUT_FILES
+            }
             prior = json.loads(run_path.read_text())
             if prior.get("argv") != list(argv):
                 print(
@@ -471,10 +484,18 @@ def run(finder, argv):
         # attempt's own, so it's torn down; on a resume it can hold a prior
         # attempt's genuine completed results (#509 review, finding V1 --
         # e.g. the finder's key() shape changed since the run being resumed
-        # last succeeded), so cleanup is skipped and whatever the resumed
-        # hunt already had on disk is left exactly as found.
+        # last succeeded), so the pre-`_resume` snapshot is restored
+        # verbatim instead, undoing both reconciliation's own rewrite and
+        # anything any seed processed successfully before the crash.
         print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
-        if not is_resume:
+        if is_resume:
+            for name, content in resume_snapshot.items():
+                path = out / name
+                if content is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.write_bytes(content)
+        else:
             _cleanup_partial_output(out)
         return 2
     finally:

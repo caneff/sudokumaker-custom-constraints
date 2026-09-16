@@ -547,4 +547,87 @@ with tempfile.TemporaryDirectory() as tmp:
         (out / "run.json").exists(),
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # Skipping cleanup on resume isn't enough on its own: `_resume`
+    # reconciles (trims an orphaned example) and rewrites summary.json
+    # *before* `_hunt_loop` ever runs, so those files are already mutated
+    # by the time a SymmetryMismatch fires deep inside the loop -- a
+    # SymmetryMismatch on resume must restore the pre-`_resume` snapshot,
+    # not just leave whatever reconciliation already produced in place
+    # (#509 Codex pass 1, finding 1). Built via a genuine base hunt (not
+    # hand-crafted files) so run.json/summary.json/progress.jsonl/
+    # examples.jsonl are exactly what the driver itself would produce, then
+    # progress.jsonl is truncated to orphan the one example -- forcing
+    # `_resume`'s reconciliation to actually trim examples.jsonl and
+    # rewrite summary.json on the next invocation.
+    out = Path(tmp) / "hunt-out"
+    valid_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class ValidGroupFinder:
+    symmetry = [(0, 1, 2, 3), (1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)]
+
+    def propose(self, rng):
+        return (0, 1, 2, 3)
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+sys.exit(run(ValidGroupFinder(), sys.argv[1:]))
+"""
+    base = subprocess.run(
+        [sys.executable, "-c", valid_script, "--out", str(out), "--seeds", "0:1"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"base hunt for the byte-for-byte restore test exits 0 (stderr: "
+        f"{base.stderr[-300:]})",
+        base.returncode == 0,
+    )
+
+    (out / "progress.jsonl").write_bytes(b"")  # orphan the one example
+
+    snapshot = {
+        name: (out / name).read_bytes()
+        for name in ("run.json", "summary.json", "progress.jsonl", "examples.jsonl")
+        if (out / name).exists()
+    }
+
+    resumed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            mismatched_length_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:1",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"resuming an orphan-example hunt into a symmetry mismatch still "
+        f"exits 2 (stderr: {resumed.stderr[-300:]})",
+        resumed.returncode == 2,
+    )
+    check(
+        "every hunt file is restored byte-for-byte to its pre-resume "
+        "snapshot, undoing reconciliation's own rewrite",
+        all(
+            (out / name).exists() and (out / name).read_bytes() == content
+            for name, content in snapshot.items()
+        ),
+    )
+
 sys.exit(0 if ok else 1)
