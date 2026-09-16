@@ -56,32 +56,11 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
-    node examples/_shared/recovery-lib.test.mjs
-    node examples/_shared/app-solve-lib.test.mjs
-    node examples/_shared/bundle-solve.test.mjs
-    node examples/_shared/app-strip-lib.test.mjs
-    node examples/_shared/harness-lib.test.mjs
-    node examples/_shared/frame-rowcol.test.mjs
-    node examples/_shared/house-gac.test.mjs
-    node examples/_shared/frame-corners.test.mjs
-    node examples/_shared/grid-rowcol.test.mjs
-    node examples/_shared/include.test.mjs
-    node examples/_shared/frame-geometry.test.mjs
-    node examples/_shared/frame-lines.test.mjs
-    node examples/_shared/global-backends.test.mjs
-    node examples/_shared/bundle-index.test.mjs
-    uv run examples/_shared/minify.test.py
-    uv run examples/_shared/frame.test.py
-    uv run examples/_shared/link_codec.test.py
-    uv run examples/_shared/probe_link.test.py
-    uv run examples/_shared/link_swap.test.py
-    uv run examples/_shared/time_example.test.py
-    uv run examples/_shared/component_scan.test.py
-    uv run examples/_shared/count_calls.test.py
-    uv run examples/_shared/cpsat.test.py
-    uv run examples/_shared/framebuild.test.py
-    JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
-    JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
+    # Every shared test, by glob: a new one needs no edit here. JUST is for
+    # gate.test.py and ci_workflow.test.py, which run recipes themselves.
+    export JUST="{{just_executable()}}"
+    for f in examples/_shared/*.test.mjs; do node "$f"; done
+    for f in examples/_shared/*.test.py; do uv run "$f"; done
     # finders/renbanana's own tests (#469): three well under a second,
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
     # worker -- this box is shared). test_probe_finds_known_grids.py solves
@@ -107,7 +86,6 @@ test:
             esac
         done
     done
-    uv run examples/_shared/check_layout.test.py
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
@@ -147,19 +125,17 @@ verify-skyscraper size="9":
     uv run examples/skyscraper/verify.py {{size}}
 
 # Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
-# Not part of check/test/CI; run by hand after a puzzle change. See
+# Not part of check/test/CI; run by hand after a puzzle change. Every
+# gen*.json is proved, found by glob, so a new board needs no edit here. See
 # examples/isofill/README.md.
 verify-isofill:
+    #!/usr/bin/env bash
+    set -euo pipefail
     uv run examples/isofill/verify.py
-    uv run examples/isofill/verify.py examples/isofill/gen.json
-    uv run examples/isofill/verify.py examples/isofill/gen_44g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_30g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_35g_silent.json
-    uv run examples/isofill/verify.py examples/isofill/gen_9x9.json
-    uv run examples/isofill/verify.py examples/isofill/gen_28g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_24g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_25g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_26g.json
+    for f in examples/isofill/gen*.json; do
+        echo "$f"
+        uv run examples/isofill/verify.py "$f"
+    done
 
 # Soundness fuzz: every component keeps each cell's true value. The
 # invariant. Discovered by file name, same convention as `test` above.
