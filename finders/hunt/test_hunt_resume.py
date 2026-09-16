@@ -221,6 +221,47 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
+    # #516: a negative --seeds range collides with the old "-1 means no
+    # state saved" sentinel. A kill between a negative seed's own
+    # progress.jsonl event and its state.json save leaves state.json
+    # entirely absent -- the old sentinel read that as state_seed == -1,
+    # and any last seed <= -1 passed `last_seed <= state_seed`, so the seed
+    # stayed marked done with its state contribution silently lost.
+    # Simulated by hand: a completed negative-seed hunt with state.json
+    # then removed, as if its one save never landed.
+    out = Path(tmp) / "negative-seed-no-state"
+    result = run_cli(STATEFUL_FINDER, out, "-3:-2")
+    check(
+        f"base negative-seed stateful hunt exits 0 (stderr: {result.stderr[-300:]})",
+        result.returncode == 0,
+    )
+    state_path = out / "state.json"
+    real_state = json.loads(state_path.read_text())
+    check(
+        "the base hunt's state.json reflects the negative seed",
+        real_state.get("seed") == -3,
+    )
+    # Remove state.json entirely, as if seed -3's save never landed.
+    state_path.unlink()
+
+    rerun = run_cli(STATEFUL_FINDER, out, "-3:-2")
+    check(
+        f"resume after a negative-seed state gap exits 0 (stderr: {rerun.stderr[-300:]})",
+        rerun.returncode == 0,
+    )
+    final_progress = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in final_progress if e.get("event") == "seed_done"]
+    check(
+        "seed -3 reran since state.json had no confirmation of it, not zero times",
+        seeds_seen == [-3],
+    )
+    final_state = json.loads(state_path.read_text())
+    check(
+        "state.json exists again and reflects the negative seed",
+        final_state.get("seed") == -3 and final_state["state"].get("seeds_seen") == 1,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
     # Only two possible keys exist for this finder, so a broken dedupe
     # rebuild (e.g. "seen" defaulting to empty on resume) would show up as
     # a real duplicate line, not a coincidence the toy 4x4 finders' bigger

@@ -160,14 +160,17 @@ def _truncate_to_valid(path, valid_lines):
 
 
 def _state_seed(finder, out):
-    """The seed number the finder's last saved state reflects, or -1 if
-    this finder doesn't save state or hasn't saved any yet."""
+    """The seed number the finder's last saved state reflects, or None if
+    this finder doesn't save state or hasn't saved any yet. None, not a
+    numeric sentinel: `--seeds` accepts negative integers, so a sentinel
+    like -1 would be indistinguishable from a real negative seed and let
+    reconciliation treat an absent state.json as state-confirmed (#516)."""
     if not hasattr(finder, "load_state"):
-        return -1
+        return None
     state_path = out / "state.json"
     if not state_path.exists():
-        return -1
-    return json.loads(state_path.read_text()).get("seed", -1)
+        return None
+    return json.loads(state_path.read_text()).get("seed")
 
 
 def _reconcile(
@@ -206,7 +209,9 @@ def _reconcile(
         )
         examples_ok = example_confirmed <= len(examples_records)
         last_seed = progress_events[-1].get("seed", -1)
-        state_ok = not tracks_state or last_seed <= state_seed
+        state_ok = not tracks_state or (
+            state_seed is not None and last_seed <= state_seed
+        )
         if examples_ok and state_ok:
             break
         del progress_events[-1]
