@@ -2,12 +2,15 @@
 
 Runs the toy finders in this directory as subprocesses and checks only what
 a caller of the hunt CLI can see: exit code, stderr, and the output files --
-never an internal of driver.py. Two kinds of interruption are exercised:
+never an internal of driver.py. Three kinds of interruption are exercised:
 
 - A genuine `SIGKILL` mid-hunt, via a finder that sleeps a few ms per seed so
   the kill reliably lands before the range completes (no timing race).
 - A hand-corrupted trailing line, for the one case a real kill can leave
   that a timing race can't reliably reproduce: a write caught mid-syscall.
+- A hand-truncated last progress.jsonl line, simulating a kill between an
+  example's append to examples.jsonl and that seed's own progress event --
+  the orphan-example case (#487, added scope from the Codex pass on #507).
 
     uv run finders/hunt/test_hunt_resume.py
 """
@@ -25,6 +28,7 @@ from dedupe import D4, canonical_key
 HERE = Path(__file__).resolve().parent
 SLOW_FINDER = HERE / "toy_slow_finder.py"
 STATEFUL_FINDER = HERE / "toy_stateful_finder.py"
+TINY_KEY_FINDER = HERE / "toy_tiny_key_finder.py"
 TOY_FINDER = HERE / "toy_finder.py"
 
 ok = True
@@ -38,7 +42,7 @@ def check(name, cond):
     print(f"{status}: {name}")
 
 
-def run_cli(finder, out, seeds, extra_env=None):
+def run_cli(finder, out, seeds):
     return subprocess.run(
         [sys.executable, str(finder), "--out", str(out), "--seeds", seeds],
         capture_output=True,
@@ -132,8 +136,7 @@ with tempfile.TemporaryDirectory() as tmp:
 with tempfile.TemporaryDirectory() as tmp:
     # A toy finder that saves state (#487 AC: "gets it back on resume").
     # seeds_seen is a counter this finder can only get right by continuing
-    # from a saved value, not by restarting at zero and only counting the
-    # seeds this process itself re-ran.
+    # from a saved value, not by restarting at zero.
     out = Path(tmp) / "stateful"
     kill_partway(STATEFUL_FINDER, out, "0:40")
     progress_before = read_jsonl(out / "progress.jsonl")
@@ -142,9 +145,13 @@ with tempfile.TemporaryDirectory() as tmp:
         0 < len(progress_before) < 40,
     )
     state_before = json.loads((out / "state.json").read_text())
+    # save_state runs right after progress.jsonl's write in the same
+    # iteration, not atomically with it -- a kill between the two can
+    # leave state.json one seed behind progress.jsonl, so this tolerates
+    # that gap instead of demanding exact equality.
     check(
-        "state.json was written before the kill",
-        state_before.get("seeds_seen") == len(progress_before),
+        "state.json was written before the kill, within one seed of progress.jsonl",
+        0 <= len(progress_before) - state_before.get("seeds_seen", -1) <= 1,
     )
 
     resumed = run_cli(STATEFUL_FINDER, out, "0:40")
@@ -154,15 +161,8 @@ with tempfile.TemporaryDirectory() as tmp:
     )
     state_after = json.loads((out / "state.json").read_text())
     check(
-        "state.json's counter reflects every seed, not just the ones re-run after resume",
+        "state.json's counter reflects every seed, proving load_state picked up the saved value",
         state_after.get("seeds_seen") == 40,
-    )
-
-    examples = read_jsonl(out / "examples.jsonl")
-    check(
-        "an example found after resume was stamped with a counter value carried from before the kill",
-        any(e.get("seeds_seen_at_find", 0) > len(progress_before) for e in examples)
-        or len(examples) == 0,
     )
     progress_after = read_jsonl(out / "progress.jsonl")
     seeds_seen = [e["seed"] for e in progress_after if e.get("event") == "seed_done"]
@@ -172,8 +172,47 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # A half-written trailing line, as a real kill mid-write() can leave --
-    # not reproducible via timing, so it's hand-corrupted here.
+    # Only two possible keys exist for this finder, so a broken dedupe
+    # rebuild (e.g. "seen" defaulting to empty on resume) would show up as
+    # a real duplicate line, not a coincidence the toy 4x4 finders' bigger
+    # key space could hide (#487 review: the original 4x4-based resume
+    # tests all still passed with dedupe-rebuild removed entirely).
+    out = Path(tmp) / "tiny-key"
+    kill_partway(TINY_KEY_FINDER, out, "0:50")
+    progress_before = read_jsonl(out / "progress.jsonl")
+    check(
+        "the kill left a genuine partial tiny-key hunt",
+        0 < len(progress_before) < 50,
+    )
+    check(
+        "collisions were already happening before the kill (key space of 2 over several seeds)",
+        any(e.get("outcome") == "duplicate" for e in progress_before),
+    )
+
+    resumed = run_cli(TINY_KEY_FINDER, out, "0:50")
+    check(
+        f"resume of a tiny-key hunt exits 0 (stderr: {resumed.stderr[-300:]})",
+        resumed.returncode == 0,
+    )
+    examples = read_jsonl(out / "examples.jsonl")
+    check(
+        "dedupe was really rebuilt from the durable log: exactly the 2 possible keys ever appear, not one per resume",
+        {tuple(e["grid"]) for e in examples} == {(0,), (1,)} and len(examples) == 2,
+    )
+    progress_after = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in progress_after if e.get("event") == "seed_done"]
+    check(
+        "tiny-key resume: exactly one seed_done event per seed",
+        sorted(seeds_seen) == list(range(50)),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A half-written trailing line in examples.jsonl, as a real kill
+    # mid-write() can leave -- not reproducible via timing, so it's
+    # hand-corrupted here. progress.jsonl still confirms the seed as an
+    # "example", so this is the "file behind progress" reconciliation
+    # direction: the confirmed seed must rerun and rewrite the example,
+    # not leave summary.json overcounting a line that no longer exists.
     out = Path(tmp) / "corrupted"
     result = run_cli(TOY_FINDER, out, "0:100")
     check(
@@ -181,21 +220,14 @@ with tempfile.TemporaryDirectory() as tmp:
         result.returncode == 0,
     )
 
-    progress_path = out / "progress.jsonl"
     examples_path = out / "examples.jsonl"
-    progress_text = progress_path.read_text()
-    progress_path.write_text(
-        progress_text[: -(len(progress_text.splitlines()[-1]) // 2)]
-    )
-    if examples_path.read_text().strip():
-        examples_text = examples_path.read_text()
-        examples_path.write_text(
-            examples_text[: -(len(examples_text.splitlines()[-1]) // 2)]
-        )
+    examples_text = examples_path.read_text()
+    last_line = examples_text.splitlines()[-1]
+    examples_path.write_text(examples_text[: -(len(last_line) // 2)])
 
     rerun = run_cli(TOY_FINDER, out, "0:100")
     check(
-        f"resume after a half-written trailing line exits 0 (stderr: {rerun.stderr[-300:]})",
+        f"resume after a half-written trailing example line exits 0 (stderr: {rerun.stderr[-300:]})",
         rerun.returncode == 0,
     )
 
@@ -211,9 +243,63 @@ with tempfile.TemporaryDirectory() as tmp:
         "no duplicate example after resuming past a half-written line",
         len(final_keys) == len(set(final_keys)),
     )
+    final_summary = json.loads((out / "summary.json").read_text())
+    check(
+        "summary.json's example count matches examples.jsonl's actual line count after reconciliation",
+        final_summary.get("examples") == len(final_examples),
+    )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # Argv mismatch refuses to start and writes nothing.
+    # The other reconciliation direction: an example is fully written to
+    # examples.jsonl, but the kill lands before its progress.jsonl event --
+    # simulated by dropping progress.jsonl's last event by hand, so
+    # examples.jsonl has one more line than progress confirms. A single
+    # seed with the tiny-key finder is used so that seed's outcome is
+    # deterministically "example" (nothing has been seen yet to duplicate
+    # against) -- with the toy finder's own rule, the last seed in a range
+    # is only an "example" outcome about half the time, which would make
+    # this test flaky rather than exercise the orphan path at all.
+    out = Path(tmp) / "orphan"
+    result = run_cli(TINY_KEY_FINDER, out, "0:1")
+    check(
+        f"base hunt for orphan-example test exits 0 (stderr: {result.stderr[-300:]})",
+        result.returncode == 0,
+    )
+    base_progress = read_jsonl(out / "progress.jsonl")
+    check(
+        "the one seed's outcome is deterministically 'example'",
+        len(base_progress) == 1 and base_progress[0].get("outcome") == "example",
+    )
+
+    progress_path = out / "progress.jsonl"
+    progress_path.write_text("")
+
+    rerun = run_cli(TINY_KEY_FINDER, out, "0:1")
+    check(
+        f"resume after an orphaned example line exits 0 (stderr: {rerun.stderr[-300:]})",
+        rerun.returncode == 0,
+    )
+
+    final_progress = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in final_progress if e.get("event") == "seed_done"]
+    check(
+        "an orphaned example's seed reruns exactly once, not zero or twice",
+        seeds_seen == [0],
+    )
+    final_examples = read_jsonl(out / "examples.jsonl")
+    check(
+        "no duplicate example after resolving an orphaned example",
+        len(final_examples) == 1,
+    )
+    final_summary = json.loads((out / "summary.json").read_text())
+    check(
+        "summary.json's example count matches examples.jsonl's actual line count for an orphan too",
+        final_summary.get("examples") == len(final_examples) == 1,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # Argv mismatch refuses to start and writes nothing -- not even the
+    # driver's own lock file, which is only created after this check.
     out = Path(tmp) / "mismatch"
     result = run_cli(TOY_FINDER, out, "0:30")
     check(
@@ -221,18 +307,17 @@ with tempfile.TemporaryDirectory() as tmp:
         result.returncode == 0,
     )
 
-    before = {
-        name: (out / name).read_bytes()
-        for name in ("examples.jsonl", "summary.json", "progress.jsonl", "run.json")
-    }
+    before = sorted(p.name for p in out.iterdir())
+    before_contents = {name: (out / name).read_bytes() for name in before}
 
     rerun = run_cli(TOY_FINDER, out, "0:99")
     check("a differing argv (seeds) exits non-zero", rerun.returncode != 0)
 
-    after = {name: (out / name).read_bytes() for name in before}
+    after = sorted(p.name for p in out.iterdir())
+    after_contents = {name: (out / name).read_bytes() for name in after}
     check(
-        "a differing argv writes nothing -- every output file is untouched",
-        before == after,
+        "a differing argv writes nothing -- not one new file, not one changed byte",
+        before == after and before_contents == after_contents,
     )
 
 with tempfile.TemporaryDirectory() as tmp:
