@@ -40,12 +40,8 @@ APP_SOLVE = HERE / "app-solve.mjs"
 JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)
 REPS = 3
 
-# Every fixture gets both rows (docs/real-app-timing.md): cold, from an empty
-# board, then from the state a player reaches after the app's own logical pass.
-AFTER_LOGICAL_MODES = (False, True)
 
-
-def registered_components(doc):
+def shipped_component_code(doc):
     """name -> code for every component registered on any constraint."""
     result = {}
     for c in doc["puzzle"]["constraints"]:
@@ -81,7 +77,7 @@ def find_component_file(example_dir, base_doc, component=None):
     Otherwise, the one registered component with a same-named .js file on
     disk. Raises if none or more than one file matches: a silent pick among
     several would time the wrong edit (CODING_STANDARDS: fail loud)."""
-    names = sorted(registered_components(base_doc))
+    names = sorted(shipped_component_code(base_doc))
 
     declared = component if component is not None else read_timed_component(example_dir)
     if declared is not None:
@@ -270,7 +266,7 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
         )
         out_path.write_text(encode_link(candidate_doc) + "\n")
 
-    return registered_components(candidate_doc) == registered_components(
+    return shipped_component_code(candidate_doc) == shipped_component_code(
         base_doc
     ) and registered_backend(candidate_doc, constraint_name) == registered_backend(
         base_doc, constraint_name
@@ -305,29 +301,21 @@ def build_candidate(example_dir, component_file, out_path, board=None):
     )
 
 
-def timeout_message(link_path, reps_run, reps_timed_out):
-    """The all-reps-timed-out failure: names app-solve.mjs's fixed 300s
-    per-rep wait (its page.waitForFunction timeout) and the rep counts, so a
-    reader learns the app never finished a solve without opening the
-    harness."""
-    return (
-        f"app-solve.mjs: {link_path}: all {reps_run} reps hit the 300s "
-        f"per-rep timeout ({reps_timed_out} timed out)"
-    )
-
-
 def parse_app_solve_output(link_path, stdout):
     """Parse app-solve.mjs's JSON line and return its {median, version,
     repsRun, repsTimedOut}. Raises loud, naming link_path: no JSON line, every
-    rep timed out (median null -- see timeout_message), or the app version
-    could not be read."""
+    rep timed out (median null), or the app version could not be read."""
     m = JSON_LINE.search(stdout)
     if not m:
         raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{stdout}")
     data = json.loads(m.group(1))
     if data["median"] is None:
+        # Name app-solve.mjs's fixed 300s per-rep wait (its
+        # page.waitForFunction timeout) and the rep counts, so a reader learns
+        # the app never finished a solve without opening the harness.
         raise RuntimeError(
-            timeout_message(link_path, data["repsRun"], data["repsTimedOut"])
+            f"app-solve.mjs: {link_path}: all {data['repsRun']} reps hit the "
+            f"300s per-rep timeout ({data['repsTimedOut']} timed out)"
         )
     if data["version"] is None:
         raise RuntimeError(
@@ -336,22 +324,29 @@ def parse_app_solve_output(link_path, stdout):
     return data
 
 
-def run_app_solve(link_path, ring_clues=False, after_logical=False):
-    """Run the real-app timing driver and return its {median, version}.
-    after_logical runs the app's logical solver to its fixpoint first."""
-    cmd = ["node", str(APP_SOLVE), str(link_path), str(REPS)]
+def app_solve(link_path, reps, ring_clues=False, after_logical=False):
+    """Run app-solve.mjs on `link_path` and return its stdout: the one place
+    the Python tools build the driver's argv (count_calls, run_app_solve).
+    after_logical runs the app's logical solver to its fixpoint first. Raises
+    RuntimeError naming the link when the driver exits non-zero."""
+    cmd = ["node", str(APP_SOLVE), str(link_path), str(reps)]
     if ring_clues:
         cmd.append("--ring-clues")
     if after_logical:
         cmd.append("--after-logical")
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"app-solve.mjs failed on {link_path}:\n{result.stderr}")
-    return parse_app_solve_output(link_path, result.stdout)
+        raise RuntimeError(
+            f"app-solve.mjs failed on {link_path}:\n"
+            f"{result.stdout[-800:]}{result.stderr[-800:]}"
+        )
+    return result.stdout
+
+
+def run_app_solve(link_path, ring_clues=False, after_logical=False):
+    """Time `link_path` REPS times and return its {median, version}."""
+    stdout = app_solve(link_path, REPS, ring_clues, after_logical)
+    return parse_app_solve_output(link_path, stdout)
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None):
@@ -458,7 +453,10 @@ def run(example_dir, ring_clues=False, board=None, component=None):
         date = datetime.date.today().isoformat()
         rows = []
         ratios = []
-        for after_logical in AFTER_LOGICAL_MODES:
+        # Every fixture gets both rows (docs/real-app-timing.md): cold, from an
+        # empty board, then from the state a player reaches after the app's
+        # own logical pass.
+        for after_logical in (False, True):
             label = board_label + (" after-logical" if after_logical else "")
             base = run_app_solve(baseline_probe, ring_clues, after_logical)
             if byte_equal:

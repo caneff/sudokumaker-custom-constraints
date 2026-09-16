@@ -46,13 +46,6 @@ export function seededShuffle (arr, seed) {
   return a
 }
 
-// Settle a trial's verdict: a '?' (no readout appeared) gets exactly one
-// retry, and whatever that retry returns is final -- never a second retry.
-// v2 is only read when v1 is '?'.
-export function settleVerdict (v1, v2) {
-  return v1 === '?' ? v2 : v1
-}
-
 // The surviving clue set, sorted, alongside the grid it was cut from.
 export function outputJson (grid, clues) {
   const sorted = clues.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])

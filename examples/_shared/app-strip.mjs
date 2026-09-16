@@ -54,9 +54,9 @@
 import { chromium } from 'playwright'
 import fs from 'fs'
 import path from 'path'
-import { parseReadout } from './app-solve-lib.mjs'
+import { ALREADY_ENTERED, VERDICT_PATTERN, marksRejected, parseReadout } from './app-solve-lib.mjs'
 import { clickText, clickIcon, makeDeterministic, useRecordedApp, openWidePad, enterDigit } from './app-dom.mjs'
-import { parseArgs, seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
+import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
 
 const { linkFile, outFile, gridFile, seed } = parseArgs(process.argv.slice(2))
 
@@ -128,13 +128,13 @@ async function trySolveWithout (page, row, col) {
   if (!await clickIcon(page, 'ShowCandidates')) throw new Error('solve button not found: Icon ShowCandidates')
   try {
     await page.waitForFunction(
-      () => /unique solution|multiple solutions|not unique|no solution|found [\d,]+ solutions|stopped (solving|counting)/i.test(document.body.innerText),
-      null, { timeout: 30000 })
+      ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
+      [VERDICT_PATTERN.source, VERDICT_PATTERN.flags], { timeout: 30000 })
   } catch { /* no verdict within the cap -- readVerdict reports '?' below */ }
   await page.waitForTimeout(200)
   const text = await page.evaluate(() => document.body.innerText)
-  if (/based on already entered values/i.test(text)) {
-    throw new Error(`(${row},${col}): verdict was judged "based on already entered values and pencil marks" -- ` +
+  if (marksRejected(text, false)) {
+    throw new Error(`(${row},${col}): verdict was judged "${ALREADY_ENTERED} and pencil marks" -- ` +
       'the board was not clean before this solve; settleAfterSolve should have caught this')
   }
   return parseReadout(text)
@@ -172,7 +172,8 @@ for (let i = 0; i < kept.length;) {
   if (verdict === '?') {
     await settleAfterSolve(page)
     readout = await trySolveWithout(page, row, col)
-    verdict = settleVerdict('?', readout.verdict)
+    // the retry's verdict is final, whatever it is: never a second retry
+    verdict = readout.verdict
   }
 
   if (verdict === 'unique') {

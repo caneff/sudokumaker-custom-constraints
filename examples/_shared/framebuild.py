@@ -29,7 +29,7 @@ from dataclasses import dataclass, replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
-from component_scan import builtin_components, registered_components
+from component_scan import describe_mismatch, mismatch
 from frame import corner_cells, cosmetics, ring_cell
 from link_swap import find_constraint, frame_and_comment_only
 from minify import minify_file
@@ -873,18 +873,11 @@ def check(spec, link, doc, board, local=False):
     # out (that one fails inside the app, where the author never sees it),
     # and the link must not carry a name the backend never registers (that
     # one is dead weight the recipient still reads as part of the rule --
-    # #287, #289, #290, #291). `registered_components` is a lexical check: it
-    # reads `new <Name>Component` off the backend source, so a class reached
-    # through an alias, or named some other way, is invisible to it. The
-    # built-ins are subtracted: SudokuMaker provides those classes, so a
-    # backend that constructs one ships no component file for it.
-    registered = registered_components(backend) - builtin_components()
-    unshipped = sorted(registered - set(names))
-    assert not unshipped, (
-        f"the backend registers components the link omits: {unshipped}"
-    )
-    dead = sorted(set(names) - registered)
-    assert not dead, f"the link ships components the backend never registers: {dead}"
+    # #287, #289, #290, #291). `component_scan.mismatch` is a lexical check:
+    # it reads `new <Name>Component` off the backend source, so a class
+    # reached through an alias, or named some other way, is invisible to it.
+    problems = describe_mismatch(*mismatch(names, backend))
+    assert not problems, "; ".join(problems)
     assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit
 

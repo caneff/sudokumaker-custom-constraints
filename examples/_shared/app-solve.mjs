@@ -44,7 +44,7 @@
 
 import { chromium } from 'playwright'
 import fs from 'fs'
-import { parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
 
 const { linkFile, reps, iconName, ringClues, afterLogical } = parseArgs(process.argv.slice(2))
@@ -86,13 +86,13 @@ async function runOnce (page) {
   // the first phase.
   try {
     await page.waitForFunction(
-      () => /unique solution|multiple solutions|not unique|no solution|found [\d,]+ solutions|stopped (solving|counting)/i.test(document.body.innerText),
-      null, { timeout: 300000 })
+      ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
+      [VERDICT_PATTERN.source, VERDICT_PATTERN.flags], { timeout: 300000 })
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
   if (marksRejected(text, ringClues || afterLogical)) {
-    throw new Error(`${linkFile}: the app judged "based on already entered values" -- not a timing; strip the link first`)
+    throw new Error(`${linkFile}: the app judged "${ALREADY_ENTERED}" -- not a timing; strip the link first`)
   }
   return { ...parseReadout(text), version: parseVersion(text) }
 }

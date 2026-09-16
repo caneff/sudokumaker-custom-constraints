@@ -1,14 +1,15 @@
 # time_example.py: the offline seams — the paste-ready row builder plus its
 # PASS/FAIL verdict, the loud-fail behavior for a missing PUZZLE_LINK.txt or
 # build_link.py, and run()'s own orchestration with the browser call faked out
-# (time_example.run_app_solve reassigned to a canned-median stub, which is the
-# only thing in run() that needs the live site). Fake medians only; no live
+# (the app_solve adapter reassigned to a canned-median stub, which is the only
+# thing in run() that needs the live site). Fake medians only; no live
 # browser. The CLI's real run against numbered-rooms is a manual check
 # recorded in the PR, not here — see docs/real-app-timing.md.
 #
 #   uv run --with lzstring examples/_shared/time_example.test.py
 
 import contextlib
+import json
 import pathlib
 import subprocess
 import sys
@@ -21,6 +22,7 @@ import time_example
 from link_codec import decode_puzzle, encode_link
 from minify import minify_file, minify_js
 from time_example import (
+    app_solve,
     build_candidate,
     build_candidate_doc,
     build_row,
@@ -255,120 +257,92 @@ if __name__ == "__main__":
         except SystemExit as e:
             assert str(e) == "no-board-flag/build_link.py has no --board flag"
 
-    # TIMED_COMPONENT declared -> returns that file, ignoring any other
-    # matching .js file that happens to sit alongside it
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "declared"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text(
-            'CONSTRAINT_NAME = "Widget Lines"\nTIMED_COMPONENT = "WidgetComponent"\n'
-        )
-        (example_dir / "WidgetComponent.js").write_text("// widget\n")
-        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
-        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
-        result = find_component_file(example_dir, doc)
-        assert result == example_dir / "WidgetComponent.js"
-
-    # TIMED_COMPONENT declared but no working-tree file for it -> loud
-    # FileNotFoundError, even though another registered component's file
-    # sits right there
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "declared-missing-file"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text(
-            'TIMED_COMPONENT = "WidgetComponent"\n'
-        )
-        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
-        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
-        try:
-            find_component_file(example_dir, doc)
-            raise AssertionError("expected a missing-component-file failure")
-        except FileNotFoundError:
-            pass
-
-    # TIMED_COMPONENT declared but not a registered component -> loud
-    # ValueError
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "declared-unregistered"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text(
-            'TIMED_COMPONENT = "GadgetComponent"\n'
-        )
-        (example_dir / "GadgetComponent.js").write_text("// gadget\n")
-        doc = _doc(["WidgetComponent"])
-        try:
-            find_component_file(example_dir, doc)
-            raise AssertionError("expected an unregistered-component failure")
-        except ValueError:
-            pass
-
-    # no TIMED_COMPONENT, single working-tree match -> unchanged behaviour
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "undeclared-single"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
-        (example_dir / "WidgetComponent.js").write_text("// widget\n")
-        doc = _doc(["WidgetComponent"])
-        result = find_component_file(example_dir, doc)
-        assert result == example_dir / "WidgetComponent.js"
-
-    # no TIMED_COMPONENT, several working-tree matches -> unchanged
-    # fail-loud behaviour (this is the case the issue is about: an
-    # undeclared multi-component example must still fail loud)
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "undeclared-multi"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
-        (example_dir / "WidgetComponent.js").write_text("// widget\n")
-        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
-        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
-        try:
-            find_component_file(example_dir, doc)
-            raise AssertionError("expected an ambiguous-match failure")
-        except ValueError:
-            pass
-
-    # --component overrides TIMED_COMPONENT: an example whose declared
-    # component is not the one a given board registers names the other one on
-    # the command line. Skyscraper's local board runs the one-sided line
-    # component while TIMED_COMPONENT names the two-clue DP.
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "overridden"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text(
-            'TIMED_COMPONENT = "WidgetComponent"\n'
-        )
-        (example_dir / "WidgetComponent.js").write_text("// widget\n")
-        (example_dir / "WidgetPairComponent.js").write_text("// pair\n")
-        doc = _doc(["WidgetComponent", "WidgetPairComponent"])
-        result = find_component_file(example_dir, doc, component="WidgetPairComponent")
-        assert result == example_dir / "WidgetPairComponent.js"
-
-    # --component naming something the board does not register -> loud
-    # ValueError, the same check the declared constant gets
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "override-unregistered"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
-        (example_dir / "GadgetComponent.js").write_text("// gadget\n")
-        doc = _doc(["WidgetComponent"])
-        try:
-            find_component_file(example_dir, doc, component="GadgetComponent")
-            raise AssertionError("expected an unregistered-component failure")
-        except ValueError:
-            pass
-
-    # --component with no working-tree file -> loud FileNotFoundError
-    with tempfile.TemporaryDirectory() as tmp:
-        example_dir = pathlib.Path(tmp) / "override-missing-file"
-        example_dir.mkdir()
-        (example_dir / "build_link.py").write_text('CONSTRAINT_NAME = "Widget"\n')
-        doc = _doc(["WidgetComponent"])
-        try:
-            find_component_file(example_dir, doc, component="WidgetComponent")
-            raise AssertionError("expected a missing-component-file failure")
-        except FileNotFoundError:
-            pass
+    # find_component_file: which working-tree file the timing loop follows.
+    # Each case is (name, build_link.py text, component files on disk, the
+    # registered names, the --component override, and what comes back: a file
+    # name, or the exception type it must raise).
+    #   declared: TIMED_COMPONENT wins over another matching file beside it
+    #   declared-missing-file: loud, even with another registered file there
+    #   declared-unregistered: loud
+    #   undeclared-single: the one registered file on disk
+    #   undeclared-multi: several matches fail loud rather than guess
+    #   overridden: --component beats TIMED_COMPONENT (skyscraper's local
+    #     board runs the one-sided component while TIMED_COMPONENT names the
+    #     two-clue DP)
+    #   override-unregistered, override-missing-file: the same checks as the
+    #     declared constant
+    DECLARED = 'TIMED_COMPONENT = "WidgetComponent"\n'
+    UNDECLARED = 'CONSTRAINT_NAME = "Widget"\n'
+    PAIR = ["WidgetComponent", "WidgetPairComponent"]
+    CASES = [
+        ("declared", DECLARED, PAIR, PAIR, None, "WidgetComponent.js"),
+        (
+            "declared-missing-file",
+            DECLARED,
+            ["WidgetPairComponent"],
+            PAIR,
+            None,
+            FileNotFoundError,
+        ),
+        (
+            "declared-unregistered",
+            'TIMED_COMPONENT = "GadgetComponent"\n',
+            ["GadgetComponent"],
+            ["WidgetComponent"],
+            None,
+            ValueError,
+        ),
+        (
+            "undeclared-single",
+            UNDECLARED,
+            ["WidgetComponent"],
+            ["WidgetComponent"],
+            None,
+            "WidgetComponent.js",
+        ),
+        ("undeclared-multi", UNDECLARED, PAIR, PAIR, None, ValueError),
+        (
+            "overridden",
+            DECLARED,
+            PAIR,
+            PAIR,
+            "WidgetPairComponent",
+            "WidgetPairComponent.js",
+        ),
+        (
+            "override-unregistered",
+            UNDECLARED,
+            ["GadgetComponent"],
+            ["WidgetComponent"],
+            "GadgetComponent",
+            ValueError,
+        ),
+        (
+            "override-missing-file",
+            UNDECLARED,
+            [],
+            ["WidgetComponent"],
+            "WidgetComponent",
+            FileNotFoundError,
+        ),
+    ]
+    for name, build_link_text, files, registered, component, want in CASES:
+        with tempfile.TemporaryDirectory() as tmp:
+            example_dir = pathlib.Path(tmp) / name
+            example_dir.mkdir()
+            (example_dir / "build_link.py").write_text(build_link_text)
+            for f in files:
+                (example_dir / f"{f}.js").write_text(f"// {f}\n")
+            doc = _doc(registered)
+            if isinstance(want, str):
+                got = find_component_file(example_dir, doc, component=component)
+                assert got == example_dir / want, (name, got)
+                continue
+            try:
+                find_component_file(example_dir, doc, component=component)
+                raise AssertionError(f"{name}: expected {want.__name__}")
+            except want:
+                pass
 
     # The two-row ship rule: a change ships when it clears 0.9x on one of the
     # two rows (cold, after-logical) and does not regress past 1.1x on the
@@ -642,27 +616,59 @@ if __name__ == "__main__":
     except RuntimeError as e:
         assert "could not read the app version" in str(e)
 
+    # ---- app_solve: the one adapter that builds app-solve.mjs's argv ----
+    real_run = time_example.subprocess.run
+    seen = []
+
+    def fake_run(cmd, **kwargs):
+        seen.append(list(cmd))
+        code = 1 if "fail.txt" in cmd[2] else 0
+        return subprocess.CompletedProcess(cmd, code, "OUT\n", "ERR\n")
+
+    time_example.subprocess.run = fake_run
+    try:
+        assert app_solve("board.txt", 3) == "OUT\n"
+        assert app_solve("board.txt", 1, ring_clues=True, after_logical=True) == "OUT\n"
+        try:
+            app_solve("fail.txt", 1)
+            raise AssertionError("a failed driver run must raise")
+        except RuntimeError as e:
+            assert "app-solve.mjs failed on fail.txt" in str(e) and "ERR" in str(e), e
+    finally:
+        time_example.subprocess.run = real_run
+    node = ["node", str(time_example.APP_SOLVE)]
+    assert seen[0] == [*node, "board.txt", "3"]
+    assert seen[1] == [*node, "board.txt", "1", "--ring-clues", "--after-logical"]
+
     # ---- run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
     @contextlib.contextmanager
     def fake_solve(medians):
-        """Replace run_app_solve with a stub returning `medians` in order.
-        Yields the list of (link_name, ring_clues, after_logical) calls."""
+        """Replace the app_solve adapter with a stub printing `medians` in
+        order as the driver's JSON line. Yields the list of (link_name,
+        ring_clues, after_logical) calls."""
         calls = []
-        real = time_example.run_app_solve
+        real = time_example.app_solve
         pending = list(medians)
 
-        def stub(link_path, ring_clues=False, after_logical=False):
+        def stub(link_path, reps, ring_clues=False, after_logical=False):
+            assert reps == time_example.REPS
             calls.append((pathlib.Path(link_path).name, ring_clues, after_logical))
-            return {"median": pending.pop(0), "version": "v2026.08.14-d47fc4b"}
+            data = {
+                "median": pending.pop(0),
+                "version": "v2026.08.14-d47fc4b",
+                "repsRun": reps,
+                "repsTimedOut": 0,
+            }
+            return f"JSON: {json.dumps(data)}\n"
 
-        time_example.run_app_solve = stub
+        time_example.app_solve = stub
         try:
             yield calls
         finally:
-            time_example.run_app_solve = real
+            time_example.app_solve = real
 
     # a component edit that halves the solve time: two rows (cold, then
     # after-logical), both PASS, and the two-row rule ships it
