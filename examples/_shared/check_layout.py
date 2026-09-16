@@ -857,9 +857,16 @@ def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
     # docs/research/ sits beside examples/ at the repo root, not inside the
-    # argv root, so it is found relative to this file rather than `root`.
-    repo_root = pathlib.Path(__file__).resolve().parents[2]
-    violations.extend(check_research_python(repo_root))
+    # argv root, so it is found relative to this file rather than `root` --
+    # but only for the real, no-args invocation `just check` makes. A test
+    # that passes an explicit root is pointed at a temp tree on purpose, and
+    # must stay hermetic: scanning this file's real repo location in that
+    # case would fail check_layout.test.py's subprocess cases on whatever
+    # scratch .py another session happens to have under docs/research/ right
+    # now, unrelated to the temp tree under test.
+    if len(argv) <= 1:
+        repo_root = pathlib.Path(__file__).resolve().parents[2]
+        violations.extend(check_research_python(repo_root))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")
