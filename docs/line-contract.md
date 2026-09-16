@@ -41,13 +41,20 @@ have drawn one end and not the other, is where a lone clue is handled.
   (gotcha 6, verified #189).
 - **Query the line only**, never clue + line: a ring cell in the list flips the
   answer to `true`.
-- **Cache on the instance.** Each `update` re-tests `instance.kind` until it
-  reaches full house, then later calls read it. (A length test against
-  `digitCount` does not work: hit-counts boards run `minDigit 0` for the clue
-  ring and a cage removes 0 from the inner grid during solving, so the line's
-  digit set only settles after the first `update`. Decided #193.) The app rebuilds every component on every edit, so a redrawn
-  group gets a fresh instance and a fresh answer. Never cache in a file-level
-  variable.
+- **Latch only the `noRepeats` fact; re-read the digit set every call.**
+  `noRepeats` (bare vs. house) comes from `getCellsCanHaveRepeats`, a geometry
+  fact — houses are registered once and a backtrack cannot un-register one, so
+  it is safe to test once on the instance and reuse the answer
+  (`component-contract.md`'s never-cache rule). Full house is a candidate
+  fact: whether the union of live candidates across the line has exactly
+  `line.length` digits changes with the search node, so `update` re-tests it
+  on every call rather than latching it once reached — latching it is what
+  made #336 unsound. (A length test against `digitCount` does not work
+  either: hit-counts boards run `minDigit 0` for the clue ring and a cage
+  removes 0 from the inner grid during solving, so the line's digit set only
+  settles after the first `update`. Decided #193.) The app rebuilds every
+  component on every edit, so a redrawn group gets a fresh instance and a
+  fresh answer. Never cache in a file-level variable.
 - **One component, gated rules.** Each rule starts with its gate
   (`if (instance.kind < HOUSE) …`). No per-kind component files, no
   `replaceComponent` swap.
