@@ -38,35 +38,45 @@ def _d4_cell_maps(n):
     return maps
 
 
+def _normalize_group(maps):
+    """A hashable tuple-of-tuples for `maps`, or raise if it's empty.
+
+    Accepts any iterable (a list, a set, ...) of index sequences -- shared
+    by `validate_group` and `canonical_key`'s custom-group path so neither
+    duplicates the other's setup.
+    """
+    maps = list(maps)
+    if not maps:
+        raise ValueError("a custom symmetry group must not be empty")
+    return tuple(tuple(m) for m in maps)
+
+
 @lru_cache
 def _validate_custom_group(maps, n):
-    """Validate `maps` is a group of permutations of range(n): non-empty,
-    each map a bijection, the identity present, and closed under
-    composition (which, for a finite set, forces every inverse to be
-    present too). Canonicalizing as the minimum image is only an
-    equivalence relation when the maps form a group -- a set that is merely
-    closed under nothing (e.g. `[identity, rotate90]`, missing the other
-    two rotations) can canonicalize two unrelated grids to the same key and
-    silently drop one as a false duplicate (#508).
+    """Validate `maps` is a group of permutations of range(n): each map a
+    bijection, and closed under composition. Canonicalizing as the minimum
+    image is only an equivalence relation when the maps form a group -- a
+    set that is merely closed under nothing (e.g. `[identity, rotate90]`,
+    missing the other two rotations) can canonicalize two unrelated grids
+    to the same key and silently drop one as a false duplicate (#508).
+
+    No separate identity check: a finite non-empty set of permutations
+    that's closed under composition is a subgroup of the full permutation
+    group (every element's powers must cycle back to it, and a finite
+    subsemigroup of a group is a subgroup), so closure alone already
+    forces the identity to be present -- a `[rotate90, rotate180,
+    rotate180]`-style group missing it fails composition closure first.
 
     `maps` must be a tuple of tuples (hashable) so this can be cached --
     the composition check is O(k^2 * n) and `canonical_key` would otherwise
     redo it on every call for a custom-group finder.
     """
-    if not maps:
-        raise ValueError("a custom symmetry group must not be empty")
     for cell_map in maps:
         if len(cell_map) != n or sorted(cell_map) != list(range(n)):
             raise ValueError(
                 f"a custom cell map must be a permutation of range({n}), "
                 f"got {cell_map!r}"
             )
-    identity = tuple(range(n))
-    if identity not in maps:
-        raise ValueError(
-            f"a custom symmetry group must include the identity map "
-            f"{identity!r}, got {maps!r}"
-        )
     map_set = set(maps)
     for f in maps:
         for g in maps:
@@ -88,10 +98,8 @@ def validate_group(maps):
     reject a broken group up front -- before proposing anything or writing
     any output.
     """
-    if not maps:
-        raise ValueError("a custom symmetry group must not be empty")
-    n = len(maps[0])
-    _validate_custom_group(tuple(tuple(m) for m in maps), n)
+    maps = _normalize_group(maps)
+    _validate_custom_group(maps, len(maps[0]))
 
 
 def canonical_key(grid, group):
@@ -104,6 +112,6 @@ def canonical_key(grid, group):
             raise ValueError(f"D4 needs a square grid, got {len(grid)} cells")
         maps = _d4_cell_maps(n)
     else:
-        maps = tuple(tuple(m) for m in group)
+        maps = _normalize_group(group)
         _validate_custom_group(maps, len(grid))
     return min(tuple(grid[i] for i in cell_map) for cell_map in maps)

@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dedupe import D4, canonical_key, validate_group
+from dedupe import D4, IDENTITY, canonical_key, validate_group
 
 OUTPUT_FILES = ("examples.jsonl", "summary.json", "progress.jsonl", "run.json")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -84,7 +84,7 @@ def run(finder, argv):
     """
     args = _parse_args(argv)
     symmetry = getattr(finder, "symmetry", D4)
-    if not isinstance(symmetry, str):
+    if symmetry not in (D4, IDENTITY):
         try:
             validate_group(symmetry)
         except ValueError as e:

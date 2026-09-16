@@ -165,4 +165,15 @@ try:
 except ValueError:
     check("IDENTITY still passes", False)
 
+# A custom group given as a set (not a list) must fail cleanly, not with an
+# unhandled TypeError from indexing it -- `_normalize_group` must list() it
+# first (#508 correctness review).
+try:
+    canonical_key(flat(tiny), {identity_2x2, rotate90_2x2})
+    check("a non-closed custom group given as a set is rejected", False)
+except ValueError:
+    check("a non-closed custom group given as a set is rejected", True)
+except TypeError:
+    check("a non-closed custom group given as a set is rejected", False)
+
 sys.exit(0 if ok else 1)
