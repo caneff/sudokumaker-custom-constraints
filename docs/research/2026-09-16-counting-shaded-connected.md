@@ -181,7 +181,20 @@ enumeration, one worker, each size exhausted in under 25 s:
 Two things differ from sudoku: the counts grow with size rather than
 collapsing (the sudoku ceiling of 26 is a box effect), and a Latin square is
 far looser, so a unique completion from 20-30 givens is even less likely.
-None found. Sizes 31 and up: see the next table when it lands.
+None found. Continued upward until a size came back empty:
+
+| size | shapes | with a grid | unique |
+|---|---|---|---|
+| 31 | 101 | 59 | 0 |
+| 32 | 61 | 24 | 0 |
+| 33 | 33 | 12 | 0 |
+| 34 | 17 | 4 | 0 |
+| 35 | 2 | 0 | 0 |
+| 36 | 2 | 0 | 0 |
+| 37 | 0 | - | - |
+
+**Under Latin rules with r9c1 + r9c2 pinned: largest shading with a grid is
+34; no size 21-36 carries a unique one.** Every size exhausted in about 20 s.
 
 ## Symmetry
 
