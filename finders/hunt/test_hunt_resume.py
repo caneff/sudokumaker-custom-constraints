@@ -298,8 +298,10 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # Argv mismatch refuses to start and writes nothing -- not even the
-    # driver's own lock file, which is only created after this check.
+    # Argv mismatch refuses to start and writes nothing to any hunt file.
+    # (This block's base hunt already leaves .lock behind, so it can't
+    # witness whether .lock specifically stays absent on a refusal -- see
+    # the next block for that.)
     out = Path(tmp) / "mismatch"
     result = run_cli(TOY_FINDER, out, "0:30")
     check(
@@ -318,6 +320,30 @@ with tempfile.TemporaryDirectory() as tmp:
     check(
         "a differing argv writes nothing -- not one new file, not one changed byte",
         before == after and before_contents == after_contents,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # The check above can't tell whether .lock specifically gets created on
+    # a refusal: the base hunt it runs first already leaves .lock behind,
+    # so its before/after snapshot can't see a *new* .lock appearing. Here
+    # run.json is hand-written -- no CLI run happens first -- so .lock
+    # genuinely doesn't exist yet, and this is a real witness that the
+    # argv check runs before the lock is ever taken.
+    out = Path(tmp) / "mismatch-no-lock-yet"
+    out.mkdir()
+    (out / "run.json").write_text(
+        json.dumps({"argv": ["--out", str(out), "--seeds", "0:30"], "git_sha": "x"})
+    )
+    check("no .lock exists before the refused rerun", not (out / ".lock").exists())
+
+    rerun = run_cli(TOY_FINDER, out, "0:99")
+    check(
+        "a differing argv against a hand-written run.json exits non-zero",
+        rerun.returncode != 0,
+    )
+    check(
+        "the refusal never creates .lock -- the argv check runs before the lock is taken",
+        sorted(p.name for p in out.iterdir()) == ["run.json"],
     )
 
 with tempfile.TemporaryDirectory() as tmp:
