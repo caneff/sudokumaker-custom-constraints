@@ -23,7 +23,7 @@
 //
 // The engine pieces that do not vary per example (the all-different floor, the
 // component loader, the fixpoint runner, the DFS uniqueness search) live in
-// ../_shared/recovery-lib.mjs, and the frame-probe skeleton (geometry, seeding,
+// ../_shared/recovery-lib.mjs, and the frame-probe skeleton (seeding,
 // report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file keeps only
 // the Hit Counts glue: the matching-bound extra propagator and the hit-count
 // leaf check.
@@ -31,6 +31,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
+import { runToFixpoint } from '../_shared/recovery-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -151,7 +152,7 @@ makeFrameProbe({
   beforeReport: p => {
     const { st, keys, alldiffGroups, floorGroup, floorKind } = p
     const tightStart = tighterLines(p)
-    for (let pass = 0; pass < 500; pass++) { const b = st.total(); for (const g of alldiffGroups) floorGroup(g); if (st.total() === b) break }
+    runToFixpoint(st, [], alldiffGroups, floorGroup, { init: false })
     const tightAfterFloor = tighterLines(p)
     console.log(`  matching tighter than naive: ${tightStart}/${keys.length} lines at start, ${tightAfterFloor}/${keys.length} after the ${floorKind} floor`)
   },

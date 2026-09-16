@@ -8,7 +8,7 @@
 //   node <probe> [gen.json] [--search [--only=<mode key>] [--cap=N]] [--floor=regin|singles]
 //
 // Every probe callback receives the probe context `p`: { file, gen, n, st,
-// floorKind, floorGroup, W, H, idx, interior, clueCell, keys, groups,
+// clueOf, floorKind, floorGroup, W, H, idx, interior, clueCell, keys, groups,
 // alldiffGroups, hiddenKeys }.
 
 import { readFileSync } from 'fs'
@@ -33,7 +33,7 @@ const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) 
 //   out of --search. `--only=<key>` picks one search mode.
 // deltas: [[title, fromKey, toKey]] — one DELTA line each, `to - from`.
 // blankWord: the header's word for clues not shown ('hidden', 'blank').
-// headerNote(p), beforeReport(p), afterReport(p), afterSearch(p, byKey):
+// headerNote(p) (default: the floor, when not regin), beforeReport(p), afterReport(p), afterSearch(p, byKey):
 //   optional extra output at those points; beforeReport sees the fresh start
 //   state, which it may prune (every report run reseeds).
 // branchClues: search also branches over the clue cells.
@@ -41,9 +41,10 @@ const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) 
 // validLeaf(p): true when a full assignment is a real solution.
 export function makeFrameProbe ({
   here, clueRange, files, modes, deltas, blankWord, validLeaf,
-  headerNote = () => '', beforeReport = () => {}, afterReport = () => {}, afterSearch = () => {},
-  branchClues = false, nodeCap, argv = process.argv.slice(2)
+  headerNote = ({ floorKind }) => (floorKind === 'regin' ? '' : ` (floor: ${floorKind})`), beforeReport = () => {}, afterReport = () => {}, afterSearch = () => {},
+  branchClues = false, nodeCap
 }) {
+  const argv = process.argv.slice(2)
   const file = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'gen_6x6.json'
   const gen = JSON.parse(readFileSync(join(here, file), 'utf8'))
   const { n, box: [bh, bw], grid, clue, active } = gen
@@ -56,13 +57,14 @@ export function makeFrameProbe ({
 
   const geometry = frameGeometry(n, [bh, bw])
   const { W, H, idx, interior, clueCell, keys, alldiffGroups } = geometry
+  const clueOf = k => clueCell(k[0], +k.slice(1)) // a clue key (side letter + line index) -> its clue cell
   // The all-different groups are the board's houses: the line components gate
   // on them through getCellsCanHaveRepeats (docs/line-contract.md).
   const st = makeCandidateState({ houses: alldiffGroups })
   const floorKind = flag(argv, 'floor') || 'regin'
   const floorGroup = makeAllDifferentFloor(st, { kind: floorKind, maxDigit: n })
   const hiddenKeys = keys.filter(k => !activeSet.has(k))
-  const p = { file, gen, n, st, floorKind, floorGroup, hiddenKeys, ...geometry }
+  const p = { file, gen, n, st, clueOf, floorKind, floorGroup, hiddenKeys, ...geometry }
 
   function freshState () {
     st.cand = new Map()
@@ -72,10 +74,7 @@ export function makeFrameProbe ({
         st.cand.set(interior(r, c), g != null ? new Set([g]) : RANGE(1, n))
       }
     }
-    for (const k of keys) {
-      const side = k[0]; const i = +k.slice(1)
-      st.cand.set(clueCell(side, i), activeSet.has(k) ? new Set([clue[k]]) : RANGE(clueLo, clueHi))
-    }
+    for (const k of keys) st.cand.set(clueOf(k), activeSet.has(k) ? new Set([clue[k]]) : RANGE(clueLo, clueHi))
   }
 
   // main-global.js builds the frame itself (no groups input), so it needs the
@@ -91,13 +90,13 @@ export function makeFrameProbe ({
     freshState()
     const start = st.total()
     const passes = runToFixpoint(st, comps(mode), alldiffGroups, floorGroup, { init: true, extra: extraOf(mode) })
-    const hiddenRecovered = hiddenKeys.filter(k => st.cand.get(clueCell(k[0], +k.slice(1))).size === 1).length
+    const hiddenRecovered = hiddenKeys.filter(k => st.cand.get(clueOf(k)).size === 1).length
     let interiorSolved = 0
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (st.cand.get(interior(r, c)).size === 1) interiorSolved++
     // soundness: every true value must survive
     const truth = []
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth.push([interior(r, c), grid[r][c]])
-    for (const k of keys) truth.push([clueCell(k[0], +k.slice(1)), clue[k]])
+    for (const k of keys) truth.push([clueOf(k), clue[k]])
     const lost = countLost(st, truth)
     const removed = start - st.total()
     console.log(reportLine(mode.label, { extra: `hidden ${hiddenRecovered}/${hiddenKeys.length}, interior ${interiorSolved}/${n * n}, `, removed, passes, lost }))
@@ -106,7 +105,7 @@ export function makeFrameProbe ({
 
   const branch = []
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) branch.push(interior(r, c))
-  if (branchClues) for (const k of keys) branch.push(clueCell(k[0], +k.slice(1)))
+  if (branchClues) for (const k of keys) branch.push(clueOf(k))
   const cap = +flag(argv, 'cap') || nodeCap
   function searchRun (mode) {
     freshState()
