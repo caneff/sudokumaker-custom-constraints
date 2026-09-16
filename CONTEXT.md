@@ -154,7 +154,7 @@ Use these terms exactly. Do not drift to synonyms.
   output directory. Not a finder: one finder runs many hunts.
 - **finder rule** — a rule a finder states itself because gridfind has no layer
   for it. It stays a finder rule until it is **promoted**: turned into a
-  gridfind layer with its fixtures, once a second finder needs it.
+  gridfind layer with its fixtures.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 
