@@ -6,24 +6,27 @@ finder rule, no search strategy. A fresh `--out` (no `run.json`) starts a
 new hunt; an `--out` that already has one resumes it: seeds with a
 `seed_done` event are skipped, the dedupe set is rebuilt from the durable
 log, and a finder's optional `save_state`/`load_state` round-trip through
-state.json. A differing argv versus the recorded run refuses to start and
-writes nothing; a differing git sha only warns. The grid helpers, CP-SAT
-helpers, the `--workers`/load gate, deferred verification and the render
-hook are the other later tickets (#485-#490) under the parent spec (#483).
+state.json. A differing argv versus the recorded run refuses to start; a
+differing git sha only warns. The grid helpers, CP-SAT helpers, the
+`--workers`/load gate, deferred verification and the render hook are the
+other later tickets (#485-#490) under the parent spec (#483).
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
 
-Every seed's outcome (empty/rejected/duplicate/example) and, for an
-example, its canonical dedupe key, live in progress.jsonl -- not in
-examples.jsonl, which stays exactly what `finder.record()` returned, with
-nothing driver-owned added to it. That split matters for resume:
-`_process_seed` always writes an accepted example to examples.jsonl
-*before* that seed's progress.jsonl event, so a kill can leave the two
-logs' tails disagreeing by exactly one seed -- an example written with no
-confirming event, or (see the corruption tests) a confirmed event whose
-example line got corrupted by something other than the kill that produced
-the event. `_resume` reconciles that disagreement before rebuilding
-anything from the logs.
+Every accepted example carries a driver-owned `__dedupe_key__` field
+alongside whatever `finder.record()` returned, so the dedupe set can be
+rebuilt from examples.jsonl on resume the way the ticket asks -- the
+double-underscore name is meant to never collide with a finder's own
+field. progress.jsonl's per-seed `outcome` (empty/rejected/duplicate/
+example) is what lets summary.json's counts rebuild without trusting a
+summary.json snapshot a kill may have left stale.
+
+`_process_seed` writes, in order: the example (if any) to examples.jsonl,
+that seed's event to progress.jsonl, then (`_hunt_loop`) the finder's saved
+state to state.json. A kill can catch any prefix of that sequence, leaving
+progress.jsonl's tail ahead of either or both of the other two logs --
+`_reconcile` trims progress.jsonl's tail, seed by seed, until it's not
+ahead of anything, before resume rebuilds anything from the logs.
 """
 
 import argparse
@@ -48,16 +51,14 @@ OUTPUT_FILES = (
 )
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# The per-seed outcome in each progress.jsonl line, alongside `event`/`seed`/
-# `rejected_reason`/`dedupe_key` -- it's what lets a resume rebuild
-# summary.json's counts from progress.jsonl alone, without trusting a
-# summary.json snapshot that a kill may have left one seed stale.
 _OUTCOME_COUNT_KEY = {
     "empty": "empty",
     "rejected": "rejected",
     "duplicate": "duplicates",
     "example": "examples",
 }
+
+_DEDUPE_KEY_FIELD = "__dedupe_key__"
 
 
 def _parse_seeds(text):
@@ -158,48 +159,71 @@ def _truncate_to_valid(path, valid_lines):
     _write_text_atomic(path, "".join(valid_lines))
 
 
-def _reconcile_examples(
-    progress_lines, progress_events, examples_lines, examples_records
+def _state_seed(finder, out):
+    """The seed number the finder's last saved state reflects, or -1 if
+    this finder doesn't save state or hasn't saved any yet."""
+    if not hasattr(finder, "load_state"):
+        return -1
+    state_path = out / "state.json"
+    if not state_path.exists():
+        return -1
+    return json.loads(state_path.read_text()).get("seed", -1)
+
+
+def _reconcile(
+    finder, out, progress_lines, progress_events, examples_lines, examples_records
 ):
-    """Make the two logs' tails agree on how many examples really happened.
+    """Trim progress.jsonl's tail until it's not ahead of examples.jsonl or
+    state.json, so a seed a kill left half-durable reruns instead of being
+    treated as done with a gap.
 
-    `_process_seed` writes an accepted example to examples.jsonl and
-    *then* that seed's event to progress.jsonl, so in a clean log the
-    number of examples.jsonl lines always equals the number of
-    `"outcome": "example"` progress events. A kill (or, for the
-    half-written-line tests, a hand corruption) can knock that out of
-    step in either direction:
+    `_process_seed` writes, in order, an accepted example to
+    examples.jsonl, that seed's event to progress.jsonl, then (`_hunt_loop`)
+    the finder's state to state.json -- so in a clean log progress.jsonl's
+    claimed example count always equals examples.jsonl's line count, and
+    its last confirmed seed is always <= the seed state.json last saved.
+    A kill can leave progress.jsonl ahead on either count:
 
-    - progress claims one more example than the file has: the example's
-      own line was lost (truncated as invalid, or corrupted by something
-      that left it valid-but-wrong) -- un-confirm the most recent
-      "example" event so its seed reruns and rewrites it.
-    - the file has one more example than progress confirms: the example
-      was written but the kill landed before its progress event -- drop
-      that orphaned trailing line; its seed reruns and rewrites it too.
+    - ahead of examples.jsonl: that example's own line was lost (truncated
+      as invalid, or corrupted by something that left it valid-but-wrong).
+    - ahead of state.json: the seed's own contribution to the finder's
+      state was never saved -- and since a "done" seed never reruns, that
+      contribution would otherwise be lost for good with no error, because
+      nothing about the hunt looks broken (#812 Codex pass 1, finding 2).
 
-    Either way, nothing is left that both logs don't agree really happened,
-    so resume can't double-count or silently lose a find.
+    Only progress.jsonl's very tail can ever be ahead -- every earlier line
+    was already durable everywhere before the kill happened -- so this
+    drops progress.jsonl's last event and rechecks both conditions, one
+    seed at a time, until neither gap remains. Every dropped seed is no
+    longer "done", so it reruns and rewrites everything it should have made
+    durable the first time.
     """
-    confirmed = sum(1 for e in progress_events if e.get("outcome") == "example")
-    while confirmed > len(examples_records) and progress_events:
-        idx = max(
-            i for i, e in enumerate(progress_events) if e.get("outcome") == "example"
+    state_seed = _state_seed(finder, out)
+    tracks_state = hasattr(finder, "load_state")
+    while progress_events:
+        example_confirmed = sum(
+            1 for e in progress_events if e.get("outcome") == "example"
         )
-        del progress_events[idx]
-        del progress_lines[idx]
-        confirmed -= 1
-    if len(examples_records) > confirmed:
-        examples_records = examples_records[:confirmed]
-        examples_lines = examples_lines[:confirmed]
+        examples_ok = example_confirmed <= len(examples_records)
+        last_seed = progress_events[-1].get("seed", -1)
+        state_ok = not tracks_state or last_seed <= state_seed
+        if examples_ok and state_ok:
+            break
+        del progress_events[-1]
+        del progress_lines[-1]
+
+    example_confirmed = sum(1 for e in progress_events if e.get("outcome") == "example")
+    if len(examples_records) > example_confirmed:
+        examples_records = examples_records[:example_confirmed]
+        examples_lines = examples_lines[:example_confirmed]
     return progress_lines, progress_events, examples_lines, examples_records
 
 
-def _save_state(finder, out):
+def _save_state(finder, out, seed):
     save = getattr(finder, "save_state", None)
     if save is None:
         return
-    _write_json_atomic(out / "state.json", save())
+    _write_json_atomic(out / "state.json", {"seed": seed, "state": save()})
 
 
 def _load_state(finder, out):
@@ -207,7 +231,7 @@ def _load_state(finder, out):
     state_path = out / "state.json"
     if load is None or not state_path.exists():
         return
-    load(json.loads(state_path.read_text()))
+    load(json.loads(state_path.read_text())["state"])
 
 
 def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
@@ -233,11 +257,12 @@ def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
                 event["outcome"] = "duplicate"
             else:
                 seen.add(key)
-                examples_f.write(json.dumps(finder.record(candidate)) + "\n")
+                record = dict(finder.record(candidate))
+                record[_DEDUPE_KEY_FIELD] = list(key)
+                examples_f.write(json.dumps(record) + "\n")
                 examples_f.flush()
                 counts["examples"] += 1
                 event["outcome"] = "example"
-                event["dedupe_key"] = list(key)
 
     progress_f.write(json.dumps(event) + "\n")
     progress_f.flush()
@@ -255,7 +280,7 @@ def _hunt_loop(finder, out, seed_start, seed_end, seen, counts, skip=frozenset()
                 continue
             _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts)
             _write_json_atomic(out / "summary.json", dict(counts))
-            _save_state(finder, out)
+            _save_state(finder, out, seed)
 
 
 def _fresh(finder, argv, args, out):
@@ -295,20 +320,14 @@ def _resume(finder, argv, args, out, prior):
 
     progress_lines, progress_events = _read_valid_lines(out / "progress.jsonl")
     examples_lines, examples_records = _read_valid_lines(out / "examples.jsonl")
-    progress_lines, progress_events, examples_lines, examples_records = (
-        _reconcile_examples(
-            progress_lines, progress_events, examples_lines, examples_records
-        )
+    progress_lines, progress_events, examples_lines, examples_records = _reconcile(
+        finder, out, progress_lines, progress_events, examples_lines, examples_records
     )
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
     _truncate_to_valid(out / "examples.jsonl", examples_lines)
 
     done_seeds = {e["seed"] for e in progress_events if e.get("event") == "seed_done"}
-    seen = {
-        _to_hashable(e["dedupe_key"])
-        for e in progress_events
-        if e.get("outcome") == "example"
-    }
+    seen = {_to_hashable(r[_DEDUPE_KEY_FIELD]) for r in examples_records}
 
     counts = {
         "seeds_done": 0,
@@ -335,14 +354,16 @@ def run(finder, argv):
     A fresh `--out` (no run.json) starts a new hunt, refusing when it
     already holds any other output file with no run.json to explain it. An
     `--out` with a run.json resumes: already-done seeds are skipped, the
-    dedupe set and summary.json's counts are rebuilt from the durable log,
-    and a finder's optional state round-trips through state.json. A
-    refusal on a mismatched argv or a stray leftover file is checked and
-    returned before anything (including the lock file below) is written,
-    so it leaves --out exactly as it found it. Returns the process exit
-    code: 0 on a completed hunt, 2 on a refusal (an occupied fresh --out,
-    a resume whose argv doesn't match the recorded run, or a second
-    process already holding this --out's lock).
+    dedupe set is rebuilt from examples.jsonl, summary.json's counts from
+    progress.jsonl, and a finder's optional state round-trips through
+    state.json. Every one of those checks and decisions is made only after
+    this process holds --out's lock (see below), and re-reads --out fresh
+    at that point rather than trusting anything observed before acquiring
+    it -- a decision made from a pre-lock read can be stale by the time the
+    lock is granted. Returns the process exit code: 0 on a completed hunt,
+    2 on a refusal (an occupied fresh --out, a resume whose argv doesn't
+    match the recorded run, or a second process already holding this
+    --out's lock).
     """
     args = _parse_args(argv)
     refusal = _validate_symmetry(finder)
@@ -350,36 +371,19 @@ def run(finder, argv):
         return refusal
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    run_path = out / "run.json"
 
-    prior = None
-    if run_path.exists():
-        prior = json.loads(run_path.read_text())
-        if prior.get("argv") != list(argv):
-            print(
-                "hunt: refusing to resume -- argv differs from the recorded run "
-                f"({prior.get('argv')!r} vs {list(argv)!r})",
-                file=sys.stderr,
-            )
-            return 2
-    else:
-        other_files = [
-            name
-            for name in OUTPUT_FILES
-            if name != "run.json" and (out / name).exists()
-        ]
-        if other_files:
-            return _refuse(args.out, ", ".join(other_files))
-
-    # An advisory lock on a dedicated file, held for the whole run (fresh or
-    # resumed): two processes landing on the same --out at once must not
-    # both proceed, whichever path each would otherwise take -- a resume
-    # replays seeds and dedupes in this process's own memory, so a second
-    # process resuming concurrently would redo seeds and could both decide
-    # the same candidate is novel. `flock` is tied to the open fd, so a
-    # SIGKILLed holder releases it the instant the process dies -- no stale
-    # lock to clean up before the next, real resume. Taken only now, after
-    # the checks above, so a refusal on those never creates this file.
+    # Taken before anything about --out's state is inspected, not just
+    # before anything is written: classifying --out as fresh or resumed by
+    # reading run.json *before* acquiring this lock is itself a race
+    # (#812 Codex pass 1, finding 1) -- a second process can see no
+    # run.json, then, delayed by ordinary scheduling rather than by
+    # blocking on this non-blocking lock, acquire it only after a first
+    # process's complete fresh hunt has already finished and released it.
+    # Acting on that stale "no run.json" belief overwrites the finished
+    # hunt and replays every seed. Locking first makes every read below an
+    # authoritative one. `flock` is tied to the open fd, so a SIGKILLed
+    # holder releases it the instant the process dies -- no stale lock to
+    # clean up before the next, real resume.
     lock_fd = os.open(out / ".lock", os.O_CREAT | os.O_RDWR)
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -388,8 +392,24 @@ def run(finder, argv):
         return _refuse(args.out, "an active hunt (locked)")
 
     try:
-        if prior is not None:
+        run_path = out / "run.json"
+        if run_path.exists():
+            prior = json.loads(run_path.read_text())
+            if prior.get("argv") != list(argv):
+                print(
+                    "hunt: refusing to resume -- argv differs from the recorded run "
+                    f"({prior.get('argv')!r} vs {list(argv)!r})",
+                    file=sys.stderr,
+                )
+                return 2
             return _resume(finder, argv, args, out, prior)
+        other_files = [
+            name
+            for name in OUTPUT_FILES
+            if name != "run.json" and (out / name).exists()
+        ]
+        if other_files:
+            return _refuse(args.out, ", ".join(other_files))
         return _fresh(finder, argv, args, out)
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)

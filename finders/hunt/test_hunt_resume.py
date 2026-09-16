@@ -2,7 +2,9 @@
 
 Runs the toy finders in this directory as subprocesses and checks only what
 a caller of the hunt CLI can see: exit code, stderr, and the output files --
-never an internal of driver.py. Three kinds of interruption are exercised:
+never an internal of driver.py, except the one test that drives
+`driver.run()` directly in-process to pin an exact thread interleaving (see
+its own comment for why). Kinds of interruption exercised:
 
 - A genuine `SIGKILL` mid-hunt, via a finder that sleeps a few ms per seed so
   the kill reliably lands before the range completes (no timing race).
@@ -11,6 +13,11 @@ never an internal of driver.py. Three kinds of interruption are exercised:
 - A hand-truncated last progress.jsonl line, simulating a kill between an
   example's append to examples.jsonl and that seed's own progress event --
   the orphan-example case (#487, added scope from the Codex pass on #507).
+- A hand-rolled-back state.json, simulating a kill between a seed's
+  progress.jsonl event and its state.json save (#812 Codex pass 1).
+- A precisely-timed thread barrier reproducing the fresh-vs-resume
+  classify-before-lock race a real kill/schedule-delay combination can
+  trigger but can't reliably reproduce on demand (#812 Codex pass 1).
 
     uv run finders/hunt/test_hunt_resume.py
 """
@@ -151,7 +158,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # that gap instead of demanding exact equality.
     check(
         "state.json was written before the kill, within one seed of progress.jsonl",
-        0 <= len(progress_before) - state_before.get("seeds_seen", -1) <= 1,
+        0 <= len(progress_before) - state_before["state"].get("seeds_seen", -1) <= 1,
     )
 
     resumed = run_cli(STATEFUL_FINDER, out, "0:40")
@@ -162,13 +169,55 @@ with tempfile.TemporaryDirectory() as tmp:
     state_after = json.loads((out / "state.json").read_text())
     check(
         "state.json's counter reflects every seed, proving load_state picked up the saved value",
-        state_after.get("seeds_seen") == 40,
+        state_after["state"].get("seeds_seen") == 40,
+    )
+    check(
+        "state.json records which seed it reflects, ending at the last one",
+        state_after.get("seed") == 39,
     )
     progress_after = read_jsonl(out / "progress.jsonl")
     seeds_seen = [e["seed"] for e in progress_after if e.get("event") == "seed_done"]
     check(
         "stateful resume: exactly one seed_done event per seed",
         sorted(seeds_seen) == list(range(40)),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # #812 Codex pass 1, finding 2: a kill between a seed's progress.jsonl
+    # event and its state.json save leaves that seed marked done with its
+    # contribution to state never captured -- and since a done seed never
+    # reruns, that contribution would be lost forever with nothing else
+    # looking wrong. Simulated by hand: progress.jsonl confirms one more
+    # seed than state.json reflects.
+    out = Path(tmp) / "state-behind"
+    result = run_cli(STATEFUL_FINDER, out, "0:10")
+    check(
+        f"base stateful hunt exits 0 (stderr: {result.stderr[-300:]})",
+        result.returncode == 0,
+    )
+    state_path = out / "state.json"
+    real_state = json.loads(state_path.read_text())
+    check(
+        "the base hunt's state.json reflects the last seed", real_state.get("seed") == 9
+    )
+    # Roll state.json back one seed, as if seed 9's save never landed.
+    state_path.write_text(json.dumps({"seed": 8, "state": {"seeds_seen": 9}}))
+
+    rerun = run_cli(STATEFUL_FINDER, out, "0:10")
+    check(
+        f"resume after a state/progress gap exits 0 (stderr: {rerun.stderr[-300:]})",
+        rerun.returncode == 0,
+    )
+    final_progress = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in final_progress if e.get("event") == "seed_done"]
+    check(
+        "the seed state.json hadn't caught up to reruns exactly once, not zero times",
+        sorted(seeds_seen) == list(range(10)),
+    )
+    final_state = json.loads(state_path.read_text())
+    check(
+        "state.json ends caught up to the last seed again",
+        final_state.get("seed") == 9 and final_state["state"].get("seeds_seen") == 10,
     )
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -323,13 +372,14 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # The check above can't tell whether .lock specifically gets created on
-    # a refusal: the base hunt it runs first already leaves .lock behind,
-    # so its before/after snapshot can't see a *new* .lock appearing. Here
-    # run.json is hand-written -- no CLI run happens first -- so .lock
-    # genuinely doesn't exist yet, and this is a real witness that the
-    # argv check runs before the lock is ever taken.
-    out = Path(tmp) / "mismatch-no-lock-yet"
+    # #812 Codex pass 1, finding 1: classifying --out as fresh or resumed
+    # (and checking argv) *before* acquiring the lock is itself a race, so
+    # the fix moved that classification inside the lock -- meaning a
+    # refusal now does create .lock (an acceptable, harmless side effect of
+    # correctly serializing access), even though it still writes no hunt
+    # data. Hand-written run.json, no CLI run first, so this is a clean
+    # before/after on exactly that.
+    out = Path(tmp) / "mismatch-lock-ok"
     out.mkdir()
     (out / "run.json").write_text(
         json.dumps({"argv": ["--out", str(out), "--seeds", "0:30"], "git_sha": "x"})
@@ -342,8 +392,81 @@ with tempfile.TemporaryDirectory() as tmp:
         rerun.returncode != 0,
     )
     check(
-        "the refusal never creates .lock -- the argv check runs before the lock is taken",
-        sorted(p.name for p in out.iterdir()) == ["run.json"],
+        ".lock may now exist (locking runs before the argv check), "
+        "but run.json itself is untouched and no hunt-data file appears",
+        {p.name for p in out.iterdir()} <= {"run.json", ".lock"}
+        and (out / "run.json").read_text()
+        == json.dumps({"argv": ["--out", str(out), "--seeds", "0:30"], "git_sha": "x"}),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # #812 Codex pass 1, finding 1, reproduced directly: two processes on
+    # the same fresh --out, where the second reads "no run.json" before the
+    # first has even started, but only reaches its own lock acquisition
+    # after the first has finished a complete hunt and released it. A real
+    # timing race (like the pre-existing "racing on a fresh --out" test)
+    # can't reliably land in that exact window, so this drives driver.run()
+    # in-process across two threads and pins the ordering with a barrier:
+    # thread B is paused inside a patched fcntl.flock, right where it would
+    # otherwise acquire the lock, until the main thread has run a complete
+    # hunt (thread A) to completion on the same --out.
+    import threading
+
+    sys.path.insert(0, str(HERE))
+    import driver as driver_module
+    from toy_finder import ToyFinder
+
+    out = Path(tmp) / "toctou"
+    out.mkdir()
+    argv = ["--out", str(out), "--seeds", "0:30"]
+
+    b_ready = threading.Event()
+    release_b = threading.Event()
+    real_flock = driver_module.fcntl.flock
+
+    def _patched_flock(fd, op):
+        if threading.current_thread().name == "hunt-B":
+            b_ready.set()
+            release_b.wait(timeout=10)
+        return real_flock(fd, op)
+
+    driver_module.fcntl.flock = _patched_flock
+    b_result = {}
+    try:
+        b_thread = threading.Thread(
+            target=lambda: b_result.__setitem__(
+                "code", driver_module.run(ToyFinder(), argv)
+            ),
+            name="hunt-B",
+        )
+        b_thread.start()
+        check("thread B reached its lock acquisition", b_ready.wait(timeout=10))
+
+        a_code = driver_module.run(ToyFinder(), argv)
+        check("thread A's hunt (run first, in the main thread) exits 0", a_code == 0)
+        a_progress = read_jsonl(out / "progress.jsonl")
+        check(
+            "thread A ran the full range before B's lock was released",
+            len(a_progress) == 30,
+        )
+
+        release_b.set()
+        b_thread.join(timeout=15)
+    finally:
+        driver_module.fcntl.flock = real_flock
+
+    check("thread B's call returned", "code" in b_result)
+    final_progress = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in final_progress if e.get("event") == "seed_done"]
+    check(
+        "B's stale 'no run.json yet' belief doesn't overwrite A's completed hunt: "
+        "still exactly one seed_done per seed",
+        sorted(seeds_seen) == list(range(30)),
+    )
+    final_summary = json.loads((out / "summary.json").read_text())
+    check(
+        "summary.json still matches a single, uninterrupted 0:30 hunt",
+        final_summary.get("seeds_done") == 30,
     )
 
 with tempfile.TemporaryDirectory() as tmp:
