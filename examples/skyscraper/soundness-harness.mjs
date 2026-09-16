@@ -12,15 +12,20 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import {
+  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, violates, fixpoint
+} from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { read, load, loadSource } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { load } = makeIo(HERE)
+const { rnd } = makeRng()
 const FUZZ = Number(process.env.FUZZ) || 2000
 
 const N = 9
 installGlobals(1, N)
+const DIGITS = [...Array(N).keys()].map(i => i + 1)
+// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
+const seeder = makeSeeder(rnd, DIGITS)
 
 const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
 
@@ -32,16 +37,10 @@ const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate
 // (false) or counted (true), and both readings must be sound.
 // ---------------------------------------------------------------------------
 
-const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
-const ONE_SIDED_SRC = read(ONE_SIDED_FILE)
-const TIES_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
-if (!TIES_FLAG.test(ONE_SIDED_SRC)) throw new Error(`${ONE_SIDED_FILE} has no 'const ALLOW_TIES = ...' line to flip`)
-
-// The component as it would read with the constant set either way. The app
-// pastes the file as its own segment, so a flag is a source edit, not a
-// parameter: the harness makes the same edit.
+// The component as it would read with the constant set either way.
 function loadOneSided (allowTies) {
-  return loadSource(ONE_SIDED_SRC.replace(TIES_FLAG, `const ALLOW_TIES = ${allowTies}`), ['setParams', 'update', 'validate'])
+  return load('SkyscraperOneSidedComponent.js', ['setParams', 'update', 'validate'],
+    src => patchSource(src, TIES_FLAG, `const ALLOW_TIES = ${allowTies}`))
 }
 
 // The truth clue for one line of digits: buildings visible reading it inward.
@@ -71,7 +70,6 @@ function disagreement (p, oracle) {
   }
   return null
 }
-const oneSidedTotal = p => { let n = 0; for (const set of p._cand.values()) n += set.size; return n }
 function fuzzOneSided (label, { allowTies, kind, n, iters }) {
   const oneSidedMod = loadOneSided(allowTies)
   const cells = Array.from({ length: n }, (_, i) => i)
@@ -81,12 +79,12 @@ function fuzzOneSided (label, { allowTies, kind, n, iters }) {
     const digits = makeLine(rnd, kind, n, N)
     const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
     for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { kind, digitCount: N })
+    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, cells) })
     const inst = {}
     oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
-    const before = oneSidedTotal(p)
+    const before = total(p)
     const v = violates(oneSidedMod, inst, p, truth)
-    if (oneSidedTotal(p) < before) fired++
+    if (total(p) < before) fired++
     if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
   }
   console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
@@ -108,7 +106,7 @@ for (const allowTies of [false, true]) {
     const filledWith = k => {
       const truth = { [ONE_SIDED_CLUE]: k }
       for (let i = 0; i < n; i++) truth[i] = digits[i]
-      return makePuzzle(truth, (c, v) => [v], { kind, digitCount: N })
+      return makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) })
     }
     const wrong = clue === 1 ? clue + 1 : clue - 1
     if (!oneSidedMod.validate(inst, filledWith(clue))) { oneSidedValidateBad++; console.log('validate rejected the true clue', clue, 'on', digits.join('')) }
@@ -154,7 +152,7 @@ for (const allowTies of [false, true]) {
       const s = new Set([v])
       for (let d = 1; d <= EXACT_N; d++) if (rnd() < 0.5) s.add(d)
       return [...s]
-    }, { kind: 'bare', digitCount: EXACT_N })
+    })
     const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
     // Every fill the starting candidates and the clue allow, by brute force.
     const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
@@ -183,38 +181,18 @@ for (const allowTies of [false, true]) {
 }
 console.log('one-sided exactness vs brute force (n=5):', oneSidedExactRuns, 'states,', oneSidedExactBad, 'disagreements')
 
-function visible (vals) {
-  let count = 0
-  let max = 0
-  for (const v of vals) if (v > max) { count++; max = v }
-  return count
-}
-
-function shuffled () {
-  const a = [...Array(N).keys()].map(i => i + 1)
-  for (let i = N - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] }
-  return a
-}
-
-// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (c, v) {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return [...Array(N).keys()].map(i => i + 1)
-  const s = new Set([v])
-  for (let d = 1; d <= N; d++) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
+// The two-clue DP's rule is the ties-hidden reading.
+const visible = vals => visibleWith(false, vals)
+const shuffled = () => shuffle(rnd, [...DIGITS])
 
 const CA = 100
 const CB = 101
 const LINE = [...Array(N).keys()]
 // The DP is a full-house rule and gates on the kind the mock declares
 // (docs/line-contract.md), so every state built around a permutation says so.
-const FULL = { kind: 'fullHouse', digitCount: N }
+const FULL = { houses: [LINE] }
 let bad = 0
 let fired = 0 // coverage: the prune removed something, so the DP actually ran
-const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
 for (let iter = 0; iter < FUZZ; iter++) {
   const perm = shuffled()
   const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
@@ -241,7 +219,8 @@ mod.setParams(instA, CA, CB, LINE)
 const instB = {}
 mod.setParams(instB, CA2, CB2, LINE2)
 const state = q => [...q._cand].map(([c, s]) => c + ':' + [...s].sort().join('')).sort().join('|')
-const copyOf = q => { const r = makePuzzle({}, () => [], FULL); for (const [c, s] of q._cand) r._cand.set(c, new Set(s)); return r }
+const BOTH = { houses: [LINE, LINE2] }
+const copyOf = q => { const r = makePuzzle({}, () => [], BOTH); for (const [c, s] of q._cand) r._cand.set(c, new Set(s)); return r }
 
 let interleaveBad = 0
 const PAIRS = 500
@@ -256,7 +235,7 @@ for (let iter = 0; iter < PAIRS; iter++) {
   }
   for (const i of LINE) truth[i] = permA[i]
   for (let i = 0; i < N; i++) truth[LINE2[i]] = permB[i]
-  const start = makePuzzle(truth, seeder, FULL)
+  const start = makePuzzle(truth, seeder, BOTH)
 
   // Serial: drain A fully, then B.
   const serial = copyOf(start)
@@ -306,7 +285,7 @@ for (let iter = 0; iter < EXACT; iter++) {
     const s = new Set([v])
     for (let d = 1; d <= M; d++) if (rnd() < 0.5) s.add(d)
     return [...s]
-  }, { kind: 'fullHouse', digitCount: M })
+  }, { houses: [smallLine] })
   const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
   // Every line the STARTING candidates and both clues allow, by brute force.
   const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
@@ -350,7 +329,7 @@ for (let iter = 0; iter < 2000; iter++) {
   if (new Set(digits).size < digits.length) bareRepeats++
   const truth = { [CA]: visible(digits), [CB]: visible([...digits].reverse()) }
   for (const i of LINE) truth[i] = digits[i]
-  const bp = makePuzzle(truth, seeder, { kind: 'bare', digitCount: N })
+  const bp = makePuzzle(truth, seeder)
   const before = total(bp)
   fixpoint(mod, bareInst, bp)
   bareRemovals += before - total(bp)
@@ -367,7 +346,7 @@ const zeroLine = [...Array(9).keys()]
 const zeroInst = {}
 mod.setParams(zeroInst, CA, CB, zeroLine)
 const unclued = [...Array(10).keys()]
-const zeroOpts = { kind: 'fullHouse', digitCount: 10 }
+const zeroOpts = { houses: [zeroLine] }
 let zeroRemovals = 0
 for (const pinClues of [false, true]) {
   const truth = { [CA]: 9, [CB]: 1 }

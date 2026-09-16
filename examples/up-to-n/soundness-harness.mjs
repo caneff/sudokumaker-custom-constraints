@@ -17,7 +17,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, total, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -40,16 +40,7 @@ function upToN (digits, target) {
 const ITERS = 20000
 const SIZES = [4, 6, 9]
 
-const seeder = D => (c, v) => {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return Array.from({ length: D }, (_, i) => i + 1)
-  const s = new Set([v])
-  for (let d = 1; d <= D; d++) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
-
-const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
+const seeder = D => makeSeeder(rnd, Array.from({ length: D }, (_, i) => i + 1))
 
 // A line of the kind asked for that holds `target` at least once (`atLeast`
 // times for the repeated-target pool).
@@ -76,7 +67,7 @@ function fuzz (label, { kind, D, n, atLeast = 1 }) {
     const clue = upToN(digits, target)
     const truth = {}
     for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder(D), { kind, digitCount: D })
+    const p = makePuzzle(truth, seeder(D), { houses: housesOf(kind, cells) })
     const inst = {}
     mod.setParams(inst, cells, target, clue)
     const before = total(p)
@@ -127,8 +118,8 @@ for (const D of SIZES) {
     for (let i = 0; i < D; i++) truth[i] = digits[i]
     const inst = {}
     mod.setParams(inst, cells, target, clue)
-    const accepted = mod.validate(inst, makePuzzle(truth, (c, v) => [v], { kind, digitCount: D }))
-    const p = makePuzzle(truth, (c, v) => [v], { kind, digitCount: D })
+    const accepted = mod.validate(inst, makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) }))
+    const p = makePuzzle(truth, (c, v) => [v], { houses: housesOf(kind, cells) })
     fixpoint(mod, inst, p)
     const killed = p._stopped !== null || [...p._cand.values()].some(s => s.size === 0)
     const holds = upToN(digits, target) === clue
@@ -147,7 +138,7 @@ console.log('update/validate agreement on filled lines:', runs, 'lines,', disagr
   installGlobals(1, 4)
   const inst = {}
   mod.setParams(inst, [3, 2, 1, 0], 4, 1)
-  const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { kind: 'fullHouse', digitCount: 4 })
+  const p = makePuzzle({ 0: 1, 1: 2, 2: 3, 3: 4 }, (c, v) => [v], { houses: [[0, 1, 2, 3]] })
   fixpoint(mod, inst, p)
   // cell 3 is R1C4 on the mock's 9-wide naming; the lowest cell id, 0, is R1C1.
   assert.match(String(p._stopped), /R1C4/, 'the stop names the marker, not the lowest cell id')

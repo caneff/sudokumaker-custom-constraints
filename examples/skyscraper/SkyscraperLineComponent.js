@@ -258,8 +258,9 @@ function * update (instance, puzzle) {
   }
 }
 
-// Visible buildings reading `cells` in order: count the running maxima.
-function visibleCount (puzzle, cells) {
+// Visible buildings reading `cells` in order, on a line `gateOpen` has proved a
+// permutation of 1..n: count the running maxima, no tie possible.
+function visibleCountPermutation (puzzle, cells) {
   let count = 0
   let max = 0
   for (const cell of cells) {
@@ -275,6 +276,6 @@ function validate (instance, puzzle) {
   // a board whose digits start at 0 would read a leading 0 as no building.
   if (!gateOpen(instance, puzzle)) return true
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
-  return puzzle.getValue(clueA) === visibleCount(puzzle, line) &&
-    puzzle.getValue(clueB) === visibleCount(puzzle, [...line].reverse())
+  return puzzle.getValue(clueA) === visibleCountPermutation(puzzle, line) &&
+    puzzle.getValue(clueB) === visibleCountPermutation(puzzle, [...line].reverse())
 }

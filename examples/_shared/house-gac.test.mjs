@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle, makeRng } from './harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
 import { runBackend } from './backend-runner.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -42,17 +42,12 @@ const CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 19]
 function runOnce (mod, cands, kind = 'fullHouse') {
   const cells = CELLS.slice(0, cands.length)
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
-  const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { kind })
+  const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
   const inst = { name: 'row 1' }
   mod.setParams(inst, cells)
   Array.from(mod.update(inst, p))
   if (p._stopped !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
-}
-
-function shuffle (rnd, a) {
-  for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] }
-  return a
 }
 
 // A house state that still allows the solution `perm`: each cell keeps its
@@ -242,8 +237,8 @@ board(1, 9)
   const aCands = [[1, 2], [4, 5], all, [1, 2], all, all, all, all, all]
   const bCands = [[1], [2], [3], [4], [5], [6], [7], [8], [9]]
   const truth = Object.fromEntries(CELLS.map(c => [c, 0]))
-  const pa = makePuzzle(truth, c => aCands[CELLS.indexOf(c)], { kind: 'fullHouse' })
-  const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { kind: 'fullHouse' })
+  const pa = makePuzzle(truth, c => aCands[CELLS.indexOf(c)], { houses: [CELLS] })
+  const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { houses: [CELLS] })
   const a = { name: 'A' }
   const b = { name: 'B' }
   gac.setParams(a, CELLS)

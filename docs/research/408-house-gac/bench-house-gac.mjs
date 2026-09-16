@@ -42,7 +42,7 @@ const cells = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 function candidatesAfter (component, masks) {
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
   const digits = m => { const out = []; for (let d = 1; d <= 9; d++) if (m >> d & 1) out.push(d); return out }
-  const puzzle = makePuzzle(truth, c => digits(masks[c]), { kind: 'fullHouse' })
+  const puzzle = makePuzzle(truth, c => digits(masks[c]), { houses: [cells] })
   const instance = { name: 'house' }
   component.setParams(instance, cells)
   Array.from(component.update(instance, puzzle))

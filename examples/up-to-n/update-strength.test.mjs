@@ -17,7 +17,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -42,40 +42,32 @@ function upToN (digits, target) {
   return null
 }
 
-let states = 0
-let weaker = 0
 for (const D of [4, 6, 9]) {
   installGlobals(1, D)
   const LINE = Array.from({ length: D }, (_, i) => i)
   for (const kind of ['fullHouse', 'bare']) {
-    let poolStates = 0
-    let poolWeaker = 0
-    for (let rep = 0; rep < REPS; rep++) {
-      const digits = makeLine(rnd, kind, D, D)
-      const target = digits[(rnd() * D) | 0]
-      const clue = upToN(digits, target)
-      const start = new Map()
-      for (const c of LINE) start.set(c, randomCandidates(rnd, 1, D, digits[c]))
-      const apply = (mod, p) => {
+    strengthSweep(`up-to-n ${kind} ${D}`, {
+      cur,
+      ref,
+      apply: (mod, p, { target, clue }) => {
         const inst = {}
         mod.setParams(inst, LINE, target, clue)
         fixpoint(mod, inst, p)
+      },
+      opts: { houses: housesOf(kind, LINE) },
+      * states () {
+        for (let rep = 0; rep < REPS; rep++) {
+          const digits = makeLine(rnd, kind, D, D)
+          const target = digits[(rnd() * D) | 0]
+          const clue = upToN(digits, target)
+          const start = new Map()
+          for (const c of LINE) start.set(c, randomCandidates(rnd, 1, D, digits[c]))
+          yield { start, params: { target, clue } }
+        }
       }
-      const w = compareStrength(cur, ref, apply, start, { kind, digitCount: D })
-      if (w === null) continue
-      poolStates++
-      poolWeaker += w.length
-      if (w.length > 0 && poolWeaker <= 5) console.log(kind, D, 'weaker at', w[0], 'start', [...start])
-    }
-    console.log(`up-to-n ${kind} ${D}:`, poolStates, 'states,', poolWeaker, 'weaker cells')
-    states += poolStates
-    weaker += poolWeaker
+    })
   }
 }
-
-// Every state keeps a real solution, so none may die.
-assert.strictEqual(states, 3 * 2 * REPS, 'a state built around a solution must never die')
-assert.strictEqual(weaker, 0)
 
 // ---- Worked states: the prefix-cell prune (#369) ----
 //
@@ -85,7 +77,7 @@ assert.strictEqual(weaker, 0)
 function settle (target, clue) {
   installGlobals(1, 4)
   const LINE = [0, 1, 2, 3]
-  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4], { kind: 'bare', digitCount: 4 })
+  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4])
   const inst = {}
   cur.setParams(inst, LINE, target, clue)
   fixpoint(cur, inst, p)

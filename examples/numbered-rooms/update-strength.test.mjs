@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { execFileSync } from 'child_process'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadSource } = makeIo(HERE)
@@ -54,7 +54,7 @@ const applyOn = (kind, line) => (mod, p) => {
 // On a bare line they may both hold 2.
 for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
   installGlobals(1, 4)
-  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [2] : [1, 2, 3, 4]), { kind, digitCount: 4 })
+  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [2] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
   const inst = {}
   cur.setParams(inst, CLUE, lineCells(4))
   fixpoint(cur, inst, p)
@@ -66,7 +66,7 @@ for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
 // holds 1, so the clue is 1.
 for (const kind of ['house', 'bare']) {
   installGlobals(1, 4)
-  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [1] : [1, 2, 3, 4]), { kind, digitCount: 4 })
+  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [1] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
   const inst = {}
   cur.setParams(inst, CLUE, lineCells(4))
   fixpoint(cur, inst, p)
@@ -77,7 +77,7 @@ for (const kind of ['house', 'bare']) {
 // every digit past 3 is out of range and leaves the indexer.
 for (const kind of ['house', 'bare']) {
   installGlobals(0, 5)
-  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0 }, () => [0, 1, 2, 3, 4, 5], { kind, digitCount: 5 })
+  const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0 }, () => [0, 1, 2, 3, 4, 5], { houses: housesOf(kind, lineCells(3)) })
   const inst = {}
   cur.setParams(inst, CLUE, lineCells(3))
   fixpoint(cur, inst, p)
@@ -94,34 +94,31 @@ const REPS = 8000
 
 for (const [kind, sizes] of [['bare', [[4, 6], [5, 5], [6, 6]]], ['house', [[4, 6], [5, 6], [3, 5]]]]) {
   const ref = floor(kind)
-  let states = 0
-  let drawn = 0
-  let weaker = 0
   for (const [m, D] of sizes) {
     installGlobals(1, D)
     const line = lineCells(m)
-    const apply = applyOn(kind, line)
-    for (let rep = 0; rep < REPS; rep++) {
-      const digits = makeLine(rnd, kind, m, D)
-      if (digits[0] < 1 || digits[0] > m) {
-        // a draw whose indexer points off the line is no truth; for a house,
-        // moving an in-range digit to the front keeps the digits distinct
-        const i = digits.findIndex(d => d >= 1 && d <= m)
-        if (i < 0) continue
-        ;[digits[0], digits[i]] = [digits[i], digits[0]]
+    strengthSweep(`never-weaker ${kind} m=${m} D=${D}`, {
+      cur,
+      ref,
+      apply: applyOn(kind, line),
+      opts: { houses: housesOf(kind, line) },
+      * states () {
+        for (let rep = 0; rep < REPS; rep++) {
+          const digits = makeLine(rnd, kind, m, D)
+          if (digits[0] < 1 || digits[0] > m) {
+            // a draw whose indexer points off the line is no truth; for a
+            // house, moving an in-range digit to the front keeps the digits
+            // distinct
+            const i = digits.findIndex(d => d >= 1 && d <= m)
+            if (i < 0) continue
+            ;[digits[0], digits[i]] = [digits[i], digits[0]]
+          }
+          const start = new Map([[CLUE, randomCandidates(rnd, 1, D, digits[digits[0] - 1])]])
+          for (let i = 0; i < m; i++) start.set(line[i], randomCandidates(rnd, 1, D, digits[i]))
+          yield start
+        }
       }
-      drawn++
-      const start = new Map([[CLUE, randomCandidates(rnd, 1, D, digits[digits[0] - 1])]])
-      for (let i = 0; i < m; i++) start.set(line[i], randomCandidates(rnd, 1, D, digits[i]))
-      const w = compareStrength(cur, ref, apply, start, { kind, digitCount: D })
-      if (w === null) continue
-      states++
-      weaker += w.length
-      if (w.length > 0 && weaker <= 5) console.log('weaker at', w[0], 'start', [...start])
-    }
+    })
   }
-  console.log(`never-weaker ${kind}:`, states, 'states,', weaker, 'weaker cells')
-  assert.strictEqual(states, drawn, 'a state built around a valid line must never die')
-  assert.strictEqual(weaker, 0)
 }
 console.log('PASS')

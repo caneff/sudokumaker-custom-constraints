@@ -11,8 +11,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import assert from 'assert'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
@@ -40,30 +39,28 @@ const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
 // Both components run over one line per board size. A clue counts cells, so it
 // ranges over 1..m; the line holds digits 1..m.
 function fuzzLine (cur, ref, clues, setUp, label) {
-  let states = 0
-  let weaker = 0
   for (const m of [4, 6, 9]) {
     installGlobals(1, m)
     const LINE = Array.from({ length: m }, (_, i) => i)
-    const apply = (mod, p) => {
-      const inst = {}
-      setUp(mod, inst, clues, LINE)
-      fixpoint(mod, inst, p)
-    }
-    for (let rep = 0; rep < 10000; rep++) {
-      const start = new Map()
-      for (const c of clues) start.set(c, randomSet(1, m))
-      for (const c of LINE) start.set(c, randomSet(1, m))
-      const w = compareStrength(cur, ref, apply, start, { kind: 'house', digitCount: m })
-      if (w === null) continue
-      states++
-      weaker += w.length
-      if (w.length > 0 && weaker <= 5) console.log(label, 'weaker at', w[0], 'start', [...start])
-    }
+    strengthSweep(`running-start ${label} ${m}`, {
+      cur,
+      ref,
+      apply: (mod, p) => {
+        const inst = {}
+        setUp(mod, inst, clues, LINE)
+        fixpoint(mod, inst, p)
+      },
+      opts: { houses: [LINE] },
+      * states () {
+        for (let rep = 0; rep < 10000; rep++) {
+          const start = new Map()
+          for (const c of clues) start.set(c, randomSet(1, m))
+          for (const c of LINE) start.set(c, randomSet(1, m))
+          yield start
+        }
+      }
+    })
   }
-  console.log('running-start ' + label + ':', states, 'states,', weaker, 'weaker cells')
-  assert.ok(states > 10000, 'the dead-state filter must leave most states to compare')
-  assert.strictEqual(weaker, 0)
 }
 
 // The line component reads one clue (the left end); the pair reads both ends.

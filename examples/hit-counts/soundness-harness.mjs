@@ -27,7 +27,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, shuffle, total, fixpoint, violates } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -44,25 +44,18 @@ const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 
 const sideMod = load('SideSumComponent.js', ['setParams', 'update'])
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
 
-// A random candidate seed keeping the true value. `hi` bounds the range: line
-// cells use 1..n, a clue cell uses 0..n (it can be 0).
-function seeder (lo, hi) {
-  return (c, v) => {
-    const mode = [1, 2, 3][(rnd() * 3) | 0]
-    if (mode === 1) return [v] // pinned
-    const s = new Set([v])
-    for (let d = lo; d <= hi; d++) if (rnd() < 0.5) s.add(d) // subset keeping truth
-    return [...s]
-  }
-}
+// A random candidate seed keeping the true value: pinned a third of the time,
+// else a subset keeping truth. `hi` bounds the range: line cells use 1..n, a
+// clue cell uses 0..n (it can be 0).
+const seeder = (lo, hi) => makeSeeder(rnd, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i), ['pin', 'subset', 'subset'])
 
 const A = 100
 const B = 101
 const hits = line => line.reduce((k, x, i) => k + (x === i + 1 ? 1 : 0), 0)
 const rev = a => a.slice().reverse()
 
-// One line-kind fuzz. `kind` is what the mock answers for
-// `getCellsCanHaveRepeats`, declared per case and never inferred from the
+// One line-kind fuzz. `kind` declares the line's houses, which is what the mock
+// answers `getCellsCanHaveRepeats` from, per case and never inferred from the
 // digits. Both clues of the line are true together, which is what the joint
 // component reads.
 function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
@@ -78,15 +71,14 @@ function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
     for (let i = 0; i < line.length; i++) truth[i] = line[i]
     const lineSeed = seeder(lo, hi)
     const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v), { kind, digitCount: 9 })
-    const total = () => [...p._cand.values()].reduce((s, x) => s + x.size, 0)
-    const before = total()
+    const p = makePuzzle(truth, (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
+    const before = total(p)
     const inst = {}
     joint.setParams(inst, A, B, cells)
     Array.from(joint.initialize(inst, p))
     const v = violates(joint, inst, p, truth)
     tests++
-    if (total() < before) fired++
+    if (total(p) < before) fired++
     if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', line.join('')) }
   }
   console.log(`${label}:`, tests, 'tests,', bad, 'violations,', fired, 'states pruned')
@@ -136,7 +128,7 @@ function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
     for (let i = 0; i < line.length; i++) truth[i] = line[i]
     const lineSeed = seeder(lo, hi)
     const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v), { kind, digitCount: 9 })
+    const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
     const inst = {}
     mod.setParams(inst, CLUE, cells)
     const nMinus1 = line.length - 1
@@ -164,55 +156,66 @@ const lineZero = fuzzLine('line, {0..8}    ', { kind: 'fullHouse', lines: zeroLi
 // The line pools above give one line at a time. A real grid gives every line of
 // a board at once, over the three shipped sizes and band/stack shuffles of them,
 // which keep a grid valid while moving every hit.
-const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] } return a }
-
 // Digit relabelling would not be safe here: a hit compares a digit to a
 // position, so relabelling changes the rule, not just the grid.
 function reshuffle (grid, bh, bw) {
   const n = grid.length
   const rowOrder = []
-  for (let b = 0; b < n; b += bh) rowOrder.push(shuffle(Array.from({ length: bh }, (_, k) => b + k)))
+  for (let b = 0; b < n; b += bh) rowOrder.push(shuffle(rnd, Array.from({ length: bh }, (_, k) => b + k)))
   const colOrder = []
-  for (let b = 0; b < n; b += bw) colOrder.push(shuffle(Array.from({ length: bw }, (_, k) => b + k)))
-  const rows = shuffle(rowOrder).flat()
-  const cols = shuffle(colOrder).flat()
+  for (let b = 0; b < n; b += bw) colOrder.push(shuffle(rnd, Array.from({ length: bw }, (_, k) => b + k)))
+  const rows = shuffle(rnd, rowOrder).flat()
+  const cols = shuffle(rnd, colOrder).flat()
   return rows.map(r => cols.map(c => grid[r][c]))
 }
 
+// Every whole-grid state both grid corpora below run on: each shipped size,
+// its committed grid first and then band/stack shuffles of it, every cell
+// seeded with a random candidate superset that keeps its true value, and the
+// grid's rows and columns declared as its houses.
 const ITERS = 4000
+function * gridStates () {
+  for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
+    const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
+    const { n, box: [bh, bw] } = gen
+    const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])
+    const clueCells = new Set(keys.map(k => clueCell(k[0], +k.slice(1))))
+    const houses = [
+      ...Array.from({ length: n }, (_, i) => lineCells('L', i)),
+      ...Array.from({ length: n }, (_, i) => lineCells('T', i))
+    ]
+    for (let iter = 0; iter < ITERS; iter++) {
+      const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
+      const truth = {}
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
+      for (const k of keys) {
+        const side = k[0]; const i = +k.slice(1)
+        truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+      }
+      const lineSeed = seeder(1, n)
+      const clueSeed = seeder(0, n)
+      const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { houses })
+      yield { file, n, truth, p, clueCell, lineCells }
+    }
+  }
+}
+
 let gTests = 0
 let gBad = 0
 let gFired = 0
-for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
-  const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
-  const { n, box: [bh, bw] } = gen
-  const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])
-  const clueCells = new Set(keys.map(k => clueCell(k[0], +k.slice(1))))
-  for (let iter = 0; iter < ITERS; iter++) {
-    const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
-    const truth = {}
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
-    for (const k of keys) {
-      const side = k[0]; const i = +k.slice(1)
-      truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
+  const before = total(p)
+  for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
+    for (let i = 0; i < n; i++) {
+      const inst = {}
+      joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
+      Array.from(joint.initialize(inst, p))
+      const v = violates(joint, inst, p, truth)
+      gTests++
+      if (v) { gBad++; if (gBad <= 5) console.log('JOINT grid violation', file, sa + i, v) }
     }
-    const lineSeed = seeder(1, n)
-    const clueSeed = seeder(0, n)
-    const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { kind: 'fullHouse', digitCount: n })
-    const total = () => [...Object.keys(truth)].reduce((s, c) => s + p.getCandidates(+c).size, 0)
-    const before = total()
-    for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
-      for (let i = 0; i < n; i++) {
-        const inst = {}
-        joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
-        Array.from(joint.initialize(inst, p))
-        const v = violates(joint, inst, p, truth)
-        gTests++
-        if (v) { gBad++; if (gBad <= 5) console.log('JOINT grid violation', file, sa + i, v) }
-      }
-    }
-    if (total() < before) gFired++
   }
+  if (total(p) < before) gFired++
 }
 console.log('joint, whole grids:', gTests, 'tests,', gBad, 'violations,', gFired, 'states pruned')
 
@@ -241,11 +244,11 @@ for (let iter = 0; iter < 20000; iter++) {
     draw.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
   }
   const run = kind => {
-    const p = makePuzzle(truth, c => draw.get(c), { kind, digitCount: n })
+    const p = makePuzzle(truth, c => draw.get(c), { houses: housesOf(kind, cells) })
     const inst = {}
     joint.setParams(inst, A, B, cells)
     const v = violates(joint, inst, p, truth)
-    return { v, left: [...p._cand.values()].reduce((s, x) => s + x.size, 0) }
+    return { v, left: total(p) }
   }
   const asHouse = run('fullHouse')
   const asBare = run('bare')
@@ -279,11 +282,11 @@ for (let iter = 0; iter < 20000; iter++) {
     draw.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
   }
   const run = component => {
-    const p = makePuzzle(truth, c => draw.get(c), { kind: 'fullHouse', digitCount: n })
+    const p = makePuzzle(truth, c => draw.get(c), { houses: [cells] })
     const inst = {}
     component.setParams(inst, A, B, cells)
     const v = violates(component, inst, p, truth)
-    return { v, left: [...p._cand.values()].reduce((s, x) => s + x.size, 0) }
+    return { v, left: total(p) }
   }
   const now = run(joint)
   const before = run(caseSweep)
@@ -301,7 +304,7 @@ console.log('permutation sweep:', permTests, 'tests,', permBad, 'violations,', p
 const R = [0, 1, 2, 3]
 const rTruth = { [A]: 0, [B]: 0, 0: 2, 1: 1, 2: 4, 3: 3 } // a derangement both ways
 function gateProbe (seed) {
-  const p = makePuzzle(rTruth, () => seed.slice(), { kind: 'fullHouse', digitCount: 4 })
+  const p = makePuzzle(rTruth, () => seed.slice(), { houses: [R] })
   const inst = {}
   joint.setParams(inst, A, B, R)
   Array.from(joint.initialize(inst, p))
@@ -336,7 +339,7 @@ console.log('{0..n-1} full house re-test:', wrongSetOk ? 'OK' : `FAIL (held ${he
 // the no-n-1 rule takes that true value out of the parent.
 const LATCH = [0, 1, 2, 3]
 const lTruth = { [A]: 3, [B]: 0, 0: 1, 1: 2, 2: 3, 3: 9 }
-const latchState = fill => makePuzzle(lTruth, c => (c === A || c === B ? [0, 1, 2, 3, 4] : fill), { kind: 'fullHouse', digitCount: 9 })
+const latchState = fill => makePuzzle(lTruth, c => (c === A || c === B ? [0, 1, 2, 3, 4] : fill), { houses: [LATCH] })
 function latchProbe (component, params) {
   const inst = {}
   component.setParams(inst, ...params)
@@ -362,7 +365,7 @@ function validateAt (kind) {
     if (c === A) return [8]
     if (c === B) return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     return line
-  }, { kind, digitCount: 9 })
+  }, { houses: housesOf(kind, [0, 1, 2, 3, 4, 5, 6, 7, 8]) })
   const inst = {}
   joint.setParams(inst, A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
   return joint.validate(inst, p)
@@ -379,36 +382,19 @@ console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 let sTests = 0
 let sBad = 0
 let sFired = 0
-for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
-  const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
-  const { n, box: [bh, bw] } = gen
-  const { interior, clueCell, lineCells, keys } = frameGeometry(n, [bh, bw])
-  const clueCells = new Set(keys.map(k => clueCell(k[0], +k.slice(1))))
-  for (let iter = 0; iter < ITERS; iter++) {
-    const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
-    const truth = {}
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
-    for (const k of keys) {
-      const side = k[0]; const i = +k.slice(1)
-      truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
-    }
-    const lineSeed = seeder(1, n)
-    const clueSeed = seeder(0, n)
-    const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { kind: 'fullHouse', digitCount: n })
-    const total = () => [...Object.keys(truth)].reduce((s, c) => s + p.getCandidates(+c).size, 0)
-    const before = total()
-    for (const side of ['L', 'R', 'T', 'B']) {
-      const clues = []
-      const lines = []
-      for (let i = 0; i < n; i++) { clues.push(clueCell(side, i)); lines.push(lineCells(side, i)) }
-      const inst = {}
-      matchMod.setParams(inst, clues, lines)
-      const v = violates(matchMod, inst, p, truth)
-      sTests++
-      if (v) { sBad++; if (sBad <= 5) console.log('SIDE-MATCH violation', file, side, v) }
-    }
-    if (total() < before) sFired++
+for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
+  const before = total(p)
+  for (const side of ['L', 'R', 'T', 'B']) {
+    const clues = []
+    const lines = []
+    for (let i = 0; i < n; i++) { clues.push(clueCell(side, i)); lines.push(lineCells(side, i)) }
+    const inst = {}
+    matchMod.setParams(inst, clues, lines)
+    const v = violates(matchMod, inst, p, truth)
+    sTests++
+    if (v) { sBad++; if (sBad <= 5) console.log('SIDE-MATCH violation', file, side, v) }
   }
+  if (total(p) < before) sFired++
 }
 console.log('side hit matching, whole grids:', sTests, 'tests,', sBad, 'violations,', sFired, 'states pruned')
 
@@ -446,12 +432,14 @@ const GRID_CANDS = [
 // too, and every line hits exactly once. So the truth really does complete this
 // state, which is what makes a lost candidate a violation.
 const GRID_TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
+// The side's lines and the positions across them: every one a house.
+const GRID_HOUSES = [...GRID_LINES, ...[0, 1, 2, 3].map(c => GRID_LINES.map(line => line[c]))]
 function sideGateProbe (withZero) {
   const truth = {}
   for (const c of GRID_CLUES) truth[c] = 1
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
   const p = makePuzzle(truth, c => (c >= 400 ? [1] : GRID_CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
-    { kind: 'fullHouse', digitCount: 4 })
+    { houses: GRID_HOUSES })
   const inst = {}
   matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
   return { p, inst, v: violates(matchMod, inst, p, truth) }
@@ -481,7 +469,7 @@ function sideValidate (clueVals, openCell) {
   const truth = {}
   GRID_CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
-  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { kind: 'fullHouse', digitCount: 4 })
+  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: GRID_HOUSES })
   const inst = {}
   matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
   return matchMod.validate(inst, p)
@@ -520,13 +508,12 @@ function fuzzSide (label, { kind, sums, iters }) {
     for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
     for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
     const clueSeed = seeder(0, 9)
-    const p = makePuzzle(truth, (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)), { kind, digitCount: 9 })
-    const before = [...p._cand.values()].reduce((s, x) => s + x.size, 0)
+    const p = makePuzzle(truth, (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)), { houses: kind === 'bare' ? [] : PERP })
+    const before = total(p)
     const inst = {}
     sideMod.setParams(inst, SIDE, N, PERP)
     const v = violates(sideMod, inst, p, truth)
-    const after = [...p._cand.values()].reduce((s, x) => s + x.size, 0)
-    if (after < before) fired++
+    if (total(p) < before) fired++
     tests++
     if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'vals', vals.join('')) }
   }
@@ -554,7 +541,7 @@ function sideSumState (vals, fill, clueSeed) {
   const truth = {}
   for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
   for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
-  return { truth, p: makePuzzle(truth, (c, v) => (c >= 1000 ? fill(v) : clueSeed(c, v)), { kind: 'fullHouse', digitCount: 9 }) }
+  return { truth, p: makePuzzle(truth, (c, v) => (c >= 1000 ? fill(v) : clueSeed(c, v)), { houses: PERP }) }
 }
 const deepSide = sideSumState(composition(), v => [v], (c, v) => [v]) // perpendiculars pinned to 1..9: the gate opens
 Array.from(sideMod.update(sideLatchInst, deepSide.p))

@@ -16,11 +16,11 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
@@ -55,14 +55,7 @@ function silentSeeder (d) {
 }
 
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (c, v) {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return ALL
-  const s = new Set([v])
-  for (const d of ALL) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
+const seeder = makeSeeder(rnd, ALL)
 
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
@@ -285,15 +278,9 @@ const ALL9 = Array.from({ length: N9 }, (_, d) => d + 1)
 const rows9 = {}
 for (const c of CELLS9) rows9[c] = Math.floor(c / N9) + 1
 let bad9 = 0
+const seeder9 = makeSeeder(rnd, ALL9)
 for (let iter = 0; iter < FUZZ; iter++) {
-  const p = makePuzzle(rows9, (c, v) => {
-    const mode = pick(['pin', 'full', 'subset'])
-    if (mode === 'pin') return [v]
-    if (mode === 'full') return ALL9
-    const s = new Set([v])
-    for (const d of ALL9) if (rnd() < 0.5) s.add(d)
-    return [...s]
-  })
+  const p = makePuzzle(rows9, seeder9)
   const inst = {}
   mod.setParams(inst, CELLS9)
   const v = violates(mod, inst, p, rows9)

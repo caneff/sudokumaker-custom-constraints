@@ -16,11 +16,11 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { rnd } = makeRng()
 
 const mod = load('FillominoComponent.js', ['setParams', 'update', 'validate'])
 
@@ -35,18 +35,6 @@ const gridOf = rows => {
 const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
 // varied — a second valid solution: many 1s, 2s and 3s and one 4-region.
 const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
-
-// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (ALL) {
-  return (c, v) => {
-    const mode = pick(['pin', 'full', 'subset'])
-    if (mode === 'pin') return [v]
-    if (mode === 'full') return ALL
-    const s = new Set([v])
-    for (const d of ALL) if (rnd() < 0.5) s.add(d)
-    return [...s]
-  }
-}
 
 function run (truth, seed, CELLS) {
   const p = makePuzzle(truth, seed)
@@ -72,7 +60,8 @@ for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
   installGlobals(1, n)
   const CELLS = Array.from({ length: n * n }, (_, i) => i)
   const ALL = Array.from({ length: n }, (_, d) => d + 1)
-  const seed = seeder(ALL)
+  // pinned, full, or a subset that keeps true
+  const seed = makeSeeder(rnd, ALL)
   let fails = 0
   for (let iter = 0; iter < FUZZ; iter++) {
     const { v } = run(truth, seed, CELLS)

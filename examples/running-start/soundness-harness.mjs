@@ -19,25 +19,20 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import {
+  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, total, violates, fixpoint
+} from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { read, load, loadSource } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { read, load } = makeIo(HERE)
+const { rnd } = makeRng()
 
 const N = 9
 installGlobals(1, N)
 
-// The components as they would read with the constant set either way. The app
-// pastes each file as its own segment, so a flag is a source edit, not a
-// parameter: the harness makes the same edit.
-const TIES_FLAG = /^const ALLOW_TIES = (?:true|false)$/m
-function loader (file, names) {
-  const src = read(file)
-  if (!TIES_FLAG.test(src)) throw new Error(`${file} has no 'const ALLOW_TIES = ...' line to flip`)
-  return allowTies => loadSource(src.replace(TIES_FLAG, `const ALLOW_TIES = ${allowTies}`), names)
-}
-const loadLine = loader('RunningStartComponent.js', ['setParams', 'update', 'validate'])
+// The line component as it would read with the constant set either way.
+const loadLine = allowTies => load('RunningStartComponent.js', ['setParams', 'update', 'validate'],
+  src => patchSource(src, TIES_FLAG, `const ALLOW_TIES = ${allowTies}`))
 // The pair carries no flag of its own -- it only prunes on a house, where the
 // two readings coincide -- so it loads once, and every pair pool below runs it
 // against truth clues derived under both readings all the same.
@@ -57,16 +52,7 @@ function runWith (allowTies, vals) {
 }
 
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (c, v) {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return [...Array(N).keys()].map(i => i + 1)
-  const s = new Set([v])
-  for (let d = 1; d <= N; d++) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
-
-const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
+const seeder = makeSeeder(rnd, [...Array(N).keys()].map(i => i + 1))
 
 // A bare line that ties right after its ascending run: an ascending run, the
 // last digit again, then random filler. This is the state the two descent
@@ -94,7 +80,7 @@ function fuzzLine (label, { allowTies, kind, n, iters, digitsOf }) {
     const digits = digitsOf ? digitsOf(n) : makeLine(rnd, kind, n, N)
     const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
     for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { kind, digitCount: N })
+    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, cells) })
     const inst = {}
     mod.setParams(inst, LINE_CLUE, cells)
     const before = total(p)
@@ -137,7 +123,7 @@ for (const allowTies of [false, true]) {
     const [clue, line] = sol.groups[iter % sol.groups.length]
     const truth = {}
     for (const c of [clue, ...line]) truth[c] = sol.val[c]
-    const p = makePuzzle(truth, seeder, { kind: 'fullHouse', digitCount: N })
+    const p = makePuzzle(truth, seeder, { houses: [line] })
     const inst = {}
     mod.setParams(inst, clue, line)
     const v = violates(mod, inst, p, truth)
@@ -168,12 +154,12 @@ for (const allowTies of [false, true]) {
     const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
     for (let i = 0; i < n; i++) truth[i] = digits[i]
     const openClue = [...Array(N).keys()].map(i => i + 1)
-    const p = makePuzzle(truth, (c, v) => (c === LINE_CLUE ? openClue : [v]), { kind: 'bare', digitCount: N })
+    const p = makePuzzle(truth, (c, v) => (c === LINE_CLUE ? openClue : [v]))
     fixpoint(mod, inst, p)
     const kept = [...p._cand.get(LINE_CLUE)]
     const accepted = openClue.filter(k => {
       const filled = { ...truth, [LINE_CLUE]: k }
-      return mod.validate(inst, makePuzzle(filled, (c, v) => [v], { kind: 'bare', digitCount: N }))
+      return mod.validate(inst, makePuzzle(filled, (c, v) => [v]))
     })
     agreeRuns++
     if (kept.length !== accepted.length || accepted.some(k => !kept.includes(k))) {
@@ -210,7 +196,7 @@ function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
     const line = digits.map((_, i) => i)
     const truth = { [CA]: runWith(allowTies, digits), [CB]: runWith(allowTies, [...digits].reverse()) }
     for (let i = 0; i < digits.length; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { kind, digitCount: N })
+    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, line) })
     const inst = {}
     mod.setParams(inst, CA, CB, line)
     if (Math.min(...p.getCandidates(CA)) + Math.min(...p.getCandidates(CB)) === line.length + 1) unimodal++

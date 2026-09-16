@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeRng, makePuzzle, fixpoint, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
 import { loadComponent } from './cut-profile.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -32,26 +32,15 @@ const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const SKIP = '  if (skip[x]) return false // the filter cleared this cell: no cut\n'
 const WALKED = '  let cut = reach(instance, placed, depth, allowed, size).size < size\n'
 
-function anchor (src, name, line) {
-  const at = src.indexOf(line)
-  if (at < 0) throw new Error(`cut-filter: ${name} anchor not found in IsofillComponent.js`)
-  if (src.indexOf(line, at + 1) >= 0) throw new Error(`cut-filter: ${name} anchor is not unique`)
-  return at
-}
-
 // Drop the filter's verdict: every open cell falls through to the re-walks.
 function unfiltered (src) {
-  anchor(src, 'SKIP', SKIP)
-  return src.replace(SKIP, '')
+  return patchSource(src, SKIP, '')
 }
 
 // Count the cells the filter clears and the cells it leaves to the re-walk.
 function counted (src) {
-  anchor(src, 'SKIP', SKIP)
-  anchor(src, 'WALKED', WALKED)
-  return src
-    .replace(SKIP, '  globalThis.__skipped += skip[x] ? 1 : 0\n' + SKIP)
-    .replace(WALKED, '  globalThis.__walked++\n' + WALKED)
+  src = patchSource(src, SKIP, '  globalThis.__skipped += skip[x] ? 1 : 0\n' + SKIP)
+  return patchSource(src, WALKED, '  globalThis.__walked++\n' + WALKED)
 }
 
 installGlobals(0, 9)

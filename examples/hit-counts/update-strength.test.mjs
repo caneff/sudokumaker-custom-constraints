@@ -18,7 +18,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, strengthSweep, total } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
@@ -39,12 +39,19 @@ const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
 // is { mod, inst }; a pass drains every update, and the loop stops when a whole
 // pass removes nothing.
 function jointFixpoint (comps, p) {
-  const total = () => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
   for (let pass = 0; pass < 20; pass++) {
-    const before = total()
+    const before = total(p)
     for (const { mod, inst } of comps) Array.from(mod.update(inst, p))
-    if (total() === before) break
+    if (total(p) === before) break
   }
+}
+
+// A deterministic case's state: `start` (cell -> candidate array) as a mock
+// puzzle declaring `houses`.
+function stateOf (start, houses) {
+  const cells = {}
+  for (const c of start.keys()) cells[c] = 0
+  return makePuzzle(cells, c => start.get(c), { houses })
 }
 
 // ---- 1. HitCountsJointComponent against the per-line + pair floor ----
@@ -83,28 +90,26 @@ function jointFixpoint (comps, p) {
   // 1..m once each (docs/line-contract.md). That is the state to compare on, so
   // each line cell keeps one digit of a random permutation: the seed declares
   // the full house and every digit 1..m stays live somewhere on the line.
-  let states = 0
-  let weaker = 0
   for (const m of [4, 6, 9]) {
     installGlobals(0, m)
     const LINE = Array.from({ length: m }, (_, i) => 10 + i)
-    const apply = (mod, p) => mod.run(p)
-    for (let rep = 0; rep < 10000; rep++) {
-      const perm = makeLine(rnd, 'fullHouse', m, m)
-      const start = new Map()
-      start.set(PA, randomSet(0, m))
-      start.set(PB, randomSet(0, m))
-      LINE.forEach((c, j) => start.set(c, randomCandidates(rnd, 1, m, perm[j])))
-      const w = compareStrength(candidate(LINE), floor(LINE), apply, start, { kind: 'fullHouse', digitCount: m })
-      if (w === null) continue
-      states++
-      weaker += w.length
-      if (w.length > 0 && weaker <= 5) console.log('joint weaker at', w[0], 'start', [...start])
-    }
+    strengthSweep(`hit-counts joint ${m}`, {
+      cur: candidate(LINE),
+      ref: floor(LINE),
+      apply: (mod, p) => mod.run(p),
+      opts: { houses: [LINE] },
+      * states () {
+        for (let rep = 0; rep < 10000; rep++) {
+          const perm = makeLine(rnd, 'fullHouse', m, m)
+          const start = new Map()
+          start.set(PA, randomSet(0, m))
+          start.set(PB, randomSet(0, m))
+          LINE.forEach((c, j) => start.set(c, randomCandidates(rnd, 1, m, perm[j])))
+          yield start
+        }
+      }
+    })
   }
-  console.log('hit-counts joint:', states, 'states,', weaker, 'weaker cells')
-  assert.ok(states > 10000, 'the dead-state filter must leave most states to compare')
-  assert.strictEqual(weaker, 0)
 }
 
 // ---- 2. HitCountsComponent: one clue over a nine-cell line ----
@@ -127,7 +132,6 @@ function jointFixpoint (comps, p) {
   // prove is a full house of {1..9} (docs/line-contract.md). That is the state
   // to compare on, so the seed declares the full house and every digit 1..9 is
   // left live somewhere on the line.
-  const OPTS = { kind: 'fullHouse', digitCount: 9 }
   const coverLine = start => {
     const live = new Set()
     for (const c of LINE) for (const d of start.get(c)) live.add(d)
@@ -137,22 +141,21 @@ function jointFixpoint (comps, p) {
       start.set(c, [...new Set([...start.get(c), d])])
     }
   }
-  let states = 0
-  let weaker = 0
-  for (let rep = 0; rep < 20000; rep++) {
-    const start = new Map()
-    start.set(CLUE, randomSet(0, 9))
-    for (const c of LINE) start.set(c, randomSet(1, 9))
-    coverLine(start)
-    const w = compareStrength(cur, ref, apply, start, OPTS)
-    if (w === null) continue
-    states++
-    weaker += w.length
-    if (w.length > 0 && weaker <= 5) console.log('line weaker at', w[0], 'start', [...start])
-  }
-  console.log('hit-counts line:', states, 'states,', weaker, 'weaker cells')
-  assert.ok(states > 10000, 'the dead-state filter must leave most states to compare')
-  assert.strictEqual(weaker, 0)
+  strengthSweep('hit-counts line', {
+    cur,
+    ref,
+    apply,
+    opts: { houses: [LINE] },
+    * states () {
+      for (let rep = 0; rep < 20000; rep++) {
+        const start = new Map()
+        start.set(CLUE, randomSet(0, 9))
+        for (const c of LINE) start.set(c, randomSet(1, 9))
+        coverLine(start)
+        yield start
+      }
+    }
+  })
 }
 
 // ---- 3. The mirrored-pair exclusion, deterministic ----
@@ -186,11 +189,7 @@ function jointFixpoint (comps, p) {
     [CA, [1]], [CB, [1]],
     [20, [0, 1, 2, 4]], [21, [2, 4]], [22, [1, 3]], [23, [1, 2, 4]]
   ])
-  const state = () => {
-    const cells = {}
-    for (const c of start.keys()) cells[c] = 0
-    return makePuzzle(cells, c => start.get(c), { kind: 'fullHouse', digitCount: 4 })
-  }
+  const state = () => stateOf(start, [LINE])
 
   const pj = state()
   const ij = {}
@@ -251,11 +250,8 @@ function jointFixpoint (comps, p) {
   const start = new Map()
   for (const c of CLUES) start.set(c, [1])
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) start.set(cell(r, c), CANDS[r][c])
-  const state = () => {
-    const cells = {}
-    for (const c of start.keys()) cells[c] = 0
-    return makePuzzle(cells, c => start.get(c), { kind: 'fullHouse', digitCount: 4 })
-  }
+  // every line and every position across the lines is a house
+  const state = () => stateOf(start, [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(line => line[c]))])
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
 
   const ps = state()
@@ -317,9 +313,7 @@ function jointFixpoint (comps, p) {
     [30, [1, 4]], [31, [2, 4]], [32, [3, 4]], [33, [1, 2, 3, 4]]
   ])
   const run = mod => {
-    const cells = {}
-    for (const c of start.keys()) cells[c] = 0
-    const p = makePuzzle(cells, c => start.get(c), { kind: 'fullHouse', digitCount: 4 })
+    const p = stateOf(start, [LINE])
     const inst = {}
     mod.setParams(inst, CA, CB, LINE)
     fixpoint(mod, inst, p)
@@ -348,30 +342,28 @@ function jointFixpoint (comps, p) {
   // {1..N} (docs/line-contract.md), so the comparison hands it N such lines:
   // a Latin square, every cell pinned to its own digit.
   const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
-  const OPTS = { kind: 'fullHouse', digitCount: N }
   installGlobals(0, 9)
   const apply = (mod, p) => {
     const inst = {}
     mod.setParams(inst, SIDE, N, PERP)
     fixpoint(mod, inst, p)
   }
-  let states = 0
-  let weaker = 0
-  for (let rep = 0; rep < 20000; rep++) {
-    const start = new Map()
-    // Nine clues that must sum to nine: seeding from 0..9 leaves almost every
-    // state dead, so the side test draws small clue values.
-    for (const c of SIDE) start.set(c, randomSet(0, 3))
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) start.set(PERP[i][j], [((i + j) % N) + 1])
-    const w = compareStrength(cur, ref, apply, start, OPTS)
-    if (w === null) continue
-    states++
-    weaker += w.length
-    if (w.length > 0 && weaker <= 5) console.log('side-sum weaker at', w[0], 'start', [...start])
-  }
-  console.log('hit-counts side-sum:', states, 'states,', weaker, 'weaker cells')
-  assert.ok(states > 5000, 'the dead-state filter must leave most states to compare')
-  assert.strictEqual(weaker, 0)
+  strengthSweep('hit-counts side-sum', {
+    cur,
+    ref,
+    apply,
+    opts: { houses: PERP },
+    * states () {
+      for (let rep = 0; rep < 20000; rep++) {
+        const start = new Map()
+        // Nine clues that must sum to nine: seeding from 0..9 leaves almost
+        // every state dead, so the side test draws small clue values.
+        for (const c of SIDE) start.set(c, randomSet(0, 3))
+        for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) start.set(PERP[i][j], [((i + j) % N) + 1])
+        yield start
+      }
+    }
+  })
 }
 
 // ---- A stopped sweep leaves no memo ----
@@ -386,7 +378,7 @@ function jointFixpoint (comps, p) {
   // A bare line of two cells, both {1,2}, with both clues pinned to 2. Two hits
   // at each end at once is impossible, so the case sweep stops.
   const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
-  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { kind: 'bare' })
+  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c])
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
@@ -405,7 +397,7 @@ function jointFixpoint (comps, p) {
   // (2,0) or (0,2). Both clues pinned to 2 asks for (2,2), which no ordering
   // reaches.
   const cand = { 0: [2], 1: [2], 2: [1, 2], 3: [1, 2] }
-  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { kind: 'house' })
+  const p = makePuzzle({ 0: 2, 1: 2, 2: 1, 3: 2 }, c => cand[c], { houses: [[2, 3]] })
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
