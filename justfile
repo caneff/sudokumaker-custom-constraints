@@ -68,6 +68,7 @@ test:
     node examples/_shared/include.test.mjs
     node examples/_shared/frame-geometry.test.mjs
     node examples/_shared/frame-lines.test.mjs
+    node examples/_shared/line-kind.test.mjs
     node examples/_shared/global-backends.test.mjs
     node examples/_shared/bundle-index.test.mjs
     uv run examples/_shared/minify.test.py

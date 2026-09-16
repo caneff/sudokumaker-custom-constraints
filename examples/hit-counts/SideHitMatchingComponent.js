@@ -44,20 +44,18 @@ function setParams (instance, clues, lines) {
     : lines[0].map((_, i) => lines.map(line => line[i]))
 }
 
-// Half the gate: n clues, n lines of n cells, and every position a house. The
-// house test is asked at solve time, because main code runs before the built-in
-// row/column houses are registered (gotcha 6), and it is cached once it turns
-// true -- cells that see each other go on seeing each other. The size bound is
-// the reachability search below, which holds one bitmask of 2n + 1 nodes in a
+// Half the gate: n clues, n lines of n cells, and every position a house
+// (lineKind, which latches each position once it is one). The size bound is the
+// reachability search below, which holds one bitmask of 2n + 1 nodes in a
 // 31-bit integer.
-function housesKnown (instance, puzzle) {
-  if (instance.housesKnown) return true
+// #include ../_shared/line-kind.js
+
+function positionsAreHouses (instance, puzzle) {
   const { clues, lines, positions } = instance
   const n = lines.length
   if (n < 1 || n > 15 || clues.length !== n) return false
   for (const line of lines) if (line.length !== n) return false
-  for (const at of positions) if (puzzle.getCellsCanHaveRepeats(at)) return false
-  instance.housesKnown = true
+  for (const at of positions) if (lineKind(instance, puzzle, at).kind === BARE) return false
   return true
 }
 
@@ -250,7 +248,7 @@ function readSide (puzzle, instance) {
 }
 
 function * update (instance, puzzle) {
-  if (!housesKnown(instance, puzzle)) return
+  if (!positionsAreHouses(instance, puzzle)) return
   const { clues, lines } = instance
   const read = readSide(puzzle, instance)
   if (read === null || read.sig === instance.sig) return

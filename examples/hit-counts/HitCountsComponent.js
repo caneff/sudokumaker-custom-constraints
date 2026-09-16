@@ -15,45 +15,10 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Line kinds, ordered (docs/line-contract.md): a rule that needs one kind also
-// holds on every kind above it. The count bounds below are sound on a bare
-// line; the no-n-1 rule needs a full house whose digit set is {1..n}.
-const BARE = 0
-const HOUSE = 1
-const FULL_HOUSE = 2
-
-// The line's kind, asked at solve time and re-tested until it settles. Two
-// reasons it cannot be asked once: main code runs before the built-in
-// row/column houses are registered and would read every line as bare (gotcha
-// 6), and a hit-counts board runs minDigit 0 for its clue ring with a cage that
-// takes 0 off the inner grid during solving, so the line's digit set only
-// settles after the first update. Query the line alone -- a ring cell in the
-// list flips getCellsCanHaveRepeats to true.
-// `instance.oneToN` rides along: the union of the line's live candidates is
-// exactly {1..n}, the extra fact the no-n-1 rule needs. Both are read fresh
-// every call and neither is cached. The app shares one component object across
-// every search node, so a fact latched deep in a branch survives the backtrack
-// to a parent state where the union has regained digits -- and the no-n-1 rule
-// then fires on a line that is not a permutation of 1..n (#336).
-function lineKind (instance, puzzle) {
-  const line = instance.line
-  instance.oneToN = false
-  if (!instance.noRepeats) {
-    if (puzzle.getCellsCanHaveRepeats(line)) { instance.kind = BARE; return BARE }
-    instance.noRepeats = true // structural: a house is registered once and a backtrack cannot un-register it
-  }
-  let mask = 0
-  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-  let live = 0
-  for (let m = mask; m; m &= m - 1) live++
-  instance.oneToN = mask === (1 << (line.length + 1)) - 2 // bits 1..n set, bit 0 clear
-  instance.kind = live === line.length ? FULL_HOUSE : HOUSE
-  return instance.kind
-}
-
-function fullHouseOfOneToN (instance, puzzle) {
-  return lineKind(instance, puzzle) === FULL_HOUSE && instance.oneToN
-}
+// The line's kind: lineKind(instance, puzzle, cells). The count bounds below
+// are sound on a bare line; the no-n-1 rule needs a full house whose digit set
+// is {1..n}, which is lineKind's `oneToN`.
+// #include ../_shared/line-kind.js
 
 function hitCount (puzzle, line) {
   let count = 0
@@ -87,7 +52,7 @@ function scan (puzzle, line) {
 // flows through to the side-sum and pair via the shared cell.
 function * noNMinusOne (instance, puzzle) {
   const n = instance.line.length
-  if (n < 2 || !fullHouseOfOneToN(instance, puzzle)) return
+  if (n < 2 || !lineKind(instance, puzzle, instance.line).oneToN) return
   if (Array.from(puzzle.getCandidates(instance.clue)).includes(n - 1)) {
     yield puzzle.removeCandidateFromCell(n - 1, instance.clue)
   }
@@ -133,7 +98,7 @@ function * initialize (instance, puzzle) {
 function validate (instance, puzzle) {
   const { clue, line } = instance
   if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1 &&
-      line.length >= 2 && fullHouseOfOneToN(instance, puzzle)) return false
+      line.length >= 2 && lineKind(instance, puzzle, line).oneToN) return false
   if (!puzzle.getCellsAreFilled([clue, ...line])) return true
   return puzzle.getValue(clue) === hitCount(puzzle, line)
 }

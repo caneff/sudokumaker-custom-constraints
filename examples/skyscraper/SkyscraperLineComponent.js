@@ -210,24 +210,13 @@ function prune (puzzle, line, Lc, Rc, peak) {
 // The answer is never cached: the app shares one component object across every
 // search node, so a gate latched open deep in a branch stays open after the
 // backtrack to a parent state whose line has regained the digits that shut it
-// (#336). Re-asking costs one pass over the line's masks.
-function gateOpen (instance, puzzle) {
-  const line = instance.line
-  // The repeats answer is structural -- a house is registered once and a
-  // backtrack cannot un-register it -- so it alone is cached.
-  if (!instance.noRepeats) {
-    if (puzzle.getCellsCanHaveRepeats(line)) return false
-    instance.noRepeats = true
-  }
-  let mask = 0
-  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-  return mask === (1 << (line.length + 1)) - 2 // bits 1..length set, bit 0 clear
-}
+// (#336). lineKind's `oneToN` is that test.
+// #include ../_shared/line-kind.js
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
   const peak = line.length // the gate proves the line holds 1..length once each
-  if (peak > MAXN || !gateOpen(instance, puzzle)) return
+  if (peak > MAXN || !lineKind(instance, puzzle, line).oneToN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
@@ -258,7 +247,7 @@ function * update (instance, puzzle) {
   }
 }
 
-// Visible buildings reading `cells` in order, on a line `gateOpen` has proved a
+// Visible buildings reading `cells` in order, on a line the gate has proved a
 // permutation of 1..n: count the running maxima, no tie possible.
 function visibleCountPermutation (puzzle, cells) {
   let count = 0
@@ -274,7 +263,7 @@ function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
   // Judge only a line `update` gates in: the running max below starts at 0, so
   // a board whose digits start at 0 would read a leading 0 as no building.
-  if (!gateOpen(instance, puzzle)) return true
+  if (!lineKind(instance, puzzle, line).oneToN) return true
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   return puzzle.getValue(clueA) === visibleCountPermutation(puzzle, line) &&
     puzzle.getValue(clueB) === visibleCountPermutation(puzzle, [...line].reverse())

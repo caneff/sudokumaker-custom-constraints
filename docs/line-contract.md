@@ -35,6 +35,12 @@ have drawn one end and not the other, is where a lone clue is handled.
 
 ## How a component gates
 
+Every outside-clue component asks through one snippet,
+`examples/_shared/line-kind.js`, spliced in by `// #include
+../_shared/line-kind.js`: `lineKind(instance, puzzle, cells)` returns
+`{ kind, oneToN }` and follows every rule below. Change the rule there, not in
+a component.
+
 - **Ask in `update`, never in main code.** `getCellsCanHaveRepeats` walks the
   exclusion groups registered so far; main code runs at register time and can
   miss the built-in houses, `update` runs at solve time and sees them all
