@@ -20,6 +20,11 @@ drivers that launch a hunt overnight stay under `docs/research/` (#469).
 
 ## Pointers
 
-- Before writing a new finder — what to search, when cuts beat a counter,
-  profiling the loop, the `ctypes` C port, counting what you found:
-  `docs/agents/grid-finder-lessons.md`.
+- **Before starting a hunt, answer the preflight** at the top of
+  `docs/agents/grid-finder-lessons.md` in writing, and keep a decision log as
+  the hunt runs. Six lessons in that file were re-derived the expensive way by
+  a later hunt that never read it; the preflight is what closes that loop.
+  The doc also covers what to search, when cuts beat a counter, reading solver
+  status honestly, profiling the loop, the `ctypes` C port and counting what
+  you found. A worked log:
+  `docs/research/2026-09-16-ghosts-connected-decision-log.md`.

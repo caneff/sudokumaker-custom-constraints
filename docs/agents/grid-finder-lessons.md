@@ -5,6 +5,41 @@ hunt (2026-09-15), which went from one example in 25 minutes to 234 verified
 examples in 20 minutes on 8 cores. The run log, with the approaches that
 failed and their numbers, is `docs/research/2026-09-15-ghosts-all-visible.md`.
 
+## Preflight — answer these in writing before spending compute
+
+This list exists because the lessons below were already written when a later
+hunt re-derived six of them the hard way
+(`docs/research/2026-09-16-ghosts-connected-decision-log.md`). Knowing them is
+not the problem; consulting them is. Answer these before the first long run,
+and keep a decision log as that one does — what was decided, what it rested on,
+what it cost.
+
+1. **What are the known bounds of the base puzzle, and does your variant still
+   obey them?** A theorem costs nothing where it applies, and misleads where it
+   does not. The 17-givens minimum (McGuire, Tugemann & Civario 2012) is a
+   result about a board carrying **digit givens and nothing else**. Any extra
+   clue type — a renban, a whisper, a ghost the solver must still locate —
+   carries information the theorem does not count, and such puzzles are unique
+   with far fewer givens. That is the normal case in this repo, so the bound
+   usually does *not* apply.
+   It applied to the connected Ghosts hunt only because of a reduction proved
+   first: with every ghost visible the ghost rule is redundant (all solutions
+   agree on the ghost cells, so the rule has the same truth value in each), and
+   the board really is a plain sudoku whose givens are the ghost digits. State
+   the reduction before borrowing the bound.
+2. **What produced any corpus you are about to reason from, and with what
+   flags?** A corpus inherits its generator's parameters. A distribution bound
+   read off a catalogue whose generator had `--min-ghosts 26` is that flag, not
+   a fact.
+3. **Does your sampler cover the space or one orbit of it?** A sampler built
+   from the puzzle's own symmetry group produces isomorphic outputs that look
+   different. Check by isomorphism, not by eye.
+4. **Which lesson below does this plan contradict?** Name it and say why this
+   case differs. "More givens should help uniqueness" is already falsified.
+5. **What would make your result an artefact, and what control rules that
+   out?** Then check the control actually changes the model — a control that
+   cannot turn the constraint off is not a control.
+
 ## Model
 
 - **Search the smallest object that determines the puzzle.** In Ghosts every
@@ -23,6 +58,11 @@ failed and their numbers, is `docs/research/2026-09-15-ghosts-all-visible.md`.
   as givens are added, which argued for maximising the clue count. One 5-minute
   measurement killed it: the densest shape (35 ghosts, proven bound 39) still
   had 8 solutions.
+- **Feasibility beats minimality when two lessons conflict.** Searching the
+  smallest determining object is right only while every candidate it produces
+  can actually be realised. Shape-only search for connected Ghosts returned
+  admissible shapes that no grid completes — 0 solutions — because the shape
+  model could not see solvability. An unsolvable candidate is not a candidate.
 - **Seed local search from a joint feasibility model.** A random shape is
   almost always unsolvable; a CP-SAT model holding grid and shape together
   makes every start solvable, at a few seconds each.
@@ -45,6 +85,26 @@ failed and their numbers, is `docs/research/2026-09-15-ghosts-all-visible.md`.
   `gcc` (`finders/ghosts/ghosts_fast.c`, loaded by `fastclimb.py`).
 - **Pair it with a parity test.** Check the C against the Python on thousands
   of random inputs before trusting a result, as with the soundness harness.
+
+## Reading the solver
+
+- **`OPTIMAL` is a claim about your model, not about the puzzle.** A bound that
+  will constrain future search earns a second encoding that shares nothing with
+  the first — different variable shape, different constraint form, different
+  auxiliary structure. The Ghosts 26-ghost ceiling was re-proved that way
+  (`finders/ghosts/recheck_ceiling.py`, `--exactly 27` INFEASIBLE).
+- **`UNKNOWN` is a timeout, never a proof.** Only `INFEASIBLE` proves a band
+  empty. Never let a timeout print as exhaustion, and never let one count as
+  "this clue can be dropped" — `minimal.py` and `zombo_brainanas_cpsat.py`
+  both keep the clue on a timeout.
+- **Check a geometric encoding against a direct implementation.** Flow
+  connectivity and spanning-tree connectivity were each checked against flood
+  fill on hundreds of random shapes (300/300, 200/200) before any ceiling drawn
+  from them was believed.
+- **Connectivity: prefer an encoding to lazy cuts.** A flood-fill cut kills one
+  component layout and the solver finds another — 2073 cuts in 120s with no
+  connected shape, against 77s for single-commodity flow. Size the flow domains
+  to the real maximum, not to the cell count.
 
 ## Counting what you found
 

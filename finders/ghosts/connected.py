@@ -42,6 +42,43 @@ def boundary(comp):
     return {j for i in comp for j in ORTH[i] if j not in cells}
 
 
+def add_flow_connectivity(m, g):
+    """Exact connectivity: one root ghost supplies one unit of flow to each other.
+
+    Lazy cuts lose badly here -- each cut kills one component layout and the
+    solver finds another, 2073 cuts in 120s without ever landing a connected
+    shape. Flow pays for itself: it is one encoding, solved once.
+    """
+    root = [m.new_bool_var(f"r{i}") for i in range(81)]
+    m.add_exactly_one(root)
+    arcs = {}
+    for i in range(81):
+        m.add_implication(root[i], g[i])
+        for j in ORTH[i]:
+            f = m.new_int_var(0, 81, f"f{i}_{j}")
+            m.add(f <= 81 * g[i])
+            m.add(f <= 81 * g[j])
+            arcs[i, j] = f
+    for i in range(81):
+        supply = m.new_int_var(0, 81, f"s{i}")
+        m.add(supply <= 81 * root[i])
+        into = sum(arcs[j, i] for j in ORTH[i])
+        out = sum(arcs[i, j] for j in ORTH[i])
+        m.add(into + supply == out + g[i])
+
+
+def solve_flow(m, g, seconds, workers, log):
+    """Solve a model that already carries flow connectivity. Returns (shape, 0)."""
+    s = cp_model.CpSolver()
+    s.parameters.num_workers = workers
+    s.parameters.max_time_in_seconds = seconds
+    st = s.solve(m)
+    if st not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        log(f"{s.status_name(st)} (flow)")
+        return None, 0
+    return {i for i in range(81) if s.value(g[i])}, 0
+
+
 def solve_connected(m, g, seconds, workers, log):
     """Solve with lazy connectivity cuts. Returns (shape, cuts) or (None, cuts)."""
     s = cp_model.CpSolver()
@@ -109,6 +146,7 @@ def main():
     ap.add_argument("--force", default="")
     ap.add_argument("--ban", default="")
     ap.add_argument("--eight", action="store_true")
+    ap.add_argument("--conn", choices=("flow", "lazy"), default="flow")
     ap.add_argument("--seconds", type=float, default=120)
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args()
@@ -116,7 +154,11 @@ def main():
     ban = [int(x) for x in a.ban.split(",") if x]
     t0 = time.monotonic()
     m, g = build(a.size_min, a.size_max, force, ban, a.eight)
-    shape, cuts = solve_connected(m, g, a.seconds, a.workers, print)
+    if a.conn == "flow":
+        add_flow_connectivity(m, g)
+        shape, cuts = solve_flow(m, g, a.seconds, a.workers, print)
+    else:
+        shape, cuts = solve_connected(m, g, a.seconds, a.workers, print)
     print(
         f"size {a.size_min}-{a.size_max}: {'shape' if shape else 'none'} "
         f"after {cuts} cuts in {time.monotonic() - t0:.1f}s"
