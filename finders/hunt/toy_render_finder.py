@@ -9,6 +9,7 @@ none when a finder doesn't offer one.
     uv run finders/hunt/toy_render_finder.py --out DIR --seeds START:END
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -39,6 +40,11 @@ class ToyRenderFinder:
         return candidate
 
     def render(self, candidate):
+        # TOY_RENDER_FAIL simulates a transient render failure (a full disk,
+        # a bug since fixed) for test_render_hook.py's resume-repair test:
+        # set for a fresh run, unset for the resume that repairs it.
+        if os.environ.get("TOY_RENDER_FAIL"):
+            raise RuntimeError("simulated transient render failure")
         canvas = GridCanvas(SIDE, SIDE, cell=20, margin=4)
         for i, cell in enumerate(candidate):
             if cell:

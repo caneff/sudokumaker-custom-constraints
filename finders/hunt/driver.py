@@ -393,6 +393,43 @@ def _reconcile(
     return progress_lines, progress_events, examples_lines, examples_records
 
 
+def _repair_renders(finder, out, progress_lines, progress_events):
+    """Resume re-attempts a missing renders/<seed>.png for every
+    already-accepted example (#524 Codex pass 1): a transient render
+    failure (a full disk, a bug in the finder's own render() since fixed)
+    must not leave examples.jsonl and renders/ permanently mismatched with
+    no error, just because the seed's outcome was already durable as
+    "example" -- a done seed never reruns, so nothing else would ever
+    retry it.
+
+    Only for a finder with no `save_state`/`load_state`: `propose()` is the
+    only way to regenerate the seed's candidate without the record it wrote
+    (finder.record() need not be invertible), and a stateful finder's
+    `propose` can have side effects state.json owns (toy_stateful_finder.py
+    increments a counter there) -- calling it again here to repair a render
+    would double that side effect. A stateful finder's mismatched render
+    stays a known gap (#522) rather than risk silently corrupting its
+    state.
+    """
+    render = getattr(finder, "render", None)
+    if render is None or hasattr(finder, "load_state"):
+        return progress_lines, progress_events
+    for i, event in enumerate(progress_events):
+        if event.get("outcome") != "example":
+            continue
+        seed = event["seed"]
+        if (out / "renders" / f"{seed}.png").exists():
+            continue
+        candidate = finder.propose(random.Random(seed))
+        new_event = dict(event)
+        new_event.pop("render_error", None)
+        _render_example(finder, out, seed, candidate, new_event)
+        if new_event != event:
+            progress_events[i] = new_event
+            progress_lines[i] = json.dumps(new_event) + "\n"
+    return progress_lines, progress_events
+
+
 def _save_state(finder, out, seed):
     save = getattr(finder, "save_state", None)
     if save is None:
@@ -553,6 +590,11 @@ def _resume(finder, argv, args, out, prior):
     )
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
     _truncate_to_valid(out / "examples.jsonl", examples_lines)
+
+    progress_lines, progress_events = _repair_renders(
+        finder, out, progress_lines, progress_events
+    )
+    _truncate_to_valid(out / "progress.jsonl", progress_lines)
 
     done_seeds = {e["seed"] for e in progress_events if e.get("event") == "seed_done"}
     seen = {_to_hashable(r[_DEDUPE_KEY_FIELD]) for r in examples_records}

@@ -8,6 +8,7 @@ see -- files on disk and exit code, never a driver.py internal.
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -151,6 +152,169 @@ sys.exit(run(RaisingRenderFinder(), sys.argv[1:]))
     check(
         "every example's event records the render failure instead of silently dropping it",
         all(e.get("render_error") for e in example_events),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A render failure that clears up (a full disk that got space back, a
+    # finder bug since fixed) must not leave examples.jsonl and renders/
+    # permanently mismatched just because the seed's outcome was already
+    # durable when it failed (#524 Codex pass 1): resume re-attempts a
+    # missing PNG for any already-accepted example, for a stateless finder
+    # -- see driver.py's `_repair_renders` for why a stateful finder is out
+    # of scope here.
+    out = Path(tmp) / "hunt-out"
+    fail_env = dict(os.environ, TOY_RENDER_FAIL="1")
+    result = subprocess.run(
+        [sys.executable, str(TOY_RENDER_FINDER), "--out", str(out), "--seeds", "0:200"],
+        capture_output=True,
+        text=True,
+        env=fail_env,
+    )
+    check(
+        f"a fresh hunt with every render failing still exits 0 (stderr: "
+        f"{result.stderr[-500:]})",
+        result.returncode == 0,
+    )
+    examples_before = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
+    check("at least one example was found (render-fail run)", len(examples_before) > 0)
+    check(
+        "no PNG exists yet -- every render failed",
+        not list((out / "renders").glob("*.png")),
+    )
+
+    resume_env = dict(os.environ)
+    resume_env.pop("TOY_RENDER_FAIL", None)
+    resume_result = subprocess.run(
+        [sys.executable, str(TOY_RENDER_FINDER), "--out", str(out), "--seeds", "0:200"],
+        capture_output=True,
+        text=True,
+        env=resume_env,
+    )
+    check(
+        f"resume with rendering fixed exits 0 (stderr: {resume_result.stderr[-500:]})",
+        resume_result.returncode == 0,
+    )
+    examples_after = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
+    check(
+        "resume didn't rerun the search -- same examples, no duplicates",
+        examples_after == examples_before,
+    )
+    progress_after = [
+        json.loads(line)
+        for line in (out / "progress.jsonl").read_text().splitlines()
+        if line
+    ]
+    check(
+        "no seed_done event fired twice for the same seed",
+        len({e["seed"] for e in progress_after}) == len(progress_after),
+    )
+    accepted_seeds = {
+        e["seed"] for e in progress_after if e.get("outcome") == "example"
+    }
+    png_stems_after = {p.stem for p in (out / "renders").glob("*.png")}
+    check(
+        "every previously-failed example now has its PNG, repaired by resume",
+        png_stems_after == {str(s) for s in accepted_seeds},
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A stateful finder's render-repair is out of scope (see driver.py's
+    # `_repair_renders` docstring): its `propose()` can have side effects
+    # state.json owns, so a missing PNG for it stays missing rather than
+    # risk corrupting state by calling `propose()` a second time.
+    out = Path(tmp) / "hunt-out"
+    stateful_render_script = f"""
+import os
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from dedupe import D4
+from driver import run
+from protocol import Verdict
+from render import GridCanvas
+
+class StatefulRenderFinder:
+    symmetry = D4
+
+    def __init__(self):
+        self.seeds_seen = 0
+
+    def propose(self, rng):
+        self.seeds_seen += 1
+        return tuple(rng.randint(0, 1) for _ in range(4))
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+    def save_state(self):
+        return {{"seeds_seen": self.seeds_seen}}
+
+    def load_state(self, state):
+        self.seeds_seen = state["seeds_seen"]
+
+    def render(self, candidate):
+        if os.environ.get("TOY_RENDER_FAIL"):
+            raise RuntimeError("simulated transient render failure")
+        return GridCanvas(2, 2, cell=10).image
+
+sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
+"""
+    fail_env = dict(os.environ, TOY_RENDER_FAIL="1")
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            stateful_render_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:30",
+        ],
+        capture_output=True,
+        text=True,
+        env=fail_env,
+    )
+    resume_env = dict(os.environ)
+    resume_env.pop("TOY_RENDER_FAIL", None)
+    resume_result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            stateful_render_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:30",
+        ],
+        capture_output=True,
+        text=True,
+        env=resume_env,
+    )
+    check(
+        f"a stateful finder's resume still exits 0 (stderr: "
+        f"{resume_result.stderr[-500:]})",
+        resume_result.returncode == 0,
+    )
+    check(
+        "a stateful finder's already-failed renders stay unrepaired (documented scope limit)",
+        not list((out / "renders").glob("*.png")),
+    )
+    check(
+        "state.json's counter wasn't double-incremented by a render-repair attempt",
+        json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
     )
 
 sys.exit(0 if ok else 1)
