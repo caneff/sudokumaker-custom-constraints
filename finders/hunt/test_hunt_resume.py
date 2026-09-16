@@ -491,6 +491,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # otherwise acquire the lock, until the main thread has run a complete
     # hunt (thread A) to completion on the same --out.
     import threading
+    from unittest import mock
 
     sys.path.insert(0, str(HERE))
     import driver as driver_module
@@ -516,35 +517,31 @@ with tempfile.TemporaryDirectory() as tmp:
     # HUNT_FAKE_LOAD1/os.environ at call time, not a subprocess env dict --
     # force the gate idle here too so a busy box doesn't refuse either
     # thread's hunt (#526).
-    had_fake_load1 = "HUNT_FAKE_LOAD1" in os.environ
-    old_fake_load1 = os.environ.get("HUNT_FAKE_LOAD1")
-    os.environ["HUNT_FAKE_LOAD1"] = "0"
     try:
-        b_thread = threading.Thread(
-            target=lambda: b_result.__setitem__(
-                "code", driver_module.run(ToyFinder(), argv)
-            ),
-            name="hunt-B",
-        )
-        b_thread.start()
-        check("thread B reached its lock acquisition", b_ready.wait(timeout=10))
+        with mock.patch.dict(os.environ, {"HUNT_FAKE_LOAD1": "0"}):
+            b_thread = threading.Thread(
+                target=lambda: b_result.__setitem__(
+                    "code", driver_module.run(ToyFinder(), argv)
+                ),
+                name="hunt-B",
+            )
+            b_thread.start()
+            check("thread B reached its lock acquisition", b_ready.wait(timeout=10))
 
-        a_code = driver_module.run(ToyFinder(), argv)
-        check("thread A's hunt (run first, in the main thread) exits 0", a_code == 0)
-        a_progress = read_jsonl(out / "progress.jsonl")
-        check(
-            "thread A ran the full range before B's lock was released",
-            len(a_progress) == 30,
-        )
+            a_code = driver_module.run(ToyFinder(), argv)
+            check(
+                "thread A's hunt (run first, in the main thread) exits 0", a_code == 0
+            )
+            a_progress = read_jsonl(out / "progress.jsonl")
+            check(
+                "thread A ran the full range before B's lock was released",
+                len(a_progress) == 30,
+            )
 
-        release_b.set()
-        b_thread.join(timeout=15)
+            release_b.set()
+            b_thread.join(timeout=15)
     finally:
         driver_module.fcntl.flock = real_flock
-        if had_fake_load1:
-            os.environ["HUNT_FAKE_LOAD1"] = old_fake_load1
-        else:
-            os.environ.pop("HUNT_FAKE_LOAD1", None)
 
     check("thread B's call returned", "code" in b_result)
     final_progress = read_jsonl(out / "progress.jsonl")

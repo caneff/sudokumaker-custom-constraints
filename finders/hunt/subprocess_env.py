@@ -7,15 +7,18 @@ success-directed test fails whenever the box happens to be busy. Every
 subprocess launch that expects the hunt to actually run uses `success_env`
 so the gate always reads idle regardless of the real machine; a test that
 means to exercise the gate itself passes its own `HUNT_FAKE_LOAD1` through
-`overrides` instead.
+`overrides` instead. An override value of `None` deletes that key instead of
+setting it -- the way to ask for a truly unset var rather than an empty one.
 """
 
 import os
 
 
 def success_env(overrides=None):
-    env = dict(os.environ)
-    env["HUNT_FAKE_LOAD1"] = "0"
-    if overrides:
-        env.update(overrides)
+    env = {**os.environ, "HUNT_FAKE_LOAD1": "0"}
+    for key, value in (overrides or {}).items():
+        if value is None:
+            env.pop(key, None)
+        else:
+            env[key] = value
     return env
