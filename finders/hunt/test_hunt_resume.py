@@ -273,6 +273,29 @@ with tempfile.TemporaryDirectory() as tmp:
         )
 
 with tempfile.TemporaryDirectory() as tmp:
+    # #516 Codex pass 2: the CLI itself must accept a negative --seeds
+    # range as two separate argv tokens ("--seeds", "-3:-2"), not only the
+    # "--seeds=-3:-2" single-token form the rest of this file uses -- a
+    # real user invoking the CLI by hand types the two-token form, and
+    # argparse's own heuristic for telling a negative-looking value apart
+    # from an unrecognized option only accepts it on Python 3.14+ without
+    # `_merge_seeds_token`'s help.
+    out = Path(tmp) / "two-token-negative-seeds"
+    result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "-3:-1"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"--seeds and a negative range as two argv tokens exits 0 "
+        f"(stderr: {result.stderr[-300:]})",
+        result.returncode == 0,
+    )
+    progress = read_jsonl(out / "progress.jsonl")
+    seeds_seen = [e["seed"] for e in progress if e.get("event") == "seed_done"]
+    check("both negative seeds ran", sorted(seeds_seen) == [-3, -2])
+
+with tempfile.TemporaryDirectory() as tmp:
     # Only two possible keys exist for this finder, so a broken dedupe
     # rebuild (e.g. "seen" defaulting to empty on resume) would show up as
     # a real duplicate line, not a coincidence the toy 4x4 finders' bigger
