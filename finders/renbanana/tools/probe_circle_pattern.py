@@ -200,8 +200,7 @@ def build(circled, choc_cells=(), ban_cells=(), givens=()):
                     if b < N - 1:
                         lits.append(choc[line[b + 1]].negated())
                     iv = m.new_bool_var("")
-                    for lit in lits:
-                        m.add_implication(iv, lit)
+                    m.add_bool_and(lits).only_enforce_if(iv)
                     m.add_bool_or([iv, *(lit.negated() for lit in lits)])
                     for q in line[a : b + 1]:
                         line_run[q].append((b - a + 1, iv))

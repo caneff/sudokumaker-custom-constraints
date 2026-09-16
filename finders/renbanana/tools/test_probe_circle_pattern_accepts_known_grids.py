@@ -23,7 +23,9 @@ import probe_circle_pattern as pcp
 import renbanana_verify as rv
 from ortools.sat.python import cp_model as cp
 
-CANDIDATES = sorted(Path("docs/research/renbanana").glob("candidates*/cand_*.json"))
+POOL = Path("docs/research/renbanana")
+CANDIDATES = sorted(POOL.glob("candidates*/cand_*.json"))
+CIRCLE_PATTERN_GRIDS = 119  # the circle-pattern pool #401 names
 
 
 def group_sizes(is_choc):
@@ -49,7 +51,9 @@ def status(grid, is_choc, circled):
 
 
 def test_every_known_grid_is_accepted():
-    assert len(CANDIDATES) > 119, "the circle-pattern pool plus older witnesses"
+    pattern = [p for p in CANDIDATES if p.parent.name == "candidates-circle-pattern"]
+    assert len(pattern) == CIRCLE_PATTERN_GRIDS, f"{len(pattern)} circle-pattern grids"
+    assert len(CANDIDATES) > len(pattern), "the older verified witnesses are missing"
     rejected = []
     for path in CANDIDATES:
         grid, is_choc, _ = rv.load(path)
