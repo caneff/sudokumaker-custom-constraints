@@ -61,7 +61,7 @@ test:
     export JUST="{{just_executable()}}"
     for f in examples/_shared/*.test.mjs; do node "$f"; done
     for f in examples/_shared/*.test.py; do uv run "$f"; done
-    # finders/renbanana's own tests (#469): three well under a second,
+    # finders/renbanana's own tests (#469): four well under two seconds,
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
     # worker -- this box is shared). test_probe_finds_known_grids.py solves
     # a CP-SAT model per known grid and stays out of this gate; see
@@ -70,6 +70,7 @@ test:
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
+    uv run finders/renbanana/tools/test_prove_two_stage.py
     # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles ghosts_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
