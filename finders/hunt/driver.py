@@ -595,26 +595,60 @@ def _fresh(finder, argv, args, out):
 
 
 def _check_symmetry_before_mutation(
-    finder, symmetry, seed_start, seed_end, done_seeds, no_verify
+    finder, symmetry, seed_start, seed_end, done_seeds, examples_records, no_verify
 ):
-    """Probe the first not-yet-done seed's key against `symmetry` before
-    `_resume` writes anything, so a `SymmetryMismatch` (#509) surfaces
-    before any hunt file is mutated (#525) instead of after reconciliation
-    (or `_repair_renders`, #524) has already written something. `done_seeds`
-    must be the reconciled set `_hunt_loop` will actually skip, not a raw
-    read of progress.jsonl -- reconciliation can un-done a seed, and
-    probing the wrong set can vacuously pass on exactly the seed that
-    later raises for real, after a write this exists to guard (#525
-    review, C2/P1). Calling `finder.propose`/`verify` again is only safe
-    for a stateless finder; a stateful one's `save_state`/`load_state`
+    """Refuse a resume whose custom symmetry group no longer fits the
+    finder's key shape, before `_resume` writes anything -- two checks,
+    both run ahead of any write (#525; `_repair_renders`, #524, moved
+    ahead of the same check on rebase):
+
+    1. The group against the key length already durable in
+       examples.jsonl, with no finder call at all -- catches a resume
+       whose entire seed range is already done, where check 2 below never
+       has an un-done seed to probe and so would otherwise never notice a
+       stale recorded shape (Codex pass 1 on PR 530, finding 1).
+    2. The first not-yet-done seed's *actual* key -- for a finder whose
+       `key()` shape changed since the run being resumed last succeeded,
+       where the group's own length still happens to match the *old*
+       recorded shape and check 1 can't see the drift without a real
+       candidate (#525 review C2/P1's own regression test depends on
+       this).
+
+    `symmetry in (D4, IDENTITY)` skips both: D4's own "needs a square
+    grid" ValueError is a separate, out-of-scope bug (#509 review C3),
+    never converted to `SymmetryMismatch` either way, so neither check
+    can ever produce a refusal on that path -- running them anyway would
+    only spend an unconditional extra propose/verify per resume for
+    nothing (#525 review C4, #529).
+
+    `done_seeds` must be the reconciled set `_hunt_loop` will actually
+    skip, not a raw read of progress.jsonl (#525 review C2/P1). Calling
+    `finder.propose`/`verify` again for check 2 is only safe for a
+    stateless finder; a stateful one's `save_state`/`load_state`
     round-trips the in-memory state around the probe so it can't
-    double-count whatever the probed seed did (#525 review, C1) --
+    double-count whatever the probed seed did (#525 review C1) --
     `_resume` must call `_load_state` before this runs, so the snapshot
-    taken here is the resumed state, not the finder's fresh default.
+    taken here is the resumed state, not the finder's fresh default. That
+    snapshot is a deep copy (`json.loads(json.dumps(...))`), not the live
+    object `save_state()` returned -- a finder that mutates its own saved
+    state in place (rather than returning a fresh one each call) would
+    otherwise see the probe's mutation bleed into the "restored" state
+    too, since restoring a reference restores nothing (Codex pass 1 on
+    PR 530, finding 2).
     """
+    if symmetry in (D4, IDENTITY):
+        return
+
+    if examples_records:
+        key_len = len(examples_records[0][_DEDUPE_KEY_FIELD])
+        try:
+            canonical_key(tuple(range(key_len)), symmetry)
+        except ValueError as e:
+            raise SymmetryMismatch(str(e)) from e
+
     save = getattr(finder, "save_state", None)
     load = getattr(finder, "load_state", None)
-    pristine = save() if save else None
+    pristine = json.loads(json.dumps(save())) if save else None
     try:
         for seed in range(seed_start, seed_end):
             if seed in done_seeds:
@@ -623,7 +657,7 @@ def _check_symmetry_before_mutation(
             if key is not None:
                 return
     finally:
-        if load and pristine is not None:
+        if save and load:
             load(pristine)
 
 
@@ -659,7 +693,13 @@ def _resume(finder, argv, args, out, prior):
     # snapshot the resumed state, not the finder's fresh default.
     _load_state(finder, out)
     _check_symmetry_before_mutation(
-        finder, symmetry, seed_start, seed_end, done_seeds, args.no_verify
+        finder,
+        symmetry,
+        seed_start,
+        seed_end,
+        done_seeds,
+        examples_records,
+        args.no_verify,
     )
 
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
