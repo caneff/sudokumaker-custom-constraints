@@ -305,11 +305,192 @@ sys.exit(run(MismatchedLengthFinder(), sys.argv[1:]))
     )
     check(
         "the refusal names the length mismatch",
-        "invalid symmetry group" in result.stderr,
+        "a custom cell map must be a permutation of range(9), got (0, 1, 2, 3)"
+        in result.stderr,
     )
     check(
         "a mismatched-length symmetry group leaves no partial output behind",
         not out.exists(),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A generator-typed `symmetry` is a second shape of the same bug: the
+    # pre-flight's `list(maps)` drains it during validation, so the *same*
+    # exhausted generator object reaches canonical_key's custom-group path
+    # on the first verified candidate and fails "must not be empty" --
+    # with output already on disk, same as the length mismatch above (noted
+    # on #509: "the fix this ticket lands should cover both").
+    out = Path(tmp) / "hunt-out"
+    generator_symmetry_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class GeneratorSymmetryFinder:
+    symmetry = (m for m in [(0, 1, 2, 3), (1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)])
+
+    def propose(self, rng):
+        return (0, 0, 0, 0)
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+sys.exit(run(GeneratorSymmetryFinder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            generator_symmetry_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a generator-typed symmetry group exits 2 (stderr: {result.stderr[-300:]})",
+        result.returncode == 2,
+    )
+    check(
+        "the refusal names the exhausted-generator failure",
+        "must not be empty" in result.stderr,
+    )
+    check(
+        "a generator-typed symmetry group leaves no partial output behind",
+        not out.exists(),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A ValueError raised by the finder's own key() -- nothing to do with
+    # the symmetry group -- must not be relabelled a symmetry failure and
+    # must not have its output silently removed: finder.key() is called
+    # outside the try that catches canonical_key's ValueError (#509 review,
+    # finding P1).
+    out = Path(tmp) / "hunt-out"
+    finder_bug_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class FinderOwnBugFinder:
+    symmetry = [(0, 1, 2, 3), (1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)]
+
+    def propose(self, rng):
+        return (0, 0, 0, 0)
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        raise ValueError("finder's own bug: bad int literal")
+
+sys.exit(run(FinderOwnBugFinder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", finder_bug_script, "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        "a finder's own ValueError from key() is not relabelled an invalid "
+        f"symmetry group (stderr: {result.stderr[-300:]})",
+        "invalid symmetry group" not in result.stderr,
+    )
+    check(
+        "a finder's own ValueError from key() still surfaces (nonzero exit)",
+        result.returncode != 0,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # The built-in D4 group raising on a non-square grid is a separate,
+    # out-of-scope bug (#509 is about custom groups only) -- it must not be
+    # caught and relabelled "invalid symmetry group" (#509 review, C3).
+    out = Path(tmp) / "hunt-out"
+    d4_mismatch_script = f"""
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from driver import run
+from protocol import Verdict
+
+class NonSquareD4Finder:
+    def propose(self, rng):
+        return (0,) * 6
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+sys.exit(run(NonSquareD4Finder(), sys.argv[1:]))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", d4_mismatch_script, "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        "a non-square grid under the built-in D4 group is not relabelled "
+        f"an invalid symmetry group (stderr: {result.stderr[-300:]})",
+        "invalid symmetry group" not in result.stderr,
+    )
+    check(
+        "D4 needs a square grid still surfaces its own message",
+        "D4 needs a square grid" in result.stderr,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # A --out that already holds content this run didn't write (and that
+    # isn't one of the four hunt output files) must survive a symmetry
+    # refusal: cleanup removes only what this run itself may have created,
+    # never a blanket rmtree of the whole directory (#509 review, C1).
+    out = Path(tmp) / "hunt-out"
+    out.mkdir()
+    sentinel = out / "notes.txt"
+    sentinel.write_text("unrelated content the driver never wrote\n")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            mismatched_length_script,
+            "--out",
+            str(out),
+            "--seeds",
+            "0:5",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    check(
+        f"a mismatched-length refusal into a --out holding unrelated content "
+        f"still exits 2 (stderr: {result.stderr[-300:]})",
+        result.returncode == 2,
+    )
+    check(
+        "unrelated content in --out survives the cleanup",
+        sentinel.exists()
+        and sentinel.read_text() == "unrelated content the driver never wrote\n",
+    )
+    check(
+        "the hunt's own output files are still removed from --out",
+        not (out / "run.json").exists() and not (out / "summary.json").exists(),
     )
 
 sys.exit(0 if ok else 1)

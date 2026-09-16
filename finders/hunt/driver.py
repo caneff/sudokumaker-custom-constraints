@@ -30,11 +30,11 @@ ahead of anything, before resume rebuilds anything from the logs.
 """
 
 import argparse
+import contextlib
 import fcntl
 import json
 import os
 import random
-import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -107,17 +107,40 @@ def _refuse(out_arg, why):
 
 
 class SymmetryMismatch(Exception):
-    """A custom symmetry group that passed `validate_group`'s pre-flight
-    (structurally closed, every map the group's own length) but whose maps
-    are the wrong length for the finder's actual `key()` output (#509).
-
-    `validate_group` derives n from the group's own maps, since the driver
-    has no candidate yet to measure -- so this mismatch only surfaces inside
-    `canonical_key` on the first verified candidate, deep in the seed loop.
-    A driver-local type (not ValueError, which `_process_seed` lets pass
-    through unmodified for any other cause) so `run` can single it out
-    without swallowing an unrelated finder bug.
+    """A custom symmetry group that passes `validate_group`'s pre-flight but
+    fails inside `canonical_key` on the first verified candidate (#509). A
+    driver-local type, not ValueError, so `run` can single it out without
+    swallowing an unrelated finder bug.
     """
+
+
+def _cleanup_partial_output(out):
+    """Remove only the files this run may itself have written -- the
+    OUTPUT_FILES set plus its lock -- leaving anything else in `out`
+    untouched (#509 review, finding C1): the pre-flight this mirrors never
+    touches a pre-existing directory at all, so a blanket `rmtree` here
+    would destroy content this run never created. A file that can't be
+    removed (a symlink, a read-only parent, ...) is reported instead of
+    silently left behind (#509 review, C2) -- swallowing that failure
+    would violate "no partial output files" with no signal it happened.
+    """
+    failures = []
+    for name in (*OUTPUT_FILES, ".lock"):
+        path = out / name
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            failures.append(f"{name}: {e}")
+    if failures:
+        print(
+            "hunt: warning -- could not remove partial output: " + "; ".join(failures),
+            file=sys.stderr,
+        )
+        return
+    with contextlib.suppress(OSError):
+        out.rmdir()  # unrelated content still present, or already gone
 
 
 def _to_hashable(value):
@@ -266,9 +289,18 @@ def _process_seed(finder, seed, seen, symmetry, examples_f, progress_f, counts):
             if verdict.reason:
                 event["rejected_reason"] = verdict.reason
         else:
+            cell_values = finder.key(candidate)
             try:
-                key = canonical_key(finder.key(candidate), symmetry)
+                key = canonical_key(cell_values, symmetry)
             except ValueError as e:
+                # Only a custom group's own shape can raise here -- D4's
+                # "needs a square grid" is a separate, out-of-scope bug
+                # (#509 review, C3) and finder.key() itself is called
+                # above, outside this try, so a finder's own ValueError
+                # is never relabelled as a symmetry failure (#509 review,
+                # P1).
+                if symmetry in (D4, IDENTITY):
+                    raise
                 raise SymmetryMismatch(str(e)) from e
             if key in seen:
                 counts["duplicates"] += 1
@@ -433,10 +465,10 @@ def run(finder, argv):
         # Same clean refusal `_validate_symmetry`'s pre-flight gives a
         # structurally-broken group -- this one only surfaces once a real
         # candidate exists, after run.json/summary.json (and possibly more)
-        # are already on disk, so the directory is torn down rather than
-        # left holding a hunt that can never produce a valid key.
+        # are already on disk, so this run's own output is torn down rather
+        # than left behind.
         print(f"hunt: refusing to run -- invalid symmetry group: {e}", file=sys.stderr)
-        shutil.rmtree(out, ignore_errors=True)
+        _cleanup_partial_output(out)
         return 2
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
