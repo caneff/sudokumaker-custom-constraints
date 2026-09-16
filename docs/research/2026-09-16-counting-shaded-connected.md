@@ -165,6 +165,25 @@ not a uniqueness one: `recheck_pins.py` posts only necessary conditions (counts
 1-8, digits distinct within each house) and so is a relaxation of the real
 problem, which makes its INFEASIBLE carry up to the real problem.
 
+Re-asked 2026-09-16 under the shown-shading-only rules (`joint.build` with
+`force`/`ban`, 4 workers, each answer in under 3 s). The ban is not what kills
+it; the pair r9c1 + r9c8 already is, and only under connectivity:
+
+| pins (all shaded) | connected | result |
+|---|---|---|
+| r9c1 r9c2 | yes | feasible |
+| r9c1 r9c2 r9c8 | yes | INFEASIBLE |
+| r9c1 r9c2 r9c8 | no | feasible, 23 shaded |
+| r9c1 r9c2 r9c8, r7c4 unshaded | no | INFEASIBLE |
+| r9c1 r9c8 | yes | INFEASIBLE |
+| r9c2 r9c8 | yes | INFEASIBLE |
+| r9c1 r9c5 | yes | feasible, 21 shaded |
+| r9c1 r9c7 | yes | INFEASIBLE |
+| r9c1 r9c9 | yes | INFEASIBLE |
+
+A connected shading cannot hold two bottom-row cells six or more columns
+apart. Not hand-proved; the solver's INFEASIBLE is the record.
+
 ## Method, and why
 
 Following the idiom that produced the 234 examples and the repo's other
