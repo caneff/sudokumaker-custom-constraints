@@ -4,10 +4,14 @@
 `StallWatchdog.stalled()` is tested with a fake clock, since a real CP-SAT
 solve's wall time can't be driven deterministically from a test. Two fake
 solver/callback objects, not real CP-SAT ones, are used to test
-`solve_with_watchdog` itself -- it only needs `.Solve()`/`.StopSearch()` and
-`.stalled()`, so this exercises the real coordination code without betting
-on any particular CP-SAT model being slow enough on every machine. A short
-real CP-SAT smoke test at the end checks the two work together.
+`solve_with_watchdog`'s coordination logic itself -- it only needs
+`.Solve()`/`.StopSearch()` and `.stalled()` (`.start()` and `.stall` are
+read only if present), so this exercises the real coordination code
+without betting on any particular CP-SAT model being slow enough on every
+machine. A real-clock test then checks a small stall limit with no
+solutions at all is honoured close to that limit, not to the fixed 1s poll
+this used to have regardless of how small `stall` was. A short real CP-SAT
+smoke test at the end checks the pieces work together.
 
     uv run finders/hunt/test_watchdog.py
 """
@@ -46,7 +50,7 @@ class FakeClockCallback(StallWatchdog):
 
 
 cb = FakeClockCallback(stall=5)
-check("not stalled before any solution is found", not cb.stalled())
+check("not stalled before the clock is started or any solution found", not cb.stalled())
 cb.now = 1.0
 cb.on_solution_callback()
 check("first_at records the first solution's wall time", cb.first_at == 1.0)
@@ -62,16 +66,14 @@ check(
     cb.first_at == 1.0,
 )
 
-# A solve that never finds any solution still has to end: `stalled()` is
-# polled from the very first check, before any solution exists, so it
-# anchors its own clock there instead of waiting on a solution that may
-# never come.
+# A solve that never finds any solution still has to end: `start()` (what
+# solve_with_watchdog calls before the solve begins) arms the clock at t=0
+# so `stalled()` can measure from the solve's own start, not from whenever
+# a solution happens to arrive.
 never_found = FakeClockCallback(stall=5)
 never_found.now = 0.0
-check(
-    "the first poll sets a baseline rather than reporting stalled",
-    not never_found.stalled(),
-)
+never_found.start()
+check("armed at t=0, immediately not stalled", not never_found.stalled())
 never_found.now = 4.0
 check("still within the window, no solution ever found", not never_found.stalled())
 never_found.now = 6.0
@@ -84,11 +86,17 @@ check(
 # "0 means never stall" convention.
 disabled = FakeClockCallback(stall=0)
 disabled.now = 0.0
-disabled.stalled()  # would set a baseline if stall=0 didn't short-circuit
+disabled.start()
 disabled.now = 10_000.0
 check(
     "stall=0 never reports stalled, however long the solve runs", not disabled.stalled()
 )
+
+# stalled() before start() (or before any solution) is never stalled --
+# there's no clock running yet to have elapsed against.
+unarmed = FakeClockCallback(stall=5)
+unarmed.now = 10_000.0
+check("never stalled if the clock was never armed", not unarmed.stalled())
 
 
 class FakeSolver:
@@ -109,7 +117,9 @@ class FakeSolver:
 
 class FakeStalledAfter:
     """Reports stalled only once `calls_before` polls have happened, so the
-    test controls exactly when solve_with_watchdog should stop the solve."""
+    test controls exactly when solve_with_watchdog should stop the solve.
+    No `.start()`/`.stall` -- solve_with_watchdog must tolerate a callback
+    that doesn't have them."""
 
     def __init__(self, calls_before):
         self.calls_before = calls_before
@@ -129,6 +139,42 @@ check("a stalled solve is stopped, not left to finish on its own", status == "ST
 check(
     "the watchdog stops it near its own poll interval, not the solver's timeout",
     elapsed < 3,
+)
+
+
+class RealClockCallback(StallWatchdog):
+    """A StallWatchdog measuring real elapsed time from `start()`, for a
+    real-time test of a small stall limit -- FakeClockCallback's
+    test-driven clock can't stand in here since solve_with_watchdog's poll
+    loop sleeps in real time regardless of what a fake clock says."""
+
+    def __init__(self, stall):
+        super().__init__(stall)
+        self._t0 = None
+
+    def start(self):
+        self._t0 = time.monotonic()
+        super().start()
+
+    def WallTime(self):
+        return time.monotonic() - self._t0
+
+
+# The scenario Codex flagged in round 2: a solve with no solutions at all
+# and a stall limit under a second. Before the fix, the clock only armed
+# on the first poll (~1s in, on the old fixed 1s cadence) and polling
+# never sped up for a small `stall`, so this could take ~2s regardless of
+# asking for 0.3s. `start()` now arms the clock immediately and the poll
+# interval is bounded by `stall`, so this should finish close to 0.3s.
+no_solution_solver = FakeSolver()
+small_stall_cb = RealClockCallback(stall=0.3)
+start = time.monotonic()
+status = solve_with_watchdog(no_solution_solver, model=None, callback=small_stall_cb)
+elapsed = time.monotonic() - start
+check("a sub-second stall limit with no solutions stops the solve", status == "STOPPED")
+check(
+    "it stops close to the requested limit, not the old ~2s floor",
+    elapsed < 1.0,
 )
 
 
