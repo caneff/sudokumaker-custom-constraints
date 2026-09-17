@@ -4,11 +4,14 @@ State: per cell a candidate set for its own digit, a copycat status in
 {P, C, ?}, and for line cells a set of allowed shown options (kind, value).
 Propagation (not counted as rungs): naked and hidden singles, locked
 candidates (pointing / claiming), one copycat per house, copycat digits
-distinct, and each line pruned by its own segment sums via exact
-enumeration of its shown options (distinct plain digits in a shared house,
-one copycat per house).  A rung is one argument on one pair: equal
-first-segment sums, or one digit's count equal on both lines.  Every
-elimination is checked against the known solution.
+distinct (pigeonhole, and naked subsets over the boxes' copycat-digit
+sets), a plain cell never holds its box's copycat digit, line-cell
+candidate sync, and each line pruned by exact enumeration of its shown
+options (distinct plain digits in a shared house, one copycat per house,
+equal run sums where runs are contiguous box runs, a digit confined to the
+line inside a house must sit on it).  A rung is one argument on one pair:
+equal line totals, or one digit's count equal on both lines.  Every
+elimination is checked against the known solution when one is given.
 """
 
 import json
@@ -19,6 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from copycat_rsl_solver import parse_cell
+
+BOARDS_DIR = "docs/research/2026-09-14-galaxy-copycat/boards"
 
 
 def idx(c):
@@ -387,13 +392,12 @@ class Human:
             args = self.arguments()
             if not args:
                 break
-            pick = max(args, key=lambda t: (len(t[2]),))
+            pick = max(args, key=lambda t: len(t[2]))
+            elims = sorted(f"{nm(i)}{k}{d}" for i, k, d in pick[2])
             if verbose:
-                elims = sorted(f"{nm(i)}{k}{d}" for i, k, d in pick[2])
                 print("  trying", pick[0], pick[1], elims)
             self.apply(pick[2])
             self.propagate()
-            elims = sorted(f"{nm(i)}{k}{d}" for i, k, d in pick[2])
             self.log.append(
                 {
                     "pair": pick[0],
@@ -465,7 +469,7 @@ def seed_from_link(h, path):
 
 def batch(
     seed,
-    src="docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.unique-dedup.jsonl",
+    src=f"{BOARDS_DIR}/board14-pair7.unique-dedup.jsonl",
     dst=".scratch/copycat-rsl/p7/human_batch.jsonl",
 ):
     """Scratch-only: needs `.scratch/copycat-rsl/b14-residual.npz` for the
@@ -474,16 +478,8 @@ def batch(
     import residual
 
     f = residual.load(".scratch/copycat-rsl/b14-residual.npz")
-    base = json.loads(
-        Path(
-            "docs/research/2026-09-14-galaxy-copycat/boards/board25-pair7-relaxed.json"
-        ).read_text()
-    )
-    forced = json.loads(
-        Path(
-            "docs/research/2026-09-14-galaxy-copycat/boards/board14-forced.json"
-        ).read_text()
-    )
+    base = json.loads(Path(f"{BOARDS_DIR}/board25-pair7-relaxed.json").read_text())
+    forced = json.loads(Path(f"{BOARDS_DIR}/board14-forced.json").read_text())
     rows = [json.loads(line) for line in Path(src).read_text().splitlines()]
     with Path(dst).open("w") as out:
         for n, r in enumerate(rows):
@@ -561,11 +557,7 @@ if __name__ == "__main__":
         batch(sys.argv[2] if len(sys.argv) > 2 else None, *sys.argv[3:])
         sys.exit()
     board_lines, board_pairs = load_board(sys.argv[1])
-    forced_facts = json.loads(
-        Path(
-            "docs/research/2026-09-14-galaxy-copycat/boards/board14-forced.json"
-        ).read_text()
-    )
+    forced_facts = json.loads(Path(f"{BOARDS_DIR}/board14-forced.json").read_text())
     residual_f, residual_m = solution_for(board_lines)
     for line_a, line_b in board_pairs:
         residual_m &= residual_f.pair_mask(board_lines[line_a], board_lines[line_b])
