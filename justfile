@@ -103,6 +103,10 @@ test:
     # checks the C filter and counter against the Python ones, so a silent
     # divergence between the two fails here.
     uv run pytest finders/ghosts -q
+    # The galaxy-copycat human solver's acceptance test (#531): board 28
+    # solves with no case split, board 27 stops at the doc's recorded wall.
+    # About 1.5s, no CP-SAT solve.
+    uv run finders/galaxy-copycat/test_human_solver.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue
