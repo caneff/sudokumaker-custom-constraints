@@ -4,8 +4,8 @@
 //! built-in RequiredDigitsComponent instead of RequiredDigitsGacComponent.
 //! Built by build_required_digits.py into PUZZLE_LINK_required_digits_original.txt,
 //! the same-board pair timed (docs/real-app-timing.md's "link vs link"
-//! provision) against PUZZLE_LINK_required_digits.txt -- see
-//! required-digits-gac.md for the reproduce commands and the recorded rows.
+//! provision) against PUZZLE_LINK_required_digits.txt -- see this
+//! directory's README.md for the reproduce commands and the recorded rows.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]

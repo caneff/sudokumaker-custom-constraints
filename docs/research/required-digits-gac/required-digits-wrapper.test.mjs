@@ -28,12 +28,19 @@ const { load } = makeIo(HERE)
 // The two swap targets the wrapper's `update` can reach: a bare built-in
 // global, and a custom sibling reached only through `customComponents`
 // (docs/gotchas.md #1). Recording constructor calls is enough here --
-// neither target's own logic is under test.
-class RecordingComponent {
+// neither target's own logic is under test -- but the two targets must be
+// DISTINCT classes: a shared recorder would pass `next instanceof
+// TargetClass` no matter which one `update` actually called, so a wrapper
+// that spells the sibling as a bare `RequiredDigitsGacComponent` (the
+// gotcha this file's header names) would still read as correct here.
+class BuiltinRecorder {
   constructor (name, values, cells) { this.name = name; this.values = values; this.cells = cells }
 }
-globalThis.RequiredDigitsComponent = RecordingComponent
-globalThis.customComponents = { RequiredDigitsGacComponent: RecordingComponent }
+class GacRecorder {
+  constructor (name, values, cells) { this.name = name; this.values = values; this.cells = cells }
+}
+globalThis.RequiredDigitsComponent = BuiltinRecorder
+globalThis.customComponents = { RequiredDigitsGacComponent: GacRecorder }
 
 const g = gridGeometry(9, 3, 3) // 3x3 boxes: window = 3 cells
 
@@ -52,8 +59,8 @@ function run (mod, line, clueValue) {
 }
 
 for (const [label, file, TargetClass] of [
-  ['ours (RequiredDigitsWrapperComponent.js -> customComponents.RequiredDigitsGacComponent)', 'RequiredDigitsWrapperComponent.js', RecordingComponent],
-  ['original (RequiredDigitsWrapperComponentBuiltin.js -> RequiredDigitsComponent)', 'RequiredDigitsWrapperComponentBuiltin.js', RecordingComponent]
+  ['ours (RequiredDigitsWrapperComponent.js -> customComponents.RequiredDigitsGacComponent)', 'RequiredDigitsWrapperComponent.js', GacRecorder],
+  ['original (RequiredDigitsWrapperComponentBuiltin.js -> RequiredDigitsComponent)', 'RequiredDigitsWrapperComponentBuiltin.js', BuiltinRecorder]
 ]) {
   const mod = load(file, ['setParams', 'update'])
   const line = g.rowLine(0, 0, 9)

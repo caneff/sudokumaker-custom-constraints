@@ -99,21 +99,38 @@ node examples/_shared/app-solve.mjs /tmp/rd_orig.txt 3 --ring-clues --after-logi
 
 ### Recorded rows (2026-09-17, v2026.08.14-d47fc4b, 3 reps, non-deterministic solve off)
 
-| board | mode | median |
-|---|---|---|
-| PUZZLE_LINK_required_digits.txt (GAC) | cold | 400ms |
-| PUZZLE_LINK_required_digits_original.txt (built-in) | cold | 400ms |
-| PUZZLE_LINK_required_digits.txt (GAC) | after-logical | 300ms |
-| PUZZLE_LINK_required_digits_original.txt (built-in) | after-logical | 300ms |
+| date | app version | board | mode | baseline (built-in) | candidate (GAC) | ratio | row PASS/FAIL |
+|---|---|---|---|---|---|---|---|
+| 2026-09-17 | v2026.08.14-d47fc4b | required-digits | cold | 400ms | 400ms | 1.00 | FAIL |
+| 2026-09-17 | v2026.08.14-d47fc4b | required-digits | after-logical | 300ms | 300ms | 1.00 | FAIL |
 
-No measurable difference at this timer's resolution, on this board. Two-row
-rule (`docs/real-app-timing.md`): neither row clears 0.9x, so this is not a
-"ships" result either way — read as "no cost regression, and no proven win
-here" for RequiredDigitsGacComponent's real-app cost, consistent with the
-offline bench: 0.2–0.6 us/call on this exact clue-window shape is small
-enough that a board this shallow cannot surface it against a 100ms solver
-timer. `examples/outside-sudoku/OPTIMIZATION_LOG.md` notes the same limit
-for this board's own component history ("closed almost without searching").
+`two-row rule: NO SHIP` (`docs/real-app-timing.md`): neither row clears
+0.9x, so this is not a "ships" result either way — read as "no cost
+regression, and no proven win here" for RequiredDigitsGacComponent's
+real-app cost on this board. The invariant the ticket exists for
+("a deduction must pay for itself in solve time," `AGENTS.md`) is still
+unmet: 1.00x/1.00x is a null result, not a pass, and this board cannot
+settle it — 0.2–0.6 us/call on this exact clue-window shape (1–2 required
+digits, a 2–3 cell window) is small enough that a board this shallow (and
+already "closed almost without searching," per
+`examples/outside-sudoku/OPTIMIZATION_LOG.md`'s own history for this
+component) cannot surface it against a 100ms solver timer. Settling it for
+real needs a board with a sparser, larger required-digits group — the shape
+the offline bench already shows a real gap on (275 removals against 20 on a
+9-cell group with 4 required digits) — which is a follow-up, not something
+this ticket's Outside Sudoku board can be made to show.
+
+**Confirmed the GAC swap actually fires, not just parses.** A wrapper
+sibling-class typo (docs/gotchas.md #1) fails silently in the UI — the
+component just stops pruning — so a dead swap could in principle produce
+exactly this same "identical numbers" result for the wrong reason.
+Checked directly: pointed the GAC wrapper at a nonexistent
+`customComponents.NopeTypoComponent` and captured the browser console during
+a solve — the app threw `TypeError: ... is not a constructor` on every
+`update` call, confirming the console listener catches a dead swap. Reverted
+and re-ran against the real, committed `RequiredDigitsWrapperComponent.js`:
+zero console errors or page errors during the same solve. The GAC target
+resolves and runs.
 
 **Caveat, checked against the unmodified board.** Both rows' per-rep verdict
 reads "Found 10,000 solutions" (the app's counting cap), not "unique
@@ -129,6 +146,15 @@ carries (README, `## Timing`), which does not itself surface the verdict
 text (only the median). Both the GAC and built-in wrapper variants reach the
 same search cap the unmodified board already does under this probe, so the
 comparison is still apples-to-apples; it is a property of the probe/board
-combination, not of either RequiredDigits variant, and is worth its own
-follow-up ticket (whether `examples/_shared/time_example.py` should refuse a
-non-unique probe the way it refuses a timeout) rather than fixing here.
+combination, not of either RequiredDigits variant.
+
+This is a doc-vs-code contradiction worth naming rather than picking a side
+on: `docs/real-app-timing.md` (lines ~293–294) says a `[not-unique]` verdict
+"carries null times." The code disagrees on purpose —
+`examples/_shared/app-solve-lib.test.mjs` asserts "a not-unique verdict
+still reports both times," and every row above is real medians from exactly
+that path. Both `just time outside-sudoku`'s own established README row and
+this one rely on the code's behavior, not the doc's. Worth its own follow-up
+ticket — fix the doc line, and decide whether `time_example.py` should
+refuse a non-unique probe the way it already refuses a timeout — rather
+than ruled on here.

@@ -16,10 +16,12 @@ from build_required_digits import RESEARCH_DIR, build
 NAMES = ["PUZZLE_LINK_required_digits.txt", "PUZZLE_LINK_required_digits_original.txt"]
 
 if __name__ == "__main__":
-    # read the shipped links before the rebuild runs, so the untouched check
-    # below can't be satisfied by a build that (correctly or not) also wrote
-    # to RESEARCH_DIR
+    # read the shipped links, and their mtimes, before the rebuild runs.
+    # Content alone can't witness "untouched": a rebuild that (incorrectly)
+    # also writes RESEARCH_DIR reproduces byte-identical content by
+    # construction, so only the mtime moving would show it.
     shipped = {name: (RESEARCH_DIR / name).read_bytes() for name in NAMES}
+    shipped_mtime = {name: (RESEARCH_DIR / name).stat().st_mtime_ns for name in NAMES}
 
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = pathlib.Path(tmp)
@@ -30,7 +32,7 @@ if __name__ == "__main__":
 
     # --out must not have touched the shipped files themselves
     for name in NAMES:
-        assert (RESEARCH_DIR / name).read_bytes() == shipped[name], (
+        assert (RESEARCH_DIR / name).stat().st_mtime_ns == shipped_mtime[name], (
             f"{name} was touched by --out"
         )
 

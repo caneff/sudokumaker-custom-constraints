@@ -23,7 +23,7 @@
 # goes in finders/, and everything else research goes through an example's
 # own build script instead.
 #
-#   uv run --with lzstring examples/outside-sudoku/build_required_digits.py
+#   uv run examples/outside-sudoku/build_required_digits.py
 #
 # Writes, into docs/research/required-digits-gac/:
 #   PUZZLE_LINK_required_digits.txt          -- ours: RequiredDigitsGacComponent
@@ -47,7 +47,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, frame_only, replace_constraint_code
+from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
@@ -60,29 +60,33 @@ def _backend_code():
     return minify_file(RESEARCH_DIR / "main-required-digits-global.js")
 
 
-def build_gac(base):
-    """`base` with the wrapper registered alongside RequiredDigitsGacComponent
-    itself, swapped to GAC. Only the constraint's own code and input change."""
-    host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
-    gac_code = minify_file(RESEARCH_DIR / "RequiredDigitsGacComponent.js")
-    assert host_code and gac_code, "component code empty"
-
+def _build(base, components):
+    """`base` with "Custom Outside Sudoku"'s backend and components replaced
+    -- everything else, checked against `base` itself, is the shipped
+    board's. Shared tail of build_gac/build_original: only the components
+    list differs between the two swap-target variants."""
     doc = replace_constraint_code(
-        base,
-        CONSTRAINT_NAME,
-        backend_code=_backend_code(),
-        components=[
-            {"type": "code", "name": TIMED_COMPONENT, "code": host_code},
-            {"type": "code", "name": "RequiredDigitsGacComponent", "code": gac_code},
-        ],
+        base, CONSTRAINT_NAME, backend_code=_backend_code(), components=components
     )
-    lc = find_constraint(doc, CONSTRAINT_NAME)
-    lc["definition"]["input"] = []
-    lc["input"] = {}
     assert frame_only(base, CONSTRAINT_NAME) == frame_only(doc, CONSTRAINT_NAME), (
         "frames differ beyond the constraint's own code and input"
     )
     return doc
+
+
+def build_gac(base):
+    """`base` with the wrapper registered alongside RequiredDigitsGacComponent
+    itself, swapped to GAC."""
+    host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
+    gac_code = minify_file(RESEARCH_DIR / "RequiredDigitsGacComponent.js")
+    assert host_code and gac_code, "component code empty"
+    return _build(
+        base,
+        [
+            {"type": "code", "name": TIMED_COMPONENT, "code": host_code},
+            {"type": "code", "name": "RequiredDigitsGacComponent", "code": gac_code},
+        ],
+    )
 
 
 def build_original(base):
@@ -90,20 +94,7 @@ def build_original(base):
     RequiredDigitsComponent as the swap target, no second component needed."""
     host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponentBuiltin.js")
     assert host_code, "component code empty"
-
-    doc = replace_constraint_code(
-        base,
-        CONSTRAINT_NAME,
-        backend_code=_backend_code(),
-        components=[{"type": "code", "name": TIMED_COMPONENT, "code": host_code}],
-    )
-    lc = find_constraint(doc, CONSTRAINT_NAME)
-    lc["definition"]["input"] = []
-    lc["input"] = {}
-    assert frame_only(base, CONSTRAINT_NAME) == frame_only(doc, CONSTRAINT_NAME), (
-        "frames differ beyond the constraint's own code and input"
-    )
-    return doc
+    return _build(base, [{"type": "code", "name": TIMED_COMPONENT, "code": host_code}])
 
 
 def write(doc, out_path):
