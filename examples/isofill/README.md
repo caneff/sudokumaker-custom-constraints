@@ -417,6 +417,20 @@ instance stays valid as long as its board and clue set do not change.
 
 ## Timing
 
+### Budget rule pooled, bulk removals (#454)
+
+`budget` now owns flat typed buffers (matching, CSR residual graph, Tarjan
+scratch), the scan reads the candidate mask, and one-mask-many-cells removals
+are single plural changes. No deduction changed (update-strength floor: 0
+weaker cells; soundness: 0 violations). Both rows from `just time isofill`,
+3 reps per arm, non-deterministic solve off, with `main.js` held at its base
+text for the run (the tool matches the committed link's backend against
+`main.js` at HEAD; the guard added there cannot change solve time).
+
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill | 600ms | 400ms | 0.67 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: SHIP
+
 ### Cell ids coerced with `| 0` (#450)
 
 The main now coerces every cell id (gotcha 10). Regenerating the link left `just time`
