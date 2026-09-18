@@ -31,6 +31,10 @@ function setParams (instance, clue, line) {
 
 // The line's kind: lineKind(instance, puzzle, cells). Numbered Rooms has no
 // full-house rule, so HOUSE is as high as this component looks.
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
 // #include ../_shared/line-kind.js
 
 // Candidate sets are bitmasks: bit d set = digit d possible.

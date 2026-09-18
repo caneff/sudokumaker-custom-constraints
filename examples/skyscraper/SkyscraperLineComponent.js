@@ -207,7 +207,7 @@ function prune (puzzle, line, Lc, Rc, peak) {
 // row and column houses are registered (gotcha 6) and a board that starts its
 // digits at 0 keeps a 0 on the line until something else takes it away. Query
 // the line alone: a ring cell in the list flips getCellsCanHaveRepeats to true.
-// The answer is never cached: the app shares one component object across every
+// The digit-set answer is never cached: the app shares one component object across every
 // search node, so a gate latched open deep in a branch stays open after the
 // backtrack to a parent state whose line has regained the digits that shut it
 // (#336). lineKind's `oneToN` is that test.

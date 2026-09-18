@@ -215,6 +215,13 @@ every other shipped frame board are in
 `docs/research/421-frame-link-timing.md`. Its local board, 4x4 and 6x6 are
 `framebuild`-native and were not measured, so they do not carry the filter.
 
+The #451 rows time the repeats latch (a cache, no new deduction), so the bar
+is <= 1.1x on both rows (`docs/real-app-timing.md`, "Bar for a gate change").
+The local board is the row that shows the win (0.76 cold, 0.72 after-logical);
+the frame board reads 1.00 cold and 0 ms both sides after-logical, so it
+places only the <= 1.1x side. Baseline links were the pre-change ones, the
+candidate the current component.
+
 The #435 pair confirms the #421 win holds once `HouseGacComponent.js` walks
 only the house's unfilled cells instead of every group: baseline is the
 shipped link with the old (whole-house) filter, candidate is the same link

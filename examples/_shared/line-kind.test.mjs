@@ -45,9 +45,11 @@ assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
 }
 
 // ---- the repeats fact is latched both ways, per line ----
-// Houses are registered once and a backtrack cannot un-register one, so a line
-// found to be a house is not asked again. A component reading several lines
-// (a side's positions, its perpendiculars) latches each on its own.
+// Whether a line can repeat is geometry, fixed once update first runs, so a
+// house and a bare line are each asked about once. A component reading several
+// lines (a side's positions, its perpendiculars) latches each on its own. The
+// solver can retire a filled built-in house for the rest of a branch, which
+// can only weaken a latched answer, never make a removal unsound.
 {
   const asked = []
   const p = state(ONE_TO_FOUR)

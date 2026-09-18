@@ -292,7 +292,8 @@ board(1, 9)
 }
 
 // ---- the repeats answer is latched both ways ----
-// Geometry-fixed once update first runs: a bare line is not re-walked either.
+// Geometry-fixed once update first runs. The bare arm witnesses #451; the
+// fullHouse arm guards the latch that already held.
 for (const kind of ['bare', 'fullHouse']) {
   const cells = CELLS.slice(0, 4)
   const p = makePuzzle(Object.fromEntries(cells.map(c => [c, 0])), () => [1, 2, 3, 4], { houses: housesOf(kind, cells) })

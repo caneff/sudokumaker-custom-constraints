@@ -19,7 +19,7 @@
 //
 // Latch only the repeats fact, both answers; re-read the digit set every call.
 // Whether a line can repeat is geometry, fixed once `update` first runs, so the
-// answer is remembered per cells array in `instance.repeats` whether it is
+// answer is remembered per cells array in `instance.repeatAnswers` whether it is
 // true or false. One caveat: the solver can retire a filled built-in house for
 // the rest of a branch, which can only weaken a latched answer (a house read
 // later as bare), never make a removal unsound. The digit set is a
@@ -37,11 +37,11 @@ const LINE_FULL = Object.freeze({ kind: FULL_HOUSE, oneToN: false })
 const LINE_ONE_TO_N = Object.freeze({ kind: FULL_HOUSE, oneToN: true })
 
 function lineKind (instance, puzzle, cells) {
-  const repeats = instance.repeats || (instance.repeats = new Map())
-  let canRepeat = repeats.get(cells)
+  const answers = instance.repeatAnswers || (instance.repeatAnswers = new Map())
+  let canRepeat = answers.get(cells)
   if (canRepeat === undefined) {
     canRepeat = puzzle.getCellsCanHaveRepeats(cells)
-    repeats.set(cells, canRepeat)
+    answers.set(cells, canRepeat)
   }
   if (canRepeat) return LINE_BARE
   let mask = 0

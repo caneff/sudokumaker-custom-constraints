@@ -45,7 +45,7 @@ function setParams (instance, clues, lines) {
 }
 
 // Half the gate: n clues, n lines of n cells, and every position a house
-// (lineKind, which latches each position once it is one). The size bound is the
+// (lineKind, which latches each position's repeats answer). The size bound is the
 // reachability search below, which holds one bitmask of 2n + 1 nodes in a
 // 31-bit integer.
 // #include ../_shared/line-kind.js
