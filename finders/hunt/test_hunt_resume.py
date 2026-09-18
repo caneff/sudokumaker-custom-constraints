@@ -37,7 +37,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, canonical_key
+from render import GridCanvas
 from subprocess_env import success_env
+from toy_tiny_key_finder import TinyKeyFinder
 
 HERE = Path(__file__).resolve().parent
 SLOW_FINDER = HERE / "toy_slow_finder.py"
@@ -46,6 +48,16 @@ TINY_KEY_FINDER = HERE / "toy_tiny_key_finder.py"
 TOY_FINDER = HERE / "toy_finder.py"
 
 ok = True
+
+
+class TinyKeyRenderFinder(TinyKeyFinder):
+    # toy_render_finder.py's own rule (an even shaded-cell count passes)
+    # isn't a guaranteed accept on any one seed -- the #522 render-orphan
+    # tests below need the same deterministic-accept property the
+    # "orphan-example" case above TinyKeyFinder for, plus a render. Shared
+    # here rather than redefined per block (#522 standards review, S3).
+    def render(self, candidate):
+        return GridCanvas(2, 2, cell=10).image
 
 
 def check(name, cond):
@@ -449,16 +461,6 @@ with tempfile.TemporaryDirectory() as tmp:
     # it exactly where that second kill would land: after reconciliation's
     # own writes, before `_hunt_loop` reruns anything.
     import driver as driver_module
-    from render import GridCanvas
-    from toy_tiny_key_finder import TinyKeyFinder
-
-    class TinyKeyRenderFinder(TinyKeyFinder):
-        # toy_render_finder.py's own rule (an even shaded-cell count passes)
-        # isn't a guaranteed accept on any one seed -- this needs the same
-        # deterministic-accept property the "orphan-example" case above
-        # uses TinyKeyFinder for, plus a render.
-        def render(self, candidate):
-            return GridCanvas(2, 2, cell=10).image
 
     out = Path(tmp) / "render-orphan"
     argv = ["--out", str(out), "--seeds=0:1"]
@@ -605,16 +607,23 @@ with tempfile.TemporaryDirectory() as tmp:
     # `_reconcile_renders` spares a *confirmed* seed's render -- a version
     # that deleted every PNG unconditionally would still pass every check
     # so far. A two-seed range where seed 0's example is confirmed and
-    # untouched, and seed 1's progress event is the one dropped, witnesses
-    # both halves of the rule in the same resume: seed 0's PNG must survive
-    # byte-for-byte, seed 1's stray PNG must go.
+    # untouched, and seed 1's progress event is the one dropped, is meant to
+    # witness both halves in the same resume: seed 0's PNG survives
+    # byte-for-byte, seed 1's stray PNG goes.
+    #
+    # #522 verification pass, disputed: a first version of this block ran
+    # the resume to full completion, and `_resume` calls `_repair_renders`
+    # (#524) right after `_reconcile_renders`, before `_hunt_loop` -- so an
+    # unconditional-delete bug that wrongly deleted seed 0's PNG too would
+    # have `_repair_renders` silently regenerate it (`propose(seed)` is
+    # deterministic, byte-for-byte identical) before this test ever looked,
+    # passing regardless. Neutering `_repair_renders` for this resume
+    # removes that safety net -- the same way the render-orphan case above
+    # stops `_hunt_loop` to remove *its* masking self-heal -- so a wrongly
+    # deleted seed 0 has nothing left to regenerate it (it's already
+    # "done", so `_hunt_loop` skips it too) and the byte-for-byte check
+    # below actually tests what its name claims.
     import driver as driver_module
-    from render import GridCanvas
-    from toy_tiny_key_finder import TinyKeyFinder
-
-    class TinyKeyRenderFinder(TinyKeyFinder):
-        def render(self, candidate):
-            return GridCanvas(2, 2, cell=10).image
 
     out = Path(tmp) / "render-orphan-mixed"
     argv = ["--out", str(out), "--seeds=0:2"]
@@ -640,13 +649,22 @@ with tempfile.TemporaryDirectory() as tmp:
     progress_lines = (out / "progress.jsonl").read_text().splitlines(keepends=True)
     (out / "progress.jsonl").write_text(progress_lines[0])
 
+    def _no_repair(finder, out, progress_lines, progress_events):
+        return progress_lines, progress_events
+
     resume_finder = TinyKeyRenderFinder()
-    code = driver_module.run(resume_finder, argv)
+    orig_repair_renders = driver_module._repair_renders
+    driver_module._repair_renders = _no_repair
+    try:
+        code = driver_module.run(resume_finder, argv)
+    finally:
+        driver_module._repair_renders = orig_repair_renders
     check("resume for mixed render-orphan test exits 0", code == 0)
 
     check(
-        "seed 0's confirmed render survives resume byte-for-byte -- "
-        "reconciliation only touches the seed that didn't survive it",
+        "seed 0's confirmed render survives resume byte-for-byte with no "
+        "repair step to mask a reconciliation bug that over-deleted -- "
+        "reconciliation only touches the seed that didn't survive it (#522 C3/P3)",
         (out / "renders" / "0.png").exists()
         and (out / "renders" / "0.png").read_bytes() == seed0_png,
     )

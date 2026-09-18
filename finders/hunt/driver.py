@@ -463,10 +463,9 @@ def _repair_renders(finder, out, progress_lines, progress_events):
     `propose` can have side effects state.json owns (toy_stateful_finder.py
     increments a counter there) -- calling it again here to repair a render
     would double that side effect. A stateful finder's missing render stays
-    unrepaired rather than risk silently corrupting its state -- an
-    accepted limitation of this function specifically, separate from the
-    stray-render cleanup `_reconcile_renders` does for every finder,
-    stateful or not (#522).
+    unrepaired rather than risk silently corrupting its state -- the same
+    reason `_reconcile_renders` (#522) also skips a stateful finder outright
+    rather than delete a stray render it can't safely regenerate here.
     """
     render = getattr(finder, "render", None)
     if render is None or hasattr(finder, "load_state"):
