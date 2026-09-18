@@ -406,6 +406,18 @@ different grid and a different stripper.
 
 ## Timing
 
+### Cell ids coerced with `| 0` (#450)
+
+The main now coerces every cell id (gotcha 10). Regenerating the link left `just time`
+with no candidate to build (it refuses a baseline that matches no file), so this is
+the link-vs-link comparison, not a `just time` row: the pre-change committed link
+(`origin/main`) against the coerced one, both stripped, one rep per variant per
+round, 5 rounds, non-deterministic solve off, cold. After-logical is 0ms on both.
+
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino (link vs link) | 5500ms | 5400ms | 0.98 | interleaved, 5 rounds |
+
+The coercion is neutral on this board, not a measured win.
+
 ### The rule seam (#361)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | fillomino | 6100ms | 6200ms | 1.02 | FAIL |
