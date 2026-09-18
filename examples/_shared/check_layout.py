@@ -13,17 +13,20 @@
 # embedded backend registers, so a link cannot go stale behind its builder, and
 # that every interior row and column of a sudoku example's board is a house the
 # link actually declares (a region constraint gives boxes only -- see #335 and
-# docs/gotchas.md #9; isofill and fillomino are bare boards and exempt). Links
-# committed outside examples/ (docs/research/fillomino-baseline/'s
+# docs/gotchas.md #9; isofill and fillomino are bare boards and exempt).
+#
+# Links committed outside examples/ (docs/research/fillomino-baseline/'s
 # PUZZLE_LINK.txt and its 19 timing fixtures) are out of scope for this sweep
-# -- they are not an example directory and carry no builder to check components
-# against. They still get a manual decode pass when touched; see
-# examples/fillomino/README.md's fixture-reuse justification. The link-NAME
-# grammar binds only PUZZLE_LINK*.txt: a fixture or a hunt record is not a
-# shipped board and names itself for what it records. The share criteria bind
-# all of them -- a link is a link, and any of these can be handed to a person
-# (#310's board was picked out of exactly such a batch). uv run --with lzstring
-# examples/_shared/check_layout.py [root]
+# -- they are not an example directory and carry no builder to check
+# components against. They still get a manual decode pass when touched; see
+# examples/fillomino/README.md's fixture-reuse justification.
+#
+# The link-NAME grammar binds only PUZZLE_LINK*.txt: a fixture or a hunt record
+# is not a shipped board and names itself for what it records. The share
+# criteria bind all of them -- a link is a link, and any of these can be handed
+# to a person (#310's board was picked out of exactly such a batch).
+#
+#   uv run --with lzstring examples/_shared/check_layout.py [root]
 
 import json
 import pathlib
