@@ -8,8 +8,8 @@
 // The clue cells alone, though the gate reads every perpendicular line. Stale
 // is safe here: a missed wake only delays a deduction, never makes a wrong
 // one. The gate is re-read in full on every call (lineKind latches only the
-// repeats answer, geometry a backtrack cannot undo), so whenever the app does run
-// `update` -- on any later change to a clue -- it judges the lines as they
+// repeats answer, geometry a backtrack cannot undo), so whenever the app does
+// run `update` -- on any later change to a clue -- it judges the lines as they
 // stand then, never as they stood at some earlier call. A line cell that
 // opens the gate without waking the component costs nothing until a clue
 // moves; one a backtrack restores is read restored. The soundness harness

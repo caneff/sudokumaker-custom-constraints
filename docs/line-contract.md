@@ -56,8 +56,8 @@ a component.
   One caveat: the solver can retire a filled built-in house for the rest of a
   branch, which can only weaken a cached answer, never make a removal unsound.
   Full house is a candidate fact: whether the union of live candidates across
-  the line has exactly `line.length` digits changes with the search node, so `update` re-tests it
-  on every call rather than latching it once reached — latching it is what
+  the line has exactly `line.length` digits changes with the search node, so
+  `update` re-tests it on every call rather than latching it once reached — latching it is what
   made #336 unsound. (A length test against `digitCount` does not work
   either: hit-counts boards run `minDigit 0` for the clue ring and a cage
   removes 0 from the inner grid during solving, so the line's digit set only
