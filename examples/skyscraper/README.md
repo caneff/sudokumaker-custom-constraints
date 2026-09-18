@@ -303,13 +303,16 @@ segment.
 two-row rule: NO SHIP
 
 `just time skyscraper --ring-clues --board PUZZLE_LINK_pre455.txt`, 3 reps per
-arm, non-deterministic solve off. The baseline is `main`'s `PUZZLE_LINK.txt`
-saved under that name for the run (the committed link is rebuilt with the new
-code, so it has no candidate to swap in). The change adds no deduction (the
-soundness output shows 0 violations, update-strength 0 weaker cells), so the
-`NO SHIP` line reads the 0.9x deduction rule; the bar it answers to is the
-no-deduction bar, 1.1x or under on both rows
-(`../../docs/real-app-timing.md`), and it clears it.
+arm, non-deterministic solve off. The baseline file is not committed: it is
+`main`'s link from before this change, recreated with
+`git show d6fb878:examples/skyscraper/PUZZLE_LINK.txt >
+examples/skyscraper/PUZZLE_LINK_pre455.txt` (the committed link is rebuilt with
+the new code, so it has no candidate to swap in). The change adds no deduction
+(soundness: 0 violations; update-strength: 0 weaker cells), so the `NO SHIP`
+line reads the 0.9x deduction rule; the bar it answers to is the no-deduction
+bar, 1.1x or under (`../../docs/real-app-timing.md`). The cold row, 0.99x,
+clears it; the after-logical row is 0 ms on both sides and places no
+constraint.
 
 ### One line-kind gate across the components (#360)
 

@@ -1,5 +1,5 @@
 // A two-wide frame leaves the two-clue skyscraper an empty line. The
-// component must stand down: no throw, no removal, no stop, and validate holds.
+// component must stand down: no throw, no removal, no stop, and validate holds on filled clues.
 //
 //   node examples/skyscraper/empty-line.test.mjs
 
@@ -14,7 +14,7 @@ const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate
 installGlobals(1, 4)
 const CA = 100
 const CB = 101
-const p = makePuzzle({ [CA]: 1, [CB]: 1 }, () => [1, 2, 3, 4], { houses: [[]] })
+const p = makePuzzle({ [CA]: 1, [CB]: 1 }, (c, v) => (c === CA || c === CB ? [v] : [1, 2, 3, 4]), { houses: [[]] })
 const inst = {}
 mod.setParams(inst, CA, CB, [])
 const before = total(p)

@@ -217,6 +217,8 @@ function prune (puzzle, line, Lc, Rc, peak) {
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
   const peak = line.length // the gate proves the line holds 1..length once each
+  // peak < 1: an empty line (a two-wide frame) has no cells to prune, and the
+  // gate would pass it as a vacuous full house
   if (peak < 1 || peak > MAXN || !lineKind(instance, puzzle, line).oneToN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
@@ -264,6 +266,7 @@ function visibleCountPermutation (puzzle, line, reversed) {
 
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
+  if (line.length === 0) return true // nothing to judge; the gate would read it as a vacuous full house
   // The filled check short-circuits on the first open cell; the O(n) gate runs
   // only once the line is settled.
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
