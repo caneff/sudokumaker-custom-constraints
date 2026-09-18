@@ -62,6 +62,10 @@ function mockPuzzle (W, H) {
     },
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
+    // No boxes here: every cell is region-less, which is the weakest window a
+    // backend can compute (the whole line). outside-sudoku's own
+    // backends.test.mjs runs real boxes.
+    getRegion: () => -1,
     addConstraintComponent: comp => registered.push(comp)
   }
   return p
@@ -144,14 +148,14 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 // and checks the whole frame; an array runs a local backend on those drawn
 // groups and checks the cell ids alone. `file` and `note` only name the run in
 // an assertion message.
-function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '' } = {}) {
+function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '', mayRegisterNothing = false } = {}) {
   const p = mockPuzzle(W, H)
   // The app runs a backend segment as a bare script with `input` in scope;
   // backend-runner.mjs is that setup, shared with the frame backends' own tests.
   runBackend(src, { puzzle: p, helpers, input: groups ? { groups } : undefined })
 
   const where = `${name}/${file} on ${W}x${H}${note}`
-  assert.ok(p.registered.length > 0, `${where}: registered nothing`)
+  assert.ok(mayRegisterNothing || p.registered.length > 0, `${where}: registered nothing`)
   assert.strictEqual(p.offBoard, 0,
     `${where} asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
   const cells = W * H
@@ -251,9 +255,13 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   const clueOfLine = new Map(geom.groups.map(g => [g.cells.slice(1).join(','), g.cells[0]]))
   for (const c of p.registered) {
     const ownLines = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
-    const ownClues = [...new Set(ringIdsIn(c.args, ringCells))]
-    if (ownLines.length !== 1 || ownClues.length !== 2) continue
+    if (ownLines.length !== 1) continue
     const line = ownLines[0]
+    // A top-level argument equal to the line's length is a window or a length
+    // (outside-sudoku's third argument), not a clue: the two are the same
+    // number on some boards, so the length is dropped before counting clues.
+    const ownClues = [...new Set(ringIdsIn(c.args.filter(a => a !== line.length), ringCells))]
+    if (ownClues.length !== 2) continue
     const ends = [clueOfLine.get(line.join(',')), clueOfLine.get([...line].reverse().join(','))]
     assert.deepStrictEqual([...ownClues].sort((a, b) => a - b), ends.sort((a, b) => a - b),
       `${where}: "${c.args[0]}" pairs clues that are not the two ends of the line it was given`)
@@ -325,40 +333,29 @@ function localCases (W, H) {
   return [
     { note: ', drawn frame', groups: frame },
     { note: ', lone clue', groups: [frame[0]] },
-    // Only the bent path may be refused, and only by BENT_REFUSER: a rule can
+    // Only the bent path may be skipped, and only by BENT_SKIPPER: a rule can
     // genuinely need a straight line. A drawn frame and a lone clue are shapes
     // every local lane owes an answer to, so a throw there is a failure.
     { note: ', bent path', groups: [drawn(bent)], bentPath: true }
   ]
 }
 
-// The one local lane allowed to refuse a bent path, and the refusal it must
-// give: outside-sudoku's window is a box's extent along the line's DIRECTION,
-// which a bent path has none of, so its main.js throws rather than size a
-// window from nothing. Named, not a blanket allowance -- a TypeError out of
-// any other main.js is a real crash in a shipped lane, and must fail here.
-const BENT_REFUSER = 'outside-sudoku'
-const BENT_REFUSAL = /is not one row or column/
+// The one local lane allowed to skip a bent path: outside-sudoku's window is a
+// box's extent along the line's DIRECTION, which a bent path has none of, so
+// its main.js registers nothing for that group (a throw would show no message
+// in the app and half-apply the groups around it). Named, not a blanket
+// allowance -- any other main.js must register a bent path.
+const BENT_SKIPPER = 'outside-sudoku'
 
 let localRuns = 0
-let localRefusals = 0
 for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
   for (const [W, H] of BOARDS) {
     for (const { note, groups, bentPath } of localCases(W, H)) {
-      try {
-        checkBackend(name, src, W, H, { groups, file: 'main.js', note })
-        localRuns++
-      } catch (e) {
-        // Anywhere else, on any other shape, and for an assertion from the
-        // checks above, the throw IS the failure.
-        if (!bentPath || name !== BENT_REFUSER || e instanceof assert.AssertionError) throw e
-        assert.match(e.message, BENT_REFUSAL,
-          `${name}/main.js may refuse a bent path, but only by saying so: ${e.message}`)
-        localRefusals++
-      }
+      checkBackend(name, src, W, H, { groups, file: 'main.js', note, mayRegisterNothing: bentPath && name === BENT_SKIPPER })
+      localRuns++
     }
   }
 }
 
-console.log(`PASS (${dirs.length} global backends, ${dirs.length} local backends, ${localRuns} local runs, ${localRefusals} bent-path refusals, ${BOARDS.length} board shapes)`)
+console.log(`PASS (${dirs.length} global backends, ${dirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)

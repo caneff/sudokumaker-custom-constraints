@@ -6,8 +6,9 @@
 //!
 //! w is the extent of the box the line starts in, measured along the line's
 //! direction (3 along a row or column of a 9x9, 3 across and 2 down on a 6x6,
-//! 2 on a 4x4), capped by the line length. The component reads it off the
-//! board, never assuming 3. A line that starts at the grid edge — every frame
+//! 2 on a 4x4), capped by the line length. Main code reads it off the board
+//! (window-length.js) and passes it as the third constructor argument, so the
+//! component never assumes 3. A line that starts at the grid edge — every frame
 //! line — therefore has its own first box as its window; one an author draws
 //! from mid-box has a window of the same w cells, crossing into the next box.
 //!
@@ -15,45 +16,22 @@
 //! a line of any kind — a bare line may repeat the clue digit inside the
 //! window and the rule is still satisfied — so the component needs no gate.
 
-function getAffectedCells (clue, line) {
-  return [clue, ...line]
+// The clue plus the window, the only cells update and validate read. Main code
+// computes w (window-length.js) because getAffectedCells never gets `puzzle`.
+function getAffectedCells (clue, line, w) {
+  return [clue, ...line.slice(0, w)]
 }
 
-function setParams (instance, clue, line) {
+function setParams (instance, clue, line, w) {
   instance.clue = clue
   instance.line = line
-}
-
-// The window length: the extent of line[0]'s box along the line's direction —
-// how many of that box's cells share line[0]'s row (or column). Read
-// once per component and cached — board geometry cannot change under a live
-// component, and the app rebuilds every component when the author edits.
-// A line whose first cell has no region (region -1, e.g. a ring cell) gets the
-// whole line as its window: weaker, never unsound.
-function windowLength (instance, puzzle) {
-  if (instance.w !== undefined) return instance.w
-  const { line } = instance
-  const head = line[0]
-  const region = puzzle.getRegion(head)
-  let w = line.length
-  if (region >= 0) {
-    const alongRow = line.length === 1 || puzzle.getRow(line[1]) === puzzle.getRow(head)
-    const same = alongRow
-      ? c => puzzle.getRow(c) === puzzle.getRow(head)
-      : c => puzzle.getColumn(c) === puzzle.getColumn(head)
-    let extent = 0
-    for (const c of puzzle.getRegionCells(region)) if (same(c)) extent++
-    w = Math.min(extent, line.length)
-  }
   instance.w = w
-  return w
 }
 
 // Candidate sets are bitmasks: bit d set = digit d possible (bit 0 unused).
 // One pass, all reads from the pre-pass masks, so no step depends on another.
 function * update (instance, puzzle) {
-  const { clue, line } = instance
-  const w = windowLength(instance, puzzle)
+  const { clue, line, w } = instance
   const clueM = puzzle.getCandidatesBitMask(clue)
 
   // Deduction 1: the clue keeps only digits some window cell can still hold.
@@ -63,7 +41,7 @@ function * update (instance, puzzle) {
   let union = 0
   for (let i = 0; i < w; i++) union |= puzzle.getCandidatesBitMask(line[i])
   if (clueM & ~union) {
-    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(clueM & ~union), clue)
+    yield puzzle.removeCandidatesFromCell(clueM & ~union, clue)
   }
 
   // Deduction 2: the clue is solved to d (one bit) and exactly one window cell
@@ -77,14 +55,13 @@ function * update (instance, puzzle) {
   }
   if (holders === 1) {
     const rm = puzzle.getCandidatesBitMask(line[only]) & ~clueM
-    if (rm) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rm), line[only])
+    if (rm) yield puzzle.removeCandidatesFromCell(rm, line[only])
   }
 }
 
 function validate (instance, puzzle) {
-  const { clue, line } = instance
-  if (!puzzle.getCellsAreFilled([clue, ...line])) return true
-  const w = windowLength(instance, puzzle)
+  const { clue, line, w } = instance
+  if (!puzzle.getCellsAreFilled(getAffectedCells(clue, line, w))) return true
   const c = puzzle.getValue(clue)
   for (let i = 0; i < w; i++) if (puzzle.getValue(line[i]) === c) return true
   return false

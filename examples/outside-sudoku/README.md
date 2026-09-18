@@ -79,8 +79,11 @@ line as its window. That is weaker than the rule, never unsound.
 - **Local** (`main.js`, `PUZZLE_LINK_local.txt`): the author draws one group
   per clue, clue cell first, then the line nearest-first. A group still being
   drawn (clue only, no line) is skipped. A line that is not one row or column
-  **throws**: the window is a box extent in the line's *direction*, and a bent
-  path has no direction.
+  is **skipped**: the window is a box extent in the line's *direction*, and a
+  bent path has no direction. (A main-code throw shows nothing in the app and
+  would leave the earlier groups registered and the later ones not.) Both
+  backends compute the window length once per line (`window-length.js`) and
+  pass it as the component's third argument.
 - **Global** (`main-global.js`, `PUZZLE_LINK.txt`): reads no groups. It builds
   every frame line from `puzzle.spec.size.width` and
   `puzzle.spec.size.height` — `2(W-2) + 2(H-2)` of them, `4n` on a square
@@ -138,8 +141,8 @@ Every other example's local board draws **bent paths**, which is what makes a
 line stop being a house and gives the bare-line deductions a board to play.
 This rule cannot use one. The window is the box extent measured **along the
 line's direction**, and a bent path has no single direction — so `main.js`
-throws on a group that is not one row or one column, and a bent-path board
-would not open at all. The local board therefore draws the frame lines, and
+skips a group that is not one row or one column, and a bent-path board would
+draw nothing. The local board therefore draws the frame lines, and
 its rules text keeps quiet about houses: on this board every drawn line really
 is a row or a column.
 
@@ -229,6 +232,12 @@ just time outside-sudoku --ring-clues
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) | 500ms | 500ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) after-logical | 300ms | 300ms | 1.00 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) | 500ms | 400ms | 0.80 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) after-logical | 300ms | 300ms | 1.00 | FAIL |
+
+The #456 pair narrows `getAffectedCells` to the clue plus the window and
+passes raw masks; `just time` printed `two-row rule: SHIP` (0.9× on cold, ≤ 1.1×
+after-logical).
 
 The last pair is #276, which makes `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. It adds no deduction, so the bar is

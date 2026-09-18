@@ -13,18 +13,18 @@ import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
-const mod = load('OutsideSudokuComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('OutsideSudokuComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
 
 // One clue and one line on a 9x9 grid with 3x3 boxes: window = 3 cells.
 const g = gridGeometry(9, 3, 3)
 
 // `cands` maps cell id -> candidate array. Returns the state after update runs
 // to a fixpoint, as cell id -> sorted candidate array.
-function run (line, cands) {
+function run (line, cands, w = Math.min(3, line.length)) {
   const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
   Object.assign(p, g.api)
   const inst = {}
-  mod.setParams(inst, g.clue, line)
+  mod.setParams(inst, g.clue, line, w)
   fixpoint(mod, inst, p)
   return new Map([...p._cand].map(([c, s]) => [c, [...s].sort((a, b) => a - b)]))
 }
@@ -50,7 +50,7 @@ installGlobals(1, 9)
   const line = g.rowLine(0, 1, 8)
   const cands = new Map([[g.clue, [1, 2, 3, 4, 5, 6, 7, 8, 9]]])
   for (const [i, c] of line.entries()) cands.set(c, i < 2 ? [1, 2] : i === 2 ? [3] : [9])
-  const after = run(line, cands)
+  const after = run(line, cands, 3)
   assert.deepStrictEqual(after.get(g.clue), [1, 2, 3], 'window is 3 cells from line[0], not 2')
 }
 
@@ -70,6 +70,32 @@ installGlobals(1, 9)
   for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [1, 2, 3] : [4])
   const after = run(line, cands)
   assert.deepStrictEqual(after.get(g.clue), [], 'a clue no window cell can hold empties')
+}
+
+// ---- 4b. the trigger set is the clue plus the window, nothing else
+{
+  const line = g.rowLine(0, 0, 9)
+  assert.deepStrictEqual(mod.getAffectedCells(g.clue, line, 3), [g.clue, ...line.slice(0, 3)],
+    'a line cell outside the window must not wake update')
+  assert.deepStrictEqual(mod.getAffectedCells(g.clue, line, 9), [g.clue, ...line], 'a full window lists the whole line')
+}
+
+// ---- 4c. validate checks the window only, and rejects a violated full window
+// Cells past the window stay open: a filled check over the whole line would
+// return true on them, and the component would retire on a vacuous true.
+{
+  const line = g.rowLine(0, 0, 9)
+  const state = (clueDigit, windowDigits) => {
+    const cands = new Map([[g.clue, [clueDigit]]])
+    for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [windowDigits[i]] : [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
+    Object.assign(p, g.api)
+    const inst = {}
+    mod.setParams(inst, g.clue, line, 3)
+    return mod.validate(inst, p)
+  }
+  assert.strictEqual(state(9, [1, 2, 3]), false, 'a filled window without the clue digit is rejected')
+  assert.strictEqual(state(2, [1, 2, 3]), true, 'a filled window holding the clue digit passes')
 }
 
 // ---- 5. never weaker than the three documented deductions
@@ -107,8 +133,7 @@ for (const [N, bh, bw] of [[9, 3, 3], [6, 2, 3], [4, 2, 2]]) {
     apply: (version, p, { line, w }) => {
       Object.assign(p, geo.api)
       const inst = {}
-      // The extra `w` is the reference's; the component ignores it and reads
-      // the window off the geometry, which is the point of the comparison.
+      // Both versions get the window length main code would compute.
       version.setParams(inst, geo.clue, line, w)
       fixpoint(version, inst, p)
     },
