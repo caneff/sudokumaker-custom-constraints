@@ -158,3 +158,75 @@ this one rely on the code's behavior, not the doc's. Worth its own follow-up
 ticket — fix the doc line, and decide whether `time_example.py` should
 refuse a non-unique probe the way it already refuses a timeout — rather
 than ruled on here.
+
+## Sparse board timing (#541)
+
+The Outside Sudoku wrapper board above could not settle the invariant: its
+groups are 2-3 cells. This board is built for the shape the offline bench
+favours (a sparse, large group) and searches deeply enough to read.
+
+`sparse/` holds it: `gen.json` (solution grid, 10 givens, and the generated
+table of 20 groups), `main-sparse-global.js` (the backend, which registers
+each group's component directly -- no wrapper), and the two links.
+
+- **Groups**: 20 orthogonally connected 9-cell snakes across at least three
+  boxes, none a house (a house already requires all nine digits), overlapping
+  freely, each requiring 5 digits its own cells hold in the solution. The
+  required sets come from the table, not from clue cells.
+- **Rule**: each listed digit occurs in at least one cell of its group (the
+  group is not all-different). `model()` in the build script is the CP-SAT
+  side, `RequiredDigitsGacComponent.js` the JS side.
+- **Uniqueness**: CP-SAT proves the 10 givens unique
+  (`build_sparse_required_digits.test.py`, part of `just test`); the app's own
+  verdict on both links is "unique solution".
+- **Depth**: givens carved greedily in seeded order until none can go. 20
+  groups at 5 digits left 10 givens and a built-in median of 2.4s; 24 and 30
+  groups left 2-6 givens and the built-in timed out (DNF), so they are too
+  deep to time. 6 and 12 groups at 4 digits closed in 0ms.
+- **Two links, one board**: `PUZZLE_LINK_sparse_original.txt` registers the
+  built-in `RequiredDigitsComponent`; `PUZZLE_LINK_sparse.txt` registers
+  `RequiredDigitsGacComponent`. Same board and table; the backend differs in
+  that one identifier, and the candidate link also ships the component code.
+
+```
+uv run examples/outside-sudoku/build_sparse_required_digits.py           # rebuild both links
+uv run examples/outside-sudoku/build_sparse_required_digits.py --search SEED --groups 20 --required 5 --overlap --gen /path/gen.json
+uv run examples/_shared/probe_link.py strip sparse/PUZZLE_LINK_sparse.txt cand.txt   # and _original -> base.txt
+node examples/_shared/app-solve.mjs base.txt 1 [--after-logical]                     # then cand.txt, alternating
+```
+
+Not `just time`: the board sits under `docs/research/`, so the driver has no
+example directory to resolve (same reason as the wrapper board). Timed the
+way `docs/real-app-timing.md` says for a link-vs-link comparison: one rep per
+variant per round, three rounds, non-deterministic solve off, the app's
+"sum" readout.
+
+### Recorded rows (2026-09-18, v2026.08.14-d47fc4b, 3 reps, non-deterministic solve off)
+
+| date | app version | board | mode | baseline (built-in) | candidate (GAC) | ratio | row PASS/FAIL |
+|---|---|---|---|---|---|---|---|
+| 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | cold | 2400ms | 4500ms | 1.88 | FAIL |
+| 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | after-logical | 500ms | 1000ms | 2.00 | FAIL |
+
+Per-rep sums, cold: built-in 2400/2400/2300, GAC 4600/4500/4500;
+after-logical: built-in 500/500/500, GAC 1000/1000/900.
+
+`two-row rule: NO SHIP`. On a board that does search (2.4s baseline), the GAC
+component makes the real solver about twice as slow on both rows. The offline
+win (275 removals against 20 on one sparse group) does not survive the app:
+the stronger pruning costs more per call than the search it saves, so the
+`AGENTS.md` deduction-pays-for-itself invariant is settled against shipping
+`RequiredDigitsGacComponent` as a replacement for the built-in.
+
+Two things this row does not separate, worth knowing before reading it as a
+verdict on Hall's-condition pruning in general:
+
+- The built-in is a first-class class to the solver: `addConstraintComponent`
+  registers its required digits in the candidate-set map
+  (`docs/research/bundle-api-reference.md`, `addConstraintComponent`), which
+  the app's own logic reads. A custom component gets none of that, so the
+  candidate loses that help as well as paying for its own `update`. The
+  comparison is the real swap a puzzle author would make; it is not a
+  measure of the pruning alone.
+- One board, one seed. Denser or shallower boards were not timed to a ratio
+  (too shallow: 0ms both; deeper: the built-in DNFs).
