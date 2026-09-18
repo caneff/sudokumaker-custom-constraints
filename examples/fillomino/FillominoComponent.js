@@ -590,8 +590,8 @@ function * componentBound (instance, puzzle) {
   prev.set(code)
 }
 
-// The bitmask of the digits other than `digit`, cached per digit. The digit range only reads
-// right at update time, so the cache is built on first use.
+// The bitmask of the digits other than `digit`, cached per digit. The digit
+// range only reads right at update time, so the cache is built on first use.
 function otherMask (instance, digit) {
   if (instance.others === null) instance.others = []
   let out = instance.others[digit]
