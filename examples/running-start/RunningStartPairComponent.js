@@ -33,6 +33,10 @@
 // and every frame line is a house.
 
 // The line's kind: lineKind(instance, puzzle, cells).
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
 // #include ../_shared/line-kind.js
 
 function getAffectedCells (clueA, clueB, line) {

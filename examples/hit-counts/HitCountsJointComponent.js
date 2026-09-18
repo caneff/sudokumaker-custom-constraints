@@ -44,6 +44,10 @@ const CASE_M = 2
 // The line's kind: lineKind(instance, puzzle, cells). The mirrored-pair
 // exclusion needs a house; the no-n-1 rule and the permutation sweep need a
 // full house whose digit set is {1..n}, which is lineKind's `oneToN`.
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
 // #include ../_shared/line-kind.js
 
 function getAffectedCells (clueA, clueB, line) {

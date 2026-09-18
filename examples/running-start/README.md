@@ -200,6 +200,10 @@ branch.
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) after-logical | 300ms | 0ms | ~0 | SHIP |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) | 1000ms | 800ms | 0.80 | gate: PASS |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) after-logical | 0ms | 0ms | — | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (repeats latch both ways, #451) | 900ms | 900ms | 1.00 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (repeats latch both ways, #451) after-logical | 0ms | 0ms | — | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) | 23000ms | 17400ms | 0.76 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) after-logical | 1800ms | 1300ms | 0.72 | gate: PASS |
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
@@ -210,6 +214,13 @@ here). Both rows clear 0.9x -- full numbers and the same pass/fail read on
 every other shipped frame board are in
 `docs/research/421-frame-link-timing.md`. Its local board, 4x4 and 6x6 are
 `framebuild`-native and were not measured, so they do not carry the filter.
+
+The #451 rows time the repeats latch (a cache, no new deduction), so the bar
+is <= 1.1x on both rows (`docs/real-app-timing.md`, "Bar for a gate change").
+The local board is the row that shows the win (0.76 cold, 0.72 after-logical);
+the frame board reads 1.00 cold and 0 ms both sides after-logical, so it
+places only the <= 1.1x side. Baseline links were the pre-change ones, the
+candidate the current component.
 
 The #435 pair confirms the #421 win holds once `HouseGacComponent.js` walks
 only the house's unfilled cells instead of every group: baseline is the

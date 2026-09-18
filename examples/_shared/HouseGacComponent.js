@@ -107,11 +107,12 @@ function * update (instance, puzzle) {
   const cellCount = cells.length
   //! All-different holds only where the app says the cells cannot repeat
   //! (docs/line-contract.md). Asked here, not in main code, which can run
-  //! before the built-in houses exist; cached once it says no.
-  if (!instance.noRepeats) {
-    if (puzzle.getCellsCanHaveRepeats(cells)) return
-    instance.noRepeats = true
-  }
+  //! before the built-in houses exist. Latched whichever way it answers: the
+  //! answer is geometry, fixed once update first runs. The solver can retire
+  //! a filled built-in house for the rest of a branch, which can only weaken
+  //! the latched answer, never make a removal unsound.
+  if (instance.canRepeat === undefined) instance.canRepeat = puzzle.getCellsCanHaveRepeats(cells)
+  if (instance.canRepeat) return
 
   //! Per call, so the removals can be yielded straight off them.
   const candidates = cells.map(cell => puzzle.getCandidatesBitMask(cell))
