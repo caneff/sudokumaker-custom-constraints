@@ -200,6 +200,10 @@ branch.
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC, #421) after-logical | 300ms | 0ms | ~0 | SHIP |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) | 1000ms | 800ms | 0.80 | gate: PASS |
 | 2026-09-13 | v2026.08.14-d47fc4b | running-start (house-GAC free-cell walk, #435) after-logical | 0ms | 0ms | — | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (repeats latch both ways, #451) | 900ms | 900ms | 1.00 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (repeats latch both ways, #451) after-logical | 0ms | 0ms | — | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) | 23000ms | 17400ms | 0.76 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) after-logical | 1800ms | 1300ms | 0.72 | gate: PASS |
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
