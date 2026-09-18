@@ -296,6 +296,21 @@ segment.
 
 ## Timing
 
+### Empty-line guard, raw masks, cheaper hot path (#455)
+
+| 2026-09-18 | v2026.08.14-d47fc4b | skyscraper | 7800ms | 7700ms | 0.99 | FAIL |
+| 2026-09-18 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time skyscraper --ring-clues --board PUZZLE_LINK_pre455.txt`, 3 reps per
+arm, non-deterministic solve off. The baseline is `main`'s `PUZZLE_LINK.txt`
+saved under that name for the run (the committed link is rebuilt with the new
+code, so it has no candidate to swap in). The change adds no deduction (the
+soundness output shows 0 violations, update-strength 0 weaker cells), so the
+`NO SHIP` line reads the 0.9x deduction rule; the bar it answers to is the
+no-deduction bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it.
+
 ### One line-kind gate across the components (#360)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | skyscraper | 7700ms | 7800ms | 1.01 | FAIL |
