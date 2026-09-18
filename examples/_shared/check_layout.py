@@ -9,8 +9,8 @@
 # filled end to end, and the rules text carries the sudoku prefix, except an
 # example in NO_RULES_PREFIX (isofill and fillomino are not sudoku). A _clued
 # link is exempt from the first two -- filling every clue is what that name
-# means. It also checks that every link ships exactly the components its own embedded
-# backend registers, so a link cannot go stale behind its builder, and that
+# means. It also checks that every link ships exactly the components its own
+# embedded backend registers, so a link cannot go stale behind its builder, and that
 # every interior row and column of a sudoku example's board is a house the
 # link actually declares (a region constraint gives boxes only -- see #335 and
 # docs/gotchas.md #9; isofill and fillomino are bare boards and exempt).

@@ -420,6 +420,7 @@ violations. `just time fillomino`, 3 reps, non-deterministic solve off:
 | 2026-09-18 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | 0ms | — | NO TIME |
 
 two-row rule: SHIP (cold 0.83; after-logical 0 ms on both sides places no constraint).
+The after-logical row is structurally unmeasurable on this board, so the cold row is the whole measurement.
 
 ### Cell ids coerced with `| 0` (#450)
 

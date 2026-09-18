@@ -86,7 +86,8 @@ function setParams (instance, cells) {
   // Neighbour lists once, not per visit: update runs on every search node.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
   // Per-call scratch, reused so a call allocates almost nothing. `mask` is the
-  // stamped visit mask, shared by the scan and every walk and flood and never
+  // stamped visit mask, shared by the scan, every walk and flood, and the door
+  // dedupe (which relies on doorRules running last and scan being eager), never
   // cleared -- the stamp does that.
   instance.mask = new Int32Array(cells.length)
   instance.stamp = 0
@@ -111,7 +112,8 @@ function setParams (instance, cells) {
   instance.ddep = new Int16Array(cells.length)
   instance.domCount = new Int16Array(cells.length)
   instance.skip = new Uint8Array(cells.length)
-  // The digits other than k, per k, for the force yield. Built on first use:
+  // The bitmask of the digits other than k, per k, for the force, cut and
+  // one-door yields. Built on first use:
   // the digit range only reads right at update time.
   instance.others = null
 }
@@ -588,7 +590,7 @@ function * componentBound (instance, puzzle) {
   prev.set(code)
 }
 
-// The digits other than `digit`, cached per digit. The digit range only reads
+// The bitmask of the digits other than `digit`, cached per digit. The digit range only reads
 // right at update time, so the cache is built on first use.
 function otherMask (instance, digit) {
   if (instance.others === null) instance.others = []
