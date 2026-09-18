@@ -204,6 +204,7 @@ function freeClosure (instance, puzzle, layer, from, len, digit, stamp) {
 function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
   const { cells, nbrs, mask } = instance
   const stamp = ++instance.stamp
+  const bit = 1 << digit
   let [frontier, next] = instance.frontier
   let len = 0
   for (let i = 0; i < count; i++) { mask[members[i]] = stamp; frontier[len++] = members[i] }
@@ -215,7 +216,7 @@ function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
     for (let f = 0; f < len; f++) {
       for (const nb of nbrs[frontier[f]]) {
         if (mask[nb] === stamp || nb === exclude) continue
-        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
+        if (!puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
           mask[nb] = stamp
           next[nextLen++] = nb
         }
@@ -385,9 +386,10 @@ function * islandRule (instance, puzzle, island) {
   // Seal (§1): a full island is a finished region, so nothing beside it may
   // hold the digit -- that cell would join the region and make it k + 1.
   if (count === digit) {
+    const bit = 1 << digit
     for (let i = 0; i < count; i++) {
       for (const nb of nbrs[members[i]]) {
-        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
+        if (!puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
           yield puzzle.removeCandidateFromCell(digit, cells[nb])
         }
       }
@@ -406,10 +408,10 @@ function * islandRule (instance, puzzle, island) {
   // two sets are equal -- every open cell of the walk holds k.
   if (island.reach === digit) {
     const stamp = walkCells(instance, puzzle, island)
-    const others = otherDigits(instance, digit)
+    const others = otherMask(instance, digit)
     for (let i = 0; i < cells.length; i++) {
       if (mask[i] === stamp && !puzzle.hasValue(cells[i])) {
-        yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
+        yield puzzle.removeCandidatesFromCell(others, cells[i])
       }
     }
     return SETTLED
@@ -434,6 +436,7 @@ function * cutStarveRule (instance, puzzle, island) {
   const { cells, mask, members, allowed, skip } = instance
   const { digit, count } = islandFacts(instance, puzzle, island)
   if (count >= digit || island.reach <= digit) return OPEN
+  const bit = 1 << digit
   const stamp = walkCells(instance, puzzle, island)
   // one pass over the board: the digit's allowed row, and the walk's open cells
   const openWalk = []
@@ -441,7 +444,7 @@ function * cutStarveRule (instance, puzzle, island) {
     const placed = puzzle.hasValue(cells[i])
     allowed[i] = placed
       ? (puzzle.getValue(cells[i]) === digit ? 1 : 0)
-      : (puzzle.getCandidates(cells[i]).has(digit) ? 1 : 0)
+      : ((puzzle.getCandidatesBitMask(cells[i]) & bit) !== 0 ? 1 : 0)
     if (!placed && mask[i] === stamp) openWalk.push(i)
   }
   cutFilter(instance, members, count, openWalk, allowed, digit, digit - count)
@@ -451,9 +454,9 @@ function * cutStarveRule (instance, puzzle, island) {
     if (walk(instance, puzzle, members, count, digit, digit - count, y).size < digit) cuts.push(y)
   }
   if (cuts.length === 0) return OPEN
-  const others = otherDigits(instance, digit)
+  const others = otherMask(instance, digit)
   for (const y of cuts) {
-    yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[y])
+    yield puzzle.removeCandidatesFromCell(others, cells[y])
   }
   // the island just grew; the door rules want a live one, and the next call
   // re-scans for it
@@ -464,13 +467,16 @@ function * cutStarveRule (instance, puzzle, island) {
 // is short of its region, so the region grows through a door. Reads the same
 // islands cut starve does.
 function * doorRules (instance, puzzle, island) {
-  const { cells, nbrs, members, merge } = instance
+  const { cells, nbrs, mask, members, merge } = instance
   const { digit, count } = islandFacts(instance, puzzle, island)
   if (count >= digit || island.reach <= digit) return OPEN
+  const bit = 1 << digit
   const doors = []
+  const doorStamp = ++instance.stamp
   for (let i = 0; i < count; i++) {
     for (const nb of nbrs[members[i]]) {
-      if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit) && !doors.includes(nb)) {
+      if (mask[nb] !== doorStamp && !puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
+        mask[nb] = doorStamp
         doors.push(nb)
       }
     }
@@ -500,9 +506,9 @@ function * doorRules (instance, puzzle, island) {
 
   // One door (§3): the region must take a cell beside the island, and only
   // one is left that can be it.
-  const live = doors.filter(x => !puzzle.hasValue(cells[x]) && puzzle.getCandidates(cells[x]).has(digit))
+  const live = doors.filter(x => !puzzle.hasValue(cells[x]) && (puzzle.getCandidatesBitMask(cells[x]) & bit) !== 0)
   if (live.length === 1) {
-    yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(otherDigits(instance, digit)), cells[live[0]])
+    yield puzzle.removeCandidatesFromCell(otherMask(instance, digit), cells[live[0]])
   }
   return OPEN
 }
@@ -584,13 +590,13 @@ function * componentBound (instance, puzzle) {
 
 // The digits other than `digit`, cached per digit. The digit range only reads
 // right at update time, so the cache is built on first use.
-function otherDigits (instance, digit) {
+function otherMask (instance, digit) {
   if (instance.others === null) instance.others = []
   let out = instance.others[digit]
   if (out === undefined) {
-    out = []
+    out = 0
     for (let d = helpers.digits.minDigit; d <= helpers.digits.maxDigit; d++) {
-      if (d !== digit) out.push(d)
+      if (d !== digit) out |= 1 << d
     }
     instance.others[digit] = out
   }
