@@ -8,7 +8,8 @@
 //! direction (3 along a row or column of a 9x9, 3 across and 2 down on a 6x6,
 //! 2 on a 4x4), capped by the line length. Main code reads it off the board
 //! (window-length.js) and passes it as the third constructor argument, so the
-//! component never assumes 3. A line that starts at the grid edge — every frame
+//! component never assumes 3. The component is valid only
+//! when its own main builds it: a missing `w` reads an empty window. A line that starts at the grid edge — every frame
 //! line — therefore has its own first box as its window; one an author draws
 //! from mid-box has a window of the same w cells, crossing into the next box.
 //!

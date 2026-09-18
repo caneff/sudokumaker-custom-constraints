@@ -12,6 +12,7 @@ import { dirname, join } from 'path'
 import assert from 'assert'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { assembleSource } from '../_shared/include.mjs'
+import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // Assembled, not raw: main-global.js splices in the shared frame reader
@@ -60,6 +61,19 @@ function runBackend (file, puzzle, input) {
   // scope; a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', 'OutsideSudokuComponent', src(file)) // eslint-disable-line no-new-func
   fn(input, puzzle, helpers, OutsideSudokuComponent)
+}
+
+// ---- windowLength reads the box along the line's own direction
+// On a 6x6 the boxes are 2 tall and 3 wide, so a row line and a column line
+// from the same corner differ: a reading that ignores the direction gets one of
+// them wrong.
+{
+  const geo = gridGeometry(6, 2, 3)
+  const windowLength = new Function(`${src('window-length.js')}\nreturn windowLength`)() // eslint-disable-line no-new-func
+  const p = geo.api
+  assert.strictEqual(windowLength(p, geo.rowLine(0, 0, 6)), 3, 'along a row: 3 wide')
+  assert.strictEqual(windowLength(p, geo.columnLine(0, 0, 6)), 2, 'down a column: 2 tall')
+  assert.strictEqual(windowLength(p, geo.columnLine(0, 0, 1)), 1, 'a one-cell line has a one-cell window')
 }
 
 // ---- main.js: one component per drawn group

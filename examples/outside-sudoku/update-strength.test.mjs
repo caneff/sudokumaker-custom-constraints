@@ -20,7 +20,7 @@ const g = gridGeometry(9, 3, 3)
 
 // `cands` maps cell id -> candidate array. Returns the state after update runs
 // to a fixpoint, as cell id -> sorted candidate array.
-function run (line, cands, w = Math.min(3, line.length)) {
+function run (line, cands, w) {
   const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
   Object.assign(p, g.api)
   const inst = {}
@@ -37,7 +37,7 @@ installGlobals(1, 9)
   const cands = new Map([[g.clue, [1, 2, 3, 4, 5, 6, 7, 8, 9]]])
   // window (line[0..2]) can hold only 1, 2, 3; 9 lives outside the window
   for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [1, 2, 3] : [9])
-  const after = run(line, cands)
+  const after = run(line, cands, 3)
   assert.deepStrictEqual(after.get(g.clue), [1, 2, 3], 'clue must keep only window digits')
 }
 
@@ -59,7 +59,7 @@ installGlobals(1, 9)
   const line = g.rowLine(0, 0, 9)
   const cands = new Map([[g.clue, [4]]])
   for (const [i, c] of line.entries()) cands.set(c, i === 1 ? [4, 7, 8] : [1, 2, 3])
-  const after = run(line, cands)
+  const after = run(line, cands, 3)
   assert.deepStrictEqual(after.get(line[1]), [4], 'the only window cell that admits the clue is pinned')
 }
 
@@ -68,7 +68,7 @@ installGlobals(1, 9)
   const line = g.rowLine(0, 0, 9)
   const cands = new Map([[g.clue, [4]]])
   for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [1, 2, 3] : [4])
-  const after = run(line, cands)
+  const after = run(line, cands, 3)
   assert.deepStrictEqual(after.get(g.clue), [], 'a clue no window cell can hold empties')
 }
 
