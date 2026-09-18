@@ -181,9 +181,9 @@ cells:
   walk masks per digit, BFS frontiers, distance rows) live on the instance
   and are reused per call, so `update` allocates almost nothing: 5.7 s → 4.1 s.
   The `DigitSet` handed to `removeCandidatesFromCell` is the one thing built
-  fresh per yield. The app itself takes a raw bitmask there (it ANDs the
-  argument, `docs/research/bundle-api-reference.md`); the harness mock is
-  what insists on a `DigitSet`, to catch a plain array, which the app would
+  fresh per yield, and it need not be: the app takes a raw bitmask there (it
+  ANDs the argument, `docs/research/bundle-api-reference.md`), and the harness
+  mock takes either. What both refuse is a plain array, which the app would
   AND to zero and silently remove nothing.
 - **Tour** — the region is a connected set holding every placed cell and
   the candidate cell, so a walk round its spanning tree is a closed tour

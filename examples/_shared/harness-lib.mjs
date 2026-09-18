@@ -233,6 +233,19 @@ export function makeLine (rnd, kind, n, D) {
   throw new RangeError(`unknown line kind: ${kind}`)
 }
 
+// The digit argument of a change builder, as a bitmask. The app stores it raw
+// and only ever uses it under `&` (docs/research/bundle-api-reference.md, the
+// six change builders), so a DigitSet and a plain integer both work there --
+// a negative one included, since `~used` is how "everything but these" is
+// written without allocating a set. An array does not work: its `valueOf` is
+// not a number, so the `&` gives 0 and the change silently removes nothing
+// (a rule went dead that way). That is the hazard this check exists to catch.
+function maskOf (s, caller) {
+  if (s instanceof DigitSet) return s.mask
+  if (Number.isInteger(s)) return s
+  throw new TypeError(`${caller} wants a DigitSet or a bitmask integer, got ${typeof s}`)
+}
+
 // The puzzle API a component calls, over cell -> Set<digit> read live through
 // `getSet`, so it serves a fixed map (makePuzzle) and a map a search reassigns
 // wholesale (recovery-lib's makeCandidateState) alike.
@@ -249,6 +262,11 @@ export function makeLine (rnd, kind, n, D) {
 // line is bare.
 export function makePuzzleApi (getSet, { houses = [] } = {}) {
   const houseSets = houses.map(h => new Set(h))
+  // The mask arithmetic every change builder below shares: drop the masked
+  // digits from a cell, or keep only them. Iterating a copy leaves the live
+  // set free to shrink underneath.
+  const dropMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (m & (1 << d)) set.delete(d) }
+  const keepMask = (m, c) => { const set = getSet(c); for (const d of [...set]) if (!(m & (1 << d))) set.delete(d) }
   return {
     hasValue: c => getSet(c).size === 1,
     // The solved digit, undefined while the cell is open (docs/puzzle-api.md).
@@ -259,11 +277,11 @@ export function makePuzzleApi (getSet, { houses = [] } = {}) {
     getCellsAreFilled: cs => cs.every(c => getSet(c).size === 1),
     getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
     removeCandidateFromCell: (d, c) => { getSet(c).delete(d) },
-    // The app takes a DigitSet here and nothing else; a plain array passes in
-    // Node and silently removes nothing in the app (a rule went dead that way).
-    removeCandidatesFromCell: (s, c) => { if (!(s instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet'); const set = getSet(c); for (const d of s) set.delete(d) },
+    removeCandidatesFromCell: (s, c) => dropMask(maskOf(s, 'removeCandidatesFromCell'), c),
+    removeCandidatesFromCells: (s, cs) => { const m = maskOf(s, 'removeCandidatesFromCells'); for (const c of cs) dropMask(m, c) },
     removeCandidateFromCells: (d, cs) => { for (const c of cs) getSet(c).delete(d) },
-    filterCandidatesInCells: (s, cs) => { for (const c of cs) for (const d of getSet(c)) if (!s.has(d)) getSet(c).delete(d) }
+    filterCandidatesInCell: (s, c) => keepMask(maskOf(s, 'filterCandidatesInCell'), c),
+    filterCandidatesInCells: (s, cs) => { const m = maskOf(s, 'filterCandidatesInCells'); for (const c of cs) keepMask(m, c) }
   }
 }
 
