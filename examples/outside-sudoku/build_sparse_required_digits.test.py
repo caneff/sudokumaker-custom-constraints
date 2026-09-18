@@ -21,6 +21,7 @@ from build_sparse_required_digits import (
     GEN,
     RESEARCH_DIR,
     backend_code,
+    box,
     build,
     count_solutions,
     is_house,
@@ -32,11 +33,14 @@ NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
 
 def check_board(gen):
     groups = gen["groups"]
-    assert groups, "no groups"
+    # the shape the README's recorded rows describe (20 groups, 5 digits each)
+    assert len(groups) == 20, "the timed board has 20 groups"
+    assert all(len(g["values"]) == 5 for g in groups), "5 required digits each"
     for g in groups:
         cells = [tuple(p) for p in g["cells"]]
         assert len(set(cells)) == len(cells) == 9, f"{g['name']}: not 9 distinct cells"
         assert not is_house(cells), f"{g['name']} is a house: its rule is vacuous"
+        assert len({box(r, c) for r, c in cells}) >= 3, f"{g['name']}: under 3 boxes"
         held = [gen["grid"][r][c] for r, c in cells]
         for d in set(g["values"]):
             assert held.count(d) >= g["values"].count(d), (

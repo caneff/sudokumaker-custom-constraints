@@ -1,7 +1,8 @@
 # Build the sparse required-digits timing board (#541): a plain 9x9 sudoku
-# carrying a few 9-cell regions that are not houses, each required to hold
-# about 4 given digits, with the givens carved back until the app's solver
-# actually searches. It exists to give RequiredDigitsGacComponent a real-app
+# carrying 20 overlapping 9-cell regions that are not houses, each required
+# to hold 5 given digits, with the givens carved back until the app's solver
+# actually searches (the defaults below draw that shape; fewer or smaller
+# groups close in 0ms, more leave the built-in timing out). It exists to give RequiredDigitsGacComponent a real-app
 # timing row on the shape the offline bench says it wins on (a sparse, large
 # group -- docs/research/required-digits-gac/README.md), which the Outside
 # Sudoku wrapper board of #534/#535 could not surface.
@@ -14,7 +15,9 @@
 #   uv run examples/outside-sudoku/build_sparse_required_digits.py
 #       rebuild both links from the committed gen.json
 #   uv run examples/outside-sudoku/build_sparse_required_digits.py --search SEED
-#       draw a fresh board (grid, groups, carved givens) into --gen
+#       draw a fresh board (grid, groups, carved givens) into --gen. The
+#       grid comes from CP-SAT's portfolio search, which is not reproducible
+#       from the seed: the committed gen.json is the artifact, this a one-shot.
 #
 # Lives here, not in docs/research/, because that gate refuses a new .py
 # there (check_research_python, #469); see build_required_digits.py.
@@ -28,7 +31,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from cpsat import SOLVED, forbid, solver
 from link_codec import decode_puzzle, encode_link
-from minify import minify_js
+from minify import minify_file, minify_js
 from ortools.sat.python import cp_model
 
 HERE = pathlib.Path(__file__).parent
@@ -48,9 +51,12 @@ COMPONENT = (
 CANDIDATE_NAME = "RequiredDigitsGacComponent"
 BASELINE_NAME = "RequiredDigitsComponent"
 CONSTRAINT_NAME = "Sparse required digits"
+# The regions are not drawn: they live in the constraint's code, so the text
+# says so rather than promise an outline the document does not carry.
 RULES = (
-    "Normal sudoku rules apply. Each outlined region also has to contain "
-    "the digits listed for it, at least once each."
+    "Normal sudoku rules apply. Timing board: the Sparse required digits "
+    "constraint's code holds 20 hidden 9-cell regions, each of which must "
+    "contain the digits the code lists for it, at least once each."
 )
 
 N = 9
@@ -99,7 +105,10 @@ def count_solutions(groups, givens, limit=60):
     """1 for a unique board, 2 for "at least two" -- TimeoutError if no verdict."""
     m, x = model(groups, givens)
     s = solver(limit)
-    if s.Solve(m) not in SOLVED:
+    status = s.Solve(m)
+    if status == cp_model.UNKNOWN:
+        raise TimeoutError("no verdict")
+    if status not in SOLVED:
         return 0
     first = {k: s.Value(v) for k, v in x.items()}
     forbid(m, x, first)
@@ -135,7 +144,7 @@ def snake(rng, taken):
     raise RuntimeError("no snake found")
 
 
-def search(seed, n_groups=6, n_required=4, overlap=False):
+def search(seed, n_groups=20, n_required=5, overlap=True):
     """Draw a board: a solution grid, disjoint snake groups each requiring
     `n_required` digits its own cells hold, and givens carved (in seeded
     random order) until no more can go while the board stays unique."""
@@ -145,16 +154,8 @@ def search(seed, n_groups=6, n_required=4, overlap=False):
         s = snake(rng, set() if overlap else taken)
         taken.update(s)
         cell_lists.append(s)
-    # a solution grid to read the required digits off
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, N, "") for r in range(N) for c in range(N)}
-    for i in range(N):
-        m.AddAllDifferent([x[i, c] for c in range(N)])
-        m.AddAllDifferent([x[r, i] for r in range(N)])
-    for b in range(N):
-        m.AddAllDifferent(
-            [x[r, c] for r in range(N) for c in range(N) if box(r, c) == b]
-        )
+    # a solution grid to read the required digits off: the plain sudoku
+    m, x = model([], {})
     for cell in x:
         m.AddHint(x[cell], rng.randrange(1, N + 1))
     sv = solver(30, reproducible=False, seed=seed, randomize=True)
@@ -163,6 +164,11 @@ def search(seed, n_groups=6, n_required=4, overlap=False):
     groups = []
     for i, cells in enumerate(cell_lists):
         present = sorted({grid[r][c] for r, c in cells})
+        if len(present) < n_required:
+            raise ValueError(
+                f"a snake holds {len(present)} distinct digits, fewer than "
+                f"--required {n_required}: try another seed"
+            )
         values = sorted(rng.sample(present, n_required))
         groups.append(
             {
@@ -176,7 +182,11 @@ def search(seed, n_groups=6, n_required=4, overlap=False):
     rng.shuffle(order)
     for cell in order:
         trial = {k: v for k, v in givens.items() if k != cell}
-        if count_solutions(groups, trial) == 1:
+        try:
+            unique = count_solutions(groups, trial) == 1
+        except TimeoutError:
+            unique = False  # no verdict: keep the given, lose nothing
+        if unique:
             givens = trial
     return {
         "grid": grid,
@@ -189,12 +199,6 @@ def backend_code(gen, name):
     table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
     src = BACKEND.read_text().replace(CANDIDATE_NAME, name)
     return minify_js(table + src, base_dir=BACKEND.parent)
-
-
-def component_code():
-    from minify import minify_file
-
-    return minify_file(COMPONENT)
 
 
 def rows_and_columns():
@@ -218,7 +222,7 @@ def build_doc(gen, name):
     ]
     regions = [box(r, c) for r in range(N) for c in range(N)]
     components = (
-        [{"type": "code", "name": CANDIDATE_NAME, "code": component_code()}]
+        [{"type": "code", "name": CANDIDATE_NAME, "code": minify_file(COMPONENT)}]
         if name == CANDIDATE_NAME
         else []
     )
@@ -269,9 +273,14 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--search", type=int, metavar="SEED")
     p.add_argument("--gen", default=GEN)
-    p.add_argument("--groups", type=int, default=6)
-    p.add_argument("--required", type=int, default=4)
-    p.add_argument("--overlap", action="store_true", help="let groups share cells")
+    p.add_argument("--groups", type=int, default=20)
+    p.add_argument("--required", type=int, default=5)
+    p.add_argument(
+        "--disjoint",
+        dest="overlap",
+        action="store_false",
+        help="keep groups from sharing cells (default: they may)",
+    )
     p.add_argument(
         "--out",
         help="directory for the links (default: docs/research/required-digits-gac/sparse/)",

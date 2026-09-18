@@ -189,11 +189,18 @@ each group's component directly -- no wrapper), and the two links.
   that one identifier, and the candidate link also ships the component code.
 
 ```
-uv run examples/outside-sudoku/build_sparse_required_digits.py           # rebuild both links
-uv run examples/outside-sudoku/build_sparse_required_digits.py --search SEED --groups 20 --required 5 --overlap --gen /path/gen.json
-uv run examples/_shared/probe_link.py strip sparse/PUZZLE_LINK_sparse.txt cand.txt   # and _original -> base.txt
-node examples/_shared/app-solve.mjs base.txt 1 [--after-logical]                     # then cand.txt, alternating
+uv run examples/outside-sudoku/build_sparse_required_digits.py   # rebuild both links
+D=docs/research/required-digits-gac/sparse
+uv run examples/_shared/probe_link.py strip $D/PUZZLE_LINK_sparse.txt cand.txt
+uv run examples/_shared/probe_link.py strip $D/PUZZLE_LINK_sparse_original.txt base.txt
+node examples/_shared/app-solve.mjs base.txt 1 [--after-logical]   # then cand.txt, alternating
 ```
+
+The committed `gen.json` was drawn with `--search 2 --groups 20 --required 5`
+(overlap is the default). Its grid comes from CP-SAT's portfolio search,
+which is not reproducible from the seed (`examples/_shared/cpsat.py`), so a
+rerun draws a different board: `gen.json` is the artifact, `--search` is a
+one-shot for drawing another.
 
 Not `just time`: the board sits under `docs/research/`, so the driver has no
 example directory to resolve (same reason as the wrapper board). Timed the
