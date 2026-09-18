@@ -44,7 +44,7 @@ assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
   assert.ok(!('oneToN' in inst) && !('kind' in inst), `no hidden write: ${Object.keys(inst)}`)
 }
 
-// ---- the house fact is latched, per line ----
+// ---- the repeats fact is latched both ways, per line ----
 // Houses are registered once and a backtrack cannot un-register one, so a line
 // found to be a house is not asked again. A component reading several lines
 // (a side's positions, its perpendiculars) latches each on its own.
@@ -58,11 +58,12 @@ assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
   lineKind(inst, p, LINE)
   lineKind(inst, p, LINE)
   assert.strictEqual(asked.length, 1, 'a house is asked about once')
-  assert.strictEqual(lineKind(inst, p, [CLUE, 0]).kind, BARE)
-  assert.strictEqual(lineKind(inst, p, [CLUE, 0]).kind, BARE)
-  assert.strictEqual(asked.length, 3, 'a bare line is asked about every time: it may be a house not yet registered')
+  const WITH_CLUE = [CLUE, 0]
+  assert.strictEqual(lineKind(inst, p, WITH_CLUE).kind, BARE)
+  assert.strictEqual(lineKind(inst, p, WITH_CLUE).kind, BARE)
+  assert.strictEqual(asked.length, 2, 'a bare line is latched too: the answer is geometry, fixed once update first runs')
   lineKind(inst, p, OTHER)
-  assert.strictEqual(asked.length, 4, 'another line gets its own answer')
+  assert.strictEqual(asked.length, 3, 'another line gets its own answer')
 }
 
 console.log('line-kind.test.mjs: all seams pass')

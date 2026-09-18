@@ -47,12 +47,15 @@ a component.
   (gotcha 6, verified #189).
 - **Query the line only**, never clue + line: a ring cell in the list flips the
   answer to `true`.
-- **Latch only the `noRepeats` fact; re-read the digit set every call.**
-  `noRepeats` (bare vs. house) comes from `getCellsCanHaveRepeats`, a geometry
-  fact — houses are registered once and a backtrack cannot un-register one, so
-  it is safe to test once on the instance and reuse the answer
-  (`component-contract.md`'s never-cache rule). Full house is a candidate
-  fact: whether the union of live candidates across the line has exactly
+- **Latch the repeats answer both ways; re-read the digit set every call.**
+  Whether a line can repeat (bare vs. house) comes from
+  `getCellsCanHaveRepeats`, a geometry fact fixed once `update` first runs, so
+  it is cached whether it comes back true or false and the O(n) walk runs once
+  per line (`component-contract.md`'s never-cache rule is about candidates, not
+  this). One caveat: the solver can retire a filled built-in house for the rest
+  of a branch, which can only weaken a cached answer, never make a removal
+  unsound. The re-ask-every-call rule applies to the full-house kind only, because
+  full house is a candidate fact: whether the union of live candidates across the line has exactly
   `line.length` digits changes with the search node, so `update` re-tests it
   on every call rather than latching it once reached — latching it is what
   made #336 unsound. (A length test against `digitCount` does not work

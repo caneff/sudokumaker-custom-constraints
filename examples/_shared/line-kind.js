@@ -17,9 +17,12 @@
 // bare (gotcha 6). Pass the line's cells alone -- a clue cell is in no house
 // with them and flips the answer to BARE.
 //
-// Latch only the house fact; re-read the digit set every call. A house is
-// registered once and a backtrack cannot un-register it, so a line found to be
-// one is remembered, per cells array, in `instance.houses`. The digit set is a
+// Latch only the repeats fact, both answers; re-read the digit set every call.
+// Whether a line can repeat is geometry, fixed once `update` first runs, so the
+// answer is remembered per cells array in `instance.repeats` whether it is
+// true or false. One caveat: the solver can retire a filled built-in house for
+// the rest of a branch, which can only weaken a latched answer (a house read
+// later as bare), never make a removal unsound. The digit set is a
 // candidate fact: the app shares one component object across every search node,
 // so a set latched deep in a branch would survive the backtrack to a parent
 // where the line has regained a digit (#336). Nothing else is written to the
@@ -34,11 +37,13 @@ const LINE_FULL = Object.freeze({ kind: FULL_HOUSE, oneToN: false })
 const LINE_ONE_TO_N = Object.freeze({ kind: FULL_HOUSE, oneToN: true })
 
 function lineKind (instance, puzzle, cells) {
-  const houses = instance.houses || (instance.houses = new Set())
-  if (!houses.has(cells)) {
-    if (puzzle.getCellsCanHaveRepeats(cells)) return LINE_BARE
-    houses.add(cells)
+  const repeats = instance.repeats || (instance.repeats = new Map())
+  let canRepeat = repeats.get(cells)
+  if (canRepeat === undefined) {
+    canRepeat = puzzle.getCellsCanHaveRepeats(cells)
+    repeats.set(cells, canRepeat)
   }
+  if (canRepeat) return LINE_BARE
   let mask = 0
   for (const c of cells) mask |= puzzle.getCandidatesBitMask(c)
   if (mask === (1 << (cells.length + 1)) - 2) return LINE_ONE_TO_N // bits 1..n set, bit 0 clear
