@@ -214,6 +214,41 @@ variant per round, three rounds, non-deterministic solve off, the app's
 |---|---|---|---|---|---|---|---|
 | 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | cold | 2400ms | 4500ms | 1.88 | FAIL |
 | 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | after-logical | 500ms | 1000ms | 2.00 | FAIL |
+| 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | cold | 2400ms | 3100ms | 1.29 | FAIL |
+| 2026-09-18 | v2026.08.14-d47fc4b | sparse-required-digits | after-logical | 500ms | 600ms | 1.20 | FAIL |
+
+The last two rows are the same board re-timed after the cost pass on
+`RequiredDigitsGacComponent.js` described below; the first two are the
+component as #541 measured it. Same procedure, same session, three
+interleaved rounds per row.
+
+### The cost pass (2026-09-18)
+
+Three changes, none of them to what the component deduces -- the output is
+identical on 27,000 random states, 6,522 of them stops:
+
+- the three subset memo arrays moved to module scope, allocated once instead
+  of three `Int32Array`s per `update` call, the way `HouseGacComponent`
+  shares `pooledDigitsOf`;
+- `countBits` became a SWAR popcount rather than one iteration per set bit;
+- the per-subset `visit` closure went away: `walkSubsets` fills the memo and
+  its two callers scan it inline.
+
+Offline cost (`bench-required-digits.mjs` shapes, best of 5, us/call):
+
+| shape | built-in | before | after |
+|---|---|---|---|
+| 3 cells, 1 digit | 0.064 | 0.215 | 0.168 |
+| 9 cells, 4 digits | 0.093 | 0.561 | 0.417 |
+| 9 cells, 9 digits | 1.348 | 3.217 | 1.349 |
+
+So per call the component now matches the built-in on the heavy shape, and
+the real-app gap closed from 1.88x/2.00x to 1.29x/1.20x. `two-row rule: NO
+SHIP` all the same -- neither row clears 0.9x, and 1.20x is still a real
+regression. What is left is not micro-optimisation: the built-in feeds the
+app's candidate-set map (`bundle-api-reference.md:562`,
+`handleRequiredDigitsComponent`) and a custom component cannot, so the swap
+still gives up the hidden singles that registration buys.
 
 Per-rep sums, cold: built-in 2400/2400/2300, GAC 4600/4500/4500;
 after-logical: built-in 500/500/500, GAC 1000/1000/900.

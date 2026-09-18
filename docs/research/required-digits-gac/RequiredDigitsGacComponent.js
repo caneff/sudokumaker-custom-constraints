@@ -78,6 +78,15 @@ function setParams (instance, values, cells) {
   instance.cells = cells
 }
 
+//! The subset memo, allocated once and shared between calls, exactly as
+//! HouseGacComponent shares `pooledDigitsOf`: `walkSubsets` fills slot `s`
+//! before anything reads it, and the walk yields nothing, so no other
+//! component can run in the middle of it. Three Int32Arrays per call was
+//! measurable at these call counts (bench-required-digits.mjs).
+const cellsOfSubset = new Int32Array(2 ** MAX_DISTINCT)
+const neededBySubset = new Int32Array(2 ** MAX_DISTINCT)
+const digitsOfSubset = new Int32Array(2 ** MAX_DISTINCT)
+
 function lowestBit (bits) {
   return bits & -bits
 }
@@ -91,10 +100,13 @@ function positionOf (singleBit) {
   return 31 - Math.clz32(singleBit)
 }
 
+//! Set bits in one pass of shifts rather than one iteration per bit: a cell
+//! mask runs to 24 bits, and this is called once per subset.
 function countBits (bits) {
-  let count = 0
-  for (; bits !== 0; bits = withoutLowestBit(bits)) count++
-  return count
+  let x = bits - ((bits >> 1) & 0x55555555)
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333)
+  x = (x + (x >> 4)) & 0x0f0f0f0f
+  return Math.imul(x, 0x01010101) >> 24
 }
 
 //! Per distinct required digit, the cells that can still hold it, as a cell
@@ -111,33 +123,24 @@ function cellsHoldingEachDigit (instance, candidates) {
   })
 }
 
-//! Walk every subset S of the distinct required digits, lowest digit last in.
-//! `visit(cellsInS, needOfS, digitsInS)` returns a string to stop the branch,
-//! or nothing to carry on. The three memo arrays are the same trick as
-//! HouseGacComponent: a subset without its lowest digit is a smaller number,
-//! so it has already been visited and its totals are on record.
-function walkSubsets (instance, cellsHoldingDigit, visit) {
-  const wholeSet = (2 ** instance.digits.length) - 1
-  const cellsOf = new Int32Array(wholeSet + 1)
-  const neededBy = new Int32Array(wholeSet + 1)
-  const digitsOf = new Int32Array(wholeSet + 1)
-
+//! Fill the memo for every subset S of the distinct required digits and
+//! return the whole-set index, so a caller can scan slots 1..wholeSet. A
+//! subset without its lowest digit is a smaller number, so it has already
+//! been filled and its totals are on record -- HouseGacComponent's trick.
+//! The scan is left to the caller rather than taken as a callback: a closure
+//! called 2^k times per update was the second cost this file exists to drop.
+function walkSubsets (instance, cellsHoldingDigit) {
+  const digits = instance.digits
+  const wantedCells = instance.wantedCells
+  const wholeSet = (2 ** digits.length) - 1
   for (let subset = 1; subset <= wholeSet; subset++) {
-    const newestDigitBit = lowestBit(subset)
-    const newestIndex = positionOf(newestDigitBit)
+    const newestIndex = positionOf(lowestBit(subset))
     const rest = withoutLowestBit(subset)
-
-    const cellsInSubset = cellsOf[rest] | cellsHoldingDigit[newestIndex]
-    const neededBySubset = neededBy[rest] + instance.wantedCells[newestIndex]
-    const digitsInSubset = digitsOf[rest] | (1 << instance.digits[newestIndex])
-    cellsOf[subset] = cellsInSubset
-    neededBy[subset] = neededBySubset
-    digitsOf[subset] = digitsInSubset
-
-    const failure = visit(cellsInSubset, neededBySubset, digitsInSubset)
-    if (failure !== undefined) return failure
+    cellsOfSubset[subset] = cellsOfSubset[rest] | cellsHoldingDigit[newestIndex]
+    neededBySubset[subset] = neededBySubset[rest] + wantedCells[newestIndex]
+    digitsOfSubset[subset] = digitsOfSubset[rest] | (1 << digits[newestIndex])
   }
-  return undefined
+  return wholeSet
 }
 
 //! A digit wanted twice needs two cells that the app allows to repeat. Hall
@@ -175,19 +178,24 @@ function * update (instance, puzzle) {
   //! looks tight on the record is tight or already unsatisfiable now, and both
   //! justify the filter. It is what makes this one pass and not a fixpoint
   //! loop; the solver re-runs `update` after the removals anyway.
-  const failure = walkSubsets(instance, cellsHoldingDigit, (cellsInSubset, neededBySubset, digitsInSubset) => {
+  const wholeSet = walkSubsets(instance, cellsHoldingDigit)
+  let failure
+  for (let subset = 1; subset <= wholeSet; subset++) {
+    const cellsInSubset = cellsOfSubset[subset]
     const holderCount = countBits(cellsInSubset)
-    if (holderCount < neededBySubset) {
-      return `${instance.name} has nowhere left to put the digits it requires`
+    const needed = neededBySubset[subset]
+    if (holderCount < needed) {
+      failure = `${instance.name} has nowhere left to put the digits it requires`
+      break
     }
-    if (holderCount === neededBySubset) {
+    if (holderCount === needed) {
       //! Those cells are used up by those digits: nothing else may sit there.
+      const digitsInSubset = digitsOfSubset[subset]
       for (let rest = cellsInSubset; rest !== 0; rest = withoutLowestBit(rest)) {
         candidates[positionOf(lowestBit(rest))] &= digitsInSubset
       }
     }
-    return undefined
-  })
+  }
 
   if (failure !== undefined) {
     //! puzzle.stop fails the search node being tried, so the solver backs up
@@ -215,7 +223,9 @@ function validate (instance, puzzle) {
   const candidates = instance.cells.map(cell => puzzle.getCandidatesBitMask(cell))
   const cellsHoldingDigit = cellsHoldingEachDigit(instance, candidates)
   if (instance.hasRepeats && !repeatsFit(instance, puzzle, cellsHoldingDigit)) return false
-  const failure = walkSubsets(instance, cellsHoldingDigit, (cellsInSubset, neededBySubset) =>
-    countBits(cellsInSubset) < neededBySubset ? 'no' : undefined)
-  return failure === undefined
+  const wholeSet = walkSubsets(instance, cellsHoldingDigit)
+  for (let subset = 1; subset <= wholeSet; subset++) {
+    if (countBits(cellsOfSubset[subset]) < neededBySubset[subset]) return false
+  }
+  return true
 }
