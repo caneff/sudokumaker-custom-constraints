@@ -14,10 +14,14 @@ verified.jsonl. A finder's optional `render` (#490) gets a picture saved to
 renders/<seed>.png right after that seed's example is accepted; a finder
 with no `render` gets no renders/ directory at all. `--workers` (default 3,
 set on the finder before the first seed) and the 1-minute load gate
-(refuses above 24 unless `--force-load`) are #488. This is the last ticket
-under the parent spec (#483) -- an unresumed killed hunt's renders/ can
-still hold a seed with no matching examples.jsonl line (#522), tracked
-separately.
+(refuses above 24 unless `--force-load`) are #488. A resume also
+reconciles renders/ itself (#522): any PNG left over from a seed whose
+example didn't survive `_reconcile` is deleted, so a hunt that's killed
+again mid-rerun and then genuinely abandoned still can't leave a stray PNG
+with no examples.jsonl line -- a hunt that's simply never resumed at all
+can't leave one either, since the example line that would confirm its
+render is already durable on disk by the time the render itself is
+written.
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
@@ -402,6 +406,39 @@ def _reconcile(
     return progress_lines, progress_events, examples_lines, examples_records
 
 
+def _reconcile_renders(out, progress_events):
+    """Delete a stray renders/<seed>.png left by a seed whose example
+    didn't survive `_reconcile` (#522): a kill between an accepted seed's
+    render write and its progress.jsonl event leaves examples.jsonl's line
+    for that seed trimmed away on this resume, but the render itself
+    untouched. The seed then reruns in `_hunt_loop` and normally overwrites
+    the same file (the seed is deterministic), self-healing before this
+    resume even finishes -- but a second kill landing during that rerun,
+    before it reaches its own render or progress write, leaves the file
+    orphaned for good if the hunt is never resumed a third time: nothing
+    else would ever revisit it.
+
+    Compares every PNG on disk against progress.jsonl's post-reconcile
+    confirmed "example" seeds -- not examples.jsonl, whose records don't
+    all carry a seed field (a finder's own `record()` decides that) -- and
+    removes anything that isn't there for a real, confirmed reason. Called
+    for every resume, the same as `_repair_renders`, and safe for a
+    stateful finder too: unlike `_repair_renders`, this never calls
+    `finder.propose`, so it can't double a state side effect.
+    """
+    renders_dir = out / "renders"
+    if not renders_dir.is_dir():
+        return
+    confirmed = {e["seed"] for e in progress_events if e.get("outcome") == "example"}
+    for png in renders_dir.glob("*.png"):
+        try:
+            seed = int(png.stem)
+        except ValueError:
+            continue
+        if seed not in confirmed:
+            png.unlink(missing_ok=True)
+
+
 def _repair_renders(finder, out, progress_lines, progress_events):
     """Resume re-attempts a missing renders/<seed>.png for every
     already-accepted example (#524 Codex pass 1): a transient render
@@ -416,9 +453,11 @@ def _repair_renders(finder, out, progress_lines, progress_events):
     (finder.record() need not be invertible), and a stateful finder's
     `propose` can have side effects state.json owns (toy_stateful_finder.py
     increments a counter there) -- calling it again here to repair a render
-    would double that side effect. A stateful finder's mismatched render
-    stays a known gap (#522) rather than risk silently corrupting its
-    state.
+    would double that side effect. A stateful finder's missing render stays
+    unrepaired rather than risk silently corrupting its state -- an
+    accepted limitation of this function specifically, separate from the
+    stray-render cleanup `_reconcile_renders` does for every finder,
+    stateful or not (#522).
     """
     render = getattr(finder, "render", None)
     if render is None or hasattr(finder, "load_state"):
@@ -704,6 +743,7 @@ def _resume(finder, argv, args, out, prior):
 
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
     _truncate_to_valid(out / "examples.jsonl", examples_lines)
+    _reconcile_renders(out, progress_events)
 
     progress_lines, progress_events = _repair_renders(
         finder, out, progress_lines, progress_events

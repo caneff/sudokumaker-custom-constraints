@@ -427,6 +427,74 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
+    # #522: a kill between an accepted seed's render write and its
+    # progress.jsonl event leaves renders/<seed>.png durable while progress
+    # doesn't confirm it -- the same setup as the orphan-example case above,
+    # but with a render-capable finder. Reconciliation trims that seed's
+    # line back out of examples.jsonl on resume, and the seed then reruns
+    # and overwrites the same PNG (deterministic), self-healing before this
+    # resume process even exits -- so a single real kill followed by a
+    # resume that's allowed to finish can't witness the gap either way. The
+    # only way the PNG stays a genuine orphan is a second kill landing
+    # during that rerun, before it reaches its own render or progress
+    # write again -- not reproducible by timing (the seed's own sleep is
+    # 10ms, far shorter than a subprocess's own startup), so this drives
+    # driver.run() in-process instead, the same exception this file's own
+    # docstring carries for the #812 thread-barrier test below, and stops
+    # it exactly where that second kill would land: after reconciliation's
+    # own writes, before `_hunt_loop` reruns anything.
+    import driver as driver_module
+    from render import GridCanvas
+    from toy_tiny_key_finder import TinyKeyFinder
+
+    class TinyKeyRenderFinder(TinyKeyFinder):
+        def render(self, candidate):
+            return GridCanvas(2, 2, cell=10).image
+
+    out = Path(tmp) / "render-orphan"
+    argv = ["--out", str(out), "--seeds=0:1"]
+    finder = TinyKeyRenderFinder()
+    code = driver_module.run(finder, argv)
+    check("base hunt for render-orphan test exits 0", code == 0)
+
+    base_progress = read_jsonl(out / "progress.jsonl")
+    check(
+        "the one seed's outcome is deterministically 'example' (render-orphan base)",
+        len(base_progress) == 1 and base_progress[0].get("outcome") == "example",
+    )
+    check(
+        "the base hunt wrote the seed's render",
+        (out / "renders" / "0.png").exists(),
+    )
+
+    # Simulate the first kill landing between the render write and the
+    # progress.jsonl flush.
+    (out / "progress.jsonl").write_text("")
+
+    class _StopBeforeRerun(Exception):
+        pass
+
+    def _boom(*a, **k):
+        raise _StopBeforeRerun
+
+    orig_hunt_loop = driver_module._hunt_loop
+    driver_module._hunt_loop = _boom
+    try:
+        try:
+            driver_module.run(finder, argv)
+            check("resume reached _hunt_loop unexpectedly (render-orphan)", False)
+        except _StopBeforeRerun:
+            pass
+    finally:
+        driver_module._hunt_loop = orig_hunt_loop
+
+    check(
+        "reconciliation removes a render whose example didn't survive it, "
+        "before the seed gets a chance to rerun and self-heal (#522)",
+        not (out / "renders" / "0.png").exists(),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
     # Argv mismatch refuses to start and writes nothing to any hunt file.
     # (This block's base hunt already leaves .lock behind, so it can't
     # witness whether .lock specifically stays absent on a refusal -- see
