@@ -2,9 +2,10 @@
 
 Runs the toy finders in this directory as subprocesses and checks only what
 a caller of the hunt CLI can see: exit code, stderr, and the output files --
-never an internal of driver.py, except the one test that drives
-`driver.run()` directly in-process to pin an exact thread interleaving (see
-its own comment for why). Kinds of interruption exercised:
+never an internal of driver.py, except the tests that drive `driver.run()`
+directly in-process to pin an exact interleaving a live kill can't reliably
+reproduce (see each one's own comment for why). Kinds of interruption
+exercised:
 
 - A genuine `SIGKILL` mid-hunt, via a finder that sleeps a few ms per seed so
   the kill reliably lands before the range completes (no timing race).
@@ -18,6 +19,10 @@ its own comment for why). Kinds of interruption exercised:
 - A precisely-timed thread barrier reproducing the fresh-vs-resume
   classify-before-lock race a real kill/schedule-delay combination can
   trigger but can't reliably reproduce on demand (#812 Codex pass 1).
+- A hand-truncated progress.jsonl paired with a `_hunt_loop` monkeypatch
+  that stops a resume right after reconciliation's own writes, pinning the
+  state a *second* kill mid-rerun would leave behind -- render-artifact
+  reconciliation, an orphan renders/<seed>.png (#522).
 
     uv run finders/hunt/test_hunt_resume.py
 """
@@ -448,6 +453,10 @@ with tempfile.TemporaryDirectory() as tmp:
     from toy_tiny_key_finder import TinyKeyFinder
 
     class TinyKeyRenderFinder(TinyKeyFinder):
+        # toy_render_finder.py's own rule (an even shaded-cell count passes)
+        # isn't a guaranteed accept on any one seed -- this needs the same
+        # deterministic-accept property the "orphan-example" case above
+        # uses TinyKeyFinder for, plus a render.
         def render(self, candidate):
             return GridCanvas(2, 2, cell=10).image
 
@@ -471,6 +480,14 @@ with tempfile.TemporaryDirectory() as tmp:
     # progress.jsonl flush.
     (out / "progress.jsonl").write_text("")
 
+    # #522 correctness review, C2: a stray file that only *looks*
+    # seed-numbered to Python's own permissive `int()` (underscores, here)
+    # must not be swept up as if seed 10 -- no seed anywhere near 10 ran in
+    # this hunt, so a stem-parse that's too loose would delete it as an
+    # unconfirmed "seed 10" the same as a genuine orphan.
+    decoy = out / "renders" / "1_0.png"
+    decoy.write_bytes(b"not a real seed file")
+
     class _StopBeforeRerun(Exception):
         pass
 
@@ -492,6 +509,151 @@ with tempfile.TemporaryDirectory() as tmp:
         "reconciliation removes a render whose example didn't survive it, "
         "before the seed gets a chance to rerun and self-heal (#522)",
         not (out / "renders" / "0.png").exists(),
+    )
+    check(
+        "a stray file that only int()-parses as a seed (underscores) is "
+        "left alone, not swept up as an unconfirmed seed (#522 C2)",
+        decoy.exists(),
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # #522 correctness review, C1: the seed `_reconcile_renders` deletes for
+    # is always about to rerun in this same resume -- but `_render_example`
+    # swallows a render failure into `render_error` rather than raising, so
+    # deleting first is a bet that the rerun's own render succeeds. For a
+    # stateless finder that bet is safe even lost: `_repair_renders` (#524)
+    # retries any missing render for a confirmed example on a *later*
+    # resume, so nothing is lost for good. A stateful finder gets no such
+    # retry (`_repair_renders` skips it outright -- a second `propose()`
+    # could corrupt state), so deleting its stray render eagerly can turn a
+    # merely-unconfirmed-but-intact picture into a permanently missing one.
+    # `_reconcile_renders` must skip a stateful finder the same way
+    # `_repair_renders` does, leaving the stray file in place rather than
+    # betting on a rerun with no safety net.
+    import driver as driver_module
+    from protocol import Verdict
+    from render import GridCanvas
+    from toy_stateful_finder import StatefulToyFinder
+
+    class StatefulRenderFinder(StatefulToyFinder):
+        def propose(self, rng):
+            self.seeds_seen += 1
+            return (rng.randint(0, 1),)
+
+        def verify(self, candidate):
+            return Verdict(ok=True)
+
+        def render(self, candidate):
+            return GridCanvas(2, 2, cell=10).image
+
+    out = Path(tmp) / "render-orphan-stateful"
+    argv = ["--out", str(out), "--seeds=0:1"]
+    finder = StatefulRenderFinder()
+    code = driver_module.run(finder, argv)
+    check("base hunt for stateful render-orphan test exits 0", code == 0)
+
+    base_progress = read_jsonl(out / "progress.jsonl")
+    check(
+        "the one seed's outcome is deterministically 'example' (stateful render-orphan base)",
+        len(base_progress) == 1 and base_progress[0].get("outcome") == "example",
+    )
+    check(
+        "the base hunt wrote the seed's render (stateful)",
+        (out / "renders" / "0.png").exists(),
+    )
+    original_png = (out / "renders" / "0.png").read_bytes()
+
+    # Simulate the same kill landing between the render write and the
+    # progress.jsonl flush as the stateless case above.
+    (out / "progress.jsonl").write_text("")
+
+    # A full resume-to-completion reruns seed 0 and rewrites renders/0.png
+    # either way, self-healing regardless of whether reconciliation deleted
+    # it first -- the same masking the render-orphan case above exists to
+    # avoid. Stopping before `_hunt_loop` the same way isolates exactly
+    # what reconciliation itself did to the file.
+    class _StopBeforeRerun(Exception):
+        pass
+
+    def _boom(*a, **k):
+        raise _StopBeforeRerun
+
+    resume_finder = StatefulRenderFinder()
+    orig_hunt_loop = driver_module._hunt_loop
+    driver_module._hunt_loop = _boom
+    try:
+        try:
+            driver_module.run(resume_finder, argv)
+            check(
+                "resume reached _hunt_loop unexpectedly (stateful render-orphan)",
+                False,
+            )
+        except _StopBeforeRerun:
+            pass
+    finally:
+        driver_module._hunt_loop = orig_hunt_loop
+
+    check(
+        "a stateful finder's stray render survives reconciliation untouched -- no "
+        "safety net exists to replace it if a rerun's render then failed (#522 C1)",
+        (out / "renders" / "0.png").exists()
+        and (out / "renders" / "0.png").read_bytes() == original_png,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # #522 correctness review, C3/spec P3: nothing above proves
+    # `_reconcile_renders` spares a *confirmed* seed's render -- a version
+    # that deleted every PNG unconditionally would still pass every check
+    # so far. A two-seed range where seed 0's example is confirmed and
+    # untouched, and seed 1's progress event is the one dropped, witnesses
+    # both halves of the rule in the same resume: seed 0's PNG must survive
+    # byte-for-byte, seed 1's stray PNG must go.
+    import driver as driver_module
+    from render import GridCanvas
+    from toy_tiny_key_finder import TinyKeyFinder
+
+    class TinyKeyRenderFinder(TinyKeyFinder):
+        def render(self, candidate):
+            return GridCanvas(2, 2, cell=10).image
+
+    out = Path(tmp) / "render-orphan-mixed"
+    argv = ["--out", str(out), "--seeds=0:2"]
+    finder = TinyKeyRenderFinder()
+    code = driver_module.run(finder, argv)
+    check("base hunt for mixed render-orphan test exits 0", code == 0)
+
+    base_progress = read_jsonl(out / "progress.jsonl")
+    base_outcomes = {e["seed"]: e.get("outcome") for e in base_progress}
+    check(
+        "both seeds are deterministically accepted (mixed render-orphan base)",
+        base_outcomes == {0: "example", 1: "example"},
+    )
+    seed0_png = (out / "renders" / "0.png").read_bytes()
+    check(
+        "both seeds wrote their render (mixed render-orphan base)",
+        (out / "renders" / "0.png").exists() and (out / "renders" / "1.png").exists(),
+    )
+
+    # Drop only seed 1's progress event, simulating the kill landing
+    # between its render write and its own progress.jsonl flush -- seed 0's
+    # line stays confirmed.
+    progress_lines = (out / "progress.jsonl").read_text().splitlines(keepends=True)
+    (out / "progress.jsonl").write_text(progress_lines[0])
+
+    resume_finder = TinyKeyRenderFinder()
+    code = driver_module.run(resume_finder, argv)
+    check("resume for mixed render-orphan test exits 0", code == 0)
+
+    check(
+        "seed 0's confirmed render survives resume byte-for-byte -- "
+        "reconciliation only touches the seed that didn't survive it",
+        (out / "renders" / "0.png").exists()
+        and (out / "renders" / "0.png").read_bytes() == seed0_png,
+    )
+    check(
+        "seed 1's render still matches examples.jsonl after resuming past "
+        "its own dropped progress event",
+        (out / "renders" / "1.png").exists(),
     )
 
 with tempfile.TemporaryDirectory() as tmp:

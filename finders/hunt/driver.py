@@ -15,13 +15,7 @@ renders/<seed>.png right after that seed's example is accepted; a finder
 with no `render` gets no renders/ directory at all. `--workers` (default 3,
 set on the finder before the first seed) and the 1-minute load gate
 (refuses above 24 unless `--force-load`) are #488. A resume also
-reconciles renders/ itself (#522): any PNG left over from a seed whose
-example didn't survive `_reconcile` is deleted, so a hunt that's killed
-again mid-rerun and then genuinely abandoned still can't leave a stray PNG
-with no examples.jsonl line -- a hunt that's simply never resumed at all
-can't leave one either, since the example line that would confirm its
-render is already durable on disk by the time the render itself is
-written.
+reconciles renders/ itself for a stateless finder (#522, `_reconcile_renders`).
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
@@ -50,6 +44,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -406,7 +401,10 @@ def _reconcile(
     return progress_lines, progress_events, examples_lines, examples_records
 
 
-def _reconcile_renders(out, progress_events):
+_SEED_STEM = re.compile(r"-?\d+")
+
+
+def _reconcile_renders(finder, out, progress_events):
     """Delete a stray renders/<seed>.png left by a seed whose example
     didn't survive `_reconcile` (#522): a kill between an accepted seed's
     render write and its progress.jsonl event leaves examples.jsonl's line
@@ -421,21 +419,32 @@ def _reconcile_renders(out, progress_events):
     Compares every PNG on disk against progress.jsonl's post-reconcile
     confirmed "example" seeds -- not examples.jsonl, whose records don't
     all carry a seed field (a finder's own `record()` decides that) -- and
-    removes anything that isn't there for a real, confirmed reason. Called
-    for every resume, the same as `_repair_renders`, and safe for a
-    stateful finder too: unlike `_repair_renders`, this never calls
-    `finder.propose`, so it can't double a state side effect.
+    removes anything that isn't there for a real, confirmed reason.
+    `_SEED_STEM` requires the whole stem to be an optionally-negative run of
+    digits, not just whatever `int()` tolerates (underscores, surrounding
+    whitespace, a leading "+") -- a stray file that only looks
+    seed-numbered by `int()`'s loose grammar must not be silently swept up.
+
+    Only for a finder with no `save_state`/`load_state`, the same carve-out
+    `_repair_renders` makes and for the same reason it does: a stateless
+    finder's missing render always gets retried by `_repair_renders` on a
+    *later* resume if this one's own rerun happens to fail (#524), so
+    deleting the stray file first costs nothing even in the worst case. A
+    stateful finder gets no such retry, so deleting eagerly would bet an
+    intact picture against a rerun's render with no safety net if that bet
+    is lost (#522 correctness review, finding C1) -- left alone instead,
+    same as `_repair_renders` leaves a stateful finder's missing render.
     """
+    if hasattr(finder, "load_state"):
+        return
     renders_dir = out / "renders"
     if not renders_dir.is_dir():
         return
     confirmed = {e["seed"] for e in progress_events if e.get("outcome") == "example"}
     for png in renders_dir.glob("*.png"):
-        try:
-            seed = int(png.stem)
-        except ValueError:
+        if not _SEED_STEM.fullmatch(png.stem):
             continue
-        if seed not in confirmed:
+        if int(png.stem) not in confirmed:
             png.unlink(missing_ok=True)
 
 
@@ -743,7 +752,7 @@ def _resume(finder, argv, args, out, prior):
 
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
     _truncate_to_valid(out / "examples.jsonl", examples_lines)
-    _reconcile_renders(out, progress_events)
+    _reconcile_renders(finder, out, progress_events)
 
     progress_lines, progress_events = _repair_renders(
         finder, out, progress_lines, progress_events
