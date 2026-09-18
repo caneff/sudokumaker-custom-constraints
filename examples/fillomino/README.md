@@ -406,6 +406,15 @@ different grid and a different stripper.
 
 ## Timing
 
+### Cell ids coerced with `| 0` (#450)
+
+The main now coerces every cell id (gotcha 10). `just time fillomino`, run alone, on the
+main with the coercion; `just time` prints the baseline row when no candidate is
+swapped in. The 2026-09-16 rows above (uncoerced main) read 6100ms cold.
+
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino | 5600ms | — | — | BASELINE |
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | — | — | BASELINE |
+
 ### The rule seam (#361)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | fillomino | 6100ms | 6200ms | 1.02 | FAIL |

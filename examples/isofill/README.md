@@ -416,6 +416,15 @@ instance stays valid as long as its board and clue set do not change.
 
 ## Timing
 
+### Cell ids coerced with `| 0` (#450)
+
+The main now coerces every cell id (gotcha 10). `just time isofill`, run alone, on the
+main with the coercion; `just time` prints the baseline row when no candidate is
+swapped in. The 2026-09-16 rows above (uncoerced main) read 600ms cold.
+
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill | 600ms | — | — | BASELINE |
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | — | — | BASELINE |
+
 ### The reach split (#362)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | isofill | 600ms | 600ms | 1.00 | FAIL |
