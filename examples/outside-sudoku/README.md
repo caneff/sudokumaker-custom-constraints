@@ -40,17 +40,18 @@ all read off the pre-pass bitmasks:
    the clue's last candidate goes and the solver backtracks at once. This falls
    out of deduction 1: `d` is not in the union, so deduction 1 removes it.
 
-`validate` is the filled-board backstop: on a full group it checks the clue's
+`validate` is the filled-board backstop: on a full window it checks the clue's
 digit against the window.
 
 ### Sizing the window
 
-`update` needs the board, and `setParams` does not get it, so the window length
-is read on the first `update` and cached on the instance
-(`puzzle.getRegion`, `getRegionCells`, `getRow`, `getColumn`). Board geometry
-cannot change under a live component, and the app rebuilds every component when
-the author edits a group, so a redrawn group gets a fresh instance and a fresh
-answer.
+`update` needs the window length and `setParams` gets no board, so main code
+computes it once per line (`window-length.js`, spliced into both mains with
+`// #include`: `puzzle.getRegion`, `getRegionCells`, `getRow`, `getColumn`) and
+passes it as the third constructor argument. Board geometry cannot change under
+a live component, and the app rebuilds every component when the author edits a
+group, so a redrawn group gets a fresh window. The component is valid only when
+its own main builds it: a missing `w` empties every clue.
 
 A line whose first cell has no region (region `-1`) falls back to the whole
 line as its window. That is weaker than the rule, never unsound.
@@ -60,6 +61,7 @@ line as its window. That is weaker than the rule, never unsound.
 | File | What it is |
 | --- | --- |
 | `OutsideSudokuComponent.js` | The component — paste into a component code segment |
+| `window-length.js` | The window-length reader, `// #include`d into both mains |
 | `main.js` | Local backend: one component per drawn group |
 | `main-global.js` | Global backend: the 4n frame lines, built from the board size |
 | `grid-geometry.mjs` | The board geometry the Node harnesses hand the mock puzzle |
@@ -79,8 +81,11 @@ line as its window. That is weaker than the rule, never unsound.
 - **Local** (`main.js`, `PUZZLE_LINK_local.txt`): the author draws one group
   per clue, clue cell first, then the line nearest-first. A group still being
   drawn (clue only, no line) is skipped. A line that is not one row or column
-  **throws**: the window is a box extent in the line's *direction*, and a bent
-  path has no direction.
+  is **skipped**: the window is a box extent in the line's *direction*, and a
+  bent path has no direction. (A main-code throw shows nothing in the app and
+  would leave the earlier groups registered and the later ones not.) Both
+  backends compute the window length once per line (`window-length.js`) and
+  pass it as the component's third argument.
 - **Global** (`main-global.js`, `PUZZLE_LINK.txt`): reads no groups. It builds
   every frame line from `puzzle.spec.size.width` and
   `puzzle.spec.size.height` — `2(W-2) + 2(H-2)` of them, `4n` on a square
@@ -138,8 +143,8 @@ Every other example's local board draws **bent paths**, which is what makes a
 line stop being a house and gives the bare-line deductions a board to play.
 This rule cannot use one. The window is the box extent measured **along the
 line's direction**, and a bent path has no single direction — so `main.js`
-throws on a group that is not one row or one column, and a bent-path board
-would not open at all. The local board therefore draws the frame lines, and
+skips a group that is not one row or one column, and a bent-path board would
+draw nothing. The local board therefore draws the frame lines, and
 its rules text keeps quiet about houses: on this board every drawn line really
 is a row or a column.
 
@@ -229,8 +234,15 @@ just time outside-sudoku --ring-clues
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) | 500ms | 500ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) after-logical | 300ms | 300ms | 1.00 | gate: PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) | 500ms | 400ms | 0.80 | SHIP |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) after-logical | 300ms | 300ms | 1.00 | SHIP |
 
-The last pair is #276, which makes `main-global.js` coerce every cell id it
+The #456 pair narrows `getAffectedCells` to the clue plus the window and
+passes raw masks. Cold clears 0.9× (0.80) and after-logical holds at 1.00, so
+`just time` printed `two-row rule: SHIP`; each row's own verdict there is the
+per-row 0.9× result alone.
+
+The #276 pair is the run that made `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. It adds no deduction, so the bar is
 **≤ 1.1× on both rows** and "unchanged" is the pass
 (`docs/real-app-timing.md`, "Bar for a gate change"). This board is closed

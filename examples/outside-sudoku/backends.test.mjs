@@ -12,6 +12,7 @@ import { dirname, join } from 'path'
 import assert from 'assert'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { assembleSource } from '../_shared/include.mjs'
+import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // Assembled, not raw: main-global.js splices in the shared frame reader
@@ -29,6 +30,21 @@ function mockPuzzle (W) {
     getCellAt: (a, b) => a + b * W,
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
+    // A 3x3-box grid inside a one-cell ring: ring cells have no region.
+    getRegion: c => {
+      const r = Math.floor(c / W) - 1
+      const k = (c % W) - 1
+      if (r < 0 || k < 0 || r >= W - 2 || k >= W - 2) return -1
+      return Math.floor(r / 3) * ((W - 2) / 3) + Math.floor(k / 3)
+    },
+    getRegionCells: reg => {
+      const across = (W - 2) / 3
+      const cells = []
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dk = 0; dk < 3; dk++) cells.push((Math.floor(reg / across) * 3 + dr + 1) * W + (reg % across) * 3 + dk + 1)
+      }
+      return cells
+    },
     addConstraintComponent: comp => registered.push(comp)
   }
 }
@@ -36,8 +52,8 @@ function mockPuzzle (W) {
 const helpers = { naming: { getCellsDescription: cells => cells.join(','), getCellName: cell => String(cell) } }
 
 // The component constructor the backends call: records its arguments.
-function OutsideSudokuComponent (name, clue, line) {
-  return { name, clue, line }
+function OutsideSudokuComponent (name, clue, line, w) {
+  return { name, clue, line, w }
 }
 
 function runBackend (file, puzzle, input) {
@@ -45,6 +61,19 @@ function runBackend (file, puzzle, input) {
   // scope; a Function body is the closest Node equivalent.
   const fn = new Function('input', 'puzzle', 'helpers', 'OutsideSudokuComponent', src(file)) // eslint-disable-line no-new-func
   fn(input, puzzle, helpers, OutsideSudokuComponent)
+}
+
+// ---- windowLength reads the box along the line's own direction
+// On a 6x6 the boxes are 2 tall and 3 wide, so a row line and a column line
+// from the same corner differ: a reading that ignores the direction gets one of
+// them wrong.
+{
+  const geo = gridGeometry(6, 2, 3)
+  const windowLength = new Function(`${src('window-length.js')}\nreturn windowLength`)() // eslint-disable-line no-new-func
+  const p = geo.api
+  assert.strictEqual(windowLength(p, geo.rowLine(0, 0, 6)), 3, 'along a row: 3 wide')
+  assert.strictEqual(windowLength(p, geo.columnLine(0, 0, 6)), 2, 'down a column: 2 tall')
+  assert.strictEqual(windowLength(p, geo.columnLine(0, 0, 1)), 1, 'a one-cell line has a one-cell window')
 }
 
 // ---- main.js: one component per drawn group
@@ -56,6 +85,21 @@ function runBackend (file, puzzle, input) {
   assert.strictEqual(p.registered.length, 1, 'one component per group')
   assert.strictEqual(p.registered[0].clue, 11)
   assert.deepStrictEqual(p.registered[0].line, row)
+  assert.strictEqual(p.registered[0].w, 3, 'the window is the box extent along the row')
+}
+
+// ---- main.js: a line shorter than the box extent is capped at its length
+{
+  const p = mockPuzzle(11)
+  runBackend('main.js', p, { groups: [{ cells: [11, 12, 13] }] })
+  assert.strictEqual(p.registered[0].w, 2, 'the window is capped by the line length')
+}
+
+// ---- main.js: a line down a column measures the box along the column
+{
+  const p = mockPuzzle(11)
+  runBackend('main.js', p, { groups: [{ cells: [1, 12, 23, 34, 45] }] })
+  assert.strictEqual(p.registered[0].w, 3)
 }
 
 // ---- main.js: a group still being drawn (clue only) is skipped
@@ -65,16 +109,14 @@ function runBackend (file, puzzle, input) {
   assert.deepStrictEqual(p.registered, [], 'an empty line registers nothing')
 }
 
-// ---- main.js: a line that is not one row or column fails loud
+// ---- main.js: a bent group is skipped; groups around it still register
 {
   const p = mockPuzzle(11)
   const bent = [12, 13, 24] // two cells of row 1, then one of row 2
-  assert.throws(
-    () => runBackend('main.js', p, { groups: [{ cells: [11, ...bent] }] }),
-    /not one row or column/,
-    'a bent line must throw, not solve wrong'
-  )
-  assert.deepStrictEqual(p.registered, [], 'nothing is registered from a bad group')
+  runBackend('main.js', p, {
+    groups: [{ cells: [11, 12, 13, 14] }, { cells: [11, ...bent] }, { cells: [22, 23, 24, 25] }]
+  })
+  assert.deepStrictEqual(p.registered.map(c => c.clue), [11, 22], 'the bent group alone is skipped, no throw')
 }
 
 // ---- main-global.js: all 4n frame lines, no groups read
@@ -86,6 +128,7 @@ function runBackend (file, puzzle, input) {
   const built = p.registered.map(c => [c.clue, ...c.line].join(','))
   const expected = frameGeometry(n, [3, 3]).groups.map(g => g.cells.join(','))
   assert.deepStrictEqual([...built].sort(), [...expected].sort(), 'the 4n frame lines')
+  assert.ok(p.registered.every(c => c.w === 3), 'every frame line has the 3-cell window')
 }
 
 console.log('PASS')
