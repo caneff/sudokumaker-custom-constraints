@@ -55,13 +55,13 @@ function setParams (instance, cells) {
   instance.targetStamp = 0
   // Per-call scratch, reused so update allocates almost nothing (GC was 12%
   // of a call): one allowed and one walk mask per digit, BFS frontiers,
-  // distance rows for the tour bound, and the "every other digit" lists (the
-  // DigitSet the app receives is built fresh per yield).
+  // distance rows for the tour bound, and the "every other digit" masks.
   instance.allowed = []
   instance.near = []
   instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
   instance.dist = []
   instance.others = []
+  instance.allMask = 0
   // Cut filter scratch: the two shortest-path DAGs cut's tests walk (one from
   // all placed cells, one from the seed), their dominator trees, the subtree
   // counts read off them, and the per-cell verdict. See cutFilter.
@@ -102,6 +102,14 @@ function neighbours (i, side) {
   return out
 }
 
+// The next visit stamp. `mask` and `targets` are Uint32Array, so a counter
+// that reached 2^32 would store 0 and every cell would read as unvisited; clear
+// the array and start over one step before that.
+function nextStamp (instance) {
+  if (instance.stamp >= 0xFFFFFFFF) { instance.mask.fill(0); instance.stamp = 0 }
+  return ++instance.stamp
+}
+
 // How far a walk from `starts` spreads: the cells reachable in at most `depth`
 // steps through `allowed`, stopping once it holds `limit` cells. Returns
 // { size, stamp }: `instance.mask[i] === stamp` marks a visited cell until the
@@ -109,7 +117,7 @@ function neighbours (i, side) {
 // this is the hot loop of every search node.
 function reachSize (instance, starts, depth, allowed, limit = Infinity) {
   const { nbrs, mask } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   let size = 0
   let [frontier, next] = instance.frontier
   let len = 0
@@ -137,7 +145,7 @@ function reachSize (instance, starts, depth, allowed, limit = Infinity) {
 // it has seen them all.
 function reachesAll (instance, start, depth, allowed, want) {
   const { nbrs, mask, targets, targetStamp } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   let [frontier, next] = instance.frontier
   mask[start] = stamp
   frontier[0] = start
@@ -168,7 +176,7 @@ function reachesAll (instance, start, depth, allowed, want) {
 // Buffers live on `instance`, so a walk allocates nothing.
 function seedWalk (instance, start, budget, allowed, value, d) {
   const { nbrs, mask } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   let size = 1
   let [frontier, next] = instance.frontier
   let len = 1
@@ -317,10 +325,11 @@ function scanBoard (instance, puzzle, lo, hi) {
     const allowed = instance.allowed[d] || (instance.allowed[d] = new Uint8Array(cells.length))
     allowed.fill(0)
     state[d] = { placed: [], open: [], allowed }
-    if (!instance.others[d]) {
-      const others = []
-      for (let e = lo; e <= hi; e++) if (e !== d) others.push(e)
-      instance.others[d] = others
+    if (instance.others[d] === undefined) {
+      let all = 0
+      for (let e = lo; e <= hi; e++) all |= 1 << e
+      instance.allMask = all
+      instance.others[d] = all & ~(1 << d)
     }
     state.digits.push(d)
   }
@@ -335,7 +344,9 @@ function scanBoard (instance, puzzle, lo, hi) {
       s.placed.push(i)
       s.allowed[i] = 1
     } else {
-      for (const d of Array.from(puzzle.getCandidates(c))) {
+      // Lowest set bit first, so digits come in ascending order.
+      for (let m = puzzle.getCandidatesBitMask(c); m; m &= m - 1) {
+        const d = 31 - Math.clz32(m & -m)
         state[d].open.push(i)
         state[d].allowed[i] = 1
       }
@@ -406,15 +417,16 @@ function * cutRule (instance, puzzle, state, d, size, near) {
   const { placed, open, allowed } = state[d]
   const others = instance.others[d]
   const depth = size - placed.length
+  if (instance.targetStamp >= 0xFFFFFFFF) { instance.targets.fill(0); instance.targetStamp = 0 }
   const targetStamp = ++instance.targetStamp
   for (const i of placed) instance.targets[i] = targetStamp
   const skip = cutFilter(instance, placed, open, allowed, size, depth)
+  const held = []
   for (const x of open) {
     if (!near.mask[x]) continue
-    if (cutsRegion(instance, x, placed, allowed, near, size, depth, skip)) {
-      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])
-    }
+    if (cutsRegion(instance, x, placed, allowed, near, size, depth, skip)) held.push(cells[x])
   }
+  if (held.length) yield puzzle.removeCandidatesFromCells(others, held)
 }
 
 //! Tour bound and cut filter, for a digit with a seed and room left to grow.
@@ -428,7 +440,8 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
     yield puzzle.removeCandidateFromCell(d, cells[placed[0]])
     return null
   }
-  for (const i of open) if (!near.mask[i]) yield puzzle.removeCandidateFromCell(d, cells[i])
+  const out = open.filter(i => !near.mask[i]).map(i => cells[i])
+  if (out.length) yield puzzle.removeCandidateFromCells(d, out)
   yield * cutRule(instance, puzzle, state, d, size, near)
   return near.mask // budget limits this digit to its walk
 }
@@ -444,16 +457,18 @@ function * noSeedRule (instance, puzzle, state, d, size) {
   const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
   near.fill(0)
   const small = []
+  const smallCells = []
   let big = false
   for (const start of open) {
     if (near[start]) continue
     const comp = reachSize(instance, [start], Infinity, allowed)
-    for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) small.push(i) }
+    for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) { small.push(i); smallCells.push(cells[i]) } }
     if (comp.size >= size) big = true
   }
   // No component fits the region: a dead branch, so empty a cell.
-  if (!big) { yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[open[0]]); return null }
-  for (const i of small) { near[i] = 0; yield puzzle.removeCandidateFromCell(d, cells[i]) }
+  if (!big) { yield puzzle.removeCandidatesFromCell(instance.allMask, cells[open[0]]); return null }
+  for (const i of small) near[i] = 0
+  if (smallCells.length) yield puzzle.removeCandidateFromCells(d, smallCells)
   return near // budget limits this digit to the components that fit
 }
 
@@ -474,11 +489,10 @@ function * digitRule (instance, puzzle, state, d, size) {
   }
   if (placed.length === size) {
     //! Cap: d already fills all size cells, so every open cell loses it.
-    for (const i of open) yield puzzle.removeCandidateFromCell(d, cells[i])
+    if (open.length) yield puzzle.removeCandidateFromCells(d, open.map(i => cells[i]))
   } else if (placed.length + open.length === size) {
     //! Force: exactly size cells can hold d, so every open one takes d.
-    const others = instance.others[d]
-    for (const i of open) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
+    if (open.length) yield puzzle.removeCandidatesFromCells(instance.others[d], open.map(i => cells[i]))
   } else if (placed.length > 0) {
     return yield * seededRule(instance, puzzle, state, d, size, walk)
   } else if (open.length > 0) {
@@ -492,16 +506,25 @@ function * update (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
-  if (!Number.isInteger(size)) throw new Error(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`)
+  if (!Number.isInteger(size)) {
+    // stop, not throw: a throw in update reaches only the console, and the
+    // board would solve as if ISOFILL were absent.
+    yield puzzle.stop(`ISOFILL: ${cells.length} cells do not split evenly among digits ${lo}-${hi}`, cells)
+    return
+  }
   const state = scanBoard(instance, puzzle, lo, hi)
   const near = []
   for (let d = lo; d <= hi; d++) near[d] = yield * digitRule(instance, puzzle, state, d, size)
   // Budget: every open cell needs a digit, and digit d can take at most
   // (size - placed) more cells, all inside its walk. If no assignment covers
   // every open cell the branch is dead: empty that cell.
-  const { dead, drops } = budget(state, near, lo, hi, size)
-  if (dead >= 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(state.digits), cells[dead])
-  for (const [x, d] of drops) yield puzzle.removeCandidateFromCell(d, cells[x])
+  const b = budget(instance, state, near, lo, hi, size)
+  if (b.dead >= 0) yield puzzle.removeCandidatesFromCell(instance.allMask, cells[b.dead])
+  for (let d = lo; d <= hi; d++) {
+    const out = []
+    for (let k = 0; k < b.dropCount; k++) if (b.dropDigit[k] === d) out.push(cells[b.dropCell[k]])
+    if (out.length) yield puzzle.removeCandidateFromCells(d, out)
+  }
   yield * perimeterRule(instance, puzzle, lo, hi)
 }
 
@@ -560,9 +583,9 @@ function * perimeterRule (instance, puzzle, lo, hi) {
     const strip = mask & ~(1 << a)
     if (!strip) continue
     const q = at[(s + 1) % m]
-    for (let k = at[s] + 1 >= n ? 0 : at[s] + 1; k !== q; k = k + 1 >= n ? 0 : k + 1) {
-      yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(strip), cells[border[k]])
-    }
+    const gap = []
+    for (let k = at[s] + 1 >= n ? 0 : at[s] + 1; k !== q; k = k + 1 >= n ? 0 : k + 1) gap.push(cells[border[k]])
+    if (gap.length) yield puzzle.removeCandidatesFromCells(strip, gap)
   }
 }
 
@@ -574,83 +597,130 @@ function * perimeterRule (instance, puzzle, lo, hi) {
 // lies in some other perfect matching only if cell and digit share a strongly
 // connected component of the residual graph (cell -> digit for an unmatched
 // pair, digit -> cell for a matched one). Every other pair is in no solution,
-// so `drops` lists them as [cell, digit].
+// so they go in `dropCell`/`dropDigit`.
 //! Budget: match open cells to the digits' free slots. No full matching is a
 //! dead branch; a pair no matching can use loses that candidate.
-function budget (state, near, lo, hi, size) {
+// Every buffer is owned by `instance.budget`, sized once from the board and the
+// digit range, so a call allocates nothing. Returns that scratch object: `dead`
+// (a cell, or -1) and `dropCell[k]`/`dropDigit[k]` for k < `dropCount`.
+function budget (instance, state, near, lo, hi, size) {
   const n = state[lo].allowed.length
-  const isOpen = new Uint8Array(n)
-  const options = [] // cell -> digits whose walk holds it
-  const taken = [] // digit -> cells matched to it
-  const matched = new Int8Array(n).fill(-1) // cell -> digit
+  const D = hi + 1
+  const b = instance.budget || (instance.budget = {
+    n,
+    D,
+    isOpen: new Uint8Array(n),
+    optCount: new Uint8Array(n), // cell -> how many digits' walks hold it
+    optList: new Uint8Array(n * D), // cell x -> optList[x * D ...], ascending digits
+    taken: new Int16Array(D * size), // digit d -> cells matched to it, taken[d * size ...]
+    takenLen: new Uint8Array(D),
+    matched: new Int8Array(n),
+    seen: new Uint32Array(D),
+    seenStamp: 0,
+    adjStart: new Int32Array(n + D + 1), // residual graph in CSR form
+    adjFill: new Int32Array(n + D),
+    adjList: new Int32Array(n * D),
+    idx: new Int32Array(n + D),
+    low: new Int32Array(n + D),
+    comp: new Int32Array(n + D),
+    stack: new Int32Array(n + D),
+    dropCell: new Int16Array(n * D),
+    dropDigit: new Int8Array(n * D),
+    dead: -1,
+    dropCount: 0,
+    size,
+    state: null,
+    sp: 0,
+    next: 0,
+    count: 0
+  })
+  b.state = state
+  b.size = size
+  b.dead = -1
+  b.dropCount = 0
+  b.isOpen.fill(0)
+  b.optCount.fill(0)
+  b.takenLen.fill(0)
+  b.matched.fill(-1)
   let slots = 0
   for (let d = lo; d <= hi; d++) {
-    taken[d] = []
     slots += size - state[d].placed.length
     for (const i of state[d].open) {
-      isOpen[i] = 1
-      if (!near[d] || near[d][i]) (options[i] || (options[i] = [])).push(d)
+      b.isOpen[i] = 1
+      if (!near[d] || near[d][i]) b.optList[i * D + b.optCount[i]++] = d
     }
-  }
-  const augment = (x, seen) => {
-    for (const d of options[x] || []) {
-      if (seen[d]) continue
-      seen[d] = 1
-      if (taken[d].length < size - state[d].placed.length) { taken[d].push(x); matched[x] = d; return true }
-      for (let k = 0; k < taken[d].length; k++) {
-        if (augment(taken[d][k], seen)) { taken[d][k] = x; matched[x] = d; return true }
-      }
-    }
-    return false
   }
   let open = 0
   for (let x = 0; x < n; x++) {
-    if (!isOpen[x]) continue
+    if (!b.isOpen[x]) continue
     open++
-    if (!augment(x, new Uint8Array(hi + 1))) return { dead: x, drops: [] }
+    if (b.seenStamp >= 0xFFFFFFFF) { b.seen.fill(0); b.seenStamp = 0 }
+    b.seenStamp++
+    if (!augment(b, x)) { b.dead = x; return b }
   }
-  const drops = []
-  if (open !== slots) return { dead: -1, drops } // an emptied cell: not perfect, prune unsound
-  // Residual graph over cells 0..n-1 and digits n+d; Tarjan's SCC.
-  const adj = []
-  for (let v = 0; v < n + hi + 1; v++) adj[v] = []
+  if (open !== slots) return b // an emptied cell: not perfect, prune unsound
+  // Residual graph over cells 0..n-1 and digits n+d, in CSR form.
+  const V = n + D
+  b.adjStart.fill(0)
   for (let x = 0; x < n; x++) {
-    for (const d of options[x] || []) {
-      if (d === matched[x]) adj[n + d].push(x); else adj[x].push(n + d)
+    for (let k = 0; k < b.optCount[x]; k++) {
+      const d = b.optList[x * D + k]
+      b.adjStart[(d === b.matched[x] ? n + d : x) + 1]++
     }
   }
-  const comp = sccs(adj)
+  for (let v = 0; v < V; v++) { b.adjStart[v + 1] += b.adjStart[v]; b.adjFill[v] = b.adjStart[v] }
   for (let x = 0; x < n; x++) {
-    for (const d of options[x] || []) {
-      if (d !== matched[x] && comp[x] !== comp[n + d]) drops.push([x, d])
+    for (let k = 0; k < b.optCount[x]; k++) {
+      const d = b.optList[x * D + k]
+      if (d === b.matched[x]) b.adjList[b.adjFill[n + d]++] = x; else b.adjList[b.adjFill[x]++] = n + d
     }
   }
-  return { dead: -1, drops }
+  b.idx.fill(-1)
+  b.comp.fill(-1)
+  b.sp = 0
+  b.next = 0
+  b.count = 0
+  for (let v = 0; v < V; v++) if (b.idx[v] < 0) sccVisit(b, v)
+  for (let x = 0; x < n; x++) {
+    for (let k = 0; k < b.optCount[x]; k++) {
+      const d = b.optList[x * D + k]
+      if (d !== b.matched[x] && b.comp[x] !== b.comp[n + d]) { b.dropCell[b.dropCount] = x; b.dropDigit[b.dropCount++] = d }
+    }
+  }
+  return b
 }
 
-// Tarjan's strongly connected components; returns a component id per node.
-function sccs (adj) {
-  const n = adj.length
-  const idx = new Int32Array(n).fill(-1)
-  const low = new Int32Array(n)
-  const comp = new Int32Array(n).fill(-1)
-  const stack = []
-  let next = 0
-  let count = 0
-  const visit = v => {
-    idx[v] = low[v] = next++
-    stack.push(v)
-    for (const w of adj[v]) {
-      if (idx[w] < 0) { visit(w); low[v] = Math.min(low[v], low[w]) } else if (comp[w] < 0) low[v] = Math.min(low[v], idx[w])
-    }
-    if (low[v] === idx[v]) {
-      let w
-      do { w = stack.pop(); comp[w] = count } while (w !== v)
-      count++
+// Kuhn's augmenting path from open cell x; `b.seenStamp` marks the digits this
+// search already tried.
+function augment (b, x) {
+  const { D, size, state, taken, takenLen, seen } = b
+  for (let k = 0; k < b.optCount[x]; k++) {
+    const d = b.optList[x * D + k]
+    if (seen[d] === b.seenStamp) continue
+    seen[d] = b.seenStamp
+    if (takenLen[d] < size - state[d].placed.length) { taken[d * size + takenLen[d]++] = x; b.matched[x] = d; return true }
+    for (let j = 0; j < takenLen[d]; j++) {
+      if (augment(b, taken[d * size + j])) { taken[d * size + j] = x; b.matched[x] = d; return true }
     }
   }
-  for (let v = 0; v < n; v++) if (idx[v] < 0) visit(v)
-  return comp
+  return false
+}
+
+// Tarjan's strongly connected components over the CSR graph in `b`; fills
+// `b.comp` with a component id per node.
+function sccVisit (b, v) {
+  const { idx, low, comp, stack, adjStart, adjList } = b
+  idx[v] = low[v] = b.next++
+  stack[b.sp++] = v
+  for (let e = adjStart[v]; e < adjStart[v + 1]; e++) {
+    const w = adjList[e]
+    if (idx[w] < 0) { sccVisit(b, w); low[v] = Math.min(low[v], low[w]) } else if (comp[w] < 0) low[v] = Math.min(low[v], idx[w])
+  }
+  if (low[v] === idx[v]) {
+    let w
+    do { w = stack[--b.sp]; comp[w] = b.count } while (w !== v)
+    b.count++
+  }
 }
 
 // Exact check on a full grid: every digit is one connected island of `size` cells.
@@ -660,13 +730,14 @@ function validate (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1)
+  const allowed = instance.holds || (instance.holds = new Uint8Array(cells.length))
   for (let d = lo; d <= hi; d++) {
-    const allowed = new Array(cells.length).fill(false)
+    allowed.fill(0)
     let first = -1
     let count = 0
     for (let i = 0; i < cells.length; i++) {
       if (puzzle.getValue(cells[i]) !== d) continue
-      allowed[i] = true
+      allowed[i] = 1
       count++
       if (first < 0) first = i
     }

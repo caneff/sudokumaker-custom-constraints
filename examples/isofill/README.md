@@ -12,9 +12,10 @@ Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 The same code serves any square board whose digit count equals its side: N
 regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+1
 regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
-above). `main.js` reads the side from `puzzle.spec.size.width`; the component
-reads the digit range from `helpers.digits` and throws when the cells do not
-split evenly among the digits. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
+above). `main.js` reads the side from `puzzle.spec.size.width` (and checks the height); the component
+reads the digit range from `helpers.digits` and stops the branch (`puzzle.stop`,
+which reaches the step log) when the cells do not split evenly among the
+digits. `main.js` also refuses a non-square board before registering. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
 the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
 the app proves it unique in 0.2 s).
 
