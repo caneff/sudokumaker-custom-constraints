@@ -29,15 +29,38 @@ const STATES = 20000
 // A state: one mask per cell, each holding a planted digit plus noise, so no
 // cell is ever empty and the walk is never cut short by a stop.
 //
-// `pin` is what makes the shape reach `update`'s second half. Left null, the
-// counter cell gets a random mask, and on a group of any size the chance that
-// its largest survivor lands exactly on the definite count (or its smallest on
-// the possible count) is small -- about 50 states in 20,000 here -- so the row
-// times `countHits` and the bounds check and almost never the filtering loop.
-// Pinned to 'definite' or 'possible' the branch fires on every state, which is
-// the ceiling the same row would otherwise hide.
+// `pin` is what makes a shape reach `update`'s second half, where the open
+// target cells are filtered. On a random counter mask that branch is rare --
+// the counter's largest survivor has to land exactly on the definite count, or
+// its smallest on the possible count -- so an unpinned row times `countHits`
+// and the bounds check and little else. Pinning the counter to one of those
+// bounds is how the filtering loop gets timed at all.
+//
+// The pin only takes when the count it needs is a digit a cell could hold
+// (1..9): a 20-cell group's possible count averages 17, so 'possible' pins
+// nothing there. Rather than leave that to be assumed, every shape reports the
+// share of its states that actually reach the loop, and a row whose share is
+// low is a row about `countHits`, whatever its label says.
+function reachesFilter (masks, targetCount, digitMask) {
+  let definite = 0
+  let open = 0
+  for (let cell = 1; cell <= targetCount; cell++) {
+    const inSet = masks[cell] & digitMask
+    if (inSet === masks[cell]) definite++
+    else if (inSet !== 0) open++
+  }
+  const possible = definite + open
+  const inRange = ((1 << (possible + 1)) - 1) & ~((1 << definite) - 1)
+  const allowed = masks[0] & inRange
+  if (allowed === 0 || open === 0) return { definite, possible, reaches: false }
+  const largest = 31 - Math.clz32(allowed)
+  const smallest = 31 - Math.clz32(allowed & -allowed)
+  return { definite, possible, reaches: largest === definite || smallest === possible }
+}
+
 function makeStates (targetCount, density, digitMask, pin = null) {
   const states = []
+  let reaching = 0
   for (let t = 0; t < STATES; t++) {
     const masks = Array.from({ length: targetCount + 1 }, () => {
       let mask = 1 << (1 + ((rnd() * 9) | 0))
@@ -45,21 +68,14 @@ function makeStates (targetCount, density, digitMask, pin = null) {
       return mask
     })
     if (pin !== null) {
-      let definite = 0
-      let open = 0
-      for (let cell = 1; cell <= targetCount; cell++) {
-        const inSet = masks[cell] & digitMask
-        if (inSet === masks[cell]) definite++
-        else if (inSet !== 0) open++
-      }
-      const count = pin === 'definite' ? definite : definite + open
-      // A counter cell holds a digit, so a count outside 1..9 cannot be pinned;
-      // those states keep their random counter and just miss the branch.
+      const { definite, possible } = reachesFilter(masks, targetCount, digitMask)
+      const count = pin === 'definite' ? definite : possible
       if (count >= 1 && count <= 9) masks[0] = 1 << count
     }
+    if (reachesFilter(masks, targetCount, digitMask).reaches) reaching++
     states.push(masks)
   }
-  return states
+  return { states, reaching }
 }
 
 const THREE = (1 << 1) | (1 << 5) | (1 << 9)
@@ -69,14 +85,15 @@ const SHAPES = [
   ['20 targets, 3 digits          ', 20, THREE, null],
   ['30 targets, 4 digits          ', 30, (1 << 1) | (1 << 3) | (1 << 5) | (1 << 7), null],
   ['20 targets, 3 digits, forced  ', 20, THREE, 'definite'],
-  ['20 targets, 3 digits, all-hits', 20, THREE, 'possible']
+  ['9 targets, 3 digits, all-hits ', 9, THREE, 'possible']
 ]
 
 const COUNTER = 0
 
 for (const [label, targetCount, digitMask, pin] of SHAPES) {
   const targets = [...Array(targetCount).keys()].map(i => i + 1)
-  const states = makeStates(targetCount, 0.35, digitMask, pin)
+  const { states, reaching } = makeStates(targetCount, 0.35, digitMask, pin)
+  console.log(label, `states reaching the filtering loop: ${reaching} of ${STATES}`)
   let masks
   const puzzle = {
     getCandidatesBitMask: cell => masks[cell],

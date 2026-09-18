@@ -80,21 +80,27 @@ the deduction the search would otherwise have to find by trial.
 
 Cost (us/call, best of 3, 20,000 states per shape):
 
-| shape | builtin validate | gac update | gac validate |
-|---|---|---|---|
-| 5 targets, 2 digits | 0.056 | 0.152 | 0.062 |
-| 12 targets, 3 digits | 0.060 | 0.139 | 0.087 |
-| 20 targets, 3 digits | 0.080 | 0.179 | 0.142 |
-| 30 targets, 4 digits | 0.098 | 0.234 | 0.201 |
-| 20 targets, 3 digits, counter pinned to the definite count | 0.077 | 0.358 | 0.165 |
-| 20 targets, 3 digits, counter pinned to the possible count | 0.083 | 0.523 | 0.171 |
+| shape | reaches the filtering loop | builtin validate | gac update | gac validate |
+|---|---|---|---|---|
+| 5 targets, 2 digits | 2,775 / 20,000 | 0.054 | 0.142 | 0.055 |
+| 12 targets, 3 digits | 51 / 20,000 | 0.068 | 0.133 | 0.086 |
+| 20 targets, 3 digits | 53 / 20,000 | 0.077 | 0.178 | 0.145 |
+| 30 targets, 4 digits | 106 / 20,000 | 0.095 | 0.242 | 0.194 |
+| 20 targets, 3 digits, counter pinned to the definite count | 7,646 / 20,000 | 0.076 | 0.330 | 0.143 |
+| 9 targets, 3 digits, counter pinned to the possible count | 20,000 / 20,000 | 0.029 | 0.265 | 0.063 |
 
-The last two shapes are the ceiling, and they are there because the first four
-are not. On a random state the counter's bound lands exactly on a count rarely
-enough — about 50 states in 20,000 — that the first four rows time `countHits`
-and the bounds check and almost never the filtering loop that follows. Pinning
-the counter to a bound makes that loop run on every state, and it costs two to
-three times the unforced row.
+Read the middle column before the timings. `update` has two halves — count the
+targets and bound the counter, then filter the open cells if a bound is tight —
+and on a random counter mask the second half almost never runs: 51 states in
+20,000 on the 12-target shape. So the first four rows are mostly the first
+half. The last two pin the counter to a bound on purpose, and the filtering
+loop roughly doubles the call: 0.330 against 0.178 on the same 20-target group.
+
+The pin only takes when the count it needs is a digit a cell could hold, which
+is why the all-hits shape is 9 targets and not 20 — a 20-cell group's possible
+count averages 17, so nothing there can pin to it, and a row labelled for a
+branch it never enters is a number about something else. The bench prints the
+share rather than leaving it to be assumed.
 
 Both sides are one pass over the target cells either way, so the whole spread
 is a fraction of a microsecond. A custom component that defines `validate` gets
