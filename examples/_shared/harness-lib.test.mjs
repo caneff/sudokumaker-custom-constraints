@@ -241,4 +241,53 @@ assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]
   assert.strictEqual(loadAt('HEAD', 'seg.js', ['seg']).seg(), 2)
 }
 
+// ---- the change builders take a DigitSet or a raw bitmask, and nothing else ----
+// The app stores the argument raw and later uses it under `&`
+// (docs/research/bundle-api-reference.md, the six change builders), so a plain
+// Number works there. An array does not: its `valueOf` is not a number, so the
+// `&` gives 0 and the removal silently removes nothing -- the hazard this mock
+// exists to catch, and the reason it still refuses everything but the two.
+{
+  const p = makePuzzle({ 0: 1, 1: 1 }, () => [1, 2, 3])
+
+  p.removeCandidatesFromCell(1 << 2, 0)
+  assert.deepStrictEqual([...p.getCandidates(0)].sort(), [1, 3], 'a raw mask removes its digits')
+  p.removeCandidatesFromCell(DigitSet.from([3]), 0)
+  assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a DigitSet still works')
+
+  for (const bad of [[2], '4', undefined, null, 1.5, -1, {}]) {
+    assert.throws(() => p.removeCandidatesFromCell(bad, 1), /removeCandidatesFromCell/,
+      `removeCandidatesFromCell must refuse ${JSON.stringify(bad) ?? String(bad)}`)
+  }
+  assert.deepStrictEqual([...p.getCandidates(1)].sort(), [1, 2, 3], 'a refused call changes nothing')
+}
+
+// ---- the plural removal and the singular filter follow the same rule ----
+// Mask first, cells second, the bundle's argument order. The filter keeps the
+// masked digits and drops the rest; a cell already inside the mask is left
+// alone (the app answers such a call with UnchangedResult).
+{
+  const p = makePuzzle({ 0: 1, 1: 1, 2: 1 }, () => [1, 2, 3])
+
+  p.removeCandidatesFromCells((1 << 2) | (1 << 3), [0, 1])
+  assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a raw mask clears both digits')
+  assert.deepStrictEqual([...p.getCandidates(1)], [1])
+  assert.deepStrictEqual([...p.getCandidates(2)].sort(), [1, 2, 3], 'an unlisted cell is untouched')
+
+  p.filterCandidatesInCell(DigitSet.from([2, 3]), 2)
+  assert.deepStrictEqual([...p.getCandidates(2)].sort(), [2, 3], 'the filter keeps only its digits')
+  p.filterCandidatesInCell(1 << 3, 2)
+  assert.deepStrictEqual([...p.getCandidates(2)], [3], 'and takes a raw mask too')
+  p.filterCandidatesInCell((1 << 3) | (1 << 5), 2)
+  assert.deepStrictEqual([...p.getCandidates(2)], [3], 'a filter that removes nothing is a no-op')
+
+  for (const bad of [[2], '4', undefined, null, 1.5, -1, {}]) {
+    assert.throws(() => p.removeCandidatesFromCells(bad, [0]), /removeCandidatesFromCells/,
+      `removeCandidatesFromCells must refuse ${JSON.stringify(bad) ?? String(bad)}`)
+    assert.throws(() => p.filterCandidatesInCell(bad, 0), /filterCandidatesInCell/,
+      `filterCandidatesInCell must refuse ${JSON.stringify(bad) ?? String(bad)}`)
+  }
+  assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a refused call changes nothing')
+}
+
 console.log('harness-lib.test.mjs: all seams pass')
