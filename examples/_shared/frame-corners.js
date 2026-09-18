@@ -10,6 +10,9 @@
 //! draws nothing there and the recipient reads no digit off a corner (#394).
 
 const { width: W, height: H } = helpers.cellIds
+// No `| 0` here: these ids are literal arithmetic on the board's width and
+// height, plain integers already, not ids read from a geometry helper
+// (docs/gotchas.md #10).
 const corners = [0, W - 1, W * (H - 1), W * H - 1]
 
 puzzle.addConstraintComponent(new PredefinedCandidatesComponent(

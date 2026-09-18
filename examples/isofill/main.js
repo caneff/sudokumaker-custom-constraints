@@ -15,6 +15,6 @@
 const side = puzzle.spec.size.width
 const cells = []
 for (let y = 0; y < side; y++) {
-  for (let x = 0; x < side; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }))
+  for (let x = 0; x < side; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }) | 0)
 }
 puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
