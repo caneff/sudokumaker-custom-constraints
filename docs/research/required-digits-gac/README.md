@@ -222,6 +222,47 @@ The last two rows are the same board re-timed after the cost pass on
 component as #541 measured it. Same procedure, same session, three
 interleaved rounds per row.
 
+### What the rule is worth inside the app's own solver (2026-09-18)
+
+Every row above measures a **custom component**, which pays a tax the built-in
+does not: `handleRequiredDigitsComponent` registers the built-in's digits in
+the app's candidate-set map (`bundle-api-reference.md:562`), feeding
+`HiddenSingleLogicStep`; a custom component cannot register anything. So those
+rows answer "is our component a good swap", never "is the Hall rule a better
+rule".
+
+`bundle-probe/hall-in-bundle-probe.mjs` answers the second question. It loads
+the reference bundle in Node, builds the sparse board's state through the
+bundle's own `buildSolverStateFromPuzzle`, and runs "find all solutions" twice:
+once as shipped, once with the Hall walk swapped onto
+`RequiredDigitsComponent.prototype.update`. Swapping the prototype keeps the
+registration, because that is keyed on the class, not on `update`.
+
+| rule | search nodes | solve time |
+|---|---|---|
+| built-in (as shipped) | 47,241 | 11,840ms |
+| Hall | 33,726 (0.71x) | 10,558ms (0.89x) |
+
+Deterministic: identical node counts across three reps, both rules returning
+the board's one solution, checked against the rules restated in the probe.
+
+**So the rule does pay for itself; our component does not.** As the built-in,
+the Hall walk cuts the search by 29% and the clock by 11% -- past the 0.9x bar.
+As a custom component on the same board it ran 1.20-1.29x slower. The whole
+difference is the registration a custom component gives up. This is a case to
+send the app's author, not something a puzzle link can carry.
+
+Caveats: this is the search solver ("find all solutions"), not AutoStep, and
+Node rather than the browser -- a ratio between two runs in one process, not a
+wall-clock row comparable to the tables above.
+
+**Quarantine.** The probe never writes a modified bundle: it reads
+`docs/research/humanify-pedagogy/bundle.claude.js` verbatim, refuses to run if
+its sha256 has changed, appends only the `globalThis.__probe` export line
+bugcheck.mjs already uses, and swaps the rule on the exported class at runtime.
+Nothing here may build or verify a shipped link -- it would be measuring a
+solver nobody runs.
+
 ### The cost pass (2026-09-18)
 
 Three changes, none of them to what the component deduces -- the output is
