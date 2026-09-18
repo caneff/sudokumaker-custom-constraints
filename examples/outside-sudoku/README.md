@@ -234,15 +234,15 @@ just time outside-sudoku --ring-clues
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku after-logical | 300ms | — | — | BASELINE |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) | 500ms | 500ms | 1.00 | gate: PASS |
 | 2026-08-31 | v2026.08.14-d47fc4b | outside-sudoku (cell-id coercion, #276) after-logical | 300ms | 300ms | 1.00 | gate: PASS |
-| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) | 500ms | 400ms | 0.80 | two-row: SHIP |
-| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) after-logical | 300ms | 300ms | 1.00 | two-row: SHIP |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) | 500ms | 400ms | 0.80 | SHIP |
+| 2026-09-18 | v2026.08.14-d47fc4b | outside-sudoku (window from main code, #456) after-logical | 300ms | 300ms | 1.00 | SHIP |
 
 The #456 pair narrows `getAffectedCells` to the clue plus the window and
 passes raw masks. Cold clears 0.9× (0.80) and after-logical holds at 1.00, so
 `just time` printed `two-row rule: SHIP`; each row's own verdict there is the
 per-row 0.9× result alone.
 
-The #276 pair is which makes `main-global.js` coerce every cell id it
+The #276 pair is the run that made `main-global.js` coerce every cell id it
 derives from the board size with `| 0`. It adds no deduction, so the bar is
 **≤ 1.1× on both rows** and "unchanged" is the pass
 (`docs/real-app-timing.md`, "Bar for a gate change"). This board is closed
