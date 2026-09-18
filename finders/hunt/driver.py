@@ -755,11 +755,9 @@ def _run_verify(finder, argv):
     verify-able, but possibly a genuine bug in `verify` itself -- the
     driver can't tell which) refuses with both named as possible causes,
     rather than propagating a raw traceback. verified.jsonl is published
-    only on a complete, successful run: a failure partway leaves whatever
-    verified.jsonl already existed (absent, or a previously complete file)
-    untouched, rather than truncating it down to a prefix (#527) -- the
-    scratch verdicts computed before the failing record are discarded along
-    with the .tmp file, not published as a partial verified.jsonl.
+    only on a complete, successful run: a failure partway discards the
+    scratch verdicts and the .tmp file, leaving whatever verified.jsonl
+    already existed (absent, or a previously complete file) untouched (#527).
 
     Takes the same out/.lock a hunt takes (`_acquire_lock`), before
     examples.jsonl is even opened -- so this can't read a hunt's

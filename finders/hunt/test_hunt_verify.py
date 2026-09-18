@@ -248,9 +248,7 @@ sys.exit(run(WrappedRecordFinder(), sys.argv[1:]))
 with tempfile.TemporaryDirectory() as tmp:
     # A record partway through examples.jsonl that fails to verify must not
     # publish a partial verified.jsonl -- a failure publishes only on
-    # complete success (#489 review V1; behavior updated by #527, which
-    # found the original fix still published the partial file, destroying
-    # a prior complete one on a retry).
+    # complete success (#527).
     out = Path(tmp) / "hunt-out"
     out.mkdir()
     (out / "examples.jsonl").write_text(
