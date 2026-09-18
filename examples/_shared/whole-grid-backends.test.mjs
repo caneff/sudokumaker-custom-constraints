@@ -35,11 +35,11 @@ for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'Fill
     assert.strictEqual(registered.length, 1, `${where}: expected one component`)
     assert.strictEqual(registered[0].ctor, ctor, `${where}: wrong component`)
     const cells = registered[0].args.find(a => Array.isArray(a))
-    assert.deepStrictEqual(cells, Array.from({ length: side * side }, (_, i) => i),
-      `${where}: cells are not the row-major ids`)
     const boxed = cells.filter(c => typeof c !== 'number')
     assert.deepStrictEqual(boxed, [],
-      `${where}: ${boxed.length} uncoerced ids; \`| 0\` is load-bearing (#276, #394)`)
+      `${where}: ${boxed.length} uncoerced ids; \`| 0\` is load-bearing (docs/gotchas.md #10, #450)`)
+    assert.deepStrictEqual(cells, Array.from({ length: side * side }, (_, i) => i),
+      `${where}: cells are not the row-major ids`)
   }
 }
 console.log('whole-grid backends: ok')
