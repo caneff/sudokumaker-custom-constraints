@@ -532,6 +532,13 @@ with tempfile.TemporaryDirectory() as tmp:
     # `_reconcile_renders` must skip a stateful finder the same way
     # `_repair_renders` does, leaving the stray file in place rather than
     # betting on a rerun with no safety net.
+    #
+    # This test pins that carve-out's current, deliberate cost, not a
+    # desired end state: a stateful finder can still hit #522's exact
+    # failure sequence (a PNG left with no matching example after a second
+    # kill), just with the delete-then-lose-it-for-good risk traded away
+    # instead. The carve-out -- and this test -- come out once #538 gives a
+    # stateful finder a state-safe render-repair path.
     import driver as driver_module
     from protocol import Verdict
     from render import GridCanvas
@@ -596,8 +603,9 @@ with tempfile.TemporaryDirectory() as tmp:
         driver_module._hunt_loop = orig_hunt_loop
 
     check(
-        "a stateful finder's stray render survives reconciliation untouched -- no "
-        "safety net exists to replace it if a rerun's render then failed (#522 C1)",
+        "a stateful finder's stray render survives reconciliation untouched -- a "
+        "deliberate gap (no repair safety net exists yet) pinned until #538, not "
+        "the desired end state (#522 C1)",
         (out / "renders" / "0.png").exists()
         and (out / "renders" / "0.png").read_bytes() == original_png,
     )

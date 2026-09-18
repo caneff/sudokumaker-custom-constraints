@@ -434,6 +434,16 @@ def _reconcile_renders(finder, out, progress_events):
     intact picture against a rerun's render with no safety net if that bet
     is lost (#522 correctness review, finding C1) -- left alone instead,
     same as `_repair_renders` leaves a stateful finder's missing render.
+
+    This means a stateful finder can still hit #522's exact failure
+    sequence: reconciliation trims the unconfirmed seed's line out of
+    examples.jsonl, this carve-out leaves its PNG in place, and a second
+    kill before the rerun finishes leaves that PNG with no matching
+    example -- a deliberate, known gap, not a theoretical one (pinned by
+    the stateful test in test_hunt_resume.py). It stays open until #538
+    gives a stateful finder a state-safe render-repair path; only then can
+    this carve-out come out too, since only then does deleting eagerly stop
+    betting on a rerun with no way back.
     """
     if hasattr(finder, "load_state"):
         return
@@ -465,7 +475,9 @@ def _repair_renders(finder, out, progress_lines, progress_events):
     would double that side effect. A stateful finder's missing render stays
     unrepaired rather than risk silently corrupting its state -- the same
     reason `_reconcile_renders` (#522) also skips a stateful finder outright
-    rather than delete a stray render it can't safely regenerate here.
+    rather than delete a stray render it can't safely regenerate here. #538
+    tracks giving a stateful finder a state-safe repair path; until then,
+    both carve-outs stay.
     """
     render = getattr(finder, "render", None)
     if render is None or hasattr(finder, "load_state"):
