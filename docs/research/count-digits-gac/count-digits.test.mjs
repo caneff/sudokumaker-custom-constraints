@@ -93,4 +93,19 @@ function run (candidatesByCell, { digits = ONE_OR_TWO, targets = TARGETS } = {})
 // any of them changes.
 assert.deepStrictEqual(mod.getAffectedCells(ONE_OR_TWO, COUNTER, TARGETS), [COUNTER, ...TARGETS])
 
+// setParams refuses a registration it cannot count. Each of these would
+// otherwise miscount in silence: an array of digits coerces to a number when it
+// holds one element, an empty mask counts nothing, and a target list past
+// MAX_TARGETS runs the count off the end of a 32-bit mask.
+{
+  const instance = { name: 'count' }
+  assert.throws(() => mod.setParams(instance, [1, 2], COUNTER, TARGETS), TypeError, 'an array of digits is refused')
+  assert.throws(() => mod.setParams(instance, 0, COUNTER, TARGETS), RangeError, 'an empty digit mask is refused')
+  assert.throws(
+    () => mod.setParams(instance, ONE_OR_TWO, COUNTER, [...Array(31).keys()].map(i => i + 1)),
+    RangeError,
+    'a target list past the mask width is refused'
+  )
+}
+
 console.log('ok')

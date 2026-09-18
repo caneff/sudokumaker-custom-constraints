@@ -41,6 +41,16 @@ map. That is what made the sparse required-digits row next door
 component a good swap" rather than "is the rule worth it"; here the two sides
 get the same help from the app, and the row reads as the pruning alone.
 
+## Registering it
+
+`new CountDigitsGacComponent(name, digits, counterCell, targetCells)`, the
+built-in's own constructor, with two registrations the built-in would accept
+and this one refuses at setup rather than miscount: `digits` must be a mask or
+a `SudokuDigitSet` and never an array (a one-element array coerces to a number
+and would read as the wrong digits), and `targetCells` tops out at
+`MAX_TARGETS` = 30, because the counts are compared against a 32-bit mask. Both
+throw a named error from `setParams`; `count-digits.test.mjs` holds them to it.
+
 ## Offline: soundness, strength, completeness
 
 ```
@@ -72,13 +82,22 @@ Cost (us/call, best of 3, 20,000 states per shape):
 
 | shape | builtin validate | gac update | gac validate |
 |---|---|---|---|
-| 5 targets, 2 digits | 0.048 | 0.155 | 0.060 |
-| 12 targets, 3 digits | 0.041 | 0.126 | 0.075 |
-| 20 targets, 3 digits | 0.073 | 0.181 | 0.134 |
-| 30 targets, 4 digits | 0.079 | 0.267 | 0.197 |
+| 5 targets, 2 digits | 0.056 | 0.152 | 0.062 |
+| 12 targets, 3 digits | 0.060 | 0.139 | 0.087 |
+| 20 targets, 3 digits | 0.080 | 0.179 | 0.142 |
+| 30 targets, 4 digits | 0.098 | 0.234 | 0.201 |
+| 20 targets, 3 digits, counter pinned to the definite count | 0.077 | 0.358 | 0.165 |
+| 20 targets, 3 digits, counter pinned to the possible count | 0.083 | 0.523 | 0.171 |
 
-Both sides are one pass over the target cells, so the gap is a constant factor
-on a fraction of a microsecond. A custom component that defines `validate` gets
+The last two shapes are the ceiling, and they are there because the first four
+are not. On a random state the counter's bound lands exactly on a count rarely
+enough — about 50 states in 20,000 — that the first four rows time `countHits`
+and the bounds check and almost never the filtering loop that follows. Pinning
+the counter to a bound makes that loop run on every state, and it costs two to
+three times the unforced row.
+
+Both sides are one pass over the target cells either way, so the whole spread
+is a fraction of a microsecond. A custom component that defines `validate` gets
 `validateDuringSolve` forced true by the wrapper
 (`docs/component-contract.md`), so the candidate pays the middle column on
 every changed watch cell and the right-hand column on every state, against the

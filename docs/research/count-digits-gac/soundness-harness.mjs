@@ -27,9 +27,8 @@ const { load } = makeIo(HERE)
 
 installGlobals(1, 9)
 
-const FUNCTIONS = ['getAffectedCells', 'setParams', 'update', 'validate']
-const gac = load('CountDigitsGacComponent.js', FUNCTIONS)
-const builtin = load('BuiltinCountDigitsComponent.js', FUNCTIONS)
+const gac = load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
+const builtin = load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
 
 const { rnd } = makeRng(4242)
 function maskOf (digits) { let m = 0; for (const d of digits) m |= 1 << d; return m }
@@ -66,7 +65,7 @@ function makeState ({ targetCount, digitCount, digitRange, counterIsTarget }) {
 const puzzleOf = state => makePuzzle(state.truth, cell => state.seed.get(cell))
 const candidatesOf = p => new Map([...p._cand].map(([cell, set]) => [cell, new Set(set)]))
 
-function runComponent (mod, state, p) {
+function runComponent (mod, state) {
   const instance = { name: 'count digits' }
   mod.setParams(instance, state.digitMask, state.counter, state.targets)
   return instance
@@ -120,7 +119,7 @@ function run (label, shape) {
     const p = puzzleOf(state)
     const start = candidatesOf(p)
     const before = total(p)
-    const violation = violates(gac, runComponent(gac, state, p), p, state.truth)
+    const violation = violates(gac, runComponent(gac, state), p, state.truth)
     const removed = before - total(p)
     removedGac += removed
     if (removed > 0) firedGac++
@@ -134,7 +133,7 @@ function run (label, shape) {
     if (removed > 0 || p._stopped !== null) {
       const q = puzzleOf(state)
       for (const [cell, set] of start) q._cand.set(cell, new Set(set))
-      if (builtin.validate(runComponent(builtin, state, q), q)) builtinBlind++
+      if (builtin.validate(runComponent(builtin, state), q)) builtinBlind++
     }
 
     // 3. completeness against the oracle, on the shapes small enough to

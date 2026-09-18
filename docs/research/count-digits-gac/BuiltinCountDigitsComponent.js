@@ -1,28 +1,19 @@
-/* eslint-disable no-unused-vars -- setParams/update/getAffectedCells/validate are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/validate are the component API SudokuMaker calls by name, not dead code */
 //! The built-in CountDigits' own rule, ported from the bundle body
 //! (bundle.claude.js:5092) so the harness and the bench next to this file can
 //! run it on the same states as CountDigitsGacComponent. NOT for use in a
 //! puzzle -- the app already has this one, and registering it as custom code
 //! would only lose its `validateDuringSolve` opt-in.
 //!
-//! It is validate-only on purpose: the built-in defines no `update`, so the
-//! `update` below is the empty generator that says so, and every candidate
-//! removal the comparison reports for the GAC component is one this rule
-//! cannot make at all.
-
-function getAffectedCells (digits, counterCell, targetCells) {
-  return [counterCell, ...targetCells]
-}
+//! `validate` is the whole of it: the built-in defines no `update`, so every
+//! candidate removal the comparison reports for the GAC component is one this
+//! rule cannot make at all. Nothing here loads it for anything else, so
+//! `update` and `getAffectedCells` are not written out.
 
 function setParams (instance, digits, counterCell, targetCells) {
   instance.digits = +digits
   instance.counterCell = counterCell
   instance.targetCells = targetCells
-}
-
-//! The built-in has no `update`. Spelled out rather than omitted so a caller
-//! can drive both components through the same loop.
-function * update (instance, puzzle) {
 }
 
 //! Verbatim in structure from the bundle: a target whose whole candidate mask

@@ -283,6 +283,13 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         if args.carved is not None:
+            if args.out:
+                # The depth is written back into the gen, and the committed gen
+                # has to keep describing the committed links: a depth change
+                # that lands somewhere else would leave the two disagreeing,
+                # and the board test would read it as a link that no longer
+                # reproduces.
+                p.error("--carved rebuilds the committed board; it takes no --out")
             gen_path = pathlib.Path(args.gen)
             gen = json.loads(gen_path.read_text())
             gen["carved"] = args.carved
