@@ -406,6 +406,24 @@ different grid and a different stripper.
 
 ## Timing
 
+### Candidate reads on bitmasks (#453)
+
+The walk, the seal, the cut block and the doors read `getCandidatesBitMask` and
+test the digit's bit, where they built a DigitSet per neighbour with
+`getCandidates(c).has(d)`. The door list dedupes on a stamped mask, not a linear
+`includes`, and the force, cut and one-door yields pass a cached raw mask. The
+`allowed` row is gone: `cutFilter`'s dominator BFS reads allowedness off the
+live candidate mask (`cellAllows`), and its parent scan drops the check the
+distance test already implies.
+Behaviour unchanged: update-strength floor 0 weaker cells, soundness harness 0
+violations. `just time fillomino`, 3 reps, non-deterministic solve off:
+
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino | 5300ms | 4200ms | 0.79 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+two-row rule: SHIP (cold 0.79; after-logical 0 ms on both sides places no constraint).
+The after-logical row is structurally unmeasurable on this board, so the cold row is the whole measurement.
+
 ### Cell ids coerced with `| 0` (#450)
 
 The main now coerces every cell id (gotcha 10). Regenerating the link left `just time`
