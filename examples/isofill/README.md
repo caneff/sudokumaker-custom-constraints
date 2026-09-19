@@ -12,9 +12,10 @@ Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 The same code serves any square board whose digit count equals its side: N
 regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+1
 regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
-above). `main.js` reads the side from `puzzle.spec.size.width`; the component
-reads the digit range from `helpers.digits` and throws when the cells do not
-split evenly among the digits. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
+above). `main.js` reads the side from `puzzle.spec.size.width` (and checks the height); the component
+reads the digit range from `helpers.digits` and stops the branch (`puzzle.stop`,
+which reaches the step log) when the cells do not split evenly among the
+digits. `main.js` also refuses a non-square board before registering. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
 the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
 the app proves it unique in 0.2 s).
 
@@ -180,9 +181,8 @@ cells:
   on the 32-given fixture fell 15.3 s → 5.7 s. Scratch buffers (allowed and
   walk masks per digit, BFS frontiers, distance rows) live on the instance
   and are reused per call, so `update` allocates almost nothing: 5.7 s → 4.1 s.
-  The `DigitSet` handed to `removeCandidatesFromCell` is the one thing built
-  fresh per yield, and it need not be: the app takes a raw bitmask there (it
-  ANDs the argument, `docs/research/bundle-api-reference.md`), and the harness
+  Removals pass a raw bitmask, never a `DigitSet` built per yield: the app
+  ANDs the argument (`docs/research/bundle-api-reference.md`), and the harness
   mock takes either. What both refuse is a plain array, which the app would
   AND to zero and silently remove nothing.
 - **Tour** — the region is a connected set holding every placed cell and
@@ -247,8 +247,9 @@ cells:
 connected island of ten. The solver may not call it (`../../docs/gotchas.md`,
 gotcha 2); the deductions above do the work, `validate` states the rule.
 
-All of it reads each cell's candidates as a `DigitSet` (wrap it in
-`Array.from`; build one back with `SudokuDigitSet.from`). `update` reads the
+All of it reads each cell's candidates as a raw bitmask
+(`getCandidatesBitMask`, lowest set bit first) and removes with raw masks,
+never a `DigitSet`. `update` reads the
 grid **once** per call and builds every digit's placed, open, and allowed
 sets from that one scan. It runs on every search node, so a scan per digit
 (ten reads of each cell) cost real time: the one-pass scan halved the app's
@@ -415,6 +416,20 @@ so it runs by hand through `just verify-isofill`. The proof of the shipped
 instance stays valid as long as its board and clue set do not change.
 
 ## Timing
+
+### Budget rule pooled, bulk removals (#454)
+
+`budget` now owns flat typed buffers (matching, CSR residual graph, Tarjan
+scratch), the scan reads the candidate mask, and one-mask-many-cells removals
+are single plural changes. No deduction changed (update-strength floor: 0
+weaker cells; soundness: 0 violations). Both rows from `just time isofill`,
+3 reps per arm, non-deterministic solve off, with `main.js` held at its base
+text for the run (the tool matches the committed link's backend against
+`main.js` at HEAD; the guard added there cannot change solve time).
+
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill | 600ms | 400ms | 0.67 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: SHIP
 
 ### Cell ids coerced with `| 0` (#450)
 

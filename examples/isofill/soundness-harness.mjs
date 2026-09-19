@@ -292,12 +292,13 @@ const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
-// A board that does not split evenly among its digits must throw, not prune.
+// A board that does not split evenly among its digits must stop, not prune.
 installGlobals(0, 9)
 const badInst = {}
 mod.setParams(badInst, CELLS9)
-let threw = false
-try { Array.from(mod.update(badInst, makePuzzle(rows9, () => ALL))) } catch { threw = true }
+const badPuzzle = makePuzzle(rows9, () => ALL)
+Array.from(mod.update(badInst, badPuzzle))
+const stopped = badPuzzle._stopped !== null
 
 // The directed checks, by name: each one's line in the verdict, and all of
 // them in the pass.
@@ -321,7 +322,7 @@ const CHECKS = {
   'silent dead fired': silentDeadOk,
   'one pass': onePassOk,
   '9x9 cap fired': cap9Ok,
-  'uneven board throws': threw,
+  'uneven board stops': stopped,
   'perimeter arc fired': arcOk,
   'perimeter flank fired': flankOk,
   validate: validateOk

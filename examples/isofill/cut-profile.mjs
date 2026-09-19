@@ -30,7 +30,7 @@ const ALL = Array.from({ length: N }, (_, d) => d)
 // The cut loop's two ends. Both lines are unique in the component; if either
 // moves, `instrument` throws rather than time the wrong span.
 const CUT_START = '  const depth = size - placed.length\n'
-const CUT_END = '      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[x])\n    }\n  }\n'
+const CUT_END = '  if (held.length) yield puzzle.removeCandidatesFromCells(others, held)\n'
 
 // Patch the component so the cut loop accumulates its wall time. Throws when
 // an anchor is missing or no longer unique (patchSource).
