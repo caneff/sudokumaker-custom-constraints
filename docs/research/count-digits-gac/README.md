@@ -127,12 +127,38 @@ and the two links.
   built-in `CountDigitsComponent`; `PUZZLE_LINK_sparse.txt` registers
   `CountDigitsGacComponent`. Same board and table; the backend differs in that
   one identifier, and the candidate link also ships the component code.
+- **A third link, for reading** (#567): `PUZZLE_LINK_sparse_annotated.txt` is
+  the candidate link's board, givens and component with every comment kept in
+  the embedded code (about twice the size: 10.5k against 5.0k), plus
+  cold-start commentary on the counter and target cells, what `puzzle.stop`
+  and `puzzle.removeCandidatesFromCell` do with a returned change, what the
+  backend registers, and what the digit mask is. It reads `[unique]` in the
+  app with `entered: 0`. It is for reading the code in the app's code box,
+  not for seeing the rule: the 20 groups are not drawn on the board, so a
+  reader cannot see which cells a group holds. Timing uses
+  `PUZZLE_LINK_sparse.txt`; comments do not change the solve, but the
+  annotated link is not one of the timed rows.
+  Adding commentary: a comment may not contain a block-comment marker (the
+  two-character opener or closer of a block comment). The plain build strips
+  line comments with a regex and asserts on a stray marker in what is left of
+  a line (`minify.py`, `_splice_and_strip`), so the plain links stop
+  building. The annotated build keeps comments and does not notice, so build
+  both before committing. A URL's `://` is fine. The mirror case stops only
+  the annotated build: a comment holding a computed-dispatch token (`eval(`,
+  `new Function(`, `Function(`, or `[name](`) makes `_prune_dead_includes`
+  refuse to prune.
+  A board change leaves the annotated link on the old board until it is
+  rebuilt: `--carved K` rebuilds the two plain links, and `--search SEED`
+  only rewrites `gen.json` (a plain rebuild follows it). Either way, finish
+  with `--keep-comments`, or the test reports that the annotated link does
+  not reproduce.
 
 ### Building the boards
 
 ```
 uv run examples/outside-sudoku/build_sparse_count_digits.py            # rebuild both links
 uv run examples/outside-sudoku/build_sparse_count_digits.py --carved K # change the depth, rebuild
+uv run examples/outside-sudoku/build_sparse_count_digits.py --keep-comments # write only the annotated link
 ```
 
 The script lives in `examples/outside-sudoku/` beside

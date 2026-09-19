@@ -21,6 +21,11 @@
 #   uv run examples/outside-sudoku/build_sparse_count_digits.py --carved K
 #       set the board's depth -- how many of the gen's carve order it drops --
 #       and rebuild. See `givens_of`.
+#   uv run examples/outside-sudoku/build_sparse_count_digits.py --keep-comments
+#       write only PUZZLE_LINK_sparse_annotated.txt (#567): the candidate link's
+#       board and givens, with the component and backend code keeping every
+#       comment, for a reader who opens it in SudokuMaker and reads the code
+#       box. Same flag as examples/house-gac/build_link.py.
 #   uv run examples/outside-sudoku/build_sparse_count_digits.py --search SEED
 #       draw a fresh board (grid, groups, carve order) into --gen. The grid
 #       comes from CP-SAT's portfolio search, which is not reproducible from
@@ -199,15 +204,16 @@ def search(seed, n_groups=20, n_targets=14, n_digits=3):
     }
 
 
-def backend_code(gen, name):
+def backend_code(gen, name, keep_comments=False):
     table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
     src = BACKEND.read_text().replace(CANDIDATE_NAME, name)
-    return minify_js(table + src, base_dir=BACKEND.parent)
+    return minify_js(table + src, base_dir=BACKEND.parent, keep_comments=keep_comments)
 
 
-def build_doc(gen, name):
+def build_doc(gen, name, keep_comments=False):
     """The board's document: `name` is the class the backend registers --
-    CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in)."""
+    CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in).
+    `keep_comments` keeps every comment in the embedded code (#567)."""
     givens = givens_of(gen)
     cells = [
         {"value": gen["grid"][r][c], "given": True} if (r, c) in givens else {}
@@ -216,7 +222,13 @@ def build_doc(gen, name):
     ]
     regions = [box(r, c) for r in range(N) for c in range(N)]
     components = (
-        [{"type": "code", "name": CANDIDATE_NAME, "code": minify_file(COMPONENT)}]
+        [
+            {
+                "type": "code",
+                "name": CANDIDATE_NAME,
+                "code": minify_file(COMPONENT, keep_comments),
+            }
+        ]
         if name == CANDIDATE_NAME
         else []
     )
@@ -239,7 +251,10 @@ def build_doc(gen, name):
                     "definition": {
                         "name": CONSTRAINT_NAME,
                         "input": [],
-                        "backend": {"type": "code", "code": backend_code(gen, name)},
+                        "backend": {
+                            "type": "code",
+                            "code": backend_code(gen, name, keep_comments),
+                        },
                         "components": components,
                     },
                     "input": {},
@@ -250,10 +265,15 @@ def build_doc(gen, name):
     }
 
 
-def build(out_dir=RESEARCH_DIR, gen_path=GEN):
+def build(out_dir=RESEARCH_DIR, gen_path=GEN, keep_comments=False):
     gen = json.loads(pathlib.Path(gen_path).read_text())
+    if keep_comments:
+        names = ["PUZZLE_LINK_sparse_annotated.txt"]
+        write(build_doc(gen, CANDIDATE_NAME, keep_comments=True), out_dir / names[0])
+        return names
     write(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
     write(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt")
+    return ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
 
 
 if __name__ == "__main__":
@@ -270,6 +290,12 @@ if __name__ == "__main__":
         "back into the gen before the rebuild -- the board's depth knob",
     )
     p.add_argument(
+        "--keep-comments",
+        action="store_true",
+        help="write only PUZZLE_LINK_sparse_annotated.txt: the candidate link "
+        "with every comment kept in the embedded code (#567)",
+    )
+    p.add_argument(
         "--out",
         help="directory for the links (default: docs/research/count-digits-gac/sparse/)",
     )
@@ -282,6 +308,12 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         if args.carved is not None:
+            if args.keep_comments:
+                # --keep-comments writes only the annotated link, so the new
+                # depth would leave both plain links on the old board.
+                p.error(
+                    "--carved rebuilds the plain links; run --keep-comments after it"
+                )
             if args.out or str(args.gen) != str(GEN):
                 # The depth is written back into the gen, and the committed gen
                 # has to keep describing the committed links: a depth written
@@ -296,5 +328,9 @@ if __name__ == "__main__":
             gen["carved"] = args.carved
             gen_path.write_text(json.dumps(gen) + "\n")
             print(f"set carved={args.carved} in {args.gen}")
-        build(pathlib.Path(args.out) if args.out else RESEARCH_DIR, args.gen)
-        print("wrote PUZZLE_LINK_sparse.txt and PUZZLE_LINK_sparse_original.txt")
+        written = build(
+            pathlib.Path(args.out) if args.out else RESEARCH_DIR,
+            args.gen,
+            args.keep_comments,
+        )
+        print("wrote " + " and ".join(written))
