@@ -199,8 +199,8 @@ def check_link(gen):
         "HIT",
         "puzzle.stop",
         "removeCandidatesFromCell",
-        "bit d is set",
-        "ARRAY is refused",
+        "the whole of arc consistency",
+        "validateDuringSolve",
     ):
         assert phrase in gac["components"][0]["code"], f"annotation lost: {phrase}"
     assert (

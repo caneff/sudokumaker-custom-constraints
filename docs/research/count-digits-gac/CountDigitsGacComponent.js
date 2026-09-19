@@ -1,71 +1,8 @@
 /* eslint-disable no-unused-vars -- setParams/update/getAffectedCells/validate are the component API SudokuMaker calls by name, not dead code */
-//! HOW TO READ THIS FILE, if you are meeting SudokuMaker custom code cold.
-//!
-//! A SudokuMaker custom constraint has two pieces of code. The BACKEND (the
-//! main code box of the constraint) runs once when the puzzle loads. It reads
-//! the groups drawn on the constraint (`input.groups`, each with its cells and
-//! a typed value) and REGISTERS components, one call per group, like this:
-//!
-//!   puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counterCell, targetCells))
-//!
-//! A COMPONENT (this file) is the rule itself, written as plain functions, not
-//! a class. The app turns the file into a constructor named after the
-//! component, which is why the backend can say `new CountDigitsGacComponent`.
-//! The app calls the functions below BY NAME:
-//!   - getAffectedCells : which cells the component watches. When any of them
-//!                        changes, the solver runs `update` again.
-//!   - setParams        : called once with the constructor arguments (after
-//!                        `name`), so the component can store them on `instance`.
-//!   - update           : a GENERATOR. It reads the grid and YIELDS changes.
-//!   - validate         : returns true or false, judging the current state.
-//! Cells are identified by a number (a cell id), never by row and column, and
-//! `puzzle.getCellAt(col, row)` in the backend is what turns coordinates into
-//! ids.
-//!
-//! The two kinds of cell in this rule:
-//!   - the COUNTER cell holds a digit that says how many;
-//!   - the TARGET cells are the ones counted. A target is a HIT when its digit
-//!     is one of the listed `digits`, and a miss otherwise.
-//!   The counter must equal the number of hits.
-//!
-//! The digit set is passed as a MASK: a whole number in which bit d is set when
-//! digit d is in the set, so digits 1, 4 and 7 are 2 + 16 + 128 = 146. The app
-//! keeps every cell's remaining candidates the same way (a cell that could
-//! still be 1, 2 or 3 reads as the mask 14), and that is what
-//! `puzzle.getCandidatesBitMask(cell)` returns, so testing membership is one
-//! bitwise AND. An ARRAY is refused on purpose: a one-element array such as [3]
-//! silently turns into the number 3 when used as a number, which is the mask
-//! for digits 0 and 1, and the component would count the wrong digits without
-//! an error.
-//!
-//! A CHANGE is what `update` yields. `update` never edits the grid itself: it
-//! yields a change and the solver applies it, then runs every component again
-//! until nothing more changes.
-//!   - `puzzle.removeCandidatesFromCell(digitSet, cell)` yields "these digits
-//!     can no longer go in this cell". The solver removes them, and any cell
-//!     left with one candidate is solved.
-//!   - `puzzle.stop(message, cells)` yields "this state is contradictory". The
-//!     solver abandons the guess it is currently exploring and backs up to try
-//!     another; if no guess is open, the puzzle has no solution.
-//!
-//! The built-in CountDigits has none of this: it is validate-only, so it never
-//! yields a removal, and the solver finds out the rule only by guessing and
-//! being told no. That gap is what this board lets you time.
-
 //! A pruning replacement for the built-in CountDigits. Same constructor as the
 //! built-in:
 //!
 //!   puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counterCell, targetCells))
-//!
-//! Cold start, for a reader meeting the app for the first time. A constraint
-//! here is a "component": an object the solver calls to prune candidates. This
-//! one watches two kinds of cell, both named by cell id (a number, x + y * width):
-//!   - the COUNTER cell: one cell whose digit is the answer to "how many";
-//!   - the TARGET cells: the group being counted, any cells at all -- they need
-//!     not touch each other or the counter, and nothing is drawn on the board
-//!     to show which they are.
-//! The backend (the code box next to this one) makes the cell ids and registers
-//! one instance of this class per group.
 //!
 //! The rule, the built-in's own: the digit in `counterCell` equals the number
 //! of `targetCells` whose digit is one of `digits`. `digits` is a digit MASK
