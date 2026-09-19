@@ -38,7 +38,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from build_sparse_required_digits import box, rows_and_columns, write
+from build_sparse_required_digits import box, write
 from cpsat import SOLVED, forbid, solver
 from minify import minify_file, minify_js
 from ortools.sat.python import cp_model
@@ -225,7 +225,7 @@ def build_doc(gen, name):
         "puzzle": {
             "name": "Sparse count digits",
             "author": "",
-            "type": "custom",
+            "type": "sudoku",
             "width": N,
             "height": N,
             "comment": RULES,
@@ -233,7 +233,6 @@ def build_doc(gen, name):
             "constraints": [
                 {"type": 0},
                 {"type": 1, "regions": regions},
-                rows_and_columns(),
                 {
                     "name": CONSTRAINT_NAME,
                     "type": 1000,

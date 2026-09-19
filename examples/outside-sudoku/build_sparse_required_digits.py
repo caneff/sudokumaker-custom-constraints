@@ -40,10 +40,6 @@ RESEARCH_DIR = (
 )
 GEN = RESEARCH_DIR / "gen.json"
 BACKEND = RESEARCH_DIR / "main-sparse-global.js"
-# the plain 9x9's rows-and-columns constraint, read off the board #406 built
-ROWS_COLUMNS_BASE = (
-    HERE.parent.parent / "docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt"
-)
 COMPONENT = (
     HERE.parent.parent
     / "docs/research/required-digits-gac/RequiredDigitsGacComponent.js"
@@ -201,16 +197,6 @@ def backend_code(gen, name):
     return minify_js(table + src, base_dir=BACKEND.parent)
 
 
-def rows_and_columns():
-    base = decode_puzzle(ROWS_COLUMNS_BASE.read_text().strip())
-    (c,) = [
-        c
-        for c in base["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == "Rows & Columns"
-    ]
-    return c
-
-
 def build_doc(gen, name):
     """The board's document: `name` is the class the backend registers --
     CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in)."""
@@ -231,7 +217,7 @@ def build_doc(gen, name):
         "puzzle": {
             "name": "Sparse required digits",
             "author": "",
-            "type": "custom",
+            "type": "sudoku",
             "width": N,
             "height": N,
             "comment": RULES,
@@ -239,7 +225,6 @@ def build_doc(gen, name):
             "constraints": [
                 {"type": 0},
                 {"type": 1, "regions": regions},
-                rows_and_columns(),
                 {
                     "name": CONSTRAINT_NAME,
                     "type": 1000,
