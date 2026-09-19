@@ -155,6 +155,30 @@ def check_link(gen):
         "`enabled` is not the wire key; the app reads `disabled`"
     )
 
+    # the groups reach the solver through `input.groups`, and both constraints
+    # carry the SAME list: were they to differ, the link would time two
+    # different puzzles and call the gap an algorithm
+    groups = [c["input"]["groups"] for c in cs]
+    assert groups[0] == groups[1], "the two constraints carry different groups"
+    assert len(groups[0]) == len(gen["groups"])
+    for drawn, g in zip(groups[0], gen["groups"], strict=True):
+        counter, *targets = drawn["cells"]
+        assert (counter // N, counter % N) == tuple(g["counter"]), (
+            "the counter is not the first cell"
+        )
+        assert targets == [r * N + col for r, col in g["cells"]], (
+            "targets differ from gen.json, or lost their order"
+        )
+        assert drawn["value"] == " ".join(map(str, g["values"]))
+    for c in cs:
+        assert c["definition"]["input"] == [
+            {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
+        ]
+        code = c["definition"]["backend"]["code"]
+        assert "input.groups" in code and "GROUPS" not in code, (
+            "the backend still reads a baked table"
+        )
+
     by_name = {c["name"]: c["definition"] for c in cs}
     gac = by_name[VARIANTS["gac"][0]]
     base = by_name[VARIANTS["builtin"][0]]
@@ -187,8 +211,19 @@ def check_link(gen):
     # both variants drawn: one cage element per group, group cage + counter cage
     cages = [c for c in p["constraints"] if c.get("type") == 2001]
     assert len(cages) == len(gen["groups"])
-    for c, g in zip(cages, gen["groups"], strict=True):
+    for c, g, drawn in zip(cages, gen["groups"], groups[0], strict=True):
         group_cage, counter_cage = c["cages"]
+        # the cages are cosmetic (the solver never reads them), so they are
+        # pinned to the groups the solver does read
+        assert group_cage["cells"] == drawn["cells"][1:], (
+            "a cage is not its group's targets"
+        )
+        assert counter_cage["cells"] == drawn["cells"][:1], (
+            "a # cage is not its group's counter"
+        )
+        assert group_cage["value"] == drawn["value"], (
+            "a cage label is not its group's digits"
+        )
         assert sorted(group_cage["cells"]) == sorted(
             r * N + col for r, col in g["cells"]
         )
@@ -218,7 +253,7 @@ def check_link(gen):
         assert {k: v for k, v in a.items() if k != "disabled"} == {
             k: v for k, v in b.items() if k != "disabled"
         }
-    assert backend_code(gen, CANDIDATE_NAME) != backend_code(gen, BASELINE_NAME)
+    assert backend_code(CANDIDATE_NAME) != backend_code(BASELINE_NAME)
 
 
 if __name__ == "__main__":

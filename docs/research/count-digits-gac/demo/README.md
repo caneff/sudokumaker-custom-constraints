@@ -10,15 +10,43 @@ draws the constraint and keeps it to four groups.
 `PUZZLE_LINK_demo.txt` — a plain 9x9 sudoku document, 20 givens, `[unique]`,
 nothing entered.
 
-- **Four groups.** Each is a connected region of 10 cells drawn as a coloured
-  dashed cage, its listed digits as the cage's label (top-left corner). A
-  one-cell cage of the same colour, labelled `#`, marks the group's **counter**.
-  The counter's digit is how many of the region's cells hold one of the listed
-  digits. The rules text says so.
+- **Four groups, on the local lane.** The groups reach the solver through
+  `input.groups`, the way an author would draw them: each group's `value` is its
+  digit list (`5 6 8`), its **first cell is the counter** and the rest are the
+  targets. The backend (`main-demo.js`) parses the digit mask out of `value`;
+  there is no parallel table. The counter's digit is how many of the group's
+  cells hold one of the listed digits. The rules text says so.
 - **Two custom constraints**, identical except for the class their backend
   registers: `CountDigits (built-in)`, the app's own validate-only rule, and
   `CountDigits (GAC)`, `CountDigitsGacComponent` with its commentary kept (the
   code box reads as a walkthrough of the component). The GAC one ships enabled.
+  **Both carry the same `input.groups`**, emitted once from `gen.json`, and the
+  test asserts the two lists are equal cell for cell, counter included: if they
+  ever differed the link would time two different puzzles.
+
+### What the app draws, and why the cages stay
+
+Looked at with `shot-scraper`, on the shipped link:
+
+- **Unselected**, a custom constraint's groups are not drawn at all: the grid
+  shows only the givens. (`framebuild.clue_labels` says the same for the frame
+  boards.)
+- **Selected** in the Elements panel, the app opens the group editor: one tab
+  per group (1-4), a `Value:` field (`5 6 8`), and the group's cells shaded blue
+  and numbered in draw order, **0 on the counter cell**, 1..10 down the
+  targets. So the order and the `value` are both reachable, but every group is
+  the same blue, and it is only there while the element is selected.
+
+That is not a coloured, labelled, always-visible drawing, so the cosmetic
+cages stay (one element per group: a dashed cage in the group's colour labelled
+with the digits, a one-cell `#` cage on the counter). They are decoration the
+solver never reads, so the test pins them to `input.groups`: each cage is its
+group's targets, each `#` cage its counter, each label its `value`.
+
+**Round trip, checked in the app** (Share → link → clipboard, then decoded):
+both constraints' `input.groups` come back equal cell for cell with the counter
+first, and `disabled` is kept. The only differences in the whole document are
+`type`, `width` and `height`, which the app drops as defaults.
 
 ## How to toggle
 
@@ -112,6 +140,9 @@ uv run examples/outside-sudoku/build_count_digits_demo.py          # rebuild the
 uv run examples/outside-sudoku/build_count_digits_demo.test.py     # board, uniqueness, flags, annotation, reproduction
 node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_LINK_demo.txt 3
 ```
+
+Re-timed after the move to `input.groups` (3 reps, cold): built-in 2000ms, GAC
+100ms, both `[unique]`; through the menu, GAC 100ms and built-in 2000ms.
 
 `--enabled builtin --out DIR` writes the same board with the other component
 on, for timing outside the app's menu.

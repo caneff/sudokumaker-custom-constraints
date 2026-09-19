@@ -3,7 +3,8 @@
 //!
 //! A SudokuMaker custom constraint has two pieces of code. The BACKEND (the
 //! main code box of the constraint) runs once when the puzzle loads. It reads
-//! the puzzle and REGISTERS components, one call per group, like this:
+//! the groups drawn on the constraint (`input.groups`, each with its cells and
+//! a typed value) and REGISTERS components, one call per group, like this:
 //!
 //!   puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counterCell, targetCells))
 //!

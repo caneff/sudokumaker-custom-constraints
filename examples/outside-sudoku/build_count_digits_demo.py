@@ -10,10 +10,14 @@
 # digits. `model()` (imported from build_sparse_count_digits) is the CP-SAT
 # side; CountDigitsGacComponent.js is the JS side.
 #
-# Unlike the sparse timing board (whose 20 groups live only in the code), each
-# group is DRAWN: a cosmetic cage round its connected cells, its digit list as
-# the cage's label, and a one-cell cage of the same colour on the counter cell
-# labelled "#".
+# The groups reach the solver the way an author's would, through `input.groups`
+# (the local lane, docs/example-layout.md): `value` is the digit list, the first
+# cell is the counter and the rest are the targets. Both constraints carry the
+# same list, emitted once from gen.json (`groups_input`). The app draws nothing
+# for those groups outside the constraint's own editor, so each group also gets
+# a cosmetic cage round its connected cells, its digit list as the cage's label,
+# and a one-cell cage of the same colour on the counter cell labelled "#"; the
+# test pins the cages to `input.groups`.
 #
 # Wire note: the app saves a disabled constraint as `"disabled": true`
 # (`enabled` is the in-memory name, `Ec.save` in the app's main bundle);
@@ -164,10 +168,23 @@ def search(seed, n_groups, n_targets, n_digits):
     }
 
 
-def backend_code(gen, class_name):
-    table = "const GROUPS = " + json.dumps(gen["groups"], separators=(",", ":")) + "\n"
+def backend_code(class_name):
     src = BACKEND.read_text().replace(CANDIDATE_NAME, class_name)
-    return minify_js(table + src, base_dir=BACKEND.parent, keep_comments=True)
+    return minify_js(src, base_dir=BACKEND.parent, keep_comments=True)
+
+
+def groups_input(gen):
+    """The drawn groups, in the document's own shape: cell ids on the 9-wide
+    grid, `value` the group's digit list, and the counter cell FIRST, then the
+    targets -- the convention the backend reads (main-demo.js). Both
+    constraints carry this same list, emitted here once."""
+    return [
+        {
+            "cells": [r * N + c for r, c in [g["counter"], *g["cells"]]],
+            "value": " ".join(map(str, g["values"])),
+        }
+        for g in gen["groups"]
+    ]
 
 
 def cage_constraints(gen):
@@ -213,11 +230,11 @@ def custom_constraint(gen, variant, enabled):
         "type": 1000,
         "definition": {
             "name": title,
-            "input": [],
-            "backend": {"type": "code", "code": backend_code(gen, class_name)},
+            "input": [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}],
+            "backend": {"type": "code", "code": backend_code(class_name)},
             "components": components,
         },
-        "input": {},
+        "input": {"groups": groups_input(gen)},
         "style": {},
     }
     if not enabled:
