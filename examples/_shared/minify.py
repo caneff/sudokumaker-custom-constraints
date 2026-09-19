@@ -128,7 +128,7 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
         elif text.strip():
             out.append((text.rstrip(), included))
     assert not frames, (
-        f"{'template literal' if frames[-1] is None else 'block comment'} never closes, which this strip cannot read"
+        f"{'block comment' if frames[-1] == _BLOCK else 'template literal'} never closes, which this strip cannot read"
     )
     return out
 
