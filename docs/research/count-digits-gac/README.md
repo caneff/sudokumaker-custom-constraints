@@ -136,9 +136,8 @@ uv run examples/outside-sudoku/build_sparse_count_digits.py --carved K # change 
 ```
 
 The script lives in `examples/outside-sudoku/` beside
-`build_sparse_required_digits.py`, whose rows-and-columns base and board shape
-it reuses; `docs/research/` refuses a new `.py` file
-(`check_research_python`, #469).
+`build_sparse_required_digits.py`, whose board shape it reuses;
+`docs/research/` refuses a new `.py` file (`check_research_python`, #469).
 
 ### Reproduce
 
@@ -155,7 +154,11 @@ uv run examples/_shared/probe_link.py strip $D/PUZZLE_LINK_sparse_original.txt b
 node examples/_shared/app-solve.mjs base.txt 1 [--after-logical]   # then cand.txt, alternating
 ```
 
-### Recorded rows (2026-09-18, v2026.08.14-d47fc4b, 3 reps, non-deterministic solve off)
+### Recorded rows, `"custom"` document (2026-09-18, v2026.08.14-d47fc4b, 3 reps, non-deterministic solve off)
+
+Taken on the board as #543 built it: a `"custom"` document carrying a
+hand-rolled Rows & Columns backend, so measured against the restricted
+`CustomPuzzleEnabledStepTypes` technique set.
 
 | date | app version | board | mode | baseline (built-in) | candidate (GAC) | ratio | row PASS/FAIL |
 |---|---|---|---|---|---|---|---|
@@ -182,6 +185,30 @@ in the app, and both, run through the real bundle offline
 So the speed-up is not a component pruning its way to a wrong or empty answer,
 and the component demonstrably runs: a swap that failed silently
 (`docs/gotchas.md` #1) could not make the solve twenty times faster.
+
+### Recorded rows, `"sudoku"` document (2026-09-19, v2026.08.14-d47fc4b, 3 reps, non-deterministic solve off) (#565)
+
+The same board rebuilt as a `"sudoku"` document with no Rows & Columns backend
+(rows and columns come from the app's `SudokuRules`), so measured against the
+full `StandardLogicStepsGenerator` technique set. Both links read `[unique]`;
+the app accepts a sudoku document carrying custom component code.
+
+Three things moved with the document type, not one: the technique set, the
+row/column strength (the old backend declared each line as a
+`DifferentDigitsComponent` over digits 0..9; `SudokuRules` declares
+`HouseComponent` lines over 1..9), and the candidate set. So the paired tables
+do not isolate `CustomPuzzleEnabledStepTypes` alone, and the old boards were
+looser than the CP-SAT model `gen.json` is proved unique under; the rebuild
+closes that gap.
+
+| date | app version | board | mode | baseline (built-in) | candidate (GAC) | ratio | row PASS/FAIL |
+|---|---|---|---|---|---|---|---|
+| 2026-09-19 | v2026.08.14-d47fc4b | sparse-count-digits (sudoku doc) | cold | 4600ms | 200ms | 0.04 | PASS |
+| 2026-09-19 | v2026.08.14-d47fc4b | sparse-count-digits (sudoku doc) | after-logical | 2100ms | 200ms | 0.10 | PASS |
+
+Per-rep sums, cold: built-in 4500/4600/4700, GAC 300/200/200; after-logical:
+built-in 2100/2100/2100, GAC 200/200/200. Two-row verdict: SHIP, unchanged by
+the document type.
 
 ### Depth
 

@@ -87,6 +87,14 @@ if __name__ == "__main__":
 
     docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs
+    for d in docs:
+        # a plain 9x9 is a sudoku document (#565): rows and columns come from
+        # the app's own rules, so no "Rows & Columns" backend rides along
+        assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
+        names = [
+            (c.get("definition") or {}).get("name") for c in d["puzzle"]["constraints"]
+        ]
+        assert "Rows & Columns" not in names, "a row/column backend is still carried"
     cand_c = cand_doc["puzzle"]["constraints"][-1]["definition"]
     base_c = base_doc["puzzle"]["constraints"][-1]["definition"]
     assert [c["name"] for c in cand_c["components"]] == [CANDIDATE_NAME]
