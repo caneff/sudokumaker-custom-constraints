@@ -103,6 +103,8 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
     lines -- the split `_prune_dead_includes` scopes itself to."""
     included = bool(stack)
     out = []
+    mode = ()  # open template-literal frames carried across lines
+    in_template = False
     for line in src.splitlines():
         directive = _INCLUDE_RE.match(line)
         if directive:
@@ -114,16 +116,113 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
                 )
             )
             continue
-        if not keep_comments:
-            if drop_blocks:
-                line = re.sub(r"/\*.*?\*/", "", line)  # drop block comments
-                assert "/*" not in line and "*/" not in line, (
-                    f"unpaired block-comment marker, which this strip cannot read: {line!r}"
-                )
-            line = re.sub(r"(?<!:)//.*$", "", line)  # drop comments, keep URLs
-        if line.strip():
-            out.append((line.rstrip(), included))
+        text, mode = _strip_line(
+            line,
+            mode,
+            drop_line=not keep_comments,
+            drop_block=drop_blocks and not keep_comments,
+        )
+        if mode:  # a template literal ends past this line: its text is content
+            out.append((text, included))
+        elif text.strip() or in_template:
+            out.append((text.rstrip(), included))
+        in_template = bool(mode)
     return out
+
+
+_REGEX_PREV = "(,=:[!&|?{};+-*%<>~^"
+
+
+def _strip_line(line, frames, drop_line, drop_block):
+    """`line` with its comments removed, tracking string and template-literal
+    state so a comment marker inside a string is left alone. `frames` is the
+    stack of open template literals from earlier lines (each entry the brace
+    depth of a `${` expression, or None while in the literal's own text).
+    Returns `(text, frames)`. A construct this scan cannot read -- a regex
+    literal that does not close, an unterminated quote, a block comment that does not close on its
+    line -- stops the build naming the line."""
+    frames = list(frames)
+    out = []
+    i, n = 0, len(line)
+
+    def confused(what):
+        raise AssertionError(f"{what}, which this strip cannot read: {line!r}")
+
+    while i < n:
+        c = line[i]
+        nxt = line[i + 1] if i + 1 < n else ""
+        in_text = bool(frames) and frames[-1] is None
+        if in_text:  # inside a template literal's own text
+            if c == "\\":
+                out.append(line[i : i + 2])
+                i += 2
+            elif c == "`":
+                frames.pop()
+                out.append(c)
+                i += 1
+            elif c == "$" and nxt == "{":
+                frames[-1] = 1
+                out.append("${")
+                i += 2
+            else:
+                out.append(c)
+                i += 1
+            continue
+        if c in "'\"":
+            j = i + 1
+            while j < n and line[j] != c:
+                j += 2 if line[j] == "\\" else 1
+            if j >= n:
+                confused("unterminated string")
+            out.append(line[i : j + 1])
+            i = j + 1
+        elif c == "`":
+            frames.append(None)
+            out.append(c)
+            i += 1
+        elif c == "/" and nxt == "/":
+            if not drop_line:
+                out.append(line[i:])
+            break
+        elif c == "/" and nxt == "*":
+            end = line.find("*/", i + 2)
+            if end < 0:
+                confused("unpaired block-comment marker")
+            if not drop_block:
+                out.append(line[i : end + 2])
+            i = end + 2
+        elif c == "/":
+            prev = "".join(out).rstrip()[-1:]
+            if prev == "":  # a line-leading "/" may continue a division
+                confused("ambiguous leading slash (regex literal or division)")
+            if prev in _REGEX_PREV:  # after these, "/" cannot be a division
+                j, in_class = i + 1, False
+                while j < n and (in_class or line[j] != "/"):
+                    if line[j] == "\\":
+                        j += 1
+                    elif line[j] == "[":
+                        in_class = True
+                    elif line[j] == "]":
+                        in_class = False
+                    j += 1
+                if j >= n:
+                    confused("unterminated regex literal")
+                out.append(line[i : j + 1])
+                i = j + 1
+            else:
+                out.append(c)
+                i += 1
+        else:
+            if frames:  # inside a `${ ... }` expression
+                if c == "{":
+                    frames[-1] += 1
+                elif c == "}":
+                    frames[-1] -= 1
+                    if frames[-1] == 0:
+                        frames[-1] = None
+            out.append(c)
+            i += 1
+    return "".join(out), tuple(frames)
 
 
 def _include(rest, drop_blocks, base_dir, stack, keep_comments):

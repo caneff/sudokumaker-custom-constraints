@@ -99,12 +99,11 @@ def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
 
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
     # This is a regex strip, not a scanner, so anything it cannot pair on one
-    # line -- a block spanning lines, or a "/*" living inside a string -- is
-    # refused rather than half-cut. No shipped file has either today.
+    # line -- a block spanning lines -- is refused rather than half-cut. No
+    # shipped file has one today. (A "/*" inside a string is fine now.)
     unpaired = [
         "/* opens\n and closes */\nconst x = 1\n",  # a multi-line block
         "const x = 1 /* opens\n",  # a block with no end at all
-        "const s = 'a /* b'\n",  # a marker inside a string
     ]
     for src in unpaired:
         try:
@@ -112,6 +111,77 @@ def test_refuses_an_unpaired_block_marker_rather_than_guessing():
         except AssertionError:
             continue
         raise AssertionError(f"expected a refusal for {src!r}")
+
+
+def test_a_line_comment_may_contain_block_markers_and_urls():
+    got = minify_js(
+        "const a = 1 // see /* here\n"
+        "const b = 2 // or here */\n"
+        "const c = 3 // https://x.y/z\n"
+    )
+    assert got == "const a = 1\nconst b = 2\nconst c = 3\n", repr(got)
+
+
+def test_a_string_keeps_its_comment_markers():
+    src = (
+        'const sep = "a//b"\n'
+        "const open = 'x /* y'\n"
+        "const close = 'x */ y'  // dropped\n"
+        'const url = "https://x" // dropped\n'
+        "const esc = 'it\\'s // fine'\n"
+    )
+    got = minify_js(src)
+    assert got == (
+        'const sep = "a//b"\n'
+        "const open = 'x /* y'\n"
+        "const close = 'x */ y'\n"
+        'const url = "https://x"\n'
+        "const esc = 'it\\'s // fine'\n"
+    ), repr(got)
+
+
+def test_a_template_literal_keeps_markers_across_lines():
+    src = (
+        "const t = `a // b\n\n/* c ${x // real comment\n} d`  // dropped\nconst y = 1\n"
+    )
+    got = minify_js(src)
+    assert got == ("const t = `a // b\n\n/* c ${x \n} d`\nconst y = 1\n"), repr(got)
+
+
+def test_keep_comments_leaves_all_of_it_alone():
+    src = (
+        "const a = 1 // see /* here\n"
+        'const sep = "a//b" // note */\n'
+        "const t = `a // b`  // url https://x\n"
+    )
+    assert minify_js(src, keep_comments=True) == src
+
+
+def test_a_regex_literal_is_opaque_and_an_unreadable_one_refuses():
+    # A "/" after an operator or opener cannot be a division, so the scan
+    # reads the literal through (quotes, "//" and class brackets included).
+    got = minify_js("x.replace(/'\\/\\/[/]/g, '') // dropped\n")
+    assert got == "x.replace(/'\\/\\/[/]/g, '')\n", repr(got)
+    assert minify_js("const q = a / b / c\n") == "const q = a / b / c\n"
+    for src, what in [
+        ("const r = /abc\n", "unterminated regex"),
+        ("x = a\n  / b\n", "leading slash"),
+    ]:
+        try:
+            minify_js(src)
+        except AssertionError as e:
+            assert what in str(e) and repr(src.split("\n")[-2]) in str(e), str(e)
+            continue
+        raise AssertionError(f"expected a refusal for {src!r}")
+
+
+def test_refuses_an_unterminated_string():
+    try:
+        minify_js("const s = 'oops\n")
+    except AssertionError as e:
+        assert "unterminated string" in str(e), str(e)
+        return
+    raise AssertionError("expected a refusal")
 
 
 def test_splices_an_include_relative_to_the_including_file():
@@ -277,6 +347,12 @@ if __name__ == "__main__":
     test_keep_comments_still_splices_includes_and_prunes_dead_ones()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
+    test_a_line_comment_may_contain_block_markers_and_urls()
+    test_a_string_keeps_its_comment_markers()
+    test_a_template_literal_keeps_markers_across_lines()
+    test_keep_comments_leaves_all_of_it_alone()
+    test_a_regex_literal_is_opaque_and_an_unreadable_one_refuses()
+    test_refuses_an_unterminated_string()
     test_splices_an_include_relative_to_the_including_file()
     test_minifies_the_included_text_too()
     test_an_include_that_minifies_to_nothing_leaves_no_blank_line()
