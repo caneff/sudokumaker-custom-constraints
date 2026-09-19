@@ -11,7 +11,7 @@
 //   - value: the text typed on the group, here the listed digits, "5 6 8".
 //
 // This puzzle carries two copies of this backend as two separate constraints in
-// the Elements panel, each with the same four groups. They are identical except
+// the Elements panel, each with the same groups. They are identical except
 // for the one class name in the registering line below: one registers the app's
 // own built-in count-digits rule, the other registers a pruning replacement
 // whose code is in that constraint's component box. Exactly one is enabled.

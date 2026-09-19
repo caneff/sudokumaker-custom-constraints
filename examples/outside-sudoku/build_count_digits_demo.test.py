@@ -259,7 +259,7 @@ def check_link(gen):
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
     check_board(gen)
-    check_board(json.loads((DEMO_DIR / "gen_5x8.json").read_text()))
+    check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()))
     check_uniqueness_detects_a_wrong_count(gen)
     check_grow_region_is_connected_and_disjoint()
     check_palette_guard(gen)

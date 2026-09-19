@@ -3,14 +3,14 @@
 A small board a reader can read, carrying **both** count-digits components in
 one link, so they can switch between them and feel the difference. The timing
 rig (`../sparse/`, #543) proves the gap with 20 undrawn groups; this board
-draws the constraint and keeps it to four groups.
+draws the constraint and keeps it to five groups of eight cells.
 
 ## The link
 
-`PUZZLE_LINK_demo.txt` — a plain 9x9 sudoku document, 20 givens, `[unique]`,
+`PUZZLE_LINK_demo.txt` — a plain 9x9 sudoku document, 17 givens, `[unique]`,
 nothing entered.
 
-- **Four groups, on the local lane.** The groups reach the solver through
+- **Five groups, on the local lane.** The groups reach the solver through
   `input.groups`, the way an author would draw them: each group's `value` is its
   digit list (`5 6 8`), its **first cell is the counter** and the rest are the
   targets. The backend (`main-demo.js`) parses the digit mask out of `value`;
@@ -32,7 +32,7 @@ Looked at with `shot-scraper`, on the shipped link:
   shows only the givens. (`framebuild.clue_labels` says the same for the frame
   boards.)
 - **Selected** in the Elements panel, the app opens the group editor: one tab
-  per group (1-4), a `Value:` field (`5 6 8`), and the group's cells shaded blue
+  per group (1-5), a `Value:` field (`5 6 8`), and the group's cells shaded blue
   and numbered in draw order, **0 on the counter cell**, 1..10 down the
   targets. So the order and the `value` are both reachable, but every group is
   the same blue, and it is only there while the element is selected.
@@ -95,24 +95,37 @@ app's logical solver; median sum, ms):
 
 | board | built-in cold | GAC cold | built-in after-logical | GAC after-logical |
 |---|---|---|---|---|
-| 4 groups x 10, seed 7 **(shipped)** | 2000 | 100 | 900 | 0 |
+| 4 groups x 10, seed 7 (kept alternative) | 2000 | 100 | 900 | 0 |
 | 5 x 8, seed 2 | 3500 | 300 | 1400 | 200 |
 | 5 x 12, seed 2 | 2700 | 300 | 2200 | 300 |
-| 5 x 8, seed 5 | 28100 | 600 | 10600 | 100 |
+| 5 x 8, seed 5 (**shipped**) | 28100 | 600 | 10600 | 100 |
 
-**Why 4 x 10 seed 7 ships:** it is the smallest rung that clears the ~2s aim
-(4 groups, 40 cells, 20 givens), and it is the one a reader waits two seconds
-for, not half a minute. The cost: 2000ms is the aim's floor, not a wide margin,
-and after the logical solver has run the built-in drops to 900ms. The board
-opens cold, so the reader sees 2s against 0.1s. A reader who wants the
-dramatic version (28s against 0.6s) can build the 5 x 8 seed-5 draw, kept as
-`gen_5x8.json` (a draw is not replayable from its seed: the grid comes from
-CP-SAT's portfolio search):
-`uv run examples/outside-sudoku/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_5x8.json --out <dir>`.
+**Why 5 x 8 seed 5 ships (owner ruling, #568):** it is the dramatic board, and
+that is the demonstration. The 4 x 10 draw's 2000ms sat exactly on the ~2s aim
+with no margin, so a faster machine or a luckier search order could bring the
+built-in under a second and the demo would stop showing anything. The cost
+recorded: a half-minute wait for the built-in solve, and a busier grid (five
+cages, 40 cells, 5 counters, on 17 givens) than the four-cage one. The 4 x 10
+draw is kept as the smaller alternative, `gen_4x10.json` (a draw is not
+replayable from its seed: the grid comes from CP-SAT's portfolio search, so
+neither draw is re-derived; a swap is a rename plus a rebuild):
+`uv run examples/outside-sudoku/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_4x10.json --out <dir>`.
 
-Through the app's own menu (Disable on the GAC element, Enable on the built-in,
-one rep each, non-deterministic solve off): GAC 100ms, built-in 1900ms, both
-"unique solution".
+### Confirmation run on the shipped link (2026-09-19, v2026.08.14-d47fc4b)
+
+`PUZZLE_LINK_demo.txt` as committed (groups through `input.groups`), the other
+component switched on with `--enabled builtin`, 3 reps each, non-deterministic
+solve off, the app's "sum" readout (ms):
+
+| mode | built-in reps | built-in median | GAC reps | GAC median | ratio |
+|---|---|---|---|---|---|
+| cold | 29400 / 29600 / 30000 | 29600 | 600 / 700 / 800 | 700 | 0.02 |
+| after-logical | 11200 / 11000 / 10900 | 11000 | 100 / 100 / 100 | 100 | 0.01 |
+
+All twelve runs read `[unique]`. Through the app's own menu (Disable on the GAC
+element, Enable on the built-in, one rep): built-in 29600ms, `unique solution`.
+The ladder's one-rep and the older 3-rep figures above are the evidence for the
+choice; these are the measurement of the board that ships.
 
 ## Decode of the shipped link
 
@@ -120,13 +133,14 @@ Both constraints present, exactly one enabled (`disabled` absent means enabled;
 the test asserts this from the committed link):
 
 ```
-type sudoku   givens 20   entered 0
+type sudoku   givens 17   entered 0
 0     Given digits                              enabled
 1     Regions                                   enabled
-2001  Group 1: count of 5 6 8                   enabled
-2001  Group 2: count of 3 5 6                   enabled
-2001  Group 3: count of 5 6 9                   enabled
-2001  Group 4: count of 1 4 9                   enabled
+2001  Group 1: count of 2 6 7                   enabled
+2001  Group 2: count of 2 3 5                   enabled
+2001  Group 3: count of 1 3 8                   enabled
+2001  Group 4: count of 2 7 8                   enabled
+2001  Group 5: count of 2 3 4                   enabled
 1000  CountDigits (built-in)                    disabled   (no component code)
 1000  CountDigits (GAC)                         enabled    (annotated component)
 ```
@@ -141,14 +155,11 @@ uv run examples/outside-sudoku/build_count_digits_demo.test.py     # board, uniq
 node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_LINK_demo.txt 3
 ```
 
-Re-timed after the move to `input.groups` (3 reps, cold): built-in 2000ms, GAC
-100ms, both `[unique]`; through the menu, GAC 100ms and built-in 2000ms.
-
 `--enabled builtin --out DIR` writes the same board with the other component
 on, for timing outside the app's menu.
 
 **Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
-sparse builder's `model()` and `count_solutions()`), from the 20 givens, in the
+sparse builder's `model()` and `count_solutions()`), from the 17 givens, in the
 test. **Readability caveat:** the app draws cosmetic cages as thin dashed
 outlines, and the regions grow at random, so two regions that meet can be
 hard to tell apart; the colour and the `#` marker are what carry it.
