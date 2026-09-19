@@ -147,9 +147,11 @@ and the two links.
   the annotated build: a comment holding a computed-dispatch token (`eval(`,
   `new Function(`, `Function(`, or `[name](`) makes `_prune_dead_includes`
   refuse to prune.
-  A board change (`--carved`, `--search`) rebuilds the two plain links only;
-  rerun with `--keep-comments` afterwards, or the annotated link is left on
-  the old board and the test reports that it does not reproduce.
+  A board change leaves the annotated link on the old board until it is
+  rebuilt: `--carved K` rebuilds the two plain links, and `--search SEED`
+  only rewrites `gen.json` (a plain rebuild follows it). Either way, finish
+  with `--keep-comments`, or the test reports that the annotated link does
+  not reproduce.
 
 ### Building the boards
 
