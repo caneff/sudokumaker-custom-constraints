@@ -61,4 +61,23 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   }
   assert.deepStrictEqual(run(0xFFFFFFF0), run(0))
 }
+
+// 4. The target stamp too: a stale one reads as "no targets" and reports a cut
+// that is not there. Many random states, so the cut rule's re-walk is reached.
+{
+  const run = stamp => {
+    const out = []
+    for (let rep = 0; rep < 200; rep++) {
+      const r = makeRng(1000 + rep).rnd
+      const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
+      const inst = {}
+      mod.setParams(inst, CELLS)
+      if (stamp) inst.targetStamp = stamp
+      Array.from(mod.update(inst, p))
+      out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
+    }
+    return out
+  }
+  assert.deepStrictEqual(run(0xFFFFFFFF), run(0))
+}
 console.log('PASS')

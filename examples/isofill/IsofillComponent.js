@@ -53,6 +53,8 @@ function setParams (instance, cells) {
   instance.targets = new Uint32Array(cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
+  instance.holds = new Uint8Array(cells.length) // validate's per-digit mask
+  instance.budget = null // sized on first update, once the digit range is known
   // Per-call scratch, reused so update allocates almost nothing (GC was 12%
   // of a call): one allowed and one walk mask per digit, BFS frontiers,
   // distance rows for the tour bound, and the "every other digit" masks.
@@ -108,6 +110,13 @@ function neighbours (i, side) {
 function nextStamp (instance) {
   if (instance.stamp >= 0xFFFFFFFF) { instance.mask.fill(0); instance.stamp = 0 }
   return ++instance.stamp
+}
+
+// The same wrap guard for the target stamp `reachesAll` reads: a stale one
+// would read as "no targets" and report a cut that is not there.
+function nextTargetStamp (instance) {
+  if (instance.targetStamp >= 0xFFFFFFFF) { instance.targets.fill(0); instance.targetStamp = 0 }
+  return ++instance.targetStamp
 }
 
 // How far a walk from `starts` spreads: the cells reachable in at most `depth`
@@ -319,18 +328,15 @@ function cutFilter (instance, placed, open, allowed, size, depth) {
 // `state.digits` is the digit range itself.
 function scanBoard (instance, puzzle, lo, hi) {
   const { cells } = instance
+  instance.allMask = 0
+  for (let e = lo; e <= hi; e++) instance.allMask |= 1 << e
   const state = []
   state.digits = []
   for (let d = lo; d <= hi; d++) {
     const allowed = instance.allowed[d] || (instance.allowed[d] = new Uint8Array(cells.length))
     allowed.fill(0)
     state[d] = { placed: [], open: [], allowed }
-    if (instance.others[d] === undefined) {
-      let all = 0
-      for (let e = lo; e <= hi; e++) all |= 1 << e
-      instance.allMask = all
-      instance.others[d] = all & ~(1 << d)
-    }
+    if (instance.others[d] === undefined) instance.others[d] = instance.allMask & ~(1 << d)
     state.digits.push(d)
   }
   const value = instance.value // cell -> its value, or -1 while open
@@ -417,8 +423,7 @@ function * cutRule (instance, puzzle, state, d, size, near) {
   const { placed, open, allowed } = state[d]
   const others = instance.others[d]
   const depth = size - placed.length
-  if (instance.targetStamp >= 0xFFFFFFFF) { instance.targets.fill(0); instance.targetStamp = 0 }
-  const targetStamp = ++instance.targetStamp
+  const targetStamp = nextTargetStamp(instance)
   for (const i of placed) instance.targets[i] = targetStamp
   const skip = cutFilter(instance, placed, open, allowed, size, depth)
   const held = []
@@ -607,7 +612,6 @@ function budget (instance, state, near, lo, hi, size) {
   const n = state[lo].allowed.length
   const D = hi + 1
   const b = instance.budget || (instance.budget = {
-    n,
     D,
     isOpen: new Uint8Array(n),
     optCount: new Uint8Array(n), // cell -> how many digits' walks hold it
@@ -730,7 +734,7 @@ function validate (instance, puzzle) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const size = cells.length / (hi - lo + 1)
-  const allowed = instance.holds || (instance.holds = new Uint8Array(cells.length))
+  const allowed = instance.holds
   for (let d = lo; d <= hi; d++) {
     allowed.fill(0)
     let first = -1

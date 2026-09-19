@@ -248,8 +248,9 @@ cells:
 connected island of ten. The solver may not call it (`../../docs/gotchas.md`,
 gotcha 2); the deductions above do the work, `validate` states the rule.
 
-All of it reads each cell's candidates as a `DigitSet` (wrap it in
-`Array.from`; build one back with `SudokuDigitSet.from`). `update` reads the
+All of it reads each cell's candidates as a raw bitmask
+(`getCandidatesBitMask`, lowest set bit first) and removes with raw masks,
+never a `DigitSet`. `update` reads the
 grid **once** per call and builds every digit's placed, open, and allowed
 sets from that one scan. It runs on every search node, so a scan per digit
 (ten reads of each cell) cost real time: the one-pass scan halved the app's
