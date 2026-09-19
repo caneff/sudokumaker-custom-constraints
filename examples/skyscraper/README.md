@@ -298,19 +298,19 @@ segment.
 
 ### Empty-line guard, raw masks, cheaper hot path (#455)
 
-| 2026-09-18 | v2026.08.14-d47fc4b | skyscraper | 7800ms | 7700ms | 0.99 | FAIL |
-| 2026-09-18 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+| 2026-09-19 | v2026.08.14-d47fc4b | skyscraper | 7600ms | 7300ms | 0.96 | FAIL |
+| 2026-09-19 | v2026.08.14-d47fc4b | skyscraper after-logical | 0ms | 0ms | — | NO TIME |
 two-row rule: NO SHIP
 
 `just time skyscraper --ring-clues --board PUZZLE_LINK_pre455.txt`, 3 reps per
 arm, non-deterministic solve off. The baseline file is not committed: it is
 `main`'s link from before this change, recreated with
-`git show d6fb878:examples/skyscraper/PUZZLE_LINK.txt >
+`git show 532abd2:examples/skyscraper/PUZZLE_LINK.txt >
 examples/skyscraper/PUZZLE_LINK_pre455.txt` (the committed link is rebuilt with
 the new code, so it has no candidate to swap in). The change adds no deduction
 (soundness: 0 violations; update-strength: 0 weaker cells), so the `NO SHIP`
 line reads the 0.9x deduction rule; the bar it answers to is the no-deduction
-bar, 1.1x or under (`../../docs/real-app-timing.md`). The cold row, 0.99x,
+bar, 1.1x or under (`../../docs/real-app-timing.md`). The cold row, 0.96x,
 clears it; the after-logical row is 0 ms on both sides and places no
 constraint.
 
