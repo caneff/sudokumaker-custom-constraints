@@ -69,7 +69,8 @@ test:
     # pattern's --cover subset: six grids, about 7s, one per circled group
     # shape, so an over-constrained size encoding fails CI. The inverted
     # probe's --cover subset (#501) is five grids, about 25s: one per
-    # chocolate rectangle shape and banana group size the pool holds. The
+    # chocolate rectangle shape and banana group size the pool holds (not
+    # per box offset: that takes 30 grids). The
     # full runs are `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
