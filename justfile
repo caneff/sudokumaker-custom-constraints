@@ -67,8 +67,11 @@ test:
     # worker -- this box is shared). The known-grid tests solve a CP-SAT
     # model per known grid and stay out of this gate, except the circle
     # pattern's --cover subset: six grids, about 7s, one per circled group
-    # shape, so an over-constrained size encoding fails CI. The full runs
-    # are `just test-finders-slow`.
+    # shape, so an over-constrained size encoding fails CI. The inverted
+    # probe's --cover subset (#501) is five grids, about 25s: one per
+    # chocolate rectangle shape and banana group size the pool holds (not
+    # per box offset: that takes 30 grids). The
+    # full runs are `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
@@ -76,6 +79,7 @@ test:
     uv run finders/renbanana/tools/test_prove_two_stage.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
+    uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover
     # finders/hunt's own tests (#484, #485, #486, #487, #488, #489, #490):
     # the dedupe key's public function, neighbours and connected components
     # on hand-drawn boards, the text printer's output, the grid-drawing
