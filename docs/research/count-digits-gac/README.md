@@ -130,10 +130,9 @@ and the two links.
   one identifier, and the candidate link also ships the component code.
 - **A third link, for reading** (#567): `PUZZLE_LINK_sparse_annotated.txt` is
   the candidate link's board, givens and component with every comment kept in
-  the embedded code (about twice the size: 10.5k against 5.0k), plus
-  cold-start commentary on the counter and target cells, what `puzzle.stop`
-  and `puzzle.removeCandidatesFromCell` do with a returned change, what the
-  backend registers, and what the digit mask is. It reads `[unique]` in the
+  the embedded code (about twice the size: 10.3k against 5.0k): the rule,
+  what the built-in does instead, and the three deductions with the
+  soundness argument. It reads `[unique]` in the
   app with `entered: 0`. It is for reading the code in the app's code box,
   not for seeing the rule: the 20 groups are not drawn on the board, so a
   reader cannot see which cells a group holds. Timing uses
