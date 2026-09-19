@@ -98,9 +98,8 @@ def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
 
 
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
-    # This is a regex strip, not a scanner, so anything it cannot pair on one
-    # line -- a block spanning lines -- is refused rather than half-cut. No
-    # shipped file has one today. (A "/*" inside a string is fine now.)
+    # A block comment that is being dropped must close on its line: one that
+    # spans lines is refused rather than half-cut. No shipped file has one.
     unpaired = [
         "/* opens\n and closes */\nconst x = 1\n",  # a multi-line block
         "const x = 1 /* opens\n",  # a block with no end at all
@@ -148,40 +147,59 @@ def test_a_template_literal_keeps_markers_across_lines():
     assert got == ("const t = `a // b\n\n/* c ${x \n} d`\nconst y = 1\n"), repr(got)
 
 
-def test_keep_comments_leaves_all_of_it_alone():
+def test_keep_comments_never_reads_the_text():
+    # The annotated mode returns every line as written (blank lines aside), so
+    # nothing the scan refuses -- a multi-line block, an apostrophe in prose --
+    # can stop it (#433).
     src = (
         "const a = 1 // see /* here\n"
         'const sep = "a//b" // note */\n'
-        "const t = `a // b`  // url https://x\n"
+        "const open = 'x /* y'\n"
+        'const url = "https://x" // https://y\n'
+        "const t = `a // b\n"
+        "c`  // url https://x\n"
+        "/* a block\n"
+        "   that doesn't close on its line */\n"
+        "const r = /'/  // regex\n"
     )
     assert minify_js(src, keep_comments=True) == src
 
 
-def test_a_regex_literal_is_opaque_and_an_unreadable_one_refuses():
-    # A "/" after an operator or opener cannot be a division, so the scan
-    # reads the literal through (quotes, "//" and class brackets included).
+def test_drop_blocks_false_passes_a_multiline_block_through():
+    # Vendored code round-trips: a block spanning lines is kept, its text is
+    # not scanned as code, and line comments still go.
+    got = minify_js(
+        "/* a block\n   isn't code // still block */\nconst x = 1  // gone\n",
+        drop_blocks=False,
+    )
+    assert got == "/* a block\n   isn't code // still block */\nconst x = 1\n", repr(
+        got
+    )
+
+
+def test_a_regex_literal_is_read_through_where_it_cannot_be_a_division():
     got = minify_js("x.replace(/'\\/\\/[/]/g, '') // dropped\n")
     assert got == "x.replace(/'\\/\\/[/]/g, '')\n", repr(got)
-    assert minify_js("const q = a / b / c\n") == "const q = a / b / c\n"
-    for src, what in [
+    got = minify_js("const q = a / b / c // note\nconst d = (a) / 2 // note\n")
+    assert got == "const q = a / b / c\nconst d = (a) / 2\n", repr(got)
+
+
+def test_refuses_a_slash_it_cannot_classify_and_an_unclosed_construct():
+    refused = [
+        ("const r = i++ / n // note\n", "ambiguous slash"),
+        ("  return /'/.test(s)\n", "ambiguous slash"),
+        ("x = a\n  / b\n", "ambiguous slash"),
         ("const r = /abc\n", "unterminated regex"),
-        ("x = a\n  / b\n", "leading slash"),
-    ]:
+        ("const s = 'oops\n", "unterminated string"),
+        ("const t = `never closes\nmore\n", "template literal never closes"),
+    ]
+    for src, what in refused:
         try:
             minify_js(src)
         except AssertionError as e:
-            assert what in str(e) and repr(src.split("\n")[-2]) in str(e), str(e)
+            assert what in str(e), str(e)
             continue
         raise AssertionError(f"expected a refusal for {src!r}")
-
-
-def test_refuses_an_unterminated_string():
-    try:
-        minify_js("const s = 'oops\n")
-    except AssertionError as e:
-        assert "unterminated string" in str(e), str(e)
-        return
-    raise AssertionError("expected a refusal")
 
 
 def test_splices_an_include_relative_to_the_including_file():
@@ -350,9 +368,10 @@ if __name__ == "__main__":
     test_a_line_comment_may_contain_block_markers_and_urls()
     test_a_string_keeps_its_comment_markers()
     test_a_template_literal_keeps_markers_across_lines()
-    test_keep_comments_leaves_all_of_it_alone()
-    test_a_regex_literal_is_opaque_and_an_unreadable_one_refuses()
-    test_refuses_an_unterminated_string()
+    test_keep_comments_never_reads_the_text()
+    test_drop_blocks_false_passes_a_multiline_block_through()
+    test_a_regex_literal_is_read_through_where_it_cannot_be_a_division()
+    test_refuses_a_slash_it_cannot_classify_and_an_unclosed_construct()
     test_splices_an_include_relative_to_the_including_file()
     test_minifies_the_included_text_too()
     test_an_include_that_minifies_to_nothing_leaves_no_blank_line()
