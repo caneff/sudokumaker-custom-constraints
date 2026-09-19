@@ -94,8 +94,8 @@ there with the code.
   fuzz. CI runs it on every pull request, and `check` on pushes to main.
 - Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
-- Most tests are standalone scripts run by name. `finders/ghosts` is the one
-  pytest suite (`uv run pytest finders/ghosts`); `just test` runs it too.
+- Most tests are standalone scripts run by name. `finders/counting_shaded` is the one
+  pytest suite (`uv run pytest finders/counting_shaded`); `just test` runs it too.
 - Python runs in the one project environment (`pyproject.toml`, `uv.lock`):
   `uv run <file>`. The `uv run --with ...` usage lines in older file headers
   and READMEs still work; the justfile never passes `--with`.

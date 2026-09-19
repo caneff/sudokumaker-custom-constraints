@@ -103,11 +103,11 @@ test:
     uv run finders/hunt/test_uniqueness.py
     uv run finders/hunt/test_minimizer.py
     uv run finders/hunt/test_watchdog.py
-    # finders/ghosts' soundness suite, the one pytest suite in the repo: 21
-    # tests, about 3s. It compiles ghosts_fast.c with the system cc and
+    # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
+    # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
     # divergence between the two fails here.
-    uv run pytest finders/ghosts -q
+    uv run pytest finders/counting_shaded -q
     # The galaxy-copycat human solver's acceptance test (#531): board 28
     # solves with no case split, board 27 stops at the doc's recorded wall.
     # About 1.5s, no CP-SAT solve.

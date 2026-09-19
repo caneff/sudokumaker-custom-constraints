@@ -7,7 +7,7 @@ caneff/sudokumaker-custom-constraints#478.
 
 Yes. A git dependency on gridfind pinned to a sha resolves and installs
 cleanly with uv on Python 3.14; ortools ships cp314 manylinux wheels; the
-ghosts ctypes build (`finders/ghosts/fastclimb.py` + `ghosts_fast.c`, gcc via
+shaded cells ctypes build (`finders/counting_shaded/fastclimb.py` + `counting_shaded_fast.c`, gcc via
 `subprocess`) is Python-version-independent and passed its parity test; and
 every existing Python generator and Node test passed under `just test` on
 3.14. Both repos are public, so CI needs no auth to clone gridfind. The one
@@ -80,13 +80,13 @@ clones of public repos. `astral-sh/setup-uv@v5` (already in `ci.yml`) installs
 whatever interpreter `requires-python` calls for, the same way it does for
 3.11 today — no CI config change needed beyond the pyproject bump itself.
 
-## The ghosts ctypes build
+## The shaded cells ctypes build
 
-`finders/ghosts/fastclimb.py` shells out to `gcc` on first import to build
-`ghosts_fast.so` into the worktree's `.scratch/ghosts/build/`, then loads it
+`finders/counting_shaded/fastclimb.py` shells out to `gcc` on first import to build
+`counting_shaded_fast.so` into the worktree's `.scratch/counting_shaded/build/`, then loads it
 via `ctypes.CDLL`. This has no dependency on the Python version beyond
 `ctypes` itself (stable stdlib module, unaffected by 3.14). Ran
-`uv run finders/ghosts/fastclimb.py --test` under the 3.14 venv with gridfind
+`uv run finders/counting_shaded/fastclimb.py --test` under the 3.14 venv with gridfind
 installed: builds and passes its parity test against `shapes.py`
 (`parity OK (plain/eight/pins)`, 20000 shapes each leg).
 
