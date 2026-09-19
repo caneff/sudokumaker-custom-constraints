@@ -91,7 +91,9 @@ if __name__ == "__main__":
         # a plain 9x9 is a sudoku document (#565): rows and columns come from
         # the app's own rules, so no "Rows & Columns" backend rides along
         assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
-        names = [c.get("definition", {}).get("name") for c in d["puzzle"]["constraints"]]
+        names = [
+            c.get("definition", {}).get("name") for c in d["puzzle"]["constraints"]
+        ]
         assert "Rows & Columns" not in names, "a row/column backend is still carried"
     cand_c = cand_doc["puzzle"]["constraints"][-1]["definition"]
     base_c = base_doc["puzzle"]["constraints"][-1]["definition"]
