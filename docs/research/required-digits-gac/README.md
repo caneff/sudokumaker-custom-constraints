@@ -222,16 +222,6 @@ The last two rows are the same board re-timed after the cost pass on
 component as #541 measured it. Same procedure, same session, three
 interleaved rounds per row.
 
-### Reading the rule
-
-`ReadableRequiredDigitsGacComponent.js` is the same rule written for a reader
-rather than a machine -- digit sets and cell lists through the puzzle API, no
-bit arithmetic, no shared memo, subsets enumerated by size the way
-`docs/research/408-house-gac/ReadableHouseGacComponent.js` does. It removes
-exactly what the shipped component removes across 27,000 random states (6,522
-of them branch-killing), and costs about 18x more on a 9-cell group with 9
-required digits: 25.4us against 1.4us. Read it first, ship the other one.
-
 ### What the rule is worth inside the app's own solver (2026-09-18)
 
 Every row above measures a **custom component**, which pays a tax the built-in
