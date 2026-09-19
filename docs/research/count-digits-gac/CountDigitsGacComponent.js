@@ -4,9 +4,19 @@
 //!
 //!   puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counterCell, targetCells))
 //!
+//! Cold start, for a reader meeting the app for the first time. A constraint
+//! here is a "component": an object the solver calls to prune candidates. This
+//! one watches two kinds of cell, both named by cell id (a number, x + y * width):
+//!   - the COUNTER cell: one cell whose digit is the answer to "how many";
+//!   - the TARGET cells: the group being counted, any cells at all -- they need
+//!     not touch each other or the counter, and nothing is drawn on the board
+//!     to show which they are.
+//! The backend (the code box next to this one) makes the cell ids and registers
+//! one instance of this class per group.
+//!
 //! The rule, the built-in's own: the digit in `counterCell` equals the number
 //! of `targetCells` whose digit is one of `digits`. `digits` is a digit MASK
-//! (bit d is digit d) or a SudokuDigitSet, exactly as the built-in takes it
+//! (bit d is digit d; {1,3} is 0b1010 = 10) or a SudokuDigitSet, exactly as the built-in takes it
 //! (bundle.claude.js:5092 does `this.digits & candidates`).
 //!
 //! What the built-in does instead: nothing. It defines no `update`, so it
@@ -51,12 +61,23 @@
 //! registration mistake, refused at setup where the author sees it.
 const MAX_TARGETS = 30
 
+//! The app calls this to learn which cells this component watches, and
+//! re-runs `update` when any of them changes. It receives the constructor's
+//! arguments, so the signature repeats theirs. The counter is watched as well as the targets
+//! because the count moves when either side does.
 function getAffectedCells (digits, counterCell, targetCells) {
   return [counterCell, ...targetCells]
 }
 
+//! The app calls this once, from the constructor, with the same arguments as
+//! `new CountDigitsGacComponent(name, digits, counterCell, targetCells)`.
+//! `instance` is the component being built: whatever is stored on it here is
+//! what `update` and `validate` read later, since they get the instance, not
+//! the constructor's arguments.
 function setParams (instance, digits, counterCell, targetCells) {
-  //! An array coerces to a number when it holds one element ([3] -> 3), which
+  //! The mask is a plain number, not a list: the solver combines it with a
+  //! cell's candidates using bitwise AND (`digits & candidates`), so bit d set
+  //! means digit d counts. An array coerces to a number when it holds one element ([3] -> 3), which
   //! would read as the mask {0,1} and quietly count the wrong digits. Refuse it
   //! by name rather than let that through.
   if (Array.isArray(digits)) {
@@ -111,6 +132,11 @@ function countHits (instance, puzzle) {
   return { masks, open, definite, possible: definite + open.length }
 }
 
+//! The app calls `update` whenever a watched cell changes, and keeps calling it
+//! until a pass yields nothing new. It is a generator: each `yield` hands the
+//! solver one CHANGE to apply. `puzzle` is the solver's view of the board right
+//! now; `getCandidatesBitMask(cell)` reads a cell's remaining candidates as a
+//! digit mask. The solver applies each yielded change before resuming here.
 function * update (instance, puzzle) {
   const hits = countHits(instance, puzzle)
   if (hits === null) {
@@ -122,13 +148,19 @@ function * update (instance, puzzle) {
   const counterMask = puzzle.getCandidatesBitMask(instance.counterCell)
   const allowed = counterMask & rangeMask(definite, possible)
   if (allowed === 0) {
-    //! puzzle.stop fails the search node being tried, so the solver backs up
-    //! and tries the next candidate elsewhere on the board.
+    //! puzzle.stop is a change that says "this board state has no solution":
+    //! the message says why and the cell list says which cells are to
+    //! blame. It fails only the search node being tried, so the
+    //! solver backs up and tries the next candidate elsewhere on the board.
     yield puzzle.stop(`${instance.name} cannot count between ${definite} and ${possible}`, getAffectedCells(instance.digitMask, instance.counterCell, instance.targetCells))
     return
   }
 
   if (allowed !== counterMask) {
+    //! puzzle.removeCandidatesFromCell is a change that takes the digits in the
+    //! given set out of one cell's candidates. The solver applies it, then runs
+    //! every component watching that cell again -- this one included -- so a
+    //! removal made here can set off the next deduction.
     yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(counterMask & ~allowed), instance.counterCell)
   }
 
@@ -143,8 +175,11 @@ function * update (instance, puzzle) {
   }
 }
 
-//! The backstop, and the built-in's own validate: the count cannot reach the
-//! counter's remaining digits at either end.
+//! The backstop, and the built-in's own validate. The app calls it to check a
+//! board state against the rule and refuse it (return false) or accept it
+//! (true); `update` above only prunes, it does not replace this check. It
+//! refuses a state when the count cannot reach the counter's remaining digits
+//! at either end.
 function validate (instance, puzzle) {
   const hits = countHits(instance, puzzle)
   if (hits === null) return false

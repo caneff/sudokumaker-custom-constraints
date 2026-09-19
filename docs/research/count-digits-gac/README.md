@@ -127,12 +127,24 @@ and the two links.
   built-in `CountDigitsComponent`; `PUZZLE_LINK_sparse.txt` registers
   `CountDigitsGacComponent`. Same board and table; the backend differs in that
   one identifier, and the candidate link also ships the component code.
+- **A third link, for reading** (#567): `PUZZLE_LINK_sparse_annotated.txt` is
+  the candidate link's board, givens and component with every comment kept in
+  the embedded code (about twice the size: 10.5k against 5.0k), plus
+  cold-start commentary on the counter and target cells, what `puzzle.stop`
+  and `puzzle.removeCandidatesFromCell` do with a returned change, what the
+  backend registers, and what the digit mask is. It reads `[unique]` in the
+  app with `entered: 0`. It is for reading the code in the app's code box,
+  not for seeing the rule: the 20 groups are not drawn on the board, so a
+  reader cannot see which cells a group holds. Timing uses
+  `PUZZLE_LINK_sparse.txt`; comments do not change the solve, but the
+  annotated link is not one of the timed rows.
 
 ### Building the boards
 
 ```
 uv run examples/outside-sudoku/build_sparse_count_digits.py            # rebuild both links
 uv run examples/outside-sudoku/build_sparse_count_digits.py --carved K # change the depth, rebuild
+uv run examples/outside-sudoku/build_sparse_count_digits.py --keep-comments # write only the annotated link
 ```
 
 The script lives in `examples/outside-sudoku/` beside

@@ -30,6 +30,7 @@ from link_codec import decode_puzzle
 from minify import minify_file
 
 NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
+ANNOTATED = "PUZZLE_LINK_sparse_annotated.txt"
 N = 9
 
 
@@ -91,6 +92,33 @@ def check_rule_is_enforced(gen):
     )
 
 
+def check_annotated(gen, plain_doc, shipped):
+    """--keep-comments (#567): the annotated link is the candidate's board with
+    the component and backend code kept commented, written alone."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = pathlib.Path(tmp)
+        build(out, keep_comments=True)
+        assert [p.name for p in out.iterdir()] == [ANNOTATED], (
+            "--keep-comments writes only the annotated link"
+        )
+        built = (out / ANNOTATED).read_bytes()
+    assert built == (RESEARCH_DIR / ANNOTATED).read_bytes(), (
+        f"{ANNOTATED} does not reproduce"
+    )
+    doc = decode_puzzle(built.decode().strip())
+    constraint = doc["puzzle"]["constraints"][-1]["definition"]
+    component = constraint["components"][0]["code"]
+    assert component == minify_file(COMPONENT, keep_comments=True)
+    assert "puzzle.stop" in component and "//!" in component, "comments not kept"
+    assert "//" in constraint["backend"]["code"], "backend comments not kept"
+    assert constraint["backend"]["code"] == backend_code(gen, CANDIDATE_NAME, True)
+    # same board: only the two code strings differ from the plain candidate link
+    plain_c = plain_doc["puzzle"]["constraints"][-1]["definition"]
+    plain_c["components"][0]["code"] = component
+    plain_c["backend"]["code"] = constraint["backend"]["code"]
+    assert doc == plain_doc, "the annotated link differs beyond the code comments"
+
+
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
     check_board(gen)
@@ -115,6 +143,7 @@ if __name__ == "__main__":
 
     docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs
+    cand_doc_full = json.loads(json.dumps(cand_doc))
     for d in docs:
         # a plain 9x9 is a sudoku document (#565): rows and columns come from
         # the app's own rules, so no "Rows & Columns" backend rides along
@@ -135,4 +164,6 @@ if __name__ == "__main__":
         "backend"
     ]["code"]
     assert cand_doc == base_doc, "the two links differ beyond the component code"
+
+    check_annotated(gen, cand_doc_full, shipped)
     print("ok")
