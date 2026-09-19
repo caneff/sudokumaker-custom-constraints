@@ -120,7 +120,7 @@ if __name__ == "__main__":
         # the app's own rules, so no "Rows & Columns" backend rides along
         assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
         names = [
-            c.get("definition", {}).get("name") for c in d["puzzle"]["constraints"]
+            (c.get("definition") or {}).get("name") for c in d["puzzle"]["constraints"]
         ]
         assert "Rows & Columns" not in names, "a row/column backend is still carried"
     cand_c = cand_doc["puzzle"]["constraints"][-1]["definition"]

@@ -235,6 +235,14 @@ and the technique set is the full `StandardLogicStepsGenerator`. Both links
 read `[unique]`; the app accepts a sudoku document carrying custom component
 code.
 
+Three things moved with the document type, not one: the technique set, the
+row/column strength (the old backend declared each line as a
+`DifferentDigitsComponent` over digits 0..9; `SudokuRules` declares
+`HouseComponent` lines over 1..9), and the candidate set. So the paired tables
+do not isolate `CustomPuzzleEnabledStepTypes` alone, and the old boards were
+looser than the CP-SAT model `gen.json` is proved unique under; the rebuild
+closes that gap.
+
 | date | app version | board | mode | baseline (built-in) | candidate (GAC) | ratio | row PASS/FAIL |
 |---|---|---|---|---|---|---|---|
 | 2026-09-19 | v2026.08.14-d47fc4b | sparse-required-digits (sudoku doc) | cold | 2300ms | 2500ms | 1.09 | FAIL |
@@ -271,8 +279,9 @@ the board's one solution, checked against the rules restated in the probe.
 
 **So the rule does pay for itself; our component does not.** As the built-in,
 the Hall walk cuts the search by 29% and the clock by 11% -- past the 0.9x bar.
-As a custom component on the same board it ran 1.20-1.29x slower. The whole
-difference is the registration a custom component gives up. This is a case to
+As a custom component on the same board it ran 1.20-1.29x slower on the
+`"custom"` document, and 1.00-1.09x on the `"sudoku"` one (rows above). The
+registration a custom component gives up is the gap that remains. This is a case to
 send the app's author, not something a puzzle link can carry.
 
 Caveats: this is the search solver ("find all solutions"), not AutoStep, and

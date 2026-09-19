@@ -28,7 +28,7 @@
 #
 # Lives here, not in docs/research/, because that gate refuses a new .py there
 # (check_research_python, #469); it sits beside build_sparse_required_digits.py,
-# whose board shape and rows-and-columns base it reuses directly.
+# whose board shape it reuses directly.
 
 import argparse
 import json
