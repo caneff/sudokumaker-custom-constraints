@@ -312,3 +312,43 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.deepStrictEqual([...copy], [1, 2, 3])
   assert.strictEqual(+DigitSet.from([1, 2, 3]), 0b1110)
 }
+
+// ---- DigitSet: every member agrees with a JS Set on the same digits ----
+// The oracle is Set arithmetic, not mask arithmetic, so a flipped `&`/`|` or a
+// dropped `~` in the mock turns a row red (#563).
+{
+  const A = [1, 2, 3, 5]
+  const B = [3, 5, 8]
+  const mk = ds => DigitSet.from(ds)
+  const sorted = s => [...s].sort((x, y) => x - y)
+  const inter = A.filter(d => B.includes(d))
+  const cases = [
+    ['union', sorted(new Set([...A, ...B])), s => s.union(mk(B))],
+    ['intersect', inter, s => s.intersect(mk(B))],
+    ['xor', [1, 2, 8], s => s.xor(mk(B))],
+    ['subtract', [1, 2], s => s.subtract(mk(B))],
+    ['add', [1, 2, 3, 5, 9], s => { s.add(9); return s }],
+    ['delete', [1, 2, 5], s => { s.delete(3); return s }],
+    ['clear', [], s => { s.clear(); return s }],
+    ['getUnion', sorted(new Set([...A, ...B])), () => DigitSet.getUnion([mk(A), mk(B)])],
+    ['getIntersection', inter, () => DigitSet.getIntersection([mk(A), mk(B)])]
+  ]
+  for (const [name, want, run] of cases) {
+    assert.deepStrictEqual([...run(mk(A))], want, name)
+  }
+  assert.ok(mk([2, 3]).isSubsetOf(mk(A)) && !mk(B).isSubsetOf(mk(A)))
+  assert.ok(mk(A).isSupersetOf(mk([2, 3])) && !mk(A).isSupersetOf(mk(B)))
+  assert.ok(mk([1, 2]).isDisjointFrom(mk([8])) && !mk(A).isDisjointFrom(mk(B)))
+  assert.ok(mk(A).intersects(mk(B)) && !mk([1]).intersects(mk([2])))
+  assert.ok(mk(A).equals(mk([5, 3, 2, 1])) && !mk(A).equals(mk(B)))
+  assert.strictEqual(mk(A).size, 4)
+  assert.strictEqual(mk(A).getSmallestNumber(), 1)
+  assert.strictEqual(mk(A).getLargestNumber(), 5)
+  assert.strictEqual(mk(A).getSmallestDigit(), 1)
+  assert.strictEqual(mk(A).getLargestDigit(), 5)
+  // An empty set has no smallest or largest, as in the bundle.
+  assert.strictEqual(mk([]).getSmallestNumber(), undefined)
+  assert.strictEqual(mk([]).getLargestDigit(), undefined)
+  // Intersecting nothing keeps every digit up to bit 30.
+  assert.strictEqual(+DigitSet.getIntersection([]), 2147483647)
+}

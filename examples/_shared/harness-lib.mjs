@@ -20,8 +20,8 @@ export class DigitSet {
   static from (digits) { let m = 0; for (const d of digits) m |= 1 << d; return new this(m) }
   get size () { let n = 0; for (let m = this.mask; m; m &= m - 1) n++; return n }
   has (d) { return (this.mask & (1 << d)) !== 0 }
-  // Copied from the bundle's SmallNumberSet (bundle.claude.js:541-617): every
-  // member, each reading its argument through `valueOf` as the app does. A
+  // Copied from the bundle's SudokuDigitSet and its SmallNumberSet base
+  // (bundle.claude.js:541-626): every member, each reading its argument through `valueOf` as the app does. A
   // member left out fails silently, not loudly -- `new SudokuDigitSet(set)`
   // without `valueOf` is an empty set (#563). `getUnion` returns a fresh set.
   add (n) { this.mask |= 1 << n }
@@ -39,6 +39,9 @@ export class DigitSet {
   valueOf () { return this.mask }
   getSmallestNumber () { if (this.mask !== 0) return 31 - Math.clz32(this.mask & -this.mask) }
   getLargestNumber () { if (this.mask !== 0) return 31 - Math.clz32(this.mask) }
+  // The subclass SudokuDigitSet's two members (bundle.claude.js:619-626).
+  getSmallestDigit () { return this.getSmallestNumber() }
+  getLargestDigit () { return this.getLargestNumber() }
   static getUnion (sets) { const u = new this(); for (const s of sets) u.union(s); return u }
   static getIntersection (sets) { const i = new this(2147483647); for (const s of sets) i.intersect(s); return i }
   * [Symbol.iterator] () { for (let m = this.mask; m; m &= m - 1) yield 31 - Math.clz32(m & -m) }
