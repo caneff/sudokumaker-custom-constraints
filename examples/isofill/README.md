@@ -128,7 +128,12 @@ paste `main.js` as the main code. Add one component segment named
 ```js
 const cells = []
 for (let y = 0; y < 10; y++) {
-  for (let x = 0; x < 10; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }))
+  for (let x = 0; x < 10; x++) {
+    const id = helpers.cellIds.getIdFromCoordsSafe({ x, y })
+    // A miss is undefined, and `undefined | 0` is cell 0: keep it loud.
+    if (id === undefined) throw new Error(`ISOFILL: no cell at x=${x}, y=${y}`)
+    cells.push(id | 0)
+  }
 }
 puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
 ```
