@@ -66,8 +66,9 @@ test:
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
     # worker -- this box is shared). The known-grid tests solve a CP-SAT
     # model per known grid and stay out of this gate, except the circle
-    # pattern's --cover subset: six grids, about 7s, one per circled group
-    # shape, so an over-constrained size encoding fails CI. The inverted
+    # pattern's --cover subset: ten grids, about 7s, one per circled group
+    # shape plus the four large-chocolate witnesses (#498), so an
+    # over-constrained size encoding fails CI. The inverted
     # probe's --cover subset (#501) is five grids, about 25s: one per
     # chocolate rectangle shape and banana group size the pool holds (not
     # per box offset: that takes 30 grids). The
