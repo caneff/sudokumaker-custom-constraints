@@ -303,3 +303,12 @@ assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]
 }
 
 console.log('harness-lib.test.mjs: all seams pass')
+
+// ---- DigitSet: a set reads as its mask, as the app's SmallNumberSet does ----
+// `new SudokuDigitSet(someSet)` coerces its argument through `+`, so without
+// `valueOf` it is NaN and the copy is empty (#563).
+{
+  const copy = new DigitSet(DigitSet.from([1, 2, 3]))
+  assert.deepStrictEqual([...copy], [1, 2, 3])
+  assert.strictEqual(+DigitSet.from([1, 2, 3]), 0b1110)
+}
