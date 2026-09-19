@@ -21,6 +21,7 @@ one of its own targets.
 | `soundness-harness.mjs` | Soundness, strength against the built-in, and completeness against a brute-force oracle. |
 | `bench-count-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, best of 3. |
 | `sparse/` | The real-app timing board (#543), below. |
+| `demo/` | The readable board (#568): both components in one link, toggled in the Elements panel. See `demo/README.md`. |
 
 ## What the built-in does, and does not
 
