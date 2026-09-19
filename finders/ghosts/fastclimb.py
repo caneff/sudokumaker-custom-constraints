@@ -15,7 +15,10 @@ HERE = Path(__file__).resolve().parent
 SRC = HERE / "ghosts_fast.c"
 REPO = HERE.parents[1]
 DATA = REPO / "docs" / "research" / "ghosts"  # notes, hits and images stayed there
-BUILD = REPO / ".scratch" / "ghosts" / "build"
+# Named `target` and holding a committed `*` .gitignore so merge-cleanup's
+# CACHE_DIRS sweeps the compiled artifact with the worktree instead of
+# refusing cleanup; see sudokumaker-custom-constraints#559.
+BUILD = REPO / ".scratch" / "ghosts" / "target"
 SO = BUILD / "ghosts_fast.so"
 
 
