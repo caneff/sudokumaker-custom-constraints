@@ -280,5 +280,4 @@ def test_build_dir_is_a_cache_merge_cleanup_sweeps():
     # merge-cleanup (#559) sweeps an ignored file unasked only when it sits in
     # a cache-named directory (here `target`) whose own .gitignore is `*`.
     assert fastclimb.BUILD.name == "target"
-    lines = (fastclimb.BUILD / ".gitignore").read_text().split()
-    assert "*" in lines
+    assert "*" in (fastclimb.BUILD / ".gitignore").read_text().splitlines()

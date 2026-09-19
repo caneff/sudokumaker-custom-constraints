@@ -17,7 +17,7 @@ REPO = HERE.parents[1]
 DATA = REPO / "docs" / "research" / "ghosts"  # notes, hits and images stayed there
 # Named `target` and holding a committed `*` .gitignore so merge-cleanup's
 # CACHE_DIRS sweeps the compiled artifact with the worktree instead of
-# refusing cleanup; see sudokumaker-custom-constraints#559.
+# refusing cleanup; see #559.
 BUILD = REPO / ".scratch" / "ghosts" / "target"
 SO = BUILD / "ghosts_fast.so"
 
@@ -25,6 +25,7 @@ SO = BUILD / "ghosts_fast.so"
 def _load():
     if not SO.exists() or SO.stat().st_mtime < SRC.stat().st_mtime:
         BUILD.mkdir(parents=True, exist_ok=True)
+        (BUILD / ".gitignore").write_text("*\n")
         subprocess.run(
             [
                 "gcc",
