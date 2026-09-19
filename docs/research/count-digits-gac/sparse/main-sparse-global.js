@@ -17,8 +17,9 @@
 // GROUPS. The board draws none of them: which cells a group holds exists only
 // in the table above. `puzzle.getCellAt(x, y)` turns a column and row into a
 // cell id, and each group's [row, col] pairs are written row-first, so `at`
-// swaps them. `| 0` turns the id into a plain number (undefined off the board
-// becomes 0).
+// swaps them. `| 0` turns the id into a plain number; an off-board pair would
+// give undefined there and silently become cell 0, so the table is trusted to
+// hold only cells on the board.
 for (const g of GROUPS) {
   const at = ([r, c]) => puzzle.getCellAt(c, r) | 0
   // Bit d of the mask is digit d: the digits {1,3} become 0b1010.

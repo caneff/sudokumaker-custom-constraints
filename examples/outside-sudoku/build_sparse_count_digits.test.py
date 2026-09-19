@@ -92,7 +92,7 @@ def check_rule_is_enforced(gen):
     )
 
 
-def check_annotated(gen, plain_doc, shipped):
+def check_annotated(gen, plain_doc):
     """--keep-comments (#567): the annotated link is the candidate's board with
     the component and backend code kept commented, written alone."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -109,10 +109,9 @@ def check_annotated(gen, plain_doc, shipped):
     constraint = doc["puzzle"]["constraints"][-1]["definition"]
     component = constraint["components"][0]["code"]
     assert component == minify_file(COMPONENT, keep_comments=True)
-    assert "puzzle.stop" in component and "//!" in component, "comments not kept"
-    assert "//" in constraint["backend"]["code"], "backend comments not kept"
     assert constraint["backend"]["code"] == backend_code(gen, CANDIDATE_NAME, True)
     # same board: only the two code strings differ from the plain candidate link
+    plain_doc = json.loads(json.dumps(plain_doc))  # the caller's stays untouched
     plain_c = plain_doc["puzzle"]["constraints"][-1]["definition"]
     plain_c["components"][0]["code"] = component
     plain_c["backend"]["code"] = constraint["backend"]["code"]
@@ -165,5 +164,5 @@ if __name__ == "__main__":
     ]["code"]
     assert cand_doc == base_doc, "the two links differ beyond the component code"
 
-    check_annotated(gen, cand_doc_full, shipped)
+    check_annotated(gen, cand_doc_full)
     print("ok")

@@ -143,7 +143,13 @@ and the two links.
   line comments with a regex and asserts on a stray marker in what is left of
   a line (`minify.py`, `_splice_and_strip`), so the plain links stop
   building. The annotated build keeps comments and does not notice, so build
-  both before committing. A URL's `://` is fine.
+  both before committing. A URL's `://` is fine. The mirror case stops only
+  the annotated build: a comment holding a computed-dispatch token (`eval(`,
+  `new Function(`, `Function(`, or `[name](`) makes `_prune_dead_includes`
+  refuse to prune.
+  A board change (`--carved`, `--search`) rebuilds the two plain links only;
+  rerun with `--keep-comments` afterwards, or the annotated link is left on
+  the old board and the test reports that it does not reproduce.
 
 ### Building the boards
 

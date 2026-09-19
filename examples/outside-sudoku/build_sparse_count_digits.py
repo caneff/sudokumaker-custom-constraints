@@ -268,13 +268,12 @@ def build_doc(gen, name, keep_comments=False):
 def build(out_dir=RESEARCH_DIR, gen_path=GEN, keep_comments=False):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     if keep_comments:
-        write(
-            build_doc(gen, CANDIDATE_NAME, keep_comments=True),
-            out_dir / "PUZZLE_LINK_sparse_annotated.txt",
-        )
-        return
+        names = ["PUZZLE_LINK_sparse_annotated.txt"]
+        write(build_doc(gen, CANDIDATE_NAME, keep_comments=True), out_dir / names[0])
+        return names
     write(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
     write(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt")
+    return ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
 
 
 if __name__ == "__main__":
@@ -309,6 +308,12 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         if args.carved is not None:
+            if args.keep_comments:
+                # --keep-comments writes only the annotated link, so the new
+                # depth would leave both plain links on the old board.
+                p.error(
+                    "--carved rebuilds the plain links; run --keep-comments after it"
+                )
             if args.out or str(args.gen) != str(GEN):
                 # The depth is written back into the gen, and the committed gen
                 # has to keep describing the committed links: a depth written
@@ -323,13 +328,9 @@ if __name__ == "__main__":
             gen["carved"] = args.carved
             gen_path.write_text(json.dumps(gen) + "\n")
             print(f"set carved={args.carved} in {args.gen}")
-        build(
+        written = build(
             pathlib.Path(args.out) if args.out else RESEARCH_DIR,
             args.gen,
             args.keep_comments,
         )
-        print(
-            "wrote PUZZLE_LINK_sparse_annotated.txt"
-            if args.keep_comments
-            else "wrote PUZZLE_LINK_sparse.txt and PUZZLE_LINK_sparse_original.txt"
-        )
+        print("wrote " + " and ".join(written))

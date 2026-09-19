@@ -63,22 +63,25 @@ const MAX_TARGETS = 30
 
 //! The app calls this to learn which cells this component watches, and
 //! re-runs `update` when any of them changes. It receives the constructor's
-//! arguments, so the signature repeats theirs. The counter is watched as well as the targets
-//! because the count moves when either side does.
+//! arguments after the name (digits, counterCell, targetCells): the name is
+//! the constructor's first argument and is not passed on, so it is not in this
+//! signature. The counter is watched as well as the targets because the count
+//! moves when either side does.
 function getAffectedCells (digits, counterCell, targetCells) {
   return [counterCell, ...targetCells]
 }
 
-//! The app calls this once, from the constructor, with the same arguments as
-//! `new CountDigitsGacComponent(name, digits, counterCell, targetCells)`.
+//! The app calls this once, from the constructor. After `instance` it gets the
+//! arguments of `new CountDigitsGacComponent(name, digits, counterCell,
+//! targetCells)` except the name, which the app keeps as `instance.name`.
 //! `instance` is the component being built: whatever is stored on it here is
 //! what `update` and `validate` read later, since they get the instance, not
 //! the constructor's arguments.
 function setParams (instance, digits, counterCell, targetCells) {
   //! The mask is a plain number, not a list: the solver combines it with a
   //! cell's candidates using bitwise AND (`digits & candidates`), so bit d set
-  //! means digit d counts. An array coerces to a number when it holds one element ([3] -> 3), which
-  //! would read as the mask {0,1} and quietly count the wrong digits. Refuse it
+  //! means digit d counts. An array coerces to a number when it holds one
+  //! element ([3] -> 3), which would read as the mask {0,1} and quietly count the wrong digits. Refuse it
   //! by name rather than let that through.
   if (Array.isArray(digits)) {
     throw new TypeError(`${instance.name}: CountDigitsGacComponent takes a digit mask or a SudokuDigitSet, not an array`)
