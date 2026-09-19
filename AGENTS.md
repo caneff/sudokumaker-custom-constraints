@@ -60,6 +60,11 @@ there with the code.
   `CODING_STANDARDS.md`.
 - **Never print a puzzle link in chat.** A link is a 10 KB blob. Write it to a
   file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
+  The trap that has broken this rule twice is `shot-scraper`: its default `shot`
+  subcommand writes `Screenshot of '<url>' written to '<file>'` **to stderr**,
+  so the whole link lands in the transcript through a `2>&1` or a bare run.
+  Pass `--silent` on every `shot-scraper` shot of a link. `accessibility` and
+  `javascript` do not echo the URL and need nothing.
 - **Every generated link's rules text starts with "Normal sudoku rules apply on
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
   that sets `comment` itself must add the sentence. Exceptions: isofill and
