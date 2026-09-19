@@ -138,6 +138,12 @@ and the two links.
   reader cannot see which cells a group holds. Timing uses
   `PUZZLE_LINK_sparse.txt`; comments do not change the solve, but the
   annotated link is not one of the timed rows.
+  Adding commentary: a comment may not contain a block-comment marker (the
+  two-character opener or closer of a block comment). The plain build strips
+  line comments with a regex and asserts on a stray marker in what is left of
+  a line (`minify.py`, `_splice_and_strip`), so the plain links stop
+  building. The annotated build keeps comments and does not notice, so build
+  both before committing. A URL's `://` is fine.
 
 ### Building the boards
 
