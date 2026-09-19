@@ -18,7 +18,7 @@
 // Each component takes (name, digits, counterCell, targetCells):
 //   - name is only used in messages;
 //   - digits is a digit MASK, a number in which bit d is set when digit d is
-//     listed (an array is not accepted, see the component code);
+//     listed (an array is not accepted, see the GAC constraint's component code);
 //   - counterCell and targetCells are cell ids, plain numbers.
 // puzzle.getCellAt(column, row) turns coordinates into a cell id, and the
 // "| 0" keeps it a plain integer, which the solver reads faster.

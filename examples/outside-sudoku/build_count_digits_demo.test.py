@@ -19,6 +19,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 from build_count_digits_demo import (
     BASELINE_NAME,
     CANDIDATE_NAME,
+    COLOURS,
     COMPONENT,
     DEMO_DIR,
     GEN,
@@ -27,6 +28,7 @@ from build_count_digits_demo import (
     backend_code,
     build,
     build_doc,
+    cage_constraints,
     grow_region,
 )
 from build_sparse_count_digits import count_solutions, givens_of
@@ -104,12 +106,26 @@ def check_uniqueness_detects_a_wrong_count(gen):
 
 
 def check_grow_region_is_connected_and_disjoint():
+    """Every seed, with the left four columns taken: a region that ignored
+    `taken` would land in them on most draws (a two-cell taken set never did)."""
     import random
 
-    rng = random.Random(0)
-    taken = {(0, 0), (0, 1)}
-    cells = grow_region(rng, taken, 8)
-    assert len(cells) == 8 and connected(cells) and not (set(cells) & taken)
+    taken = {(r, c) for r in range(N) for c in range(4)}
+    for seed in range(40):
+        cells = grow_region(random.Random(seed), taken, 8)
+        assert len(cells) == 8 and connected(cells), f"seed {seed}"
+        assert not set(cells) & taken, f"seed {seed}: a region grew onto a taken cell"
+
+
+def check_palette_guard(gen):
+    """A redraw with more groups than colours refuses, rather than wrap the
+    palette and give two groups one colour."""
+    many = {**gen, "groups": [gen["groups"][0]] * (len(COLOURS) + 1)}
+    try:
+        cage_constraints(many)
+    except ValueError:
+        return
+    raise AssertionError("more groups than colours was accepted")
 
 
 def customs(doc):
@@ -177,11 +193,20 @@ def check_link(gen):
             r * N + col for r, col in g["cells"]
         )
         assert counter_cage["cells"] == [g["counter"][0] * N + g["counter"][1]]
+        # the drawing is the board's payload: the label lists this group's
+        # digits, the counter is marked #, both in the group's own colour
+        assert group_cage["value"] == " ".join(map(str, g["values"]))
+        assert counter_cage["value"] == "#"
+        assert c["style"]["cage"]["color"] == c["style"]["text"]["color"]
 
-    # the shipped link reproduces, and the rebuild leaves the committed file alone
+    colours = [c["style"]["cage"]["color"] for c in cages]
+    assert len(set(colours)) == len(colours), "two groups share a colour"
+
+    # the shipped link reproduces, and the rebuild leaves the committed file
+    # alone -- into a directory that does not exist yet, too
     mtime = LINK.stat().st_mtime_ns
     with tempfile.TemporaryDirectory() as tmp:
-        out = build(pathlib.Path(tmp))
+        out = build(pathlib.Path(tmp) / "not" / "yet")
         assert out.read_bytes() == shipped, "the link does not reproduce"
     assert LINK.stat().st_mtime_ns == mtime, "--out touched the committed link"
 
@@ -202,5 +227,6 @@ if __name__ == "__main__":
     check_board(json.loads((DEMO_DIR / "gen_5x8.json").read_text()))
     check_uniqueness_detects_a_wrong_count(gen)
     check_grow_region_is_connected_and_disjoint()
+    check_palette_guard(gen)
     check_link(gen)
     print("ok")

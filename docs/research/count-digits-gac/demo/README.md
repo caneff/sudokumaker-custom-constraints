@@ -86,6 +86,25 @@ Through the app's own menu (Disable on the GAC element, Enable on the built-in,
 one rep each, non-deterministic solve off): GAC 100ms, built-in 1900ms, both
 "unique solution".
 
+## Decode of the shipped link
+
+Both constraints present, exactly one enabled (`disabled` absent means enabled;
+the test asserts this from the committed link):
+
+```
+type sudoku   givens 20   entered 0
+0     Given digits                              enabled
+1     Regions                                   enabled
+2001  Group 1: count of 5 6 8                   enabled
+2001  Group 2: count of 3 5 6                   enabled
+2001  Group 3: count of 5 6 9                   enabled
+2001  Group 4: count of 1 4 9                   enabled
+1000  CountDigits (built-in)                    disabled   (no component code)
+1000  CountDigits (GAC)                         enabled    (annotated component)
+```
+
+In the app the disabled element is greyed in the Elements panel.
+
 ## Rebuild and check
 
 ```

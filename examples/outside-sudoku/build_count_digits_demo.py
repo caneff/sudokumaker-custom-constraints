@@ -62,16 +62,15 @@ COLOURS = ["#d0342c", "#1a6fd1", "#1f9d55", "#c77800", "#8a3ffc", "#0f8b8d"]
 N = 9
 
 
-def rules():
-    return (
-        "Normal sudoku rules apply. Each coloured region lists digits in its "
-        "corner. The cell marked # in the same colour is that region's "
-        "counter: its digit equals how many cells of the region hold one of "
-        "the listed digits. Two CountDigits elements carry the same rule -- "
-        "the app's built-in and a pruning one; exactly one is enabled. Flip "
-        "them in the Elements panel (the three-dot menu, Disable / Enable) "
-        "and solve again to compare."
-    )
+RULES = (
+    "Normal sudoku rules apply. Each coloured region lists digits in its "
+    "corner. The cell marked # in the same colour is that region's "
+    "counter: its digit equals how many cells of the region hold one of "
+    "the listed digits. Two CountDigits elements carry the same rule -- "
+    "the app's built-in and a pruning one; exactly one is enabled. Flip "
+    "them in the Elements panel (the three-dot menu, Disable / Enable) "
+    "and solve again to compare."
+)
 
 
 def grow_region(rng, taken, size):
@@ -174,9 +173,13 @@ def backend_code(gen, class_name):
 def cage_constraints(gen):
     """One cosmetic-cage element per group: the group's cage labelled with its
     digit list, and a one-cell cage on its counter labelled "#"."""
+    if len(gen["groups"]) > len(COLOURS):
+        # colour is what ties a # counter to its region: a wrapped palette
+        # would give two groups one colour
+        raise ValueError(f"{len(gen['groups'])} groups, {len(COLOURS)} colours")
     out = []
     for i, g in enumerate(gen["groups"]):
-        colour = COLOURS[i % len(COLOURS)]
+        colour = COLOURS[i]
         digits = " ".join(map(str, g["values"]))
         out.append(
             {
@@ -240,7 +243,7 @@ def build_doc(gen, enabled=SHIPPED):
             "type": "sudoku",
             "width": N,
             "height": N,
-            "comment": rules(),
+            "comment": RULES,
             "cells": cells,
             "constraints": [
                 {"type": 0},
@@ -259,6 +262,7 @@ def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED):
         if enabled == SHIPPED
         else f"PUZZLE_LINK_demo_{enabled}.txt"
     )
+    out_dir.mkdir(parents=True, exist_ok=True)
     write(build_doc(gen, enabled), out_dir / name)
     return out_dir / name
 
@@ -270,7 +274,6 @@ if __name__ == "__main__":
     p.add_argument("--groups", type=int, default=3)
     p.add_argument("--targets", type=int, default=10)
     p.add_argument("--digits", type=int, default=3)
-    p.add_argument("--carved", type=int, help="override gen.json's carved depth")
     p.add_argument("--enabled", choices=sorted(VARIANTS), default=SHIPPED)
     p.add_argument("--out")
     args = p.parse_args()
@@ -281,10 +284,6 @@ if __name__ == "__main__":
         )
         print(f"wrote {args.gen}")
     else:
-        if args.carved is not None:
-            gen = json.loads(pathlib.Path(args.gen).read_text())
-            gen["carved"] = args.carved
-            pathlib.Path(args.gen).write_text(json.dumps(gen) + "\n")
         out = build(
             pathlib.Path(args.out) if args.out else DEMO_DIR, args.gen, args.enabled
         )
