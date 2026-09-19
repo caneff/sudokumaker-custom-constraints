@@ -406,6 +406,50 @@ different grid and a different stripper.
 
 ## Timing
 
+### Candidate reads on bitmasks (#453)
+
+The walk, the seal, the cut block and the doors read `getCandidatesBitMask` and
+test the digit's bit, where they built a DigitSet per neighbour with
+`getCandidates(c).has(d)`. The door list dedupes on a stamped mask, not a linear
+`includes`, and the force, cut and one-door yields pass a cached raw mask. The
+`allowed` row is gone: `cutFilter`'s dominator BFS reads allowedness off the
+live candidate mask (`cellAllows`), and its parent scan drops the check the
+distance test already implies.
+Behaviour unchanged: update-strength floor 0 weaker cells, soundness harness 0
+violations. `just time fillomino`, 3 reps, non-deterministic solve off:
+
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino | 5300ms | 4200ms | 0.79 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+two-row rule: SHIP (cold 0.79; after-logical 0 ms on both sides places no constraint).
+The after-logical row is structurally unmeasurable on this board, so the cold row is the whole measurement.
+
+### Cell ids coerced with `| 0` (#450)
+
+The main now coerces every cell id (gotcha 10). Regenerating the link left `just time`
+with no candidate to build (it refuses a baseline that matches no file), so this is
+the link-vs-link comparison, not a `just time` row: the pre-change committed link
+(`origin/main`) against the coerced one, both stripped, one rep per variant per
+round, 5 rounds, non-deterministic solve off, cold. After-logical is 0ms on both.
+
+| 2026-09-18 | v2026.08.14-d47fc4b | fillomino (link vs link) | 5500ms | 5400ms | 0.98 | interleaved, 5 rounds |
+
+The coercion is neutral on this board, not a measured win.
+
+### The rule seam (#361)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | fillomino | 6100ms | 6200ms | 1.02 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time fillomino`, 3 reps per arm, non-deterministic solve off. The
+candidate splits `update` into named rule generators and scans once for cut
+starve instead of twice; it adds no deduction (the strength test's output is
+byte-identical), so the `NO SHIP` line reads the 0.9x deduction rule. The bar
+it answers to is the gate-change bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it: the after-logical row is
+0ms on both sides and places no constraint.
+
 The app opens `PUZZLE_LINK.txt` and reaches a verdict on it: **unique**.
 
 | Date | App version | Board | Cold (median of 3) | After logical (median of 3) |

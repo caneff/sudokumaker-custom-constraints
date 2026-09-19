@@ -19,6 +19,7 @@ from check_layout import (
     RULES_PREFIX,
     check_research_python,
     check_tree,
+    committed_links,
 )
 from link_codec import encode_link
 from minify import minify_js
@@ -574,6 +575,29 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert len(violations) == 1, violations
         assert "stale copy of grid-rowcol.js" in violations[0], violations
+
+    # every committed link is decoded once, however many checks read it: the
+    # checks take the decoded puzzle, not the file
+    import check_layout
+
+    real_decode = check_layout.decode_puzzle
+    decoded = []
+
+    def counting_decode(text):
+        decoded.append(text)
+        return real_decode(text)
+
+    check_layout.decode_puzzle = counting_decode
+    try:
+        with example(contents={"PUZZLE_LINK.txt": _link()}) as (root, _):
+            check_tree(root)
+            links = [
+                p for d in root.iterdir() if d.is_dir() for p in committed_links(d)
+            ]
+    finally:
+        check_layout.decode_puzzle = real_decode
+    assert len(links) > 1, "the fixture must carry more than one link"
+    assert len(decoded) == len(links), f"{len(decoded)} decodes for {len(links)} links"
 
     # a link shipping a component its backend never registers fails: dead
     # weight the recipient reads as part of the rule (#291)

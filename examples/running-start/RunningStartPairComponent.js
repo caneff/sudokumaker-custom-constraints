@@ -32,16 +32,12 @@
 // component (a pair needs both ends of a line, which only a full frame has),
 // and every frame line is a house.
 
-// Is the line a house? Asked at solve time and re-tested until it settles. It
-// cannot be asked once at register time: main code runs before the built-in
-// row/column houses exist and would read every line as bare (gotcha 6). Query
-// the line alone -- a clue cell in the list flips getCellsCanHaveRepeats to
-// true. A house never repeats again, so the true answer caches.
-function isHouse (instance, puzzle) {
-  if (instance.house) return true
-  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)
-  return instance.house
-}
+// The line's kind: lineKind(instance, puzzle, cells).
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
+// #include ../_shared/line-kind.js
 
 function getAffectedCells (clueA, clueB, line) {
   return [clueA, clueB, ...line]
@@ -85,7 +81,7 @@ function * incRun (puzzle, cells) {
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
-  if (!isHouse(instance, puzzle)) return
+  if (lineKind(instance, puzzle, instance.line).kind < HOUSE) return
   const cap = n + 1
   const ca = Array.from(puzzle.getCandidates(clueA))
   const cb = Array.from(puzzle.getCandidates(clueB))

@@ -296,3 +296,10 @@ def test_gridenum_six_by_six_counter_and_size_12(tmp_path):
         12, (), (), 120, tmp_path, lambda _m: None, symmetry=True
     )
     assert (status, shapes, solvable, unique) == ("exhausted", 66, 19, 2)
+
+
+def test_build_dir_is_a_cache_merge_cleanup_sweeps():
+    # merge-cleanup (#559) sweeps an ignored file unasked only when it sits in
+    # a cache-named directory (here `target`) whose own .gitignore is `*`.
+    assert fastclimb.BUILD.name == "target"
+    assert "*" in (fastclimb.BUILD / ".gitignore").read_text().splitlines()

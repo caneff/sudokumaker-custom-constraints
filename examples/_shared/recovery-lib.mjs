@@ -7,10 +7,11 @@
 //
 // The candidate state is a REASSIGNABLE map (state.cand), not a fixed one —
 // the DFS search clones it before a guess and restores it on backtrack. This
-// is a different shape from the fixed-map makePuzzle in harness-lib.mjs,
-// which is why the two files stay separate.
+// is a different map from the fixed one makePuzzle holds, so the two mocks
+// differ in who owns the map; the puzzle API over it is harness-lib's
+// makePuzzleApi either way.
 
-import { makeIo } from './harness-lib.mjs'
+import { makeIo, makePuzzleApi } from './harness-lib.mjs'
 
 // A candidate-state mock over a reassignable map (cell -> Set<value>).
 // `state.cand` is meant to be reassigned wholesale (fresh seed, or restored
@@ -19,11 +20,11 @@ import { makeIo } from './harness-lib.mjs'
 //
 // `houses` are the cell groups whose digits are all different — the probe's
 // stand-in for the app's built-in row/column/box constraints, which is what
-// `getCellsCanHaveRepeats` reads. Pass the probe's all-different groups
-// whenever a component gates on the line kind (docs/line-contract.md);
-// leave it out and every line answers "bare", which stands every gate down.
+// `getCellsCanHaveRepeats` reads (makePuzzleApi). Pass the probe's
+// all-different groups whenever a component gates on the line kind
+// (docs/line-contract.md); leave it out and every line answers "bare", which
+// stands every gate down.
 export function makeCandidateState ({ houses = [] } = {}) {
-  const houseSets = houses.map(h => new Set(h))
   const state = {
     cand: new Map(),
     stopped: false, // a component declared the branch dead via puzzle.stop()
@@ -31,16 +32,7 @@ export function makeCandidateState ({ houses = [] } = {}) {
     anyEmpty () { for (const set of state.cand.values()) if (set.size === 0) return true; return false },
     clone () { const m = new Map(); for (const [k, v] of state.cand) m.set(k, new Set(v)); return m },
     puzzle: {
-      hasValue: c => state.cand.get(c).size === 1,
-      getValue: c => [...state.cand.get(c)][0],
-      getCandidates: c => state.cand.get(c),
-      getCandidatesBitMask: c => { let m = 0; for (const d of state.cand.get(c)) m |= 1 << d; return m },
-      getCellsAreFilled: cs => cs.every(c => state.cand.get(c).size === 1),
-      // The app's rule (docs/puzzle-api.md): false exactly when the cells all
-      // see each other, which here means one house holds every one of them.
-      getCellsCanHaveRepeats: cs => !houseSets.some(h => cs.every(c => h.has(c))),
-      removeCandidateFromCell: (d, c) => { state.cand.get(c).delete(d) },
-      removeCandidatesFromCell: (s, c) => { const set = state.cand.get(c); for (const d of s) set.delete(d) },
+      ...makePuzzleApi(c => state.cand.get(c), { houses }),
       stop: (message = '', cells = []) => { state.stopped = true; return { message, cells } }
     }
   }
@@ -50,7 +42,7 @@ export function makeCandidateState ({ houses = [] } = {}) {
 // Kuhn augmenting-path matching between `cells` and the values `getCand`
 // offers each one. For a group of size <= 9 the brute per-edge recheck below
 // (in makeAllDifferentFloor) is GAC by definition and plenty fast.
-export function maxMatch (cells, getCand) {
+function maxMatch (cells, getCand) {
   const byVal = new Map()
   function aug (cell, seen) {
     for (const v of getCand(cell)) {

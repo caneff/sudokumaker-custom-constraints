@@ -64,10 +64,11 @@ const MAXN = 16
 // visible counts that subset can be laid out with. The subset already fixes the
 // prefix length (its popcount) and the running max (its highest digit), so the
 // pair (subset, count) is the whole DP state.
-let dp = null
+const dps = []
 function dpFor (m) {
   const size = 1 << m
-  if (dp === null || dp.m !== m) {
+  let dp = dps[m]
+  if (dp === undefined) {
     const pc = new Uint8Array(size)
     for (let i = 1; i < size; i++) pc[i] = pc[i >> 1] + (i & 1)
     dp = {
@@ -80,6 +81,7 @@ function dpFor (m) {
       reach: [new Uint16Array(size), new Uint16Array(size)],
       feas: [new Uint16Array(size), new Uint16Array(size)]
     }
+    dps[m] = dp
   }
   for (let d = 0; d < 2; d++) {
     dp.reach[d].fill(0)
@@ -151,13 +153,12 @@ function prune (puzzle, line, Lc, Rc, peak) {
   const s = dpFor(m)
   const peakBit = 1 << m
   const subMask = peakBit - 1
-  const rev = i => len - 1 - i // cell i's position when the line is read right to left
   const cand = s.cand
   for (let i = 0; i < len; i++) {
     const c = puzzle.getCandidatesBitMask(line[i]) >> 1
     cand[i] = c
     s.sub[0][i] = c & subMask
-    s.sub[1][rev(i)] = c & subMask
+    s.sub[1][len - 1 - i] = c & subMask // the right-to-left reading
   }
   sweepForward(s, 0)
   sweepForward(s, 1)
@@ -195,7 +196,7 @@ function prune (puzzle, line, Lc, Rc, peak) {
   // survives where the join found a feasible position.
   const keep = s.keep[0]
   for (let i = 0; i < len; i++) {
-    keep[i] |= s.keep[1][rev(i)] | ((peakPos >> i) & 1 ? peakBit : 0)
+    keep[i] |= s.keep[1][len - 1 - i] | ((peakPos >> i) & 1 ? peakBit : 0)
   }
   return { cand, keep, L: keepL, R: keepR }
 }
@@ -207,33 +208,24 @@ function prune (puzzle, line, Lc, Rc, peak) {
 // row and column houses are registered (gotcha 6) and a board that starts its
 // digits at 0 keeps a 0 on the line until something else takes it away. Query
 // the line alone: a ring cell in the list flips getCellsCanHaveRepeats to true.
-// The answer is never cached: the app shares one component object across every
+// The digit-set answer is never cached: the app shares one component object across every
 // search node, so a gate latched open deep in a branch stays open after the
 // backtrack to a parent state whose line has regained the digits that shut it
-// (#336). Re-asking costs one pass over the line's masks.
-function gateOpen (instance, puzzle) {
-  const line = instance.line
-  // The repeats answer is structural -- a house is registered once and a
-  // backtrack cannot un-register it -- so it alone is cached.
-  if (!instance.noRepeats) {
-    if (puzzle.getCellsCanHaveRepeats(line)) return false
-    instance.noRepeats = true
-  }
-  let mask = 0
-  for (const c of line) mask |= puzzle.getCandidatesBitMask(c)
-  return mask === (1 << (line.length + 1)) - 2 // bits 1..length set, bit 0 clear
-}
+// (#336). lineKind's `oneToN` is that test.
+// #include ../_shared/line-kind.js
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
   const peak = line.length // the gate proves the line holds 1..length once each
-  if (peak > MAXN || !gateOpen(instance, puzzle)) return
+  // peak < 1: an empty line (a two-wide frame) has no cells to prune, and the
+  // gate would pass it as a vacuous full house
+  if (peak < 1 || peak > MAXN || !lineKind(instance, puzzle, line).oneToN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
   const r = prune(puzzle, line, Lc, Rc, peak)
   // A clue with no surviving value means no arrangement satisfies the pair:
-  // the branch is dead (this used to surface as an emptied clue cell).
+  // the branch is dead.
   if (r.L === 0 || r.R === 0) {
     yield puzzle.stop(`no arrangement of heights satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return
@@ -251,19 +243,22 @@ function * update (instance, puzzle) {
       pending.push(line[i], rm)
     }
   }
-  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rmA << 1), clueA)
-  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(rmB << 1), clueB)
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(rmA << 1, clueA)
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(rmB << 1, clueB)
   if (pending !== null) {
-    for (let i = 0; i < pending.length; i += 2) yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1] << 1), pending[i])
+    for (let i = 0; i < pending.length; i += 2) yield puzzle.removeCandidatesFromCell(pending[i + 1] << 1, pending[i])
   }
 }
 
-// Visible buildings reading `cells` in order: count the running maxima.
-function visibleCount (puzzle, cells) {
+// Visible buildings reading `line` front to back, or back to front when
+// `reversed`, on a line the gate has proved a permutation of 1..n: count the
+// running maxima, no tie possible.
+function visibleCountPermutation (puzzle, line, reversed) {
+  const len = line.length
   let count = 0
   let max = 0
-  for (const cell of cells) {
-    const v = puzzle.getValue(cell)
+  for (let i = 0; i < len; i++) {
+    const v = puzzle.getValue(line[reversed ? len - 1 - i : i])
     if (v > max) { count++; max = v }
   }
   return count
@@ -271,10 +266,13 @@ function visibleCount (puzzle, cells) {
 
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
+  if (line.length === 0) return true // nothing to judge; the gate would read it as a vacuous full house
+  // The filled check short-circuits on the first open cell; the O(n) gate runs
+  // only once the line is settled.
+  if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   // Judge only a line `update` gates in: the running max below starts at 0, so
   // a board whose digits start at 0 would read a leading 0 as no building.
-  if (!gateOpen(instance, puzzle)) return true
-  if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
-  return puzzle.getValue(clueA) === visibleCount(puzzle, line) &&
-    puzzle.getValue(clueB) === visibleCount(puzzle, [...line].reverse())
+  if (!lineKind(instance, puzzle, line).oneToN) return true
+  return puzzle.getValue(clueA) === visibleCountPermutation(puzzle, line, false) &&
+    puzzle.getValue(clueB) === visibleCountPermutation(puzzle, line, true)
 }

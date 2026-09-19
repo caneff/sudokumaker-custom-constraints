@@ -24,6 +24,7 @@ import { execFileSync } from 'child_process'
 import { readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
+import { parseArgs } from 'node:util'
 import { outputJson } from '../_shared/app-strip-lib.mjs'
 import { loadComponent, score, stripOffline, givensOf } from './hunt-lib.mjs'
 
@@ -35,13 +36,13 @@ const py = (script, args, input) =>
   JSON.parse(execFileSync('uv', ['run', '--project', join(HERE, '..', '..'), join(HERE, script), ...args],
     { input, encoding: 'utf8', maxBuffer: 1 << 26 }))
 
-// `--node-cap N` raises the search budget for a board the default cannot
-// finish. Reported, never silent: a spent budget scores 'capped'.
+// A command's arguments with `--node-cap N` taken out: it raises the search
+// budget for a board the default cannot finish. Reported, never silent: a
+// spent budget scores 'capped'. An unknown flag throws.
 function takeNodeCap (args) {
-  const i = args.indexOf('--node-cap')
-  if (i < 0) return args
-  nodeCap = Number(args[i + 1])
-  return args.filter((_, k) => k !== i && k !== i + 1)
+  const { values, positionals } = parseArgs({ args, options: { 'node-cap': { type: 'string' } }, allowPositionals: true })
+  if (values['node-cap'] !== undefined) nodeCap = Number(values['node-cap'])
+  return positionals
 }
 
 // A board file, as either shape, plus the grid when the file carries one.

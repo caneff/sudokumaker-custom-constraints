@@ -85,10 +85,10 @@ function setParams (instance, cells) {
   instance.side = Math.round(Math.sqrt(cells.length))
   // Neighbour lists once, not per visit: update runs on every search node.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  // Per-call scratch, reused so a call allocates almost nothing. `islandId`
-  // is the scan's cell -> island id row; `mask` is the stamped walk mask,
-  // shared by every walk and flood and never cleared -- the stamp does that.
-  instance.islandId = new Int16Array(cells.length)
+  // Per-call scratch, reused so a call allocates almost nothing. `mask` is the
+  // stamped visit mask, shared by the scan, every walk and flood, and the door
+  // dedupe (which relies on doorRules running last and scan being eager), never
+  // cleared -- the stamp does that.
   instance.mask = new Int32Array(cells.length)
   instance.stamp = 0
   instance.queue = new Int16Array(cells.length)
@@ -102,17 +102,17 @@ function setParams (instance, cells) {
   instance.code = new Int32Array(cells.length)
   instance.prev = new Int32Array(cells.length).fill(-1)
   instance.seeds = new Int16Array(cells.length)
-  // Cut starve's scratch (#309): the digit's allowed row, the shortest-path
+  // Cut starve's scratch (#309): the shortest-path
   // DAG the filter walks, its dominator tree, the subtree counts read off it,
   // and the per-cell verdict. See cutFilter.
-  instance.allowed = new Uint8Array(cells.length)
   instance.distStarve = new Int16Array(cells.length)
   instance.domOrder = new Int16Array(cells.length)
   instance.idom = new Int16Array(cells.length)
   instance.ddep = new Int16Array(cells.length)
   instance.domCount = new Int16Array(cells.length)
   instance.skip = new Uint8Array(cells.length)
-  // The digits other than k, per k, for the force yield. Built on first use:
+  // The bitmask of the digits other than k, per k, for the force, cut and
+  // one-door yields. Built on first use:
   // the digit range only reads right at update time.
   instance.others = null
 }
@@ -128,24 +128,22 @@ function neighbours (i, side) {
 }
 
 // One grid scan: flood every placed cell into its island. Returns the island
-// list, each entry the digit, one seed cell and the cell count;
-// `instance.islandId[i]` is the island of cell i, or -1 where the cell is open.
+// list, each entry the digit, one seed cell and the cell count.
 function scan (instance, puzzle) {
-  const { cells, nbrs, islandId, queue } = instance
-  islandId.fill(-1)
+  const { cells, nbrs, mask, queue } = instance
+  const stamp = ++instance.stamp
   const islands = []
   for (let i = 0; i < cells.length; i++) {
-    if (islandId[i] !== -1 || !puzzle.hasValue(cells[i])) continue
+    if (mask[i] === stamp || !puzzle.hasValue(cells[i])) continue
     const digit = puzzle.getValue(cells[i])
-    const id = islands.length
-    islandId[i] = id
+    mask[i] = stamp
     queue[0] = i
     let head = 0
     let len = 1
     while (head < len) {
       for (const nb of nbrs[queue[head++]]) {
-        if (islandId[nb] === -1 && puzzle.hasValue(cells[nb]) && puzzle.getValue(cells[nb]) === digit) {
-          islandId[nb] = id
+        if (mask[nb] !== stamp && puzzle.hasValue(cells[nb]) && puzzle.getValue(cells[nb]) === digit) {
+          mask[nb] = stamp
           queue[len++] = nb
         }
       }
@@ -207,6 +205,7 @@ function freeClosure (instance, puzzle, layer, from, len, digit, stamp) {
 function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
   const { cells, nbrs, mask } = instance
   const stamp = ++instance.stamp
+  const bit = 1 << digit
   let [frontier, next] = instance.frontier
   let len = 0
   for (let i = 0; i < count; i++) { mask[members[i]] = stamp; frontier[len++] = members[i] }
@@ -218,7 +217,7 @@ function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
     for (let f = 0; f < len; f++) {
       for (const nb of nbrs[frontier[f]]) {
         if (mask[nb] === stamp || nb === exclude) continue
-        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
+        if (!puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
           mask[nb] = stamp
           next[nextLen++] = nb
         }
@@ -234,17 +233,25 @@ function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
   return { size, stamp }
 }
 
-// Breadth-first search from `starts` through `allowed`, no further than
-// `maxDist` steps, and the dominator tree of the shortest-path DAG it builds.
+// Whether a cell can be in a region of `digit`: it holds the digit, or is open
+// with the digit among its candidates. `bit` is `1 << digit`.
+function cellAllows (puzzle, cell, digit, bit) {
+  return puzzle.hasValue(cell) ? puzzle.getValue(cell) === digit : (puzzle.getCandidatesBitMask(cell) & bit) !== 0
+}
+
+// Breadth-first search from `starts` through the cells that allow `digit`, no
+// further than `maxDist` steps, and the dominator tree of the shortest-path DAG it builds.
 // A cell y keeps a path of its own length from some start when the removed
 // cell does not dominate y, which is what the cut filter reads. Fills `dist`
 // (-1 where unreached), `domOrder` (the cells in BFS order), `idom` (the
 // dominator, -1 for a cell no other cell dominates) and `ddep` (its depth in
 // that tree); returns how many cells the walk reached. Transferred from
 // ISOFILL unchanged (transfer doc §4): it is a statement about reachability
-// alone and never reads a digit or a region count.
-function domTree (instance, starts, nStarts, maxDist, allowed, dist) {
-  const { nbrs, domOrder, idom, ddep } = instance
+// alone: the digit only says which cells are in, and it never reads a region
+// count.
+function domTree (instance, puzzle, starts, nStarts, maxDist, digit, dist) {
+  const { cells, nbrs, domOrder, idom, ddep } = instance
+  const bit = 1 << digit
   dist.fill(-1)
   let len = 0
   for (let i = 0; i < nStarts; i++) {
@@ -254,7 +261,7 @@ function domTree (instance, starts, nStarts, maxDist, allowed, dist) {
   for (let head = 0; head < len; head++) {
     const u = domOrder[head]
     if (dist[u] >= maxDist) continue
-    for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
+    for (const n of nbrs[u]) if (dist[n] < 0 && cellAllows(puzzle, cells[n], digit, bit)) { dist[n] = dist[u] + 1; domOrder[len++] = n }
   }
   // A cell's dominator is the deepest cell dominating all its DAG
   // predecessors, so fold them pairwise, walking the deeper one up the tree
@@ -264,7 +271,7 @@ function domTree (instance, starts, nStarts, maxDist, allowed, dist) {
     if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
     let a = -2
     for (const p of nbrs[v]) {
-      if (!allowed[p] || dist[p] !== dist[v] - 1) continue
+      if (dist[p] !== dist[v] - 1) continue
       if (a === -2) { a = p; continue }
       let b = p
       while (a !== b) {
@@ -308,9 +315,9 @@ function subtreeSums (instance, len) {
 // doc §4 kills it, since two islands of one digit need not share a region.
 //
 // Writes the verdict into `instance.skip`, 1 where cut is proved false.
-function cutFilter (instance, starts, nStarts, open, allowed, digit, budget) {
+function cutFilter (instance, puzzle, starts, nStarts, open, digit, budget) {
   const { skip, domCount, domOrder, distStarve } = instance
-  const reached = domTree(instance, starts, nStarts, budget, allowed, distStarve)
+  const reached = domTree(instance, puzzle, starts, nStarts, budget, digit, distStarve)
   domCount.fill(0)
   for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
   subtreeSums(instance, reached)
@@ -318,139 +325,199 @@ function cutFilter (instance, starts, nStarts, open, allowed, digit, budget) {
   for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= digit ? 1 : 0
 }
 
+// A rule generator's verdict on one island, read by `update`: DEAD, the
+// branch is dead and the call ends; SETTLED, the island's deductions are made
+// and the next island is up; OPEN, the next rule reads this island too.
+const DEAD = 0
+const SETTLED = 1
+const OPEN = 2
+
+// `update` scans once, then hands each island to the per-island rules in
+// order and the board to the component bound. Every rule reads the island's
+// live facts (islandFacts), so a rule does not depend on another having run:
+// each guards its own precondition, and the harness removes one at a time.
 function * update (instance, puzzle) {
-  const { cells, nbrs, mask, members, merge } = instance
+  for (const island of scan(instance, puzzle)) {
+    const verdict = yield * islandRule(instance, puzzle, island)
+    if (verdict === DEAD) return
+    if (verdict === SETTLED) continue
+    if ((yield * cutStarveRule(instance, puzzle, island)) === SETTLED) continue
+    yield * doorRules(instance, puzzle, island)
+  }
+  yield * componentBound(instance, puzzle)
+}
 
-  // `update` yields as it goes, so by the time a later island is reached an
-  // earlier deduction may have placed a digit right beside it. Every rule
-  // below therefore reads the island's live extent, re-flooded from the
-  // scan's seed cell, rather than the extent the scan recorded. A placed cell
-  // never re-opens, so the seed is still placed and still holds the digit.
-  for (const { digit, seed } of scan(instance, puzzle)) {
-    const count = placedFlood(instance, puzzle, seed, digit, digit, members)
+// The island's live extent and its walk, computed once per island per call.
+//
+// `update` yields as it goes, so by the time a later island is reached an
+// earlier deduction may have placed a digit right beside it. Every rule
+// therefore reads the island's live extent, re-flooded from the scan's seed
+// cell, rather than the extent the scan recorded. A placed cell never
+// re-opens, so the seed is still placed and still holds the digit. The extent
+// lands in `instance.members` and `island.count`; the walk out of an
+// unfinished island, budget k - p, in `island.reach` and `island.walkStamp`.
+// The walk's cells are read off `instance.mask`, which any later walk or flood
+// restamps, so a reader asks `walkCells` rather than trusting the stamp.
+function islandFacts (instance, puzzle, island) {
+  const { digit, seed } = island
+  if (island.count === undefined) {
+    island.count = placedFlood(instance, puzzle, seed, digit, digit, instance.members)
+  }
+  if (island.reach === undefined && island.count < digit) walkCells(instance, puzzle, island)
+  return island
+}
 
-    // Overflow (§1): every cell of the island is in one region of k cells, so
-    // an island wider than k cannot be. Kill the branch the way the solver
-    // reads it -- empty a placed cell.
-    if (count > digit) {
-      yield puzzle.removeCandidateFromCell(digit, cells[seed])
-      return
-    }
+// The walk's stamp on `instance.mask`, walking again if anything has stamped
+// the mask since.
+function walkCells (instance, puzzle, island) {
+  if (island.walkStamp !== instance.stamp) {
+    const { size, stamp } = walk(instance, puzzle, instance.members, island.count, island.digit, island.digit - island.count)
+    island.reach = size
+    island.walkStamp = stamp
+  }
+  return island.walkStamp
+}
 
-    // Seal (§1): a full island is a finished region, so nothing beside it may
-    // hold the digit -- that cell would join the region and make it k + 1.
-    if (count === digit) {
-      for (let i = 0; i < count; i++) {
-        for (const nb of nbrs[members[i]]) {
-          if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit)) {
-            yield puzzle.removeCandidateFromCell(digit, cells[nb])
-          }
-        }
-      }
-      continue
-    }
+// Overflow, seal, starve and force: the rules that read the island and its
+// walk alone.
+function * islandRule (instance, puzzle, island) {
+  const { cells, nbrs, mask, members } = instance
+  const { digit, seed, count } = islandFacts(instance, puzzle, island)
 
-    // The walk out of an unfinished island, budget k - p.
-    const { size, stamp } = walk(instance, puzzle, members, count, digit, digit - count)
+  // Overflow (§1): every cell of the island is in one region of k cells, so
+  // an island wider than k cannot be. Kill the branch the way the solver
+  // reads it -- empty a placed cell.
+  if (count > digit) {
+    yield puzzle.removeCandidateFromCell(digit, cells[seed])
+    return DEAD
+  }
 
-    // Starve (§3, reading b): the region sits inside the walk and holds k
-    // cells, so a walk under k cells is a dead branch.
-    if (size < digit) {
-      yield puzzle.removeCandidateFromCell(digit, cells[seed])
-      return
-    }
-
-    // Force (§2): the region is inside the walk and both hold k cells, so the
-    // two sets are equal -- every open cell of the walk holds k.
-    if (size === digit) {
-      const others = otherDigits(instance, digit)
-      for (let i = 0; i < cells.length; i++) {
-        if (mask[i] === stamp && !puzzle.hasValue(cells[i])) {
-          yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[i])
-        }
-      }
-      continue
-    }
-
-    // Cut starve (§4), rung 3. The region R sits inside the walk and holds k
-    // cells. Take an open cell y of the walk and run the walk again without
-    // it: if that covers fewer than k cells then R cannot avoid y, since R
-    // would otherwise be a subset of a set under k cells. So y is in R and
-    // holds k. ISOFILL's strand half does not come along -- two islands of one
-    // digit need not share a region (§4).
-    //
-    // Every test below reads ONE snapshot -- this island's extent, this walk,
-    // this allowed row -- so the cuts are collected and yielded together at
-    // the end. Yielding inside the loop would place a k beside the island and
-    // leave every later test, and the door rules further down, reading an
-    // island that is a deduction out of date.
-    const { allowed, skip } = instance
-    for (let i = 0; i < cells.length; i++) {
-      allowed[i] = puzzle.hasValue(cells[i])
-        ? (puzzle.getValue(cells[i]) === digit ? 1 : 0)
-        : (puzzle.getCandidates(cells[i]).has(digit) ? 1 : 0)
-    }
-    const openWalk = []
-    for (let i = 0; i < cells.length; i++) {
-      if (mask[i] === stamp && !puzzle.hasValue(cells[i])) openWalk.push(i)
-    }
-    cutFilter(instance, members, count, openWalk, allowed, digit, digit - count)
-    const cuts = []
-    for (const y of openWalk) {
-      if (skip[y]) continue
-      if (walk(instance, puzzle, members, count, digit, digit - count, y).size < digit) cuts.push(y)
-    }
-    if (cuts.length > 0) {
-      const others = otherDigits(instance, digit)
-      for (const y of cuts) {
-        yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(others), cells[y])
-      }
-      // the island just grew; the door rules below want a live one, and the
-      // next call re-scans for it
-      continue
-    }
-
-    // The doors: the open cells beside the island that still allow k. The
-    // island is short of its region, so the region grows through a door.
-    const doors = []
+  // Seal (§1): a full island is a finished region, so nothing beside it may
+  // hold the digit -- that cell would join the region and make it k + 1.
+  if (count === digit) {
+    const bit = 1 << digit
     for (let i = 0; i < count; i++) {
       for (const nb of nbrs[members[i]]) {
-        if (!puzzle.hasValue(cells[nb]) && puzzle.getCandidates(cells[nb]).has(digit) && !doors.includes(nb)) {
-          doors.push(nb)
+        if (!puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
+          yield puzzle.removeCandidateFromCell(digit, cells[nb])
         }
       }
     }
+    return SETTLED
+  }
 
-    // The growth test at a door (§6). The merged set M is the door plus every
-    // island of k it touches: if the door held k, Lemma A puts them all in one
-    // region.
-    for (const x of doors) {
-      const m = placedFlood(instance, puzzle, x, digit, digit, merge)
+  // Starve (§3, reading b): the region sits inside the walk and holds k
+  // cells, so a walk under k cells is a dead branch.
+  if (island.reach < digit) {
+    yield puzzle.removeCandidateFromCell(digit, cells[seed])
+    return DEAD
+  }
 
-      // Merge overflow (§3, §6): M alone is already wider than the region it
-      // would be, so the door cannot hold k.
-      if (m > digit) {
-        yield puzzle.removeCandidateFromCell(digit, cells[x])
-        continue
-      }
-
-      // Merge starve (§6): the region would be a connected k-cell set holding
-      // M and lying inside the cells that allow k, so the 0-1 walk out of M
-      // with budget k - |M| covers it. A walk under k cells means no such
-      // region exists, so the door does not hold k.
-      if (walk(instance, puzzle, merge, m, digit, digit - m).size < digit) {
-        yield puzzle.removeCandidateFromCell(digit, cells[x])
+  // Force (§2): the region is inside the walk and both hold k cells, so the
+  // two sets are equal -- every open cell of the walk holds k.
+  if (island.reach === digit) {
+    const stamp = walkCells(instance, puzzle, island)
+    const others = otherMask(instance, digit)
+    for (let i = 0; i < cells.length; i++) {
+      if (mask[i] === stamp && !puzzle.hasValue(cells[i])) {
+        yield puzzle.removeCandidatesFromCell(others, cells[i])
       }
     }
+    return SETTLED
+  }
+  return OPEN
+}
 
-    // One door (§3): the region must take a cell beside the island, and only
-    // one is left that can be it.
-    const live = doors.filter(x => !puzzle.hasValue(cells[x]) && puzzle.getCandidates(cells[x]).has(digit))
-    if (live.length === 1) {
-      yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(otherDigits(instance, digit)), cells[live[0]])
+// Cut starve (§4), rung 3. The region R sits inside the walk and holds k
+// cells. Take an open cell y of the walk and run the walk again without it: if
+// that covers fewer than k cells then R cannot avoid y, since R would
+// otherwise be a subset of a set under k cells. So y is in R and holds k.
+// ISOFILL's strand half does not come along -- two islands of one digit need
+// not share a region (§4). Reads an unfinished island whose walk runs past k
+// cells, the only one the island rules leave open.
+//
+// Every test below reads ONE snapshot -- this island's extent, this walk, the
+// live candidates -- so the cuts are collected and yielded together at the end.
+// Yielding inside the loop would place a k beside the island and leave every
+// later test, and the door rules, reading an island that is a deduction out of
+// date.
+function * cutStarveRule (instance, puzzle, island) {
+  const { cells, mask, members, skip } = instance
+  const { digit, count } = islandFacts(instance, puzzle, island)
+  if (count >= digit || island.reach <= digit) return OPEN
+  const stamp = walkCells(instance, puzzle, island)
+  // one pass over the board: the walk's open cells
+  const openWalk = []
+  for (let i = 0; i < cells.length; i++) {
+    if (mask[i] === stamp && !puzzle.hasValue(cells[i])) openWalk.push(i)
+  }
+  cutFilter(instance, puzzle, members, count, openWalk, digit, digit - count)
+  const cuts = []
+  for (const y of openWalk) {
+    if (skip[y]) continue
+    if (walk(instance, puzzle, members, count, digit, digit - count, y).size < digit) cuts.push(y)
+  }
+  if (cuts.length === 0) return OPEN
+  const others = otherMask(instance, digit)
+  for (const y of cuts) {
+    yield puzzle.removeCandidatesFromCell(others, cells[y])
+  }
+  // the island just grew; the door rules want a live one, and the next call
+  // re-scans for it
+  return SETTLED
+}
+
+// The doors: the open cells beside the island that still allow k. The island
+// is short of its region, so the region grows through a door. Reads the same
+// islands cut starve does.
+function * doorRules (instance, puzzle, island) {
+  const { cells, nbrs, mask, members, merge } = instance
+  const { digit, count } = islandFacts(instance, puzzle, island)
+  if (count >= digit || island.reach <= digit) return OPEN
+  const bit = 1 << digit
+  const doors = []
+  const doorStamp = ++instance.stamp
+  for (let i = 0; i < count; i++) {
+    for (const nb of nbrs[members[i]]) {
+      if (mask[nb] !== doorStamp && !puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
+        mask[nb] = doorStamp
+        doors.push(nb)
+      }
     }
   }
 
+  // The growth test at a door (§6). The merged set M is the door plus every
+  // island of k it touches: if the door held k, Lemma A puts them all in one
+  // region.
+  for (const x of doors) {
+    const m = placedFlood(instance, puzzle, x, digit, digit, merge)
+
+    // Merge overflow (§3, §6): M alone is already wider than the region it
+    // would be, so the door cannot hold k.
+    if (m > digit) {
+      yield puzzle.removeCandidateFromCell(digit, cells[x])
+      continue
+    }
+
+    // Merge starve (§6): the region would be a connected k-cell set holding
+    // M and lying inside the cells that allow k, so the 0-1 walk out of M
+    // with budget k - |M| covers it. A walk under k cells means no such
+    // region exists, so the door does not hold k.
+    if (walk(instance, puzzle, merge, m, digit, digit - m).size < digit) {
+      yield puzzle.removeCandidateFromCell(digit, cells[x])
+    }
+  }
+
+  // One door (§3): the region must take a cell beside the island, and only
+  // one is left that can be it.
+  const live = doors.filter(x => !puzzle.hasValue(cells[x]) && (puzzle.getCandidatesBitMask(cells[x]) & bit) !== 0)
+  if (live.length === 1) {
+    yield puzzle.removeCandidatesFromCell(otherMask(instance, digit), cells[live[0]])
+  }
+  return OPEN
+}
+
+function * componentBound (instance, puzzle) {
   // The component bound (§6(i)), once per digit. Let A(k) be the cells that
   // allow k -- open cells with k among their candidates, plus cells already
   // holding k. Every k-region is connected and lies inside A(k), so it lies
@@ -475,7 +542,7 @@ function * update (instance, puzzle) {
   // pass's codes against the last pass's cannot. `prev` is written only after
   // the last yield, so a pass the solver abandons half-way leaves the older
   // snapshot in place and the next pass reads a superset of what moved.
-  const { code, prev, seeds } = instance
+  const { cells, nbrs, mask, members, code, prev, seeds } = instance
   const seedStamp = ++instance.stamp
   let nSeeds = 0
   for (let i = 0; i < cells.length; i++) {
@@ -525,15 +592,15 @@ function * update (instance, puzzle) {
   prev.set(code)
 }
 
-// The digits other than `digit`, cached per digit. The digit range only reads
-// right at update time, so the cache is built on first use.
-function otherDigits (instance, digit) {
+// The bitmask of the digits other than `digit`, cached per digit. The digit
+// range only reads right at update time, so the cache is built on first use.
+function otherMask (instance, digit) {
   if (instance.others === null) instance.others = []
   let out = instance.others[digit]
   if (out === undefined) {
-    out = []
+    out = 0
     for (let d = helpers.digits.minDigit; d <= helpers.digits.maxDigit; d++) {
-      if (d !== digit) out.push(d)
+      if (d !== digit) out |= 1 << d
     }
     instance.others[digit] = out
   }

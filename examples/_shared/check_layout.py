@@ -7,11 +7,11 @@
 # three mechanical pre-share criteria from docs/share-checklist.md: the link
 # opens clean (no entered values on non-given cells), the outside ring is not
 # filled end to end, and the rules text carries the sudoku prefix, except an
-# example in NO_RULES_PREFIX (isofill is not sudoku). A _clued link is exempt
-# from the first two -- filling every clue is what that name means. It also
-# checks that every link ships exactly the components its own embedded
-# backend registers, so a link cannot go stale behind its builder, and that
-# every interior row and column of a sudoku example's board is a house the
+# example in NO_RULES_PREFIX (isofill and fillomino are not sudoku). A _clued
+# link is exempt from the first two -- filling every clue is what that name
+# means. It also checks that every link ships exactly the components its own
+# embedded backend registers, so a link cannot go stale behind its builder, and
+# that every interior row and column of a sudoku example's board is a house the
 # link actually declares (a region constraint gives boxes only -- see #335 and
 # docs/gotchas.md #9; isofill and fillomino are bare boards and exempt).
 #
@@ -34,13 +34,14 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from component_scan import builtin_components, registered_components
+from component_scan import describe_mismatch, mismatch
 from framebuild import (
     FRAME_BACKENDS,
     GRID_BACKEND,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
     NO_RING_RULES_PREFIX,
+    RULES_PREFIX,
     frame_backend_code,
     grid_backend_constraint,
     house_gac_backend_code,
@@ -88,11 +89,6 @@ SHARED_COMPONENT = {"house-gac": "HouseGacComponent"}
 # the directory must not come back -- a second one would drift from the
 # first the way numbered-rooms-lines drifted from numbered-rooms (#238).
 MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
-
-# Must match framebuild.RULES_PREFIX. Duplicated (not imported) so this
-# check does not pull in ortools -- framebuild.py imports it at module load,
-# and check_layout.py runs with just `--with lzstring`.
-RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 
 
 def is_no_ring(puzzle):
@@ -249,25 +245,6 @@ def check_gen_link_pairing(example_dir):
 # added to it; new finder code goes in finders/ from the start.
 GRANDFATHERED_RESEARCH_PY = frozenset(
     {
-        "docs/research/2026-09-14-copycat-scan/parse_copycat.py",
-        "docs/research/2026-09-14-galaxy-copycat/copycat_rsl_solver.py",
-        "docs/research/2026-09-14-galaxy-copycat/distinct_grids.py",
-        "docs/research/2026-09-14-galaxy-copycat/distinct_values.py",
-        "docs/research/2026-09-14-galaxy-copycat/find_l4_all.py",
-        "docs/research/2026-09-14-galaxy-copycat/find_pair4.py",
-        "docs/research/2026-09-14-galaxy-copycat/find_pair7.py",
-        "docs/research/2026-09-14-galaxy-copycat/find_quad4.py",
-        "docs/research/2026-09-14-galaxy-copycat/find_repeats.py",
-        "docs/research/2026-09-14-galaxy-copycat/line_multisets_on_grid.py",
-        "docs/research/2026-09-14-galaxy-copycat/other_pair_sums.py",
-        "docs/research/2026-09-14-galaxy-copycat/rank_l4.py",
-        "docs/research/2026-09-14-galaxy-copycat/rank_pair4.py",
-        "docs/research/2026-09-14-galaxy-copycat/rank_residual.py",
-        "docs/research/2026-09-14-galaxy-copycat/residual.py",
-        "docs/research/2026-09-14-galaxy-copycat/segment_openers.py",
-        "docs/research/2026-09-14-galaxy-copycat/symmetric_region_tilings.py",
-        "docs/research/2026-09-14-lmd-hybrid-scan/fetch_pages.py",
-        "docs/research/2026-09-14-lmd-hybrid-scan/parse_pages.py",
         "docs/research/367-no-ring-board-type/build_docs.py",
         "docs/research/368-up-to-n-setup-throw/probe_clues.py",
         "docs/research/406-gac-demo/tools/build9.py",
@@ -354,9 +331,9 @@ def _ring_state(puzzle):
     return sum(1 for i in ring if cells[i]), len(ring)
 
 
-def check_share_ready(example_dir, link):
-    """Decode `link` (a PUZZLE_LINK*.txt path) and return one violation
-    string per pre-share criterion it fails: the link opens clean, the ring is
+def check_share_ready(example_dir, link, puzzle):
+    """Return one violation string per pre-share criterion `link` (a
+    committed link, decoded as `puzzle`) fails: the link opens clean, the ring is
     not filled end to end, and the rules text carries the sudoku prefix
     (docs/share-checklist.md).
 
@@ -366,11 +343,6 @@ def check_share_ready(example_dir, link):
     still needs a human against the recorded carve."""
     name = example_dir.name
     violations = []
-
-    try:
-        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
-    except Exception as e:
-        return [f"{name}: {link.name} failed to decode: {e}"]
 
     # The clued twins fill all 36 outside clues on purpose -- that is what
     # the name means, and app-solve.mjs reads them with --ring-clues. The
@@ -400,8 +372,8 @@ def check_share_ready(example_dir, link):
     return violations
 
 
-def check_components(example_dir, link):
-    """Decode `link` and return one violation string per custom constraint
+def check_components(example_dir, link, puzzle):
+    """Return one violation string per custom constraint in `puzzle`
     whose shipped component set differs from the set its own embedded backend
     registers.
 
@@ -426,27 +398,19 @@ def check_components(example_dir, link):
     registration.
     """
     name = example_dir.name
-
-    try:
-        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
-    except Exception:
-        return []  # check_share_ready reports the decode failure
-
     violations = []
     for constraint in puzzle.get("constraints", []):
         definition = constraint.get("definition")
         if not definition:
             continue
-        shipped = {c["name"] for c in definition.get("components", [])}
+        shipped = [c["name"] for c in definition.get("components", [])]
         # A definition with no code backend registers nothing; its component
         # list is then empty too, so the two sets still match.
         backend = definition.get("backend", {}).get("code", "")
-        registered = registered_components(backend) - builtin_components()
-        if shipped != registered:
-            violations.append(
-                f"{name}: {link.name} constraint {definition['name']!r} ships "
-                f"{sorted(shipped)}, its backend registers {sorted(registered)}"
-            )
+        violations.extend(
+            f"{name}: {link.name} constraint {definition['name']!r}: {problem}"
+            for problem in describe_mismatch(*mismatch(shipped, backend))
+        )
 
     return violations
 
@@ -556,8 +520,8 @@ def interior_line_lengths(puzzle, width, height):
     return {len(line) for line in (*rows, *columns) if line}
 
 
-def check_houses(example_dir, link):
-    """Decode `link` and return one violation string per interior row or column
+def check_houses(example_dir, link, puzzle):
+    """Return one violation string per interior row or column of `puzzle`
     that is neither a house the document declares nor one the shared frame
     backend declares in JS.
 
@@ -574,11 +538,6 @@ def check_houses(example_dir, link):
     name = example_dir.name
     if name in NO_HOUSES:
         return []
-
-    try:
-        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
-    except Exception:
-        return []  # check_share_ready reports the decode failure
 
     width, height = puzzle.get("width"), puzzle.get("height")
     if not isinstance(width, int) or not isinstance(height, int):
@@ -611,8 +570,9 @@ def check_houses(example_dir, link):
     return violations
 
 
-def check_frame_backends(example_dir, link):
-    """Return one violation per shared frame backend `link` ships under its own
+def check_frame_backends(example_dir, link, puzzle):
+    """Return one violation per shared frame backend `link` (decoded as
+    `puzzle`) ships under its own
     name with code that is not the copy in the tree, plus one if it ships
     either backend and declares no digit range.
 
@@ -647,11 +607,6 @@ def check_frame_backends(example_dir, link):
     committed link valid; only a real code change makes them stale, and a stale
     link genuinely runs different code from the one under review.
     """
-    try:
-        puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
-    except Exception:
-        return []  # check_share_ready reports the decode failure
-
     name = example_dir.name
     current = frame_backend_files()
     comp_name, comp_source, comp_want = house_gac_component_file()
@@ -817,10 +772,16 @@ def check_example(example_dir):
                 f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
                 f"(size=NxN, tags in fixed order {list(TAGS)})"
             )
-        violations.extend(check_share_ready(example_dir, link))
-        violations.extend(check_components(example_dir, link))
-        violations.extend(check_frame_backends(example_dir, link))
-        violations.extend(check_houses(example_dir, link))
+        # Decoded once, here: every check below reads the same puzzle.
+        try:
+            puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+        except Exception as e:
+            violations.append(f"{name}: {link.name} failed to decode: {e}")
+            continue
+        violations.extend(check_share_ready(example_dir, link, puzzle))
+        violations.extend(check_components(example_dir, link, puzzle))
+        violations.extend(check_frame_backends(example_dir, link, puzzle))
+        violations.extend(check_houses(example_dir, link, puzzle))
 
     return violations
 

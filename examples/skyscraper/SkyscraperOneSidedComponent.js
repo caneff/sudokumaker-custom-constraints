@@ -133,13 +133,13 @@ function backwardSweep (fwd, bwd, cand, keep, len, tallest, minDigit, clueCand) 
 //! remove nothing, so it is built only when there is something in it.
 function collectRemovals (clue, line, len, clueDrop, cand, keep) {
   let pending = null
-  const drop = (cell, mask) => {
-    if (mask === 0) return
+  if (clueDrop !== 0) pending = [clue, clueDrop]
+  for (let i = 0; i < len; i++) {
+    const mask = cand[i] & ~keep[i]
+    if (mask === 0) continue
     if (pending === null) pending = []
-    pending.push(cell, mask)
+    pending.push(line[i], mask)
   }
-  drop(clue, clueDrop)
-  for (let i = 0; i < len; i++) drop(line[i], cand[i] & ~keep[i])
   return pending
 }
 
@@ -183,7 +183,7 @@ function * update (instance, puzzle) {
   const pending = collectRemovals(clue, line, len, clueCand & ~reached, cand, keep)
   if (pending !== null) {
     for (let i = 0; i < pending.length; i += 2) {
-      yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(pending[i + 1]), pending[i])
+      yield puzzle.removeCandidatesFromCell(pending[i + 1], pending[i])
     }
   }
 }
@@ -191,11 +191,11 @@ function * update (instance, puzzle) {
 // Visible buildings reading `cells` in order: the running maxima, with a tie
 // counted or not per ALLOW_TIES. The running max starts below every digit, so a
 // board whose digits start at 0 reads the same as any other.
-function visibleCount (puzzle, cells) {
+function visibleCountTies (puzzle, cells) {
   let count = 0
   let max = -1
-  for (const cell of cells) {
-    const v = puzzle.getValue(cell)
+  for (let i = 0; i < cells.length; i++) {
+    const v = puzzle.getValue(cells[i])
     if (v + TIE > max) count++
     if (v > max) max = v
   }
@@ -206,5 +206,5 @@ function validate (instance, puzzle) {
   const { clue, line } = instance
   if (line.length === 0) return true
   if (!puzzle.getCellsAreFilled([clue, ...line])) return true
-  return puzzle.getValue(clue) === visibleCount(puzzle, line)
+  return puzzle.getValue(clue) === visibleCountTies(puzzle, line)
 }

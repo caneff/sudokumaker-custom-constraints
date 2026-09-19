@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, DigitSet } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzleApi } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -98,27 +98,19 @@ function seeder (c, v) {
 }
 
 function fixpointAll (cand) {
+  const size = () => { let n = 0; for (const s of cand.values()) n += s.size; return n }
   for (let pass = 0; pass < 20; pass++) {
     let changed = false
     for (const cells of HOUSES) {
       const inst = {}
       mod.setParams(inst, cells)
       const p = {
-        getCellsCanHaveRepeats: () => false,
-        getCandidatesBitMask: cell => { let m = 0; for (const d of cand.get(cell)) m |= 1 << d; return m },
-        // The app takes a DigitSet here and nothing else (harness-lib.mjs's
-        // own makePuzzle carries the same guard): a plain array passes in
-        // Node and silently removes nothing in the app -- a rule went dead
-        // that way.
-        removeCandidatesFromCell: (set, cell) => {
-          if (!(set instanceof DigitSet)) throw new TypeError('removeCandidatesFromCell wants a DigitSet')
-          const before = cand.get(cell).size
-          for (const d of set) cand.get(cell).delete(d)
-          if (cand.get(cell).size !== before) changed = true
-        },
+        ...makePuzzleApi(cell => cand.get(cell), { houses: HOUSES }),
         stop: (message = '', cells = []) => ({ message, cells, __stop: true })
       }
+      const before = size()
       for (const r of mod.update(inst, p)) if (r && r.__stop) return { stopped: true }
+      if (size() !== before) changed = true
     }
     if (!changed) break
   }

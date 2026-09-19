@@ -1,22 +1,26 @@
 // Pure decision and formatting logic for app-strip.mjs -- greedy clue removal
 // with the live SudokuMaker app as the uniqueness oracle. Split out so this
 // runs under node:assert without a browser; the Playwright driver imports it
-// alongside readVerdict/parseReadout from app-solve-lib.mjs.
+// alongside parseReadout from app-solve-lib.mjs.
+
+import { parseArgs as parseCli } from 'node:util'
 
 // The driver's command line: `<link_file> <out.json> [seed] --grid <puzzle.json>`.
-// `--grid` may sit anywhere among the positionals, so it and its value are
-// removed before the positionals are read off. A missing link file, out file
-// or grid file is a usage error, not a run with a null path. Split out here
-// because it is the one branchy part of app-strip.mjs a browser is not needed
-// to exercise (#315).
+// `--grid` may sit anywhere among the positionals. A missing link file, out
+// file or grid file, or a flag the driver does not know, is a usage error, not
+// a run with a null path. Split out here because it is the one branchy part of
+// app-strip.mjs a browser is not needed to exercise (#315).
+const USAGE = 'usage: app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>'
 export function parseArgs (argv) {
-  const i = argv.indexOf('--grid')
-  const gridFile = i >= 0 ? argv[i + 1] : null
-  const positional = i >= 0 ? argv.filter((_, j) => j !== i && j !== i + 1) : argv
-  const [linkFile, outFile, seedArg] = positional
-  if (!linkFile || !outFile || !gridFile) {
-    throw new Error('usage: app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>')
+  let parsed
+  try {
+    parsed = parseCli({ args: argv, options: { grid: { type: 'string' } }, allowPositionals: true })
+  } catch {
+    throw new Error(USAGE)
   }
+  const [linkFile, outFile, seedArg] = parsed.positionals
+  const gridFile = parsed.values.grid
+  if (!linkFile || !outFile || !gridFile) throw new Error(USAGE)
   // No seed given means seed 1: a run is reproducible by default, and the
   // removal order only varies when a seed is asked for.
   return { linkFile, outFile, gridFile, seed: seedArg ? parseInt(seedArg, 10) : 1 }
@@ -44,13 +48,6 @@ export function seededShuffle (arr, seed) {
     ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
-}
-
-// Settle a trial's verdict: a '?' (no readout appeared) gets exactly one
-// retry, and whatever that retry returns is final -- never a second retry.
-// v2 is only read when v1 is '?'.
-export function settleVerdict (v1, v2) {
-  return v1 === '?' ? v2 : v1
 }
 
 // The surviving clue set, sorted, alongside the grid it was cut from.

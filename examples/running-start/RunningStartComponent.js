@@ -22,17 +22,12 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Is the line a house? Asked at solve time and re-tested until it settles: it
-// cannot be asked once at register time, because main code runs before the
-// built-in row/column houses exist and would read every line as bare (gotcha
-// 6). Query the line alone -- a clue cell in the list flips
-// getCellsCanHaveRepeats to true. A house never repeats again, so the true
-// answer caches on the instance.
-function isHouse (instance, puzzle) {
-  if (instance.house) return true
-  instance.house = !puzzle.getCellsCanHaveRepeats(instance.line)
-  return instance.house
-}
+// The line's kind: lineKind(instance, puzzle, cells).
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
+// #include ../_shared/line-kind.js
 
 function runningStart (puzzle, line) {
   let count = 1
@@ -117,7 +112,7 @@ function * update (instance, puzzle) {
   // reading the flag names is sound. Recovering the strict break on a house is
   // not cosmetic: the shipped frame board solves 3.4x slower without it
   // (OPTIMIZATION_LOG.md).
-  const house = isHouse(instance, puzzle)
+  const house = lineKind(instance, puzzle, instance.line).kind >= HOUSE
   const climbStrict = !ALLOW_TIES || house
   const breakStrict = ALLOW_TIES || house
 

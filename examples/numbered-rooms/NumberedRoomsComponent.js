@@ -29,30 +29,20 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Line kinds, ordered (docs/line-contract.md). Numbered Rooms has no
+// The line's kind: lineKind(instance, puzzle, cells). Numbered Rooms has no
 // full-house rule, so HOUSE is as high as this component looks.
-const BARE = 0
-const HOUSE = 1
-
-// The line's kind, asked at solve time and re-asked while it is still bare.
-// It cannot be asked once in main code: that runs before the built-in
-// row/column houses are registered and would read every line as bare (gotcha
-// 6). Query the line alone — a clue cell in the list flips
-// getCellsCanHaveRepeats to true. A house never repeats again, so the answer
-// is cached the moment it comes back HOUSE.
-function lineKind (instance, puzzle) {
-  if (instance.kind !== HOUSE) {
-    instance.kind = puzzle.getCellsCanHaveRepeats(instance.line) ? BARE : HOUSE
-  }
-  return instance.kind
-}
+// The repeats answer is latched both ways, since it is geometry fixed once
+// `update` first runs. The solver can retire a filled built-in house for the
+// rest of a branch, which can only weaken a latched answer, never make a
+// removal unsound.
+// #include ../_shared/line-kind.js
 
 // Candidate sets are bitmasks: bit d set = digit d possible.
 // One pass, all reads from the pre-pass masks, so no step depends on another.
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const m = line.length
-  const house = lineKind(instance, puzzle) === HOUSE
+  const house = lineKind(instance, puzzle, line).kind >= HOUSE
   const clueM = puzzle.getCandidatesBitMask(clue) // what the clue can still be
   const idxM = puzzle.getCandidatesBitMask(line[0]) // what the index k can still be
   const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)

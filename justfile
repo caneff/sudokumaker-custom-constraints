@@ -56,46 +56,62 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
-    node examples/_shared/recovery-lib.test.mjs
-    node examples/_shared/app-solve-lib.test.mjs
-    node examples/_shared/bundle-solve.test.mjs
-    node examples/_shared/app-strip-lib.test.mjs
-    node examples/_shared/harness-lib.test.mjs
-    node examples/_shared/frame-rowcol.test.mjs
-    node examples/_shared/house-gac.test.mjs
-    node examples/_shared/frame-corners.test.mjs
-    node examples/_shared/grid-rowcol.test.mjs
-    node examples/_shared/include.test.mjs
-    node examples/_shared/frame-geometry.test.mjs
-    node examples/_shared/frame-lines.test.mjs
-    node examples/_shared/global-backends.test.mjs
-    node examples/_shared/bundle-index.test.mjs
-    uv run examples/_shared/minify.test.py
-    uv run examples/_shared/frame.test.py
-    uv run examples/_shared/link_codec.test.py
-    uv run examples/_shared/probe_link.test.py
-    uv run examples/_shared/link_swap.test.py
-    uv run examples/_shared/time_example.test.py
-    uv run examples/_shared/component_scan.test.py
-    uv run examples/_shared/count_calls.test.py
-    uv run examples/_shared/cpsat.test.py
-    uv run examples/_shared/framebuild.test.py
-    JUST="{{just_executable()}}" uv run examples/_shared/gate.test.py
-    JUST="{{just_executable()}}" uv run examples/_shared/ci_workflow.test.py
-    # finders/renbanana's own tests (#469): three well under a second,
+    # Every shared test, by glob: a new one needs no edit here. JUST is for
+    # the tests that run recipes themselves (gate_lib.commands).
+    export JUST="{{just_executable()}}"
+    for f in examples/_shared/*.test.mjs; do node "$f"; done
+    for f in examples/_shared/*.test.py; do uv run "$f"; done
+    # finders/renbanana's own tests (#469): four well under two seconds,
+    # test_probe_circle_cost.py about a second (two model builds, no solve),
     # test_max_house_circles.py about 7s (a CP-SAT solve, pinned to one
-    # worker -- this box is shared). test_probe_finds_known_grids.py solves
-    # a CP-SAT model per known grid and stays out of this gate; see
-    # `just test-finders-slow`.
+    # worker -- this box is shared). The known-grid tests solve a CP-SAT
+    # model per known grid and stay out of this gate, except the circle
+    # pattern's --cover subset: ten grids, about 7s, one per circled group
+    # shape plus the four large-chocolate witnesses (#498), so an
+    # over-constrained size encoding fails CI. The inverted
+    # probe's --cover subset (#501) is five grids, about 25s: one per
+    # chocolate rectangle shape and banana group size the pool holds (not
+    # per box offset: that takes 30 grids). The
+    # full runs are `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
+    uv run finders/renbanana/tools/test_prove_two_stage.py
+    uv run finders/renbanana/tools/test_probe_circle_cost.py
+    uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
+    uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover
+    # finders/hunt's own tests (#484, #485, #486, #487, #488, #489, #490):
+    # the dedupe key's public function, neighbours and connected components
+    # on hand-drawn boards, the text printer's output, the grid-drawing
+    # base's image size and sampled pixels, the `hunt` CLI run in a
+    # subprocess with the toy finders (fresh hunts and resume, resume's
+    # sleeping briefly per seed so a kill lands mid-hunt without a timing
+    # race; --no-verify then hunt verify DIR; the render hook writing one
+    # PNG per example), the `--workers`/load gate, and the CP-SAT helpers
+    # (uniqueness, minimizer, watchdog) on tiny models -- all well under a
+    # few seconds, workers pinned to 1.
+    uv run finders/hunt/test_dedupe.py
+    uv run finders/hunt/test_grid.py
+    uv run finders/hunt/test_printer.py
+    uv run finders/hunt/test_render.py
+    uv run finders/hunt/test_toy_hunt.py
+    uv run finders/hunt/test_render_hook.py
+    uv run finders/hunt/test_hunt_resume.py
+    uv run finders/hunt/test_workers_load.py
+    uv run finders/hunt/test_hunt_verify.py
+    uv run finders/hunt/test_uniqueness.py
+    uv run finders/hunt/test_minimizer.py
+    uv run finders/hunt/test_watchdog.py
     # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
     # divergence between the two fails here.
     uv run pytest finders/counting_shaded -q
+    # The galaxy-copycat human solver's acceptance test (#531): board 28
+    # solves with no case split, board 27 stops at the doc's recorded wall.
+    # About 1.5s, no CP-SAT solve.
+    uv run finders/galaxy-copycat/test_human_solver.py
     for dir in examples/*/; do
         name=$(basename "$dir")
         [ "$name" = "_shared" ] && continue
@@ -107,15 +123,17 @@ test:
             esac
         done
     done
-    uv run examples/_shared/check_layout.test.py
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
-# finders/renbanana's slow test: an inverted CP-SAT solve per known grid, one
-# to several seconds each and minutes overall. Not part of check/check-full;
-# run by hand after touching probe_inverted.py.
+# finders/renbanana's slow tests: a CP-SAT solve per known grid, about a
+# second to several seconds each and minutes overall. Not part of
+# check/check-full; run by hand after touching probe_inverted.py,
+# probe_circle_pattern.py or prove_two_stage.py.
 test-finders-slow:
     uv run finders/renbanana/tools/test_probe_finds_known_grids.py
+    uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py
+    uv run finders/renbanana/tools/test_prove_two_stage_slow.py
 
 # Run one space-separated list of test files, dispatching by extension.
 _run-tests files:
@@ -147,19 +165,17 @@ verify-skyscraper size="9":
     uv run examples/skyscraper/verify.py {{size}}
 
 # Manual, occasional uniqueness proof for isofill puzzles (slow CP-SAT solve).
-# Not part of check/test/CI; run by hand after a puzzle change. See
+# Not part of check/test/CI; run by hand after a puzzle change. Every
+# gen*.json is proved, found by glob, so a new board needs no edit here. See
 # examples/isofill/README.md.
 verify-isofill:
+    #!/usr/bin/env bash
+    set -euo pipefail
     uv run examples/isofill/verify.py
-    uv run examples/isofill/verify.py examples/isofill/gen.json
-    uv run examples/isofill/verify.py examples/isofill/gen_44g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_30g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_35g_silent.json
-    uv run examples/isofill/verify.py examples/isofill/gen_9x9.json
-    uv run examples/isofill/verify.py examples/isofill/gen_28g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_24g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_25g.json
-    uv run examples/isofill/verify.py examples/isofill/gen_26g.json
+    for f in examples/isofill/gen*.json; do
+        echo "$f"
+        uv run examples/isofill/verify.py "$f"
+    done
 
 # Soundness fuzz: every component keeps each cell's true value. The
 # invariant. Discovered by file name, same convention as `test` above.

@@ -5,7 +5,7 @@
 #
 #   uv run --with lzstring examples/_shared/component_scan.test.py
 
-from component_scan import builtin_components, registered_components
+from component_scan import builtin_components, mismatch, registered_components
 
 if __name__ == "__main__":
     # a single registration is found
@@ -48,5 +48,18 @@ if __name__ == "__main__":
     # link's component list honest would stop seeing it
     assert "SkyscraperLineComponent" not in builtins
     assert "FooComponent" not in builtins
+
+    # mismatch: the shipped-vs-registered comparison both framebuild.check and
+    # check_layout.check_components run. Unshipped is what the backend
+    # registers and the link omits; dead is what the link ships and the
+    # backend never registers. Built-ins are neither.
+    backend = "new FooComponent()\nnew BarComponent()\nnew HouseComponent()"
+    assert mismatch(["FooComponent", "BarComponent"], backend) == ([], [])
+    assert mismatch(["FooComponent"], backend) == (["BarComponent"], [])
+    assert mismatch(["FooComponent", "BarComponent", "BazComponent"], backend) == (
+        [],
+        ["BazComponent"],
+    )
+    assert mismatch(["BazComponent"], "") == ([], ["BazComponent"])
 
     print("component_scan self-check OK")

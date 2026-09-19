@@ -30,72 +30,15 @@
 // the original is slower still, so the comparison is conservative.
 //
 // The generic engine (all-different floor, component loader, fixpoint, DFS search)
-// lives in ../_shared/recovery-lib.mjs. This file is the Skyscraper glue only.
+// lives in ../_shared/recovery-lib.mjs, and the frame-probe skeleton (seeding,
+// report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file is the
+// Skyscraper glue only: the original wiring and the visible-count leaf check.
 
-import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { installGlobals, makeIo } from '../_shared/harness-lib.mjs'
-import {
-  makeCandidateState, makeAllDifferentFloor, loadComponents,
-  runToFixpoint, search, countLost, reportLine
-} from '../_shared/recovery-lib.mjs'
-import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { dirname } from 'path'
+import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const file = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'gen_6x6.json'
-const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
-const { n, box: [bh, bw], grid, clue, active } = gen
-const activeSet = new Set(active)
-const givens = gen.givens || {}
-
-// A skyscraper line and clue both range over 1..n (you always see at least the
-// first building, at most n).
-installGlobals(1, n)
-globalThis.helpers.naming = { getCellsDescription: () => '', getCellName: () => '' }
-
-// ---- geometry (mirrors build_size.py and the Hit Counts probe) ----
-const { W, H, idx, interior, clueCell, keys, groups, alldiffGroups } = frameGeometry(n, [bh, bw])
-
-// ---- the shared candidate state ----
-const RANGE = (lo, hi) => { const s = new Set(); for (let d = lo; d <= hi; d++) s.add(d); return s }
-// The all-different groups are the board's houses: both components gate on the
-// line kind, which the mock answers off this list (docs/line-contract.md).
-const st = makeCandidateState({ houses: alldiffGroups })
-
-function freshState () {
-  st.cand = new Map()
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const g = givens[`${r},${c}`]
-      st.cand.set(interior(r, c), g != null ? new Set([g]) : RANGE(1, n))
-    }
-  }
-  for (const k of keys) {
-    const side = k[0]; const i = +k.slice(1)
-    st.cand.set(clueCell(side, i), activeSet.has(k) ? new Set([clue[k]]) : RANGE(1, n))
-  }
-}
-
-// ---- the two wirings ----
-const { read } = makeIo(HERE)
-// main-global.js builds the frame itself (no groups input), so it needs the
-// puzzle mock's getCellAt/spec.size -- `frame: { W, H, idx }` ties those
-// to the same W/idx this probe already uses, so main-global.js's own
-// frame-building produces the identical `groups` list computed above.
-const mainSrc = read('main-global.js')
-
-function buildOurs () {
-  return loadComponents({
-    here: HERE,
-    mainSrc,
-    input: {},
-    frame: { W, H, idx },
-    files: [
-      { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
-    ]
-  })
-}
 
 // The built-in forward prune for a KNOWN clue k: the digits to drop from each
 // line cell, keeping only candidates on some path whose visible count is k.
@@ -121,11 +64,11 @@ function forwardPrune (puzzle, line, k) {
   if (![...cur].some(key => ((key / 32) | 0) === k)) return line.map(() => [])
   const C = new Array(len)
   C[len - 1] = new Set()
-  for (let m = 0; m <= n; m++) C[len - 1].add(KEY(k, m))
+  for (let m = 0; m <= len; m++) C[len - 1].add(KEY(k, m))
   for (let i = len - 2; i >= 0; i--) {
     C[i] = new Set()
     for (let j = 0; j <= len; j++) {
-      for (let m = 0; m <= n; m++) {
+      for (let m = 0; m <= len; m++) {
         for (const d of cands[i + 1]) {
           if (d > m) { if (C[i + 1].has(KEY(j + 1, d))) { C[i].add(KEY(j, m)); break } } else if (d < m) { if (C[i + 1].has(KEY(j, m))) { C[i].add(KEY(j, m)); break } }
         }
@@ -155,7 +98,7 @@ const gatedLine = {
     for (let i = 0; i < inst.line.length; i++) if (bad[i].length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad[i]), inst.line[i])
   }
 }
-function buildOriginal () {
+function buildOriginal ({ groups }) {
   return groups.map(g => {
     const inst = { name: g.key }
     gatedLine.setParams(inst, g.cells[0], g.cells.slice(1))
@@ -164,45 +107,14 @@ function buildOriginal () {
   })
 }
 
-// ---- Régin (GAC) all-different floor over rows, columns, boxes ----
-const floorGroup = makeAllDifferentFloor(st, { kind: 'regin', maxDigit: n })
-
-// ---- root recovery (cheap) + soundness ----
-const hiddenKeys = keys.filter(k => !activeSet.has(k))
-function visibleCount (line) {
-  let cnt = 0; let max = 0
-  for (const c of line) { const v = [...st.cand.get(c)][0]; if (v > max) { cnt++; max = v } }
-  return cnt
-}
-function report (label, build) {
-  freshState()
-  const startTotal = st.total()
-  const comps = build()
-  const passes = runToFixpoint(st, comps, alldiffGroups, floorGroup, { init: true })
-  const hiddenRecovered = hiddenKeys.filter(k => st.cand.get(groups.find(g => g.key === k).cells[0]).size === 1).length
-  let interiorSolved = 0
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (st.cand.get(interior(r, c)).size === 1) interiorSolved++
-  const truth = []
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth.push([interior(r, c), grid[r][c]])
-  for (const k of keys) truth.push([groups.find(g => g.key === k).cells[0], clue[k]])
-  const lost = countLost(st, truth)
-  const removed = startTotal - st.total()
-  console.log(reportLine(label, { extra: `hidden ${hiddenRecovered}/${hiddenKeys.length}, interior ${interiorSolved}/${n * n}, `, removed, passes, lost }))
-  return { hiddenRecovered, interiorSolved, removed, lost }
-}
-
-// ---- search: does deducing the blank clues cut backtracking? ----
-// Branch over the interior AND every clue cell: the original can never DEDUCE a
-// blank clue, so the only way it fills one is a guess. Ours deduces most of them
-// during propagation, so it rarely has to branch a clue and prunes the interior
-// with what it deduced. Fewer nodes = the interactive deduction paid off.
-const INT = []
-for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) INT.push(interior(r, c))
-for (const k of keys) INT.push(groups.find(g => g.key === k).cells[0])
-
 // A full assignment is a real solution only when every line's visible count equals
 // its clue. update prunes toward this but does not reject a completed line itself.
-function validLeaf () {
+function validLeaf ({ st, groups }) {
+  const visibleCount = line => {
+    let cnt = 0; let max = 0
+    for (const c of line) { const v = [...st.cand.get(c)][0]; if (v > max) { cnt++; max = v } }
+    return cnt
+  }
   for (const g of groups) {
     const clueId = g.cells[0]
     if (st.cand.get(clueId).size !== 1) return false
@@ -210,38 +122,39 @@ function validLeaf () {
   }
   return true
 }
-// The original brute-forces the blank clues, so its tree is unbounded in
-// practice. Cap the nodes so a hopeless run still returns; a capped original is
-// itself the finding — it does not solve within the budget. --cap= overrides.
-const NODE_CAP = +((process.argv.find(a => a.startsWith('--cap=')) || '').split('=')[1]) || 200000
-function searchRun (build) {
-  freshState()
-  const comps = build()
-  runToFixpoint(st, comps, alldiffGroups, floorGroup, { init: true })
-  return search(st, { interior: INT, comps, alldiffGroups, floorGroup, validLeaf, nodeCap: NODE_CAP })
-}
 
-console.log(`${file}: n=${n}, box ${bh}x${bw}, ${active.length}/${keys.length} clues shown, ${hiddenKeys.length} blank, ${Object.keys(givens).length} interior givens`)
-
-if (process.argv.includes('--search')) {
-  const only = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1]
-  const modes = [['original', buildOriginal], ['ours    ', buildOurs]].filter(([m]) => !only || m.trim() === only)
-  const seen = {}
-  for (const [label, build] of modes) {
-    const r = searchRun(build)
-    seen[label.trim()] = r
-    const note = r.capped ? ' CAPPED' : (r.solutions === 1 ? '' : ` (solutions=${r.solutions}!)`)
-    console.log(`  ${label}: ${r.nodes} search nodes, ${r.solutions} solution${r.solutions === 1 ? '' : 's'}${note}`)
-  }
-  if (seen.original && seen.ours && !seen.ours.capped && seen.ours.nodes > 0) {
-    const ratio = (seen.original.nodes / seen.ours.nodes).toFixed(0)
-    const atLeast = seen.original.capped ? '>' : ''
-    console.log(`  ours explores ${atLeast}${ratio}x fewer nodes than the original${seen.original.capped ? ' (original never finished within the cap)' : ''}`)
-  }
-} else {
-  const original = report('original', buildOriginal)
-  const ours = report('ours    ', buildOurs)
-  console.log(`  DELTA ours over original: hidden +${ours.hiddenRecovered - original.hiddenRecovered}, interior +${ours.interiorSolved - original.interiorSolved}, removed +${ours.removed - original.removed}`)
-  console.log('  (run with --search for solve-node counts)')
-  if (ours.lost || original.lost) { console.log('  FAIL: a true value was removed'); process.exit(1) }
-}
+// A skyscraper line and clue both range over 1..n (you always see at least the
+// first building, at most n).
+makeFrameProbe({
+  here: HERE,
+  clueRange: n => [1, n],
+  files: [
+    { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
+  ],
+  blankWord: 'blank',
+  // 'original' — the wrapper ChinStrap shipped (gatedLine above); 'ours' —
+  // main-global.js, one SkyscraperLineComponent per line reading both end clues.
+  modes: [
+    { key: 'original', label: 'original', build: buildOriginal },
+    { key: 'ours', label: 'ours    ' }
+  ],
+  deltas: [['ours over original:', 'original', 'ours']],
+  afterReport: () => console.log('  (run with --search for solve-node counts)'),
+  // Branch over the interior AND every clue cell: the original can never DEDUCE a
+  // blank clue, so the only way it fills one is a guess. Ours deduces most of them
+  // during propagation, so it rarely has to branch a clue and prunes the interior
+  // with what it deduced. Fewer nodes = the interactive deduction paid off.
+  branchClues: true,
+  // The original brute-forces the blank clues, so its tree is unbounded in
+  // practice. Cap the nodes so a hopeless run still returns; a capped original is
+  // itself the finding — it does not solve within the budget. --cap= overrides.
+  nodeCap: 200000,
+  afterSearch: (p, seen) => {
+    if (seen.original && seen.ours && !seen.ours.capped && seen.ours.nodes > 0) {
+      const ratio = (seen.original.nodes / seen.ours.nodes).toFixed(0)
+      const atLeast = seen.original.capped ? '>' : ''
+      console.log(`  ours explores ${atLeast}${ratio}x fewer nodes than the original${seen.original.capped ? ' (original never finished within the cap)' : ''}`)
+    }
+  },
+  validLeaf
+})

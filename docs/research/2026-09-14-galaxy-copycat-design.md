@@ -325,7 +325,7 @@ dead (every size is nine). Everything else in the pairings list applies.
 ## Result: equal-size symmetric regions cannot tile the grid irregularly
 
 Checked 2026-09-14 by exhaustive search
-(`2026-09-14-galaxy-copycat/symmetric_region_tilings.py`; shape counts
+(`finders/galaxy-copycat/symmetric_region_tilings.py`; shape counts
 cross-checked against the known 9,910 fixed nonominoes).
 
 | Grid | Point-symmetric n-ominoes (fixed) | Tilings by n of them | Distinct up to symmetry | Without any 1xn bar |
@@ -444,7 +444,7 @@ inside one box. Single-cell segments are fine.
 
 ### Segment-structure survey (2026-09-14)
 
-`2026-09-14-galaxy-copycat/segment_openers.py` enumerates every pair of
+`finders/galaxy-copycat/segment_openers.py` enumerates every pair of
 segment structures up to length 8 (parts of any size, singles included) and
 lists which (S_A, S_B) can be realised and how many in-segment duplicates
 (copycats) that needs. Geometry-free relaxation: rows and columns are
@@ -539,7 +539,7 @@ only says the sums are equal, 11 to 17. Branch lists come from
 
 ### Checker (2026-09-14)
 
-`2026-09-14-galaxy-copycat/copycat_rsl_solver.py` is the CP-SAT model of the
+`finders/galaxy-copycat/copycat_rsl_solver.py` is the CP-SAT model of the
 chosen ruleset: sudoku, nine copycats (one per row, column, box, nine
 different digits, value = digit of the 180-degree opposite cell), region
 sum lines on values, and copycat pairs as equal value multisets. It takes a
@@ -1040,3 +1040,239 @@ Answer to the question: yes, two (3,4) lines fit, in hundreds of ways,
 and 341 of them are unique puzzles in which the split genuinely
 shuffles. Next: pick by shape and box coverage, then verify the chosen
 board with `copycat_rsl_solver.py --candidates` and hand-check the break-in.
+
+**Unique (3,4) pairs deduped by cell coverage (2026-09-16).** Direction and
+path order through the same cells are the same region sum line, so pairs
+are keyed by the two cell sets. 2,255 feasible pairs are 1,317 by
+coverage; the 341 unique ones are **201**, 16 of them with a repeated
+value. `boards/board14-pair7.unique-dedup.jsonl` lists the 201 sorted by
+"lines only" (solutions left by the two lines' region sums before the
+pairing rule; higher means the pairing does more). Top of each list:
+
+| lines only | L5 | L6 | values |
+|---|---|---|---|
+| 1,249 | r1c2-r6c2 column, hook r6c1 (boxes 1, 4) | r7c7-r9c7, r9c6-r8c6-r8c5-r9c5 (boxes 9, 8) | 5 9 6 \| 8 1 7 4 vs 8 5 7 \| 9 4 1 6 |
+| 1,140 | r1c2-r5c2, r5c3-r6c3 | r8c5-r9c5-r9c6-r8c6, r8c7-r8c8-r9c8 | 9 2 7 \| 8 1 5 4 vs 1 8 7 2 \| 9 4 5 |
+| 646 (repeat) | r1c2-r1c1-r2c1-r3c1, r4c1-r4c2-r4c3 | r1c5-r1c6-r2c6, r2c7-r2c8-r1c8-r1c9 | 7 1 5 6 \| 8 8 3 vs 5 8 6 \| 1 7 3 8 |
+
+The repeat case is notable: L5's 3-segment is three cells of row 4
+showing 8, 8, 3, so the repeat itself proves a copycat sits on the
+segment. Repeats cost freedom (646 against 1,249) because they pin a
+copycat on the line.
+
+**Human break-in ranking of the 201 unique (3,4) pairs (2026-09-16).**
+Board 22 (`boards/board22-pair7-copycats.json`, the pair with a copycat on
+each line, L5 r5c2-r5c1-r6c1-r6c2 | r7c2-r8c2-r8c3, L6 r9c5-r8c5-r8c6-r7c6 |
+r7c7-r8c7-r9c7) is unique but has no human break-in: the two lines' sums
+leave 989 states, equal sums 121, and no single count argument places a
+digit; the first placements need equal sums plus the 8-count together (4
+states), i.e. a case split over sums 15/16/18/20. A ladder was measured
+for every unique pair off the residual set (`.scratch/copycat-rsl/p7/ladder.py`):
+lines-only, then equal segment sums, then per-digit count arguments added
+greedily; per rung the state count and the digits/copycats placed. 135 of
+201 pairs place digits on only two rungs, 38 on three, 4 on four; none
+place a digit from the lines alone, 95 from equal sums.
+
+**Board 23** (`boards/board23-pair7-ladder.json`): L5 =
+r1c3-r1c2-r2c2-r3c2 | r4c2-r5c2-r6c2 (boxes 1, 4), L6 = r7c8-r8c8-r8c7 |
+r8c6-r8c5-r9c5-r9c6 (boxes 9, 8); solution values 4,2,5,7 | 8,1,9 and
+5,4,9 | 7,1,8,2, both sums 18; unique; no copycat lands on the lines
+(r4c2 and r8c7 are possible copycats until the sums exclude them). Ladder:
+lines only 279 states; L5's box-4 segment is r4c2+1+r6c2 so L5 makes only
+10/12/15/16/17/18 and the common sums are 15 or 18, which places r1c3=4,
+r5c5=4, r6c1=4, r7c5=6 and the box-4 copycat r4c1 (17 states); at sum 15
+L5 is 4,3,2,6 | 9,1,5 with no 7 while L6 must show a 7, so sum 18 (3
+states, 26 digits); the 3-count or the full match finishes. Rendered with
+the ladder in the session artifact.
+
+**Optimising for digit-count deductions (2026-09-16).** Same ladder, but
+with only per-digit count arguments (no segment sums), the digit chosen at
+each rung being the one that places most. 134 of the 201 unique pairs
+place a digit from a single count; rungs with placements: 5 for 9 pairs,
+4 for 56, 3 for 83, 2 for 49, 1 for 4 (`.scratch/copycat-rsl/p7/ladder_counts.py`).
+
+**Board 24** (`boards/board24-pair7-counts.json`): L5 = r5c3-r6c3-r6c2 |
+r7c2-r7c1-r8c1-r9c1 (boxes 4, 7), L6 = r7c5-r8c5-r8c6-r9c6 | r9c7-r8c7-r8c8
+(boxes 8, 9); values 9,4,7 | 5,1,8,6 and 6,1,4,9 | 7,8,5, both sums 20;
+unique; copycats r9c1 (L5) and r8c7 (L6) on the lines. Count ladder from
+340 lines-only states: 1s -> 118 (r1c3=1, r6c3=4); 6s -> 52 (r1c4=8,
+r5c4=2); 9s -> 41 (r2c7=1, r5c5=4, r5c6=8, r7c5=6, r9c5=8); 8s -> 2
+(20 digits, copycats r1c9, r4c2, r9c1); 2s -> 1. Runner-up: L5
+r4c1-r5c1-r5c2-r6c2 | r7c2-r7c1-r8c1 with L6 r8c6-r8c5-r9c5-r9c6 |
+r9c7-r8c7-r8c8 (8s, 4s, 2s, 1s, 5s; one copycat on the lines).
+
+**Human rungs must survive a relaxed model (2026-09-16).** Board 24's
+count ladder looked gradual, but every rung after the 1s was closed by
+where L1/L2 pin box 8's 8, which a solver cannot see from the lines. Test:
+enumerate the states of board 14's forced facts + sudoku + copycat rules +
+the region sums of L1-L4 *without* their pairings (606,950 states, CP-SAT
+OPTIMAL in 210 s, placement DFS agrees), and run the count ladder there.
+A rung counts only if it places digits in that set. Board 24 keeps one
+rung (the 1s). Over the 201 unique pairs: 112 keep no rung, 42 one, 14
+two, 10 three, 17 four, 4 five, 2 six (`.scratch/copycat-rsl/p7/enum_relaxed.py`,
+`ladder_relaxed.py`; the no-lines relaxation passed 4.4 M states without
+finishing and was dropped).
+
+**Board 25** (`boards/board25-pair7-relaxed.json`): L5 = r1c1-r2c1-r3c1 |
+r4c1-r5c1-r5c2-r5c3 (boxes 1, 4), L6 = r7c6-r7c5-r8c5-r8c6 | r8c7-r7c7-r7c8
+(boxes 8, 9); values 2,7,9 | 8,6,1,3 and 9,6,1,2 | 7,8,3, sums 18; unique,
+and unique already in the relaxed set, so the L1/L2 pairings are never
+needed. No copycat lands on the lines (r4c1, r7c7, r8c7 are possible
+until excluded). Relaxed ladder from 890 lines-only states: 8s -> 163
+(r1c3=1, r8c7 not a copycat); 7s -> 61 (r6c3=4); 3s -> 20 (r4c1=8,
+r4c3=2); 4s -> 9 (r3c1=9, r4c2=9, r4c7=3, r5c7=9, r7c8=3); 5s -> 3 (nine
+digits); 2s -> 1. Runner-up with six rungs but ending at 3 relaxed states:
+L5 r2c1-r2c2-r3c2 | r4c2-r5c2-r5c1-r6c1 with L6 r9c5-r9c6-r8c6 |
+r8c7-r8c8-r9c8-r9c9.
+
+**Rungs must be readable off the line pencil marks (2026-09-16).** The
+relaxed-model ladder still credited rungs that only a joint state count can
+see: on board 25 the "7s" rung was a phantom (r6c3=4 already held in 162 of
+163 states, the real reason being the 4s-in-columns argument), and after
+the 1s, 8s and r6c3=4 no single count placed anything; the strongest, the
+3s, removed 38 candidates scattered over 32 cells, most far from the lines.
+Two stricter metrics were tried on the 201 unique pairs
+(`.scratch/copycat-rsl/p7/ladder_local.py`, `ladder_human2.py`):
+
+- *Local*: credit a rung only for candidates removed, digits placed or
+  copycat flags decided on the line cells and the boxes they cross, and
+  only for candidates alive in >= 5 % of the current states. Still too
+  loose: late rungs "remove" 50-90 local candidates by state collapse.
+- *Human-projectable* (kept): knowledge is each line cell's candidates and
+  copycat status projected from the surviving states; each line is
+  enumerated exactly over those options (own digit if it may be plain, the
+  opposite cell's candidates if it may be a copycat; distinct plain digits
+  in a shared house; one copycat per house; the line's own segment sums).
+  A rung is one argument, equal first-segment sums or one digit's count
+  equal on both lines, and it eliminates an option only when no
+  enumeration of that line uses the option with a count (sum) the other
+  line can reach. Only those eliminations are applied to the state set;
+  between rungs the relaxed model propagates (sudoku, copycat rules, L1-L4
+  region sums, no pairings). Run on all 201 pairs in 110 s.
+
+Result: 91 pairs have no human rung, 89 one, 17 two, 3 four, 1 five. Board
+22 and 23 keep one rung, board 24 none, board 25 two (the 1s and the 8s,
+matching the hand analysis exactly). Two pairs reach a single relaxed
+state on four rungs.
+
+**Board 26** (`boards/board26-pair7-human.json`): L5 = r4c2-r5c2-r6c2 |
+r7c2-r8c2-r9c2-r9c1 (boxes 4, 7), L6 = r7c8-r8c8-r8c7 | r8c6-r8c5-r9c5-r9c6
+(boxes 9, 8); values 8,1,9 | 2,7,6,3 and 9,6,3 | 2,1,8,7, sums 18; unique,
+and unique already in the relaxed set. r8c2 is the box-7 copycat (digit 4,
+shows 7); no copycat on L6. Ladder from 286 lines-only states: 1s (L6 has
+exactly the plain 1 at r8c5, L5 has r5c2, so r9c1 is not 1; then L5's box-7
+segment is >= 16 and its box-4 segment r4c2+1+r6c2 <= 17, so r4c2 is not a
+copycat, r4c2 and r6c2 are from 7/8/9, and r7c2, r9c2 lose 8, 9 while r8c2
+cannot show 8 or 9) -> 136, propagation gives r4c2=8; 4s (L5 cannot show a
+4: box 7's 4 is the copycat, no possible copycat on L5 shows 4, and r6c2=4
+fails L5's sums, so r7c8, r8c8, r8c6, r9c5, r9c6 lose 4) -> 27; 8s (L5 shows
+the 8 at r4c2, L6 at most one, so r9c1 is not 8 and L6's one 8 must be
+r9c5) -> 3; sums (L5 16 or 18, L6 18 or 20, so 18: r6c2=9, r9c1=3, r8c7=3,
+r9c6=7, r8c2 shows 7) -> 1. Not measured: the difficulty of the relaxed
+propagation between rungs (17 -> 21 -> 46 -> 81 placed digits), which uses
+L1-L4's sums but not their pairings. Runner-up, also four rungs to one
+state: L5 r1c1-r2c1-r3c1-r3c2 | r4c2-r4c1-r5c1 with L6 r7c8-r7c7-r8c7 |
+r9c7-r9c6-r9c5-r8c5 (1s, sums, 2s, sums). The five-rung pair L5
+r1c1-r2c1-r3c1-r3c2-r4c2-r4c1-r5c1 / L6 r8c5-r8c6-r7c6-r7c7-r8c7-r9c7-r9c8
+ends at 15 relaxed states. Rendered with the ladder in the session artifact.
+
+**Board 26, hand check of the rungs (2026-09-16).** Chris pushed on the
+first step and the narration above does not hold. Corrected: (1) the
+1-count gives only r9c1 != 1; the "box-7 segment >= 16" claim was false (a
+copycat can repeat a plain digit, so 13 is reachable) and the seven other
+eliminations each need their own column-2 argument. (2) r4c2 = 8 is not
+propagation: the 8s at r2c3, r6c9, r7c7 put column 2's 8 in r4c2/r8c2/r9c2;
+in box 7 it makes the lower segment 16 or >= 18 once r9c1 != 1, and the
+upper segment r4c2+1+r6c2 <= 17 reaches 16 only as 8+1+7, so r4c2 = 8.
+(3) The 4s rung stands. (4) The 8s rung needs r8c7 excluded as a copycat
+(true in the state set: 1 of 136 states after step 1, 0 of 27 after the
+4s) and no hand reason for that is known, so the rest of the ladder is
+solver-verified only. Lesson for `ladder_human2.py`: the projection step
+between rungs smuggles in facts (r4c2 = 8, r8c7 not a copycat) that the
+rung itself did not earn; a human ladder must carry its own candidate
+state and propagate only with singles.
+
+**A candidate-carrying human solver (2026-09-16).** Chris: "like the column 2
+8 deduction felt humanable, but checking through all states of r6c2=4
+didn't." So the ladder now runs on a solver that carries its own state and
+never consults the state set (`finders/galaxy-copycat/human_solver.py`):
+per cell a candidate set, a copycat status P/C/?, and for line cells the
+allowed shown options. Propagation: naked and hidden singles, locked
+candidates, one copycat per house, copycat digits distinct, the pigeonhole
+"only box 7 can copycat a 4, so box 7's copycat is its 4" (every other
+box has its 4 pinned away from its copycat cells), a plain cell never
+holds its box's copycat digit, and each line pruned by exact enumeration
+of its shown options (distinct plain digits in a shared house, one copycat
+per house, equal run sums, a digit confined to the line inside a house
+must sit on it). A rung is one argument on one of the three pairs: equal
+line totals (L3 has three box runs, L4 two, so totals not run sums) or one
+digit's count equal. Every elimination is checked against the solution.
+Start state: board 14's forced facts plus the centre and corner marks of
+Chris's link (corner marks read as "digit confined to these cells of the
+box"). Two model bugs it caught: the earlier r4c2 = 8 argument ignored
+r4c2 as a copycat *holding* 8 while showing 2, and r9c1 as a copycat
+showing 2.
+
+Result over the 201 unique shuffled pairs (`human_batch.jsonl`, 5 min):
+none solves. Digits placed beyond the 16 forced: 0 for 162 pairs, 1 for 22,
+2 for 8, 3 for 6, then one each at 4, 5, 7. Board 26 places 4 (r4c2 = 8
+from the 1s then the 2s, the 4s rung, r9c1 != 8 from the 8s) and stalls
+at 20 digits, 6 copycats. Best is L5 r2c2-r3c2-r3c1 | r4c1-r5c1-r5c2-r5c3
+with L6 r8c5-r8c6-r9c6 | r9c7-r9c8-r8c8-r8c9 at 23 digits (4s, 1s, 6s,
+sum). Conclusion: no shuffled (3,4) pair on board 14 has a human path
+under single pair arguments plus basic propagation; the solver-projected
+ladders above were all leaning on joint state facts. Next: the unshuffled
+(3,4) pairs, per Chris's fallback.
+
+**Unshuffled (3,4) pairs (2026-09-16).** Chris's fallback. No new CP-SAT
+run: the stage-1 catalogue (507 feasible 7-cell lines) was paired exactly on
+the residual set (`.scratch/copycat-rsl/p7/pairs_all.py`, 3 s): 4,241
+feasible disjoint pairs, 408 unique, of which 41 are new by cell coverage,
+i.e. unique pairs whose two lines take the same split
+(`boards/board14-pair7.unique-unshuffled.jsonl`). The human solver solves
+none of them either; digits placed beyond the 16 forced: 0 for 21 pairs,
+1 for 14, 2 for 6. Worse than the shuffled set. So with this solver no
+(3,4) pair on board 14, shuffled or not, has a human path. What could
+change the verdict: the solver is a lower bound (no casework, no chaining
+two arguments, no bifurcation on a copycat cell), a third pair or a
+different line shape, or accepting some casework as the intended break-in.
+
+**Human solver, fixes, and (3,4) x (5,2) pairs (2026-09-17).** Chris: "what
+about a 3/4 and 5/2 pair". Paired lines carry the same seven values, so a
+(5,2) partner's 2-cell segment equals its 5-cell segment: 15 to 17 with no
+copycat on either segment, 11 to 18 with one (a copycat may repeat a
+value; Chris's correction). All (5,2) paths off L1-L4 were paired with the
+(3,4) paths exactly on the residual set (`.scratch/copycat-rsl/p7/pairs_52.py`,
+2 s): 249 feasible (5,2) lines, 1,337 feasible pairs, 128 unique by
+coverage (`boards/board14-pair7-52.unique.jsonl`). Solver fixes on the way:
+a line cell's candidates were not synced when its copycat status was
+decided after its options were pruned; naked subsets over the boxes'
+copycat-digit sets (boxes 2 and 6 both {5,7} make box 8's copycat its 3).
+Rerun of all three sets on the fixed solver (`hb_*.jsonl`): shuffled
+(3,4): none solved, best 23 digits; unshuffled (3,4): none, best 18;
+(3,4) x (5,2): one solved outright, next best 57.
+
+**Board 27** (`boards/board27-pair34x52.json`): L5 r7c5-r8c5-r9c5-r9c6 |
+r9c7-r9c8-r9c9, L6 r1c1-r1c2-r2c2-r2c1-r3c1 | r4c1-r4c2, sums 17, r4c1 the
+box-4 copycat holding 8 and showing 8. Seven rungs to 57 digits, then one
+case split (r1c7 as box 3's copycat contradicts) finishes. Chris: "lame",
+box 1's copycat is r3c3 from the start, so the five-cell segment is plain
+and the squeeze is free.
+
+**Board 28** (`boards/board28-pair43x25-solved.json`): L5 r4c3-r4c2-r5c2-r6c2
+| r7c2-r8c2-r9c2 (boxes 4, 7), L6 r2c6-r1c6 | r1c7-r1c8-r2c8-r2c9-r3c9
+(boxes 2, 3); values 2,5,1,9 | 3,8,6 and 9,8 | 1,6,5,2,3, sums 17; unique;
+copycats on both lines: r9c2 (box 7, digit 4, shows r1c8 = 6) and r1c7
+(box 3, digit 9, shows r9c3 = 1), so the five-cell segment is not plain
+from the start. Solved by the human solver in six rungs: L1/L2 6s (r7c4 is
+box 8's copycat, 17 digits), L5/L6 1s (19), sums, 7s, 3s, then L1/L2 sums,
+after which propagation fills the grid. Caveat: that final propagation
+runs from 19 to 81 placed digits and its by-hand length is unmeasured.
+Rendered in the session artifact.
+
+**Ruling (2026-09-17).** Chris: "board 28 was perfect." Board 28 is the
+design of record for the copycat + region-sum-line puzzle on board 14:
+`boards/board28-pair43x25-solved.json`, solution and copycats in the entry
+above. The human solver (`finders/galaxy-copycat/human_solver.py`, landed
+by #531) is the acceptance test for any further change: a board counts as
+human-solvable only if it solves there with no case split.

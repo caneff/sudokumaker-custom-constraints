@@ -7,8 +7,8 @@
 // The component gates two rules on the line being a house, so every kind in
 // docs/line-contract.md gets its own fuzz: a bare line (a drawn path, digits
 // may repeat), a house, and a full house. The mock answers
-// getCellsCanHaveRepeats from the declared kind, never from the digits, so a
-// run cannot pass by inferring a kind the app would not give it.
+// getCellsCanHaveRepeats from the houses the case declares, never from the
+// digits, so a run cannot pass by inferring a kind the app would not give it.
 //
 // A fourth run puts the board on minDigit 0: an index of 0 is out of range, and
 // 0 is an ordinary digit everywhere else on the line.
@@ -19,7 +19,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, violates, fixpoint } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -71,8 +71,7 @@ function drawZeroLine (kind, m, D) {
   }
   const pool = []
   for (let d = 0; d <= D; d++) pool.push(d)
-  for (let i = pool.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]] }
-  return swapIndexerIntoRange(pool.slice(0, m))
+  return swapIndexerIntoRange(shuffle(rnd, pool).slice(0, m))
 }
 
 function fuzz (label, kind, minDigit, sizes, draw) {
@@ -84,7 +83,7 @@ function fuzz (label, kind, minDigit, sizes, draw) {
       const line = draw(kind, m, D)
       if (line === null) continue
       const truth = truthOf(line)
-      const p = makePuzzle(truth, (c, v) => randomCandidates(rnd, minDigit, D, v), { kind, digitCount: D })
+      const p = makePuzzle(truth, (c, v) => randomCandidates(rnd, minDigit, D, v), { houses: housesOf(kind, lineCells(line.length)) })
       const inst = {}
       mod.setParams(inst, CLUE, lineCells(line.length))
       const v = violates(mod, inst, p, truth)
@@ -112,7 +111,7 @@ const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
   if (c === 1) return [2] // index forced to 2
   if (c === 2) return [3] // target (line[1]) forced to 3
   return [1, 2, 3, 4]
-}, { kind: 'house', digitCount: 4 })
+}, { houses: [lineCells(4)] })
 const inst = {}
 mod.setParams(inst, CLUE, lineCells(4))
 let removals = 0; for (const s of p._cand.values()) removals += s.size

@@ -20,6 +20,20 @@ drivers that launch a hunt overnight stay under `docs/research/` (#469).
 
 ## Pointers
 
+- Before writing a new finder, start from `finders/hunt/`: the shared hunt
+  protocol (a `typing.Protocol` of `propose`/`verify`/`record`/`key`/
+  `symmetry`, and the `hunt` CLI's `run(finder, argv)`) that gives a fresh
+  hunt its output directory and dedupe for free. `finders/hunt/toy_finder.py`
+  is a minimal worked example. Existing finders are not ported onto it.
+- Before writing a new finder — what to search, when cuts beat a counter,
+  profiling the loop, the `ctypes` C port, counting what you found:
+  `docs/agents/grid-finder-lessons.md`.
+- `finders/galaxy-copycat/`'s write-ups live in `docs/research/2026-09-14-copycat-scan.md`
+  and `docs/research/2026-09-14-galaxy-copycat-design.md`; its boards are
+  `docs/research/2026-09-14-galaxy-copycat/boards/`.
+- `finders/galaxy-copycat/human_solver.py` is the candidate-carrying human
+  solver for copycat + paired region-sum lines — the acceptance test for
+  whether a board is human-solvable (design doc, "Ruling (2026-09-17)").
 - **Before starting a hunt, answer the preflight** at the top of
   `docs/agents/grid-finder-lessons.md` in writing, and keep a decision log as
   the hunt runs. Six lessons in that file were re-derived the expensive way by

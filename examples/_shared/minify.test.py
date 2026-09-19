@@ -98,18 +98,106 @@ def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
 
 
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
-    # This is a regex strip, not a scanner, so anything it cannot pair on one
-    # line -- a block spanning lines, or a "/*" living inside a string -- is
-    # refused rather than half-cut. No shipped file has either today.
+    # A block comment that is being dropped must close on its line: one that
+    # spans lines is refused rather than half-cut. No shipped file has one.
     unpaired = [
         "/* opens\n and closes */\nconst x = 1\n",  # a multi-line block
         "const x = 1 /* opens\n",  # a block with no end at all
-        "const s = 'a /* b'\n",  # a marker inside a string
     ]
     for src in unpaired:
         try:
             minify_js(src)
         except AssertionError:
+            continue
+        raise AssertionError(f"expected a refusal for {src!r}")
+
+
+def test_a_line_comment_may_contain_block_markers_and_urls():
+    got = minify_js(
+        "const a = 1 // see /* here\n"
+        "const b = 2 // or here */\n"
+        "const c = 3 // https://x.y/z\n"
+    )
+    assert got == "const a = 1\nconst b = 2\nconst c = 3\n", repr(got)
+
+
+def test_a_string_keeps_its_comment_markers():
+    src = (
+        'const sep = "a//b"\n'
+        "const open = 'x /* y'\n"
+        "const close = 'x */ y'  // dropped\n"
+        'const url = "https://x" // dropped\n'
+        "const esc = 'it\\'s // fine'\n"
+    )
+    got = minify_js(src)
+    assert got == (
+        'const sep = "a//b"\n'
+        "const open = 'x /* y'\n"
+        "const close = 'x */ y'\n"
+        'const url = "https://x"\n'
+        "const esc = 'it\\'s // fine'\n"
+    ), repr(got)
+
+
+def test_a_template_literal_keeps_markers_across_lines():
+    src = (
+        "const t = `a // b\n\n/* c ${x // real comment\n} d`  // dropped\nconst y = 1\n"
+    )
+    got = minify_js(src)
+    assert got == ("const t = `a // b\n\n/* c ${x \n} d`\nconst y = 1\n"), repr(got)
+
+
+def test_keep_comments_never_reads_the_text():
+    # The annotated mode returns every line as written (blank lines aside), so
+    # nothing the scan refuses -- a multi-line block, an apostrophe in prose --
+    # can stop it (#433).
+    src = (
+        "const a = 1 // see /* here\n"
+        'const sep = "a//b" // note */\n'
+        "const open = 'x /* y'\n"
+        'const url = "https://x" // https://y\n'
+        "const t = `a // b\n"
+        "c`  // url https://x\n"
+        "/* a block\n"
+        "   that doesn't close on its line */\n"
+        "const r = /'/  // regex\n"
+    )
+    assert minify_js(src, keep_comments=True) == src
+
+
+def test_drop_blocks_false_passes_a_multiline_block_through():
+    # Vendored code round-trips: a block spanning lines is kept, its text is
+    # not scanned as code, and line comments still go.
+    got = minify_js(
+        "/* a block\n   isn't code // still block */\nconst x = 1  // gone\n",
+        drop_blocks=False,
+    )
+    assert got == "/* a block\n   isn't code // still block */\nconst x = 1\n", repr(
+        got
+    )
+
+
+def test_a_regex_literal_is_read_through_where_it_cannot_be_a_division():
+    got = minify_js("x.replace(/'\\/\\/[/]/g, '') // dropped\n")
+    assert got == "x.replace(/'\\/\\/[/]/g, '')\n", repr(got)
+    got = minify_js("const q = a / b / c // note\nconst d = (a) / 2 // note\n")
+    assert got == "const q = a / b / c\nconst d = (a) / 2\n", repr(got)
+
+
+def test_refuses_a_slash_it_cannot_classify_and_an_unclosed_construct():
+    refused = [
+        ("const r = i++ / n // note\n", "ambiguous slash"),
+        ("  return /'/.test(s)\n", "ambiguous slash"),
+        ("x = a\n  / b\n", "ambiguous slash"),
+        ("const r = /abc\n", "unterminated regex"),
+        ("const s = 'oops\n", "unterminated string"),
+        ("const t = `never closes\nmore\n", "template literal never closes"),
+    ]
+    for src, what in refused:
+        try:
+            minify_js(src)
+        except AssertionError as e:
+            assert what in str(e), str(e)
             continue
         raise AssertionError(f"expected a refusal for {src!r}")
 
@@ -277,6 +365,13 @@ if __name__ == "__main__":
     test_keep_comments_still_splices_includes_and_prunes_dead_ones()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()
+    test_a_line_comment_may_contain_block_markers_and_urls()
+    test_a_string_keeps_its_comment_markers()
+    test_a_template_literal_keeps_markers_across_lines()
+    test_keep_comments_never_reads_the_text()
+    test_drop_blocks_false_passes_a_multiline_block_through()
+    test_a_regex_literal_is_read_through_where_it_cannot_be_a_division()
+    test_refuses_a_slash_it_cannot_classify_and_an_unclosed_construct()
     test_splices_an_include_relative_to_the_including_file()
     test_minifies_the_included_text_too()
     test_an_include_that_minifies_to_nothing_leaves_no_blank_line()

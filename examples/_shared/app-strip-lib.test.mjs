@@ -3,7 +3,7 @@
 // run. Run: node examples/_shared/app-strip-lib.test.mjs
 
 import assert from 'assert'
-import { parseArgs, seededShuffle, settleVerdict, outputJson } from './app-strip-lib.mjs'
+import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
 
 // ---- seededShuffle: a fixed seed reproduces one exact, known permutation ----
 {
@@ -12,17 +12,6 @@ import { parseArgs, seededShuffle, settleVerdict, outputJson } from './app-strip
   const b = seededShuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 7)
   assert.deepStrictEqual(a, b, 'same seed must reproduce the same order')
 }
-
-// ---- settleVerdict: a non-'?' first verdict is final, v2 unread ----
-assert.strictEqual(settleVerdict('unique', undefined), 'unique')
-assert.strictEqual(settleVerdict('not-unique', undefined), 'not-unique')
-assert.strictEqual(settleVerdict('timeout', undefined), 'timeout')
-
-// ---- settleVerdict: a '?' first verdict settles on the retry's verdict, ----
-// ---- whatever that is -- never a second retry ----
-assert.strictEqual(settleVerdict('?', 'unique'), 'unique')
-assert.strictEqual(settleVerdict('?', 'not-unique'), 'not-unique')
-assert.strictEqual(settleVerdict('?', '?'), '?')
 
 // ---- output JSON sorts the surviving clues and keeps the grid as given ----
 {
@@ -63,7 +52,10 @@ assert.strictEqual(settleVerdict('?', '?'), '?')
     ['link.txt', 'out.json'], // no --grid
     ['link.txt', '--grid', 'puzzle.json'], // no out file
     ['--grid', 'puzzle.json'], // no link file
-    ['link.txt', 'out.json', '--grid'] // --grid with no value
+    ['link.txt', 'out.json', '--grid'], // --grid with no value
+    // a mistyped flag, read as a positional or a seed, is no run either
+    ['link.txt', 'out.json', '--gird', 'puzzle.json'],
+    ['link.txt', 'out.json', '--grid', 'puzzle.json', '--seed', '3']
   ]
   for (const argv of incomplete) {
     assert.throws(() => parseArgs(argv), /usage: app-strip.mjs/, `accepted ${JSON.stringify(argv)}`)

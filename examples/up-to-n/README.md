@@ -18,10 +18,10 @@ board with no groups has no clues to read.
   registers one `UpToNComponent` per clued marker, its line ordered from the
   marker inward.
 - `UpToNComponent.js` — the line component: `update` and `validate`.
-- `build_link.py` — the rule's Python half (`up_to_n`, the CP-SAT model
-  `add_up_to_n`, the rules text and the drawn markers, together as `SPEC`), and
-  the component swap `just time` uses.
-- `build_size.py` — builds a board at any size, or re-encodes a committed one.
+- `build_link.py` — the component swap `just time` uses.
+- `build_size.py` — the rule's Python half (`up_to_n`, the CP-SAT model
+  `add_up_to_n`, the rules text and the drawn markers, together as `SPEC`);
+  builds a board at any size, or re-encodes a committed one.
 - `build_link.test.py` — the CP-SAT model and `validate` agree on hand-built
   lines; every committed board decodes to what its gen JSON records, CP-SAT
   proves it unique, and `--rebuild` reproduces its link byte for byte.

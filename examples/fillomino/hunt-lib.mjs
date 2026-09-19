@@ -7,7 +7,7 @@
 // propagation passes. Offline scores RANK candidate boards; the app still
 // has the last word on any board that ships (docs/real-app-timing.md).
 
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
 import { seededShuffle } from '../_shared/app-strip-lib.mjs'
 
 // The component, loaded the way the soundness harness loads it.
@@ -16,7 +16,6 @@ export function loadComponent (here) {
   return load('FillominoComponent.js', ['setParams', 'update', 'validate'])
 }
 
-const total = p => { let n = 0; for (const s of p._cand.values()) n += s.size; return n }
 const dead = p => { for (const s of p._cand.values()) if (s.size === 0) return true; return false }
 
 // A fresh board state: every given pinned, every other cell open over 1..cap.

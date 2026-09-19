@@ -35,19 +35,35 @@ have drawn one end and not the other, is where a lone clue is handled.
 
 ## How a component gates
 
+Every outside-clue component asks through one snippet,
+`examples/_shared/line-kind.js`, spliced in by `// #include
+../_shared/line-kind.js`: `lineKind(instance, puzzle, cells)` returns
+`{ kind, oneToN }` and follows every rule below. Change the rule there, not in
+a component.
+
 - **Ask in `update`, never in main code.** `getCellsCanHaveRepeats` walks the
   exclusion groups registered so far; main code runs at register time and can
   miss the built-in houses, `update` runs at solve time and sees them all
   (gotcha 6, verified #189).
 - **Query the line only**, never clue + line: a ring cell in the list flips the
   answer to `true`.
-- **Cache on the instance.** Each `update` re-tests `instance.kind` until it
-  reaches full house, then later calls read it. (A length test against
-  `digitCount` does not work: hit-counts boards run `minDigit 0` for the clue
-  ring and a cage removes 0 from the inner grid during solving, so the line's
-  digit set only settles after the first `update`. Decided #193.) The app rebuilds every component on every edit, so a redrawn
-  group gets a fresh instance and a fresh answer. Never cache in a file-level
-  variable.
+- **Latch the repeats answer both ways; re-read the digit set every call.**
+  The re-ask-every-call rule applies to the full-house kind only. Whether a
+  line can repeat (bare vs. house) comes from `getCellsCanHaveRepeats`, a
+  geometry fact fixed once `update` first runs, so it is cached whether it
+  comes back true or false and the O(n) walk runs once per line
+  (`component-contract.md`'s never-cache rule is about candidates, not this).
+  One caveat: the solver can retire a filled built-in house for the rest of a
+  branch, which can only weaken a cached answer, never make a removal unsound.
+  Full house is a candidate fact: whether the union of live candidates across
+  the line has exactly `line.length` digits changes with the search node, so
+  `update` re-tests it on every call rather than latching it once reached — latching it is what
+  made #336 unsound. (A length test against `digitCount` does not work
+  either: hit-counts boards run `minDigit 0` for the clue ring and a cage
+  removes 0 from the inner grid during solving, so the line's digit set only
+  settles after the first `update`. Decided #193.) The app rebuilds every
+  component on every edit, so a redrawn group gets a fresh instance and a
+  fresh answer. Never cache in a file-level variable.
 - **One component, gated rules.** Each rule starts with its gate
   (`if (instance.kind < HOUSE) …`). No per-kind component files, no
   `replaceComponent` swap.
@@ -110,13 +126,16 @@ DP is a pair shape, global only, gated on full house.
 ## Harness
 
 A component with an `ALLOW_TIES` constant is fuzzed under both readings:
-`makeIo(here).loadSource(src, names)` evaluates source the harness has already
-edited, so a run flips the constant the way an author would in the pasted
-segment.
+`makeIo(here).load(file, names, src => patchSource(src, TIES_FLAG, ...))`
+loads the file with the constant flipped the way an author would flip it in
+the pasted segment, and `patchSource` throws if the flag line is gone.
 
-`harness-lib.mjs` adds `getCellsCanHaveRepeats(cells)` and `spec.digitCount`
-to the mock, answered from the case's kind (via `makePuzzle(..., { kind,
-digitCount })`), never inferred from the digits. One shared
+`harness-lib.mjs`'s `makePuzzleApi` answers `getCellsCanHaveRepeats(cells)`
+from the houses the case declares (`makePuzzle(..., { houses })`, with
+`housesOf(kind, cells)` for one line), never inferred from the digits: false
+exactly when one house holds every queried cell, so a clue cell passed into
+the query reads as "may repeat", as in the app. Both the soundness mock and
+recovery-lib's candidate state serve that one API. One shared
 `makeLine(rnd, kind, n, D)` builds a bare line (random digits, any length,
 may repeat), a house (`n` distinct digits, `n < D`), or a full house (a
 permutation of `1..D`). Every example's soundness harness fuzzes all three

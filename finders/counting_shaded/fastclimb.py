@@ -17,13 +17,17 @@ REPO = HERE.parents[1]
 DATA = (
     REPO / "docs" / "research" / "counting_shaded"
 )  # notes, hits and images stayed there
-BUILD = REPO / ".scratch" / "counting_shaded" / "build"
+# Named `target` and holding a committed `*` .gitignore so merge-cleanup's
+# CACHE_DIRS sweeps the compiled artifact with the worktree instead of
+# refusing cleanup; see #559.
+BUILD = REPO / ".scratch" / "counting_shaded" / "target"
 SO = BUILD / "counting_shaded_fast.so"
 
 
 def _load():
     if not SO.exists() or SO.stat().st_mtime < SRC.stat().st_mtime:
         BUILD.mkdir(parents=True, exist_ok=True)
+        (BUILD / ".gitignore").write_text("*\n")
         subprocess.run(
             [
                 "gcc",

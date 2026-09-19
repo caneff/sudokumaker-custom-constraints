@@ -10,10 +10,10 @@
 // full-house fill is also a bare fill, and the component has no kind gate, so
 // the bare enumeration covers all three line kinds (docs/line-contract.md).
 //
-// Each case pins its own board geometry, because the component sizes its
-// window off the board: 3 along a row of a 9x9, 3 across and 2 down on a 6x6,
+// Each case pins its own board geometry, because the window length depends on
+// the board: 3 along a row of a 9x9, 3 across and 2 down on a 6x6,
 // 2 on a 4x4. The digit count is smaller than the board so the enumeration
-// stays exhaustive; the component reads the board only for the window.
+// stays exhaustive; main code hands the component the window length.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -69,7 +69,7 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
       const p = makePuzzle(truth, seed)
       Object.assign(p, geo.api)
       const inst = {}
-      mod.setParams(inst, geo.clue, line)
+      mod.setParams(inst, geo.clue, line, w)
       const v = violates(mod, inst, p, truth)
       tests++
       if (v) { bad++; if (bad <= 5) console.log('violation', v, 'truth', truth, `N=${N} m=${m} D=${D}`) }

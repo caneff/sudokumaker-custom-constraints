@@ -12,8 +12,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import assert from 'assert'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, compareStrength } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // The component lives in `_shared`, not owned by this example, so `loadAt`
@@ -32,12 +31,6 @@ const ref = loadAt(REF_COMMIT, 'HouseGacComponent.js', NAMES)
 
 const { rnd } = makeRng(422)
 
-function shuffled () {
-  const a = Array.from({ length: N }, (_, i) => i + 1)
-  for (let i = N - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]] }
-  return a
-}
-
 const CELLS = Array.from({ length: N }, (_, i) => i)
 const apply = (mod, p) => {
   const inst = {}
@@ -46,21 +39,19 @@ const apply = (mod, p) => {
 }
 
 const REPS = 6000
-let states = 0
-let weaker = 0
-for (let rep = 0; rep < REPS; rep++) {
-  const perm = shuffled()
-  const start = new Map()
-  for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, perm[c]))
-  const w = compareStrength(cur, ref, apply, start, { kind: 'fullHouse', digitCount: N })
-  if (w === null) continue
-  states++
-  weaker += w.length
-  if (w.length > 0 && weaker <= 5) console.log('weaker at', w[0], 'start', [...start])
-}
-console.log('house-gac:', states, 'states,', weaker, 'weaker cells')
-// Every state keeps a real permutation, so no state may die: a dead one would
-// mean a version emptied a cell the solution needs.
-assert.strictEqual(states, REPS, 'a state built around a permutation must never die')
-assert.strictEqual(weaker, 0)
+strengthSweep('house-gac', {
+  solvable: true,
+  cur,
+  ref,
+  apply,
+  opts: { houses: [CELLS] },
+  * states () {
+    for (let rep = 0; rep < REPS; rep++) {
+      const perm = shuffle(rnd, Array.from({ length: N }, (_, i) => i + 1))
+      const start = new Map()
+      for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, perm[c]))
+      yield start
+    }
+  }
+})
 console.log('PASS')

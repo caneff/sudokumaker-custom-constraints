@@ -37,13 +37,22 @@ board, at 500ms / 300ms. Both are BASELINE rows on the same component.
   timing run, not to the line component.
 - **A hand-built `original/` wrapper around `RequiredDigitsComponent`.** No
   catalog author ships an Outside Sudoku "Interactable" template (#262
-  checked, README "No `original/` baseline"), but the builtin
-  `RequiredDigitsComponent(name, values, cells)` — "each of `values` gets a
-  unique cell" — could stand in for the builtin half of the usual wait-then-
-  swap wrapper: idle while the clue is blank, then
-  `RequiredDigitsComponent(name, [clueValue], line.slice(0, w))` once it is
-  filled. Not built: it would be new code this repo authors and maintains,
-  not a verbatim baseline, and needs the same window-length geometry
-  (`OutsideSudokuComponent.js`'s `windowLength`) duplicated into the wrapper.
-  Worth a follow-up ticket if a real capability-gap number (like Numbered
-  Rooms' wrapper-vs-ours) is wanted.
+  checked, README "No `original/` baseline"). **Built in #534** — not as a
+  second baseline for this component (`OutsideSudokuComponent.js` still wins
+  in three bitmask reads and needs no detour through RequiredDigits), but to
+  give `docs/research/required-digits-gac/RequiredDigitsGacComponent.js` a
+  real-app timing row it had none of: no example registered a
+  RequiredDigits-shaped component to swap. The wrapper
+  (`docs/research/required-digits-gac/RequiredDigitsWrapperComponent.js`)
+  idles while its clue is blank, then swaps itself
+  (`puzzle.replaceComponent`, docs/gotchas.md #1) for a required-digits rule
+  over the clue's window, window-sized with its own copy of
+  `OutsideSudokuComponent.js`'s `windowLength`. Two swap targets:
+  `RequiredDigitsWrapperComponentBuiltin.js` (the real built-in
+  `RequiredDigitsComponent`) and `RequiredDigitsWrapperComponent.js`
+  (`customComponents.RequiredDigitsGacComponent`). Lives in
+  `docs/research/required-digits-gac/`, not as this example's own board —
+  see that directory's `README.md` for the built boards, the reproduce
+  commands, and the recorded rows (and why they read `Found 10,000
+  solutions`, a probe-method property the unmodified shipped board shares,
+  not a soundness regression).

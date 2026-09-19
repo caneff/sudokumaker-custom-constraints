@@ -79,6 +79,8 @@ function postprocessJSON (json) { // eslint-disable-line no-unused-vars -- calle
   // them, and `frame.py:corner_cells` is the Python copy for the builder, so
   // three copies is the floor. Keeping them one expression is what makes a
   // drift between them visible.
+  // No `| 0` here, same as `frame-corners.js`: arithmetic yields a primitive
+  // number and the first corner is the literal 0 (docs/gotchas.md #10).
   const corners = [0, W - 1, W * (H - 1), W * H - 1]
   for (const cell of corners) {
     const [r, c] = toRC(cell)

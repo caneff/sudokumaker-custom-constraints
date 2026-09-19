@@ -12,9 +12,10 @@ Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 The same code serves any square board whose digit count equals its side: N
 regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+1
 regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
-above). `main.js` reads the side from `puzzle.spec.size.width`; the component
-reads the digit range from `helpers.digits` and throws when the cells do not
-split evenly among the digits. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
+above). `main.js` reads the side from `puzzle.spec.size.width` (and checks the height); the component
+reads the digit range from `helpers.digits` and stops the branch (`puzzle.stop`,
+which reaches the step log) when the cells do not split evenly among the
+digits. `main.js` also refuses a non-square board before registering. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
 the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
 the app proves it unique in 0.2 s).
 
@@ -86,9 +87,11 @@ exists to teach.
   both are the #143 rows in `## Timing` below.
 - `build_link.py` — builds `PUZZLE_LINK.txt` from `gen.json`, `main.js`, and
   the component file. Run it after changing any of them:
-  `uv run --with lzstring examples/isofill/build_link.py`. Flags: `--component`
-  swaps in a candidate component file, `--out` writes elsewhere, `--puzzle`
-  builds another instance (`gen_44g.json` for timing).
+  `uv run examples/isofill/build_link.py`. Flags: `--out` writes elsewhere,
+  `--puzzle` builds another instance (`gen_44g.json`); `--component` with
+  `--out` instead swaps a candidate component into `PUZZLE_LINK.txt`, or into
+  `--board`. The two paths do not mix: a flag the path cannot honour is
+  refused.
 - `PUZZLE_LINK.txt` — the built SudokuMaker link. Open it to play.
 - `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` — the 9×9, digits 1–9 instance.
 - `PUZZLE_LINK_30g.txt`, `PUZZLE_LINK_32g.txt`, `PUZZLE_LINK_35g_silent.txt`,
@@ -125,7 +128,12 @@ paste `main.js` as the main code. Add one component segment named
 ```js
 const cells = []
 for (let y = 0; y < 10; y++) {
-  for (let x = 0; x < 10; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }))
+  for (let x = 0; x < 10; x++) {
+    const id = helpers.cellIds.getIdFromCoordsSafe({ x, y })
+    // A miss is undefined, and `undefined | 0` is cell 0: keep it loud.
+    if (id === undefined) throw new Error(`ISOFILL: no cell at x=${x}, y=${y}`)
+    cells.push(id | 0)
+  }
 }
 puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
 ```
@@ -178,10 +186,9 @@ cells:
   on the 32-given fixture fell 15.3 s → 5.7 s. Scratch buffers (allowed and
   walk masks per digit, BFS frontiers, distance rows) live on the instance
   and are reused per call, so `update` allocates almost nothing: 5.7 s → 4.1 s.
-  The `DigitSet` handed to `removeCandidatesFromCell` is the one thing built
-  fresh per yield. The app itself takes a raw bitmask there (it ANDs the
-  argument, `docs/research/bundle-api-reference.md`); the harness mock is
-  what insists on a `DigitSet`, to catch a plain array, which the app would
+  Removals pass a raw bitmask, never a `DigitSet` built per yield: the app
+  ANDs the argument (`docs/research/bundle-api-reference.md`), and the harness
+  mock takes either. What both refuse is a plain array, which the app would
   AND to zero and silently remove nothing.
 - **Tour** — the region is a connected set holding every placed cell and
   the candidate cell, so a walk round its spanning tree is a closed tour
@@ -245,8 +252,9 @@ cells:
 connected island of ten. The solver may not call it (`../../docs/gotchas.md`,
 gotcha 2); the deductions above do the work, `validate` states the rule.
 
-All of it reads each cell's candidates as a `DigitSet` (wrap it in
-`Array.from`; build one back with `SudokuDigitSet.from`). `update` reads the
+All of it reads each cell's candidates as a raw bitmask
+(`getCandidatesBitMask`, lowest set bit first) and removes with raw masks,
+never a `DigitSet`. `update` reads the
 grid **once** per call and builds every digit's placed, open, and allowed
 sets from that one scan. It runs on every search node, so a scan per digit
 (ten reads of each cell) cost real time: the one-pass scan halved the app's
@@ -413,6 +421,45 @@ so it runs by hand through `just verify-isofill`. The proof of the shipped
 instance stays valid as long as its board and clue set do not change.
 
 ## Timing
+
+### Budget rule pooled, bulk removals (#454)
+
+`budget` now owns flat typed buffers (matching, CSR residual graph, Tarjan
+scratch), the scan reads the candidate mask, and one-mask-many-cells removals
+are single plural changes. No deduction changed (update-strength floor: 0
+weaker cells; soundness: 0 violations). Both rows from `just time isofill`,
+3 reps per arm, non-deterministic solve off, with `main.js` held at its base
+text for the run (the tool matches the committed link's backend against
+`main.js` at HEAD; the guard added there cannot change solve time).
+
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill | 600ms | 400ms | 0.67 | PASS |
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: SHIP
+
+### Cell ids coerced with `| 0` (#450)
+
+The main now coerces every cell id (gotcha 10). Regenerating the link left `just time`
+with no candidate to build (it refuses a baseline that matches no file), so this is
+the link-vs-link comparison, not a `just time` row: the pre-change committed link
+(`origin/main`) against the coerced one, both stripped, one rep per variant per
+round, 5 rounds, non-deterministic solve off, cold. After-logical is 0ms on both.
+
+| 2026-09-18 | v2026.08.14-d47fc4b | isofill (link vs link) | 600ms | 600ms | 1.00 | interleaved, 5 rounds |
+
+The coercion is neutral on this board, not a measured win.
+
+### The reach split (#362)
+
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill | 600ms | 600ms | 1.00 | FAIL |
+| 2026-09-16 | v2026.08.14-d47fc4b | isofill after-logical | 0ms | 0ms | — | NO TIME |
+two-row rule: NO SHIP
+
+`just time isofill`, 3 reps per arm, non-deterministic solve off. The candidate
+splits `reach` into `reachSize` and `reachesAll` and has `digitRule` return
+its `near` bound; it adds no deduction (the soundness and strength outputs are
+byte-identical), so the `NO SHIP` line reads the 0.9x deduction rule. The bar
+it answers to is the gate-change bar, 1.1x or under on both rows
+(`../../docs/real-app-timing.md`), and it clears it.
 
 ### Twenty-grid strip batch (#166, 2026-08-28)
 

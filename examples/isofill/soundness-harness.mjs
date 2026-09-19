@@ -16,11 +16,11 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
-const { rnd, pick } = makeRng()
+const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
@@ -55,14 +55,7 @@ function silentSeeder (d) {
 }
 
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
-function seeder (c, v) {
-  const mode = pick(['pin', 'full', 'subset'])
-  if (mode === 'pin') return [v]
-  if (mode === 'full') return ALL
-  const s = new Set([v])
-  for (const d of ALL) if (rnd() < 0.5) s.add(d)
-  return [...s]
-}
+const seeder = makeSeeder(rnd, ALL)
 
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
@@ -285,15 +278,9 @@ const ALL9 = Array.from({ length: N9 }, (_, d) => d + 1)
 const rows9 = {}
 for (const c of CELLS9) rows9[c] = Math.floor(c / N9) + 1
 let bad9 = 0
+const seeder9 = makeSeeder(rnd, ALL9)
 for (let iter = 0; iter < FUZZ; iter++) {
-  const p = makePuzzle(rows9, (c, v) => {
-    const mode = pick(['pin', 'full', 'subset'])
-    if (mode === 'pin') return [v]
-    if (mode === 'full') return ALL9
-    const s = new Set([v])
-    for (const d of ALL9) if (rnd() < 0.5) s.add(d)
-    return [...s]
-  })
+  const p = makePuzzle(rows9, seeder9)
   const inst = {}
   mod.setParams(inst, CELLS9)
   const v = violates(mod, inst, p, rows9)
@@ -305,18 +292,43 @@ const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
-// A board that does not split evenly among its digits must throw, not prune.
+// A board that does not split evenly among its digits must stop, not prune.
 installGlobals(0, 9)
 const badInst = {}
 mod.setParams(badInst, CELLS9)
-let threw = false
-try { Array.from(mod.update(badInst, makePuzzle(rows9, () => ALL))) } catch { threw = true }
-console.log('9x9 cap fired:', cap9Ok, '| uneven board throws:', threw)
+const badPuzzle = makePuzzle(rows9, () => ALL)
+Array.from(mod.update(badInst, badPuzzle))
+const stopped = badPuzzle._stopped !== null
 
-console.log('validate:', validateOk)
-console.log('perimeter arc fired:', arcOk, '| perimeter flank fired:', flankOk)
-console.log('cap fired:', capOk, '| force fired:', forceOk, '| outside walk:', outsideOk, '| stranded:', strandedOk, '| stranded at cap:', capStrandedOk, '| starved:', starvedOk, '| far dead:', farDeadOk, '| far live:', farLiveOk, '| linked walk tighter:', linkedOk, '| walled off:', walledOk, '| cut starve fired:', cutStarveOk, '| cut strand fired:', cutStrandOk, '| tour fired:', tourOk, '| budget fired:', budgetOk, '| budget prune fired:', pruneOk, '| silent fired:', silentOk, '| silent dead fired:', silentDeadOk, '| one pass:', onePassOk, `(${reads} reads)`)
+// The directed checks, by name: each one's line in the verdict, and all of
+// them in the pass.
+const CHECKS = {
+  'cap fired': capOk,
+  'force fired': forceOk,
+  'outside walk': outsideOk,
+  stranded: strandedOk,
+  'stranded at cap': capStrandedOk,
+  starved: starvedOk,
+  'far dead': farDeadOk,
+  'far live': farLiveOk,
+  'linked walk tighter': linkedOk,
+  'walled off': walledOk,
+  'cut starve fired': cutStarveOk,
+  'cut strand fired': cutStrandOk,
+  'tour fired': tourOk,
+  'budget fired': budgetOk,
+  'budget prune fired': pruneOk,
+  'silent fired': silentOk,
+  'silent dead fired': silentDeadOk,
+  'one pass': onePassOk,
+  '9x9 cap fired': cap9Ok,
+  'uneven board stops': stopped,
+  'perimeter arc fired': arcOk,
+  'perimeter flank fired': flankOk,
+  validate: validateOk
+}
+console.log(Object.entries(CHECKS).map(([name, pass]) => `${name}: ${pass}`).join(' | '), `(${reads} reads)`)
 
-const ok = bad === 0 && bad9 === 0 && cap9Ok && threw && capOk && forceOk && outsideOk && strandedOk && capStrandedOk && starvedOk && farDeadOk && farLiveOk && linkedOk && walledOk && cutStarveOk && cutStrandOk && tourOk && budgetOk && pruneOk && silentOk && silentDeadOk && arcOk && flankOk && onePassOk && validateOk
+const ok = bad === 0 && bad9 === 0 && Object.values(CHECKS).every(Boolean)
 console.log(ok ? 'PASS' : 'FAIL')
 process.exit(ok ? 0 : 1)
