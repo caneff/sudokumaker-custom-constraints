@@ -138,6 +138,28 @@ Both backends need this sweep, and `frame-corners.js` needs it most: it
 registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
 component file and the component check above has no set to compare it against.
 
+## When a board has to be a `"custom"` document
+
+The outer ring is what needs it. A board with clue cells outside the grid needs
+a `"custom"` document: the app validates a sudoku document's regions and sizes,
+and a ring is neither. **A plain 9x9 does not need one** (owner ruling,
+2026-09-19). Custom constraints and their component code register on a
+`"sudoku"` document too -- the solver's handler for them
+(`registerConstraintHandler(ConstraintType.Custom, ...)`) has no puzzle-kind
+check.
+
+Two things a plain 9x9 pays for choosing `"custom"` anyway:
+
+- **Rows and columns stop being free.** `SudokuRules` is prepended only for
+  `spec.type === Sudoku` (`bundle.claude.js:11455`), so the board has to carry
+  a row/column backend of its own, plus the `RESEARCH_ROWCOL_BACKENDS`
+  exemption below that lets a static decode see through it.
+- **The technique set narrows.** A sudoku document gets
+  `StandardLogicStepsGenerator`; a custom one gets `CustomLogicStepsGenerator`,
+  which filters to `CustomPuzzleEnabledStepTypes`. A timing or AutoStep row
+  taken on a custom board is therefore taken against a restricted set of
+  techniques, which is worth saying out loud when the row is the evidence.
+
 A **no-ring** board (`framebuild.no_ring_doc`, up-to-n's) is a bare n x n
 `"custom"` document with no clue ring, and its shared backend is
 `_shared/grid-rowcol.js`, which declares every whole row and column. A link
