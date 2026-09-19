@@ -22,6 +22,11 @@ if (puzzle.spec.size.height !== side) {
 }
 const cells = []
 for (let y = 0; y < side; y++) {
-  for (let x = 0; x < side; x++) cells.push(helpers.cellIds.getIdFromCoordsSafe({ x, y }) | 0)
+  for (let x = 0; x < side; x++) {
+    const id = helpers.cellIds.getIdFromCoordsSafe({ x, y })
+    // A miss is undefined, and `undefined | 0` is cell 0: keep it loud.
+    if (id === undefined) throw new Error(`ISOFILL: no cell at x=${x}, y=${y}`)
+    cells.push(id | 0)
+  }
 }
 puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
