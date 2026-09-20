@@ -1,0 +1,298 @@
+{
+  "formatVersion": "1.6.0",
+  "puzzle": {
+    "name": "CountDigits demo",
+    "author": "",
+    "comment": "Normal sudoku rules apply. Each coloured region lists digits in its corner. The cell marked # in the same colour is that region's counter: its digit equals how many cells of the region hold one of the listed digits. Two CountDigits elements carry the same rule -- the app's built-in and a pruning one; exactly one is enabled. Flip them in the Elements panel (the three-dot menu, Disable / Enable) and solve again to compare.",
+    "cells": [
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "given": true,
+        "value": 1
+      },
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "given": true,
+        "value": 2
+      },
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {}
+    ],
+    "constraints": [
+      {
+        "type": 0
+      },
+      {
+        "type": 1,
+        "regions": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          6,
+          6,
+          6,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          6,
+          6,
+          6,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8
+        ]
+      },
+      {
+        "name": "CountDigits (GAC)",
+        "definition": {
+          "name": "CountDigits (GAC)",
+          "input": [
+            {
+              "id": "groups",
+              "label": "Groups",
+              "params": {
+                "type": "raw"
+              }
+            }
+          ],
+          "backend": {
+            "type": "code",
+            "code": "// BACKEND of the CountDigits demo board (#568). This is the constraint's main\n// code: SudokuMaker runs it once when the puzzle loads, and again whenever the\n// drawn groups change. Its job is to read the groups drawn on this constraint\n// and REGISTER one component per group, so the solver knows the rule. It does\n// no solving itself.\n//\n// input.groups is the list of groups drawn on the board. Each has:\n//   - cells: the group's cells as cell ids, in the order they were drawn. By\n//     this board's convention the FIRST cell is the counter and the rest are\n//     the target cells that get counted;\n//   - value: the text typed on the group, here the listed digits, \"5 6 8\".\n//\n// This puzzle carries two copies of this backend as two separate constraints in\n// the Elements panel, each with the same groups. They are identical except\n// for the one class name in the registering line below: one registers the app's\n// own built-in count-digits rule, the other registers a pruning replacement\n// whose code is in that constraint's component box. Exactly one is enabled.\n// Disable it and enable the other, then solve again, to compare the two.\n//\n// Each component takes (name, digits, counterCell, targetCells):\n//   - name is only used in messages;\n//   - digits is a digit MASK, a number in which bit d is set when digit d is\n//     listed (an array is not accepted, see the GAC constraint's component code);\n//   - counterCell and targetCells are cell ids, plain numbers.\nfor (const { cells, value } of input.groups) {\n  const [counter, ...targets] = cells\n  // Digits are read out of the text, so \"5 6 8\" and \"568\" mean the same.\n  const digits = [...value.matchAll(/[1-9]/g)].reduce((mask, [d]) => mask | (1 << d), 0)\n  // A group still being drawn has no targets, or no digits yet: nothing to\n  // enforce, and registering it would only make the app refuse the board.\n  if (targets.length === 0 || digits === 0) continue\n  const name = `the count at ${helpers.naming.getCellName(counter)}`\n  puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counter, targets))\n}\n"
+          },
+          "components": [
+            {
+              "type": "code",
+              "name": "CountDigitsGacComponent",
+              "code": "/* eslint-disable no-unused-vars -- setParams/update/getAffectedCells/validate are the component API SudokuMaker calls by name, not dead code */\n//! A pruning replacement for the built-in CountDigits. Same constructor as the\n//! built-in:\n//!\n//!   puzzle.addConstraintComponent(new CountDigitsGacComponent(name, digits, counterCell, targetCells))\n//!\n//! The rule, the built-in's own: the digit in `counterCell` equals the number\n//! of `targetCells` whose digit is one of `digits`. `digits` is a digit MASK\n//! (bit d is digit d; {1,3} is 0b1010 = 10) or a SudokuDigitSet, exactly as the built-in takes it\n//! (bundle.claude.js:5092 does `this.digits & candidates`).\n//!\n//! What the built-in does instead: nothing. It defines no `update`, so it\n//! prunes no candidate ever (docs/research/bundle-api-reference.md,\n//! \"CountDigits\"). Its `validate` runs on every state (`validateDuringSolve`)\n//! and refuses the ones below, so the search learns the rule only by trying a\n//! digit and being told no.\n//!\n//! Call a target cell a HIT when its digit is in the set. Reading candidates:\n//!   - every candidate in the set  -> a definite hit;\n//!   - no candidate in the set     -> a definite miss;\n//!   - some of each                -> open, either way.\n//! So the count is at least `definite` and at most `possible` = definite +\n//! open, and every value in between is reachable by flipping open cells one at\n//! a time -- the reachable counts are the whole interval.\n//!\n//! Three deductions follow, and they are the whole of arc consistency for this\n//! constraint when the counter is not itself a target:\n//!   1. The counter keeps only [definite, possible]. Anything outside is\n//!      unreachable however the open cells fall.\n//!   2. If the counter's largest survivor equals `definite`, the count IS\n//!      definite: no open cell may be a hit, so the in-set digits leave every\n//!      open cell.\n//!   3. If the counter's smallest survivor equals `possible`, every open cell\n//!      must be a hit, so the out-of-set digits leave every open cell.\n//! Nothing else is removable: an open cell asked to be a hit reaches the\n//! counts [definite+1, possible], which meets the counter's set unless (2)\n//! holds, and asked to be a miss reaches [definite, possible-1], which meets it\n//! unless (3) holds. `soundness-harness.mjs` next to this file checks that\n//! against a brute-force oracle rather than taking the argument's word.\n//!\n//! Sound: each deduction is a statement about the true solution, read off the\n//! candidates the true solution is still inside, so it survives a counter cell\n//! that is also one of its own targets -- the count is still what it is. That\n//! case is legal (the built-in's `cellIds` is `[counterCell, ...targetCells]`\n//! either way) and only costs strength: (1)'s bounds then move as the counter\n//! shrinks, and the walk here reads one snapshot and does not chase it. The\n//! solver re-runs `update` to a fixpoint, so the next pass sees the new bounds.\n//! Counts run 0..targetCells.length and are compared against digit masks, so\n//! the target list has to stay inside a 32-bit mask. A longer one is a\n//! registration mistake, refused at setup where the author sees it.\nconst MAX_TARGETS = 30\n//! The app calls this to learn which cells this component watches, and\n//! re-runs `update` when any of them changes. It receives the constructor's\n//! arguments after the name (digits, counterCell, targetCells): the name is\n//! the constructor's first argument and is not passed on, so it is not in this\n//! signature. The counter is watched as well as the targets because the count\n//! moves when either side does.\nfunction getAffectedCells (digits, counterCell, targetCells) {\n  return [counterCell, ...targetCells]\n}\n//! The app calls this once, from the constructor. After `instance` it gets the\n//! arguments of `new CountDigitsGacComponent(name, digits, counterCell,\n//! targetCells)` except the name, which the app keeps as `instance.name`.\n//! `instance` is the component being built: whatever is stored on it here is\n//! what `update` and `validate` read later, since they get the instance, not\n//! the constructor's arguments.\nfunction setParams (instance, digits, counterCell, targetCells) {\n  //! The mask is a plain number, not a list: the solver combines it with a\n  //! cell's candidates using bitwise AND (`digits & candidates`), so bit d set\n  //! means digit d counts. An array coerces to a number when it holds one\n  //! element ([3] -> 3), which would read as the mask {0,1} and quietly count the wrong digits. Refuse it\n  //! by name rather than let that through.\n  if (Array.isArray(digits)) {\n    throw new TypeError(`${instance.name}: CountDigitsGacComponent takes a digit mask or a SudokuDigitSet, not an array`)\n  }\n  const digitMask = +digits\n  if (!Number.isInteger(digitMask) || digitMask <= 0) {\n    throw new RangeError(`${instance.name}: CountDigitsGacComponent needs a non-empty digit mask, got ${digits}`)\n  }\n  if (targetCells.length > MAX_TARGETS) {\n    throw new RangeError(`${instance.name}: CountDigitsGacComponent takes at most ${MAX_TARGETS} target cells, got ${targetCells.length}`)\n  }\n  instance.digitMask = digitMask\n  instance.counterCell = counterCell\n  instance.targetCells = targetCells\n}\n//! Bits lo..hi, both ends included; 0 when the range is empty. hi stays under\n//! 31 because MAX_TARGETS does.\nfunction rangeMask (lo, hi) {\n  if (lo > hi) return 0\n  return ((1 << (hi + 1)) - 1) & ~((1 << lo) - 1)\n}\nfunction smallestDigit (mask) {\n  return 31 - Math.clz32(mask & -mask)\n}\nfunction largestDigit (mask) {\n  return 31 - Math.clz32(mask)\n}\n//! Read every target once: how many are certainly hits, and which are open.\n//! `open` is a list of positions into `targetCells`, so a caller that has to\n//! filter them walks only those.\nfunction countHits (instance, puzzle) {\n  const targetCells = instance.targetCells\n  const digitMask = instance.digitMask\n  const masks = []\n  const open = []\n  let definite = 0\n  for (let position = 0; position < targetCells.length; position++) {\n    const mask = puzzle.getCandidatesBitMask(targetCells[position])\n    masks.push(mask)\n    const inSet = mask & digitMask\n    //! An empty cell is a dead state the app should never hand us; counting it\n    //! as a definite hit would be wrong, so say so instead.\n    if (mask === 0) return null\n    if (inSet === mask) definite++\n    else if (inSet !== 0) open.push(position)\n  }\n  return { masks, open, definite, possible: definite + open.length }\n}\n//! The app calls `update` whenever a watched cell changes, and keeps calling it\n//! until a pass yields nothing new. It is a generator: each `yield` hands the\n//! solver one CHANGE to apply. `puzzle` is the solver's view of the board right\n//! now; `getCandidatesBitMask(cell)` reads a cell's remaining candidates as a\n//! digit mask. The solver applies each yielded change before resuming here.\nfunction * update (instance, puzzle) {\n  const hits = countHits(instance, puzzle)\n  if (hits === null) {\n    yield puzzle.stop(`${instance.name} has a target cell with no candidates left`, instance.targetCells)\n    return\n  }\n  const { masks, open, definite, possible } = hits\n  const counterMask = puzzle.getCandidatesBitMask(instance.counterCell)\n  const allowed = counterMask & rangeMask(definite, possible)\n  if (allowed === 0) {\n    //! puzzle.stop is a change that says \"this board state has no solution\":\n    //! the message says why and the cell list says which cells are to\n    //! blame. It fails only the search node being tried, so the\n    //! solver backs up and tries the next candidate elsewhere on the board.\n    yield puzzle.stop(`${instance.name} cannot count between ${definite} and ${possible}`, getAffectedCells(instance.digitMask, instance.counterCell, instance.targetCells))\n    return\n  }\n  if (allowed !== counterMask) {\n    //! puzzle.removeCandidatesFromCell is a change that takes the digits in the\n    //! given set out of one cell's candidates. The solver applies it, then runs\n    //! every component watching that cell again -- this one included -- so a\n    //! removal made here can set off the next deduction.\n    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(counterMask & ~allowed), instance.counterCell)\n  }\n  //! At most one of these fires: both would mean definite === possible, and\n  //! then there is no open cell to filter.\n  const forcedOut = largestDigit(allowed) === definite\n  const forcedIn = smallestDigit(allowed) === possible\n  if (!forcedOut && !forcedIn) return\n  for (const position of open) {\n    const removed = forcedOut ? masks[position] & instance.digitMask : masks[position] & ~instance.digitMask\n    yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(removed), instance.targetCells[position])\n  }\n}\n//! The backstop, and the built-in's own validate. The app calls it to check a\n//! board state against the rule and refuse it (return false) or accept it\n//! (true); `update` above only prunes, it does not replace this check. It\n//! refuses a state when the count cannot reach the counter's remaining digits\n//! at either end.\nfunction validate (instance, puzzle) {\n  const hits = countHits(instance, puzzle)\n  if (hits === null) return false\n  const counterMask = puzzle.getCandidatesBitMask(instance.counterCell)\n  if (counterMask === 0) return false\n  return hits.definite <= largestDigit(counterMask) && hits.possible >= smallestDigit(counterMask)\n}\n"
+            }
+          ]
+        },
+        "input": {
+          "groups": [
+            {
+              "cells": [
+                0,
+                0,
+                10,
+                20
+              ],
+              "value": "2 4 6 8"
+            },
+            {
+              "cells": [
+                30,
+                30,
+                40,
+                50,
+                60,
+                70
+              ],
+              "value": "2 4 6 8"
+            }
+          ]
+        },
+        "style": {},
+        "type": 1000
+      },
+      {
+        "solverIgnored": true,
+        "type": 408,
+        "bulbsWithArrows": [
+          {
+            "bulbCells": [
+              0
+            ],
+            "arrows": [
+              [
+                0,
+                10,
+                20
+              ]
+            ]
+          },
+          {
+            "bulbCells": [
+              30
+            ],
+            "arrows": [
+              [
+                30,
+                40,
+                50,
+                60,
+                70
+              ]
+            ]
+          }
+        ],
+        "style": {
+          "bulb": {
+            "size": 0.8,
+            "fill": "#ffffff",
+            "stroke": {
+              "thickness": 0.02,
+              "color": "#aaaaaa"
+            }
+          },
+          "arrow": {
+            "thickness": 0.05,
+            "color": "#aaaaaa",
+            "headSize": 0.35
+          }
+        }
+      },
+      {
+        "type": 101,
+        "cells": [
+          10,
+          40
+        ],
+        "style": {
+          "color": "#00000033",
+          "size": 0.8
+        }
+      }
+    ]
+  }
+}
