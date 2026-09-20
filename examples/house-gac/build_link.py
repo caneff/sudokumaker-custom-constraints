@@ -58,7 +58,7 @@ TIMED_COMPONENT = "HouseGacComponent"
 sys.path.insert(0, str(REPO / "examples/_shared"))
 sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
 from cpsat import SOLVED, has_second_solution, solver
-from framebuild import RULES_PREFIX
+from framebuild import NO_RING_RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, swap_main
@@ -134,7 +134,7 @@ def build(
     find_constraint(doc, "House GAC")["definition"]["name"] = CONSTRAINT_NAME
     doc["puzzle"]["name"] = "Standalone House GAC"
     doc["puzzle"]["comment"] = (
-        RULES_PREFIX
+        NO_RING_RULES_PREFIX
         + "The only constraint beyond the board's own rows, columns and boxes "
         "is the shipped House GAC filter -- a generalized-arc-consistency "
         "all-different check on every row, column and box. It adds no rule "

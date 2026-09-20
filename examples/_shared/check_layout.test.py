@@ -16,6 +16,8 @@ import tempfile
 
 from check_layout import (
     GRANDFATHERED_RESEARCH_PY,
+    NO_RING_RULES_PREFIX,
+    RINGLESS_SUDOKU,
     RULES_PREFIX,
     check_research_python,
     check_tree,
@@ -42,6 +44,7 @@ def _link(
     digits=(1, 3),
     no_ring=None,
     grid_backend=None,
+    ringless=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -80,7 +83,9 @@ def _link(
     `no_ring` builds a no-ring board instead: its comment is `no_ring` (the
     whole text) rather than RULES_PREFIX, and it carries the shared whole-grid
     rows-and-columns backend. `grid_backend` overrides that backend alone --
-    False drops it, "stale" embeds an older copy.
+    False drops it, "stale" embeds an older copy. `ringless` opens the comment on
+    NO_RING_RULES_PREFIX, as a plain 9x9 board with no ring does
+    (house-gac; `house_gac_renamed` implies it).
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -89,7 +94,8 @@ def _link(
         cells = [{"given": True, "value": 1} for _ in range(9)]
     if entered:
         cells[1] = {"value": 2}
-    comment = (RULES_PREFIX if prefix else "") + "test rules"
+    sentence = NO_RING_RULES_PREFIX if ringless or house_gac_renamed else RULES_PREFIX
+    comment = (sentence if prefix else "") + "test rules"
     if no_ring is not None:
         comment = no_ring
     registers = ships if registers is None else registers
@@ -214,15 +220,18 @@ def example(
     the lane tests to put a real marker in main.js or main-global.js.
     """
     contents = contents or {}
+    # house-gac is a ringless board (RINGLESS_SUDOKU), so its links open on
+    # the plain sentence, not the inner-grid one (#460).
+    default_link = _link(ringless=name in RINGLESS_SUDOKU)
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         d = root / name
         d.mkdir()
         for f in files:
-            default = _link() if f.startswith("PUZZLE_LINK") else "x"
+            default = default_link if f.startswith("PUZZLE_LINK") else "x"
             (d / f).write_text(contents.get(f, default))
         for link in extra_links:
-            (d / link).write_text(contents.get(link, _link()))
+            (d / link).write_text(contents.get(link, default_link))
         for gen in extra_gens:
             (d / gen).write_text(contents.get(gen, "x"))
         yield root, d
@@ -563,6 +572,21 @@ if __name__ == "__main__":
             violations = check_tree(root)
             assert len(violations) == 1, violations
             assert "rules prefix" in violations[0], violations
+
+    # house-gac is a plain board with no ring and no grid backend, so the
+    # checker cannot detect it: it is named in RINGLESS_SUDOKU and opens on the
+    # plain sentence (#460), and the inner-grid sentence fails there.
+    # (the name also arms the shared-component check, so only the prefix
+    # violation is asserted on)
+    with example(name="house-gac") as (root, _):
+        violations = check_tree(root)
+        assert not any("rules prefix" in v for v in violations), violations
+    inner = {"PUZZLE_LINK.txt": _link()}
+    with example(name="house-gac", contents=inner) as (root, _):
+        violations = check_tree(root)
+        assert any(
+            "PUZZLE_LINK.txt comment missing rules prefix" in v for v in violations
+        ), violations
 
     # a stale copy of the grid backend is stale like a frame backend's
     stale_grid = _link(

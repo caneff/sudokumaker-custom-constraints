@@ -69,8 +69,10 @@ there with the code.
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
   that sets `comment` itself must add the sentence. Exceptions: isofill and
   fillomino are not sudoku and skip the line (`NO_RULES_PREFIX` in
-  `check_layout.py`); up-to-n has no ring, so its text opens "Normal sudoku
-  rules apply." (`NO_RING_RULES_PREFIX` in `framebuild.py`).
+  `check_layout.py`). A ringless sudoku board has no inner grid to name, so its
+  text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
+  `framebuild.py`): up-to-n, and house-gac's plain 9x9 (`RINGLESS_SUDOKU` in
+  `check_layout.py`).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 
