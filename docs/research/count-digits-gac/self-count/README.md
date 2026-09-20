@@ -14,7 +14,7 @@ Same board, one component swapped (same-board comparison,
 | `PUZZLE_LINK_selfcount_current.txt` | `../CountDigitsGacComponent.js` (with #578) |
 | `PUZZLE_LINK_selfcount_pre578.txt` | `CountDigitsGacComponent.pre578.js` (`git show d0b1854:docs/research/count-digits-gac/CountDigitsGacComponent.js`) |
 
-Each is a 9x9 sudoku, `[unique]`, `entered: 0`, one custom constraint, digits
+Each is a 9x9 sudoku, CP-SAT-unique (the app's `[unique]` readout is the controller's to confirm), `entered: 0`, one custom constraint, digits
 `2 4 6 8`. In `input.groups` a group is `[counter, counter, ...others]`, the
 colleague's spelling. Cages are cosmetic (a dashed cage over the group with its
 digits, a one-cell `#` cage on the counter) and pinned to `input.groups` by the
@@ -24,18 +24,16 @@ test. Backend and cages are byte-equal across the two links.
 
 18 givens, 6 groups, **5 of 6 counters hold an even digit** (a counter with an
 odd solution digit does not count itself, so it is the old shape in disguise).
-`gen.json`; alternates `gen_5x8.json` (5 x 8, 17 givens, 4 even counters) and
-`gen_5x10.json` (5 x 10, 18 givens, 4 even counters), rebuilt with
-`--gen <file> --out <dir>`.
+`gen.json`. If timing shows no gap, draw another from the ladder's better shapes (5 x 8 seed 1 had 17 givens and 4 even counters) with `--search`; a redraw must keep each counter off its group's top-left cell (the test checks it).
 
 ## The ladder (structural; NOT timed)
 
-Draws: `--search SEED --groups G --targets T`, carved to unique by CP-SAT. This
+Draws: `--search SEED --groups G --targets T` (T counts the counter; the seeds do not reproduce a draw, the grid comes from CP-SAT's portfolio search), carved to unique by CP-SAT. This
 worker cannot drive the app (no Chromium in the sandbox), so the ladder ranks
 draws by what should make a gap: many groups (`../demo/README.md`: count moves
 the gap more than size), few givens, many even counters. **The gap itself is the
-controller's to measure**; the shipped draw is a structural pick, and the
-alternates are there if it shows none.
+controller's to measure**; the shipped draw is a structural pick, and a
+redraw is the fallback if it shows none.
 
 | shape | seed 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|

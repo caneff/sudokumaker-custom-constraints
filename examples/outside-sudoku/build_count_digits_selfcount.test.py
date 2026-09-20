@@ -24,7 +24,6 @@ from build_count_digits_selfcount import (
     PRE578,
     VARIANTS,
     build,
-    build_doc,
 )
 from build_sparse_count_digits import count_solutions, givens_of
 from link_codec import decode_puzzle
@@ -45,6 +44,9 @@ def check_board(gen):
         assert gen["grid"][counter[0]][counter[1]] == hits, (
             f"{g['name']}: the solution's counter digit is not the count"
         )
+        # a cage label draws in the region's top-left cell: were that the
+        # counter, the digit list and the # would share a corner
+        assert counter != min(cells), f"{g['name']}: counter is the top-left cell"
         used += cells
     assert len(set(used)) == len(used), "two groups share a cell"
     assert count_solutions(gen["groups"], givens_of(gen)) == 1, "not unique"
@@ -78,7 +80,7 @@ def check_links(gen):
         docs[variant] = doc
         p = doc["puzzle"]
         assert p["type"] == "sudoku" and variant in p["name"]
-        assert p["comment"].startswith("Normal sudoku rules apply on the inner grid.")
+        assert p["comment"].startswith("Normal sudoku rules apply.")
         givens = givens_of(gen)
         for i, cell in enumerate(p["cells"]):
             assert bool(cell.get("given")) == ((i // N, i % N) in givens), f"cell {i}"
@@ -122,14 +124,11 @@ def check_links(gen):
         for path in build(pathlib.Path(tmp) / "not" / "yet"):
             v = path.name.removeprefix("PUZZLE_LINK_selfcount_").removesuffix(".txt")
             assert path.read_bytes() == shipped[v], f"{v} does not reproduce"
-    assert build_doc(gen, "current")
 
 
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
     check_board(gen)
-    for alt in ("gen_5x8.json", "gen_5x10.json"):
-        check_board(json.loads((BOARD_DIR / alt).read_text()))
     check_self_counting_is_modelled(gen)
     check_links(gen)
     print("ok")

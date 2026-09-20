@@ -51,7 +51,7 @@ VARIANTS = {"current": CURRENT, "pre578": PRE578}
 EVENS = [2, 4, 6, 8]
 
 RULES = (
-    "Normal sudoku rules apply on the inner grid. Each coloured region "
+    "Normal sudoku rules apply. Each coloured region "
     "counts the even digits in it, and the cell marked # in the same colour "
     "is that region's counter and one of its own cells: its digit equals "
     "how many cells of the region, itself included, hold an even digit."
@@ -183,7 +183,9 @@ if __name__ == "__main__":
     p.add_argument("--search", type=int, metavar="SEED")
     p.add_argument("--gen", default=GEN)
     p.add_argument("--groups", type=int, default=5)
-    p.add_argument("--targets", type=int, default=8)
+    p.add_argument(
+        "--targets", type=int, default=8, help="cells per group, the counter included"
+    )
     p.add_argument("--out")
     args = p.parse_args()
     if args.search is not None:
