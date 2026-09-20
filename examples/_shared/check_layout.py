@@ -108,6 +108,11 @@ def is_no_ring(puzzle):
 # pattern as NO_LOCAL_GLOBAL_SPLIT above.
 NO_RULES_PREFIX = {"isofill", "fillomino"}
 
+# A sudoku example whose board is a plain 9x9 with no clue ring and no grid
+# backend, so is_no_ring cannot see it: its rules text opens on
+# NO_RING_RULES_PREFIX, there being no inner grid to name (#460).
+RINGLESS_SUDOKU = {"house-gac"}
+
 # An example whose board has no houses at all: isofill and fillomino are
 # whole-grid constraints on a bare board, with no row, column or box rule to
 # check (specs #232, #303). Every other example is a sudoku, so every one of
@@ -365,7 +370,8 @@ def check_share_ready(example_dir, link, puzzle):
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
-    prefix = NO_RING_RULES_PREFIX if no_ring else RULES_PREFIX
+    ringless = no_ring or name in RINGLESS_SUDOKU
+    prefix = NO_RING_RULES_PREFIX if ringless else RULES_PREFIX
     if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(prefix):
         violations.append(f"{name}: {link.name} comment missing rules prefix")
 

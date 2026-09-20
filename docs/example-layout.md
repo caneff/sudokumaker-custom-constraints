@@ -110,7 +110,8 @@ cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the
 inner grid" — except an example in `NO_RULES_PREFIX` (isofill and fillomino
 are not sudoku, and their rules text must not mention sudoku), and a no-ring
-board (below), whose comment starts "Normal sudoku rules apply." instead. See
+board (below) or an example in `RINGLESS_SUDOKU` (house-gac's plain 9x9),
+whose comment starts "Normal sudoku rules apply." instead. See
 `docs/share-checklist.md` for the full pre-share list.
 
 The **name** grammar above binds `PUZZLE_LINK*.txt` only, but the share
