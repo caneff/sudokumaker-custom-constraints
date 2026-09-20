@@ -100,7 +100,7 @@ function supportedDigits (state, candidates) {
 }
 
 function run (label, shape) {
-  const { iters, oracle = false } = shape
+  const { iters, oracle = false, exact = false } = shape
   let drawn = 0
   let bad = 0
   let removedGac = 0
@@ -148,7 +148,14 @@ function run (label, shape) {
           const supportedHere = support.get(cell).has(digit)
           const keptHere = p._stopped === null && p._cand.get(cell).has(digit)
           if (!supportedHere) removedOracle++
-          if (!supportedHere && keptHere) missedByGac++
+          if (!supportedHere && keptHere) {
+            missedByGac++
+            //! `exact` shapes claim full arc consistency: a removal the oracle makes and we do not is a failure.
+            if (exact) {
+              bad++
+              if (bad <= 5) console.log(label, 'MISSED', { cell, digit }, 'truth', JSON.stringify(state.truth))
+            }
+          }
           if (supportedHere && !keptHere) {
             bad++
             if (bad <= 5) console.log(label, 'OVER-PRUNED', { cell, digit }, 'truth', JSON.stringify(state.truth))
@@ -165,7 +172,9 @@ function run (label, shape) {
 let failures = 0
 failures += run('5 targets, 2 digits, oracle  ', { targetCount: 5, digitCount: 2, digitRange: 5, counterIsTarget: false, iters: 4000, oracle: true })
 failures += run('5 targets, 3 digits, oracle  ', { targetCount: 5, digitCount: 3, digitRange: 5, counterIsTarget: false, iters: 4000, oracle: true })
-failures += run('4 targets, 2 digits, counter ', { targetCount: 4, digitCount: 2, digitRange: 4, counterIsTarget: true, iters: 4000, oracle: true })
+failures += run('4 targets, 2 digits, counter ', { targetCount: 4, digitCount: 2, digitRange: 4, counterIsTarget: true, iters: 4000, oracle: true, exact: true })
+failures += run('5 targets, 3 digits, counter ', { targetCount: 5, digitCount: 3, digitRange: 5, counterIsTarget: true, iters: 4000, oracle: true, exact: true })
+failures += run('6 targets, 2 digits, counter ', { targetCount: 6, digitCount: 2, digitRange: 6, counterIsTarget: true, iters: 4000, oracle: true, exact: true })
 failures += run('9 targets, 3 digits, bare    ', { targetCount: 9, digitCount: 3, digitRange: 9, counterIsTarget: false, iters: 4000 })
 failures += run('12 targets, 4 digits, bare   ', { targetCount: 12, digitCount: 4, digitRange: 9, counterIsTarget: false, iters: 4000 })
 failures += run('20 targets, 3 digits, bare   ', { targetCount: 20, digitCount: 3, digitRange: 9, counterIsTarget: false, iters: 4000 })

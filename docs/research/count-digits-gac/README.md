@@ -8,8 +8,8 @@ and the soundness argument.
 
 **Verdict: `two-row rule: SHIP`** — 0.04x cold and 0.10x after-logical on a
 board the built-in takes 4.6s to search (below, "Recorded rows"). Sound on
-24,709 fuzzed states, and exactly arc-consistent where the counter cell is not
-one of its own targets.
+30,400 fuzzed states, and exactly arc-consistent, the counter cell inside its own
+target list included (#578); a non-counter cell listed twice is the one gap.
 
 ## Files
 
@@ -60,21 +60,19 @@ node docs/research/count-digits-gac/soundness-harness.mjs
 node docs/research/count-digits-gac/bench-count-digits.mjs
 ```
 
-Soundness: 24,709 states across seven shapes, 0 violations.
+Soundness: 30,400 states across nine shapes, 0 violations.
 
 Completeness: the harness enumerates every assignment the candidates allow,
 keeps the ones obeying the rule, and reads each cell's supported digits off
-them. On the shapes where the counter cell is not one of its own targets the
-component removes exactly what that oracle removes — 9,754 candidates, none
-missed, over 7,688 states. It is arc consistency, not an approximation of it.
-With the counter inside its own target list it stays sound and goes weaker
-(986 of 4,211 removable candidates missed): the bounds it reads move as the
-counter itself shrinks, and the walk reads one snapshot. The solver's own
-fixpoint recovers some of that on the next pass; the harness measures a single
-sweep.
+them. On every shape the oracle covers, including the counter cell being one of its
+own targets (#578), the component removes exactly what that oracle removes,
+none missed. It is arc consistency, not an approximation of it, with one
+exception the harness does not draw: a non-counter cell listed twice in the
+target list moves the count by 2 when it flips, and there the component stays
+sound but prunes less than the oracle.
 
-Strength: on those 24,709 states, all of which still hold a solution, the
-component removed 26,581 candidates and the built-in's `validate` accepted every one of
+Strength: on those 30,400 states, all of which still hold a solution, the
+component removed 38,422 candidates and the built-in's `validate` accepted every one of
 those states. That is the shape of the comparison, not a close call — a
 validate-only rule cannot remove anything, so every number in that column is
 the deduction the search would otherwise have to find by trial.
@@ -83,19 +81,19 @@ Cost (us/call, best of 3, 20,000 states per shape):
 
 | shape | reaches the filtering loop | builtin validate | gac update | gac validate |
 |---|---|---|---|---|
-| 5 targets, 2 digits | 2,775 / 20,000 | 0.054 | 0.142 | 0.055 |
-| 12 targets, 3 digits | 51 / 20,000 | 0.068 | 0.133 | 0.086 |
-| 20 targets, 3 digits | 53 / 20,000 | 0.077 | 0.178 | 0.145 |
-| 30 targets, 4 digits | 106 / 20,000 | 0.095 | 0.242 | 0.194 |
-| 20 targets, 3 digits, counter pinned to the definite count | 7,646 / 20,000 | 0.076 | 0.330 | 0.143 |
-| 9 targets, 3 digits, counter pinned to the possible count | 20,000 / 20,000 | 0.029 | 0.265 | 0.063 |
+| 5 targets, 2 digits | 2,775 / 20,000 | 0.053 | 0.161 | 0.072 |
+| 12 targets, 3 digits | 51 / 20,000 | 0.068 | 0.151 | 0.116 |
+| 20 targets, 3 digits | 53 / 20,000 | 0.075 | 0.208 | 0.184 |
+| 30 targets, 4 digits | 106 / 20,000 | 0.107 | 0.324 | 0.243 |
+| 20 targets, 3 digits, counter pinned to the definite count | 7,646 / 20,000 | 0.072 | 0.365 | 0.173 |
+| 9 targets, 3 digits, counter pinned to the possible count | 20,000 / 20,000 | 0.028 | 0.279 | 0.071 |
 
 Read the middle column before the timings. `update` has two halves — count the
 targets and bound the counter, then filter the open cells if a bound is tight —
 and on a random counter mask the second half almost never runs: 51 states in
 20,000 on the 12-target shape. So the first four rows are mostly the first
 half. The last two pin the counter to a bound on purpose, and the filtering
-loop roughly doubles the call: 0.330 against 0.178 on the same 20-target group.
+loop roughly doubles the call: 0.365 against 0.208 on the same 20-target group.
 
 The pin only takes when the count it needs is a digit a cell could hold, which
 is why the all-hits shape is 9 targets and not 20 — a 20-cell group's possible

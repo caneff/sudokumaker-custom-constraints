@@ -127,6 +127,24 @@ element, Enable on the built-in, one rep): built-in 29600ms, `unique solution`.
 The ladder's one-rep and the older 3-rep figures above are the evidence for the
 choice; these are the measurement of the board that ships.
 
+## After #578 (counter-in-targets)
+
+The component now reads the counter's own contribution to its count. This board
+has no counter-in-targets group, so the extra work should cost it nothing:
+link vs link, the committed link before the change against the rebuilt one
+(`just time` has no candidate to build for a board that carries the component
+inline), 3 reps, non-deterministic solve off, the app's "sum" readout (ms).
+
+| mode | before reps | before median | after reps | after median | ratio |
+|---|---|---|---|---|---|
+| cold | 600 / 600 / 600 | 600 | 600 / 600 / 600 | 600 | 1.00 |
+| after-logical | 100 / 100 / 100 | 100 | 100 / 100 / 100 | 100 | 1.00 |
+
+Bar: this change adds no deduction to a board that uses it, so the
+"adds no deduction" bar of `docs/real-app-timing.md` applies, <= 1.1x on both
+rows; both read 1.00x, though at the app's 100 ms readout that resolves only a
+large regression. Both links read `[unique]` on every run (medians as the driver printed them).
+
 ## Decode of the shipped link
 
 Both constraints present, exactly one enabled (`disabled` absent means enabled;
