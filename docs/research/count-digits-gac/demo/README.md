@@ -14,6 +14,11 @@ draws the constraint and keeps it to five groups of eight cells.
 | `gen_4x10.json` | The smaller counter-outside alternative from #568's ladder. |
 | `../self-count/` | #581's self-counting board, GAC against its own pre-#578 self. Kept as #578's evidence; it is not the demo, since the demo compares built-in against GAC. |
 
+**#572 (share the builders' carve/draw code) is not made obsolete.** This change
+added a link-name rule and a rules-text switch to the demo builder, and reused the
+self-count builder's draw; the demo builder's own `search`/carve loop is still a
+copy of the sparse builder's, which is what #572 covers.
+
 Everything below "The link" describes the shipped self-counting board unless a
 heading says counter-outside. The **built-in vs GAC timing of the shipped board
 is not on record yet**: a browser probe dies in a sandboxed worker, so the
