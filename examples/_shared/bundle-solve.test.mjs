@@ -33,7 +33,9 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
 
 // ---- buildStartMessage: an undeclared range is 1..9 whatever the width, and a
 // declared minDigit alone keeps the 9 ceiling (#461: the live app's default,
-// probed in docs/research/2026-09-20-default-digit-range/). ----
+// probed in docs/research/2026-09-20-default-digit-range/). The rangeless half
+// is probed (4,104 solutions); the minDigit-0 half is inferred from it, not
+// probed. ----
 {
   const mk = (extra) => ({ puzzle: { type: 'custom', width: 6, height: 6, cells: Array.from({ length: 36 }, () => ({})), constraints: [], ...extra } })
   const bare = buildStartMessage(mk({})).spec

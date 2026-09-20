@@ -74,9 +74,8 @@ def _link(
     "House GAC" (examples/house-gac/build_link.py renames it to avoid the
     reserved title -- #439); "stale_component" stales the shared component the
     same way `house_gac_backend` does. `digits` is the
-    document's declared range -- None leaves it off, which is what makes the
-    app default the board to 0..9 and silently weaken both frame backends
-    (#394).
+    document's declared range -- None leaves it off, which leaves the range
+    to the app default (1..9) instead of the document (#394).
 
     `no_ring` builds a no-ring board instead: its comment is `no_ring` (the
     whole text) rather than RULES_PREFIX, and it carries the shared whole-grid
@@ -724,11 +723,9 @@ if __name__ == "__main__":
         (root / "_shared" / "HouseGacComponent.js").write_text("x")
         assert check_tree(root) == [], check_tree(root)
 
-    # A frame link that declares no digit range is silently weakened: the app
-    # defaults a custom puzzle to 0..9 whatever the grid size, the interior
-    # lines stop matching digitCount and fall back to plain all-different, and
-    # the corners are pinned to 0. The source text still reads right, so only
-    # the document can be asked (#394).
+    # A frame link that declares no digit range leaves it to the app default
+    # (1..9 whatever the grid size, #461), not to the document. The source text
+    # still reads right, so only the document can be asked (#394).
     for kwargs in (
         {"frame_backend": True, "houses": "none"},
         {"corners_backend": True},

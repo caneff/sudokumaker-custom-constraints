@@ -63,6 +63,9 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // docs/research/2026-09-20-default-digit-range/ (#461). A board narrower or
   // wider than 9 that wants another range must declare it, as
   // examples/_shared/frame-rowcol.js:40 does ("Hit Counts runs minDigit 0").
+  // Before #461 the default was 1..width: the 6x6 docs/research/fillomino-baseline
+  // link now solves 1..9 (as the app does), and a minDigit-0 link with no max
+  // (the isofill 10x10s) is 0..9 and clears the single-digit guard below.
   const minDigit = p.minDigit ?? 1
   const maxDigit = p.maxDigit ?? 9
   // gridBufferToDigits stringifies one character per cell (bottom of this

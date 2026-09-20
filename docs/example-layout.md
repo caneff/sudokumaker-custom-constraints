@@ -180,12 +180,11 @@ constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
 recognizes.
 
 The same check requires a frame link to declare `minDigit`/`maxDigit`. The app
-defaults a custom puzzle to 0..9 whatever the grid size, and both backends read
-`helpers.digits`: undeclared, a 9-cell interior line stops matching the digit
-count, so every row and column silently degrades from a named `HouseComponent`
-to a plain `DifferentDigitsComponent`, and the corner pin lands on 0. A range
-that is declared but does not span the interior line does the same thing, so
-the check compares `maxDigit - minDigit + 1` against the interior line length
+defaults a custom puzzle to 1..9 whatever the grid size (#461), and both
+backends read `helpers.digits`: an undeclared range rests on that default. A
+range that does not span the interior line makes every row and column silently
+degrade from a named `HouseComponent` to a plain `DifferentDigitsComponent`,
+and the corner pin lands on the wrong digit, so the check compares `maxDigit - minDigit + 1` against the interior line length
 rather than only asking that both fields are there. `hit-counts` is the one
 example exempt: it runs `minDigit: 0` so a clue can read 0 and keeps 0 out of
 the interior with a look-and-say cage, so its lines are all-different by

@@ -37,12 +37,12 @@ COMMENT = RULES_PREFIX + (
 )
 
 # The interior is a 9x9 sudoku on 1-9, and the document has to say so. The app
-# defaults a custom puzzle to 0..9 whatever the grid size, and both shared frame
-# backends read `helpers.digits`: left undeclared, a 9-cell interior line stops
-# matching digitCount, so every row and column falls back from a named
-# HouseComponent to a plain DifferentDigitsComponent with no houseType, and the
-# corner pin lands on 0 -- a digit this puzzle never uses. Same pin and the same
-# reason as running-start/build_link.py's template (#394).
+# defaults a custom puzzle to 1..9 whatever the grid size (#461), and both shared
+# frame backends read `helpers.digits`; declaring the range keeps the rule from
+# resting on that default. A range that does not span the interior line makes
+# every row and column fall back from a named HouseComponent to a plain
+# DifferentDigitsComponent with no houseType. Same pin and the same reason as
+# running-start/build_link.py's template (#394).
 DIGITS = (1, 9)
 
 

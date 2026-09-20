@@ -28,7 +28,7 @@ merge, 8900 ms after, five rounds, one rep per variant per round), inside the
 Earlier readings that this table no longer carries, kept because they say the
 verdicts are stable rather than lucky: #394's own sweep, and a re-run of the
 four hand-built numbered-rooms links after round 2 pinned `minDigit`/`maxDigit`
-on them (the app otherwise defaults a custom puzzle to 0..9). Every verdict
+on them (the app otherwise defaults a custom puzzle to 1..9). Every verdict
 held across all three readings.
 
 | Link | Verdict | Time |

@@ -278,7 +278,8 @@ Two contradictions that are **decisions, not fixes**:
 - `framebuild.py` `build_doc` comment says a custom puzzle defaults to 0..9;
   `bundle-solve-lib.mjs:68-69` says 1..width. The headless solver agrees with
   the .mjs side on the house-gac link (1 solution), not resolved against the
-  live app.
+  live app. **Resolved (#461):** both comments were wrong; the app defaults a
+  custom puzzle to 1..9 -- see `2026-09-20-default-digit-range/`.
 
 ## Per-example status
 
