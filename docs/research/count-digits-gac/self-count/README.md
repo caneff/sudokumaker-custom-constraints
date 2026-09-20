@@ -4,6 +4,12 @@ A board where **every group's counter is its own first target**, the shape
 #578 made exact (`../counter-in-targets/NOTES.md`). It exists so the gain from
 #578 can be timed: the colleague's board has two givens and no unique solution.
 
+> **Not the shipped demo.** The demo (`../demo/`, #584) compares the app's
+> built-in CountDigits against the GAC component on a self-counting board; this
+> directory compares the GAC component against its own pre-#578 self and stays
+> as #578's evidence. The demo's draw was ranked with this directory's
+> `node-probe.mjs`.
+
 ## The two links
 
 Same board, one component swapped (same-board comparison,
