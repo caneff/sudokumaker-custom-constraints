@@ -3,7 +3,7 @@
 
 import assert from 'assert'
 import { execFileSync } from 'child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
@@ -249,8 +249,9 @@ assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]
   git(['add', '-A'])
   commit('bad')
   assert.throws(() => loadAt('HEAD', 'bad.js', ['f']), /nope\.js/)
-  // a dotted base directory (house-gac loads through `ex/../_shared`) still works
-  assert.strictEqual(makeIo(join(repo, 'ex', '..', '_shared')).loadAt(first, 'seg.js', ['seg']).seg(), 2)
+  // a checkout reached through a symlink still resolves against the toplevel
+  symlinkSync(repo, repo + '-link')
+  assert.strictEqual(makeIo(join(repo + '-link', 'ex')).loadAt(first, 'comp.js', ['f']).f(), 2)
 }
 
 // ---- the change builders take a DigitSet or a raw bitmask, and nothing else ----

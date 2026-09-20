@@ -89,8 +89,10 @@ export function makeIo (here) {
   const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
   const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
   // Splices the includes from the tree at `commit`, not the working tree, so a
-  // pinned component loads as it shipped. Paths go through resolve() first:
-  // `here` may carry `..` (house-gac), which git does not normalize.
+  // pinned component loads as it shipped. Paths are made repo-relative for
+  // `git show`, so `here` is realpath'd to match `--show-toplevel` (a checkout
+  // reached through a symlink). A symlink committed inside the repo is not
+  // followed: `git show` returns its target string, so include real files.
   const loadAt = (commit, file, names) => {
     const top = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
     const atCommit = abs => git(['show', `${commit}:${relative(top, abs).split(sep).join('/')}`])
