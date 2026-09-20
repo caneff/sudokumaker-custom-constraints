@@ -21,9 +21,8 @@ copy of the sparse builder's, which is what #572 covers.
 
 Everything below "The link" describes the shipped self-counting board unless a
 heading says counter-outside. The **built-in vs GAC timing of the shipped board
-is not on record yet**: a browser probe dies in a sandboxed worker, so the
-controller times it (`just time`, the rows go under "Timing of the shipped
-board" below).
+is under "Timing of the shipped board" below**: a browser probe dies in a
+sandboxed worker, so the controller timed it.
 
 ## The link
 
@@ -198,10 +197,29 @@ large regression. Both links read `[unique]` on every run (medians as the driver
 
 ## Timing of the shipped board
 
-Not measured by this change (#584: the browser probe needs a real session).
-The controller times `PUZZLE_LINK_demo.txt` against
-`--enabled builtin` (`just time`, 3 reps, cold and after-logical), and the rows
-go here.
+Timed by the controller in the browser (2026-09-20, v2026.08.14-d47fc4b), not by
+the worker that built the board. `PUZZLE_LINK_demo.txt` (5 groups x 8 cells, 17
+givens, self-counting) against the same board with the built-in enabled
+(`--enabled builtin`), 3 reps each, non-deterministic solve off, the app's
+readout in ms, median of 3. All twelve runs read `[unique]`.
+
+| mode | built-in first / unique / sum | GAC first / unique / sum | sum ratio |
+|---|---|---|---|
+| cold | 1700 / 3200 / **4900** | 100 / 100 / **200** | 0.04x |
+| after-logical | 800 / 600 / **1400** | 100 / 100 / **200** | 0.14x |
+
+Built-in cold reps: 5600 / 4600 / 4900. GAC cold reps: 200 / 200 / 200.
+Built-in after-logical reps: 1400 / 1300 / 1400. GAC after-logical: 300 / 200 / 200.
+
+- **The GAC side sits at the app's floor on both rows** (200 ms), so 0.04x is a
+  lower bound on the speedup, not a measurement of it. Read it as "the built-in
+  takes 4.9 s where GAC is under the app's resolution", not "24x".
+- **The gap is largest on a cold board**, which is what a solver actually opens:
+  the built-in's after-logical row falls from 4900 to 1400, so the app's own
+  logical solver recovers much of what the built-in cannot deduce, while GAC is
+  already done on both rows.
+- **Which side the ladder ranked:** the draw's search size is the built-in
+  alone, 184,639 nodes (19 s in Node), per the ladder above.
 
 ## Decode of the shipped link
 
