@@ -30,6 +30,8 @@
 #       portfolio search, which the seed does not reproduce)
 #   ... --enabled builtin --out DIR
 #       the same board with the other component switched on, for timing
+#   ... --gen docs/research/count-digits-gac/demo/gen_counter_outside.json --name PUZZLE_LINK_demo_counter_outside.txt
+#       the counter-outside board the demo shipped before #584
 #
 # Lives here, not in docs/research/, because that gate refuses a new .py there
 # (check_research_python, #469).
@@ -49,7 +51,10 @@ from minify import minify_file, minify_js
 
 HERE = pathlib.Path(__file__).parent
 DEMO_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac" / "demo"
-GEN = DEMO_DIR / "gen.json"
+GEN = DEMO_DIR / "gen.json"  # the shipped board: self-counting (#584)
+# the counter-outside draw the demo shipped before #584, kept as that case
+OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
+OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"
 BACKEND = DEMO_DIR / "main-demo.js"
 COMPONENT = (
     HERE.parent.parent / "docs/research/count-digits-gac/CountDigitsGacComponent.js"
@@ -66,15 +71,34 @@ COLOURS = ["#d0342c", "#1a6fd1", "#1f9d55", "#c77800", "#8a3ffc", "#0f8b8d"]
 N = 9
 
 
-RULES = (
-    "Normal sudoku rules apply. Each coloured region lists digits in its "
-    "corner. The cell marked # in the same colour is that region's "
-    "counter: its digit equals how many cells of the region hold one of "
-    "the listed digits. Two CountDigits elements carry the same rule -- "
+# Both shapes end with the toggle instruction.
+TOGGLE = (
+    " Two CountDigits elements carry the same rule -- "
     "the app's built-in and a pruning one; exactly one is enabled. Flip "
     "them in the Elements panel (the three-dot menu, Disable / Enable) "
     "and solve again to compare."
 )
+RULES = (
+    "Normal sudoku rules apply. Each coloured region lists digits in its "
+    "corner. The cell marked # in the same colour is that region's "
+    "counter: its digit equals how many cells of the region hold one of "
+    "the listed digits." + TOGGLE
+)
+# the shape authors write (#584): the counter is one of the cells it counts
+SELFCOUNT_RULES = (
+    "Normal sudoku rules apply. Each coloured region lists digits in its "
+    "corner. The cell marked # in the same colour is that region's "
+    "counter and one of its own cells: its digit equals how many cells of "
+    "the region, itself included, hold one of the listed digits." + TOGGLE
+)
+
+
+def is_selfcount(gen):
+    """True when every group's counter is one of its own target cells (the
+    self-counting shape); False for the counter-outside draw."""
+    return all(
+        tuple(g["counter"]) in {tuple(p) for p in g["cells"]} for g in gen["groups"]
+    )
 
 
 def grow_region(rng, taken, size):
@@ -260,7 +284,7 @@ def build_doc(gen, enabled=SHIPPED):
             "type": "sudoku",
             "width": N,
             "height": N,
-            "comment": RULES,
+            "comment": SELFCOUNT_RULES if is_selfcount(gen) else RULES,
             "cells": cells,
             "constraints": [
                 {"type": 0},
@@ -272,9 +296,9 @@ def build_doc(gen, enabled=SHIPPED):
     }
 
 
-def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED):
+def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED, name=None):
     gen = json.loads(pathlib.Path(gen_path).read_text())
-    name = (
+    name = name or (
         "PUZZLE_LINK_demo.txt"
         if enabled == SHIPPED
         else f"PUZZLE_LINK_demo_{enabled}.txt"
@@ -293,6 +317,7 @@ if __name__ == "__main__":
     p.add_argument("--digits", type=int, default=3)
     p.add_argument("--enabled", choices=sorted(VARIANTS), default=SHIPPED)
     p.add_argument("--out")
+    p.add_argument("--name", help="link file name (default by --enabled)")
     args = p.parse_args()
     if args.search is not None:
         pathlib.Path(args.gen).write_text(
@@ -302,6 +327,9 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         out = build(
-            pathlib.Path(args.out) if args.out else DEMO_DIR, args.gen, args.enabled
+            pathlib.Path(args.out) if args.out else DEMO_DIR,
+            args.gen,
+            args.enabled,
+            args.name,
         )
         print(f"wrote {out}")

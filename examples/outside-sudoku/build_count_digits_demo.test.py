@@ -23,6 +23,8 @@ from build_count_digits_demo import (
     COMPONENT,
     DEMO_DIR,
     GEN,
+    OUTSIDE_GEN,
+    OUTSIDE_LINK_NAME,
     SHIPPED,
     VARIANTS,
     backend_code,
@@ -30,18 +32,21 @@ from build_count_digits_demo import (
     build_doc,
     cage_constraints,
     grow_region,
+    is_selfcount,
 )
 from build_sparse_count_digits import count_solutions, givens_of
 from link_codec import decode_puzzle
 from minify import minify_file
 
 LINK = DEMO_DIR / "PUZZLE_LINK_demo.txt"
+OUTSIDE_LINK = DEMO_DIR / OUTSIDE_LINK_NAME
 N = 9
 
 
 def count(gen, group):
-    """The group's own count in the solution grid: target cells holding a
-    listed digit. The rule, restated here rather than imported."""
+    """The group's own count in the solution grid: cells holding a listed
+    digit. The rule, restated here rather than imported. `cells` is the whole
+    target list, the counter included on a self-counting board."""
     return sum(
         1
         for r, c in (tuple(p) for p in group["cells"])
@@ -65,7 +70,10 @@ def connected(cells):
     return seen == cells
 
 
-def check_board(gen):
+def check_board(gen, selfcount):
+    """`selfcount`: the board the demo ships, every counter its own first
+    target. Not selfcount: the counter-outside case, kept as the older draw."""
+    assert is_selfcount(gen) == selfcount
     groups = gen["groups"]
     used = []
     for g in groups:
@@ -75,13 +83,17 @@ def check_board(gen):
         assert connected(cells), (
             f"{g['name']}: not one connected region, so its cage would be hard to read"
         )
-        assert counter not in set(cells), (
-            f"{g['name']}: the counter is one of its targets"
-        )
+        if selfcount:
+            assert cells[0] == counter, f"{g['name']}: the counter is not first"
+        else:
+            assert counter not in set(cells), (
+                f"{g['name']}: the counter is one of its targets"
+            )
         assert gen["grid"][counter[0]][counter[1]] == count(gen, g), (
             f"{g['name']}: the solution's counter digit is not the count"
         )
         used += [*cells, counter]
+        used = list(dict.fromkeys(used)) if selfcount else used
     assert len(set(used)) == len(used), (
         "two groups share a cell, so the colours would overlap"
     )
@@ -132,12 +144,15 @@ def customs(doc):
     return [c for c in doc["puzzle"]["constraints"] if c.get("type") == 1000]
 
 
-def check_link(gen):
-    shipped = LINK.read_bytes()
+def check_link(gen, link, selfcount):
+    shipped = link.read_bytes()
     doc = decode_puzzle(shipped.decode().strip())
     p = doc["puzzle"]
     assert p["type"] == "sudoku"
     assert p["comment"].startswith("Normal sudoku rules apply")
+    # the rules text tells the reader which shape this is, and how to toggle
+    assert ("one of its own cells" in p["comment"]) == selfcount
+    assert "Disable / Enable" in p["comment"]
     # `entered: 0`: every non-given cell is empty
     givens = givens_of(gen)
     for i, cell in enumerate(p["cells"]):
@@ -239,11 +254,15 @@ def check_link(gen):
 
     # the shipped link reproduces, and the rebuild leaves the committed file
     # alone -- into a directory that does not exist yet, too
-    mtime = LINK.stat().st_mtime_ns
+    mtime = link.stat().st_mtime_ns
     with tempfile.TemporaryDirectory() as tmp:
-        out = build(pathlib.Path(tmp) / "not" / "yet")
+        out = build(
+            pathlib.Path(tmp) / "not" / "yet",
+            GEN if selfcount else OUTSIDE_GEN,
+            name=link.name,
+        )
         assert out.read_bytes() == shipped, "the link does not reproduce"
-    assert LINK.stat().st_mtime_ns == mtime, "--out touched the committed link"
+    assert link.stat().st_mtime_ns == mtime, "--out touched the committed link"
 
     # flipping which one is on swaps the disabled flag and nothing else
     flipped = build_doc(gen, "builtin")
@@ -258,10 +277,13 @@ def check_link(gen):
 
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
-    check_board(gen)
-    check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()))
-    check_uniqueness_detects_a_wrong_count(gen)
+    outside = json.loads(OUTSIDE_GEN.read_text())
+    check_board(gen, selfcount=True)
+    check_board(outside, selfcount=False)
+    check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()), selfcount=False)
+    check_uniqueness_detects_a_wrong_count(outside)
     check_grow_region_is_connected_and_disjoint()
     check_palette_guard(gen)
-    check_link(gen)
+    check_link(gen, LINK, selfcount=True)
+    check_link(outside, OUTSIDE_LINK, selfcount=False)
     print("ok")
