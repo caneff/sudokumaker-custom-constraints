@@ -51,3 +51,6 @@ pair also says exactly one of R2C2/R3C3 is even, which is the deduction the app
 was reaching by contradiction.
 
 Filed as #578.
+
+Landed: #578. The component now prunes both groups as in the table above; the
+regression cases are in `count-digits.test.mjs`.

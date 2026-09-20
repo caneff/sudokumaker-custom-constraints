@@ -48,6 +48,14 @@
 //! checks that against a brute-force oracle, counter-in-targets shapes
 //! included, rather than taking the argument's word.
 //!
+//! What still escapes: a NON-counter cell listed twice in `targetCells` moves the
+//! count by 2 when it flips, so the interval argument no longer holds for it and
+//! the component prunes less than the oracle there (still sound). A counter
+//! listed any number of times is exact. Cells are compared with `===`, which
+//! assumes primitive cell ids (docs/puzzle-api.md says the id type is not a
+//! contract): a non-primitive id would read as no self-listing and fall back to
+//! the pre-#578 strength.
+//!
 //! Sound: each deduction is a statement about the true solution, read off the
 //! candidates the true solution is still inside. A target cell listed twice is
 //! read once per listing, as the built-in counts it.
@@ -131,7 +139,9 @@ function supportableMask (instance, hits, counterMask) {
   let allowed = 0
   let lowNeed = Infinity
   let highNeed = -Infinity
-  for (let value = 0; value <= 30; value++) {
+  //! A supportable value never exceeds the target count: need <= possible and
+  //! possible + selfHits <= targetCells.length.
+  for (let value = 0; value <= instance.targetCells.length; value++) {
     if (!(counterMask & (1 << value))) continue
     const need = value - ((instance.digitMask & (1 << value)) ? hits.selfHits : 0)
     if (need < hits.definite || need > hits.possible) continue
@@ -162,7 +172,7 @@ function * update (instance, puzzle) {
     //! the message says why and the cell list says which cells are to
     //! blame. It fails only the search node being tried, so the
     //! solver backs up and tries the next candidate elsewhere on the board.
-    yield puzzle.stop(`${instance.name} cannot count between ${definite} and ${possible}`, getAffectedCells(instance.digitMask, instance.counterCell, instance.targetCells))
+    yield puzzle.stop(`${instance.name} cannot count between ${definite} and ${possible} over its other targets`, getAffectedCells(instance.digitMask, instance.counterCell, instance.targetCells))
     return
   }
 
@@ -185,7 +195,9 @@ function * update (instance, puzzle) {
   }
 }
 
-//! The backstop, and the built-in's own validate. The app calls it to check a
+//! The backstop: the built-in's validate, made exact -- it refuses a state
+//! exactly when no counter value is supportable, which is stricter than the
+//! built-in's interval-end check and still sound (the built-in never prunes). The app calls it to check a
 //! board state against the rule and refuse it (return false) or accept it
 //! (true); `update` above only prunes, it does not replace this check. It
 //! refuses a state when none of the counter's remaining digits is supportable.
