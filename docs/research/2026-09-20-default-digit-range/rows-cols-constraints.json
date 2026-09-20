@@ -1,0 +1,19 @@
+[
+ {
+  "type": 1000,
+  "input": {},
+  "style": {},
+  "definition": {
+   "name": "Rows & Columns",
+   "input": [],
+   "backend": {
+    "type": "code",
+    "code": "function postprocessJSON (json, input, helpers) {\n  function getRowsAndColumns () {\n    return [\n      ['row ', helpers.geometry.getAllRows()],\n      ['column ', helpers.geometry.getAllColumns()]\n    ].flatMap(([type, lines]) =>\n      [...lines].map((line, i) => ({ name: `${type}${i + 1}`, cells: line.map(c => c | 0) }))\n    )\n  }\n  if (json == undefined) return getRowsAndColumns()\n  json.metadata.norowcol = true\n  json.cages.push(\n    ...getRowsAndColumns().map(({ cells }) => ({\n      unique: 'true', type: 'rowcol', hidden: 'true', cells: cells.map(toRC)\n    }))\n  )\n  function toRC (cell) {\n    const { x, y } = helpers.cellIds.getCoordsFromId(cell)\n    return [y, x]\n  }\n}\nconst components = postprocessJSON(undefined, undefined, helpers)\n  .map(({ name, cells }) => new DifferentDigitsComponent(name, cells))\nfor (const component of components) puzzle.addConstraintComponent(component)\n"
+   },
+   "components": []
+  }
+ },
+ {
+  "type": 0
+ }
+]
