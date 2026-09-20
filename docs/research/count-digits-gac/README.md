@@ -8,8 +8,8 @@ and the soundness argument.
 
 **Verdict: `two-row rule: SHIP`** — 0.04x cold and 0.10x after-logical on a
 board the built-in takes 4.6s to search (below, "Recorded rows"). Sound on
-24,709 fuzzed states, and exactly arc-consistent where the counter cell is not
-one of its own targets.
+30,400 fuzzed states, and exactly arc-consistent, the counter cell inside its own
+target list included (#578).
 
 ## Files
 
@@ -60,21 +60,14 @@ node docs/research/count-digits-gac/soundness-harness.mjs
 node docs/research/count-digits-gac/bench-count-digits.mjs
 ```
 
-Soundness: 24,709 states across seven shapes, 0 violations.
+Soundness: 30,400 states across nine shapes, 0 violations.
 
 Completeness: the harness enumerates every assignment the candidates allow,
 keeps the ones obeying the rule, and reads each cell's supported digits off
-them. On the shapes where the counter cell is not one of its own targets the
-component removes exactly what that oracle removes — 9,754 candidates, none
-missed, over 7,688 states. It is arc consistency, not an approximation of it.
-With the counter inside its own target list it stays sound and goes weaker
-(986 of 4,211 removable candidates missed): the bounds it reads move as the
-counter itself shrinks, and the walk reads one snapshot. The solver's own
-fixpoint recovers some of that on the next pass; the harness measures a single
-sweep.
+them. On every shape the oracle covers, including the counter cell being one of its own targets (#578), the component removes exactly what that oracle removes, none missed. It is arc consistency, not an approximation of it. Before #578 the counter-in-targets shape missed 986 of 4,211 removable candidates, because the bounds moved as the counter itself shrank; each counter value now pays for its own contribution to the count, so one pass reads it all.
 
-Strength: on those 24,709 states, all of which still hold a solution, the
-component removed 26,581 candidates and the built-in's `validate` accepted every one of
+Strength: on those 30,400 states, all of which still hold a solution, the
+component removed 38,422 candidates and the built-in's `validate` accepted every one of
 those states. That is the shape of the comparison, not a close call — a
 validate-only rule cannot remove anything, so every number in that column is
 the deduction the search would otherwise have to find by trial.

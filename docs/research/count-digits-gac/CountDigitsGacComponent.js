@@ -23,28 +23,34 @@
 //! open, and every value in between is reachable by flipping open cells one at
 //! a time -- the reachable counts are the whole interval.
 //!
+//! When the counter is also one of its targets its digit is on both sides of
+//! the equation. Read the OTHER targets for `definite`/`possible`, and let
+//! each counter value v pay for its own contribution: v adds `selfHits` (the
+//! number of times the counter appears among its targets) to the count when v
+//! is in the set, so v is supportable exactly when
+//! definite <= v - selfHits*[v in set] <= possible. With the counter outside
+//! its targets `selfHits` is 0 and this is the plain interval. One code path
+//! covers both, so the two cases cannot drift apart.
+//!
 //! Three deductions follow, and they are the whole of arc consistency for this
-//! constraint when the counter is not itself a target:
-//!   1. The counter keeps only [definite, possible]. Anything outside is
+//! constraint:
+//!   1. The counter keeps only its supportable values. Anything else is
 //!      unreachable however the open cells fall.
-//!   2. If the counter's largest survivor equals `definite`, the count IS
-//!      definite: no open cell may be a hit, so the in-set digits leave every
-//!      open cell.
-//!   3. If the counter's smallest survivor equals `possible`, every open cell
-//!      must be a hit, so the out-of-set digits leave every open cell.
+//!   2. If the largest supportable value needs exactly `definite` from the
+//!      other targets, the count IS definite: no open cell may be a hit, so the
+//!      in-set digits leave every open cell.
+//!   3. If the smallest supportable value needs exactly `possible`, every open
+//!      cell must be a hit, so the out-of-set digits leave every open cell.
 //! Nothing else is removable: an open cell asked to be a hit reaches the
-//! counts [definite+1, possible], which meets the counter's set unless (2)
-//! holds, and asked to be a miss reaches [definite, possible-1], which meets it
-//! unless (3) holds. `soundness-harness.mjs` next to this file checks that
-//! against a brute-force oracle rather than taking the argument's word.
+//! needs [definite+1, possible], which meets the counter's supportable values
+//! unless (2) holds, and asked to be a miss reaches [definite, possible-1],
+//! which meets them unless (3) holds. `soundness-harness.mjs` next to this file
+//! checks that against a brute-force oracle, counter-in-targets shapes
+//! included, rather than taking the argument's word.
 //!
 //! Sound: each deduction is a statement about the true solution, read off the
-//! candidates the true solution is still inside, so it survives a counter cell
-//! that is also one of its own targets -- the count is still what it is. That
-//! case is legal (the built-in's `cellIds` is `[counterCell, ...targetCells]`
-//! either way) and only costs strength: (1)'s bounds then move as the counter
-//! shrinks, and the walk here reads one snapshot and does not chase it. The
-//! solver re-runs `update` to a fixpoint, so the next pass sees the new bounds.
+//! candidates the true solution is still inside. A target cell listed twice is
+//! read once per listing, as the built-in counts it.
 
 //! Counts run 0..targetCells.length and are compared against digit masks, so
 //! the target list has to stay inside a 32-bit mask. A longer one is a
@@ -88,31 +94,24 @@ function setParams (instance, digits, counterCell, targetCells) {
   instance.targetCells = targetCells
 }
 
-//! Bits lo..hi, both ends included; 0 when the range is empty. hi stays under
-//! 31 because MAX_TARGETS does.
-function rangeMask (lo, hi) {
-  if (lo > hi) return 0
-  return ((1 << (hi + 1)) - 1) & ~((1 << lo) - 1)
-}
-
-function smallestDigit (mask) {
-  return 31 - Math.clz32(mask & -mask)
-}
-
-function largestDigit (mask) {
-  return 31 - Math.clz32(mask)
-}
-
-//! Read every target once: how many are certainly hits, and which are open.
-//! `open` is a list of positions into `targetCells`, so a caller that has to
-//! filter them walks only those.
+//! Read every target except the counter once: how many are certainly hits, and
+//! which are open. `open` is a list of positions into `targetCells`, so a
+//! caller that has to filter them walks only those. `selfHits` counts how many
+//! times the counter appears among its own targets; those are handled per
+//! counter value in `supportableMask`, not read as candidates here.
 function countHits (instance, puzzle) {
   const targetCells = instance.targetCells
   const digitMask = instance.digitMask
   const masks = []
   const open = []
   let definite = 0
+  let selfHits = 0
   for (let position = 0; position < targetCells.length; position++) {
+    if (targetCells[position] === instance.counterCell) {
+      selfHits++
+      masks.push(0)
+      continue
+    }
     const mask = puzzle.getCandidatesBitMask(targetCells[position])
     masks.push(mask)
     const inSet = mask & digitMask
@@ -122,7 +121,25 @@ function countHits (instance, puzzle) {
     if (inSet === mask) definite++
     else if (inSet !== 0) open.push(position)
   }
-  return { masks, open, definite, possible: definite + open.length }
+  return { masks, open, definite, possible: definite + open.length, selfHits }
+}
+
+//! The counter values the rest of the targets can support, and the smallest and
+//! largest amount they would each have to supply (`need = v - selfHits` for an
+//! in-set v, `v` otherwise). `need` is what the other targets must count.
+function supportableMask (instance, hits, counterMask) {
+  let allowed = 0
+  let lowNeed = Infinity
+  let highNeed = -Infinity
+  for (let value = 0; value <= 30; value++) {
+    if (!(counterMask & (1 << value))) continue
+    const need = value - ((instance.digitMask & (1 << value)) ? hits.selfHits : 0)
+    if (need < hits.definite || need > hits.possible) continue
+    allowed |= 1 << value
+    if (need < lowNeed) lowNeed = need
+    if (need > highNeed) highNeed = need
+  }
+  return { allowed, lowNeed, highNeed }
 }
 
 //! The app calls `update` whenever a watched cell changes, and keeps calling it
@@ -139,7 +156,7 @@ function * update (instance, puzzle) {
   const { masks, open, definite, possible } = hits
 
   const counterMask = puzzle.getCandidatesBitMask(instance.counterCell)
-  const allowed = counterMask & rangeMask(definite, possible)
+  const { allowed, lowNeed, highNeed } = supportableMask(instance, hits, counterMask)
   if (allowed === 0) {
     //! puzzle.stop is a change that says "this board state has no solution":
     //! the message says why and the cell list says which cells are to
@@ -159,8 +176,8 @@ function * update (instance, puzzle) {
 
   //! At most one of these fires: both would mean definite === possible, and
   //! then there is no open cell to filter.
-  const forcedOut = largestDigit(allowed) === definite
-  const forcedIn = smallestDigit(allowed) === possible
+  const forcedOut = highNeed === definite
+  const forcedIn = lowNeed === possible
   if (!forcedOut && !forcedIn) return
   for (const position of open) {
     const removed = forcedOut ? masks[position] & instance.digitMask : masks[position] & ~instance.digitMask
@@ -171,12 +188,11 @@ function * update (instance, puzzle) {
 //! The backstop, and the built-in's own validate. The app calls it to check a
 //! board state against the rule and refuse it (return false) or accept it
 //! (true); `update` above only prunes, it does not replace this check. It
-//! refuses a state when the count cannot reach the counter's remaining digits
-//! at either end.
+//! refuses a state when none of the counter's remaining digits is supportable.
 function validate (instance, puzzle) {
   const hits = countHits(instance, puzzle)
   if (hits === null) return false
   const counterMask = puzzle.getCandidatesBitMask(instance.counterCell)
   if (counterMask === 0) return false
-  return hits.definite <= largestDigit(counterMask) && hits.possible >= smallestDigit(counterMask)
+  return supportableMask(instance, hits, counterMask).allowed !== 0
 }
