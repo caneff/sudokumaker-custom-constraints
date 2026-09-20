@@ -291,7 +291,13 @@ the method, not a running log.
   it *loaded* is stripped, before the logic pass runs, so the only marks the
   timed search can meet are the ones that pass put there.
   `app-solve.mjs` reports `[timeout]` when the app stops at its own limit and
-  `[not-unique]` on "Found N solutions"; both carry null times.
+  `[not-unique]` on "Found N solutions"; both carry null times, because neither
+  readout holds a "took". A not-unique run is not always timeless: the other
+  readout the app writes for it, "Solved took 100ms / This puzzle has multiple
+  solutions. took 50ms", carries both times and parses to a real sum
+  (`app-solve-lib.test.mjs`, "a not-unique verdict still reports both times").
+  That is why `docs/frame-link-verdicts.md` records not-unique rows with times
+  on them. The verdict does not decide whether there is a time; the readout does.
 - **Pick the strip mode by where the clues live.** `strip` keeps givens only.
   `empty` also keeps the outer ring, because a clue is not always a given:
   Numbered Rooms stores its outside clues as non-given cell values in the ring,
