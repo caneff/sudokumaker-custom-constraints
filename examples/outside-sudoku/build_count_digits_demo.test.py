@@ -72,7 +72,7 @@ def connected(cells):
 
 def check_board(gen, selfcount):
     """`selfcount`: the board the demo ships, every counter its own first
-    target. Not selfcount: the counter-outside case, kept as the older draw."""
+    target. Not selfcount: the counter-outside case."""
     assert is_selfcount(gen) == selfcount
     groups = gen["groups"]
     used = []
@@ -92,8 +92,8 @@ def check_board(gen, selfcount):
         assert gen["grid"][counter[0]][counter[1]] == count(gen, g), (
             f"{g['name']}: the solution's counter digit is not the count"
         )
-        used += [*cells, counter]
-        used = list(dict.fromkeys(used)) if selfcount else used
+        # a self-counting counter repeats inside its own group, never across
+        used += dict.fromkeys([*cells, counter])
     assert len(set(used)) == len(used), (
         "two groups share a cell, so the colours would overlap"
     )
@@ -259,8 +259,8 @@ def check_link(gen, link, selfcount):
         out = build(
             pathlib.Path(tmp) / "not" / "yet",
             GEN if selfcount else OUTSIDE_GEN,
-            name=link.name,
         )
+        assert out.name == link.name, "the link name does not follow the gen"
         assert out.read_bytes() == shipped, "the link does not reproduce"
     assert link.stat().st_mtime_ns == mtime, "--out touched the committed link"
 
@@ -281,6 +281,7 @@ if __name__ == "__main__":
     check_board(gen, selfcount=True)
     check_board(outside, selfcount=False)
     check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()), selfcount=False)
+    check_uniqueness_detects_a_wrong_count(gen)
     check_uniqueness_detects_a_wrong_count(outside)
     check_grow_region_is_connected_and_disjoint()
     check_palette_guard(gen)

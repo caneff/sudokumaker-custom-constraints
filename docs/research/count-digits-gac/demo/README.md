@@ -228,7 +228,7 @@ node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_L
 
 `--enabled builtin --out DIR` writes the same board with the other component
 on, for timing outside the app's menu. The counter-outside link rebuilds with
-`--gen docs/research/count-digits-gac/demo/gen_counter_outside.json --name PUZZLE_LINK_demo_counter_outside.txt`.
+`--gen docs/research/count-digits-gac/demo/gen_counter_outside.json` (the link name follows the gen).
 
 **Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
 sparse builder's `model()` and `count_solutions()`), from the 17 givens, in the

@@ -30,8 +30,9 @@
 #       portfolio search, which the seed does not reproduce)
 #   ... --enabled builtin --out DIR
 #       the same board with the other component switched on, for timing
-#   ... --gen docs/research/count-digits-gac/demo/gen_counter_outside.json --name PUZZLE_LINK_demo_counter_outside.txt
-#       the counter-outside board the demo shipped before #584
+#   ... --gen docs/research/count-digits-gac/demo/gen_counter_outside.json
+#       the counter-outside board (counters outside their targets); its link
+#       name follows the gen, so it never overwrites the shipped link
 #
 # Lives here, not in docs/research/, because that gate refuses a new .py there
 # (check_research_python, #469).
@@ -52,7 +53,7 @@ from minify import minify_file, minify_js
 HERE = pathlib.Path(__file__).parent
 DEMO_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac" / "demo"
 GEN = DEMO_DIR / "gen.json"  # the shipped board: self-counting (#584)
-# the counter-outside draw the demo shipped before #584, kept as that case
+# the counter-outside case: counters outside their own targets
 OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
 OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"
 BACKEND = DEMO_DIR / "main-demo.js"
@@ -78,18 +79,19 @@ TOGGLE = (
     "them in the Elements panel (the three-dot menu, Disable / Enable) "
     "and solve again to compare."
 )
-RULES = (
+RULES_HEAD = (
     "Normal sudoku rules apply. Each coloured region lists digits in its "
     "corner. The cell marked # in the same colour is that region's "
-    "counter: its digit equals how many cells of the region hold one of "
-    "the listed digits." + TOGGLE
+)
+RULES = (
+    RULES_HEAD + "counter: its digit equals how many cells of the region hold "
+    "one of the listed digits." + TOGGLE
 )
 # the shape authors write (#584): the counter is one of the cells it counts
 SELFCOUNT_RULES = (
-    "Normal sudoku rules apply. Each coloured region lists digits in its "
-    "corner. The cell marked # in the same colour is that region's "
-    "counter and one of its own cells: its digit equals how many cells of "
-    "the region, itself included, hold one of the listed digits." + TOGGLE
+    RULES_HEAD + "counter and one of its own cells: its digit equals how "
+    "many cells of the region, itself included, hold one of the listed "
+    "digits." + TOGGLE
 )
 
 
@@ -296,13 +298,18 @@ def build_doc(gen, enabled=SHIPPED):
     }
 
 
-def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED, name=None):
+def link_name(gen_path, enabled):
+    """The link's file name follows its gen, so a board never overwrites
+    another's link: gen.json -> PUZZLE_LINK_demo, gen_<x>.json ->
+    PUZZLE_LINK_demo_<x>; a non-shipped `enabled` adds its own suffix."""
+    stem = pathlib.Path(gen_path).stem
+    board = "" if pathlib.Path(gen_path) == GEN else "_" + stem.removeprefix("gen_")
+    return f"PUZZLE_LINK_demo{board}{'' if enabled == SHIPPED else '_' + enabled}.txt"
+
+
+def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED):
     gen = json.loads(pathlib.Path(gen_path).read_text())
-    name = name or (
-        "PUZZLE_LINK_demo.txt"
-        if enabled == SHIPPED
-        else f"PUZZLE_LINK_demo_{enabled}.txt"
-    )
+    name = link_name(gen_path, enabled)
     out_dir.mkdir(parents=True, exist_ok=True)
     write(build_doc(gen, enabled), out_dir / name)
     return out_dir / name
@@ -317,7 +324,6 @@ if __name__ == "__main__":
     p.add_argument("--digits", type=int, default=3)
     p.add_argument("--enabled", choices=sorted(VARIANTS), default=SHIPPED)
     p.add_argument("--out")
-    p.add_argument("--name", help="link file name (default by --enabled)")
     args = p.parse_args()
     if args.search is not None:
         pathlib.Path(args.gen).write_text(
@@ -330,6 +336,5 @@ if __name__ == "__main__":
             pathlib.Path(args.out) if args.out else DEMO_DIR,
             args.gen,
             args.enabled,
-            args.name,
         )
         print(f"wrote {out}")
