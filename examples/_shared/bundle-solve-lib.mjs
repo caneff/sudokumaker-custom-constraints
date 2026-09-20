@@ -58,15 +58,16 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   }
 
   // spec: puzzle-api.md "spec" -- size, minDigit, maxDigit, type. A document
-  // that does not declare minDigit/maxDigit defaults to 1..width: every
-  // shipped board that omits them (docs/research/406-gac-demo's demo pair,
-  // examples/house-gac's standalone link) is a plain 1..width sudoku, and
-  // examples/_shared/frame-rowcol.js:40's comment ("Hit Counts runs minDigit
-  // 0") names that as the one exception, not the rule -- the default is not
-  // 0-based. Confirmed against CP-SAT on the without-GAC link
-  // (bundle-solve.test.mjs).
+  // that does not declare minDigit/maxDigit defaults to 1..9 whatever the
+  // width: the live app's own default for a custom puzzle, probed in
+  // docs/research/2026-09-20-default-digit-range/ (#461). A board narrower or
+  // wider than 9 that wants another range must declare it, as
+  // examples/_shared/frame-rowcol.js:40 does ("Hit Counts runs minDigit 0").
+  // Before #461 the default was 1..width: the 6x6 docs/research/fillomino-baseline
+  // link now solves 1..9 (as the app does), and a minDigit-0 link with no max
+  // (the isofill 10x10s) is 0..9 and clears the single-digit guard below.
   const minDigit = p.minDigit ?? 1
-  const maxDigit = p.maxDigit ?? p.width
+  const maxDigit = p.maxDigit ?? 9
   // gridBufferToDigits stringifies one character per cell (bottom of this
   // file), so a two-digit maxDigit would make two distinct solutions
   // stringify the same -- a shipped board already reaches this: the

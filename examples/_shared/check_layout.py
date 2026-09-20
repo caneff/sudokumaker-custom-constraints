@@ -585,15 +585,14 @@ def check_frame_backends(example_dir, link, puzzle):
     unique (#394).
 
     The digit range is the other silent one. Both backends read
-    `helpers.digits`, and the app defaults a custom puzzle to 0..9 whatever the
-    grid size. With no `minDigit`/`maxDigit` on the document, a 9-cell interior
-    line stops matching `digitCount`, so every row and column degrades from a
-    named `HouseComponent` to a bare `DifferentDigitsComponent` -- the weaker
-    rule, with no houseType for the solver's row/column machinery -- and the
-    corners are pinned to 0, a digit the puzzle never uses. Declaring a range
-    that does not span the interior line does the same thing, so the range is
-    checked against the line and not merely for being there. None of it shows
-    on the board or in the source text.
+    `helpers.digits`, and the app defaults a custom puzzle to 1..9 whatever the
+    grid size (#461). With no `minDigit`/`maxDigit` the range rests on that
+    default, not on the document. A range that does not span the interior line
+    degrades every row and column from a named `HouseComponent` to a bare
+    `DifferentDigitsComponent` -- the weaker rule, with no houseType for the
+    solver's row/column machinery -- and pins the corners to a digit the puzzle
+    never uses, so the range is checked against the line and not merely for
+    being there. None of it shows on the board or in the source text.
 
     The component staleness check is keyed on the shipped component's own
     name, not the constraint's title: house-gac's standalone board splices in
@@ -667,10 +666,9 @@ def check_frame_backends(example_dir, link, puzzle):
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
         violations.append(
             f"{name}: {link.name} ships {sorted(carried)} but declares no "
-            f"digit range -- the app defaults a custom puzzle to 0..9 whatever "
-            f"the grid size, so the interior lines fall back from named houses "
-            f"to plain all-different and a corner is pinned to 0. Pin "
-            f"minDigit/maxDigit on the document (#394)"
+            f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
+            f"the grid size, so the range rests on that default, not on the "
+            f"document. Pin minDigit/maxDigit on the document (#394)"
         )
         return violations
 

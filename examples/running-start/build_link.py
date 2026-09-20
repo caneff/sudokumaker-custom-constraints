@@ -95,7 +95,7 @@ def build_from_template():
     ]
     cons.append(house_gac_constraint(9))
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
-    # pin the digit range to 9 (the app defaults a custom puzzle to 0..9) and
+    # pin the digit range to 9 (the app defaults a custom puzzle to 1..9, #461) and
     # match the rule wording used by the 4x4/6x6 builder
     doc["puzzle"]["minDigit"] = 1
     doc["puzzle"]["maxDigit"] = 9
