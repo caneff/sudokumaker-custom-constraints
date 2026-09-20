@@ -50,27 +50,18 @@ function setParams (instance, clueA, clueB, line) {
   instance.n = line.length
 }
 
-// Arc-consistency for a strict "a < b" using live candidates.
-function * less (puzzle, a, b) {
-  const ca = Array.from(puzzle.getCandidates(a))
-  const cb = Array.from(puzzle.getCandidates(b))
-  const maxB = Math.max(...cb)
-  const minA = Math.min(...ca)
-  const rmA = ca.filter(d => d >= maxB)
-  const rmB = cb.filter(d => d <= minA)
-  if (rmA.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), a)
-  if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), b)
-}
+// Arc-consistency for a strict "a < b": below(puzzle, a, b, true).
+// #include ../_shared/below.js
 
 // Treat cells as one strictly increasing run of pinned length cells.length:
 // cell j needs j cells below it and (k-1-j) above, so it sits in
-// [lo+j, hi-(k-1-j)]. Also chain adjacent cells with `less`.
+// [lo+j, hi-(k-1-j)]. Also chain adjacent cells with `below`.
 function * incRun (puzzle, cells) {
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
   const k = cells.length
   for (let j = 0; j < k; j++) {
-    if (j >= 1) yield * less(puzzle, cells[j - 1], cells[j])
+    if (j >= 1) yield * below(puzzle, cells[j - 1], cells[j], true)
     const floor = lo + j
     const ceil = hi - (k - 1 - j)
     const bad = []

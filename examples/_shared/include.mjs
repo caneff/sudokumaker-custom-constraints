@@ -16,24 +16,20 @@ import { dirname, resolve } from 'path'
 
 const INCLUDE = /^\s*\/\/\s*#include\b(.*)$/
 
-// The first `// #include` line in `src`, or null. A reader that cannot splice
-// -- `loadAt` in harness-lib.mjs, which holds text from a git commit and has no
-// directory to resolve against -- uses this to refuse loudly instead of evalling
-// the directive as an ordinary comment.
-export function firstInclude (src) {
-  return src.split('\n').find(line => INCLUDE.test(line)) ?? null
-}
-
-export function assembleSource (path, stack = []) {
+// `readFile` reads one file's text by absolute path: the working tree by
+// default, or `git show` at a commit for `loadAt` in harness-lib.mjs, so a
+// pinned component splices the includes it shipped with. It throws for a file
+// that does not exist.
+export function assembleSource (path, stack = [], readFile = p => readFileSync(p, 'utf8')) {
   const here = resolve(path)
   if (stack.includes(here)) throw new Error(`#include cycle through ${here}`)
-  return readFileSync(here, 'utf8').split('\n').map(line => {
+  return readFile(here).split('\n').map(line => {
     const m = INCLUDE.exec(line)
     if (!m) return line
     const rel = m[1].trim()
     if (!rel || rel.split(/\s+/).length !== 1) {
       throw new Error(`an #include names exactly one path, which this one does not: ${JSON.stringify(m[1])}`)
     }
-    return assembleSource(resolve(dirname(here), rel), [...stack, here]).replace(/\n$/, '')
+    return assembleSource(resolve(dirname(here), rel), [...stack, here], readFile).replace(/\n$/, '')
   }).join('\n')
 }

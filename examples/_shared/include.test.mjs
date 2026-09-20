@@ -14,7 +14,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { assembleSource, firstInclude } from './include.mjs'
+import { assembleSource } from './include.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
@@ -55,10 +55,6 @@ const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
   writeFileSync(join(root, 'two.js'), '// #include a.js b.js\n')
   assert.throws(() => assembleSource(join(root, 'two.js')), /exactly one path/)
 }
-
-// ---- firstInclude reports the directive a non-splicing reader must refuse ----
-assert.strictEqual(firstInclude('const x = 1\n// #include seg.js\n'), '// #include seg.js')
-assert.strictEqual(firstInclude('const x = 1\n// an ordinary comment\n'), null)
 
 // ---- both halves read the same directive out of the same fixture ----
 // Python's answer is minified and Node's is not, so the comparison runs
