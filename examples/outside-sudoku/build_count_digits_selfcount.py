@@ -61,12 +61,18 @@ RULES = (
 def draw_group(rng, grid, taken, index, size):
     """A connected region of `size` free cells whose first cell is a counter:
     a cell whose solution digit equals the region's count of evens (the
-    counter itself counted). None when this draw has no such cell."""
+    counter itself counted), off the region's top-left corner. None when this
+    draw has no such cell."""
     cells = grow_region(rng, taken, size)
     if cells is None:
         return None
     count = sum(1 for r, c in cells if grid[r][c] in EVENS)
     picks = [p for p in cells if grid[p[0]][p[1]] == count]
+    if not picks:
+        return None
+    # a cage label draws in the region's top-left cell: a counter there would
+    # share that corner with the digit list
+    picks = [p for p in picks if p != min(cells)]
     if not picks:
         return None
     counter = rng.choice(picks)

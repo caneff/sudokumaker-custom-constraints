@@ -44,9 +44,6 @@ def check_board(gen):
         assert gen["grid"][counter[0]][counter[1]] == hits, (
             f"{g['name']}: the solution's counter digit is not the count"
         )
-        # a cage label draws in the region's top-left cell: were that the
-        # counter, the digit list and the # would share a corner
-        assert counter != min(cells), f"{g['name']}: counter is the top-left cell"
         used += cells
     assert len(set(used)) == len(used), "two groups share a cell"
     assert count_solutions(gen["groups"], givens_of(gen)) == 1, "not unique"
@@ -64,6 +61,24 @@ def check_self_counting_is_modelled(gen):
     assert count_solutions([dropped], full) == (0 if even else 1), (
         "the model ignores whether the counter counts itself"
     )
+
+
+def check_search_keeps_counter_off_the_label_corner():
+    """A cage label draws in the region's top-left cell, so a draw never puts
+    the counter's own # there. (The committed gen.json predates the rule; the
+    README names its one collision.)"""
+    import random
+
+    from build_count_digits_selfcount import draw_group
+
+    grid = json.loads(GEN.read_text())["grid"]
+    drawn = 0
+    for seed in range(300):
+        g = draw_group(random.Random(seed), grid, set(), 0, 8)
+        if g is not None:
+            drawn += 1
+            assert tuple(g["counter"]) != min(map(tuple, g["cells"])), f"seed {seed}"
+    assert drawn > 20, "the guard rejects nearly every draw"
 
 
 def only_custom(doc):
@@ -129,6 +144,9 @@ def check_links(gen):
 if __name__ == "__main__":
     gen = json.loads(GEN.read_text())
     check_board(gen)
+    for alt in ("gen_6x8_first.json", "gen_5x10_ratio.json"):
+        check_board(json.loads((BOARD_DIR / alt).read_text()))
+    check_search_keeps_counter_off_the_label_corner()
     check_self_counting_is_modelled(gen)
     check_links(gen)
     print("ok")
