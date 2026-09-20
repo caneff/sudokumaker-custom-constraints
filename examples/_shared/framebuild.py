@@ -655,7 +655,7 @@ def _document(spec, board, width, cells, constraints, comment):
             "author": "",
             "comment": comment,
             # minDigit/maxDigit pin the digit range to n; the app otherwise
-            # defaults a custom puzzle to 0..9 regardless of grid size.
+            # defaults a custom puzzle to 1..9 regardless of grid size.
             "type": "custom",
             "width": width,
             "height": width,
@@ -878,7 +878,7 @@ def check(spec, link, doc, board, local=False):
     # reached through an alias, or named some other way, is invisible to it.
     problems = describe_mismatch(*mismatch(names, backend))
     assert not problems, "; ".join(problems)
-    assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 0..9 default"
+    assert doc["puzzle"]["maxDigit"] == n, "maxDigit must be n, not the 1..9 default"
     assert doc["puzzle"]["minDigit"] == spec.min_digit
 
 

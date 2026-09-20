@@ -22,7 +22,7 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
   }
   const msg = buildStartMessage(doc)
   assert.strictEqual(msg.type, 'start')
-  assert.deepStrictEqual(msg.spec, { size: { width: 2, height: 2 }, minDigit: 1, maxDigit: 2, digitCount: 2, type: 'custom' })
+  assert.deepStrictEqual(msg.spec, { size: { width: 2, height: 2 }, minDigit: 1, maxDigit: 9, digitCount: 9, type: 'custom' })
   // two words per cell: value then candidate mask; 4294967295 is "unset"
   assert.deepStrictEqual(msg.grid, [1, 0, 4294967295, 0, 4294967295, 0, 2, 0])
   assert.deepStrictEqual(msg.constraints, [{ config: { type: 1, regions: [0, 0, 0, 0] } }])
@@ -30,6 +30,18 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
   assert.strictEqual(msg.strategy.useRandomness, false)
   assert.strictEqual(msg.verbose, false)
 }
+
+// ---- buildStartMessage: an undeclared range is 1..9 whatever the width, and a
+// declared minDigit alone keeps the 9 ceiling (#461: the live app's default,
+// probed in docs/research/2026-09-20-default-digit-range/). ----
+{
+  const mk = (extra) => ({ puzzle: { type: 'custom', width: 6, height: 6, cells: Array.from({ length: 36 }, () => ({})), constraints: [], ...extra } })
+  const bare = buildStartMessage(mk({})).spec
+  assert.deepStrictEqual([bare.minDigit, bare.maxDigit, bare.digitCount], [1, 9, 9])
+  const zero = buildStartMessage(mk({ minDigit: 0 })).spec
+  assert.deepStrictEqual([zero.minDigit, zero.maxDigit, zero.digitCount], [0, 9, 10])
+}
+console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
 
 // ---- buildStartMessage: declared minDigit/maxDigit pass through unchanged ----
 // minDigit 0 (the real examples/hit-counts value), not 1 -- 1 would equal the
@@ -183,6 +195,8 @@ function boxRegionsConstraint (boxSize, width, height) {
       type: 'custom',
       width: 4,
       height: 4,
+      minDigit: 1,
+      maxDigit: 4, // declared: an undeclared range is 1..9 (#461)
       cells,
       constraints: [boxRegionsConstraint(2, 4, 4), rowsAndColumnsConstraint()]
     }
