@@ -63,20 +63,44 @@ Node on **both** links, so no ratio.
 
 What it says: on 47 of the 48 measured draws the two components search almost the
 same tree (pre-#578 / current 0.8 to 1.3); the exception is 5 x 10 seed 2 at
-1.76, and the first shipped draw, outside the table, read 2.67. Draw shape and luck move difficulty by orders of magnitude;
-#578 moves it by a few percent, and the two large ratios are on the smaller
-searches. So #578 buys strength, not speed, on this shape, except on the odd
-draw. **The browser time of the shipped and the two ratio candidates is the
-controller's to measure.**
+1.76, and the first shipped draw, outside the table, read 2.67. Draw shape and
+luck move difficulty by orders of magnitude; #578 moves the node count by a few
+percent. The browser rows below say what that is worth in wall time.
 
-## Timing (controller)
+## Timing (browser, 2026-09-20, v2026.08.14-d47fc4b)
 
-```
-node examples/_shared/app-solve.mjs docs/research/count-digits-gac/self-count/PUZZLE_LINK_selfcount_pre578.txt 3
-node examples/_shared/app-solve.mjs docs/research/count-digits-gac/self-count/PUZZLE_LINK_selfcount_current.txt 3
-```
+Shipped board (`gen.json`, 6 groups x 10 cells, 17 givens), the same link pair
+built from this directory, 3 reps each, non-deterministic solve off, the app's
+readout in ms, median of 3. All twelve runs read `[unique]`.
 
-Numbers: _not yet measured_.
+| mode | pre-#578 first / unique / sum | current first / unique / sum | sum ratio |
+|---|---|---|---|
+| cold | 400 / 1300 / **1700** | 100 / 1100 / **1200** | 0.71x |
+| after-logical | 100 / 900 / **1000** | 100 / 800 / **900** | 0.90x |
+
+Cold reps: pre-#578 1700 / 1900 / 1700, current 1300 / 1200 / 1200.
+After-logical reps: pre-#578 1100 / 1000 / 1000, current 900 / 900 / 1300.
+
+That clears the bar in `docs/real-app-timing.md` (<= 0.9x on one row, <= 1.1x on
+the other): 0.71x cold, 0.90x after-logical. The first-solve column moves too,
+400 ms to 100 ms cold, which is where most of the cold gain sits.
+
+The two candidates that led on node ratio, for the ladder:
+
+| draw | node ratio | pre-#578 vs current, cold |
+|---|---|---|
+| `gen_5x10_ratio.json` | 1.76x | 300 ms vs 300 ms (3 reps, both `[unique]`) |
+| `gen_6x8_first.json` | 2.67x | 100 ms vs 100 ms |
+
+Both sit at the app's 100 ms floor, so their gaps do not show.
+
+**Node-count ratio did not predict wall time.** The draw with the best ratio
+(2.67x) is too small to measure, and the draw that shows a 0.71x speedup has a
+node ratio of only 1.08x. Absolute search size decided whether anything was
+visible, not the ratio. So the gain from #578 is real (about 30% of the cold
+solve on a board the app can resolve) but needs a board large enough for the
+app's 100 ms readout to see it, and most draws are not. Rank draws on pre-#578
+search size, then time the top few in the browser.
 
 ## Rebuild and check
 
