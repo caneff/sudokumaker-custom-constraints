@@ -96,10 +96,24 @@ def refuses(fn, *args, saying="", **kwargs):
 # Bad inputs are refused, not scored: a count or worker count below 1, and a
 # corner pin on a cell that already carries a different QQRR clue.
 assert refuses(
-    checker.run, fixed, corner=None, hypotheses=True, count=0, workers=1, timeout=30
+    checker.run,
+    fixed,
+    corner=None,
+    hypotheses=True,
+    count=0,
+    workers=1,
+    timeout=30,
+    saying="count",
 )
 assert refuses(
-    checker.run, fixed, corner=None, hypotheses=True, count=2, workers=0, timeout=30
+    checker.run,
+    fixed,
+    corner=None,
+    hypotheses=True,
+    count=2,
+    workers=0,
+    timeout=30,
+    saying="workers",
 )
 clued_corner = checker.Opener(9, {}, {(0, 0): 40}, {}, {})
 assert refuses(
@@ -110,6 +124,7 @@ assert refuses(
     count=2,
     workers=1,
     timeout=30,
+    saying="already carries",
 )
 # The same rank on both is no contradiction.
 same = checker.Opener(9, {}, {(0, 0): checker.CORNER_RANK}, {}, fixed.digit_hypotheses)
@@ -140,13 +155,16 @@ def named(p, name):
 
 
 assert variant(
-    lambda p: named(p, checker.WINDOW_MARKS)["params"][0].__setitem__("text", "70")
+    lambda p: named(p, checker.WINDOW_MARKS)["params"][0].__setitem__("text", "70"),
+    "outside 1..64",
 )
 assert variant(
-    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("value", "300")
+    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("value", "300"),
+    "outside 1..81",
 )
 assert variant(
-    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("cells", [4, 5])
+    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("cells", [4, 5]),
+    "one cell",
 )
 assert not variant(lambda p: None)
 
