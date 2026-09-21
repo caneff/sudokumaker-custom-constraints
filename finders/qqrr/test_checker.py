@@ -84,11 +84,12 @@ block = checker.render_solution(checker.Solution(grid, ranks, numbers, cranks), 
 assert "window ranks" in block and "cell numbers" in block and "cell ranks" in block
 
 
-def refuses(fn, *args, **kwargs):
+def refuses(fn, *args, saying="", **kwargs):
+    """True when the call raises the guard's own error, with `saying` in its message."""
     try:
         fn(*args, **kwargs)
-    except (ValueError, AssertionError):
-        return True
+    except (ValueError, AssertionError) as e:
+        return saying in str(e)
     return False
 
 
@@ -123,13 +124,13 @@ assert checker.run(
 doc = json.loads((HERE / "opener.json").read_text())
 
 
-def variant(mutate):
+def variant(mutate, saying=""):
     d = json.loads(json.dumps(doc))
     mutate(d["puzzle"])
     path = HERE / ".variant.json"
     path.write_text(json.dumps(d))
     try:
-        return refuses(checker.load_opener, path)
+        return refuses(checker.load_opener, path, saying=saying)
     finally:
         path.unlink()
 

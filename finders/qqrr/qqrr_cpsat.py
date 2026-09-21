@@ -23,20 +23,13 @@ import checker
 HERE = Path(__file__).resolve().parent
 
 
-def positive(text):
-    value = int(text)
-    if value < 1:
-        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
-    return value
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("opener", nargs="?", default=HERE / "opener.json")
     ap.add_argument("--corner", choices=[*checker.CORNERS, "none"], default="none")
     ap.add_argument("--hypotheses", action="store_true")
-    ap.add_argument("--count", type=positive, default=2)
-    ap.add_argument("--workers", type=positive, default=6)
+    ap.add_argument("--count", type=int, default=2)
+    ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--timeout", type=float, default=600)
     ap.add_argument("--progress", type=Path)
     a = ap.parse_args(argv)
@@ -47,8 +40,18 @@ def main(argv=None):
             with a.progress.open("a") as f:
                 f.write(text + "\n")
 
-    op = checker.load_opener(a.opener)
     corner = None if a.corner == "none" else a.corner
+    # Bad arguments exit 1 like any other error, never argparse's 2, which is
+    # the timeout code an unattended run reads.
+    try:
+        op = checker.load_opener(a.opener)
+        if a.count < 1 or a.workers < 1:
+            raise ValueError(
+                f"--count and --workers must be at least 1, got {a.count} and {a.workers}"
+            )
+    except (ValueError, OSError, KeyError) as e:
+        log(f"error: {type(e).__name__}: {e}")
+        return 1
     log(
         f"qqrr: corner={a.corner} hypotheses={'on' if a.hypotheses else 'off'} "
         f"count<={a.count} workers={a.workers} timeout={a.timeout:.0f}s"

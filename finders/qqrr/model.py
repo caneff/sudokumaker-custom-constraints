@@ -159,15 +159,20 @@ def build(n=9, ranked_cells=()):
             m.Add(rank[r][c] >= (n - 2) * (x[r][c] - 1) + 1)
             m.Add(rank[r][c] <= (n - 2) * (x[r][c] - 1) + (n - 1))
 
-    num = [
-        [
-            add_cell_number(
-                m, [rank[wr][wc] for wr, wc in windows_of(n, r, c)], top, f"num{r}{c}"
-            )
-            for c in range(n)
-        ]
-        for r in range(n)
+    wide = [
+        [add_width(m, rank[r][c], f"wide{r}{c}") for c in range(w)] for r in range(w)
     ]
+    num = [[None] * n for _ in range(n)]
+    for r in range(n):
+        for c in range(n):
+            wins = windows_of(n, r, c)
+            num[r][c] = add_cell_number(
+                m,
+                [rank[wr][wc] for wr, wc in wins],
+                top,
+                f"num{r}{c}",
+                widths=[wide[wr][wc] for wr, wc in wins[1:]],
+            )
     bounds = [
         [number_bounds(len(windows_of(n, r, c)), top) for c in range(n)]
         for r in range(n)

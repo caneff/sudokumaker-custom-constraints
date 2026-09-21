@@ -73,6 +73,14 @@ for a, b in (((0, 0), (0, 8)), ((0, 0), (8, 0)), ((0, 0), (2, 2))):
     q.m.Add(q.x[b[0]][b[1]] == 5)
     assert cpsat.solver(30).Solve(q.m) == cp_model.INFEASIBLE, (a, b)
 
+# One width literal per window, shared by every cell reading it (map #591 item
+# 4 as the ticket states it): 64 literals on a 9x9, not one per cell per window.
+q = model.build(9)
+assert sum(1 for v in q.m.Proto().variables if v.name.startswith("wide")) == 64
+assert not any(
+    v.name.startswith("num") and "_w" in v.name for v in q.m.Proto().variables
+)
+
 # The guards on the encoding: bounds are the extreme concatenations, and a
 # rank width past two digits is refused rather than mis-encoded.
 assert model.number_bounds(1, 64) == (1, 64)
