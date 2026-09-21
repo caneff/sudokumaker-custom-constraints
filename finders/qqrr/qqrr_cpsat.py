@@ -8,7 +8,9 @@ One run per corner pin and hypothesis setting (map #591's protocol is eight).
 it they steer the search as hints only. The verdict stops at `--count`
 solutions. Every grid printed has been re-ranked by the oracle. The report
 goes to stdout and is appended to `--progress`, each solution as it lands, so
-a killed run keeps what it found. Never prints a puzzle link.
+a killed run keeps what it found. Exit 0 on a verdict, 2 on a timeout, 1 on
+an error, and the progress file carries the same last line either way.
+Never prints a puzzle link.
 """
 
 import argparse
@@ -21,13 +23,20 @@ import checker
 HERE = Path(__file__).resolve().parent
 
 
+def positive(text):
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("opener", nargs="?", default=HERE / "opener.json")
     ap.add_argument("--corner", choices=[*checker.CORNERS, "none"], default="none")
     ap.add_argument("--hypotheses", action="store_true")
-    ap.add_argument("--count", type=int, default=2)
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--count", type=positive, default=2)
+    ap.add_argument("--workers", type=positive, default=6)
     ap.add_argument("--timeout", type=float, default=600)
     ap.add_argument("--progress", type=Path)
     a = ap.parse_args(argv)
@@ -44,18 +53,21 @@ def main(argv=None):
         f"qqrr: corner={a.corner} hypotheses={'on' if a.hypotheses else 'off'} "
         f"count<={a.count} workers={a.workers} timeout={a.timeout:.0f}s"
     )
-    report = checker.run(
-        op,
-        corner,
-        a.hypotheses,
-        a.count,
-        a.workers,
-        a.timeout,
-        on_solution=lambda sol, i: log(checker.render_solution(sol, i)),
-    )
-    head = checker.render(report).split("\n", 1)[0]
-    log(head)
-    return 0
+    try:
+        report = checker.run(
+            op,
+            corner=corner,
+            hypotheses=a.hypotheses,
+            count=a.count,
+            workers=a.workers,
+            timeout=a.timeout,
+            on_solution=lambda sol, i: log(checker.render_solution(sol, i)),
+        )
+    except Exception as e:
+        log(f"error: {type(e).__name__}: {e}")
+        raise
+    log(checker.render(report))
+    return 2 if report.status == "timeout" else 0
 
 
 if __name__ == "__main__":

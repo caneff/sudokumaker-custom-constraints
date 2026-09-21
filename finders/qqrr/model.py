@@ -13,10 +13,11 @@ encoding follows the speed list on map #591:
 - a cell rank counts only the cells whose number can fall below this one's
   upper bound, which drops every interior cell from a corner's count;
 - the leading-digit bound (map #321, #324) is posted on every window as two
-  linear inequalities. It is sound only on a full latin square with digits
-  1..n, which every sudoku grid is; `build(latin=False)` leaves it out.
+  linear inequalities; `leading_digits` reads the same band backwards to
+  pre-prune a clued window's top-left cell.
 """
 
+import itertools
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
@@ -60,26 +61,32 @@ def add_rank(m, values, mine, name, lo=1, hi=None):
     return r
 
 
-def add_cell_number(m, ranks, top, name):
+def add_width(m, rank, name):
+    """A literal that is true exactly when `rank` is two digits wide."""
+    b = m.NewBoolVar(name)
+    m.Add(rank >= 10).OnlyEnforceIf(b)
+    m.Add(rank <= 9).OnlyEnforceIf(b.Not())
+    return b
+
+
+def add_cell_number(m, ranks, top, name, widths=None):
     """The unpadded concatenation of `ranks` (int vars in 1..`top`, `top` < 100).
 
     Each rank after the first is one or two digits wide, which sets the
     power of ten under every earlier rank. One linear equality per width
-    combination, enforced by the width literals it assumes.
+    combination, enforced by the width literals it assumes. `widths` are the
+    literals for `ranks[1:]` (one per window, shared by every cell reading
+    that window); minted here when the caller has none.
     """
     k = len(ranks)
     num = m.NewIntVar(*number_bounds(k, top), name)
-    wide = []
-    for i, r in enumerate(ranks[1:], 1):
-        b = m.NewBoolVar(f"{name}_w{i}")
-        m.Add(r >= 10).OnlyEnforceIf(b)
-        m.Add(r <= 9).OnlyEnforceIf(b.Not())
-        wide.append(b)
-    for widths in _width_cases(k - 1):
-        lits = [b if w == 2 else b.Not() for b, w in zip(wide, widths, strict=True)]
+    if widths is None:
+        widths = [add_width(m, r, f"{name}_w{i}") for i, r in enumerate(ranks[1:], 1)]
+    for case in itertools.product((1, 2), repeat=k - 1):
+        lits = [b if w == 2 else b.Not() for b, w in zip(widths, case, strict=True)]
         shift = 0
         terms = []
-        for r, w in zip(reversed(ranks), reversed((1, *widths)), strict=True):
+        for r, w in zip(reversed(ranks), reversed((1, *case)), strict=True):
             terms.append(r * 10**shift)
             shift += w
         m.Add(num == sum(terms)).OnlyEnforceIf(lits)
@@ -92,13 +99,31 @@ def number_bounds(k, top):
     return int("1" * k), int(str(top) * k)
 
 
-def _width_cases(count):
-    if count == 0:
-        return [()]
-    return [(w, *rest) for w in (1, 2) for rest in _width_cases(count - 1)]
+def leading_digit_band(n, d):
+    """Ranks a window whose top-left digit is `d` can take, on a full latin square.
+
+    Over the (n-1) rows holding top-left cells, each smaller digit sits in
+    n-2 or n-1 of them (only column n-1 can hide one), and at most n-2 other
+    windows share the digit `d`. Map #321, #324: tight at 9x9.
+    """
+    return (n - 2) * (d - 1) + 1, (n - 2) * (d - 1) + (n - 1)
 
 
-def build(n=9, ranked_cells=(), latin=True):
+def leading_digits(n, lo, hi):
+    """Top-left digits whose band meets the rank band [lo, hi]."""
+    return [
+        d
+        for d in range(1, n + 1)
+        if not (leading_digit_band(n, d)[1] < lo or leading_digit_band(n, d)[0] > hi)
+    ]
+
+
+def build(n=9, ranked_cells=()):
+    """The model for an n x n sudoku grid under the QQRR rule.
+
+    The leading-digit bound is posted on every window. It is sound only on a
+    full latin square with digits 1..n, which is every grid the houses allow.
+    """
     m = cp_model.CpModel()
     x = [[m.NewIntVar(1, n, f"x{r}{c}") for c in range(n)] for r in range(n)]
     for i in range(n):
@@ -131,11 +156,8 @@ def build(n=9, ranked_cells=(), latin=True):
             mine = v[r][c]
             others = [u for u in flat if u is not mine]
             rank[r][c] = add_rank(m, others, mine, f"rank{r}{c}", hi=top)
-            if latin:
-                # Leading-digit bound: a window whose top-left digit is d ranks
-                # within [(n-2)(d-1)+1, (n-2)(d-1)+(n-1)] on a full latin square.
-                m.Add(rank[r][c] >= (n - 2) * (x[r][c] - 1) + 1)
-                m.Add(rank[r][c] <= (n - 2) * (x[r][c] - 1) + (n - 1))
+            m.Add(rank[r][c] >= (n - 2) * (x[r][c] - 1) + 1)
+            m.Add(rank[r][c] <= (n - 2) * (x[r][c] - 1) + (n - 1))
 
     num = [
         [

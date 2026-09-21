@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import model
 import oracle
+from grids import random_sudoku
 
 from examples._shared import cpsat
 
@@ -48,23 +49,6 @@ for k in (1, 2, 4):
         assert solve(m).Value(num) == oracle.concat(ranks), (ranks, widths)
 
 
-def random_sudoku(rng):
-    """A full 9x9 sudoku grid: the base pattern under band, stack and digit shuffles."""
-    base = [[(3 * (r % 3) + r // 3 + c) % 9 + 1 for c in range(9)] for r in range(9)]
-    rows = [
-        r
-        for band in rng.sample(range(3), 3)
-        for r in rng.sample([3 * band + i for i in range(3)], 3)
-    ]
-    cols = [
-        c
-        for stack in rng.sample(range(3), 3)
-        for c in rng.sample([3 * stack + i for i in range(3)], 3)
-    ]
-    digits = rng.sample(range(1, 10), 9)
-    return [[digits[base[r][c] - 1] for c in cols] for r in rows]
-
-
 rng = random.Random(592)
 for trial in range(20):
     grid = random_sudoku(rng)
@@ -81,11 +65,30 @@ for trial in range(20):
     got = [[s.Value(q.q[(r, c)]) for c in range(9)] for r in range(9)]
     assert got == cranks, (trial, got, cranks)
 
-# The sudoku houses are in the model: a grid with a repeated digit in a row
-# has no solution.
-q = model.build(9)
-q.m.Add(q.x[0][0] == 5)
-q.m.Add(q.x[0][8] == 5)
-assert cpsat.solver(30).Solve(q.m) == cp_model.INFEASIBLE
+# The sudoku houses are in the model: a repeated digit in a row, a column or
+# a box each leaves no solution.
+for a, b in (((0, 0), (0, 8)), ((0, 0), (8, 0)), ((0, 0), (2, 2))):
+    q = model.build(9)
+    q.m.Add(q.x[a[0]][a[1]] == 5)
+    q.m.Add(q.x[b[0]][b[1]] == 5)
+    assert cpsat.solver(30).Solve(q.m) == cp_model.INFEASIBLE, (a, b)
+
+# The guards on the encoding: bounds are the extreme concatenations, and a
+# rank width past two digits is refused rather than mis-encoded.
+assert model.number_bounds(1, 64) == (1, 64)
+assert model.number_bounds(2, 64) == (11, 6464)
+assert model.number_bounds(4, 64) == (1111, 64646464)
+try:
+    model.number_bounds(2, 100)
+    raise SystemExit("a three-digit top must be refused")
+except AssertionError:
+    pass
+
+# The leading-digit band read backwards: rank 10 pins the top-left digit to 2,
+# 51..56 to 8, 58 and up to 9, and the ambiguous rank 8 admits 1 or 2.
+assert model.leading_digits(9, 10, 10) == [2]
+assert model.leading_digits(9, 51, 56) == [8]
+assert model.leading_digits(9, 58, 64) == [9]
+assert model.leading_digits(9, 8, 8) == [1, 2]
 
 print("ok test_model")

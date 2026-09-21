@@ -10,13 +10,20 @@ oracle ranks it. Workers pinned to 1.
     uv run finders/qqrr/test_checker.py
 """
 
+import json
 import random
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import checker
+import model
 import oracle
+from grids import random_sudoku
+
+from examples._shared import cpsat
 
 HERE = Path(__file__).resolve().parent
 op = checker.load_opener(HERE / "opener.json")
@@ -36,22 +43,6 @@ assert checker.parse_band("51-56", 64) == (51, 56)
 assert checker.parse_band("58+", 64) == (58, 64)
 
 
-def random_sudoku(rng):
-    base = [[(3 * (r % 3) + r // 3 + c) % 9 + 1 for c in range(9)] for r in range(9)]
-    rows = [
-        r
-        for band in rng.sample(range(3), 3)
-        for r in rng.sample([3 * band + i for i in range(3)], 3)
-    ]
-    cols = [
-        c
-        for stack in rng.sample(range(3), 3)
-        for c in rng.sample([3 * stack + i for i in range(3)], 3)
-    ]
-    digits = rng.sample(range(1, 10), 9)
-    return [[digits[base[r][c] - 1] for c in cols] for r in rows]
-
-
 grid = random_sudoku(random.Random(7))
 ranks, numbers, cranks = oracle.rank_grid(grid)
 # A run whose clues are read off the grid itself: the one clue set that is
@@ -68,8 +59,8 @@ report = checker.run(
 )
 assert report.status == "unique", report.status
 assert report.solutions[0].grid == grid
-assert report.solutions[0].window_ranks == ranks
-assert report.solutions[0].cell_ranks == cranks
+# The tables on a Solution are the oracle's; that they equal the model's is
+# asserted inside run, and the stub-solver case below witnesses that assert.
 
 # With the corner pinned to a rank the grid does not have, nothing satisfies.
 wrong = cranks[0][0] % 81 + 1
@@ -79,9 +70,105 @@ report = checker.run(
 )
 assert report.status == "infeasible", report.status
 
-# The report renders the grid and all three tables.
-text = checker.render(checker.run(fixed, None, True, 2, 1, 30))
-assert "unique" in text
-assert "window ranks" in text and "cell numbers" in text and "cell ranks" in text
+# A spent budget is a timeout, never a verdict.
+report = checker.run(fixed, corner=None, hypotheses=True, count=2, workers=1, timeout=0)
+assert report.status == "timeout", report.status
+assert report.solutions == []
+
+# The verdict line and the solution block.
+text = checker.render(
+    checker.run(fixed, corner=None, hypotheses=True, count=2, workers=1, timeout=30)
+)
+assert text.startswith("unique:"), text
+block = checker.render_solution(checker.Solution(grid, ranks, numbers, cranks), 1)
+assert "window ranks" in block and "cell numbers" in block and "cell ranks" in block
+
+
+def refuses(fn, *args, **kwargs):
+    try:
+        fn(*args, **kwargs)
+    except (ValueError, AssertionError):
+        return True
+    return False
+
+
+# Bad inputs are refused, not scored: a count or worker count below 1, and a
+# corner pin on a cell that already carries a different QQRR clue.
+assert refuses(
+    checker.run, fixed, corner=None, hypotheses=True, count=0, workers=1, timeout=30
+)
+assert refuses(
+    checker.run, fixed, corner=None, hypotheses=True, count=2, workers=0, timeout=30
+)
+clued_corner = checker.Opener(9, {}, {(0, 0): 40}, {}, {})
+assert refuses(
+    checker.run,
+    clued_corner,
+    corner="tl",
+    hypotheses=False,
+    count=2,
+    workers=1,
+    timeout=30,
+)
+# The same rank on both is no contradiction.
+same = checker.Opener(9, {}, {(0, 0): checker.CORNER_RANK}, {}, fixed.digit_hypotheses)
+assert checker.run(
+    same, corner="tl", hypotheses=True, count=1, workers=1, timeout=30
+).status in (
+    "infeasible",
+    "multiple",
+)
+
+# A mark outside 1..64, a cage outside 1..81, or a two-cell cage fails the load.
+doc = json.loads((HERE / "opener.json").read_text())
+
+
+def variant(mutate):
+    d = json.loads(json.dumps(doc))
+    mutate(d["puzzle"])
+    path = HERE / ".variant.json"
+    path.write_text(json.dumps(d))
+    try:
+        return refuses(checker.load_opener, path)
+    finally:
+        path.unlink()
+
+
+def named(p, name):
+    return next(c for c in p["constraints"] if c.get("name") == name)
+
+
+assert variant(
+    lambda p: named(p, checker.WINDOW_MARKS)["params"][0].__setitem__("text", "70")
+)
+assert variant(
+    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("value", "300")
+)
+assert variant(
+    lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("cells", [4, 5])
+)
+assert not variant(lambda p: None)
+
+
+# The oracle check inside run is live: a solver whose readings disagree with
+# the oracle is refused, not reported.
+class Stub:
+    def __init__(self, s, bad):
+        self.s, self.bad = s, bad
+
+    def Value(self, v):
+        val = self.s.Value(v)
+        return val + 1 if v.Name() == self.bad else val
+
+
+qm = model.build(9, ranked_cells=[(0, 4)])
+for r in range(9):
+    for c in range(9):
+        qm.m.Add(qm.x[r][c] == grid[r][c])
+solver = cpsat.solver(30)
+assert solver.Solve(qm.m) in cpsat.SOLVED
+assert checker._extract(solver, qm, [(0, 4)]).grid == grid
+for bad in ("rank00", "num44", "q04"):
+    assert refuses(checker._extract, Stub(solver, bad), qm, [(0, 4)]), bad
 
 print("ok test_checker")

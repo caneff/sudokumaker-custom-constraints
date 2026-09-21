@@ -6,19 +6,21 @@ uncircled one a hypothesis, an entered digit a hypothesis, the cage a clue.
 `run` builds the model for one corner and one hypothesis setting, then
 solves, forbids and solves again up to `count` times; every grid it returns
 has been re-ranked by `oracle.py` and matched against the model's own rank
-variables. `render` prints the verdict with the grid and all three tables.
+variables. `render_solution` is a grid with all three tables; `render` is the
+one-line verdict.
 """
 
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import model
 import oracle
+from ortools.sat.python import cp_model
 
 from examples._shared import cpsat
 
@@ -55,7 +57,6 @@ class Report:
     hypotheses: bool
     count: int
     note: str = ""
-    checks: list = field(default_factory=list)
 
 
 def parse_band(text, top):
@@ -82,11 +83,22 @@ def load_opener(path):
     for x, y, *rest in marks["symbols"]:
         text = marks["params"][rest[0] if rest else 0]["text"]
         band = parse_band(text, top)
+        if not (1 <= band[0] <= band[1] <= top) or not (
+            0 <= y <= n - 2 and 0 <= x <= n - 2
+        ):
+            raise ValueError(
+                f"window mark {text!r} at [{x}, {y}] is outside 1..{top} or off the grid"
+            )
         (window_clues if (y, x) in circled else window_hypotheses)[(y, x)] = band
     cell_clues = {}
     for cage in by_name[CELL_CAGES]["cages"]:
+        if len(cage["cells"]) != 1:
+            raise ValueError(f"a QQRR cage must hold one cell, got {cage['cells']}")
         (i,) = cage["cells"]
-        cell_clues[divmod(i, n)] = int(cage["value"])
+        value = int(cage["value"])
+        if not 1 <= value <= n * n:
+            raise ValueError(f"QQRR cage value {value} is outside 1..{n * n}")
+        cell_clues[divmod(i, n)] = value
     digit_hypotheses = {
         divmod(i, n): c["value"]
         for i, c in enumerate(cells)
@@ -95,7 +107,7 @@ def load_opener(path):
     return Opener(n, window_clues, cell_clues, window_hypotheses, digit_hypotheses)
 
 
-def run(op, corner, hypotheses, count, workers, timeout, on_solution=None):
+def run(op, *, corner, hypotheses, count, workers, timeout, on_solution=None):
     """Solve the opener under one corner pin and one hypothesis setting.
 
     `corner` is a CORNERS key or None. With `hypotheses` the entered digits
@@ -103,14 +115,28 @@ def run(op, corner, hypotheses, count, workers, timeout, on_solution=None):
     at `count` solutions, or when CP-SAT proves there is no next one, or when
     `timeout` seconds have elapsed across the whole loop.
     """
+    if count < 1:
+        raise ValueError(f"count must be at least 1, got {count}")
+    if workers < 1:
+        raise ValueError(f"workers must be at least 1, got {workers}")
     n = op.n
     ranked = list(op.cell_clues)
-    if corner is not None and CORNERS[corner] not in ranked:
-        ranked.append(CORNERS[corner])
+    if corner is not None:
+        pinned = CORNERS[corner]
+        if op.cell_clues.get(pinned, CORNER_RANK) != CORNER_RANK:
+            raise ValueError(
+                f"corner {corner} already carries QQRR {op.cell_clues[pinned]}; it cannot also be {CORNER_RANK}"
+            )
+        if pinned not in ranked:
+            ranked.append(pinned)
     q = model.build(n, ranked_cells=ranked)
     m = q.m
     for (wr, wc), (lo, hi) in op.window_clues.items():
         m.AddLinearConstraint(q.rank[wr][wc], lo, hi)
+        # Pre-prune the top-left digit from the leading-digit band (speed item 5).
+        m.AddAllowedAssignments(
+            [q.x[wr][wc]], [(d,) for d in model.leading_digits(n, lo, hi)]
+        )
     for cell, value in op.cell_clues.items():
         m.Add(q.q[cell] == value)
     if corner is not None:
@@ -139,9 +165,16 @@ def run(op, corner, hypotheses, count, workers, timeout, on_solution=None):
         if result == cpsat.UNKNOWN:
             status = "timeout"
             break
-        if result not in cpsat.SOLVED:
-            status = ["infeasible", "unique", "multiple"][min(len(solutions), 2)]
+        if result == cp_model.INFEASIBLE:
+            if not solutions:
+                status = "infeasible"
+            elif len(solutions) == 1:
+                status = "unique"
+            else:
+                status = "multiple"
             break
+        if result not in cpsat.SOLVED:
+            raise RuntimeError(f"CP-SAT returned {s.StatusName(result)}; no verdict")
         sol = _extract(s, q, ranked)
         solutions.append(sol)
         if on_solution:
@@ -210,11 +243,9 @@ def render_solution(sol, index):
 
 
 def render(report):
+    """The one-line verdict."""
     head = (
         f"{report.status}: corner={report.corner or 'none'} hypotheses={'on' if report.hypotheses else 'off'} "
         f"count<={report.count} {report.seconds:.1f}s"
     )
-    parts = [head + (f" -- {report.note}" if report.note else "")]
-    for i, sol in enumerate(report.solutions, 1):
-        parts.append(render_solution(sol, i))
-    return "\n".join(parts)
+    return head + (f" -- {report.note}" if report.note else "")
