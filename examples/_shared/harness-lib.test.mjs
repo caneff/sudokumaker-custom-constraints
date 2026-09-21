@@ -3,7 +3,7 @@
 
 import assert from 'assert'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
@@ -221,24 +221,37 @@ const { rnd } = makeRng()
 installGlobals(1, 9)
 assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]), 'string')
 
-// ---- makeIo().loadAt refuses a source carrying an #include ----
-// `read` assembles includes and `loadAt` cannot: it holds text from a commit,
-// with no directory to resolve one against. Two readers in one factory must
-// not silently disagree -- evalling the directive as a comment would fail much
-// later, as `frameLines is not defined`.
+// ---- makeIo().loadAt assembles an #include as of the commit ----
+// `read` splices includes from the working tree; `loadAt` splices them from the
+// tree at the commit, so a pinned component that carries a directive still
+// loads as it shipped -- even after the included file has since changed.
 {
   const repo = mkdtempSync(join(tmpdir(), 'loadat-'))
   const git = args => execFileSync('git', args, { cwd: repo, encoding: 'utf8' })
+  const commit = msg => git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-am', msg])
+  mkdirSync(join(repo, 'ex'))
+  mkdirSync(join(repo, '_shared'))
+  writeFileSync(join(repo, 'ex', 'comp.js'), '// #include ../_shared/seg.js\nfunction f () { return seg() }\n')
+  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 2 }\n')
   git(['init', '-q'])
-  writeFileSync(join(repo, 'comp.js'), '// #include seg.js\nfunction f () { return 1 }\n')
-  writeFileSync(join(repo, 'seg.js'), 'function seg () { return 2 }\n')
   git(['add', '-A'])
-  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'init'])
-  const { loadAt } = makeIo(repo)
-  assert.throws(() => loadAt('HEAD', 'comp.js', ['f']), /#include/,
-    'loadAt must refuse a source it cannot assemble, not eval it')
-  // ...and a source with no directive still loads
-  assert.strictEqual(loadAt('HEAD', 'seg.js', ['seg']).seg(), 2)
+  commit('init')
+  const first = git(['rev-parse', 'HEAD']).trim()
+  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 3 }\n')
+  commit('change seg')
+  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 4 }\n') // uncommitted
+  const { loadAt, load } = makeIo(join(repo, 'ex'))
+  assert.strictEqual(loadAt(first, 'comp.js', ['f']).f(), 2, 'the include is read as of the commit')
+  assert.strictEqual(loadAt('HEAD', 'comp.js', ['f']).f(), 3, 'not from the working tree')
+  assert.strictEqual(load('comp.js', ['f']).f(), 4, 'while `load` reads the working tree')
+  // an include the commit does not carry stops the load
+  writeFileSync(join(repo, 'ex', 'bad.js'), '// #include nope.js\n')
+  git(['add', '-A'])
+  commit('bad')
+  assert.throws(() => loadAt('HEAD', 'bad.js', ['f']), /nope\.js/)
+  // a checkout reached through a symlink still resolves against the toplevel
+  symlinkSync(repo, repo + '-link')
+  assert.strictEqual(makeIo(join(repo + '-link', 'ex')).loadAt(first, 'comp.js', ['f']).f(), 2)
 }
 
 // ---- the change builders take a DigitSet or a raw bitmask, and nothing else ----

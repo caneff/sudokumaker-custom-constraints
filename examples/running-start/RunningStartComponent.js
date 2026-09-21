@@ -40,18 +40,8 @@ function runningStart (puzzle, line) {
   return count
 }
 
-// Arc-consistency for "a < b" (strict) or "a <= b" (not strict) using live
-// candidates.
-function * below (puzzle, a, b, strict) {
-  const ca = Array.from(puzzle.getCandidates(a))
-  const cb = Array.from(puzzle.getCandidates(b))
-  const maxB = Math.max(...cb)
-  const minA = Math.min(...ca)
-  const rmA = ca.filter(d => (strict ? d >= maxB : d > maxB))
-  const rmB = cb.filter(d => (strict ? d <= minA : d < minA))
-  if (rmA.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), a)
-  if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), b)
-}
+// Arc-consistency for "a < b" / "a <= b": below(puzzle, a, b, strict).
+// #include ../_shared/below.js
 
 // The set of clue values the line's live candidates can still realize.
 //

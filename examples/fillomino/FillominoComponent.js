@@ -117,15 +117,9 @@ function setParams (instance, cells) {
   instance.others = null
 }
 
-// Orthogonal neighbours by index arithmetic; cells are row-major on a square.
-function neighbours (i, side) {
-  const out = []
-  if (i % side > 0) out.push(i - 1)
-  if (i % side < side - 1) out.push(i + 1)
-  if (i >= side) out.push(i - side)
-  if (i + side < side * side) out.push(i + side)
-  return out
-}
+// The neighbour table, the dominator fold and the starve verdict (shared with
+// ISOFILL):
+// #include ../_shared/dominator.js
 
 // One grid scan: flood every placed cell into its island. Returns the island
 // list, each entry the digit, one seed cell and the cell count.
@@ -250,7 +244,7 @@ function cellAllows (puzzle, cell, digit, bit) {
 // alone: the digit only says which cells are in, and it never reads a region
 // count.
 function domTree (instance, puzzle, starts, nStarts, maxDist, digit, dist) {
-  const { cells, nbrs, domOrder, idom, ddep } = instance
+  const { cells, nbrs, domOrder } = instance
   const bit = 1 << digit
   dist.fill(-1)
   let len = 0
@@ -263,37 +257,8 @@ function domTree (instance, puzzle, starts, nStarts, maxDist, digit, dist) {
     if (dist[u] >= maxDist) continue
     for (const n of nbrs[u]) if (dist[n] < 0 && cellAllows(puzzle, cells[n], digit, bit)) { dist[n] = dist[u] + 1; domOrder[len++] = n }
   }
-  // A cell's dominator is the deepest cell dominating all its DAG
-  // predecessors, so fold them pairwise, walking the deeper one up the tree
-  // built so far. A start has no predecessor and no dominator.
-  for (let k = 0; k < len; k++) {
-    const v = domOrder[k]
-    if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
-    let a = -2
-    for (const p of nbrs[v]) {
-      if (dist[p] !== dist[v] - 1) continue
-      if (a === -2) { a = p; continue }
-      let b = p
-      while (a !== b) {
-        if (ddep[a] >= ddep[b]) a = idom[a]; else b = idom[b]
-        if (a < 0 || b < 0) { a = -1; b = -1 }
-      }
-    }
-    idom[v] = a
-    ddep[v] = a < 0 ? 1 : ddep[a] + 1
-  }
+  domFold(instance, len, dist)
   return len
-}
-
-// Roll `domCount` up the dominator tree `domTree` just left behind, so each
-// cell's entry counts itself and everything it dominates. BFS order puts a
-// cell after its dominator, so one backward pass does it.
-function subtreeSums (instance, len) {
-  const { domCount, domOrder, idom } = instance
-  for (let k = len - 1; k >= 0; k--) {
-    const v = domOrder[k]
-    if (idom[v] >= 0) domCount[idom[v]] += domCount[v]
-  }
 }
 
 // The cut filter (#309, ISOFILL's #258): answer cut starve for every open cell
@@ -316,13 +281,9 @@ function subtreeSums (instance, len) {
 //
 // Writes the verdict into `instance.skip`, 1 where cut is proved false.
 function cutFilter (instance, puzzle, starts, nStarts, open, digit, budget) {
-  const { skip, domCount, domOrder, distStarve } = instance
+  const { distStarve } = instance
   const reached = domTree(instance, puzzle, starts, nStarts, budget, digit, distStarve)
-  domCount.fill(0)
-  for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
-  subtreeSums(instance, reached)
-  // a cell the walk never reached changes nothing by leaving it
-  for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= digit ? 1 : 0
+  starveVerdict(instance, reached, distStarve, open, digit)
 }
 
 // A rule generator's verdict on one island, read by `update`: DEAD, the

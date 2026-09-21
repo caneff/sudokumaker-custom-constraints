@@ -94,15 +94,9 @@ function perimeter (side) {
   return out
 }
 
-// Orthogonal neighbours by index arithmetic; cells are row-major on a square.
-function neighbours (i, side) {
-  const out = []
-  if (i % side > 0) out.push(i - 1)
-  if (i % side < side - 1) out.push(i + 1)
-  if (i >= side) out.push(i - side)
-  if (i + side < side * side) out.push(i + side)
-  return out
-}
+// The neighbour table, the dominator fold and the starve verdict (shared with
+// FILLOMINO):
+// #include ../_shared/dominator.js
 
 // The next visit stamp. `mask` and `targets` are Uint32Array, so a counter
 // that reached 2^32 would store 0 and every cell would read as unvisited; clear
@@ -238,7 +232,7 @@ function distances (instance, start, allowed, dist) {
 // other cell dominates) and `ddep` (its depth in that tree); returns how many
 // cells the walk reached.
 function domTree (instance, starts, maxDist, allowed, dist) {
-  const { nbrs, domOrder, idom, ddep } = instance
+  const { nbrs, domOrder } = instance
   dist.fill(-1)
   let len = 0
   for (const s of starts) if (dist[s] < 0) { dist[s] = 0; domOrder[len++] = s }
@@ -247,37 +241,8 @@ function domTree (instance, starts, maxDist, allowed, dist) {
     if (dist[u] >= maxDist) continue
     for (const n of nbrs[u]) if (allowed[n] && dist[n] < 0) { dist[n] = dist[u] + 1; domOrder[len++] = n }
   }
-  // A cell's dominator is the deepest cell dominating all its DAG predecessors,
-  // so fold them pairwise, walking the deeper one up the tree built so far. A
-  // start has no predecessor and no dominator.
-  for (let k = 0; k < len; k++) {
-    const v = domOrder[k]
-    if (dist[v] === 0) { idom[v] = -1; ddep[v] = 1; continue }
-    let a = -2
-    for (const p of nbrs[v]) {
-      if (!allowed[p] || dist[p] !== dist[v] - 1) continue
-      if (a === -2) { a = p; continue }
-      let b = p
-      while (a !== b) {
-        if (ddep[a] >= ddep[b]) a = idom[a]; else b = idom[b]
-        if (a < 0 || b < 0) { a = -1; b = -1 }
-      }
-    }
-    idom[v] = a
-    ddep[v] = a < 0 ? 1 : ddep[a] + 1
-  }
+  domFold(instance, len, dist)
   return len
-}
-
-// Roll `domCount` up the dominator tree of the walk `domTree` just left
-// behind, so each cell's entry counts itself and everything it dominates. BFS
-// order puts a cell after its dominator, so one backward pass does it.
-function subtreeSums (instance, len) {
-  const { domCount, domOrder, idom } = instance
-  for (let k = len - 1; k >= 0; k--) {
-    const v = domOrder[k]
-    if (idom[v] >= 0) domCount[idom[v]] += domCount[v]
-  }
 }
 
 // The cut filter (#258): answer both of cut's tests for every open cell at
@@ -297,15 +262,12 @@ function subtreeSums (instance, len) {
 // clears a cell, and every cell it does not clear falls through to the exact
 // re-walks. Returns the per-cell verdict, 1 where cut is proved false.
 function cutFilter (instance, placed, open, allowed, size, depth) {
-  const { skip, domCount, domOrder, distStarve, distStrand } = instance
+  const { skip, domCount, distStrand, distStarve } = instance
   // Starve: how many cells each cell dominates in the walk from all placed
   // cells. A cell outside that walk changes nothing by leaving it. This
   // verdict is read before the strand walk below overwrites the tree.
   const reached = domTree(instance, placed, depth, allowed, distStarve)
-  domCount.fill(0)
-  for (let k = 0; k < reached; k++) domCount[domOrder[k]] = 1
-  subtreeSums(instance, reached)
-  for (const x of open) skip[x] = (distStarve[x] < 0 ? reached : reached - domCount[x]) >= size ? 1 : 0
+  starveVerdict(instance, reached, distStarve, open, size)
   if (placed.length < 2) return skip // one placed cell strands nothing
   // Strand: how many placed cells each cell dominates in the walk from the
   // seed. A placed cell the seed does not reach inside the budget already

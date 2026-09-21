@@ -271,9 +271,10 @@ The splice happens wherever the source is turned into something that runs:
 builder writes, and `assembleSource` (`examples/_shared/include.mjs`) for the
 Node tests, harnesses and probes. A path resolves against the including file's
 own directory; a missing file, a cycle, or a directive naming no path stops the
-build. `loadAt` in `harness-lib.mjs` is the one reader that cannot splice --
-it holds a file's text at a git commit, with no directory to resolve against --
-so it refuses a source carrying a directive rather than eval it as a comment.
+build. `loadAt` in `harness-lib.mjs` splices too, but from the tree at the commit
+(`assembleSource` takes a reader, and `loadAt` passes `git show`), so a pinned
+update-strength floor loads with the includes it shipped with, even after the
+included file has changed. An include the commit does not carry stops the load.
 
 Because a paste target's body can arrive through a directive, anything that
 judges what a file does reads the ASSEMBLED text, not the raw file:
