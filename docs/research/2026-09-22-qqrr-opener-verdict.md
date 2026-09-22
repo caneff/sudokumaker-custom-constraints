@@ -37,11 +37,13 @@ every run below actually used. The controller also ordered run 9, past the
 map's eight.
 
 Real clues, every run — always fixed, `--hypotheses` or not, per
-`finders/qqrr/checker.py`'s `load_opener` (`window_clues`/`cell_clues`,
-circled symbols only, under the #599 mapping): QR 10 at window top-left
-(row 5, col 5); QR band 58–64 at window (row 3, col 3); QR band 51–56 at
-window (row 1, col 4); QQRR 33 at cell (row 0, col 4); QQRR 5 at the corner
-under test (tl/tr/bl/br), or absent on run 9. Hypotheses, fixed only on the
+`finders/qqrr/checker.py`'s `load_opener`: window marks circled in the link
+are `window_clues` (the window-symbol-to-grid mapping fixed by #599); the
+cage is always a `cell_clue`; the corner is whichever `--corner` names. QR 10
+at window top-left (row 5, col 5); QR band 58–64 at window (row 3, col 3);
+QR band 51–56 at window (row 1, col 4); QQRR 33 at cell (row 0, col 4); QQRR
+5 at the corner under test (tl/tr/bl/br), or absent on run 9. Hypotheses,
+fixed only on the
 `--hypotheses` runs, per `load_opener`'s `window_hypotheses`/
 `digit_hypotheses`: the three uncircled QR marks — 9 at window (row 2, col
 1), 8 at window (row 3, col 0), 1 at window (row 2, col 0) — and the 13
@@ -486,8 +488,12 @@ with the real clues at both live corners and with no corner fixed at all. The
 earlier (pre-#599) run set's hypotheses-on infeasibility at every corner and
 at none (its runs 1–4 and 9) was the mapping bug, not a genuine conflict in
 the hypotheses: under the corrected window mapping, the hypotheses hold up
-everywhere they're tested. (Its hypotheses-off runs 5–8 were already
-`multiple`, so the mapping bug's effect was confined to the hypotheses-on
+at both corners the clue set itself leaves open (tr, br) and with no corner
+fixed. tl and bl stay infeasible with hypotheses on (runs 1, 3) too, but
+that's the clue set closing those corners outright (runs 5, 7 show the same
+without any hypotheses in play), not the digits or marks failing. (The old
+record's hypotheses-off runs 5–8 were already `multiple`, so the mapping
+bug's effect was confined to the hypotheses-on
 half of that record.)
 
 **How open the opener is.** Open at both surviving corners, hypotheses or
