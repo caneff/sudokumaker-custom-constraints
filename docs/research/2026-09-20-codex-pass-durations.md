@@ -6,3 +6,4 @@ One row per run of the controller's Codex pass (implement/SKILL.md § The merge,
 |---|---|---|---|---|---|---|
 | #598 | #599 | early | 2026-09-22T06:23:14-04:00 | 2026-09-22T06:24:07-04:00 | 0.9 | refused: stale — head moved from 4fb3c5e to d73c4aa (C1 fix commit) before the gate |
 | #598 | #599 | gate-retry | 2026-09-22T06:31:23-04:00 | 2026-09-22T06:32:15-04:00 | 0.9 | collected-after-retry |
+| #593 | #600 | gate-retry | 2026-09-22T06:48:46-04:00 | 2026-09-22T06:50:52-04:00 | 2.1 | collected (no early phase existed; the worker never sent "Round 1 out") |

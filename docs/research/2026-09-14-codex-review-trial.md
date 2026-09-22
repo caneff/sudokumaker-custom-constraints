@@ -5,3 +5,4 @@ The controller runs a Codex adversarial pass on every heavy Claude-lane PR at me
 | Ticket | PR | codex-only confirmed | also found by Claude | disputed | Notes |
 |---|---|---|---|---|---|
 | #598 | #599 | 0 | 0 | 0 | Verdict approve, no findings, at both phases (early at 4fb3c5e refused as stale after the C1 fix commit; gate-retry at d73c4aa collected). Claude round 1: 5 findings, 4 fixed, 1 disputed. |
+| #593 | #600 | 0 | 0 | 0 | Verdict approve, no findings. No early phase: "Round 1 out" never reached the controller, so the one run launched at the gate (phase recorded as gate-retry, 2f3838c, collected). Codex independently re-verified all ten grids against sudoku, rank tables and clues. Claude: round 1 (pre-#598) 15 findings all fixed then superseded; round 2 10 findings all fixed. |
