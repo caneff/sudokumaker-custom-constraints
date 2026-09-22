@@ -11,7 +11,7 @@ cell (row 0, col 4); QQRR 5 at the corner under test (tl/tr/bl/br), or absent
 on the diagnostic run. Hypotheses, fixed only on the `--hypotheses` runs: QR
 band 58+ at window (row 4, col 4); QR band 51–56 at window (row 2, col 5);
 uncircled QR marks 9 at (row 3, col 2), 8 at (row 4, col 1), 1 at (row 3, col
-1); the 40 entered digits from `OPENER_NOTES.md`. Plain sudoku underneath.
+1); the 13 entered digits from `OPENER_NOTES.md`'s grid. Plain sudoku underneath.
 
 ## Runs
 
@@ -359,7 +359,7 @@ single-digit seconds every time.
 infeasible, corner-paired (1–4) and corner-free (9, the diagnostic). Run 9
 proves the infeasibility isn't an artifact of the corner pin fighting the
 digits — it's the hypothesis set itself, against the two real clues alone,
-that has no solution. The entered digits (`OPENER_NOTES.md`'s 40-cell grid)
+that has no solution. The entered digits (`OPENER_NOTES.md`'s 13-cell grid)
 and the three uncircled QR marks (9, 8, 1) cannot all stand together as
 given; at least one is wrong, or the rule as coded diverges from the one
 Chris intended.
