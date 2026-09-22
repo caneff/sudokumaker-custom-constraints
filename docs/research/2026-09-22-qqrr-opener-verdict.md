@@ -1,17 +1,44 @@
 # QQRR opener verdict (#593)
 
-Nine runs of `finders/qqrr/qqrr_cpsat.py` against `finders/qqrr/opener.json`,
-`job-run`, sequential, `--workers 16 --timeout 600`. Eight per the map #591
-protocol (hypotheses on then off, by corner for the QQRR 5), plus one
-diagnostic (hypotheses on, no corner) to separate the corner pin from the
-hypotheses as the source of the on-runs' infeasibility.
+Eleven runs of `finders/qqrr/qqrr_cpsat.py` against `finders/qqrr/opener.json`
+(runs 1–9) and two hand-built variants of it (runs 10–11), each under
+`job-run --name qqrr-opener-<label>`, sequential (one solver process live at
+a time), `--workers 16 --timeout 600`:
 
-Real clues, every run: QR 10 at window top-left (row 6, col 6); QQRR 33 at
-cell (row 0, col 4); QQRR 5 at the corner under test (tl/tr/bl/br), or absent
-on the diagnostic run. Hypotheses, fixed only on the `--hypotheses` runs: QR
-band 58+ at window (row 4, col 4); QR band 51–56 at window (row 2, col 5);
-uncircled QR marks 9 at (row 3, col 2), 8 at (row 4, col 1), 1 at (row 3, col
-1); the 13 entered digits from `OPENER_NOTES.md`'s grid. Plain sudoku underneath.
+```
+uv run finders/qqrr/qqrr_cpsat.py [<opener-variant>.json] --corner <tl|tr|bl|br|none> \
+  [--hypotheses] --workers 16 --timeout 600 --progress <path>.log
+```
+
+Eight per the map #591 protocol (hypotheses on then off, by corner for the
+QQRR 5), plus a diagnostic (run 9: hypotheses on, no corner) to separate the
+corner pin from the hypotheses as the source of the on-runs' infeasibility,
+plus a hypothesis-group split (runs 10–11) to separate the entered digits
+from the uncircled marks as the source of that infeasibility.
+
+**Deviations from the map's protocol, both controller-authorized, not the
+worker's own choice.** The map calls for the eight numbered runs at 4 in
+parallel / 6 workers when the box is quiet, else sequential at 16; the
+parallel launch and a first sequential attempt at 16 were both denied by this
+session's permission classifier ("Interfere With Workloads"), reported
+verbatim to the controller (qqrr-17), which relayed Chris's ruling: run
+sequential at 16 workers throughout, one solver process live at a time — that
+ruling is what every run below actually used. The controller also ordered
+run 9 and runs 10–11, past the map's eight, to localize the infeasibility
+that runs 1–4 found.
+
+Real clues, every run — always fixed, `--hypotheses` or not, per
+`checker.load_opener`'s `window_clues`/`cell_clues` (circled symbols only):
+QR 10 at window top-left (row 6, col 6); QR band 58–64 at window (row 4, col
+4); QR band 51–56 at window (row 2, col 5); QQRR 33 at cell (row 0, col 4);
+QQRR 5 at the corner under test (tl/tr/bl/br), or absent on the diagnostic
+run. The two QR bands read "assumption" in `OPENER_NOTES.md`'s status column,
+but the link circles them, so the checker treats them as clues like QR 10 —
+not as hypotheses. Hypotheses, fixed only on the `--hypotheses` runs, per
+`window_hypotheses`/`digit_hypotheses`: the three uncircled QR marks — 9 at
+(row 3, col 2), 8 at (row 4, col 1), 1 at (row 3, col 1) — and the 13 entered
+digits from `OPENER_NOTES.md`'s grid (`test_checker.py` asserts this count).
+Plain sudoku underneath.
 
 ## Runs
 
@@ -21,10 +48,10 @@ uncircled QR marks 9 at (row 3, col 2), 8 at (row 4, col 1), 1 at (row 3, col
 | 2 | tr | on | infeasible | 0.0s |
 | 3 | bl | on | infeasible | 0.0s |
 | 4 | br | on | infeasible | 0.0s |
-| 5 | tl | off | multiple (2 solutions, cap) | 3.8s |
-| 6 | tr | off | multiple (2 solutions, cap) | 6.5s |
-| 7 | bl | off | multiple (2 solutions, cap) | 5.5s |
-| 8 | br | off | multiple (2 solutions, cap) | 9.8s |
+| 5 | tl | off | multiple (≥2 solutions, capped at 2) | 3.8s |
+| 6 | tr | off | multiple (≥2 solutions, capped at 2) | 6.5s |
+| 7 | bl | off | multiple (≥2 solutions, capped at 2) | 5.5s |
+| 8 | br | off | multiple (≥2 solutions, capped at 2) | 9.8s |
 | 9 | none | on | infeasible | 0.0s |
 
 No run approached the 600s ceiling; every result is a proven verdict, not a
@@ -347,39 +374,53 @@ cell ranks
 ## Readout
 
 **Which corners survive.** All four (tl, tr, bl, br) survive clues-only:
-each is `multiple`, not infeasible, at 3.8–9.8s. Only the entered digits and
-uncircled marks distinguish them, and hypotheses-on rejects every corner
-alike (run 1–4, all infeasible at 0.0s), so the corner assumption itself
-carries no discriminating power over this opener — nothing here narrows the
-QQRR 5 to one corner. The clue set alone (QR 10, QQRR 33, QQRR 5 at any one
-corner) leaves the grid open enough that CP-SAT finds a second solution in
-single-digit seconds every time.
+each is `multiple`, not infeasible, at 3.8–9.8s. The three real QR clues (10,
+58–64, 51–56) plus QQRR 33 plus any one QQRR-5 corner all coexist happily;
+hypotheses-on rejects every corner alike (runs 1–4, all infeasible at 0.0s),
+so the corner assumption carries no discriminating power over this
+opener — nothing here narrows the QQRR 5 to one corner. It's the hypothesis
+groups (the 13 digits, the three uncircled marks), not the clue set, that
+close off every corner equally.
 
-**Whether the entered digits can all stand.** No. Every hypotheses-on run is
-infeasible, corner-paired (1–4) and corner-free (9, the diagnostic). Run 9
-proves the infeasibility isn't an artifact of the corner pin fighting the
-digits — it's the hypothesis set itself, against the two real clues alone,
-that has no solution. The entered digits (`OPENER_NOTES.md`'s 13-cell grid)
-and the three uncircled QR marks (9, 8, 1) cannot all stand together as
-given; at least one is wrong, or the rule as coded diverges from the one
-Chris intended.
+**Whether the entered digits can all stand.** Not established which group is
+at fault — see the split below (runs 10–11): every hypotheses-on run bundled
+the 13 digits and the three uncircled marks together, so runs 1–4 and 9 only
+show that the two groups combined, against the five real clues, have no
+solution; they don't say which group, or whether it takes both together.
 
-**The two QR band hypotheses specifically** (58+ at window (4,4), 51–56 at
-window (2,5)) are bundled into every hypotheses-on run alongside the digits
-and the three point marks — this run set does not isolate which of the five
-hypothesis groups (entered digits, band-58+, band-51-56, mark-9, mark-8,
-mark-1) is the one that conflicts. Given these two bands are called out as
-load-bearing for the solve path, narrowing the culprit likely means a
-follow-up run (or several) that hypotheses-fixes each group independently
-against the two real clues, rather than the current all-five-groups-at-once
-split.
+**How open the opener is.** Wide open on clues alone: every corner exhibits a
+second solution in 3.8–9.8s, well under the 600s ceiling — `multiple` is
+proven by the second solution CP-SAT actually returned, not inferred from
+the run staying short of the timeout. The five real clues (QR 10, QR
+58–64, QR 51–56, QQRR 33, QQRR 5 at any one corner) underconstrain the grid
+by a wide margin — the opener needs more real clues, or a resolved and
+*consistent* hypothesis set, before a unique-grid finder run is worth
+mounting.
 
-**How open the opener is.** Wide open on clues alone: 3.8–9.8s to a second
-solution at every corner, well under the 600s ceiling, so `multiple` is a
-proven verdict, not a near-timeout guess. The two real clues (QR 10, QQRR 33)
-plus any one QQRR-5 corner underconstrain the grid by a wide margin — the
-opener needs more real clues, or a resolved and *consistent* hypothesis set,
-before a unique-grid finder run is worth mounting.
+## The hypothesis-group split (runs 10–11)
+
+Two `.scratch/opener-*.json` variants of `finders/qqrr/opener.json`, each run
+once, hypotheses-on, no corner, against the five real clues:
+
+- **digits-only** (`opener-digits-only.json`): the three uncircled QR-mark
+  symbols (9, 8, 1) removed from the "QR Ranks" symbol list; the 13 entered
+  digits left in place.
+- **marks-only** (`opener-marks-only.json`): every non-given cell `value`
+  removed; the three uncircled marks left in place.
+
+| # | variant | status | wall clock |
+|---|---|---|---|
+| 10 | digits-only | infeasible | 0.0s |
+| 11 | marks-only | infeasible | 0.0s |
+
+**Both are infeasible alone.** The 13 entered digits conflict with the five
+real clues on their own, with no uncircled marks in play; the three
+uncircled marks conflict with the five real clues on their own, with no
+entered digits in play. Neither group needs the other to break the opener —
+this isn't a fight between the two groups, each one individually contradicts
+QR 10 / QR 58–64 / QR 51–56 / QQRR 33 / QQRR 5. At least one entered digit
+and at least one uncircled mark is wrong, or the rule as coded diverges from
+the one intended, independent of which group is blamed.
 
 ## Raw progress files
 
