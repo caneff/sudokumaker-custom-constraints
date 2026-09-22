@@ -1,4 +1,4 @@
-<!-- QQRR explorer. Tie-sample presets first: r4c1 reads window ranks 1|8 = 18 (the uncircled marks), tying a corner window whose rank is 18. Published artifact: https://claude.ai/artifact/QH1ZpnXoLkQj6R6x899Axh -- republish this file with that url to update it. Presets are the #593 rerun grids; paste any 9x9 grid to re-rank. -->
+<!-- QQRR explorer. First preset (#601): the 7-digit tie witness, a grid found with no opener clues at all, shown with the opener overlay off. Then the tie-sample presets: r4c1 reads window ranks 1|8 = 18 (the uncircled marks), tying a corner window whose rank is 18. Published artifact: https://claude.ai/artifact/QH1ZpnXoLkQj6R6x899Axh -- republish this file with that url to update it. Presets are the #593 rerun grids; paste any 9x9 grid to re-rank. -->
 <title>Quad Quad Rank Rank Explorer</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>
@@ -102,7 +102,8 @@ tr.tie td{color:var(--clue)}
 
 <script>
 const N=9, W=N-1;
-const PRESETS=[
+const PRESETS=[  // [label, grid, corner pinned, false = not an opener completion: overlay off]
+["7-digit tie witness · no opener clues · r4c6 = r5c4 = 2251246","645378921/871259634/329614587/953827146/264195378/718463295/537941862/482536719/196782453",null,false],
 ["tie sample · QQRR 5 top-right · r4c1 = 18 ties r1c1 · tr #7","365741298/947286513/128395467/216938754/483517629/579462831/651873942/734629185/892154376","tr"],
 ["tie sample · QQRR 5 top-right · r4c1 = 18 ties r9c1 · tr #11","436751289/975283614/128649357/213978546/587416932/694532871/742895163/359167428/861324795","tr"],
 ["tie sample · QQRR 5 bottom-right · r4c1 = 18 ties r9c1 · br #34","635791482/947283516/128564937/213958764/584376129/769142853/492835671/356417298/871629345","br"],
@@ -250,11 +251,12 @@ function load(g,cn){grid=g;corner=cn;A=analyse(grid);sel=null;draw();renderDetai
 
 const preset=document.getElementById("preset");
 PRESETS.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=p[0];preset.appendChild(o)});
-preset.addEventListener("change",()=>{const p=PRESETS[preset.value];load(parseGrid(p[1]),p[2])});
+function loadPreset(p){document.getElementById("showOpener").checked=p[3]!==false;load(parseGrid(p[1]),p[2])}
+preset.addEventListener("change",()=>loadPreset(PRESETS[preset.value]));
 document.getElementById("apply").addEventListener("click",()=>{const e=document.getElementById("err");try{load(parseGrid(document.getElementById("gridText").value),corner);e.textContent=""}catch(x){e.textContent=x.message}});
 ["showQR","showQQ","showOpener","showTies"].forEach(id=>document.getElementById(id).addEventListener("change",draw));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",draw);
 new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
-load(parseGrid(PRESETS[0][1]),PRESETS[0][2]);
-select({type:"cell",r:8,c:8});
+loadPreset(PRESETS[0]);
+select({type:"cell",r:3,c:5});
 </script>
