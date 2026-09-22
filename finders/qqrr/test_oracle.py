@@ -13,23 +13,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import oracle
-from grids import TIE_WITNESS
+from grids import TIE_WITNESS, parse
 
 # The first tie-sample preset in docs/research/2026-09-22-qqrr-explorer.html.
-TIE_SAMPLE_TR7 = [
-    [int(d) for d in row]
-    for row in [
-        "365741298",
-        "947286513",
-        "128395467",
-        "216938754",
-        "483517629",
-        "579462831",
-        "651873942",
-        "734629185",
-        "892154376",
-    ]
-]
+TIE_SAMPLE_TR7 = parse(
+    "365741298/947286513/128395467/216938754/483517629/579462831/651873942/734629185/892154376"
+)
 
 GRID = [
     [1, 2, 1, 2],

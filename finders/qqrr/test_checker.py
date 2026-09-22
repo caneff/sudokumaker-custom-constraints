@@ -271,5 +271,58 @@ class Lying:
 
 
 assert refuses(checker._extract, Lying(solver, pairs), qt, [], pairs, saying="tie")
+# `_extract` fills the whole tie report, the cage flag included.
+sol = checker._extract(solver, qt, [], pairs, clued=[(2, 4), (8, 8)])
+assert sol.tie_touches == [(2, 4)]
+
+# The recheck is on the path `run` takes: an oracle that finds no tie refuses
+# the model's pair there too.
+real = checker.oracle.seven_digit_ties
+checker.oracle.seven_digit_ties = lambda ranks: []
+try:
+    assert refuses(
+        checker.run,
+        pinned(TIE_WITNESS, {}),
+        corner=None,
+        hypotheses=True,
+        count=1,
+        workers=1,
+        timeout=60,
+        tie=True,
+        saying="tie",
+    )
+finally:
+    checker.oracle.seven_digit_ties = real
+
+# The verdict line says the tie constraint was on: "infeasible" under it
+# means no tie, not a dead opener.
+text = checker.render(
+    checker.run(
+        fixed, corner=None, hypotheses=True, count=2, workers=1, timeout=60, tie=True
+    )
+)
+assert text.startswith("infeasible:") and "tie=on" in text, text
+assert "tie=off" in checker.render(
+    checker.run(fixed, corner=None, hypotheses=True, count=2, workers=1, timeout=60)
+)
+
+# The CLI hands --tie to the run, and leaves it off without the flag.
+import qqrr_cpsat
+
+seen = []
+real_run = checker.run
+checker.run = lambda op, **kw: (
+    seen.append(kw["tie"]),
+    real_run(op, **{**kw, "timeout": 0}),
+)[1]
+try:
+    for argv in (
+        ["--tie", "--count", "1", "--workers", "1"],
+        ["--count", "1", "--workers", "1"],
+    ):
+        qqrr_cpsat.main(argv)
+finally:
+    checker.run = real_run
+assert seen == [True, False], seen
 
 print("ok test_checker")

@@ -7,8 +7,8 @@ uncircled one a hypothesis, an entered digit a hypothesis, the cage a clue.
 solves, forbids and solves again up to `count` times; every grid it returns
 has been re-ranked by `oracle.py` and matched against the model's own rank
 variables. With `tie` it also requires the 7-digit tie of #601 and reports
-the pair, rechecked against `oracle.seven_digit_ties`. `render_solution` is a grid with all three tables; `render` is the
-one-line verdict.
+the pair, rechecked against `oracle.seven_digit_ties`. `render_solution` is a
+grid with all three tables; `render` is the one-line verdict.
 """
 
 import json
@@ -60,6 +60,7 @@ class Report:
     hypotheses: bool
     count: int
     note: str = ""
+    tie: bool = False
 
 
 def parse_band(text, top):
@@ -187,9 +188,7 @@ def run(
             break
         if result not in cpsat.SOLVED:
             raise RuntimeError(f"CP-SAT returned {s.StatusName(result)}; no verdict")
-        sol = _extract(s, q, ranked, pairs)
-        if tie:
-            sol.tie_touches = _touching(n, sol.tie, op.cell_clues)
+        sol = _extract(s, q, ranked, pairs, op.cell_clues)
         solutions.append(sol)
         if on_solution:
             on_solution(sol, len(solutions))
@@ -209,15 +208,23 @@ def run(
     elif status == "timeout":
         note = f"{len(solutions)} solutions found before the {timeout:.0f}s ceiling; no verdict"
     return Report(
-        status, solutions, time.monotonic() - start, corner, hypotheses, count, note
+        status,
+        solutions,
+        time.monotonic() - start,
+        corner,
+        hypotheses,
+        count,
+        note,
+        tie,
     )
 
 
-def _extract(s, q, ranked, pairs=None):
+def _extract(s, q, ranked, pairs=None, clued=()):
     """Read the grid back and assert the model's ranks are the oracle's.
 
     With `pairs` (from `model.add_seeing_tie`), the first pair the model set
-    true must be one the oracle finds; that entry is the solution's `tie`.
+    true must be one the oracle finds; that entry is the solution's `tie`, and
+    `tie_touches` lists the `clued` cells sharing a window with it.
     """
     n = q.n
     grid = [[s.Value(q.x[r][c]) for c in range(n)] for r in range(n)]
@@ -238,7 +245,7 @@ def _extract(s, q, ranked, pairs=None):
             raise AssertionError(
                 f"model cell rank at {(r, c)} is {v}, oracle says {cranks[r][c]}"
             )
-    tie = None
+    tie = touches = None
     if pairs is not None:
         chosen = next(k for k, p in pairs.items() if s.Value(p))
         tie = next((t for t in oracle.seven_digit_ties(ranks) if t[:2] == chosen), None)
@@ -246,7 +253,8 @@ def _extract(s, q, ranked, pairs=None):
             raise AssertionError(
                 f"model tie pair {chosen} is not a tie the oracle finds"
             )
-    return Solution(grid, ranks, numbers, cranks, tie)
+        touches = _touching(n, tie, clued)
+    return Solution(grid, ranks, numbers, cranks, tie, touches)
 
 
 def _touching(n, tie, clued):
@@ -294,6 +302,6 @@ def render(report):
     """The one-line verdict."""
     head = (
         f"{report.status}: corner={report.corner or 'none'} hypotheses={'on' if report.hypotheses else 'off'} "
-        f"count<={report.count} {report.seconds:.1f}s"
+        f"tie={'on' if report.tie else 'off'} count<={report.count} {report.seconds:.1f}s"
     )
     return head + (f" -- {report.note}" if report.note else "")

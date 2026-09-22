@@ -214,10 +214,13 @@ def add_tie_pair(m, num_a, num_b, wide_a, wide_b, name):
     return p
 
 
-def sees(a, b):
-    """Two distinct cells of a 9x9 grid share a row, a column or a box."""
+def sees(n, a, b):
+    """Two distinct cells of an n x n grid share a row, a column or a box."""
+    box = int(n**0.5)
     return a != b and (
-        a[0] == b[0] or a[1] == b[1] or (a[0] // 3, a[1] // 3) == (b[0] // 3, b[1] // 3)
+        a[0] == b[0]
+        or a[1] == b[1]
+        or (a[0] // box, a[1] // box) == (b[0] // box, b[1] // box)
     )
 
 
@@ -233,7 +236,7 @@ def add_seeing_tie(q):
     pairs = {}
     for i, a in enumerate(interior):
         for b in interior[i + 1 :]:
-            if not sees(a, b):
+            if not sees(n, a, b):
                 continue
             pairs[(a, b)] = add_tie_pair(
                 q.m,
