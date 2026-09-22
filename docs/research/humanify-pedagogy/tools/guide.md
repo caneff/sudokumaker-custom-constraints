@@ -113,8 +113,8 @@ draining your generator after either one, so yield them last.
 
 ### 4. When update runs, and when you are done
 
-The solver runs a fixpoint per search node
-([updateConstraints](#solverstate-updateconstraints)). A component's `update`
+The solver runs a fixpoint per search node<!--private-->
+([updateConstraints](#solverstate-updateconstraints))<!--/private-->. A component's `update`
 runs when any cell in its `cellIds` is dirtied, where dirty means any candidate
 removal or placement on that cell. A cell your logic reads but did not list in
 `getAffectedCells` is invisible to that test, which is why `getAffectedCells`
@@ -175,13 +175,13 @@ or from `update`, when a condition has resolved and a built-in can take over:
 yield puzzle.replaceComponent(new HouseComponent(instance.name, instance.cells))
 ```
 
-Three shapes recur among the built-ins, and they show how the app itself splits
+<!--private-->Three shapes recur among the built-ins, and they show how the app itself splits
 work between `update` and `validate`. A leaf extends
 [ConstraintComponent](#constraintcomponent) and prunes in `update`. A composite
 extends [CompositeComponent](#compositecomponent), builds leaf components in
 `initialize`, and deletes itself. A pair extends
 [PairComponent](#paircomponent) and delegates all pruning to a precomputed friend
-table, supplying only a constructor and `validate`. The components index below is
+table, supplying only a constructor and `validate`. <!--/private-->The components index below is
 grouped by what each one constrains.
 
 ### 6. Coordinates
@@ -223,9 +223,9 @@ the vocabulary the app's own components use.
 
 One search node runs the constraint fixpoint and the validators, takes the app's
 own logic steps until they stall, then branches on a cell and starts a child node
-on a cloned state. The diagram under [SolverState](#solverstate) is the whole
+on a cloned state.<!--private--> The diagram under [SolverState](#solverstate) is the whole
 loop; [processChange](#solverstate-processchange) is what happens to each change
-you yield. The logic steps run beside your component and never call it; they only see
+you yield.<!--/private--> The logic steps run beside your component and never call it; they only see
 the candidates it has narrowed.
 
 `update` reruns on every dirtied cell in every node of the search, so a

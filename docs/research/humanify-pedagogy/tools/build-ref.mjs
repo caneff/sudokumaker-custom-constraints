@@ -1,5 +1,13 @@
 // Build the single-page HTML view of docs/research/bundle-api-reference.md.
-//   node build-ref.mjs <reference.md> <out.html>
+//   node build-ref.mjs <reference.md> <out.html> [--public-only]
+//
+// --public-only builds the page that is shared outside this repo: only entries
+// whose Access line is **public** (what the app hands custom code by name),
+// no "Under the hood", no reachable-tier entries, no tier buttons, and the
+// guide passages fenced <!--private-->…<!--/private--> are dropped. The
+// app's author asked that the solver internals not be shared; the full page
+// stays a local build. Every link is still checked, so a public entry that
+// links to a removed one fails the build instead of dangling.
 //
 // The page is a teaching view of the reference, in three parts:
 //   Guide          ./guide.md, a reading order for a first-time author; every
@@ -37,7 +45,24 @@ import { marked } from 'marked'
 const here = dirname(fileURLToPath(import.meta.url))
 const vt = (name) => readFileSync(join(here, 'vt', name), 'utf8')
 const page = JSON.parse(readFileSync(join(here, 'page.json'), 'utf8'))
-const guideMd = readFileSync(join(here, 'guide.md'), 'utf8')
+const publicOnly = process.argv.includes('--public-only')
+const args = process.argv.slice(2).filter(a => !a.startsWith('--'))
+// Guide passages about the internals sit between <!--private--> markers:
+// dropped with their markers in a public-only build, markers alone otherwise.
+const PRIVATE = /<!--private-->([\s\S]*?)<!--\/private-->/g
+const guideMd = readFileSync(join(here, 'guide.md'), 'utf8').replace(PRIVATE, (m, inner) => publicOnly ? '' : inner)
+// The preamble explains the three tiers; a public-only page has one.
+function publicPreamble (text) {
+  const cuts = [
+    /\s*\*\*reachable, not documented\*\*:[\s\S]*?not for calling\./,
+    /\s*Entries in the internals sections also carry where the body was\s+read in full\./
+  ]
+  for (const re of cuts) {
+    if (!re.test(text)) throw new Error('public-only: preamble sentence to cut not found: ' + re)
+    text = text.replace(re, '')
+  }
+  return text
+}
 
 // ---------------------------------------------------------------- markdown prep
 // The markdown keeps bundle line citations for readers with the bundle in
@@ -266,14 +291,15 @@ function renderSection (sec, opts = {}) {
 }
 function renderEntry (e) {
   const tier = tierOf(e.body)
+  if (publicOnly && tier !== 'public') return ''
   const inner = render('### ' + e.heading + '\n' + e.body)
   return '<section class="entry" data-tier="' + tier + '">' + inner + '</section>\n'
 }
 
 // --------------------------------------------------------------- assemble
-const refMd = prepare(readFileSync(process.argv[2], 'utf8'))
+const refMd = prepare(readFileSync(args[0], 'utf8'))
 const sections = splitSections(refMd)
-const preamble = sections[0].body
+const preamble = publicOnly ? publicPreamble(sections[0].body) : sections[0].body
 const byTitle = new Map(sections.slice(1).map(s => [s.title, s]))
 for (const t of [...page.sectionOrder, ...page.underTheHood]) if (!byTitle.has(t)) throw new Error('page.json names a section the reference lacks: ' + t)
 const placed = new Set([...page.sectionOrder, ...page.underTheHood])
@@ -305,6 +331,7 @@ for (const title of page.sectionOrder) {
   const byName = new Map(members.map(e => [componentName(e.heading), e]))
   const families = page.componentFamilies.map(f => ({ ...f, entries: f.members.map(n => { const e = byName.get(n); if (!e) throw new Error('page.json family member not in reference: ' + n); byName.delete(n); return e }) }))
   if (byName.size) families.push({ name: 'Other', blurb: 'Components no family claims.', entries: [...byName.values()] })
+  if (publicOnly) for (const f of families) f.entries = f.entries.filter(e => tierOf(e.body) === 'public')
   // ids for the index table must match what renderEntry will assign; compute
   // them the same way but without consuming the uniqueness counter
   const idOf = (e) => { const k = classKey(e.heading); return k ? k.toLowerCase() : slug(componentName(e.heading)) }
@@ -328,9 +355,9 @@ for (const title of page.sectionOrder) {
   }
 }
 
-// Under the hood
+// Under the hood (not built at all in a public-only page)
 let hoodHtml = ''
-for (const title of page.underTheHood) hoodHtml += renderSection(byTitle.get(title))
+if (!publicOnly) for (const title of page.underTheHood) hoodHtml += renderSection(byTitle.get(title))
 
 // ------------------------------------------------------------ autolinking
 // Link `identifier` code spans to entries. Scope is the enclosing h3; a method
@@ -375,12 +402,12 @@ function autolink (html) {
     })
   }).join('')
 }
-let body = autolink(guideHtml) + '<hr class="part">' + autolink(refHtml) +
-  '<details class="hood" id="under-the-hood"><summary><h2>Under the hood<a class="anchor" href="#under-the-hood" aria-label="Link to this section" title="Copy link">#</a></h2><p>The solver machinery a custom constraint never calls: internal component pieces, state and change application, the app\'s own logic steps, the free functions behind the utility globals, and the built-in constraint handlers. Described so behaviour can be understood, not for calling.</p></summary>' + autolink(hoodHtml) + '</details>'
+let body = autolink(guideHtml) + '<hr class="part">' + autolink(refHtml) + (publicOnly ? '' :
+  '<details class="hood" id="under-the-hood"><summary><h2>Under the hood<a class="anchor" href="#under-the-hood" aria-label="Link to this section" title="Copy link">#</a></h2><p>The solver machinery a custom constraint never calls: internal component pieces, state and change application, the app\'s own logic steps, the free functions behind the utility globals, and the built-in constraint handlers. Described so behaviour can be understood, not for calling.</p></summary>' + autolink(hoodHtml) + '</details>')
 
 // The task table names each target by its heading, with the class for a method.
 const headById = new Map(headings.map(h => [h.id, h]))
-const taskRows = page.tasks.map(([what, href]) => {
+const taskRows = page.tasks.filter(([, href]) => !publicOnly || headById.has(href.slice(1))).map(([what, href]) => {
   const h = headById.get(href.slice(1))
   if (!h) throw new Error('page.json task points at a missing id: ' + href)
   const cls = h.level === 4 && h.h3 ? headById.get(h.h3) : null
@@ -422,7 +449,8 @@ function navTree (heads) {
 }
 const nav = '<li class="part"><span>Guide</span></li>' + navTree(guideHeads) +
   '<li class="part"><span>Reference</span></li>' + navTree(refHeads) +
-  '<li class="part hood"><a href="#under-the-hood">Under the hood</a></li>' + navTree(hoodHeads)
+  (publicOnly ? '' : '<li class="part hood"><a href="#under-the-hood">Under the hood</a></li>' + navTree(hoodHeads))
+const tierButtons = publicOnly ? '' : '<div class="tiers" role="group" aria-label="Show tiers in the reference"><button type="button" data-tier="public" aria-pressed="true">public</button><button type="button" data-tier="reachable" aria-pressed="true">reachable</button><button type="button" data-tier="internal" aria-pressed="false">internal</button></div>'
 
 // ------------------------------------------------------------------ page
 const html = `<title>SudokuMaker Constraint API</title>
@@ -515,7 +543,7 @@ a{color:var(--vt-accent)}
 @media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--vt-rule);padding-right:0;max-height:40vh}}
 </style>
 <div class="shell">
-<nav aria-label="Contents"><div class="brand">Constraint API</div><input id="q" type="search" placeholder="Filter entries… ( / )" aria-label="Filter entries"><div class="tiers" role="group" aria-label="Show tiers in the reference"><button type="button" data-tier="public" aria-pressed="true">public</button><button type="button" data-tier="reachable" aria-pressed="true">reachable</button><button type="button" data-tier="internal" aria-pressed="false">internal</button></div><div class="count" id="count"></div><ul id="toc">${nav}</ul></nav>
+<nav aria-label="Contents"><div class="brand">Constraint API</div><input id="q" type="search" placeholder="Filter entries… ( / )" aria-label="Filter entries">${tierButtons}<div class="count" id="count"></div><ul id="toc">${nav}</ul></nav>
 <main id="doc">
 ${body}
 </main>
@@ -551,7 +579,7 @@ ${body}
     items.push(it)});
   var q=document.getElementById('q'),count=document.getElementById('count');
   var tiers={public:true,reachable:true,internal:false};
-  try{var saved=JSON.parse(localStorage.getItem('ref-tiers')||'null');if(saved&&typeof saved==='object')Object.keys(tiers).forEach(function(k){if(k in saved)tiers[k]=!!saved[k]})}catch(e){}
+  ${publicOnly ? '' : "try{var saved=JSON.parse(localStorage.getItem('ref-tiers')||'null');if(saved&&typeof saved==='object')Object.keys(tiers).forEach(function(k){if(k in saved)tiers[k]=!!saved[k]})}catch(e){}"}
   var tierButtons=Array.prototype.slice.call(nav.querySelectorAll('.tiers button'));
   tierButtons.forEach(function(b){b.setAttribute('aria-pressed',String(tiers[b.dataset.tier]));b.addEventListener('click',function(){tiers[b.dataset.tier]=!tiers[b.dataset.tier];b.setAttribute('aria-pressed',String(tiers[b.dataset.tier]));try{localStorage.setItem('ref-tiers',JSON.stringify(tiers))}catch(e){}applyView();spy()})});
   function inHood(el){return !!(hood&&el&&hood.contains(el))}
@@ -581,5 +609,5 @@ ${body}
 })();
 </script>
 `
-writeFileSync(process.argv[3], html)
-console.log('bytes', html.length, 'headings', headings.length, 'links', (body.match(/<a class="ref"/g) || []).length)
+writeFileSync(args[1], html)
+console.log(publicOnly ? 'public-only' : 'full', 'bytes', html.length, 'headings', headings.length, 'links', (body.match(/<a class="ref"/g) || []).length)
