@@ -14,7 +14,9 @@ per unordered pair of interior cells that see each other (344 pairs), each
 enforcing equal numbers, three of four window ranks two digits wide on both
 sides, and the one-digit rank in a different slot; at least one pair true.
 Run through `finders/qqrr/qqrr_cpsat.py --tie --count 2 --workers 8
---timeout 1800`, code at `8755429`.
+--timeout 1800`. The first two rows ran at `f7a85a5`, check 2 at `8755429`;
+the model and the tie constraint are the same at both (`8755429` changed
+reporting and tests only).
 
 | run | fixings | tr | br |
 |---|---|---|---|
@@ -34,7 +36,7 @@ result could be trusted and ruled both checks:
   each window's top-left digit, and the clued windows' digit pre-prune), the one
   pruning rule in the model whose soundness rests on a separate argument
   (map #321, #324). Run from a scratch copy of `model.py` and `checker.py`
-  with only those lines deleted. Same verdict, 6x slower: the bound is not what
+  with only those lines deleted. Same verdict, 5 to 6x slower: the bound is not what
   makes the tie infeasible.
 - *Check 2* drops the entered digits and the uncircled marks, which Chris had
   called forced. Same verdict at both corners: the tie is ruled out by the
