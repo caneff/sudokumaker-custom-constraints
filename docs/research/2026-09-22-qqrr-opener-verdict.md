@@ -1,12 +1,17 @@
 # QQRR opener verdict (#593)
 
-**The earlier nine runs recorded in this file (2026-09-22, commits up to
-`09f8990`) were invalidated by #598**: `checker.load_opener` mapped a "QR
-Ranks" symbol `[x, y]` to the window whose top-left cell was `(row y, col
-x)`, but the symbol sits on a grid intersection — the window it marks is the
-four cells around that point, top-left `(row y-1, col x-1)`. #599 fixed the
-mapping (squash `55cb83a`, on `main`). This is a full rerun on the corrected
-checker; nothing below is inherited from the earlier attempt.
+**An earlier eleven-run record for this ticket, held only on branch commits
+up to `09f8990` and never landed on `main`, was invalidated by #598**:
+`finders/qqrr/checker.py`'s `load_opener` mapped a "QR Ranks" symbol `[x,
+y]` to the window whose top-left cell was `(row y, col x)`, but the symbol
+sits on a grid intersection — the window it marks is the four cells around
+that point, top-left `(row y-1, col x-1)`. #599 fixed the mapping (squash
+`55cb83a`, on `main`). That eleven-run record included two hypothesis-group
+split runs (entered digits alone, uncircled marks alone) built to localize
+the mapping-bug-era infeasibility; this rerun's own diagnostic (run 9,
+below) is feasible, so there is nothing left to localize and the split isn't
+repeated here. This is a full rerun on the corrected checker; nothing below
+is inherited from the earlier attempt.
 
 Nine runs of `finders/qqrr/qqrr_cpsat.py` against `finders/qqrr/opener.json`,
 each under `job-run --name qqrr-opener-<label>`, sequential (one solver
@@ -17,7 +22,7 @@ uv run finders/qqrr/qqrr_cpsat.py --corner <tl|tr|bl|br|none> [--hypotheses] \
   --workers 16 --timeout 600 --progress <path>.log
 ```
 
-Eight per the map #591 protocol (hypotheses on then off, by corner for the
+Eight per issue #591's protocol (hypotheses on then off, by corner for the
 QQRR 5), plus a ninth diagnostic (hypotheses on, no corner) to separate the
 corner pin from the hypotheses as a possible source of infeasibility.
 
@@ -32,33 +37,43 @@ every run below actually used. The controller also ordered run 9, past the
 map's eight.
 
 Real clues, every run — always fixed, `--hypotheses` or not, per
-`checker.load_opener`'s `window_clues`/`cell_clues` (circled symbols only,
-under the #599 mapping): QR 10 at window top-left (row 5, col 5); QR band
-58–64 at window (row 3, col 3); QR band 51–56 at window (row 1, col 4); QQRR
-33 at cell (row 0, col 4); QQRR 5 at the corner under test (tl/tr/bl/br), or
-absent on run 9. Hypotheses, fixed only on the `--hypotheses` runs, per
-`window_hypotheses`/`digit_hypotheses`: the three uncircled QR marks — 9 at
-window (row 2, col 1), 8 at window (row 3, col 0), 1 at window (row 2, col
-0) — and the 13 entered digits from `OPENER_NOTES.md`'s grid
-(`test_checker.py` asserts this count). Plain sudoku underneath.
+`finders/qqrr/checker.py`'s `load_opener` (`window_clues`/`cell_clues`,
+circled symbols only, under the #599 mapping): QR 10 at window top-left
+(row 5, col 5); QR band 58–64 at window (row 3, col 3); QR band 51–56 at
+window (row 1, col 4); QQRR 33 at cell (row 0, col 4); QQRR 5 at the corner
+under test (tl/tr/bl/br), or absent on run 9. Hypotheses, fixed only on the
+`--hypotheses` runs, per `load_opener`'s `window_hypotheses`/
+`digit_hypotheses`: the three uncircled QR marks — 9 at window (row 2, col
+1), 8 at window (row 3, col 0), 1 at window (row 2, col 0) — and the 13
+entered digits from `finders/qqrr/OPENER_NOTES.md`'s grid
+(`finders/qqrr/test_checker.py` asserts this count). Plain sudoku
+underneath. The rank tables below (window ranks, cell ranks) follow the QR
+and QQRR tie-rank rule as `finders/qqrr/OPENER_NOTES.md` § Rule states it —
+ties share the lower rank and ranks after a tie are skipped, so a repeated
+value followed by a gap in a rank row is that rule, not a transcription
+error.
 
 ## Runs
+
+Every run's `--count` was 2 (`qqrr_cpsat.py`'s default), so `multiple` below
+means "at least 2 solutions, search capped at 2" — CP-SAT stops as soon as it
+finds the second, so `multiple` is a proven verdict (an exhibited solution),
+`infeasible` a proven one too (a proof of no solution), and no run's status
+was inferred from staying short of the 600s ceiling.
 
 | # | corner | hypotheses | status | wall clock |
 |---|---|---|---|---|
 | 1 | tl | on | infeasible | 1.7s |
-| 2 | tr | on | multiple (≥2 solutions, capped at 2) | 3.5s |
+| 2 | tr | on | multiple | 3.5s |
 | 3 | bl | on | infeasible | 1.6s |
-| 4 | br | on | multiple (≥2 solutions, capped at 2) | 3.2s |
+| 4 | br | on | multiple | 3.2s |
 | 5 | tl | off | infeasible | 34.7s |
-| 6 | tr | off | multiple (≥2 solutions, capped at 2) | 9.2s |
+| 6 | tr | off | multiple | 9.2s |
 | 7 | bl | off | infeasible | 35.9s |
-| 8 | br | off | multiple (≥2 solutions, capped at 2) | 16.6s |
-| 9 | none | on | multiple (≥2 solutions, capped at 2) | 3.2s |
+| 8 | br | off | multiple | 16.6s |
+| 9 | none | on | multiple | 3.2s |
 
-No run approached the 600s ceiling; every result is proven by CP-SAT — a
-solution actually found for `multiple`, a proof of no solution for
-`infeasible` — never inferred from staying short of the timeout.
+No run approached the 600s ceiling.
 
 ## Grid and rank tables, feasible runs
 
@@ -468,13 +483,16 @@ candidates. Nothing here distinguishes tr from br yet.
 corners. Runs 2, 4 and 9 (hypotheses on, corner tr/br/none respectively) are
 all `multiple` — the 13 entered digits and the three uncircled marks coexist
 with the real clues at both live corners and with no corner fixed at all. The
-earlier (pre-#599) run set's blanket infeasibility was the mapping bug, not
-a genuine conflict in the hypotheses: under the corrected window mapping, the
-hypotheses hold up everywhere they're tested.
+earlier (pre-#599) run set's hypotheses-on infeasibility at every corner and
+at none (its runs 1–4 and 9) was the mapping bug, not a genuine conflict in
+the hypotheses: under the corrected window mapping, the hypotheses hold up
+everywhere they're tested. (Its hypotheses-off runs 5–8 were already
+`multiple`, so the mapping bug's effect was confined to the hypotheses-on
+half of that record.)
 
 **How open the opener is.** Open at both surviving corners, hypotheses or
-not: 3.2–16.6s to a second solution, no run within two orders of magnitude of
-the 600s ceiling. tl and bl are closed outright by the clue set. The next
+not: 3.2–16.6s to a second solution, well short of the 600s ceiling. tl and
+bl are closed outright by the clue set. The next
 useful move is likely a run that adds real clues (not hypotheses) at tr and
 br specifically, since both remain a `multiple` result away from a unique
 grid, or a targeted search for what single additional clue would separate
@@ -483,4 +501,6 @@ them.
 ## Raw progress files
 
 `.scratch/{on,off}-{tl,tr,bl,br}.log`, `.scratch/on-none.log` — gitignored,
-not shipped.
+not shipped, and scoped to this ticket's task worktree, so they don't outlive
+it. The grid, window-rank and cell-rank tables above are the durable copy;
+re-run the invocation at the top of this doc to regenerate the logs.
