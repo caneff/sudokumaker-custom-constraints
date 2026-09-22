@@ -15,8 +15,8 @@ enforcing equal numbers, three of four window ranks two digits wide on both
 sides, and the one-digit rank in a different slot; at least one pair true.
 Run through `finders/qqrr/qqrr_cpsat.py --tie --count 2 --workers 8
 --timeout 1800`. The first two rows ran at `f7a85a5`, check 2 at `8755429`;
-the model and the tie constraint are the same at both (`8755429` changed
-reporting and tests only).
+the constraint posted is the same at both (`8755429` changed reporting and
+tests, and made `sees` read the box size from n, which is 3 at 9x9).
 
 | run | fixings | tr | br |
 |---|---|---|---|
