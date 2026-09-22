@@ -166,6 +166,16 @@ assert variant(
     lambda p: named(p, checker.CELL_CAGES)["cages"][0].__setitem__("cells", [4, 5]),
     "one cell",
 )
+# A mark on a border intersection (x=0 or y=0) has no window around it: the
+# offset (y-1, x-1) would be negative, silently pointing at the wrong window.
+assert variant(
+    lambda p: named(p, checker.WINDOW_MARKS)["symbols"][0].__setitem__(0, 0),
+    "border intersection",
+)
+assert variant(
+    lambda p: named(p, checker.WINDOW_MARKS)["symbols"][0].__setitem__(1, 0),
+    "border intersection",
+)
 assert not variant(lambda p: None)
 
 

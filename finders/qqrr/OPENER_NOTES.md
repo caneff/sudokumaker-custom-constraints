@@ -17,7 +17,13 @@ cosmetic symbols (type 2002), the cell clue is a cosmetic cage (type 2001).
   Same tie semantics. Given as a single-cell cage value.
 - Plain 9x9 sudoku underneath. No custom component in this effort.
 
-## Window-rank marks in the link ("QR Ranks" symbols, [x, y] = grid intersection: the mark sits on the point between four cells, and the window it marks is those four cells, top-left (row y-1, col x-1), 0-based. Q16's original ruling read the symbol's own cell as the window's TL; that rested on the grill's misreading of the grid, not on Chris's reading. Under (y-1, x-1), all 6 marks have an entered top-left digit inside their rank's leading-digit band and the hypotheses-on run is feasible (multiple, 3.1 s); under the old (y, x) reading only 1 of 6 fit and the run was infeasible in 0.0 s — six-of-six evidence, #598.)
+## Window-rank marks in the link
+
+`"QR Ranks"` symbols, `[x, y]` = grid intersection. The mark sits on the point
+between four cells, and the window it marks is those four cells: top-left
+(row y-1, col x-1), 0-based. Fact, ruled at #598: all 6 marks have an entered
+top-left digit inside their rank's leading-digit band under this mapping, and
+the hypotheses-on run is feasible (multiple, 3.1 s).
 
 | symbol | window TL (row, col) 0-based | Chris's status |
 |---|---|---|
