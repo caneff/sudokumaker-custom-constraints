@@ -7,7 +7,11 @@
 // guide passages fenced <!--private-->…<!--/private--> are dropped. The
 // app's author asked that the solver internals not be shared; the full page
 // stays a local build. Every link is still checked, so a public entry that
-// links to a removed one fails the build instead of dangling.
+// links to a removed one fails the build instead of dangling. Passing
+// mentions go too: every code span naming a non-public class or method
+// (`SolverState`, `puzzle.state`, `extends CompositeComponent`, …) takes its
+// sentence, list item or table row with it, `solverState` parameters read
+// `state`, and the build fails if any such name survives in the output.
 //
 // The page is a teaching view of the reference, in three parts:
 //   Guide          ./guide.md, a reading order for a first-time author; every
@@ -50,7 +54,7 @@ const args = process.argv.slice(2).filter(a => !a.startsWith('--'))
 // Guide passages about the internals sit between <!--private--> markers:
 // dropped with their markers in a public-only build, markers alone otherwise.
 const PRIVATE = /<!--private-->([\s\S]*?)<!--\/private-->/g
-const guideMd = readFileSync(join(here, 'guide.md'), 'utf8').replace(PRIVATE, (m, inner) => publicOnly ? '' : inner)
+let guideMd = readFileSync(join(here, 'guide.md'), 'utf8').replace(PRIVATE, (m, inner) => publicOnly ? '' : inner)
 // The preamble explains the three tiers; a public-only page has one.
 function publicPreamble (text) {
   const cuts = [
@@ -296,10 +300,75 @@ function renderEntry (e) {
   return '<section class="entry" data-tier="' + tier + '">' + inner + '</section>\n'
 }
 
+// ------------------------------------------------- public-only redaction
+// The names a public page must not mention: the class of every non-public
+// entry, its aliases, and its methods that no public entry also has.
+function nonPublicNames (sections) {
+  const pubClasses = new Set(); const pubMethods = new Set()
+  const classes = new Set(); const methods = new Set()
+  const h4Names = (body) => [...body.matchAll(/^#### (.+)$/gm)].flatMap(m => [...m[1].matchAll(/`\*?(?:static |get |set )?([A-Za-z_$][\w$]*)/g)].map(x => x[1]))
+  for (const sec of sections.slice(1)) {
+    for (const e of splitEntries(sec.body).slice(1)) {
+      const k = classKey(e.heading)
+      const alias = /global `?([A-Z][A-Za-z0-9]+)`?(?:, aliased `?([A-Z][A-Za-z0-9]+)`?)?/.exec(e.heading)
+      const names = [k, alias && alias[1], alias && alias[2]].filter(Boolean)
+      if (tierOf(e.body) === 'public') { names.forEach(n => pubClasses.add(n)); h4Names(e.body).forEach(n => pubMethods.add(n)) } else { names.forEach(n => classes.add(n)); h4Names(e.body).forEach(n => methods.add(n)) }
+    }
+  }
+  const out = new Set(['puzzle.state'])
+  for (const c of classes) if (!pubClasses.has(c) && c.length >= 5) out.add(c)
+  // a method name that is also the stem of a public one (`removeCandidate` under `removeCandidateFromCell`) would hit the public name
+  for (const m of methods) if (!pubMethods.has(m) && m.length >= 5 && /[a-z][A-Z]/.test(m) && ![...pubMethods].some(p => p.startsWith(m))) out.add(m)
+  return out
+}
+// A code span or heading naming one of them.
+function namePattern (names) {
+  return new RegExp('(?<![\\w.$])(?:' + [...names].map(n => n.replace(/[.$]/g, '\\$&')).join('|') + ')(?![\\w$])')
+}
+// Names are identifiers (PascalCase classes, camelCase methods), so a bare
+// prose mention ("a CompositeComponent") is as telling as a code span.
+const spanHits = (line, re) => re.test(line)
+// Drop the sentence, list item or table row that mentions a name; keep every
+// heading (minus an "extends <name>") and every Access line; leave fences alone.
+function scrub (md, names) {
+  const re = namePattern(names)
+  const lines = md.replace(/\bsolverState\b/g, 'state').split('\n')
+  const out = []
+  const indent = (l) => /^\s*/.exec(l)[0].length
+  const isItem = (l) => /^\s*[-*] /.test(l)
+  let i = 0; let fence = false
+  const sentences = (text) => text.split(/(?<=[.!?])\s+(?=[A-Z`(\[*_"'])/)
+  while (i < lines.length) {
+    const l = lines[i]
+    if (/^```/.test(l)) { fence = !fence; out.push(l); i++; continue }
+    if (fence || l.trim() === '' || /^Access: /.test(l)) { out.push(l); i++; continue }
+    if (/^#{2,4} /.test(l)) { out.push(l.replace(/ extends `?([A-Z][A-Za-z0-9]+)/g, (m, c) => names.has(c) ? '' : m)); i++; continue }
+    if (/^\|/.test(l)) { if (!spanHits(l, re)) out.push(l); i++; continue }
+    if (isItem(l)) {
+      const base = indent(l); const block = [l]; i++
+      while (i < lines.length && lines[i].trim() !== '' && !/^```/.test(lines[i]) && (indent(lines[i]) > base || (!isItem(lines[i]) && !/^[#|]/.test(lines[i])))) block.push(lines[i++])
+      // a nested item that is itself flagged goes alone; the parent goes with all its children
+      const own = []; const kids = []
+      for (const b of block) (kids.length || (b !== l && isItem(b) && indent(b) > base) ? kids : own).push(b)
+      if (own.some(b => spanHits(b, re))) continue
+      out.push(...own)
+      if (kids.length) { lines.splice(i, 0, ...kids); }
+      continue
+    }
+    const para = [l]; i++
+    while (i < lines.length && lines[i].trim() !== '' && !/^(```|#{2,4} |\||\s*[-*] |Access: )/.test(lines[i])) para.push(lines[i++])
+    const kept = sentences(para.join(' ')).filter(s => !spanHits(s, re))
+    if (kept.length) out.push(kept.join(' '))
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n')
+}
+
 // --------------------------------------------------------------- assemble
-const refMd = prepare(readFileSync(args[0], 'utf8'))
+let refMd = prepare(readFileSync(args[0], 'utf8'))
+const redacted = publicOnly ? nonPublicNames(splitSections(refMd)) : null
+if (publicOnly) refMd = scrub(publicPreamble(refMd), redacted)
 const sections = splitSections(refMd)
-const preamble = publicOnly ? publicPreamble(sections[0].body) : sections[0].body
+const preamble = sections[0].body
 const byTitle = new Map(sections.slice(1).map(s => [s.title, s]))
 for (const t of [...page.sectionOrder, ...page.underTheHood]) if (!byTitle.has(t)) throw new Error('page.json names a section the reference lacks: ' + t)
 const placed = new Set([...page.sectionOrder, ...page.underTheHood])
@@ -307,6 +376,7 @@ const unplaced = sections.slice(1).filter(s => !placed.has(s.title)).map(s => s.
 if (unplaced.length) throw new Error('sections missing from page.json: ' + unplaced.join(', '))
 
 // Guide part
+if (publicOnly) guideMd = scrub(guideMd, redacted)
 ctx.idPrefix = 'guide'; ctx.h2 = 'Guide'
 const guideHtml = render(guideMd)
 ctx.idPrefix = null
@@ -421,6 +491,13 @@ body = body.replace('<!--TASKS-->', '').replace('<!--TASKROWS-->', taskRows)
 const missing = new Set()
 for (const m of body.matchAll(/href="#([^"]+)"/g)) if (!ids.has(m[1]) && m[1] !== 'under-the-hood') missing.add(m[1])
 if (missing.size) throw new Error('links to ids that do not exist: ' + [...missing].join(', '))
+// A public-only page names no non-public class or method anywhere in its text.
+if (publicOnly) {
+  const re = new RegExp(namePattern(redacted).source, 'g')
+  const text = body.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+  const left = [...text.matchAll(re)].map(m => m[0] + ' in "…' + text.slice(Math.max(0, m.index - 50), m.index + 40).replace(/\s+/g, ' ') + '…"')
+  if (left.length) throw new Error('public-only: non-public names survive in the page:\n  ' + left.join('\n  '))
+}
 
 // ------------------------------------------------------------------ nav
 const hoodTitles = new Set(page.underTheHood)
