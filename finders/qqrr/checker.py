@@ -84,12 +84,16 @@ def load_opener(path):
         text = marks["params"][rest[0] if rest else 0]["text"]
         band = parse_band(text, top)
         if not (1 <= band[0] <= band[1] <= top) or not (
-            0 <= y <= n - 2 and 0 <= x <= n - 2
+            1 <= y <= n - 1 and 1 <= x <= n - 1
         ):
             raise ValueError(
                 f"window mark {text!r} at [{x}, {y}] is outside 1..{top} or off the grid"
             )
-        (window_clues if (y, x) in circled else window_hypotheses)[(y, x)] = band
+        # The symbol sits on the grid intersection at (x, y); the window it
+        # marks is the four cells around that point, top-left (y - 1, x - 1).
+        (window_clues if (y, x) in circled else window_hypotheses)[(y - 1, x - 1)] = (
+            band
+        )
     cell_clues = {}
     for cage in by_name[CELL_CAGES]["cages"]:
         if len(cage["cells"]) != 1:

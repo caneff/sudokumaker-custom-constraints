@@ -17,16 +17,16 @@ cosmetic symbols (type 2002), the cell clue is a cosmetic cage (type 2001).
   Same tie semantics. Given as a single-cell cage value.
 - Plain 9x9 sudoku underneath. No custom component in this effort.
 
-## Window-rank marks in the link ("QR Ranks" symbols, [x, y] = grid intersection, ruled by Chris 2026-09-21: window's TL cell is (row y, col x))
+## Window-rank marks in the link ("QR Ranks" symbols, [x, y] = grid intersection: the mark sits on the point between four cells, and the window it marks is those four cells, top-left (row y-1, col x-1), 0-based. Q16's original ruling read the symbol's own cell as the window's TL; that rested on the grill's misreading of the grid, not on Chris's reading. Under (y-1, x-1), all 6 marks have an entered top-left digit inside their rank's leading-digit band and the hypotheses-on run is feasible (multiple, 3.1 s); under the old (y, x) reading only 1 of 6 fit and the run was infeasible in 0.0 s — six-of-six evidence, #598.)
 
 | symbol | window TL (row, col) 0-based | Chris's status |
 |---|---|---|
-| `10` at (6,6), circled | (6,6) | **real QR clue** |
-| `58+` at (4,4), circled | (4,4) | **assumption**: a QR clue of 58 or more will sit here |
-| `51-56` at (5,2), circled | (2,5) | **assumption**: a QR clue between 51 and 56 inclusive will sit here |
-| `9` at (2,3) | (3,2) | **hypothesis** (deduced while working): second run only, with the entered digits |
-| `8` at (1,4) | (4,1) | **hypothesis** (deduced while working): second run only, with the entered digits |
-| `1` at (1,3) | (3,1) | **hypothesis** (deduced while working): second run only, with the entered digits |
+| `10` at (6,6), circled | (5,5) | **real QR clue** |
+| `58+` at (4,4), circled | (3,3) | **assumption**: a QR clue of 58 or more will sit here |
+| `51-56` at (5,2), circled | (1,4) | **assumption**: a QR clue between 51 and 56 inclusive will sit here |
+| `9` at (2,3) | (2,1) | **hypothesis** (deduced while working): second run only, with the entered digits |
+| `8` at (1,4) | (3,0) | **hypothesis** (deduced while working): second run only, with the entered digits |
+| `1` at (1,3) | (2,0) | **hypothesis** (deduced while working): second run only, with the entered digits |
 
 ## Cell-rank marks
 
