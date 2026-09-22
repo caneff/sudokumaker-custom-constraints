@@ -103,6 +103,12 @@ test:
     uv run finders/hunt/test_uniqueness.py
     uv run finders/hunt/test_minimizer.py
     uv run finders/hunt/test_watchdog.py
+    # finders/qqrr (#592): the rule oracle on a hand-worked 4x4, the CP-SAT
+    # model against the oracle on 20 fixed grids, and the opener reader plus
+    # count loop on a fixed grid. About five seconds together, workers 1.
+    uv run finders/qqrr/test_oracle.py
+    uv run finders/qqrr/test_model.py
+    uv run finders/qqrr/test_checker.py
     # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
