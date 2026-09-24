@@ -2,9 +2,11 @@
 
 Drivers for the 7-digit tie hunt and the 34–36 hunt (map #591). Flags, results
 and the runs that produced them: `docs/research/2026-09-22-qqrr-tie-r5c1.md`.
-Logs are read and written under `$HUNT_LOGS` (default `.scratch/place`). Run
-one hunt at a time; the worker, pool and load numbers are the box rules in
-`AGENTS.md`.
+`$HUNT_LOGS` (default `.scratch/place`) is where `chan_big.py`, `scheduler4.sh`,
+`sync_presets.py` and `check_3436.py` find the `big-*.log` files; `pair_sweep.py`,
+`chan_sweep.py` and `measure.py` take their log path as an argument. The
+worker, pool and load numbers are the ones the hunts ran with; check `uptime`
+and the box rules in `AGENTS.md` before launching, and run one hunt at a time.
 
 - `pair_sweep.py` — one solve per seeing pair, resumable.
   `pair_sweep.py <corner> <procs> <per-pair timeout> <log> [<hunt> [<workers> [retry]]]`
