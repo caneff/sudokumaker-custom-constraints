@@ -251,7 +251,10 @@ function * update (instance, puzzle) {
   if (!positionsAreHouses(instance, puzzle)) return
   const { clues, lines } = instance
   const read = readSide(puzzle, instance)
-  if (read === null || read.sig === instance.sig) return
+  // A position missing a digit: nothing to sweep, and a memo kept here would
+  // name a state this call never read. Null it, as the exit below does.
+  if (read === null) { instance.sig = null; return }
+  if (read.sig === instance.sig) return
   const found = sideDeductions(puzzle, clues, lines, read.live)
   if (found === null) {
     // No assignment of positions to lines survives: this branch is dead. Stop

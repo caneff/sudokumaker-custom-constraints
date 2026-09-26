@@ -165,6 +165,20 @@ const { load } = makeIo(HERE)
   assert.deepEqual(onDiagonal(l.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
     'the per-line rule pins its one possible hit with one keep-only change')
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
+
+  // ---- A side that stops holding 1..n at a position leaves no memo ----
+  // The side's memo is the hash of the state its last sweep left. A call that
+  // finds some position missing a digit exits before any sweep; a memo left
+  // standing there names a state this call never read.
+  const m = spied()
+  const im = { cells: [...CLUES, ...LINES.flat()] }
+  side.setParams(im, CLUES, LINES)
+  Array.from(side.update(im, m.p))
+  assert.notEqual(im.sig, null, 'a sweep leaves its memo')
+  for (const l of LINES) m.p._cand.get(l[3]).delete(4) // position 3 no longer holds a 4
+  Array.from(side.update(im, m.p))
+  assert.equal(im.sig, null, 'the null-side exit clears the memo')
+  console.log('hit-counts side matching: the null-side exit clears the memo')
 }
 
 // ---- validate reads the cell list the app already built ----

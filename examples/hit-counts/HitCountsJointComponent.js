@@ -344,8 +344,12 @@ function * update (instance, puzzle) {
   if (sig === instance.sig) return
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
-  // signature return early and never raise it. Both sweeps share the one
-  // epilogue so neither can drift back to memoising a state it stopped on.
+  // signature return early and never raise it. Two guards hold that. In the
+  // app, `stop()` is a terminal change (AbortSolver): the solver stops draining
+  // the generator there, so the memo line below never runs after one. The Node
+  // harnesses drain every generator to its end, and there the `stopped` boolean
+  // skips the memo. Both sweeps share the one epilogue so neither can drift
+  // back to memoising a state it stopped on.
   const stopped = yield * (exact
     ? permutationPrune(instance, puzzle, cm, maskA, maskB)
     : caseSweep(instance, puzzle, cm, maskA, maskB, lk.kind, all))
