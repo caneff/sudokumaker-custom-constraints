@@ -26,6 +26,16 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 See `finders/AGENTS.md` — the catalogue rule for the renbanana finder moved
 there with the code.
 
+## Include closure
+
+The burn clumper (`burndown/closure.py`) reads this section to find which
+files a change really regenerates; `docs/example-layout.md` § The shared
+frame reader explains the directive itself.
+
+- **Directive**: `// #include <path>`
+- **Paths**: relative to the including file
+- **Generator**: each example's own `build_link.py` or `build_size.py` (reported by the clumper, never run by it)
+
 ## Solver runs stay off the machine's back (always on)
 
 - **One hunt at a time, and `--workers 1` unless told otherwise.** This box is
