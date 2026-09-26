@@ -39,8 +39,8 @@ const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'initialize', 'validate'])
-const mod = load('HitCountsComponent.js', ['setParams', 'update', 'initialize', 'validate'])
+const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
 const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
 const sideMod = load('SideSumComponent.js', SIDE_NAMES)
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
@@ -76,7 +76,6 @@ function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
     const before = total(p)
     const inst = {}
     joint.setParams(inst, A, B, cells)
-    Array.from(joint.initialize(inst, p))
     const v = violates(joint, inst, p, truth)
     tests++
     if (total(p) < before) fired++
@@ -133,12 +132,11 @@ function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
     const inst = {}
     mod.setParams(inst, CLUE, cells)
     const nMinus1 = line.length - 1
-    // Bracket `initialize` alone: it runs the no-n-1 rule and nothing else, so
-    // this counts that rule's firings. Over the whole fixpoint the bare count
+    // Bracket the no-n-1 rule alone, so this counts that rule's firings. Over the whole fixpoint the bare count
     // bounds also take n - 1 in plenty of states, which says nothing about the
     // gate.
     const had = p.getCandidates(CLUE).has(nMinus1)
-    Array.from(mod.initialize(inst, p))
+    Array.from(mod.noNMinusOne(inst, p))
     if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
     const v = violates(mod, inst, p, truth)
     tests++
@@ -210,7 +208,6 @@ for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
     for (let i = 0; i < n; i++) {
       const inst = {}
       joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
-      Array.from(joint.initialize(inst, p))
       const v = violates(joint, inst, p, truth)
       gTests++
       if (v) { gBad++; if (gBad <= 5) console.log('JOINT grid violation', file, sa + i, v) }
@@ -265,7 +262,7 @@ console.log('mirrored-pair exclusion:', exTests, 'tests,', exBad, 'violations,',
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
-const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'initialize', 'validate'])
+const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
 let permTests = 0
 let permFired = 0
 let permBad = 0
@@ -308,7 +305,7 @@ function gateProbe (seed) {
   const p = makePuzzle(rTruth, () => seed.slice(), { houses: [R] })
   const inst = {}
   joint.setParams(inst, A, B, R)
-  Array.from(joint.initialize(inst, p))
+  Array.from(joint.update(inst, p)) // the load pass: the base initialize runs update once
   return { p, inst }
 }
 // Five digits over four cells: not a full house at all, so the gate is shut.
@@ -554,14 +551,12 @@ const sideLatchBad = violates(sideMod, sideLatchInst, backSide.p, backSide.truth
 console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
 
 // ---- side-sum: the stale wake (#362) ----
-// `getAffectedCells` names the side's clue cells only, while the gate reads
-// every perpendicular line. So the app never wakes the component when a line
-// cell alone changes, and the component can run on a line state it was never
-// told about. The case: a solver that calls `update` only when an affected
-// cell has lost a candidate since the last call, and restores the whole state
-// on a backtrack without waking anyone. A branch opens the gate (a line cell
-// loses its 0, then a clue narrows, which wakes the component), the search
-// backtracks to a state whose line has its 0 again, and a clue narrows there.
+// The component can run on a line state it was never told about: the app
+// restores a backtrack's candidates without waking anyone. The case: a solver
+// that calls `update` only when an affected cell has lost a candidate since
+// the last call. A branch opens the gate (a line cell loses its 0, which wakes
+// the component, then a clue narrows), the search backtracks to a state whose
+// line has its 0 again, and a clue narrows there.
 // The truth has the 0 in that line, so the side need not sum to N: a gate
 // still open would force the first clue to 1 and take its true 3 away.
 function staleWakeRun (mod) {
@@ -584,9 +579,9 @@ function staleWakeRun (mod) {
   }
   const restore = () => { for (const [c] of p._cand) p._cand.set(c, new Set(start(c))); seen = snapshot() }
   wake() // the root: 0 live on line 0, the gate shut
-  p._cand.get(PERP[0][0]).delete(0) // branch: no affected cell moved, no wake
+  p._cand.get(PERP[0][0]).delete(0) // branch: the line's 0 goes, woken, gate open
   wake()
-  p._cand.get(SIDE[2]).delete(2) // a clue narrows in the branch: woken, gate open
+  p._cand.get(SIDE[2]).delete(2) // a clue narrows in the branch: woken
   wake()
   restore() // backtrack: the 0 is back, and nobody is woken
   p._cand.get(SIDE[0]).delete(0) // a clue narrows in the parent: woken

@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Soundness. The true solution induces one concrete case at every position —
 // hit for A, hit for B, or neither — and one concrete (A, B) hit count for the
 // line. Every set this component builds is a SUPERSET of what the true solution
@@ -486,11 +486,6 @@ function bits (mask) {
   const out = []
   for (let m = mask; m; m &= m - 1) out.push(31 - Math.clz32(m & -m))
   return out
-}
-
-// Run once at creation: two given opposite clues can pin the whole line at load.
-function * initialize (instance, puzzle) {
-  yield * update(instance, puzzle)
 }
 
 // A full line must realise both its clues exactly. The n - 1 reject rides the

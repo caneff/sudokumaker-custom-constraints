@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Hit Counts. An outside clue k on a line counts the "hits": read inward, a
 //! cell is a hit when its digit equals its distance from the clue. So line[i]
 //! (0-based) is a hit when line[i] === i + 1, and k is the number of hits. The
@@ -90,13 +90,6 @@ function * update (instance, puzzle) {
       if (drop.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(drop), line[i])
     }
   }
-}
-
-// Take the n - 1 clue at load, when the line already proves itself a full house
-// of {1..n}. While a cage has yet to remove the 0 the gate is shut here and
-// `update` takes the clue on the pass that opens it.
-function * initialize (instance, puzzle) {
-  yield * noNMinusOne(instance, puzzle)
 }
 
 function validate (instance, puzzle) {

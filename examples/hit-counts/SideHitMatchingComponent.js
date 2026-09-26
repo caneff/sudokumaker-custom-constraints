@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Soundness. The true solution induces one concrete assignment of positions to
 // lines: position i goes to the single line whose cell i holds digit i + 1, and
 // line L takes exactly clue(L) of them. That assignment is one of the ones this
@@ -269,11 +269,6 @@ function * update (instance, puzzle) {
   // call looks again instead of matching a number this one never produced.
   const after = readSide(puzzle, instance)
   instance.sig = after === null ? null : after.sig
-}
-
-// Run once at creation: given clues can settle part of the side at load.
-function * initialize (instance, puzzle) {
-  yield * update(instance, puzzle)
 }
 
 // Every line of a filled side must realise its clue exactly.
