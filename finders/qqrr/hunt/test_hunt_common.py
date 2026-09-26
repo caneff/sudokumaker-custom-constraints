@@ -1,6 +1,6 @@
 """The shared hunt helpers (#605): the q34 criterion is one definition, a HIT block parses by
 its markers rather than by line offsets, and chan_sweep is driven by a call, not by sys.argv.
-Seams: hunt_common's public functions and chan_sweep.configure. Workers pinned to 1.
+Seams: hunt_common's public functions and chan_sweep.configure.
 
     uv run finders/qqrr/hunt/test_hunt_common.py
 """
@@ -35,7 +35,7 @@ cr2[0][3] = 35
 cr2[8][8] = 35
 assert hc.q34_accept([[5] * 8 for _ in range(8)], cr2) == []
 
-# parse_hits: two tie lines must not shift the grid read (the old fixed +3 offset did).
+# parse_hits: the grid is found by its marker, however many tie lines precede it.
 TIE_A = "  tie r3c2 1|2 = r3c5 3|4, number 1234567, QQRR 12"
 TIE_B = "  tie r4c2 5|6 = r4c5 7|8, number 7654321, QQRR 34"
 QQRR = "  QQRR cage 33 corner 5 QR r6c6 10 bounded cell 7"
