@@ -17,9 +17,12 @@ set on the finder before the first seed) and the 1-minute load gate
 (refuses above 24 unless `--force-load`) are #488. A resume also
 reconciles renders/ itself (#522, `_reconcile_renders`) and repairs a missing
 picture: by re-proposing for a stateless finder, from the examples.jsonl
-record via `candidate_from_record` for a stateful one (#538). A stateful
-finder with a `render` but no `candidate_from_record` gets neither -- the
-gap is part of the finder contract (protocol.py).
+record via `candidate_from_record` for a stateful one (#538). That hook must
+leave the finder's state unchanged and return the candidate as `propose`
+produced it (everything `verify` and `render` read); the driver does not
+guard either. A stateful finder with a `render` but no `candidate_from_record`
+gets neither repair nor sweep -- the gap is part of the finder contract
+(protocol.py).
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
@@ -468,9 +471,11 @@ def _can_repair_renders(finder):
     A stateful finder's `propose()` can have side effects state.json owns
     (toy_stateful_finder.py increments a counter there), so it never gets
     called again; it can be repaired only from the examples.jsonl record,
-    through its optional `candidate_from_record`. Without that hook the
-    finder's missing render stays unrepaired -- part of the finder
-    contract (protocol.py, `render`)."""
+    through its optional `candidate_from_record`, which must leave the
+    finder's state unchanged and return the candidate as `propose`
+    produced it (protocol.py). Without that hook the finder's missing
+    render stays unrepaired -- part of the finder contract (protocol.py,
+    `render`)."""
     if getattr(finder, "render", None) is None:
         return False
     if hasattr(finder, "load_state"):
@@ -490,7 +495,9 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
     A stateless finder's candidate is regenerated with `propose()`. A
     stateful finder's is rebuilt from its examples.jsonl record with
     `candidate_from_record` (#538) -- `propose()` is never called for it,
-    so state.json is untouched. The k-th "example" event pairs with the
+    so state.json stays untouched provided the hook honours its contract
+    (no state change, the candidate as `propose` produced it; unguarded,
+    see protocol.py). The k-th "example" event pairs with the
     k-th record: `_reconcile` leaves the two counts equal. A finder
     `_can_repair_renders` refuses is left as it is.
     """

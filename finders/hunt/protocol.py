@@ -75,10 +75,18 @@ class Finder(Protocol):
     # `verify`, not the JSON `record()` wrote. A finder whose record() *is*
     # already verify-able skips this; `hunt verify` then hands `verify` the
     # parsed record line unchanged.
+    #
+    # A stateful finder (has `load_state`) that also has `render` needs this
+    # hook for render repair on resume (#538), and there the driver holds it
+    # to a stronger contract: the call must leave the finder's state
+    # unchanged, and the candidate it returns must be what `propose` produced
+    # -- everything `verify` *and* `render` read, not only what `verify`
+    # reads. The driver has no runtime guard for either requirement.
 
     def candidate_from_record(self, record: dict) -> Any:
-        """Rebuild the candidate `verify` can check from a line `record()`
-        wrote to examples.jsonl."""
+        """Rebuild the candidate, as `propose` produced it, from a line
+        `record()` wrote to examples.jsonl. Must not change the finder's
+        state; `verify` and `render` must both accept the result."""
         ...
 
     # Optional -- a finder with no picture to draw skips this. The driver
