@@ -11,3 +11,4 @@ One row per run of the controller's Codex pass (implement/SKILL.md § The merge,
 | #601 | #602 | gate-retry | 2026-09-22T09:15:59-04:00 | 2026-09-22T09:17:10-04:00 | 1.2 | collected-after-retry |
 | #603 | #604 | gate | 2026-09-24T08:52:19-04:00 | 2026-09-24T08:53:35-04:00 | 1.3 | collected |
 | #605 | #607 | gate | 2026-09-26T09:30:24-04:00 | 2026-09-26T09:31:23-04:00 | 1.0 | collected |
+| #605 | #607 | second | 2026-09-26T09:33:09-04:00 | 2026-09-26T09:34:09-04:00 | 1.0 | collected |
