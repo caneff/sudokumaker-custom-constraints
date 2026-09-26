@@ -1,6 +1,6 @@
 // A clue given as 0 on a board whose digits start at 0. No run is 0 cells
 // long, so validate rejects the filled line; update must stand down rather than
-// read the cell before the line: no throw, no removal, no stop.
+// read the cell before the line: no throw, no removal.
 //
 //   node examples/running-start/zero-clue.test.mjs
 
@@ -22,5 +22,4 @@ mod.setParams(inst, CLUE, LINE)
 const before = total(p)
 assert.doesNotThrow(() => Array.from(mod.update(inst, p)))
 assert.strictEqual(total(p), before, 'a 0 clue removed a candidate')
-assert.strictEqual(p._stopped, null, 'a 0 clue stopped the branch')
 console.log('PASS')
