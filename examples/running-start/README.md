@@ -206,6 +206,8 @@ branch.
 | 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) after-logical | 1800ms | 1300ms | 0.72 | gate: PASS |
 | 2026-09-26 | v2026.08.14-d47fc4b | running-start (bitmask below/feasibleClues, #457) | 900ms | 800ms | 0.89 | SHIP |
 | 2026-09-26 | v2026.08.14-d47fc4b | running-start (bitmask below/feasibleClues, #457) after-logical | 0ms | 0ms | — | SHIP |
+| 2026-09-26 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #457) | 18600ms | 11000ms | 0.59 | SHIP |
+| 2026-09-26 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #457) after-logical | 1300ms | 900ms | 0.69 | SHIP |
 
 The #457 pair times the bitmask rewrite of `below` and `feasibleClues`, the
 two removals built as one mask each, the `k >= 1` guard and the pair's
@@ -214,7 +216,11 @@ The reverse and window steps now yield only when they remove a live
 candidate, where the arrays yielded a change that could remove nothing. The
 cold row clears 0.9x outright; after-logical is 0 ms on both sides and
 places no constraint. `just time running-start`, 3 reps, baseline the
-committed link, printed `two-row rule: SHIP`.
+committed link, printed `two-row rule: SHIP`. The local bent-path board, where
+every line is bare and the non-strict comparisons run, shows the larger win:
+`just time running-start --board PUZZLE_LINK_local.txt` against the
+pre-#457 local link (`origin/main`'s copy, restored for the run), 0.59 cold
+and 0.69 after-logical.
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
