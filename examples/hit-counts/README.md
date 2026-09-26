@@ -551,8 +551,11 @@ the gate-change bar: 1.1x or under on both rows
 list grows from n to n + n² cells. The widened wake costs 5% on the 9x9 and
 is kept so the gate fires when a crossing line changes, not at the next clue
 change. The per-line
-`HitCountsComponent` sits only on the local boards: the 9x9 local board is
-the recorded DNF, and the 6x6 local reads 200ms, so it has no row.
+`HitCountsComponent` sits only on the local boards, and neither can time it:
+the 9x9 local board is the recorded DNF, and the 6x6 local's recorded
+baseline (2026-09-03, below) is 200ms on both rows, two ticks of the
+readout, where a 0.9x or 1.1x ratio cannot be read. Neither was run for this
+change, so it has no row.
 
 ### The SideSum stale-wake case (#362)
 
