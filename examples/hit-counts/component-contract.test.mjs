@@ -167,4 +167,35 @@ const { load } = makeIo(HERE)
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
 }
 
+// ---- validate reads the cell list the app already built ----
+// The app stores `getAffectedCells`'s result as `instance.cells` before
+// `setParams` runs (docs/research/bundle-api-reference.md, the custom
+// component wrapper), and calls `validate` on every search node. Rebuilding
+// the same array there is an allocation per node.
+{
+  installGlobals(0, 4)
+  const CLUES = [400, 401, 402, 403]
+  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => r * 4 + c))
+  const truth = {}
+  for (const c of CLUES) truth[c] = 1
+  for (const l of LINES) l.forEach((c, j) => { truth[c] = j + 1 })
+  const cases = [
+    ['HitCountsComponent.js', [CLUES[0], LINES[0]]],
+    ['HitCountsJointComponent.js', [CLUES[0], CLUES[1], LINES[0]]],
+    ['SideHitMatchingComponent.js', [CLUES, LINES]]
+  ]
+  for (const [file, args] of cases) {
+    const mod = load(file, ['getAffectedCells', 'setParams', 'validate'])
+    const p = makePuzzle(truth, (c, v) => [v])
+    const asked = []
+    const real = p.getCellsAreFilled
+    p.getCellsAreFilled = cs => { asked.push(cs); return real(cs) }
+    const inst = { cells: mod.getAffectedCells(...args) }
+    mod.setParams(inst, ...args)
+    mod.validate(inst, p)
+    assert.ok(asked.length > 0 && asked.every(cs => cs === inst.cells), `${file}: validate passes instance.cells itself`)
+  }
+  console.log('hit-counts validate: all three pass instance.cells to getCellsAreFilled')
+}
+
 console.log('PASS')

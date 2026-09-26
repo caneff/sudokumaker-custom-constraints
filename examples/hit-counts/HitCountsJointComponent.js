@@ -491,7 +491,7 @@ function validate (instance, puzzle) {
     if (puzzle.hasValue(clueA) && puzzle.getValue(clueA) === n - 1) return false
     if (puzzle.hasValue(clueB) && puzzle.getValue(clueB) === n - 1) return false
   }
-  if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   let a = 0
   let b = 0
   for (let j = 0; j < n; j++) {

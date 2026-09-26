@@ -273,7 +273,7 @@ function * update (instance, puzzle) {
 // Every line of a filled side must realise its clue exactly.
 function validate (instance, puzzle) {
   const { clues, lines } = instance
-  if (!puzzle.getCellsAreFilled(getAffectedCells(clues, lines))) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   for (let L = 0; L < lines.length; L++) {
     let hits = 0
     for (let i = 0; i < lines[L].length; i++) if (puzzle.getValue(lines[L][i]) === i + 1) hits++

@@ -364,7 +364,8 @@ function validateAt (kind) {
     if (c === B) return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     return line
   }, { houses: housesOf(kind, [0, 1, 2, 3, 4, 5, 6, 7, 8]) })
-  const inst = {}
+  // The app sets `instance.cells` to getAffectedCells' list before setParams.
+  const inst = { cells: [A, B, 0, 1, 2, 3, 4, 5, 6, 7, 8] }
   joint.setParams(inst, A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
   return joint.validate(inst, p)
 }
@@ -468,7 +469,7 @@ function sideValidate (clueVals, openCell) {
   GRID_CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
   const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: GRID_HOUSES })
-  const inst = {}
+  const inst = { cells: [...GRID_CLUES, ...GRID_LINES.flat()] } // as the app sets it
   matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
   return matchMod.validate(inst, p)
 }

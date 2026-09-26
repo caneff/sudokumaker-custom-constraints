@@ -94,6 +94,6 @@ function validate (instance, puzzle) {
   const { clue, line } = instance
   if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1 &&
       line.length >= 2 && lineKind(instance, puzzle, line).oneToN) return false
-  if (!puzzle.getCellsAreFilled([clue, ...line])) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   return puzzle.getValue(clue) === hitCount(puzzle, line)
 }
