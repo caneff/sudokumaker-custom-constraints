@@ -179,6 +179,18 @@ const { load } = makeIo(HERE)
   Array.from(side.update(im, m.p))
   assert.equal(im.sig, null, 'the null-side exit clears the memo')
   console.log('hit-counts side matching: the null-side exit clears the memo')
+
+  // ---- A forced hit already in place yields nothing ----
+  // Line 0's cell at position 0 already holds only its target: the side still
+  // forces that edge, and a pin there would be a change that changes nothing.
+  const q = spied()
+  q.p._cand.set(cell(0, 0), new Set([1]))
+  const iq = { cells: [...CLUES, ...LINES.flat()] }
+  side.setParams(iq, CLUES, LINES)
+  Array.from(side.update(iq, q.p))
+  assert.deepEqual(onDiagonal(q.calls, 0), [], 'no pin on a cell already pinned to its target')
+  assert.equal(pins(q.calls).length, 3, 'the other three diagonal cells are still pinned')
+  console.log('hit-counts side matching: a forced hit already in place yields nothing')
 }
 
 // ---- The joint component reads each line cell once on an unchanged state ----
