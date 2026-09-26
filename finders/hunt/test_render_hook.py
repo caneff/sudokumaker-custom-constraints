@@ -272,6 +272,10 @@ class StatefulRenderFinder:
         # TOY_HOOK_RAISES simulates a record the hook cannot rebuild.
         if os.environ.get("TOY_HOOK_RAISES"):
             raise KeyError("grid")
+        # TOY_HOOK_MUTATES simulates a hook that breaks the contract by
+        # changing the finder's state.
+        if os.environ.get("TOY_HOOK_MUTATES"):
+            self.seeds_seen += 100
         return tuple(record["grid"])
 
     def render(self, candidate):
@@ -433,6 +437,43 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
             for e in nohook_events
             if e.get("outcome") == "example"
         ),
+    )
+
+    # A hook that mutates finder state must not reach state.json: repair
+    # snapshots the state before the call and restores it after (Codex gate
+    # 2). A kill is simulated by truncating progress.jsonl, so the resume
+    # both repairs renders and reruns seeds; the persisted state must equal
+    # the one a resume with a well-behaved hook writes.
+    def resumed_state(name, resume_extra_env):
+        run_out = Path(tmp) / name
+        run_args = ["--out", str(run_out), "--seeds", "0:30"]
+        subprocess.run(
+            run_argv + run_args,
+            capture_output=True,
+            text=True,
+            env=dict(os.environ, TOY_RENDER_FAIL="1"),
+        )
+        lines = (run_out / "progress.jsonl").read_text().splitlines(keepends=True)
+        (run_out / "progress.jsonl").write_text("".join(lines[:10]))
+        resumed = subprocess.run(
+            run_argv + run_args,
+            capture_output=True,
+            text=True,
+            env=dict(os.environ, **resume_extra_env),
+        )
+        return resumed, json.loads((run_out / "state.json").read_text())
+
+    clean, clean_state = resumed_state("state-clean", {})
+    mutating, mutating_state = resumed_state(
+        "state-mutating", {"TOY_HOOK_MUTATES": "1"}
+    )
+    check(
+        f"both state-mutation resumes exit 0 (stderr: {mutating.stderr[-300:]})",
+        clean.returncode == 0 and mutating.returncode == 0,
+    )
+    check(
+        "a hook that mutates finder state never reaches state.json",
+        clean_state["state"]["seeds_seen"] > 30 and mutating_state == clean_state,
     )
 
 with tempfile.TemporaryDirectory() as tmp:

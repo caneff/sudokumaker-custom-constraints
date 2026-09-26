@@ -18,9 +18,9 @@ set on the finder before the first seed) and the 1-minute load gate
 reconciles renders/ itself (#522, `_reconcile_renders`) and repairs a missing
 picture: by re-proposing for a stateless finder, from the examples.jsonl
 record via `candidate_from_record` for a stateful one (#538). That hook must
-leave the finder's state unchanged and return the candidate as `propose`
-produced it (everything `verify` and `render` read); the driver does not
-guard either. A stateful finder with a `render` but no `candidate_from_record`
+return the candidate as `propose` produced it (everything `verify` and
+`render` read); the driver does not guard that, but it does restore the
+finder's state around the call. A stateful finder with a `render` but no `candidate_from_record`
 gets neither repair nor sweep -- the gap is part of the finder contract
 (protocol.py).
 
@@ -471,15 +471,20 @@ def _can_repair_renders(finder):
     A stateful finder's `propose()` can have side effects state.json owns
     (toy_stateful_finder.py increments a counter there), so it never gets
     called again; it can be repaired only from the examples.jsonl record,
-    through its optional `candidate_from_record`, which must leave the
-    finder's state unchanged and return the candidate as `propose`
-    produced it (protocol.py). Without that hook the finder's missing
-    render stays unrepaired -- part of the finder contract (protocol.py,
+    through its optional `candidate_from_record`, which must return the
+    candidate as `propose` produced it (protocol.py; the driver does not
+    check that) and leave the finder's state unchanged (`_repair_renders`
+    restores it regardless). Without that hook, or without `save_state`
+    to snapshot the state (fail closed), the finder's missing render
+    stays unrepaired -- part of the finder contract (protocol.py,
     `render`)."""
     if getattr(finder, "render", None) is None:
         return False
     if hasattr(finder, "load_state"):
-        return getattr(finder, "candidate_from_record", None) is not None
+        return (
+            getattr(finder, "candidate_from_record", None) is not None
+            and getattr(finder, "save_state", None) is not None
+        )
     return True
 
 
@@ -494,11 +499,13 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
 
     A stateless finder's candidate is regenerated with `propose()`. A
     stateful finder's is rebuilt from its examples.jsonl record with
-    `candidate_from_record` (#538) -- `propose()` is never called for it,
-    so state.json stays untouched provided the hook honours its contract
-    (no state change, the candidate as `propose` produced it; unguarded,
-    see protocol.py). The k-th "example" event pairs with the
-    k-th record: `_reconcile` leaves the two counts equal. A finder
+    `candidate_from_record` (#538) -- `propose()` is never called for it.
+    The finder's state is snapshotted (a JSON round trip of `save_state()`)
+    before each hook call and restored after it, even if the hook raises,
+    so a hook that mutates state never reaches state.json (Codex gate 2).
+    That the candidate is what `propose` produced stays the hook's
+    contract, unchecked (protocol.py). The k-th "example" event pairs with
+    the k-th record: `_reconcile` leaves the two counts equal. A finder
     `_can_repair_renders` refuses is left as it is.
     """
     if not _can_repair_renders(finder):
@@ -514,6 +521,8 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
             continue
         new_event = dict(event)
         new_event.pop("render_error", None)
+        if stateful:
+            snapshot = json.loads(json.dumps(finder.save_state()))
         try:
             if stateful:
                 candidate = finder.candidate_from_record(record)
@@ -525,6 +534,9 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
             new_event["render_error"] = f"{type(e).__name__}: {e}"
         else:
             _render_example(finder, out, seed, candidate, new_event)
+        finally:
+            if stateful:
+                finder.load_state(snapshot)
         if new_event != event:
             progress_events[i] = new_event
             progress_lines[i] = json.dumps(new_event) + "\n"

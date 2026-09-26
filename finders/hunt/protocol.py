@@ -77,16 +77,19 @@ class Finder(Protocol):
     # parsed record line unchanged.
     #
     # A stateful finder (has `load_state`) that also has `render` needs this
-    # hook for render repair on resume (#538), and there the driver holds it
-    # to a stronger contract: the call must leave the finder's state
-    # unchanged, and the candidate it returns must be what `propose` produced
-    # -- everything `verify` *and* `render` read, not only what `verify`
-    # reads. The driver has no runtime guard for either requirement.
+    # hook, and `save_state`, for render repair on resume (#538), and there
+    # the driver holds it to a stronger contract: the candidate it returns
+    # must be what `propose` produced -- everything `verify` *and* `render`
+    # read, not only what `verify` reads -- and the call should leave the
+    # finder's state unchanged. The driver has no runtime guard for the
+    # candidate's completeness; it does snapshot the state before the call
+    # and restore it after, so a hook that changes state never reaches
+    # state.json.
 
     def candidate_from_record(self, record: dict) -> Any:
         """Rebuild the candidate, as `propose` produced it, from a line
-        `record()` wrote to examples.jsonl. Must not change the finder's
-        state; `verify` and `render` must both accept the result."""
+        `record()` wrote to examples.jsonl. `verify` and `render` must both
+        accept the result; it should not change the finder's state."""
         ...
 
     # Optional -- a finder with no picture to draw skips this. The driver
