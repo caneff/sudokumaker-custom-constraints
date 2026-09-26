@@ -261,40 +261,60 @@ board(1, 9)
 // A frame board: the ring is the first and last row and column, and the region
 // constraint gives the interior boxes and leaves the ring out. The board is
 // rectangular so a backend that reads one dimension twice is caught.
-{
-  const SRC = readFileSync(join(here, 'house-gac.js'), 'utf8')
-  for (const [W, H, bw, bh] of [[11, 11, 3, 3], [8, 6, 3, 2]]) {
-    const id = (x, y) => new Number(x + y * W) // eslint-disable-line no-new-wrappers -- ids must be coerced
-    const iw = W - 2
-    const ih = H - 2
-    const regions = []
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        const r = Math.floor((y - 1) / bh) * (iw / bw) + Math.floor((x - 1) / bw)
-        ;(regions[r] ||= []).push(x + y * W)
+const BACKEND_SRC = readFileSync(join(here, 'house-gac.js'), 'utf8')
+
+// A W x H frame board with bw x bh boxes, as the backend sees it: uncoerced
+// ids from the geometry helpers, and the region list from `getRegions`, which
+// `regionsOf` may break. Runs the backend and returns what it registered.
+function runFrameBackend (W, H, bw, bh, regionsOf = regions => regions) {
+  const id = (x, y) => new Number(x + y * W) // eslint-disable-line no-new-wrappers -- ids must be coerced
+  const iw = W - 2
+  const regions = []
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const r = Math.floor((y - 1) / bh) * (iw / bw) + Math.floor((x - 1) / bw)
+      ;(regions[r] ||= []).push(x + y * W)
+    }
+  }
+  const registered = []
+  runBackend(BACKEND_SRC, {
+    puzzle: { addConstraintComponent: c => registered.push(c), getRegions: () => regionsOf(regions) },
+    helpers: {
+      geometry: {
+        * getAllRows () { for (let y = 0; y < H; y++) yield Array.from({ length: W }, (_, x) => id(x, y)) },
+        * getAllColumns () { for (let x = 0; x < W; x++) yield Array.from({ length: H }, (_, y) => id(x, y)) }
       }
     }
-    const registered = []
-    runBackend(SRC, {
-      puzzle: { addConstraintComponent: c => registered.push(c), getRegions: () => regions },
-      helpers: {
-        geometry: {
-          * getAllRows () { for (let y = 0; y < H; y++) yield Array.from({ length: W }, (_, x) => id(x, y)) },
-          * getAllColumns () { for (let x = 0; x < W; x++) yield Array.from({ length: H }, (_, y) => id(x, y)) }
-        }
-      }
-    })
-    const where = `${W}x${H}`
-    const rows = Array.from({ length: ih }, (_, y) => Array.from({ length: iw }, (_, x) => (x + 1) + (y + 1) * W))
-    const cols = Array.from({ length: iw }, (_, x) => Array.from({ length: ih }, (_, y) => (x + 1) + (y + 1) * W))
-    assert.deepStrictEqual([...new Set(registered.map(c => c.ctor))], ['HouseGacComponent'], `${where}: wrong component`)
-    // Plain numbers on the right, so an uncoerced id object also fails here (#276, #394).
-    assert.deepStrictEqual(registered.map(c => c.args[1]), [...rows, ...cols, ...regions],
-      `${where}: the houses are not the interior rows, then columns, then boxes, as plain numbers`)
-    const names = registered.map(c => c.args[0])
-    assert.strictEqual(new Set(names).size, names.length, `${where}: house names are not distinct`)
-    assert.deepStrictEqual([names[0], names[ih], names[ih + iw]], ['row 1', 'column 1', 'box 1'], `${where}: misnamed`)
-  }
+  })
+  return { registered, regions }
+}
+
+for (const [W, H, bw, bh] of [[11, 11, 3, 3], [8, 6, 3, 2]]) {
+  const { registered, regions } = runFrameBackend(W, H, bw, bh)
+  const iw = W - 2
+  const ih = H - 2
+  const where = `${W}x${H}`
+  const rows = Array.from({ length: ih }, (_, y) => Array.from({ length: iw }, (_, x) => (x + 1) + (y + 1) * W))
+  const cols = Array.from({ length: iw }, (_, x) => Array.from({ length: ih }, (_, y) => (x + 1) + (y + 1) * W))
+  assert.deepStrictEqual([...new Set(registered.map(c => c.ctor))], ['HouseGacComponent'], `${where}: wrong component`)
+  // Plain numbers on the right, so an uncoerced id object also fails here (#276, #394).
+  assert.deepStrictEqual(registered.map(c => c.args[1]), [...rows, ...cols, ...regions],
+    `${where}: the houses are not the interior rows, then columns, then boxes, as plain numbers`)
+  const names = registered.map(c => c.args[0])
+  assert.strictEqual(new Set(names).size, names.length, `${where}: house names are not distinct`)
+  assert.deepStrictEqual([names[0], names[ih], names[ih + iw]], ['GAC row 1', 'GAC column 1', 'GAC box 1'], `${where}: misnamed -- the filter must not share a name with the row it filters`)
+}
+
+// ---- the backend refuses a region list that does not tile the interior ----
+// A short list would register fewer box filters with no error, and
+// `getRegions` back-fills a missing region id with an empty array, which
+// would register a zero-cell filter: either way the filter goes quietly
+// weaker. Both throw at setup, as the standalone backend's count check does.
+for (const [what, regionsOf] of [
+  ['a short region list', regions => regions.slice(0, -1)],
+  ['a back-filled empty region', regions => [...regions.slice(0, 4), [], ...regions.slice(5)]]
+]) {
+  assert.throws(() => runFrameBackend(11, 11, 3, 3, regionsOf), /House GAC: expected 9 boxes of 9 cells/, `${what} did not throw`)
 }
 
 // ---- the repeats answer is latched both ways ----

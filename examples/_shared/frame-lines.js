@@ -68,9 +68,11 @@ function framePairs (lines) {
     // with L1 and hand a joint component two clues on one side and the wrong
     // line, and an odd-length one would pair the last entry with undefined and
     // throw inside the app at solve time. It does not check that a and b are
-    // the two ends of the same line. The two strings are the opposite-side
-    // table, read as a lookup; kept to one throw because this ships in every
-    // link of five examples (gotcha 7).
+    // the two ends of the same line. The throw is loud in the Node harnesses
+    // and console-only in the app, where it aborts the rest of the backend
+    // before any pair component registers; a mispaired one is worse. The
+    // two strings are the opposite-side table, read as a lookup; kept to one
+    // throw because this ships in every link of five examples (gotcha 7).
     if (!b || b.side !== 'RLBT'['LRTB'.indexOf(a.side)]) {
       throw new Error('framePairs takes whole frameLines output')
     }

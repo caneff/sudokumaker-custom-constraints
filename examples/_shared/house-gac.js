@@ -12,15 +12,28 @@
 //! Its ids are the state's own loop indices, already plain integers. The
 //! region constraint registers before any custom constraint, so the boxes are
 //! there when this runs (bundle: `priority: -1e3`).
+//!
+//! Every name opens with `GAC`: `frame-rowcol.js` already names its houses
+//! `row 1`, `column 1`, and the app's step log and stop message name the
+//! component that fired, so a shared name hides which of the two it was.
 
-const lines = [
-  ['row', helpers.geometry.getAllRows()],
-  ['column', helpers.geometry.getAllColumns()]
-].flatMap(([kind, all]) =>
-  [...all].slice(1, -1).map((line, i) => [`${kind} ${i + 1}`, line.slice(1, -1).map(cell => cell | 0)])
-)
-const boxes = puzzle.getRegions().map((cells, i) => [`box ${i + 1}`, cells])
+const interior = (kind, all) =>
+  [...all].slice(1, -1).map((line, i) => [`GAC ${kind} ${i + 1}`, line.slice(1, -1).map(cell => cell | 0)])
+const rows = interior('row', helpers.geometry.getAllRows())
+const columns = interior('column', helpers.geometry.getAllColumns())
+const boxes = puzzle.getRegions().map((cells, i) => [`GAC box ${i + 1}`, cells])
 
-for (const [name, cells] of [...lines, ...boxes]) {
+//! The boxes must tile the interior: one per interior row, each a row long.
+//! A short region list would register fewer filters, and `getRegions`
+//! back-fills a missing region id with an empty array, a zero-cell filter;
+//! either way the filter goes quietly weaker. The RangeError fails the Node
+//! harness loudly; in the app it only reaches the console, before any house
+//! registers.
+const rowLength = rows[0][1].length
+if (boxes.length !== rows.length || boxes.some(([, cells]) => cells.length !== rowLength)) {
+  throw new RangeError(`House GAC: expected ${rows.length} boxes of ${rowLength} cells, got ${boxes.map(([, cells]) => cells.length).join('/')}`)
+}
+
+for (const [name, cells] of [...rows, ...columns, ...boxes]) {
   puzzle.addConstraintComponent(new HouseGacComponent(name, cells))
 }

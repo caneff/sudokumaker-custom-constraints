@@ -11,6 +11,8 @@
 // cell off each of the rest; see this folder's README, "Why its own backend".
 const rows = [...helpers.geometry.getAllRows()].map(line => line.map(cell => cell | 0))
 const cols = [...helpers.geometry.getAllColumns()].map(line => line.map(cell => cell | 0))
+// No `| 0` on boxes: region ids are the state's own loop indices, already
+// plain integers.
 const boxes = puzzle.getRegions()
 
 // A silently short list here (empty regions, a resized board) would register
