@@ -11,13 +11,15 @@
 // cell off each of the rest; see this folder's README, "Why its own backend".
 const rows = [...helpers.geometry.getAllRows()].map(line => line.map(cell => cell | 0))
 const cols = [...helpers.geometry.getAllColumns()].map(line => line.map(cell => cell | 0))
+// No `| 0` on boxes: region ids are the state's own loop indices, already
+// plain integers.
 const boxes = puzzle.getRegions()
 
 // A silently short list here (empty regions, a resized board) would register
 // fewer than 27 houses with no error -- the filter just goes quietly weaker.
-// Fail loud instead, matching the shipped component's own RangeErrors. A
-// board that isn't a plain 9x9 with all 27 houses intact throws here, at
-// setup, rather than shipping a filter that quietly checks fewer houses.
+// A board that isn't a plain 9x9 with all 27 houses intact throws here, at
+// setup, instead. The RangeError fails the Node harness loudly; in the app it
+// only reaches the console, and the board ships with no filter at all.
 if (rows.length !== 9 || cols.length !== 9 || boxes.length !== 9) {
   throw new RangeError(`House GAC: expected 9 rows, 9 columns and 9 boxes, got ${rows.length}/${cols.length}/${boxes.length}`)
 }

@@ -43,7 +43,7 @@ function candidatesAfter (component, masks) {
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
   const digits = m => { const out = []; for (let d = 1; d <= 9; d++) if (m >> d & 1) out.push(d); return out }
   const puzzle = makePuzzle(truth, c => digits(masks[c]), { houses: [cells] })
-  const instance = { name: 'house' }
+  const instance = { name: 'house', cells } // as the app's constructor builds it
   component.setParams(instance, cells)
   Array.from(component.update(instance, puzzle))
   if (puzzle._stopped !== null) return 'stop'
@@ -69,7 +69,7 @@ if (stops < 100) throw new Error(`only ${stops} check states stop; the stop is n
 for (const [label, component] of Object.entries(components)) {
   let masks
   const puzzle = { getCellsCanHaveRepeats: () => false, getCandidatesBitMask: c => masks[c], getCandidates: c => new SudokuDigitSet(masks[c]), stop: () => ({}), removeCandidatesFromCell: () => ({}) }
-  const instance = { name: 'house' }
+  const instance = { name: 'house', cells } // as the app's constructor builds it
   component.setParams(instance, cells)
   for (let rep = 0; rep < 3; rep++) {
     const t0 = process.hrtime.bigint()

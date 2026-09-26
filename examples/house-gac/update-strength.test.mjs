@@ -32,8 +32,9 @@ const ref = loadAt(REF_COMMIT, 'HouseGacComponent.js', NAMES)
 const { rnd } = makeRng(422)
 
 const CELLS = Array.from({ length: N }, (_, i) => i)
+// The app's constructor stores the cells as instance.cells before setParams.
 const apply = (mod, p) => {
-  const inst = {}
+  const inst = { cells: CELLS }
   mod.setParams(inst, CELLS)
   fixpoint(mod, inst, p)
 }
