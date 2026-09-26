@@ -452,13 +452,14 @@ def _reconcile_renders(finder, out, progress_events):
     stray render is left alone, a documented gap (protocol.py, `render`).
     """
     renders_dir = out / "renders"
-    if renders_dir.is_dir():
-        # A kill mid-save leaves a temp file (#537); nothing else owns it.
-        for tmp in renders_dir.glob(_RENDER_TMP_GLOB):
+    if not renders_dir.is_dir():
+        return
+    # A kill mid-save leaves a temp file (#537); only a name the driver
+    # itself writes is swept, never a file that merely looks like one.
+    for tmp in renders_dir.iterdir():
+        if _RENDER_TMP.fullmatch(tmp.name):
             tmp.unlink(missing_ok=True)
     if not _can_repair_renders(finder):
-        return
-    if not renders_dir.is_dir():
         return
     confirmed = {e["seed"] for e in progress_events if e.get("outcome") == "example"}
     for png in renders_dir.glob("*.png"):
@@ -583,7 +584,8 @@ def _render_example(finder, out, seed, candidate, event):
         event["render_error"] = f"{type(e).__name__}: {e}"
 
 
-_RENDER_TMP_GLOB = "*.tmp-*.png"
+_RENDER_TMP_MARK = ".tmp-"
+_RENDER_TMP = re.compile(_SEED_STEM.pattern + re.escape(_RENDER_TMP_MARK) + r"\d+\.png")
 
 
 def _save_render_atomic(image, dest):
@@ -594,7 +596,7 @@ def _save_render_atomic(image, dest):
     The temp name ends in `.png` (the image's save infers the format from
     it) but its stem is not a seed, so `_reconcile_renders` never reads it
     as one."""
-    tmp = dest.with_name(f"{dest.stem}.tmp-{os.getpid()}.png")
+    tmp = dest.with_name(f"{dest.stem}{_RENDER_TMP_MARK}{os.getpid()}.png")
     try:
         image.save(tmp)
         tmp.replace(dest)
