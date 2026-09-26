@@ -226,10 +226,10 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
 with tempfile.TemporaryDirectory() as tmp:
-    # A stateful finder's render-repair is out of scope (see driver.py's
-    # `_repair_renders` docstring): its `propose()` can have side effects
-    # state.json owns, so a missing PNG for it stays missing rather than
-    # risk corrupting state by calling `propose()` a second time.
+    # A stateful finder's render-repair (#538): its `propose()` can have
+    # side effects state.json owns, so repair never calls it -- it rebuilds
+    # the candidate from the examples.jsonl record via the finder's
+    # `candidate_from_record` and renders that.
     out = Path(tmp) / "hunt-out"
     stateful_render_script = f"""
 import os
@@ -247,6 +247,10 @@ class StatefulRenderFinder:
         self.seeds_seen = 0
 
     def propose(self, rng):
+        # TOY_NO_PROPOSE marks the resume run: every seed is already done,
+        # so anything that reaches propose() is a render repair calling it.
+        if os.environ.get("TOY_NO_PROPOSE"):
+            raise RuntimeError("propose() called during resume")
         self.seeds_seen += 1
         return tuple(rng.randint(0, 1) for _ in range(4))
 
@@ -264,6 +268,9 @@ class StatefulRenderFinder:
 
     def load_state(self, state):
         self.seeds_seen = state["seeds_seen"]
+
+    def candidate_from_record(self, record):
+        return tuple(record["grid"])
 
     def render(self, candidate):
         if os.environ.get("TOY_RENDER_FAIL"):
@@ -287,7 +294,7 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         text=True,
         env=fail_env,
     )
-    resume_env = dict(os.environ)
+    resume_env = dict(os.environ, TOY_NO_PROPOSE="1")
     resume_env.pop("TOY_RENDER_FAIL", None)
     resume_result = subprocess.run(
         [
@@ -308,12 +315,20 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         f"{resume_result.stderr[-500:]})",
         resume_result.returncode == 0,
     )
+    resumed_examples = [
+        json.loads(line)
+        for line in (out / "examples.jsonl").read_text().splitlines()
+        if line
+    ]
     check(
-        "a stateful finder's already-failed renders stay unrepaired (documented scope limit)",
-        not list((out / "renders").glob("*.png")),
+        "a stateful finder's failed renders are repaired from the recorded "
+        "examples on resume",
+        len(resumed_examples) > 0
+        and len(list((out / "renders").glob("*.png"))) == len(resumed_examples),
     )
     check(
-        "state.json's counter wasn't double-incremented by a render-repair attempt",
+        "repair never called propose() (exit 0 under TOY_NO_PROPOSE) and left "
+        "state.json's counter unchanged",
         json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
     )
 

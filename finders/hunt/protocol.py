@@ -84,7 +84,12 @@ class Finder(Protocol):
     # Optional -- a finder with no picture to draw skips this. The driver
     # calls `render` right after an accepted example is written, and saves
     # the returned image to renders/<seed>.png (#490). Build the image with
-    # `render.GridCanvas`.
+    # `render.GridCanvas`. On resume the driver re-renders a missing
+    # picture (#538): a stateless finder is re-proposed; a stateful one (has
+    # `load_state`) is never re-proposed -- its picture is rebuilt from the
+    # examples.jsonl record with `candidate_from_record`. A stateful finder
+    # with `render` but no `candidate_from_record` gets no repair: a failed
+    # render stays missing, and a stray render is never deleted.
 
     def render(self, candidate: Any):
         """A picture of this candidate (a `PIL.Image.Image`), or omit this

@@ -27,6 +27,7 @@ exercised:
     uv run finders/hunt/test_hunt_resume.py
 """
 
+import contextlib
 import json
 import os
 import subprocess
@@ -540,12 +541,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # `_repair_renders` does, leaving the stray file in place rather than
     # betting on a rerun with no safety net.
     #
-    # This test pins that carve-out's current, deliberate cost, not a
-    # desired end state: a stateful finder can still hit #522's exact
-    # failure sequence (a PNG left with no matching example after a second
-    # kill), just with the delete-then-lose-it-for-good risk traded away
-    # instead. The carve-out -- and this test -- come out once #538 gives a
-    # stateful finder a state-safe render-repair path.
+    # #538 gave a stateful finder a state-safe repair path, but only one
+    # that has `candidate_from_record`. This finder has none, so it keeps
+    # the carve-out: the stray render is left alone, a documented gap (see
+    # protocol.py, `render`). The next block covers the finder with the hook.
     import driver as driver_module
     from protocol import Verdict
     from render import GridCanvas
@@ -555,6 +554,9 @@ with tempfile.TemporaryDirectory() as tmp:
         def propose(self, rng):
             self.seeds_seen += 1
             return (rng.randint(0, 1),)
+
+        # SlowToyFinder supplies one; this case is the finder without it.
+        candidate_from_record = None
 
         def verify(self, candidate):
             return Verdict(ok=True)
@@ -610,11 +612,73 @@ with tempfile.TemporaryDirectory() as tmp:
         driver_module._hunt_loop = orig_hunt_loop
 
     check(
-        "a stateful finder's stray render survives reconciliation untouched -- a "
-        "deliberate gap (no repair safety net exists yet) pinned until #538, not "
-        "the desired end state (#522 C1)",
+        "a stateful finder with no candidate_from_record keeps its stray render "
+        "through reconciliation -- no repair safety net exists for it (#522 C1)",
         (out / "renders" / "0.png").exists()
         and (out / "renders" / "0.png").read_bytes() == original_png,
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
+    # #538: a stateful finder that has `candidate_from_record` does have a
+    # state-safe repair path, so `_reconcile_renders` no longer spares it:
+    # the orphan PNG of an unconfirmed seed is deleted, and after a full
+    # resume renders/ and examples.jsonl agree, with state.json's counter
+    # advanced only by the rerun seed's own propose().
+    import driver as driver_module
+    from protocol import Verdict
+    from toy_stateful_finder import StatefulToyFinder
+
+    class StatefulRecordRenderFinder(StatefulToyFinder):
+        def propose(self, rng):
+            self.seeds_seen += 1
+            return (rng.randint(0, 1),)
+
+        def verify(self, candidate):
+            return Verdict(ok=True)
+
+        def candidate_from_record(self, record):
+            return tuple(record["grid"])
+
+        def render(self, candidate):
+            return GridCanvas(2, 2, cell=10).image
+
+    out = Path(tmp) / "render-orphan-stateful-hook"
+    argv = ["--out", str(out), "--seeds=0:1"]
+    check(
+        "base hunt for stateful-hook render-orphan test exits 0",
+        driver_module.run(StatefulRecordRenderFinder(), argv) == 0,
+    )
+    (out / "progress.jsonl").write_text("")
+
+    class _StopBeforeRerun(Exception):
+        pass
+
+    def _boom(*a, **k):
+        raise _StopBeforeRerun
+
+    orig_hunt_loop = driver_module._hunt_loop
+    driver_module._hunt_loop = _boom
+    try:
+        with contextlib.suppress(_StopBeforeRerun):
+            driver_module.run(StatefulRecordRenderFinder(), argv)
+    finally:
+        driver_module._hunt_loop = orig_hunt_loop
+    check(
+        "a stateful finder with candidate_from_record loses its orphan render "
+        "at reconciliation (#538)",
+        not (out / "renders" / "0.png").exists(),
+    )
+
+    code = driver_module.run(StatefulRecordRenderFinder(), argv)
+    check("full resume of the stateful-hook hunt exits 0", code == 0)
+    check(
+        "renders/ and examples.jsonl agree after resume (stateful-hook)",
+        {p.stem for p in (out / "renders").glob("*.png")}
+        == {
+            str(e["seed"])
+            for e in read_jsonl(out / "progress.jsonl")
+            if e.get("outcome") == "example"
+        },
     )
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -664,7 +728,7 @@ with tempfile.TemporaryDirectory() as tmp:
     progress_lines = (out / "progress.jsonl").read_text().splitlines(keepends=True)
     (out / "progress.jsonl").write_text(progress_lines[0])
 
-    def _no_repair(finder, out, progress_lines, progress_events):
+    def _no_repair(finder, out, progress_lines, progress_events, examples_records):
         return progress_lines, progress_events
 
     resume_finder = TinyKeyRenderFinder()
