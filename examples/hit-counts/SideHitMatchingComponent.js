@@ -261,8 +261,7 @@ function * update (instance, puzzle) {
   }
   for (const [cell, digit] of found.forbid) yield puzzle.removeCandidateFromCell(digit, cell)
   for (const [cell, keep] of found.force) {
-    const rm = Array.from(puzzle.getCandidates(cell)).filter(d => d !== keep)
-    if (rm.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), cell)
+    if (puzzle.getCandidatesBitMask(cell) !== 1 << keep) yield puzzle.filterCandidatesInCell(1 << keep, cell)
   }
   // The removals above can take a digit's last home at some position, which
   // reads as a dead state rather than a side to skip: null the hash so the next

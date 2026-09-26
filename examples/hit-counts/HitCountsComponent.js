@@ -83,12 +83,10 @@ function * update (instance, puzzle) {
     for (const i of free) yield puzzle.removeCandidateFromCell(i + 1, line[i])
   }
 
-  // Every free cell is needed as a hit: pin each to its target.
+  // Every free cell is needed as a hit: pin each to its target. A free cell
+  // still holds some other digit, so each pin removes something.
   if (cmin - forced >= free.length && free.length > 0) {
-    for (const i of free) {
-      const drop = Array.from(puzzle.getCandidates(line[i])).filter(d => d !== i + 1)
-      if (drop.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(drop), line[i])
-    }
+    for (const i of free) yield puzzle.filterCandidatesInCell(1 << (i + 1), line[i])
   }
 }
 

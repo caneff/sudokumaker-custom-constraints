@@ -111,4 +111,60 @@ const { load } = makeIo(HERE)
   }
 }
 
+// ---- A forced hit is one keep-only change ----
+// Pinning a cell to its target is `filterCandidatesInCell(1 << target, cell)`:
+// one change, no candidate list to read and filter first. The state is the
+// side the update-strength test pins (update-strength.test.mjs, "side hit
+// matching"): the side forces the whole diagonal, and line 0's own clue
+// forces its first cell.
+{
+  installGlobals(0, 4)
+  const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
+  const line = load('HitCountsComponent.js', ['setParams', 'update'])
+  const CLUES = [400, 401, 402, 403]
+  const cell = (r, c) => r * 4 + c
+  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => cell(r, c)))
+  const CANDS = [
+    [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
+    [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
+    [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
+    [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
+  ]
+  const truth = {}
+  for (const c of CLUES) truth[c] = 1
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = r === c ? c + 1 : CANDS[r][c][0]
+  const seed = c => (CLUES.includes(c) ? [1] : CANDS[Math.floor(c / 4)][c % 4])
+  const houses = [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(l => l[c]))]
+  // Record every removal builder a component calls, then let it apply.
+  const spied = () => {
+    const p = makePuzzle(truth, seed, { houses })
+    const calls = []
+    for (const name of ['filterCandidatesInCell', 'removeCandidatesFromCell', 'removeCandidateFromCell']) {
+      const real = p[name]
+      p[name] = (digits, c) => { calls.push([name, +digits, c]); return real(digits, c) }
+    }
+    return { p, calls }
+  }
+  const pins = calls => calls.filter(([name]) => name === 'filterCandidatesInCell')
+  const onDiagonal = (calls, i) => calls.filter(([, , c]) => c === cell(i, i))
+
+  const s = spied()
+  const is = { cells: [...CLUES, ...LINES.flat()] }
+  side.setParams(is, CLUES, LINES)
+  Array.from(side.update(is, s.p))
+  for (let i = 0; i < 4; i++) {
+    assert.deepEqual(onDiagonal(s.calls, i), [['filterCandidatesInCell', 1 << (i + 1), cell(i, i)]],
+      `the side pins line ${i} at position ${i} with one keep-only change`)
+  }
+  assert.equal(pins(s.calls).length, 4, 'the side yields exactly the four pins as keep-only changes')
+
+  const l = spied()
+  const il = { cells: [CLUES[0], ...LINES[0]] }
+  line.setParams(il, CLUES[0], LINES[0])
+  Array.from(line.update(il, l.p))
+  assert.deepEqual(onDiagonal(l.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
+    'the per-line rule pins its one possible hit with one keep-only change')
+  console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
+}
+
 console.log('PASS')
