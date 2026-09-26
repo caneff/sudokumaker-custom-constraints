@@ -300,12 +300,12 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   permKeepDigits(F, H, keep, reach, dig, pc, n, W, last)
 
   const rmA = maskA & ~keepA
-  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(rmA, clueA)
   const rmB = maskB & ~keepB
-  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(rmB, clueB)
   for (let j = 0; j < n; j++) {
     const rm = dig[j] & ~keep[j]
-    if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm << 1)), line[j])
+    if (rm !== 0) yield puzzle.removeCandidatesFromCell(rm << 1, line[j])
   }
   return false
 }
@@ -471,21 +471,15 @@ function * caseSweep (instance, puzzle, cm, maskA, maskB, kind, all) {
   const open = openCases(combos, units, F, H, U, n)
   const { keepA, keepB } = caseKeepClues(F[U], box, n)
   const rmA = maskA & ~keepA
-  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(rmA, clueA)
   const rmB = maskB & ~keepB
-  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(rmB, clueB)
 
   for (let j = 0; j < n; j++) {
     const rm = caseCellDrop(open[j], j, n) & cm[j]
-    if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm)), line[j])
+    if (rm !== 0) yield puzzle.removeCandidatesFromCell(rm, line[j])
   }
   return false
-}
-
-function bits (mask) {
-  const out = []
-  for (let m = mask; m; m &= m - 1) out.push(31 - Math.clz32(m & -m))
-  return out
 }
 
 // A full line must realise both its clues exactly. The n - 1 reject rides the

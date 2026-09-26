@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -61,6 +61,54 @@ const { load } = makeIo(HERE)
   const defining = FILES.filter(f => /^function\s*\*\s*initialize\b/m.test(read(f)))
   assert.deepEqual(defining, [], 'the base initialize already runs update once')
   console.log('hit-counts initialize: none defined; the base runs update at load')
+}
+
+// ---- The joint component removes with raw masks ----
+// The app's removal builders take a bitmask as readily as a DigitSet
+// (docs/research/bundle-api-reference.md, "removeCandidatesFromCell"), so
+// building a SudokuDigitSet per removal is an allocation nothing reads. With
+// a SudokuDigitSet that throws, both sweeps must still remove from clue A,
+// clue B and the line cells.
+{
+  const joint = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const { rnd } = makeRng(452)
+  installGlobals(0, 9)
+  const real = globalThis.SudokuDigitSet
+  globalThis.SudokuDigitSet = { from () { throw new Error('SudokuDigitSet built') } }
+  const N = 5
+  const A = 100
+  const B = 101
+  const cells = Array.from({ length: N }, (_, j) => j)
+  const hits = line => line.filter((d, j) => d === j + 1).length
+  try {
+    for (const kind of ['fullHouse', 'bare']) {
+      const removed = { A: 0, B: 0, line: 0 }
+      for (let rep = 0; rep < 2000; rep++) {
+        const line = makeLine(rnd, kind, N, N)
+        const truth = { [A]: hits(line), [B]: hits(line.slice().reverse()) }
+        line.forEach((d, j) => { truth[j] = d })
+        // No n - 1 among the clue candidates, so the no-n-1 rule on the full
+        // house removes nothing and every removal counted is the sweep's own.
+        const seed = (c, v) => (c === A || c === B
+          ? randomCandidates(rnd, 0, N, v).filter(d => d !== N - 1)
+          : randomCandidates(rnd, 1, N, v))
+        const p = makePuzzle(truth, seed, { houses: kind === 'bare' ? [] : [cells] })
+        const size = c => p._cand.get(c).size
+        const before = { A: size(A), B: size(B), line: cells.reduce((s, c) => s + size(c), 0) }
+        const inst = { cells: [A, B, ...cells] }
+        joint.setParams(inst, A, B, cells)
+        Array.from(joint.update(inst, p))
+        if (p._stopped !== null) continue
+        removed.A += before.A - size(A)
+        removed.B += before.B - size(B)
+        removed.line += before.line - cells.reduce((s, c) => s + size(c), 0)
+      }
+      assert.ok(removed.A > 0 && removed.B > 0 && removed.line > 0, `${kind}: every removal site fired ${JSON.stringify(removed)}`)
+      console.log(`hit-counts joint raw masks, ${kind}: removals ${JSON.stringify(removed)} with no SudokuDigitSet built`)
+    }
+  } finally {
+    globalThis.SudokuDigitSet = real
+  }
 }
 
 console.log('PASS')
