@@ -68,13 +68,13 @@ function runningStart (puzzle, line) {
 function feasibleClues (puzzle, line, climbStrict, breakStrict) {
   const n = line.length
   let feasible = 0
-  let floor = 0 // the smallest digit that climbs from the previous minEnd
+  let minClimb = 0 // the smallest digit that climbs from the previous minEnd
   for (let j = 0; j < n; j++) {
-    const climb = puzzle.getCandidatesBitMask(line[j]) & -(1 << floor)
+    const climb = puzzle.getCandidatesBitMask(line[j]) & -(1 << minClimb)
     if (!climb) break // no length-(j+1) prefix; no longer clue either
     const mn = 31 - Math.clz32(climb & -climb)
     const mx = 31 - Math.clz32(climb)
-    floor = climbStrict ? mn + 1 : mn
+    minClimb = climbStrict ? mn + 1 : mn
     const k = j + 1
     if (k === n) {
       feasible |= 1 << k
