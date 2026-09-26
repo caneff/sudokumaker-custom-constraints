@@ -548,4 +548,105 @@ sys.exit(run(RenderMismatchedLengthFinder(), sys.argv[1:]))
         out.exists() and {p.name for p in out.iterdir()} == {".lock"},
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A save that fails after writing part of the file (#537): renders/<seed>.png
+    # must only ever exist complete, and resume must end with valid PNGs. A
+    # truncated PNG already at the destination (left by an older driver) is
+    # not "done" either: repair re-renders it.
+    from PIL import Image
+
+    out = Path(tmp) / "hunt-out"
+    partial_script = f"""
+import os
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from dedupe import D4
+from driver import run
+from protocol import Verdict
+from render import GridCanvas
+
+class PartialImage:
+    def __init__(self, image):
+        self.image = image
+
+    def save(self, path):
+        # A disk-full save: write the head of the file, then fail.
+        import io
+        buf = io.BytesIO()
+        self.image.save(buf, format="PNG")
+        with open(path, "wb") as f:
+            f.write(buf.getvalue()[:20])
+        raise OSError("simulated disk full mid-write")
+
+class PartialRenderFinder:
+    symmetry = D4
+
+    def propose(self, rng):
+        return tuple(rng.randint(0, 1) for _ in range(4))
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+    def render(self, candidate):
+        canvas = GridCanvas(2, 2, cell=10)
+        for i, cell in enumerate(candidate):
+            if cell:
+                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
+        if os.environ.get("TOY_PARTIAL_SAVE"):
+            return PartialImage(canvas.image)
+        return canvas.image
+
+sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
+"""
+    argv = [sys.executable, "-c", partial_script, "--out", str(out), "--seeds", "0:30"]
+    subprocess.run(
+        argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_PARTIAL_SAVE="1"),
+    )
+
+    def decodes(path):
+        try:
+            with Image.open(path) as img:
+                img.load()
+            return True
+        except Exception:
+            return False
+
+    check(
+        "a failed mid-write save leaves no file at renders/<seed>.png",
+        not list((out / "renders").glob("*.png")),
+    )
+    check(
+        "a failed mid-write save leaves no temp file behind",
+        not list((out / "renders").iterdir()),
+    )
+    env_ok = {k: v for k, v in os.environ.items() if k != "TOY_PARTIAL_SAVE"}
+    resume = subprocess.run(argv, capture_output=True, text=True, env=env_ok)
+    check(f"resume exits 0 (stderr: {resume.stderr[-500:]})", resume.returncode == 0)
+    pngs = sorted((out / "renders").glob("*.png"))
+    check(
+        "resume after a mid-write failure ends with a valid PNG per example",
+        len(pngs) > 0 and all(decodes(p) for p in pngs),
+    )
+
+    victim = pngs[0]
+    victim.write_bytes(victim.read_bytes()[:20])
+    resume2 = subprocess.run(argv, capture_output=True, text=True, env=env_ok)
+    check(
+        f"second resume exits 0 (stderr: {resume2.stderr[-500:]})",
+        resume2.returncode == 0,
+    )
+    check(
+        "resume re-renders a truncated PNG already at the destination",
+        decodes(victim),
+    )
+
 sys.exit(0 if ok else 1)

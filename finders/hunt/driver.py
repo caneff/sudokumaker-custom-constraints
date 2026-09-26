@@ -451,9 +451,13 @@ def _reconcile_renders(finder, out, progress_events):
     has no such retry -- its `propose()` can't be called again -- so its
     stray render is left alone, a documented gap (protocol.py, `render`).
     """
+    renders_dir = out / "renders"
+    if renders_dir.is_dir():
+        # A kill mid-save leaves a temp file (#537); nothing else owns it.
+        for tmp in renders_dir.glob(_RENDER_TMP_GLOB):
+            tmp.unlink(missing_ok=True)
     if not _can_repair_renders(finder):
         return
-    renders_dir = out / "renders"
     if not renders_dir.is_dir():
         return
     confirmed = {e["seed"] for e in progress_events if e.get("outcome") == "example"}
@@ -517,7 +521,7 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
             continue
         record = next(records)
         seed = event["seed"]
-        if (out / "renders" / f"{seed}.png").exists():
+        if _render_intact(out / "renders" / f"{seed}.png"):
             continue
         new_event = dict(event)
         new_event.pop("render_error", None)
@@ -574,9 +578,43 @@ def _render_example(finder, out, seed, candidate, event):
     try:
         renders_dir = out / "renders"
         renders_dir.mkdir(exist_ok=True)
-        render(candidate).save(renders_dir / f"{seed}.png")
+        _save_render_atomic(render(candidate), renders_dir / f"{seed}.png")
     except Exception as e:
         event["render_error"] = f"{type(e).__name__}: {e}"
+
+
+_RENDER_TMP_GLOB = "*.tmp-*.png"
+
+
+def _save_render_atomic(image, dest):
+    """Save to a per-render temp file beside `dest`, then `Path.replace` it
+    into place, so `dest` only ever exists complete (#537): a save that
+    dies partway (a full disk) leaves the temp file, which is removed, and
+    never a half-written picture that resume would take for a finished one.
+    The temp name ends in `.png` (the image's save infers the format from
+    it) but its stem is not a seed, so `_reconcile_renders` never reads it
+    as one."""
+    tmp = dest.with_name(f"{dest.stem}.tmp-{os.getpid()}.png")
+    try:
+        image.save(tmp)
+        tmp.replace(dest)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _render_intact(path):
+    """Whether `path` is a complete PNG. Existence is not enough (#537): a
+    picture left truncated by an older driver, or damaged since, must be
+    re-rendered by `_repair_renders`, not counted done."""
+    from PIL import Image
+
+    try:
+        with Image.open(path) as img:
+            img.load()
+    except Exception:
+        return False
+    return True
 
 
 def _propose_and_key(finder, seed, symmetry, no_verify=False):
