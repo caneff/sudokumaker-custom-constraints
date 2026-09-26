@@ -107,7 +107,11 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // document is wrapped, unchanged, as one `{ config }` entry -- the numeric
   // `type` codes in a saved link already match `ConstraintType`
   // (bundle.claude.js:9395-9450) one for one.
-  const constraints = p.constraints.map(config => ({ config }))
+  // A saved constraint switched off in the app carries `disabled: true`
+  // (docs/research/count-digits-gac/demo/README.md); the app filters those out
+  // on its main thread, so the bundle never reads the key. Dropped here so a
+  // probe solves what the app would (#586).
+  const constraints = p.constraints.filter(config => !config.disabled).map(config => ({ config }))
 
   return {
     type: 'start',

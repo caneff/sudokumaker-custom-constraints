@@ -31,6 +31,21 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
   assert.strictEqual(msg.verbose, false)
 }
 
+// ---- buildStartMessage: a constraint with `disabled: true` is not sent to the
+// worker (#586): the probe of a two-constraint link with one disabled must run
+// the enabled one alone. ----
+{
+  const on = { type: 1, regions: [0, 0, 0, 0] }
+  const off = { type: 1, regions: [0, 0, 1, 1], disabled: true }
+  const mk = (constraints) => ({ puzzle: { type: 'custom', width: 2, height: 2, cells: [{}, {}, {}, {}], constraints } })
+  const both = buildStartMessage(mk([on, off]))
+  assert.deepStrictEqual(both.constraints, [{ config: on }])
+  assert.deepStrictEqual(both.constraints, buildStartMessage(mk([on])).constraints)
+  // `disabled: false` is an enabled constraint
+  assert.strictEqual(buildStartMessage(mk([{ ...on, disabled: false }])).constraints.length, 1)
+}
+console.log('bundle-solve-lib: buildStartMessage skips disabled constraints ok')
+
 // ---- buildStartMessage: an undeclared range is 1..9 whatever the width, and a
 // declared minDigit alone keeps the 9 ceiling (#461: the live app's default,
 // probed in docs/research/2026-09-20-default-digit-range/). The rangeless half
