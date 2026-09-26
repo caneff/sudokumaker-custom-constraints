@@ -12,3 +12,4 @@ The controller runs a Codex adversarial pass on every heavy Claude-lane PR at me
 | #457 | #609 | 0 | 0 | 0 | Verdict approve, no findings, at gate (e17b712, collected). Claude round 1: 12 findings, 6 fixed adjacent, 6 disputed, 0 leftover. |
 | #586 | #610 | 0 | 0 | 0 | Verdict approve, no findings, at gate (8dbefe5, collected). Claude round 1: 4 findings, 2 fixed adjacent, 1 disputed, 1 leftover to sweep #611. |
 | #452 | #612 | 0 | 0 | 0 | Verdict approve, no findings, at gate (5769c2b, collected). Claude round 1: 18 mutations run by the correctness axis, 1 green became C1 and was fixed; 1 leftover (S4) to the burn sweep. |
+| #458 | #615 | 0 | 0 | 0 | Verdict approve, no findings, at gate (bdec564, collected). Claude round 1: house-gac tests each seen red; 1 leftover (S1) to per-PR sweep #616, P2 disputed on a driver refusal. |
