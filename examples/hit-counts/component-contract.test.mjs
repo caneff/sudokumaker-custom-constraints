@@ -181,6 +181,34 @@ const { load } = makeIo(HERE)
   console.log('hit-counts side matching: the null-side exit clears the memo')
 }
 
+// ---- The joint component reads each line cell once on an unchanged state ----
+// A call that finds its memo unchanged does no sweep, so what it costs is the
+// reads. The component reads each line mask once and hands it to the
+// signature; lineKind keeps its own read (the shared gate reads the cells
+// itself), so two reads per line cell is the whole cost.
+{
+  installGlobals(0, 9)
+  const joint = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  for (const kind of ['fullHouse', 'bare']) {
+    const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    const truth = { 100: 0, 101: 0 }
+    const perm = [2, 1, 4, 3, 6, 5, 8, 9, 7] // no digit at home either way
+    LINE.forEach((c, j) => { truth[c] = perm[j] })
+    const p = makePuzzle(truth, c => (c >= 100 ? [0, 1, 2] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), { houses: kind === 'bare' ? [] : [LINE] })
+    const inst = { cells: [100, 101, ...LINE] }
+    joint.setParams(inst, 100, 101, LINE)
+    Array.from(joint.update(inst, p)) // sweeps and memoises
+    Array.from(joint.update(inst, p)) // settles on a state its memo names
+    const reads = new Map()
+    const real = p.getCandidatesBitMask
+    p.getCandidatesBitMask = c => { reads.set(c, (reads.get(c) || 0) + 1); return real(c) }
+    const yielded = Array.from(joint.update(inst, p))
+    assert.equal(yielded.length, 0, `${kind}: the state is unchanged`)
+    for (const c of LINE) assert.ok(reads.get(c) <= 2, `${kind}: line cell ${c} read ${reads.get(c)} times on a memo hit`)
+  }
+  console.log('hit-counts joint: a memo hit reads each line cell at most twice')
+}
+
 // ---- validate reads the cell list the app already built ----
 // The app stores `getAffectedCells`'s result as `instance.cells` before
 // `setParams` runs (docs/research/bundle-api-reference.md, the custom

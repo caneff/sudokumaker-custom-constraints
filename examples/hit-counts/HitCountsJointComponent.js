@@ -133,13 +133,14 @@ function pairCombos (a, b, house) {
 // run reads, so a change it cannot see costs one pass over the cells and no
 // solve. The kind is in the hash because it can climb while no candidate moves,
 // and a higher kind opens a stronger rule -- which is also what picks the sweep,
-// so one hash cannot be mistaken for the other.
-function signature (puzzle, instance, exact, lk) {
-  const { clueA, clueB, line, n } = instance
+// so one hash cannot be mistaken for the other. The caller passes the masks it
+// already read: `rawA` and `rawB` are the clues' whole masks, `cm` the line's.
+function signature (instance, exact, lk, rawA, rawB, cm) {
+  const { n } = instance
   const kind = lk.kind * 2 + (lk.oneToN ? 1 : 0)
-  let h = (Math.imul(puzzle.getCandidatesBitMask(clueA), 31) + puzzle.getCandidatesBitMask(clueB)) | 0
+  let h = (Math.imul(rawA, 31) + rawB) | 0
   for (let j = 0; j < n; j++) {
-    const m = puzzle.getCandidatesBitMask(line[j])
+    const m = cm[j]
     h = (Math.imul(h, 31) + (exact ? m : caseBits(m, j, n))) | 0
   }
   return (Math.imul(h, 31) + kind) | 0
@@ -327,9 +328,12 @@ function * noNMinusOne (instance, puzzle, maskA, maskB, lk) {
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
   const all = (1 << (n + 1)) - 1
-  const maskA = puzzle.getCandidatesBitMask(clueA) & all
-  const maskB = puzzle.getCandidatesBitMask(clueB) & all
+  const rawA = puzzle.getCandidatesBitMask(clueA)
+  const rawB = puzzle.getCandidatesBitMask(clueB)
+  const maskA = rawA & all
+  const maskB = rawB & all
   if (maskA === 0 || maskB === 0) return
+  // Each line mask is read once here and handed to the signature and the sweep.
   const cm = []
   for (let j = 0; j < n; j++) cm.push(puzzle.getCandidatesBitMask(line[j]))
   const lk = lineKind(instance, puzzle, line)
@@ -340,7 +344,7 @@ function * update (instance, puzzle) {
   // the case sweep answers and more -- every case it keeps is realised by a real
   // permutation -- so the line takes one sweep or the other, never both.
   const exact = lk.oneToN && n <= PERM_MAX
-  const sig = signature(puzzle, instance, exact, lk)
+  const sig = signature(instance, exact, lk, rawA, rawB, cm)
   if (sig === instance.sig) return
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
@@ -353,7 +357,11 @@ function * update (instance, puzzle) {
   const stopped = yield * (exact
     ? permutationPrune(instance, puzzle, cm, maskA, maskB)
     : caseSweep(instance, puzzle, cm, maskA, maskB, lk.kind, all))
-  if (!stopped) instance.sig = signature(puzzle, instance, exact, lk)
+  if (stopped) return
+  // The sweep's removals moved the masks read above: the memo hashes the state
+  // it leaves, so read them again.
+  for (let j = 0; j < n; j++) cm[j] = puzzle.getCandidatesBitMask(line[j])
+  instance.sig = signature(instance, exact, lk, puzzle.getCandidatesBitMask(clueA), puzzle.getCandidatesBitMask(clueB), cm)
 }
 
 // F[u][a] — bitmask of the B counts reachable with A count a, over the units
