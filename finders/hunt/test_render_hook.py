@@ -159,9 +159,8 @@ with tempfile.TemporaryDirectory() as tmp:
     # finder bug since fixed) must not leave examples.jsonl and renders/
     # permanently mismatched just because the seed's outcome was already
     # durable when it failed (#524 Codex pass 1): resume re-attempts a
-    # missing PNG for any already-accepted example, for a stateless finder
-    # -- see driver.py's `_repair_renders` for why a stateful finder is out
-    # of scope here.
+    # missing PNG for any already-accepted example. This block is the
+    # stateless finder; the stateful blocks below cover the rest.
     out = Path(tmp) / "hunt-out"
     fail_env = dict(os.environ, TOY_RENDER_FAIL="1")
     result = subprocess.run(
@@ -278,8 +277,14 @@ class StatefulRenderFinder:
     def render(self, candidate):
         if os.environ.get("TOY_RENDER_FAIL"):
             raise RuntimeError("simulated transient render failure")
-        return GridCanvas(2, 2, cell=10).image
+        canvas = GridCanvas(2, 2, cell=10)
+        for i, cell in enumerate(candidate):
+            if cell:
+                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
+        return canvas.image
 
+if os.environ.get("TOY_NO_HOOK"):
+    StatefulRenderFinder.candidate_from_record = None
 sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
 """
     fail_env = dict(os.environ, TOY_RENDER_FAIL="1")
@@ -334,6 +339,30 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         "state.json's counter unchanged",
         json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
     )
+    # Each repaired picture is drawn from its own seed's record: a fresh
+    # hunt with rendering working the whole way is the control (#538 review C3).
+    control_out = Path(tmp) / "control"
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            stateful_render_script,
+            "--out",
+            str(control_out),
+            "--seeds",
+            "0:30",
+        ],
+        capture_output=True,
+        text=True,
+        env=dict(os.environ),
+    )
+    control = {p.name: p.read_bytes() for p in (control_out / "renders").glob("*.png")}
+    repaired = {p.name: p.read_bytes() for p in (out / "renders").glob("*.png")}
+    check(
+        "every repaired picture is byte-identical to the fresh hunt's picture "
+        "for the same seed",
+        len(control) > 1 and repaired == control,
+    )
 
     # A record the hook cannot rebuild is a presentation-layer fault too: it
     # lands on the seed's event and never stops the resume (#538 review C1).
@@ -366,6 +395,42 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         all(
             "KeyError" in e.get("render_error", "")
             for e in raise_events
+            if e.get("outcome") == "example"
+        ),
+    )
+
+    # A stateful finder with no candidate_from_record is left alone: nothing
+    # is rebuilt, and its failed renders keep their original render_error
+    # (#538 review C2).
+    nohook_out = Path(tmp) / "no-hook"
+    nohook_argv = ["--out", str(nohook_out), "--seeds", "0:30"]
+    subprocess.run(
+        run_argv + nohook_argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_RENDER_FAIL="1"),
+    )
+    nohook_result = subprocess.run(
+        run_argv + nohook_argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_NO_HOOK="1", TOY_NO_PROPOSE="1"),
+    )
+    nohook_events = [
+        json.loads(line)
+        for line in (nohook_out / "progress.jsonl").read_text().splitlines()
+    ]
+    check(
+        "a stateful finder with no candidate_from_record resumes with exit 0 "
+        "and no picture",
+        nohook_result.returncode == 0
+        and not list((nohook_out / "renders").glob("*.png")),
+    )
+    check(
+        "its events keep the original render failure, untouched by repair",
+        all(
+            e.get("render_error", "").startswith("RuntimeError")
+            for e in nohook_events
             if e.get("outcome") == "example"
         ),
     )
