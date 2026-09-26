@@ -548,9 +548,9 @@ driver printed `NO SHIP` on all three because it reads the 0.9x deduction
 rule. None of these changes adds a deduction, so the bar they answer to is
 the gate-change bar: 1.1x or under on both rows
 (`../../docs/real-app-timing.md`). All three clear it. The side sum's wake
-list grows from n to n + n² cells. That makes it run when a line opens its
-gate, where before it waited for a clue to change, and it costs 1.05x on
-both rows with no speed gain on this board. The per-line
+list grows from n to n + n² cells. The widened wake costs 5% on the 9x9 and
+is kept so the gate fires when a crossing line changes, not at the next clue
+change. The per-line
 `HitCountsComponent` sits only on the local boards: the 9x9 local board is
 the recorded DNF, and the 6x6 local reads 200ms, so it has no row.
 
