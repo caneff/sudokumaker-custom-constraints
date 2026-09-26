@@ -132,9 +132,9 @@ function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
     const inst = {}
     mod.setParams(inst, CLUE, cells)
     const nMinus1 = line.length - 1
-    // Bracket the no-n-1 rule alone, so this counts that rule's firings. Over the whole fixpoint the bare count
-    // bounds also take n - 1 in plenty of states, which says nothing about the
-    // gate.
+    // Bracket the no-n-1 rule alone, so this counts that rule's firings. Over
+    // the whole fixpoint the bare count bounds also take n - 1 in plenty of
+    // states, which says nothing about the gate.
     const had = p.getCandidates(CLUE).has(nMinus1)
     Array.from(mod.noNMinusOne(inst, p))
     if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
