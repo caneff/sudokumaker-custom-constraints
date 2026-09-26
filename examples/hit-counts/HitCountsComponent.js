@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Hit Counts. An outside clue k on a line counts the "hits": read inward, a
 //! cell is a hit when its digit equals its distance from the clue. So line[i]
 //! (0-based) is a hit when line[i] === i + 1, and k is the number of hits. The
@@ -83,26 +83,17 @@ function * update (instance, puzzle) {
     for (const i of free) yield puzzle.removeCandidateFromCell(i + 1, line[i])
   }
 
-  // Every free cell is needed as a hit: pin each to its target.
+  // Every free cell is needed as a hit: pin each to its target. A free cell
+  // still holds some other digit, so each pin removes something.
   if (cmin - forced >= free.length && free.length > 0) {
-    for (const i of free) {
-      const drop = Array.from(puzzle.getCandidates(line[i])).filter(d => d !== i + 1)
-      if (drop.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(drop), line[i])
-    }
+    for (const i of free) yield puzzle.filterCandidatesInCell(1 << (i + 1), line[i])
   }
-}
-
-// Take the n - 1 clue at load, when the line already proves itself a full house
-// of {1..n}. While a cage has yet to remove the 0 the gate is shut here and
-// `update` takes the clue on the pass that opens it.
-function * initialize (instance, puzzle) {
-  yield * noNMinusOne(instance, puzzle)
 }
 
 function validate (instance, puzzle) {
   const { clue, line } = instance
   if (puzzle.hasValue(clue) && puzzle.getValue(clue) === line.length - 1 &&
       line.length >= 2 && lineKind(instance, puzzle, line).oneToN) return false
-  if (!puzzle.getCellsAreFilled([clue, ...line])) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   return puzzle.getValue(clue) === hitCount(puzzle, line)
 }

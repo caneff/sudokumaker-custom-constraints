@@ -129,9 +129,9 @@ makeFrameProbe({
   here: HERE,
   clueRange: n => [0, n],
   files: [
-    { file: 'HitCountsJointComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'HitCountsJointComponent' },
+    { file: 'HitCountsJointComponent.js', names: ['setParams', 'update'], ctorName: 'HitCountsJointComponent' },
     { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
-    { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update', 'initialize'], ctorName: 'SideHitMatchingComponent' }
+    { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update'], ctorName: 'SideHitMatchingComponent' }
   ],
   blankWord: 'hidden',
   headerNote: ({ floorKind }) => ` (floor: ${floorKind})`,

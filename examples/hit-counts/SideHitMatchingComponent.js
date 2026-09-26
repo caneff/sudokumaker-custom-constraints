@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Soundness. The true solution induces one concrete assignment of positions to
 // lines: position i goes to the single line whose cell i holds digit i + 1, and
 // line L takes exactly clue(L) of them. That assignment is one of the ones this
@@ -251,7 +251,10 @@ function * update (instance, puzzle) {
   if (!positionsAreHouses(instance, puzzle)) return
   const { clues, lines } = instance
   const read = readSide(puzzle, instance)
-  if (read === null || read.sig === instance.sig) return
+  // A position missing a digit: nothing to sweep, and a memo kept here would
+  // name a state this call never read. Null it, as the exit below does.
+  if (read === null) { instance.sig = null; return }
+  if (read.sig === instance.sig) return
   const found = sideDeductions(puzzle, clues, lines, read.live)
   if (found === null) {
     // No assignment of positions to lines survives: this branch is dead. Stop
@@ -261,8 +264,7 @@ function * update (instance, puzzle) {
   }
   for (const [cell, digit] of found.forbid) yield puzzle.removeCandidateFromCell(digit, cell)
   for (const [cell, keep] of found.force) {
-    const rm = Array.from(puzzle.getCandidates(cell)).filter(d => d !== keep)
-    if (rm.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rm), cell)
+    if (puzzle.getCandidatesBitMask(cell) !== 1 << keep) yield puzzle.filterCandidatesInCell(1 << keep, cell)
   }
   // The removals above can take a digit's last home at some position, which
   // reads as a dead state rather than a side to skip: null the hash so the next
@@ -271,15 +273,10 @@ function * update (instance, puzzle) {
   instance.sig = after === null ? null : after.sig
 }
 
-// Run once at creation: given clues can settle part of the side at load.
-function * initialize (instance, puzzle) {
-  yield * update(instance, puzzle)
-}
-
 // Every line of a filled side must realise its clue exactly.
 function validate (instance, puzzle) {
   const { clues, lines } = instance
-  if (!puzzle.getCellsAreFilled(getAffectedCells(clues, lines))) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   for (let L = 0; L < lines.length; L++) {
     let hits = 0
     for (let i = 0; i < lines[L].length; i++) if (puzzle.getValue(lines[L][i]) === i + 1) hits++

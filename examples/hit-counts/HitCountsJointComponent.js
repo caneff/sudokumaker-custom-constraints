@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Soundness. The true solution induces one concrete case at every position —
 // hit for A, hit for B, or neither — and one concrete (A, B) hit count for the
 // line. Every set this component builds is a SUPERSET of what the true solution
@@ -133,13 +133,14 @@ function pairCombos (a, b, house) {
 // run reads, so a change it cannot see costs one pass over the cells and no
 // solve. The kind is in the hash because it can climb while no candidate moves,
 // and a higher kind opens a stronger rule -- which is also what picks the sweep,
-// so one hash cannot be mistaken for the other.
-function signature (puzzle, instance, exact, lk) {
-  const { clueA, clueB, line, n } = instance
+// so one hash cannot be mistaken for the other. The caller passes the masks it
+// already read: `rawA` and `rawB` are the clues' whole masks, `cm` the line's.
+function signature (instance, exact, lk, rawA, rawB, cm) {
+  const { n } = instance
   const kind = lk.kind * 2 + (lk.oneToN ? 1 : 0)
-  let h = (Math.imul(puzzle.getCandidatesBitMask(clueA), 31) + puzzle.getCandidatesBitMask(clueB)) | 0
+  let h = (Math.imul(rawA, 31) + rawB) | 0
   for (let j = 0; j < n; j++) {
-    const m = puzzle.getCandidatesBitMask(line[j])
+    const m = cm[j]
     h = (Math.imul(h, 31) + (exact ? m : caseBits(m, j, n))) | 0
   }
   return (Math.imul(h, 31) + kind) | 0
@@ -300,12 +301,12 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   permKeepDigits(F, H, keep, reach, dig, pc, n, W, last)
 
   const rmA = maskA & ~keepA
-  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(rmA, clueA)
   const rmB = maskB & ~keepB
-  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(rmB, clueB)
   for (let j = 0; j < n; j++) {
     const rm = dig[j] & ~keep[j]
-    if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm << 1)), line[j])
+    if (rm !== 0) yield puzzle.removeCandidatesFromCell(rm << 1, line[j])
   }
   return false
 }
@@ -327,9 +328,12 @@ function * noNMinusOne (instance, puzzle, maskA, maskB, lk) {
 function * update (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
   const all = (1 << (n + 1)) - 1
-  const maskA = puzzle.getCandidatesBitMask(clueA) & all
-  const maskB = puzzle.getCandidatesBitMask(clueB) & all
+  const rawA = puzzle.getCandidatesBitMask(clueA)
+  const rawB = puzzle.getCandidatesBitMask(clueB)
+  const maskA = rawA & all
+  const maskB = rawB & all
   if (maskA === 0 || maskB === 0) return
+  // Each line mask is read once here and handed to the signature and the sweep.
   const cm = []
   for (let j = 0; j < n; j++) cm.push(puzzle.getCandidatesBitMask(line[j]))
   const lk = lineKind(instance, puzzle, line)
@@ -340,16 +344,24 @@ function * update (instance, puzzle) {
   // the case sweep answers and more -- every case it keeps is realised by a real
   // permutation -- so the line takes one sweep or the other, never both.
   const exact = lk.oneToN && n <= PERM_MAX
-  const sig = signature(puzzle, instance, exact, lk)
+  const sig = signature(instance, exact, lk, rawA, rawB, cm)
   if (sig === instance.sig) return
   // A sweep that stopped leaves no memo: the dead-branch signal has to fire
   // again on the next call, and a memo would let a later state with the same
-  // signature return early and never raise it. Both sweeps share the one
-  // epilogue so neither can drift back to memoising a state it stopped on.
+  // signature return early and never raise it. Two guards hold that. In the
+  // app, `stop()` is a terminal change (AbortSolver): the solver stops draining
+  // the generator there, so the memo line below never runs after one. The Node
+  // harnesses drain every generator to its end, and there the `stopped` boolean
+  // skips the memo. Both sweeps share the one epilogue so neither can drift
+  // back to memoising a state it stopped on.
   const stopped = yield * (exact
     ? permutationPrune(instance, puzzle, cm, maskA, maskB)
     : caseSweep(instance, puzzle, cm, maskA, maskB, lk.kind, all))
-  if (!stopped) instance.sig = signature(puzzle, instance, exact, lk)
+  if (stopped) return
+  // The sweep's removals moved the masks read above: the memo hashes the state
+  // it leaves, so read them again.
+  for (let j = 0; j < n; j++) cm[j] = puzzle.getCandidatesBitMask(line[j])
+  instance.sig = signature(instance, exact, lk, puzzle.getCandidatesBitMask(clueA), puzzle.getCandidatesBitMask(clueB), cm)
 }
 
 // F[u][a] — bitmask of the B counts reachable with A count a, over the units
@@ -471,26 +483,15 @@ function * caseSweep (instance, puzzle, cm, maskA, maskB, kind, all) {
   const open = openCases(combos, units, F, H, U, n)
   const { keepA, keepB } = caseKeepClues(F[U], box, n)
   const rmA = maskA & ~keepA
-  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmA)), clueA)
+  if (rmA !== 0) yield puzzle.removeCandidatesFromCell(rmA, clueA)
   const rmB = maskB & ~keepB
-  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rmB)), clueB)
+  if (rmB !== 0) yield puzzle.removeCandidatesFromCell(rmB, clueB)
 
   for (let j = 0; j < n; j++) {
     const rm = caseCellDrop(open[j], j, n) & cm[j]
-    if (rm !== 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bits(rm)), line[j])
+    if (rm !== 0) yield puzzle.removeCandidatesFromCell(rm, line[j])
   }
   return false
-}
-
-function bits (mask) {
-  const out = []
-  for (let m = mask; m; m &= m - 1) out.push(31 - Math.clz32(m & -m))
-  return out
-}
-
-// Run once at creation: two given opposite clues can pin the whole line at load.
-function * initialize (instance, puzzle) {
-  yield * update(instance, puzzle)
 }
 
 // A full line must realise both its clues exactly. The n - 1 reject rides the
@@ -502,7 +503,7 @@ function validate (instance, puzzle) {
     if (puzzle.hasValue(clueA) && puzzle.getValue(clueA) === n - 1) return false
     if (puzzle.hasValue(clueB) && puzzle.getValue(clueB) === n - 1) return false
   }
-  if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
+  if (!puzzle.getCellsAreFilled(instance.cells)) return true
   let a = 0
   let b = 0
   for (let j = 0; j < n; j++) {

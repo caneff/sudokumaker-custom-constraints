@@ -1,28 +1,31 @@
-/* eslint-disable no-unused-vars -- setParams/update/initialize/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
+/* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Side sum. The n Hit Counts clues on one side of the grid sum to exactly n.
 //! Regroup the side's hits by the perpendicular line each one lands on: a line
 //! that holds 1..n once each has its own value at home exactly once, giving one
 //! hit per line, n in all. So the rule needs all n clues of the side AND the n
 //! perpendicular lines they cross.
 
-// The clue cells alone, though the gate reads every perpendicular line. Stale
-// is safe here: a missed wake only delays a deduction, never makes a wrong
-// one. The gate is re-read in full on every call (lineKind latches only the
-// repeats answer, geometry a backtrack cannot undo), so whenever the app does
-// run `update` -- on any later change to a clue -- it judges the lines as they
-// stand then, never as they stood at some earlier call. A line cell that
-// opens the gate without waking the component costs nothing until a clue
-// moves; one a backtrack restores is read restored. The soundness harness
-// holds this with a wake-driven run ("side-sum stale wake", #362). Widening
-// the list to the lines would buy earlier firing, not soundness.
+// The clue cells and every cell of the perpendicular lines the gate reads, so
+// the change that opens the gate -- a line losing its last 0 -- wakes the
+// component instead of waiting for a clue to move: n + n^2 cells in all. The
+// list does not bear on soundness: the gate is re-read in full on every call
+// (lineKind latches only the repeats answer, geometry a backtrack cannot
+// undo), so whenever `update` runs it judges the lines as they stand then
+// (#362's "side-sum stale wake" in the soundness harness). The app retires a
+// component once every listed cell is filled and it validates, so this one
+// retires only once its lines are filled as well. That costs nothing: the side
+// sum is derived, and main-global.js gives every framed line a joint component
+// that enforces its own clues.
 function getAffectedCells (cells, target, lines) {
-  return cells
+  return [...cells, ...lines.flat()]
 }
 
 // `lines` are the n perpendicular lines the main code hands over. The component
 // checks them itself rather than trusting the caller (docs/line-contract.md).
+// The clues live in `instance.clues`: the app has already set `instance.cells`
+// to the list above, and the bound reads the clues alone.
 function setParams (instance, cells, target, lines) {
-  instance.cells = cells
+  instance.clues = cells
   instance.target = target
   instance.lines = lines
 }
@@ -39,8 +42,8 @@ function setParams (instance, cells, target, lines) {
 // #include ../_shared/line-kind.js
 
 function sumsToN (instance, puzzle) {
-  const { cells, target, lines } = instance
-  if (!lines || lines.length !== cells.length || target !== lines.length) return false
+  const { clues, target, lines } = instance
+  if (!lines || lines.length !== clues.length || target !== lines.length) return false
   for (const line of lines) if (!lineKind(instance, puzzle, line).oneToN) return false
   return true
 }
@@ -66,22 +69,16 @@ function * propagate (cells, target, puzzle) {
   }
 }
 
-// Run once at creation: the side's given clues already bound the rest (e.g. if
-// the shown clues sum to n, the hidden ones are forced to 0 right away).
-function * initialize (instance, puzzle) {
-  yield * update(instance, puzzle)
-}
-
 function * update (instance, puzzle) {
   if (!sumsToN(instance, puzzle)) return
-  yield * propagate(instance.cells, instance.target, puzzle)
+  yield * propagate(instance.clues, instance.target, puzzle)
 }
 
 function validate (instance, puzzle) {
-  const { cells, target } = instance
-  if (!puzzle.getCellsAreFilled(cells)) return true
+  const { clues, target } = instance
+  if (!puzzle.getCellsAreFilled(clues)) return true
   if (!sumsToN(instance, puzzle)) return true
   let sum = 0
-  for (const c of cells) sum += puzzle.getValue(c)
+  for (const c of clues) sum += puzzle.getValue(c)
   return sum === target
 }

@@ -56,7 +56,7 @@ function stateOf (start, houses) {
 
 // ---- 1. HitCountsJointComponent against the per-line + pair floor ----
 {
-  const cur = load('HitCountsJointComponent.js', ['setParams', 'update', 'initialize'])
+  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
   const lineRef = loadAt(REPLACED_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
   const pairRef = loadAt(REPLACED_COMMIT, 'HitCountsPairComponent.js', ['setParams', 'update'])
   const PA = 300
@@ -68,7 +68,6 @@ function stateOf (start, houses) {
     run: p => {
       const inst = {}
       cur.setParams(inst, PA, PB, LINE)
-      Array.from(cur.initialize(inst, p))
       fixpoint(cur, inst, p)
     }
   })
@@ -116,16 +115,17 @@ function stateOf (start, houses) {
 // A drawn line with no clue at its far end still gets this component, so it
 // keeps its own floor.
 {
-  const NAMES = ['setParams', 'update', 'initialize']
-  const cur = load('HitCountsComponent.js', NAMES)
-  const ref = loadAt(REF_COMMIT, 'HitCountsComponent.js', NAMES)
+  // The floor still has its `initialize`; the current file leaves the load
+  // pass to the base, which runs `update` once -- the fixpoint's first pass.
+  const cur = load('HitCountsComponent.js', ['setParams', 'update'])
+  const ref = loadAt(REF_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
   const CLUE = 100
   const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
   installGlobals(0, 9)
   const apply = (mod, p) => {
     const inst = {}
     mod.setParams(inst, CLUE, LINE)
-    Array.from(mod.initialize(inst, p))
+    if (mod.initialize) Array.from(mod.initialize(inst, p))
     fixpoint(mod, inst, p)
   }
   // The no-n-1 rule is behind a gate: it fires only on a line the component can
@@ -234,7 +234,7 @@ function stateOf (start, houses) {
 {
   installGlobals(0, 4)
   const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
-  const line = load('HitCountsComponent.js', ['setParams', 'update', 'initialize'])
+  const line = load('HitCountsComponent.js', ['setParams', 'update'])
   const CLUES = [400, 401, 402, 403]
   const cell = (r, c) => r * 4 + c
   const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => cell(r, c)))
@@ -263,7 +263,6 @@ function stateOf (start, houses) {
   for (let r = 0; r < 4; r++) {
     const inst = {}
     line.setParams(inst, CLUES[r], LINES[r])
-    Array.from(line.initialize(inst, pl))
     fixpoint(line, inst, pl)
   }
 

@@ -533,6 +533,30 @@ previous commit keeps.
 
 ## Timing
 
+### Contract cleanups across the components (#452)
+
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (joint: raw masks, one read per mask, no `initialize`) | 6300ms | 6400ms | 1.02 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (joint) after-logical | 3900ms | 3900ms | 1.00 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side sum: wakes on its lines, no `initialize`) | 6500ms | 6800ms | 1.05 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side sum) after-logical | 3800ms | 4000ms | 1.05 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side matching: keep-only pins, null memo, no `initialize`) | 6600ms | 6300ms | 0.95 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side matching) after-logical | 3900ms | 3800ms | 0.97 | gate: PASS |
+
+`just time hit-counts --component <name>`, one run per component the 9x9
+board registers, since the driver swaps one component per candidate. The
+driver printed `NO SHIP` on all three because it reads the 0.9x deduction
+rule. None of these changes adds a deduction, so the bar they answer to is
+the gate-change bar: 1.1x or under on both rows
+(`../../docs/real-app-timing.md`). All three clear it. The side sum's wake
+list grows from n to n + n² cells. The widened wake costs 5% on the 9x9 and
+is kept so the gate fires when a crossing line changes, not at the next clue
+change. The per-line
+`HitCountsComponent` sits only on the local boards, and neither can time it:
+the 9x9 local board is the recorded DNF, and the 6x6 local's recorded
+baseline (2026-09-03, below) is 200ms on both rows, two ticks of the
+readout, where a 0.9x or 1.1x ratio cannot be read. Neither was run for this
+change, so it has no row.
+
 ### The SideSum stale-wake case (#362)
 
 | 2026-09-16 | v2026.08.14-d47fc4b | hit-counts | 6500ms | — | — | BASELINE |
