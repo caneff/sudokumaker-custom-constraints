@@ -140,7 +140,8 @@ function * update (instance, puzzle) {
   // ---- Forward: clue pinned -> the break after the prefix's last cell ----
   if (puzzle.hasValue(clue)) {
     const k = puzzle.getValue(clue) // k === kmin here, so the window above already ran
-    if (k < n) yield * below(puzzle, line[k], line[k - 1], breakStrict)
+    // A 0 clue (a board whose digits start at 0) has no last cell; validate rejects it.
+    if (k >= 1 && k < n) yield * below(puzzle, line[k], line[k - 1], breakStrict)
   }
 }
 
