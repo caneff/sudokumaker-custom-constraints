@@ -37,14 +37,22 @@ function board (minDigit, maxDigit) {
 
 const CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 19]
 
+// An instance as the app's compiled constructor builds one: it stores
+// `getAffectedCells`'s list as `instance.cells`, then calls `setParams`
+// (docs/research/bundle-api-reference.md, the custom component wrapper).
+function appInstance (mod, name, cells) {
+  const inst = { name, cells: mod.getAffectedCells(cells) }
+  mod.setParams(inst, cells)
+  return inst
+}
+
 // One update call of `mod` on a house seeded with `cands` (one candidate array
 // per cell). Returns each cell's surviving candidates, sorted, or 'stop'.
 function runOnce (mod, cands, kind = 'fullHouse') {
   const cells = CELLS.slice(0, cands.length)
   const truth = Object.fromEntries(cells.map(c => [c, 0]))
   const p = makePuzzle(truth, c => cands[cells.indexOf(c)], { houses: housesOf(kind, cells) })
-  const inst = { name: 'row 1' }
-  mod.setParams(inst, cells)
+  const inst = appInstance(mod, 'row 1', cells)
   Array.from(mod.update(inst, p))
   if (p._stopped !== null) return 'stop'
   return cells.map(c => [...p._cand.get(c)].sort((a, b) => a - b))
@@ -239,10 +247,8 @@ board(1, 9)
   const truth = Object.fromEntries(CELLS.map(c => [c, 0]))
   const pa = makePuzzle(truth, c => aCands[CELLS.indexOf(c)], { houses: [CELLS] })
   const pb = makePuzzle(truth, c => bCands[CELLS.indexOf(c)], { houses: [CELLS] })
-  const a = { name: 'A' }
-  const b = { name: 'B' }
-  gac.setParams(a, CELLS)
-  gac.setParams(b, CELLS)
+  const a = appInstance(gac, 'A', CELLS)
+  const b = appInstance(gac, 'B', CELLS)
   const genA = gac.update(a, pa)
   assert.strictEqual(genA.next().done, false, 'house A yields no removal to suspend at')
   Array.from(gac.update(b, pb))
@@ -300,11 +306,35 @@ for (const kind of ['bare', 'fullHouse']) {
   const real = p.getCellsCanHaveRepeats
   let asked = 0
   p.getCellsCanHaveRepeats = cs => { asked++; return real(cs) }
-  const inst = { name: 'row 1' }
-  gac.setParams(inst, cells)
+  const inst = appInstance(gac, 'row 1', cells)
   Array.from(gac.update(inst, p))
   Array.from(gac.update(inst, p))
   assert.strictEqual(asked, 1, `${kind}: asked once, not per update`)
+}
+
+// ---- setParams leaves instance.cells to the app ----
+// The compiled constructor already stores getAffectedCells's list as
+// instance.cells, so setParams has nothing to add.
+{
+  const inst = { name: 'row 1' }
+  gac.setParams(inst, CELLS)
+  assert.deepStrictEqual(inst, { name: 'row 1' }, 'setParams wrote to the instance')
+}
+
+// ---- removals go to the app as raw masks ----
+// The removal builders take a bitmask (docs/research/bundle-api-reference.md),
+// so a SudokuDigitSet per removal is an allocation nothing reads. With a
+// SudokuDigitSet that throws, the worked Hall set must still be removed.
+{
+  const real = globalThis.SudokuDigitSet
+  globalThis.SudokuDigitSet = class { constructor () { throw new Error('SudokuDigitSet built') } static from () { throw new Error('SudokuDigitSet built') } }
+  try {
+    const all = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    const got = runOnce(gac, [[1, 2], [2, 3], [1, 3], [3, 4], all, all, all, all, all])
+    assert.deepStrictEqual(got[3], [4], 'the naked triple was not removed from cell 3')
+  } finally {
+    globalThis.SudokuDigitSet = real
+  }
 }
 
 console.log('house-gac self-check OK')

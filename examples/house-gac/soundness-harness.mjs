@@ -102,7 +102,8 @@ function fixpointAll (cand) {
   for (let pass = 0; pass < 20; pass++) {
     let changed = false
     for (const cells of HOUSES) {
-      const inst = {}
+      // As the app's constructor does: cells first, then setParams.
+      const inst = { cells }
       mod.setParams(inst, cells)
       const p = {
         ...makePuzzleApi(cell => cand.get(cell), { houses: HOUSES }),

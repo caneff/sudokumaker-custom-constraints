@@ -44,7 +44,9 @@
 //! against 26 us for a matching filter, but the cost doubles with each free
 //! cell and matching is cheaper from n=12 or 13 on
 //! (docs/research/all-different-gac.md). A larger house is a registration
-//! mistake, refused at setup where the author sees it.
+//! mistake, refused at setup: the RangeError fails the Node harness loudly,
+//! but in the app it only reaches the console, and the board ships with no
+//! GAC filter at all. The build-time cap in framebuild.py is the loud guard.
 //! The same rule in three other forms, and what each costs, is in
 //! docs/research/408-house-gac/.
 const MAX_CELLS = 9
@@ -55,12 +57,20 @@ const MAX_CELLS = 9
 //! at a yield point.
 const pooledDigitsOf = new Int32Array(2 ** MAX_CELLS)
 
+//! The house positions of the free cells, in house order; the first
+//! `freeCount` slots are this call's. Shared between calls like
+//! `pooledDigitsOf`, and for the same reason safe: it is read only by the
+//! walk, which finishes before `update` first yields.
+const freePositions = new Uint8Array(MAX_CELLS)
+
 //! Bit counts looked up rather than counted: two counts per group, 511 groups
 //! per call, and a lookup halves the call (docs/research/all-different-gac.md,
 //! "Precomputed bit counts"). `cellsInGroupOf` covers every group and
 //! `digitCountOf` every digit set the board can make. The digit table doubles
-//! with each digit, 131 KB at 16, so a board past 16 is refused at setup; its
-//! table is capped so that loading the code on such a board still works.
+//! with each digit, 131 KB at 16, so a board past 16 is refused at setup --
+//! by the same RangeError, loud in the Node harness and console-only in the
+//! app. Its table is capped so that loading the code on such a board still
+//! works.
 const MAX_DIGIT = 16
 //! Set-bit count of every group index: how many cells a group holds.
 const cellsInGroupOf = countTable(2 ** MAX_CELLS)
@@ -78,7 +88,6 @@ function setParams (instance, cells) {
   if (helpers.digits.maxDigit > MAX_DIGIT) {
     throw new RangeError(`${instance.name}: HouseGacComponent takes digits up to ${MAX_DIGIT}, the board goes to ${helpers.digits.maxDigit}`)
   }
-  instance.cells = cells
 }
 
 //! `table[bits]` is how many bits are set in `bits`, for every value below
@@ -114,7 +123,8 @@ function * update (instance, puzzle) {
   if (instance.canRepeat === undefined) instance.canRepeat = puzzle.getCellsCanHaveRepeats(cells)
   if (instance.canRepeat) return
 
-  //! Per call, so the removals can be yielded straight off them.
+  //! Per call, not module scratch: the removals are yielded straight off
+  //! them, and a yield lets the solver run another house's update.
   const candidates = cells.map(cell => puzzle.getCandidatesBitMask(cell))
   const startingCandidates = candidates.slice()
 
@@ -124,7 +134,7 @@ function * update (instance, puzzle) {
   //! extra removal is the placed digit -- already stripped here -- so the
   //! free-cell walk below removes exactly what walking every group of the
   //! whole house would remove (#435).
-  const freePositions = []
+  let freeCount = 0
   for (let position = 0; position < cellCount; position++) {
     if (digitCountOf[candidates[position]] === 1) {
       const placedDigit = candidates[position]
@@ -132,11 +142,10 @@ function * update (instance, puzzle) {
         if (other !== position) candidates[other] &= ~placedDigit
       }
     } else {
-      freePositions.push(position)
+      freePositions[freeCount++] = position
     }
   }
 
-  const freeCount = freePositions.length
   const wholeGroup = (2 ** freeCount) - 1
   for (let group = 1; group <= wholeGroup; group++) {
     const newestCellBit = lowestBit(group)
@@ -185,7 +194,7 @@ function * update (instance, puzzle) {
   for (let position = 0; position < cellCount; position++) {
     if (candidates[position] !== startingCandidates[position]) {
       const removedDigits = startingCandidates[position] & ~candidates[position]
-      yield puzzle.removeCandidatesFromCell(new SudokuDigitSet(removedDigits), cells[position])
+      yield puzzle.removeCandidatesFromCell(removedDigits, cells[position])
     }
   }
 }
