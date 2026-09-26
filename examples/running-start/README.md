@@ -204,6 +204,15 @@ branch.
 | 2026-09-18 | v2026.08.14-d47fc4b | running-start (repeats latch both ways, #451) after-logical | 0ms | 0ms | — | gate: PASS |
 | 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) | 23000ms | 17400ms | 0.76 | gate: PASS |
 | 2026-09-18 | v2026.08.14-d47fc4b | running-start (PUZZLE_LINK_local.txt, #451) after-logical | 1800ms | 1300ms | 0.72 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | running-start (bitmask below/feasibleClues, #457) | 900ms | 800ms | 0.89 | SHIP |
+| 2026-09-26 | v2026.08.14-d47fc4b | running-start (bitmask below/feasibleClues, #457) after-logical | 0ms | 0ms | — | SHIP |
+
+The #457 pair times the bitmask rewrite of `below` and `feasibleClues`, the
+two removals built as one mask each, the `k >= 1` guard and the pair's
+`validate` (which lets the solver retire a filled pair). No deduction changed,
+yet the cold row clears 0.9x outright; after-logical is 0 ms on both sides and
+places no constraint. `just time running-start`, 3 reps, baseline the
+committed link, printed `two-row rule: SHIP`.
 
 The #421 pair is a link-vs-link comparison, not a component-code diff: the
 shared house-GAC filter (`examples/_shared/house-gac.js` +
