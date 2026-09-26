@@ -18,6 +18,6 @@ select = ["F", "I", "B", "UP", "SIM", "C4", "PIE", "PERF", "RET", "PTH", "RUF"]
 
 # finders/qqrr/hunt (#603): the hunt drivers land as they ran on 2026-09-22, so
 # results stay reproducible; only style rules that would rewrite their file and
-# glob handling are waived, not the pyflakes or import checks.
+# glob handling are waived, not the pyflakes, import, B905 or RUF059 checks.
 [lint.per-file-ignores]
-"finders/qqrr/hunt/*.py" = ["SIM115", "PTH", "PERF401", "B905", "RUF001", "RUF005", "RUF059"]
+"finders/qqrr/hunt/*.py" = ["SIM115", "PTH", "PERF401", "RUF001", "RUF005"]
