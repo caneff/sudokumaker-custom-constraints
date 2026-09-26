@@ -7,15 +7,15 @@
 
 // The clue cells and every cell of the perpendicular lines the gate reads, so
 // the change that opens the gate -- a line losing its last 0 -- wakes the
-// component instead of waiting for a clue to move. That grows the list from n
-// cells to n + n^2. It does not bear on soundness: the gate is re-read in full
-// on every call (lineKind latches only the repeats answer, geometry a
-// backtrack cannot undo), so whenever `update` runs it judges the lines as
-// they stand then (#362's "side-sum stale wake" in the soundness harness).
-// The app retires a component once every listed cell is filled and it
-// validates, so this one now retires only with its lines filled too. That
-// costs nothing: the side sum is derived, and the joint components still
-// enforce every line's own clue.
+// component instead of waiting for a clue to move: n + n^2 cells in all. The
+// list does not bear on soundness: the gate is re-read in full on every call
+// (lineKind latches only the repeats answer, geometry a backtrack cannot
+// undo), so whenever `update` runs it judges the lines as they stand then
+// (#362's "side-sum stale wake" in the soundness harness). The app retires a
+// component once every listed cell is filled and it validates, so this one
+// retires only once its lines are filled as well. That costs nothing: the side
+// sum is derived, and main-global.js gives every framed line a joint component
+// that enforces its own clues.
 function getAffectedCells (cells, target, lines) {
   const out = cells.slice()
   for (const line of lines) for (const cell of line) out.push(cell)
