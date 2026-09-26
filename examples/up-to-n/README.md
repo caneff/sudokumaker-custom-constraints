@@ -141,10 +141,13 @@ draws a marker by hand in the editor must add a text cosmetic for its clue by
 hand (Add element, "Cosmetic symbols", Text).
 
 **Two 9×9 boards.** The carve's minimal 9×9 shows 13 clues and no givens, and
-the live app finds no solution to it within 300 s. The same solution with more
-clues shown, still no givens, was timed at 15 (timeout), 18 (unique, 15 s) and
-24 (unique, 13 s) clues (`docs/research/368-up-to-n-setup-throw.md`, finding
-5). The shipped board is the 18-clue one, derived from the minimal one by
+the live app finds no solution to it within 300 s: re-timed under the corrected
+rule on 2026-09-26, all 3 reps hit the 300 s cap (§ Timing). The shipped board
+shows 18 clues, still no givens, and solves in 15.2 s cold and 11.7 s
+after-logical on that date. Older probe results for other clue counts, taken
+2026-09-14 under the old `update`: 15 clues timed out, 18 solved in 15 s, 24
+solved in 13 s (`docs/research/368-up-to-n-setup-throw.md`, finding 5). The
+shipped board is the 18-clue one, derived from the minimal one by
 `build_size.py --derive-shipped-9x9`; the minimal one stays as
 `PUZZLE_LINK_9x9.txt`.
 
@@ -173,20 +176,30 @@ the component stronger.
 
 ## Timing
 
-| 2026-09-14 | v2026.08.14-d47fc4b | up-to-n | 14500ms | — | — | BASELINE |
-| 2026-09-14 | v2026.08.14-d47fc4b | up-to-n after-logical | 10900ms | — | — | BASELINE |
-
 `just time up-to-n` on the shipped 18-clue 9×9, 3 reps, non-deterministic
-solve off. Candidate code is byte-equal to the committed link, so only baseline
-rows print: this is the floor a later component change is judged against.
+solve off, corrected rule (#614), 1 worker. Candidate code is byte-equal to
+the committed link, so only baseline rows print: this is the floor a later
+component change is judged against.
+
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n | 15200ms | — | — | BASELINE |
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n after-logical | 11700ms | — | — | BASELINE |
+
+The minimal 13-clue board, `just time up-to-n --board PUZZLE_LINK_9x9.txt`,
+same day, same driver, is a DNF, recorded verbatim:
+
+```
+RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+```
+
+The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
+14500 ms cold and 10900 ms after-logical; they are superseded by the rows above.
 
 **The rule correction (#613) costs nothing.** The component and the board
 changed together, so a component swap into the old board would time a
-different puzzle; `just time up-to-n` on the corrected tree prints baseline
-rows only, 2026-09-26:
-
-| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n | 16400ms | — | — | BASELINE |
-| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n after-logical | 12000ms | — | — | BASELINE |
+different puzzle. `just time up-to-n` on the corrected tree, run earlier on
+2026-09-26 while #613 was open, printed 16400 ms cold and 12000 ms
+after-logical; the #614 run above is the floor, and the 7% spread between the
+two runs of one board is run-to-run noise.
 
 The comparison is link vs link instead: the committed `PUZZLE_LINK.txt` before
 the correction against the one after, both stripped, one rep of each per round,
@@ -209,17 +222,4 @@ RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_probe.txt: all 3 reps hi
 ```
 
 Without the prune the shipped board does not solve inside 300 s; with it, it
-solves in 14.5 s. The refusal is the record: there is no ratio to print.
-
-**The 9×9 re-timed under the corrected rule (#614), 2026-09-26.** Both boards
-through the standard driver, 1 worker, app v2026.08.14-d47fc4b, the old rows
-above being taken under the old `update`:
-
-| board | driver output |
-|---|---|
-| shipped 18-clue, `just time up-to-n` | `\| 2026-09-26 \| v2026.08.14-d47fc4b \| up-to-n \| 15200ms \| — \| — \| BASELINE \|` and `\| 2026-09-26 \| v2026.08.14-d47fc4b \| up-to-n after-logical \| 11700ms \| — \| — \| BASELINE \|` |
-| minimal 13-clue, `just time up-to-n --board PUZZLE_LINK_9x9.txt` | DNF: `RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)` |
-
-The shipped board still solves in about 15 s cold and 12 s after the logical
-pass; the minimal board still does not solve inside the 300 s cap. The numbers
-support the same choice of board: the 18-clue one ships.
+solved in 14.5 s (2026-09-14, old rule; current time above). The refusal is the record: there is no ratio to print.

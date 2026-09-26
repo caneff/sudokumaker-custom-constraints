@@ -16,7 +16,7 @@
 # the code in the tree, with no fresh CP-SAT search.
 #
 # The 9x9 has two boards. The carve's minimal one, PUZZLE_LINK_9x9.txt /
-# gen_9x9.json, is unique by CP-SAT but times out in the live app
+# gen_9x9.json, is unique by CP-SAT but times out in the live app (README § Timing)
 # (docs/research/368-up-to-n-setup-throw.md, finding 5). The shipped one,
 # PUZZLE_LINK.txt / gen.json, is the same solution with more clues shown and
 # still no givens, derived from the minimal one:
@@ -141,9 +141,8 @@ SPEC = Spec(
 
 MINIMAL_9X9 = (HERE / "PUZZLE_LINK_9x9.txt", HERE / "gen_9x9.json")
 # Clues the shipped 9x9 shows. 18 is the fewest of the counts probed that the
-# live app solves: 15 times out, 18 is unique in 15 s (finding 5). Re-timed
-# under the corrected rule (#614, 2026-09-26): shipped 15200 ms cold, 11700 ms
-# after-logical; minimal 13-clue board DNF (all 3 reps hit the 300 s cap).
+# live app solves: 15 times out, 18 is unique in 15 s (finding 5).
+# Timing under the corrected rule: examples/up-to-n/README.md § Timing.
 SHIPPED_9X9_CLUES = 18
 
 
