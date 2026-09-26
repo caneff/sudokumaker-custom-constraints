@@ -551,7 +551,7 @@ sys.exit(run(RenderMismatchedLengthFinder(), sys.argv[1:]))
 with tempfile.TemporaryDirectory() as tmp:
     # A save that fails after writing part of the file (#537): renders/<seed>.png
     # must only ever exist complete, and resume must end with valid PNGs. A
-    # truncated PNG already at the destination (left by an older driver) is
+    # truncated PNG already at the destination is
     # not "done" either: repair re-renders it.
     from PIL import Image
 

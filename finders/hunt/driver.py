@@ -16,7 +16,7 @@ with no `render` gets no renders/ directory at all. `--workers` (default 3,
 set on the finder before the first seed) and the 1-minute load gate
 (refuses above 24 unless `--force-load`) are #488. A resume also
 reconciles renders/ itself (#522, `_reconcile_renders`) and repairs a missing
-picture: by re-proposing for a stateless finder, from the examples.jsonl
+or undecodable picture: by re-proposing for a stateless finder, from the examples.jsonl
 record via `candidate_from_record` for a stateful one (#538). That hook must
 return the candidate as `propose` produced it (everything `verify` and
 `render` read); the driver does not guard that, but it does restore the
@@ -443,7 +443,8 @@ def _reconcile_renders(finder, out, progress_events):
     whitespace, a leading "+") -- a stray file that only looks
     seed-numbered by `int()`'s loose grammar must not be silently swept up.
 
-    Only for a finder `_can_repair_renders` accepts: deleting a stray
+    The temp-file sweep (#537) runs for every finder. The stray-picture
+    deletion is only for a finder `_can_repair_renders` accepts: deleting a stray
     picture eagerly bets an intact one against the rerun's own render, and
     that bet is only safe when a *later* resume's `_repair_renders` can
     regenerate the picture if the rerun's render fails (#522 correctness
@@ -494,7 +495,7 @@ def _can_repair_renders(finder):
 
 
 def _repair_renders(finder, out, progress_lines, progress_events, examples_records):
-    """Resume re-attempts a missing renders/<seed>.png for every
+    """Resume re-attempts a missing or undecodable renders/<seed>.png for every
     already-accepted example (#524 Codex pass 1): a transient render
     failure (a full disk, a bug in the finder's own render() since fixed)
     must not leave examples.jsonl and renders/ permanently mismatched with
@@ -607,7 +608,7 @@ def _save_render_atomic(image, dest):
 
 def _render_intact(path):
     """Whether `path` is a complete PNG. Existence is not enough (#537): a
-    picture left truncated by an older driver, or damaged since, must be
+    picture left truncated or damaged, whatever wrote it, must be
     re-rendered by `_repair_renders`, not counted done."""
     from PIL import Image
 
