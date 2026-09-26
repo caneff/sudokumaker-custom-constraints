@@ -610,6 +610,10 @@ def _render_intact(path):
     from PIL import Image
 
     try:
+        # verify() walks the chunk stream through IEND and checks each CRC,
+        # which load() alone doesn't: a tail-truncated file can still decode.
+        with Image.open(path) as img:
+            img.verify()
         with Image.open(path) as img:
             img.load()
     except Exception:
