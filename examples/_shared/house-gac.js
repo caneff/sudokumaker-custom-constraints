@@ -17,10 +17,10 @@
 //! `row 1`, `column 1`, and the app's step log and stop message name the
 //! component that fired, so a shared name hides which of the two it was.
 
-const interior = (kind, all) =>
+const interiorHouses = (kind, all) =>
   [...all].slice(1, -1).map((line, i) => [`GAC ${kind} ${i + 1}`, line.slice(1, -1).map(cell => cell | 0)])
-const rows = interior('row', helpers.geometry.getAllRows())
-const columns = interior('column', helpers.geometry.getAllColumns())
+const rows = interiorHouses('row', helpers.geometry.getAllRows())
+const columns = interiorHouses('column', helpers.geometry.getAllColumns())
 const boxes = puzzle.getRegions().map((cells, i) => [`GAC box ${i + 1}`, cells])
 
 //! One box per interior row, each a row long: a count-and-size check, not a
