@@ -23,12 +23,12 @@ const rows = interior('row', helpers.geometry.getAllRows())
 const columns = interior('column', helpers.geometry.getAllColumns())
 const boxes = puzzle.getRegions().map((cells, i) => [`GAC box ${i + 1}`, cells])
 
-//! The boxes must tile the interior: one per interior row, each a row long.
-//! A short region list would register fewer filters, and `getRegions`
-//! back-fills a missing region id with an empty array, a zero-cell filter;
-//! either way the filter goes quietly weaker. The RangeError fails the Node
-//! harness loudly; in the app it only reaches the console, before any house
-//! registers.
+//! One box per interior row, each a row long: a count-and-size check, not a
+//! proof the boxes tile the interior. A short region list would register
+//! fewer filters, and `getRegions` back-fills a missing region id with an
+//! empty array, a zero-cell filter; either way the filter goes quietly
+//! weaker. The RangeError fails the Node harness loudly; in the app it only
+//! reaches the console, before any house registers.
 const rowLength = rows[0][1].length
 if (boxes.length !== rows.length || boxes.some(([, cells]) => cells.length !== rowLength)) {
   throw new RangeError(`House GAC: expected ${rows.length} boxes of ${rowLength} cells, got ${boxes.map(([, cells]) => cells.length).join('/')}`)
