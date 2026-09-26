@@ -25,14 +25,14 @@ const { rnd, pick } = makeRng(368)
 const mod = load('UpToNComponent.js', ['setParams', 'update', 'validate'])
 
 // The rule, stated a third time (CODING_STANDARDS.md, "The rule has one
-// home"): the sum of the digits up to and including the first `target`, or
-// null when the line never holds it. It must agree with the component and
+// home"): the sum of the digits strictly before the first `target`, or null
+// when the line never holds it. It must agree with the component and
 // with build_size.py's `up_to_n` and its CP-SAT model.
 function upToN (digits, target) {
   let sum = 0
   for (const d of digits) {
-    sum += d
     if (d === target) return sum
+    sum += d
   }
   return null
 }
@@ -103,7 +103,8 @@ for (const D of SIZES) {
 // exactly when the clue holds, and `update` must then leave it whole; when the
 // clue fails -- a wrong sum, or no target at all -- `update` must empty a cell
 // or stop, so the solver drops the branch rather than trusting `validate`
-// alone. Clues range over every reachable sum, not only the true one.
+// alone. Clues range over every reachable sum, 0 included, not only the true
+// one.
 let disagree = 0
 let runs = 0
 for (const D of SIZES) {
@@ -113,7 +114,7 @@ for (const D of SIZES) {
     const kind = pick(['bare', 'fullHouse'])
     const digits = makeLine(rnd, kind, D, D)
     const target = 1 + ((rnd() * D) | 0)
-    const clue = 1 + ((rnd() * D * D) | 0)
+    const clue = (rnd() * D * D) | 0
     const truth = {}
     for (let i = 0; i < D; i++) truth[i] = digits[i]
     const inst = {}

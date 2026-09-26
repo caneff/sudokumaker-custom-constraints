@@ -47,18 +47,24 @@ from link_swap import swap_build
 from minify import minify_file
 from ortools.sat.python import cp_model
 
-# Hand-built lines, read from the marked end: (digits, target, the sum up to
-# and including the first target, or None when the line never holds it).
-# Worked by hand, not by any copy of the rule.
+# Hand-built lines, read from the marked end: (digits, target, the sum of the
+# digits strictly before the first target, or None when the line never holds
+# it). Worked by hand, not by any copy of the rule.
 LINES = [
-    ([3, 1, 4, 2], 4, 8),  # 3 + 1 + 4
-    ([3, 1, 4, 2], 3, 3),  # the target is the first cell
-    ([3, 1, 4, 2], 2, 10),  # the target is the last cell
-    ([2, 2, 1, 3], 1, 5),  # a repeated digit before the target
-    ([1, 4, 4, 2], 4, 5),  # the target twice: only the first counts
+    ([3, 1, 4, 2], 4, 4),  # 3 + 1
+    ([3, 1, 4, 2], 3, 0),  # the target is the first cell: nothing is read
+    ([3, 1, 4, 2], 2, 8),  # the target is the last cell: 10 - 2
+    ([2, 2, 1, 3], 1, 4),  # a repeated digit before the target
+    ([1, 4, 4, 2], 4, 1),  # the target twice: only the first counts
     ([2, 3, 2, 3], 4, None),  # the target absent
-    ([6, 5, 4, 3, 2, 1], 1, 21),  # a 6-cell line summing all of it
-    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 23),  # a 9-cell line
+    ([6, 5, 4, 3, 2, 1], 1, 20),  # a 6-cell line, target last: 21 - 1
+    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20),  # a 9-cell line
+    ([1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36),  # a 9-cell line, target last: 45 - 9
+    ([7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0),  # a 9-cell line, target first
+    # The rules text's three worked examples.
+    ([3, 1, 2, 4], 2, 4),  # 3 + 1
+    ([4, 1, 6, 2, 5, 3], 2, 11),  # 4 + 1 + 6
+    ([9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12),  # 9 + 2 + 1
 ]
 
 
@@ -109,8 +115,10 @@ def test_model_and_validate_agree_on_hand_built_lines():
     for digits, target, true_sum in LINES:
         # The true sum, one off either way, and an arbitrary clue for a line
         # with no target at all.
-        clues = [true_sum, true_sum - 1, true_sum + 1] if true_sum else [5, 10]
-        cases += [(digits, target, clue) for clue in clues if clue >= 1]
+        clues = (
+            [true_sum, true_sum - 1, true_sum + 1] if true_sum is not None else [5, 10]
+        )
+        cases += [(digits, target, clue) for clue in clues if clue >= 0]
     js = validate_accepts(cases)
     for (digits, target, clue), js_ok in zip(cases, js, strict=True):
         want = {t: s for d, t, s in LINES if d == digits}.get(target) == clue
@@ -185,9 +193,9 @@ def shipped_board_matches_its_link(link_name, gen_name):
         target = (cells[0][0] if key[0] in "LR" else cells[0][1]) + 1
         total = 0
         for r, c in cells:
-            total += board.grid[r][c]
             if board.grid[r][c] == target:
                 break
+            total += board.grid[r][c]
         assert clue == total, (key, clue, total)
     return board
 

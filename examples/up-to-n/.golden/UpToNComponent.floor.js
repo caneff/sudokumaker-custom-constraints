@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! Up to N. A clue v on a line with target digit N means: read from the
-//! marked end, the digits up to and including the first N sum to v. A line
-//! that never holds N breaks the rule.
+//! marked end, the digits strictly before the first N sum to v; N itself is
+//! never added, so a first cell holding N gives 0. A line that never holds N
+//! breaks the rule.
 //!
 //! The rules here hold on every line kind (docs/line-contract.md). A bare line
 //! may repeat digits and may lack N; a house never repeats.
@@ -37,18 +38,18 @@ function highBit (mask) {
 // Every position the first N can still take, with the prefix sum bounds at
 // each: `at[k]` is the position, `lo[k]` and `hi[k]` its bounds. Position p is
 // feasible when the cell there allows N, every earlier cell can avoid N, and
-// the clue lies between the smallest and largest sum the prefix can make: N
-// plus each earlier cell's smallest (largest) digit other than N.
+// the clue lies between the smallest and largest sum the prefix can make: the
+// sum of each earlier cell's smallest (largest) digit other than N.
 //
 // Sound: in the true solution the first N sits at some p*, every cell before
-// it holds a digit other than N, and their sum plus N is the clue -- so p* is
+// it holds a digit other than N, and their sum is the clue -- so p* is
 // feasible and never dropped.
 function feasiblePositions (instance, puzzle) {
   const { line, target, clue } = instance
   const bitN = 1 << target
   const feasible = { at: [], lo: [], hi: [] }
-  let lo = target
-  let hi = target
+  let lo = 0
+  let hi = 0
   for (let p = 0; p < line.length; p++) {
     const mask = puzzle.getCandidatesBitMask(line[p])
     if ((mask & bitN) !== 0 && lo <= clue && clue <= hi) {
@@ -118,8 +119,8 @@ function validate (instance, puzzle) {
   for (const cell of line) {
     if (!puzzle.hasValue(cell)) return true
     const d = puzzle.getValue(cell)
-    sum += d
     if (d === target) return sum === clue
+    sum += d
   }
   return false
 }

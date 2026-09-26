@@ -53,9 +53,9 @@ CONSTRAINT_NAME = "Up to N"
 # The worked example in the rules text, per size: a row read from its left
 # marker. Row 2 aims at the 2.
 RULE_EXAMPLES = {
-    4: "a clue of 6 at the left end of row 2 is true of the row 3124, since 3 + 1 + 2 = 6",
-    6: "a clue of 13 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 + 2 = 13",
-    9: "a clue of 17 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 + 5 = 17",
+    4: "a clue of 4 at the left end of row 2 is true of the row 3124, since 3 + 1 = 4",
+    6: "a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11",
+    9: "a clue of 12 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 = 12",
 }
 
 
@@ -63,8 +63,8 @@ def rule_text(n):
     rule = (
         "Up to N: a clue sits in a two-cell marker at one end of a row or "
         "column. N is that row's or column's number. Reading inward from the "
-        "marker, the digits up to and including the first N sum to the clue. "
-        "A marker with no number is not a clue."
+        "marker, the digits before the first N sum to the clue; N itself is "
+        "not added. A marker with no number is not a clue."
     )
     ex = RULE_EXAMPLES.get(n)
     if ex:
@@ -80,20 +80,21 @@ def target_digit(cells):
 
 
 def up_to_n(values, cells, _box):
-    # the digits up to and including the first N, summed; None if N is absent
+    # the digits strictly before the first N, summed; None if N is absent
     target = target_digit(cells)
     total = 0
     for v in values:
-        total += v
         if v == target:
             return total
+        total += v
     return None
 
 
 def add_up_to_n(m, x, cells, kk, n, tag, _box):
-    # hit[i]: cell i holds N. before[i]: no earlier cell holds N, so cell i is
-    # read. The read cells sum to kk, and some cell holds N -- on a row of a
-    # sudoku that is automatic, but the rule itself demands it.
+    # hit[i]: cell i holds N. before[i]: no cell up to and including i holds
+    # N, so cell i is read -- the first N itself never is. The read cells sum
+    # to kk, and some cell holds N -- on a row of a sudoku that is automatic,
+    # but the rule itself demands it.
     target = target_digit(cells)
     hit = []
     for i, cell in enumerate(cells):
@@ -105,11 +106,8 @@ def add_up_to_n(m, x, cells, kk, n, tag, _box):
     read = []
     for i, cell in enumerate(cells):
         before = m.NewBoolVar(f"b{tag}_{i}")
-        m.AddBoolAnd([h.Not() for h in hit[:i]]).OnlyEnforceIf(before)
-        if i:
-            m.AddBoolOr(hit[:i]).OnlyEnforceIf(before.Not())
-        else:
-            m.Add(before == 1)
+        m.AddBoolAnd([h.Not() for h in hit[: i + 1]]).OnlyEnforceIf(before)
+        m.AddBoolOr(hit[: i + 1]).OnlyEnforceIf(before.Not())
         term = m.NewIntVar(0, n, f"t{tag}_{i}")
         m.Add(term == x[cell]).OnlyEnforceIf(before)
         m.Add(term == 0).OnlyEnforceIf(before.Not())

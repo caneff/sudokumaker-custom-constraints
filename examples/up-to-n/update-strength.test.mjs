@@ -36,8 +36,8 @@ const REPS = 5000
 function upToN (digits, target) {
   let sum = 0
   for (const d of digits) {
-    sum += d
     if (d === target) return sum
+    sum += d
   }
   return null
 }
@@ -85,16 +85,32 @@ function settle (target, clue) {
   return LINE.map(c => [...p._cand.get(c)].sort())
 }
 
-// N = 4, clue 5. The first 4 can only be the second cell (4 alone is 4, and
-// three cells sum at least 4 + 1 + 1 = 6), so the first cell is 5 - 4 = 1.
-assert.deepStrictEqual(settle(4, 5)[0], [1])
+// N = 4, clue 1. The first 4 can only be the second cell (4 first reads 0,
+// and three cells before it read at least 1 + 1 + 1 = 3), so the first cell
+// is 1.
+assert.deepStrictEqual(settle(4, 1)[0], [1])
 
-// N = 3, clue 6. The first 3 sits second (3 + d = 6 needs d = 3, itself N, so
-// not there), third (two cells summing 3: {1, 2}) or fourth (1 + 1 + 1). So
-// the first two cells hold 1 or 2 and nothing else.
+// N = 3, clue 3. The first 3 sits second (d = 3 is itself N, so not there),
+// third (two cells summing 3: {1, 2}) or fourth (1 + 1 + 1). So the first two
+// cells hold 1 or 2 and nothing else.
 {
-  const [c0, c1] = settle(3, 6)
+  const [c0, c1] = settle(3, 3)
   assert.deepStrictEqual(c0, [1, 2])
   assert.deepStrictEqual(c1, [1, 2])
+}
+
+// N = 2, clue 0: the target is first, since any digit before it reads at
+// least 1. On a house the first 2 is the only 2, so 2 leaves every other cell
+// and the house's hidden single places it in the first. (On a bare line a
+// later cell may hold a second 2, so nothing is removed.)
+{
+  installGlobals(1, 4)
+  const LINE = [0, 1, 2, 3]
+  const p = makePuzzle({ 0: 2, 1: 1, 2: 3, 3: 4 }, () => [1, 2, 3, 4], { houses: [LINE] })
+  const inst = {}
+  cur.setParams(inst, LINE, 2, 0)
+  fixpoint(cur, inst, p)
+  const cands = LINE.map(c => [...p._cand.get(c)].sort())
+  assert.deepStrictEqual(cands, [[1, 2, 3, 4], [1, 3, 4], [1, 3, 4], [1, 3, 4]])
 }
 console.log('PASS')
