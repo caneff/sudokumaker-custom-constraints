@@ -80,8 +80,10 @@ function feasibleClues (puzzle, line, climbStrict, breakStrict) {
       feasible |= 1 << k
     } else {
       const next = puzzle.getCandidatesBitMask(line[k])
-      const minNext = 31 - Math.clz32(next & -next)
-      if (next && (breakStrict ? minNext < mx : minNext <= mx)) feasible |= 1 << k
+      if (next) {
+        const minNext = 31 - Math.clz32(next & -next)
+        if (breakStrict ? minNext < mx : minNext <= mx) feasible |= 1 << k
+      }
     }
   }
   return feasible
