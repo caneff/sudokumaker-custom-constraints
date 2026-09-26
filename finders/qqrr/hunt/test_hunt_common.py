@@ -62,6 +62,15 @@ assert [h["grid"] for h in hits] == [G1, G2]
 assert [len(h["ties"]) for h in hits] == [1, 2]
 assert hits[1]["ties"][1] == ("r4c2", "r4c5", "7654321", "34")
 assert hc.parse_hits("no hits here\n") == []
+# logged_grids reads every grid line of a log file
+import tempfile
+
+with tempfile.TemporaryDirectory() as d:
+    log = Path(d) / "big-x.log"
+    log.write_text(
+        "HIT 1 1s\n" + TIE_A + "\n  grid " + G1 + "\nHIT 2 2s\n  grid " + G2 + "\n"
+    )
+    assert hc.logged_grids(log) == [G1, G2]
 
 # tie_line and grid_line are what parse_hits reads back.
 grid = [[(r + c) % 9 + 1 for c in range(9)] for r in range(9)]
