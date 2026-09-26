@@ -92,3 +92,11 @@ function * update (instance, puzzle) {
     yield * incRun(puzzle, line.slice(peak).reverse()) // line[peak..n-1] strictly down
   }
 }
+
+// The pair adds no rule of its own: each clue is checked by its own line
+// component's validate. Accepting every state lets the solver retire the pair
+// once its cells are all filled (getIsDone), which a component with no
+// validate never is.
+function validate (instance, puzzle) {
+  return true
+}

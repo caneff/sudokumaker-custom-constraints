@@ -349,6 +349,18 @@ reps", because the app finds no verdict on it inside its limit. Skyscraper's
 minimality carves past what SudokuMaker's search closes. The 6x6 twin exists
 for exactly this.
 
+### One plural dead-index removal (#457)
+
+| 2026-09-26 | v2026.08.14-d47fc4b | numbered-rooms (plural dead-index removal, #457) | 1900ms | 1900ms | 1.00 | FAIL |
+| 2026-09-26 | v2026.08.14-d47fc4b | numbered-rooms (plural dead-index removal, #457) after-logical | 1600ms | 1600ms | 1.00 | FAIL |
+
+`just time numbered-rooms --ring-clues`, baseline the committed link, candidate
+the component with step 3's per-cell removals folded into one
+`removeCandidatesFromCells`. The change adds no deduction, so its bar is
+**≤ 1.1× on both rows** (`docs/real-app-timing.md`, "Bar for a gate change");
+1.00 and 1.00 clear it. The `FAIL` and the tool's `NO SHIP` line are the
+0.9× deduction bar, which a change that removes nothing new cannot reach.
+
 ## Not covered
 
 `PUZZLE_LINK.txt` is hand-made and is the committed source of truth: no
