@@ -209,8 +209,10 @@ branch.
 
 The #457 pair times the bitmask rewrite of `below` and `feasibleClues`, the
 two removals built as one mask each, the `k >= 1` guard and the pair's
-`validate` (which lets the solver retire a filled pair). No deduction changed,
-yet the cold row clears 0.9x outright; after-logical is 0 ms on both sides and
+`validate` (which lets the solver retire a filled pair). No deduction changed.
+The reverse and window steps now yield only when they remove a live
+candidate, where the arrays yielded a change that could remove nothing. The
+cold row clears 0.9x outright; after-logical is 0 ms on both sides and
 places no constraint. `just time running-start`, 3 reps, baseline the
 committed link, printed `two-row rule: SHIP`.
 
