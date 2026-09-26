@@ -5,9 +5,9 @@
 // Each drawn group is a MARKER: two adjacent cells at one end of a whole row
 // or column. The border cell is the reading end. The marked line's 1-based
 // index is the TARGET DIGIT N (column 3 aims at 3, row 5 at 5), and the typed
-// value is the clue: read inward from the marked end, the digits up to and
-// including the first N sum to it. An empty value draws the slot and clues
-// nothing.
+// value is the clue: read inward from the marked end, the digits before the
+// first N sum to it, N itself not added. An empty value draws the slot and
+// clues nothing.
 //
 // Every marker is checked before any component is registered. A throw in main
 // code shows the author a "Registering custom constraint 'Up to N' failed"
@@ -19,6 +19,9 @@ const W = puzzle.spec.size.width
 const H = puzzle.spec.size.height
 const lo = helpers.digits.minDigit
 const hi = helpers.digits.maxDigit
+// Every digit once: what a whole house sums to. A line aiming at N reads at
+// most TOTAL - N (N last) and at least 0 (N first).
+const TOTAL = ((lo + hi) * (hi - lo + 1)) / 2
 
 const cellNames = cells => cells.map(c => helpers.naming.getCellName(c)).join(' and ')
 
@@ -67,13 +70,17 @@ for (const g of input.groups) {
   seen.add(m.key)
   const text = String(g.value ?? '').trim()
   if (text === '') continue
-  if (!/^[1-9][0-9]*$/.test(text)) {
-    throw new Error(`Up to N: the marker at ${m.where} holds "${text}", not a positive integer`)
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) {
+    throw new Error(`Up to N: the marker at ${m.where} holds "${text}", not a whole number 0 or above`)
   }
   if (m.target < lo || m.target > hi) {
     throw new Error(`Up to N: the marker at ${m.where} aims at target digit ${m.target}, outside ${lo}..${hi}`)
   }
-  markers.push({ ...m, clue: Number(text) })
+  const clue = Number(text)
+  if (clue > TOTAL - m.target) {
+    throw new Error(`Up to N: the marker at ${m.where} holds ${clue}, above ${TOTAL - m.target}, the most a line aiming at ${m.target} can read`)
+  }
+  markers.push({ ...m, clue })
 }
 
 for (const m of markers) {

@@ -109,7 +109,7 @@ for (const [link, gen] of BOARDS) {
     ['a three-cell marker', (d, g) => g.cells.push(g.cells[1] + inward(g)), /Up to N: .* must be exactly two cells/],
     ['a marker one step in from the end', (d, g) => { g.cells = g.cells.map(c => c + inward(g)) }, /Up to N: .* not at either end/],
     ['a second marker on the same end', (d, g) => markers(d).push({ ...g, value: '1' }), /Up to N: .* same line and end/],
-    ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a positive integer/],
+    ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a whole number/],
     // Digits stop one short of the board, every clue is cleared, and only the
     // marker at the top of the last column is clued: its target digit is one
     // the board cannot hold, and the refusal names that marker.

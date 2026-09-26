@@ -2,11 +2,21 @@
 
 A clue sits in a **marker**: two cells drawn as a group at one end of a whole
 row or column. **N** is that row's or column's number (a marker on column 3
-aims at the 3). Reading inward from the marker, the digits up to and including
-the first N sum to the clue.
+aims at the 3). Reading inward from the marker, the digits before the first N
+sum to the clue. N itself is never added, so a line whose first cell holds N
+has the clue 0.
 
-For example, a clue of 6 at the left end of row 2 is true of the row `3124`:
-the row aims at 2, and 3 + 1 + 2 = 6. A marker with no number is not a clue.
+For example, a clue of 4 at the left end of row 2 is true of the row `3124`:
+the row aims at 2, and 3 + 1 = 4. A marker with no number is not a clue.
+
+Let TOTAL be the sum of the puzzle's digits, `minDigit..maxDigit`: n(n+1)/2
+on an n×n board with digits from 1 (10, 21 and 45 at 4×4, 6×6 and 9×9). A
+line aiming at N carries a clue from 0 (N first) to TOTAL - N (N last).
+
+**The far end carries no information.** A row or column holds N exactly once,
+so the clues read from its two ends split the rest of the line between them
+and always sum to TOTAL - N. A marker at the far end of a clued line is a
+wasted clue.
 
 The board is a plain n×n sudoku with nothing around it. There is no clue ring
 and no global variant: every clue is typed into a drawn group's value, so a
@@ -50,8 +60,10 @@ group's cells, for:
 - a group that is not two adjacent cells in one row or column, or not at an
   end of its line;
 - two markers on the same line and end, even when one is empty;
-- a clued marker whose value is not a positive integer;
-- a clued marker whose target digit is outside the puzzle's digit range.
+- a clued marker whose value is not a whole number 0 or above (a typed 0 is
+  a clue: N is the first cell);
+- a clued marker whose target digit is outside the puzzle's digit range;
+- a clued marker whose value is above TOTAL - N, the most its line can read.
 
 A marker with an empty value is checked for shape and then registers nothing.
 
@@ -64,8 +76,8 @@ live and through the solver bundle in
 ## What the component deduces
 
 For each position p a first N could take, the prefix before p sums to at least
-N plus every earlier cell's smallest digit other than N, and at most N plus
-their largest. p is **feasible** when the cell allows N, no earlier cell is
+the sum of every earlier cell's smallest digit other than N, and at most the
+sum of their largest. p is **feasible** when the cell allows N, no earlier cell is
 forced to N, and the clue lies inside those bounds.
 
 - N leaves every cell before the first feasible position.
@@ -167,6 +179,26 @@ the component stronger.
 `just time up-to-n` on the shipped 18-clue 9×9, 3 reps, non-deterministic
 solve off. Candidate code is byte-equal to the committed link, so only baseline
 rows print: this is the floor a later component change is judged against.
+
+**The rule correction (#613) costs nothing.** The component and the board
+changed together, so a component swap into the old board would time a
+different puzzle; `just time up-to-n` on the corrected tree prints baseline
+rows only, 2026-09-26:
+
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n | 16400ms | — | — | BASELINE |
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n after-logical | 12000ms | — | — | BASELINE |
+
+The comparison is link vs link instead: the committed `PUZZLE_LINK.txt` before
+the correction against the one after, both stripped, one rep of each per round,
+3 rounds interleaved, non-deterministic solve off. It is not a `just time` row.
+
+| board | before | after | ratio |
+|---|---|---|---|
+| up-to-n | 16200ms | 15800ms | 0.98x |
+| up-to-n after-logical | 12000ms | 12000ms | 1.00x |
+
+Both rows sit inside 1.1×, the bar for a change that adds no deduction: the
+bounds and the clue shift by N together, so `update` prunes the same cells.
 
 **The prefix-cell prune (#369) pays for itself.** `just time up-to-n` with
 the prune stripped from the working-tree component (the committed link, with

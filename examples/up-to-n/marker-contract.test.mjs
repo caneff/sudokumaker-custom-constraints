@@ -56,11 +56,21 @@ const built = comp => {
   assert.deepStrictEqual(built(c).line, [1, 5, 9, 13])
 }
 
-// Bottom of column 4: read upward, target 4.
+// Bottom of column 4: read upward, target 4. 6 is the largest clue a 4x4
+// line aiming at 4 can carry: 1 + 2 + 3, the target last.
 {
-  const [c] = setup([{ cells: [id(3, 3), id(3, 2)], value: '10' }])
+  const [c] = setup([{ cells: [id(3, 3), id(3, 2)], value: '6' }])
   assert.deepStrictEqual(built(c), {
-    ctor: 'UpToNComponent', line: [15, 11, 7, 3], target: 4, clue: 10
+    ctor: 'UpToNComponent', line: [15, 11, 7, 3], target: 4, clue: 6
+  })
+}
+
+// A typed 0 is a clue: the target is the first cell read. It registers a
+// component like any other value.
+{
+  const [c] = setup([{ cells: [id(0, 2), id(1, 2)], value: '0' }])
+  assert.deepStrictEqual(built(c), {
+    ctor: 'UpToNComponent', line: [8, 9, 10, 11], target: 3, clue: 0
   })
 }
 
@@ -141,11 +151,15 @@ refuses([{ cells: [id(0, 0), id(2, 0)], value: '5' }], /adjacent/)
 // Adjacent, but at neither end of the line.
 refuses([{ cells: [id(1, 0), id(2, 0)], value: '5' }], names)
 refuses([{ cells: [id(0, 1), id(0, 2)], value: '5' }], /R2C1.*R3C1/)
-// A non-numeric, a zero, a negative and a fractional value.
-refuses([{ cells: [id(0, 1), id(0, 0)], value: 'x' }], /positive integer/)
-refuses([{ cells: [id(0, 1), id(0, 0)], value: '0' }], /positive integer/)
-refuses([{ cells: [id(0, 1), id(0, 0)], value: '-3' }], /positive integer/)
-refuses([{ cells: [id(0, 1), id(0, 0)], value: '2.5' }], /positive integer/)
+// A non-numeric, a negative, a fractional and a zero-padded value.
+refuses([{ cells: [id(0, 1), id(0, 0)], value: 'x' }], /R2C1.*R1C1.*not a whole number/)
+refuses([{ cells: [id(0, 1), id(0, 0)], value: '-3' }], /R2C1.*R1C1.*not a whole number/)
+refuses([{ cells: [id(0, 1), id(0, 0)], value: '2.5' }], /R2C1.*R1C1.*not a whole number/)
+refuses([{ cells: [id(0, 1), id(0, 0)], value: '05' }], /R2C1.*R1C1.*not a whole number/)
+// Above the clue range: a 4x4 line aiming at 4 reads at most 1 + 2 + 3 = 6.
+refuses([{ cells: [id(3, 3), id(3, 2)], value: '7' }], /R4C4.*R3C4.*above 6/)
+// The range is 10 - N for each target: the top of column 1 allows 9, not 10.
+refuses([{ cells: [id(0, 0), id(0, 1)], value: '10' }], /R1C1.*R2C1.*above 9/)
 // Target digit outside the digit range: column 5 on a board whose digits stop
 // at 4.
 refuses(
