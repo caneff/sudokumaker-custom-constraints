@@ -43,7 +43,8 @@ function runningStart (puzzle, line) {
 // Arc-consistency for "a < b" / "a <= b": below(puzzle, a, b, strict).
 // #include ../_shared/below.js
 
-// The set of clue values the line's live candidates can still realize.
+// The clue values the line's live candidates can still realize, as a mask
+// (bit k set = clue k possible).
 //
 // A clue value k means: cells line[0..k-1] climb, then (if k < n) cell line[k]
 // breaks the run. So k is possible only if both hold:
@@ -61,28 +62,26 @@ function runningStart (puzzle, line) {
 // end value, so from maxEnd[k-1]. Rejecting k only when even the largest
 // reachable predecessor cannot be broken keeps this sound — it never drops a
 // true clue.
+//
+// Candidates are bitmasks: -(1 << d) masks every digit >= d, m & -m isolates
+// the lowest set bit, and 31 - clz32 reads a bit's position.
 function feasibleClues (puzzle, line, climbStrict, breakStrict) {
   const n = line.length
-  const feasible = new Set()
-  let prevMin = -Infinity
+  let feasible = 0
+  let floor = 0 // the smallest digit that climbs from the previous minEnd
   for (let j = 0; j < n; j++) {
-    let mn = Infinity
-    let mx = -Infinity
-    for (const d of puzzle.getCandidates(line[j])) {
-      if (climbStrict ? d > prevMin : d >= prevMin) {
-        if (d < mn) mn = d
-        if (d > mx) mx = d
-      }
-    }
-    if (mn === Infinity) break // no length-(j+1) prefix; no longer clue either
-    prevMin = mn
+    const climb = puzzle.getCandidatesBitMask(line[j]) & -(1 << floor)
+    if (!climb) break // no length-(j+1) prefix; no longer clue either
+    const mn = 31 - Math.clz32(climb & -climb)
+    const mx = 31 - Math.clz32(climb)
+    floor = climbStrict ? mn + 1 : mn
     const k = j + 1
     if (k === n) {
-      feasible.add(k)
+      feasible |= 1 << k
     } else {
-      let minNext = Infinity
-      for (const d of puzzle.getCandidates(line[k])) if (d < minNext) minNext = d
-      if (breakStrict ? minNext < mx : minNext <= mx) feasible.add(k)
+      const next = puzzle.getCandidatesBitMask(line[k])
+      const minNext = 31 - Math.clz32(next & -next)
+      if (next && (breakStrict ? minNext < mx : minNext <= mx)) feasible |= 1 << k
     }
   }
   return feasible
@@ -111,10 +110,8 @@ function * update (instance, puzzle) {
   // min/max interval: it also drops interior values whose required break is
   // impossible, not just values outside the reachable run-length range.
   if (!puzzle.hasValue(clue)) {
-    const feasible = feasibleClues(puzzle, line, climbStrict, breakStrict)
-    const bad = []
-    for (let d = lo; d <= hi; d++) if (!feasible.has(d)) bad.push(d)
-    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
+    const bad = puzzle.getCandidatesBitMask(clue) & ~feasibleClues(puzzle, line, climbStrict, breakStrict)
+    if (bad) yield puzzle.removeCandidatesFromCell(bad, clue)
   }
 
   // ---- Forward: the clue's minimum forces a guaranteed climbing prefix ----
@@ -123,7 +120,8 @@ function * update (instance, puzzle) {
   // window does not: it counts j cells strictly below line[j], which only holds
   // while the run climbs strictly. Where it does not, the whole prefix may be
   // one repeated digit and the window would cut digits the line needs.
-  const kmin = Math.min(...Array.from(puzzle.getCandidates(clue)))
+  const clueM = puzzle.getCandidatesBitMask(clue)
+  const kmin = 31 - Math.clz32(clueM & -clueM)
   for (let j = 0; j < kmin && j < n; j++) {
     if (j >= 1) yield * below(puzzle, line[j - 1], line[j], climbStrict)
     if (!climbStrict) continue
@@ -132,9 +130,9 @@ function * update (instance, puzzle) {
     // is impossible for every feasible clue.
     const floor = lo + j
     const ceil = hi - (kmin - 1 - j)
-    const bad = []
-    for (let d = lo; d <= hi; d++) if (d < floor || d > ceil) bad.push(d)
-    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), line[j])
+    // Every digit below floor, plus every digit above ceil.
+    const bad = puzzle.getCandidatesBitMask(line[j]) & (((1 << floor) - 1) | -(1 << (ceil + 1)))
+    if (bad) yield puzzle.removeCandidatesFromCell(bad, line[j])
   }
 
   // ---- Forward: clue pinned -> the break after the prefix's last cell ----

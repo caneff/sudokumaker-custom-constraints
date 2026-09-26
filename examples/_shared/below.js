@@ -5,12 +5,16 @@
 // Arc-consistency for "a < b" (strict) or "a <= b" (not strict) using live
 // candidates.
 function * below (puzzle, a, b, strict) {
-  const ca = Array.from(puzzle.getCandidates(a))
-  const cb = Array.from(puzzle.getCandidates(b))
-  const maxB = Math.max(...cb)
-  const minA = Math.min(...ca)
-  const rmA = ca.filter(d => (strict ? d >= maxB : d > maxB))
-  const rmB = cb.filter(d => (strict ? d <= minA : d < minA))
-  if (rmA.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmA), a)
-  if (rmB.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(rmB), b)
+  const ma = puzzle.getCandidatesBitMask(a)
+  const mb = puzzle.getCandidatesBitMask(b)
+  if (!ma || !mb) return // an emptied cell: the branch is already dead
+  // Bit d set = digit d possible. 31 - clz32 reads the highest set bit, and
+  // m & -m isolates the lowest.
+  const maxB = 31 - Math.clz32(mb)
+  const minA = 31 - Math.clz32(ma & -ma)
+  // -(1 << d) masks every digit >= d; (1 << d) - 1 every digit < d.
+  const rmA = ma & -(1 << (strict ? maxB : maxB + 1))
+  const rmB = mb & ((1 << (strict ? minA + 1 : minA)) - 1)
+  if (rmA) yield puzzle.removeCandidatesFromCell(rmA, a)
+  if (rmB) yield puzzle.removeCandidatesFromCell(rmB, b)
 }

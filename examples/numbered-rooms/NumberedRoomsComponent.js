@@ -73,10 +73,13 @@ function * update (instance, puzzle) {
   // Step 3: clue solved to c (mask has one bit). On a house c appears once in
   // the line, at the target, so remove c from every cell at a non-working
   // index. On a bare line c may sit at a dead index too, so this stands down.
+  // One plural change covers every dead cell that still holds c.
   if (house && (clueM & (clueM - 1)) === 0) { // x & (x-1) clears the lowest bit; zero = one bit set
+    const dead = []
     for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
-      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) yield drop(clueM, line[k - 1])
+      if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) dead.push(line[k - 1])
     }
+    if (dead.length > 0) yield puzzle.removeCandidatesFromCells(clueM, dead)
   }
 
   // Step 4: one index k left, so the target is known: it must equal the clue.
