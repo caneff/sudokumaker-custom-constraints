@@ -72,8 +72,10 @@ TIE = re.compile(r"  tie (r\dc\d) [\d|]+ = (r\dc\d) [\d|]+, number (\d+), QQRR (
 
 
 def parse_hits(text):
-    """Each HIT block of a finder log as {"ties": [(a, b, number, qqrr)], "grid": str},
-    read by the `  tie ` and `  grid ` markers, so any number of tie lines parses."""
+    """Each complete HIT block of a finder log as {"ties": [(a, b, number, qqrr)], "grid": str},
+    read by the `  tie ` and `  grid ` markers, so any number of tie lines parses. chan_big
+    prints a HIT only with at least one tie, so a block with no tie or no grid was cut short
+    by a kill and is left out."""
     hits = []
     for line in text.split("\n"):
         if line.startswith("HIT"):
@@ -82,7 +84,7 @@ def parse_hits(text):
             hits[-1]["ties"].append(TIE.match(line).groups())
         elif hits and line.startswith("  grid "):
             hits[-1]["grid"] = line.split()[1]
-    return hits
+    return [h for h in hits if h["ties"] and h["grid"]]
 
 
 def logged_grids(path):

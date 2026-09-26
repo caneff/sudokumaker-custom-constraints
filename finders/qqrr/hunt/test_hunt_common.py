@@ -62,6 +62,11 @@ assert [h["grid"] for h in hits] == [G1, G2]
 assert [len(h["ties"]) for h in hits] == [1, 2]
 assert hits[1]["ties"][1] == ("r4c2", "r4c5", "7654321", "34")
 assert hc.parse_hits("no hits here\n") == []
+# a log cut after a HIT line, or after HIT and one tie, parses to the complete blocks before it
+done = "HIT 1 1s\n" + TIE_A + "\n" + QQRR + "\n  grid " + G1 + "\n"
+assert [h["grid"] for h in hc.parse_hits(done + "HIT 2 2s\n")] == [G1]
+assert [h["grid"] for h in hc.parse_hits(done + "HIT 2 2s\n" + TIE_B + "\n")] == [G1]
+assert hc.parse_hits("HIT 1 1s\n") == []
 # logged_grids reads every grid line of a log file
 import tempfile
 
