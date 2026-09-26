@@ -182,7 +182,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("at least one example was found (render-fail run)", len(examples_before) > 0)
     check(
         "no PNG exists yet -- every render failed",
-        not list((out / "renders").glob("*.png")),
+        not [p for p in (out / "renders").iterdir() if p.name.count(".") == 1],
     )
 
     resume_env = dict(os.environ)
@@ -605,11 +605,16 @@ class PartialRenderFinder:
 sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
 """
     argv = [sys.executable, "-c", partial_script, "--out", str(out), "--seeds", "0:30"]
-    subprocess.run(
+    first = subprocess.run(
         argv,
         capture_output=True,
         text=True,
         env=dict(os.environ, TOY_PARTIAL_SAVE="1"),
+    )
+    check(
+        f"a hunt whose renders fail mid-write still exits 0 (stderr: "
+        f"{first.stderr[-500:]})",
+        first.returncode == 0,
     )
 
     def decodes(path):
@@ -622,7 +627,7 @@ sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
 
     check(
         "a failed mid-write save leaves no file at renders/<seed>.png",
-        not list((out / "renders").glob("*.png")),
+        not [p for p in (out / "renders").iterdir() if p.name.count(".") == 1],
     )
     check(
         "a failed mid-write save leaves no temp file behind",
@@ -632,9 +637,32 @@ sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
     resume = subprocess.run(argv, capture_output=True, text=True, env=env_ok)
     check(f"resume exits 0 (stderr: {resume.stderr[-500:]})", resume.returncode == 0)
     pngs = sorted((out / "renders").glob("*.png"))
+    n_examples = len((out / "examples.jsonl").read_text().splitlines())
     check(
         "resume after a mid-write failure ends with a valid PNG per example",
-        len(pngs) > 0 and all(decodes(p) for p in pngs),
+        n_examples > 0 and len(pngs) == n_examples and all(decodes(p) for p in pngs),
+    )
+
+    # A kill mid-save leaves a driver temp file; resume sweeps it. A file
+    # that only looks like one is not the driver's and stays.
+    stale = out / "renders" / "7.tmp-99999.png"
+    stale.write_bytes(b"partial")
+    foreign = out / "renders" / "notes.tmp-x.png"
+    foreign.write_bytes(b"mine")
+    subprocess.run(argv, capture_output=True, text=True, env=env_ok)
+    check("resume sweeps a stale driver temp file", not stale.exists())
+    check("resume leaves a non-driver *.tmp-*.png alone", foreign.exists())
+    foreign.unlink()
+
+    # Tail-truncated: still decodes, but has no IEND.
+    victim = pngs[-1]
+    victim.write_bytes(victim.read_bytes()[:-12])
+    subprocess.run(argv, capture_output=True, text=True, env=env_ok)
+    check(
+        "resume re-renders a PNG whose IEND tail is cut off",
+        decodes(victim)
+        and victim.stat().st_size > 0
+        and victim.read_bytes().endswith(b"IEND\xaeB`\x82"),
     )
 
     victim = pngs[0]
