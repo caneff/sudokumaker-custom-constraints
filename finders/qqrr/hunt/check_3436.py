@@ -15,7 +15,12 @@ for p in sorted(glob.glob(str(hc.LOGS / "big-*.log"))):
 for g, src in seen.items():
     grid = [[int(d) for d in row] for row in g.split("/")]
     ranks, nums, cr = oracle.rank_grid(grid)
-    ones = {(wr, wc) for wr in range(8) for wc in range(8) if ranks[wr][wc] == 1}
+    ones = {
+        (wr, wc)
+        for wr in range(len(ranks))
+        for wc in range(len(ranks))
+        if ranks[wr][wc] == 1
+    }
     clean = [f"r{r + 1}c{c + 1}" for r, c in hc.q34_accept(ranks, cr)]
     print(
         src,
