@@ -107,7 +107,10 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // document is wrapped, unchanged, as one `{ config }` entry -- the numeric
   // `type` codes in a saved link already match `ConstraintType`
   // (bundle.claude.js:9395-9450) one for one.
-  const constraints = p.constraints.map(config => ({ config }))
+  // A record with `disabled: true` is switched off in the app and never
+  // reaches the solver, so it is dropped here too (#586); without this a
+  // probe of a link carrying a disabled constraint runs it as if enabled.
+  const constraints = p.constraints.filter(config => !config.disabled).map(config => ({ config }))
 
   return {
     type: 'start',
