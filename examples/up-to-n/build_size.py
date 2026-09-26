@@ -141,7 +141,9 @@ SPEC = Spec(
 
 MINIMAL_9X9 = (HERE / "PUZZLE_LINK_9x9.txt", HERE / "gen_9x9.json")
 # Clues the shipped 9x9 shows. 18 is the fewest of the counts probed that the
-# live app solves: 15 times out, 18 is unique in 15 s (finding 5).
+# live app solves: 15 times out, 18 is unique in 15 s (finding 5). Re-timed
+# under the corrected rule (#614, 2026-09-26): shipped 15200 ms cold, 11700 ms
+# after-logical; minimal 13-clue board DNF (all 3 reps hit the 300 s cap).
 SHIPPED_9X9_CLUES = 18
 
 

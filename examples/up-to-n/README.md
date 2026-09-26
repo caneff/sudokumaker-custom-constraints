@@ -211,7 +211,15 @@ RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_probe.txt: all 3 reps hi
 Without the prune the shipped board does not solve inside 300 s; with it, it
 solves in 14.5 s. The refusal is the record: there is no ratio to print.
 
-`PUZZLE_LINK_9x9.txt`, the minimal 13-clue board, has no row: the live app
-found no solution to it within 300 s in one rep
-(`docs/research/368-up-to-n-setup-throw.md`, finding 5), and a DNF on record is
-not re-measured.
+**The 9×9 re-timed under the corrected rule (#614), 2026-09-26.** Both boards
+through the standard driver, 1 worker, app v2026.08.14-d47fc4b, the old rows
+above being taken under the old `update`:
+
+| board | driver output |
+|---|---|
+| shipped 18-clue, `just time up-to-n` | `\| 2026-09-26 \| v2026.08.14-d47fc4b \| up-to-n \| 15200ms \| — \| — \| BASELINE \|` and `\| 2026-09-26 \| v2026.08.14-d47fc4b \| up-to-n after-logical \| 11700ms \| — \| — \| BASELINE \|` |
+| minimal 13-clue, `just time up-to-n --board PUZZLE_LINK_9x9.txt` | DNF: `RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)` |
+
+The shipped board still solves in about 15 s cold and 12 s after the logical
+pass; the minimal board still does not solve inside the 300 s cap. The numbers
+support the same choice of board: the 18-clue one ships.
