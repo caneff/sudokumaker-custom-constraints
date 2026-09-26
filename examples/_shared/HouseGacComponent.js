@@ -67,10 +67,9 @@ const freePositions = new Uint8Array(MAX_CELLS)
 //! per call, and a lookup halves the call (docs/research/all-different-gac.md,
 //! "Precomputed bit counts"). `cellsInGroupOf` covers every group and
 //! `digitCountOf` every digit set the board can make. The digit table doubles
-//! with each digit, 131 KB at 16, so a board past 16 is refused at setup --
-//! by the same RangeError, loud in the Node harness and console-only in the
-//! app. Its table is capped so that loading the code on such a board still
-//! works.
+//! with each digit, 131 KB at 16, so a board past 16 is refused at setup, by
+//! a RangeError as visible as `MAX_CELLS`'s. Its table is capped so that
+//! loading the code on such a board still works.
 const MAX_DIGIT = 16
 //! Set-bit count of every group index: how many cells a group holds.
 const cellsInGroupOf = countTable(2 ** MAX_CELLS)
