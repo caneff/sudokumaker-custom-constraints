@@ -17,9 +17,7 @@
 // sum is derived, and main-global.js gives every framed line a joint component
 // that enforces its own clues.
 function getAffectedCells (cells, target, lines) {
-  const out = cells.slice()
-  for (const line of lines) for (const cell of line) out.push(cell)
-  return out
+  return [...cells, ...lines.flat()]
 }
 
 // `lines` are the n perpendicular lines the main code hands over. The component
