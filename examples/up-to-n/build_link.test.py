@@ -1,9 +1,10 @@
 # Checks on the Up to N rule (build_size.SPEC) and the boards it ships.
 #
-# 1. The rule's CP-SAT model and the JS component's `validate` agree on
-#    hand-built lines: for each line, target and clue, the model with the line
+# 1. The rule's clue function, its CP-SAT model and the JS component's
+#    `validate` agree on hand-built lines: `up_to_n` gives the sum worked out
+#    by hand, and for each line, target and clue, the model with the line
 #    fixed is satisfiable exactly when `validate` accepts the filled line, and
-#    both match the sum worked out by hand. The lines include bare ones -- a
+#    both match that sum. The lines include bare ones -- a
 #    repeated digit, a repeated target, the target absent.
 # 2. Every committed board -- the shipped 9x9 and the 4x4 and 6x6 variants:
 #    its link decodes to a bare n x n sudoku whose drawn markers carry the
@@ -33,6 +34,7 @@ from build_size import (
     SPEC,
     add_up_to_n,
     shipped_9x9,
+    up_to_n,
 )
 from framebuild import (
     NO_RING_RULES_PREFIX,
@@ -113,6 +115,10 @@ console.log(JSON.stringify(out))
 def test_model_and_validate_agree_on_hand_built_lines():
     cases = []
     for digits, target, true_sum in LINES:
+        # The clue function the search fills every marker from, on the line
+        # posted as row target - 1, as model_accepts does.
+        row = [(target - 1, c) for c in range(len(digits))]
+        assert up_to_n(digits, row, None) == true_sum, ("up_to_n", digits, target)
         # The true sum, one off either way, and an arbitrary clue for a line
         # with no target at all.
         clues = (
