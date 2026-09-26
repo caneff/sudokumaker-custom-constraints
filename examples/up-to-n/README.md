@@ -9,7 +9,8 @@ has the clue 0.
 For example, a clue of 4 at the left end of row 2 is true of the row `3124`:
 the row aims at 2, and 3 + 1 = 4. A marker with no number is not a clue.
 
-On an n×n board let TOTAL = n(n+1)/2 (10, 21 and 45 at 4×4, 6×6 and 9×9). A
+Let TOTAL be the sum of the puzzle's digits, `minDigit..maxDigit`: n(n+1)/2
+on an n×n board with digits from 1 (10, 21 and 45 at 4×4, 6×6 and 9×9). A
 line aiming at N carries a clue from 0 (N first) to TOTAL - N (N last).
 
 **The far end carries no information.** A row or column holds N exactly once,
@@ -62,8 +63,7 @@ group's cells, for:
 - a clued marker whose value is not a whole number 0 or above (a typed 0 is
   a clue: N is the first cell);
 - a clued marker whose target digit is outside the puzzle's digit range;
-- a clued marker whose value is above TOTAL - N, the most its line can read
-  (TOTAL here is the sum of the puzzle's digits, `minDigit..maxDigit`).
+- a clued marker whose value is above TOTAL - N, the most its line can read.
 
 A marker with an empty value is checked for shape and then registers nothing.
 
