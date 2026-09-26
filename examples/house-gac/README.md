@@ -185,3 +185,17 @@ finishes instantly either way
 near zero under "Find all solutions", GAC filter or not). The filter's real
 payoff is AutoStep reach (the table above), not search cost; #427 is the
 open search for a classic 9x9 where GAC alone moves the search-cost row.
+
+#458 (raw-mask removals, module-scratch `freePositions`, no
+`instance.cells` write) timed against the link before it, from a checkout
+of `main` with the change applied uncommitted:
+
+| date | app version | board | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-26 | v2026.08.14-d47fc4b | house-gac | 0ms | 0ms | — | NO TIME |
+| 2026-09-26 | v2026.08.14-d47fc4b | house-gac after-logical | 0ms | 0ms | — | NO TIME |
+
+`two-row rule: NO TIME`. Both sides read 0 ms on both rows, so neither row
+places a constraint (docs/real-app-timing.md, the two-row rule): the change
+neither clears nor fails the bar on this board, for the same reason as the
+baseline rows above.
