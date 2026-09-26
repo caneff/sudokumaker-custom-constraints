@@ -505,13 +505,19 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
         seed = event["seed"]
         if (out / "renders" / f"{seed}.png").exists():
             continue
-        if stateful:
-            candidate = finder.candidate_from_record(record)
-        else:
-            candidate = finder.propose(random.Random(seed))
         new_event = dict(event)
         new_event.pop("render_error", None)
-        _render_example(finder, out, seed, candidate, new_event)
+        try:
+            if stateful:
+                candidate = finder.candidate_from_record(record)
+            else:
+                candidate = finder.propose(random.Random(seed))
+        except Exception as e:
+            # Same rule as `_render_example`: a presentation-layer fault
+            # lands on the seed's event, it never stops the resume.
+            new_event["render_error"] = f"{type(e).__name__}: {e}"
+        else:
+            _render_example(finder, out, seed, candidate, new_event)
         if new_event != event:
             progress_events[i] = new_event
             progress_lines[i] = json.dumps(new_event) + "\n"

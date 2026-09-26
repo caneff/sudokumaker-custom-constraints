@@ -270,6 +270,9 @@ class StatefulRenderFinder:
         self.seeds_seen = state["seeds_seen"]
 
     def candidate_from_record(self, record):
+        # TOY_HOOK_RAISES simulates a record the hook cannot rebuild.
+        if os.environ.get("TOY_HOOK_RAISES"):
+            raise KeyError("grid")
         return tuple(record["grid"])
 
     def render(self, candidate):
@@ -330,6 +333,41 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         "repair never called propose() (exit 0 under TOY_NO_PROPOSE) and left "
         "state.json's counter unchanged",
         json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
+    )
+
+    # A record the hook cannot rebuild is a presentation-layer fault too: it
+    # lands on the seed's event and never stops the resume (#538 review C1).
+    raise_out = Path(tmp) / "hook-raises"
+    run_argv = [sys.executable, "-c", stateful_render_script]
+    seeds_argv = ["--out", str(raise_out), "--seeds", "0:30"]
+    subprocess.run(
+        run_argv + seeds_argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_RENDER_FAIL="1"),
+    )
+    raise_result = subprocess.run(
+        run_argv + seeds_argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_HOOK_RAISES="1"),
+    )
+    raise_events = [
+        json.loads(line)
+        for line in (raise_out / "progress.jsonl").read_text().splitlines()
+    ]
+    check(
+        f"a raising candidate_from_record doesn't stop the resume (stderr: "
+        f"{raise_result.stderr[-300:]})",
+        raise_result.returncode == 0 and len(raise_events) == 30,
+    )
+    check(
+        "the hook's failure is recorded on each example's event as render_error",
+        all(
+            "KeyError" in e.get("render_error", "")
+            for e in raise_events
+            if e.get("outcome") == "example"
+        ),
     )
 
 with tempfile.TemporaryDirectory() as tmp:
