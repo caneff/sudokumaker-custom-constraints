@@ -180,6 +180,26 @@ the component stronger.
 solve off. Candidate code is byte-equal to the committed link, so only baseline
 rows print: this is the floor a later component change is judged against.
 
+**The rule correction (#613) costs nothing.** The component and the board
+changed together, so a component swap into the old board would time a
+different puzzle; `just time up-to-n` on the corrected tree prints baseline
+rows only, 2026-09-26:
+
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n | 16400ms | — | — | BASELINE |
+| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n after-logical | 12000ms | — | — | BASELINE |
+
+The comparison is link vs link instead: the committed `PUZZLE_LINK.txt` before
+the correction against the one after, both stripped, one rep of each per round,
+3 rounds interleaved, non-deterministic solve off. It is not a `just time` row.
+
+| board | before | after | ratio |
+|---|---|---|---|
+| up-to-n | 16200ms | 15800ms | 0.98x |
+| up-to-n after-logical | 12000ms | 12000ms | 1.00x |
+
+Both rows sit inside 1.1×, the bar for a change that adds no deduction: the
+bounds and the clue shift by N together, so `update` prunes the same cells.
+
 **The prefix-cell prune (#369) pays for itself.** `just time up-to-n` with
 the prune stripped from the working-tree component (the committed link, with
 the prune, as baseline) refused on its cold row, 2026-09-14:
