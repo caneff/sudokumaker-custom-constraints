@@ -75,10 +75,10 @@ for (const D of [4, 6, 9]) {
 // A cell before every feasible position of N keeps only the digits some
 // feasible position admits within its sum bounds. Worked by hand on a bare
 // 4-cell line over 1..4, every cell open.
-function settle (target, clue) {
+function settle (target, clue, opts) {
   installGlobals(1, 4)
   const LINE = [0, 1, 2, 3]
-  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4])
+  const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3, 4], opts)
   const inst = {}
   cur.setParams(inst, LINE, target, clue)
   fixpoint(cur, inst, p)
@@ -103,14 +103,8 @@ assert.deepStrictEqual(settle(4, 1)[0], [1])
 // least 1. On a house the first 2 is the only 2, so 2 leaves every other cell
 // and the house's hidden single places it in the first. (On a bare line a
 // later cell may hold a second 2, so nothing is removed.)
-{
-  installGlobals(1, 4)
-  const LINE = [0, 1, 2, 3]
-  const p = makePuzzle({ 0: 2, 1: 1, 2: 3, 3: 4 }, () => [1, 2, 3, 4], { houses: [LINE] })
-  const inst = {}
-  cur.setParams(inst, LINE, 2, 0)
-  fixpoint(cur, inst, p)
-  const cands = LINE.map(c => [...p._cand.get(c)].sort())
-  assert.deepStrictEqual(cands, [[1, 2, 3, 4], [1, 3, 4], [1, 3, 4], [1, 3, 4]])
-}
+assert.deepStrictEqual(
+  settle(2, 0, { houses: [[0, 1, 2, 3]] }),
+  [[1, 2, 3, 4], [1, 3, 4], [1, 3, 4], [1, 3, 4]]
+)
 console.log('PASS')
