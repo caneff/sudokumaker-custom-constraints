@@ -561,6 +561,52 @@ if __name__ == "__main__":
             == example_dir / "main.js"
         ), "an edited include must not change which backend file HEAD resolves to"
 
+    # a backend declared in examples/_shared/ rather than per-example
+    # (house-gac.js, #421): a board that opts into it can still ship its own
+    # main.js and main-global.js for an unrelated constraint -- real
+    # hit-counts does, for its "Hit Counts" backend, alongside the shared
+    # "House GAC" one -- so resolve_backend_file must add SHARED_BACKEND_FILES
+    # as a further candidate, not only fall back to it when BACKEND_FILES
+    # turns up nothing (#629).
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        example_dir = root / "hit-counts"
+        example_dir.mkdir()
+        shared_dir = root / "_shared"
+        shared_dir.mkdir()
+        (shared_dir / "house-gac.js").write_text("function update(){return 'gac'}\n")
+        (example_dir / "main.js").write_text("console.log('hit counts local lane')\n")
+        (example_dir / "main-global.js").write_text(
+            "console.log('hit counts global lane')\n"
+        )
+        _git_commit_all(root)
+        base_doc = _widget_doc(
+            minify_file(shared_dir / "house-gac.js"),
+            minify_js("function update(){return 1}\n"),
+        )
+        base_doc["puzzle"]["constraints"][0]["definition"]["name"] = "House GAC"
+        assert (
+            resolve_backend_file(example_dir, base_doc, "House GAC")
+            == shared_dir / "house-gac.js"
+        ), (
+            "the shared _shared/house-gac.js backend must resolve even when "
+            "the example ships its own main.js and main-global.js for a "
+            "different constraint"
+        )
+
+        # no candidate matches at all -> the error names every file it
+        # checked, house-gac.js included
+        no_match_doc = _widget_doc(
+            "SOMETHING NONE OF THEM HAVE",
+            minify_js("function update(){return 1}\n"),
+        )
+        no_match_doc["puzzle"]["constraints"][0]["definition"]["name"] = "House GAC"
+        try:
+            resolve_backend_file(example_dir, no_match_doc, "House GAC")
+            raise AssertionError("expected a no-backend-match failure")
+        except ValueError as e:
+            assert "house-gac.js" in str(e), str(e)
+
     # all reps timed out: the failure names the fixed 300s per-rep timeout
     # and the rep counts
     stdout = (
