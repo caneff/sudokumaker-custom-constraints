@@ -101,6 +101,16 @@ frame reader explains the directive itself.
 - Folder guide, page build and the artifact link:
   `docs/research/humanify-pedagogy/README.md`.
 
+## End-to-end seam
+
+- **Seam**: `just check-full`
+- **Blind to**: the live app — solve time (`just time`), how a link renders
+  and solves in sudokumaker.app, and anything a browser probe checks rather
+  than a Node or Python test asserts
+
+The controller re-runs it on a PR merged into current `main` before the
+merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
+
 ## Commands
 
 - **Build loop:** `just check` — lint and every test but the heavy ones, about
