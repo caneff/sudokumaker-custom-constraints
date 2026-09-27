@@ -10,12 +10,14 @@ One CP-SAT worker; about ten seconds in all.
 """
 
 import json
-import os
 import resource
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "finders" / "hunt"))
+from subprocess_env import success_env
 
 HERE = Path(__file__).resolve().parent
 FINDER = HERE / "tie_finder.py"
@@ -40,9 +42,11 @@ def check(name, cond):
 
 
 def run_cli(*args):
-    env = dict(os.environ, HUNT_FAKE_LOAD1="0")
     return subprocess.run(
-        [sys.executable, str(FINDER), *args], capture_output=True, text=True, env=env
+        [sys.executable, str(FINDER), *args],
+        capture_output=True,
+        text=True,
+        env=success_env(),
     )
 
 
