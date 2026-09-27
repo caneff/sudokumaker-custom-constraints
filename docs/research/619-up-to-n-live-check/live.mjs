@@ -45,6 +45,17 @@ const rulesText = async page => {
 
 const bodyLines = async (page, re) => (await page.evaluate(() => document.body.innerText)).split('\n').filter(l => re.test(l))
 
+// The corrected rule's worked example per size (build_size.py RULE_EXAMPLES,
+// the source of truth): what the rules text must contain for that n.
+const WORKED_EXAMPLE = {
+  4: 'a clue of 4 at the left end of row 2 is true of the row 3124, since 3 + 1 = 4',
+  6: 'a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11',
+  9: 'a clue of 12 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 = 12'
+}
+
+const failures = []
+const check = (desc, ok) => { console.log(`  ${ok ? 'ok  ' : 'FAIL'} — ${desc}`); if (!ok) failures.push(desc) }
+
 for (const [link, gen] of BOARDS) {
   const board = JSON.parse(readFileSync(DIR + gen, 'utf8'))
   const page = await open(link)
@@ -53,13 +64,24 @@ for (const [link, gen] of BOARDS) {
   const drawn = await labels(page, board.n)
   const recorded = Object.fromEntries(board.active.map(k => [k, String(board.clue[k])]))
   const sameLabels = JSON.stringify(Object.entries(drawn).sort()) === JSON.stringify(Object.entries(recorded).sort())
+  const rules = await rulesText(page)
+  const banners = await bodyLines(page, /failed|error/i)
   console.log(`\n== ${link} (${board.n}x${board.n}) screenshot ${shot}`)
   console.log('  labels drawn   :', JSON.stringify(Object.fromEntries(Object.entries(drawn).sort())))
   console.log('  labels recorded:', JSON.stringify(Object.fromEntries(Object.entries(recorded).sort())))
-  console.log('  labels match   :', sameLabels)
-  console.log('  rules text     :', await rulesText(page))
-  console.log('  banners        :', JSON.stringify(await bodyLines(page, /failed|error/i)))
+  console.log('  rules text     :', rules)
+  console.log('  banners        :', JSON.stringify(banners))
+  check(`${link}: labels drawn match recorded`, sameLabels)
+  check(`${link}: rules text carries the size-${board.n} worked example`, !!rules && rules.includes(WORKED_EXAMPLE[board.n]))
+  check(`${link}: no failed/error banner`, banners.length === 0)
   await page.context().close()
 }
 
 await browser.close()
+
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`)
+  for (const f of failures) console.log(`  - ${f}`)
+  process.exit(1)
+}
+console.log('\nAll checks passed.')

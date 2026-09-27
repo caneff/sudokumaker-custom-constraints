@@ -33,7 +33,7 @@ the candidate is byte-equal to the regenerated link:
 ```
 
 The comparison is link vs link. `link_vs_link.py` (below) times the committed
-`PUZZLE_LINK.txt` before the correction (1c43b3b~1) against the one after,
+`PUZZLE_LINK.txt` before the correction (46fbd12~1) against the one after,
 both stripped. Each round runs one rep of each link, in alternating order,
 with non-deterministic solve off. Raw reps, in ms:
 
@@ -85,7 +85,7 @@ for link_name, gen_name in [("PUZZLE_LINK.txt", "gen.json"), ("PUZZLE_LINK_9x9.t
     print(gen_name, "shown", sorted((k, clue[k]) for k in board.active))
 ```
 
-`link_vs_link.py`, run from the repo root with `uv run`, with `.scratch/old_link.txt` = `git show 1c43b3b~1:examples/up-to-n/PUZZLE_LINK.txt`:
+`link_vs_link.py`, run from the repo root with `uv run`, with `.scratch/old_link.txt` = `git show 46fbd12~1:examples/up-to-n/PUZZLE_LINK.txt`:
 
 ```python
 # One-off for #613: the committed PUZZLE_LINK.txt before and after the rule
