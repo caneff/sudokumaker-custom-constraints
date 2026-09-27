@@ -137,11 +137,13 @@ from the houses the case declares (`makePuzzle(..., { houses })`, with
 exactly when one house holds every queried cell, so a clue cell passed into
 the query reads as "may repeat", as in the app. Both the soundness mock and
 recovery-lib's candidate state serve that one API. One shared
-`makeLine(rnd, kind, n, D)` builds a bare line (random digits, any length,
-may repeat), a house (`n` distinct digits, `n < D`), or a full house (a
-permutation of `1..D`). Every example's soundness harness fuzzes all three
-kinds — except one whose component has no gate at all, which may enumerate
-bare fills alone: every house and full-house fill is also a bare fill, so the
-bare enumeration already covers the other two. Outside Sudoku's membership
-rule is that case (#260); a component that reads `getCellsCanHaveRepeats`
-anywhere must fuzz all three.
+`makeLine(rnd, kind, n, D)` builds one of three fill shapes: a bare line
+(random digits, any length, may repeat), a house (`n` distinct digits,
+`n < D`), or a full house (a permutation of `1..D`, a house with `oneToN`).
+The shapes are fixtures, not `lineKind` kinds: the full house is there so a
+rule gated on `oneToN` fires. Every example's soundness harness fuzzes all
+three shapes — except one whose component has no gate at all, which may
+enumerate bare fills alone: every house and full-house fill is also a bare
+fill, so the bare enumeration already covers the other two. Outside Sudoku's
+membership rule is that case (#260); a component that reads
+`getCellsCanHaveRepeats` anywhere must fuzz all three.
