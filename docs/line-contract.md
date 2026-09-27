@@ -6,14 +6,15 @@ code. Decided on the map issue #187, ticket #191. Terms are in `CONTEXT.md`.
 
 ## Line kinds
 
-A line is one of three kinds, ordered. A rule that needs one kind also fires on
-every kind above it.
+A line is one of two kinds, ordered. A rule that needs a house also fires on a
+house whose digit set is `{1..n}`; that set is a separate fact, `oneToN`, not a
+third kind (#631: no rule read a full house of any other set).
 
 | Kind | Digits may | Learned from |
 |-|-|-|
 | **bare** | repeat, be absent, any length | nothing — the default |
 | **house** | not repeat | `!puzzle.getCellsCanHaveRepeats(line)` |
-| **full house** | not repeat, and every digit the line can hold is present once | house and the union of live candidates across the line has exactly `line.length` digits |
+| house, **`oneToN`** | not repeat, and are exactly `1..line.length` | house and the union of live candidates across the line is exactly `{1..line.length}` |
 
 "Clued at both ends" is not a kind. It is a **pair** shape, owned by the global
 main code (below). The global lane gets those pairs from `framePairs`, which
@@ -31,7 +32,7 @@ have drawn one end and not the other, is where a lone clue is handled.
   1–9. `puzzle.spec.digitCount` is the digit count.
 - A one-cell line reads as a house (the app says so; no special case).
 - A rule that needs the line's digit set to be `{1..n}` (hit-counts n-1,
-  side sum) checks that set itself; full house alone does not promise it.
+  side sum) reads `oneToN`; `kind` alone does not promise it.
 
 ## How a component gates
 
@@ -48,15 +49,15 @@ a component.
 - **Query the line only**, never clue + line: a ring cell in the list flips the
   answer to `true`.
 - **Latch the repeats answer both ways; re-read the digit set every call.**
-  The re-ask-every-call rule applies to the full-house kind only. Whether a
+  The re-ask-every-call rule applies to `oneToN` only. Whether a
   line can repeat (bare vs. house) comes from `getCellsCanHaveRepeats`, a
   geometry fact fixed once `update` first runs, so it is cached whether it
   comes back true or false and the O(n) walk runs once per line
   (`component-contract.md`'s never-cache rule is about candidates, not this).
   One caveat: the solver can retire a filled built-in house for the rest of a
   branch, which can only weaken a cached answer, never make a removal unsound.
-  Full house is a candidate fact: whether the union of live candidates across
-  the line has exactly `line.length` digits changes with the search node, so
+  `oneToN` is a candidate fact: whether the union of live candidates across
+  the line is exactly `{1..line.length}` changes with the search node, so
   `update` re-tests it on every call rather than latching it once reached — latching it is what
   made #336 unsound. (A length test against `digitCount` does not work
   either: hit-counts boards run `minDigit 0` for the clue ring and a cage
@@ -121,7 +122,7 @@ Skyscraper's local variant ships the one-sided DP: a sweep over `(position,
 tallest so far, visible count)`, sound on every kind, no gate, and exact for a
 line whose cells are tied to nothing but their own candidates. It replaced the
 running cap of #196 once it cleared the timing bar (#206, #241). The two-clue
-DP is a pair shape, global only, gated on full house.
+DP is a pair shape, global only, gated on `oneToN`.
 
 ## Harness
 

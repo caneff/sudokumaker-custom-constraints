@@ -8,7 +8,11 @@ import { dirname } from 'path'
 import { makeIo, makePuzzle } from './harness-lib.mjs'
 
 const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
-const { lineKind, BARE, HOUSE, FULL_HOUSE } = load('line-kind.js', ['lineKind', 'BARE', 'HOUSE', 'FULL_HOUSE'])
+const { lineKind, BARE, HOUSE } = load('line-kind.js', ['lineKind', 'BARE', 'HOUSE'])
+
+// Two kinds, no third rung: a rule that needs the line's digits reads `oneToN`,
+// and no rule reads a full house of any other digit set (#631).
+assert.throws(() => load('line-kind.js', ['FULL_HOUSE']), /FULL_HOUSE/, 'the FULL_HOUSE rung is gone')
 
 const LINE = [0, 1, 2, 3]
 const CLUE = 100
@@ -16,13 +20,13 @@ const state = (cands, houses = [LINE]) =>
   makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, [CLUE]: 0 }, c => (c === CLUE ? [1] : cands[c]), { houses })
 const ONE_TO_FOUR = [[1, 2], [2, 3], [3, 4], [4, 1]]
 
-// ---- the three kinds, and the digit set on a full house ----
+// ---- the two kinds, and the digit set on a house ----
 assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR, []), LINE), { kind: BARE, oneToN: false })
 assert.deepStrictEqual(lineKind({}, state([[1, 5], [2], [3], [4]]), LINE), { kind: HOUSE, oneToN: false })
-assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR), LINE), { kind: FULL_HOUSE, oneToN: true })
-// four digits over four cells, but not 1..4: a full house of the wrong set
-assert.deepStrictEqual(lineKind({}, state([[0], [1], [2], [3]]), LINE), { kind: FULL_HOUSE, oneToN: false })
-assert.ok(BARE < HOUSE && HOUSE < FULL_HOUSE, 'a gate reads `kind >= HOUSE`')
+assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR), LINE), { kind: HOUSE, oneToN: true })
+// four digits over four cells, but not 1..4: a house of the wrong set
+assert.deepStrictEqual(lineKind({}, state([[0], [1], [2], [3]]), LINE), { kind: HOUSE, oneToN: false })
+assert.ok(BARE < HOUSE, 'a gate reads `kind >= HOUSE`')
 
 // ---- query the line alone: the clue cell is in no house with it ----
 assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
@@ -35,11 +39,11 @@ assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
 {
   const inst = {}
   const p = state(ONE_TO_FOUR)
-  assert.deepStrictEqual(lineKind(inst, p, LINE), { kind: FULL_HOUSE, oneToN: true })
+  assert.deepStrictEqual(lineKind(inst, p, LINE), { kind: HOUSE, oneToN: true })
   p._cand.get(2).add(0)
   assert.deepStrictEqual(lineKind(inst, p, LINE), { kind: HOUSE, oneToN: false }, 'a regained digit shuts the gate')
   p._cand.get(2).delete(0)
-  assert.deepStrictEqual(lineKind(inst, p, LINE), { kind: FULL_HOUSE, oneToN: true }, 'and it opens again')
+  assert.deepStrictEqual(lineKind(inst, p, LINE), { kind: HOUSE, oneToN: true }, 'and it opens again')
   // nothing about the digit set lands on the instance
   assert.ok(!('oneToN' in inst) && !('kind' in inst), `no hidden write: ${Object.keys(inst)}`)
 }
