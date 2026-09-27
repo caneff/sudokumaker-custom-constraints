@@ -16,7 +16,7 @@ const check = (desc, ok) => { console.log(`  ${ok ? 'ok  ' : 'FAIL'} — ${desc}
 // Expected result per tab: the typed 0 is accepted with no setup banner, and
 // the solver readout agrees with the true grid (unique on B0, whose true clue
 // is 0; broken on B1, whose true clue is 7).
-const EXPECT = { 1: /This is a unique solution\./, 2: /broken/i }
+const EXPECT = { 1: /This is a unique solution\./, 2: /cannot reach its sum/ }
 // The 4x4's three pre-existing clue labels (README, gen_4x4.json): a typed
 // value draws no label of its own, so this set must not grow.
 const RECORDED_LABELS = ['0', '4', '5']

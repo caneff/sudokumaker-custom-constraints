@@ -53,8 +53,8 @@ const WORKED_EXAMPLE = {
   6: 'a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11',
   9: 'a clue of 12 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 = 12'
 }
-// The corrected rule statement itself (main.js's registered comment_fn),
-// independent of any one size's worked example.
+// The corrected rule statement itself (build_size.py's rule_text(), the
+// SPEC's comment_fn), independent of any one size's worked example.
 const RULE_STATEMENT = 'the digits before the first N sum to the clue; N itself is not added'
 
 const failures = []
