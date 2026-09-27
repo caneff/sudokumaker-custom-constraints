@@ -173,7 +173,9 @@ class TieFinder:
 def main(argv):
     parser = argparse.ArgumentParser(prog="tie_finder", add_help=False)
     parser.add_argument("--hunt", choices=sorted(hc.HUNTS))
-    parser.add_argument("--ten")
+    # A window's top-left cell: rows and columns 1..8 on the 9x9 board.
+    windows = [f"r{r}c{c}" for r in range(1, N) for c in range(1, N)]
+    parser.add_argument("--ten", choices=windows, metavar="rXcY")
     parser.add_argument("--corner", choices=sorted(checker.CORNERS))
     parser.add_argument("--timeout", type=float)
     parser.add_argument("--q34", action="store_true")

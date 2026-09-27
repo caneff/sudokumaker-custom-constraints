@@ -115,4 +115,11 @@ with tempfile.TemporaryDirectory() as d:
     check("a hunt missing --hunt/--corner refuses (exit 2)", r.returncode == 2)
     check("the refusal names the missing flag", "--hunt" in r.stderr)
 
+with tempfile.TemporaryDirectory() as d:
+    out = Path(d) / "hunt"
+    flags = ["--hunt", "r1c5", "--corner", "bl", "--timeout", "1", "--ten", "r9c9"]
+    r = run_cli("--out", str(out), "--seeds=0:1", *flags)
+    check("a hunt with a window off the board refuses (exit 2)", r.returncode == 2)
+    check("the refused hunt wrote no run.json", not (out / "run.json").exists())
+
 sys.exit(0 if ok else 1)
