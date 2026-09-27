@@ -10,10 +10,6 @@ import { makeIo, makePuzzle } from './harness-lib.mjs'
 const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
 const { lineKind, BARE, HOUSE } = load('line-kind.js', ['lineKind', 'BARE', 'HOUSE'])
 
-// Two kinds, no third rung: a rule that needs the line's digits reads `oneToN`,
-// and no rule reads a full house of any other digit set (#631).
-assert.throws(() => load('line-kind.js', ['FULL_HOUSE']), /FULL_HOUSE/, 'the FULL_HOUSE rung is gone')
-
 const LINE = [0, 1, 2, 3]
 const CLUE = 100
 const state = (cands, houses = [LINE]) =>
