@@ -8,8 +8,8 @@
 //   kind   BARE (the cells may repeat a digit) or HOUSE (they cannot)
 //   oneToN a house whose live candidates are exactly {1..cells.length} -- the
 //          digit set a rule that reads the line as a permutation of 1..n needs.
-//          A full house of any other set, {0..n-1} say, is not one, and no
-//          rule reads it, so it is no kind of its own (#631).
+//          A full house of any other set, {0..n-1} say, is not one. No rule
+//          reads that case, so `kind` stops at HOUSE.
 //
 // Ask in `update` or `validate`, never in main code: main code runs before the
 // built-in row and column houses are registered and would read every line as
