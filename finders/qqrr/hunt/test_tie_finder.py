@@ -21,6 +21,10 @@ HERE = Path(__file__).resolve().parent
 FINDER = HERE / "tie_finder.py"
 # Found by chan_big.py in the 34-36 hunt (docs/research/2026-09-22-qqrr-tie-r5c1.md).
 GOOD = "436781529/978265134/125394876/217839465/354176982/689452713/763948251/591627348/842513697"
+# The tie hunt's first br grid (same doc): cage 33 at r5c1, a tie, QR 10 at r6c6, but r4c1 = 8.
+BR1 = "591247638/672183954/438695127/865934271/927516483/143872569/284369715/716458392/359721846"
+# hunt_common's r1c5 seed grid: everything but the tie holds at QR r6c6, corner br.
+SEED_R1C5 = "356791428/974286531/128534967/215948673/483617295/697352814/562873149/749165382/831429756"
 # GOOD with r1c1 and r1c2 swapped: row 1 still holds 1..9, column 1 and box 1 do not.
 NOT_SUDOKU = "346781529" + GOOD[9:]
 
@@ -65,6 +69,30 @@ with tempfile.TemporaryDirectory() as d:
             "QR",
         ),
         ("a grid that is not a sudoku", record(NOT_SUDOKU), False, "sudoku"),
+        (
+            "the found grid filed under the other cage",
+            record(GOOD, hunt="r5c1"),
+            False,
+            "cage",
+        ),
+        (
+            "a grid with no tie",
+            record(SEED_R1C5, ten="r6c6", corner="br"),
+            False,
+            "tie",
+        ),
+        (
+            "a grid over the bound",
+            record(BR1, hunt="r5c1", ten="r6c6", corner="br", q34=False),
+            False,
+            "bounded",
+        ),
+        (
+            "a grid with no 34-36 cell",
+            record(BR1, hunt="r5c1", ten="r6c6", corner="br"),
+            False,
+            "34-36",
+        ),
     ]
     (out / "examples.jsonl").write_text(
         "".join(json.dumps(rec) + "\n" for _, rec, _, _ in cases)
