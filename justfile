@@ -103,6 +103,8 @@ test:
     uv run finders/hunt/test_uniqueness.py
     uv run finders/hunt/test_minimizer.py
     uv run finders/hunt/test_watchdog.py
+    # A finder's own config in run.json, and an empty seed's reason (#491).
+    uv run finders/hunt/test_finder_config.py
     # finders/qqrr (#592): the rule oracle on a hand-worked 4x4, the CP-SAT
     # model against the oracle on 20 fixed grids, and the opener reader plus
     # count loop on a fixed grid. About five seconds together, workers 1.
