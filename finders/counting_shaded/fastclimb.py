@@ -2,9 +2,7 @@
 
     uv run finders/counting_shaded/fastclimb.py --test
 
-The .so is built on first import into a git-ignored `target/` beside this
-file, kept out of `.scratch/` so a worker's pre-report scratch sweep can
-never reach its tracked anchor .gitignore (#633).
+The .so is built on first import into a git-ignored `target/` beside this file.
 """
 
 import ctypes
@@ -21,9 +19,8 @@ DATA = (
 )  # notes, hits and images stayed there
 # Named `target` and holding a committed `*` .gitignore so merge-cleanup's
 # CACHE_DIRS sweeps the compiled artifact with the worktree instead of
-# refusing cleanup; see #559. Kept outside `.scratch/` (#633): a worker's
-# "clear .scratch/" step (`rm -rf .scratch`) does not see it, so it cannot
-# delete this tracked anchor by accident.
+# refusing cleanup; see #559. Kept outside `.scratch/` (#633), so a worker's
+# "clear .scratch/" step (`rm -rf .scratch`) can't delete this tracked anchor.
 BUILD = HERE / "target"
 SO = BUILD / "counting_shaded_fast.so"
 
