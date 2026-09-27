@@ -201,11 +201,13 @@ The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
 changed together, so a component swap into the old board would time a
 different puzzle. `just time up-to-n` on the corrected tree, run earlier on
 2026-09-26 while #613 was open, printed 16400 ms cold and 12000 ms
-after-logical; the #614 run above is the floor. The 7% spread between the two
-runs of one board is wider than the <5% run-to-run variance
-`docs/real-app-timing.md` records for a deterministic solve, but neither run
-is slower than the other by a margin that would flip the "costs nothing"
-verdict below, so the #614 numbers stand as recorded.
+after-logical; the #614 run above is the floor because it is the recorded
+`just time` measurement this example is judged against, not because it is
+the faster of the two. The 7% spread between the two runs of one board is
+wider than the <5% run-to-run variance `docs/real-app-timing.md` records
+for a deterministic solve, but neither run is slower than the other by a
+margin that would flip this section's "costs nothing" verdict, so the #614
+numbers stand as recorded.
 
 The comparison is link vs link instead: the committed `PUZZLE_LINK.txt` before
 the correction against the one after, both stripped, one rep of each per round,

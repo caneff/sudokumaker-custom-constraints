@@ -18,9 +18,10 @@
 # The 9x9 has two boards. The carve's minimal one, PUZZLE_LINK_9x9.txt /
 # gen_9x9.json, is unique by CP-SAT but times out in the live app: its 13
 # clues are a standard-driver DNF (3 reps at the 300 s cap; README §
-# Timing). Probe detail: docs/research/368-up-to-n-setup-throw.md, finding
-# 5. The shipped one, PUZZLE_LINK.txt / gen.json, is the same solution with
-# more clues shown and still no givens, derived from the minimal one:
+# Timing has the current numbers). Earlier background on why this board is
+# slow to solve: docs/research/368-up-to-n-setup-throw.md, finding 5. The
+# shipped one, PUZZLE_LINK.txt / gen.json, is the same solution with more
+# clues shown and still no givens, derived from the minimal one:
 #
 #   uv run examples/up-to-n/build_size.py 9 3 3 --local   # writes the plain pair
 #   (move the plain pair to PUZZLE_LINK_9x9.txt / gen_9x9.json)
@@ -142,9 +143,8 @@ SPEC = Spec(
 
 MINIMAL_9X9 = (HERE / "PUZZLE_LINK_9x9.txt", HERE / "gen_9x9.json")
 # Clues the shipped 9x9 shows: 18, not the minimal 13, because it must solve
-# inside the live app's time budget. The shipped 18 clues solve in 15200 ms
-# cold / 11700 ms after-logical; the minimal 13 are a DNF (README §
-# Timing). Selection detail: docs/research/368-up-to-n-setup-throw.md,
+# inside the live app's time budget (README § Timing has the current
+# numbers for both). Selection detail: docs/research/368-up-to-n-setup-throw.md,
 # finding 5.
 SHIPPED_9X9_CLUES = 18
 

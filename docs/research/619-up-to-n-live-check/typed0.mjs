@@ -16,14 +16,15 @@ const check = (desc, ok) => { console.log(`  ${ok ? 'ok  ' : 'FAIL'} — ${desc}
 // Expected result per tab: the typed 0 is accepted with no setup banner, and
 // the solver readout agrees with the true grid (unique on B0, whose true clue
 // is 0; broken on B1, whose true clue is 7).
-const EXPECT = {
-  1: { readoutHas: /This is a unique solution\./ },
-  2: { readoutHas: /broken/i }
-}
+const EXPECT = { 1: /This is a unique solution\./, 2: /broken/i }
+// The 4x4's three pre-existing clue labels (README, gen_4x4.json): a typed
+// value draws no label of its own, so this set must not grow.
+const RECORDED_LABELS = ['0', '4', '5']
 
 for (const [tab, what] of [['1', 'B0, true clue 0'], ['2', 'B1, true clue 7']]) {
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 1000 } })).newPage()
-  page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 200)))
+  const pageErrors = []
+  page.on('pageerror', e => { console.log('  [pageerror]', e.message.slice(0, 200)); pageErrors.push(e.message) })
   await page.goto(readFileSync('examples/up-to-n/PUZZLE_LINK_4x4.txt', 'utf8').trim(), { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(2500)
   await page.getByText('Up to N', { exact: true }).click(); await page.waitForTimeout(800)
@@ -38,7 +39,8 @@ for (const [tab, what] of [['1', 'B0, true clue 0'], ['2', 'B1, true clue 7']]) 
   await page.getByText('Up to N', { exact: true }).click(); await page.waitForTimeout(1000)
   await page.screenshot({ path: `.scratch/619-live/live-typed0-tab${tab}.png` })
   const setupBanners = await lines(page, /failed|error|whole number/i)
-  console.log('  labels (panel closed):', JSON.stringify(await svgTexts(page)))
+  const drawnLabels = await svgTexts(page)
+  console.log('  labels (panel closed):', JSON.stringify(drawnLabels))
   console.log('  banners:', JSON.stringify(setupBanners))
   await clickText(page, 'Tools'); await page.waitForTimeout(300)
   console.log('  solve  :', await clickIcon(page, 'ShowCandidates'))
@@ -50,7 +52,9 @@ for (const [tab, what] of [['1', 'B0, true clue 0'], ['2', 'B1, true clue 7']]) 
 
   check(`tab ${tab}: typed 0 registers (field reads "0")`, fieldValue === '0')
   check(`tab ${tab}: no setup refusal banner`, setupBanners.length === 0)
-  check(`tab ${tab}: solver readout matches the true grid`, readout.some(l => EXPECT[tab].readoutHas.test(l)))
+  check(`tab ${tab}: no uncaught page error`, pageErrors.length === 0)
+  check(`tab ${tab}: typed marker draws no label of its own`, JSON.stringify([...drawnLabels].sort()) === JSON.stringify(RECORDED_LABELS))
+  check(`tab ${tab}: solver readout matches the true grid`, readout.some(l => EXPECT[tab].test(l)))
 }
 await browser.close()
 
