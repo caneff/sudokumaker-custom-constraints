@@ -112,8 +112,11 @@ with tempfile.TemporaryDirectory() as d:
 
 with tempfile.TemporaryDirectory() as d:
     r = run_cli("--out", str(Path(d) / "hunt"), "--seeds=0:1", "--ten", "r7c7")
-    check("a hunt missing --hunt/--corner refuses (exit 2)", r.returncode == 2)
-    check("the refusal names the missing flag", "--hunt" in r.stderr)
+    check(
+        "a hunt missing --hunt/--corner/--timeout refuses (exit 2)", r.returncode == 2
+    )
+    for flag in ("--hunt", "--corner", "--timeout"):
+        check(f"the refusal names the missing {flag}", flag in r.stderr)
 
 with tempfile.TemporaryDirectory() as d:
     out = Path(d) / "hunt"
