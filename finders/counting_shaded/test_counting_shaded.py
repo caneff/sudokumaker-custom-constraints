@@ -303,3 +303,11 @@ def test_build_dir_is_a_cache_merge_cleanup_sweeps():
     # a cache-named directory (here `target`) whose own .gitignore is `*`.
     assert fastclimb.BUILD.name == "target"
     assert "*" in (fastclimb.BUILD / ".gitignore").read_text().splitlines()
+
+
+def test_build_dir_is_outside_scratch_so_a_worker_sweep_cannot_delete_it():
+    # #633: implement/SKILL.md's "clear .scratch/" step runs `rm -rf .scratch`,
+    # which deleted this dir's tracked anchor .gitignore on every worker that
+    # touched this finder (PRs #607, #609, #610, #612, #615). The anchor must
+    # live somewhere a scratch sweep never reaches.
+    assert ".scratch" not in fastclimb.BUILD.parts
