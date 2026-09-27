@@ -7,7 +7,7 @@ on, the hunt's seed grid as a hint, `--q34` adding the 34-36 criterion. The
 seed sets the solver's random seed. Every grid an earlier seed returned is
 forbidden (the finder's state), so a later seed finds a new grid or proves
 there is none. A capped solve comes back `Empty("timeout")`, a proof
-`Empty("infeasible after <k> found")`. `verify` re-reads the grid with the
+`Empty("infeasible with <k> grids forbidden")`. `verify` re-reads the grid with the
 oracle, never the model: sudoku, the cage's QQRR 33, the corner's QQRR 5,
 the bounded cell <= 7, QR 10 at the window, a tie, and the criterion.
 
@@ -101,7 +101,7 @@ class TieFinder:
         if res == cpsat.UNKNOWN:
             return Empty("timeout")
         if res == cp_model.INFEASIBLE:
-            return Empty(f"infeasible after {len(self.found)} found")
+            return Empty(f"infeasible with {len(self.found)} grids forbidden")
         if res not in cpsat.SOLVED:
             raise RuntimeError(s.StatusName(res))
         grid = tuple(s.Value(q.x[r][col]) for r in range(N) for col in range(N))
