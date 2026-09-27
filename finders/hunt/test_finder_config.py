@@ -69,12 +69,15 @@ with tempfile.TemporaryDirectory() as d:
         examples and all(sum(e["grid"]) % 2 == 1 for e in examples),
     )
 
+    # Every resume that goes ahead rewrites summary.json, even over a range
+    # already done, so its absence afterwards is what shows nothing ran.
+    (out / "summary.json").unlink()
     before = {p.name: p.read_bytes() for p in out.iterdir() if p.is_file()}
     r = run_cli(out, "0:40", "--parity", "even")
     check("resume under a different config refuses (exit 2)", r.returncode == 2)
     check("the refusal names the config", "config" in r.stderr)
     after = {p.name: p.read_bytes() for p in out.iterdir() if p.is_file()}
-    check("a refused resume leaves every file as it was", before == after)
+    check("a refused resume writes nothing", before == after)
 
     r = run_cli(out, "0:40", "--parity", "odd")
     check("resume under the same config exits 0", r.returncode == 0)
