@@ -28,9 +28,9 @@ because the checker reads them and nothing under `docs/research/` does
   protocol (a `typing.Protocol` of `propose`/`verify`/`record`/`key`/
   `symmetry`, and the `hunt` CLI's `run(finder, argv)`) that gives a fresh
   hunt its output directory and dedupe for free. `finders/hunt/toy_finder.py`
-  is a minimal worked example; `finders/qqrr/hunt/tie_finder.py` is the first
-  real one, with flags of its own (`finder.config`) and a reason on an empty
-  seed (`protocol.Empty`). Existing finders are not ported onto it.
+  is a minimal worked example; `finders/qqrr/hunt/tie_finder.py`, a new finder
+  over `chan_big.py`'s model, is the first real one. The older scripts stay
+  on their own plumbing.
 - Before writing a new finder — what to search, when cuts beat a counter,
   profiling the loop, the `ctypes` C port, counting what you found:
   `docs/agents/grid-finder-lessons.md`.
