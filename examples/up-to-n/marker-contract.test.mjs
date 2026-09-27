@@ -160,6 +160,17 @@ refuses([{ cells: [id(0, 1), id(0, 0)], value: '05' }], /R2C1.*R1C1.*not a whole
 refuses([{ cells: [id(3, 3), id(3, 2)], value: '7' }], /R4C4.*R3C4.*above 6/)
 // The range is 10 - N for each target: the top of column 1 allows 9, not 10.
 refuses([{ cells: [id(0, 0), id(0, 1)], value: '10' }], /R1C1.*R2C1.*above 9/)
+// A board whose digits don't start at 1: TOTAL is (lo+hi)*(hi-lo+1)/2, not
+// hi*(hi+1)/2 -- digits 2..5 give TOTAL 14, not 15. Column 3 aims at 3, so
+// the max clue is 14 - 3 = 11.
+{
+  const opts4 = { W: 4, H: 4, lo: 2, hi: 5 }
+  const [c] = setup([{ cells: [id(2, 0), id(2, 1)], value: '11' }], opts4)
+  assert.deepStrictEqual(built(c), {
+    ctor: 'UpToNComponent', line: [2, 6, 10, 14], target: 3, clue: 11
+  })
+  refuses([{ cells: [id(2, 0), id(2, 1)], value: '12' }], /above 11/, opts4)
+}
 // Target digit outside the digit range: column 5 on a board whose digits stop
 // at 4.
 refuses(

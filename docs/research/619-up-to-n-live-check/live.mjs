@@ -11,10 +11,11 @@ const browser = await chromium.launch()
 
 async function open (linkFile) {
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 1000 } })).newPage()
-  page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 200)))
+  const pageErrors = []
+  page.on('pageerror', e => { console.log('  [pageerror]', e.message.slice(0, 200)); pageErrors.push(e.message) })
   await page.goto(readFileSync(DIR + linkFile, 'utf8').trim(), { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(2500)
-  return page
+  return { page, pageErrors }
 }
 
 // Every SVG label outside the grid, as its marker key (L/R row, T/B column).
@@ -45,21 +46,48 @@ const rulesText = async page => {
 
 const bodyLines = async (page, re) => (await page.evaluate(() => document.body.innerText)).split('\n').filter(l => re.test(l))
 
+// The corrected rule's worked example per size (build_size.py RULE_EXAMPLES,
+// the source of truth): what the rules text must contain for that n.
+const WORKED_EXAMPLE = {
+  4: 'a clue of 4 at the left end of row 2 is true of the row 3124, since 3 + 1 = 4',
+  6: 'a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11',
+  9: 'a clue of 12 at the left end of row 5 is true of the row 921564738, since 9 + 2 + 1 = 12'
+}
+// The corrected rule statement itself (build_size.py's rule_text(), the
+// SPEC's comment_fn), independent of any one size's worked example.
+const RULE_STATEMENT = 'the digits before the first N sum to the clue; N itself is not added'
+
+const failures = []
+const check = (desc, ok) => { console.log(`  ${ok ? 'ok  ' : 'FAIL'} — ${desc}`); if (!ok) failures.push(desc) }
+
 for (const [link, gen] of BOARDS) {
   const board = JSON.parse(readFileSync(DIR + gen, 'utf8'))
-  const page = await open(link)
+  const { page, pageErrors } = await open(link)
   const shot = `.scratch/619-live/live-${link.replace('.txt', '')}.png`
   await page.screenshot({ path: shot })
   const drawn = await labels(page, board.n)
   const recorded = Object.fromEntries(board.active.map(k => [k, String(board.clue[k])]))
   const sameLabels = JSON.stringify(Object.entries(drawn).sort()) === JSON.stringify(Object.entries(recorded).sort())
+  const rules = await rulesText(page)
+  const banners = await bodyLines(page, /failed|error/i)
   console.log(`\n== ${link} (${board.n}x${board.n}) screenshot ${shot}`)
   console.log('  labels drawn   :', JSON.stringify(Object.fromEntries(Object.entries(drawn).sort())))
   console.log('  labels recorded:', JSON.stringify(Object.fromEntries(Object.entries(recorded).sort())))
-  console.log('  labels match   :', sameLabels)
-  console.log('  rules text     :', await rulesText(page))
-  console.log('  banners        :', JSON.stringify(await bodyLines(page, /failed|error/i)))
+  console.log('  rules text     :', rules)
+  console.log('  banners        :', JSON.stringify(banners))
+  check(`${link}: labels drawn match recorded`, sameLabels)
+  check(`${link}: rules text states the corrected rule`, !!rules && rules.includes(RULE_STATEMENT))
+  check(`${link}: rules text carries the size-${board.n} worked example`, !!rules && rules.includes(WORKED_EXAMPLE[board.n]))
+  check(`${link}: no failed/error banner`, banners.length === 0)
+  check(`${link}: no uncaught page error`, pageErrors.length === 0)
   await page.context().close()
 }
 
 await browser.close()
+
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`)
+  for (const f of failures) console.log(`  - ${f}`)
+  process.exit(1)
+}
+console.log('\nAll checks passed.')

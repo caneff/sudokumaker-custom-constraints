@@ -6,8 +6,11 @@ aims at the 3). Reading inward from the marker, the digits before the first N
 sum to the clue. N itself is never added, so a line whose first cell holds N
 has the clue 0.
 
-For example, a clue of 4 at the left end of row 2 is true of the row `3124`:
-the row aims at 2, and 3 + 1 = 4. A marker with no number is not a clue.
+For example, at 4×4 a clue of 4 at the left end of row 2 is true of the row
+`3124`: the row aims at 2, and 3 + 1 = 4. At 6×6, a clue of 11 at the left
+end of row 2 is true of the row `416253`, since 4 + 1 + 6 = 11. At 9×9, a
+clue of 12 at the left end of row 5 is true of the row `921564738`, since
+9 + 2 + 1 = 12. A marker with no number is not a clue.
 
 Let TOTAL be the sum of the puzzle's digits, `minDigit..maxDigit`: n(n+1)/2
 on an n×n board with digits from 1 (10, 21 and 45 at 4×4, 6×6 and 9×9). A
@@ -198,8 +201,13 @@ The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
 changed together, so a component swap into the old board would time a
 different puzzle. `just time up-to-n` on the corrected tree, run earlier on
 2026-09-26 while #613 was open, printed 16400 ms cold and 12000 ms
-after-logical; the #614 run above is the floor, and the 7% spread between the
-two runs of one board is run-to-run noise.
+after-logical; the #614 run above is the floor because it is the recorded
+`just time` measurement this example is judged against, not because it is
+the faster of the two. The 7% spread between the two runs of one board is
+wider than the <5% run-to-run variance `docs/real-app-timing.md` records
+for a deterministic solve, but neither run is slower than the other by a
+margin that would flip this section's "costs nothing" verdict, so the #614
+numbers stand as recorded.
 
 The comparison is link vs link instead: the committed `PUZZLE_LINK.txt` before
 the correction against the one after, both stripped, one rep of each per round,
