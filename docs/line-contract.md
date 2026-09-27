@@ -6,15 +6,19 @@ code. Decided on the map issue #187, ticket #191. Terms are in `CONTEXT.md`.
 
 ## Line kinds
 
-A line is one of two kinds, ordered. A rule that needs a house also fires on a
-house whose digit set is `{1..n}`; that set is a separate fact, `oneToN`, not a
-third kind (#631: no rule read a full house of any other set).
+A line is one of two kinds, ordered. A rule that needs one kind also fires on
+every kind above it.
 
 | Kind | Digits may | Learned from |
 |-|-|-|
 | **bare** | repeat, be absent, any length | nothing — the default |
 | **house** | not repeat | `!puzzle.getCellsCanHaveRepeats(line)` |
-| house, **`oneToN`** | not repeat, and are exactly `1..line.length` | house and the union of live candidates across the line is exactly `{1..line.length}` |
+
+A house also carries one digit-set fact, **`oneToN`**: the union of live
+candidates across the line is exactly `{1..line.length}`, so the line is a
+permutation of `1..n`. It is a fact beside the kind, not a third kind: the
+rules that need a full house need exactly that set, and none reads a full
+house of any other set.
 
 "Clued at both ends" is not a kind. It is a **pair** shape, owned by the global
 main code (below). The global lane gets those pairs from `framePairs`, which
