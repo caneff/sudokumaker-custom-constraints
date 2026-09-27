@@ -37,7 +37,7 @@ sys.path.insert(0, str(hc.ROOT / "finders" / "hunt"))
 # isort: split
 from dedupe import IDENTITY
 from driver import run
-from protocol import DEFAULT_WORKERS, Empty, Verdict
+from protocol import Empty, Verdict
 
 N = 9
 
@@ -71,7 +71,6 @@ class TieFinder:
     # The cage, the bounded cell and the corner pin fix cells: no symmetry of
     # the board maps the search onto itself.
     symmetry = IDENTITY
-    workers = DEFAULT_WORKERS
 
     def __init__(self, hunt=None, ten=None, corner=None, timeout=None, q34=False):
         self.config = {
