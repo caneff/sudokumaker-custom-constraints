@@ -143,6 +143,13 @@ def registered_backend(doc, constraint_name):
 # main-global.js -- so it is detected, never assumed.
 BACKEND_FILES = ("main.js", "main-global.js")
 
+# A backend declared in `_shared/` rather than per-example: house-gac.js backs
+# the shared HouseGacComponent (framebuild.HOUSE_GAC_BACKEND_TITLE, #421). A
+# board that opts in has no per-example copy of its own to drift from the
+# committed one -- resolve_backend_file follows the shared file the same way
+# find_component_file already follows the shared component file, above.
+SHARED_BACKEND_FILES = ("house-gac.js",)
+
 
 @functools.cache
 def _toplevel(start_dir):
@@ -188,17 +195,23 @@ def head_path(path):
 
 
 def resolve_backend_file(example_dir, base_doc, constraint_name):
-    """Which of BACKEND_FILES the committed PUZZLE_LINK.txt's constraint_name
+    """Which of BACKEND_FILES, or SHARED_BACKEND_FILES in the sibling
+    `_shared/` directory, the committed PUZZLE_LINK.txt's constraint_name
     backend was built from, as a working-tree path -- the file
     build_candidate_doc must re-minify to time a backend-only change. None
-    when the constraint has no code backend, or example_dir has neither
-    file. Raises when a file exists but none of them matches -- a silent
-    guess would time the wrong backend variant."""
+    when the constraint has no code backend, or none of those files exist.
+    Raises when a file exists but none of them matches -- a silent guess
+    would time the wrong backend variant."""
     committed_backend = registered_backend(base_doc, constraint_name)
     if committed_backend is None:
         return None
+    shared_dir = example_dir.parent / "_shared"
     candidates = [
         example_dir / name for name in BACKEND_FILES if (example_dir / name).exists()
+    ] + [
+        shared_dir / name
+        for name in SHARED_BACKEND_FILES
+        if (shared_dir / name).exists()
     ]
     if not candidates:
         return None
@@ -230,8 +243,8 @@ def resolve_backend_file(example_dir, base_doc, constraint_name):
             )
         raise ValueError(
             f"{example_dir.name}: no backend file "
-            f"({', '.join(BACKEND_FILES)}) matches the committed "
-            f"{constraint_name!r} backend{note}"
+            f"({', '.join(BACKEND_FILES + SHARED_BACKEND_FILES)}) matches the "
+            f"committed {constraint_name!r} backend{note}"
         )
     if len(matches) > 1:
         raise ValueError(

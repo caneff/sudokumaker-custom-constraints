@@ -561,6 +561,48 @@ if __name__ == "__main__":
             == example_dir / "main.js"
         ), "an edited include must not change which backend file HEAD resolves to"
 
+    # a backend declared in examples/_shared/ rather than per-example
+    # (house-gac.js, #421): a board that opts into it ships neither main.js
+    # nor main-global.js of its own, so BACKEND_FILES alone finds nothing --
+    # this is the #629 bug (`just time hit-counts --component
+    # HouseGacComponent` raised "no backend file matches"). resolve_backend_file
+    # must also look for SHARED_BACKEND_FILES in the sibling `_shared/` dir.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        example_dir = root / "hit-counts"
+        example_dir.mkdir()
+        shared_dir = root / "_shared"
+        shared_dir.mkdir()
+        (shared_dir / "house-gac.js").write_text("function update(){return 'gac'}\n")
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "commit",
+                "-q",
+                "-m",
+                "init",
+            ],
+            cwd=root,
+            check=True,
+        )
+        base_doc = _widget_doc(
+            minify_file(shared_dir / "house-gac.js"),
+            minify_js("function update(){return 1}\n"),
+        )
+        assert (
+            resolve_backend_file(example_dir, base_doc, "Widget Lines")
+            == shared_dir / "house-gac.js"
+        ), (
+            "a backend declared in examples/_shared/ (house-gac.js) must "
+            "resolve there when the example ships neither BACKEND_FILES file"
+        )
+
     # all reps timed out: the failure names the fixed 300s per-rep timeout
     # and the rep counts
     stdout = (
