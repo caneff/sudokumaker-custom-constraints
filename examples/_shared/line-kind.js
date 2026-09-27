@@ -5,12 +5,11 @@
 // Not a module: the app runs the assembled component as a bare script.
 //
 // `lineKind(instance, puzzle, cells)` returns `{ kind, oneToN }`:
-//   kind   BARE (the cells may repeat a digit), HOUSE (they cannot), or
-//          FULL_HOUSE (a house whose live candidates hold exactly as many
-//          digits as it has cells)
-//   oneToN the live candidates are exactly {1..cells.length} -- the digit set
-//          a rule that reads the line as a permutation of 1..n needs. It
-//          implies FULL_HOUSE; a full house of {0..n-1} is not one.
+//   kind   BARE (the cells may repeat a digit) or HOUSE (they cannot)
+//   oneToN a house whose live candidates are exactly {1..cells.length} -- the
+//          digit set a rule that reads the line as a permutation of 1..n needs.
+//          A full house of any other set, {0..n-1} say, is not one. No rule
+//          reads that case, so `kind` stops at HOUSE.
 //
 // Ask in `update` or `validate`, never in main code: main code runs before the
 // built-in row and column houses are registered and would read every line as
@@ -30,11 +29,9 @@
 // nothing.
 const BARE = 0
 const HOUSE = 1
-const FULL_HOUSE = 2
 const LINE_BARE = Object.freeze({ kind: BARE, oneToN: false })
 const LINE_HOUSE = Object.freeze({ kind: HOUSE, oneToN: false })
-const LINE_FULL = Object.freeze({ kind: FULL_HOUSE, oneToN: false })
-const LINE_ONE_TO_N = Object.freeze({ kind: FULL_HOUSE, oneToN: true })
+const LINE_ONE_TO_N = Object.freeze({ kind: HOUSE, oneToN: true })
 
 function lineKind (instance, puzzle, cells) {
   const answers = instance.repeatAnswers || (instance.repeatAnswers = new Map())
@@ -46,8 +43,5 @@ function lineKind (instance, puzzle, cells) {
   if (canRepeat) return LINE_BARE
   let mask = 0
   for (const c of cells) mask |= puzzle.getCandidatesBitMask(c)
-  if (mask === (1 << (cells.length + 1)) - 2) return LINE_ONE_TO_N // bits 1..n set, bit 0 clear
-  let live = 0
-  for (let m = mask; m; m &= m - 1) live++
-  return live === cells.length ? LINE_FULL : LINE_HOUSE
+  return mask === (1 << (cells.length + 1)) - 2 ? LINE_ONE_TO_N : LINE_HOUSE // bits 1..n set, bit 0 clear
 }

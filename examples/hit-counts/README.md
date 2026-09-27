@@ -533,6 +533,21 @@ previous commit keeps.
 
 ## Timing
 
+### The FULL_HOUSE rung collapsed in line-kind.js (#631)
+
+| 2026-09-27 | v2026.08.14-d47fc4b | hit-counts | 7000ms | 7400ms | 1.06 | FAIL |
+| 2026-09-27 | v2026.08.14-d47fc4b | hit-counts after-logical | 4700ms | 4900ms | 1.04 | FAIL |
+
+`just time hit-counts`, run in a checkout of the commit before the change with
+only the new `_shared/line-kind.js` in its working tree, so the baseline is
+the link as it stood and the candidate is the joint component with the new
+include spliced in. `lineKind` now answers `BARE` or `HOUSE` and drops the
+popcount that told a full house of any other digit set apart; every gate
+reads `kind >= HOUSE` or `oneToN`, so no rule changes. That is a change that
+adds no deduction, so the bar is the gate-change bar, 1.1x or under on both
+rows (`../../docs/real-app-timing.md`); both rows clear it, and the driver's
+`NO SHIP` reads the 0.9x deduction rule.
+
 ### Contract cleanups across the components (#452)
 
 | 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (joint: raw masks, one read per mask, no `initialize`) | 6300ms | 6400ms | 1.02 | gate: PASS |
