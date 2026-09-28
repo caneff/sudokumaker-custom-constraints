@@ -108,3 +108,19 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
 6. Values: each set's lies cancel, Σ(value − digit) = 0 per set; all 27
    values sum to 135. The main diagonal holds only box wolves (at most 3,
    in boxes 1, 5, 9), so its bullet sums at most three box-set values.
+
+## Candidate solve steps (brainstorm, 2026-09-28; derived from the truths above, not solver-checked as steps)
+
+- Diagonal-box switch: in box 1 exactly one of {the 2 lies in row 2, the 3
+  lies in row 3}; the other lies in its own column (same in boxes 5, 9).
+- Band cycle: one box wolf's row in a band fixes all three (1 of box 1 in
+  row 2 ⇒ 2 of box 2 in row 3 ⇒ 3 of box 3 in row 1); same for row wolves.
+- Row k's k is never in box k; box k's k is never in row k.
+- Bullet 0: every cell on the diagonal loses its box, row and column digit.
+- Main-diagonal bullet: only box wolves 1/5/9 (1 at r2c2|r3c3, 5 at
+  r4c4|r6c6, 9 at r7c7|r8c8), values distinct, none equal to own digit; a
+  large sum forces all three onto the diagonal.
+- Values repeat across sets but not within: bullet 2 = one wolf worth 2, or
+  two wolves worth 1 from different sets.
+- Lies cancel per set; last wolf of a set gets the one leftover value, which
+  must differ from its digit.
