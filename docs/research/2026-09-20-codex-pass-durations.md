@@ -32,3 +32,4 @@ One row per run of the controller's Codex pass (implement/SKILL.md § The merge,
 | #627 | #640 | gate | 2026-09-28T15:06:40-04:00 | 2026-09-28T15:06:43-04:00 | 0.1 | refused: status 1, Codex usage limit reached until 2026-10-03 17:53 |
 | #628 | #642 | gate | 2026-09-28T15:22:34-04:00 | 2026-09-28T15:22:38-04:00 | 0.1 | refused: status 1, Codex usage limit reached until 2026-10-03 17:53 |
 | #517 | #644 | gate | 2026-09-28T15:32:53-04:00 | 2026-09-28T15:33:01-04:00 | 0.1 | refused: status 1, Codex usage limit reached until 2026-10-03 17:53 |
+| #626 | #646 | gate | 2026-09-28T16:10:36-04:00 | 2026-09-28T16:10:39-04:00 | 0.1 | refused: status 1, Codex usage limit reached until 2026-10-03 17:53 |
