@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "finders" / "qqrr"))
@@ -69,11 +70,22 @@ def grid_line(grid):
 
 
 TIE = re.compile(r"  tie (r\dc\d) [\d|]+ = (r\dc\d) [\d|]+, number (\d+), QQRR (\d+)")
+
+
+class Tie(NamedTuple):
+    """One logged 7-digit tie: the two cells, the shared number and the QQRR, as logged."""
+
+    a: str
+    b: str
+    number: str
+    qqrr: str
+
+
 GRID = re.compile(r"  grid (\d{9}(?:/\d{9}){8})")
 
 
 def parse_hits(text):
-    """Each complete HIT block of a finder log as {"ties": [(a, b, number, qqrr)], "grid": str},
+    """Each complete HIT block of a finder log as {"ties": [Tie], "grid": str},
     read by the `  tie ` and `  grid ` markers, so any number of tie lines parses. chan_big
     prints a HIT only with at least one tie, so a block with no tie or no grid was cut short
     by a kill and is left out. A marker line that does not match its whole form makes its
@@ -86,7 +98,7 @@ def parse_hits(text):
             m = TIE.fullmatch(line)
             hits[-1]["bad"] |= m is None
             if m:
-                hits[-1]["ties"].append(m.groups())
+                hits[-1]["ties"].append(Tie(*m.groups()))
         elif hits and line.startswith("  grid "):
             m = GRID.fullmatch(line)
             hits[-1]["bad"] |= m is None

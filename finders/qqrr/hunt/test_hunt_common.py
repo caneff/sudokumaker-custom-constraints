@@ -61,6 +61,8 @@ hits = hc.parse_hits(text)
 assert [h["grid"] for h in hits] == [G1, G2]
 assert [len(h["ties"]) for h in hits] == [1, 2]
 assert hits[1]["ties"][1] == ("r4c2", "r4c5", "7654321", "34")
+tie = hits[1]["ties"][1]
+assert (tie.a, tie.b, tie.number, tie.qqrr) == ("r4c2", "r4c5", "7654321", "34")
 assert hc.parse_hits("no hits here\n") == []
 # a log cut after a HIT line, or after HIT and one tie, parses to the complete blocks before it
 done = "HIT 1 1s\n" + TIE_A + "\n" + QQRR + "\n  grid " + G1 + "\n"
