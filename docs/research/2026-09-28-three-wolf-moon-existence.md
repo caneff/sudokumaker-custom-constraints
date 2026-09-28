@@ -190,3 +190,29 @@ r9c1 (row wolf 9, value 1).
   worth 2, an 8 not worth 8). Sum 0: box 1's 2 avoids r1c2/r2c1, leaving 3
   of the 10 box-1 arrangements (1r3c2 2r2c3 3r1c3; 1r3c3 2r2c3 3r1c3;
   1r3c3 2r3c2 3r3c1); box 9's 8 likewise.
+
+## Single-bullet search (2026-09-28)
+
+`.scratch/wolf/bullets.py` (job `wolf-bullets`, 1 worker, 113 min): every
+diagonal of length 2–9 in both directions × every sum 0..9·length = 1452
+cases; 1214 fully covered, 238 infeasible, 0 timeouts. Per case: all
+(cell, digit) eliminations the bullet alone forces beyond the 63 rule bans
+(solution cover until INFEASIBLE). Ranking (`.scratch/wolf/rank.py`): the
+elimination set of "sum ≥ 1" (intersection over nonzero sums) is removed,
+and only eliminations outside the diagonal's own boxes count as distant.
+
+- High sums dominate any raw ranking (e.g. / r1c9–r9c1 at 59–62 of max 65:
+  188 distant) — bulk forcing, not subtle. Restricting to the lower half of
+  each diagonal's range:
+- **Box 1 anti-diagonal r1c3–r2c2–r3c1, sum 3: 33 distant eliminations.**
+  Only three wolves can sit there: r1c3 as column-wolf 3, r2c2 as box-wolf 1,
+  r3c1 as row-wolf 3. A 3 alone would be worth 3, its own digit — banned —
+  so box 1's 1 is at r2c2 (solver: sum 3 with r2c2≠1 INFEASIBLE). Then the
+  band cycle puts box 2's 2 in row 3 and box 3's 3 in row 1, and the stack
+  puts boxes 4 and 7's box wolves in columns 1 and 3.
+  Sums 10–18 also force r2c2 = 1 (two wolves needed), bluntly.
+- Box 9 anti-diagonal r7c9–r8c8–r9c7, sum 7: same shape (a 7 alone would be
+  worth 7), forces r8c8 = 9; 33 distant.
+- Main diagonal, sum 1: 18 distant. One box wolf worth 1; not box 1's 1
+  (worth its own digit), so it is box 5's 5 or box 9's 9, and box 1's 1
+  leaves the diagonal.
