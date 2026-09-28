@@ -46,6 +46,19 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
 }
 console.log('bundle-solve-lib: buildStartMessage skips disabled constraints ok')
 
+// ---- buildStartMessage: a constraint marked "Disable for solver" is not sent
+// either (#628, C1). The app saves it as `solverIgnored: true` and hands the
+// solver only `enabled && !solverIgnored` constraints (main-D44ZZMA9.js
+// `Ec.save`, `getConstraintsForSolver`). ----
+{
+  const on = { type: 1, regions: [0, 0, 0, 0] }
+  const ignored = { type: 1, regions: [0, 0, 1, 1], solverIgnored: true }
+  const mk = (constraints) => ({ puzzle: { type: 'custom', width: 2, height: 2, cells: [{}, {}, {}, {}], constraints } })
+  assert.deepStrictEqual(buildStartMessage(mk([on, ignored])).constraints, [{ config: on }])
+  assert.strictEqual(buildStartMessage(mk([{ ...on, solverIgnored: false }])).constraints.length, 1)
+}
+console.log('bundle-solve-lib: buildStartMessage skips solver-ignored constraints ok')
+
 // ---- buildStartMessage: an undeclared range is 1..9 whatever the width, and a
 // declared minDigit alone keeps the 9 ceiling (#461: the live app's default,
 // probed in docs/research/2026-09-20-default-digit-range/). The rangeless half
