@@ -85,6 +85,9 @@ BAD_GRIDS = [G2[:-1], G2 + "/123456789", G2.replace("9", "x", 1), G2 + " extra"]
 for bad in BAD_GRIDS:
     block = "HIT 2 2s\n" + TIE_B + "\n  grid " + bad + "\n"
     assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
+    # followed by a good grid line, so the block drops for the bad line and not for a missing grid
+    block += "  grid " + G2 + "\n"
+    assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
 # logged_grids reads every grid line of a log file
 import tempfile
 
