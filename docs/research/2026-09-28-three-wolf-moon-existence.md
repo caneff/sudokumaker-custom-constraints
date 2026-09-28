@@ -151,3 +151,21 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
   witness shows 7/9 and 5/9 in every band and stack.
 - Corner homes: box k's k (k = 1, 5, 9) sits in the 2x2 avoiding row k and
   column k — box 1's 1 in r2-3c2-3, box 5's 5 on a corner, box 9's 9 in r7-8c7-8.
+- Subtler steps (argued from the definitions; not solver-checked as steps):
+  - Hidden symbols: each set is one cell per row, column, box and digit, so
+    it behaves like an extra sudoku digit spread over different real digits.
+    Singles, pairs and fish apply to it: if rows 4 and 7 can only hold
+    their own-column digit in columns 2 or 8, then column 2's 2 and column
+    8's 8 are in rows 4/7, which removes 2 from column 2 and 8 from column 8
+    in every other row.
+  - The / total: the r+c diagonals partition the grid and their length-1
+    corners r1c1, r9c9 never hold a wolf, so the 15 bullets on / diagonals
+    of length 2–9 sum to exactly 135; one missing / bullet is 135 minus the
+    rest. The \ family does not close: r1c9 and r9c1 can be wolves.
+  - Lie balance: over the / family, Σ value = Σ digit (both 135), so a
+    diagonal whose bullet exceeds its wolves' displayed digits forces
+    another to fall short by the same total.
+  - One full row per band: each row holds its row wolf and box wolf among
+    the band's digits; the band's only other such wolf is the diagonal
+    box's column wolf, so exactly one row per band has all three of its
+    band digits as wolves (the row holding that column wolf).
