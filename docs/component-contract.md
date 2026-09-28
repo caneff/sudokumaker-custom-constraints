@@ -40,7 +40,7 @@ You define the ones you need. `setParams` and `update` are the working pair;
 | Function | Signature | Role |
 |-|-|-|
 | `getAffectedCells` | `(…params) => CellId[]` | The cells this component watches. The solver re-runs `update` when any of them changes. Return every cell your logic reads. **[verified]** |
-| `setParams` | `(instance, …params) => void` | Store the constructor args on `instance` (e.g. `instance.cells = cells`). Runs once. **[verified]** |
+| `setParams` | `(instance, …params) => void` | Store the constructor args on `instance` (e.g. `instance.clue = clue`). Runs once, last in the constructor. `instance.cells` is already set by then, to what `getAffectedCells` returned, so do not write it: an `instance.cells = cells` overwrites a wake list wider than the param (Side Sum's case). **[read]** (`docs/research/bundle-api-reference.md` § `compileCustomComponentClass`) |
 | `initialize` | `(instance, puzzle) => Generator<Change>` | Optional one-time pass at creation, e.g. remove impossible candidates up front. **It is never called again**, so a check on solve state (`hasValue`, a candidate count) belongs in `update`; in `initialize` it sees the initial grid only (SM issue #22, `docs/research/2026-09-14-sm-issue-22-initialize-is-one-shot.md`). **It never replaces the first `update`**: the wrapper runs your `initialize`, then the base class's, which ends with `yield* this.update(...)`. So `update` still runs once at setup after your pass; do not duplicate its work here. **[verified]** (bundle: wrapper `bundle.claude.js:10031-10034`, base `initialize` 2686-2704, in `docs/research/humanify-pedagogy/`) |
 | `update` | `(instance, puzzle) => Generator<Change>` | The propagation loop. Yields Changes (candidate removals, component replacement). The solver calls it repeatedly until nothing more changes. **[verified]** |
 | `validate` | `(instance, puzzle) => boolean` | Return `false` when the current assignment already breaks the rule, `true` otherwise. Return `true` while the group is incomplete, then do the real check once it is filled. **[verified]** |
@@ -51,13 +51,17 @@ You define the ones you need. `setParams` and `update` are the working pair;
 puzzle directly. The solver applies each yielded Change and re-runs `update`
 (and other components) until a fixpoint. **[verified]**
 
+The removal builders take a raw bitmask or a `DigitSet` for their digits
+(`docs/research/bundle-api-reference.md` § `removeCandidatesFromCell`). **[read]**
+
 The Changes come from `puzzle` methods:
 
 ```js
 function* update (instance, puzzle) {
   const { cells } = instance
-  // remove a set of candidates from one cell
-  yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from([1,2,3]), cells[0])
+  // remove a set of candidates from one cell: a raw bitmask, bit d = digit d
+  // (a DigitSet is also accepted, but building one is an allocation nothing reads)
+  yield puzzle.removeCandidatesFromCell((1 << 1) | (1 << 2) | (1 << 3), cells[0])
   // remove a single candidate from one cell
   yield puzzle.removeCandidateFromCell(9, cells[1])
   // swap this component for a different (built-in) one
