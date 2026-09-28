@@ -3,7 +3,7 @@
 `--no-verify` skips `finder.verify` while searching, so a candidate the
 verifier would reject still reaches examples.jsonl. `hunt verify DIR` then
 runs `finder.verify` over every line in examples.jsonl afterwards and writes
-one verdict per line to verified.jsonl.
+a stamp line and then one verdict per line to verified.jsonl (#517).
 
     uv run finders/hunt/test_hunt_verify.py
 """
