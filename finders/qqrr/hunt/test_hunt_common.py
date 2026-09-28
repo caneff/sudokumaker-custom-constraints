@@ -67,6 +67,19 @@ done = "HIT 1 1s\n" + TIE_A + "\n" + QQRR + "\n  grid " + G1 + "\n"
 assert [h["grid"] for h in hc.parse_hits(done + "HIT 2 2s\n")] == [G1]
 assert [h["grid"] for h in hc.parse_hits(done + "HIT 2 2s\n" + TIE_B + "\n")] == [G1]
 assert hc.parse_hits("HIT 1 1s\n") == []
+# a malformed marker line makes its block incomplete, rather than crashing or reading as whole
+BAD_TIES = [
+    TIE_A + " trailing",
+    "  tie r3c2 1|2 = r3c5",
+    "  tie r3c2 1|2 = r3c5 3|4, number x, QQRR 12",
+]
+for bad in BAD_TIES:
+    block = "HIT 2 2s\n" + bad + "\n  grid " + G2 + "\n"
+    assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
+BAD_GRIDS = [G2[:-1], G2 + "/123456789", G2.replace("9", "x", 1), G2 + " extra"]
+for bad in BAD_GRIDS:
+    block = "HIT 2 2s\n" + TIE_B + "\n  grid " + bad + "\n"
+    assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
 # logged_grids reads every grid line of a log file
 import tempfile
 
@@ -76,6 +89,11 @@ with tempfile.TemporaryDirectory() as d:
         "HIT 1 1s\n" + TIE_A + "\n  grid " + G1 + "\nHIT 2 2s\n  grid " + G2 + "\n"
     )
     assert hc.logged_grids(log) == [G1, G2]
+    # a malformed grid line is skipped, not returned as a grid
+    log.write_text(
+        "  grid " + G1[:-1] + "\n  grid " + G1 + " extra\n  grid " + G2 + "\n"
+    )
+    assert hc.logged_grids(log) == [G2]
 
 # tie_line and grid_line are what parse_hits reads back.
 grid = [[(r + c) % 9 + 1 for c in range(9)] for r in range(9)]

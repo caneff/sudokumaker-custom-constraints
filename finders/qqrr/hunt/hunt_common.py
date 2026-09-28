@@ -69,28 +69,39 @@ def grid_line(grid):
 
 
 TIE = re.compile(r"  tie (r\dc\d) [\d|]+ = (r\dc\d) [\d|]+, number (\d+), QQRR (\d+)")
+GRID = re.compile(r"  grid (\d{9}(?:/\d{9}){8})")
 
 
 def parse_hits(text):
     """Each complete HIT block of a finder log as {"ties": [(a, b, number, qqrr)], "grid": str},
     read by the `  tie ` and `  grid ` markers, so any number of tie lines parses. chan_big
     prints a HIT only with at least one tie, so a block with no tie or no grid was cut short
-    by a kill and is left out."""
+    by a kill and is left out. A marker line that does not match its whole form makes its
+    block incomplete too."""
     hits = []
     for line in text.split("\n"):
         if line.startswith("HIT"):
-            hits.append({"ties": [], "grid": None})
+            hits.append({"ties": [], "grid": None, "bad": False})
         elif hits and line.startswith("  tie "):
-            hits[-1]["ties"].append(TIE.match(line).groups())
+            m = TIE.fullmatch(line)
+            hits[-1]["bad"] |= m is None
+            if m:
+                hits[-1]["ties"].append(m.groups())
         elif hits and line.startswith("  grid "):
-            hits[-1]["grid"] = line.split()[1]
-    return [h for h in hits if h["ties"] and h["grid"]]
+            m = GRID.fullmatch(line)
+            hits[-1]["bad"] |= m is None
+            hits[-1]["grid"] = m and m[1]
+    return [
+        {"ties": h["ties"], "grid": h["grid"]}
+        for h in hits
+        if h["ties"] and h["grid"] and not h["bad"]
+    ]
 
 
 def logged_grids(path):
-    """Every `  grid ` line of a finder log, as its slash-joined digit string."""
+    """Every well-formed `  grid ` line of a finder log, as its slash-joined digit string."""
     return [
-        line.split()[1]
+        m[1]
         for line in Path(path).read_text().split("\n")
-        if line.startswith("  grid ")
+        if (m := GRID.fullmatch(line))
     ]
