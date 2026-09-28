@@ -169,3 +169,24 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
     the band's digits; the band's only other such wolf is the diagonal
     box's column wolf, so exactly one row per band has all three of its
     band digits as wolves (the row holding that column wolf).
+
+## Concrete sum setups (2026-09-28)
+
+Per-diagonal wolf types (from the 63 bans): the \ main diagonal holds box
+wolves only; / r+c=3 holds only a 2 (r1c2 column wolf, r2c1 row wolf);
+/ r+c=4 holds only r1c3 as column-wolf 3, r2c2 as box-wolf 1, r3c1 as
+row-wolf 3; / r+c=17 only 8s. Witness bullets (value = digit mod 9 + 1):
+/ length 2–9 total 135 exactly; \ length 2–9 total 134, the missing 1 being
+r9c1 (row wolf 9, value 1).
+
+- Setup A, the unseen corners: give all 15 \ bullets. Their shortfall from
+  135 is the value of the wolves at r1c9 and r9c1, which no bullet sees.
+  Shortfall 1 (as in the witness): exactly one corner is a wolf worth 1; not
+  r1c9 as row wolf 1 or r9c1 as column wolf 1 (value ≠ digit), so it is
+  r1c9 = 3 or 9 as box/column wolf, or r9c1 = 7 or 9 as box/row wolf.
+  Shortfall 0: both corners are normal (r1c9 ∉ {1,3,9}, r9c1 ∉ {1,7,9}).
+- Setup B, the missing corners: give every / bullet except r+c=3 and r+c=17.
+  Their sum is 135 minus the rest; each is 0 or one wolf's value (a 2 not
+  worth 2, an 8 not worth 8). Sum 0: box 1's 2 avoids r1c2/r2c1, leaving 3
+  of the 10 box-1 arrangements (1r3c2 2r2c3 3r1c3; 1r3c3 2r2c3 3r1c3;
+  1r3c3 2r3c2 3r3c1); box 9's 8 likewise.
