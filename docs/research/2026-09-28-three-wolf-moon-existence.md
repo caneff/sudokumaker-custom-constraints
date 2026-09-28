@@ -61,3 +61,16 @@ Values: each werewolf's value is its digit + 1, with 9 becoming 1, in all three 
    the row set's boxes are each a 3-cycle (2x2 options per band and per stack).
 
 Open follow-ups, not run: solution count (ii) and a puzzle built on a grid (iii).
+
+## Clue type: silver bullets (Chris, 2026-09-28)
+
+- A silver bullet is an outside clue pointing along a diagonal. It gives the
+  sum of the values of every werewolf on that diagonal; non-wolves count 0.
+- A bullet may read 0.
+- Bullets may sit on any diagonal of length 2–9, in either direction.
+- Rejected earlier as clue themes: dots (boring), clues that name or count
+  wolf locations (seers, moonlight, three-wolves-one-moon), "no reflection"
+  mirrors, moon lines (two thermometers), clue lines drawn as art.
+- Consequence of the complete-set rule: the 27 wolf values total 135, so the
+  bullets on every diagonal in one direction would sum to 135.
+- Not started: the finder.
