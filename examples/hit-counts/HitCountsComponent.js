@@ -69,8 +69,9 @@ function * update (instance, puzzle) {
 
   // ---- Reverse: the clue is the hit count, so it lies in [forced, possible] ----
   if (!puzzle.hasValue(clue)) {
-    const bad = Array.from(puzzle.getCandidates(clue)).filter(d => d < forced || d > possible)
-    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), clue)
+    let bad = 0 // raw mask, bit d = digit d
+    for (const d of puzzle.getCandidates(clue)) if (d < forced || d > possible) bad |= 1 << d
+    if (bad !== 0) yield puzzle.removeCandidatesFromCell(bad, clue)
   }
 
   // ---- Forward: the clue's range bounds how many free cells may hit ----

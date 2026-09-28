@@ -83,6 +83,11 @@ the in-memory name (`createConstraint`, `bundle.claude.js:9762`); the app's
 saver writes `disabled` (`Ec.save` in `main-*.js`), and a link carrying
 `"enabled": false` loads with the element still on.
 
+"Disable for solver" goes on the wire as `"solverIgnored": true`, absent when
+off, under the same name in memory. The solver gets only the constraints
+passing `enabled && !solverIgnored` (`getConstraintsForSolver`). Both read from
+`https://sudokumaker.app/assets/main-D44ZZMA9.js` on 2026-09-28 (#628).
+
 ## The ladder that chose the shipped self-counting draw (#584)
 
 Ranked on the **built-in's** search size, the slow side here, in the app's own

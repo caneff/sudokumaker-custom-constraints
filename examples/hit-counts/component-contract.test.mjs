@@ -111,6 +111,46 @@ const { load } = makeIo(HERE)
   }
 }
 
+// ---- The per-line reverse bound and side sum remove with raw masks too ----
+// Same contract as the joint component's (#628, S4): with a SudokuDigitSet
+// that throws, the per-line clue's [forced, possible] bound and side sum's
+// bounds propagation must still make their removals.
+{
+  const perLine = load('HitCountsComponent.js', ['setParams', 'update'])
+  const sideSum = load('SideSumComponent.js', ['getAffectedCells', 'setParams', 'update'])
+  installGlobals(0, 9)
+  const real = globalThis.SudokuDigitSet
+  globalThis.SudokuDigitSet = { from () { throw new Error('SudokuDigitSet built') } }
+  try {
+    // A bare line pinned to 2 1 4 3 has no hit, so the clue keeps only 0.
+    const C = 100
+    const line = [0, 1, 2, 3]
+    const truth = { [C]: 0, 0: 2, 1: 1, 2: 4, 3: 3 }
+    const p = makePuzzle(truth, c => (c === C ? [0, 1, 2, 4] : [truth[c]]), { houses: [] })
+    const inst = { cells: [C, ...line] }
+    perLine.setParams(inst, C, line)
+    Array.from(perLine.update(inst, p))
+    assert.deepEqual([...p._cand.get(C)], [0], 'the reverse bound leaves the clue at 0')
+
+    // Every line a house of 1..9 and every clue but the first pinned to 1:
+    // the side's bound forces the first to 1.
+    const N = 9
+    const SIDE = Array.from({ length: N }, (_, i) => 200 + i)
+    const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
+    const t2 = {}
+    for (const c of SIDE) t2[c] = 1
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) t2[PERP[i][j]] = ((i + j) % N) + 1
+    const q = makePuzzle(t2, c => (c === SIDE[0] ? [1, 5] : [t2[c]]), { houses: PERP })
+    const side = { cells: sideSum.getAffectedCells(SIDE, N, PERP) }
+    sideSum.setParams(side, SIDE, N, PERP)
+    Array.from(sideSum.update(side, q))
+    assert.deepEqual([...q._cand.get(SIDE[0])], [1], 'side sum propagates with no SudokuDigitSet built')
+  } finally {
+    globalThis.SudokuDigitSet = real
+  }
+  console.log('hit-counts per-line and side sum raw masks: removals with no SudokuDigitSet built')
+}
+
 // ---- A forced hit is one keep-only change ----
 // Pinning a cell to its target is `filterCandidatesInCell(1 << target, cell)`:
 // one change, no candidate list to read and filter first. The state is the

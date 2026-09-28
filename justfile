@@ -113,6 +113,7 @@ test:
     uv run finders/qqrr/test_checker.py
     uv run finders/qqrr/hunt/test_hunt_smoke.py
     uv run finders/qqrr/hunt/test_hunt_common.py
+    uv run finders/qqrr/hunt/test_chan_sweep_pool.py
     # The tie finder's `hunt` CLI (#491): verify on a known grid, one 5 s capped seed.
     uv run finders/qqrr/hunt/test_tie_finder.py
     # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21

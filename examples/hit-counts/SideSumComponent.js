@@ -64,8 +64,9 @@ function * propagate (cells, target, puzzle) {
   for (let i = 0; i < cells.length; i++) {
     const lo = target - (sumMax - maxs[i])
     const hi = target - (sumMin - mins[i])
-    const bad = Array.from(puzzle.getCandidates(cells[i])).filter(d => d < lo || d > hi)
-    if (bad.length > 0) yield puzzle.removeCandidatesFromCell(SudokuDigitSet.from(bad), cells[i])
+    let bad = 0 // raw mask, bit d = digit d
+    for (const d of puzzle.getCandidates(cells[i])) if (d < lo || d > hi) bad |= 1 << d
+    if (bad !== 0) yield puzzle.removeCandidatesFromCell(bad, cells[i])
   }
 }
 

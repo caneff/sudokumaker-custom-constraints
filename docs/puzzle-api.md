@@ -40,8 +40,8 @@ yet used by a component here; **[docs]** = documented, not personally exercised.
 | Method | Effect |
 |-|-|
 | `puzzle.removeCandidateFromCell(digit, cell)` | Drop one candidate from one cell. **[verified]** |
-| `puzzle.removeCandidatesFromCell(digitSet, cell)` | Drop a set of candidates from one cell. **[verified]** |
-| `puzzle.removeCandidatesFromCells(digitSet, cells)` | Drop a set from several cells. **[docs]** |
+| `puzzle.removeCandidatesFromCell(digits, cell)` | Drop a set of candidates from one cell. `digits` is a raw bitmask (bit `d` = digit `d`) or a `DigitSet`; the mask skips an allocation (`docs/research/bundle-api-reference.md` § `removeCandidatesFromCell`). **[verified]** |
+| `puzzle.removeCandidatesFromCells(digits, cells)` | Drop a set from several cells; `digits` as above. **[docs]** |
 | `puzzle.replaceComponent(instance, newComponent)` | Swap this component for another. Any target; a sibling custom class must be spelled `customComponents.Name` (gotcha 1). **[read]** |
 | `puzzle.addConstraintComponent(component)` | Register a component (used in the main code). **[verified]** |
 | `puzzle.removeConstraintComponent(component)` | Remove a component. **[docs]** |
