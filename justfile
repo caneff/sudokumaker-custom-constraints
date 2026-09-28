@@ -103,6 +103,8 @@ test:
     uv run finders/hunt/test_uniqueness.py
     uv run finders/hunt/test_minimizer.py
     uv run finders/hunt/test_watchdog.py
+    # A finder's own config in run.json, and an empty seed's reason (#491).
+    uv run finders/hunt/test_finder_config.py
     # finders/qqrr (#592): the rule oracle on a hand-worked 4x4, the CP-SAT
     # model against the oracle on 20 fixed grids, and the opener reader plus
     # count loop on a fixed grid. About five seconds together, workers 1.
@@ -111,6 +113,8 @@ test:
     uv run finders/qqrr/test_checker.py
     uv run finders/qqrr/hunt/test_hunt_smoke.py
     uv run finders/qqrr/hunt/test_hunt_common.py
+    # The tie finder's `hunt` CLI (#491): verify on a known grid, one 5 s capped seed.
+    uv run finders/qqrr/hunt/test_tie_finder.py
     # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
