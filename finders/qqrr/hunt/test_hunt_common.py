@@ -78,6 +78,9 @@ BAD_TIES = [
 for bad in BAD_TIES:
     block = "HIT 2 2s\n" + bad + "\n  grid " + G2 + "\n"
     assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
+    # beside a good tie, so the block drops for the bad line and not for having no tie
+    block = "HIT 2 2s\n" + TIE_B + "\n" + bad + "\n  grid " + G2 + "\n"
+    assert [h["grid"] for h in hc.parse_hits(done + block)] == [G1], bad
 BAD_GRIDS = [G2[:-1], G2 + "/123456789", G2.replace("9", "x", 1), G2 + " extra"]
 for bad in BAD_GRIDS:
     block = "HIT 2 2s\n" + TIE_B + "\n  grid " + bad + "\n"
