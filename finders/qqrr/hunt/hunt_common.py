@@ -100,22 +100,24 @@ def parse_hits(text):
     by a kill and is left out. A marker line that does not match its whole form makes its
     block incomplete too."""
     hits = []
+    malformed = set()  # indexes of blocks holding a malformed marker line
     for line in text.split("\n"):
         if line.startswith("HIT"):
-            hits.append({"ties": [], "grid": None, "bad": False})
+            hits.append({"ties": [], "grid": None})
         elif hits and line.startswith("  tie "):
             m = TIE.fullmatch(line)
-            hits[-1]["bad"] |= m is None
             if m:
                 hits[-1]["ties"].append(Tie(*m.groups()))
+            else:
+                malformed.add(len(hits) - 1)
         elif hits and line.startswith("  grid "):
             m = GRID.fullmatch(line)
-            hits[-1]["bad"] |= m is None
-            hits[-1]["grid"] = m and m[1]
+            if m:
+                hits[-1]["grid"] = m[1]
+            else:
+                malformed.add(len(hits) - 1)
     return [
-        {"ties": h["ties"], "grid": h["grid"]}
-        for h in hits
-        if h["ties"] and h["grid"] and not h["bad"]
+        h for i, h in enumerate(hits) if h["ties"] and h["grid"] and i not in malformed
     ]
 
 
