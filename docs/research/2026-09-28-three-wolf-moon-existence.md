@@ -130,7 +130,7 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
   number; each row and column exactly one equal to its box number; each box
   exactly one equal to its row number and one equal to its column number.
 - r1c1, r5c5, r9c9 are never wolves (all three indices equal; no-overlap).
-- A cell with two equal indices can be a wolf in only one way (18 cells).
+- A cell with two equal indices can be a wolf in only one way (36 cells: 24 where box = row, 6 where row = column, 6 where box = column).
 - Corner bullets: diagonal r1c2–r2c1 can hold only a 2 as a wolf (r1c2 as
   column wolf, r2c1 as row wolf), at most one of them; r8c9–r9c8 the same
   with 8s.
