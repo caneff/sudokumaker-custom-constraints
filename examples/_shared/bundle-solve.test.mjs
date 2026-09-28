@@ -234,6 +234,13 @@ function boxRegionsConstraint (boxSize, width, height) {
   const { solutions } = await solveDocument(doc)
   assert.strictEqual(solutions.length, 2)
   assert.notStrictEqual(solutions[0], solutions[1])
+  // Wrapped anti-diagonal regions clash with the givens, so the solver
+  // rejects the grid when it sees them; marked "Disable for solver",
+  // solveDocument must still find two (#628, C5).
+  const diagonals = { type: 1, regions: cells.map((_, i) => (Math.floor(i / 4) + i % 4) % 4) }
+  const withRule = extra => ({ puzzle: { ...doc.puzzle, constraints: [...doc.puzzle.constraints, extra] } })
+  await assert.rejects(() => solveDocument(withRule(diagonals)), /rejected the initial grid/)
+  assert.strictEqual((await solveDocument(withRule({ ...diagonals, solverIgnored: true }))).solutions.length, 2)
 }
 console.log('bundle-solve-lib: solveDocument two-solutions ok')
 
