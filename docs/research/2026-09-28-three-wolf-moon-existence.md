@@ -74,3 +74,37 @@ Open follow-ups, not run: solution count (ii) and a puzzle built on a grid (iii)
 - Consequence of the complete-set rule: the 27 wolf values total 135, so the
   bullets on every diagonal in one direction would sum to 135.
 - Not started: the finder.
+
+## Inherent truths of the setup (2026-09-28)
+
+Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
+1 worker, all OPTIMAL/INFEASIBLE (no timeouts). Exhaustive over all 729
+(cell, digit) pairs, all 4 band combos per band, all 36 stack combos per stack.
+
+1. Every row, column and box holds exactly 3 wolves, one per set.
+   Every digit k is a wolf exactly 3 times (in box k, row k, column k).
+2. 63 (cell, digit) pairs are impossible. 39 are the direct no-overlap bans
+   (k in row k inside box k; k at rkck; k in column k inside box k for
+   k = 1, 5, 9). The other 24 all sit in boxes 1, 5 and 9 and follow from:
+   **each diagonal box's three wolves are exactly its band's digit triple**
+   — 1,2,3 in box 1; 4,5,6 in box 5; 7,8,9 in box 9. The middle digit
+   (1/5/9 = box number) is the box wolf, off its own row and column. The
+   other two are the row wolf and column wolf, so each lies in its own row
+   or its own column (the 2 of box 1 is in row 2 or column 2, not at r2c2).
+   Why: a diagonal box's row numbers and column numbers are both its band
+   triple, and the box number is banned for the row and column wolf there.
+3. Band structure: in each band the box set's rows and the row set's boxes
+   are each a 3-cycle; all 4 combinations are feasible in every band.
+4. Stack structure: only the diagonal box and diagonal column carry a ban
+   (box-set column map and column-set band map each 4 of 6); all 16
+   combinations are feasible in every stack.
+5. Rows and columns are not symmetric. Box numbers run along bands, so a
+   row's box wolf digit is in its band triple (not its own number); a
+   column's box wolf digit is in {s+1, s+4, s+7} for stack s. Transpose is
+   not a symmetry (fails on the witness). The symmetry group is the 6 maps
+   applying one permutation of {0,1,2} to band, row-in-band, stack,
+   column-in-stack and digit (as 3a+b) together; all 6 map the witness to
+   a valid grid.
+6. Values: each set's lies cancel, Σ(value − digit) = 0 per set; all 27
+   values sum to 135. The main diagonal holds only box wolves (at most 3,
+   in boxes 1, 5, 9), so its bullet sums at most three box-set values.
