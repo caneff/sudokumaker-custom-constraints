@@ -867,6 +867,8 @@ def _resume(finder, argv, args, out, prior):
     progress_lines, progress_events = _read_valid_lines(out / "progress.jsonl")
     examples_lines, examples_records = _read_valid_lines(out / "examples.jsonl")
 
+    raw_examples_count = len(examples_lines)
+
     # Reconciliation itself only edits these in-memory lists -- every write
     # (`_truncate_to_valid`, `_repair_renders`, summary.json) is held off
     # until the symmetry check below has passed, so nothing is on disk yet
@@ -893,6 +895,14 @@ def _resume(finder, argv, args, out, prior):
         examples_records,
         args.no_verify,
     )
+
+    # verified.jsonl describes the examples.jsonl `hunt verify` read (#517),
+    # and this resume is about to reconcile it or append to it. Deleted
+    # before either write, so a kill in between can't leave a stale file.
+    if len(examples_lines) != raw_examples_count or any(
+        seed not in done_seeds for seed in range(seed_start, seed_end)
+    ):
+        (out / "verified.jsonl").unlink(missing_ok=True)
 
     _truncate_to_valid(out / "progress.jsonl", progress_lines)
     _truncate_to_valid(out / "examples.jsonl", examples_lines)
@@ -980,6 +990,9 @@ def _run_verify(finder, argv):
         tmp = verified_path.with_suffix(verified_path.suffix + ".tmp")
         verified_count = 0
         with tmp.open("w") as verified_f:
+            # The stamp (#517): how many examples this pass verified, so a
+            # reader can compare it to examples.jsonl's line count.
+            verified_f.write(json.dumps({"verified_examples": len(records)}) + "\n")
             for record in records:
                 try:
                     verdict = finder.verify(to_candidate(record))
