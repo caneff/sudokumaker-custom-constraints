@@ -69,6 +69,15 @@ def grid_line(grid):
     return "  grid " + "/".join("".join(map(str, r)) for r in grid)
 
 
+def qqrr_line(cage, corner, ten, ten_rank, bound):
+    """The cage line of a HIT block: the cage's and the corner's QQRR, the QR window at `ten`
+    and its rank, and the bounded cell's digit."""
+    return (
+        f"  QQRR cage {cage} corner {corner} QR r{ten[0] + 1}c{ten[1] + 1} {ten_rank} "
+        f"bounded cell {bound}"
+    )
+
+
 TIE = re.compile(r"  tie (r\dc\d) [\d|]+ = (r\dc\d) [\d|]+, number (\d+), QQRR (\d+)")
 
 

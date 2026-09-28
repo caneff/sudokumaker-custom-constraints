@@ -108,6 +108,10 @@ assert hc.parse_hits("HIT 1 1s\n" + line + "\n" + hc.grid_line(grid))[0]["ties"]
     ("r3c2", "r3c5", "1234567", "12")
 ]
 
+# qqrr_line is the cage line every finder prints, the QR window named by its own cell.
+assert hc.qqrr_line(33, 5, (5, 5), 10, 7) == QQRR
+assert hc.qqrr_line(33, 5, (4, 4), 10, 7) == QQRR.replace("r6c6", "r5c5")
+
 # HUNTS: one table, the seed a 9x9 grid of digits.
 assert set(hc.HUNTS) == {"r5c1", "r1c5"}
 for _cage, _target, seed in hc.HUNTS.values():
