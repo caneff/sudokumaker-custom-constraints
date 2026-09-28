@@ -135,3 +135,19 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
   column wolf, r2c1 as row wolf), at most one of them; r8c9–r9c8 the same
   with 8s.
 - Crossing bullets share cells; a pinned wolf value subtracts from both.
+- Box 1 mini-puzzle (solver-enumerated, `.scratch/wolf/box1.py`, all 504
+  placements OPTIMAL/INFEASIBLE): digits 1,2,3 have only 10 arrangements.
+  1@r2c2: 2@r1c2 3@r3c1 | 2@r1c2 3@r3c2 | 2@r2c1 3@r2c3.
+  1@r2c3: 2@r1c2 3@r3c1 | 2@r1c2 3@r3c2.
+  1@r3c2: 2@r2c1 3@r1c3 | 2@r2c3 3@r1c3.
+  1@r3c3: 2@r2c1 3@r1c3 | 2@r2c3 3@r1c3 | 2@r3c2 3@r3c1.
+  Two put all three in one row: row 2 reads 2 1 3, row 3 reads 3 2 1.
+- Band link (solver-checked): the 2 of row 2 is in box 1 ⇔ the 1 of row 1
+  is in box 3 (the row-wolf 3-cycle), and then box 1's 3 is its column wolf.
+- Seven of nine: in each band, of the 9 cells holding the band's digit
+  triple, exactly 7 are wolves (3 box, 3 row, 1 column — the diagonal box's
+  column wolf). In each stack, of the 9 cells holding the stack's triple,
+  exactly 5 are wolves (3 column, 1 box, 1 row). Proof by set membership;
+  witness shows 7/9 and 5/9 in every band and stack.
+- Corner homes: box k's k (k = 1, 5, 9) sits in the 2x2 avoiding row k and
+  column k — box 1's 1 in r2-3c2-3, box 5's 5 on a corner, box 9's 9 in r7-8c7-8.
