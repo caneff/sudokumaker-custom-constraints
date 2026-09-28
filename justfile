@@ -105,6 +105,10 @@ test:
     uv run finders/hunt/test_watchdog.py
     # A finder's own config in run.json, and an empty seed's reason (#491).
     uv run finders/hunt/test_finder_config.py
+    # The spec-level end-to-end test (#626): one toy hunt through fresh run,
+    # kill, resume, refusals, verification and the render hook. About six
+    # seconds; its header names what it is blind to.
+    uv run finders/hunt/test_spec_483_e2e.py
     # finders/qqrr (#592): the rule oracle on a hand-worked 4x4, the CP-SAT
     # model against the oracle on 20 fixed grids, and the opener reader plus
     # count loop on a fixed grid. About five seconds together, workers 1.
