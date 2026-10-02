@@ -385,11 +385,8 @@ def combine_reps(link_path, reps):
             f"app-solve.mjs: {link_path}: all {len(reps)} reps hit the "
             f"300s per-rep timeout"
         )
-    version = next((r["version"] for r in reps if r["version"]), None)
-    if version is None:
-        raise RuntimeError(
-            f"app-solve.mjs could not read the app version for {link_path}"
-        )
+    # A rep with a median passed parse_app_solve_output's version check.
+    version = next(r["version"] for r in reps if r["median"] is not None)
     return {"median": done[len(done) // 2], "version": version}
 
 
