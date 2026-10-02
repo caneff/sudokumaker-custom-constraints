@@ -59,7 +59,7 @@ function supportedRows (m1, m5, m9, side) {
 
 function * update (instance, puzzle) {
   const { cells, side, seen } = instance
-  if (side < 9) return // no 5 or 9 to place
+  if (side < 9) return // a board without a 9 cannot hold the triple the prune reasons over
   for (let col = 0; col < side; col++) {
     const key = columnKey(cells, side, col, puzzle)
     if (key === seen[col]) continue

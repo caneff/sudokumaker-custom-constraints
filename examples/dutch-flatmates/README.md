@@ -178,11 +178,12 @@ uv run examples/dutch-flatmates/build_link.test.py
 
 `just time dutch-flatmates` (no flags, strip mode, 3 reps, non-deterministic
 solve off) on the pruning component against the committed validate-only link,
-run three times; every run printed these rows and `two-row rule: SHIP`. The app
-reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
+run three times; every run printed these rows and `two-row rule: SHIP`. The
+driver times all baseline reps, then all candidate reps, per row, so the reps
+are not interleaved. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
 outside run-to-run spread.
 
-| date | app version | fixture | time | vs baseline | ratio | verdict |
+| date | app version | fixture | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates | 200ms | 0ms | 0.00 | PASS |
 | 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates after-logical | 200ms | 0ms | 0.00 | PASS |

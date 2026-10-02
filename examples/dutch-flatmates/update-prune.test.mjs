@@ -147,17 +147,22 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   c.p._cand.get(at(2, 4)).add(1)
   run(c)
   assert.ok(has(c.p, 3, 4, 5), 'a column whose 1 changed was not re-read: the now-supported 5 was pruned')
-  // And a change to a 9 alone: a 9 at row 4 supports the 5 at row 3 again.
-  const d = board(cand => {
-    for (let r = 0; r < N; r++) if (r !== 3 && r !== 6) cand.get(at(r, 4)).delete(5)
-    cand.get(at(2, 4)).delete(1)
-    cand.get(at(4, 4)).delete(9)
-  })
-  run(d)
-  d.p._cand.get(at(3, 4)).add(5)
-  d.p._cand.get(at(4, 4)).add(9)
-  run(d)
-  assert.ok(has(d.p, 3, 4, 5), 'a column whose 9 changed was not re-read: the now-supported 5 was pruned')
+  // The only flatmate left for a pinned 5 is removed, and nothing else moves: a
+  // 9 alone, then a 1 alone. A column whose key ignored either digit would be
+  // skipped here and miss the dead state.
+  for (const [flatmate, row, label] of [[9, 4, '9'], [1, 2, '1']]) {
+    const e = board(cand => {
+      for (let r = 0; r < N; r++) if (r !== 3) cand.get(at(r, 6)).delete(5)
+      if (flatmate === 9) cand.get(at(2, 6)).delete(1) // only the 9 below can flatmate it
+      else cand.get(at(4, 6)).delete(9) // only the 1 above can flatmate it
+    })
+    run(e)
+    assert.strictEqual(e.p._stopped, null, `the ${label} case was dead before the change`)
+    assert.ok(has(e.p, row, 6, flatmate), `the ${label} flatmate was pruned though it is the only one`)
+    e.p._cand.get(at(row, 6)).delete(flatmate)
+    run(e)
+    assert.notStrictEqual(e.p._stopped, null, `a column whose only change was losing a ${label} was not re-read`)
+  }
   console.log('repeat calls: idempotent, re-prunes after a restore, sees a changed column')
 }
 
