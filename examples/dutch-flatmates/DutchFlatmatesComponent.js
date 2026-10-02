@@ -23,7 +23,7 @@ function setParams (instance, cells) {
   instance.columns = Array.from({ length: size }, (_, col) =>
     Array.from({ length: size }, (_, row) => cells[row * size + col]))
   instance.mayRepeat = new Array(size).fill(null) // filled in by columnMayRepeat
-  instance.lastLeft = new Array(size).fill(null) // where we left each column
+  instance.lastPruned = new Array(size).fill(null) // each column's state when we last pruned it
 }
 
 // Rows (0 = top) of this column where each of the digits 1, 5 and 9 can still go.
@@ -40,14 +40,14 @@ function readColumn (puzzle, column) {
   return { ones, fives, nines }
 }
 
-// A short description of a column's state, to tell whether it has changed.
-function describe ({ ones, fives, nines }) {
+// A short text for a column's state, to tell whether it has changed.
+function columnState ({ ones, fives, nines }) {
   return `${ones}|${fives}|${nines}`
 }
 
 // Whether this column may repeat digits. The app only knows once solving has
 // started, so this is asked here and not in the setup code, and only once: the
-// answer does not change as the puzzle is solved.
+// board's layout decides it, so one answer is kept for the whole solve.
 function columnMayRepeat (instance, puzzle, col) {
   if (instance.mayRepeat[col] === null) {
     instance.mayRepeat[col] = puzzle.getCellsCanHaveRepeats(instance.columns[col])
@@ -94,12 +94,12 @@ function rowsToKeepIfRepeatsAllowed (ones, fives, nines) {
 }
 
 function * update (instance, puzzle) {
-  const { columns, size, lastLeft } = instance
-  if (size < 9) return // no 9 on a board this small, so the rule has nothing to say
+  const { columns, size, lastPruned } = instance
+  if (size < 9) return // no 9 fits on a board this small, so there is nothing to prune
   for (let col = 0; col < size; col++) {
     const column = columns[col]
     const { ones, fives, nines } = readColumn(puzzle, column)
-    if (describe({ ones, fives, nines }) === lastLeft[col]) continue // nothing new since we pruned it
+    if (columnState({ ones, fives, nines }) === lastPruned[col]) continue // nothing new since we pruned it
     const mayRepeat = columnMayRepeat(instance, puzzle, col)
     const keep = mayRepeat
       ? rowsToKeepIfRepeatsAllowed(ones, fives, nines)
@@ -109,21 +109,21 @@ function * update (instance, puzzle) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
-    for (const [digit, rows, kept] of [[1, ones, keep.ones], [5, fives, keep.fives], [9, nines, keep.nines]]) {
+    // Remove each digit from the rows we are not keeping, and note the rows left.
+    const left = { ones: [], fives: [], nines: [] }
+    for (const [name, digit, rows] of [['ones', 1, ones], ['fives', 5, fives], ['nines', 9, nines]]) {
       for (const row of rows) {
-        if (!kept.has(row)) yield puzzle.removeCandidateFromCell(digit, column[row])
+        if (keep[name].has(row)) left[name].push(row)
+        else yield puzzle.removeCandidateFromCell(digit, column[row])
       }
     }
     // Pruning again would remove nothing more, so remember the column as it now stands.
-    lastLeft[col] = describe({
-      ones: ones.filter(row => keep.ones.has(row)),
-      fives: fives.filter(row => keep.fives.has(row)),
-      nines: nines.filter(row => keep.nines.has(row))
-    })
+    lastPruned[col] = columnState(left)
   }
 }
 
 // On a full grid, every 5 needs a 1 directly above it or a 9 directly below it.
+// `instance.cells` is the list of every cell, row by row, which the app fills in.
 function validate (instance, puzzle) {
   const { cells, size } = instance
   if (!puzzle.getCellsAreFilled(cells)) return true

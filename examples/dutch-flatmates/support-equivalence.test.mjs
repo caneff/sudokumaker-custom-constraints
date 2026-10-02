@@ -1,7 +1,7 @@
 // The plain-language `rowsToKeep` (row lists in, row sets out) keeps exactly the
 // rows the frozen bit-set functions keep, for every 1/5/9 column state. Two
-// references: `.golden/DutchFlatmatesComponent.bitmask.js`, today's
-// `supportedRows` and `flatmatedRows` as #690 shipped them, and
+// references: `.golden/DutchFlatmatesComponent.bitmask.js`, the
+// `supportedRows` and `flatmatedRows` functions #690 shipped, and
 // `.golden/DutchFlatmatesComponent.floor.js`, the 9^3 loop over (5, 1, 9) row
 // triples. This test is the proof that the rewrite is the same deduction, not
 // an argument for it.
