@@ -1,7 +1,7 @@
 // Soundness fuzz for the Dutch Flatmates component: `update` never removes a
-// cell's TRUE value. The shipped component only validates, so `update` removes
-// nothing at all, and this harness asserts both: zero violations, and every
-// candidate set untouched.
+// cell's TRUE value, on random partial boards consistent with the shipped
+// solution. It also asserts the prune is not dead code: some states lose
+// candidates.
 //
 //   node examples/dutch-flatmates/soundness-harness.mjs
 //
@@ -65,7 +65,7 @@ for (let i = 0; i < ITERS; i++) {
 }
 console.log(`${'dutch-flatmates'.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', changed, 'states pruned')
 assert.strictEqual(bad, 0, `${bad} violations`)
-assert.strictEqual(changed, 0, 'the validate-only update removed a candidate')
+assert.ok(changed > 0, 'update never removed a candidate: the prune is dead')
 
 // ---- validate agrees with the truth on the solved grid --------------------
 {

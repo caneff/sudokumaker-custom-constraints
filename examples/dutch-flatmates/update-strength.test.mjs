@@ -1,9 +1,8 @@
 // Strength check for DutchFlatmatesComponent.update. Soundness (never remove a
 // true value) lives in soundness-harness.mjs; this file checks the other
 // direction: that a rewrite does not quietly prune LESS than the floor. The
-// floor is the validate-only `update`, which removes nothing, so no state can
-// come out weaker than it; the sweep is the harness a later deduction is held
-// to.
+// floor is the per-column 1/5/9 prune, so a later deduction is held to at least
+// that strength.
 //
 //   node examples/dutch-flatmates/update-strength.test.mjs
 //

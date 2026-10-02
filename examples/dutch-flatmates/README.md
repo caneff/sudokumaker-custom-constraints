@@ -5,11 +5,11 @@ plus one rule. Every 5 needs a flatmate: a 1 in the cell directly above it, or
 a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
-The component is **validate-only**: `validate` checks the rule on a full grid
-and `update` removes nothing. That is the baseline a pruning deduction is timed
-against. Because the app then only learns the rule by trying values, the board
-keeps plain sudoku's completions few (1,279 on the shipped givens), so the
-app's search over them stays quick (see Timing).
+`validate` checks the rule on a full grid; `update` prunes per column. A column
+is a full house, so it holds one 5, one 1 and one 9, and `update` keeps only the
+5, 1 and 9 rows that some consistent (5, 1, 9) triple still supports. The board
+also keeps plain sudoku's completions few (1,279 on the shipped givens). The
+pruning was timed against the validate-only first slice and kept (see Timing).
 
 The one solution:
 
@@ -29,7 +29,7 @@ The one solution:
 
 | File | Holds |
 | --- | --- |
-| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that removes nothing |
+| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
 | `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`) |
@@ -95,8 +95,9 @@ uv run examples/dutch-flatmates/build_link.py
 seed does not give one grid; `gen.json` is the record, and the link is rebuilt
 from it. The carve stops removing givens at 2,000 plain-sudoku completions
 (`MAX_PLAIN_COMPLETIONS`): the 19-given minimum the carve reaches without that
-bound has over 100,000 completions, and a validate-only component leaves the app
-to enumerate them.
+bound has over 100,000 completions, and the first slice's validate-only component
+left the app to enumerate them. The bound stays: it keeps the search small
+whether or not `update` prunes.
 
 ## Live app
 
@@ -133,7 +134,7 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   has to be committed before the run, or it refuses naming that.
 
 So `just time dutch-flatmates` needs no flag and runs in strip mode. It was run
-once on this example (below).
+three times on this example (below).
 
 ## Tests
 
@@ -141,6 +142,7 @@ once on this example (below).
 node examples/dutch-flatmates/validate.test.mjs
 node examples/dutch-flatmates/soundness-harness.mjs
 node examples/dutch-flatmates/update-strength.test.mjs
+node examples/dutch-flatmates/update-prune.test.mjs
 uv run examples/dutch-flatmates/flatmate_model.test.py
 uv run examples/dutch-flatmates/build_link.test.py
 ```
@@ -151,9 +153,16 @@ uv run examples/dutch-flatmates/build_link.test.py
   the shipped solution passes.
 - `soundness-harness.mjs` — `main.js` registers one component over 81 cells
   row-major (an id order scrambled by the mock, so a build by index fails); a
-  rectangle or a missing cell throws; 5,000 random states around the shipped
-  solution lose no true value and lose no candidate at all.
-- `update-strength.test.mjs` — the floor is a frozen copy of the validate-only
+  rectangle or a missing cell throws; 5,000 random partial boards consistent
+  with the shipped solution lose no true value, and some lose candidates (the
+  prune is live).
+- `update-prune.test.mjs` — targeted cases through what a caller sees: a 5 with
+  no 1 above and no 9 below is pruned, as is a top-row 5 with no 9 below and a
+  bottom-row 5 with no 1 above; a pinned 5 pins its flatmate; an open board
+  loses nothing; a column with no possible 5 stops the branch; repeat calls are
+  idempotent, re-prune after a backtrack restores a candidate, and see a column
+  that changed.
+- `update-strength.test.mjs` — the floor is a frozen copy of the pruning
   component, `.golden/DutchFlatmatesComponent.floor.js` (the component and its
   floor land in one squash-merged PR, so a pinned sha would name a commit main
   never holds). Replace that copy in the same commit as a stronger `update`.
@@ -168,11 +177,16 @@ uv run examples/dutch-flatmates/build_link.test.py
 ## Timing
 
 `just time dutch-flatmates` (no flags, strip mode, 3 reps, non-deterministic
-solve off) on `PUZZLE_LINK.txt`. The code is byte-equal to the committed link's,
-so the run times the baseline alone and prints `BASELINE`; this is the
-validate-only comparison point the pruning deductions are timed against.
+solve off) on the pruning component against the committed validate-only link,
+run three times; every run printed these rows and `two-row rule: SHIP`. The
+driver times all baseline reps, then all candidate reps, per row, so the reps
+are not interleaved. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
+outside run-to-run spread.
 
-| date | app version | fixture | time | ratio | vs baseline | verdict |
+| date | app version | fixture | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates | 200ms | — | — | BASELINE |
-| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates after-logical | 200ms | — | — | BASELINE |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates | 200ms | 0ms | 0.00 | PASS |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates after-logical | 200ms | 0ms | 0.00 | PASS |
+
+Baseline (validate-only, slice 1, `BASELINE` rows): 200 ms cold, 200 ms
+after-logical. The shipped `PUZZLE_LINK.txt` carries the pruning component.
