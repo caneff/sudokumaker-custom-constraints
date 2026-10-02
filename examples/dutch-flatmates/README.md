@@ -163,4 +163,12 @@ uv run --with lzstring examples/dutch-flatmates/build_link.test.py
 
 ## Timing
 
-TIMING_PLACEHOLDER
+`just time dutch-flatmates` (no flags, strip mode, 7 reps, non-deterministic
+solve off) on `PUZZLE_LINK.txt`. The code is byte-equal to the committed link's,
+so the run times the baseline alone and prints `BASELINE`; this is the
+validate-only comparison point the pruning deductions are timed against.
+
+| date | app version | fixture | time | ratio | vs baseline | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates | 200ms | — | — | BASELINE |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates after-logical | 200ms | — | — | BASELINE |
