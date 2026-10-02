@@ -54,3 +54,39 @@ The scratch files live in the primary checkout's git-ignored `.scratch/dfm-compa
 2. Replace the constraint whose `definition.components` is non-empty with the other document's.
 3. Encode with gridfind's `scripts/link_file.py encode`.
 4. Loop `node examples/_shared/app-solve.mjs <link> 1 [--after-logical]` over the four links, 3 rounds, rotating the start.
+
+## Two SudokuPad puzzles, rebuilt with SudokuMaker built-ins
+
+Chris asked how fast two published Dutch Flatmates puzzles solve. Neither has givens. Each was rebuilt on our 9x9 base board with every cell empty, using the app's own built-in constraint types, read from the production bundle `main-D44ZZMA9.js`:
+
+- `NumberedRooms` = 504: `clues: [{outerCell, value}]`, where `outerCell = (x+1) + (y+1)*11`.
+- `CountingCircles` = 306: `cells: [...]`.
+- `DiagonalMinus` = 10 and `DiagonalPlus` = 11.
+
+Only the flatmate constraint differs between "ours" and "theirs".
+
+| puzzle | source | extra rules |
+|---|---|---|
+| P1 | sudokupad.app/2z307pcbx5, GoodCity, "Dutch Flat Mates (Numbered Rooms)" | 19 Numbered Rooms clues |
+| P2 | sudokupad.app/pdhr2gqlhe, Flinty, "Dutch Flat Mates (Counting Circles)", made in Sudoku Maker v2024.03.28 | 28 counting circles, both diagonals unique |
+
+Every clue was checked against the solution SudokuPad records:
+- P1: 19 of 19 Numbered Rooms clues hold.
+- P2: 0 circle-count violations, and the diagonals hold.
+- Both: 0 flatmate violations.
+
+P2's rule text also says "5s ... don't live in Circles". That rule was **not** added, because no built-in expresses it. The recorded solution has no 5 in a circle.
+
+Timing: sudokumaker.app `v2026.08.14-d47fc4b`, `app-solve.mjs`, 3 interleaved rounds, rotating lead, non-deterministic solve off. The driver's limit is 300 s.
+
+| link | cold: first / unique (3 reps) | after-logical: first / unique (3 reps) |
+|---|---|---|
+| P1, our code | 0/0, 0/0, 0/0 ms | 0/0, 0/0, 100/0 ms |
+| P1, their code | 100/0, 100/0, 100/0 ms | 0/0, 0/0, 0/0 ms |
+| P2, our code | timeout x3 (no first solve) | timeout x3 |
+| P2, their code | timeout x3 (no first solve) | timeout x3 |
+
+- **P1.** Both prove uniqueness in 0 ms. Cold, their code reads 100 ms to the first solution against our 0 ms, 3 reps of 3. The readout's resolution is 100 ms, so that is one tick.
+- **P2.** DNF with both codes, so the flatmate code is not what decides it. The cause has not been checked. Candidates: the built-in CountingCircles search, the omitted "no 5 in circles" rule, or a board mismatch the solution check cannot see, such as a built-in reading its input differently from SudokuPad.
+
+Rebuild: `build_sp.py` (beside this note) writes the docs from the unzipped SudokuPad JSON (`sudokupad-art/tools/unzip_scl.py <id> sp.json`). `run2.sh` times them, with `VARIANTS="..." OUT=<file>`.
