@@ -2,9 +2,10 @@
 # flatmate rule, then greedy given removal for as long as the board stays
 # uniquely solvable, written to gen.json (the board `build_link.py` encodes).
 #
-#   uv run examples/dutch-flatmates/generate.py [--seed N] [--out gen.json]
+#   uv run examples/dutch-flatmates/generate.py [--seed N] [--out gen.json] [--max-plain N]
 #
-# The carve also keeps plain sudoku's completions few (MAX_PLAIN_COMPLETIONS),
+# The carve also keeps plain sudoku's completions few (MAX_PLAIN_COMPLETIONS by
+# default; --max-plain raises it for a board with fewer givens),
 # because the shipped component validates only and the app enumerates them.
 #
 # Two things the carve must leave true, asserted before anything is written:

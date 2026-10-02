@@ -32,8 +32,9 @@ The one solution:
 | `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
-| `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`) |
+| `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
 | `gen.json` | The shipped board: the solution, the given cells, the seed |
+| `gen_18g.json`, `PUZZLE_LINK_18g.txt` | The 18-given timing board and its link: evidence that partner pointing (#678) could not be timed (see Timing) |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`; `--component` swaps a candidate in |
 | `verify.py` | The uniqueness proof and the rule-forces-a-flatmate check |
 | `app-open.mjs` | Opens the link in the app once and prints rules, verdict and solved grid |
@@ -92,17 +93,19 @@ uv run examples/dutch-flatmates/build_link.py
 ```
 
 `generate.py --max-plain N` raises the plain-completions bound the carve keeps
-(default 2,000) for a board with fewer givens; `gen_18g.json` came from
-`--seed 4 --max-plain 100000000`, built with `build_link.py --puzzle
-gen_18g.json --out PUZZLE_LINK_18g.txt`.
+(default 2,000) for a board with fewer givens. `gen_18g.json` came from
+`uv run examples/dutch-flatmates/generate.py --seed 4 --max-plain 100000000
+--out examples/dutch-flatmates/gen_18g.json`, and the link from `cd
+examples/dutch-flatmates && uv run build_link.py --puzzle gen_18g.json --out
+PUZZLE_LINK_18g.txt`.
 
 `generate.py` takes CP-SAT's 8-worker portfolio for the grid search, so one
 seed does not give one grid; `gen.json` is the record, and the link is rebuilt
 from it. The carve stops removing givens at 2,000 plain-sudoku completions
-(`MAX_PLAIN_COMPLETIONS`): the 19-given minimum the carve reaches without that
+(`MAX_PLAIN_COMPLETIONS`): the 19-given minimum seed 1's carve reaches without that
 bound has over 100,000 completions, and the first slice's validate-only component
-left the app to enumerate them. The bound stays: it keeps the search small
-whether or not `update` prunes.
+left the app to enumerate them. The bound is the default: it keeps the search small
+whether or not `update` prunes. `--max-plain` raises it for a harder board.
 
 ## Live app
 
