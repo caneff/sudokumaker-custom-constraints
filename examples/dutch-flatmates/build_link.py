@@ -17,8 +17,9 @@
 # backend and the rules opening -- from framebuild.
 #
 # A gen JSON with a "circles" list is Flinty's Counting Circles board
-# (gen_0g.json): the same document plus both diagonals, the app's built-in
-# Counting Circles, and NoFiveComponent over the circle cells. Its builtin
+# (gen_0g.json): the same document plus the app's built-in Counting Circles and
+# NoFiveComponent over the circle cells, and, when its "diagonals" key is set,
+# both diagonals. Its builtin
 # constraint shapes (types 10, 11, 306) are the ones the app's own bundle
 # writes; the app solving the board to a unique verdict is what vouches for
 # them.
@@ -54,14 +55,23 @@ CIRCLE_STYLE = {
     "fill": "#ffffffff",
     "stroke": {"thickness": 0.02, "color": "#000000ff"},
 }
+DIAGONALS_RULE = "Digits may not repeat along the two main diagonals."
 CIRCLES_RULES = (
-    "Normal sudoku rules apply. Digits may not repeat along the two main "
-    "diagonals.\n\n" + RULE + "\n\n"
     "Counting Circles: a digit in a circle is the number of circles containing "
     "that digit.\n\n"
     "No 5 in a circle: 5s live in Dutch Flats, not in circles.\n\n"
     "Puzzle by {author} ({source})."
 )
+
+
+def circles_comment(extras, spec):
+    """The rules text of a Counting Circles board: the ringless opening, then
+    each rule the `extras` ship, in the order the board lists them."""
+    parts = [NO_RING_RULES_PREFIX + (DIAGONALS_RULE if extras.diagonals else RULE)]
+    if extras.diagonals:
+        parts.append(RULE)
+    parts.append(CIRCLES_RULES.format(**spec))
+    return "\n\n".join(parts)
 
 
 def read_board(puzzle_path):
@@ -126,7 +136,7 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
         "puzzle": {
             "name": CONSTRAINT_NAME,
             "author": "",
-            "comment": CIRCLES_RULES.format(**spec)
+            "comment": circles_comment(extras, spec)
             if extras.circles
             else NO_RING_RULES_PREFIX + RULE,
             "type": "custom",
