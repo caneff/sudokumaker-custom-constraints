@@ -4,92 +4,122 @@
 //! the 9 below; a 5 in the bottom row can only have the 1 above.
 //!
 //! One whole-grid component. `validate` judges the rule on a full grid. `update`
-//! prunes per column: a column is a full house, so it holds one 5, one 1 and one
-//! 9, and only a (5, 1, 9) row triple the rule allows can be the true one.
+//! prunes per column, and how far depends on what the app says about it:
+//!   - a column that cannot repeat is a house, so it holds exactly one 5, one 1
+//!     and one 9, and only the rows of a (5, 1, 9) arrangement the rule allows
+//!     can be the true ones;
+//!   - a column that can repeat gets only the per-cell rule: a 5 with no 1
+//!     above it and no 9 below it can go.
+
+// #include ../_shared/line-kind.js
 
 function getAffectedCells (cells) {
   return cells
 }
 
 // `cells` is row-major over the square grid; `instance.cells` is already set.
-// `seen[col]` is the 1/5/9 candidate key `update` last left that column at, so
-// a column no one has touched since costs one key read.
+// `instance.columns[col]` is that column's cell ids, top row first.
+// `instance.seen[col]` is the `[ones, fives, nines]` row sets `update` last
+// left that column at (null until it has), so a column no one has touched since
+// costs one read.
 function setParams (instance, cells) {
-  instance.side = Math.round(Math.sqrt(cells.length))
-  instance.seen = new Array(instance.side).fill(-1)
+  const side = Math.round(Math.sqrt(cells.length))
+  instance.side = side
+  instance.columns = Array.from({ length: side }, (_, col) =>
+    Array.from({ length: side }, (_, row) => cells[row * side + col]))
+  instance.seen = new Array(side).fill(null)
 }
 
 const BIT_1 = 1 << 1
 const BIT_5 = 1 << 5
 const BIT_9 = 1 << 9
 
-// The 1/5/9 candidates of one column as one number: three bits a row.
-function columnKey (cells, side, col, puzzle) {
-  let key = 0
-  for (let row = 0; row < side; row++) {
-    const mask = puzzle.getCandidatesBitMask(cells[row * side + col])
-    key = key * 8 + ((mask & BIT_1) >> 1) + ((mask & BIT_5) >> 4) + ((mask & BIT_9) >> 7)
+// The rows of a column where a 1, a 5 and a 9 can still go, as three bit sets
+// (bit `row` is set when that row's cell holds the digit as a candidate).
+function readRows (puzzle, column) {
+  let ones = 0
+  let fives = 0
+  let nines = 0
+  for (let row = 0; row < column.length; row++) {
+    const mask = puzzle.getCandidatesBitMask(column[row])
+    if (mask & BIT_1) ones |= 1 << row
+    if (mask & BIT_5) fives |= 1 << row
+    if (mask & BIT_9) nines |= 1 << row
   }
-  return key
+  return [ones, fives, nines]
 }
 
-// Per column, the rows a 5, a 1 and a 9 can take in some consistent triple:
-// three distinct rows, each holding its digit as a candidate, with the 5's
-// flatmate present, the 1 directly above it or the 9 directly below it. Sound:
-// the true column is such a triple, so none of its positions is dropped.
-function supportedRows (m1, m5, m9, side) {
-  let s1 = 0
-  let s5 = 0
-  let s9 = 0
-  for (let r5 = 0; r5 < side; r5++) {
-    if ((m5 >> r5 & 1) === 0) continue
-    for (let r1 = 0; r1 < side; r1++) {
-      if (r1 === r5 || (m1 >> r1 & 1) === 0) continue
-      for (let r9 = 0; r9 < side; r9++) {
-        if (r9 === r5 || r9 === r1 || (m9 >> r9 & 1) === 0) continue
-        if (r1 !== r5 - 1 && r9 !== r5 + 1) continue
-        s5 |= 1 << r5
-        s1 |= 1 << r1
-        s9 |= 1 << r9
+function sameRows (a, b) {
+  return b !== null && a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+}
+
+// House column: the rows a 1, a 5 and a 9 can take in some arrangement of one
+// of each that the rule allows. A 5 at `row` is supported two ways:
+//   1 above: a 1 at row - 1, and a 9 at any other row it can go;
+//   9 below: a 9 at row + 1, and a 1 at any other row it can go.
+// A row is kept for a digit when some supported 5 uses it, as its partner or as
+// the column's other digit. Sound: the true column is such an arrangement, so
+// none of its positions is dropped.
+function supportedRows (ones, fives, nines, side) {
+  let keepOnes = 0
+  let keepFives = 0
+  let keepNines = 0
+  for (let row = 0; row < side; row++) {
+    if (!(fives >> row & 1)) continue
+    const five = 1 << row
+    if (row > 0 && ones >> (row - 1) & 1) {
+      const one = 1 << (row - 1)
+      const otherNines = nines & ~five & ~one
+      if (otherNines !== 0) {
+        keepFives |= five
+        keepOnes |= one
+        keepNines |= otherNines
+      }
+    }
+    if (row < side - 1 && nines >> (row + 1) & 1) {
+      const nine = 1 << (row + 1)
+      const otherOnes = ones & ~five & ~nine
+      if (otherOnes !== 0) {
+        keepFives |= five
+        keepNines |= nine
+        keepOnes |= otherOnes
       }
     }
   }
-  return [s1, s5, s9]
+  return [keepOnes, keepFives, keepNines]
+}
+
+// A column that can repeat: only the 5s that have a 1 above or a 9 below can stay.
+function flatmatedRows (ones, fives, nines) {
+  return [ones, fives & ((ones << 1) | (nines >> 1)), nines]
+}
+
+function * removeRows (puzzle, column, digit, rows) {
+  for (let row = 0; row < column.length; row++) {
+    if (rows >> row & 1) yield puzzle.removeCandidateFromCell(digit, column[row])
+  }
 }
 
 function * update (instance, puzzle) {
-  const { cells, side, seen } = instance
-  if (side < 9) return // a board without a 9 cannot hold the triple the prune reasons over
+  const { columns, side, seen } = instance
+  if (side < 9) return // a board without a 9 cannot hold the arrangement the prune reasons over
   for (let col = 0; col < side; col++) {
-    const key = columnKey(cells, side, col, puzzle)
-    if (key === seen[col]) continue
-    let m1 = 0
-    let m5 = 0
-    let m9 = 0
-    for (let row = 0; row < side; row++) {
-      const mask = puzzle.getCandidatesBitMask(cells[row * side + col])
-      m1 |= ((mask & BIT_1) >> 1) << row
-      m5 |= ((mask & BIT_5) >> 5) << row
-      m9 |= ((mask & BIT_9) >> 9) << row
-    }
-    const [s1, s5, s9] = supportedRows(m1, m5, m9, side)
-    if (s5 === 0) {
+    const column = columns[col]
+    const rows = readRows(puzzle, column)
+    if (sameRows(rows, seen[col])) continue
+    const [ones, fives, nines] = rows
+    const isHouse = lineKind(instance, puzzle, column).kind === HOUSE
+    const keep = isHouse ? supportedRows(ones, fives, nines, side) : flatmatedRows(ones, fives, nines)
+    if (isHouse && keep[1] === 0) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
-    let after = 0
-    for (let row = 0; row < side; row++) {
-      const cell = cells[row * side + col]
-      const mask = puzzle.getCandidatesBitMask(cell)
-      const drop = (mask & BIT_1 && !(s1 >> row & 1) ? BIT_1 : 0) |
-        (mask & BIT_5 && !(s5 >> row & 1) ? BIT_5 : 0) |
-        (mask & BIT_9 && !(s9 >> row & 1) ? BIT_9 : 0)
-      if (drop !== 0) yield puzzle.removeCandidatesFromCell(drop, cell)
-      after = after * 8 + (((mask & ~drop) & BIT_1) >> 1) + (((mask & ~drop) & BIT_5) >> 4) + (((mask & ~drop) & BIT_9) >> 7)
-    }
+    if (ones & ~keep[0]) yield * removeRows(puzzle, column, 1, ones & ~keep[0])
+    if (fives & ~keep[1]) yield * removeRows(puzzle, column, 5, fives & ~keep[1])
+    if (nines & ~keep[2]) yield * removeRows(puzzle, column, 9, nines & ~keep[2])
     // A pass over the pruned column removes nothing more: every kept position
-    // is in a triple whose three positions all stay.
-    seen[col] = after
+    // is in an arrangement whose positions all stay.
+    seen[col] = keep
   }
 }
 
