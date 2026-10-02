@@ -703,7 +703,7 @@ if __name__ == "__main__":
         finally:
             time_example.app_solve = real
 
-    def reps(cold, logical):
+    def per_link(cold, logical):
         """Per-rep medians for one link: its cold reps, then its logical ones."""
         return [*cold, *logical]
 
@@ -728,7 +728,7 @@ if __name__ == "__main__":
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
         with fake_solve(
-            {B: reps([1000] * R, [800] * R), C: reps([500] * R, [400] * R)}
+            {B: per_link([1000] * R, [800] * R), C: per_link([500] * R, [400] * R)}
         ) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["PASS", "PASS"]
@@ -757,7 +757,7 @@ if __name__ == "__main__":
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
         with fake_solve(
-            {B: reps([1000] * R, [1000] * R), C: reps([1000] * R, [1500] * R)}
+            {B: per_link([1000] * R, [1000] * R), C: per_link([1000] * R, [1500] * R)}
         ):
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["FAIL", "FAIL"]
@@ -770,7 +770,7 @@ if __name__ == "__main__":
         _make_widget_example(
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
-        with fake_solve({B: reps([1000] * R, [900] * R)}) as calls:
+        with fake_solve({B: per_link([1000] * R, [900] * R)}) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
         assert ship is None, "nothing to judge means no ship verdict"
@@ -820,7 +820,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK_alt.txt").write_text(encode_link(base_doc) + "\n")
         _git_commit_all(example_dir)
-        with fake_solve({B: reps([1000] * R, [900] * R)}) as calls:
+        with fake_solve({B: per_link([1000] * R, [900] * R)}) as calls:
             rows, _ship = run(example_dir, ring_clues=True, board="PUZZLE_LINK_alt.txt")
         assert all(ring for _name, ring, _al in calls), (
             "ring_clues must reach the driver"
@@ -837,8 +837,8 @@ if __name__ == "__main__":
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
         with fake_solve(
             {
-                B: reps([900, 3000, 1000], [100, 100, 100]),
-                C: reps([400, 500, 9000], [100, 100, 100]),
+                B: per_link([900, 3000, 1000], [100, 100, 100]),
+                C: per_link([400, 500, 9000], [100, 100, 100]),
             }
         ):
             rows, _ship = run(example_dir)
