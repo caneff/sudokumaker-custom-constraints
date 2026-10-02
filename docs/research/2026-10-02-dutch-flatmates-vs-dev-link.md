@@ -120,3 +120,22 @@ The time splits differently between the two codes:
 - The uniqueness proof is where theirs loses: 12.5–12.8 s against our 2.3–2.4 s.
 
 The column pruning is the likely cause of the faster proof, but that is not tested here. Cell-by-cell, their per-cell rule cannot remove a 1 or 9 that no 5 in the column can use, so the search for a second solution explores branches that ours removes.
+
+### Third implementation: the catalog's "Dutch Flatmates 2.0" (curlingclips)
+
+**Source.** The community catalog (`docs/catalog.md`) row "Dutch Flatmates 2.0", https://tinyurl.com/2c6le3g3, by curlingclips.
+
+**Design.** One `FlatmatesComponent` per cell. A drawn group sets the offsets (origin, above, below) and the digit sets `[5],[1],[9]`. In `update`, a component either:
+- removes 5 and itself, when its cell cannot be 5 or neither partner can supply; or
+- replaces itself with the app's built-in `PairComponent` on (above, below) once its cell must be 5.
+
+**Method.** Same board (P2 + no-5), with only the flatmate constraint swapped. Interleaved with our code, 3 rounds, both rows.
+
+| link | cold total (first + unique), 3 reps | median | after-logical total, 3 reps | median |
+|---|---|---|---|---|
+| ours | 11.7 (9.3+2.4), 12.5, 12.0 s | 12.0 s | 11.5 (9.0+2.5), 11.8, 12.6 s | 11.8 s |
+| curlingclips | timeout x3 (first solve 53.0–54.1 s, no verdict in 300 s) | DNF | 15.6 (1.3+14.3), 15.8, 15.9 s | 15.8 s |
+
+**After-logical:** ours / curlingclips = 11.8 / 15.8 = **0.75x**. The pattern is the same as the dev-link code: a fast first solve, then a slow uniqueness proof.
+
+**What Chris sees.** Chris's manual runs (logic pass first, non-deterministic off) match the after-logical rows: about 12 s for both ours and the dev-link code. The cold DNFs occur only when the search starts without the logic pass. The combined link (ours + dev-link code active together) also times out cold, twice: first solve at 50.1 s and 50.5 s.
