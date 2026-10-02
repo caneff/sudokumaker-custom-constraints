@@ -105,6 +105,7 @@ if __name__ == "__main__":
     # the plain count is capped: a count at the cap reads "cap or more"
     assert count_plain_completions({}, 5) == 5
     assert count_plain_completions(grid, 5) == 1
+    assert count_plain_completions({(0, 0): 1, (0, 1): 1}, 5) == 0
     # a count the time limit cuts short is no verdict, whatever it had counted
     try:
         count_plain_completions({}, 10**9, limit=0.3)

@@ -128,9 +128,9 @@ def count_plain_completions(givens, cap, limit=60):
     s.parameters.enumerate_all_solutions = True
     counter = _Counter(cap)
     status = s.Solve(m, counter)
-    # OPTIMAL: the enumeration finished. Otherwise it stopped at `cap`, or hit
+    # OPTIMAL or INFEASIBLE: the enumeration finished. Otherwise it stopped at `cap`, or hit
     # the time limit with a partial count, which is no verdict.
-    if status != cp_model.OPTIMAL and counter.found < cap:
+    if status not in (cp_model.OPTIMAL, cp_model.INFEASIBLE) and counter.found < cap:
         raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
     return counter.found
 
