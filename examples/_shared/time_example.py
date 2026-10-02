@@ -369,7 +369,8 @@ def run_app_solve(
     links = [baseline_link] + ([candidate_link] if candidate_link else [])
     data = {link: [] for link in links}
     for rnd in range(REPS):
-        for link in links if rnd % 2 == 0 else reversed(links):
+        order = links if rnd % 2 == 0 else links[::-1]
+        for link in order:
             stdout = app_solve(link, 1, ring_clues, after_logical)
             data[link].append(parse_app_solve_output(link, stdout, allow_timeout=True))
     timed = [combine_reps(link, data[link]) for link in links]
