@@ -52,26 +52,31 @@ const truth = {}
 gen.grid.forEach((row, r) => [...row].forEach((ch, c) => { truth[r * N + c] = Number(ch) }))
 const seeder = makeSeeder(rnd, ALL)
 
+// Once with the columns declared houses (the shipped board), once with none
+// (every column can repeat, so only the per-cell rule runs).
+const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => row * N + col))
 const ITERS = 5000
-let bad = 0
-let changed = 0
-for (let i = 0; i < ITERS; i++) {
-  const start = makePuzzle(truth, seeder)
-  const before = total(start)
-  const inst = { cells: CELLS }
-  mod.setParams(inst, CELLS)
-  if (violates(mod, inst, start, truth) !== null) bad++
-  if (total(start) !== before) changed++
+for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (no houses)', []]]) {
+  let bad = 0
+  let changed = 0
+  for (let i = 0; i < ITERS; i++) {
+    const start = makePuzzle(truth, seeder, { houses })
+    const before = total(start)
+    const inst = { cells: CELLS }
+    mod.setParams(inst, CELLS)
+    if (violates(mod, inst, start, truth) !== null) bad++
+    if (total(start) !== before) changed++
+  }
+  console.log(`${label.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', changed, 'states pruned')
+  assert.strictEqual(bad, 0, `${label}: ${bad} violations`)
+  assert.ok(changed > 0, `${label}: update never removed a candidate: the prune is dead`)
 }
-console.log(`${'dutch-flatmates'.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', changed, 'states pruned')
-assert.strictEqual(bad, 0, `${bad} violations`)
-assert.ok(changed > 0, 'update never removed a candidate: the prune is dead')
 
 // ---- validate agrees with the truth on the solved grid --------------------
 {
   const inst = { cells: CELLS }
   mod.setParams(inst, CELLS)
-  const solved = makePuzzle(truth, (c, v) => [v])
+  const solved = makePuzzle(truth, (c, v) => [v], { houses: COLUMNS })
   assert.strictEqual(mod.validate(inst, solved), true, 'validate rejected the shipped solution')
   fixpoint(mod, inst, solved)
   assert.strictEqual(mod.validate(inst, solved), true, 'update broke the shipped solution')

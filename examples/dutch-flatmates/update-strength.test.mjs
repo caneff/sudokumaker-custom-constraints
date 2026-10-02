@@ -36,6 +36,10 @@ const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const gen = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8'))
 const truth = gen.grid.flatMap(row => [...row].map(Number))
 
+// The floor prunes every column as a house, so compare on a board that declares
+// each column one (compareStrength hands `opts` to the mock puzzle).
+const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => row * N + col))
+
 const apply = (mod, p) => {
   const inst = { cells: CELLS }
   mod.setParams(inst, CELLS)
@@ -48,6 +52,7 @@ strengthSweep('dutch-flatmates', {
   cur,
   ref,
   apply,
+  opts: { houses: COLUMNS },
   * states () {
     for (let rep = 0; rep < REPS; rep++) {
       const start = new Map()

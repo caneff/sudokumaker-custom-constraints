@@ -15,6 +15,14 @@
 # neither. The document is written out here, in the shape `no_ring_doc`
 # produces, and takes its two shared parts -- the whole-grid rows-and-columns
 # backend and the rules opening -- from framebuild.
+#
+# A gen JSON with a "circles" list is Flinty's Counting Circles board
+# (gen_0g.json): the same document plus the app's built-in Counting Circles and
+# NoFiveComponent over the circle cells, and, when its "diagonals" key is set,
+# both diagonals. Its builtin
+# constraint shapes (types 10, 11, 306) are the ones the app's own bundle
+# writes; the app solving the board to a unique verdict is what vouches for
+# them.
 
 import argparse
 import json
@@ -25,7 +33,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from flatmate_model import N, prove_recorded
+from flatmate_model import Extras, N, prove_recorded
 from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
@@ -39,6 +47,32 @@ RULE = (
     "bottom row needs the 1 above it."
 )
 
+NO_FIVE_NAME = "No 5 in circles"
+NO_FIVE_COMPONENT = "NoFiveComponent"
+LINE_STYLE = {"color": "#34bbe6ff", "thickness": 0.02}
+CIRCLE_STYLE = {
+    "size": 0.75,
+    "fill": "#ffffffff",
+    "stroke": {"thickness": 0.02, "color": "#000000ff"},
+}
+DIAGONALS_RULE = "Digits may not repeat along the two main diagonals."
+CIRCLES_RULES = (
+    "Counting Circles: a digit in a circle is the number of circles containing "
+    "that digit.\n\n"
+    "No 5 in a circle: 5s live in Dutch Flats, not in circles.\n\n"
+    "Puzzle by {author} ({source})."
+)
+
+
+def circles_comment(extras, spec):
+    """The rules text of a Counting Circles board: the ringless opening, then
+    each rule the `extras` ship, in the order the board lists them."""
+    parts = [NO_RING_RULES_PREFIX + (DIAGONALS_RULE if extras.diagonals else RULE)]
+    if extras.diagonals:
+        parts.append(RULE)
+    parts.append(CIRCLES_RULES.format(**spec))
+    return "\n\n".join(parts)
+
 
 def read_board(puzzle_path):
     """(grid, givens) from a gen JSON: `grid` the solved rows as strings,
@@ -48,12 +82,47 @@ def read_board(puzzle_path):
     return spec["grid"], givens
 
 
+def read_extras(puzzle_path):
+    """The `Extras` a gen JSON asks for, plus its raw spec: no "circles" key is
+    the plain flatmate board."""
+    spec = json.loads(pathlib.Path(puzzle_path).read_text())
+    return Extras(tuple(spec.get("circles", ())), spec.get("diagonals", False)), spec
+
+
+def circles_constraints(circles):
+    """The constraints Counting Circles adds after the flatmate one: the circles
+    and the no-5 rule over the circle cells."""
+    no_five = f"puzzle.addConstraintComponent(new {NO_FIVE_COMPONENT}('no 5 in a circle', {json.dumps(list(circles))}))"
+    return [
+        {"type": 306, "cells": list(circles), "style": CIRCLE_STYLE},
+        {
+            "name": NO_FIVE_NAME,
+            "type": 1000,
+            "definition": {
+                "name": NO_FIVE_NAME,
+                "input": [],
+                "backend": {"type": "code", "code": no_five},
+                "components": [
+                    {
+                        "type": "code",
+                        "name": NO_FIVE_COMPONENT,
+                        "code": minify_file(HERE / f"{NO_FIVE_COMPONENT}.js"),
+                    }
+                ],
+            },
+            "input": {},
+            "style": {},
+        },
+    ]
+
+
 def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen.json"):
     """Build the board in `puzzle_path` with `component_path`'s code, after
     proving it has exactly the solution the gen JSON records. Returns (link,
     doc, number of givens)."""
     grid, givens = read_board(puzzle_path)
-    prove_recorded(givens, grid)
+    extras, spec = read_extras(puzzle_path)
+    prove_recorded(givens, grid, extras)
     # a cell holds a value only when it is a given: a non-given value ships as
     # an entered digit and the recipient opens a solved board
     cells = [
@@ -67,7 +136,9 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
         "puzzle": {
             "name": CONSTRAINT_NAME,
             "author": "",
-            "comment": NO_RING_RULES_PREFIX + RULE,
+            "comment": circles_comment(extras, spec)
+            if extras.circles
+            else NO_RING_RULES_PREFIX + RULE,
             "type": "custom",
             "width": N,
             "height": N,
@@ -103,6 +174,13 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
                     "input": {},
                     "style": {},
                 },
+                # one `Extras` field per rule, for the proof and the document alike
+                *(
+                    [{"type": t, "style": LINE_STYLE} for t in (10, 11)]
+                    if extras.diagonals
+                    else []
+                ),
+                *(circles_constraints(extras.circles) if extras.circles else []),
             ],
             "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
         },
@@ -115,7 +193,8 @@ def check(link, doc, n_givens):
     assert back == doc, "link does not decode back to the built document"
     p = back["puzzle"]
     assert (p["type"], p["width"], p["height"]) == ("custom", N, N)
-    assert p["comment"].startswith(NO_RING_RULES_PREFIX + "Dutch Flatmates")
+    assert p["comment"].startswith(NO_RING_RULES_PREFIX)
+    assert "Dutch Flatmates" in p["comment"]
     assert len(p["cells"]) == N * N
     # every non-given cell must be empty, or the board ships entered digits
     assert all(c.get("given") or c == {} for c in p["cells"])

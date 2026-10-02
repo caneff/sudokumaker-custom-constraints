@@ -5,9 +5,12 @@ plus one rule. Every 5 needs a flatmate: a 1 in the cell directly above it, or
 a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
-`validate` checks the rule on a full grid; `update` prunes per column. A column
-is a full house, so it holds one 5, one 1 and one 9, and `update` keeps only the
-5, 1 and 9 rows that some consistent (5, 1, 9) triple still supports. The board
+`validate` checks the rule on a full grid; `update` prunes per column. When the
+app says a column cannot repeat (`getCellsCanHaveRepeats`, through
+`line-kind.js`), it is a house, so it holds one 5, one 1 and one 9, and `update`
+keeps only the rows some arrangement of the three still supports: a 5 with a 1
+above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. A column that can
+repeat gets only the per-cell rule: a 5 with no 1 above and no 9 below goes. The board
 also keeps plain sudoku's completions few (1,279 on the shipped givens). The
 pruning was timed against the validate-only first slice and kept (see Timing).
 
@@ -29,13 +32,14 @@ The one solution:
 
 | File | Holds |
 | --- | --- |
-| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column |
+| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, house columns by the arrangement rule and the rest per cell |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
 | `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
 | `gen.json` | The shipped board: the solution, the given cells, the seed |
 | `gen_18g.json`, `PUZZLE_LINK_18g.txt` | The 18-given timing board and its link: evidence that partner pointing (#678) could not be timed (see Timing) |
-| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`; `--component` swaps a candidate in |
+| `gen_0g.json`, `PUZZLE_LINK_0g.txt`, `NoFiveComponent.js` | The Counting Circles timing board, the one board where the component still searches in the app (see below) |
+| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`, and `PUZZLE_LINK_0g.txt` from `gen_0g.json`; `--component` swaps a candidate in |
 | `verify.py` | The uniqueness proof and the rule-forces-a-flatmate check |
 | `app-open.mjs` | Opens the link in the app once and prints rules, verdict and solved grid |
 
@@ -64,6 +68,56 @@ rows and columns for free, but `check_layout.py` would then need its own
 reading of an implicit-houses board; a custom document with the shared backend
 is the shape up-to-n's ringless links have (house-gac's carries a research
 "Rows & Columns" backend instead).
+
+## Counting Circles board (`PUZZLE_LINK_0g.txt`): the searchable timing board
+
+Every other board here reads 0 ms in the app, so a change to the flatmate code
+cannot be timed on them. This one is Flinty's "Dutch Flat Mates (Counting
+Circles)" (https://sudokupad.app/pdhr2gqlhe, made in Sudoku Maker v2024.03.28),
+committed as a second board. It has **no givens**, hence `0g`. Rules: normal
+sudoku; both main diagonals unique; Dutch Flatmates; Counting Circles on 28
+cells (a digit in a circle is the number of circles holding that digit); no 5 in
+a circle. The rules text opens "Normal sudoku rules apply." and names all five
+plus the credit.
+
+- **Document:** the same ringless 9x9 as the plain board, plus the app's
+  built-in constraints for the diagonals (types 10 and 11) and Counting Circles
+  (type 306), and a second custom constraint, `No 5 in circles`, which registers
+  `NoFiveComponent` over the 28 circle cells. The built-in shapes are the ones
+  the app's production bundle writes; the app solving the board to a unique
+  verdict is the only check they have beyond that.
+- **Why `NoFiveComponent` is its own constraint, in its own file.**
+  `check_layout.check_components` compares each custom constraint's shipped
+  components with what its own backend registers, so a second constraint that
+  ships and registers one component passes with no allow-list. It is not a shared
+  component: no other example needs it.
+- **`just time` leaves it alone.** `link_swap.swap_build` finds the constraint
+  that registers `DutchFlatmatesComponent` and replaces only that component's
+  code, then asserts the two docs differ nowhere else (`check_and_write`), so the
+  diagonals, circles and `NoFiveComponent` stay as committed.
+- **Uniqueness, proved two ways.** CP-SAT (`flatmate_model.Extras`, the model's
+  diagonals and Counting Circles, one worker, seed 0, about 1.5 s) finds exactly
+  one solution and it is `gen_0g.json`'s grid, which is SudokuPad's recorded
+  solution; `build_link.test.py` runs `verify()` on it. The app says
+  unique too (below). `build_link.test.py` also states every rule independently
+  on the recorded grid.
+- **Regenerate:** `uv run examples/dutch-flatmates/build_link.py --puzzle
+  examples/dutch-flatmates/gen_0g.json --out examples/dutch-flatmates/PUZZLE_LINK_0g.txt`.
+  `gen_0g.json` came from the SudokuPad puzzle through
+  `sudokupad-art/tools/unzip_scl.py pdhr2gqlhe`: its solution string and the 28
+  `underlays` centres (row * 9 + column).
+
+Baseline, `just time dutch-flatmates --board PUZZLE_LINK_0g.txt` (strip mode,
+non-deterministic solve off, 3 reps, candidate byte-equal so baseline rows only),
+2026-10-02, app `v2026.08.14-d47fc4b`:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11800ms | — | — | BASELINE |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11500ms | — | — | BASELINE |
+
+One `app-solve.mjs` rep reads `[unique]`: 9.6 s to the first solution, 2.5 s to
+prove no other.
 
 ## Proof of uniqueness
 
@@ -153,6 +207,7 @@ node examples/dutch-flatmates/validate.test.mjs
 node examples/dutch-flatmates/soundness-harness.mjs
 node examples/dutch-flatmates/update-strength.test.mjs
 node examples/dutch-flatmates/update-prune.test.mjs
+node examples/dutch-flatmates/no-five.test.mjs
 node examples/dutch-flatmates/end-to-end.test.mjs
 uv run examples/dutch-flatmates/flatmate_model.test.py
 uv run examples/dutch-flatmates/build_link.test.py
@@ -167,12 +222,23 @@ uv run examples/dutch-flatmates/build_link.test.py
   rectangle or a missing cell throws; 5,000 random partial boards consistent
   with the shipped solution lose no true value, and some lose candidates (the
   prune is live).
-- `update-prune.test.mjs` — targeted cases through what a caller sees: a 5 with
+- `update-prune.test.mjs` — targeted cases through what a caller sees (columns
+  declared houses; a second set with none declared: a column that can repeat
+  keeps the 1s the house rule would drop, still loses a 5 with no flatmate, and
+  is not stopped for lacking a 5): a 5 with
   no 1 above and no 9 below is pruned, as is a top-row 5 with no 9 below and a
   bottom-row 5 with no 1 above; a pinned 5 pins its flatmate; an open board
   loses nothing; a column with no possible 5 stops the branch; repeat calls are
   idempotent, re-prune after a backtrack restores a candidate, and see a column
   that changed.
+- `no-five.test.mjs` — `NoFiveComponent`'s `initialize` removes the 5 from exactly
+  the 28 circle cells, `validate` refuses a 5 there, and the recorded solution
+  keeps every true value.
+- `support-equivalence.test.mjs` — the readable `supportedRows` returns the same
+  three row sets as the floor's 9³ triple loop on every 1/5/9 column state: all
+  2,396,672 states of 3- to 7-row columns, and 497,336 on the real 9-row column
+  (a fixed-seed fuzz across densities plus every state with at most two rows per
+  digit). The 9-row column is fuzzed, not exhaustive (2^27 states).
 - `update-strength.test.mjs` — the floor is a frozen copy of the pruning
   component, `.golden/DutchFlatmatesComponent.floor.js` (the component and its
   floor land in one squash-merged PR, so a pinned sha would name a commit main
@@ -189,7 +255,9 @@ uv run examples/dutch-flatmates/build_link.test.py
 - `build_link.test.py` — the committed link is what the builder writes; it decodes
   to the ringless 9x9, `gen.json`'s givens, the rules text and exactly one
   `DutchFlatmatesComponent`; a swap round-trips; a board missing givens, and a
-  grid that is not the board's solution, are refused; and `verify.py` passes.
+  grid that is not the board's solution, are refused; and `verify.py` passes on
+  both boards, with the Counting Circles board's link, rules text, circles and
+  `NoFiveComponent` checked too.
 
 ## Timing
 
@@ -228,3 +296,19 @@ matched the Live app section above (23 givens, rules text, unique, grid equal to
 the solution). `just time` read 0 ms cold and 0 ms after-logical, as BASELINE
 rows because the committed link now is the pruning candidate, so they match the
 candidate column above.
+
+Readable rewrite and house gate (#690), 2026-10-02, on the Counting Circles
+board (the shipped board reads 0 ms, so it cannot show a ratio). `just time
+dutch-flatmates --board PUZZLE_LINK_0g.txt`, 3 reps, interleaved, non-deterministic
+solve off, old component (committed link) against the rewrite:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11800ms | 11600ms | 0.98 | PASS (≤ 1.1x) |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11200ms | 11200ms | 1.00 | PASS (≤ 1.1x) |
+
+The driver prints FAIL and `NO SHIP` on these rows because it applies the 0.9x
+rule of an added deduction. The rewrite adds none, so the bar is the gate-change
+bar of `docs/real-app-timing.md`: ≤ 1.1x on both rows. All three links were
+rebuilt from the rewrite (`build_link.py`, `--puzzle gen_18g.json`, `--puzzle
+gen_0g.json`).

@@ -24,11 +24,15 @@ const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 const at = (row, col) => row * N + col
 
+// The nine columns, each a house the app reports cannot repeat. `board()`
+// declares them unless a test hands it none: the repeat-column cases below.
+const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => at(row, col)))
+
 // A full-candidate board; `edit(cand)` narrows cells before the call.
-function board (edit = () => {}) {
+function board (edit = () => {}, houses = COLUMNS) {
   const cand = new Map(CELLS.map(c => [c, new Set(ALL)]))
   edit(cand)
-  const p = makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => [...cand.get(c)])
+  const p = makePuzzle(Object.fromEntries(CELLS.map(c => [c, 0])), c => [...cand.get(c)], { houses })
   const inst = { cells: CELLS }
   mod.setParams(inst, CELLS)
   return { p, inst }
@@ -114,6 +118,40 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   run(b)
   assert.notStrictEqual(b.p._stopped, null, 'a repeat call on a dead column did not stop again')
   console.log('column with no 5 anywhere: stopped')
+}
+
+// A column that can repeat is not a house: it need not hold a 1, a 5 or a 9, so
+// the triple rule does not apply, but the per-cell rule still does.
+{
+  const none = []
+  // the house-only prune: a 5 pinned at row 4 whose 9 below is gone pins the 1
+  // above it, so a house loses every other 1; a column that can repeat keeps them
+  const pinned = cand => {
+    for (let r = 0; r < N; r++) if (r !== 4) cand.get(at(r, 1)).delete(5)
+    cand.get(at(5, 1)).delete(9)
+  }
+  const house = board(pinned)
+  run(house)
+  const open = board(pinned, none)
+  run(open)
+  for (let r = 0; r < N; r++) {
+    assert.strictEqual(has(house.p, r, 1, 1), r === 3, `house: 1 at row ${r} should ${r === 3 ? 'stay' : 'go'}`)
+    assert.ok(has(open.p, r, 1, 1), `repeat column: the 1 at row ${r} was pruned by the house rule`)
+  }
+  // the per-cell rule: a 5 with no 1 above and no 9 below goes, on a column that can repeat too
+  const lone = board(cand => {
+    cand.get(at(2, 0)).delete(1)
+    cand.get(at(4, 0)).delete(9)
+  }, none)
+  run(lone)
+  assert.ok(!has(lone.p, 3, 0, 5), 'repeat column: the 5 with no flatmate survived')
+  assert.ok(has(lone.p, 6, 0, 5), 'repeat column: a 5 with a 1 above was removed')
+  assert.ok(has(lone.p, 3, 0, 1) && has(lone.p, 3, 0, 9), 'repeat column: the per-cell rule touched a 1 or 9')
+  // a repeat column with no 5 anywhere is fine: it need not hold one
+  const noFive = board(cand => { for (let r = 0; r < N; r++) cand.get(at(r, 7)).delete(5) }, none)
+  run(noFive)
+  assert.strictEqual(noFive.p._stopped, null, 'a column that can repeat was stopped for holding no 5')
+  console.log('repeat column: not pruned by the house rule, still loses an unflatmated 5, never stopped for lacking a 5')
 }
 
 // Repeat calls: a second call on the pruned state removes nothing more, and the

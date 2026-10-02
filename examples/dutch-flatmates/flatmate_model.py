@@ -5,6 +5,7 @@
 # other homes are DutchFlatmatesComponent.js, and the independent statements in
 # flatmate_model.test.py and validate.test.mjs that check the two against it.
 
+import dataclasses
 import pathlib
 import sys
 
@@ -17,10 +18,23 @@ N = 9
 BOX = 3
 
 
-def build_model(givens=(), flatmate=True):
-    """(model, x) for sudoku with `givens` ({(row, column): digit}) and, when
-    `flatmate` is true, the flatmate rule on every cell. `x` maps (row,
-    column) to its variable."""
+@dataclasses.dataclass(frozen=True)
+class Extras:
+    """The rules a board adds beside the flatmate rule: `circles` the cell
+    indices (row * 9 + column) of the Counting Circles board's circles, and
+    `diagonals` whether both main diagonals hold distinct digits."""
+
+    circles: tuple = ()
+    diagonals: bool = False
+
+
+NO_EXTRAS = Extras()
+
+
+def build_model(givens=(), flatmate=True, extras=NO_EXTRAS):
+    """(model, x) for sudoku with `givens` ({(row, column): digit}), `extras`
+    and, when `flatmate` is true, the flatmate rule on every cell. `x` maps
+    (row, column) to its variable."""
     m = cp_model.CpModel()
     x = {(r, c): m.NewIntVar(1, N, f"x{r}{c}") for r in range(N) for c in range(N)}
     for (r, c), v in dict(givens).items():
@@ -35,6 +49,11 @@ def build_model(givens=(), flatmate=True):
             )
     if flatmate:
         _post_flatmate(m, x)
+    if extras.diagonals:
+        m.AddAllDifferent([x[i, i] for i in range(N)])
+        m.AddAllDifferent([x[i, N - 1 - i] for i in range(N)])
+    if extras.circles:
+        _post_counting_circles(m, x, extras.circles)
     return m, x
 
 
@@ -61,6 +80,21 @@ def _post_flatmate(m, x):
             m.AddBoolOr(options).OnlyEnforceIf(five)
 
 
+def _post_counting_circles(m, x, circles):
+    """Counting Circles: a digit in a circle is the number of circles holding
+    that digit. The board also bans 5 from every circle, so no circle holds
+    a 5 (and "five circles hold a 5" never has to be counted)."""
+    cells = [divmod(i, N) for i in circles]
+    for d in range(1, N + 1):
+        if d == 5:
+            for cell in cells:
+                m.Add(x[cell] != 5)
+            continue
+        holds = [_is(m, x[cell], d, f"circle{d}_{cell[0]}{cell[1]}") for cell in cells]
+        for held in holds:
+            m.Add(sum(holds) == d).OnlyEnforceIf(held)
+
+
 def _solve(m, limit):
     """(status, solver) for `m`. Raises TimeoutError on no verdict: a timeout is
     never read as "no solution"."""
@@ -71,21 +105,21 @@ def _solve(m, limit):
     return status, s
 
 
-def solve_one(givens, flatmate=True, limit=60):
+def solve_one(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
     """One solution of the board as {(row, column): digit}, or None when it
     has none. Raises TimeoutError on no verdict."""
-    m, x = build_model(givens, flatmate)
+    m, x = build_model(givens, flatmate, extras)
     status, s = _solve(m, limit)
     return {k: s.Value(v) for k, v in x.items()} if status in SOLVED else None
 
 
-def unique_solution(givens, flatmate=True, limit=60):
+def unique_solution(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
     """The board's one solution, or None when it has none or several (the two
     are not told apart). Raises TimeoutError on no verdict."""
-    first = solve_one(givens, flatmate, limit)
+    first = solve_one(givens, flatmate, limit, extras)
     if first is None:
         return None
-    m, x = build_model(givens, flatmate)
+    m, x = build_model(givens, flatmate, extras)
     return None if has_second_solution(m, x, first, limit) else first
 
 
@@ -94,10 +128,10 @@ def rows_of(solution):
     return ["".join(str(solution[r, c]) for c in range(N)) for r in range(N)]
 
 
-def prove_recorded(givens, grid):
+def prove_recorded(givens, grid, extras=NO_EXTRAS):
     """The board's one solution, proved to be the recorded `grid` (nine digit
     strings). Raises AssertionError naming which part failed."""
-    solution = unique_solution(givens)
+    solution = unique_solution(givens, extras=extras)
     assert solution is not None, "the board is not uniquely solvable"
     assert rows_of(solution) == grid, "the gen JSON's grid is not the board's solution"
     return solution
@@ -145,7 +179,7 @@ def flatmate_of(solution, r, c):
     raise AssertionError(f"the 5 at {(r, c)} has no flatmate in this solution")
 
 
-def rule_forced_flatmates(givens, solution, limit=60):
+def rule_forced_flatmates(givens, solution, limit=60, extras=NO_EXTRAS):
     """The 5s of `solution` whose flatmate cell the givens alone do not fix:
     under plain sudoku with `givens`, that cell can take another digit. These
     are the cells where only the flatmate rule forces the flatmate.
@@ -157,7 +191,7 @@ def rule_forced_flatmates(givens, solution, limit=60):
         if v != 5:
             continue
         f = flatmate_of(solution, r, c)
-        m, x = build_model(givens, flatmate=False)
+        m, x = build_model(givens, flatmate=False, extras=extras)
         m.Add(x[f] != solution[f])
         status, _s = _solve(m, limit)
         if status in SOLVED:
