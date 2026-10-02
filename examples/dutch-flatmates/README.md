@@ -32,8 +32,9 @@ The one solution:
 | `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
-| `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`) |
+| `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
 | `gen.json` | The shipped board: the solution, the given cells, the seed |
+| `gen_18g.json`, `PUZZLE_LINK_18g.txt` | The 18-given timing board and its link: evidence that partner pointing (#678) could not be timed (see Timing) |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`; `--component` swaps a candidate in |
 | `verify.py` | The uniqueness proof and the rule-forces-a-flatmate check |
 | `app-open.mjs` | Opens the link in the app once and prints rules, verdict and solved grid |
@@ -91,13 +92,20 @@ uv run examples/dutch-flatmates/generate.py          # a fresh gen.json (seed 1,
 uv run examples/dutch-flatmates/build_link.py
 ```
 
+`generate.py --max-plain N` raises the plain-completions bound the carve keeps
+(default 2,000) for a board with fewer givens. `gen_18g.json` came from
+`uv run examples/dutch-flatmates/generate.py --seed 4 --max-plain 100000000
+--out examples/dutch-flatmates/gen_18g.json`, and the link from `cd
+examples/dutch-flatmates && uv run build_link.py --puzzle gen_18g.json --out
+PUZZLE_LINK_18g.txt`.
+
 `generate.py` takes CP-SAT's 8-worker portfolio for the grid search, so one
 seed does not give one grid; `gen.json` is the record, and the link is rebuilt
 from it. The carve stops removing givens at 2,000 plain-sudoku completions
-(`MAX_PLAIN_COMPLETIONS`): the 19-given minimum the carve reaches without that
+(`MAX_PLAIN_COMPLETIONS`): the 19-given minimum seed 1's carve reaches without that
 bound has over 100,000 completions, and the first slice's validate-only component
-left the app to enumerate them. The bound stays: it keeps the search small
-whether or not `update` prunes.
+left the app to enumerate them. The bound is the default: it keeps the search small
+whether or not `update` prunes. `--max-plain` raises it for a harder board.
 
 ## Live app
 
@@ -190,3 +198,15 @@ outside run-to-run spread.
 
 Baseline (validate-only, slice 1, `BASELINE` rows): 200 ms cold, 200 ms
 after-logical. The shipped `PUZZLE_LINK.txt` carries the pruning component.
+
+**Partner pointing (#678) could not be timed.** The shipped pruning reads 0 ms
+on `PUZZLE_LINK.txt`, which leaves no ratio. Boards carved with fewer givens
+(`generate.py --max-plain`: 21, 20 and 18 givens) read the same, so the 18-given
+board, `PUZZLE_LINK_18g.txt` (`gen_18g.json`), is the committed evidence:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_18g.txt) | 0ms | — | — | BASELINE |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_18g.txt) after-logical | 0ms | — | — | BASELINE |
+
+No partner-pointing deduction was written; see `OPTIMIZATION_LOG.md`.
