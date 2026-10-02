@@ -90,3 +90,14 @@ Timing: sudokumaker.app `v2026.08.14-d47fc4b`, `app-solve.mjs`, 3 interleaved ro
 - **P2.** DNF with both codes, so the flatmate code is not what decides it. The cause has not been checked. Candidates: the built-in CountingCircles search, the omitted "no 5 in circles" rule, or a board mismatch the solution check cannot see, such as a built-in reading its input differently from SudokuPad.
 
 Rebuild: `build_sp.py` (beside this note) writes the docs from the unzipped SudokuPad JSON (`sudokupad-art/tools/unzip_scl.py <id> sp.json`). `run2.sh` times them, with `VARIANTS="..." OUT=<file>`.
+
+### P2 with "no 5 in a circle" added
+
+The DNF above was caused by the rule left out. `add_no5.py` (beside this note) adds it as one small custom constraint. Its `initialize` removes 5 from the 28 circle cells, and its `validate` rejects a 5 on a circle. One cold rep each:
+
+| link | first solve | uniqueness proof | verdict |
+|---|---|---|---|
+| P2 + no-5, our code | 9.7 s | 2.4 s (12.1 s total) | unique |
+| P2 + no-5, their code | 43.6 s | none within 300 s | timeout |
+
+This is the first board where the two flatmate codes separate in the real app. It is one rep, cold only. The full interleaved 3-rep, two-row run follows when it lands.
