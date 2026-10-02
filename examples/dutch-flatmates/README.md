@@ -5,9 +5,12 @@ plus one rule. Every 5 needs a flatmate: a 1 in the cell directly above it, or
 a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
-`validate` checks the rule on a full grid; `update` prunes per column. A column
-is a full house, so it holds one 5, one 1 and one 9, and `update` keeps only the
-5, 1 and 9 rows that some consistent (5, 1, 9) triple still supports. The board
+`validate` checks the rule on a full grid; `update` prunes per column. When the
+app says a column cannot repeat (`getCellsCanHaveRepeats`, through
+`line-kind.js`), it is a house, so it holds one 5, one 1 and one 9, and `update`
+keeps only the rows some arrangement of the three still supports: a 5 with a 1
+above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. A column that can
+repeat gets only the per-cell rule: a 5 with no 1 above and no 9 below goes. The board
 also keeps plain sudoku's completions few (1,279 on the shipped givens). The
 pruning was timed against the validate-only first slice and kept (see Timing).
 
@@ -29,7 +32,7 @@ The one solution:
 
 | File | Holds |
 | --- | --- |
-| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column |
+| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, house columns by the arrangement rule and the rest per cell |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
 | `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
@@ -219,7 +222,10 @@ uv run examples/dutch-flatmates/build_link.test.py
   rectangle or a missing cell throws; 5,000 random partial boards consistent
   with the shipped solution lose no true value, and some lose candidates (the
   prune is live).
-- `update-prune.test.mjs` — targeted cases through what a caller sees: a 5 with
+- `update-prune.test.mjs` — targeted cases through what a caller sees (columns
+  declared houses; a second set with none declared: a column that can repeat
+  keeps the 1s the house rule would drop, still loses a 5 with no flatmate, and
+  is not stopped for lacking a 5): a 5 with
   no 1 above and no 9 below is pruned, as is a top-row 5 with no 9 below and a
   bottom-row 5 with no 1 above; a pinned 5 pins its flatmate; an open board
   loses nothing; a column with no possible 5 stops the branch; repeat calls are
@@ -228,6 +234,11 @@ uv run examples/dutch-flatmates/build_link.test.py
 - `no-five.test.mjs` — `NoFiveComponent`'s `initialize` removes the 5 from exactly
   the 28 circle cells, `validate` refuses a 5 there, and the recorded solution
   keeps every true value.
+- `support-equivalence.test.mjs` — the readable `supportedRows` returns the same
+  three row sets as the floor's 9³ triple loop on every 1/5/9 column state: all
+  2,396,672 states of 3- to 7-row columns, and 497,336 on the real 9-row column
+  (a fixed-seed fuzz across densities plus every state with at most two rows per
+  digit). The 9-row column is fuzzed, not exhaustive (2^27 states).
 - `update-strength.test.mjs` — the floor is a frozen copy of the pruning
   component, `.golden/DutchFlatmatesComponent.floor.js` (the component and its
   floor land in one squash-merged PR, so a pinned sha would name a commit main
@@ -285,3 +296,19 @@ matched the Live app section above (23 givens, rules text, unique, grid equal to
 the solution). `just time` read 0 ms cold and 0 ms after-logical, as BASELINE
 rows because the committed link now is the pruning candidate, so they match the
 candidate column above.
+
+Readable rewrite and house gate (#690), 2026-10-02, on the Counting Circles
+board (the shipped board reads 0 ms, so it cannot show a ratio). `just time
+dutch-flatmates --board PUZZLE_LINK_0g.txt`, 3 reps, interleaved, non-deterministic
+solve off, old component (committed link) against the rewrite:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11800ms | 11600ms | 0.98 | PASS (≤ 1.1x) |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11200ms | 11200ms | 1.00 | PASS (≤ 1.1x) |
+
+The driver prints FAIL and `NO SHIP` on these rows because it applies the 0.9x
+rule of an added deduction. The rewrite adds none, so the bar is the gate-change
+bar of `docs/real-app-timing.md`: ≤ 1.1x on both rows. All three links were
+rebuilt from the rewrite (`build_link.py`, `--puzzle gen_18g.json`, `--puzzle
+gen_0g.json`).
