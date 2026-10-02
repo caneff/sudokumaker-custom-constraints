@@ -73,8 +73,16 @@ REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 # line an author draws, so there is no per-line group to split a local lane
 # out of either (#428). up-to-n has drawn groups but no global lane: its clues
 # are typed into them, and a board with no groups has no clue to read (spec
-# #366). Every other example needs both lanes (#194, #235, #268).
-NO_LOCAL_GLOBAL_SPLIT = {"isofill", "fillomino", "house-gac", "up-to-n"}
+# #366). dutch-flatmates is whole-grid like isofill: one component over a
+# ringless 9x9 and no drawn groups. Every other example needs both lanes (#194,
+# #235, #268).
+NO_LOCAL_GLOBAL_SPLIT = {
+    "isofill",
+    "fillomino",
+    "house-gac",
+    "up-to-n",
+    "dutch-flatmates",
+}
 
 # An example whose one required component lives in `_shared/` on purpose,
 # shared across every board that carries the same filter, rather than a copy
@@ -108,10 +116,11 @@ def is_no_ring(puzzle):
 # pattern as NO_LOCAL_GLOBAL_SPLIT above.
 NO_RULES_PREFIX = {"isofill", "fillomino"}
 
-# A sudoku example whose board is a plain 9x9 with no clue ring and no grid
-# backend, so is_no_ring cannot see it: its rules text opens on
-# NO_RING_RULES_PREFIX, there being no inner grid to name (#460).
-RINGLESS_SUDOKU = {"house-gac"}
+# A sudoku example whose board is a plain 9x9 with no clue ring: its rules text
+# opens on NO_RING_RULES_PREFIX, there being no inner grid to name (#460).
+# house-gac's board carries no grid backend, so is_no_ring cannot see it;
+# dutch-flatmates' does, and is named here as well.
+RINGLESS_SUDOKU = {"house-gac", "dutch-flatmates"}
 
 # An example whose board has no houses at all: isofill and fillomino are
 # whole-grid constraints on a bare board, with no row, column or box rule to
