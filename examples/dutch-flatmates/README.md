@@ -6,8 +6,8 @@ a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
 `validate` checks the rule on a full grid; `update` prunes per column. When the
-app says a column cannot repeat (`getCellsCanHaveRepeats`, through
-`line-kind.js`), it is a house, so it holds one 5, one 1 and one 9, and `update`
+app says a column cannot repeat (`getCellsCanHaveRepeats`, asked once per
+column inside `update`), it is a house, so it holds one 5, one 1 and one 9, and `update`
 keeps only the rows some arrangement of the three still supports: a 5 with a 1
 above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. A column that can
 repeat gets only the per-cell rule: a 5 with no 1 above and no 9 below goes. The board
@@ -39,7 +39,8 @@ The one solution:
 | `gen.json` | The shipped board: the solution, the given cells, the seed |
 | `gen_18g.json`, `PUZZLE_LINK_18g.txt` | The 18-given timing board and its link: evidence that partner pointing (#678) could not be timed (see Timing) |
 | `gen_0g.json`, `PUZZLE_LINK_0g.txt`, `NoFiveComponent.js` | The Counting Circles timing board, the one board where the component still searches in the app (see below) |
-| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`, and `PUZZLE_LINK_0g.txt` from `gen_0g.json`; `--component` swaps a candidate in |
+| `PUZZLE_LINK_0g_annotated.txt` | The Counting Circles board with the embedded code's comments kept, for reading the code in the app (#693) |
+| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`, and `PUZZLE_LINK_0g.txt` from `gen_0g.json`; `--keep-comments` builds the annotated link; `--component` swaps a candidate in |
 | `verify.py` | The uniqueness proof and the rule-forces-a-flatmate check |
 | `app-open.mjs` | Opens the link in the app once and prints rules, verdict and solved grid |
 
@@ -234,8 +235,11 @@ uv run examples/dutch-flatmates/build_link.test.py
 - `no-five.test.mjs` — `NoFiveComponent`'s `initialize` removes the 5 from exactly
   the 28 circle cells, `validate` refuses a 5 there, and the recorded solution
   keeps every true value.
-- `support-equivalence.test.mjs` — the readable `supportedRows` returns the same
-  three row sets as the floor's 9³ triple loop on every 1/5/9 column state: all
+- `support-equivalence.test.mjs` — the plain-language `rowsToKeep` (row lists in,
+  row sets out) keeps the same rows as the floor's 9³ triple loop and as #690's
+  bit-set `supportedRows`, and `rowsToKeepIfRepeatsAllowed` the same as #690's
+  `flatmatedRows` (both frozen in `.golden/DutchFlatmatesComponent.bitmask.js`),
+  on every 1/5/9 column state: all
   2,396,672 states of 3- to 7-row columns, and 497,336 on the real 9-row column
   (a fixed-seed fuzz across densities plus every state with at most two rows per
   digit). The 9-row column is fuzzed, not exhaustive (2^27 states).
@@ -312,3 +316,22 @@ rule of an added deduction. The rewrite adds none, so the bar is the gate-change
 bar of `docs/real-app-timing.md`: ≤ 1.1x on both rows. All three links were
 rebuilt from the rewrite (`build_link.py`, `--puzzle gen_18g.json`, `--puzzle
 gen_0g.json`).
+
+Plain-language rewrite (#693), 2026-10-02, same board and command, 3 reps,
+interleaved, non-deterministic solve off, #690's component (committed link)
+against the rewrite (row lists, `getCandidates(cell).has(digit)`, no shifts):
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 12000ms | 13100ms | 1.09 | PASS (≤ 1.1x) |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11300ms | 12600ms | 1.12 | **FAIL** (≤ 1.1x) |
+
+The after-logical row misses the bar by 0.02x. The driver's baseline-only run of
+the rewrite read 13200 ms cold and 12300 ms after-logical, so the same code
+swings about 0.3 s between runs. Where the time goes: a diagnostic run
+with the candidate read swapped for `getCandidatesBitMask` (not shipped: it
+needs the digit-bit constants #693 removes) read 11600 ms -> 12500 ms (1.08x)
+cold and 11200 ms -> 12000 ms (1.07x) after-logical. So the allocation in
+`getCandidates` is a small part of the cost, and the rest comes from the plain
+row lists, row sets and the unchanged-column key. Left as is, for Chris to rule
+on whether the readability is worth ~1.1x.
