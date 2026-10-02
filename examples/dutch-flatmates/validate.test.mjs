@@ -52,6 +52,10 @@ assert.strictEqual(verdict({ '0,3': 5, '1,3': 1 }), false, 'top-row 5 with a 1 b
 assert.strictEqual(verdict({ '8,3': 5, '7,3': 1 }), true, 'bottom-row 5 with the 1 above passes')
 assert.strictEqual(verdict({ '8,3': 5 }), false, 'bottom-row 5 with no 1 above fails')
 assert.strictEqual(verdict({ '8,3': 5, '7,3': 9 }), false, 'bottom-row 5 with a 9 above fails')
+// no wrap-around: the cell above the top row and below the bottom row is not
+// the other end of the column
+assert.strictEqual(verdict({ '0,3': 5, '8,3': 1 }), false, 'a 1 at the foot of the column is not above a top-row 5')
+assert.strictEqual(verdict({ '8,3': 5, '0,3': 9 }), false, 'a 9 at the head of the column is not below a bottom-row 5')
 // corners and the left/right edges read the same column
 assert.strictEqual(verdict({ '0,0': 5, '1,0': 9 }), true, 'top-left 5 with the 9 below passes')
 assert.strictEqual(verdict({ '8,8': 5, '7,8': 1 }), true, 'bottom-right 5 with the 1 above passes')
