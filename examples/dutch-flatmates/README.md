@@ -324,9 +324,9 @@ against the rewrite (row lists, `getCandidates(cell).has(digit)`, no shifts):
 | date | app version | fixture | baseline | candidate | ratio | verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 12000ms | 13100ms | 1.09 | PASS (≤ 1.1x) |
-| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11300ms | 12600ms | 1.12 | **FAIL** (≤ 1.1x) |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11200ms | 12500ms | 1.12 | **FAIL** (≤ 1.1x) |
 
-The after-logical row misses the bar by 0.02x. The driver's baseline-only run of
+The after-logical row misses the bar by 0.02x (the same two rows read twice, on the component as first built and on the one after review's fixes). The driver's baseline-only run of
 the rewrite read 13200 ms cold and 12300 ms after-logical, so the same code
 swings about 0.3 s between runs. Where the time goes: a diagnostic run
 with the candidate read swapped for `getCandidatesBitMask` (not shipped: it
