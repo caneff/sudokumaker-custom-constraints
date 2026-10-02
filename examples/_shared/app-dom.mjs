@@ -27,6 +27,25 @@ export async function useRecordedApp (context) {
   console.error(update ? `app: live, recording ${har}` : `app: replay from ${har}`)
 }
 
+// The digits the app draws on a 9x9 grid, as nine strings ('.' for a cell with
+// none). Each cell's digit sits in a group translated to the cell's centre at
+// scale 25, 50 px per cell; a constraint's own decoration is never at that
+// transform (CELL_TRANSFORM in app-solve-lib.mjs).
+export const readGrid = page => page.evaluate(() => {
+  const re = /^translate\((\d+) (\d+)\) scale\(25\)$/
+  const rows = Array.from({ length: 9 }, () => Array(9).fill('.'))
+  for (const t of document.querySelectorAll('svg text')) {
+    const g = t.closest('g[transform]')
+    const m = g && re.exec(g.getAttribute('transform'))
+    const v = t.textContent.trim()
+    if (!m || !/^[1-9]$/.test(v)) continue
+    const col = Math.round((+m[1] - 25) / 50)
+    const row = Math.round((+m[2] - 25) / 50)
+    if (col >= 0 && col < 9 && row >= 0 && row < 9) rows[row][col] = v
+  }
+  return rows.map(r => r.join(''))
+})
+
 // Click the innermost element whose exact trimmed text equals `t`.
 export const clickText = (page, t) => page.evaluate((t) => {
   const els = [...document.querySelectorAll('*')]
