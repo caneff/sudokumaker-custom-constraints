@@ -6,7 +6,8 @@
 #
 # The carve also keeps plain sudoku's completions few (MAX_PLAIN_COMPLETIONS by
 # default; --max-plain raises it for a board with fewer givens),
-# because the shipped component validates only and the app enumerates them.
+# because the app enumerates them, and the pruning in `update` shrinks that search
+# only so far.
 #
 # Two things the carve must leave true, asserted before anything is written:
 # the flatmate rule is needed (plain sudoku on the same givens has more than one

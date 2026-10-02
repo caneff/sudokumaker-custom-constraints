@@ -120,7 +120,9 @@ loads with 23 givens drawn; the play page's rules text reads "Normal sudoku
 rules apply. Dutch Flatmates: every 5 needs a flatmate, a 1 directly above it
 or a 9 directly below it. A 5 in the top row needs the 9 below it, and a 5 in
 the bottom row needs the 1 above it."; "Find all solutions and valid
-candidates" says unique solution (first solve 100 ms, uniqueness search 100 ms)
+candidates" says unique solution (first solve 100 ms, uniqueness search 100 ms,
+read on the first slice's validate-only link; the pruning link shipped now reads 0 ms
+and 0 ms, re-run for #685, below)
 and the grid it fills is the solution above, cell for cell. The same run
 against the recorded app (`examples/_shared/sudokumaker.har`, no `--live`) gives
 the same verdict and grid, and reads no rules text: the recording holds no play
@@ -142,7 +144,7 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   has to be committed before the run, or it refuses naming that.
 
 So `just time dutch-flatmates` needs no flag and runs in strip mode. It was run
-three times on this example (below).
+on this example (Timing, below).
 
 ## Tests
 
@@ -151,6 +153,7 @@ node examples/dutch-flatmates/validate.test.mjs
 node examples/dutch-flatmates/soundness-harness.mjs
 node examples/dutch-flatmates/update-strength.test.mjs
 node examples/dutch-flatmates/update-prune.test.mjs
+node examples/dutch-flatmates/end-to-end.test.mjs
 uv run examples/dutch-flatmates/flatmate_model.test.py
 uv run examples/dutch-flatmates/build_link.test.py
 ```
@@ -174,6 +177,12 @@ uv run examples/dutch-flatmates/build_link.test.py
   component, `.golden/DutchFlatmatesComponent.floor.js` (the component and its
   floor land in one squash-merged PR, so a pinned sha would name a commit main
   never holds). Replace that copy in the same commit as a stronger `update`.
+- `end-to-end.test.mjs` — the spec as a whole through the app's own solver
+  (`bundle-solve-lib.mjs`), on the shipped link and the 18-given one: rules text,
+  one whole-grid component, exactly one solution equal to `gen.json`'s, the rule
+  needed for uniqueness (1,279 plain completions on the shipped givens), the true
+  grid accepted and rule-breaking sudoku grids refused. Its header lists what a
+  green run does not cover: the live app and solve time.
 - `flatmate_model.test.py` — the CP-SAT model against a plain Python statement of
   the rule on 150 sudoku symmetries of the solution, both verdicts and the edge
   rows covered.
@@ -187,8 +196,10 @@ uv run examples/dutch-flatmates/build_link.test.py
 `just time dutch-flatmates` (no flags, strip mode, 3 reps, non-deterministic
 solve off) on the pruning component against the committed validate-only link,
 run three times; every run printed these rows and `two-row rule: SHIP`. The
-driver times all baseline reps, then all candidate reps, per row, so the reps
-are not interleaved. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
+driver then timed all baseline reps, then all candidate reps, per row, so these
+reps were block-ordered, not interleaved as `docs/real-app-timing.md` asks; the
+driver interleaves since #682, and these rows were not re-run, as 200 ms -> 0 ms
+is far beyond any drift between blocks. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
 outside run-to-run spread.
 
 | date | app version | fixture | baseline | candidate | ratio | verdict |
@@ -210,3 +221,10 @@ board, `PUZZLE_LINK_18g.txt` (`gen_18g.json`), is the committed evidence:
 | 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_18g.txt) after-logical | 0ms | — | — | BASELINE |
 
 No partner-pointing deduction was written; see `OPTIMIZATION_LOG.md`.
+
+Close-out (#685), 2026-10-02: `app-open.mjs --live` and `just time dutch-flatmates`
+re-run on the shipped `PUZZLE_LINK.txt` (app `v2026.08.14-d47fc4b`). The open
+matched the Live app section above (23 givens, rules text, unique, grid equal to
+the solution). `just time` read 0 ms cold and 0 ms after-logical, as BASELINE
+rows because the committed link now is the pruning candidate, so they match the
+candidate column above.
