@@ -4,11 +4,18 @@
 #
 #   uv run examples/dutch-flatmates/build_link.py [--puzzle gen.json] [--out FILE]
 #   uv run examples/dutch-flatmates/build_link.py --component FILE --out FILE [--board LINK]
+#   uv run examples/dutch-flatmates/build_link.py --puzzle examples/dutch-flatmates/gen_0g.json \
+#       --keep-comments --out examples/dutch-flatmates/PUZZLE_LINK_0g_annotated.txt
 #
 # No --component rebuilds PUZZLE_LINK.txt (or --out) from --puzzle, re-proving
 # the board unique first; --component swaps a candidate into PUZZLE_LINK.txt or
 # --board, the way `just time dutch-flatmates` times a candidate against the
 # committed link (link_swap.swap_main).
+#
+# --keep-comments builds the annotated link (#693): same board, but the code
+# embedded in it keeps every comment, so a puzzle setter can read it in the
+# app's code box (the build house-gac's annotated link uses, #433). The code
+# loses its `/* eslint-disable */` line, which is for this repo's linter.
 #
 # framebuild cannot host this board: its only ringless path (`no_ring_doc`)
 # reads drawn groups and a clue function from a `Spec`, and a flatmate board has
@@ -37,7 +44,7 @@ from flatmate_model import Extras, N, prove_recorded
 from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
-from minify import minify_file
+from minify import minify_js
 
 CONSTRAINT_NAME = "Dutch Flatmates"
 TIMED_COMPONENT = "DutchFlatmatesComponent"
@@ -62,6 +69,20 @@ CIRCLES_RULES = (
     "No 5 in a circle: 5s live in Dutch Flats, not in circles.\n\n"
     "Puzzle by {author} ({source})."
 )
+
+
+def embedded_code(path, keep_comments=False):
+    """`path`'s code as it goes into a link: comments stripped, or, for the
+    annotated link, kept, minus the lint directive (a repo-only line)."""
+    path = pathlib.Path(path)
+    text = path.read_text()
+    if keep_comments:
+        text = "".join(
+            line
+            for line in text.splitlines(keepends=True)
+            if not line.startswith("/* eslint-disable")
+        )
+    return minify_js(text, base_dir=path.parent, keep_comments=keep_comments)
 
 
 def circles_comment(extras, spec):
@@ -89,7 +110,7 @@ def read_extras(puzzle_path):
     return Extras(tuple(spec.get("circles", ())), spec.get("diagonals", False)), spec
 
 
-def circles_constraints(circles):
+def circles_constraints(circles, keep_comments=False):
     """The constraints Counting Circles adds after the flatmate one: the circles
     and the no-5 rule over the circle cells."""
     no_five = f"puzzle.addConstraintComponent(new {NO_FIVE_COMPONENT}('no 5 in a circle', {json.dumps(list(circles))}))"
@@ -106,7 +127,9 @@ def circles_constraints(circles):
                     {
                         "type": "code",
                         "name": NO_FIVE_COMPONENT,
-                        "code": minify_file(HERE / f"{NO_FIVE_COMPONENT}.js"),
+                        "code": embedded_code(
+                            HERE / f"{NO_FIVE_COMPONENT}.js", keep_comments
+                        ),
                     }
                 ],
             },
@@ -116,10 +139,15 @@ def circles_constraints(circles):
     ]
 
 
-def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen.json"):
+def build(
+    component_path=HERE / f"{TIMED_COMPONENT}.js",
+    puzzle_path=HERE / "gen.json",
+    keep_comments=False,
+):
     """Build the board in `puzzle_path` with `component_path`'s code, after
-    proving it has exactly the solution the gen JSON records. Returns (link,
-    doc, number of givens)."""
+    proving it has exactly the solution the gen JSON records. `keep_comments`
+    builds the annotated link: the embedded code keeps its comments. Returns
+    (link, doc, number of givens)."""
     grid, givens = read_board(puzzle_path)
     extras, spec = read_extras(puzzle_path)
     prove_recorded(givens, grid, extras)
@@ -161,13 +189,13 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
                         "input": [],
                         "backend": {
                             "type": "code",
-                            "code": minify_file(HERE / "main.js"),
+                            "code": embedded_code(HERE / "main.js", keep_comments),
                         },
                         "components": [
                             {
                                 "type": "code",
                                 "name": TIMED_COMPONENT,
-                                "code": minify_file(pathlib.Path(component_path)),
+                                "code": embedded_code(component_path, keep_comments),
                             }
                         ],
                     },
@@ -180,7 +208,11 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
                     if extras.diagonals
                     else []
                 ),
-                *(circles_constraints(extras.circles) if extras.circles else []),
+                *(
+                    circles_constraints(extras.circles, keep_comments)
+                    if extras.circles
+                    else []
+                ),
             ],
             "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
         },
@@ -213,7 +245,9 @@ def rebuild(args, _parser):
     """No --component: rebuild the link from source, to --out or
     PUZZLE_LINK.txt."""
     out = args.out or HERE / "PUZZLE_LINK.txt"
-    link, doc, n_givens = build(puzzle_path=args.puzzle)
+    link, doc, n_givens = build(
+        puzzle_path=args.puzzle, keep_comments=args.keep_comments
+    )
     check(link, doc, n_givens)
     pathlib.Path(out).write_text(link + "\n")
     print(f"wrote {out} ({len(link)} chars, {n_givens} givens)")
@@ -222,4 +256,9 @@ def rebuild(args, _parser):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--puzzle", default=HERE / "gen.json")
+    p.add_argument(
+        "--keep-comments",
+        action="store_true",
+        help="build the annotated link: embedded code keeps every comment (#693)",
+    )
     swap_main(HERE, p, rebuild)

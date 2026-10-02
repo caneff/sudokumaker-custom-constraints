@@ -165,6 +165,43 @@ if __name__ == "__main__":
             == committed_0g
         )
 
+    # the annotated twin (#693): same board, the embedded code keeps its
+    # comments and loses the repo's lint line
+    annotated_path = HERE / "PUZZLE_LINK_0g_annotated.txt"
+    link_ann, doc_ann, n_ann = build(
+        puzzle_path=HERE / "gen_0g.json", keep_comments=True
+    )
+    check(link_ann, doc_ann, n_ann)
+    assert link_ann == annotated_path.read_text().strip(), (
+        "PUZZLE_LINK_0g_annotated.txt is not what build_link.py --keep-comments writes"
+    )
+    ann_code = {
+        c["name"]: c["code"]
+        for k in doc_ann["puzzle"]["constraints"]
+        if k["type"] == 1000
+        for c in k["definition"]["components"]
+    }
+    plain_code = {
+        c["name"]: c["code"]
+        for k in decode_puzzle(committed_0g)["puzzle"]["constraints"]
+        if k["type"] == 1000
+        for c in k["definition"]["components"]
+    }
+    for name in (TIMED_COMPONENT, NO_FIVE_COMPONENT):
+        assert "//" not in plain_code[name], f"{name}: the shipped link kept a comment"
+        assert ann_code[name].startswith("// "), (
+            f"{name}: the annotated link lost its header"
+        )
+        assert "eslint" not in ann_code[name], (
+            f"{name}: a lint directive reached the link"
+        )
+    assert "every 5 needs a 1 directly above it" in ann_code[TIMED_COMPONENT]
+    # a reader of the pasted code cannot open a repo file or a ticket
+    for jargon in ("line-kind", ".js", "isofill", "#6"):
+        assert jargon not in ann_code[TIMED_COMPONENT], (
+            f"annotated code names {jargon!r}"
+        )
+
     forced0 = verify(HERE / "gen_0g.json", HERE / "PUZZLE_LINK_0g.txt")
     print(f"Counting Circles board: unique, {len(forced0)} rule-forced flatmate(s)")
     print("PASS")
