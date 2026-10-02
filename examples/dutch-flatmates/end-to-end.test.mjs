@@ -30,9 +30,8 @@
 //
 // It runs the code embedded in the committed links, not the tree:
 // build_link.test.py fails when PUZZLE_LINK.txt's code drifts from main.js or
-// the component, and `build_link.py` refreshes it. Nothing checks
-// PUZZLE_LINK_18g.txt the same way: rebuild it (README, Rebuilding) after any
-// change to the component.
+// the component, and `build_link.py` refreshes it. The 18-given link is checked
+// only against the shipped one, by the case near the end of this file.
 //
 // What a green run does not cover:
 // - The live app at sudokumaker.app: how the link loads and renders, the rules
@@ -149,6 +148,13 @@ for (const [link, gen, givenCount] of BOARDS) {
   for (const [a, b, grid] of breakers) {
     assert.deepStrictEqual(await solutionsOf(entered(doc, grid)), [], `${label}: swapping ${a} and ${b} passed`)
   }
+}
+
+// Both links carry the same Dutch Flatmates constraint, code included, so the
+// 18-given link cannot drift from the shipped one unnoticed.
+{
+  const flatmates = link => decodeLinkFile(join(HERE, link)).puzzle.constraints.find(c => c.definition?.name === 'Dutch Flatmates')
+  assert.deepStrictEqual(flatmates(BOARDS[1][0]), flatmates(BOARDS[0][0]), 'PUZZLE_LINK_18g.txt drifted from PUZZLE_LINK.txt')
 }
 
 // No local lane: one whole-grid constraint has no drawn groups to split.
