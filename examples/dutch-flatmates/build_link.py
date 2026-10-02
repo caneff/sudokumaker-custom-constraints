@@ -82,12 +82,10 @@ def read_extras(puzzle_path):
 
 
 def circles_constraints(circles):
-    """The constraints Counting Circles adds after the flatmate one: both
-    diagonals, the circles, and the no-5 rule over the circle cells."""
+    """The constraints Counting Circles adds after the flatmate one: the circles
+    and the no-5 rule over the circle cells."""
     no_five = f"puzzle.addConstraintComponent(new {NO_FIVE_COMPONENT}('no 5 in a circle', {json.dumps(list(circles))}))"
     return [
-        {"type": 10, "style": LINE_STYLE},
-        {"type": 11, "style": LINE_STYLE},
         {"type": 306, "cells": list(circles), "style": CIRCLE_STYLE},
         {
             "name": NO_FIVE_NAME,
@@ -168,6 +166,12 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
                     "input": {},
                     "style": {},
                 },
+                # one `Extras` field per rule, for the proof and the document alike
+                *(
+                    [{"type": t, "style": LINE_STYLE} for t in (10, 11)]
+                    if extras.diagonals
+                    else []
+                ),
                 *(circles_constraints(extras.circles) if extras.circles else []),
             ],
             "export": {"sudokuPad": {"useIncompleteGridAsSolution": True}},
