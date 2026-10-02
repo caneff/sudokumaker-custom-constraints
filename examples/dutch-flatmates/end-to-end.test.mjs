@@ -77,8 +77,8 @@ const entered = (doc, grid) => {
   return d
 }
 
-// Accepted: the one solution comes back. Refused: no solution, or setup
-// rejecting the entered grid.
+// The solutions found; none when setup rejects the grid as it stands (the
+// givens or an entered grid contradict the rule, or `update` ruled them out).
 const solutionsOf = d => solveDocument(d).then(
   r => r.solutions,
   err => (/rejected the initial grid/.test(err.message) ? [] : Promise.reject(err))
@@ -118,16 +118,12 @@ for (const [link, gen, givenCount] of BOARDS) {
     })
   }
 
-  // The recorded solution obeys the spec's rule, and has a 5 on each edge
-  // case's side only where its one flatmate exists.
+  // The recorded solution obeys the spec's rule.
   assert.ok(flatmatesOk(digits(board)), `${label}: recorded solution breaks the rule`)
 
   // The app's search finds exactly the recorded solution: one solution, so
   // the board is unique under the rule and `update` ruled nothing true out.
-  {
-    const { solutions } = await solveDocument(copy(doc))
-    assert.deepStrictEqual(solutions, [solution(board)], `${label}: the link's solutions`)
-  }
+  assert.deepStrictEqual(await solutionsOf(copy(doc)), [solution(board)], `${label}: the link's solutions`)
 
   // The rule is what makes it unique: with the component removed the same
   // givens leave more than one completion. Shipped board only: the 18-given
