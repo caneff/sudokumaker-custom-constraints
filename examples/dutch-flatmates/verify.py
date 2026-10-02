@@ -2,7 +2,7 @@
 # unique under sudoku plus the flatmate rule, and the committed link carries
 # exactly its givens.
 #
-#   uv run --with lzstring --with ortools examples/dutch-flatmates/verify.py
+#   uv run examples/dutch-flatmates/verify.py
 #
 # Four checks, each a handful of single-worker CP-SAT solves:
 #

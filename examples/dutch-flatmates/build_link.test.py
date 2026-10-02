@@ -4,7 +4,7 @@
 # survives a component swap unchanged, and the builder refuses a board that is
 # not uniquely solvable. Also runs verify.py's proof of the shipped board.
 #
-#   uv run --with lzstring examples/dutch-flatmates/build_link.test.py
+#   uv run examples/dutch-flatmates/build_link.test.py
 
 import json
 import pathlib

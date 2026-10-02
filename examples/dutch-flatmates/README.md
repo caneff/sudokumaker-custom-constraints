@@ -67,7 +67,7 @@ is the shape up-to-n's ringless links have (house-gac's carries a research
 ## Proof of uniqueness
 
 ```
-uv run --with lzstring --with ortools examples/dutch-flatmates/verify.py
+uv run examples/dutch-flatmates/verify.py
 ```
 
 Four checks: the board has exactly one solution (CP-SAT, one worker, seed 0)
@@ -88,7 +88,7 @@ r9c9 a bottom-row one, so both edge cases are in play).
 
 ```
 uv run examples/dutch-flatmates/generate.py          # a fresh gen.json (seed 1, then up)
-uv run --with lzstring examples/dutch-flatmates/build_link.py
+uv run examples/dutch-flatmates/build_link.py
 ```
 
 `generate.py` takes CP-SAT's 8-worker portfolio for the grid search, so one
@@ -142,7 +142,7 @@ node examples/dutch-flatmates/validate.test.mjs
 node examples/dutch-flatmates/soundness-harness.mjs
 node examples/dutch-flatmates/update-strength.test.mjs
 uv run examples/dutch-flatmates/flatmate_model.test.py
-uv run --with lzstring examples/dutch-flatmates/build_link.test.py
+uv run examples/dutch-flatmates/build_link.test.py
 ```
 
 - `validate.test.mjs` — a full grid satisfying the rule passes; a 5 lacking both

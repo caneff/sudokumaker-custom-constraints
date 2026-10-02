@@ -2,8 +2,8 @@
 # gen.json, the whole-grid rows-and-columns backend, and the one whole-grid
 # flatmate constraint (main.js + DutchFlatmatesComponent.js).
 #
-#   uv run --with lzstring examples/dutch-flatmates/build_link.py [--puzzle gen.json] [--out FILE]
-#   uv run --with lzstring examples/dutch-flatmates/build_link.py --component FILE --out FILE [--board LINK]
+#   uv run examples/dutch-flatmates/build_link.py [--puzzle gen.json] [--out FILE]
+#   uv run examples/dutch-flatmates/build_link.py --component FILE --out FILE [--board LINK]
 #
 # No --component rebuilds PUZZLE_LINK.txt (or --out) from --puzzle, re-proving
 # the board unique first; --component swaps a candidate into PUZZLE_LINK.txt or
