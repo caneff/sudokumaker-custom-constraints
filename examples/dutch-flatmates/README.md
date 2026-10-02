@@ -151,6 +151,7 @@ node examples/dutch-flatmates/validate.test.mjs
 node examples/dutch-flatmates/soundness-harness.mjs
 node examples/dutch-flatmates/update-strength.test.mjs
 node examples/dutch-flatmates/update-prune.test.mjs
+node examples/dutch-flatmates/end-to-end.test.mjs
 uv run examples/dutch-flatmates/flatmate_model.test.py
 uv run examples/dutch-flatmates/build_link.test.py
 ```
@@ -174,6 +175,12 @@ uv run examples/dutch-flatmates/build_link.test.py
   component, `.golden/DutchFlatmatesComponent.floor.js` (the component and its
   floor land in one squash-merged PR, so a pinned sha would name a commit main
   never holds). Replace that copy in the same commit as a stronger `update`.
+- `end-to-end.test.mjs` — the spec as a whole through the app's own solver
+  (`bundle-solve-lib.mjs`), on the shipped link and the 18-given one: rules text,
+  one whole-grid component, exactly one solution equal to `gen.json`'s, the rule
+  needed for uniqueness (1,279 plain completions on the shipped givens), the true
+  grid accepted and rule-breaking sudoku grids refused. Its header lists what a
+  green run does not cover: the live app and solve time.
 - `flatmate_model.test.py` — the CP-SAT model against a plain Python statement of
   the rule on 150 sudoku symmetries of the solution, both verdicts and the edge
   rows covered.
@@ -210,3 +217,10 @@ board, `PUZZLE_LINK_18g.txt` (`gen_18g.json`), is the committed evidence:
 | 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_18g.txt) after-logical | 0ms | — | — | BASELINE |
 
 No partner-pointing deduction was written; see `OPTIMIZATION_LOG.md`.
+
+Close-out (#685), 2026-10-02: `app-open.mjs --live` and `just time dutch-flatmates`
+re-run on the shipped `PUZZLE_LINK.txt` (app `v2026.08.14-d47fc4b`). The open
+matched the Live app section above (23 givens, rules text, unique, grid equal to
+the solution). `just time` read 0 ms cold and 0 ms after-logical, as BASELINE
+rows because the committed link now is the pruning candidate, so they match the
+candidate column above.
