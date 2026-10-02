@@ -56,9 +56,7 @@ CIRCLE_STYLE = {
 }
 CIRCLES_RULES = (
     "Normal sudoku rules apply. Digits may not repeat along the two main "
-    "diagonals.\n\n"
-    "Dutch Flatmates: every 5 has a 1 directly above it or a 9 directly below "
-    "it (or both).\n\n"
+    "diagonals.\n\n" + RULE + "\n\n"
     "Counting Circles: a digit in a circle is the number of circles containing "
     "that digit.\n\n"
     "No 5 in a circle: 5s live in Dutch Flats, not in circles.\n\n"
