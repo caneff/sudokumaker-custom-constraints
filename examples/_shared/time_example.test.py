@@ -676,19 +676,21 @@ if __name__ == "__main__":
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
     @contextlib.contextmanager
-    def fake_solve(medians):
-        """Replace the app_solve adapter with a stub printing `medians` in
-        order as the driver's JSON line. Yields the list of (link_name,
-        ring_clues, after_logical) calls."""
+    def fake_solve(by_link):
+        """Replace the app_solve adapter with a stub printing, per link name,
+        that link's next value from `by_link` ({name: [per-rep medians, in
+        call order]}) as the driver's JSON line. One call is one rep. Yields
+        the list of (link_name, ring_clues, after_logical) calls."""
         calls = []
         real = time_example.app_solve
-        pending = list(medians)
+        pending = {name: list(v) for name, v in by_link.items()}
 
         def stub(link_path, reps, ring_clues=False, after_logical=False):
-            assert reps == time_example.REPS
-            calls.append((pathlib.Path(link_path).name, ring_clues, after_logical))
+            assert reps == 1, "interleaving means one rep per driver call"
+            name = pathlib.Path(link_path).name
+            calls.append((name, ring_clues, after_logical))
             data = {
-                "median": pending.pop(0),
+                "median": pending[name].pop(0),
                 "version": "v2026.08.14-d47fc4b",
                 "repsRun": reps,
                 "repsTimedOut": 0,
@@ -701,6 +703,22 @@ if __name__ == "__main__":
         finally:
             time_example.app_solve = real
 
+    def reps(cold, logical):
+        """Per-rep medians for one link: its cold reps, then its logical ones."""
+        return [*cold, *logical]
+
+    R = time_example.REPS
+    B, C = "baseline_probe.txt", "candidate_probe.txt"
+
+    def interleaved(after_logical):
+        """The call order the protocol demands in one mode: one rep of each
+        variant per round, the lead alternating, never a variant's block."""
+        out = []
+        for rnd in range(R):
+            order = (B, C) if rnd % 2 == 0 else (C, B)
+            out += [(name, False, after_logical) for name in order]
+        return out
+
     # a component edit that halves the solve time: two rows (cold, then
     # after-logical), both PASS, and the two-row rule ships it
     with tempfile.TemporaryDirectory() as tmp:
@@ -709,7 +727,9 @@ if __name__ == "__main__":
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
-        with fake_solve([1000, 500, 800, 400]) as calls:
+        with fake_solve(
+            {B: reps([1000] * R, [800] * R), C: reps([500] * R, [400] * R)}
+        ) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["PASS", "PASS"]
         assert ship == "SHIP"
@@ -717,13 +737,16 @@ if __name__ == "__main__":
         assert rows[0][0].endswith("| 1000ms | 500ms | 0.50 | PASS |")
         assert "faster after-logical" in rows[1][0], "the second row is the logical one"
         # baseline and candidate are timed against separate links, cold first
-        # then after-logical, and neither run asks for the ring
-        assert calls == [
-            ("baseline_probe.txt", False, False),
-            ("candidate_probe.txt", False, False),
-            ("baseline_probe.txt", False, True),
-            ("candidate_probe.txt", False, True),
-        ]
+        # then after-logical, neither run asks for the ring, and the reps are
+        # interleaved round by round (#681): one rep of each variant per
+        # round, the lead alternating, never one variant's reps as a block
+        assert calls == interleaved(False) + interleaved(True)
+        assert calls[:4] == [
+            (B, False, False),
+            (C, False, False),
+            (C, False, False),
+            (B, False, False),
+        ], "round 2 leads with the candidate"
 
     # a slower candidate: 1.0x on the cold row is inside 1.1x but never
     # reaches 0.9x, so the two-row rule refuses it
@@ -733,7 +756,9 @@ if __name__ == "__main__":
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
-        with fake_solve([1000, 1000, 1000, 1500]):
+        with fake_solve(
+            {B: reps([1000] * R, [1000] * R), C: reps([1000] * R, [1500] * R)}
+        ):
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["FAIL", "FAIL"]
         assert ship == "NO SHIP"
@@ -745,11 +770,11 @@ if __name__ == "__main__":
         _make_widget_example(
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
-        with fake_solve([1000, 900]) as calls:
+        with fake_solve({B: reps([1000] * R, [900] * R)}) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
         assert ship is None, "nothing to judge means no ship verdict"
-        assert [c[0] for c in calls] == ["baseline_probe.txt"] * 2
+        assert [c[0] for c in calls] == [B] * (2 * R)
 
     # A link regenerated against edited code is not a baseline: the link that
     # was the baseline is gone from this tree. Every link the run times comes
@@ -775,7 +800,7 @@ if __name__ == "__main__":
             minify_file(example_dir / "main.js"), minify_js(component_src)
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(regenerated) + "\n")
-        with fake_solve([1000, 500, 800, 400]) as calls:
+        with fake_solve({B: [1], C: [1]}) as calls:
             try:
                 run(example_dir)
             except ValueError as e:
@@ -795,11 +820,41 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK_alt.txt").write_text(encode_link(base_doc) + "\n")
         _git_commit_all(example_dir)
-        with fake_solve([1000, 900]) as calls:
+        with fake_solve({B: reps([1000] * R, [900] * R)}) as calls:
             rows, _ship = run(example_dir, ring_clues=True, board="PUZZLE_LINK_alt.txt")
         assert all(ring for _name, ring, _al in calls), (
             "ring_clues must reach the driver"
         )
         assert "ringed (PUZZLE_LINK_alt.txt)" in rows[0][0]
+
+    # the median is taken over each variant's own reps, the app-solve.mjs way
+    # (the upper middle of the sorted reps): a noisy round does not move it
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = pathlib.Path(tmp) / "noisy"
+        _make_widget_example(
+            example_dir, "console.log('same')\n", "function update(){return 1}\n"
+        )
+        (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
+        with fake_solve(
+            {
+                B: reps([900, 3000, 1000], [100, 100, 100]),
+                C: reps([400, 500, 9000], [100, 100, 100]),
+            }
+        ):
+            rows, _ship = run(example_dir)
+        assert "| 1000ms | 500ms | 0.50 |" in rows[0][0], rows[0][0]
+
+    # one timed-out rep is left out of its link's median; a link whose reps all
+    # timed out raises, naming the link
+    with fake_solve({B: [1000, None, 3000], C: [500, 600, 700]}):
+        base, cand = time_example.run_app_solve(B, C)
+    assert (base["median"], cand["median"]) == (3000, 600)
+    with fake_solve({B: [1000, 1000, 1000], C: [None] * R}):
+        try:
+            time_example.run_app_solve(B, C)
+        except RuntimeError as e:
+            assert C in str(e) and "300s" in str(e), e
+        else:
+            raise AssertionError("an all-timeout link must raise")
 
     print("ok")

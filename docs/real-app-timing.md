@@ -61,7 +61,7 @@ the offline recording works.
 For an example with a `build_link.py` (every example; each one's command line
 is `examples/_shared/link_swap.swap_main`), `just time <example>` runs the whole loop below in
 one command: it builds a candidate link from the working-tree component,
-times baseline and candidate 3 reps each in both modes, and prints one
+times baseline and candidate 3 reps each in both modes (one rep per variant per round, the lead alternating), and prints one
 paste-ready row per mode (date, app version, board, both medians, ratio, and
 that row's PASS/FAIL at candidate <= 0.9x baseline) followed by the
 `two-row rule:` line. Byte-equal candidate code prints baseline-only rows.

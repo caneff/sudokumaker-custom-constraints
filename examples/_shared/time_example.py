@@ -311,14 +311,18 @@ def build_candidate(example_dir, component_file, out_path, board=None):
     )
 
 
-def parse_app_solve_output(link_path, stdout):
+def parse_app_solve_output(link_path, stdout, allow_timeout=False):
     """Parse app-solve.mjs's JSON line and return its {median, version,
     repsRun, repsTimedOut}. Raises loud, naming link_path: no JSON line, every
-    rep timed out (median null), or the app version could not be read."""
+    rep timed out (median null, unless allow_timeout: run_app_solve's one-rep
+    calls tolerate a null and let combine_reps judge), or the app version could
+    not be read."""
     m = JSON_LINE.search(stdout)
     if not m:
         raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{stdout}")
     data = json.loads(m.group(1))
+    if data["median"] is None and allow_timeout:
+        return data
     if data["median"] is None:
         # Name app-solve.mjs's fixed 300s per-rep wait (its
         # page.waitForFunction timeout) and the rep counts, so a reader learns
@@ -353,10 +357,40 @@ def app_solve(link_path, reps, ring_clues=False, after_logical=False):
     return result.stdout
 
 
-def run_app_solve(link_path, ring_clues=False, after_logical=False):
-    """Time `link_path` REPS times and return its {median, version}."""
-    stdout = app_solve(link_path, REPS, ring_clues, after_logical)
-    return parse_app_solve_output(link_path, stdout)
+def run_app_solve(
+    baseline_link, candidate_link=None, ring_clues=False, after_logical=False
+):
+    """Time the links REPS times each, interleaved as docs/real-app-timing.md
+    requires: every round times one rep of each link, and the lead alternates
+    (baseline first in round 1) so neither always gets the colder slot. Returns
+    (baseline, candidate): each a {median, version} over that link's own reps,
+    candidate None when `candidate_link` is None. A rep that times out is left
+    out of its link's median, and a link whose every rep timed out raises."""
+    links = [baseline_link] + ([candidate_link] if candidate_link else [])
+    data = {link: [] for link in links}
+    for rnd in range(REPS):
+        for link in links if rnd % 2 == 0 else reversed(links):
+            stdout = app_solve(link, 1, ring_clues, after_logical)
+            data[link].append(parse_app_solve_output(link, stdout, allow_timeout=True))
+    timed = [combine_reps(link, data[link]) for link in links]
+    return timed[0], (timed[1] if candidate_link else None)
+
+
+def combine_reps(link_path, reps):
+    """One link's {median, version} from its one-rep driver results. The median
+    is app-solve.mjs's own: the upper middle of the reps that finished."""
+    done = sorted(r["median"] for r in reps if r["median"] is not None)
+    if not done:
+        raise RuntimeError(
+            f"app-solve.mjs: {link_path}: all {len(reps)} reps hit the "
+            f"300s per-rep timeout"
+        )
+    version = next((r["version"] for r in reps if r["version"]), None)
+    if version is None:
+        raise RuntimeError(
+            f"app-solve.mjs could not read the app version for {link_path}"
+        )
+    return {"median": done[len(done) // 2], "version": version}
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None):
@@ -468,11 +502,15 @@ def run(example_dir, ring_clues=False, board=None, component=None):
         # own logical pass.
         for after_logical in (False, True):
             label = board_label + (" after-logical" if after_logical else "")
-            base = run_app_solve(baseline_probe, ring_clues, after_logical)
+            base, cand = run_app_solve(
+                baseline_probe,
+                None if byte_equal else candidate_probe,
+                ring_clues,
+                after_logical,
+            )
             if byte_equal:
                 rows.append(build_row(date, base["version"], label, base["median"]))
                 continue
-            cand = run_app_solve(candidate_probe, ring_clues, after_logical)
             rows.append(
                 build_row(date, base["version"], label, base["median"], cand["median"])
             )
