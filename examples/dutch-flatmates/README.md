@@ -40,9 +40,12 @@ The one solution:
 
 No local lane (`main-global.js`, `PUZZLE_LINK_local.txt`, `gen_local.json`):
 one whole-grid constraint has no drawn groups to split a lane from, so
-`check_layout.py` lists the example in `NO_LOCAL_GLOBAL_SPLIT`, and in
-`RINGLESS_SUDOKU` for its "Normal sudoku rules apply." opening. Those two
-entries were all `check_layout.py` needed.
+`check_layout.py` lists the example in `NO_LOCAL_GLOBAL_SPLIT`; that entry is
+what the checker needed. The ticket also asked for a `RINGLESS_SUDOKU` entry,
+which is in place but does no work for this board: the link carries the shared
+grid backend, so `check_layout.is_no_ring` already gives it the "Normal sudoku
+rules apply." opening. It matters only if the board is ever rebuilt without that
+backend.
 
 ## Board: a ringless 9x9, built here and not by framebuild
 
@@ -58,7 +61,8 @@ link carries that backend, `check_layout.py` reads it as a no-ring board.
 A `"sudoku"` document would have kept the app's full technique set and given
 rows and columns for free, but `check_layout.py` would then need its own
 reading of an implicit-houses board; a custom document with the shared backend
-is the shape every other ringless link here already has.
+is the shape up-to-n's ringless links have (house-gac's carries a research
+"Rows & Columns" backend instead).
 
 ## Proof of uniqueness
 

@@ -118,8 +118,9 @@ NO_RULES_PREFIX = {"isofill", "fillomino"}
 
 # A sudoku example whose board is a plain 9x9 with no clue ring: its rules text
 # opens on NO_RING_RULES_PREFIX, there being no inner grid to name (#460).
-# house-gac's board carries no grid backend, so is_no_ring cannot see it;
-# dutch-flatmates' does, and is named here as well.
+# house-gac's board carries no grid backend, so is_no_ring cannot see it.
+# dutch-flatmates' does, so its entry is redundant today; it is named here so
+# the prefix holds if that board is ever rebuilt without the backend.
 RINGLESS_SUDOKU = {"house-gac", "dutch-flatmates"}
 
 # An example whose board has no houses at all: isofill and fillomino are
