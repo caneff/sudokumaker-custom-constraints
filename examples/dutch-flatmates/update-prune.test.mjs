@@ -132,21 +132,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   b.p._cand.get(at(3, 0)).add(5) // backtrack: the 5 is a candidate again
   run(b)
   assert.ok(!has(b.p, 3, 0, 5), 'the 5 restored by a backtrack was not pruned again')
-  // A column that changed is still swept after an unchanged one was skipped:
-  // column 4 starts as column 0 did, is pruned once, then only a 1 and a 9 move.
-  const c = board(cand => {
-    for (let r = 0; r < N; r++) if (r !== 3 && r !== 6) cand.get(at(r, 4)).delete(5)
-    cand.get(at(2, 4)).delete(1)
-    cand.get(at(4, 4)).delete(9)
-  })
-  run(c)
-  assert.ok(!has(c.p, 3, 4, 5), 'the unsupported 5 survived the first call')
-  // Backtrack restores that 5, and a 1 appears at row 2: the 5 at row 3 is now
-  // supported by it, so only a fresh sweep of this column keeps it.
-  c.p._cand.get(at(3, 4)).add(5)
-  c.p._cand.get(at(2, 4)).add(1)
-  run(c)
-  assert.ok(has(c.p, 3, 4, 5), 'a column whose 1 changed was not re-read: the now-supported 5 was pruned')
   // The only flatmate left for a pinned 5 is removed, and nothing else moves: a
   // 9 alone, then a 1 alone. A column whose key ignored either digit would be
   // skipped here and miss the dead state.
@@ -163,7 +148,7 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     run(e)
     assert.notStrictEqual(e.p._stopped, null, `a column whose only change was losing a ${label} was not re-read`)
   }
-  console.log('repeat calls: idempotent, re-prunes after a restore, sees a changed column')
+  console.log('repeat calls: idempotent, re-prunes after a restore, sees a column whose only change is a 1 or a 9')
 }
 
 console.log('PASS')

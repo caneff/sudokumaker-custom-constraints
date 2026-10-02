@@ -36,10 +36,10 @@ from flatmate_model import (
 )
 
 SEARCH_LIMIT = 30
-# The component only validates, so the app fills the grid by plain sudoku and
-# tests the rule on every full grid: a carve to the bare minimum of givens
-# leaves it more completions than it can enumerate (a 19-given carve has over
-# 100,000). The carve stops removing givens at this many plain completions.
+# Plain sudoku completions are what the app's search has to cover before the rule
+# prunes them: a carve to the bare minimum of givens leaves more than it can
+# enumerate (a 19-given carve has over 100,000). The carve stops removing givens
+# at this many plain completions.
 MAX_PLAIN_COMPLETIONS = 2000
 MAX_SEEDS = 50
 
