@@ -29,8 +29,10 @@
 // checks the layout lists and the decoded link.
 //
 // It runs the code embedded in the committed links, not the tree:
-// build_link.test.py fails when a link's code drifts from main.js or the
-// component, and `build_link.py` refreshes it.
+// build_link.test.py fails when PUZZLE_LINK.txt's code drifts from main.js or
+// the component, and `build_link.py` refreshes it. Nothing checks
+// PUZZLE_LINK_18g.txt the same way: rebuild it (README, Rebuilding) after any
+// change to the component.
 //
 // What a green run does not cover:
 // - The live app at sudokumaker.app: how the link loads and renders, the rules
@@ -39,7 +41,7 @@
 //   `app-open.mjs --live` is the one-open check, and the README's Timing and
 //   Live app sections record it.
 // - Whether the deduction pays for itself: that is `just time`, and the 0 ms
-//   vs 200 ms rows sit under the app's 100 ms reading step.
+//   vs 200 ms rows are 100 ms-step readings: 0 ms means under one step.
 
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'

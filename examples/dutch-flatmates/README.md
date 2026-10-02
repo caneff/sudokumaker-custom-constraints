@@ -142,7 +142,7 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   has to be committed before the run, or it refuses naming that.
 
 So `just time dutch-flatmates` needs no flag and runs in strip mode. It was run
-three times on this example (below).
+on this example (Timing, below).
 
 ## Tests
 
@@ -194,8 +194,10 @@ uv run examples/dutch-flatmates/build_link.test.py
 `just time dutch-flatmates` (no flags, strip mode, 3 reps, non-deterministic
 solve off) on the pruning component against the committed validate-only link,
 run three times; every run printed these rows and `two-row rule: SHIP`. The
-driver times all baseline reps, then all candidate reps, per row, so the reps
-are not interleaved. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
+driver then timed all baseline reps, then all candidate reps, per row, so these
+reps were block-ordered, not interleaved as `docs/real-app-timing.md` asks; the
+driver interleaves since #682, and these rows were not re-run, as 200 ms -> 0 ms
+is far beyond any drift between blocks. The app reads in 100 ms steps, and the three runs agree, so the 200 ms -> 0 ms gap is
 outside run-to-run spread.
 
 | date | app version | fixture | baseline | candidate | ratio | verdict |
