@@ -101,3 +101,22 @@ The DNF above was caused by the rule left out. `add_no5.py` (beside this note) a
 | P2 + no-5, their code | 43.6 s | none within 300 s | timeout |
 
 This is the first board where the two flatmate codes separate in the real app. It is one rep, cold only. The full interleaved 3-rep, two-row run follows when it lands.
+
+#### Full run: 3 interleaved rounds, rotating lead, both rows
+
+| link | cold total (first + unique), 3 reps | median | after-logical total (first + unique), 3 reps | median |
+|---|---|---|---|---|
+| P2 + no-5, our code | 11.7 (9.3+2.4), 11.6, 11.5 s | **11.6 s** | 11.0 (8.6+2.4), 11.2, 11.1 s | **11.1 s** |
+| P2 + no-5, their code | timeout x3 (first solve at 43.5–43.8 s, no uniqueness verdict in 300 s) | **DNF** | 13.7 (1.2+12.5), 14.0, 13.8 s | **13.8 s** |
+
+Results:
+- **Cold:** ours finishes, theirs does not.
+- **After-logical:** ours/theirs = 11.1 / 13.8 = **0.80x**.
+
+Read as a two-row comparison with theirs as the baseline, ours wins both rows.
+
+The time splits differently between the two codes:
+- After the logic pass, theirs finds its first solution in 1.2 s, against our 8.6–8.8 s.
+- The uniqueness proof is where theirs loses: 12.5–12.8 s against our 2.3–2.4 s.
+
+The column pruning is the likely cause of the faster proof, but that is not tested here. Cell-by-cell, their per-cell rule cannot remove a 1 or 9 that no 5 in the column can use, so the search for a second solution explores branches that ours removes.
