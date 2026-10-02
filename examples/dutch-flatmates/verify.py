@@ -15,7 +15,9 @@
 #      take another digit, and only the rule pins it. The 5s that do are listed.
 #   4. PUZZLE_LINK.txt decodes to the same givens as gen.json, cell for cell.
 #
-# `build_link.test.py` runs this, so `just check` re-proves the board.
+# `build_link.test.py` runs this on both boards (`gen.json` and the Counting
+# Circles `gen_0g.json`, whose extras -- diagonals, circles, no 5 in a circle --
+# are part of "sudoku" in checks 1-3), so `just check` re-proves both.
 
 import pathlib
 import sys
@@ -24,7 +26,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import read_board
+from build_link import read_board, read_extras
 from flatmate_model import N, prove_recorded, rule_forced_flatmates, unique_solution
 from link_codec import decode_puzzle
 
@@ -33,11 +35,12 @@ def verify(gen=HERE / "gen.json", link=HERE / "PUZZLE_LINK.txt"):
     """Run the four checks; return the rule-forced (5, flatmate) cell pairs.
     Raises AssertionError naming the first check that fails."""
     grid, givens = read_board(gen)
-    solution = prove_recorded(givens, grid)
-    assert unique_solution(givens, flatmate=False) is None, (
+    extras, _spec = read_extras(gen)
+    solution = prove_recorded(givens, grid, extras)
+    assert unique_solution(givens, flatmate=False, extras=extras) is None, (
         "plain sudoku already has one solution on these givens: the rule is not needed"
     )
-    forced = rule_forced_flatmates(givens, solution)
+    forced = rule_forced_flatmates(givens, solution, extras=extras)
     assert forced, "no 5 has its flatmate forced by the rule rather than the givens"
     cells = decode_puzzle(pathlib.Path(link).read_text().strip())["puzzle"]["cells"]
     shipped = {
