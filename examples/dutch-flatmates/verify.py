@@ -7,7 +7,7 @@
 # Four checks, each a handful of single-worker CP-SAT solves:
 #
 #   1. The board has exactly one solution, and it is the grid gen.json records.
-#      A timeout is never read as "no second solution" (`is_unique` raises).
+#      A timeout is never read as "no second solution" (`unique_solution` raises).
 #   2. The rule is needed: plain sudoku on the same givens has more than one
 #      solution, so the flatmate rule is not decoration.
 #   3. At least one 5 has its flatmate forced by the rule rather than by the
@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import read_board
-from flatmate_model import N, is_unique, rule_forced_flatmates
+from flatmate_model import N, prove_recorded, rule_forced_flatmates, unique_solution
 from link_codec import decode_puzzle
 
 
@@ -33,12 +33,8 @@ def verify(gen=HERE / "gen.json", link=HERE / "PUZZLE_LINK.txt"):
     """Run the four checks; return the rule-forced (5, flatmate) cell pairs.
     Raises AssertionError naming the first check that fails."""
     grid, givens = read_board(gen)
-    solution = is_unique(givens)
-    assert solution is not None, "the board is not uniquely solvable"
-    assert ["".join(str(solution[r, c]) for c in range(N)) for r in range(N)] == grid, (
-        "gen.json's grid is not the board's one solution"
-    )
-    assert is_unique(givens, flatmate=False) is None, (
+    solution = prove_recorded(givens, grid)
+    assert unique_solution(givens, flatmate=False) is None, (
         "plain sudoku already has one solution on these givens: the rule is not needed"
     )
     forced = rule_forced_flatmates(givens, solution)

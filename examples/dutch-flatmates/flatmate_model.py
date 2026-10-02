@@ -1,8 +1,9 @@
 # The Dutch Flatmates rule as a CP-SAT model -- sudoku, plus: every 5 has a 1
 # directly above it or a 9 directly below it. The generator, the uniqueness
 # proof and the rule-forces-a-flatmate check all build this one model, so the
-# rule has one CP-SAT home (CODING_STANDARDS.md, "The rule has one home"); its
-# other two homes are DutchFlatmatesComponent.js and soundness-harness.mjs.
+# rule has one CP-SAT home (CODING_STANDARDS.md, "The rule has one home"). Its
+# other homes are DutchFlatmatesComponent.js, and the independent statements in
+# flatmate_model.test.py and validate.test.mjs that check the two against it.
 
 import pathlib
 import sys
@@ -10,7 +11,7 @@ import sys
 from ortools.sat.python import cp_model
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "_shared"))
-from cpsat import SOLVED, forbid, solver
+from cpsat import SOLVED, has_second_solution, solver
 
 N = 9
 BOX = 3
@@ -60,29 +61,46 @@ def _post_flatmate(m, x):
             m.AddBoolOr(options).OnlyEnforceIf(five)
 
 
-def solve_one(givens, flatmate=True, limit=60):
-    """One solution of the board as {(row, column): digit}, or None when it
-    has none. Raises TimeoutError on no verdict."""
-    m, x = build_model(givens, flatmate)
+def _solve(m, limit):
+    """(status, solver) for `m`. Raises TimeoutError on no verdict: a timeout is
+    never read as "no solution"."""
     s = solver(limit)
     status = s.Solve(m)
     if status == cp_model.UNKNOWN:
         raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
+    return status, s
+
+
+def solve_one(givens, flatmate=True, limit=60):
+    """One solution of the board as {(row, column): digit}, or None when it
+    has none. Raises TimeoutError on no verdict."""
+    m, x = build_model(givens, flatmate)
+    status, s = _solve(m, limit)
     return {k: s.Value(v) for k, v in x.items()} if status in SOLVED else None
 
 
-def is_unique(givens, flatmate=True, limit=60):
-    """The board's one solution, or None when it has none or several.
-    Raises TimeoutError on no verdict: a timeout is never read as unique."""
+def unique_solution(givens, flatmate=True, limit=60):
+    """The board's one solution, or None when it has none or several (the two
+    are not told apart). Raises TimeoutError on no verdict."""
     first = solve_one(givens, flatmate, limit)
     if first is None:
         return None
     m, x = build_model(givens, flatmate)
-    forbid(m, x, first)
-    status = solver(limit).Solve(m)
-    if status == cp_model.UNKNOWN:
-        raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
-    return None if status in SOLVED else first
+    return None if has_second_solution(m, x, first, limit) else first
+
+
+def rows_of(solution):
+    """`solution` as nine strings of digits, the shape gen.json records."""
+    return ["".join(str(solution[r, c]) for c in range(N)) for r in range(N)]
+
+
+def prove_recorded(givens, grid):
+    """The board's one solution, proved to be the recorded `grid` (nine digit
+    strings). Raises AssertionError naming which part failed."""
+    solution = unique_solution(givens)
+    assert solution is not None, "the board is not uniquely solvable"
+    assert rows_of(solution) == grid, "the gen JSON's grid is not the board's solution"
+    return solution
 
 
 class _Counter(cp_model.CpSolverSolutionCallback):
@@ -110,7 +128,9 @@ def count_plain_completions(givens, cap, limit=60):
     s.parameters.enumerate_all_solutions = True
     counter = _Counter(cap)
     status = s.Solve(m, counter)
-    if status == cp_model.UNKNOWN:
+    # OPTIMAL: the enumeration finished. Otherwise it stopped at `cap`, or hit
+    # the time limit with a partial count, which is no verdict.
+    if status != cp_model.OPTIMAL and counter.found < cap:
         raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
     return counter.found
 
@@ -139,9 +159,7 @@ def rule_forced_flatmates(givens, solution, limit=60):
         f = flatmate_of(solution, r, c)
         m, x = build_model(givens, flatmate=False)
         m.Add(x[f] != solution[f])
-        status = solver(limit).Solve(m)
-        if status == cp_model.UNKNOWN:
-            raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
+        status, _s = _solve(m, limit)
         if status in SOLVED:
             out.append(((r, c), f))
     return out

@@ -31,8 +31,8 @@ from flatmate_model import (
     N,
     build_model,
     count_plain_completions,
-    is_unique,
     rule_forced_flatmates,
+    unique_solution,
 )
 
 SEARCH_LIMIT = 30
@@ -62,7 +62,7 @@ def carve(grid, rng):
     for cell in cells:
         trial = {k: v for k, v in givens.items() if k != cell}
         if (
-            is_unique(trial) is not None
+            unique_solution(trial) is not None
             and count_plain_completions(trial, MAX_PLAIN_COMPLETIONS + 1)
             <= MAX_PLAIN_COMPLETIONS
         ):
@@ -76,8 +76,8 @@ def make_board(seed):
     rng = random.Random(seed)
     grid = random_grid(seed)
     givens = carve(grid, rng)
-    assert is_unique(givens) == grid, "the carve lost the solution"
-    if is_unique(givens, flatmate=False) is not None:
+    assert unique_solution(givens) == grid, "the carve lost the solution"
+    if unique_solution(givens, flatmate=False) is not None:
         return None  # plain sudoku already solves it: the rule is decoration
     forced = rule_forced_flatmates(givens, grid)
     if not forced:

@@ -25,7 +25,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from flatmate_model import N, is_unique
+from flatmate_model import N, prove_recorded
 from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
@@ -53,11 +53,7 @@ def build(component_path=HERE / f"{TIMED_COMPONENT}.js", puzzle_path=HERE / "gen
     proving it has exactly the solution the gen JSON records. Returns (link,
     doc, number of givens)."""
     grid, givens = read_board(puzzle_path)
-    solution = is_unique(givens)
-    assert solution is not None, "the board is not uniquely solvable"
-    assert ["".join(str(solution[r, c]) for c in range(N)) for r in range(N)] == grid, (
-        "the gen JSON's grid is not the board's solution"
-    )
+    prove_recorded(givens, grid)
     # a cell holds a value only when it is a given: a non-given value ships as
     # an entered digit and the recipient opens a solved board
     cells = [
