@@ -120,7 +120,9 @@ loads with 23 givens drawn; the play page's rules text reads "Normal sudoku
 rules apply. Dutch Flatmates: every 5 needs a flatmate, a 1 directly above it
 or a 9 directly below it. A 5 in the top row needs the 9 below it, and a 5 in
 the bottom row needs the 1 above it."; "Find all solutions and valid
-candidates" says unique solution (first solve 100 ms, uniqueness search 100 ms)
+candidates" says unique solution (first solve 100 ms, uniqueness search 100 ms,
+read on the first slice's validate-only link; the pruning link shipped now reads 0 ms
+and 0 ms, re-run for #685, below)
 and the grid it fills is the solution above, cell for cell. The same run
 against the recorded app (`examples/_shared/sudokumaker.har`, no `--live`) gives
 the same verdict and grid, and reads no rules text: the recording holds no play
