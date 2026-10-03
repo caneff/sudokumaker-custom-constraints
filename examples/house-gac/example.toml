@@ -3,5 +3,6 @@ constraint_name = "House GAC (standalone)"
 lanes = "single"
 rules_prefix = "ringless"
 shared_component = "HouseGacComponent"
+annotated_keeps_comments = true
 generator_less_links = ["PUZZLE_LINK.txt"]
 rowcol_backend = "Rows & Columns"

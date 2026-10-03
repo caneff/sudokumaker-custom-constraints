@@ -20,11 +20,15 @@ from check_layout import (
     GRANDFATHERED_RESEARCH_PY,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
+    check_digit_range,
+    check_gen_frame_backends,
+    check_gen_json_parses,
     check_research_python,
+    check_stale_backend_code,
     check_tree,
     committed_links,
 )
-from link_codec import encode_link
+from link_codec import decode_puzzle, encode_link
 from manifest import load_manifest
 from minify import minify_file, minify_js
 from sm_document import code_constraint
@@ -224,7 +228,7 @@ def example(
     Yields (root, example_dir). `files` are the example's own files;
     `extra_links` are extra PUZZLE_LINK*.txt names to add on top, `extra_gens`
     extra gen*.json names (for a test that must keep every generated link
-    paired). `contents` overrides one file's text (default "x") -- used by
+    paired). `contents` overrides one file's text (default "x"; a gen*.json defaults to "{}") -- used by
     the lane tests to put a real marker in main.js or main-global.js.
     `manifest` is the example.toml traits (see manifest_text); None writes the
     defaults, and a `contents` entry for "example.toml" replaces the text.
@@ -242,12 +246,16 @@ def example(
             contents.get("example.toml", manifest_text(traits))
         )
         for f in files:
-            default = default_link if f.startswith("PUZZLE_LINK") else "x"
+            default = "x"
+            if f.startswith("PUZZLE_LINK"):
+                default = default_link
+            elif f.startswith("gen") and f.endswith(".json"):
+                default = "{}"
             (d / f).write_text(contents.get(f, default))
         for link in extra_links:
             (d / link).write_text(contents.get(link, default_link))
         for gen in extra_gens:
-            (d / gen).write_text(contents.get(gen, "x"))
+            (d / gen).write_text(contents.get(gen, "{}"))
         yield root, d
 
 
@@ -844,6 +852,72 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "gen_6x6.json" in violations[0], violations[0]
         assert "House GAC" in violations[0], violations[0]
+
+    # A gen JSON that does not parse stops the gate. It is the board's record,
+    # and a corrupt one must not drop out of the checks that read it.
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": "{not json"},
+    ) as (root, d):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "gen_6x6.json is not valid JSON" in violations[0], violations[0]
+        # each violation comes from the function named for it
+        assert len(check_gen_json_parses(d)) == 1
+        assert check_gen_frame_backends(d) == []
+
+    # a gen JSON with no `puzzle` key is board data, not a corrupt document
+    with example(
+        extra_links=["PUZZLE_LINK_6x6.txt"],
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": json.dumps({"cells": []})},
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # only a missing `puzzle` key is skipped: a gen JSON of the wrong shape, or
+    # a `puzzle` with no `constraints`, is a broken record and must fail loud
+    with example(extra_gens=["gen_6x6.json"], contents={"gen_6x6.json": "[]"}) as (
+        _,
+        d,
+    ):
+        try:
+            check_gen_frame_backends(d)
+        except TypeError:
+            pass
+        else:
+            raise AssertionError("a gen JSON that is not an object was skipped")
+
+    with example(
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": json.dumps({"puzzle": {}})},
+    ) as (_, d):
+        try:
+            check_gen_frame_backends(d)
+        except KeyError:
+            pass
+        else:
+            raise AssertionError("a puzzle with no constraints was skipped")
+
+    # stale backend code and a missing digit range are two checks: a stale
+    # copy with a good range trips only the first, a fresh copy with no range
+    # only the second
+    def _checks(link_text):
+        with example(contents={"PUZZLE_LINK.txt": link_text}) as (_, d):
+            link = d / "PUZZLE_LINK.txt"
+            puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
+            manifest = load_manifest(d)
+            return (
+                check_stale_backend_code(d, link, puzzle, manifest),
+                check_digit_range(d, link, puzzle, manifest),
+            )
+
+    stale_found, range_found = _checks(_link(frame_backend="stale", houses="none"))
+    assert len(stale_found) == 1 and range_found == [], (stale_found, range_found)
+    stale_found, range_found = _checks(
+        _link(frame_backend=True, houses="none", digits=None)
+    )
+    assert stale_found == [] and len(range_found) == 1, (stale_found, range_found)
 
     # ...and a board with no frame backend at all is not asked for one
     plain = _link(digits=None)

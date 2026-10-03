@@ -45,6 +45,7 @@ if __name__ == "__main__":
     assert m.rowcol_backend is None
     assert m.constraint_name is None
     assert m.boardless is False
+    assert m.annotated_keeps_comments is False
     tmp.cleanup()
 
     # every trait can be set
@@ -60,6 +61,7 @@ shared_component = "SharedComponent"
 generator_less_links = ["PUZZLE_LINK.txt"]
 rowcol_backend = "Rows & Columns"
 boardless = true
+annotated_keeps_comments = true
 """
     )
     m = load_manifest(d)
@@ -68,7 +70,7 @@ boardless = true
     assert m.shared_component == "SharedComponent"
     assert m.generator_less_links == ("PUZZLE_LINK.txt",)
     assert m.rowcol_backend == "Rows & Columns"
-    assert m.boardless is True
+    assert m.boardless is True and m.annotated_keeps_comments is True
     tmp.cleanup()
 
     # NO_RULES_PREFIX and NO_HOUSES stay two separate fields (2026-09-07 ruling)

@@ -36,7 +36,8 @@
 # (landed while this ticket was in flight) made "House GAC" a reserved title
 # meaning ONE specific thing repo-wide -- the shared `examples/_shared/
 # house-gac.js` backend on a frame board, always checked for staleness and a
-# declared digit range (`check_layout.py`'s `check_frame_backends`). This
+# declared digit range (`check_layout.py`'s `check_stale_backend_code` and
+# `check_digit_range`). This
 # board's backend is a different file (`main.js`, no ring to slice), so it is
 # not that thing and must not answer to that name -- `build()` renames the
 # spliced constraint below before returning it.
