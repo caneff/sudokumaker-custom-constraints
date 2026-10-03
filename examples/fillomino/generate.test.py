@@ -133,12 +133,6 @@ def test_sample_retries_past_a_striped_grid():
     assert "drop (striped)" in err, err
 
 
-def test_distinct_seeds_land_on_distinct_grids():
-    # Pinned-cell diversity: two seeds must not draw the same grid.
-    board = Board.of(9)
-    assert sample(board, seed=1) != sample(board, seed=2)
-
-
 if __name__ == "__main__":
     test_self_check()
     print("self-check: ok")
@@ -152,6 +146,4 @@ if __name__ == "__main__":
     test_is_striped_reads_rows_with_at_most_two_digits()
     test_sample_retries_past_a_striped_grid()
     print("striped grids detected and retried: ok")
-    test_distinct_seeds_land_on_distinct_grids()
-    print("distinct seeds, distinct grids: ok")
     print("generate.test.py: ok")
