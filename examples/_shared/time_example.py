@@ -439,7 +439,7 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
     `component` names the registered component to follow, over the manifest's
-    the manifest's timed_component -- which board registers which component is the caller's
+    timed_component -- which board registers which component is the caller's
     to say."""
     mode = "empty" if ring_clues else "strip"
     baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
