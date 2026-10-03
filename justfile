@@ -79,6 +79,7 @@ test:
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
     uv run finders/renbanana/tools/test_prove_two_stage.py
+    uv run finders/renbanana/tools/test_renbanana_model.py
     uv run finders/renbanana/tools/test_probe_circle_cost.py
     uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover
     uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover
