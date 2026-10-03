@@ -4,7 +4,11 @@
 # grid exactly when a plain Python check of the rule does. Half the sample keeps
 # the 1, 5 and 9 where they are and only moves the columns and the other digits,
 # which preserves the rule; the other half moves everything, which moves 5s into
-# the top and bottom rows, so both edge cases are in the sample.
+# the top and bottom rows, so both edge cases are in the sample. Edge rows then
+# get grids of their own, where one edge-row 5 is the grid's only violation: a
+# top-row 5 with no 9 below, a bottom-row 5 with no 1 above, and a bottom-row 5
+# whose 9 sits at the top of its column, which a model that wraps rows round
+# would accept.
 #
 #   uv run examples/dutch-flatmates/flatmate_model.test.py
 
@@ -73,6 +77,29 @@ def symmetry(grid, rng, keep_rule):
     }
 
 
+def edge_only_violations(grid, rng, tries=1_000_000):
+    """One symmetry of `grid` for each edge case whose only bad 5 is an edge-row
+    one: {"top": g, "bottom": g, "wrap": g}. The wrap grid's bad 5 is in the
+    bottom row with a 9 at the top of its column. Raises AssertionError when the
+    sample misses a case."""
+    found = {}
+    for _ in range(tries):
+        g = symmetry(grid, rng, keep_rule=False)
+        bad = bad_fives(g)
+        if len(bad) != 1:
+            continue
+        ((r, c),) = bad
+        if r == 0:
+            found.setdefault("top", g)
+        elif r == N - 1:
+            found.setdefault("bottom", g)
+            if g[0, c] == 9:
+                found.setdefault("wrap", g)
+        if len(found) == 3:
+            return found
+    raise AssertionError(f"{tries} symmetries missed an edge case: {sorted(found)}")
+
+
 if __name__ == "__main__":
     grid_rows, givens = read_board(HERE / "gen.json")
     grid = {(r, c): int(grid_rows[r][c]) for r in range(N) for c in range(N)}
@@ -98,6 +125,13 @@ if __name__ == "__main__":
         f"model agrees with the rule on 150 symmetries: {accepted} accepted, "
         f"{rejected} rejected ({edge_rejected} with a bad edge-row 5)"
     )
+
+    for case, g in edge_only_violations(grid, rng).items():
+        assert model_accepts(g, False), f"{case}: not a plain sudoku grid"
+        assert not model_accepts(g, True), (
+            f"the model accepted a grid whose only bad 5 is the {case} edge-row one"
+        )
+    print("model rejects grids whose only violation is an edge-row 5")
 
     # the plain count is capped: a count at the cap reads "cap or more"
     assert count_plain_completions({}, 5) == 5
