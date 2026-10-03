@@ -1044,7 +1044,7 @@ if __name__ == "__main__":
 
     # check_layout names no example: no string in its source equals the name
     # of a directory under examples/ -- a name-keyed table or an
-    # `if name == "..."` branch is how a trait used to be recorded
+    # `if name == "..."` branch would be a trait recorded by name
     example_names = {
         d.name for d in HERE.parent.iterdir() if d.is_dir() and d.name != "_shared"
     }

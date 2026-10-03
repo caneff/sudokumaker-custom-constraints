@@ -1,7 +1,7 @@
-# example_manifest reads an example's example.toml: the traits the shared
-# checker and the timing driver used to keep as tables keyed by example name
-# (docs/example-layout.md, "The manifest"). These cases pin the defaults, the
-# values a manifest can set, and the loud failures.
+# manifest.load_manifest reads an example's example.toml: the traits the shared
+# checker and the timing driver read (docs/example-layout.md, "The manifest").
+# These cases pin the defaults, the values a manifest can set, and the loud
+# failures.
 #
 #   uv run examples/_shared/manifest.test.py
 

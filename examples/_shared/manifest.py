@@ -1,7 +1,6 @@
 # One example's traits, read from the `example.toml` beside its code
 # (docs/example-layout.md, "The manifest"). The shared checker and the timing
-# driver used to keep these as tables keyed by example name; they now iterate
-# manifests and name no example.
+# driver iterate manifests and name no example.
 
 import pathlib
 import tomllib
