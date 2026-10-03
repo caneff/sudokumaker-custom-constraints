@@ -716,10 +716,7 @@ def check_example(example_dir):
     elif not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
-    if manifest.boardless:
-        return violations
-
-    if manifest.lanes == "split":
+    if manifest.lanes == "split" and not manifest.boardless:
         violations.extend(
             f"{name}: missing required file {required}"
             for required in ["main-global.js", *REQUIRED_LOCAL_FILES]

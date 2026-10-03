@@ -1002,6 +1002,10 @@ if __name__ == "__main__":
                 violations,
             )
             (d / "held").rename(d / missing)
+        # a link committed to a boardless example is still checked
+        (d / "PUZZLE_LINK_bogus.txt").write_text(_link())
+        violations = check_tree(root)
+        assert any("link name" in v for v in violations), violations
 
     # a manifest's shared_component must exist in _shared/
     with example(manifest={"shared_component": "NoSuchComponent"}) as (root, _):
