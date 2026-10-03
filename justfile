@@ -75,6 +75,7 @@ test:
     # full runs are `just test-finders-slow`.
     uv run finders/renbanana/tools/test_catalogue_is_used.py
     uv run finders/renbanana/tools/test_canon.py
+    uv run finders/renbanana/tools/test_covering_grids.py
     uv run finders/renbanana/tools/test_max_house_circles.py
     uv run finders/renbanana/tools/test_probe_known_solution.py
     uv run finders/renbanana/tools/test_prove_two_stage.py
