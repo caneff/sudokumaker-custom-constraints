@@ -30,9 +30,9 @@ sys.path.insert(0, str(HERE))
 
 from cpsat import SOLVED, solver
 from flatmate_model import (
-    N,
     build_model,
     count_plain_completions,
+    rows_of,
     rule_forced_flatmates,
     unique_solution,
 )
@@ -89,7 +89,7 @@ def make_board(seed, max_plain=MAX_PLAIN_COMPLETIONS):
 def to_json(grid, givens, seed):
     return {
         "seed": seed,
-        "grid": ["".join(str(grid[r, c]) for c in range(N)) for r in range(N)],
+        "grid": rows_of(grid),
         "clues": sorted([r, c] for r, c in givens),
     }
 

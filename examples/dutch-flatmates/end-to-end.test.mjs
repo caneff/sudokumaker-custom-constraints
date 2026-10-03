@@ -61,8 +61,6 @@ const load = (link, gen) => ({
   board: JSON.parse(readFileSync(join(HERE, gen), 'utf8'))
 })
 
-const copy = doc => structuredClone(doc)
-
 // The grid as a row-major digit array, and as the solver prints it.
 const digits = board => board.grid.flatMap(row => [...row].map(Number))
 const solution = board => digits(board).join('')
@@ -73,7 +71,7 @@ const flatmatesOk = g => g.every((d, i) =>
   d !== 5 || (i >= N && g[i - N] === 1) || (i + N < N * N && g[i + N] === 9))
 
 const entered = (doc, grid) => {
-  const d = copy(doc)
+  const d = structuredClone(doc)
   d.puzzle.cells = grid.map(value => ({ value }))
   return d
 }
@@ -124,13 +122,13 @@ for (const [link, gen, givenCount] of BOARDS) {
 
   // The app's search finds exactly the recorded solution: one solution, so
   // the board is unique under the rule and `update` ruled nothing true out.
-  assert.deepStrictEqual(await solutionsOf(copy(doc)), [solution(board)], `${label}: the link's solutions`)
+  assert.deepStrictEqual(await solutionsOf(structuredClone(doc)), [solution(board)], `${label}: the link's solutions`)
 
   // The rule is what makes it unique: with the component removed the same
   // givens leave more than one completion. Shipped board only: the 18-given
   // board leaves up to 10^8 plain completions, too many for the solver to list.
   if (givenCount === 23) {
-    const plain = copy(doc)
+    const plain = structuredClone(doc)
     plain.puzzle.constraints = plain.puzzle.constraints.filter(c => c.definition?.name !== 'Dutch Flatmates')
     const { solutions } = await solveDocument(plain)
     assert.ok(solutions.length > 1, `${label}: ${solutions.length} solutions without the rule`)

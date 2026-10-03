@@ -23,15 +23,11 @@ so a missing required file or a bad link name fails the gate.
 | `gen_local.json` | The board data behind `PUZZLE_LINK_local.txt` |
 
 `main-global.js`, `PUZZLE_LINK_local.txt` and `gen_local.json` are required on
-every example except one with no local/global duality: `isofill` and
-`fillomino` (whole-grid constraints, no drawn groups at all), `house-gac`
-(a fixed-geometry filter over every row, column and box — no drawn group to
-split a local lane from either, for a different reason) and `dutch-flatmates`
-(one whole-grid constraint on a ringless 9x9, no drawn groups) each ship
-`main.js` alone, and so does `up-to-n`, which draws groups but has no global lane: its
-clues are typed into them, so a board with no groups has none. Its
-`PUZZLE_LINK.txt` is a drawn-groups board. `examples/_shared/check_layout.py`
-holds this list as `NO_LOCAL_GLOBAL_SPLIT`.
+every example except one with no local/global duality: it ships `main.js`
+alone. The reason is either a whole-grid or fixed-geometry constraint with no
+drawn groups to split a local lane from, or groups drawn but no global lane,
+the clues being typed into them. `examples/_shared/check_layout.py` owns the
+members as `NO_LOCAL_GLOBAL_SPLIT`.
 
 ## Which lane a link runs (#268)
 
@@ -111,7 +107,7 @@ cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the
 inner grid" — except an example in `NO_RULES_PREFIX` (isofill and fillomino
 are not sudoku, and their rules text must not mention sudoku), and a no-ring
-board (below) or an example in `RINGLESS_SUDOKU` (the plain 9x9s of house-gac and dutch-flatmates),
+board (below) or an example in `RINGLESS_SUDOKU` (`check_layout.py`),
 whose comment starts "Normal sudoku rules apply." instead. See
 `docs/share-checklist.md` for the full pre-share list.
 
