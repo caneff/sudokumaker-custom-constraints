@@ -50,7 +50,7 @@ its lane and that no backend registers a component the link left out.
 
 ## What the components deduce
 
-**`SkyscraperLineComponent.js` — one per line, both clues at once.** A line is
+**`SkyscraperPairComponent.js` — one per line, both clues at once.** A line is
 a full house, so its tallest building is exactly `n`, at one cell: the peak.
 The left clue is `1 +` the left-to-right maxima before the peak; the right clue
 is `1 +` the right-to-left maxima after it. The prefix and the suffix are
@@ -137,7 +137,7 @@ In the real app the shipped `PUZZLE_LINK.txt` is proved unique in **7.4 s**
 (`just time skyscraper --ring-clues`). It is the hardest unique board a
 560-seed scan found (#140, #161), so it doubles as the timing board. The
 first shipped board handed the solver 58% of its ring and read 0.3 s; before
-the joint component it ran past the app's 300 s limit. Node counts and app time are different measurements — reps,
+the pair component it ran past the app's 300 s limit. Node counts and app time are different measurements — reps,
 dates, and app version in `../../docs/real-app-timing.md`.
 
 The reason is the interactive clue. The puzzle's one solution needs the skyscraper
@@ -162,11 +162,11 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
 - `main-global.js` — the global backend segment: reads all 4n frame lines off
   the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
   `docs/example-layout.md`), then registers the two-clue DP per line.
-- `SkyscraperLineComponent.js` — the two-clue DP: both clues, the whole
+- `SkyscraperPairComponent.js` — the two-clue DP: both clues, the whole
   line, and the final check. Global only.
 - `SkyscraperOneSidedComponent.js` — the one-sided DP: one clue, one drawn
   line of any shape. Local only.
-- `soundness-harness.mjs` — Node soundness fuzz for the line component.
+- `soundness-harness.mjs` — Node soundness fuzz for the pair component.
   Soundness = the component never removes a cell's true value. Run it:
   `node examples/skyscraper/soundness-harness.mjs` (`FUZZ=20000` for the deep
   run).
@@ -217,7 +217,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   verify-skyscraper [size]`.
 - `build_link.py` — rebuilds a committed board link with one named
   component's code swapped for a candidate file, board and clues unchanged:
-  `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperLineComponent.js --out /tmp/candidate.txt`.
+  `uv run --with lzstring examples/skyscraper/build_link.py --component SkyscraperPairComponent.js --out /tmp/candidate.txt`.
   Defaults to `PUZZLE_LINK.txt`; `--board <file>` swaps against another
   committed link instead. See `docs/real-app-timing.md`.
 
@@ -272,7 +272,7 @@ The three mechanical criteria, checked by `check_layout.py`:
    uniqueness, so no clue on this board is unnecessary.
 4. **Component reads well at its source** ✓ — the link carries the one global
    component, and its file in this repo carries the commentary.
-   `SkyscraperLineComponent.js` opens with a 35-line `//!` overview (the rule,
+   `SkyscraperPairComponent.js` opens with a 35-line `//!` overview (the rule,
    the peak split, the subset DP and its state, why soundness holds, and the
    permutation precondition both entry points re-check) and carries a short
    `//!` note per step of the sweep — 58 `//!` lines in all.
@@ -291,7 +291,7 @@ cell blank (`given: false`) to make it interactive; mark it given to show it.
 
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
-`main-global.js` as the main code, plus the `SkyscraperLineComponent`
+`main-global.js` as the main code, plus the `SkyscraperPairComponent`
 segment.
 
 ## Timing

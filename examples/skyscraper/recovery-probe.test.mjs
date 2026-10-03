@@ -1,7 +1,7 @@
 // Regression golden for the skyscraper recovery/speed probe: asserts its stdout
 // is BYTE-IDENTICAL to a fixed golden, per invocation. Covers the recovery path
 // (gen_6) and the search path (gen_4 with a small node cap, so a capped original
-// still returns fast; gen_9 'ours' only, the case the joint line component was
+// still returns fast; gen_9 'ours' only, the case the pair component was
 // built for, capped: the shipped board takes 45k nodes and ~2 min uncapped,
 // so the golden pins the capped run; `just time` judges deductions). The node
 // and solution counts are deterministic — MRV branching
