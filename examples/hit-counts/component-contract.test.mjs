@@ -7,6 +7,7 @@
 //   node examples/hit-counts/component-contract.test.mjs
 import assert from 'node:assert/strict'
 import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './side-fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -153,23 +154,13 @@ const { load } = makeIo(HERE)
   installGlobals(0, 4)
   const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
   const line = load('HitCountsComponent.js', ['setParams', 'update'])
-  const CLUES = [400, 401, 402, 403]
-  const cell = (r, c) => r * 4 + c
-  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => cell(r, c)))
-  const CANDS = [
-    [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
-    [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
-    [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
-    [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
-  ]
   const truth = {}
   for (const c of CLUES) truth[c] = 1
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = r === c ? c + 1 : CANDS[r][c][0]
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
   const seed = c => (CLUES.includes(c) ? [1] : CANDS[Math.floor(c / 4)][c % 4])
-  const houses = [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(l => l[c]))]
   // Record every removal builder a component calls, then let it apply.
   const spied = () => {
-    const p = makePuzzle(truth, seed, { houses })
+    const p = makePuzzle(truth, seed, { houses: HOUSES })
     const calls = []
     for (const name of ['filterCandidatesInCell', 'removeCandidatesFromCell', 'removeCandidateFromCell']) {
       const real = p[name]
@@ -198,19 +189,24 @@ const { load } = makeIo(HERE)
     'the per-line rule pins its one possible hit with one keep-only change')
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
 
-  // ---- A side that stops holding 1..n at a position leaves no memo ----
-  // The side's memo is the hash of the state its last sweep left. A call that
-  // finds some position missing a digit exits before any sweep; a memo left
-  // standing there names a state this call never read.
+  // ---- A backtrack makes the side deduce again ----
+  // The side skips a state it has already swept. A position that loses a digit
+  // (no 1..n there any more) is a dead state to sweep nothing on; the search
+  // then backtracks to the state before the first sweep, and the side must
+  // make the same four pins again rather than treat that state as swept.
   const m = spied()
   const im = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(im, CLUES, LINES)
   Array.from(side.update(im, m.p))
-  assert.notEqual(im.sig, null, 'a sweep leaves its memo')
+  assert.equal(pins(m.calls).length, 4, 'the first sweep pins the diagonal')
   for (const l of LINES) m.p._cand.get(l[3]).delete(4) // position 3 no longer holds a 4
+  m.calls.length = 0
   Array.from(side.update(im, m.p))
-  assert.equal(im.sig, null, 'the null-side exit clears the memo')
-  console.log('hit-counts side matching: the null-side exit clears the memo')
+  assert.deepEqual(m.calls, [], 'a position missing a digit is not swept')
+  for (const c of LINES.flat()) m.p._cand.set(c, new Set(seed(c))) // the backtrack
+  Array.from(side.update(im, m.p))
+  assert.equal(pins(m.calls).length, 4, 'after the backtrack the side pins the diagonal again')
+  console.log('hit-counts side matching: a backtrack makes the side deduce again')
 
   // ---- A forced hit already in place yields nothing ----
   // Line 0's cell at position 0 already holds only its target: the side still
@@ -260,8 +256,6 @@ const { load } = makeIo(HERE)
 // the same array there is an allocation per node.
 {
   installGlobals(0, 4)
-  const CLUES = [400, 401, 402, 403]
-  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => r * 4 + c))
   const truth = {}
   for (const c of CLUES) truth[c] = 1
   for (const l of LINES) l.forEach((c, j) => { truth[c] = j + 1 })

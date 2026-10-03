@@ -31,6 +31,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './side-fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -409,56 +410,33 @@ console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 // a gate held open over a restored 0 would put a digit in a cell that need not
 // hold it.
 //
-// The side below is the one shape that pins the matching outright, and
-// `update-strength.test.mjs` case 3b uses the same one to show what the
-// per-line scan cannot reach. The two runs are separate processes with nothing
-// to share through, so the table is written out twice — change one copy, change
-// the other.
-//
-// Four rows
-// clued 1, position 0 live on lines 0 and 1, position 1 on lines 1 and 2,
-// position 2 on lines 2 and 3, position 3 on line 3 alone. Only one assignment
-// survives, so every cell of the diagonal is forced. A 0 read as anything but
-// an ordinary miss would change that answer.
-const GRID_CLUES = [400, 401, 402, 403]
-const gcell = (r, c) => r * 4 + c
-const GRID_LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => gcell(r, c)))
-const GRID_CANDS = [
-  [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
-  [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
-  [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
-  [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
-]
-// The grid those candidates admit: row r is a permutation of 1..4, each column
-// too, and every line hits exactly once. So the truth really does complete this
-// state, which is what makes a lost candidate a violation.
-const GRID_TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
-// The side's lines and the positions across them: every one a house.
-const GRID_HOUSES = [...GRID_LINES, ...[0, 1, 2, 3].map(c => GRID_LINES.map(line => line[c]))]
+// The side below is the one shape that pins the matching outright; it lives in
+// side-fixture.mjs, shared with the other hit-counts tests. A 0 read as anything
+// but an ordinary miss would change its answer.
 function sideGateProbe (withZero) {
   const truth = {}
-  for (const c of GRID_CLUES) truth[c] = 1
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
-  const p = makePuzzle(truth, c => (c >= 400 ? [1] : GRID_CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
-    { houses: GRID_HOUSES })
+  for (const c of CLUES) truth[c] = 1
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
+  const p = makePuzzle(truth, c => (c >= 400 ? [1] : CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
+    { houses: HOUSES })
   const inst = {}
-  matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
+  matchMod.setParams(inst, CLUES, LINES)
   return { p, inst, v: violates(matchMod, inst, p, truth) }
 }
 const zeroLive = sideGateProbe(true)
-const gateShut = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size > 1)
-for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) zeroLive.p._cand.get(gcell(r, c)).delete(0) // the cage bites
+const gateShut = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(cell(i, i)).size > 1)
+for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) zeroLive.p._cand.get(cell(r, c)).delete(0) // the cage bites
 fixpoint(matchMod, zeroLive.inst, zeroLive.p)
-const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size === 1)
+const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(cell(i, i)).size === 1)
 // A backtrack: the state goes back to where it was and the 0 comes back with
 // it. The same instance must forget it ever opened.
 const undone = sideGateProbe(true)
 Array.from(matchMod.update(undone.inst, undone.p)) // shut, and no hash stored
-for (const c of GRID_LINES.flat()) undone.p._cand.get(c).delete(0)
+for (const c of LINES.flat()) undone.p._cand.get(c).delete(0)
 fixpoint(matchMod, undone.inst, undone.p) // open: the diagonal is forced
-for (const c of GRID_LINES.flat()) undone.p._cand.set(c, new Set(GRID_CANDS[(c / 4) | 0][c % 4].concat([0])))
+for (const c of LINES.flat()) undone.p._cand.set(c, new Set(CANDS[(c / 4) | 0][c % 4].concat([0])))
 Array.from(matchMod.update(undone.inst, undone.p))
-const gateReshut = GRID_LINES.flat().every(c => undone.p._cand.get(c).has(0))
+const gateReshut = LINES.flat().every(c => undone.p._cand.get(c).has(0))
 const sideGateOk = gateShut && gateOpened && gateReshut && !zeroLive.v && !sideGateProbe(false).v
 console.log('side hit matching, minDigit 0 gate:', sideGateOk ? 'OK' : `FAIL (shut ${gateShut}, reopened ${gateOpened}, re-shut ${gateReshut})`)
 
@@ -468,16 +446,16 @@ console.log('side hit matching, minDigit 0 gate:', sideGateOk ? 'OK' : `FAIL (sh
 // is not; a side still holding an open cell is not yet judged either way.
 function sideValidate (clueVals, openCell) {
   const truth = {}
-  GRID_CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
-  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: GRID_HOUSES })
-  const inst = { cells: [...GRID_CLUES, ...GRID_LINES.flat()] } // as the app sets it
-  matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
+  CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
+  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: HOUSES })
+  const inst = { cells: [...CLUES, ...LINES.flat()] } // as the app sets it
+  matchMod.setParams(inst, CLUES, LINES)
   return matchMod.validate(inst, p)
 }
 const sideValidateOk = sideValidate([1, 1, 1, 1], null) === true &&
   sideValidate([1, 2, 1, 1], null) === false &&
-  sideValidate([1, 2, 1, 1], gcell(2, 2)) === true
+  sideValidate([1, 2, 1, 1], cell(2, 2)) === true
 console.log('side hit matching, validate:', sideValidateOk ? 'OK' : 'FAIL')
 
 // ---- Side-sum component: n clues on a side sum to exactly n ----
