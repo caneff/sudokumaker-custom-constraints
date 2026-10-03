@@ -17,11 +17,12 @@ with no `render` gets no renders/ directory at all. `--workers` (default 3,
 set on the finder before the first seed) and the 1-minute load gate
 (refuses above 24 unless `--force-load`) are #488. A resume also
 reconciles renders/ itself (#522, `_reconcile_renders`) and repairs a missing
-or undecodable picture: by re-proposing for a stateless finder, from the examples.jsonl
-record via `candidate_from_record` for a stateful one (#538); the contract
-for that hook, and the gap without it, is in protocol.py. A finder's own knobs travel as `finder.config`: run.json
-records it and a resume under a different one refuses; a seed that found
-nothing may return `Empty(reason)`, written as `empty_reason` (#491).
+or undecodable picture: by re-proposing for a stateless finder, from the
+examples.jsonl record via `candidate_from_record` for a stateful one (#538);
+the contract for that hook, and the gap without it, is in protocol.py. A
+finder's own knobs travel as `finder.config`: run.json records it and a
+resume under a different one refuses; a seed that found nothing may return
+`Empty(reason)`, written as `empty_reason` (#491).
 
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END
     uv run finders/hunt/toy_finder.py --out DIR --seeds START:END --no-verify
@@ -543,22 +544,22 @@ def _warn_unrepaired_renders(finder, out, progress_events):
 
 def _repair_renders(finder, out, progress_lines, progress_events, examples_records):
     """Resume re-attempts a missing or undecodable renders/<seed>.png for every
-    already-accepted example (#524): a transient render
-    failure (a full disk, a bug in the finder's own render() since fixed)
-    must not leave examples.jsonl and renders/ permanently mismatched with
-    no error, just because the seed's outcome was already durable as
-    "example" -- a done seed never reruns, so nothing else would ever
-    retry it.
+    already-accepted example (#524): a transient render failure (a full disk, a
+    bug in the finder's own render() since fixed) must not leave
+    examples.jsonl and renders/ permanently mismatched with no error, just
+    because the seed's outcome was already durable as "example" -- a done
+    seed never reruns, so nothing else would ever retry it.
 
     A stateless finder's candidate is regenerated with `propose()`. A
     stateful finder's is rebuilt from its examples.jsonl record with
     `candidate_from_record` (#538) -- `propose()` is never called for it.
     The finder's state is snapshotted (a JSON round trip of `save_state()`)
     before each hook call and restored after it, even if the hook raises,
-    so a hook that mutates state never reaches state.json. A rebuild that comes back `None` or
-    `Empty` keeps the seed's `render_error` and writes no picture (#645). The k-th "example" event pairs with
-    the k-th record: `_reconcile` leaves the two counts equal. A finder
-    `_can_repair_renders` refuses is left as it is.
+    so a hook that mutates state never reaches state.json. A rebuild that
+    comes back `None` or `Empty` keeps the seed's `render_error` and writes no
+    picture (#645). The k-th "example" event pairs with the k-th record:
+    `_reconcile` leaves the two counts equal. A finder `_can_repair_renders`
+    refuses is left as it is.
     """
     if not _can_repair_renders(finder):
         _warn_unrepaired_renders(finder, out, progress_events)

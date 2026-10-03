@@ -489,9 +489,10 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
     )
 
     # A hook that mutates finder state must not reach state.json: repair
-    # snapshots the state before the call and restores it after. A kill is simulated by truncating progress.jsonl, so the resume
-    # both repairs renders and reruns seeds; the persisted state must equal
-    # the one a resume with a well-behaved hook writes.
+    # snapshots the state before the call and restores it after. A kill is
+    # simulated by truncating progress.jsonl, so the resume both repairs
+    # renders and reruns seeds; the persisted state must equal the one a
+    # resume with a well-behaved hook writes.
     def resumed_state(name, resume_extra_env):
         run_out = Path(tmp) / name
         run_args = ["--out", str(run_out), "--seeds", "0:30"]
