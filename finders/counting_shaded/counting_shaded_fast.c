@@ -313,8 +313,8 @@ static int refresh(Enum *e) {
         if (dist[x] > rem) continue;
         int open = 0;
         for (int k = 0; k < NBN[x]; k++) open += e->st[NB[x][k]] == OPEN && dist[NB[x][k]] <= rem;
-        // Cells still to place that can raise x's count: an open x two or more steps
-        // out needs a path cell that is itself a king neighbour, so only rem - 1 remain.
+        // Cells still to place that can raise x's count: an open x takes one of the rem
+        // slots itself, so only rem - 1 can be its neighbours; an IN cell can use all rem.
         int lo = e->inn[x], hi = lo + open, room = e->st[x] == IN ? rem : rem - 1;
         if (e->st[x] == IN) {
             if (!open && !e->reg[x]) {
