@@ -83,7 +83,8 @@ def random_grid(seed, seconds, workers, steer=0):
 
 
 class Shadings:
-    """Legal shadings of one *fixed* solved grid. Exact but for rule 4."""
+    """Legal shadings of one *fixed* solved grid. Exact but for rules 4 and 6,
+    which `offenders` checks on each solution."""
 
     def __init__(self, grid, min_chocolate=0, drop="none", want_circled=0):
         m = cp.CpModel()
@@ -261,7 +262,8 @@ class Shadings:
         return bad
 
     def solve(self, seconds, workers, seed):
-        """Loop the lazy rule-4 cuts until the shading is clean or time runs out."""
+        """Loop the `offenders` cuts (rules 4 and 6) until the shading is clean or
+        time runs out."""
         if self.impossible:
             return cp.INFEASIBLE, None
         deadline = time.monotonic() + seconds

@@ -8,6 +8,7 @@ timeout -- the status is compared by name). The last test checks that the
 hunt and the four probes use these definitions rather than their own copies.
 """
 
+import collections
 import sys
 from pathlib import Path
 
@@ -178,13 +179,15 @@ def test_banana_labels_pin_and_sharing():
         pin(m, choc, chocolate)
         m.add(lab[(0, 1), 0] == 1)
         assert status_of(m) == want, pin_labels
-    # Adjacent banana cells cannot hold two different labels.
-    m, _, choc = digits_and_shading()
-    lab = rm.banana_labels(m, choc)
-    pin(m, choc, chocolate)
-    m.add(lab[(0, 1), 1] == 1)
-    m.add(lab[(0, 2), 2] == 1)
-    assert status_of(m) == "INFEASIBLE"
+    # Adjacent banana cells share a label. Both labels here are at or below
+    # (0,1)'s index, so only the share clause can refuse the split pin.
+    for second, want in ((0, "OPTIMAL"), (1, "INFEASIBLE")):
+        m, _, choc = digits_and_shading()
+        lab = rm.banana_labels(m, choc, pin=False)
+        pin(m, choc, chocolate)
+        m.add(lab[(0, 1), 0] == 1)
+        m.add(lab[(0, 2), second] == 1)
+        assert status_of(m) == want, second
 
 
 SHARED = (
@@ -196,17 +199,20 @@ SHARED = (
     "banana_labels",
     "forbid_banana_rectangles",
     "forbid_dead_chocolate",
+    "maximal_chocolate_lits",
+    "chocolate_spot",
+    "forbid_banana_group",
 )
 
 
 def calls_while(build):
     """Which shared encodings `build()` calls through the model module."""
-    seen = set()
+    seen = collections.Counter()
     real = {name: getattr(rm, name) for name in SHARED}
 
     def spy(name):
         def wrapped(*a, **k):
-            seen.add(name)
+            seen[name] += 1
             return real[name](*a, **k)
 
         return wrapped
@@ -283,7 +289,25 @@ def test_encodings_have_one_definition():
     }
     for name, (build, need) in wanted.items():
         got = calls_while(build)
-        assert need <= got, f"{name} no longer calls {sorted(need - got)}"
+        assert need <= set(got), f"{name} no longer calls {sorted(need - set(got))}"
+
+    # Calls made directly by a builder, beyond the ones forbid_dead_chocolate
+    # makes for it: two pinned rectangles, one maximal-literal set per placement.
+    pair = [(2, 2, 0, 0), (2, 3, 4, 4)]
+    model = None
+
+    def build_pair():
+        nonlocal model
+        model = pp.JointPair(pair, renban=False)
+
+    got = calls_while(build_pair)
+    assert got["maximal_chocolate_lits"] >= model.dead + len(pair), "prove_pair pins"
+    got = calls_while(lambda: mh.shading_model(house))
+    assert got["maximal_chocolate_lits"] >= len(rm.PLACEMENTS), "max_house rect"
+    spots = calls_while(lambda: rc.Shadings().spot(2, 2, 3, 3))
+    assert spots["chocolate_spot"] == 1
+    cuts = calls_while(lambda: rc.Shadings().forbid_component([(0, 0)]))
+    assert cuts["forbid_banana_group"] == 1
 
 
 if __name__ == "__main__":

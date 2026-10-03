@@ -115,16 +115,23 @@ def stage_3_domains_and_circles_come_from_the_catalogue():
 
 
 def whisper_holds():
-    """Two adjacent chocolate cells differ by 5 or more in stage 3's model."""
+    """Stage 3 keeps the whisper gap on the pool shading's first chocolate
+    pair. 2/9 and 8/1 are rejected only because the neighbours of the pair
+    cannot keep the gap to them -- they pass if the gap is dropped -- and 1/6
+    is a legal pin that must solve."""
     is_choc = pool_shading()
     p, q = next((p, q) for p, q in R.ADJACENT if is_choc[p] and is_choc[q])
-    verdicts = {}
-    for lo, hi in ((6, 4), (9, 4)):  # 6/4 sits on opposite sides of 5, gap 2
+    got = {}
+    for pin in ((2, 9), (8, 1), (1, 6)):
         m, d, _ = R.digit_model(is_choc)
-        m.add(d[p] == lo)
-        m.add(d[q] == hi)
-        verdicts[lo, hi] = solve_status(m)
-    return verdicts[6, 4] == "INFEASIBLE" and verdicts[9, 4] != "INFEASIBLE"
+        m.add(d[p] == pin[0])
+        m.add(d[q] == pin[1])
+        got[pin] = solve_status(m)
+    return (
+        got[2, 9] == "INFEASIBLE"
+        and got[8, 1] == "INFEASIBLE"
+        and got[1, 6] in ("OPTIMAL", "FEASIBLE")
+    )
 
 
 def check(name, ok, detail=""):
