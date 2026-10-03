@@ -213,7 +213,8 @@ def backend_code(gen, name, keep_comments=False):
 def build_doc(gen, name, keep_comments=False):
     """The board's document: `name` is the class the backend registers --
     CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in).
-    `keep_comments` keeps every comment in the embedded code (#567)."""
+    `keep_comments` keeps every comment (the lint directive aside) in the
+    embedded code (#567)."""
     givens = givens_of(gen)
     cells = [
         {"value": gen["grid"][r][c], "given": True} if (r, c) in givens else {}
@@ -293,7 +294,7 @@ if __name__ == "__main__":
         "--keep-comments",
         action="store_true",
         help="write only PUZZLE_LINK_sparse_annotated.txt: the candidate link "
-        "with every comment kept in the embedded code (#567)",
+        "with every comment kept in the embedded code, the lint directive aside (#567)",
     )
     p.add_argument(
         "--out",

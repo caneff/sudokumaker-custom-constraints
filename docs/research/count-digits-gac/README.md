@@ -128,7 +128,7 @@ and the two links.
   one identifier, and the candidate link also ships the component code.
 - **A third link, for reading** (#567): `PUZZLE_LINK_sparse_annotated.txt` is
   the candidate link's board, givens and component with every comment kept in
-  the embedded code (about twice the size: 10.3k against 5.0k): the rule,
+  the embedded code, the lint directive aside (about twice the size: 10.3k against 5.0k): the rule,
   what the built-in does instead, and the three deductions with the
   soundness argument. It reads `[unique]` in the
   app with `entered: 0`. It is for reading the code in the app's code box,

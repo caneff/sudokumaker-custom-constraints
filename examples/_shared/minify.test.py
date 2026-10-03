@@ -58,9 +58,11 @@ def test_keeps_block_comments_when_asked_to():
     assert kept == "const x = 1\n", repr(kept)
 
 
-def test_keeps_every_comment_when_asked_to():
+def test_keeps_comments_and_blank_lines_when_asked_to():
     # keep_comments=True is the annotated-link mode (#433): line and block
-    # comments both survive, drop_blocks is ignored, and only blank lines go.
+    # comments both survive, drop_blocks is ignored, and blank lines stay so
+    # the commentary reads in paragraphs (#695). The one comment that goes is
+    # the repo's `/* eslint-disable` directive.
     src = (
         "/* eslint-disable no-unused-vars -- the component API */\n"
         "// ordinary comment, kept\n"
@@ -71,14 +73,70 @@ def test_keeps_every_comment_when_asked_to():
     )
     got = minify_js(src, keep_comments=True)
     assert got == (
-        "/* eslint-disable no-unused-vars -- the component API */\n"
         "// ordinary comment, kept\n"
         "  //! marked comment, kept too\n"
         "const x = 1        // inline note, kept\n"
+        "\n"
         "  const u = 'http://a/b'\n"
     ), repr(got)
     # drop_blocks is ignored in this mode
     assert minify_js(src, drop_blocks=True, keep_comments=True) == got
+
+
+def test_keep_comments_drops_the_lint_directive_and_the_blank_after_it():
+    # The directive is for this repo's linter; a recipient reading the code in
+    # the app's box has no use for it (#695). The blank line that followed it
+    # would open the link on empty space, so it goes too -- from an included
+    # file as well as the top-level one.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "/* eslint-disable no-unused-vars -- read by the includer */\n\n"
+            "// seg header\nfunction used () { return 1 }\n"
+        )
+        (root / "main.js").write_text(
+            "/* eslint-disable no-unused-vars -- the app calls these */\n\n"
+            "// main header\n// #include seg.js\nused()\n"
+        )
+        got = minify_file(root / "main.js", keep_comments=True)
+    assert got == (
+        "// main header\n// seg header\nfunction used () { return 1 }\nused()\n"
+    ), repr(got)
+    # the plain mode never kept it
+    assert "eslint" not in minify_js("/* eslint-disable x */\nconst x = 1\n")
+
+
+def test_keep_comments_refuses_a_lint_directive_that_spans_lines():
+    # Dropping only its first line would leave a dangling `*/` in the link.
+    try:
+        minify_js(
+            "/* eslint-disable\n   no-unused-vars */\nconst x = 1\n", keep_comments=True
+        )
+    except AssertionError as e:
+        assert "lint directive" in str(e), e
+        return
+    raise AssertionError("expected a refusal for a multi-line lint directive")
+
+
+def test_keep_comments_keeps_blank_lines_between_functions():
+    src = "// head\n\nfunction a () { return 1 }\n\n// b\nfunction b () { return 2 }\n"
+    assert minify_js(src, keep_comments=True) == src
+
+
+def test_keep_comments_prune_leaves_no_doubled_blank_line():
+    # A pruned include takes the blank line after it along, so the functions
+    # around it stay separated by one blank line, not two.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text(
+            "function used () { return 1 }\n\nfunction unused () { return 2 }\n\n"
+            "function last () { return 3 }\n"
+        )
+        (root / "main.js").write_text("// #include seg.js\nused()\nlast()\n")
+        got = minify_file(root / "main.js", keep_comments=True)
+    assert got == (
+        "function used () { return 1 }\n\nfunction last () { return 3 }\nused()\nlast()\n"
+    ), repr(got)
 
 
 def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
@@ -95,6 +153,19 @@ def test_keep_comments_still_splices_includes_and_prunes_dead_ones():
         got = minify_file(root / "main.js", keep_comments=True)
     assert "// kept commentary" in got, repr(got)
     assert "function used" in got and "function unused" not in got, repr(got)
+
+
+def test_keep_comments_prune_keeps_the_includers_paragraph_break():
+    # A pruned include that sits right against the includer's own blank line
+    # leaves that blank line: it is the only gap, not a doubled one.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("function unused () { return 2 }\n")
+        (root / "main.js").write_text(
+            "const a = 1\n// #include seg.js\n\n// next\nconst b = 2\n"
+        )
+        got = minify_file(root / "main.js", keep_comments=True)
+    assert got == "const a = 1\n\n// next\nconst b = 2\n", repr(got)
 
 
 def test_refuses_an_unpaired_block_marker_rather_than_guessing():
@@ -361,7 +432,12 @@ if __name__ == "__main__":
     test_drops_a_marked_comment_that_trails_code()
     test_drops_a_block_comment()
     test_keeps_block_comments_when_asked_to()
-    test_keeps_every_comment_when_asked_to()
+    test_keeps_comments_and_blank_lines_when_asked_to()
+    test_keep_comments_drops_the_lint_directive_and_the_blank_after_it()
+    test_keep_comments_refuses_a_lint_directive_that_spans_lines()
+    test_keep_comments_keeps_blank_lines_between_functions()
+    test_keep_comments_prune_leaves_no_doubled_blank_line()
+    test_keep_comments_prune_keeps_the_includers_paragraph_break()
     test_keep_comments_still_splices_includes_and_prunes_dead_ones()
     test_drops_a_block_comment_sharing_a_line_with_code()
     test_refuses_an_unpaired_block_marker_rather_than_guessing()

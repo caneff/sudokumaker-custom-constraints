@@ -17,9 +17,10 @@
 #
 # --keep-comments builds the annotated sibling link (#433): same board, same
 # givens, same component and backend files, but the embedded code keeps every
-# comment (only blank lines go; indentation is untouched) instead of the
-# usual full strip -- for a reader who opens the link in SudokuMaker and
-# reads the code in its own box. Regenerate PUZZLE_LINK_annotated.txt with
+# comment and blank line (bar the lint directive; indentation is untouched)
+# instead of the usual full strip -- for a reader who opens the link in
+# SudokuMaker and reads the code in its own box. Regenerate
+# PUZZLE_LINK_annotated.txt with
 #
 #   uv run --with lzstring examples/house-gac/build_link.py \
 #       --keep-comments --out examples/house-gac/PUZZLE_LINK_annotated.txt
@@ -96,10 +97,10 @@ def build(
     solution, n_givens).
 
     `keep_comments=True` is the annotated-link build (#433): the embedded
-    component and backend code keep every comment (only blank lines go;
-    indentation is untouched), instead of the usual full comment strip. Board,
-    givens and every other constraint are unaffected -- only how this one
-    constraint's code is minified changes."""
+    component and backend code keep every comment and blank line (bar
+    the lint directive; indentation is untouched), instead of the usual full
+    comment strip. Board, givens and every other constraint are unaffected --
+    only how this one constraint's code is minified changes."""
     base = decode_puzzle(pathlib.Path(base_link).read_text().strip())
     width = base["puzzle"]["width"]
     assert width == base["puzzle"]["height"] == 9, "expected the plain 9x9 board"

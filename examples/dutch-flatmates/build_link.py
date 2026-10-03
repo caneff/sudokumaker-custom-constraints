@@ -15,7 +15,8 @@
 # --keep-comments builds the annotated link (#693): same board, but the code
 # embedded in it keeps every comment, so a puzzle setter can read it in the
 # app's code box (the build house-gac's annotated link uses, #433). The code
-# loses its `/* eslint-disable */` line, which is for this repo's linter.
+# loses its `/* eslint-disable */` line, which is for this repo's linter
+# (minify.py's keep_comments mode drops it, #695).
 #
 # framebuild cannot host this board: its only ringless path (`no_ring_doc`)
 # reads drawn groups and a clue function from a `Spec`, and a flatmate board has
@@ -44,7 +45,7 @@ from flatmate_model import Extras, N, prove_recorded
 from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
-from minify import minify_js
+from minify import minify_file
 
 CONSTRAINT_NAME = "Dutch Flatmates"
 TIMED_COMPONENT = "DutchFlatmatesComponent"
@@ -69,20 +70,6 @@ CIRCLES_RULES = (
     "No 5 in a circle: 5s live in Dutch Flats, not in circles.\n\n"
     "Puzzle by {author} ({source})."
 )
-
-
-def embedded_code(path, keep_comments=False):
-    """`path`'s code as it goes into a link: comments stripped, or, for the
-    annotated link, kept, minus the lint directive (a repo-only line)."""
-    path = pathlib.Path(path)
-    text = path.read_text()
-    if keep_comments:
-        text = "".join(
-            line
-            for line in text.splitlines(keepends=True)
-            if not line.startswith("/* eslint-disable")
-        )
-    return minify_js(text, base_dir=path.parent, keep_comments=keep_comments)
 
 
 def circles_comment(extras, spec):
@@ -129,7 +116,7 @@ def circles_constraints(circles, keep_comments=False):
                     {
                         "type": "code",
                         "name": NO_FIVE_COMPONENT,
-                        "code": embedded_code(
+                        "code": minify_file(
                             HERE / f"{NO_FIVE_COMPONENT}.js", keep_comments
                         ),
                     }
@@ -190,13 +177,13 @@ def build(
                         "input": [],
                         "backend": {
                             "type": "code",
-                            "code": embedded_code(HERE / "main.js", keep_comments),
+                            "code": minify_file(HERE / "main.js", keep_comments),
                         },
                         "components": [
                             {
                                 "type": "code",
                                 "name": TIMED_COMPONENT,
-                                "code": embedded_code(component_path, keep_comments),
+                                "code": minify_file(component_path, keep_comments),
                             }
                         ],
                     },
