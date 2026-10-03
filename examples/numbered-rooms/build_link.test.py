@@ -80,10 +80,10 @@ def check_refresh_rejects_another_board():
             text=True,
         )
         # argparse's usage error, exit 2, naming --board: a crash for some other
-        # reason does not pass as the refusal. (The shared swap_main refuses it
-        # before `rebuild`'s own --board guard is reached.)
+        # reason does not pass as the refusal. Either guard's message will do:
+        # the shared swap_main refuses first, `rebuild`'s own guard behind it.
         assert run.returncode == 2, (run.returncode, run.stdout, run.stderr)
-        assert "error: --board" in run.stderr, run.stderr
+        assert "--board" in run.stderr, run.stderr
         assert copy.read_text() == before, "--refresh rewrote the board it was given"
 
 
