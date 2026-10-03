@@ -149,14 +149,10 @@ def unique(board, givens, limit=LIMIT, reproducible=True):
     portfolio, which is far faster and is what the generation searches want.
     """
     m, x = model(board, givens)
-    s = cpsat.solver(limit, reproducible=reproducible)
-    status = s.Solve(m)
-    if status == cpsat.UNKNOWN:
-        raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
-    if status not in cpsat.SOLVED:
+    first, is_unique = cpsat.solve_unique(m, x, limit, reproducible=reproducible)
+    if first is None:
         raise ValueError("no ISOFILL grid matches the givens")
-    first = {p: s.Value(x[p]) for p in board.cells}
-    return not cpsat.has_second_solution(m, x, first, limit, reproducible=reproducible)
+    return is_unique
 
 
 def self_check(board):
