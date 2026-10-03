@@ -10,8 +10,9 @@
 # measured shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
 # The source files keep those blocks; how a reuser gets the commentary is a
 # separate question -- `keep_comments=True` is that answer for a link that
-# wants it: every comment survives (only blank lines go), for the rare link
-# built to be read inside the app's own code box (#433).
+# wants it: every comment and blank line survives, bar the `/* eslint-disable`
+# directive (a line for this repo's linter, and the blank line after it), for
+# the rare link built to be read inside the app's own code box (#433, #695).
 #
 # One source file can splice in another with a line reading
 #
@@ -49,7 +50,7 @@
 # close on its line, an unterminated string, template or regex, and a "/" whose
 # reading (division or regex) depends on more than the token before it, all stop
 # the build naming the line. `keep_comments=True` never scans -- every line
-# survives as written.
+# survives as written, but the directive's.
 
 import pathlib
 import re
@@ -61,6 +62,10 @@ _INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
 
 # A top-level function declaration: no leading whitespace, so a helper nested
 # inside another function (indented) is never a prune candidate.
+# The repo's lint directive: a block comment opening a line, which the annotated
+# mode drops (the plain mode drops every comment anyway).
+_LINT_DIRECTIVE = "/* eslint-disable"
+
 _FUNC_DECL_RE = re.compile(r"^function\s+([A-Za-z_$][\w$]*)\s*\(")
 
 # Dispatch through a name this strip cannot read: a computed member call
@@ -87,10 +92,11 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=(), keep_comments=Fal
     <Change> */` type annotations, and its whole point is being the author's
     own file. Everything shipped from examples/ takes the default.
 
-    `keep_comments=True` is the annotated-link mode: every comment survives
-    (line and block alike, `drop_blocks` is ignored), and only blank lines
-    are dropped -- for a link whose whole point is a reader inside the app's
-    code box learning the filter from its own commentary. Includes still
+    `keep_comments=True` is the annotated-link mode: every comment and blank
+    line survives (line and block alike, `drop_blocks` is ignored), except a
+    line opening `/* eslint-disable` and the blank line right after it -- for
+    a link whose whole point is a reader inside the app's code box learning
+    the filter from its own commentary. Includes still
     resolve and dead top-level functions still prune the same way; a
     computed-dispatch site still refuses the prune rather than guessing."""
     lines = _splice_and_strip(src, drop_blocks, base_dir, _stack, keep_comments)
@@ -107,7 +113,16 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
     included = bool(stack)
     out = []
     frames = ()  # open template literals / block comments, carried across lines
+    after_directive = False  # the last line read was a dropped lint directive
     for line in src.splitlines():
+        if keep_comments:
+            if line.startswith(_LINT_DIRECTIVE):
+                after_directive = True
+                continue
+            if after_directive and not line.strip():
+                after_directive = False
+                continue
+            after_directive = False
         directive = _INCLUDE_RE.match(line)
         if directive:
             # An include that minifies to nothing appends nothing: every blank
@@ -118,9 +133,8 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
                 )
             )
             continue
-        if keep_comments:  # never scanned: only blank lines go
-            if line.strip():
-                out.append((line.rstrip(), included))
+        if keep_comments:  # never scanned: every line survives as written
+            out.append((line.rstrip(), included))
             continue
         text, frames = _strip_line(line, frames, drop_blocks)
         if any(f != _BLOCK for f in frames):  # a template literal runs on:
@@ -322,6 +336,10 @@ def _prune_dead_includes(lines):
         used_elsewhere = len(pattern.findall(whole)) - len(pattern.findall(span_text))
         if used_elsewhere == 0:
             drop.update(range(start, end + 1))
+            # blank lines survive only in the annotated mode: the one after a
+            # pruned function would double the gap around it
+            if end + 1 < n and not lines[end + 1][0].strip():
+                drop.add(end + 1)
     return [pair for idx, pair in enumerate(lines) if idx not in drop]
 
 

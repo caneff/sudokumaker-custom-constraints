@@ -12,7 +12,8 @@ component, standing alone, on the simplest board there is.
 
 A second link, `PUZZLE_LINK_annotated.txt`, is the same board and the same 25
 givens with its embedded code kept uncompressed instead of minified: every
-comment survives (only blank lines go; indentation is untouched), for a
+comment and blank line survives (bar the repo's lint directive; indentation
+is untouched), for a
 reader who opens the link in SudokuMaker and reads the filter's own
 commentary in its code box (#433, "Rebuilding" below).
 
@@ -100,8 +101,8 @@ uv run --with lzstring examples/house-gac/build_link.py
 `--keep-comments` builds `PUZZLE_LINK_annotated.txt` instead: same board, same
 givens, same `main.js` and `HouseGacComponent.js`, but the embedded code goes
 through `minify_js`'s comment-keeping mode (`examples/_shared/minify.py`)
-rather than the usual full strip -- only blank lines go, every comment
-survives:
+rather than the usual full strip -- every comment and blank line survives,
+bar the `/* eslint-disable` directive:
 
 ```
 uv run --with lzstring examples/house-gac/build_link.py \
@@ -123,7 +124,7 @@ $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LIN
 ```
 
 Size against the minified link: `PUZZLE_LINK.txt` is 4,755 characters,
-`PUZZLE_LINK_annotated.txt` is 9,554 -- roughly double, the commentary being
+`PUZZLE_LINK_annotated.txt` is 10,002 -- roughly double, the commentary being
 about as large a share of the embedded code as #385 found it elsewhere.
 
 The pre-share decode check (`sm-link` skill, gridfind's `inspect_link.py`)
