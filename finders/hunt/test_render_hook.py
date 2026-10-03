@@ -769,7 +769,13 @@ sys.exit(run(EmptyRepairFinder(), sys.argv[1:]))
     check("the first run left render_errors to repair", len(failed) > 0)
     resume_env = dict(os.environ, TOY_EMPTY_PROPOSE="1")
     resume_env.pop("TOY_RENDER_FAIL", None)
-    subprocess.run(empty_argv, capture_output=True, text=True, env=resume_env)
+    empty_resume = subprocess.run(
+        empty_argv, capture_output=True, text=True, env=resume_env
+    )
+    check(
+        f"the Empty-repair resume exits 0 (stderr: {empty_resume.stderr[-500:]})",
+        empty_resume.returncode == 0,
+    )
     still_failed = [
         e for e in read_jsonl(out / "progress.jsonl") if "render_error" in e
     ]
