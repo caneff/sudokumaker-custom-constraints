@@ -193,11 +193,7 @@ const { load } = makeIo(HERE)
   // The side skips a state it has already swept. After a sweep, and a state
   // with a position missing a digit (not swept at all), the search backtracks
   // to the state before the first sweep: the side must make the same four
-  // pins again, not treat that state as swept. This witnesses a memo that
-  // never lets go. It does not witness the memo being cleared on the
-  // missing-digit exit: the memo hashes exactly the bits a sweep reads, so a
-  // state matching a stale memo would sweep to nothing either way and no
-  // state makes that clear observable.
+  // pins again, not treat that state as swept.
   const m = spied()
   const im = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(im, CLUES, LINES)
@@ -211,6 +207,28 @@ const { load } = makeIo(HERE)
   Array.from(side.update(im, m.p))
   assert.equal(pins(m.calls).length, 4, 'after the backtrack the side pins the diagonal again')
   console.log('hit-counts side matching: a backtrack makes the side deduce again')
+
+  // ---- The missing-digit exit forgets the last sweep ----
+  // The memo hashes which digits are live at each position and the clue masks,
+  // not the rest of a cell's candidates. Sweep, reach a position missing a
+  // digit, then backtrack to the state the sweep left with digit 2 put back on
+  // cell (0, 0): it hashes as the swept state, but the cell is no longer
+  // pinned, so the side must pin it again. A memo the missing-digit exit left
+  // standing would match and skip that sweep.
+  const f = spied()
+  const ifr = { cells: [...CLUES, ...LINES.flat()] }
+  side.setParams(ifr, CLUES, LINES)
+  Array.from(side.update(ifr, f.p))
+  const swept = new Map(LINES.flat().map(c => [c, new Set(f.p._cand.get(c))]))
+  for (const l of LINES) f.p._cand.get(l[3]).delete(4)
+  Array.from(side.update(ifr, f.p)) // the missing-digit exit
+  for (const [c, cands] of swept) f.p._cand.set(c, new Set(cands))
+  f.p._cand.get(cell(0, 0)).add(2)
+  f.calls.length = 0
+  Array.from(side.update(ifr, f.p))
+  assert.deepEqual(onDiagonal(f.calls, 0), [['filterCandidatesInCell', 1 << 1, cell(0, 0)]],
+    'the restored swept state is swept again: cell (0, 0) is pinned once more')
+  console.log('hit-counts side matching: the missing-digit exit forgets the last sweep')
 
   // ---- A forced hit already in place yields nothing ----
   // Line 0's cell at position 0 already holds only its target: the side still
