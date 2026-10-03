@@ -15,6 +15,9 @@ argument).
 | `bench-required-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, 3 reps. |
 | `RequiredDigitsWrapperComponent.js`, `RequiredDigitsWrapperComponentBuiltin.js`, `main-required-digits-global.js`, `PUZZLE_LINK_required_digits*.txt` | The real-app timing rig (#534), below. |
 
+The boards, the timing rig and `BuiltinRequiredDigitsComponent.js` stay here until
+the four builders move next to their components (#658).
+
 ## Offline: soundness and cost
 
 ```

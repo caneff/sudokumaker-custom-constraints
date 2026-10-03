@@ -20,6 +20,9 @@ target list included (#578); a non-counter cell listed twice is the one gap.
 | `sparse/` | The real-app timing board (#543), below. |
 | `demo/` | The readable board (#568): both components in one link, toggled in the Elements panel. See `demo/README.md`. |
 
+The boards (`sparse/`, `demo/`, `self-count/`) stay here until the four builders
+move next to their components (#658).
+
 ## What the built-in does, and does not
 
 `CountDigitsComponent` (`bundle.claude.js:5092`,
