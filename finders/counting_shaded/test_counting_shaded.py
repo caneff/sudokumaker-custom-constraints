@@ -323,6 +323,11 @@ def dfs(size, force=R9C12, ban=(), all_digits=True, symmetry=False, seconds=0, *
     return fastclimb.enumerate_shapes(size, all_digits, symmetry, seconds=seconds, **kw)
 
 
+def window_ban(rows, cols):
+    """Every cell outside the rows x cols window, as a ban list."""
+    return [i for i in range(81) if i // 9 not in rows or i % 9 not in cols]
+
+
 @pytest.mark.parametrize(
     "size, shapes_found, solvable",
     [(21, 2, 2), (20, 2, 2), (19, 2, 0), (18, 0, 0), (17, 0, 0)],
@@ -362,9 +367,10 @@ def test_dfs_agrees_with_cpsat_native_enumeration_pinned(tmp_path):
 
     for size in (19, 20):
         fastclimb.pins(R9C12)
-        _, n, solvable, unique = shapeenum.enumerate_native(
+        status, n, solvable, unique = shapeenum.enumerate_native(
             size, R9C12, (), 120, tmp_path, lambda _m: None
         )
+        assert status == "exhausted"  # a timed-out CP-SAT count proves nothing
         r = dfs(size)
         assert (r.shapes, r.solvable, r.unique) == (n, solvable, unique)
 
@@ -387,3 +393,21 @@ def test_dfs_unpinned_size_17_matches_cpsat_native_symmetry_record():
 def test_dfs_refuses_symmetry_with_pins():
     with pytest.raises(ValueError):
         dfs(19, symmetry=True)
+
+
+def test_dfs_all_digits_prune_keeps_a_shape_whose_only_eight_is_two_steps_out(tmp_path):
+    # Size 14 inside rows 0-4 x columns 1-6: three shapes carry all of 1-8. One shows
+    # its only 8 on a cell two steps from the partial shape when the walk reaches it;
+    # a prune that undercounts that cell's reach drops it. CP-SAT is the second opinion.
+    import shapeenum
+
+    ban = window_ban(range(5), range(1, 7))
+    fastclimb.pins((), ban)
+    status, n, solvable, unique = shapeenum.enumerate_native(
+        14, (), ban, 120, tmp_path, lambda _m: None
+    )
+    assert status == "exhausted"
+    r = dfs(14, force=(), ban=ban)
+    assert r.exhausted
+    assert (r.shapes, r.solvable, r.unique) == (n, solvable, unique)
+    assert r.shapes == 3
