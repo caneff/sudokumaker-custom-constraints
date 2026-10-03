@@ -121,6 +121,7 @@ test:
     uv run finders/qqrr/hunt/test_chan_sweep_pool.py
     # The tie finder's `hunt` CLI (#491): verify on a known grid, one 5 s capped seed.
     uv run finders/qqrr/hunt/test_tie_finder.py
+    uv run finders/qqrr/hunt/test_tie_warm.py
     # finders/counting_shaded' soundness suite, the one pytest suite in the repo: 21
     # tests, about 3s. It compiles counting_shaded_fast.c with the system cc and
     # checks the C filter and counter against the Python ones, so a silent
