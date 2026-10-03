@@ -26,6 +26,9 @@ if __name__ == "__main__":
     # wrote to HERE could not satisfy the untouched check below
     names = ["PUZZLE_LINK_clued.txt", "PUZZLE_LINK_clued_original.txt"]
     shipped = {n: (HERE / n).read_bytes() for n in names}
+    # modification times too: a rebuild that also wrote to HERE rewrites the
+    # same bytes, so only the time shows it
+    stamped = {n: (HERE / n).stat().st_mtime_ns for n in names}
 
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = pathlib.Path(tmp)
@@ -36,6 +39,9 @@ if __name__ == "__main__":
             )
     for n in names:
         assert (HERE / n).read_bytes() == shipped[n], f"{n} was touched by build()"
+        assert (HERE / n).stat().st_mtime_ns == stamped[n], (
+            f"{n} was rewritten by build()"
+        )
 
     ring = {g["cells"][0] for g in frame_groups()}
     assert len(ring) == 36, f"expected 36 clue cells, found {len(ring)}"

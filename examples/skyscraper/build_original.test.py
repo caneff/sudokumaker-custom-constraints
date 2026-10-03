@@ -21,12 +21,14 @@ SIZES = {
 }
 
 if __name__ == "__main__":
-    # read the shipped links before any rebuild runs, so the untouched check
-    # below can't be satisfied by a build that (correctly or not) also wrote
-    # to HERE
+    # read the shipped links before any rebuild runs. Their bytes and their
+    # modification times both: a rebuild that also wrote to HERE rewrites the
+    # same bytes (the byte check above proves the rebuild reproduces them), so
+    # only the modification time shows the write.
     shipped = {
         name: (HERE / name).read_bytes() for pair in SIZES.values() for name in pair
     }
+    stamped = {name: (HERE / name).stat().st_mtime_ns for name in shipped}
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
@@ -43,5 +45,8 @@ if __name__ == "__main__":
     # --out must not have touched the shipped files themselves
     for name, before in shipped.items():
         assert (HERE / name).read_bytes() == before, f"{name} was touched by --out"
+        assert (HERE / name).stat().st_mtime_ns == stamped[name], (
+            f"{name} was rewritten by --out"
+        )
 
     print("ok")

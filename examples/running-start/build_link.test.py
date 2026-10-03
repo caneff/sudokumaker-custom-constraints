@@ -101,9 +101,10 @@ def check_template_rebuild():
     wrong["puzzle"]["comment"] = "not what was encoded"
     try:
         check(link, wrong)
-        raise AssertionError("check accepted a doc the link does not decode to")
     except AssertionError as e:
         assert "does not decode" in str(e), e
+    else:
+        raise AssertionError("check accepted a doc the link does not decode to")
 
     # and on a board whose constraint lost a component
     dropped = json.loads(json.dumps(doc))
@@ -112,9 +113,10 @@ def check_template_rebuild():
             del c["definition"]["components"][-1]
     try:
         check(encode_link(dropped), dropped)
-        raise AssertionError("check accepted a constraint missing a component")
     except AssertionError as e:
         assert "components wrong" in str(e), e
+    else:
+        raise AssertionError("check accepted a constraint missing a component")
 
 
 if __name__ == "__main__":

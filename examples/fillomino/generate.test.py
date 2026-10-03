@@ -12,7 +12,7 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from generate import Board, drop, is_striped, model, rows, sample, self_check, unique
+from generate import Board, drop, is_striped, model, rows, sample, self_check
 from ortools.sat.python import cp_model
 
 
