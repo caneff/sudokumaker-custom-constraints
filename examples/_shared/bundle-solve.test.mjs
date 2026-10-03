@@ -282,3 +282,9 @@ function* update (instance, puzzle) {
   await assert.rejects(() => solveDocument(doc), /deliberate test failure/)
 }
 console.log('bundle-solve-lib: solveDocument throwing-component ok')
+
+// ---- bundle-solve.mjs: the CLI module imports cleanly (#668). It imported
+// `median` from app-solve-lib.mjs, which did not export it, so the tool died
+// at load. Importing must neither fail nor run the CLI (no argv here). ----
+await import('./bundle-solve.mjs')
+console.log('bundle-solve: module imports ok')
