@@ -18,6 +18,11 @@ def test_picks_greedily_and_covers_every_key():
     assert picked == ["a", "b", "d"], picked
 
 
+def test_the_largest_remaining_set_beats_the_first_useful_one():
+    keys = {"small": {1}, "big": {1, 2, 3}, "tail": {3, 4}}
+    assert rv.covering(keys.keys(), keys.get) == ["big", "tail"]
+
+
 def test_first_best_wins_a_tie():
     keys = {"x": {1}, "y": {1}}
     assert rv.covering(["x", "y"], keys.get) == ["x"]
@@ -30,6 +35,7 @@ def test_group_key_tells_chocolate_shape_from_banana_size():
 
 if __name__ == "__main__":
     test_picks_greedily_and_covers_every_key()
+    test_the_largest_remaining_set_beats_the_first_useful_one()
     test_first_best_wins_a_tie()
     test_group_key_tells_chocolate_shape_from_banana_size()
     print("PASS")
