@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, total, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, shuffle, violates, total, fixpoint } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -70,6 +70,43 @@ for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (
   console.log(`${label.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', changed, 'states pruned')
   assert.strictEqual(bad, 0, `${label}: ${bad} violations`)
   assert.ok(changed > 0, `${label}: update never removed a candidate: the prune is dead`)
+}
+
+// ---- soundness on boards whose columns are not a plain sudoku's (#693) -----
+// A board narrower than its digit list (6x6, digits 1-9), a full set of digits
+// with no 9 (8x8, digits 1-8) and one with no 1 (9x9, digits 2-10). Every column
+// is declared all-different. Each truth column is a random draw of distinct
+// digits in which every 5 has a 1 above it or a 9 below it; the columns are
+// independent because the rule never looks across them.
+for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, hi: 8 }, { width: 9, lo: 2, hi: 10 }]) {
+  installGlobals(lo, hi)
+  const digits = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
+  const cells = Array.from({ length: width * width }, (_, i) => i)
+  const columns = Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
+  const flatmated = column => column.every((d, i) => d !== 5 || column[i - 1] === 1 || column[i + 1] === 9)
+  const drawColumn = () => {
+    for (;;) {
+      const column = shuffle(rnd, [...digits]).slice(0, width)
+      if (flatmated(column)) return column
+    }
+  }
+  const label = `${width}x${width}, digits ${lo}-${hi}`
+  let bad = 0
+  let changed = 0
+  for (let i = 0; i < 2000; i++) {
+    const truthHere = {}
+    for (let col = 0; col < width; col++) drawColumn().forEach((d, row) => { truthHere[row * width + col] = d })
+    const start = makePuzzle(truthHere, makeSeeder(rnd, digits), { houses: columns })
+    const before = total(start)
+    const inst = { cells }
+    mod.setParams(inst, cells)
+    if (violates(mod, inst, start, truthHere) !== null) bad++
+    if (total(start) !== before) changed++
+  }
+  installGlobals(1, 9)
+  console.log(`${label.padEnd(28)}`, 2000, 'tests,', bad, 'violations,', changed, 'states pruned')
+  assert.strictEqual(bad, 0, `${label}: ${bad} violations`)
+  assert.ok(changed > 0, `${label}: update never removed a candidate`)
 }
 
 // ---- validate agrees with the truth on the solved grid --------------------

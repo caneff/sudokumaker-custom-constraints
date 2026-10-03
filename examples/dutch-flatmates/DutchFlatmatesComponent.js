@@ -7,8 +7,10 @@
 // the 9, and that the column's other digit still has somewhere to go. Any 1, 5
 // or 9 that no valid placement uses is removed.
 //
-// If the app says a column may repeat digits (not a normal sudoku column),
-// only the simple check is used: a 5 must have a possible 1 above or 9 below.
+// A column that is not such a set of digits (the app says it may repeat digits,
+// or the board has no 1, 5 or 9, or the column is shorter or longer than the
+// list of digits) only gets the simple check: a 5 must have a possible 1 above
+// or 9 below.
 
 // Every cell takes part in the rule, so a change to any cell wakes `update`.
 function getAffectedCells (cells) {
@@ -22,7 +24,7 @@ function setParams (instance, cells) {
   instance.size = size
   instance.columns = Array.from({ length: size }, (_, col) =>
     Array.from({ length: size }, (_, row) => cells[row * size + col]))
-  instance.mayRepeat = new Array(size).fill(null) // filled in by columnMayRepeat
+  instance.holdsEachDigitOnce = new Array(size).fill(null) // filled in by columnHoldsEachDigitOnce
   instance.lastPruned = new Array(size).fill(null) // each column's state when we last pruned it
 }
 
@@ -43,17 +45,26 @@ function columnState (rows) {
   return `${rows[1]}|${rows[5]}|${rows[9]}`
 }
 
-// Whether this column may repeat digits. The app only knows once solving has
-// started, so this is asked here and not in the setup code, and only once: the
-// board's layout decides it, so one answer is kept for the whole solve.
-function columnMayRepeat (instance, puzzle, col) {
-  if (instance.mayRepeat[col] === null) {
-    instance.mayRepeat[col] = puzzle.getCellsCanHaveRepeats(instance.columns[col])
+// Whether this column holds each of the board's digits exactly once, as a
+// column of an ordinary sudoku does, and 1, 5 and 9 are among those digits. Only
+// then does it hold exactly one 1, one 5 and one 9. That takes three facts:
+// the app says the column cannot repeat a digit, the column is as long as the
+// list of digits, and the digits run from at most 1 to at least 9.
+// The app only knows whether a column can repeat once solving has started, so
+// this is asked here and not in the setup code, and only once: the board's
+// layout decides it, so one answer is kept for the whole solve.
+function columnHoldsEachDigitOnce (instance, puzzle, col) {
+  if (instance.holdsEachDigitOnce[col] === null) {
+    const { minDigit, maxDigit } = helpers.digits
+    const column = instance.columns[col]
+    instance.holdsEachDigitOnce[col] = minDigit <= 1 && maxDigit >= 9 &&
+      column.length === maxDigit - minDigit + 1 &&
+      !puzzle.getCellsCanHaveRepeats(column)
   }
-  return instance.mayRepeat[col]
+  return instance.holdsEachDigitOnce[col]
 }
 
-// Which rows of a normal column can still hold its 1, 5 and 9.
+// Which rows of a column that holds each digit once can still hold its 1, 5 and 9.
 function rowsToKeep (rows) {
   const keep = { 1: new Set(), 5: new Set(), 9: new Set() }
   for (const five of rows[5]) {
@@ -81,8 +92,8 @@ function rowsToKeep (rows) {
   return keep
 }
 
-// A column that may repeat digits: a 5 stays only if a 1 can go above it or a
-// 9 below it. Nothing is known about the 1s and 9s, so they all stay.
+// Any other column: a 5 stays only if a 1 can go above it or a 9 below it.
+// Nothing is known about the 1s and 9s, so they all stay.
 function rowsToKeepIfRepeatsAllowed (rows) {
   return {
     1: new Set(rows[1]),
@@ -93,15 +104,14 @@ function rowsToKeepIfRepeatsAllowed (rows) {
 
 function * update (instance, puzzle) {
   const { columns, size, lastPruned } = instance
-  if (size < 9) return // no 9 fits on a board this small, so there is nothing to prune
   for (let col = 0; col < size; col++) {
     const column = columns[col]
     const rows = readColumn(puzzle, column)
     if (columnState(rows) === lastPruned[col]) continue // nothing new since we pruned it
-    const mayRepeat = columnMayRepeat(instance, puzzle, col)
-    const keep = mayRepeat ? rowsToKeepIfRepeatsAllowed(rows) : rowsToKeep(rows)
-    // A normal column must hold a 5 somewhere, so if none can stay, this branch is dead.
-    if (!mayRepeat && keep[5].size === 0) {
+    const holdsEachDigitOnce = columnHoldsEachDigitOnce(instance, puzzle, col)
+    const keep = holdsEachDigitOnce ? rowsToKeep(rows) : rowsToKeepIfRepeatsAllowed(rows)
+    // Such a column must hold a 5 somewhere, so if none can stay, this branch is dead.
+    if (holdsEachDigitOnce && keep[5].size === 0) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
