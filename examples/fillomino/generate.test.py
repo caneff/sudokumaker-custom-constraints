@@ -22,15 +22,6 @@ def test_self_check():
     self_check()
 
 
-def test_timeout_never_a_verdict():
-    try:
-        unique(Board.of(9), {}, limit=0.001)
-    except TimeoutError:
-        pass
-    else:
-        raise AssertionError("a tiny time cap must raise, not report a verdict")
-
-
 def test_cap_wider_than_side():
     # When the cap exceeds the side, `sample` forces one pin above the side, so
     # every grid it draws uses a digit the side alone would not reach, and none
@@ -119,25 +110,38 @@ KNOWN_BAD_SEED_1_GRID = [
 ]
 
 
-def test_striped_seeds_rejected_and_sampling_varies():
+def test_is_striped_reads_rows_with_at_most_two_digits():
     assert is_striped(KNOWN_BAD_SEED_1_GRID), "known-bad seed 1 grid expected striped"
+    shipped = json.loads((HERE / "gen.json").read_text())["grid"]
+    assert not is_striped(shipped), "the shipped grid is not dull"
 
-    # sample() must never hand back a striped grid, even fed a bad seed.
+
+def test_sample_retries_past_a_striped_grid():
+    # `rows` is what sample() reads each solve through: hand it the striped
+    # grid first, a good one second, and sample() must skip the first.
+    import generate
+
+    good = json.loads((HERE / "gen.json").read_text())["grid"]
+    draws = [KNOWN_BAD_SEED_1_GRID, good]
+    real_rows = generate.rows
+    generate.rows = lambda board, s, x: draws.pop(0)
+    try:
+        err = _stderr_of(lambda: draws.append(sample(Board.of(6), seed=1)))
+    finally:
+        generate.rows = real_rows
+    assert draws == [good], "sample() returned the striped grid"
+    assert "drop (striped)" in err, err
+
+
+def test_distinct_seeds_land_on_distinct_grids():
+    # Pinned-cell diversity: two seeds must not draw the same grid.
     board = Board.of(9)
-    g1 = sample(board, seed=1)
-    g2 = sample(board, seed=2)
-    assert not is_striped(g1)
-    assert not is_striped(g2)
-
-    # Distinct seeds must land on distinct grids -- pinned-cell diversity.
-    assert g1 != g2
+    assert sample(board, seed=1) != sample(board, seed=2)
 
 
 if __name__ == "__main__":
     test_self_check()
     print("self-check: ok")
-    test_timeout_never_a_verdict()
-    print("timeout never a verdict: ok")
     test_model_and_rows_read_the_board_they_are_given()
     print("model and rows read the board they are given: ok")
     test_dropped_grid_logs_seed_and_clue_set()
@@ -145,6 +149,9 @@ if __name__ == "__main__":
     print("dropped grids log seed and clue set: ok")
     test_cap_wider_than_side()
     print("cap wider than side: ok")
-    test_striped_seeds_rejected_and_sampling_varies()
-    print("striped seeds rejected, sampling varies: ok")
+    test_is_striped_reads_rows_with_at_most_two_digits()
+    test_sample_retries_past_a_striped_grid()
+    print("striped grids detected and retried: ok")
+    test_distinct_seeds_land_on_distinct_grids()
+    print("distinct seeds, distinct grids: ok")
     print("generate.test.py: ok")

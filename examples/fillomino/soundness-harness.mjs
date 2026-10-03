@@ -5,10 +5,8 @@
 //
 //   node examples/fillomino/soundness-harness.mjs
 //
-// Two fuzz fixtures:
-//   shipped — the grid of gen.json, the board the example ships (size follows
-//             whatever gen.json holds).
-//   varied  — a second, fixed 6x6 grid, a different mix of region sizes.
+// Two fuzz fixtures (gen.json size follows whatever ships):
+//   shipped, varied — grids.mjs, shared with update-strength.test.mjs.
 // The directed checks below run on their own fixed 6x6 grid (`directed`),
 // independent of gen.json — they hardcode cell indices and a 1-6 digit range
 // tied to that grid's specific region layout, not to whatever ships.
@@ -19,9 +17,8 @@
 // checks must fail, so a rule that quietly stops deducing, or starts reaching
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
-import { join } from 'path'
-import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { gridOf, shipped, varied } from './grids.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -50,18 +47,6 @@ const SHARED = {
 // and hands the dispatcher the verdict that lets the later rules run.
 const without = (...rules) => load('FillominoComponent.js', NAMES, src => rules.reduce((out, rule) =>
   patchSource(out, `function * ${rule} (`, `function * ${rule} () { return OPEN }\nfunction * ${rule}Removed (`), src))
-
-const gridOf = rows => {
-  const n = rows.length
-  const truth = {}
-  rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
-  return { truth, n }
-}
-
-// shipped — the grid of gen.json, the board the example ships.
-const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
-// varied — a second valid solution: many 1s, 2s and 3s and one 4-region.
-const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
 
 let bad = 0
 
