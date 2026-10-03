@@ -13,6 +13,8 @@ await withApp({ live: false }, async app => {
   mkdirSync('.scratch', { recursive: true })
   const { text } = await solveInApp(page, link, {
     ringClues: true,
+    timeoutMs: 8000,
+    alsoWaitFor: /unable to satisfy|error/i,
     afterOpen: p => p.screenshot({ path: '.scratch/368-live-open-' + (process.argv[3] || 'a') + '.png' })
   })
   console.log(text.split('\n').filter(l => /solution|took|unique|constraint|error/i.test(l)).slice(0, 20).join('\n'))

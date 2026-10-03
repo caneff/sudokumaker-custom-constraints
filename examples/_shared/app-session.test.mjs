@@ -29,6 +29,23 @@ await withApp({ live: false }, async app => {
   // solver would verify, not search, and the time would mean nothing.
   const clued = await app.newPage()
   await assert.rejects(solveInApp(clued, link('numbered-rooms/PUZZLE_LINK_clued.txt')), /entered values on the board/)
+
+  // The app's own "already entered values" verdict is refused too: a board
+  // with pencil marks and no entered value passes the stripped check, so this
+  // is the refusal's only guard. The phrase is planted into the page, since
+  // no committed link carries marks only.
+  const marked = await app.newPage()
+  await marked.addInitScript(() => {
+    setInterval(() => {
+      if (document.body && !document.getElementById('planted')) {
+        const d = document.createElement('div')
+        d.id = 'planted'
+        d.textContent = 'This is a unique solution. (based on already entered values and pencil marks.)'
+        document.body.appendChild(d)
+      }
+    }, 50)
+  })
+  await assert.rejects(solveInApp(marked, link('up-to-n/PUZZLE_LINK_4x4.txt')), /based on already entered values/)
 })
 
 console.log('app-session.test.mjs: all seams pass')

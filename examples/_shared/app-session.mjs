@@ -113,7 +113,7 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
   if (marksRejected(text, ringClues || afterLogical)) {
-    throw new Error(`${name}: the app judged "${ALREADY_ENTERED}" -- not a timing; strip the link first`)
+    throw new Error(`${name}: the app judged "${ALREADY_ENTERED}" -- that verifies a part-filled board instead of searching, so it is no timing; strip the link first`)
   }
   return { ...parseReadout(text), version: parseVersion(text), text }
 }
