@@ -258,7 +258,7 @@ in the live app and record what it said:
   and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
   committed link (`docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt`),
   re-proved unique with CP-SAT rather than generated from a `gen*.json` this
-  example owns. each example's `example.toml` names its own in
+  example owns. Each example's `example.toml` names its own in
   `generator_less_links`.
 
 ## The `original/` baseline
