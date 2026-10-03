@@ -18,12 +18,12 @@
 # component here, RequiredDigitsGacComponent, is reachable only through the
 # wrapper's own `customComponents.RequiredDigitsGacComponent`
 # (docs/gotchas.md #1), never `new`'d by the backend itself). This script
-# stays in examples/outside-sudoku/ because a .py file under docs/research/
+# stays in examples/count-digits-gac/ because a .py file under docs/research/
 # is refused by that gate (check_research_python, #469/#474) -- finder code
 # goes in finders/, and everything else research goes through an example's
 # own build script instead.
 #
-#   uv run examples/outside-sudoku/build_required_digits.py
+#   uv run examples/count-digits-gac/build_required_digits.py
 #
 # Writes, into docs/research/required-digits-gac/:
 #   PUZZLE_LINK_required_digits.txt          -- ours: RequiredDigitsGacComponent
@@ -53,7 +53,7 @@ from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "required-digits-gac"
-GAC_DIR = HERE.parent / "count-digits-gac"
+OUTSIDE_SUDOKU = HERE.parent / "outside-sudoku"
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 TIMED_COMPONENT = "RequiredDigitsWrapperComponent"
 
@@ -80,7 +80,7 @@ def build_gac(base):
     """`base` with the wrapper registered alongside RequiredDigitsGacComponent
     itself, swapped to GAC."""
     host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
-    gac_code = minify_file(GAC_DIR / "RequiredDigitsGacComponent.js")
+    gac_code = minify_file(HERE / "RequiredDigitsGacComponent.js")
     assert host_code and gac_code, "component code empty"
     return _build(
         base,
@@ -103,7 +103,7 @@ def build(out_dir=RESEARCH_DIR):
     """Rebuild both derived links into `out_dir`. Reads the shipped
     PUZZLE_LINK.txt and every source file from its own fixed locations
     regardless of `out_dir`; only the written links move."""
-    base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+    base = decode_puzzle((OUTSIDE_SUDOKU / "PUZZLE_LINK.txt").read_text().strip())
     gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
     original_link = write_link(
         build_original(base), out_dir / "PUZZLE_LINK_required_digits_original.txt"

@@ -154,14 +154,14 @@ and the two links.
 ### Building the boards
 
 ```
-uv run examples/outside-sudoku/build_sparse_count_digits.py            # rebuild both links
-uv run examples/outside-sudoku/build_sparse_count_digits.py --carved K # change the depth, rebuild
-uv run examples/outside-sudoku/build_sparse_count_digits.py --keep-comments # write only the annotated link
+uv run examples/count-digits-gac/build_sparse_count_digits.py            # rebuild both links
+uv run examples/count-digits-gac/build_sparse_count_digits.py --carved K # change the depth, rebuild
+uv run examples/count-digits-gac/build_sparse_count_digits.py --keep-comments # write only the annotated link
 ```
 
-The script lives in `examples/outside-sudoku/` beside
-`build_sparse_required_digits.py`, whose board shape it reuses;
-`docs/research/` refuses a new `.py` file (`check_research_python`, #469).
+The script lives in `examples/count-digits-gac/`, on the shared board kit
+(`board_kit.py`); `docs/research/` refuses a new `.py` file
+(`check_research_python`, #469).
 
 ### Reproduce
 

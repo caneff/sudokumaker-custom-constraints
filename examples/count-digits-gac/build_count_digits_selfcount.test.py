@@ -5,7 +5,7 @@
 # one, or the pre-#578 copy; entered 0, exactly one custom constraint each; a
 # rebuild reproduces the committed links byte for byte.
 #
-#   uv run examples/outside-sudoku/build_count_digits_selfcount.test.py
+#   uv run examples/count-digits-gac/build_count_digits_selfcount.test.py
 
 import json
 import pathlib
@@ -16,6 +16,8 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
+from board_kit import count_solutions as count_with
+from board_kit import givens_of
 from build_count_digits_selfcount import (
     BOARD_DIR,
     CURRENT,
@@ -25,11 +27,15 @@ from build_count_digits_selfcount import (
     VARIANTS,
     build,
 )
-from build_sparse_count_digits import count_solutions, givens_of
+from count_board import model
 from link_codec import decode_puzzle
 from minify import minify_file
 
 N = 9
+
+
+def count_solutions(groups, givens):
+    return count_with(model, groups, givens)
 
 
 def check_board(gen):
@@ -50,21 +56,26 @@ def check_board(gen):
 
 
 def check_self_counting_is_modelled(gen):
-    """The CP-SAT model counts the counter among its own targets: a group
-    over the solution whose counter digit is off by one has no solution."""
+    """The CP-SAT model counts the counter among its own targets. A counter
+    holding an even digit is the case that tells the two readings apart: the
+    group is feasible over the solution only while the counter counts itself,
+    and dropping it from the targets leaves the count one short. (An odd
+    counter changes no count either way, so a test on one proves nothing.)"""
     full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
-    g = gen["groups"][0]
-    assert count_solutions([g], full) == 1
-    r, c = g["counter"]
-    dropped = {**g, "cells": g["cells"][1:]}  # counter no longer counted
-    even = gen["grid"][r][c] in EVENS
-    assert count_solutions([dropped], full) == (0 if even else 1), (
-        "the model ignores whether the counter counts itself"
-    )
+    evens = [g for g in gen["groups"] if full[tuple(g["counter"])] in EVENS]
+    assert evens, "fixture: no group's counter holds an even digit"
+    for g in evens:
+        assert count_solutions([g], full) == 1, (
+            f"{g['name']}: the model does not count the counter among its targets"
+        )
+        dropped = {**g, "cells": g["cells"][1:]}  # counter no longer counted
+        assert count_solutions([dropped], full) == 0, (
+            f"{g['name']}: the model ignores whether the counter counts itself"
+        )
 
 
 def check_search_keeps_counter_off_the_label_corner():
-    """A cage label draws in the region's top-left cell, so a draw never puts
+    """A cage label draws in the group's top-left cell, so a draw never puts
     the counter's own # there. (The committed gen.json predates the rule; the
     README names its one collision.)"""
     import random

@@ -1,5 +1,5 @@
 # Build the sparse required-digits timing board (#541): a plain 9x9 sudoku
-# carrying 20 overlapping 9-cell regions that are not houses, each required
+# carrying 20 overlapping 9-cell groups that are not houses, each required
 # to hold 5 given digits, with the givens carved back until the app's solver
 # actually searches (the defaults below draw that shape; fewer or smaller
 # groups close in 0ms, more leave the built-in timing out). It exists to give RequiredDigitsGacComponent a real-app
@@ -12,26 +12,29 @@
 # rule; the group is NOT all-different). `model()` below is the CP-SAT side;
 # RequiredDigitsGacComponent.js is the JS side.
 #
-#   uv run examples/outside-sudoku/build_sparse_required_digits.py
+#   uv run examples/count-digits-gac/build_sparse_required_digits.py
 #       rebuild both links from the committed gen.json
-#   uv run examples/outside-sudoku/build_sparse_required_digits.py --search SEED
+#   uv run examples/count-digits-gac/build_sparse_required_digits.py --search SEED
 #       draw a fresh board (grid, groups, carved givens) into --gen. The
 #       grid comes from CP-SAT's portfolio search, which is not reproducible
 #       from the seed: the committed gen.json is the artifact, this a one-shot.
 #
 # Lives here, not in docs/research/, because that gate refuses a new .py
-# there (check_research_python, #469); see build_required_digits.py.
+# there (check_research_python, #469). The board's shared steps are
+# board_kit.py's.
 
 import argparse
 import json
 import pathlib
-import random
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from cpsat import SOLVED, solve_unique, solver, sudoku_model
-from link_codec import decode_puzzle, encode_link
+from board_kit import N, board_doc, box
+from board_kit import search as search_board
+from cpsat import sudoku_model
 from minify import minify_file, minify_js
+from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = (
@@ -39,23 +42,17 @@ RESEARCH_DIR = (
 )
 GEN = RESEARCH_DIR / "gen.json"
 BACKEND = RESEARCH_DIR / "main-sparse-global.js"
-COMPONENT = HERE.parent / "count-digits-gac" / "RequiredDigitsGacComponent.js"
+COMPONENT = HERE / "RequiredDigitsGacComponent.js"
 CANDIDATE_NAME = "RequiredDigitsGacComponent"
 BASELINE_NAME = "RequiredDigitsComponent"
 CONSTRAINT_NAME = "Sparse required digits"
-# The regions are not drawn: they live in the constraint's code, so the text
+# The groups are not drawn: they live in the constraint's code, so the text
 # says so rather than promise an outline the document does not carry.
 RULES = (
     "Normal sudoku rules apply. Timing board: the Sparse required digits "
-    "constraint's code holds 20 hidden 9-cell regions, each of which must "
+    "constraint's code holds 20 hidden 9-cell groups, each of which must "
     "contain the digits the code lists for it, at least once each."
 )
-
-N = 9
-
-
-def box(r, c):
-    return (r // 3) * 3 + c // 3
 
 
 def is_house(cells):
@@ -85,15 +82,6 @@ def model(groups, givens):
     return m, x
 
 
-def count_solutions(groups, givens, limit=60):
-    """1 for a unique board, 2 for "at least two" -- TimeoutError if no verdict."""
-    m, x = model(groups, givens)
-    first, unique = solve_unique(m, x, limit)
-    if first is None:
-        return 0
-    return 1 if unique else 2
-
-
 def snake(rng, taken):
     """A 9-cell orthogonally connected self-avoiding walk on free cells."""
     for _ in range(2000):
@@ -120,55 +108,38 @@ def snake(rng, taken):
     raise RuntimeError("no snake found")
 
 
-def search(seed, n_groups=20, n_required=5, overlap=True):
-    """Draw a board: a solution grid, disjoint snake groups each requiring
-    `n_required` digits its own cells hold, and givens carved (in seeded
-    random order) until no more can go while the board stays unique."""
-    rng = random.Random(seed)
-    taken, cell_lists = set(), []
-    for _ in range(n_groups):
-        s = snake(rng, set() if overlap else taken)
-        taken.update(s)
-        cell_lists.append(s)
-    # a solution grid to read the required digits off: the plain sudoku
-    m, x = model([], {})
-    for cell in x:
-        m.AddHint(x[cell], rng.randrange(1, N + 1))
-    sv = solver(30, reproducible=False, seed=seed, randomize=True)
-    assert sv.Solve(m) in SOLVED
-    grid = [[sv.Value(x[r, c]) for c in range(N)] for r in range(N)]
-    groups = []
-    for i, cells in enumerate(cell_lists):
+def make_groups(rng, grid, n_groups, n_required, overlap):
+    """Disjoint-or-overlapping snake groups over `grid`, each requiring
+    `n_required` digits its own cells hold."""
+    taken, groups = set(), []
+    for i in range(n_groups):
+        cells = snake(rng, set() if overlap else taken)
+        taken.update(cells)
         present = sorted({grid[r][c] for r, c in cells})
         if len(present) < n_required:
             raise ValueError(
                 f"a snake holds {len(present)} distinct digits, fewer than "
                 f"--required {n_required}: try another seed"
             )
-        values = sorted(rng.sample(present, n_required))
         groups.append(
             {
-                "name": f"region {i + 1}",
-                "values": values,
+                "name": f"group {i + 1}",
+                "values": sorted(rng.sample(present, n_required)),
                 "cells": [list(p) for p in cells],
             }
         )
-    givens = {(r, c): grid[r][c] for r in range(N) for c in range(N)}
-    order = list(givens)
-    rng.shuffle(order)
-    for cell in order:
-        trial = {k: v for k, v in givens.items() if k != cell}
-        try:
-            unique = count_solutions(groups, trial) == 1
-        except TimeoutError:
-            unique = False  # no verdict: keep the given, lose nothing
-        if unique:
-            givens = trial
-    return {
-        "grid": grid,
-        "groups": groups,
-        "givens": sorted(list(k) for k in givens),
-    }
+    return groups
+
+
+def search(seed, n_groups=20, n_required=5, overlap=True):
+    """Draw a board: a solution grid, snake groups each requiring `n_required`
+    digits its own cells hold, and givens carved (in seeded random order)
+    until no more can go while the board stays unique."""
+    return search_board(
+        seed,
+        lambda rng, grid: make_groups(rng, grid, n_groups, n_required, overlap),
+        model,
+    )
 
 
 def backend_code(gen, name):
@@ -180,58 +151,27 @@ def backend_code(gen, name):
 def build_doc(gen, name):
     """The board's document: `name` is the class the backend registers --
     CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in)."""
-    givens = {tuple(p) for p in gen["givens"]}
-    cells = [
-        {"value": gen["grid"][r][c], "given": True} if (r, c) in givens else {}
-        for r in range(N)
-        for c in range(N)
-    ]
-    regions = [box(r, c) for r in range(N) for c in range(N)]
     components = (
-        [{"type": "code", "name": CANDIDATE_NAME, "code": minify_file(COMPONENT)}]
-        if name == CANDIDATE_NAME
-        else []
+        [(CANDIDATE_NAME, minify_file(COMPONENT))] if name == CANDIDATE_NAME else []
     )
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
-            "name": "Sparse required digits",
-            "author": "",
-            "type": "sudoku",
-            "width": N,
-            "height": N,
-            "comment": RULES,
-            "cells": cells,
-            "constraints": [
-                {"type": 0},
-                {"type": 1, "regions": regions},
-                {
-                    "name": CONSTRAINT_NAME,
-                    "type": 1000,
-                    "definition": {
-                        "name": CONSTRAINT_NAME,
-                        "input": [],
-                        "backend": {"type": "code", "code": backend_code(gen, name)},
-                        "components": components,
-                    },
-                    "input": {},
-                    "style": {},
-                },
-            ],
-        },
-    }
-
-
-def write(doc, path):
-    link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
-    pathlib.Path(path).write_text(link + "\n")
+    return board_doc(
+        "Sparse required digits",
+        RULES,
+        gen,
+        [
+            code_constraint(
+                CONSTRAINT_NAME, backend_code(gen, name), components, named=True
+            )
+        ],
+    )
 
 
 def build(out_dir=RESEARCH_DIR, gen_path=GEN):
     gen = json.loads(pathlib.Path(gen_path).read_text())
-    write(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
-    write(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt")
+    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
+    write_link(
+        build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt"
+    )
 
 
 if __name__ == "__main__":
