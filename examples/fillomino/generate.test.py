@@ -122,14 +122,15 @@ def test_sample_retries_past_a_striped_grid():
     import generate
 
     good = json.loads((HERE / "gen.json").read_text())["grid"]
-    draws = [KNOWN_BAD_SEED_1_GRID, good]
+    queue = [KNOWN_BAD_SEED_1_GRID, good]
     real_rows = generate.rows
-    generate.rows = lambda board, s, x: draws.pop(0)
+    generate.rows = lambda board, s, x: queue.pop(0)
+    drawn = []
     try:
-        err = _stderr_of(lambda: draws.append(sample(Board.of(6), seed=1)))
+        err = _stderr_of(lambda: drawn.append(sample(Board.of(9), seed=1)))
     finally:
         generate.rows = real_rows
-    assert draws == [good], "sample() returned the striped grid"
+    assert drawn == [good], "sample() returned the striped grid"
     assert "drop (striped)" in err, err
 
 
