@@ -33,6 +33,8 @@ from time_example import (
     ship_verdict,
 )
 
+WIDGET_MANIFEST = 'timed_component = "WidgetComponent"\n'
+
 STUB_BUILD_LINK_PY = f"""\
 import argparse
 import pathlib
@@ -143,6 +145,7 @@ def _make_widget_example(
     base_doc = _widget_doc(minify_js(backend_src), minify_js(component_src))
     (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
     (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+    (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
     (example_dir / "WidgetComponent.js").write_text(component_src)
     (example_dir / backend_file).write_text(backend_src)
     for name, content in (extra_files or {}).items():
@@ -243,24 +246,32 @@ if __name__ == "__main__":
             assert str(e) == f"missing {example_dir / 'PUZZLE_LINK_timing.txt'}"
 
     # find_component_file: which working-tree file the timing loop follows.
-    # Each case is (name, build_link.py text, component files on disk, the
+    # Each case is (name, example.toml text, component files on disk, the
     # registered names, the --component override, and what comes back: a file
     # name, or the exception type it must raise).
-    #   declared: TIMED_COMPONENT wins over another matching file beside it
+    #   declared: the manifest's timed_component wins over another matching
+    #     file beside it
+    #   declared-not-first: the manifest's name wins even when it is not the
+    #     first registered one
     #   declared-missing-file: loud, even with another registered file there
     #   declared-unregistered: loud
-    #   undeclared-single: the one registered file on disk
-    #   undeclared-multi: several matches fail loud rather than guess
-    #   overridden: --component beats TIMED_COMPONENT (skyscraper's local
-    #     board runs the one-sided component while TIMED_COMPONENT names the
-    #     two-clue DP)
+    #   overridden: --component beats the manifest (skyscraper's local board
+    #     runs the one-sided component while the manifest names the two-clue
+    #     DP)
     #   override-unregistered, override-missing-file: the same checks as the
-    #     declared constant
-    DECLARED = 'TIMED_COMPONENT = "WidgetComponent"\n'
-    UNDECLARED = 'CONSTRAINT_NAME = "Widget"\n'
+    #     declared name
+    DECLARED = 'timed_component = "WidgetComponent"\n'
     PAIR = ["WidgetComponent", "WidgetPairComponent"]
     CASES = [
         ("declared", DECLARED, PAIR, PAIR, None, "WidgetComponent.js"),
+        (
+            "declared-not-first",
+            'timed_component = "WidgetPairComponent"\n',
+            PAIR,
+            PAIR,
+            None,
+            "WidgetPairComponent.js",
+        ),
         (
             "declared-missing-file",
             DECLARED,
@@ -271,21 +282,12 @@ if __name__ == "__main__":
         ),
         (
             "declared-unregistered",
-            'TIMED_COMPONENT = "GadgetComponent"\n',
+            'timed_component = "GadgetComponent"\n',
             ["GadgetComponent"],
             ["WidgetComponent"],
             None,
             ValueError,
         ),
-        (
-            "undeclared-single",
-            UNDECLARED,
-            ["WidgetComponent"],
-            ["WidgetComponent"],
-            None,
-            "WidgetComponent.js",
-        ),
-        ("undeclared-multi", UNDECLARED, PAIR, PAIR, None, ValueError),
         (
             "overridden",
             DECLARED,
@@ -296,7 +298,7 @@ if __name__ == "__main__":
         ),
         (
             "override-unregistered",
-            UNDECLARED,
+            DECLARED,
             ["GadgetComponent"],
             ["WidgetComponent"],
             "GadgetComponent",
@@ -304,18 +306,18 @@ if __name__ == "__main__":
         ),
         (
             "override-missing-file",
-            UNDECLARED,
+            DECLARED,
             [],
             ["WidgetComponent"],
             "WidgetComponent",
             FileNotFoundError,
         ),
     ]
-    for name, build_link_text, files, registered, component, want in CASES:
+    for name, manifest_text, files, registered, component, want in CASES:
         with tempfile.TemporaryDirectory() as tmp:
             example_dir = pathlib.Path(tmp) / name
             example_dir.mkdir()
-            (example_dir / "build_link.py").write_text(build_link_text)
+            (example_dir / "example.toml").write_text(manifest_text)
             for f in files:
                 (example_dir / f"{f}.js").write_text(f"// {f}\n")
             doc = _doc(registered)
@@ -328,6 +330,28 @@ if __name__ == "__main__":
                 raise AssertionError(f"{name}: expected {want.__name__}")
             except want:
                 pass
+
+    # a component whose file lives in _shared/ is followed there, not demanded
+    # beside the example
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        (root / "_shared").mkdir()
+        (root / "_shared" / "WidgetComponent.js").write_text("// shared\n")
+        example_dir = root / "widget"
+        example_dir.mkdir()
+        (example_dir / "example.toml").write_text(DECLARED)
+        got = find_component_file(example_dir, _doc(["WidgetComponent"]))
+        assert got == root / "_shared" / "WidgetComponent.js", got
+
+    # every real example resolves its timed component from its manifest: the
+    # name is registered on its shipped link, and its working-tree file exists
+    examples = HERE.parent
+    for example_dir in sorted(examples.iterdir()):
+        if not example_dir.is_dir() or example_dir.name == "_shared":
+            continue
+        doc = decode_puzzle((example_dir / "PUZZLE_LINK.txt").read_text().strip())
+        got = find_component_file(example_dir, doc)
+        assert got.is_file(), (example_dir.name, got)
 
     # The two-row ship rule: a change ships when it clears 0.9x on one of the
     # two rows (cold, after-logical) and does not regress past 1.1x on the
@@ -502,6 +526,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
         (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
         _git_commit_all(example_dir)
@@ -525,6 +550,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
         (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         (example_dir / "main.js").write_text("console.log('does not match')\n")
         _git_commit_all(example_dir)
@@ -553,6 +579,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
         (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text("function update(){return 1}\n")
         _git_commit_all(example_dir)
         (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")
@@ -785,6 +812,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
         (example_dir / "build_link.py").write_text(STUB_BUILD_LINK_PY)
+        (example_dir / "example.toml").write_text(WIDGET_MANIFEST)
         (example_dir / "WidgetComponent.js").write_text(component_src)
         _git_commit_all(example_dir)
         (example_dir / "seg.js").write_text("function seg(){return 'edited'}\n")

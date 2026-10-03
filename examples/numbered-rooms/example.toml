@@ -1,0 +1,3 @@
+timed_component = "NumberedRoomsComponent"
+constraint_name = "Custom Numbered Rooms"
+generator_less_links = ["PUZZLE_LINK.txt"]

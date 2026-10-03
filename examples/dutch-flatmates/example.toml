@@ -1,0 +1,4 @@
+timed_component = "DutchFlatmatesComponent"
+constraint_name = "Dutch Flatmates"
+lanes = "single"
+rules_prefix = "ringless"

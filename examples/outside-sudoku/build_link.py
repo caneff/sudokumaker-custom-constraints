@@ -13,9 +13,10 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from link_swap import swap_main
+from manifest import load_manifest
 
-CONSTRAINT_NAME = "Custom Outside Sudoku"
-TIMED_COMPONENT = "OutsideSudokuComponent"
+MANIFEST = load_manifest(pathlib.Path(__file__).parent)
+CONSTRAINT_NAME = MANIFEST.constraint_name
 
 if __name__ == "__main__":
     swap_main(pathlib.Path(__file__).parent)

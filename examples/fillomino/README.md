@@ -4,9 +4,9 @@ Divide the grid into orthogonally connected **regions**; every cell of a region
 of `k` cells holds the digit `k`; two distinct regions of the same size may not
 touch orthogonally. No houses, no rows, no boxes — fillomino is not sudoku, so
 this example's rules text carries no sudoku sentence, and the shared layout
-checker exempts it (`NO_RULES_PREFIX`). It is also a whole-grid constraint with
-no drawn groups, so it ships `main.js` alone and no local board
-(`NO_LOCAL_GLOBAL_SPLIT`).
+checker exempts it (`rules_prefix = "none"` in `example.toml`). It is also a
+whole-grid constraint with no drawn groups, so it ships `main.js` alone and no
+local board (`lanes = "single"`).
 
 Spec #303, on map #277. Tickets #305 (the example scaffold and **rung 1**),
 #308 (**rung 2**, the growth test), #312 (**rung 2.5**, the bound made cheap)
@@ -267,7 +267,7 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
 - **Ring not filled end to end** ✓ — 14 of 32 ring cells hold a given. See
   criterion 3 below for what the ring means on this board.
 - **Rules prefix** — **exempt**, and deliberately: fillomino is not sudoku, so
-  the example is in `NO_RULES_PREFIX` and `build_link.test.py` asserts the
+  its `example.toml` says `rules_prefix = "none"` and `build_link.test.py` asserts the
   rules text does *not* open with the sudoku sentence.
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this

@@ -14,8 +14,5 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from link_swap import swap_main
 
-CONSTRAINT_NAME = "Skyscrapers"
-TIMED_COMPONENT = "SkyscraperLineComponent"
-
 if __name__ == "__main__":
     swap_main(pathlib.Path(__file__).parent)

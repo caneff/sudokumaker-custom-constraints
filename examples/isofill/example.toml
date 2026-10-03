@@ -1,0 +1,5 @@
+timed_component = "IsofillComponent"
+constraint_name = "ISOFILL"
+lanes = "single"
+rules_prefix = "none"
+houses = false

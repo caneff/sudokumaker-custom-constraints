@@ -81,11 +81,12 @@ frame reader explains the directive itself.
 - **Every generated link's rules text starts with "Normal sudoku rules apply on
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
   that sets `comment` itself must add the sentence. Exceptions: isofill and
-  fillomino are not sudoku and skip the line (`NO_RULES_PREFIX` in
-  `check_layout.py`). A ringless sudoku board has no inner grid to name, so its
+  fillomino are not sudoku and skip the line (`rules_prefix = "none"` in their
+  `example.toml`). A ringless sudoku board has no inner grid to name, so its
   text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
-  `framebuild.py`); `check_layout.py` lists `RINGLESS_SUDOKU`
-  and finds the other no-ring boards from their backend (`is_no_ring`).
+  `framebuild.py`); its `example.toml` says `rules_prefix = "ringless"`, and
+  `check_layout.py` finds the other no-ring boards from their backend
+  (`is_no_ring`).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 

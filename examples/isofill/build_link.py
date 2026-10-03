@@ -15,9 +15,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from bareboard import BareBoard
+from manifest import load_manifest
 
-CONSTRAINT_NAME = "ISOFILL"
-TIMED_COMPONENT = "IsofillComponent"
+MANIFEST = load_manifest(pathlib.Path(__file__).parent)
+CONSTRAINT_NAME = MANIFEST.constraint_name
+TIMED_COMPONENT = MANIFEST.timed_component
 RULE = (
     "ISOFILL: Divide the grid into {n} regions, each with {n} orthogonally "
     "connected cells. Every cell in a region should contain the same digit. "

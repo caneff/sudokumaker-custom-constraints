@@ -64,15 +64,14 @@ registering a weaker filter.
 
 House GAC filters fixed board geometry — every row, column and box — not a
 line an author draws, so there is no drawn group to split a local lane out
-of: `examples/_shared/check_layout.py`'s `NO_LOCAL_GLOBAL_SPLIT` carries this
-example alongside isofill and fillomino, for a different reason (no drawn
-lines at all, not a whole-grid rule).
+of: its `example.toml` says `lanes = "single"`, as isofill's and fillomino's do,
+for a different reason (no drawn lines at all, not a whole-grid rule).
 
 The one component this example needs, `HouseGacComponent.js`, is also the
 component #421/#434's shipped frame boards register through
 `examples/_shared/house-gac.js` — it lives in `examples/_shared/` on purpose,
 not copied into this directory, so there is exactly one file to keep sound
-(`check_layout.py`'s `SHARED_COMPONENT`; `time_example.py`'s
+(its `example.toml`'s `shared_component`; `time_example.py`'s
 `find_component_file` follows the same name into `_shared/` when no local
 copy exists).
 

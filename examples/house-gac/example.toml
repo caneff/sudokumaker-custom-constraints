@@ -1,0 +1,7 @@
+timed_component = "HouseGacComponent"
+constraint_name = "House GAC (standalone)"
+lanes = "single"
+rules_prefix = "ringless"
+shared_component = "HouseGacComponent"
+generator_less_links = ["PUZZLE_LINK.txt"]
+rowcol_backend = "Rows & Columns"

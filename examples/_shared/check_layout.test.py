@@ -7,23 +7,25 @@
 #
 #   uv run --with lzstring examples/_shared/check_layout.test.py
 
+import ast
 import contextlib
 import json
 import pathlib
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 from check_layout import (
     GRANDFATHERED_RESEARCH_PY,
     NO_RING_RULES_PREFIX,
-    RINGLESS_SUDOKU,
     RULES_PREFIX,
     check_research_python,
     check_tree,
     committed_links,
 )
 from link_codec import encode_link
+from manifest import load_manifest
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -207,9 +209,38 @@ REQUIRED = [
 ]
 
 
+# example.toml traits, spelled as the manifest keys. A whole-grid example is
+# not sudoku and has no houses; a ringless one opens on the plain sentence; the
+# shared-component one borrows a component from `_shared/` and a rows-and-
+# columns backend of its own, with a hand-made link.
+WHOLE_GRID = {"lanes": "single", "rules_prefix": "none", "houses": False}
+SINGLE_LANE = {"lanes": "single"}
+HAND_MADE = {"generator_less_links": ["PUZZLE_LINK.txt"]}
+SHARED_GAC = {
+    "lanes": "single",
+    "rules_prefix": "ringless",
+    "shared_component": "HouseGacComponent",
+    "generator_less_links": ["PUZZLE_LINK.txt"],
+    "rowcol_backend": "Rows & Columns",
+}
+
+
+def manifest_text(traits):
+    """example.toml text for `traits` (manifest keys), timed_component filled
+    in -- every manifest needs one."""
+    lines = ['timed_component = "WidgetComponent"']
+    lines += [f"{key} = {json.dumps(value)}" for key, value in traits.items()]
+    return "\n".join(lines) + "\n"
+
+
 @contextlib.contextmanager
 def example(
-    files=REQUIRED, extra_links=(), extra_gens=(), name="widget", contents=None
+    files=REQUIRED,
+    extra_links=(),
+    extra_gens=(),
+    name="widget",
+    contents=None,
+    manifest=None,
 ):
     """A temp examples/-shaped tree with one example dir, `name`.
 
@@ -218,15 +249,21 @@ def example(
     extra gen*.json names (for a test that must keep every generated link
     paired). `contents` overrides one file's text (default "x") -- used by
     the lane tests to put a real marker in main.js or main-global.js.
+    `manifest` is the example.toml traits (see manifest_text); None writes the
+    defaults, and a `contents` entry for "example.toml" replaces the text.
     """
     contents = contents or {}
-    # house-gac is a ringless board (RINGLESS_SUDOKU), so its links open on
-    # the plain sentence, not the inner-grid one (#460).
-    default_link = _link(ringless=name in RINGLESS_SUDOKU)
+    # A ringless board's links open on the plain sentence, not the inner-grid
+    # one (#460).
+    traits = manifest or {}
+    default_link = _link(ringless=traits.get("rules_prefix") == "ringless")
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         d = root / name
         d.mkdir()
+        (d / "example.toml").write_text(
+            contents.get("example.toml", manifest_text(traits))
+        )
         for f in files:
             default = default_link if f.startswith("PUZZLE_LINK") else "x"
             (d / f).write_text(contents.get(f, default))
@@ -266,8 +303,8 @@ if __name__ == "__main__":
         assert "widget" in violations[0]
         assert "main-global.js" in violations[0]
 
-    # a no-local-global-split example (isofill) needs no main-global.js
-    with example(files=missing, name="isofill") as (root, _):
+    # a `lanes = "single"` example needs no main-global.js
+    with example(files=missing, name="whole-grid", manifest=WHOLE_GRID) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -297,19 +334,24 @@ if __name__ == "__main__":
     iso_missing = [
         f for f in REQUIRED if f not in ("PUZZLE_LINK_local.txt", "gen_local.json")
     ]
-    with example(files=iso_missing, name="isofill") as (root, _):
+    with example(files=iso_missing, name="whole-grid", manifest=WHOLE_GRID) as (
+        root,
+        _,
+    ):
         violations = check_tree(root)
         assert violations == [], violations
 
-    # fillomino is the second no-local-global-split example: a global
-    # constraint with no drawn groups, so it ships main.js alone and no local
+    # a global constraint with no drawn groups ships main.js alone and no local
     # board (#305).
     fillomino_files = [
         f
         for f in REQUIRED
         if f not in ("main-global.js", "PUZZLE_LINK_local.txt", "gen_local.json")
     ]
-    with example(files=fillomino_files, name="fillomino") as (root, _):
+    with example(files=fillomino_files, name="whole-grid", manifest=WHOLE_GRID) as (
+        root,
+        _,
+    ):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -337,10 +379,10 @@ if __name__ == "__main__":
             violations = check_tree(root)
             assert violations == [], violations
 
-    # numbered-rooms/PUZZLE_LINK.txt is hand-made with no generator at all
-    # (its own README, "Not covered") -- the one named exception
+    # a hand-made PUZZLE_LINK.txt with no generator at all is named in its
+    # manifest's generator_less_links -- the one exception
     missing = [f for f in REQUIRED if f != "gen.json"]
-    with example(files=missing, name="numbered-rooms") as (root, _):
+    with example(files=missing, name="hand-made", manifest=HAND_MADE) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -351,7 +393,8 @@ if __name__ == "__main__":
         assert "widget" in violations[0], violations
         assert "gen.json" in violations[0], violations
 
-    # numbered-rooms-lines was folded into numbered-rooms (#238): the
+    # numbered-rooms-lines was folded into numbered-rooms (#238, retired-
+    # examples.toml): the
     # directory must not come back, complete file set or not
     with example(name="numbered-rooms-lines") as (root, _):
         violations = check_tree(root)
@@ -490,22 +533,23 @@ if __name__ == "__main__":
         assert "PUZZLE_LINK.txt" in violations[0]
         assert "rules prefix" in violations[0]
 
-    # isofill is exempt from the rules-prefix check -- it is not sudoku, and
-    # its rules text must not mention sudoku (#271)
+    # `rules_prefix = "none"` exempts the rules-prefix check -- the example is
+    # not sudoku, and its rules text must not mention sudoku (#271)
     missing = [f for f in REQUIRED if f != "main-global.js"]
     with example(
         files=missing,
-        name="isofill",
+        name="whole-grid",
+        manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 
-    # fillomino is exempt from the rules-prefix check too -- fillomino is not
-    # sudoku, so its rules text must not carry the sudoku sentence (#305)
+    # ...and the sudoku sentence is not required of it either (#305)
     with example(
         files=fillomino_files,
-        name="fillomino",
+        name="whole-grid",
+        manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False)},
     ) as (root, _):
         violations = check_tree(root)
@@ -531,22 +575,27 @@ if __name__ == "__main__":
     # board, with no row, column or box rule to declare (#232, #303)
     with example(
         files=missing,
-        name="isofill",
+        name="whole-grid",
+        manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
     with example(
         files=fillomino_files,
-        name="fillomino",
+        name="whole-grid",
+        manifest=WHOLE_GRID,
         contents={"PUZZLE_LINK.txt": _link(prefix=False, houses="none")},
     ) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
 
-    # up-to-n is a no-ring example: local lane only, so it ships main.js and
+    # a no-ring example with a local lane only ships main.js and
     # PUZZLE_LINK.txt with no global lane and no _local pair (#368)
-    with example(files=fillomino_files, name="up-to-n") as (root, _):
+    with example(files=fillomino_files, name="single-lane", manifest=SINGLE_LANE) as (
+        root,
+        _,
+    ):
         violations = check_tree(root)
         assert violations == [], violations
 
@@ -573,16 +622,16 @@ if __name__ == "__main__":
             assert len(violations) == 1, violations
             assert "rules prefix" in violations[0], violations
 
-    # house-gac is a plain board with no ring and no grid backend, so the
-    # checker cannot detect it: it is named in RINGLESS_SUDOKU and opens on the
+    # a plain board with no ring and no grid backend cannot be detected by the
+    # checker: its manifest says `rules_prefix = "ringless"` and it opens on the
     # plain sentence (#460), and the inner-grid sentence fails there.
-    # (the name also arms the shared-component check, so only the prefix
+    # (the manifest also arms the shared-component check, so only the prefix
     # violation is asserted on)
-    with example(name="house-gac") as (root, _):
+    with example(name="shared-gac", manifest=SHARED_GAC) as (root, _):
         violations = check_tree(root)
         assert not any("rules prefix" in v for v in violations), violations
     inner = {"PUZZLE_LINK.txt": _link()}
-    with example(name="house-gac", contents=inner) as (root, _):
+    with example(name="shared-gac", manifest=SHARED_GAC, contents=inner) as (root, _):
         violations = check_tree(root)
         assert any(
             "PUZZLE_LINK.txt comment missing rules prefix" in v for v in violations
@@ -727,7 +776,8 @@ if __name__ == "__main__":
     # than the constraint's title.
     renamed_stale_component = _link(house_gac_renamed="stale_component")
     with example(
-        name="house-gac",
+        name="shared-gac",
+        manifest=SHARED_GAC,
         contents={"PUZZLE_LINK.txt": renamed_stale_component},
     ) as (root, d):
         (root / "_shared").mkdir()
@@ -739,7 +789,11 @@ if __name__ == "__main__":
 
     # A fresh copy under the renamed title raises no false positive.
     renamed_fresh = _link(house_gac_renamed=True)
-    with example(name="house-gac", contents={"PUZZLE_LINK.txt": renamed_fresh}) as (
+    with example(
+        name="shared-gac",
+        manifest=SHARED_GAC,
+        contents={"PUZZLE_LINK.txt": renamed_fresh},
+    ) as (
         root,
         d,
     ):
@@ -953,5 +1007,65 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "docs/research/zzz/x.py" in violations[0], violations[0]
         assert "finders/" in violations[0], violations[0]
+
+    # an example with no example.toml fails and names the file: its traits
+    # are what the checker reads, so there is nothing to guess from
+    with example() as (root, d):
+        (d / "example.toml").unlink()
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "widget" in violations[0] and "example.toml" in violations[0], violations
+
+    # a manifest with an unknown key or no timed_component is a violation, not
+    # a crash
+    for bad in ('timed_component = "W"\ncolour = "red"\n', 'lanes = "single"\n'):
+        with example(contents={"example.toml": bad}) as (root, _):
+            violations = check_tree(root)
+            assert len(violations) == 1, violations
+            assert "widget" in violations[0] and "example.toml" in violations[0], (
+                violations
+            )
+
+    # a manifest's shared_component must exist in _shared/
+    with example(manifest={"shared_component": "NoSuchComponent"}) as (root, _):
+        violations = check_tree(root)
+        assert any("NoSuchComponent" in v for v in violations), violations
+
+    # a fixture example with a manifest is checked by its traits: a link that
+    # opens on the inner-grid sentence fails under `rules_prefix = "ringless"`,
+    # and a plain-sentence link fails under the default
+    with example(
+        manifest={"rules_prefix": "ringless"},
+        contents={"PUZZLE_LINK.txt": _link()},
+    ) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1 and "rules prefix" in violations[0], violations
+    with example(contents={"PUZZLE_LINK.txt": _link(ringless=True)}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1 and "rules prefix" in violations[0], violations
+
+    # check_layout names no example: no string in its source equals the name
+    # of a directory under examples/ -- a name-keyed table or an
+    # `if name == "..."` branch would be a trait recorded by name
+    example_names = {
+        d.name for d in HERE.parent.iterdir() if d.is_dir() and d.name != "_shared"
+    }
+    tree = ast.parse((HERE / "check_layout.py").read_text())
+    named = sorted(
+        {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and node.value in example_names
+        }
+    )
+    assert named == [], f"check_layout.py names example(s): {named}"
+    # ...and every real example has a manifest the loader accepts
+    for name in sorted(example_names):
+        load_manifest(HERE.parent / name)
+
+    # retired-examples.toml is a name -> successor table of retired examples,
+    # none of which is a current example
+    retired = tomllib.loads((HERE / "retired-examples.toml").read_text())
+    assert retired and not set(retired) & example_names, retired
 
     print("ok")

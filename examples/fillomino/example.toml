@@ -1,0 +1,5 @@
+timed_component = "FillominoComponent"
+constraint_name = "Fillomino"
+lanes = "single"
+rules_prefix = "none"
+houses = false

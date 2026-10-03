@@ -7,13 +7,16 @@
 # three mechanical pre-share criteria from docs/share-checklist.md: the link
 # opens clean (no entered values on non-given cells), the outside ring is not
 # filled end to end, and the rules text carries the sudoku prefix, except an
-# example in NO_RULES_PREFIX (isofill and fillomino are not sudoku). A _clued
+# example whose manifest sets rules_prefix = "none" (not sudoku). A _clued
 # link is exempt from the first two -- filling every clue is what that name
 # means. It also checks that every link ships exactly the components its own
 # embedded backend registers, so a link cannot go stale behind its builder, and
 # that every interior row and column of a sudoku example's board is a house the
 # link actually declares (a region constraint gives boxes only -- see #335 and
-# docs/gotchas.md #9; isofill and fillomino are bare boards and exempt).
+# docs/gotchas.md #9; a manifest with houses = false is a bare board, exempt).
+#
+# What is special about an example is that example's own: each carries an
+# example.toml (manifest.py), and this sweep names no example.
 #
 # Links committed outside examples/ (docs/research/fillomino-baseline/'s
 # PUZZLE_LINK.txt and its 19 timing fixtures) are out of scope for this sweep
@@ -32,6 +35,7 @@ import json
 import pathlib
 import re
 import sys
+import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import describe_mismatch, mismatch
@@ -47,6 +51,7 @@ from framebuild import (
     house_gac_backend_code,
 )
 from link_codec import decode_puzzle
+from manifest import load_manifest
 from minify import minify_file
 
 REQUIRED_FILES = [
@@ -62,41 +67,17 @@ REQUIRED_FILES = [
 
 # The local lane's own files. PUZZLE_LINK.txt is the GLOBAL-lane board in
 # every split example, so the local lane needs a board of its own: the link
-# plus the gen JSON that records it (#268).
+# plus the gen JSON that records it (#268). An example whose manifest says
+# `lanes = "single"` ships main.js alone and neither.
 REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 
-# An example whose constraint has no local/global duality ships main.js
-# alone, and no local board: isofill is a whole-grid constraint with no drawn
-# groups at all (spec #232, Out of Scope), and fillomino is the same shape
-# (spec #303). house-gac is a different shape again but lands in the same
-# place: it filters fixed board geometry (every row, column and box), not a
-# line an author draws, so there is no per-line group to split a local lane
-# out of either (#428). up-to-n has drawn groups but no global lane: its clues
-# are typed into them, and a board with no groups has no clue to read (spec
-# #366). dutch-flatmates is whole-grid like isofill: one component over a
-# ringless 9x9 and no drawn groups. Every other example needs both lanes (#194,
-# #235, #268).
-NO_LOCAL_GLOBAL_SPLIT = {
-    "isofill",
-    "fillomino",
-    "house-gac",
-    "up-to-n",
-    "dutch-flatmates",
-}
-
-# An example whose one required component lives in `_shared/` on purpose,
-# shared across every board that carries the same filter, rather than a copy
-# owned by this example: house-gac's `HouseGacComponent.js` is also the
-# backend #421's frame boards will register (#408, #422). A copy pasted into
-# the example dir would only drift from that shared original, so the
-# `*Component.js` check below follows the name into `_shared/` instead of
-# requiring a local file.
-SHARED_COMPONENT = {"house-gac": "HouseGacComponent"}
-
-# An example folded into another and deleted. One rule has one example, so
-# the directory must not come back -- a second one would drift from the
-# first the way numbered-rooms-lines drifted from numbered-rooms (#238).
-MERGED_AWAY = {"numbered-rooms-lines": "numbered-rooms"}
+# Examples folded into another and deleted, name -> the example that took over.
+# One rule has one example, so the directory must not come back -- a second one
+# would drift from the first the way numbered-rooms-lines drifted from
+# numbered-rooms (#238). Data, not code: a retired name is not an example.
+RETIRED_EXAMPLES = tomllib.loads(
+    (pathlib.Path(__file__).parent / "retired-examples.toml").read_text()
+)
 
 
 def is_no_ring(puzzle):
@@ -110,56 +91,18 @@ def is_no_ring(puzzle):
     )
 
 
-# An example whose rules are not sudoku rules, so its link comment must not
-# carry RULES_PREFIX. isofill is not sudoku (spec #232) and its rules text
-# must say so (#271); fillomino is not sudoku either (spec #303). Same
-# pattern as NO_LOCAL_GLOBAL_SPLIT above.
-NO_RULES_PREFIX = {"isofill", "fillomino"}
-
-# A sudoku example whose board is a plain 9x9 with no clue ring: its rules text
-# opens on NO_RING_RULES_PREFIX, there being no inner grid to name (#460).
-# house-gac's board carries no grid backend, so is_no_ring cannot see it.
-# dutch-flatmates' does, so its entry is redundant today; it is named here so
-# the prefix holds if that board is ever rebuilt without the backend.
-RINGLESS_SUDOKU = {"house-gac", "dutch-flatmates"}
-
-# An example whose board has no houses at all: isofill and fillomino are
-# whole-grid constraints on a bare board, with no row, column or box rule to
-# check (specs #232, #303). Every other example is a sudoku, so every one of
-# its interior rows and columns must be a house the link actually declares.
-NO_HOUSES = {"isofill", "fillomino"}
-
-# An example whose digit range is deliberately wider than its interior lines.
-# A house is "every digit exactly once", which needs the line to be as long as
-# the range; hit-counts runs minDigit 0 so a clue can read 0 and keeps 0 out of
-# the interior with a look-and-say cage, so ten digits sit over nine-cell lines
-# and `frame-rowcol.js` drops them to all-different on purpose. Every other
-# frame board's range must span its interior line exactly.
-DIGITS_EXCEED_LINES = {"hit-counts"}
-
 # `build_original.py` / `build_clued.py` build a hand-derived twin: the same
 # board as another committed link, re-encoded with different wrapper code or
 # extra clues. That board already has its own gen entry under an untagged
 # name -- skyscraper's PUZZLE_LINK_6x6_original.txt reads gen_6x6.json (the
 # 6x6 size's own entry, not a "6x6_original" one), and its untagged twin
 # PUZZLE_LINK_original.txt reads gen.json the same way -- or, for
-# numbered-rooms' PUZZLE_LINK.txt, no gen JSON at all (NO_GENERATOR_LINKS
-# below). Either way, a link whose suffix carries either tag never gets its
-# own separate gen*.json (#294). "annotated" is the same shape: house-gac's
-# PUZZLE_LINK_annotated.txt is the same board as PUZZLE_LINK.txt with only its
-# embedded code's minification changed, not a fresh generation (#433).
+# a hand-made link, no gen JSON at all (the manifest's generator_less_links).
+# Either way, a link whose suffix carries either tag never gets its
+# own separate gen*.json (#294). "annotated" is the same shape: a link of the
+# same board as PUZZLE_LINK.txt with only its embedded code's minification
+# changed, not a fresh generation (#433).
 NO_GENERATOR_TAGS = {"clued", "original", "annotated"}
-
-# A link with no generator at all: numbered-rooms/PUZZLE_LINK.txt is
-# hand-made, its own README's "Not covered" section says so -- no gen.json
-# has ever paired with it (#294).
-NO_GENERATOR_LINKS = {
-    ("numbered-rooms", "PUZZLE_LINK.txt"),
-    # house-gac's board and givens come from another committed link
-    # (docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt), re-proved
-    # unique with CP-SAT, not from a gen*.json this example owns (#428).
-    ("house-gac", "PUZZLE_LINK.txt"),
-}
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
 SIZE = r"\d+"
@@ -214,14 +157,14 @@ def _link_suffix(filename, prefix, ext):
     return filename[len(prefix) : -len(ext)].lstrip("_")
 
 
-def check_gen_link_pairing(example_dir):
+def check_gen_link_pairing(example_dir, manifest):
     """Return one violation string per gen*.json / PUZZLE_LINK*.txt name that
     does not pair with the other of the same suffix (docs/example-layout.md,
     "Board naming"): `gen.json` pairs with `PUZZLE_LINK.txt`, `gen_6x6.json`
     with `PUZZLE_LINK_6x6.txt`, and so on. A gen JSON always needs its link;
     a link needs a gen JSON back only where one is generated -- not a
     build_original.py/build_clued.py twin (NO_GENERATOR_TAGS) or a hand-made
-    exception (NO_GENERATOR_LINKS) (#294)."""
+    exception (the manifest's generator_less_links) (#294)."""
     name = example_dir.name
     violations = []
 
@@ -239,7 +182,7 @@ def check_gen_link_pairing(example_dir):
         suffix = _link_suffix(link.name, "PUZZLE_LINK", ".txt")
         if set(suffix.split("_")) & NO_GENERATOR_TAGS:
             continue
-        if (name, link.name) in NO_GENERATOR_LINKS:
+        if link.name in manifest.generator_less_links:
             continue
         gen_name = f"gen_{suffix}.json" if suffix else "gen.json"
         if not (example_dir / gen_name).is_file():
@@ -247,7 +190,7 @@ def check_gen_link_pairing(example_dir):
                 f"{name}: {link.name} has no matching {gen_name} -- most "
                 "likely the gen JSON is missing or misnamed and should match "
                 "this link's own suffix; if this link is genuinely hand-made "
-                "instead, record it in check_layout.py's NO_GENERATOR_LINKS"
+                "instead, record it in the example's example.toml generator_less_links"
             )
 
     return violations
@@ -346,7 +289,7 @@ def _ring_state(puzzle):
     return sum(1 for i in ring if cells[i]), len(ring)
 
 
-def check_share_ready(example_dir, link, puzzle):
+def check_share_ready(example_dir, link, puzzle, manifest):
     """Return one violation string per pre-share criterion `link` (a
     committed link, decoded as `puzzle`) fails: the link opens clean, the ring is
     not filled end to end, and the rules text carries the sudoku prefix
@@ -380,9 +323,11 @@ def check_share_ready(example_dir, link, puzzle):
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
-    ringless = no_ring or name in RINGLESS_SUDOKU
+    ringless = no_ring or manifest.rules_prefix == "ringless"
     prefix = NO_RING_RULES_PREFIX if ringless else RULES_PREFIX
-    if name not in NO_RULES_PREFIX and not puzzle.get("comment", "").startswith(prefix):
+    if manifest.rules_prefix != "none" and not puzzle.get("comment", "").startswith(
+        prefix
+    ):
         violations.append(f"{name}: {link.name} comment missing rules prefix")
 
     return violations
@@ -487,28 +432,19 @@ def carries_frame_rowcol(puzzle):
     )
 
 
-# An example whose board carries a non-frame rows/columns backend that
-# builds its houses in JS at postprocessJSON time -- invisible to
-# declared_houses' static read of the document, the same blind spot the
-# frame's own row/col backend has -- mapped to the constraint name it ships
-# that backend under. house-gac's board is docs/research/406-gac-demo's own
-# "Rows & Columns" backend, carried unmodified (#428); house-gac does not own
-# or rebuild it, so there is nothing here for check_frame_backends to compare
-# against. Scoped per example, not by name alone: a name match on some other
-# example's own unrelated constraint must not silently exempt it too.
-RESEARCH_ROWCOL_BACKENDS = {"house-gac": "Rows & Columns"}
-
-
-def declares_rows_and_columns_in_js(example_name, puzzle):
+def declares_rows_and_columns_in_js(manifest, puzzle):
     """Does this link carry a constraint that builds its own row and column
     houses in JS, invisible to declared_houses' static read of the document?
     The frame's shared row/col backend, a no-ring board's whole-grid one, or
-    the one research backend RESEARCH_ROWCOL_BACKENDS names for this example."""
+    the one borrowed backend the manifest's rowcol_backend names (house-gac's
+    "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified --
+    #428; nothing here compares it to a file in the tree). Scoped per example,
+    not by name alone: a name match on some other example's own unrelated
+    constraint must not silently exempt it too."""
     if carries_frame_rowcol(puzzle) or is_no_ring(puzzle):
         return True
-    name = RESEARCH_ROWCOL_BACKENDS.get(example_name)
-    return name is not None and any(
-        (c.get("definition") or {}).get("name") == name
+    return manifest.rowcol_backend is not None and any(
+        (c.get("definition") or {}).get("name") == manifest.rowcol_backend
         for c in puzzle.get("constraints", [])
     )
 
@@ -536,7 +472,7 @@ def interior_line_lengths(puzzle, width, height):
     return {len(line) for line in (*rows, *columns) if line}
 
 
-def check_houses(example_dir, link, puzzle):
+def check_houses(example_dir, link, puzzle, manifest):
     """Return one violation string per interior row or column of `puzzle`
     that is neither a house the document declares nor one the shared frame
     backend declares in JS.
@@ -552,7 +488,7 @@ def check_houses(example_dir, link, puzzle):
     Interior is `interior_cells` above.
     """
     name = example_dir.name
-    if name in NO_HOUSES:
+    if not manifest.houses:
         return []
 
     width, height = puzzle.get("width"), puzzle.get("height")
@@ -565,9 +501,9 @@ def check_houses(example_dir, link, puzzle):
     # counting missing rows here would send the reader after a constraint that
     # is already present. Whether the copy embedded there is the current one is
     # `check_frame_backends`' question, with its own message and its own fix
-    # (house-gac's borrowed "Rows & Columns" backend has no such check -- see
+    # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(name, puzzle):
+    if declares_rows_and_columns_in_js(manifest, puzzle):
         return []
 
     houses = declared_houses(puzzle)
@@ -586,7 +522,7 @@ def check_houses(example_dir, link, puzzle):
     return violations
 
 
-def check_frame_backends(example_dir, link, puzzle):
+def check_frame_backends(example_dir, link, puzzle, manifest):
     """Return one violation per shared frame backend `link` (decoded as
     `puzzle`) ships under its own
     name with code that is not the copy in the tree, plus one if it ships
@@ -628,11 +564,12 @@ def check_frame_backends(example_dir, link, puzzle):
     # The annotated link (#433) embeds the same component file through the
     # comment-keeping minify mode, not the usual full strip -- compare it
     # against that copy instead, or every rebuild would read as stale.
-    # Scoped to house-gac, the only example that builds one today: a bare
-    # "annotated" tag on some other example's link is not this carve-out's
-    # business, and comparing it against a keep-comments copy it never
-    # embedded would be its own false stale reading.
-    if name == "house-gac" and "annotated" in link.stem.split("_"):
+    # Scoped to the example whose manifest names this shared component, the
+    # only one that builds an annotated link today: a bare "annotated" tag on
+    # some other example's link is not this carve-out's business, and
+    # comparing it against a keep-comments copy it never embedded would be its
+    # own false stale reading.
+    if manifest.shared_component == comp_name and "annotated" in link.stem.split("_"):
         comp_want = minify_file(
             pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
         )
@@ -689,7 +626,7 @@ def check_frame_backends(example_dir, link, puzzle):
         return violations
 
     width, height = puzzle.get("width"), puzzle.get("height")
-    if name in DIGITS_EXCEED_LINES or not (
+    if manifest.digits_exceed_lines or not (
         isinstance(width, int) and isinstance(height, int)
     ):
         return violations
@@ -746,11 +683,16 @@ def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
 
-    if name in MERGED_AWAY:
+    if name in RETIRED_EXAMPLES:
         return [
-            f"{name}: folded into {MERGED_AWAY[name]} (#238); "
+            f"{name}: folded into {RETIRED_EXAMPLES[name]} (#238); "
             "this directory must not exist"
         ]
+
+    try:
+        manifest = load_manifest(example_dir)
+    except (FileNotFoundError, ValueError) as e:
+        return [f'{name}: {e} (docs/example-layout.md, "The manifest")']
 
     violations = [
         f"{name}: missing required file {required}"
@@ -758,17 +700,17 @@ def check_example(example_dir):
         if not (example_dir / required).is_file()
     ]
 
-    if name in SHARED_COMPONENT:
-        shared_file = example_dir.parent / "_shared" / f"{SHARED_COMPONENT[name]}.js"
+    if manifest.shared_component:
+        shared_file = example_dir.parent / "_shared" / f"{manifest.shared_component}.js"
         if not shared_file.is_file():
             violations.append(
-                f"{name}: declared shared component {SHARED_COMPONENT[name]!r} "
+                f"{name}: declared shared component {manifest.shared_component!r} "
                 f"has no file at {shared_file}"
             )
     elif not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
-    if name not in NO_LOCAL_GLOBAL_SPLIT:
+    if manifest.lanes == "split":
         violations.extend(
             f"{name}: missing required file {required}"
             for required in ["main-global.js", *REQUIRED_LOCAL_FILES]
@@ -776,7 +718,7 @@ def check_example(example_dir):
         )
 
     violations.extend(check_lanes(example_dir))
-    violations.extend(check_gen_link_pairing(example_dir))
+    violations.extend(check_gen_link_pairing(example_dir, manifest))
     violations.extend(check_gen_frame_backends(example_dir))
 
     for link in committed_links(example_dir):
@@ -792,10 +734,10 @@ def check_example(example_dir):
         except Exception as e:
             violations.append(f"{name}: {link.name} failed to decode: {e}")
             continue
-        violations.extend(check_share_ready(example_dir, link, puzzle))
+        violations.extend(check_share_ready(example_dir, link, puzzle, manifest))
         violations.extend(check_components(example_dir, link, puzzle))
-        violations.extend(check_frame_backends(example_dir, link, puzzle))
-        violations.extend(check_houses(example_dir, link, puzzle))
+        violations.extend(check_frame_backends(example_dir, link, puzzle, manifest))
+        violations.extend(check_houses(example_dir, link, puzzle, manifest))
 
     return violations
 
