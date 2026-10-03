@@ -93,30 +93,25 @@ class Finder(Protocol):
     # parsed record line unchanged.
     #
     # A stateful finder (has `load_state`) that also has `render` needs this
-    # hook, and `save_state`, for render repair on resume (#538), and there
-    # the driver holds it to a stronger contract: the candidate it returns
-    # must be what `propose` produced -- everything `verify` *and* `render`
-    # read, not only what `verify` reads -- and the call should leave the
-    # finder's state unchanged. The driver has no runtime guard for the
-    # candidate's completeness; it does snapshot the state before the call
-    # and restore it after, so a hook that changes state never reaches
-    # state.json.
+    # hook, and `save_state`, for render repair on resume (#538); without
+    # them a failed render stays missing and a stray render is never deleted.
 
     def candidate_from_record(self, record: dict) -> Any:
         """Rebuild the candidate, as `propose` produced it, from a line
-        `record()` wrote to examples.jsonl. `verify` and `render` must both
-        accept the result; it should not change the finder's state."""
+        `record()` wrote to examples.jsonl: everything `verify` *and*
+        `render` read, not only what `verify` reads. The driver does not
+        check that. It should not change the finder's state, and the driver
+        snapshots the state before the call and restores it after, so a
+        hook that does never reaches state.json."""
         ...
 
     # Optional -- a finder with no picture to draw skips this. The driver
     # calls `render` right after an accepted example is written, and saves
     # the returned image to renders/<seed>.png (#490). Build the image with
     # `render.GridCanvas`. On resume the driver re-renders a missing or
-    # undecodable picture (#537, #538): a stateless finder is re-proposed; a stateful one (has
-    # `load_state`) is never re-proposed -- its picture is rebuilt from the
-    # examples.jsonl record with `candidate_from_record`. A stateful finder
-    # with `render` but no `candidate_from_record` gets no repair: a failed
-    # render stays missing, and a stray render is never deleted.
+    # undecodable picture (#537, #538): a stateless finder is re-proposed; a
+    # stateful one is never re-proposed -- its picture is rebuilt from the
+    # examples.jsonl record with `candidate_from_record` (above).
 
     def render(self, candidate: Any):
         """A picture of this candidate (a `PIL.Image.Image`), or omit this

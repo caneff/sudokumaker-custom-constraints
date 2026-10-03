@@ -45,7 +45,9 @@ def check(name, cond):
 
 def seed_pngs(out):
     """The renders/<seed>.png files, leaving out any temp file."""
-    return [p for p in (out / "renders").iterdir() if re.fullmatch(r"\d+\.png", p.name)]
+    return [
+        p for p in (out / "renders").iterdir() if re.fullmatch(r"-?\d+\.png", p.name)
+    ]
 
 
 def read_jsonl(path):
@@ -101,7 +103,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 with tempfile.TemporaryDirectory() as tmp:
     # A finder whose render() raises must not take the whole hunt down with
-    # it (#490 correctness review C1): the example itself is still real and
+    # it: the example itself is still real and
     # already durable in examples.jsonl by the time render() runs, so a
     # presentation-layer fault gets recorded on the seed's event, not
     # treated as a search failure.
@@ -165,7 +167,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # A render failure that clears up (a full disk that got space back, a
     # finder bug since fixed) must not leave examples.jsonl and renders/
     # permanently mismatched just because the seed's outcome was already
-    # durable when it failed (#524 Codex pass 1): resume re-attempts a
+    # durable when it failed (#524): resume re-attempts a
     # missing PNG for any already-accepted example. This block is the
     # stateless finder; the stateful blocks below cover the rest.
     out = Path(tmp) / "hunt-out"
@@ -528,11 +530,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # must still clean up fully: `_cleanup_partial_output` iterates
     # OUTPUT_FILES and renders/ is the one entry there that's a directory,
     # not a file -- `path.unlink()` raises `IsADirectoryError` on it if not
-    # special-cased, once a render has actually been written. Caught by
-    # rebasing this PR onto #488/#509 landing on main, not by the original
-    # render-hook review. Seed 0's candidate has a key() the length the
-    # symmetry group expects (4), so it's accepted and rendered; seed 1's
-    # has a different length, which is what canonical_key rejects.
+    # special-cased, once a render has actually been written. Seed 0's
+    # candidate has a key() the length the symmetry group expects (4), so it's
+    # accepted and rendered; seed 1's has a different length, which is what
+    # canonical_key rejects.
     out = Path(tmp) / "hunt-out"
     render_symmetry_mismatch_script = f"""
 import sys
