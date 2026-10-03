@@ -3,6 +3,8 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
+import { execFileSync } from 'child_process'
+import { fileURLToPath } from 'url'
 import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
@@ -266,6 +268,11 @@ assert.strictEqual(parseVersion('no footer here'), null)
   // no link file is a usage error, flags alone included
   assert.throws(() => parseArgs([]), /usage: app-solve.mjs/)
   assert.throws(() => parseArgs(['--ring-clues']), /usage: app-solve.mjs/)
+
+  // an unknown flag is refused, not read as a positional or ignored: a typo
+  // like --after-logic would otherwise run the cold row and print it as asked
+  assert.throws(() => parseArgs(['link.txt', '--after-logic']), /usage: app-solve.mjs/)
+  assert.throws(() => parseArgs(['link.txt', '3', '--bogus']), /usage: app-solve.mjs/)
 }
 
 // ---- VERDICT_PATTERN: the one readout the drivers wait for ----
@@ -285,6 +292,16 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.ok(!VERDICT_PATTERN.test('\u2728 Solved took 3.7s'), 'a first solve is no verdict')
   // the source travels into the page as a string and is rebuilt there
   assert.ok(new RegExp(VERDICT_PATTERN.source, VERDICT_PATTERN.flags).test('multiple solutions'))
+}
+
+// The pattern is written once. A probe that waits for a verdict imports
+// VERDICT_PATTERN (or calls solveInApp); one that spells the alternation out
+// again drifts the next time the app words a verdict differently. Every
+// tracked script that spells a verdict phrase is named here.
+{
+  const files = execFileSync('git', ['grep', '-lE', 'stopped \\(solving', '--', '*.mjs', '*.js', '*.py'],
+    { cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).split('\n').filter(Boolean)
+  assert.deepStrictEqual(files, ['examples/_shared/app-solve-lib.mjs'])
 }
 
 // ---- ALREADY_ENTERED: the phrase marksRejected reads ----

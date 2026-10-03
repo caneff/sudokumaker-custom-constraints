@@ -42,78 +42,26 @@
 // "CheckSolution" checks a filled grid. SudokuMaker is pre-release; if an icon
 // name changes, re-probe (dump each button's `<svg class="Icon ...">`).
 
-import { chromium } from 'playwright'
 import fs from 'fs'
-import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
-import { clickIcon, makeDeterministic, solveLogically, useRecordedApp } from './app-dom.mjs'
+import { parseArgs, repLine, medianLine, solveSummary } from './app-solve-lib.mjs'
+import { withApp, solveInApp } from './app-session.mjs'
 
 const { linkFile, reps, iconName, ringClues, afterLogical } = parseArgs(process.argv.slice(2))
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
-// The app draws givens black and entered values blue, at each cell's own
-// <svg text>. A grid with entered values makes the solver verify instead of
-// search, and the app says so in its verdict ("based on already entered
-// values"). Refuse before solving. See countEnteredValues (app-solve-lib.mjs)
-// for how a real cell digit is told apart from a constraint's own decoration
-// text.
-async function checkStripped (page) {
-  const cells = await page.evaluate(() =>
-    [...document.querySelectorAll('svg text')].map(t => {
-      const fill = t.getAttribute('fill') || window.getComputedStyle(t).fill
-      const cellGroup = t.closest('g[transform]')
-      const transform = cellGroup ? cellGroup.getAttribute('transform') : null
-      return { fill, transform }
-    }))
-  const entered = countEnteredValues(cells)
-  if (entered > 0 && !ringClues) {
-    throw new Error(`${linkFile}: ${entered} entered values on the board; strip it first ` +
-      '(probe_link.py strip), or pass --ring-clues for an edge-clue puzzle')
+const rows = await withApp({ live: false }, async app => {
+  const rows = []
+  for (let k = 0; k < reps; k++) {
+    // A fresh context per rep keeps the reps independent (see withApp).
+    const page = await app.newPage()
+    // A component under measurement may console.log('[probe] ...') counters
+    // (calls, skips); relay only those lines, the site's own logging stays out.
+    page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
+    rows.push(await solveInApp(page, link, { iconName, afterLogical, ringClues, name: linkFile }))
+    await app.closePage(page) // flushes a HAR recording
   }
-}
-
-async function runOnce (page) {
-  await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-  await page.waitForTimeout(1200)
-  await checkStripped(page)
-  await makeDeterministic(page)
-  // The stripped-board check above already ran, so the only marks the search
-  // can meet are the ones this pass makes.
-  if (afterLogical) await solveLogically(page)
-  const clicked = await clickIcon(page, iconName)
-  if (!clicked) throw new Error('solve button not found: Icon ' + iconName)
-  // Wait for the VERDICT, not the first "took": the solve phase prints its
-  // "took" before the uniqueness search finishes, and reading then times only
-  // the first phase.
-  try {
-    await page.waitForFunction(
-      ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
-      [VERDICT_PATTERN.source, VERDICT_PATTERN.flags], { timeout: 300000 })
-  } catch { /* fall through; a missing verdict shows as a null time */ }
-  await page.waitForTimeout(300)
-  const text = await page.evaluate(() => document.body.innerText)
-  if (marksRejected(text, ringClues || afterLogical)) {
-    throw new Error(`${linkFile}: the app judged "${ALREADY_ENTERED}" -- not a timing; strip the link first`)
-  }
-  return { ...parseReadout(text), version: parseVersion(text) }
-}
-
-const browser = await chromium.launch()
-
-// A fresh context per rep: the app's service worker (recorded in the HAR)
-// takes over a reused context's second page and the Tools tab never renders.
-// Fresh state per rep also keeps the reps independent.
-const rows = []
-for (let k = 0; k < reps; k++) {
-  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
-  await useRecordedApp(context)
-  const page = await context.newPage()
-  // A component under measurement may console.log('[probe] ...') counters
-  // (calls, skips); relay only those lines, the site's own logging stays out.
-  page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
-  rows.push(await runOnce(page))
-  await context.close() // flushes a HAR recording
-}
-await browser.close()
+  return rows
+})
 
 const mode = afterLogical ? 'after-logical' : 'cold'
 console.log(`${linkFile}  (${iconName}, ${mode}, non-deterministic OFF, ${reps} reps)`)
