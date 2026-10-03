@@ -179,7 +179,7 @@ A `0` on a line is also an ordinary miss for the sweep: it is neither of the
 position's two target digits, so it keeps the "hit for neither" case open like
 any other digit.
 
-## The joint line — both clues at once
+## The pair line — both clues at once
 
 Two clues on opposite ends of one line couple, and the coupling is much stronger
 than a bound on `A + B`. Number the line's positions `j = 0 … n-1` from clue A.
@@ -366,7 +366,7 @@ To use the whole grid as an interactive-outside frame instead (see
 
 ## What the component deduces
 
-Everything in "The joint line" above: the reachable `(A, B)` hit counts, the
+Everything in "The pair line" above: the reachable `(A, B)` hit counts, the
 cases each position can still take, and the clue values that survive. The
 subsection below is about a different bound — the one the recovery probe
 measures and the component does not use.
@@ -414,7 +414,7 @@ adds **zero** on top:
   24 lines. Nothing to bite.
 - `gen_9` — the matching *does* fire (tighter than naive on 14 of 36 lines), yet
   the recovered clues and cells are identical with it on or off. The all-different
-  floor plus the joint and side-sum components already reach the same fixpoint,
+  floor plus the pair and side-sum components already reach the same fixpoint,
   so the tighter clue bound is redundant.
 
 The result holds under a weaker singles-only floor too (`--floor=singles`).
@@ -433,7 +433,7 @@ the nodes explored, matching off vs on:
 - `gen_9` — 14,708 nodes off.
 
 Those are the counts the goldens pin. `OPTIMIZATION_LOG.md` records what the
-joint line DP bought against the wiring before it.
+pair line DP bought against the wiring before it.
 
 Nodes are only a proxy; the goal is a solver that is *faster*. The matching runs
 an `O(n · 2ⁿ)` pass per line per propagation — about 78x the naive `O(n)` scan on
@@ -477,7 +477,7 @@ Soundness (needs Node):
 
 ```
 node examples/hit-counts/soundness-harness.mjs
-# -> joint + side-sum components, 0 violations, "PASS"
+# -> pair + side-sum components, 0 violations, "PASS"
 ```
 
 The harness seeds partial states that keep each cell's true value, runs the
@@ -550,8 +550,8 @@ rows (`../../docs/real-app-timing.md`); both rows clear it, and the driver's
 
 ### Contract cleanups across the components (#452)
 
-| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (joint: raw masks, one read per mask, no `initialize`) | 6300ms | 6400ms | 1.02 | gate: PASS |
-| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (joint) after-logical | 3900ms | 3900ms | 1.00 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (pair: raw masks, one read per mask, no `initialize`) | 6300ms | 6400ms | 1.02 | gate: PASS |
+| 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (pair) after-logical | 3900ms | 3900ms | 1.00 | gate: PASS |
 | 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side sum: wakes on its lines, no `initialize`) | 6500ms | 6800ms | 1.05 | gate: PASS |
 | 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side sum) after-logical | 3800ms | 4000ms | 1.05 | gate: PASS |
 | 2026-09-26 | v2026.08.14-d47fc4b | hit-counts (side matching: keep-only pins, null memo, no `initialize`) | 6600ms | 6300ms | 0.95 | gate: PASS |

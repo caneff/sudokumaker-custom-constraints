@@ -439,7 +439,7 @@ function * silentDigitRule (instance, puzzle, state, d, size) {
 }
 
 // Everything one digit's own region says, in order: the seed walk that bounds
-// it, then whichever of cap, force, the seeded rules or the no-seed component
+// it, then whichever of cap, force, the seeded rules or the silent-digit rule
 // search applies. Returns the digit's `near` bound for the budget -- a mask of
 // the cells its region can still reach -- or null when no rule drew one.
 function * digitRule (instance, puzzle, state, d, size) {

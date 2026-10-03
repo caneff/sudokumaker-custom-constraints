@@ -186,7 +186,7 @@ const LINE = [...Array(N).keys()]
 // The DP is a full-house rule and gates on the kind the mock declares
 // (docs/line-contract.md), so every state built around a permutation says so.
 const FULL = { houses: [LINE] }
-const lineRun = fuzzSoundness('line component', {
+const lineRun = fuzzSoundness('pair component', {
   iters: FUZZ,
   draw: () => {
     const perm = shuffled()

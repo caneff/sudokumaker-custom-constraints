@@ -1,4 +1,4 @@
-// Strength check for the two line components' update. Soundness (never remove
+// Strength check for the pair and one-sided components' update. Soundness (never remove
 // a true value) lives in soundness-harness.mjs; this file checks the other
 // direction — that a rewrite does not quietly prune LESS than before.
 //

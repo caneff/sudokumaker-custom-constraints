@@ -77,9 +77,9 @@ pay for itself in real-app solve time (`CODING_STANDARDS.md`,
   component instead: the peak join needs both clue candidate sets in the same
   pass, to pair a left-side digit subset with its complement on the right
   (`examples/skyscraper/SkyscraperPairComponent.js`, module docstring and
-  `prune`). This joint shape won at 9x9 (#124).
+  `prune`). This pair shape won at 9x9 (#124).
 - When each wins: split when each direction's deduction is useful alone and
-  coupling adds little. Joint when the deduction only gets strong by sharing
+  coupling adds little. Pair when the deduction only gets strong by sharing
   state across the coupled sides, as here.
 
 ## Our DP state departs from ISS's layout

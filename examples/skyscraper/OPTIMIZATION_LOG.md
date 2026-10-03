@@ -6,7 +6,7 @@ here does not need a second attempt. Background: `docs/research/133-skip-unchang
 `docs/research/137-exact-line-dp.md`, `docs/real-app-timing.md` (the method).
 
 Boards changed across these rows (the original per-line/per-pair split →
-the joint line component's own boards → the 8-arm timing board dropped in
+the pair component's own boards → the 8-arm timing board dropped in
 #178 → the current shipped 9x9 → the 10x10 cap-lift board), so earlier rows
 are not directly comparable to later ones — each row's caveat says which
 board and app build produced its numbers.

@@ -166,7 +166,7 @@ node examples/skyscraper/recovery-probe.mjs gen_6x6.json --search   # solve, cou
   line, and the final check. Global only.
 - `SkyscraperOneSidedComponent.js` — the one-sided DP: one clue, one drawn
   line of any shape. Local only.
-- `soundness-harness.mjs` — Node soundness fuzz for the line component.
+- `soundness-harness.mjs` — Node soundness fuzz for the pair component.
   Soundness = the component never removes a cell's true value. Run it:
   `node examples/skyscraper/soundness-harness.mjs` (`FUZZ=20000` for the deep
   run).

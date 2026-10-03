@@ -64,7 +64,7 @@ const { load } = makeIo(HERE)
 // a SudokuDigitSet that throws, both sweeps must still remove from clue A,
 // clue B and the line cells.
 {
-  const joint = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update'])
   const { rnd } = makeRng(452)
   installGlobals(0, 9)
   const real = globalThis.SudokuDigitSet
@@ -90,15 +90,15 @@ const { load } = makeIo(HERE)
         const size = c => p._cand.get(c).size
         const before = { A: size(A), B: size(B), line: cells.reduce((s, c) => s + size(c), 0) }
         const inst = { cells: [A, B, ...cells] }
-        joint.setParams(inst, A, B, cells)
-        Array.from(joint.update(inst, p))
+        pairComp.setParams(inst, A, B, cells)
+        Array.from(pairComp.update(inst, p))
         if (p._stopped !== null) continue
         removed.A += before.A - size(A)
         removed.B += before.B - size(B)
         removed.line += before.line - cells.reduce((s, c) => s + size(c), 0)
       }
       assert.ok(removed.A > 0 && removed.B > 0 && removed.line > 0, `${kind}: every removal site fired ${JSON.stringify(removed)}`)
-      console.log(`hit-counts joint raw masks, ${kind}: removals ${JSON.stringify(removed)} with no SudokuDigitSet built`)
+      console.log(`hit-counts pair raw masks, ${kind}: removals ${JSON.stringify(removed)} with no SudokuDigitSet built`)
     }
   } finally {
     globalThis.SudokuDigitSet = real
@@ -234,7 +234,7 @@ const { load } = makeIo(HERE)
 // itself), so two reads per line cell is the whole cost.
 {
   installGlobals(0, 9)
-  const joint = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update'])
   for (const kind of ['fullHouse', 'bare']) {
     const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     const truth = { 100: 0, 101: 0 }
@@ -242,17 +242,17 @@ const { load } = makeIo(HERE)
     LINE.forEach((c, j) => { truth[c] = perm[j] })
     const p = makePuzzle(truth, c => (c >= 100 ? [0, 1, 2] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), { houses: kind === 'bare' ? [] : [LINE] })
     const inst = { cells: [100, 101, ...LINE] }
-    joint.setParams(inst, 100, 101, LINE)
-    Array.from(joint.update(inst, p)) // sweeps and memoises
-    Array.from(joint.update(inst, p)) // settles on a state its memo names
+    pairComp.setParams(inst, 100, 101, LINE)
+    Array.from(pairComp.update(inst, p)) // sweeps and memoises
+    Array.from(pairComp.update(inst, p)) // settles on a state its memo names
     const reads = new Map()
     const real = p.getCandidatesBitMask
     p.getCandidatesBitMask = c => { reads.set(c, (reads.get(c) || 0) + 1); return real(c) }
-    const yielded = Array.from(joint.update(inst, p))
+    const yielded = Array.from(pairComp.update(inst, p))
     assert.equal(yielded.length, 0, `${kind}: the state is unchanged`)
     for (const c of LINE) assert.ok(reads.get(c) <= 2, `${kind}: line cell ${c} read ${reads.get(c)} times on a memo hit`)
   }
-  console.log('hit-counts joint: a memo hit reads each line cell at most twice')
+  console.log('hit-counts pair: a memo hit reads each line cell at most twice')
 }
 
 // ---- validate reads the cell list the app already built ----
