@@ -77,6 +77,8 @@ with tempfile.TemporaryDirectory() as tmp:
     write(d, "big-r5c1-r5c5-tl.log", "  grid " + SEED_A + "\n")
     write(d, "big-r5c1-r1c1-tr.log", "  grid " + G_PLAIN + "\n")
     write(d, "big-r1c5-r5c5-tl.log", "  grid " + SEED_B + "\n")
+    # the same grid in an earlier-sorting log: check_3436 names it for that one
+    write(d, "big-r1c5-r1c1-bl.log", "  grid " + SEED_B + "\n")
     old_logs, chan_big.LOGS = chan_big.LOGS, d
     try:
         got = chan_big.earlier_hits("r5c1", "r5c5", "tl")
@@ -94,7 +96,7 @@ with tempfile.TemporaryDirectory() as tmp:
     lines = check_3436.report(d)
     srcs = {ln.split()[0] for ln in lines}
     assert len(lines) == 3 and srcs == {
-        "big-r1c5-r5c5-tl.log",
+        "big-r1c5-r1c1-bl.log",
         "big-r5c1-r1c1-tr.log",
         "big-r5c1-r5c5-tl.log",
     }, lines
