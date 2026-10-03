@@ -248,7 +248,7 @@ in the live app and record what it said:
   example has only the drawn-groups lane, so its names carry no lane tag: its
   9x9 is `PUZZLE_LINK.txt` and every other size `PUZZLE_LINK_<n>x<n>.txt`. A
   second board of one size takes a size tag on its own and is rebuilt through
-  the lane's `rebuild(n, files=...)` (up-to-n's `PUZZLE_LINK_9x9.txt`).
+  the lane's `rebuild(n, pair=...)` (up-to-n's `PUZZLE_LINK_9x9.txt`).
 - The pairing runs both ways where a link is generated: `check_layout.py`
   flags a `gen*.json` with no matching link, and a link with no matching
   `gen*.json`, same as above. Three kinds of link are exempt from needing one
