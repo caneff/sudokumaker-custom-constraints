@@ -225,7 +225,7 @@ median first solution at 3100 ms, 10900 ms in all (reps 10600 to 12600 ms, none
 timed out).
 
 The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
-14500 ms cold and 10900 ms after-logical; they are superseded by the rows above and by the 2026-09-26 rows quoted there.
+14500 ms cold and 10900 ms after-logical; they are superseded by the rows above.
 
 **The rule correction (#613) costs nothing.** The component and the board
 changed together, so a component swap into the old board would time a
