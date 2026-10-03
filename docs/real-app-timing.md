@@ -53,6 +53,8 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   variant as a block. Under machine load the blocks drifted far enough to
   reverse their own ordering twice, and the same pair read 1.00x/1.22x one way
   and 1.00x/0.73x the other (#394).
+  The cost: a link whose every rep times out raises only after the last
+  round, so a cold baseline DNF spends up to 3 candidate reps first (#683).
 
 The rest of this doc is the mechanics behind that command: how the driver
 reads the app's readout, how to strip a link so the solver searches, and how
