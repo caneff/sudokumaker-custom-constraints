@@ -385,12 +385,12 @@ function lostTruth (p, truth) {
 //
 // `draw(iter)` supplies a state: `{ truth, seed, parts, houses?, note? }` --
 // the cell -> true value map, makePuzzle's seed function, the `{ mod, inst }`
-// list to run, the declared houses, and what to print beside a violation
-// (a value or a function returning one), and `inspect(p)`, called on the
-// seeded puzzle before it runs, for a harness's own coverage counts. The oracle is the example's: it
+// list to run, and the declared houses
+// and `inspect(p)`, called on the seeded puzzle before it runs, for a
+// harness's own coverage counts. `note` is printed beside a violation. The oracle is the example's: it
 // derives `truth` from whatever it draws.
-// Returns `{ tests, violations, validateRejects, fired, ok }`; `ok` is true
-// when both counts are zero. Whether `fired` is enough coverage is the
+// Returns `{ tests, violations, validateRejects, failures, fired, ok }`;
+// `failures` is the two counts summed and `ok` is true when it is zero. Whether `fired` is enough coverage is the
 // harness's call, so it can differ per pool.
 export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let violations = 0
@@ -398,23 +398,23 @@ export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let fired = 0
   for (let iter = 0; iter < iters; iter++) {
     const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
-    const noteOf = () => (typeof note === 'function' ? note() : note)
     const p = makePuzzle(truth, seed, { houses })
     if (inspect) inspect(p)
     const before = total(p)
     fixpointAll(parts, p)
     if (total(p) < before) fired++
     const v = lostTruth(p, truth)
-    if (v) { violations++; if (violations <= 5) log(label, 'violation', v, noteOf()) }
+    if (v) { violations++; if (violations <= 5) log(label, 'violation', v, note) }
     const filled = makePuzzle(truth, (c, val) => [val], { houses })
     for (const { mod, inst } of parts) {
       if (typeof mod.validate !== 'function' || mod.validate(inst, filled)) continue
       validateRejects++
-      if (validateRejects <= 5) log(label, 'validate rejected the true solution', noteOf())
+      if (validateRejects <= 5) log(label, 'validate rejected the true solution', note)
     }
   }
   log(`${label}:`, iters, 'tests,', violations, 'violations,', validateRejects, 'validate rejections,', fired, 'states pruned')
-  return { tests: iters, violations, validateRejects, fired, ok: violations === 0 && validateRejects === 0 }
+  const failures = violations + validateRejects
+  return { tests: iters, violations, validateRejects, failures, fired, ok: failures === 0 }
 }
 
 // End a harness: print the verdict and exit with its status.

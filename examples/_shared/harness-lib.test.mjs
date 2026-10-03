@@ -412,10 +412,17 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(rej.validateRejects, 50)
   assert.strictEqual(rej.ok, false, 'a validate that rejects the truth fails the run')
 
-  // inspect sees each seeded puzzle before the components run.
-  let inspected = 0
-  run(sound, { inspect: p => { inspected += total(p) > 0 ? 1 : 0 } })
-  assert.strictEqual(inspected, 50)
+  // inspect sees each seeded puzzle BEFORE the components run: this update
+  // prunes every cell to its truth, so a state seen after it totals exactly 3.
+  const pruner = { * update (inst, p) { for (const [c, v] of [[0, 1], [1, 2], [2, 3]]) p.filterCandidatesInCell(1 << v, c) } }
+  const seen0 = []
+  run(pruner, { inspect: p => seen0.push(total(p)) })
+  assert.strictEqual(seen0.length, 50)
+  assert.ok(seen0.every(n => n >= 3) && Math.max(...seen0) > 3, 'inspect reads the seeded state, not the pruned one')
+
+  // failures is the two counts the harnesses gate on, summed.
+  assert.strictEqual(rej.failures, 50)
+  assert.strictEqual(bad.failures, bad.violations + bad.validateRejects)
 
   // A part with no validate is not judged on one.
   assert.strictEqual(run({ * update () {} }).ok, true)
