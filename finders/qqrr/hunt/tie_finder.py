@@ -8,8 +8,9 @@ on, the hunt's seed grid as a hint, `--q34` adding the 34-36 criterion.
 in those hunt output directories' examples.jsonl, same hunt, nearest window and
 corner first, criterion-passing first (chan_big's `warm` order), never a grid the
 run forbids. run.json records the grid the run started from, each example the grid
-its solve was hinted with. The
-seed sets the solver's random seed. Every grid an earlier seed returned is
+its solve was hinted with.
+
+The seed sets the solver's random seed. Every grid an earlier seed returned is
 forbidden (the finder's state), so a later seed finds a new grid or proves
 there is none. A capped solve comes back `Empty("timeout")`, a proof
 `Empty("infeasible with <k> grids forbidden")`. `verify` re-reads the grid with the
