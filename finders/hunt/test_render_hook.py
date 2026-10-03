@@ -9,6 +9,7 @@ see -- files on disk and exit code, never a driver.py internal.
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,11 @@ def check(name, cond):
     if not cond:
         ok = False
     print(f"{status}: {name}")
+
+
+def seed_pngs(out):
+    """The renders/<seed>.png files, leaving out any temp file."""
+    return [p for p in (out / "renders").iterdir() if re.fullmatch(r"\d+\.png", p.name)]
 
 
 def read_jsonl(path):
@@ -179,7 +185,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("at least one example was found (render-fail run)", len(examples_before) > 0)
     check(
         "no PNG exists yet -- every render failed",
-        not [p for p in (out / "renders").iterdir() if p.name.count(".") == 1],
+        not seed_pngs(out),
     )
 
     resume_env = dict(os.environ)
@@ -323,7 +329,7 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
         json.loads((out / "state.json").read_text())["state"]["seeds_seen"] == 30,
     )
     # Each repaired picture is drawn from its own seed's record: a fresh
-    # hunt with rendering working the whole way is the control (#538 review C3).
+    # hunt with rendering working the whole way is the control.
     control_out = Path(tmp) / "control"
     subprocess.run(
         [
@@ -348,7 +354,7 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
     )
 
     # A record the hook cannot rebuild is a presentation-layer fault too: it
-    # lands on the seed's event and never stops the resume (#538 review C1).
+    # lands on the seed's event and never stops the resume.
     raise_out = Path(tmp) / "hook-raises"
     run_argv = [sys.executable, "-c", stateful_render_script]
     seeds_argv = ["--out", str(raise_out), "--seeds", "0:30"]
@@ -380,8 +386,7 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
     )
 
     # A stateful finder with no candidate_from_record is left alone: nothing
-    # is rebuilt, and its failed renders keep their original render_error
-    # (#538 review C2).
+    # is rebuilt, and its failed renders keep their original render_error.
     nohook_out = Path(tmp) / "no-hook"
     nohook_argv = ["--out", str(nohook_out), "--seeds", "0:30"]
     subprocess.run(
@@ -482,8 +487,7 @@ sys.exit(run(StatefulRenderFinder(), sys.argv[1:]))
     )
 
     # A hook that mutates finder state must not reach state.json: repair
-    # snapshots the state before the call and restores it after (Codex gate
-    # 2). A kill is simulated by truncating progress.jsonl, so the resume
+    # snapshots the state before the call and restores it after. A kill is simulated by truncating progress.jsonl, so the resume
     # both repairs renders and reruns seeds; the persisted state must equal
     # the one a resume with a well-behaved hook writes.
     def resumed_state(name, resume_extra_env):
@@ -669,7 +673,7 @@ sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
 
     check(
         "a failed mid-write save leaves no file at renders/<seed>.png",
-        not [p for p in (out / "renders").iterdir() if p.name.count(".") == 1],
+        not seed_pngs(out),
     )
     check(
         "a failed mid-write save leaves no temp file behind",

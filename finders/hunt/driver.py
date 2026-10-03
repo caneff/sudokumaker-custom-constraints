@@ -18,12 +18,8 @@ set on the finder before the first seed) and the 1-minute load gate
 (refuses above 24 unless `--force-load`) are #488. A resume also
 reconciles renders/ itself (#522, `_reconcile_renders`) and repairs a missing
 or undecodable picture: by re-proposing for a stateless finder, from the examples.jsonl
-record via `candidate_from_record` for a stateful one (#538). That hook must
-return the candidate as `propose` produced it (everything `verify` and
-`render` read); the driver does not guard that, but it does restore the
-finder's state around the call. A stateful finder with a `render` but no `candidate_from_record`
-gets neither repair nor sweep -- the gap is part of the finder contract
-(protocol.py). A finder's own knobs travel as `finder.config`: run.json
+record via `candidate_from_record` for a stateful one (#538); the contract
+for that hook, and the gap without it, is in protocol.py. A finder's own knobs travel as `finder.config`: run.json
 records it and a resume under a different one refuses; a seed that found
 nothing may return `Empty(reason)`, written as `empty_reason` (#491).
 
@@ -460,9 +456,8 @@ def _reconcile_renders(finder, out, progress_events):
     picture eagerly bets an intact one against the rerun's own render, and
     that bet is only safe when a *later* resume's `_repair_renders` can
     regenerate the picture if the rerun's render fails (#522 correctness
-    review, finding C1). A stateful finder with no `candidate_from_record`
-    has no such retry -- its `propose()` can't be called again -- so its
-    stray render is left alone, a documented gap (protocol.py, `render`).
+    review, finding C1). A finder `_can_repair_renders` refuses has no such
+    retry, so its stray render is left alone.
     """
     renders_dir = out / "renders"
     if not renders_dir.is_dir():
@@ -493,15 +488,10 @@ def _can_repair_renders(finder):
 
     A stateless finder can: `propose()` on the seed rebuilds the candidate.
     A stateful finder's `propose()` can have side effects state.json owns
-    (toy_stateful_finder.py increments a counter there), so it never gets
-    called again; it can be repaired only from the examples.jsonl record,
-    through its optional `candidate_from_record`, which must return the
-    candidate as `propose` produced it (protocol.py; the driver does not
-    check that) and leave the finder's state unchanged (`_repair_renders`
-    restores it regardless). Without that hook, or without `save_state`
-    to snapshot the state (fail closed), the finder's missing render
-    stays unrepaired -- part of the finder contract (protocol.py,
-    `render`). `_render_repair_gap` names the refusal."""
+    (toy_stateful_finder.py increments a counter there), so it is repaired
+    only through `candidate_from_record` and `save_state` (the contract is
+    in protocol.py); without them its missing render stays unrepaired.
+    `_render_repair_gap` names the refusal."""
     return _render_repair_gap(finder) is None
 
 
@@ -566,9 +556,7 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
     `candidate_from_record` (#538) -- `propose()` is never called for it.
     The finder's state is snapshotted (a JSON round trip of `save_state()`)
     before each hook call and restored after it, even if the hook raises,
-    so a hook that mutates state never reaches state.json (Codex gate 2).
-    That the candidate is what `propose` produced stays the hook's
-    contract, unchecked (protocol.py). A rebuild that comes back `None` or
+    so a hook that mutates state never reaches state.json. A rebuild that comes back `None` or
     `Empty` keeps the seed's `render_error` and writes no picture (#645). The k-th "example" event pairs with
     the k-th record: `_reconcile` leaves the two counts equal. A finder
     `_can_repair_renders` refuses is left as it is.
@@ -738,7 +726,7 @@ def _process_seed(
     if _is_empty(candidate):
         counts["empty"] += 1
         event["outcome"] = "empty"
-        if isinstance(candidate, Empty) and candidate.reason:
+        if isinstance(candidate, Empty):
             event["empty_reason"] = candidate.reason
     elif not verdict.ok:
         counts["rejected"] += 1

@@ -26,9 +26,10 @@ class Empty(NamedTuple):
     """What `Finder.propose` may return in place of None when a seed found
     nothing and can say why (#491) -- a solver's timeout and its proof of
     infeasibility mean opposite things. The driver writes the reason to
-    that seed's progress event as `empty_reason`."""
+    that seed's progress event as `empty_reason`. The reason is required:
+    a seed with nothing to say returns None."""
 
-    reason: str = ""
+    reason: str
 
 
 class Finder(Protocol):
@@ -43,10 +44,16 @@ class Finder(Protocol):
     before the first seed runs (#488) -- a finder that solves with CP-SAT
     reads `self.workers` for its own solver's worker count, so a hunt
     started without `--workers` still leaves cores for the rest of the box.
+
+    `config` is the finder's own knobs, JSON-serialisable (#491), the flags it
+    parses itself and the driver's argv does not name. Optional: the driver
+    reads it with `getattr(finder, "config", None)`, run.json records it, and a
+    resume under a different config refuses.
     """
 
     symmetry: Any = D4
     workers: int = DEFAULT_WORKERS
+    config: Any = None
 
     def propose(self, rng) -> Any | None:
         """One candidate for this seed's rng, or None (or `Empty(reason)`)

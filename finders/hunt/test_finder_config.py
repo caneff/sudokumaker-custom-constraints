@@ -100,4 +100,17 @@ with tempfile.TemporaryDirectory() as d:
         others and not any("empty_reason" in e for e in others),
     )
 
+# The contract is in the Protocol: `Empty` has no reasonless spelling, and a
+# finder's `config` is a declared member the driver reads (#647).
+sys.path.insert(0, str(HERE))
+from protocol import Empty, Finder
+
+try:
+    Empty()
+    reasonless = True
+except TypeError:
+    reasonless = False
+check("Empty() with no reason is refused", not reasonless)
+check("Finder declares config", "config" in Finder.__annotations__)
+
 sys.exit(0 if ok else 1)
