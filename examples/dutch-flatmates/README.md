@@ -5,12 +5,17 @@ plus one rule. Every 5 needs a flatmate: a 1 in the cell directly above it, or
 a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
-`validate` checks the rule on a full grid; `update` prunes per column. When the
-app says a column cannot repeat (`getCellsCanHaveRepeats`, asked once per
-column inside `update`), it is a house, so it holds one 5, one 1 and one 9, and `update`
-keeps only the rows some arrangement of the three still supports: a 5 with a 1
-above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. A column that can
-repeat gets only the per-cell rule: a 5 with no 1 above and no 9 below goes. The board
+`validate` checks the rule on a full grid; `update` prunes per column. When a
+column holds each of the board's digits exactly once and the digits include 1, 5
+and 9 (the app says it cannot repeat, `getCellsCanHaveRepeats`, asked once per
+column inside `update`; it is as long as the digit list, `helpers.digits`; the
+digits run from at most 1 to at least 9), it holds one 5, one 1 and one 9, and
+`update` keeps only the rows some arrangement of the three still supports: a 5
+with a 1 above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. Any other
+column (digits may repeat, a board that is not a plain sudoku, no 1, 5 or 9 among
+its digits) gets only the per-cell rule: a 5 with no 1 above and no 9 below
+goes. #693 dropped a size check that turned all pruning off on any board narrower
+than 9, which was wrong for boards whose digits are not 1..width. The board
 also keeps plain sudoku's completions few (1,279 on the shipped givens). The
 pruning was timed against the validate-only first slice and kept (see Timing).
 
@@ -32,7 +37,7 @@ The one solution:
 
 | File | Holds |
 | --- | --- |
-| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, house columns by the arrangement rule and the rest per cell |
+| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, columns that hold each digit once (with 1, 5, 9 among the digits) by the arrangement rule and the rest per cell |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
 | `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
@@ -222,11 +227,14 @@ uv run examples/dutch-flatmates/build_link.test.py
   row-major (an id order scrambled by the mock, so a build by index fails); a
   rectangle or a missing cell throws; 5,000 random partial boards consistent
   with the shipped solution lose no true value, and some lose candidates (the
-  prune is live).
+  prune is live), and the same on a 6x6 board with digits 1-9, an 8x8 with 1-8
+  and a 9x9 with 2-10, 2,000 boards each.
 - `update-prune.test.mjs` — targeted cases through what a caller sees (columns
   declared houses; a second set with none declared: a column that can repeat
   keeps the 1s the house rule would drop, still loses a 5 with no flatmate, and
-  is not stopped for lacking a 5): a 5 with
+  is not stopped for lacking a 5; a 6x6 board with digits 1-9, an 8x8 board with
+  digits 1-8 and a 9x9 board with digits 2-10, every column declared
+  all-different, get the per-cell rule and no column reasoning): a 5 with
   no 1 above and no 9 below is pruned, as is a top-row 5 with no 9 below and a
   bottom-row 5 with no 1 above; a pinned 5 pins its flatmate; an open board
   loses nothing; a column with no possible 5 stops the branch; repeat calls are
