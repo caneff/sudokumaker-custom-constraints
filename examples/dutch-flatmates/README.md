@@ -335,3 +335,17 @@ cold and 11200 ms -> 12000 ms (1.07x) after-logical. So the allocation in
 `getCandidates` is a small part of the cost, and the rest comes from the plain
 row lists, row sets and the unchanged-column key. Left as is, for Chris to rule
 on whether the readability is worth ~1.1x.
+
+Digit-keyed rewrite (Chris's ruling on #693: row lists and keep-sets keyed by
+the digit 1, 5, 9, no name table), one more run, same board and command:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11600ms | 13200ms | 1.14 | over the 1.1x bar |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11300ms | 12300ms | 1.09 | PASS (≤ 1.1x) |
+
+The candidate's own times match the earlier run (13200 / 12300 ms against
+13100 / 12500 ms); the ratio moved because this run's baseline read 11600 ms
+cold where the earlier ones read 12000 ms. The rows above are the ones Chris
+accepted at about 1.09x / 1.12x.
+
