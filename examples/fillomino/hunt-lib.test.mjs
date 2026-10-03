@@ -78,8 +78,8 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 {
   const board = { side: 3, cap: 3, grid: GRID3 }
   assert.deepStrictEqual(stripOffline(mod, board, 7), stripOffline(mod, board, 7))
-  // Seeds 1-8 cut this grid to seven different clue sets; a strip that ignores
-  // its seed returns one.
+  // Seeds 1-8 cut this grid to several different clue sets; a strip that
+  // ignores its seed returns one.
   const cuts = new Set([1, 2, 3, 4, 5, 6, 7, 8].map(seed => JSON.stringify(stripOffline(mod, board, seed))))
   assert.ok(cuts.size > 1, 'eight seeds all cut the same clue set: the seed is ignored')
 }
