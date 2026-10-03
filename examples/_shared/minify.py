@@ -117,6 +117,10 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
     for line in src.splitlines():
         if keep_comments:
             if line.startswith(_LINT_DIRECTIVE):
+                assert "*/" in line, (
+                    f"a lint directive that does not close on its line, which "
+                    f"this strip cannot read: {line!r}"
+                )
                 after_lint = True
                 continue
             if after_lint and not line.strip():

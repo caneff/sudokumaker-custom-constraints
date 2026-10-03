@@ -106,6 +106,18 @@ def test_keep_comments_drops_the_lint_directive_and_the_blank_after_it():
     assert "eslint" not in minify_js("/* eslint-disable x */\nconst x = 1\n")
 
 
+def test_keep_comments_refuses_a_lint_directive_that_spans_lines():
+    # Dropping only its first line would leave a dangling `*/` in the link.
+    try:
+        minify_js(
+            "/* eslint-disable\n   no-unused-vars */\nconst x = 1\n", keep_comments=True
+        )
+    except AssertionError as e:
+        assert "lint directive" in str(e), e
+        return
+    raise AssertionError("expected a refusal for a multi-line lint directive")
+
+
 def test_keep_comments_keeps_blank_lines_between_functions():
     src = "// head\n\nfunction a () { return 1 }\n\n// b\nfunction b () { return 2 }\n"
     assert minify_js(src, keep_comments=True) == src
@@ -422,6 +434,7 @@ if __name__ == "__main__":
     test_keeps_block_comments_when_asked_to()
     test_keeps_comments_and_blank_lines_when_asked_to()
     test_keep_comments_drops_the_lint_directive_and_the_blank_after_it()
+    test_keep_comments_refuses_a_lint_directive_that_spans_lines()
     test_keep_comments_keeps_blank_lines_between_functions()
     test_keep_comments_prune_leaves_no_doubled_blank_line()
     test_keep_comments_prune_keeps_the_includers_paragraph_break()
