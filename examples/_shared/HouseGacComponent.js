@@ -97,18 +97,7 @@ function countTable (size) {
   return table
 }
 
-function lowestBit (bits) {
-  return bits & -bits
-}
-
-function withoutLowestBit (bits) {
-  return bits & (bits - 1)
-}
-
-//! The index of a single set bit: 1 -> 0, 2 -> 1, 4 -> 2, ...
-function positionOf (singleBit) {
-  return 31 - Math.clz32(singleBit)
-}
+// #include ../_shared/bit-helpers.js
 
 function * update (instance, puzzle) {
   const cells = instance.cells

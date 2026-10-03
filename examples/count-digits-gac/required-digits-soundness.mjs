@@ -1,25 +1,25 @@
 // Soundness fuzz and strength comparison for RequiredDigitsGacComponent, the
 // full-strength replacement for the built-in RequiredDigits
-// (bundle.claude.js:3234).
+// (bundle.claude.js:3234). Run through `soundness-harness.mjs` beside this
+// file (`just soundness`).
 //
-//   node docs/research/required-digits-gac/soundness-harness.mjs
-//
-// Three checks:
+// Three checks, each of which fails the run:
 //   1. Soundness. Random satisfiable states in which every cell still allows
-//      its true value: the component must never remove a true value and never
-//      stop the branch. A removed true value makes a real puzzle unsolvable.
+//      its true value: the component must never remove a true value, never
+//      stop the branch, and its `validate` must accept the true solution. A
+//      removed true value makes a real puzzle unsolvable. Run by the shared
+//      `fuzzSoundness` loop.
 //   2. Strength against the built-in. The built-in's `update` rule is ported
-//      here verbatim from the bundle body and run on the same states; we count
-//      how many candidates each removes.
+//      here verbatim from the bundle body and run on the same states: every
+//      candidate it removes, the component must remove too.
 //   3. Completeness on small instances. A brute-force oracle keeps a candidate
 //      only when some system of distinct representatives places every required
 //      digit with that candidate in place. The GAC component must remove no
-//      more than the oracle (sound) and we report how much less it removes.
+//      more than the oracle (sound); we report how much less it removes.
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { makeIo, makeRng, makePuzzle, makeSeeder, total, violates } from '../../../examples/_shared/harness-lib.mjs'
-import { installGlobals } from '../../../examples/_shared/harness-lib.mjs'
+import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -46,12 +46,12 @@ function builtinUpdate (values, cells, p) {
       if (at >= 0) remaining.splice(at, 1)
     } else unsolved.push(cell)
   }
-  if (unsolved.length !== remaining.length) return 0
-  let removed = 0
+  if (unsolved.length !== remaining.length) return []
+  const removed = []
   const keep = new Set(remaining)
   for (const cell of unsolved) {
     for (const d of [...p._cand.get(cell)]) {
-      if (!keep.has(d)) { p._cand.get(cell).delete(d); removed++ }
+      if (!keep.has(d)) { p._cand.get(cell).delete(d); removed.push(`${cell}:${d}`) }
     }
   }
   return removed
@@ -85,11 +85,11 @@ function hasSdr (values, cells, candOf) {
 // A candidate survives the oracle when pinning that cell to that digit still
 // leaves an SDR for the whole multiset.
 function oracleRemovals (values, cells, sets) {
-  let removed = 0
+  const removed = new Set()
   for (const cell of cells) {
     for (const d of [...sets.get(cell)]) {
       const candOf = c => (c === cell ? new Set([d]) : sets.get(c))
-      if (!hasSdr(values, cells, candOf)) removed++
+      if (!hasSdr(values, cells, candOf)) removed.add(`${cell}:${d}`)
     }
   }
   return removed
@@ -119,56 +119,79 @@ function makeState (cellCount, valueCount, { houses = [], forceRepeat = false } 
   // true state satisfies the constraint by construction.
   const picked = cells.slice().sort(() => rnd() - 0.5).slice(0, valueCount)
   const values = picked.map(cell => truth[cell])
-  const p = makePuzzle(truth, seeder, { houses })
-  return { cells, values, truth, p }
+  return { cells, values, truth, houses }
 }
 
+// One shape: `iters` states through the shared soundness loop, then checks 2
+// and 3 read off each state's puzzle, which the loop left at its fixpoint.
+// Returns the failure count.
 function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = false }) {
-  let bad = 0
-  let firedGac = 0
+  const records = []
+  const result = fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const { cells, values, truth, houses: declared } = makeState(cellCount, valueCount, { houses, forceRepeat })
+      const inst = { name: 'required digits' }
+      mod.setParams(inst, values, cells)
+      return {
+        truth,
+        seed: seeder,
+        houses: declared,
+        parts: [{ mod, inst }],
+        note: `values ${values.join('')} truth ${cells.map(c => truth[c]).join('')}`,
+        inspect: p => records.push({ cells, values, truth, houses: declared, p, snapshot: new Map([...p._cand].map(([c, s]) => [c, new Set(s)])) })
+      }
+    }
+  })
+
+  let bad = result.failures
   let removedGac = 0
   let removedBuiltin = 0
   let removedOracle = 0
   let oracleChecked = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const { cells, values, truth, p } = makeState(cellCount, valueCount, { houses, forceRepeat })
-    const snapshot = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
+  for (const { cells, values, truth, houses: declared, p, snapshot } of records) {
+    const gacRemoved = new Set()
+    for (const [c, s] of snapshot) for (const d of s) if (!p._cand.get(c).has(d)) gacRemoved.add(`${c}:${d}`)
+    removedGac += gacRemoved.size
 
-    const inst = { name: 'required digits' }
-    mod.setParams(inst, values, cells)
-    const before = total(p)
-    const v = violates(mod, inst, p, truth)
-    const gac = before - total(p)
-    if (gac > 0) firedGac++
-    removedGac += gac
-    if (v) {
+    // 2. the built-in on the same starting state: whatever it removes, the
+    //    component removes too.
+    const q = makePuzzle(truth, () => [], { houses: declared })
+    for (const [c, s] of snapshot) q._cand.set(c, new Set(s))
+    const builtinRemoved = builtinUpdate(values, cells, q)
+    removedBuiltin += builtinRemoved.length
+    for (const key of builtinRemoved) {
+      if (gacRemoved.has(key)) continue
       bad++
-      if (bad <= 5) console.log(label, 'VIOLATION', JSON.stringify(v), 'values', values.join(''), 'truth', cells.map(c => truth[c]).join(''))
+      if (bad <= 5) console.log(label, 'WEAKER THAN BUILT-IN', key, 'values', values.join(''), 'truth', cells.map(c => truth[c]).join(''))
     }
 
-    // the built-in on the same starting state
-    const q = makePuzzle(truth, () => [], { houses })
-    for (const [c, s] of snapshot) q._cand.set(c, new Set(s))
-    removedBuiltin += builtinUpdate(values, cells, q)
-
+    // 3. completeness: the component removes no more than the oracle.
     if (cellCount <= 6) {
-      removedOracle += oracleRemovals(values, cells, snapshot)
+      const oracleRemoved = oracleRemovals(values, cells, snapshot)
+      removedOracle += oracleRemoved.size
       oracleChecked++
+      for (const key of gacRemoved) {
+        if (oracleRemoved.has(key)) continue
+        bad++
+        if (bad <= 5) console.log(label, 'REMOVED MORE THAN THE ORACLE', key, 'values', values.join(''), 'truth', cells.map(c => truth[c]).join(''))
+      }
     }
   }
-  const oracle = oracleChecked > 0 ? `  oracle removed ${removedOracle}` : ''
-  console.log(`${label}: ${bad} violations in ${iters} states; gac fired ${firedGac}x removed ${removedGac}  builtin removed ${removedBuiltin}${oracle}`)
+  const oracle = oracleChecked > 0 ? `  oracle removed ${removedOracle} over ${oracleChecked} states` : ''
+  console.log(`${label}: gac removed ${removedGac}  builtin removed ${removedBuiltin}${oracle}`)
   return bad
 }
 
-let failures = 0
-failures += run('4 cells, 3 digits, bare   ', { cellCount: 4, valueCount: 3, iters: 4000 })
-failures += run('4 cells, 4 digits, bare   ', { cellCount: 4, valueCount: 4, iters: 4000 })
-failures += run('6 cells, 3 digits, bare   ', { cellCount: 6, valueCount: 3, iters: 4000 })
-failures += run('6 cells, 6 digits, house  ', { cellCount: 6, valueCount: 6, iters: 4000, houses: [[0, 1, 2, 3, 4, 5]] })
-failures += run('9 cells, 4 digits, bare   ', { cellCount: 9, valueCount: 4, iters: 4000 })
-failures += run('4 cells, 2+2 repeat, bare ', { cellCount: 4, valueCount: 4, iters: 4000, forceRepeat: true })
-failures += run('9 cells, 9 digits, house  ', { cellCount: 9, valueCount: 9, iters: 4000, houses: [[0, 1, 2, 3, 4, 5, 6, 7, 8]] })
-
-console.log(failures === 0 ? 'OK: no soundness violations' : `FAIL: ${failures} violations`)
-process.exit(failures === 0 ? 0 : 1)
+// Returns the failure count over every shape.
+export function requiredDigitsSoundness () {
+  let failures = 0
+  failures += run('required: 4 cells, 3 digits, bare   ', { cellCount: 4, valueCount: 3, iters: 4000 })
+  failures += run('required: 4 cells, 4 digits, bare   ', { cellCount: 4, valueCount: 4, iters: 4000 })
+  failures += run('required: 6 cells, 3 digits, bare   ', { cellCount: 6, valueCount: 3, iters: 4000 })
+  failures += run('required: 6 cells, 6 digits, house  ', { cellCount: 6, valueCount: 6, iters: 4000, houses: [[0, 1, 2, 3, 4, 5]] })
+  failures += run('required: 9 cells, 4 digits, bare   ', { cellCount: 9, valueCount: 4, iters: 4000 })
+  failures += run('required: 4 cells, 2+2 repeat, bare ', { cellCount: 4, valueCount: 4, iters: 4000, forceRepeat: true })
+  failures += run('required: 9 cells, 9 digits, house  ', { cellCount: 9, valueCount: 9, iters: 4000, houses: [[0, 1, 2, 3, 4, 5, 6, 7, 8]] })
+  return failures
+}

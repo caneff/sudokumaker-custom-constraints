@@ -4,7 +4,7 @@
 //
 // The two do not compute the same thing -- that is the point of the
 // replacement -- so this is a cost row only; the strength and soundness rows
-// are soundness-harness.mjs. The shapes are the ones a real puzzle registers:
+// are examples/count-digits-gac/soundness-harness.mjs. The shapes are the ones a real puzzle registers:
 // a short window with one or two clue digits (Outside Sudoku), and a full
 // house-sized group.
 //
@@ -13,9 +13,10 @@ import { installGlobals, makeIo, makeRng } from '../../../examples/_shared/harne
 
 installGlobals(1, 9)
 const FUNCTIONS = ['getAffectedCells', 'setParams', 'update']
+const GAC_DIR = new URL('../../../examples/count-digits-gac/', import.meta.url).pathname
 const here = makeIo(new URL('.', import.meta.url).pathname)
 const components = {
-  'gac (RequiredDigitsGacComponent)': here.load('RequiredDigitsGacComponent.js', FUNCTIONS),
+  'gac (RequiredDigitsGacComponent)': makeIo(GAC_DIR).load('RequiredDigitsGacComponent.js', FUNCTIONS),
   'builtin (RequiredDigits)': here.load('BuiltinRequiredDigitsComponent.js', FUNCTIONS)
 }
 

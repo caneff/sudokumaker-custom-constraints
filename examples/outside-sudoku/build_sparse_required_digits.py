@@ -39,10 +39,7 @@ RESEARCH_DIR = (
 )
 GEN = RESEARCH_DIR / "gen.json"
 BACKEND = RESEARCH_DIR / "main-sparse-global.js"
-COMPONENT = (
-    HERE.parent.parent
-    / "docs/research/required-digits-gac/RequiredDigitsGacComponent.js"
-)
+COMPONENT = HERE.parent / "count-digits-gac" / "RequiredDigitsGacComponent.js"
 CANDIDATE_NAME = "RequiredDigitsGacComponent"
 BASELINE_NAME = "RequiredDigitsComponent"
 CONSTRAINT_NAME = "Sparse required digits"

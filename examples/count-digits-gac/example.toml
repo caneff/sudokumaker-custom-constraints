@@ -1,0 +1,3 @@
+timed_component = "CountDigitsGacComponent"
+lanes = "single"
+boardless = true
