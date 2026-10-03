@@ -33,7 +33,7 @@
 import { join } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
-import { shipped, varied } from './grids.mjs'
+import { shipped, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')

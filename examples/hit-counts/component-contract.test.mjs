@@ -7,7 +7,7 @@
 //   node examples/hit-counts/component-contract.test.mjs
 import assert from 'node:assert/strict'
 import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
-import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './side-fixture.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)

@@ -17,7 +17,7 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { CLUES, cell, LINES, CANDS, HOUSES } from './side-fixture.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -208,7 +208,7 @@ function stateOf (start, houses) {
 }
 
 // ---- 3b. A forced hit the per-line scan misses, deterministic ----
-// The 4x4 left side of side-fixture.mjs: the matching pins its whole diagonal.
+// The 4x4 left side of fixture.mjs: the matching pins its whole diagonal.
 //
 // The per-line scan reaches only the first of those. Line 0 has one possible
 // hit for a clue of 1, so it forces that cell on its own; lines 1, 2 and 3 each

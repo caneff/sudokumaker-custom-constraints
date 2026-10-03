@@ -6,7 +6,7 @@
 //   node examples/fillomino/soundness-harness.mjs
 //
 // Two fuzz fixtures (gen.json size follows whatever ships):
-//   shipped, varied — grids.mjs, shared with update-strength.test.mjs.
+//   shipped, varied — fixture.mjs, shared with update-strength.test.mjs.
 // The directed checks below run on their own fixed 6x6 grid (`directed`),
 // independent of gen.json — they hardcode cell indices and a 1-6 digit range
 // tied to that grid's specific region layout, not to whatever ships.
@@ -18,7 +18,7 @@
 // another rule's deduction, shows here. Each rule is fuzzed alone as well.
 
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
-import { gridOf, shipped, varied } from './grids.mjs'
+import { gridOf, shipped, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)

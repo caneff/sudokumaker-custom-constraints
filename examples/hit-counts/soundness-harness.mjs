@@ -31,7 +31,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
-import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './side-fixture.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -411,7 +411,7 @@ console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 // hold it.
 //
 // The side below is the one shape that pins the matching outright; it lives in
-// side-fixture.mjs, shared with the other hit-counts tests. A 0 read as anything
+// fixture.mjs, shared with the other hit-counts tests. A 0 read as anything
 // but an ordinary miss would change its answer.
 function sideGateProbe (withZero) {
   const truth = {}
