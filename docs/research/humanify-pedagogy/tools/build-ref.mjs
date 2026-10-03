@@ -42,11 +42,10 @@
 //   fenced mermaid               → <pre class="mermaid"> in a .vt-diagram panel
 //                                  (the artifact host renders mermaid itself)
 import { readFileSync, writeFileSync } from 'fs'
-import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
+import { join } from 'path'
 import { marked } from 'marked'
 
-const here = dirname(fileURLToPath(import.meta.url))
+const here = import.meta.dirname
 const vt = (name) => readFileSync(join(here, 'vt', name), 'utf8')
 const page = JSON.parse(readFileSync(join(here, 'page.json'), 'utf8'))
 const publicOnly = process.argv.includes('--public-only')

@@ -49,6 +49,10 @@ REQUIRED_RULES_OPENING = "Normal sudoku rules apply"
 
 @dataclass
 class Spec:
+    """What one example hands the shared frame builder: its directory, titles,
+    components, clue rule (as a function and as CP-SAT constraints) and rules
+    text. The builder reads everything example-specific from here."""
+
     dir: pathlib.Path  # example directory: scripts, components, and outputs live here
     title: str  # puzzle title, e.g. "Skyscrapers Interactive" (the "NxN" is appended)
     constraint_name: str  # the custom constraint's name, e.g. "Skyscrapers"
@@ -175,6 +179,7 @@ def _ring_name(key):
 
 
 def make_grid(rng, n, bh, bw):
+    """A random solved n x n sudoku grid with bh x bw boxes, as rows of digits."""
     # Start from the standard shift pattern, then shuffle bands, rows, stacks,
     # columns, and digit labels. Every step preserves sudoku validity.
     base = [[((r * bw + r // bh + c) % n) for c in range(n)] for r in range(n)]
@@ -193,6 +198,9 @@ def make_grid(rng, n, bh, bw):
 
 
 def make_lines(n):
+    """Every straight clue line of an n x n interior, keyed by ring key
+    ("L"/"R"/"T"/"B" plus the row or column) -> (row, column) cells, nearest the
+    clue first."""
     lines = {}
     for r in range(n):
         lines[("L", r)] = [(r, c) for c in range(n)]

@@ -9,11 +9,9 @@
 // on its own, which is where a refusal can be asked for.
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { makeIo } from './harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { frameLines, framePairs } = makeIo(HERE).load('frame-lines.js', ['frameLines', 'framePairs'])
 
 // A board of plain integer ids, the shape frameLines reads: getCellAt(col, row).

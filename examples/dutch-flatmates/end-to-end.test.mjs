@@ -42,13 +42,12 @@
 // - Whether the deduction pays for itself: that is `just time`, and the 0 ms
 //   vs 200 ms rows are 100 ms-step readings: 0 ms means under one step.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { existsSync, readFileSync } from 'fs'
 import assert from 'assert'
 import { decodeLinkFile, solveDocument } from '../_shared/bundle-solve-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const N = 9
 
 const BOARDS = [

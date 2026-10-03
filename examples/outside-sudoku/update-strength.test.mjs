@@ -5,13 +5,11 @@
 //
 //   node examples/outside-sudoku/update-strength.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint, strengthSweep } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const mod = load('OutsideSudokuComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
 

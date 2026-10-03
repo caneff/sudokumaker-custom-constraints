@@ -12,11 +12,9 @@
 // full house of {1..n} (docs/line-contract.md), so every state declares that
 // kind, and each size installs its own digits.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the component as it stands at the commit that pins this test.

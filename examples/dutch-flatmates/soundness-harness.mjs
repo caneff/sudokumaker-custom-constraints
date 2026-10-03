@@ -9,14 +9,13 @@
 // row-major, and a refusal of a board that is not a square or has a missing
 // cell.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, fixpoint, fuzzSoundness } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng(676)
 

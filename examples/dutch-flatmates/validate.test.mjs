@@ -4,13 +4,12 @@
 //
 //   node examples/dutch-flatmates/validate.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
 const mod = load('DutchFlatmatesComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])

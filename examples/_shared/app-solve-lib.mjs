@@ -14,8 +14,8 @@ import { parseArgs as parseCli } from 'node:util'
 // `<link_file> [reps] [icon_name] [--ring-clues] [--after-logical]`.
 //
 // --ring-clues allows entered values, for edge-clue puzzles whose clues are
-// stored as non-given values in the outer ring; without it a link that is not
-// stripped to its givens is refused (see checkStripped in app-session.mjs).
+// stored as non-given values in the outer ring; without it a link that is
+// not a searchable link is refused (see checkSearchable in app-session.mjs).
 // --after-logical runs the app's logical solver to its fixpoint before the
 // timed search, so the row measures the search a player still faces. Both
 // flags may sit anywhere on the line. A flag the driver does not know is a

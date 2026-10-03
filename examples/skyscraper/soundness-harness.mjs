@@ -10,13 +10,11 @@
 //   node examples/skyscraper/soundness-harness.mjs            # 2,000 cases
 //   FUZZ=20000 node examples/skyscraper/soundness-harness.mjs # deep run before a ship
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import {
   TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, violates, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 const FUZZ = Number(process.env.FUZZ) || 2000

@@ -5,13 +5,12 @@
 //
 // Run: node examples/_shared/whole-grid-mains.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
-const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
+const EXAMPLES = join(import.meta.dirname, '..')
 
 function boardFor (W, H) {
   return {

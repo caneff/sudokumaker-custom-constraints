@@ -6,11 +6,9 @@
 //   node examples/numbered-rooms/dead-index.test.mjs
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
-const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
+const { load } = makeIo(import.meta.dirname)
 const mod = load('NumberedRoomsComponent.js', ['setParams', 'update'])
 
 installGlobals(1, 4)

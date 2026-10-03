@@ -13,12 +13,11 @@
 //          never pins digit 2, so that digit stays silent (no placed cell) in
 //          every state and only the silent-digit rule prunes it.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 

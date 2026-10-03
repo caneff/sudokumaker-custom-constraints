@@ -32,15 +32,14 @@
 // but not a plain number. A backend that coerces turns it back into one; a
 // backend that passes it through is caught here.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { existsSync, readdirSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
 import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
-const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
+const EXAMPLES = join(import.meta.dirname, '..')
 
 // A board W cells wide and H cells tall. Cell id = col + row * W, the app's
 // own layout (`getIdFromCoords(e){return e.x+e.y*this.width}` in the shipped

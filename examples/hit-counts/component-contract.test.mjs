@@ -6,11 +6,9 @@
 //
 //   node examples/hit-counts/component-contract.test.mjs
 import assert from 'node:assert/strict'
-import { dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 // ---- Side sum wakes on the lines its gate reads ----

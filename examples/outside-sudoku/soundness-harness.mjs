@@ -15,12 +15,10 @@
 // 2 on a 4x4. The digit count is smaller than the board so the enumeration
 // stays exhaustive; main code hands the component the window length.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 

@@ -18,11 +18,9 @@
 // still unsolved it already prunes. The wrapper it replaced did nothing until
 // the clue collapsed, so its removal count here would be zero.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 

@@ -9,11 +9,9 @@
 // the single line clue and the opposite-clue pair. Every state declares a
 // house, the kind the floor commit is sound on -- see REF_COMMIT below.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the components as they stand at the commit that pins this test.

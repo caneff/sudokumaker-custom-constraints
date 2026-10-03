@@ -4,11 +4,9 @@
 //   node examples/skyscraper/empty-line.test.mjs
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
 
-const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
+const { load } = makeIo(import.meta.dirname)
 const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
 
 installGlobals(1, 4)

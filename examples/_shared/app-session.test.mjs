@@ -16,7 +16,7 @@ await withApp({ live: false }, async app => {
   // A 9x9 whose search runs for seconds: the first "took" prints long before
   // the verdict, so a wait that ends on the first readout, or no wait at all,
   // reads a null sum here. The default options also run both guards below
-  // (stripped board, "already entered" verdict) on a board that passes them.
+  // (searchable link, "already entered" verdict) on a board that passes them.
   const page = await app.newPage()
   const r = await solveInApp(page, link('up-to-n/PUZZLE_LINK_9x9.txt'))
   assert.strictEqual(r.verdict, 'unique')
@@ -31,7 +31,7 @@ await withApp({ live: false }, async app => {
   await assert.rejects(solveInApp(clued, link('numbered-rooms/PUZZLE_LINK_clued.txt')), /entered values on the board/)
 
   // The app's own "already entered values" verdict is refused too: a board
-  // with pencil marks and no entered value passes the stripped check, so this
+  // with pencil marks and no entered value passes the searchable-link check, so this
   // is the refusal's only guard. The phrase is planted into the page, since
   // no committed link carries marks only.
   const marked = await app.newPage()

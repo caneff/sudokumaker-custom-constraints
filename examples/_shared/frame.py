@@ -167,6 +167,9 @@ def merge(lines):
 
 
 def cosmetics(W, cells):
+    """The three cosmetic line constraints that dress a WxW frame board: white
+    lines hiding the outside cell borders, outlines around the ring cells that
+    hold a given clue, and the border around the inner grid."""
     idx = lambda r, c: r * W + c
     ring_cells = (
         [(0, c) for c in range(W)]

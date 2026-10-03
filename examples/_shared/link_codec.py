@@ -11,6 +11,7 @@ from lzstring import LZString
 
 
 def decode_puzzle(link):
+    """The puzzle document (a dict) held in a SudokuMaker link or bare payload."""
     payload = link.split("puzzle=")[-1]
     return json.loads(
         LZString.decompressFromEncodedURIComponent(urllib.parse.unquote(payload))
@@ -18,6 +19,7 @@ def decode_puzzle(link):
 
 
 def encode_link(doc):
+    """The full SudokuMaker link for a puzzle document; decode_puzzle reads it back."""
     return "https://sudokumaker.app/?puzzle=" + LZString.compressToEncodedURIComponent(
         json.dumps(doc)
     )
