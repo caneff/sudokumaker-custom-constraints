@@ -12,7 +12,11 @@ and the box rules in `AGENTS.md` before launching, and run one hunt at a time.
   (`finders/hunt/`, #491): one seed is one solve, found grids forbidden from
   the next, output in the standard hunt directory, `hunt verify DIR` re-reads
   every grid with the oracle.
-  `tie_finder.py --out DIR --seeds 0:3 --hunt r1c5 --ten r7c7 --corner tr --timeout 900 [--q34]`
+  `tie_finder.py --out DIR --seeds 0:3 --hunt r1c5 --ten r7c7 --corner tr --timeout 900 [--q34] [--warm-from DIR...]`
+  `--warm-from` hints each solve from the nearest known grid in those hunt output
+  directories' `examples.jsonl` (#643), as `chan_big.py`'s `warm` does from its logs;
+  `docs/research/2026-10-03-qqrr-tie-warm-source/` holds the r1c5 grids of the
+  2026-09-22 hunt.
 - `pair_sweep.py` — one solve per seeing pair, resumable.
   `pair_sweep.py <corner> <procs> <per-pair timeout> <log> [<hunt> [<workers> [retry]]]`
 - `chan_sweep.py` — the digit-channelled pair sweep.
