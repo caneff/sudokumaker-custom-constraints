@@ -194,26 +194,32 @@ the component stronger.
 
 ## Timing
 
-**The house subset DP (#465) pays for itself.** `just time up-to-n` on the
-shipped 18-clue 9×9, 3 reps, non-deterministic solve off, 1 worker, 2026-10-03.
-Candidate code is byte-equal to the committed link, so only baseline rows
-print: they are the floor a later change is judged against. Against the
-bounds-only rows of 2026-09-26 (15200 ms cold, 11700 ms after-logical, same
-board, same driver) that is about 0.05× on the cold row; the after-logical row
-now reads 0 ms because the app's logical solve alone finishes the board.
+**The house subset DP (#465) pays for itself.** `just time up-to-n`, 3 reps,
+non-deterministic solve off, 1 worker, 2026-10-03. Baseline is `origin/main`
+(the bounds-only component and its committed link), candidate is the same tree
+with this component swapped in, timed before the links were regenerated:
 
-| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n | 800ms | — | — | BASELINE |
-| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n after-logical | 0ms | — | — | BASELINE |
+| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n | 15600ms | 900ms | 0.06 | PASS |
+| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n after-logical | 12000ms | 0ms | 0.00 | PASS |
+
+```
+two-row rule: SHIP
+```
+
+The after-logical row reads 0 ms because the app's logical solve alone finishes
+the shipped board. The committed link now embeds this component, so a later
+`just time` prints baseline rows only; one run on it read 800 ms cold and 0 ms
+after-logical, the floor a later change is judged against.
 
 The minimal 13-clue board was a DNF under the bounds-only component, recorded
-verbatim on 2026-09-26:
+verbatim on 2026-09-26 (not re-measured: a result on record is not re-run):
 
 ```
 RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
 ```
 
-With the subset DP, `node examples/_shared/app-solve.mjs
-examples/up-to-n/PUZZLE_LINK_9x9.txt 3` (cold, non-deterministic solve off,
+With the subset DP, the ticket's benchmark, `node
+examples/_shared/app-solve.mjs examples/up-to-n/PUZZLE_LINK_9x9.txt 3` (cold, non-deterministic solve off,
 2026-10-03) reaches a verdict on every rep: unique in a median 7800 ms after a
 median first solution at 3100 ms, 10900 ms in all (reps 10600 to 12600 ms, none
 timed out).
@@ -225,9 +231,10 @@ The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
 changed together, so a component swap into the old board would time a
 different puzzle. `just time up-to-n` on the corrected tree, run earlier on
 2026-09-26 while #613 was open, printed 16400 ms cold and 12000 ms
-after-logical; the #614 run above is the floor because it is the recorded
-`just time` measurement this example is judged against, not because it is
-the faster of the two. The 7% spread between the two runs of one board is
+after-logical; the 2026-09-26 #614 run (15200 ms and 11700 ms, since replaced
+by the rows above) was the floor then because it was the recorded `just time`
+measurement this example was judged against, not because it was the faster of
+the two. The 7% spread between the two runs of one board is
 wider than the <5% run-to-run variance `docs/real-app-timing.md` records
 for a deterministic solve, but neither run is slower than the other by a
 margin that would flip this section's "costs nothing" verdict, so the #614
