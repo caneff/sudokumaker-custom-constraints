@@ -9,6 +9,7 @@ One CP-SAT worker, a 1 s cap; a few seconds in all.
 """
 
 import json
+import random
 import subprocess
 import sys
 import tempfile
@@ -84,6 +85,38 @@ with tempfile.TemporaryDirectory() as tmp:
     got = [h[2] for h in f.warm_hits()]
     check("a grid the run forbids is never the hint", G_SAME not in got)
     check("the next nearest takes its place", got[0] == G_CORNER)
+
+    # propose hands the model the hits, never a forbidden one (a stub build stops the solve)
+    class Built(Exception):
+        pass
+
+    def proposed_hits(finder):
+        def stub(hunt, ten, corner, flags, hits=None):
+            raise Built(flags, hits)
+
+        real, chan_big.build = chan_big.build, stub
+        try:
+            finder.propose(random.Random(0))
+        except Built as e:
+            return e.args
+        finally:
+            chan_big.build = real
+
+    g = tie_finder.TieFinder("r1c5", "r7c7", "tr", 1, True, [a])
+    flags, hits = proposed_hits(g)
+    check("propose asks build to warm-start", "warm" in flags)
+    check("propose passes the nearest grid first", hits[0][2] == G_SAME)
+    g.found.append(G_SAME.replace("/", ""))
+    flags, hits = proposed_hits(g)
+    check(
+        "after a find, propose passes no grid the run forbids",
+        G_SAME not in [h[2] for h in hits],
+    )
+    flags, hits = proposed_hits(tie_finder.TieFinder("r1c5", "r7c7", "tr", 1, True))
+    check(
+        "without --warm-from, propose asks for no warm start",
+        "warm" not in flags and hits is None,
+    )
 
     q, warm_from, _ = chan_big.build(
         "r1c5",
