@@ -67,7 +67,7 @@ function makeTieLine (n) {
   return line.slice(0, n)
 }
 
-// ---- Line component: three kinds, both readings, plus the tie pool ----
+// ---- Line component: three fill shapes, both readings, plus the tie pool ----
 
 const LINE_CLUE = 200
 
