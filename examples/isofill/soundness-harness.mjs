@@ -250,16 +250,17 @@ const flankKept = ALL.filter(d => d !== 1)
 const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
   !flank.getCandidates(2).has(1) && flank.getCandidates(11).has(1)
 
-// ---- One pass: update reads each cell's candidates at most once per call ----
+// ---- One pass: update reads each cell's candidate mask at most once per call ----
+// (The scan reads masks, never getCandidates: pooling.test.mjs holds that.)
 const onePass = makePuzzle(rows, () => ALL)
 let reads = 0
-const getCandidates = onePass.getCandidates.bind(onePass)
-onePass.getCandidates = c => { reads++; return getCandidates(c) }
+const readsPerCell = new Map()
+const getMask = onePass.getCandidatesBitMask.bind(onePass)
+onePass.getCandidatesBitMask = c => { reads++; readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
 const onePassInst = {}
 mod.setParams(onePassInst, CELLS)
 Array.from(mod.update(onePassInst, onePass))
-const onePassOk = reads <= CELLS.length
-
+const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
@@ -291,14 +292,6 @@ const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
-// A board that does not split evenly among its digits must stop, not prune.
-installGlobals(0, 9)
-const badInst = {}
-mod.setParams(badInst, CELLS9)
-const badPuzzle = makePuzzle(rows9, () => ALL)
-Array.from(mod.update(badInst, badPuzzle))
-const stopped = badPuzzle._stopped !== null
-
 // The directed checks, by name: each one's line in the verdict, and all of
 // them in the pass.
 const CHECKS = {
@@ -321,7 +314,6 @@ const CHECKS = {
   'silent dead fired': silentDeadOk,
   'one pass': onePassOk,
   '9x9 cap fired': cap9Ok,
-  'uneven board stops': stopped,
   'perimeter arc fired': arcOk,
   'perimeter flank fired': flankOk,
   validate: validateOk

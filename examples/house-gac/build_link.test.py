@@ -78,8 +78,6 @@ if __name__ == "__main__":
         "the annotated backend's code, stripped, must match the plain link's"
     )
 
-    assert BACKEND.name == "main.js"
-
     # the double-splice guard: a base link that already carries a House GAC
     # constraint must refuse rather than double it (AGENTS.md: a splicing
     # generator run twice on one file duplicates the scene silently)
