@@ -691,9 +691,10 @@ def check_gen_frame_backends(example_dir):
         if error:
             continue
         try:
-            constraints = doc["puzzle"]["constraints"]
+            puzzle = doc["puzzle"]
         except KeyError:
             continue  # a board-data gen JSON carries no document at all
+        constraints = puzzle["constraints"]
         for constraint in constraints:
             definition = constraint.get("definition") or {}
             if definition.get("name") in titles and definition.get("backend", {}).get(

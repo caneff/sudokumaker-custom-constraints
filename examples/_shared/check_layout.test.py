@@ -875,8 +875,8 @@ if __name__ == "__main__":
     ) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
-    # only the missing `puzzle` key is skipped: a gen JSON of the wrong shape
-    # is a broken record and must fail loud, not be skipped
+    # only a missing `puzzle` key is skipped: a gen JSON of the wrong shape, or
+    # a `puzzle` with no `constraints`, is a broken record and must fail loud
     with example(extra_gens=["gen_6x6.json"], contents={"gen_6x6.json": "[]"}) as (
         _,
         d,
@@ -887,6 +887,17 @@ if __name__ == "__main__":
             pass
         else:
             raise AssertionError("a gen JSON that is not an object was skipped")
+
+    with example(
+        extra_gens=["gen_6x6.json"],
+        contents={"gen_6x6.json": json.dumps({"puzzle": {}})},
+    ) as (_, d):
+        try:
+            check_gen_frame_backends(d)
+        except KeyError:
+            pass
+        else:
+            raise AssertionError("a puzzle with no constraints was skipped")
 
     # stale backend code and a missing digit range are two checks: a stale
     # copy with a good range trips only the first, a fresh copy with no range
