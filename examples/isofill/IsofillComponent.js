@@ -417,7 +417,7 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
 // Its region still lies inside a single orthogonally connected component of the
 // cells that allow it, so a component smaller than `size` can hold no region
 // (ticket #142).
-function * noSeedRule (instance, puzzle, state, d, size) {
+function * silentDigitRule (instance, puzzle, state, d, size) {
   const { cells } = instance
   const { open, allowed } = state[d]
   const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
@@ -439,7 +439,7 @@ function * noSeedRule (instance, puzzle, state, d, size) {
 }
 
 // Everything one digit's own region says, in order: the seed walk that bounds
-// it, then whichever of cap, force, the seeded rules or the no-seed component
+// it, then whichever of cap, force, the seeded rules or the silent-digit rule
 // search applies. Returns the digit's `near` bound for the budget -- a mask of
 // the cells its region can still reach -- or null when no rule drew one.
 function * digitRule (instance, puzzle, state, d, size) {
@@ -462,7 +462,7 @@ function * digitRule (instance, puzzle, state, d, size) {
   } else if (placed.length > 0) {
     return yield * seededRule(instance, puzzle, state, d, size, walk)
   } else if (open.length > 0) {
-    return yield * noSeedRule(instance, puzzle, state, d, size)
+    return yield * silentDigitRule(instance, puzzle, state, d, size)
   }
   return null
 }

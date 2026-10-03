@@ -36,7 +36,7 @@ const board = (W, H) => ({
 // ---- a filtered list is refused, not mispaired ----
 // The misuse the guard exists for: hit-counts already has a bySide helper, so
 // framePairs(bySide('L')) is a plausible edit, and pairing L0 with L1 would
-// hand a joint component two clues on the same side and the wrong line.
+// hand a pair component two clues on the same side and the wrong line.
 {
   const lines = frameLines(board(7, 5))
   assert.throws(() => framePairs(lines.filter(g => g.side === 'L')), /whole frameLines output/)

@@ -4,14 +4,14 @@
 //
 //   node examples/hit-counts/update-strength.test.mjs
 //
-// A line clued at both ends gets the joint component, which carries the work the
-// per-line and pair components used to split between them, so its floor is
+// A line clued at both ends gets the pair component, which carries the work the
+// per-line and opposite-pair components used to split between them, so its floor is
 // those two run together at the commit that last shipped them: on random states
-// the joint update must leave a subset of what they left, cell for cell. A line
+// the pair update must leave a subset of what they left, cell for cell. A line
 // clued at one end keeps the per-line component, compared against itself. So is
-// the side sum. Two deterministic cases pin the inferences the joint component
-// adds: a mirrored pair can never give one A hit and one B hit, which the pair
-// component's count-only cap cannot reach; and on a line holding 1..n once each
+// the side sum. Two deterministic cases pin the inferences the pair component
+// adds: a mirrored pair can never give one A hit and one B hit, which the opposite-pair
+// floor's count-only cap cannot reach; and on a line holding 1..n once each
 // the permutation sweep drops a digit no permutation can put in the cell, which
 // the case sweep keeps.
 
@@ -25,12 +25,18 @@ const { load, loadAt } = makeIo(HERE)
 
 // The floor: the components as they stand at the commit that pins this test.
 const REF_COMMIT = 'db93523'
-// The per-line and pair components no longer exist in the tree. This is the
-// commit that last shipped them, gates and all — the strength the joint
+// The per-line and opposite-pair components no longer exist in the tree. This is the
+// commit that last shipped them, gates and all — the strength the pair
 // component has to match.
 const REPLACED_COMMIT = '7b3f9af'
-// The joint component with the case sweep alone, before the permutation sweep.
+// Collision: at that commit `HitCountsPairComponent.js` is the OLD opposite-pair
+// component, not the pair component under test (which was then called
+// HitCountsJointComponent.js). Each floor names the file as it was at its commit.
+const OPPOSITE_PAIR_REF_FILE = 'HitCountsPairComponent.js'
+// The pair component with the case sweep alone, before the permutation sweep.
 const CASE_SWEEP_COMMIT = '4cc09eb'
+// The file carried a different name at that commit, so the floor names its own path.
+const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
@@ -43,15 +49,15 @@ function stateOf (start, houses) {
   return makePuzzle(cells, c => start.get(c), { houses })
 }
 
-// ---- 1. HitCountsJointComponent against the per-line + pair floor ----
+// ---- 1. HitCountsPairComponent against the per-line + opposite-pair floor ----
 {
-  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
   const lineRef = loadAt(REPLACED_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
-  const pairRef = loadAt(REPLACED_COMMIT, 'HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairRef = loadAt(REPLACED_COMMIT, OPPOSITE_PAIR_REF_FILE, ['setParams', 'update'])
   const PA = 300
   const PB = 301
 
-  // The joint component reads clue A's line; clue B reads the same cells from
+  // The pair component reads clue A's line; clue B reads the same cells from
   // the far end, so its own line is the reverse.
   const candidate = LINE => ({
     run: p => {
@@ -81,7 +87,7 @@ function stateOf (start, houses) {
   for (const m of [4, 6, 9]) {
     installGlobals(0, m)
     const LINE = Array.from({ length: m }, (_, i) => 10 + i)
-    strengthSweep(`hit-counts joint ${m}`, {
+    strengthSweep(`hit-counts pair ${m}`, {
       cur: candidate(LINE),
       ref: floor(LINE),
       apply: (mod, p) => mod.run(p),
@@ -169,8 +175,8 @@ function stateOf (start, houses) {
 // The 0 is one more digit that hits neither way, so it leaves the cases alone.
 {
   installGlobals(0, 4)
-  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
-  const pairRef = loadAt(REPLACED_COMMIT, 'HitCountsPairComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
+  const pairRef = loadAt(REPLACED_COMMIT, OPPOSITE_PAIR_REF_FILE, ['setParams', 'update'])
   const CA = 400
   const CB = 401
   const LINE = [20, 21, 22, 23]
@@ -191,15 +197,15 @@ function stateOf (start, houses) {
   fixpoint(pairRef, ip, pp)
 
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
-  assert.deepStrictEqual(show(pj, 20), [0, 2, 4], 'joint drops the A hit at position 0')
-  assert.deepStrictEqual(show(pj, 23), [1, 2], 'joint drops the A hit at position 3')
+  assert.deepStrictEqual(show(pj, 20), [0, 2, 4], 'pair component drops the A hit at position 0')
+  assert.deepStrictEqual(show(pj, 23), [1, 2], 'pair component drops the A hit at position 3')
   assert.deepStrictEqual(show(pj, 21), [2, 4], 'position 1 keeps both cases')
   assert.deepStrictEqual(show(pj, 22), [1, 3], 'position 2 keeps both cases')
   for (const c of start.keys()) {
     assert.deepStrictEqual(show(pp, c), start.get(c).slice().sort((x, y) => x - y),
-      'the pair component reaches this state and removes nothing')
+      'the opposite-pair floor reaches this state and removes nothing')
   }
-  console.log('hit-counts mirrored pair: joint removes 2 candidates, the pair component 0')
+  console.log('hit-counts mirrored pair: the pair component removes 2 candidates, the opposite-pair floor 0')
 }
 
 // ---- 3b. A forced side hit the per-line scan misses, deterministic ----
@@ -291,8 +297,8 @@ function stateOf (start, houses) {
 {
   installGlobals(0, 4)
   const NAMES = ['setParams', 'update']
-  const cur = load('HitCountsJointComponent.js', NAMES)
-  const ref = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', NAMES)
+  const cur = load('HitCountsPairComponent.js', NAMES)
+  const ref = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE, NAMES)
   const CA = 400
   const CB = 401
   const LINE = [30, 31, 32, 33]
@@ -361,7 +367,7 @@ function stateOf (start, houses) {
 // non-exact signature reads only three case bits per cell, so a later live
 // state can hash the same and skip the sweep that would declare it dead.
 {
-  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
   installGlobals(0, 9)
   // A bare line of two cells, both {1,2}, with both clues pinned to 2. Two hits
   // at each end at once is impossible, so the case sweep stops.
@@ -379,7 +385,7 @@ function stateOf (start, houses) {
 // takes that sweep instead of the case sweep, and its stop must leave no memo
 // either.
 {
-  const cur = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
   installGlobals(0, 9)
   // Two house cells, both {1,2}: the line is 1,2 or 2,1, so the hit counts are
   // (2,0) or (0,2). Both clues pinned to 2 asks for (2,2), which no ordering

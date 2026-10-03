@@ -44,15 +44,15 @@ from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
-    "HitCountsJointComponent.js",
+    "HitCountsPairComponent.js",
     "SideSumComponent.js",
     "SideHitMatchingComponent.js",
 ]
-# main.js registers the joint component per paired ends and the single-line
+# main.js registers the pair component per paired ends and the single-line
 # component per unpaired group; the side components are main-global.js's
 # alone -- they need a whole side's clues, which only exists once every frame
 # line is drawn.
-LOCAL_COMPONENTS = ["HitCountsJointComponent.js", "HitCountsComponent.js"]
+LOCAL_COMPONENTS = ["HitCountsPairComponent.js", "HitCountsComponent.js"]
 
 
 def comment_text(n):

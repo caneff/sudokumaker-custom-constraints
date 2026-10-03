@@ -46,7 +46,7 @@ if __name__ == "__main__":
     assert "DifferentDigitsComponent" in builtins
     # an example's own component is not a built-in, or the checks that keep a
     # link's component list honest would stop seeing it
-    assert "SkyscraperLineComponent" not in builtins
+    assert "SkyscraperPairComponent" not in builtins
     assert "FooComponent" not in builtins
 
     # mismatch: the shipped-vs-registered comparison both framebuild.Lane.check and

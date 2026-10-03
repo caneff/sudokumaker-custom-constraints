@@ -38,7 +38,7 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "candidate.txt"
         for name in (
-            "HitCountsJointComponent",
+            "HitCountsPairComponent",
             "SideSumComponent",
             "SideHitMatchingComponent",
         ):
