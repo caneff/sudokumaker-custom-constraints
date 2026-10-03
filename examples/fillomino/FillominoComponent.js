@@ -121,11 +121,19 @@ function setParams (instance, cells) {
 // ISOFILL):
 // #include ../_shared/dominator.js
 
+// The visit stamp guard (shared with ISOFILL):
+// #include ../_shared/stamp.js
+
+// The next visit stamp on `mask`.
+function nextStamp (instance) {
+  return (instance.stamp = bumpStamp(instance.mask, instance.stamp))
+}
+
 // One grid scan: flood every placed cell into its island. Returns the island
 // list, each entry the digit, one seed cell and the cell count.
 function scan (instance, puzzle) {
   const { cells, nbrs, mask, queue } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   const islands = []
   for (let i = 0; i < cells.length; i++) {
     if (mask[i] === stamp || !puzzle.hasValue(cells[i])) continue
@@ -153,7 +161,7 @@ function scan (instance, puzzle) {
 // placed set wider than its digit, and stopping keeps the buffer small.
 function placedFlood (instance, puzzle, seed, digit, limit, out) {
   const { cells, nbrs, mask } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   mask[seed] = stamp
   out[0] = seed
   let head = 0
@@ -198,7 +206,7 @@ function freeClosure (instance, puzzle, layer, from, len, digit, stamp) {
 // a walk past that.
 function walk (instance, puzzle, members, count, digit, budget, exclude = -1) {
   const { cells, nbrs, mask } = instance
-  const stamp = ++instance.stamp
+  const stamp = nextStamp(instance)
   const bit = 1 << digit
   let [frontier, next] = instance.frontier
   let len = 0
@@ -437,7 +445,7 @@ function * doorRules (instance, puzzle, island) {
   if (count >= digit || island.reach <= digit) return OPEN
   const bit = 1 << digit
   const doors = []
-  const doorStamp = ++instance.stamp
+  const doorStamp = nextStamp(instance)
   for (let i = 0; i < count; i++) {
     for (const nb of nbrs[members[i]]) {
       if (mask[nb] !== doorStamp && !puzzle.hasValue(cells[nb]) && (puzzle.getCandidatesBitMask(cells[nb]) & bit) !== 0) {
@@ -504,7 +512,7 @@ function * componentBound (instance, puzzle) {
   // the last yield, so a pass the solver abandons half-way leaves the older
   // snapshot in place and the next pass reads a superset of what moved.
   const { cells, nbrs, mask, members, code, prev, seeds } = instance
-  const seedStamp = ++instance.stamp
+  const seedStamp = nextStamp(instance)
   let nSeeds = 0
   for (let i = 0; i < cells.length; i++) {
     const c = puzzle.hasValue(cells[i]) ? 1 << puzzle.getValue(cells[i]) : puzzle.getCandidatesBitMask(cells[i])
@@ -521,7 +529,7 @@ function * componentBound (instance, puzzle) {
 
   for (let digit = helpers.digits.minDigit; digit <= helpers.digits.maxDigit; digit++) {
     const bit = 1 << digit
-    const stamp = ++instance.stamp
+    const stamp = nextStamp(instance)
     for (let s = 0; s < nSeeds; s++) {
       const seed = seeds[s]
       if (mask[seed] === stamp || (code[seed] & bit) === 0) continue
