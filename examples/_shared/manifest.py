@@ -62,7 +62,10 @@ def load_manifest(example_dir):
     path = pathlib.Path(example_dir) / MANIFEST_NAME
     if not path.is_file():
         raise FileNotFoundError(f"missing {path}")
-    raw = tomllib.loads(path.read_text())
+    try:
+        raw = tomllib.loads(path.read_text())
+    except tomllib.TOMLDecodeError as e:
+        raise ValueError(f"{path}: {e}") from e
     unknown = sorted(set(raw) - set(Manifest.__annotations__))
     if unknown:
         raise ValueError(f"{path}: unknown key(s) {', '.join(unknown)}")

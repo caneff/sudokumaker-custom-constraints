@@ -87,6 +87,7 @@ rowcol_backend = "Rows & Columns"
         ('timed_component = "W"\nrules_prefix = "sudoku"\n', ("rules_prefix",)),
         ('timed_component = "W"\nhouses = "no"\n', ("houses",)),
         ('timed_component = "W"\ngenerator_less_links = "a.txt"\n', ("generator",)),
+        ('timed_component = "W"\nlanes = \n', ("Invalid",)),
     ]:
         tmp, d = manifest_in(text)
         raises(ValueError, d, str(d / MANIFEST_NAME), *needles)
