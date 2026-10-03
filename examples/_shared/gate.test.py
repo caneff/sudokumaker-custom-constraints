@@ -21,6 +21,7 @@
 #
 #   uv run examples/_shared/gate.test.py
 
+import ast
 import pathlib
 import shutil
 import sys
@@ -80,6 +81,18 @@ SCRIPTS = {
 }
 
 
+def finder_tests(root=ROOT):
+    """Repo-relative paths of every finder test, as the recipe's bash glob sees
+    them: dot-directories are skipped there, so they are skipped here."""
+    return sorted(
+        rel
+        for rel in (
+            p.relative_to(root).as_posix() for p in root.glob("finders/**/test_*.py")
+        )
+        if not any(part.startswith(".") for part in rel.split("/"))
+    )
+
+
 def on_disk(root=ROOT):
     """The command the gate must run for every test and harness file."""
     want = set()
@@ -90,10 +103,7 @@ def on_disk(root=ROOT):
     ):
         for f in root.glob(f"examples/*/{pattern}"):
             want.add(f"{runner} {f.relative_to(root).as_posix()}")
-    for f in root.glob("finders/**/test_*.py"):
-        rel = f.relative_to(root).as_posix()
-        if any(part.startswith(".") for part in rel.split("/")):
-            continue  # the recipe's bash glob skips dot-directories too
+    for rel in finder_tests(root):
         want.add(FINDER_COMMAND.get(rel, f"uv run {rel}"))
     return want - SLOW
 
@@ -105,18 +115,30 @@ def research_tests():
     }
 
 
-def pytest_style_outside_list():
-    """Finder tests that import pytest but would run as a plain script, which
-    defines the tests and exits 0 without calling any of them."""
+def pytest_style_outside_list(root=ROOT):
+    """Finder tests that define a top-level test_* function nothing in the file
+    references and have no `__main__` guard to dispatch to it: pytest would
+    collect it, but run as a plain script the file defines the test and exits 0
+    without calling it."""
     pytest_files = {k for k, v in FINDER_COMMAND.items() if "pytest" in v}
-    return sorted(
-        rel
-        for rel in (
-            p.relative_to(ROOT).as_posix() for p in ROOT.glob("finders/**/test_*.py")
-        )
-        if rel not in pytest_files
-        and "import pytest" in (ROOT / rel).read_text(encoding="utf-8")
-    )
+    out = []
+    for rel in finder_tests(root):
+        if rel in pytest_files:
+            continue
+        tree = ast.parse((root / rel).read_text(encoding="utf-8"))
+        used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        if "__main__" in {
+            n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
+        }:
+            continue
+        if any(
+            isinstance(n, ast.FunctionDef)
+            and n.name.startswith("test_")
+            and n.name not in used
+            for n in tree.body
+        ):
+            out.append(rel)
+    return out
 
 
 def planted_finder_test_is_run():
@@ -129,10 +151,22 @@ def planted_finder_test_is_run():
         planted = tree / "finders/zz_new/deep"
         planted.mkdir(parents=True)
         (planted / "test_planted.py").touch()
-        demanded = on_disk(tree)
-        assert demanded == {"uv run finders/zz_new/deep/test_planted.py"}, (
-            f"on_disk() misses a planted finder test: {sorted(demanded)}"
+        hidden = tree / "finders/zz_new/.venv"
+        hidden.mkdir()
+        (hidden / "test_vendored.py").write_text("def test_x():\n    assert False\n")
+        (tree / "finders/zz_new/test_pytest_style.py").write_text(
+            "def test_x():\n    assert False\n"
         )
+        demanded = on_disk(tree)
+        assert demanded == {
+            "uv run finders/zz_new/deep/test_planted.py",
+            "uv run finders/zz_new/test_pytest_style.py",
+        }, (
+            f"on_disk() misses a planted finder test or reads a hidden one: {sorted(demanded)}"
+        )
+        assert pytest_style_outside_list(tree) == [
+            "finders/zz_new/test_pytest_style.py"
+        ], "an uncalled test_ function in an unlisted finder test is not flagged"
         ran = set(commands("test", root=tree))
         assert demanded <= ran, f"just test misses {sorted(demanded - ran)}"
 
