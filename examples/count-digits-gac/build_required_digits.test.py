@@ -2,7 +2,7 @@
 # reproduce both shipped links (docs/research/required-digits-gac/) byte-
 # identically, and must leave the shipped files themselves untouched.
 #
-#   uv run examples/outside-sudoku/build_required_digits.test.py
+#   uv run examples/count-digits-gac/build_required_digits.test.py
 
 import pathlib
 import sys

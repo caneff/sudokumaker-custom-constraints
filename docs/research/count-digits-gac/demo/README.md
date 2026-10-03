@@ -164,7 +164,7 @@ cages, 40 cells, 5 counters, on 17 givens) than the four-cage one. The 4 x 10
 draw is kept as the smaller alternative, `gen_4x10.json` (a draw is not
 replayable from its seed: the grid comes from CP-SAT's portfolio search, so
 neither draw is re-derived; a swap is a rename plus a rebuild):
-`uv run examples/outside-sudoku/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_4x10.json --out <dir>`.
+`uv run examples/count-digits-gac/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_4x10.json --out <dir>`.
 
 ### Confirmation run on the counter-outside link (2026-09-19, v2026.08.14-d47fc4b)
 
@@ -249,8 +249,8 @@ In the app the disabled element is greyed in the Elements panel.
 ## Rebuild and check
 
 ```
-uv run examples/outside-sudoku/build_count_digits_demo.py          # rebuild the link from gen.json
-uv run examples/outside-sudoku/build_count_digits_demo.test.py     # board, uniqueness, flags, annotation, reproduction
+uv run examples/count-digits-gac/build_count_digits_demo.py          # rebuild the link from gen.json
+uv run examples/count-digits-gac/build_count_digits_demo.test.py     # board, uniqueness, flags, annotation, reproduction
 node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_LINK_demo.txt 3
 ```
 
@@ -261,5 +261,5 @@ on, for timing outside the app's menu. The counter-outside link rebuilds with
 **Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
 sparse builder's `model()` and `count_solutions()`), from the 17 givens, in the
 test. **Readability caveat:** the app draws cosmetic cages as thin dashed
-outlines, and the regions grow at random, so two regions that meet can be
+outlines, and the groups grow at random, so two groups that meet can be
 hard to tell apart; the colour and the `#` marker are what carry it.

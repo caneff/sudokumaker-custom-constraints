@@ -7,7 +7,7 @@
 #
 # The rule, stated once for both sides: the digit in a group's counter cell
 # equals the number of the group's cells holding one of the group's listed
-# digits. `model()` (imported from build_sparse_count_digits) is the CP-SAT
+# digits. `count_board.model()` is the CP-SAT
 # side; CountDigitsGacComponent.js is the JS side.
 #
 # The groups reach the solver the way an author's would, through `input.groups`
@@ -23,9 +23,9 @@
 # (`enabled` is the in-memory name, `Ec.save` in the app's main bundle);
 # writing `"enabled": false` is silently ignored.
 #
-#   uv run examples/outside-sudoku/build_count_digits_demo.py
+#   uv run examples/count-digits-gac/build_count_digits_demo.py
 #       rebuild the shipped link from the committed gen.json
-#   uv run examples/outside-sudoku/build_count_digits_demo.py --search SEED
+#   uv run examples/count-digits-gac/build_count_digits_demo.py --search SEED
 #       draw a fresh board into --gen (one-shot: the grid comes from CP-SAT's
 #       portfolio search, which the seed does not reproduce)
 #   ... --enabled builtin --out DIR
@@ -40,34 +40,38 @@
 import argparse
 import json
 import pathlib
-import random
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from build_sparse_count_digits import count_solutions, givens_of, model
-from build_sparse_required_digits import box, write
-from cpsat import SOLVED, solver
-from minify import minify_file, minify_js
+from board_kit import N, board_doc
+from board_kit import search as search_board
+from count_board import (
+    BASELINE_NAME,
+    CANDIDATE_NAME,
+    COMPONENT,
+    RESEARCH_DIR,
+    cage_constraints,
+    demo_backend_code,
+    groups_input,
+    grow_group,
+    model,
+)
+from minify import minify_file
+from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-DEMO_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac" / "demo"
+DEMO_DIR = RESEARCH_DIR / "demo"
 GEN = DEMO_DIR / "gen.json"  # the shipped board: self-counting (#584)
 # the counter-outside case: counters outside their own targets
 OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
 OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"
-BACKEND = DEMO_DIR / "main-demo.js"
-COMPONENT = HERE.parent / "count-digits-gac" / "CountDigitsGacComponent.js"
-CANDIDATE_NAME = "CountDigitsGacComponent"
-BASELINE_NAME = "CountDigitsComponent"
 # name -> (constraint title, class its backend registers)
 VARIANTS = {
     "builtin": ("CountDigits (built-in)", BASELINE_NAME),
     "gac": ("CountDigits (GAC)", CANDIDATE_NAME),
 }
 SHIPPED = "gac"
-COLOURS = ["#d0342c", "#1a6fd1", "#1f9d55", "#c77800", "#8a3ffc", "#0f8b8d"]
-N = 9
 
 
 # Both shapes end with the toggle instruction.
@@ -78,17 +82,17 @@ TOGGLE = (
     "and solve again to compare."
 )
 RULES_HEAD = (
-    "Normal sudoku rules apply. Each coloured region lists digits in its "
-    "corner. The cell marked # in the same colour is that region's "
+    "Normal sudoku rules apply. Each coloured group lists digits in its "
+    "corner. The cell marked # in the same colour is that group's "
 )
 RULES = (
-    RULES_HEAD + "counter: its digit equals how many cells of the region hold "
+    RULES_HEAD + "counter: its digit equals how many cells of the group hold "
     "one of the listed digits." + TOGGLE
 )
 # the shape authors write (#584): the counter is one of the cells it counts
 SELFCOUNT_RULES = (
     RULES_HEAD + "counter and one of its own cells: its digit equals how "
-    "many cells of the region, itself included, hold one of the listed "
+    "many cells of the group, itself included, hold one of the listed "
     "digits." + TOGGLE
 )
 
@@ -101,31 +105,11 @@ def is_selfcount(gen):
     )
 
 
-def grow_region(rng, taken, size):
-    """A connected set of `size` free cells, grown from a random seed cell."""
-    free = [(r, c) for r in range(N) for c in range(N) if (r, c) not in taken]
-    cells = [rng.choice(free)]
-    while len(cells) < size:
-        edge = [
-            (r + dr, c + dc)
-            for r, c in cells
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-            if 0 <= r + dr < N
-            and 0 <= c + dc < N
-            and (r + dr, c + dc) not in taken
-            and (r + dr, c + dc) not in cells
-        ]
-        if not edge:
-            return None
-        cells.append(rng.choice(edge))
-    return cells
-
-
 def draw_group(rng, grid, taken, index, n_targets, n_digits):
-    """One drawn group over the solution `grid`: a connected region disjoint
+    """One drawn group over the solution `grid`: a connected group disjoint
     from `taken`, a digit set, and a counter cell outside every group whose
     solution digit is the count. None when this draw has no counter to offer."""
-    cells = grow_region(rng, taken, n_targets)
+    cells = grow_group(rng, taken, n_targets)
     if cells is None:
         return None
     values = sorted(rng.sample(range(1, N + 1), n_digits))
@@ -149,17 +133,8 @@ def draw_group(rng, grid, taken, index, n_targets, n_digits):
     }
 
 
-def search(seed, n_groups, n_targets, n_digits):
-    """Draw a board: a solution grid, `n_groups` disjoint drawn groups over it,
-    and givens carved (in seeded random order) while the board stays unique."""
-    rng = random.Random(seed)
-    m, x = model([], {})
-    for cell in x:
-        m.AddHint(x[cell], rng.randrange(1, N + 1))
-    sv = solver(30, reproducible=False, seed=seed, randomize=True)
-    assert sv.Solve(m) in SOLVED
-    grid = [[sv.Value(x[r, c]) for c in range(N)] for r in range(N)]
-
+def make_groups(rng, grid, n_groups, n_targets, n_digits):
+    """`n_groups` disjoint drawn groups over `grid`, each from `draw_group`."""
     groups, taken = [], set()
     for _attempt in range(5000):
         if len(groups) == n_groups:
@@ -170,97 +145,33 @@ def search(seed, n_groups, n_targets, n_digits):
             taken |= {tuple(p) for p in g["cells"]} | {tuple(g["counter"])}
     if len(groups) != n_groups:
         raise RuntimeError(f"only drew {len(groups)} of {n_groups} groups")
-
-    givens = {(r, c): grid[r][c] for r in range(N) for c in range(N)}
-    order = list(givens)
-    rng.shuffle(order)
-    carve_order = []
-    for cell in order:
-        trial = {k: v for k, v in givens.items() if k != cell}
-        try:
-            unique = count_solutions(groups, trial) == 1
-        except TimeoutError:
-            unique = False  # no verdict: keep the given, lose nothing
-        if unique:
-            givens = trial
-            carve_order.append(cell)
-    return {
-        "grid": grid,
-        "groups": groups,
-        "carve_order": [list(p) for p in carve_order],
-        "carved": len(carve_order),
-    }
+    return groups
 
 
-def backend_code(class_name):
-    src = BACKEND.read_text().replace(CANDIDATE_NAME, class_name)
-    return minify_js(src, base_dir=BACKEND.parent, keep_comments=True)
-
-
-def groups_input(gen):
-    """The drawn groups, in the document's own shape: cell ids on the 9-wide
-    grid, `value` the group's digit list, and the counter cell FIRST, then the
-    targets -- the convention the backend reads (main-demo.js). Both
-    constraints carry this same list, emitted here once."""
-    return [
-        {
-            "cells": [r * N + c for r, c in [g["counter"], *g["cells"]]],
-            "value": " ".join(map(str, g["values"])),
-        }
-        for g in gen["groups"]
-    ]
-
-
-def cage_constraints(gen):
-    """One cosmetic-cage element per group: the group's cage labelled with its
-    digit list, and a one-cell cage on its counter labelled "#"."""
-    if len(gen["groups"]) > len(COLOURS):
-        # colour is what ties a # counter to its region: a wrapped palette
-        # would give two groups one colour
-        raise ValueError(f"{len(gen['groups'])} groups, {len(COLOURS)} colours")
-    out = []
-    for i, g in enumerate(gen["groups"]):
-        colour = COLOURS[i]
-        digits = " ".join(map(str, g["values"]))
-        out.append(
-            {
-                "type": 2001,
-                "name": f"Group {i + 1}: count of {digits}",
-                "cages": [
-                    {"value": digits, "cells": [r * N + c for r, c in g["cells"]]},
-                    {"value": "#", "cells": [g["counter"][0] * N + g["counter"][1]]},
-                ],
-                "style": {"text": {"color": colour}, "cage": {"color": colour}},
-            }
-        )
-    return out
+def search(seed, n_groups, n_targets, n_digits):
+    """Draw a board: a solution grid, `n_groups` disjoint drawn groups over it,
+    and givens carved (in seeded random order) while the board stays unique."""
+    return search_board(
+        seed,
+        lambda rng, grid: make_groups(rng, grid, n_groups, n_targets, n_digits),
+        model,
+    )
 
 
 def custom_constraint(gen, variant, enabled):
     title, class_name = VARIANTS[variant]
     components = (
-        [
-            {
-                "type": "code",
-                "name": CANDIDATE_NAME,
-                "code": minify_file(COMPONENT, keep_comments=True),
-            }
-        ]
+        [(CANDIDATE_NAME, minify_file(COMPONENT, keep_comments=True))]
         if class_name == CANDIDATE_NAME
         else []
     )
-    c = {
-        "name": title,
-        "type": 1000,
-        "definition": {
-            "name": title,
-            "input": [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}],
-            "backend": {"type": "code", "code": backend_code(class_name)},
-            "components": components,
-        },
-        "input": {"groups": groups_input(gen)},
-        "style": {},
-    }
+    c = code_constraint(
+        title,
+        demo_backend_code(class_name),
+        components,
+        groups=groups_input(gen),
+        named=True,
+    )
     if not enabled:
         c["disabled"] = True
     return c
@@ -269,31 +180,15 @@ def custom_constraint(gen, variant, enabled):
 def build_doc(gen, enabled=SHIPPED):
     """The board's document: both components as custom constraints, `enabled`
     (a VARIANTS key) switched on and the other left `disabled`."""
-    givens = givens_of(gen)
-    cells = [
-        {"value": gen["grid"][r][c], "given": True} if (r, c) in givens else {}
-        for r in range(N)
-        for c in range(N)
-    ]
-    regions = [box(r, c) for r in range(N) for c in range(N)]
-    return {
-        "formatVersion": "1.6.0",
-        "puzzle": {
-            "name": "CountDigits demo",
-            "author": "",
-            "type": "sudoku",
-            "width": N,
-            "height": N,
-            "comment": SELFCOUNT_RULES if is_selfcount(gen) else RULES,
-            "cells": cells,
-            "constraints": [
-                {"type": 0},
-                {"type": 1, "regions": regions},
-                *cage_constraints(gen),
-                *(custom_constraint(gen, v, v == enabled) for v in VARIANTS),
-            ],
-        },
-    }
+    return board_doc(
+        "CountDigits demo",
+        SELFCOUNT_RULES if is_selfcount(gen) else RULES,
+        gen,
+        [
+            *cage_constraints(gen),
+            *(custom_constraint(gen, v, v == enabled) for v in VARIANTS),
+        ],
+    )
 
 
 def link_name(gen_path, enabled):
@@ -309,7 +204,7 @@ def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     name = link_name(gen_path, enabled)
     out_dir.mkdir(parents=True, exist_ok=True)
-    write(build_doc(gen, enabled), out_dir / name)
+    write_link(build_doc(gen, enabled), out_dir / name)
     return out_dir / name
 
 

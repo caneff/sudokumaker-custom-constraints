@@ -56,7 +56,7 @@ RequiredDigitsGacComponent a real-app timing row.
 ### Building the boards
 
 ```
-uv run examples/outside-sudoku/build_required_digits.py
+uv run examples/count-digits-gac/build_required_digits.py
 ```
 
 Takes the shipped `examples/outside-sudoku/PUZZLE_LINK.txt` and replaces its
@@ -66,9 +66,9 @@ Takes the shipped `examples/outside-sudoku/PUZZLE_LINK.txt` and replaces its
 - `PUZZLE_LINK_required_digits.txt` — the wrapper, GAC as the swap target
 - `PUZZLE_LINK_required_digits_original.txt` — the wrapper, the built-in as the swap target
 
-`examples/outside-sudoku/build_required_digits.test.py` (part of `just
+`examples/count-digits-gac/build_required_digits.test.py` (part of `just
 test`) checks the rebuild is byte-identical and leaves the shipped links
-untouched. This script stays in `examples/outside-sudoku/`, not here, because
+untouched. This script stays in `examples/count-digits-gac/`, not here, because
 `docs/research/` refuses a new `.py` file (`check_research_python`, #469).
 These two links stay in `docs/research/`, not as `examples/outside-sudoku/`'s
 own boards, because they are not that example's board:
@@ -167,7 +167,7 @@ The Outside Sudoku wrapper board above could not settle the invariant: its
 groups are 2-3 cells. This board is built for the shape the offline bench
 favours (a sparse, large group) and searches deeply enough to read.
 
-`sparse/` holds it: `gen.json` (solution grid, 10 givens, and the generated
+`sparse/` holds it: `gen.json` (solution grid, carve order -- the 10 givens are the cells it leaves -- and the generated
 table of 20 groups), `main-sparse-global.js` (the backend, which registers
 each group's component directly -- no wrapper), and the two links.
 
@@ -191,7 +191,7 @@ each group's component directly -- no wrapper), and the two links.
   that one identifier, and the candidate link also ships the component code.
 
 ```
-uv run examples/outside-sudoku/build_sparse_required_digits.py   # rebuild both links
+uv run examples/count-digits-gac/build_sparse_required_digits.py   # rebuild both links
 D=docs/research/required-digits-gac/sparse
 uv run examples/_shared/probe_link.py strip $D/PUZZLE_LINK_sparse.txt cand.txt
 uv run examples/_shared/probe_link.py strip $D/PUZZLE_LINK_sparse_original.txt base.txt
