@@ -25,6 +25,7 @@ from check_layout import (
     committed_links,
 )
 from link_codec import encode_link
+from manifest import load_manifest
 from minify import minify_js
 
 HERE = pathlib.Path(__file__).parent
@@ -1015,7 +1016,8 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "widget" in violations[0] and "example.toml" in violations[0], violations
 
-    # a manifest with an unknown key or a bad value is a violation, not a crash
+    # a manifest with an unknown key or no timed_component is a violation, not
+    # a crash
     for bad in ('timed_component = "W"\ncolour = "red"\n', 'lanes = "single"\n'):
         with example(contents={"example.toml": bad}) as (root, _):
             violations = check_tree(root)
@@ -1059,7 +1061,7 @@ if __name__ == "__main__":
     assert named == [], f"check_layout.py names example(s): {named}"
     # ...and every real example has a manifest the loader accepts
     for name in sorted(example_names):
-        assert (HERE.parent / name / "example.toml").is_file(), name
+        load_manifest(HERE.parent / name)
 
     # retired-examples.toml is a name -> successor table of retired examples,
     # none of which is a current example
