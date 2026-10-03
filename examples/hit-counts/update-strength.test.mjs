@@ -18,7 +18,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, randomCandidates, strengthSweep, total } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
@@ -34,17 +34,6 @@ const CASE_SWEEP_COMMIT = '4cc09eb'
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
-
-// Run a set of already-parameterised components to a joint fixpoint. Each entry
-// is { mod, inst }; a pass drains every update, and the loop stops when a whole
-// pass removes nothing.
-function jointFixpoint (comps, p) {
-  for (let pass = 0; pass < 20; pass++) {
-    const before = total(p)
-    for (const { mod, inst } of comps) Array.from(mod.update(inst, p))
-    if (total(p) === before) break
-  }
-}
 
 // A deterministic case's state: `start` (cell -> candidate array) as a mock
 // puzzle declaring `houses`.
@@ -81,7 +70,7 @@ function stateOf (start, houses) {
       pairRef.setParams(pr, PA, PB, LINE)
       Array.from(lineRef.initialize(a, p))
       Array.from(lineRef.initialize(b, p))
-      jointFixpoint([{ mod: lineRef, inst: a }, { mod: lineRef, inst: b }, { mod: pairRef, inst: pr }], p)
+      fixpointAll([{ mod: lineRef, inst: a }, { mod: lineRef, inst: b }, { mod: pairRef, inst: pr }], p)
     }
   })
 

@@ -383,15 +383,16 @@ function lostTruth (p, truth) {
 // solution -- the solver calls it at every node, and a validate that rejects
 // the truth rules the answer out as surely as a bad prune.
 //
-// `draw(iter)` supplies a state: `{ truth, seed, parts, houses?, note? }` --
-// the cell -> true value map, makePuzzle's seed function, the `{ mod, inst }`
-// list to run, and the declared houses
-// and `inspect(p)`, called on the seeded puzzle before it runs, for a
-// harness's own coverage counts. `note` is printed beside a violation. The oracle is the example's: it
-// derives `truth` from whatever it draws.
+// `draw(iter)` supplies a state: `{ truth, seed, parts, houses?, note?, inspect? }`
+// -- the cell -> true value map, makePuzzle's seed function, the `{ mod, inst }`
+// list to run, the declared houses, what to print beside a violation, and
+// `inspect(p)`, called on the seeded puzzle before it runs, for a harness's
+// own coverage counts. The oracle is the example's: it derives `truth` from
+// whatever it draws.
 // Returns `{ tests, violations, validateRejects, failures, fired, ok }`;
-// `failures` is the two counts summed and `ok` is true when it is zero. Whether `fired` is enough coverage is the
-// harness's call, so it can differ per pool.
+// `failures` is the two counts summed and `ok` is true when it is zero.
+// Whether `fired` is enough coverage is the harness's call, so it can differ
+// per pool. A part with no `validate` is not asked one.
 export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let violations = 0
   let validateRejects = 0
