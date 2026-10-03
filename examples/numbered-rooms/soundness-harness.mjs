@@ -20,7 +20,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -80,17 +80,25 @@ function fuzz (label, kind, minDigit, sizes, draw) {
   let bad = 0
   for (const [m, D] of sizes) {
     installGlobals(minDigit, D)
-    for (let iter = 0; iter < ITERS; iter++) {
-      const line = draw(kind, m, D)
-      if (line === null) continue
-      const truth = truthOf(line)
-      const p = makePuzzle(truth, (c, v) => randomCandidates(rnd, minDigit, D, v), { houses: housesOf(kind, lineCells(line.length)) })
-      const inst = {}
-      mod.setParams(inst, CLUE, lineCells(line.length))
-      const v = violates(mod, inst, p, truth)
-      tests++
-      if (v) { bad++; if (bad <= 5) console.log('violation', v, 'line', line, `m=${line.length} D=${D}`) }
-    }
+    const r = fuzzSoundness(`${label} m=${m} D=${D}`, {
+      iters: ITERS,
+      draw: () => {
+        // a draw with no cell the indexer can point at is no truth: draw again
+        let line = null
+        while (line === null) line = draw(kind, m, D)
+        const inst = {}
+        mod.setParams(inst, CLUE, lineCells(line.length))
+        return {
+          truth: truthOf(line),
+          seed: (c, v) => randomCandidates(rnd, minDigit, D, v),
+          houses: housesOf(kind, lineCells(line.length)),
+          parts: [{ mod, inst }],
+          note: `line ${line} m=${line.length} D=${D}`
+        }
+      }
+    })
+    tests += r.tests
+    bad += r.failures
   }
   console.log(`soundness ${label}:`, tests, 'tests,', bad, 'violations')
   return bad
@@ -123,5 +131,4 @@ const strong = removals > 0 && clueCands.length === 1 && clueCands[0] === 3
 console.log('strength: clue pruned to', clueCands, `(was {1,2,3,4}), ${removals} removals with clue unsolved`)
 
 const ok = bad === 0 && strong
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)

@@ -53,6 +53,7 @@ from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "required-digits-gac"
+GAC_DIR = HERE.parent / "count-digits-gac"
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 TIMED_COMPONENT = "RequiredDigitsWrapperComponent"
 
@@ -79,7 +80,7 @@ def build_gac(base):
     """`base` with the wrapper registered alongside RequiredDigitsGacComponent
     itself, swapped to GAC."""
     host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
-    gac_code = minify_file(RESEARCH_DIR / "RequiredDigitsGacComponent.js")
+    gac_code = minify_file(GAC_DIR / "RequiredDigitsGacComponent.js")
     assert host_code and gac_code, "component code empty"
     return _build(
         base,

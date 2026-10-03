@@ -42,9 +42,7 @@ from minify import minify_file
 HERE = pathlib.Path(__file__).parent
 BOARD_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac" / "self-count"
 GEN = BOARD_DIR / "gen.json"
-CURRENT = (
-    HERE.parent.parent / "docs/research/count-digits-gac/CountDigitsGacComponent.js"
-)
+CURRENT = HERE.parent / "count-digits-gac" / "CountDigitsGacComponent.js"
 PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
 # link name -> component source
 VARIANTS = {"current": CURRENT, "pre578": PRE578}

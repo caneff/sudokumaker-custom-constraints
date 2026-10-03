@@ -40,7 +40,7 @@ board, at 500ms / 300ms. Both are BASELINE rows on the same component.
   checked, README "No `original/` baseline"). **Built in #534** — not as a
   second baseline for this component (`OutsideSudokuComponent.js` still wins
   in three bitmask reads and needs no detour through RequiredDigits), but to
-  give `docs/research/required-digits-gac/RequiredDigitsGacComponent.js` a
+  give `examples/count-digits-gac/RequiredDigitsGacComponent.js` a
   real-app timing row it had none of: no example registered a
   RequiredDigits-shaped component to swap. The wrapper
   (`docs/research/required-digits-gac/RequiredDigitsWrapperComponent.js`)

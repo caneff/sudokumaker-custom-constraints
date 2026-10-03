@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, violates, total, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, fixpoint, fuzzSoundness } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -57,19 +57,16 @@ const seeder = makeSeeder(rnd, ALL)
 const COLUMNS = columnsOf(N)
 const ITERS = 5000
 for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (no houses)', []]]) {
-  let bad = 0
-  let changed = 0
-  for (let i = 0; i < ITERS; i++) {
-    const start = makePuzzle(truth, seeder, { houses })
-    const before = total(start)
-    const inst = { cells: CELLS }
-    mod.setParams(inst, CELLS)
-    if (violates(mod, inst, start, truth) !== null) bad++
-    if (total(start) !== before) changed++
-  }
-  console.log(`${label.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', changed, 'states pruned')
-  assert.strictEqual(bad, 0, `${label}: ${bad} violations`)
-  assert.ok(changed > 0, `${label}: update never removed a candidate: the prune is dead`)
+  const r = fuzzSoundness(label, {
+    iters: ITERS,
+    draw: () => {
+      const inst = { cells: CELLS }
+      mod.setParams(inst, CELLS)
+      return { truth, seed: seeder, houses, parts: [{ mod, inst }] }
+    }
+  })
+  assert.strictEqual(r.failures, 0, `${label}: ${r.failures} failures`)
+  assert.ok(r.fired > 0, `${label}: update never removed a candidate: the prune is dead`)
 }
 
 // ---- soundness on boards whose columns are not a plain sudoku's (#693) -----
@@ -91,22 +88,19 @@ for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, 
     }
   }
   const label = `${width}x${width}, digits ${lo}-${hi}`
-  let bad = 0
-  let changed = 0
-  for (let i = 0; i < 2000; i++) {
-    const truthHere = {}
-    for (let col = 0; col < width; col++) drawColumn().forEach((d, row) => { truthHere[row * width + col] = d })
-    const start = makePuzzle(truthHere, makeSeeder(rnd, digits), { houses: columns })
-    const before = total(start)
-    const inst = { cells }
-    mod.setParams(inst, cells)
-    if (violates(mod, inst, start, truthHere) !== null) bad++
-    if (total(start) !== before) changed++
-  }
+  const r = fuzzSoundness(label, {
+    iters: 2000,
+    draw: () => {
+      const truthHere = {}
+      for (let col = 0; col < width; col++) drawColumn().forEach((d, row) => { truthHere[row * width + col] = d })
+      const inst = { cells }
+      mod.setParams(inst, cells)
+      return { truth: truthHere, seed: makeSeeder(rnd, digits), houses: columns, parts: [{ mod, inst }] }
+    }
+  })
   installGlobals(1, 9)
-  console.log(`${label.padEnd(28)}`, 2000, 'tests,', bad, 'violations,', changed, 'states pruned')
-  assert.strictEqual(bad, 0, `${label}: ${bad} violations`)
-  assert.ok(changed > 0, `${label}: update never removed a candidate`)
+  assert.strictEqual(r.failures, 0, `${label}: ${r.failures} failures`)
+  assert.ok(r.fired > 0, `${label}: update never removed a candidate`)
 }
 
 // ---- validate agrees with the truth on the solved grid --------------------

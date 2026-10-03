@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -35,13 +35,7 @@ const { load } = makeIo(HERE)
   const inst = { cells: affected }
   sideSum.setParams(inst, SIDE, N, PERP)
   // A solver that wakes the component only when a listed cell has changed.
-  const snapshot = () => affected.map(c => p.getCandidatesBitMask(c)).join()
-  let seen = null
-  const wake = () => {
-    if (snapshot() === seen) return
-    Array.from(sideSum.update(inst, p))
-    seen = snapshot()
-  }
+  const { wake } = makeWaker(sideSum, inst, p, affected)
   wake() // the load pass: the 0 is live on line 0, so the gate is shut
   assert.deepEqual([...p._cand.get(SIDE[0])], [1, 5], 'the gate is shut while line 0 holds a 0')
   p._cand.get(PERP[0][0]).delete(0) // line 0 becomes a house of 1..9: the gate opens

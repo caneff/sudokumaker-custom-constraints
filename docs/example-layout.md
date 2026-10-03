@@ -49,6 +49,7 @@ violation.
 | `shared_component` | A component whose one file lives in `examples/_shared/` | none |
 | `generator_less_links` | Links with no `gen*.json` behind them | `[]` |
 | `rowcol_backend` | The name a borrowed, non-frame rows-and-columns backend ships under | none |
+| `boardless` | `true` for an example that holds components and the harness that checks them and ships no board of its own: it needs only `README.md`, a `*Component.js` and `soundness-harness.mjs` (`count-digits-gac`) | `false` |
 
 `rules_prefix = "none"` and `houses = false` stay two separate fields: each is
 its own question, and a new non-sudoku example argues both (2026-09-07 ruling).

@@ -40,7 +40,7 @@ from framebuild import (
     save_board,
     unique,
 )
-from minify import minify_js
+from minify import minify_file, minify_js
 from no_ring import NoRing
 
 
@@ -320,7 +320,7 @@ def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
             {
                 "type": "code",
                 "name": "HouseGacComponent",
-                "code": minify_js((shared / "HouseGacComponent.js").read_text()),
+                "code": minify_file(shared / "HouseGacComponent.js"),
             }
         ]
 

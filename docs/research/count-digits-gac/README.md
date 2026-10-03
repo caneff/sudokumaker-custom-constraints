@@ -3,7 +3,7 @@
 A pruning replacement for the app's built-in CountDigits rule
 (`CountDigitsComponent(name, digits, counterCell, targetCells)`), which is
 validate-only and removes no candidate ever. See
-`CountDigitsGacComponent.js`'s own header for the rule, the three deductions
+`examples/count-digits-gac/CountDigitsGacComponent.js`'s own header for the rule, the three deductions
 and the soundness argument.
 
 **Verdict: `two-row rule: SHIP`** — 0.04x cold and 0.10x after-logical on a
@@ -15,13 +15,13 @@ target list included (#578); a non-counter cell listed twice is the one gap.
 
 | File | What it is |
 |---|---|
-| `CountDigitsGacComponent.js` | The replacement itself. |
-| `BuiltinCountDigitsComponent.js` | The built-in's own rule, ported verbatim from the bundle body, for the offline comparisons below. Not for use in a puzzle — the app already has this one. |
-| `count-digits.test.mjs` | One hand-worked case per deduction, plus both stop paths and `validate`. |
-| `soundness-harness.mjs` | Soundness, strength against the built-in, and completeness against a brute-force oracle. |
+| `../../../examples/count-digits-gac/` | The replacement (`CountDigitsGacComponent.js`), the built-in's ported rule, the worked-case test and the soundness harness: the component ships in links, so the gate reads it. |
 | `bench-count-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, best of 3. |
 | `sparse/` | The real-app timing board (#543), below. |
 | `demo/` | The readable board (#568): both components in one link, toggled in the Elements panel. See `demo/README.md`. |
+
+The boards (`sparse/`, `demo/`, `self-count/`) stay here until the four builders
+move next to their components (#658).
 
 ## What the built-in does, and does not
 
@@ -55,8 +55,8 @@ throw a named error from `setParams`; `count-digits.test.mjs` holds them to it.
 ## Offline: soundness, strength, completeness
 
 ```
-node docs/research/count-digits-gac/count-digits.test.mjs
-node docs/research/count-digits-gac/soundness-harness.mjs
+node examples/count-digits-gac/count-digits.test.mjs
+node examples/count-digits-gac/soundness-harness.mjs
 node docs/research/count-digits-gac/bench-count-digits.mjs
 ```
 

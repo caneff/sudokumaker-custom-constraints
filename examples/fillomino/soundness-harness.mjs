@@ -22,7 +22,7 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, patchSource, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -64,13 +64,6 @@ const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).
 // varied — a second valid solution: many 1s, 2s and 3s and one 4-region.
 const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
 
-function run (truth, seed, CELLS) {
-  const p = makePuzzle(truth, seed)
-  const inst = {}
-  mod.setParams(inst, CELLS)
-  return { p, v: violates(mod, inst, p, truth) }
-}
-
 let bad = 0
 
 // ---- Fuzz: true values survive, on both fixtures ----
@@ -81,13 +74,14 @@ for (const [name, { truth, n }] of [['shipped', shipped], ['varied', varied]]) {
   const ALL = Array.from({ length: n }, (_, d) => d + 1)
   // pinned, full, or a subset that keeps true
   const seed = makeSeeder(rnd, ALL)
-  let fails = 0
-  for (let iter = 0; iter < FUZZ; iter++) {
-    const { v } = run(truth, seed, CELLS)
-    if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
-  }
-  console.log('fillomino', name, `fixture: ${FUZZ} tests,`, fails, 'violations')
-  bad += fails
+  bad += fuzzSoundness(`fillomino ${name} fixture`, {
+    iters: FUZZ,
+    draw: () => {
+      const inst = {}
+      mod.setParams(inst, CELLS)
+      return { truth, seed, parts: [{ mod, inst }] }
+    }
+  }).failures
 }
 
 // ---- Directed checks below: their own fixed 6x6 grid, not gen.json ----
@@ -189,16 +183,14 @@ for (const rule of Object.keys(RULES)) {
     installGlobals(1, n)
     const RCELLS = Array.from({ length: n * n }, (_, i) => i)
     const seed = makeSeeder(rnd, Array.from({ length: n }, (_, d) => d + 1))
-    let fails = 0
-    for (let iter = 0; iter < RULE_FUZZ; iter++) {
-      const p = makePuzzle(truth, seed)
-      const inst = {}
-      solo.setParams(inst, RCELLS)
-      const v = violates(solo, inst, p, truth)
-      if (v) { fails++; if (fails <= 5) console.log(rule, name, 'violation', v) }
-    }
-    console.log(`fillomino ${rule} alone, ${name}:`, RULE_FUZZ, 'tests,', fails, 'violations')
-    bad += fails
+    bad += fuzzSoundness(`fillomino ${rule} alone, ${name}`, {
+      iters: RULE_FUZZ,
+      draw: () => {
+        const inst = {}
+        solo.setParams(inst, RCELLS)
+        return { truth, seed, parts: [{ mod: solo, inst }] }
+      }
+    }).failures
   }
   installGlobals(1, N)
 }
@@ -222,4 +214,4 @@ mod.setParams(partialInst, CELLS)
 if (!mod.validate(partialInst, partial)) { console.log('fillomino validate: judged an unfilled grid'); bad++ }
 
 console.log('fillomino soundness-harness:', bad, 'failures')
-process.exit(bad ? 1 : 0)
+finishHarness(bad === 0)

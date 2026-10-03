@@ -1,10 +1,10 @@
 // Per-call cost of CountDigitsGacComponent against the built-in CountDigits
-// rule (BuiltinCountDigitsComponent.js, ported from the bundle body), on 20000
+// rule (examples/count-digits-gac/BuiltinCountDigitsComponent.js, ported from the bundle body), on 20000
 // random states per shape, best of 3 reps.
 //
 // The two do not compute the same thing -- that is the point of the
 // replacement -- so this is a cost row only; soundness and strength are
-// soundness-harness.mjs. Three columns, because that is what the app actually
+// examples/count-digits-gac/soundness-harness.mjs. Three columns, because that is what the app actually
 // runs per state:
 //   - `builtin validate`: the whole of the built-in's work. It has no update.
 //   - `gac update`:  the pruning pass, run on every changed watch cell.
@@ -14,14 +14,14 @@
 //     built-in's.
 //
 // Run: node docs/research/count-digits-gac/bench-count-digits.mjs
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makeRng } from '../../../examples/_shared/harness-lib.mjs'
 
+const GAC_DIR = new URL('../../../examples/count-digits-gac/', import.meta.url).pathname
+
 installGlobals(1, 9)
-const here = makeIo(dirname(fileURLToPath(import.meta.url)))
-const gac = here.load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
-const builtin = here.load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
+const gacIo = makeIo(GAC_DIR)
+const gac = gacIo.load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
+const builtin = gacIo.load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
 
 const { rnd } = makeRng(99)
 const STATES = 20000

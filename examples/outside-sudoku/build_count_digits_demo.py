@@ -57,9 +57,7 @@ GEN = DEMO_DIR / "gen.json"  # the shipped board: self-counting (#584)
 OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
 OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"
 BACKEND = DEMO_DIR / "main-demo.js"
-COMPONENT = (
-    HERE.parent.parent / "docs/research/count-digits-gac/CountDigitsGacComponent.js"
-)
+COMPONENT = HERE.parent / "count-digits-gac" / "CountDigitsGacComponent.js"
 CANDIDATE_NAME = "CountDigitsGacComponent"
 BASELINE_NAME = "CountDigitsComponent"
 # name -> (constraint title, class its backend registers)

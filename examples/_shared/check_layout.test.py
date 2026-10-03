@@ -26,7 +26,7 @@ from check_layout import (
 )
 from link_codec import encode_link
 from manifest import load_manifest
-from minify import minify_js
+from minify import minify_file, minify_js
 from sm_document import code_constraint
 
 HERE = pathlib.Path(__file__).parent
@@ -136,7 +136,7 @@ def _link(
             [
                 (
                     component,
-                    minify_js((HERE / f"{component}.js").read_text())
+                    minify_file(HERE / f"{component}.js")
                     + ("\n// an older copy" if wanted == "stale_component" else ""),
                 )
             ]
@@ -147,7 +147,7 @@ def _link(
     if house_gac_renamed:
         # A backend of its own (never house-gac.js -- that is the point of
         # the rename), carrying only the shared HouseGacComponent.js.
-        comp_code = minify_js((HERE / "HouseGacComponent.js").read_text())
+        comp_code = minify_file(HERE / "HouseGacComponent.js")
         if house_gac_renamed == "stale_component":
             comp_code += "\n// an older copy"
         extra.append(
@@ -987,6 +987,25 @@ if __name__ == "__main__":
             assert "widget" in violations[0] and "example.toml" in violations[0], (
                 violations
             )
+
+    # a boardless example (components and a harness, no shipped board) needs
+    # only README, a component and the soundness harness -- and still needs
+    # those three
+    BOARDLESS = ["README.md", "FooComponent.js", "soundness-harness.mjs"]
+    with example(files=BOARDLESS, manifest={"boardless": True}) as (root, d):
+        assert check_tree(root) == [], check_tree(root)
+        for missing in BOARDLESS:
+            (d / missing).rename(d / "held")
+            violations = check_tree(root)
+            assert any("missing required file" in v for v in violations), (
+                missing,
+                violations,
+            )
+            (d / "held").rename(d / missing)
+        # a link committed to a boardless example is still checked
+        (d / "PUZZLE_LINK_bogus.txt").write_text(_link())
+        violations = check_tree(root)
+        assert any("link name" in v for v in violations), violations
 
     # a manifest's shared_component must exist in _shared/
     with example(manifest={"shared_component": "NoSuchComponent"}) as (root, _):

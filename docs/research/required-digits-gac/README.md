@@ -3,23 +3,25 @@
 A full-strength, drop-in replacement for the app's built-in RequiredDigits
 rule (`RequiredDigitsComponent(name, values, cells)`): Hall's condition on
 the value side instead of the built-in's greedy strike-off (see
-`RequiredDigitsGacComponent.js`'s own header for the rule and the soundness
+`examples/count-digits-gac/RequiredDigitsGacComponent.js`'s own header for the rule and the soundness
 argument).
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `RequiredDigitsGacComponent.js` | The replacement itself. |
+| `../../../examples/count-digits-gac/` | The replacement (`RequiredDigitsGacComponent.js`) and its soundness harness: the component ships in links, so the gate reads it. |
 | `BuiltinRequiredDigitsComponent.js` | The built-in's own rule, ported verbatim from the bundle body, for the offline strength/cost comparisons below. Not for use in a puzzle — the app already has this one. |
-| `soundness-harness.mjs` | Soundness (28,000 states, 0 violations), strength against the built-in, and completeness against a brute-force SDR oracle. |
 | `bench-required-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, 3 reps. |
 | `RequiredDigitsWrapperComponent.js`, `RequiredDigitsWrapperComponentBuiltin.js`, `main-required-digits-global.js`, `PUZZLE_LINK_required_digits*.txt` | The real-app timing rig (#534), below. |
+
+The boards, the timing rig and `BuiltinRequiredDigitsComponent.js` stay here until
+the four builders move next to their components (#658).
 
 ## Offline: soundness and cost
 
 ```
-node docs/research/required-digits-gac/soundness-harness.mjs
+node examples/count-digits-gac/soundness-harness.mjs
 node docs/research/required-digits-gac/bench-required-digits.mjs
 ```
 

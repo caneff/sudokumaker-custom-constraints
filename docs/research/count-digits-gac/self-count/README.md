@@ -17,7 +17,7 @@ Same board, one component swapped (same-board comparison,
 
 | link | component |
 |---|---|
-| `PUZZLE_LINK_selfcount_current.txt` | `../CountDigitsGacComponent.js` (with #578) |
+| `PUZZLE_LINK_selfcount_current.txt` | `examples/count-digits-gac/CountDigitsGacComponent.js` (with #578) |
 | `PUZZLE_LINK_selfcount_pre578.txt` | `CountDigitsGacComponent.pre578.js` (`git show d0b1854:docs/research/count-digits-gac/CountDigitsGacComponent.js`) |
 
 Each is a 9x9 sudoku, CP-SAT-unique (the app's `[unique]` readout is the controller's to confirm), `entered: 0`, one custom constraint, digits
