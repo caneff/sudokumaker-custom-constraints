@@ -27,7 +27,7 @@ const DIGITS = [...Array(N).keys()].map(i => i + 1)
 // A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 const seeder = makeSeeder(rnd, DIGITS)
 
-const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
 
 // ---------------------------------------------------------------------------
 // The one-sided DP: the LOCAL line component, one clue at one end of a drawn
@@ -186,7 +186,7 @@ const LINE = [...Array(N).keys()]
 // The DP is a full-house rule and gates on the kind the mock declares
 // (docs/line-contract.md), so every state built around a permutation says so.
 const FULL = { houses: [LINE] }
-const lineRun = fuzzSoundness('line component', {
+const lineRun = fuzzSoundness('pair component', {
   iters: FUZZ,
   draw: () => {
     const perm = shuffled()
@@ -403,7 +403,7 @@ console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shu
 // house as "may repeat" and never fires: the fuzz above would report zero
 // prune firings and fail. This runs that mistake and holds the harness to
 // seeing it.
-const clueInQuery = load('SkyscraperLineComponent.js', ['setParams', 'update'], src => patchSource(src,
+const clueInQuery = load('SkyscraperPairComponent.js', ['setParams', 'update'], src => patchSource(src,
   'lineKind(instance, puzzle, line).oneToN) return\n', 'lineKind(instance, puzzle, [clueA, ...line]).oneToN) return\n'))
 installGlobals(1, N)
 let clueQueryFired = 0

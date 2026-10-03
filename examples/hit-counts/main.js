@@ -6,7 +6,7 @@
 // replaceComponent and custom components in ../../docs/gotchas.md).
 //
 // Two groups that cover the same cells in opposite directions are the two ends
-// of one line, and they get a single HitCountsJointComponent, which reads the
+// of one line, and they get a single HitCountsPairComponent, which reads the
 // line, both clues, and the hit conflicts between a position and its mirror. A
 // group with no such partner -- a drawn path, or half a frame an author is
 // still drawing -- keeps the per-line HitCountsComponent, whose bounds need
@@ -37,7 +37,7 @@ for (let i = 0; i < groups.length; i++) {
     paired.add(j)
     const name = `the hit-count clues at ${helpers.naming.getCellName(groups[i].clue)} and ${helpers.naming.getCellName(groups[j].clue)}`
     puzzle.addConstraintComponent(
-      new HitCountsJointComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
+      new HitCountsPairComponent(name, groups[i].clue, groups[j].clue, groups[i].line))
     break
   }
 }

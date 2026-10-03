@@ -20,7 +20,7 @@
 // line's live digits to be exactly 1..n, which a house alone does not promise.
 // The permutation sweep needs that same full house of 1..n.
 
-//! Joint hit counts. One component for a whole line and both its clues.
+//! Pair hit counts. One component for a whole line and both its clues.
 //! Position j (0-based from clue A) hits for A when it holds digit j+1 and for B
 //! when it holds digit n-j. So digit d can hit in only two places: position d-1
 //! for A, position n-d for B. Reading hits as a matching between digits and

@@ -2,7 +2,7 @@
 //
 // No groups are drawn: the frame lines come from the shared reader below, one
 // { side, clue, line } per clued line (examples/_shared/frame-lines.js).
-// Then register the same joint line component as main.js, plus the per-side
+// Then register the same pair component as main.js, plus the per-side
 // sum, which only makes sense across the whole frame.
 //
 // The interior's rows and columns ARE the frame's lines: a left clue and a
@@ -27,13 +27,13 @@ const sides = [
 ]
 
 //! Opposite pair: the two clues at the ends of one line get ONE
-//! HitCountsJointComponent, which reads the line, both clues, and the hit
+//! HitCountsPairComponent, which reads the line, both clues, and the hit
 //! conflicts between a position and its mirror. `framePairs` hands over the two
 //! ends of each line by construction -- left with right on a row, top with
 //! bottom on a column -- and `a.line` is the line read inward from clue `a`.
 for (const { a, b } of framePairs(lines)) {
   const name = `the hit-count clues at ${helpers.naming.getCellName(a.clue)} and ${helpers.naming.getCellName(b.clue)}`
-  puzzle.addConstraintComponent(new HitCountsJointComponent(name, a.clue, b.clue, a.line))
+  puzzle.addConstraintComponent(new HitCountsPairComponent(name, a.clue, b.clue, a.line))
 }
 
 //! Side sum: the n clues on one side sum to exactly n. Regroup the side's hits

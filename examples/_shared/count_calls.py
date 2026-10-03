@@ -4,7 +4,7 @@
 # skyscraper line component: 57,000 calls, so 0.1 ms per call is the lever.)
 #
 #   uv run --with lzstring examples/_shared/count_calls.py skyscraper \
-#       examples/skyscraper/SkyscraperLineComponent.js [--ring-clues]
+#       examples/skyscraper/SkyscraperPairComponent.js [--ring-clues]
 #   uv run --with lzstring examples/_shared/count_calls.py isofill \
 #       /tmp/probe/IsofillComponent.js --board PUZZLE_LINK_28g.txt
 #

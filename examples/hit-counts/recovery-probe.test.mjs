@@ -1,7 +1,7 @@
 // Regression golden for the recovery probe: asserts its stdout is
 // BYTE-IDENTICAL to a fixed golden, per invocation. Covers the report path
 // (gen_6, gen_9) and the search path (gen_6 with the matching on and off,
-// gen_9 with it off). The gen_9 search is the board the joint component was
+// gen_9 with it off). The gen_9 search is the board the pair component was
 // built for, so a pruning regression there fails this test; it runs about a
 // minute, the slowest case here.
 //

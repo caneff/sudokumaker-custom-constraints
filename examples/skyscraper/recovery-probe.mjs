@@ -12,7 +12,7 @@
 // keep ON TOP of the all-different SudokuMaker already runs.
 //
 // TWO wirings, same start state:
-//   - 'ours'     — main-global.js: one SkyscraperLineComponent per line, reading BOTH
+//   - 'ours'     — main-global.js: one SkyscraperPairComponent per line, reading BOTH
 //                  end clues and the line together (deduces blank clues).
 //   - 'original' — the wrapper ChinStrap shipped: one per-line component that does
 //                  NOTHING while its clue is blank, and once the clue is pinned
@@ -129,11 +129,11 @@ makeFrameProbe({
   here: HERE,
   clueRange: n => [1, n],
   files: [
-    { file: 'SkyscraperLineComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperLineComponent' }
+    { file: 'SkyscraperPairComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperPairComponent' }
   ],
   blankWord: 'blank',
   // 'original' — the wrapper ChinStrap shipped (gatedLine above); 'ours' —
-  // main-global.js, one SkyscraperLineComponent per line reading both end clues.
+  // main-global.js, one SkyscraperPairComponent per line reading both end clues.
   modes: [
     { key: 'original', label: 'original', build: buildOriginal },
     { key: 'ours', label: 'ours    ' }

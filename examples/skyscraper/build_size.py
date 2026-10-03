@@ -40,7 +40,7 @@ HERE = pathlib.Path(__file__).parent
 # Each lane ships what its own backend registers, and nothing else.
 # main-global.js builds the 4n frame lines and puts the two-clue DP on each one.
 COMPONENTS = [
-    "SkyscraperLineComponent.js",
+    "SkyscraperPairComponent.js",
 ]
 # main.js registers one one-sided DP per drawn group and nothing else: a drawn
 # group carries a single clue on a line of any shape, so the two-clue DP has

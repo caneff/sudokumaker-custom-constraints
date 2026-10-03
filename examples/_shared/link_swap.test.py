@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # swap_component_code: only the named component's code changes
     swapped = swap_component_code(
-        base, CONSTRAINT_NAME, "SkyscraperLineComponent", "NEW CODE"
+        base, CONSTRAINT_NAME, "SkyscraperPairComponent", "NEW CODE"
     )
     base_components = find_constraint(base, CONSTRAINT_NAME)["definition"]["components"]
     new_components = find_constraint(swapped, CONSTRAINT_NAME)["definition"][
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     got = {c["name"]: c["code"] for c in new_components}
     want = {c["name"]: c["code"] for c in base_components}
     diffs = [name for name in got if got[name] != want[name]]
-    assert diffs == ["SkyscraperLineComponent"], (
-        f"expected only SkyscraperLineComponent to change, got {diffs}"
+    assert diffs == ["SkyscraperPairComponent"], (
+        f"expected only SkyscraperPairComponent to change, got {diffs}"
     )
     assert (
         find_constraint(swapped, CONSTRAINT_NAME)["definition"]["backend"]["code"]
@@ -186,9 +186,9 @@ if __name__ == "__main__":
         # `// #include` resolves against
         (tmp / "_shared").symlink_to(HERE)
         (tmp / "hit-counts").mkdir()
-        candidate = tmp / "hit-counts" / "HitCountsJointComponent.js"
+        candidate = tmp / "hit-counts" / "HitCountsPairComponent.js"
         candidate.write_text(
-            (hc / "HitCountsJointComponent.js").read_text()
+            (hc / "HitCountsPairComponent.js").read_text()
             + "\nconst CANDIDATE_EDIT = 1\n"
         )
 
@@ -210,12 +210,12 @@ if __name__ == "__main__":
         assert new_backend == base_backend, "no backend given: backend untouched"
         assert new_comps.keys() == base_comps.keys()
         changed = [n for n in new_comps if new_comps[n] != base_comps[n]]
-        assert changed == ["HitCountsJointComponent"], changed
-        assert new_comps["HitCountsJointComponent"] == minify_file(candidate)
+        assert changed == ["HitCountsPairComponent"], changed
+        assert new_comps["HitCountsPairComponent"] == minify_file(candidate)
 
         # the shipped component swapped back in is the board, byte for byte
         assert (
-            swap_build(hc_board, hc / "HitCountsJointComponent.js", out)
+            swap_build(hc_board, hc / "HitCountsPairComponent.js", out)
             == hc_board.read_text().strip()
         )
 

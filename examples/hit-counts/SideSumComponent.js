@@ -14,18 +14,18 @@
 // (#362's "side-sum stale wake" in the soundness harness). The app retires a
 // component once every listed cell is filled and it validates, so this one
 // retires only once its lines are filled as well. That costs nothing: the side
-// sum is derived, and main-global.js gives every framed line a joint component
+// sum is derived, and main-global.js gives every framed line a pair component
 // that enforces its own clues.
-function getAffectedCells (cells, target, lines) {
-  return [...cells, ...lines.flat()]
+function getAffectedCells (clueCells, target, lines) {
+  return [...clueCells, ...lines.flat()]
 }
 
 // `lines` are the n perpendicular lines the main code hands over. The component
 // checks them itself rather than trusting the caller (docs/line-contract.md).
 // The clues live in `instance.clues`: the app has already set `instance.cells`
 // to the list above, and the bound reads the clues alone.
-function setParams (instance, cells, target, lines) {
-  instance.clues = cells
+function setParams (instance, clueCells, target, lines) {
+  instance.clues = clueCells
   instance.target = target
   instance.lines = lines
 }
