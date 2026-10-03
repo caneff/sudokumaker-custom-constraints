@@ -455,7 +455,9 @@ console.log('harness-lib.test.mjs: all seams pass')
 {
   const p = makePuzzle({ 0: 1, 1: 2, 2: 3 }, () => [1, 2, 3])
   let calls = 0
-  const mod = { * update () { calls++ } }
+  // The load pass prunes a watched cell, so what the waker has seen must be the
+  // state after update ran, or its own prune wakes it again.
+  const mod = { * update () { calls++; if (calls === 1) p._cand.get(0).delete(2) } }
   const { wake, settle } = makeWaker(mod, {}, p, [0, 1])
   wake()
   assert.strictEqual(calls, 1, 'the first wake is the load pass')
