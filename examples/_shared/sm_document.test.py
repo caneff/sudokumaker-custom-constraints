@@ -1,7 +1,7 @@
 # The custom-constraint entry (type 1000) is built, found and written through
-# sm_document alone. The expected entries below are the shapes the committed
-# links already ship, written out by hand, so a drift in the builder shows as
-# a diff against a link the app has opened.
+# sm_document alone. The expected entries below are written out by hand in the
+# shape the committed links ship, so a change to the builder shows here as a
+# diff against that shape.
 #
 #   uv run examples/_shared/sm_document.test.py
 
@@ -46,8 +46,7 @@ if __name__ == "__main__":
     }
 
     # A shared backend: no groups, no components, no entry-level name -- and
-    # still the empty input and style every entry carries (the grid backend
-    # once shipped without them).
+    # still the empty input and style every entry carries.
     assert code_constraint("Grid Rows and Columns", "G") == {
         "type": 1000,
         "definition": {
