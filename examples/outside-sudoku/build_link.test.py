@@ -15,8 +15,9 @@ sys.path.insert(0, str(HERE))
 
 from build_link import CONSTRAINT_NAME
 from link_codec import decode_puzzle
-from link_swap import find_constraint, swap_build
+from link_swap import swap_build
 from minify import minify_file
+from sm_document import find_constraint
 
 if __name__ == "__main__":
     board = HERE / "PUZZLE_LINK.txt"

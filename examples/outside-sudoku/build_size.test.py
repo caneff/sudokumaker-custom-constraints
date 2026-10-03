@@ -25,9 +25,9 @@ from framebuild import (
     rebuild,
 )
 from link_codec import decode_puzzle
-from link_swap import find_constraint
 from minify import minify_file
 from outside_rule import window_length_by_box, window_length_by_region
+from sm_document import find_constraint
 
 SIZES = [(4, 2, 2), (6, 2, 3), (9, 3, 3)]
 CONSTRAINT_NAME = "Custom Outside Sudoku"

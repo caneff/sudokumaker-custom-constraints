@@ -27,6 +27,7 @@ from check_layout import (
 from link_codec import encode_link
 from manifest import load_manifest
 from minify import minify_js
+from sm_document import code_constraint
 
 HERE = pathlib.Path(__file__).parent
 
@@ -105,15 +106,9 @@ def _link(
     if note:
         lines.insert(0, f"// {note}")
     backend = "\n".join(lines)
-    constraint = {
-        "name": "Widget Lines",
-        "type": 1000,
-        "definition": {
-            "name": "Widget Lines",
-            "backend": {"type": "code", "code": backend},
-            "components": [{"type": "code", "name": n, "code": "x"} for n in ships],
-        },
-    }
+    constraint = code_constraint(
+        "Widget Lines", backend, [(n, "x") for n in ships], named=True
+    )
     house_constraints = []
     if houses in ("full", "boxes"):
         house_constraints.append({"type": 1, "regions": [0, 0, 0, 1, 1, 1, 2, 2, 2]})
@@ -139,26 +134,16 @@ def _link(
             code = code + "\n// an older copy"
         components = (
             [
-                {
-                    "type": "code",
-                    "name": component,
-                    "code": minify_js((HERE / f"{component}.js").read_text())
+                (
+                    component,
+                    minify_js((HERE / f"{component}.js").read_text())
                     + ("\n// an older copy" if wanted == "stale_component" else ""),
-                }
+                )
             ]
             if component and wanted != "no_component"
             else []
         )
-        extra.append(
-            {
-                "type": 1000,
-                "definition": {
-                    "name": title,
-                    "backend": {"type": "code", "code": code},
-                    "components": components,
-                },
-            }
-        )
+        extra.append(code_constraint(title, code, components))
     if house_gac_renamed:
         # A backend of its own (never house-gac.js -- that is the point of
         # the rename), carrying only the shared HouseGacComponent.js.
@@ -166,19 +151,11 @@ def _link(
         if house_gac_renamed == "stale_component":
             comp_code += "\n// an older copy"
         extra.append(
-            {
-                "type": 1000,
-                "definition": {
-                    "name": "House GAC (standalone)",
-                    "backend": {
-                        "type": "code",
-                        "code": "puzzle.addConstraintComponent(new HouseGacComponent('a'))",
-                    },
-                    "components": [
-                        {"type": "code", "name": "HouseGacComponent", "code": comp_code}
-                    ],
-                },
-            }
+            code_constraint(
+                "House GAC (standalone)",
+                "puzzle.addConstraintComponent(new HouseGacComponent('a'))",
+                [("HouseGacComponent", comp_code)],
+            )
         )
     puzzle = {
         "width": 3,
@@ -836,22 +813,7 @@ if __name__ == "__main__":
     # reads and nothing rebuilds -- it can only drift from the file it copies
     # (#394).
     def _gen(code, name="Frame Rows and Columns"):
-        return json.dumps(
-            {
-                "puzzle": {
-                    "constraints": [
-                        {
-                            "type": 1000,
-                            "definition": {
-                                "name": name,
-                                "backend": {"type": "code", "code": code},
-                                "components": [],
-                            },
-                        }
-                    ]
-                }
-            }
-        )
+        return json.dumps({"puzzle": {"constraints": [code_constraint(name, code)]}})
 
     with example(
         extra_links=["PUZZLE_LINK_6x6.txt"],

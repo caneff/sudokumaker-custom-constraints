@@ -31,11 +31,12 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, replace_constraint_code
+from link_codec import decode_puzzle
+from link_swap import replace_constraint_code
 from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
+from sm_document import find_constraint, registering_constraint_name, write_link
 
 APP_SOLVE = HERE / "app-solve.mjs"
 JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)
@@ -89,15 +90,6 @@ def find_component_file(example_dir, base_doc, component=None):
         f"{example_dir.name}'s {source} ({declared!r}) has no "
         f"working-tree file at {component_file} or {shared_file}"
     )
-
-
-def find_component_constraint(doc, component_name):
-    """The name of the constraint that registers component_name."""
-    for c in doc["puzzle"]["constraints"]:
-        names = [comp["name"] for comp in c.get("definition", {}).get("components", [])]
-        if component_name in names:
-            return c["definition"]["name"]
-    raise ValueError(f"no constraint registers a component named {component_name!r}")
 
 
 def registered_backend(doc, constraint_name):
@@ -244,14 +236,14 @@ def build_candidate_doc(example_dir, component_file, out_path, base_doc, board=N
     build_candidate(example_dir, component_file, out_path, board=board)
     candidate_doc = decode_puzzle(out_path.read_text().strip())
 
-    constraint_name = find_component_constraint(base_doc, component_file.stem)
+    constraint_name = registering_constraint_name(base_doc, component_file.stem)
     backend_file = resolve_backend_file(example_dir, base_doc, constraint_name)
     if backend_file is not None:
         backend_code = minify_file(backend_file)
         candidate_doc = replace_constraint_code(
             candidate_doc, constraint_name, backend_code=backend_code
         )
-        out_path.write_text(encode_link(candidate_doc) + "\n")
+        write_link(candidate_doc, out_path)
 
     return shipped_component_code(candidate_doc) == shipped_component_code(
         base_doc

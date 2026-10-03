@@ -17,8 +17,9 @@ sys.path.insert(0, str(HERE))
 
 from build_link import BACKEND, COMPONENT, CONSTRAINT_NAME, build, check
 from link_codec import decode_puzzle
-from link_swap import blanked, find_constraint, swap_build
+from link_swap import blanked, swap_build
 from minify import minify_js
+from sm_document import find_constraint
 
 if __name__ == "__main__":
     base_text = (HERE / "PUZZLE_LINK.txt").read_text().strip()

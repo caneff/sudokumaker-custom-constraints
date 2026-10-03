@@ -18,13 +18,13 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import (
     blanked,
     check_and_write,
-    find_constraint,
     frame_and_comment_only,
     replace_constraint_code,
     swap_build,
     swap_component_code,
 )
 from minify import minify_file
+from sm_document import find_constraint
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK.txt"

@@ -28,8 +28,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
 from framebuild import board_files, build_doc, check, frame_groups, load_board
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, frame_only, replace_constraint_code
+from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
+from sm_document import find_constraint
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"

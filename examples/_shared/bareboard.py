@@ -14,6 +14,7 @@ from collections.abc import Callable
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from minify import minify_file
+from sm_document import code_constraint
 
 
 @dataclasses.dataclass(frozen=True)
@@ -61,27 +62,12 @@ class BareBoard:
                     # carries; without it the app lists no givens (found live,
                     # 2026-08-27)
                     {"type": 0},
-                    {
-                        "name": self.name,
-                        "type": 1000,
-                        "definition": {
-                            "name": self.name,
-                            "input": [],
-                            "backend": {
-                                "type": "code",
-                                "code": minify_file(self.dir / "main.js"),
-                            },
-                            "components": [
-                                {
-                                    "type": "code",
-                                    "name": self.component,
-                                    "code": minify_file(pathlib.Path(component_path)),
-                                }
-                            ],
-                        },
-                        "input": {},
-                        "style": {},
-                    },
+                    code_constraint(
+                        self.name,
+                        minify_file(self.dir / "main.js"),
+                        [(self.component, minify_file(pathlib.Path(component_path)))],
+                        named=True,
+                    ),
                 ],
             },
         }

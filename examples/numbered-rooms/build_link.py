@@ -16,9 +16,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import RULES_PREFIX, refresh_frame_backends
 from link_codec import decode_puzzle
-from link_swap import find_constraint, swap_main, write_link
+from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from sm_document import find_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 # The shipped board is hand-built and calls its constraint this; the generated

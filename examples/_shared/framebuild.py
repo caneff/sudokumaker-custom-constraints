@@ -32,8 +32,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import link_codec
 from component_scan import describe_mismatch, mismatch
 from frame import corner_cells, cosmetics, ring_cell
-from link_swap import find_constraint, frame_and_comment_only
+from link_swap import frame_and_comment_only
 from minify import minify_file
+from sm_document import code_constraint, find_constraint
 
 # Every generated link opens with a rules sentence (project rule). The Spec
 # picks it (`Spec.rules_prefix`); this is the default, and every choice opens
@@ -448,17 +449,9 @@ def grid_backend_constraint():
     """The whole-grid rows-and-columns constraint a no-ring board ships, its
     code read from the working tree."""
     name, title = GRID_BACKEND
-    return {
-        "type": 1000,
-        "definition": {
-            "name": title,
-            "backend": {
-                "type": "code",
-                "code": minify_file(pathlib.Path(__file__).parent / f"{name}.js"),
-            },
-            "components": [],
-        },
-    }
+    return code_constraint(
+        title, minify_file(pathlib.Path(__file__).parent / f"{name}.js")
+    )
 
 
 # The shared house-GAC filter (#406, #408, #421): opt-in per board
@@ -500,23 +493,9 @@ def house_gac_constraint(n):
             "filter refuses to register at all (#421)"
         )
     title, backend_code, component_code = house_gac_backend_code()
-    return {
-        "type": 1000,
-        "definition": {
-            "name": title,
-            "input": [],
-            "backend": {"type": "code", "code": backend_code},
-            "components": [
-                {
-                    "type": "code",
-                    "name": HOUSE_GAC_COMPONENT_NAME,
-                    "code": component_code,
-                }
-            ],
-        },
-        "input": {},
-        "style": {},
-    }
+    return code_constraint(
+        title, backend_code, [(HOUSE_GAC_COMPONENT_NAME, component_code)]
+    )
 
 
 def example_constraint(spec, groups):
@@ -524,34 +503,16 @@ def example_constraint(spec, groups):
     local board ships, read by main.js; None is the global lane, whose
     main-global.js reads no input and builds its lines itself."""
     local = groups is not None
-    return {
-        "name": spec.constraint_name,
-        "type": 1000,
-        "definition": {
-            "name": spec.constraint_name,
-            "input": (
-                [{"id": "groups", "label": "Groups", "params": {"type": "raw"}}]
-                if local
-                else []
-            ),
-            "backend": {
-                "type": "code",
-                "code": minify_file(
-                    spec.dir / ("main.js" if local else "main-global.js")
-                ),
-            },
-            "components": [
-                {
-                    "type": "code",
-                    "name": PurePath(f).stem,
-                    "code": minify_file(spec.dir / f),
-                }
-                for f in component_files(spec, local)
-            ],
-        },
-        "input": {"groups": groups} if local else {},
-        "style": {},
-    }
+    return code_constraint(
+        spec.constraint_name,
+        minify_file(spec.dir / ("main.js" if local else "main-global.js")),
+        [
+            (PurePath(f).stem, minify_file(spec.dir / f))
+            for f in component_files(spec, local)
+        ],
+        groups=groups,
+        named=True,
+    )
 
 
 def no_ring_groups(spec, board):
@@ -771,20 +732,7 @@ def build_doc(spec, board, local=False):
         {"type": 0},
         *(spec.extra_cages(interior) if spec.extra_cages else []),
         example_constraint(spec, groups),
-        *(
-            {
-                "type": 1000,
-                "definition": {
-                    "name": name,
-                    "input": [],
-                    "backend": {"type": "code", "code": code},
-                    "components": [],
-                },
-                "input": {},
-                "style": {},
-            }
-            for name, code in frame_backends
-        ),
+        *(code_constraint(name, code) for name, code in frame_backends),
         *([house_gac_constraint(n)] if apply_house_gac else []),
         *cosmetics(W, cells),
     ]

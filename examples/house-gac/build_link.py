@@ -57,8 +57,9 @@ from cpsat import solve_unique, sudoku_model
 from framebuild import NO_RING_RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, swap_main
+from link_swap import swap_main
 from manifest import load_manifest
+from sm_document import find_constraint
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name

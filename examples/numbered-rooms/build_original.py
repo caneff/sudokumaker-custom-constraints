@@ -27,9 +27,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import frame_groups as _frame_groups
 from framebuild import make_lines
-from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, frame_only, replace_constraint_code
+from link_codec import decode_puzzle
+from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
+from sm_document import find_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -77,19 +78,12 @@ def build_original(base):
     return original
 
 
-def write(doc, out_path):
-    link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
-
-
 def build(out_dir=HERE):
     """Rebuild PUZZLE_LINK_original.txt into `out_dir`. Reads PUZZLE_LINK.txt
     and the original wrapper code from beside this script regardless of
     `out_dir`; only the written link moves."""
     ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    return write(build_original(ours), out_dir / "PUZZLE_LINK_original.txt")
+    return write_link(build_original(ours), out_dir / "PUZZLE_LINK_original.txt")
 
 
 if __name__ == "__main__":
