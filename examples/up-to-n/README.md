@@ -47,8 +47,8 @@ board with no groups has no clues to read.
   `.golden/UpToNComponent.floor.js` (below).
 - `PUZZLE_LINK.txt`, `gen.json` — the shipped 9×9: 18 clues, no givens.
 - `PUZZLE_LINK_9x9.txt`, `gen_9x9.json` — the carve's minimal 9×9: the same
-  solution with 13 clues, no givens. Unique by CP-SAT, but the live app times
-  out on it (below). It is the benchmark for a stronger component.
+  solution with 13 clues, no givens. Unique by CP-SAT; the benchmark for a stronger
+  component (§ Timing).
 - `PUZZLE_LINK_4x4.txt`, `gen_4x4.json` — a 4×4 (2×2 boxes).
 - `PUZZLE_LINK_6x6.txt`, `gen_6x6.json` — a 6×6 (2×3 boxes).
 
@@ -78,26 +78,40 @@ live and through the solver bundle in
 
 ## What the component deduces
 
-For each position p a first N could take, the prefix before p sums to at least
-the sum of every earlier cell's smallest digit other than N, and at most the
-sum of their largest. p is **feasible** when the cell allows N, no earlier cell is
+On a **house**, the cells before the first N hold distinct digits other than
+N, so the prefix is a set of digits whose sum is the clue. The component runs
+a subset DP over it: a forward pass lists every set the first i cells can
+hold (sets summing past the clue dropped), and a backward pass keeps the sets
+that reach a position where N can sit with the sum met. That is arc
+consistency over the prefix: a position is **feasible** when the cell allows
+N and some prefix set sums to the clue, and a cell keeps a digit only if some
+kept set uses it in that cell.
+
+- N leaves every infeasible position, since on a house the first N is the
+  only N.
+- A cell before every feasible position keeps only the digits some kept set
+  gives it.
+- No feasible position at all stops the branch.
+
+On a **bare line** digits may repeat, so a set cannot model the prefix and the
+component keeps the bounds: the prefix sum is at least the sum of every
+earlier cell's smallest digit other than N and at most the sum of their
+largest. Position p is feasible when the cell allows N, no earlier cell is
 forced to N, and the clue lies inside those bounds.
 
-- N leaves every cell before the first feasible position.
-- On a house, where the first N is the only N, N leaves every infeasible
-  position. On a bare line a later cell may hold a second N the sum never
-  reads, so it keeps N.
+- N leaves every cell before the first feasible position. A later cell may
+  hold a second N the sum never reads, so it keeps N.
 - A cell before every feasible position keeps only the digits d some
   feasible position admits: with that position's bounds lo..hi and the cell's
   own smallest and largest non-N digits, lo - smallest + d <= clue <=
   hi - largest + d.
 - No feasible position at all stops the branch.
+
 - `validate` walks a filled line to the first N and compares the sum, and
   refuses a line with no N.
 
-Both bounds only grow along the line, so the feasible positions of cells that
-allow N form one unbroken run. The line kind comes from
-`getCellsCanHaveRepeats`, asked in `update` and cached once true.
+The line kind comes from
+`getCellsCanHaveRepeats`, asked in `update`; the repeats answer is cached once asked.
 
 ## The board
 
@@ -143,11 +157,12 @@ marker gets no label. The labels exist only on generated boards: a setter who
 draws a marker by hand in the editor must add a text cosmetic for its clue by
 hand (Add element, "Cosmetic symbols", Text).
 
-**Two 9×9 boards.** The carve's minimal 9×9 shows 13 clues and no givens, and
-the live app finds no solution to it within 300 s: re-timed under the corrected
-rule on 2026-09-26, all 3 reps hit the 300 s cap (§ Timing). The shipped board
-shows 18 clues, still no givens, and solves in 15.2 s cold and 11.7 s
-after-logical on that date. Older probe results for other clue counts, taken
+**Two 9×9 boards.** The carve's minimal 9×9 shows 13 clues and no givens. Under
+the bounds-only component the live app found no solution to it within 300 s
+(all 3 reps hit the cap on 2026-09-26); with the house subset DP (#465) it
+reaches a verdict in about 11 s (§ Timing). The shipped board
+shows 18 clues, still no givens, and solved in 15.2 s cold and 11.7 s
+after-logical under the bounds-only component on 2026-09-26. Older probe results for other clue counts, taken
 2026-09-14 under the old `update`: 15 clues timed out, 18 solved in 15 s, 24
 solved in 13 s (`docs/research/368-up-to-n-setup-throw.md`, finding 5). The
 shipped board is the 18-clue one, derived from the minimal one by
@@ -179,20 +194,35 @@ the component stronger.
 
 ## Timing
 
-`just time up-to-n` on the shipped 18-clue 9×9, 3 reps, non-deterministic
-solve off, corrected rule (#614), 1 worker. Candidate code is byte-equal to
-the committed link, so only baseline rows print: this is the floor a later
-component change is judged against.
+**The house subset DP (#465) pays for itself.** `just time up-to-n`, 3 reps,
+non-deterministic solve off, 1 worker, 2026-10-03. Baseline is `origin/main`
+(the bounds-only component and its committed link), candidate is the same tree
+with this component swapped in, timed before the links were regenerated:
 
-| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n | 15200ms | — | — | BASELINE |
-| 2026-09-26 | v2026.08.14-d47fc4b | up-to-n after-logical | 11700ms | — | — | BASELINE |
+| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n | 15600ms | 900ms | 0.06 | PASS |
+| 2026-10-03 | v2026.08.14-d47fc4b | up-to-n after-logical | 12000ms | 0ms | 0.00 | PASS |
 
-The minimal 13-clue board, `just time up-to-n --board PUZZLE_LINK_9x9.txt`,
-same day, same driver, is a DNF, recorded verbatim:
+```
+two-row rule: SHIP
+```
+
+The after-logical row reads 0 ms because the app's logical solve alone finishes
+the shipped board. The committed link now embeds this component, so a later
+`just time` prints baseline rows only; one run on it read 800 ms cold and 0 ms
+after-logical, the floor a later change is judged against.
+
+The minimal 13-clue board was a DNF under the bounds-only component, recorded
+verbatim on 2026-09-26 (not re-measured: a result on record is not re-run):
 
 ```
 RuntimeError: app-solve.mjs: /tmp/tmpejo5jlc9/baseline_probe.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
 ```
+
+With the subset DP, the ticket's benchmark, `node
+examples/_shared/app-solve.mjs examples/up-to-n/PUZZLE_LINK_9x9.txt 3` (cold, non-deterministic solve off,
+2026-10-03) reaches a verdict on every rep: unique in a median 7800 ms after a
+median first solution at 3100 ms, 10900 ms in all (reps 10600 to 12600 ms, none
+timed out).
 
 The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
 14500 ms cold and 10900 ms after-logical; they are superseded by the rows above.
@@ -201,9 +231,10 @@ The 9×9 rows before the #613 rule correction, 2026-09-14 (old `update`), were
 changed together, so a component swap into the old board would time a
 different puzzle. `just time up-to-n` on the corrected tree, run earlier on
 2026-09-26 while #613 was open, printed 16400 ms cold and 12000 ms
-after-logical; the #614 run above is the floor because it is the recorded
-`just time` measurement this example is judged against, not because it is
-the faster of the two. The 7% spread between the two runs of one board is
+after-logical; the 2026-09-26 #614 run (15200 ms and 11700 ms, since replaced
+by the rows above) was the floor then because it was the recorded `just time`
+measurement this example was judged against, not because it was the faster of
+the two. The 7% spread between the two runs of one board is
 wider than the <5% run-to-run variance `docs/real-app-timing.md` records
 for a deterministic solve, but neither run is slower than the other by a
 margin that would flip this section's "costs nothing" verdict, so the #614

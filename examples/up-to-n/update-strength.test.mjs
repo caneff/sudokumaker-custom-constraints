@@ -107,4 +107,24 @@ assert.deepStrictEqual(
   settle(2, 0, { houses: [[0, 1, 2, 3]] }),
   [[1, 2, 3, 4], [1, 3, 4], [1, 3, 4], [1, 3, 4]]
 )
+
+// ---- Worked states: the prefix as a set of distinct digits (#465) ----
+//
+// On a house the cells before the first N hold distinct digits, so they are a
+// set summing to the clue. N = 4, clue 2: a first 4 in the second cell needs
+// a one-digit set {2}; in the third cell it needs two distinct digits summing
+// to 2, and there are none (1 + 1 repeats). So the first 4 sits second, the
+// first cell is 2, and 4 leaves the last two cells.
+assert.deepStrictEqual(
+  settle(4, 2, { houses: [[0, 1, 2, 3]] }),
+  [[2], [1, 2, 3, 4], [1, 2, 3], [1, 2, 3]]
+)
+
+// N = 4, clue 3: sets {3} (first 4 second) and {1, 2} (first 4 third); three
+// distinct digits sum to at least 6. So the first 4 sits second or third, and
+// 4 leaves the first and last cells.
+assert.deepStrictEqual(
+  settle(4, 3, { houses: [[0, 1, 2, 3]] }),
+  [[1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]]
+)
 console.log('PASS')
