@@ -357,3 +357,15 @@ The candidate's own times match the earlier run (13200 / 12300 ms against
 cold where the earlier ones read 12000 ms. The rows above are the ones Chris
 accepted at about 1.09x / 1.12x.
 
+Digit-range rule (Chris's finding on #693: the `size < 9` guard dropped, column
+reasoning only where a column holds each digit once and 1, 5, 9 are digits), one
+more run, same board and command. This board's path is unchanged:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11500ms | 12900ms | 1.12 | within the accepted ~1.1x |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11000ms | 12100ms | 1.10 | PASS (≤ 1.1x) |
+
+The candidate's times (12900 / 12100 ms) are no slower than the last run's
+(13200 / 12300 ms).
+
