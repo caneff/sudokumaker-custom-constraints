@@ -127,7 +127,8 @@ function run (label, shape) {
   let missedByGac = 0
   for (const { state, p, start } of records) {
     // 2. what the built-in's validate makes of the same starting state
-    if (total(p) < [...start.values()].reduce((n, set) => n + set.size, 0) || p._stopped !== null) {
+    const pruned = total(p) < [...start.values()].reduce((n, set) => n + set.size, 0)
+    if (pruned || p._stopped !== null) {
       const q = puzzleOf(state)
       for (const [cell, set] of start) q._cand.set(cell, new Set(set))
       if (builtin.validate(runComponent(builtin, state), q)) builtinBlind++
