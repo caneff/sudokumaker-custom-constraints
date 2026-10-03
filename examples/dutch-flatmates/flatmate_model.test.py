@@ -77,13 +77,17 @@ def symmetry(grid, rng, keep_rule):
     }
 
 
-def edge_only_violations(grid, rng, tries=1_000_000):
+# The wrap case turns up about 4 times in a million symmetries, so the search runs long.
+SEARCH_TRIES = 1_000_000
+
+
+def edge_only_violations(grid, rng):
     """One symmetry of `grid` for each edge case whose only bad 5 is an edge-row
     one: {"top": g, "bottom": g, "wrap": g}. The wrap grid's bad 5 is in the
     bottom row with a 9 at the top of its column. Raises AssertionError when the
     sample misses a case."""
     found = {}
-    for _ in range(tries):
+    for _ in range(SEARCH_TRIES):
         g = symmetry(grid, rng, keep_rule=False)
         bad = bad_fives(g)
         if len(bad) != 1:
@@ -97,7 +101,9 @@ def edge_only_violations(grid, rng, tries=1_000_000):
                 found.setdefault("wrap", g)
         if len(found) == 3:
             return found
-    raise AssertionError(f"{tries} symmetries missed an edge case: {sorted(found)}")
+    raise AssertionError(
+        f"{SEARCH_TRIES} symmetries missed an edge case: {sorted(found)}"
+    )
 
 
 if __name__ == "__main__":
