@@ -14,11 +14,10 @@ draws the constraint and keeps it to five groups of eight cells.
 | `gen_4x10.json` | The smaller counter-outside alternative from #568's ladder. |
 | `../self-count/` | #581's self-counting board, GAC against its own pre-#578 self. Kept as #578's evidence; it is not the demo, since the demo compares built-in against GAC. |
 
-**#572 (share the builders' carve/draw code) is not made obsolete.** This change
-added a link-name rule and a rules-text switch to the demo builder, and reused the
-self-count builder's draw; the demo builder's own `search`/carve loop is still a
-copy of the sparse builder's, which is what #572 covers. (#658 has since moved
-the draw and carve loop into `examples/count-digits-gac/board_kit.py`.)
+**The demo builder shares its draw and carve loop.** #658 moved the grid draw,
+the carve loop and search into `examples/count-digits-gac/board_kit.py`, and the
+count rule's model and drawn-group helpers into `count_board.py`; the demo,
+self-count and sparse builders each keep only their own rule.
 
 Everything below "The link" describes the shipped self-counting board unless a
 heading says counter-outside. The **built-in vs GAC timing of the shipped board

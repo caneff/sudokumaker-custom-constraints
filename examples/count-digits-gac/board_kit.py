@@ -35,7 +35,10 @@ def givens_of(gen):
     removed them, and `carved` is how many of that prefix this board uses.
     Depth is that one number: uniqueness is monotone in the givens, so any
     prefix of a carve order that ended unique is unique too, and a shallower
-    board is a rebuild rather than another search.
+    board is a rebuild rather than another search. (required-digits-gac's
+    sparse gen.json is the exception to "the order it removed them": its
+    order is the dropped cells row-major, rebuilt from the givens list it
+    used to carry; its one depth is the deepest.)
     """
     dropped = {tuple(p) for p in gen["carve_order"][: gen["carved"]]}
     return {

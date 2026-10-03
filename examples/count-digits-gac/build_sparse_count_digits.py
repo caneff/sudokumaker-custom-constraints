@@ -21,7 +21,8 @@
 #       rebuild both links from the committed gen.json
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py --carved K
 #       set the board's depth -- how many of the gen's carve order it drops --
-#       and rebuild. See `givens_of`.
+#       and rebuild. See `board_kit.givens_of`; the whole carve left the app's
+#       solver unable to finish the baseline link at all (README, "Depth").
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py --keep-comments
 #       write only PUZZLE_LINK_sparse_annotated.txt (#567): the candidate link's
 #       board and givens, with the component and backend code keeping every

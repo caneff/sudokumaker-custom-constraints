@@ -167,7 +167,9 @@ The Outside Sudoku wrapper board above could not settle the invariant: its
 groups are 2-3 cells. This board is built for the shape the offline bench
 favours (a sparse, large group) and searches deeply enough to read.
 
-`sparse/` holds it: `gen.json` (solution grid, carve order -- the 10 givens are the cells it leaves -- and the generated
+`sparse/` holds it: `gen.json` (solution grid, carve order -- the 10 givens are the cells it leaves;
+the order is the dropped cells row-major, rebuilt from the old `givens` list, not the
+search's removal order -- and the generated
 table of 20 groups), `main-sparse-global.js` (the backend, which registers
 each group's component directly -- no wrapper), and the two links.
 
