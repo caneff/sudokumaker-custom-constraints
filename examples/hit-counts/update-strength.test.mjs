@@ -17,6 +17,7 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -206,19 +207,8 @@ function stateOf (start, houses) {
   console.log('hit-counts mirrored pair: the pair component removes 2 candidates, the opposite-pair floor 0')
 }
 
-// ---- 3b. A forced side hit the per-line scan misses, deterministic ----
-// The same side `soundness-harness.mjs` builds for its gate probe, written out
-// again because the two runs are separate processes — change one copy, change
-// the other.
-//
-// A 4x4 left side: four rows, each clued 1, so the four clues host the four
-// positions between them, one line each. Position i is live on line L while
-// digit i + 1 is still a candidate at line L's cell i. Here position 0 is live
-// on lines 0 and 1, position 1 on lines 1 and 2, position 2 on lines 2 and 3,
-// and position 3 on line 3 alone. So the assignment of positions to lines has
-// exactly one answer: line 3 takes position 3, which leaves position 2 to line
-// 2, position 1 to line 1 and position 0 to line 0. Every cell on that diagonal
-// is pinned to its target, and every other live edge dies.
+// ---- 3b. A forced hit the per-line scan misses, deterministic ----
+// The 4x4 left side of fixture.mjs: the matching pins its whole diagonal.
 //
 // The per-line scan reaches only the first of those. Line 0 has one possible
 // hit for a clue of 1, so it forces that cell on its own; lines 1, 2 and 3 each
@@ -228,23 +218,10 @@ function stateOf (start, houses) {
   installGlobals(0, 4)
   const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
   const line = load('HitCountsComponent.js', ['setParams', 'update'])
-  const CLUES = [400, 401, 402, 403]
-  const cell = (r, c) => r * 4 + c
-  const LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => cell(r, c)))
-  // Row r's cell in column c drops digit c + 1 exactly where the shape above
-  // wants that edge dead. Every column still shows all of 1..4, which is the
-  // fact that makes position c the home of digit c + 1 exactly once.
-  const CANDS = [
-    [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
-    [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
-    [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
-    [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
-  ]
   const start = new Map()
   for (const c of CLUES) start.set(c, [1])
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) start.set(cell(r, c), CANDS[r][c])
-  // every line and every position across the lines is a house
-  const state = () => stateOf(start, [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(line => line[c]))])
+  const state = () => stateOf(start, HOUSES)
   const show = (p, c) => [...p._cand.get(c)].sort((x, y) => x - y)
 
   const ps = state()
@@ -358,7 +335,7 @@ function stateOf (start, houses) {
   })
 }
 
-// ---- A stopped sweep leaves no memo ----
+// ---- A stopped sweep is swept again ----
 // `update` memoises the signature it last swept so an unchanged state costs one
 // pass and no solve. A state the sweep STOPPED on must not be memoised: the
 // search clears the stop on backtrack but the memo would survive, and the
@@ -374,9 +351,13 @@ function stateOf (start, houses) {
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
-  console.log('hit-counts stopped sweep:', p._stopped === null ? 'did not stop' : 'stopped,', 'sig', inst.sig)
   assert.ok(p._stopped !== null, 'the case sweep must stop on a line no arrangement satisfies')
-  assert.strictEqual(inst.sig, undefined, 'a stopped sweep must not memoise the state it stopped on')
+  // The search backtracks past the stop and lands on the same state again: the
+  // sweep must stop again, not skip it as already swept.
+  p._stopped = null
+  Array.from(cur.update(inst, p))
+  console.log('hit-counts stopped sweep: stops again on the same state')
+  assert.ok(p._stopped !== null, 'a stopped sweep must not leave the state it stopped on looking swept')
 }
 
 // The same, for the permutation sweep: a full house holding 1..n once each
@@ -393,9 +374,11 @@ function stateOf (start, houses) {
   const inst = {}
   cur.setParams(inst, 0, 1, [2, 3])
   Array.from(cur.update(inst, p))
-  console.log('hit-counts stopped permutation sweep:', p._stopped === null ? 'did not stop' : 'stopped,', 'sig', inst.sig)
   assert.ok(p._stopped !== null, 'the permutation sweep must stop on a line no ordering satisfies')
-  assert.strictEqual(inst.sig, undefined, 'a stopped permutation sweep must not memoise the state it stopped on')
+  p._stopped = null
+  Array.from(cur.update(inst, p))
+  console.log('hit-counts stopped permutation sweep: stops again on the same state')
+  assert.ok(p._stopped !== null, 'a stopped permutation sweep must not leave the state it stopped on looking swept')
 }
 
 console.log('PASS')

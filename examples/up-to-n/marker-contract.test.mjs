@@ -65,19 +65,12 @@ const built = comp => {
 }
 
 // A typed 0 is a clue: the target is the first cell read. It registers a
-// component like any other value.
+// component like any other value. This is also the left end of row 3 (y = 2):
+// read rightward, target 3.
 {
   const [c] = setup([{ cells: [id(0, 2), id(1, 2)], value: '0' }])
   assert.deepStrictEqual(built(c), {
     ctor: 'UpToNComponent', line: [8, 9, 10, 11], target: 3, clue: 0
-  })
-}
-
-// Left end of row 3 (y = 2): read rightward, target 3.
-{
-  const [c] = setup([{ cells: [id(0, 2), id(1, 2)], value: '3' }])
-  assert.deepStrictEqual(built(c), {
-    ctor: 'UpToNComponent', line: [8, 9, 10, 11], target: 3, clue: 3
   })
 }
 

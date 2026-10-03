@@ -87,19 +87,21 @@ def fill_ring(doc, values, groups):
     return doc
 
 
-def build():
+def build(out_dir=HERE):
+    """Rebuild both clued links into `out_dir`; the inputs are read from beside
+    this script regardless."""
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     values = [int(d) for d in SOLUTION]
     assert len(values) == len(base["puzzle"]["cells"]), "SOLUTION is the wrong size"
     verify_solution(base, values)
 
     clued = fill_ring(base, values, frame_groups())
-    write_link(clued, HERE / "PUZZLE_LINK_clued.txt")
+    write_link(clued, out_dir / "PUZZLE_LINK_clued.txt")
 
     # The clued board runs the same global lane its parent does; its original
     # twin gets the drawn frame groups the wrapper reads (build_original.py).
     clued_original = build_original(clued)
-    write_link(clued_original, HERE / "PUZZLE_LINK_clued_original.txt")
+    write_link(clued_original, out_dir / "PUZZLE_LINK_clued_original.txt")
     return clued, clued_original
 
 

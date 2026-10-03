@@ -31,9 +31,9 @@
 // needs no such handling.
 
 import { join } from 'path'
-import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
+import { shipped, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
@@ -44,17 +44,6 @@ const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'updat
 
 const { rnd } = makeRng(9001)
 const REPS = 300
-
-// Each fixture is square but not necessarily the same size as the other, so
-// N/CELLS/the digit range are derived per fixture, not shared globally.
-const gridOf = rows => {
-  const n = rows.length
-  const truth = {}
-  rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
-  return { truth, n }
-}
-const shipped = gridOf(JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid)
-const varied = gridOf(['121212', '323232', '313131', '323234', '121214', '333144'])
 
 // One version's whole run on a state. The baseline sets its scratch up in
 // `initialize` off `instance.cells`; ours does it in `setParams`. The baseline

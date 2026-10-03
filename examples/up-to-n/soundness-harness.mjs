@@ -16,24 +16,12 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
+import { upToN } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd, pick } = makeRng(368)
 const mod = load('UpToNComponent.js', ['setParams', 'update', 'validate'])
-
-// The rule, stated a third time (CODING_STANDARDS.md, "The rule has one
-// home"): the sum of the digits strictly before the first `target`, or null
-// when the line never holds it. It must agree with the component and
-// with build_size.py's `up_to_n` and its CP-SAT model.
-function upToN (digits, target) {
-  let sum = 0
-  for (const d of digits) {
-    if (d === target) return sum
-    sum += d
-  }
-  return null
-}
 
 const ITERS = 20000
 const SIZES = [4, 6, 9]
