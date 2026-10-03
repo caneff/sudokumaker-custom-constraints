@@ -4,8 +4,12 @@
 # checks what each tier would have run against the files on disk:
 #
 #   - check-full runs every *.test.mjs, *.test.py and soundness-harness.mjs
-#     under examples/, lint, and the two plain scripts the gate runs, so a new
-#     or renamed test cannot drop out of both tiers;
+#     under examples/, every test_*.py under finders/ (found by glob; the slow
+#     ones are named in SLOW below and run by `just test-finders-slow`), lint,
+#     and the two plain scripts the gate runs, so a new or renamed test cannot
+#     drop out of both tiers;
+#   - the research .test.mjs files are run by hand, and BY_HAND names them: a
+#     new one fails here until it is wired into a recipe or added to BY_HAND;
 #   - what check-full adds over check is exactly the heavy tests the ruling
 #     names and the soundness harnesses -- nothing heavy runs in check, and
 #     nothing light is moved out of it;
@@ -33,6 +37,32 @@ HEAVY = {
     "node examples/hit-counts/recovery-probe.test.mjs",
 }
 
+# Finder tests the gate leaves to `just test-finders-slow`, with the command
+# that recipe must run for each.
+SLOW = {
+    "uv run finders/renbanana/tools/test_prove_two_stage_slow.py",
+}
+
+# Finder tests the gate runs with a flag or another runner, not a plain
+# `uv run <file>`: the `--cover` subsets and the one pytest suite.
+FINDER_COMMAND = {
+    "finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py": (
+        "uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py --cover"
+    ),
+    "finders/renbanana/tools/test_probe_finds_known_grids.py": (
+        "uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover"
+    ),
+    "finders/counting_shaded/test_counting_shaded.py": (
+        "uv run pytest finders/counting_shaded/test_counting_shaded.py -q"
+    ),
+}
+
+# Research tests run by hand, after touching what they cover.
+BY_HAND = {
+    "docs/research/count-digits-gac/count-digits.test.mjs",
+    "docs/research/required-digits-gac/required-digits-wrapper.test.mjs",
+}
+
 LINT = {
     "npx standard",
     "uvx ruff check examples",
@@ -48,7 +78,7 @@ SCRIPTS = {
 }
 
 
-def on_disk():
+def on_disk(root=ROOT):
     """The command the gate must run for every test and harness file."""
     want = set()
     for pattern, runner in (
@@ -56,9 +86,19 @@ def on_disk():
         ("*.test.py", "uv run"),
         ("soundness-harness.mjs", "node"),
     ):
-        for f in ROOT.glob(f"examples/*/{pattern}"):
-            want.add(f"{runner} {f.relative_to(ROOT).as_posix()}")
-    return want
+        for f in root.glob(f"examples/*/{pattern}"):
+            want.add(f"{runner} {f.relative_to(root).as_posix()}")
+    for f in root.glob("finders/**/test_*.py"):
+        rel = f.relative_to(root).as_posix()
+        want.add(FINDER_COMMAND.get(rel, f"uv run {rel}"))
+    return want - SLOW
+
+
+def research_tests():
+    """Every research .test.mjs on disk, as a repo-relative path."""
+    return {
+        f.relative_to(ROOT).as_posix() for f in ROOT.glob("docs/research/**/*.test.mjs")
+    }
 
 
 if __name__ == "__main__":
@@ -67,6 +107,17 @@ if __name__ == "__main__":
 
     with_flags = [c for c in full if "--with" in c]
     assert not with_flags, f"steps resolve their own environment: {with_flags}"
+
+    assert research_tests() == BY_HAND, (
+        f"research tests on disk {sorted(research_tests())} are not the by-hand "
+        f"allowlist {sorted(BY_HAND)}: wire a new one into a recipe or list it"
+    )
+
+    slow = set(commands("test-finders-slow"))
+    assert slow >= SLOW, f"test-finders-slow does not run {sorted(SLOW - slow)}"
+    assert not SLOW & set(full), (
+        f"check-full runs a slow test: {sorted(SLOW & set(full))}"
+    )
 
     missing = (on_disk() | LINT | SCRIPTS) - set(full)
     assert not missing, f"check-full does not run: {sorted(missing)}"
