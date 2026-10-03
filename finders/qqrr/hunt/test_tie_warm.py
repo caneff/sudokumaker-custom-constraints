@@ -173,7 +173,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("... and reads it back", f.candidate_from_record(saved).warm == G_CORNER)
     check(
         "config names the sources and the starting grid",
-        f.config["warm_from"]
+        {k: v for k, v in f.config["warm_from"].items() if k != "order"}
         == {"dirs": [a], "grid": G_SAME, "ten": "r7c7", "corner": "tr"},
     )
     check(

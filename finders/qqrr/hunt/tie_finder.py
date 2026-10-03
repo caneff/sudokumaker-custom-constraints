@@ -26,6 +26,7 @@ The driver's flags (`--out`, `--seeds`, `--workers`, ...) are its own
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -123,6 +124,10 @@ class TieFinder:
                 "grid": first[0][2] if first else None,
                 "ten": first[0][0] if first else None,
                 "corner": first[0][1] if first else None,
+                # the whole order, so a source edited below the top refuses a resume
+                "order": hashlib.sha256(
+                    "\n".join(h[2] for h in first).encode()
+                ).hexdigest()[:12],
             }
 
     def warm_hits(self):

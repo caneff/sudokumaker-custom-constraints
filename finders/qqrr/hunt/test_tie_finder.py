@@ -177,6 +177,15 @@ with tempfile.TemporaryDirectory() as d:
         )
         check(f"--warm-from over {name} refuses (exit 2)", r.returncode == 2)
         check(f"... naming the file and line ({name})", "examples.jsonl:2" in r.stderr)
+    src = Path(d) / "edited"
+    src.mkdir()
+    low = record(SEED_R1C5, ten="r1c1", corner="tl")
+    (src / "examples.jsonl").write_text(good + json.dumps(low) + "\n")
+    out = str(Path(d) / "o-edited")
+    run_cli("--out", out, *flags, "--warm-from", str(src))
+    (src / "examples.jsonl").write_text(good)
+    r = run_cli("--out", out, *flags, "--warm-from", str(src))
+    check("resuming after the warm source lost a lower grid refuses", r.returncode == 2)
     src = Path(d) / "blank"
     src.mkdir()
     (src / "examples.jsonl").write_text(good + "\n")
