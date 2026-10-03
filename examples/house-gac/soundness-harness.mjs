@@ -16,14 +16,13 @@
 //
 //   node examples/house-gac/soundness-harness.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng(425)
 

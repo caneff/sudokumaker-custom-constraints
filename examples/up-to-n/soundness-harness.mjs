@@ -14,12 +14,10 @@
 // agreement check below covers it instead, where `validate` must refuse such a
 // line and `update` must kill it.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd, pick } = makeRng(368)
 const mod = load('UpToNComponent.js', ['setParams', 'update', 'validate'])

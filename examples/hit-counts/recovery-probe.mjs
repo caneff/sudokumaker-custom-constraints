@@ -28,12 +28,10 @@
 // the Hit Counts glue: the matching-bound extra propagator and the hit-count
 // leaf check.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 import { runToFixpoint } from '../_shared/recovery-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 
 // The candidate deduction under test: the Régin-style matching clue bound. A legal
 // line is a perfect matching of positions to values (each from its candidates); a

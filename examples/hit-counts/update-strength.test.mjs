@@ -15,12 +15,10 @@
 // the permutation sweep drops a digit no permutation can put in the cell, which
 // the case sweep keeps.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the components as they stand at the commit that pins this test.

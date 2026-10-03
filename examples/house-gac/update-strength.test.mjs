@@ -10,11 +10,10 @@
 // example pins its own component's floor at the commit that adds its
 // update-strength test (docs/example-layout.md).
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 // The component lives in `_shared`, not owned by this example, so `loadAt`
 // (which resolves a commit path off `git rev-parse --show-prefix` of its own
 // `here`) is rooted at `_shared` itself rather than passed a `../` path --

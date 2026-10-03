@@ -5,8 +5,7 @@ import assert from 'assert'
 import { execFileSync } from 'child_process'
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
   columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep, total
@@ -171,7 +170,7 @@ const { rnd } = makeRng()
 // A harness runs one component twice with a flag at the top of the file
 // flipped, which means evaluating edited source rather than a file on disk.
 {
-  const { loadSource } = makeIo(dirname(fileURLToPath(import.meta.url)))
+  const { loadSource } = makeIo(import.meta.dirname)
   const src = 'const FLAG = false\nfunction reading () { return FLAG }'
   assert.strictEqual(loadSource(src, ['reading']).reading(), false)
   assert.strictEqual(loadSource(src.replace('= false', '= true'), ['reading']).reading(), true)

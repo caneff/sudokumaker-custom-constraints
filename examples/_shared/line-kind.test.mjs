@@ -3,11 +3,9 @@
 //   node examples/_shared/line-kind.test.mjs
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { makeIo, makePuzzle } from './harness-lib.mjs'
 
-const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
+const { load } = makeIo(import.meta.dirname)
 const { lineKind, BARE, HOUSE } = load('line-kind.js', ['lineKind', 'BARE', 'HOUSE'])
 
 const LINE = [0, 1, 2, 3]

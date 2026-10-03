@@ -16,14 +16,13 @@
 // its verdict is not read, and every cell re-walks. An anchor that no longer
 // matches throws rather than compare a component against itself.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeRng, makePuzzle, fixpoint, patchSource, randomCandidates } from '../_shared/harness-lib.mjs'
 import { loadComponent } from './cut-profile.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 

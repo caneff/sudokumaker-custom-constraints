@@ -6,12 +6,10 @@
 //
 //   node examples/isofill/cut-profile.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makePuzzle } from '../_shared/harness-lib.mjs'
 import { instrument, snapshots, loadComponent, timeUpdate, GRIDS } from './cut-profile.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 installGlobals(0, 9)
 
 let ok = true

@@ -10,10 +10,9 @@
 
 import { readFileSync } from 'fs'
 import { execFileSync } from 'child_process'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const BUNDLE_PATH = join(HERE, '..', '..', 'docs', 'research', 'humanify-pedagogy', 'bundle.claude.js')
 const DECODE_CLI = join(HERE, 'link_codec_cli.py')
 

@@ -20,7 +20,7 @@
 // inside its own loop (the consumer here drains them at once).
 
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, patchSource } from '../_shared/harness-lib.mjs'
 
@@ -144,7 +144,7 @@ export function timeUpdate (mod, snaps, reps = 3) {
 
 function main (which, want, reps, seed) {
   installGlobals(0, 9)
-  const here = dirname(fileURLToPath(import.meta.url))
+  const here = import.meta.dirname
   const grids = GRIDS(here)
   const mod = loadComponent(here, instrument)
   console.log('| fixture | snapshots | update calls | update ms | cut ms | cut share |')

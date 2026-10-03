@@ -40,13 +40,12 @@
 //   labels render on a board, and the typed-marker path a setter uses (a 0
 //   typed into a marker). This bundle reads the document, not the page.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { decodeLinkFile, solveDocument } from '../_shared/bundle-solve-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 
 const BOARDS = [
   ['PUZZLE_LINK_4x4.txt', 'gen_4x4.json'],

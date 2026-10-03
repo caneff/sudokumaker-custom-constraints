@@ -7,14 +7,13 @@
 // builds the 4n frame lines from the board size. The expected frame comes from
 // the shared frameGeometry, not from a second copy of the same loop.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import assert from 'assert'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { assembleSource } from '../_shared/include.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 // Assembled, not raw: main-global.js splices in the shared frame reader
 // (examples/_shared/frame-lines.js), and the app runs the assembled text.
 const src = f => assembleSource(join(HERE, f))

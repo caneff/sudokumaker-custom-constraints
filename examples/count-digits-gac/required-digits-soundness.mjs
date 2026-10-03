@@ -17,11 +17,9 @@
 //      digit with that candidate in place. The GAC component must remove no
 //      more than the oracle (sound); we report how much less it removes.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 const N = 9

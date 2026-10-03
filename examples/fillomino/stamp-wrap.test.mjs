@@ -8,13 +8,12 @@
 // deduce exactly what it does from a fresh instance. Same check as the isofill
 // one in pooling.test.mjs, on the fillomino fixture.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const mod = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
 
 const rows = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid

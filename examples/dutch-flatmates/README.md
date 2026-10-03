@@ -195,7 +195,7 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   no `--ring-clues` the board is stripped to its givens (`strip_to_givens`: every
   non-given cell cleared, ring or not). A ringless board has no ring to keep and
   needs no flag.
-- `check_stripped(..., ring_clues=False)` then insists every non-given cell is
+- `check_searchable(..., ring_clues=False)` then insists every non-given cell is
   empty, which a stripped board is. The same strip mode serves isofill.
 - The candidate is built by `build_link.py --component FILE --out FILE`
   (`link_swap.swap_main`), the baseline backend found by `resolve_backend_file`

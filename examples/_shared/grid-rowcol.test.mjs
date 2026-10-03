@@ -14,13 +14,12 @@
 // The board is run rectangular here (W != H) so a backend that reads one
 // dimension twice cannot pass.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 
-const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'grid-rowcol.js'), 'utf8')
+const SRC = readFileSync(join(import.meta.dirname, 'grid-rowcol.js'), 'utf8')
 
 // A W x H board whose geometry helpers yield boxed ids, as the app's own do
 // (#394): numerically right, not plain numbers.

@@ -12,12 +12,10 @@
 // 7 rows, and on the real 9-row column over a fixed-seed fuzz of sparse, dense
 // and half-full sets plus every set with at most two rows per digit.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
 const cur = load('DutchFlatmatesComponent.js', ['rowsToKeep', 'rowsToKeepIfRepeatsAllowed'])

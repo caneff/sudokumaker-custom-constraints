@@ -25,10 +25,9 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
 import * as acorn from 'acorn'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const HAR_PATH = join(HERE, 'sudokumaker.har')
 export const OUTPUT_PATH = join(HERE, '..', '..', 'docs', 'research', 'bundle-api-index.md')
 

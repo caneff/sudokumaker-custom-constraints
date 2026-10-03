@@ -9,12 +9,10 @@
 //   2. the hot scan reads the candidate mask, not a DigitSet per open cell;
 //   3. a visit stamp about to wrap does not change what update deduces.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, fixpoint, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const mod = load('IsofillComponent.js', ['setParams', 'update'])
 

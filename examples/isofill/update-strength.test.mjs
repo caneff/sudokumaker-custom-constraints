@@ -10,12 +10,11 @@
 // fixtures: `rows` (row r holds digit r), `bent` (L-shaped regions), and the
 // grid of gen.json, the shipped board.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the component as it stands at the commit that pins this test.

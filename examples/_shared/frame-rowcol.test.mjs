@@ -21,13 +21,12 @@
 // solve time built straight from `getAllRows()`, and 0.97x once coerced
 // (#394, #276).
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 
-const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'frame-rowcol.js'), 'utf8')
+const SRC = readFileSync(join(import.meta.dirname, 'frame-rowcol.js'), 'utf8')
 
 // A W x H board whose geometry helpers behave like the app's: `getAllRows` and
 // `getAllColumns` are GENERATORS (verified against the live app), each yielding

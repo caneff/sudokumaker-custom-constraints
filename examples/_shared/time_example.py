@@ -426,7 +426,7 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     after-logical) and the two-row rule's verdict, or None when the code is
     byte-equal and there is nothing to judge. Raises
     FileNotFoundError naming the file when the board link or build_link.py
-    is missing. Links are stripped to their givens before timing; ring_clues
+    is missing. Links become searchable links before timing; ring_clues
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.

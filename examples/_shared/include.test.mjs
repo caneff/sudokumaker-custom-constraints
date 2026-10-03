@@ -12,11 +12,10 @@ import assert from 'assert'
 import { execFileSync } from 'child_process'
 import { mkdtempSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { assembleSource } from './include.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
 
 // ---- splices the named file, resolved against the INCLUDING file's dir ----

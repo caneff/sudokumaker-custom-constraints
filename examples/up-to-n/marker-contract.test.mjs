@@ -8,13 +8,12 @@
 // `{ cells, value }` -- and asserts either the components it registers, or
 // that setup throws naming the offending group's cells.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import assert from 'assert'
 import { runBackend } from '../_shared/backend-runner.mjs'
 import { assembleSource } from '../_shared/include.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const SRC = assembleSource(join(HERE, 'main.js'))
 
 // A W x H board, digits lo..hi. Cell id = x + y * W, the app's own layout.

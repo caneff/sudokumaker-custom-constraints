@@ -17,13 +17,11 @@
 // seed-104 puzzle reaches the A + B === n + 1 case that drives the pair's
 // unimodal branch.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import {
   TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { read, load } = makeIo(HERE)
 const { rnd } = makeRng()
 

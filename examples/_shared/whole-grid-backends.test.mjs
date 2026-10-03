@@ -9,13 +9,12 @@
 // boxed `new Number(id)` and this checks the coercion itself. The timing rows
 // in each example's README are the evidence for the cost.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
-const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
+const EXAMPLES = join(import.meta.dirname, '..')
 
 for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'FillominoComponent']]) {
   for (const side of [4, 9]) {

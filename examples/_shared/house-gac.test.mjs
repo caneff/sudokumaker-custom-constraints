@@ -15,14 +15,13 @@
 // ran, so the zero-disagreement count here is the same measurement as the
 // ticket's 3000-state one (#408).
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
 import { runBackend } from './backend-runner.mjs'
 
-const here = dirname(fileURLToPath(import.meta.url))
+const here = import.meta.dirname
 const NAMES = ['getAffectedCells', 'setParams', 'update']
 const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
 

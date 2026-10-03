@@ -14,13 +14,11 @@
 //    comparison OPTIMIZATION_LOG.md asks of every rewrite — the k=1 ordering
 //    trap is invisible to the soundness harness.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { execFileSync } from 'child_process'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadSource } = makeIo(HERE)
 const NAMES = ['setParams', 'update']
 const cur = load('NumberedRoomsComponent.js', NAMES)

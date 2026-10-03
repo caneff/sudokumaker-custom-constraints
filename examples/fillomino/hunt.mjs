@@ -22,13 +22,12 @@
 
 import { execFileSync } from 'child_process'
 import { readFileSync, writeFileSync } from 'fs'
-import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
+import { join } from 'path'
 import { parseArgs } from 'node:util'
 import { outputJson } from '../_shared/app-strip-lib.mjs'
 import { loadComponent, score, stripOffline, givensOf } from './hunt-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const mod = loadComponent(HERE)
 
 // --project: the repo's one uv environment, wherever this script is launched from.

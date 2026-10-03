@@ -9,11 +9,10 @@
 //
 //   node examples/skyscraper/recovery-probe.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { runGoldenCases } from '../_shared/golden-runner.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const PROBE = join(HERE, 'recovery-probe.mjs')
 
 const cases = [

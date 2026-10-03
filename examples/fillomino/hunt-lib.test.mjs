@@ -10,11 +10,9 @@
 //   2x2, no clues, digits 1-2      -> 0
 
 import assert from 'assert'
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
 import { loadComponent, score, stripOffline, givensOf } from './hunt-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const mod = loadComponent(HERE)
 
 const rowsToGivens = rows => Object.fromEntries(rows.flat().map((d, i) => [i, d]))

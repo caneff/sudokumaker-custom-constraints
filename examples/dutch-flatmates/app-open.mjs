@@ -12,12 +12,11 @@
 // The link is read from disk and sent as the page's own URL; it is never printed.
 
 import fs from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readGrid } from '../_shared/app-dom.mjs'
 import { withApp, solveInApp } from '../_shared/app-session.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const live = process.argv.includes('--live')
 const linkFile = process.argv.slice(2).find(a => !a.startsWith('--')) ?? join(HERE, 'PUZZLE_LINK.txt')
 const link = fs.readFileSync(linkFile, 'utf8').trim()

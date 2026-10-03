@@ -30,13 +30,12 @@
 // Our own component reads each island's live extent instead, which is why it
 // needs no such handling.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates, compareStrength, total } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
 
 const io = makeIo(HERE)

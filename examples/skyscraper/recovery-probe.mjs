@@ -34,11 +34,9 @@
 // report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file is the
 // Skyscraper glue only: the original wiring and the visible-count leaf check.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 
 // The built-in forward prune for a KNOWN clue k: the digits to drop from each
 // line cell, keeping only candidates on some path whose visible count is k.
