@@ -89,6 +89,32 @@ with tempfile.TemporaryDirectory() as tmp:
     check("no two examples are equal under D4", len(keys) == len(set(keys)))
 
 with tempfile.TemporaryDirectory() as tmp:
+    # An --out that holds a hunt's output file but no run.json is not a
+    # hunt this driver can resume, and it is not empty: the hunt refuses
+    # (exit 2, naming the file) and leaves what is there untouched, instead
+    # of appending to someone's examples.jsonl (#669).
+    out = Path(tmp) / "hunt-out"
+    out.mkdir()
+    occupant = out / "examples.jsonl"
+    occupant.write_text('{"grid": [9]}\n')
+    result = subprocess.run(
+        [sys.executable, str(TOY_FINDER), "--out", str(out), "--seeds", "0:5"],
+        capture_output=True,
+        text=True,
+        env=success_env(),
+    )
+    check(
+        f"an --out holding examples.jsonl but no run.json is refused, naming "
+        f"the file (exit {result.returncode}, stderr: {result.stderr[-300:]})",
+        result.returncode == 2 and "examples.jsonl" in result.stderr,
+    )
+    check(
+        "the refused hunt left the occupant and added no hunt file",
+        occupant.read_text() == '{"grid": [9]}\n'
+        and sorted(p.name for p in out.iterdir()) == [".lock", "examples.jsonl"],
+    )
+
+with tempfile.TemporaryDirectory() as tmp:
     # A second hunt started on an --out whose first hunt is still running
     # must refuse and leave the first one's output alone. The first hunt is
     # slow and the second starts only once the first's lock exists, so the
