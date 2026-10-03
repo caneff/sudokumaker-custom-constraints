@@ -65,6 +65,7 @@ def check_carve_policy():
 
     order = carve(random.Random(7), grid, unique)
     first_run = list(order)
+    assert order != sorted(order), "carve order is row-major: the shuffle is gone"
     gone.clear()
     assert (0, 0) not in order, "a timed-out cell was carved"
     assert not any(r == 1 for r, _ in order), "a cell the check refused was carved"
