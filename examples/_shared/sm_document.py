@@ -69,9 +69,8 @@ def registering_constraint_name(doc, component_name):
 def write_link(doc, out_path):
     """Encode `doc`, assert the link decodes back to it, and write it.
 
-    Every builder writes its link here: the encoder is lossy on a document it
-    cannot represent, and a link that does not round-trip is a board nobody
-    can rebuild from what is on disk."""
+    The encoder is lossy on a document it cannot represent, and a link that
+    does not round-trip is a board nobody can rebuild from what is on disk."""
     link = encode_link(doc)
     assert decode_puzzle(link) == doc, "link does not round-trip"
     pathlib.Path(out_path).write_text(link + "\n")
