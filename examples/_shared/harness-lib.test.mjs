@@ -315,6 +315,11 @@ assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]
   assert.deepStrictEqual([...p.getCandidates(0)], [1], 'a refused call changes nothing')
 }
 
+// columnsOf: each column's cells top to bottom, row-major ids on a square board.
+assert.deepStrictEqual(columnsOf(3), [[0, 3, 6], [1, 4, 7], [2, 5, 8]])
+assert.strictEqual(columnsOf(9).length, 9)
+assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
+
 console.log('harness-lib.test.mjs: all seams pass')
 
 // ---- DigitSet: a set reads as its mask, as the app's SmallNumberSet does ----
@@ -365,8 +370,3 @@ console.log('harness-lib.test.mjs: all seams pass')
   // Intersecting nothing keeps every digit up to bit 30.
   assert.strictEqual(+DigitSet.getIntersection([]), 2147483647)
 }
-
-// columnsOf: each column's cells top to bottom, row-major ids on a square board.
-assert.deepStrictEqual(columnsOf(3), [[0, 3, 6], [1, 4, 7], [2, 5, 8]])
-assert.strictEqual(columnsOf(9).length, 9)
-assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
