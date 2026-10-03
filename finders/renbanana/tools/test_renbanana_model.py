@@ -74,7 +74,11 @@ def test_rectangle_lemma():
 
 def test_whisper():
     pair = {(4, 4), (4, 5)}
-    for lo, hi, want in ((3, 4, "INFEASIBLE"), (2, 7, "OPTIMAL")):
+    for lo, hi, want in (
+        (3, 4, "INFEASIBLE"),
+        (3, 7, "INFEASIBLE"),  # a gap of 4: the boundary
+        (2, 7, "OPTIMAL"),
+    ):
         m, d, choc = digits_and_shading()
         rm.whisper(m, d, choc)
         pin(m, choc, pair)
@@ -91,7 +95,11 @@ def test_whisper():
 
 def test_whisper_on_a_fixed_shading():
     is_choc = dict.fromkeys(rm.CELLS, False) | {(4, 4): True, (4, 5): True}
-    for lo, hi, want in ((3, 4, "INFEASIBLE"), (2, 7, "OPTIMAL")):
+    for lo, hi, want in (
+        (3, 4, "INFEASIBLE"),
+        (3, 7, "INFEASIBLE"),  # a gap of 4: the boundary
+        (2, 7, "OPTIMAL"),
+    ):
         m, d, _ = digits_and_shading()
         rm.whisper_on_shading(m, d, is_choc)
         m.add(d[4, 4] == lo)
