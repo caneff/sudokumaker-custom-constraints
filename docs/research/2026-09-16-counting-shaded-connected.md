@@ -309,6 +309,40 @@ A 21-cell witness with an 8 (r6c4 ringed), 1000+ solutions:
 1* 3* 2* 9  7  8  4  5  6
 ```
 
+## Second engine: depth-first shape enumerator (#506)
+
+`fastclimb.enumerate_shapes` (`gf_enumerate` in `counting_shaded_fast.c`) grows
+connected shapes cell by cell (Redelmeier's walk, each shape once), prunes on the
+local rules, on the all-digits requirement and on `gf_set_pins`, and hands each
+complete shape to `gf_count`. It shares no code or model with CP-SAT.
+
+Pruning: a shaded cell's count is settled once no open king neighbour is within
+reach of the cells left to place; a settled count of 0, or two equal settled
+counts in a row, column or box, cuts the branch. The walk picks the untried cell
+nearest the root row, which settles counts row by row (stack order was 100x
+slower: 42 s against 0.1 s for size 21 pinned).
+
+Pinned r9c1 + r9c2, all digits: shapes / solvable at 21 / 20 / 19 / 18 / 17 =
+2/2, 2/2, 2/0, 0/0, 0/0, none unique. (The table above counts the 19-cell
+shapes as 0 because it lists solvable ones; the DFS and CP-SAT native both find
+2 admissible shapes there, neither solvable.) Without all digits: 1 shape at 22
+(solvable), 1 at 24 (no grid), none at 23 and 25-26, as on record.
+
+Unpinned, symmetry on (one shape per orbit of the 8 dihedral images), all
+digits. Same counts from both engines, run on this box, 1 core each:
+
+| size | shapes | solvable | unique | DFS | CP-SAT native |
+|---|---|---|---|---|---|
+| 17 | 26 | 12 | 0 | 1.8 s | 70 s |
+| 18 | 32 | 16 | 0 | 3.5 s | 68 s |
+| 19 | 34 | 12 | 0 | 6.0 s | 54 s |
+| 20 | 16 | 6 | 0 | 10.6 s | 44 s |
+| 21 | 13 | 4 | 0 | 17.7 s | 44 s |
+
+Every run exhausted (`exhausted=True` / CP-SAT EXHAUSTED). Rebuild:
+`uv run python -c "import sys; sys.path.insert(0,'finders/counting_shaded'); import fastclimb; print(fastclimb.enumerate_shapes(21, True, True))"`
+against `uv run finders/counting_shaded/shapeenum.py --size 21 --mode native --symmetry --out DIR`.
+
 ## Method, and why
 
 Following the idiom that produced the 234 examples and the repo's other

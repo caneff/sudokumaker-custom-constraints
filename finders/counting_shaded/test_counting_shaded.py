@@ -374,3 +374,16 @@ def test_dfs_reports_timeout_not_exhaustion():
     # say so rather than report a count as if the size were exhausted.
     r = dfs(21, force=(), seconds=0.05, symmetry=True)
     assert not r.exhausted
+
+
+def test_dfs_unpinned_size_17_matches_cpsat_native_symmetry_record():
+    # `shapeenum.py --size 17 --mode native --symmetry` (CP-SAT, 70 s): 26 shapes
+    # up to the 8 dihedral images, 12 solvable, none unique.
+    r = dfs(17, force=(), symmetry=True)
+    assert r.exhausted
+    assert (r.shapes, r.solvable, r.unique) == (26, 12, 0)
+
+
+def test_dfs_refuses_symmetry_with_pins():
+    with pytest.raises(ValueError):
+        dfs(19, symmetry=True)
