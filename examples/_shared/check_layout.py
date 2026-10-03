@@ -503,7 +503,7 @@ def check_houses(example_dir, link, puzzle, manifest):
     # A board carrying a row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
     # is already present. Whether the copy embedded there is the current one is
-    # `check_stale_backend_code`' question, with its own message and its own fix
+    # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns_in_js).
     if declares_rows_and_columns_in_js(manifest, puzzle):
