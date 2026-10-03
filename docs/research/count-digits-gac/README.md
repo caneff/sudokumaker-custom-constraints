@@ -15,7 +15,7 @@ target list included (#578); a non-counter cell listed twice is the one gap.
 
 | File | What it is |
 |---|---|
-| `../../../examples/count-digits-gac/` | The replacement (`CountDigitsGacComponent.js`), the built-in's ported rule, the worked-case test and the soundness harness moved there: the component ships in links, so the gate reads it. |
+| `../../../examples/count-digits-gac/` | The replacement (`CountDigitsGacComponent.js`), the built-in's ported rule, the worked-case test and the soundness harness: the component ships in links, so the gate reads it. |
 | `bench-count-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, best of 3. |
 | `sparse/` | The real-app timing board (#543), below. |
 | `demo/` | The readable board (#568): both components in one link, toggled in the Elements panel. See `demo/README.md`. |

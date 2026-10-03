@@ -10,7 +10,7 @@ argument).
 
 | File | What it is |
 |---|---|
-| `../../../examples/count-digits-gac/` | The replacement (`RequiredDigitsGacComponent.js`) and its soundness harness moved there: the component ships in links, so the gate reads it. |
+| `../../../examples/count-digits-gac/` | The replacement (`RequiredDigitsGacComponent.js`) and its soundness harness: the component ships in links, so the gate reads it. |
 | `BuiltinRequiredDigitsComponent.js` | The built-in's own rule, ported verbatim from the bundle body, for the offline strength/cost comparisons below. Not for use in a puzzle — the app already has this one. |
 | `bench-required-digits.mjs` | Per-call cost against the built-in, 20,000 states per shape, 3 reps. |
 | `RequiredDigitsWrapperComponent.js`, `RequiredDigitsWrapperComponentBuiltin.js`, `main-required-digits-global.js`, `PUZZLE_LINK_required_digits*.txt` | The real-app timing rig (#534), below. |
