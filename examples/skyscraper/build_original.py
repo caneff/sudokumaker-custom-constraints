@@ -27,10 +27,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
 from framebuild import board_files, build_doc, check, frame_groups, load_board
-from link_codec import decode_puzzle, encode_link
+from link_codec import encode_link
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
-from sm_document import find_constraint
+from sm_document import GROUPS_INPUT, find_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"
@@ -70,9 +70,7 @@ def build(n, out_dir=HERE):
         ],
     )
     olc = find_constraint(original, CONSTRAINT_NAME)
-    olc["definition"]["input"] = [
-        {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
-    ]
+    olc["definition"]["input"] = [GROUPS_INPUT]
     # The shared frame_groups, so the original wrapper reads the same drawn
     # groups every other local-lane link in this repo ships (ordered by ring
     # key). The wrapper takes each group's clue from cells[0], so the order of
@@ -83,9 +81,7 @@ def build(n, out_dir=HERE):
         original, CONSTRAINT_NAME
     ), "frames differ beyond the constraint's own code/input"
     out_name = f"{link_path.stem}_original.txt"
-    link = encode_link(original)
-    assert decode_puzzle(link) == original, "link does not round-trip"
-    (out_dir / out_name).write_text(link + "\n")
+    link = write_link(original, out_dir / out_name)
     print(f"wrote {out_name} ({len(link)} chars) — same puzzle, original wrapper code")
 
 
