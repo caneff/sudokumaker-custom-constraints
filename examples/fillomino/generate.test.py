@@ -110,10 +110,12 @@ KNOWN_BAD_SEED_1_GRID = [
 ]
 
 
+SHIPPED_GRID = json.loads((HERE / "gen.json").read_text())["grid"]
+
+
 def test_is_striped_flags_a_mostly_dull_grid():
     assert is_striped(KNOWN_BAD_SEED_1_GRID), "known-bad seed 1 grid expected striped"
-    shipped = json.loads((HERE / "gen.json").read_text())["grid"]
-    assert not is_striped(shipped), "the shipped grid is not dull"
+    assert not is_striped(SHIPPED_GRID), "the shipped grid is not dull"
 
 
 def test_sample_retries_past_a_striped_grid():
@@ -121,7 +123,7 @@ def test_sample_retries_past_a_striped_grid():
     # grid first, a good one second, and sample() must skip the first.
     import generate
 
-    good = json.loads((HERE / "gen.json").read_text())["grid"]
+    good = SHIPPED_GRID
     queue = [KNOWN_BAD_SEED_1_GRID, good]
     real_rows = generate.rows
     generate.rows = lambda board, s, x: queue.pop(0)
