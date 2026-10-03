@@ -1,6 +1,7 @@
 # Two recipes find their files by glob, not by a hand-kept list:
 #
-#   - `just test` runs every examples/_shared/*.test.mjs and *.test.py;
+#   - `just test` runs every examples/_shared/*.test.mjs and *.test.py, and
+#     every finders/**/test_*.py;
 #   - `just verify-isofill` proves every examples/isofill/gen*.json.
 #
 # A hand-kept list lets a new file go unrun. So each recipe runs against a
@@ -37,6 +38,9 @@ if __name__ == "__main__":
         shutil.copy(ROOT / "justfile", tree / "justfile")
         (tree / "examples/_shared").mkdir(parents=True)
         (tree / "examples/isofill").mkdir(parents=True)
+        (tree / "finders/zz_new/deep").mkdir(parents=True)
+        (tree / "finders/zz_new/test_new.py").touch()
+        (tree / "finders/zz_new/deep/test_deeper.py").touch()
         for name in (
             "_shared/zz_new.test.mjs",
             "_shared/zz_new.test.py",
@@ -50,6 +54,12 @@ if __name__ == "__main__":
             "uv run examples/_shared/zz_new.test.py",
         ):
             assert want in ran, f"just test does not run a new shared test: {want}"
+
+        for want in (
+            "uv run finders/zz_new/test_new.py",
+            "uv run finders/zz_new/deep/test_deeper.py",
+        ):
+            assert want in ran, f"just test does not run a new finder test: {want}"
 
         ran = commands("verify-isofill", root=tree)
         want = "uv run examples/isofill/verify.py examples/isofill/gen_new.json"
