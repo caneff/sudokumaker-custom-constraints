@@ -33,11 +33,12 @@ node examples/count-digits-gac/soundness-harness.mjs
 node examples/count-digits-gac/count-digits.test.mjs
 ```
 
-Every check in the soundness harness fails the run: a removed true value, a
-`validate` that rejects the true solution, a RequiredDigits candidate the
-built-in removes and the component keeps, a RequiredDigits removal the oracle
-does not make, a CountDigits removal the oracle does not make, and a
-CountDigits candidate the oracle removes that an `exact` shape keeps.
+These fail the run: a removed true value, a `validate` that rejects the true
+solution, a RequiredDigits candidate the built-in removes and the component
+keeps, a RequiredDigits removal the oracle does not make, a CountDigits
+removal the oracle does not make, and a CountDigits candidate the oracle
+removes that an `exact` shape keeps. The CountDigits comparison with the
+built-in's `validate` only reports a count.
 
 ## Timing
 
