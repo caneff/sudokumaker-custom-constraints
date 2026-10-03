@@ -337,8 +337,13 @@ def _prune_dead_includes(lines):
         if used_elsewhere == 0:
             drop.update(range(start, end + 1))
             # blank lines survive only in the annotated mode: the one after a
-            # pruned function would double the gap around it
-            if end + 1 < n and not lines[end + 1][0].strip():
+            # pruned function would double the gap around it -- unless the
+            # function had no blank line before it, when it is the only gap
+            if (
+                end + 1 < n
+                and not lines[end + 1][0].strip()
+                and (start == 0 or not lines[start - 1][0].strip())
+            ):
                 drop.add(end + 1)
     return [pair for idx, pair in enumerate(lines) if idx not in drop]
 
