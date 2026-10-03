@@ -19,8 +19,9 @@ import { installGlobals, makeIo, makeRng } from '../../../examples/_shared/harne
 const GAC_DIR = new URL('../../../examples/count-digits-gac/', import.meta.url).pathname
 
 installGlobals(1, 9)
-const gac = makeIo(GAC_DIR).load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
-const builtin = makeIo(GAC_DIR).load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
+const gacIo = makeIo(GAC_DIR)
+const gac = gacIo.load('CountDigitsGacComponent.js', ['setParams', 'update', 'validate'])
+const builtin = gacIo.load('BuiltinCountDigitsComponent.js', ['setParams', 'validate'])
 
 const { rnd } = makeRng(99)
 const STATES = 20000
