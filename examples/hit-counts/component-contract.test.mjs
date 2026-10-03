@@ -190,10 +190,14 @@ const { load } = makeIo(HERE)
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
 
   // ---- A backtrack makes the side deduce again ----
-  // The side skips a state it has already swept. A position that loses a digit
-  // (no 1..n there any more) is a dead state to sweep nothing on; the search
-  // then backtracks to the state before the first sweep, and the side must
-  // make the same four pins again rather than treat that state as swept.
+  // The side skips a state it has already swept. After a sweep, and a state
+  // with a position missing a digit (not swept at all), the search backtracks
+  // to the state before the first sweep: the side must make the same four
+  // pins again, not treat that state as swept. This witnesses a memo that
+  // never lets go. It does not witness the memo being cleared on the
+  // missing-digit exit: the memo hashes exactly the bits a sweep reads, so a
+  // state matching a stale memo would sweep to nothing either way and no
+  // state makes that clear observable.
   const m = spied()
   const im = { cells: [...CLUES, ...LINES.flat()] }
   side.setParams(im, CLUES, LINES)
