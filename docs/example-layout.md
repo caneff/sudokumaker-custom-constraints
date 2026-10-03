@@ -24,11 +24,10 @@ so a missing required file or a bad link name fails the gate.
 
 `main-global.js`, `PUZZLE_LINK_local.txt` and `gen_local.json` are required on
 every example except one with no local/global duality: it ships `main.js`
-alone. The reason is a whole-grid or fixed-geometry constraint with no drawn
-groups to split a local lane from (`isofill`, `fillomino`, `house-gac`,
-`dutch-flatmates`), or, for `up-to-n`, groups drawn but no global lane, its
-clues being typed into them. `examples/_shared/check_layout.py` owns the list
-as `NO_LOCAL_GLOBAL_SPLIT`.
+alone. The reason is either a whole-grid or fixed-geometry constraint with no
+drawn groups to split a local lane from, or groups drawn but no global lane,
+the clues being typed into them. `examples/_shared/check_layout.py` owns the
+members as `NO_LOCAL_GLOBAL_SPLIT`.
 
 ## Which lane a link runs (#268)
 

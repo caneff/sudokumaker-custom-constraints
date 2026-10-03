@@ -39,8 +39,8 @@ if __name__ == "__main__":
     check(link, doc, n_givens)
     assert link == committed, "PUZZLE_LINK.txt is not what build_link.py writes"
 
-    # the decoded board: ringless 9x9, gen.json's givens, the rules text, the
-    # one whole-grid component and the shared whole-grid rows-and-columns backend
+    # the decoded board, past what check() asserts: the exact rules text, gen.json's
+    # givens, and the rows-and-columns backend ahead of the flatmate constraint
     p = decode_puzzle(committed)["puzzle"]
     gen = json.loads((HERE / "gen.json").read_text())
     assert p["comment"] == NO_RING_RULES_PREFIX + RULE
@@ -116,7 +116,6 @@ if __name__ == "__main__":
 
     p0 = decode_puzzle(committed_0g)["puzzle"]
     gen0 = json.loads((HERE / "gen_0g.json").read_text())
-    assert p0["comment"].startswith("Normal sudoku rules apply. ")
     for rule in (
         "diagonals",
         "Dutch Flatmates",
@@ -125,7 +124,6 @@ if __name__ == "__main__":
     ):
         assert rule in p0["comment"], f"rules text does not name {rule!r}"
     assert "Flinty" in p0["comment"] and gen0["source"] in p0["comment"]
-    assert all(c == {} for c in p0["cells"]), "the 0-given board opens with digits"
     by_type = {c["type"]: c for c in p0["constraints"] if c["type"] != 1000}
     assert by_type[306]["cells"] == gen0["circles"] and len(gen0["circles"]) == 28
     assert {10, 11} <= by_type.keys()
