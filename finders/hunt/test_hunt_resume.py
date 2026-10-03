@@ -1014,9 +1014,8 @@ with tempfile.TemporaryDirectory() as tmp:
 
 with tempfile.TemporaryDirectory() as tmp:
     # #664: a finder with only one of load_state/save_state is refused at
-    # launch, before any hunt file exists. Load-only used to resume by
-    # trimming every event, since nothing ever wrote state.json.
-    import driver as half_driver
+    # launch, before any hunt file exists.
+    import driver as driver_module
 
     class LoadOnlyFinder(StatefulToyFinder):
         save_state = None
