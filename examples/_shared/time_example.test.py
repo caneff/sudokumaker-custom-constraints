@@ -251,6 +251,8 @@ if __name__ == "__main__":
     # name, or the exception type it must raise).
     #   declared: the manifest's timed_component wins over another matching
     #     file beside it
+    #   declared-not-first: the manifest's name wins even when it is not the
+    #     first registered one
     #   declared-missing-file: loud, even with another registered file there
     #   declared-unregistered: loud
     #   overridden: --component beats the manifest (skyscraper's local board
@@ -262,6 +264,14 @@ if __name__ == "__main__":
     PAIR = ["WidgetComponent", "WidgetPairComponent"]
     CASES = [
         ("declared", DECLARED, PAIR, PAIR, None, "WidgetComponent.js"),
+        (
+            "declared-not-first",
+            'timed_component = "WidgetPairComponent"\n',
+            PAIR,
+            PAIR,
+            None,
+            "WidgetPairComponent.js",
+        ),
         (
             "declared-missing-file",
             DECLARED,
