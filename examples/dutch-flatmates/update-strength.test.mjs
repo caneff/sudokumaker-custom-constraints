@@ -19,7 +19,7 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
+import { columnsOf, installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -38,7 +38,7 @@ const truth = gen.grid.flatMap(row => [...row].map(Number))
 
 // The floor prunes every column as a house, so compare on a board that declares
 // each column one (compareStrength hands `opts` to the mock puzzle).
-const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => row * N + col))
+const COLUMNS = columnsOf(N)
 
 const apply = (mod, p) => {
   const inst = { cells: CELLS }

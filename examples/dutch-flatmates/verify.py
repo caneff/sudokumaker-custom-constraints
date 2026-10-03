@@ -26,7 +26,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import read_board, read_extras
+from build_link import read_gen
 from flatmate_model import N, prove_recorded, rule_forced_flatmates, unique_solution
 from link_codec import decode_puzzle
 
@@ -34,8 +34,7 @@ from link_codec import decode_puzzle
 def verify(gen=HERE / "gen.json", link=HERE / "PUZZLE_LINK.txt"):
     """Run the four checks; return the rule-forced (5, flatmate) cell pairs.
     Raises AssertionError naming the first check that fails."""
-    grid, givens = read_board(gen)
-    extras, _spec = read_extras(gen)
+    grid, givens, extras, _spec = read_gen(gen)
     solution = prove_recorded(givens, grid, extras)
     assert unique_solution(givens, flatmate=False, extras=extras) is None, (
         "plain sudoku already has one solution on these givens: the rule is not needed"
