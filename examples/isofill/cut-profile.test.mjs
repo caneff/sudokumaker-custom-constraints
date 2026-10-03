@@ -37,12 +37,12 @@ const removalsOf = (mod, snap) => {
 check('patched removals match plain', snaps.every(s => removalsOf(plain, s) === removalsOf(timed, s)))
 
 // ---- The accumulator is wired: cut runs, and its time is part of update's ----
-// timeUpdate itself throws on a run that recorded no cut time, so reaching the
-// check at all is the proof that cut ran. A patch that accumulates something
-// other than the cut span (a clock reading, a double count) reads more than
-// all of `update`.
+// timeUpdate throws on a run that recorded exactly no cut time. Between that
+// and all of `update` sits the span itself: a patch that accumulates a clock
+// reading, or a negative span, falls outside it. A cut counted twice does not
+// (the share is about a half here), so this is a range check, not a measure.
 const { totalMs, cutMs } = timeUpdate(timed, snaps, 1)
-check('cut time is a part of update time', cutMs < totalMs)
+check('cut time is within (0, update time)', cutMs > 0 && cutMs < totalMs)
 
 // ---- An uninstrumented component reads as no cut time at all, and that
 // fails loud rather than reporting a 0% share ----
