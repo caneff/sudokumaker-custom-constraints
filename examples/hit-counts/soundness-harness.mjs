@@ -27,7 +27,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -60,29 +60,29 @@ const rev = a => a.slice().reverse()
 // digits. Both clues of the line are true together, which is what the joint
 // component reads.
 function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
-  let tests = 0
-  let bad = 0
-  let fired = 0
   const seen = new Set()
-  for (let iter = 0; iter < iters; iter++) {
-    const line = lines[iter % lines.length]
-    const cells = line.map((_, i) => i)
-    const truth = { [A]: hits(line), [B]: hits(rev(line)) }
-    seen.add(truth[A])
-    for (let i = 0; i < line.length; i++) truth[i] = line[i]
-    const lineSeed = seeder(lo, hi)
-    const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
-    const before = total(p)
-    const inst = {}
-    joint.setParams(inst, A, B, cells)
-    const v = violates(joint, inst, p, truth)
-    tests++
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', line.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired, seen }
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const line = lines[iter % lines.length]
+      const cells = line.map((_, i) => i)
+      const truth = { [A]: hits(line), [B]: hits(rev(line)) }
+      seen.add(truth[A])
+      for (let i = 0; i < line.length; i++) truth[i] = line[i]
+      const lineSeed = seeder(lo, hi)
+      const clueSeed = seeder(0, clueHi)
+      const inst = { cells: [A, B, ...cells] } // as the app sets it
+      joint.setParams(inst, A, B, cells)
+      return {
+        truth,
+        seed: (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v),
+        houses: housesOf(kind, cells),
+        parts: [{ mod: joint, inst }],
+        note: `line ${line.join('')}`
+      }
+    }
+  })
+  return { ...r, seen }
 }
 
 // ---- full house: a permutation of 1..9, plus the two forced extremes ----
@@ -116,34 +116,38 @@ const zero = fuzzLines('joint line, {0..8}    ', { kind: 'fullHouse', lines: zer
 // A drawn line with no clue at its far end keeps this component, so it meets
 // the same four pools: the count bounds are bare, the no-n-1 rule is gated.
 function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
-  let tests = 0
-  let bad = 0
   let prunes = 0
   const CLUE = 102
-  for (let iter = 0; iter < iters; iter++) {
-    const line = lines[iter % lines.length]
-    const cells = line.map((_, i) => i)
-    const clueVal = hits(line)
-    const truth = { [CLUE]: clueVal }
-    for (let i = 0; i < line.length; i++) truth[i] = line[i]
-    const lineSeed = seeder(lo, hi)
-    const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
-    const inst = {}
-    mod.setParams(inst, CLUE, cells)
-    const nMinus1 = line.length - 1
-    // Bracket the no-n-1 rule alone, so this counts that rule's firings. Over
-    // the whole fixpoint the bare count bounds also take n - 1 in plenty of
-    // states, which says nothing about the gate.
-    const had = p.getCandidates(CLUE).has(nMinus1)
-    Array.from(mod.noNMinusOne(inst, p))
-    if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
-    const v = violates(mod, inst, p, truth)
-    tests++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', line.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', prunes, 'n-1 prunes')
-  return { bad, prunes }
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const line = lines[iter % lines.length]
+      const cells = line.map((_, i) => i)
+      const truth = { [CLUE]: hits(line) }
+      for (let i = 0; i < line.length; i++) truth[i] = line[i]
+      const lineSeed = seeder(lo, hi)
+      const clueSeed = seeder(0, clueHi)
+      const inst = { cells: [CLUE, ...cells] }
+      mod.setParams(inst, CLUE, cells)
+      const nMinus1 = line.length - 1
+      return {
+        truth,
+        seed: (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v),
+        houses: housesOf(kind, cells),
+        parts: [{ mod, inst }],
+        note: `line ${line.join('')}`,
+        // Bracket the no-n-1 rule alone, so this counts that rule's firings.
+        // Over the whole fixpoint the bare count bounds also take n - 1 in
+        // plenty of states, which says nothing about the gate.
+        inspect: p => {
+          const had = p.getCandidates(CLUE).has(nMinus1)
+          Array.from(mod.noNMinusOne(inst, p))
+          if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
+        }
+      }
+    }
+  })
+  return { ...r, prunes }
 }
 
 const lineFull = fuzzLine('line, full house', { kind: 'fullHouse', lines: fullLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
@@ -168,12 +172,18 @@ function reshuffle (grid, bh, bw) {
   return rows.map(r => cols.map(c => grid[r][c]))
 }
 
-// Every whole-grid state both grid corpora below run on: each shipped size,
-// its committed grid first and then band/stack shuffles of it, every cell
-// seeded with a random candidate superset that keeps its true value, and the
-// grid's rows and columns declared as its houses.
+// The whole-grid corpus: each shipped size, its committed grid first and then
+// band/stack shuffles of it, every cell seeded with a random candidate superset
+// that keeps its true value, and the grid's rows and columns declared as its
+// houses. Every component a board carries over those lines runs together to
+// one fixpoint, as the solver runs them: one joint component per pair of
+// opposite clues, and the side hit matching over each of the four sides. The
+// side hit matching reads a whole side at once, so it only ever meets whole
+// grids. It forces hits as well as forbidding them, so an assignment bug takes
+// a true value straight out.
 const ITERS = 4000
-function * gridStates () {
+function fuzzGrids () {
+  const sum = { tests: 0, failures: 0, fired: 0 }
   for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
     const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
     const { n, box: [bh, bw] } = gen
@@ -183,39 +193,59 @@ function * gridStates () {
       ...Array.from({ length: n }, (_, i) => lineCells('L', i)),
       ...Array.from({ length: n }, (_, i) => lineCells('T', i))
     ]
-    for (let iter = 0; iter < ITERS; iter++) {
-      const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
-      const truth = {}
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
-      for (const k of keys) {
-        const side = k[0]; const i = +k.slice(1)
-        truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+    const r = fuzzSoundness(`whole grids ${file}`, {
+      iters: ITERS,
+      draw: iter => {
+        const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
+        const truth = {}
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
+        for (const k of keys) {
+          const side = k[0]; const i = +k.slice(1)
+          truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+        }
+        const lineSeed = seeder(1, n)
+        const clueSeed = seeder(0, n)
+        const parts = []
+        for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
+          for (let i = 0; i < n; i++) {
+            const inst = { cells: [clueCell(sa, i), clueCell(sb, i), ...lineCells(sa, i)] }
+            joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
+            parts.push({ mod: joint, inst })
+          }
+        }
+        for (const side of ['L', 'R', 'T', 'B']) {
+          const clues = Array.from({ length: n }, (_, i) => clueCell(side, i))
+          const lines = Array.from({ length: n }, (_, i) => lineCells(side, i))
+          const inst = { cells: [...clues, ...lines.flat()] }
+          matchMod.setParams(inst, clues, lines)
+          parts.push({ mod: matchMod, inst })
+        }
+        return { truth, seed: (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), houses, parts, note: `${file} iter ${iter}` }
       }
-      const lineSeed = seeder(1, n)
-      const clueSeed = seeder(0, n)
-      const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { houses })
-      yield { file, n, truth, p, clueCell, lineCells }
-    }
+    })
+    sum.tests += r.tests
+    sum.failures += r.failures
+    sum.fired += r.fired
   }
+  return sum
 }
+const grids = fuzzGrids()
+console.log('joint and side hit matching, whole grids:', grids.tests, 'tests,', grids.failures, 'failures,', grids.fired, 'states pruned')
 
-let gTests = 0
-let gBad = 0
-let gFired = 0
-for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
-  const before = total(p)
-  for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
-    for (let i = 0; i < n; i++) {
-      const inst = {}
-      joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
-      const v = violates(joint, inst, p, truth)
-      gTests++
-      if (v) { gBad++; if (gBad <= 5) console.log('JOINT grid violation', file, sa + i, v) }
+// A state run by the component under test, set against a rival's leftover
+// candidates on the same state: `draw` also returns `rivalLeft`, the total the
+// rival leaves, and `beaten` counts the states where the component left less.
+function fuzzBeating (label, { iters, draw }) {
+  const runs = []
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const { rivalLeft, ...state } = draw(iter)
+      return { ...state, inspect: p => runs.push({ p, rivalLeft }) }
     }
-  }
-  if (total(p) < before) gFired++
+  })
+  return { ...r, beaten: runs.filter(({ p, rivalLeft }) => total(p) < rivalLeft).length }
 }
-console.log('joint, whole grids:', gTests, 'tests,', gBad, 'violations,', gFired, 'states pruned')
 
 // ---- The mirrored-pair exclusion fires, and only on a house ----
 // The counters above show that SOMETHING pruned; this one names the rule. It
@@ -224,37 +254,33 @@ console.log('joint, whole grids:', gTests, 'tests,', gBad, 'violations,', gFired
 // gates two rules, so the clue seeds drop n - 1 up front: with that value gone
 // the no-n-1 rule can never fire, and the only difference left between the two
 // runs is the mirrored-pair exclusion.
-let exTests = 0
-let exFired = 0
-let exBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const n = 4 + ((rnd() * 6) | 0) // 4..9
-  const perm = makeLine(rnd, 'fullHouse', n, n)
-  const cells = Array.from({ length: n }, (_, j) => j)
-  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-  for (let j = 0; j < n; j++) truth[j] = perm[j]
-  const lineSeed = seeder(1, n)
-  const clueSeed = seeder(0, n)
-  const draw = new Map()
-  for (const c of Object.keys(truth)) {
-    const isClue = +c === A || +c === B
-    const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
-    draw.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
+const exclusion = fuzzBeating('mirrored-pair exclusion', {
+  iters: 20000,
+  draw: () => {
+    const n = 4 + ((rnd() * 6) | 0) // 4..9
+    const perm = makeLine(rnd, 'fullHouse', n, n)
+    const cells = Array.from({ length: n }, (_, j) => j)
+    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+    for (let j = 0; j < n; j++) truth[j] = perm[j]
+    const lineSeed = seeder(1, n)
+    const clueSeed = seeder(0, n)
+    const cands = new Map()
+    for (const c of Object.keys(truth)) {
+      const isClue = +c === A || +c === B
+      const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
+      cands.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
+    }
+    const part = () => {
+      const inst = { cells: [A, B, ...cells] }
+      joint.setParams(inst, A, B, cells)
+      return [{ mod: joint, inst }]
+    }
+    const bare = makePuzzle(truth, c => cands.get(c), { houses: housesOf('bare', cells) })
+    fixpointAll(part(), bare)
+    return { truth, seed: c => cands.get(c), houses: housesOf('fullHouse', cells), parts: part(), note: `n = ${n}`, rivalLeft: total(bare) }
   }
-  const run = kind => {
-    const p = makePuzzle(truth, c => draw.get(c), { houses: housesOf(kind, cells) })
-    const inst = {}
-    joint.setParams(inst, A, B, cells)
-    const v = violates(joint, inst, p, truth)
-    return { v, left: total(p) }
-  }
-  const asHouse = run('fullHouse')
-  const asBare = run('bare')
-  exTests++
-  if (asHouse.v) { exBad++; if (exBad <= 5) console.log('EXCLUSION violation, n =', n, asHouse.v) }
-  if (asHouse.left < asBare.left) exFired++
-}
-console.log('mirrored-pair exclusion:', exTests, 'tests,', exBad, 'violations,', exFired, 'states where the house run pruned more')
+})
+console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the house run pruned more')
 
 // ---- the permutation sweep fires, and takes no true value with it ----
 // The counters above show the joint component pruned; this one names the
@@ -263,36 +289,32 @@ console.log('mirrored-pair exclusion:', exTests, 'tests,', exBad, 'violations,',
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
 const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
-let permTests = 0
-let permFired = 0
-let permBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const n = 4 + ((rnd() * 6) | 0) // 4..9
-  const perm = makeLine(rnd, 'fullHouse', n, n)
-  const cells = Array.from({ length: n }, (_, j) => j)
-  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-  for (let j = 0; j < n; j++) truth[j] = perm[j]
-  const lineSeed = seeder(1, n)
-  const clueSeed = seeder(0, n)
-  const draw = new Map()
-  for (const c of Object.keys(truth)) {
-    const isClue = +c === A || +c === B
-    draw.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
+const permutation = fuzzBeating('permutation sweep', {
+  iters: 20000,
+  draw: () => {
+    const n = 4 + ((rnd() * 6) | 0) // 4..9
+    const perm = makeLine(rnd, 'fullHouse', n, n)
+    const cells = Array.from({ length: n }, (_, j) => j)
+    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+    for (let j = 0; j < n; j++) truth[j] = perm[j]
+    const lineSeed = seeder(1, n)
+    const clueSeed = seeder(0, n)
+    const cands = new Map()
+    for (const c of Object.keys(truth)) {
+      const isClue = +c === A || +c === B
+      cands.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
+    }
+    const part = component => {
+      const inst = { cells: [A, B, ...cells] }
+      component.setParams(inst, A, B, cells)
+      return [{ mod: component, inst }]
+    }
+    const old = makePuzzle(truth, c => cands.get(c), { houses: [cells] })
+    fixpointAll(part(caseSweep), old)
+    return { truth, seed: c => cands.get(c), houses: [cells], parts: part(joint), note: `n = ${n}`, rivalLeft: total(old) }
   }
-  const run = component => {
-    const p = makePuzzle(truth, c => draw.get(c), { houses: [cells] })
-    const inst = {}
-    component.setParams(inst, A, B, cells)
-    const v = violates(component, inst, p, truth)
-    return { v, left: total(p) }
-  }
-  const now = run(joint)
-  const before = run(caseSweep)
-  permTests++
-  if (now.v) { permBad++; if (permBad <= 5) console.log('PERMUTATION SWEEP violation, n =', n, now.v) }
-  if (now.left < before.left) permFired++
-}
-console.log('permutation sweep:', permTests, 'tests,', permBad, 'violations,', permFired, 'states where the permutation sweep pruned more')
+})
+console.log('permutation sweep:', permutation.beaten, 'states where the permutation sweep pruned more')
 
 // ---- the gate re-opens once the cage removes 0 ----
 // On a hit-counts board 0 is live on the inner grid at the first update and a
@@ -371,31 +393,6 @@ function validateAt (kind) {
 }
 const validateOk = validateAt('bare') === true && validateAt('fullHouse') === false
 console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
-
-// ---- Side hit matching: a whole side of a real grid ----
-// The component reads all n clues of a side at once, so its corpus is whole
-// grids, not single lines: the three shipped sizes and band/stack shuffles of
-// them, every cell seeded with a random candidate superset that keeps its true
-// value. It forces hits as well as forbidding them, so an assignment bug takes
-// a true value straight out.
-let sTests = 0
-let sBad = 0
-let sFired = 0
-for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
-  const before = total(p)
-  for (const side of ['L', 'R', 'T', 'B']) {
-    const clues = []
-    const lines = []
-    for (let i = 0; i < n; i++) { clues.push(clueCell(side, i)); lines.push(lineCells(side, i)) }
-    const inst = {}
-    matchMod.setParams(inst, clues, lines)
-    const v = violates(matchMod, inst, p, truth)
-    sTests++
-    if (v) { sBad++; if (sBad <= 5) console.log('SIDE-MATCH violation', file, side, v) }
-  }
-  if (total(p) < before) sFired++
-}
-console.log('side hit matching, whole grids:', sTests, 'tests,', sBad, 'violations,', sFired, 'states pruned')
 
 // ---- Side hit matching: the gate, and 0 as an ordinary miss ----
 // The assignment needs each position to be a house holding 1..n exactly once.
@@ -498,26 +495,25 @@ const perpValue = (i, j) => ((i + j) % N) + 1
 // that really does sum to N; the bare run uses clues that do not, which the
 // gate must leave alone.
 function fuzzSide (label, { kind, sums, iters }) {
-  let tests = 0
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const vals = sums()
-    const truth = {}
-    for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
-    const clueSeed = seeder(0, 9)
-    const p = makePuzzle(truth, (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)), { houses: kind === 'bare' ? [] : PERP })
-    const before = total(p)
-    const inst = {}
-    sideMod.setParams(inst, SIDE, N, PERP)
-    const v = violates(sideMod, inst, p, truth)
-    if (total(p) < before) fired++
-    tests++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'vals', vals.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
+  return fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const vals = sums()
+      const truth = {}
+      for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
+      const clueSeed = seeder(0, 9)
+      const inst = {}
+      sideMod.setParams(inst, SIDE, N, PERP)
+      return {
+        truth,
+        seed: (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)),
+        houses: kind === 'bare' ? [] : PERP,
+        parts: [{ mod: sideMod, inst }],
+        note: `vals ${vals.join('')}`
+      }
+    }
+  })
 }
 
 const sideFull = fuzzSide('side-sum, full-house perpendiculars', { kind: 'fullHouse', sums: composition, iters: 20000 })
@@ -571,20 +567,14 @@ function staleWakeRun (mod) {
   truth[PERP[0][0]] = 0 // line 0 holds a 0, so it is no house of 1..N
   const start = c => (c === SIDE[0] ? [0, 1, 3] : c === SIDE[2] ? [1, 2] : c === PERP[0][0] ? [0, 1] : [truth[c]])
   const p = makePuzzle(truth, start, { houses: PERP })
-  const snapshot = () => affected.map(c => p.getCandidatesBitMask(c)).join()
-  let seen = null
-  const wake = () => {
-    if (snapshot() === seen) return
-    Array.from(mod.update(inst, p))
-    seen = snapshot()
-  }
-  const restore = () => { for (const [c] of p._cand) p._cand.set(c, new Set(start(c))); seen = snapshot() }
+  const { wake, settle } = makeWaker(mod, inst, p, affected)
   wake() // the root: 0 live on line 0, the gate shut
   p._cand.get(PERP[0][0]).delete(0) // branch: the line's 0 goes, woken, gate open
   wake()
   p._cand.get(SIDE[2]).delete(2) // a clue narrows in the branch: woken
   wake()
-  restore() // backtrack: the 0 is back, and nobody is woken
+  for (const [c] of p._cand) p._cand.set(c, new Set(start(c))) // backtrack: the 0 is back, and nobody is woken
+  settle()
   p._cand.get(SIDE[0]).delete(0) // a clue narrows in the parent: woken
   wake()
   return [...p._cand].find(([c, set]) => !set.has(truth[c])) || null
@@ -599,13 +589,12 @@ console.log('side-sum stale wake:', staleWakeLost === null ? 'sound' : `LOST ${J
   '/ a latched gate:', staleWakeBites ? 'loses a true value' : 'DOES NOT BITE')
 
 const ok = staleWakeLost === null && staleWakeBites &&
-  full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
-  lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
+  full.failures === 0 && bare.failures === 0 && house.failures === 0 && zero.failures === 0 &&
+  lineFull.failures === 0 && lineBare.failures === 0 && lineHouse.failures === 0 && lineZero.failures === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
-  gBad === 0 && exBad === 0 && permBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
+  grids.failures === 0 && exclusion.failures === 0 && permutation.failures === 0 && sideFull.failures === 0 && sideBare.failures === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
-  gFired > 0 && exFired > 0 && permFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
+  grids.fired > 0 && exclusion.beaten > 0 && permutation.beaten > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
   retestOk && wrongSetOk && latchOk && sideLatchBad === null && validateOk && sideGateOk && sideValidateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)
