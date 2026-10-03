@@ -189,4 +189,74 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('repeat calls: idempotent, re-prunes after a restore, sees a column whose only change is a 1 or a 9')
 }
 
+// Boards whose columns are not a plain sudoku's (#693): the column reasoning
+// (exactly one 1, one 5 and one 9) is used only when a column holds each of the
+// board's digits once and 1, 5 and 9 are among them. Every other column gets
+// the per-cell rule alone. Each case declares every column all-different, so
+// only the digits and the column length tell the cases apart.
+{
+  const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
+  // A square board of `width` with digits lo..hi; `edit(cand)` narrows cells.
+  function small (width, lo, hi, edit) {
+    installGlobals(lo, hi)
+    const cells = Array.from({ length: width * width }, (_, i) => i)
+    const digits = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
+    const cand = new Map(cells.map(c => [c, new Set(digits)]))
+    edit(cand, (row, col) => row * width + col)
+    const p = makePuzzle(Object.fromEntries(cells.map(c => [c, 0])), c => [...cand.get(c)], { houses: columnsOf(width) })
+    const inst = { cells }
+    mod.setParams(inst, cells)
+    Array.from(mod.update(inst, p))
+    installGlobals(1, N)
+    return p
+  }
+
+  // 6x6 with digits 1-9: a column is shorter than the digit list, so it need not
+  // hold a 1, a 5 or a 9. Column 0 below has its only 1 and only 9 in the same
+  // row 2 and its only 5 in row 3: the column reasoning would find no partner
+  // for the 5 and stop the branch, but the 5 has a possible 1 directly above it.
+  {
+    const p = small(6, 1, 9, (cand, at6) => {
+      for (let r = 0; r < 6; r++) {
+        if (r !== 2) { cand.get(at6(r, 0)).delete(1); cand.get(at6(r, 0)).delete(9) }
+        if (r !== 3) cand.get(at6(r, 0)).delete(5)
+      }
+      // column 1: a 5 with no 1 above and no 9 below, so the per-cell rule removes it
+      for (let r = 0; r < 6; r++) {
+        if (r !== 3) cand.get(at6(r, 1)).delete(5)
+      }
+      cand.get(at6(2, 1)).delete(1)
+      cand.get(at6(4, 1)).delete(9)
+    })
+    assert.strictEqual(p._stopped, null, 'a 6x6 board with digits 1-9 got the column reasoning and was stopped')
+    assert.ok(p._cand.get(3 * 6 + 0).has(5), 'the 5 with a possible 1 above it was removed on a 6x6 board')
+    assert.ok(!p._cand.get(3 * 6 + 1).has(5), 'the per-cell rule did not remove an unflatmated 5 on a 6x6 board')
+    console.log('6x6 board, digits 1-9: per-cell rule only, no column reasoning')
+  }
+
+  // 8x8 with digits 1-8: every column is a set of all the digits, but there is no
+  // 9, so no column holds a 9 for the column reasoning to place. It must not stop.
+  {
+    const p = small(8, 1, 8, (cand, at8) => {
+      for (let r = 0; r < 8; r++) if (r !== 3) cand.get(at8(r, 0)).delete(5)
+      cand.get(at8(2, 0)).delete(1) // the 5 at row 3 now has no 1 above and (no 9 at all) no 9 below
+    })
+    assert.strictEqual(p._stopped, null, 'a board without a 9 got the column reasoning and was stopped')
+    assert.ok(!p._cand.get(3 * 8 + 0).has(5), 'the per-cell rule did not remove an unflatmated 5 on a board without a 9')
+    console.log('8x8 board, digits 1-8: no 9, per-cell rule only')
+  }
+
+  // 9x9 with digits 2-10: each column holds all the digits once but there is no 1.
+  {
+    const p = small(9, 2, 10, (cand, at9) => {
+      for (let r = 0; r < 9; r++) if (r !== 3 && r !== 6) cand.get(at9(r, 0)).delete(5)
+      cand.get(at9(4, 0)).delete(9) // the 5 at row 3 has no 9 below; there is no 1 on this board
+    })
+    assert.strictEqual(p._stopped, null, 'a board without a 1 got the column reasoning and was stopped')
+    assert.ok(!p._cand.get(3 * 9 + 0).has(5), 'the 5 with no 9 below and no 1 anywhere was kept')
+    assert.ok(p._cand.get(6 * 9 + 0).has(5), 'the 5 with a 9 below it was removed')
+    console.log('9x9 board, digits 2-10: no 1, per-cell rule only')
+  }
+}
+
 console.log('PASS')

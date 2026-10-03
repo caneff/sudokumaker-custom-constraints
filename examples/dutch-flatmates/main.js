@@ -1,13 +1,11 @@
-// DUTCH FLATMATES -- main (backend) code segment.
+// Dutch Flatmates: add the rule once, over the whole grid.
 //
-// A global constraint: the author draws no groups, so there is no
-// `input.groups` to read. The main code builds every cell id by coordinates
-// and registers ONE component over the whole grid. The component finds the
-// cell above and below by index arithmetic, so the list must be row-major over
-// the square: build it by coordinates, do not trust getAllCellIds() order.
+// The rule looks at the cell above and the cell below each 5, so the rule gets
+// the cells listed row by row (top row first, left to right). We build that list
+// by position instead of trusting the order the app hands cells out in.
 
-//! A rectangle has no row-major square to index: refuse before registering,
-//! as isofill does, so no half-built constraint is left behind.
+// Above and below only make sense on a square grid, so stop here on any other
+// shape, before anything has been added.
 const side = puzzle.spec.size.width
 if (puzzle.spec.size.height !== side) {
   throw new Error(`DUTCH FLATMATES: needs a square board, got ${side} x ${puzzle.spec.size.height}`)
@@ -16,7 +14,8 @@ const cells = []
 for (let y = 0; y < side; y++) {
   for (let x = 0; x < side; x++) {
     const id = helpers.cellIds.getIdFromCoordsSafe({ x, y })
-    // A miss is undefined, and `undefined | 0` is cell 0: keep it loud.
+    // The app answers "no such cell" with undefined, and a bare undefined would
+    // quietly turn into cell 0 below, so stop loudly instead.
     if (id === undefined) throw new Error(`DUTCH FLATMATES: no cell at x=${x}, y=${y}`)
     cells.push(id | 0)
   }

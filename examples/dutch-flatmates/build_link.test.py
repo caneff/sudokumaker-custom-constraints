@@ -9,6 +9,7 @@
 
 import json
 import pathlib
+import re
 import sys
 import tempfile
 
@@ -164,6 +165,52 @@ if __name__ == "__main__":
             swap_build(HERE / "PUZZLE_LINK_0g.txt", HERE / f"{TIMED_COMPONENT}.js", out)
             == committed_0g
         )
+
+    # the annotated twin (#693): same board, the embedded code keeps its
+    # comments and loses the repo's lint line
+    annotated_path = HERE / "PUZZLE_LINK_0g_annotated.txt"
+    link_ann, doc_ann, n_ann = build(
+        puzzle_path=HERE / "gen_0g.json", keep_comments=True
+    )
+    check(link_ann, doc_ann, n_ann)
+    assert link_ann == annotated_path.read_text().strip(), (
+        "PUZZLE_LINK_0g_annotated.txt is not what build_link.py --keep-comments writes"
+    )
+
+    def embedded(doc):
+        """name -> code for every component and backend a constraint embeds
+        ("<name> backend" for the backend), main.js's included."""
+        code = {}
+        for k in doc["puzzle"]["constraints"]:
+            if k["type"] != 1000:
+                continue
+            d = k["definition"]
+            code[f"{d['name']} backend"] = d["backend"]["code"]
+            code.update({c["name"]: c["code"] for c in d["components"]})
+        return code
+
+    ann_code = embedded(doc_ann)
+    plain_code = embedded(decode_puzzle(committed_0g))
+    main_name = f"{CONSTRAINT_NAME} backend"
+    for name in (TIMED_COMPONENT, NO_FIVE_COMPONENT, main_name):
+        assert "//" not in plain_code[name], f"{name}: the shipped link kept a comment"
+        assert ann_code[name].startswith("// "), (
+            f"{name}: the annotated link lost its header"
+        )
+    # a reader of the pasted code cannot open a repo file or a ticket, and has
+    # no use for a lint directive
+    for name in (
+        TIMED_COMPONENT,
+        NO_FIVE_COMPONENT,
+        main_name,
+        f"{NO_FIVE_NAME} backend",
+    ):
+        code = ann_code[name]
+        assert "eslint" not in code, f"{name}: a lint directive reached the link"
+        for jargon in ("line-kind", ".js", "isofill", "house", "arrangement"):
+            assert jargon not in code, f"{name}: annotated code names {jargon!r}"
+        assert not re.search(r"#\d", code), f"{name}: annotated code names a ticket"
+    assert "every 5 needs a 1 directly above it" in ann_code[TIMED_COMPONENT]
 
     forced0 = verify(HERE / "gen_0g.json", HERE / "PUZZLE_LINK_0g.txt")
     print(f"Counting Circles board: unique, {len(forced0)} rule-forced flatmate(s)")

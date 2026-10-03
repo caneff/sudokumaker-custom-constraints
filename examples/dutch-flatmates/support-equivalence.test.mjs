@@ -1,8 +1,10 @@
-// The readable `supportedRows` keeps exactly the rows the frozen triple loop
-// keeps, for every 1/5/9 column state. The reference is the floor's own
-// function, `.golden/DutchFlatmatesComponent.floor.js` (the 9^3 loop over
-// (5, 1, 9) row triples); this test is the proof that the rewrite is the same
-// deduction, not an argument for it.
+// The plain-language `rowsToKeep` (row lists in, row sets out) keeps exactly the
+// rows the frozen bit-set functions keep, for every 1/5/9 column state. Two
+// references: `.golden/DutchFlatmatesComponent.bitmask.js`, the
+// `supportedRows` and `flatmatedRows` functions #690 shipped, and
+// `.golden/DutchFlatmatesComponent.floor.js`, the 9^3 loop over (5, 1, 9) row
+// triples. This test is the proof that the rewrite is the same deduction, not
+// an argument for it.
 //
 //   node examples/dutch-flatmates/support-equivalence.test.mjs
 //
@@ -18,14 +20,24 @@ import { installGlobals, makeIo, makeRng } from '../_shared/harness-lib.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
-const cur = load('DutchFlatmatesComponent.js', ['supportedRows'])
-const ref = load('.golden/DutchFlatmatesComponent.floor.js', ['supportedRows'])
+const cur = load('DutchFlatmatesComponent.js', ['rowsToKeep', 'rowsToKeepIfRepeatsAllowed'])
+const floor = load('.golden/DutchFlatmatesComponent.floor.js', ['supportedRows'])
+const frozen = load('.golden/DutchFlatmatesComponent.bitmask.js', ['supportedRows', 'flatmatedRows'])
+
+// The frozen functions speak in bit sets (bit `row` = row), the rewrite in
+// ascending row lists and sets of rows; these two translate at the boundary.
+const toRows = (mask, side) => Array.from({ length: side }, (_, row) => row).filter(row => mask >> row & 1)
+const toMask = rows => [...rows].reduce((mask, row) => mask | 1 << row, 0)
+const asMasks = keep => [toMask(keep[1]), toMask(keep[5]), toMask(keep[9])]
 
 let checked = 0
 function same (ones, fives, nines, side) {
-  const got = cur.supportedRows(ones, fives, nines, side)
-  const want = ref.supportedRows(ones, fives, nines, side)
-  assert.deepStrictEqual(got, want, `side ${side}: ones ${ones.toString(2)} fives ${fives.toString(2)} nines ${nines.toString(2)}`)
+  const rows = { 1: toRows(ones, side), 5: toRows(fives, side), 9: toRows(nines, side) }
+  const label = `side ${side}: ones ${ones.toString(2)} fives ${fives.toString(2)} nines ${nines.toString(2)}`
+  const house = asMasks(cur.rowsToKeep(rows))
+  assert.deepStrictEqual(house, frozen.supportedRows(ones, fives, nines, side), `${label}: normal column vs frozen`)
+  assert.deepStrictEqual(house, floor.supportedRows(ones, fives, nines, side), `${label}: normal column vs floor`)
+  assert.deepStrictEqual(asMasks(cur.rowsToKeepIfRepeatsAllowed(rows)), frozen.flatmatedRows(ones, fives, nines), `${label}: repeating column vs frozen`)
   checked++
 }
 

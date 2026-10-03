@@ -5,12 +5,17 @@ plus one rule. Every 5 needs a flatmate: a 1 in the cell directly above it, or
 a 9 in the cell directly below it. A 5 in the top row can only have the 9 below;
 a 5 in the bottom row can only have the 1 above.
 
-`validate` checks the rule on a full grid; `update` prunes per column. When the
-app says a column cannot repeat (`getCellsCanHaveRepeats`, through
-`line-kind.js`), it is a house, so it holds one 5, one 1 and one 9, and `update`
-keeps only the rows some arrangement of the three still supports: a 5 with a 1
-above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. A column that can
-repeat gets only the per-cell rule: a 5 with no 1 above and no 9 below goes. The board
+`validate` checks the rule on a full grid; `update` prunes per column. When a
+column holds each of the board's digits exactly once and the digits include 1, 5
+and 9 (the app says it cannot repeat, `getCellsCanHaveRepeats`, asked once per
+column inside `update`; it is as long as the digit list, `helpers.digits`; the
+digits run from at most 1 to at least 9), it holds one 5, one 1 and one 9, and
+`update` keeps only the rows some arrangement of the three still supports: a 5
+with a 1 above it and a 9 elsewhere, or a 9 below it and a 1 elsewhere. Any other
+column (digits may repeat, a board that is not a plain sudoku, no 1, 5 or 9 among
+its digits) gets only the per-cell rule: a 5 with no 1 above and no 9 below
+goes. #693 dropped a size check that turned all pruning off on any board narrower
+than 9, which was wrong for boards whose digits are not 1..width. The board
 also keeps plain sudoku's completions few (1,279 on the shipped givens). The
 pruning was timed against the validate-only first slice and kept (see Timing).
 
@@ -32,14 +37,15 @@ The one solution:
 
 | File | Holds |
 | --- | --- |
-| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, house columns by the arrangement rule and the rest per cell |
+| `DutchFlatmatesComponent.js` | The one component: `validate` on a full grid, an `update` that prunes 1/5/9 per column, columns that hold each digit once (with 1, 5, 9 among the digits) by the arrangement rule and the rest per cell |
 | `main.js` | Registers **one** component over the whole grid, built by coordinates, row-major |
 | `flatmate_model.py` | The rule as a CP-SAT model: the one home of the rule on the Python side |
 | `generate.py` | Random grid, then givens carved while the board stays unique (writes `gen.json`); `--max-plain` raises the carve's plain-completions bound for fewer givens |
 | `gen.json` | The shipped board: the solution, the given cells, the seed |
 | `gen_18g.json`, `PUZZLE_LINK_18g.txt` | The 18-given timing board and its link: evidence that partner pointing (#678) could not be timed (see Timing) |
 | `gen_0g.json`, `PUZZLE_LINK_0g.txt`, `NoFiveComponent.js` | The Counting Circles timing board, the one board where the component still searches in the app (see below) |
-| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`, and `PUZZLE_LINK_0g.txt` from `gen_0g.json`; `--component` swaps a candidate in |
+| `PUZZLE_LINK_0g_annotated.txt` | The Counting Circles board with the embedded code's comments kept, for reading the code in the app (#693) |
+| `build_link.py` | Builds `PUZZLE_LINK.txt` from `gen.json`, and `PUZZLE_LINK_0g.txt` from `gen_0g.json`; `--keep-comments` builds the annotated link; `--component` swaps a candidate in |
 | `verify.py` | The uniqueness proof and the rule-forces-a-flatmate check |
 | `app-open.mjs` | Opens the link in the app once and prints rules, verdict and solved grid |
 
@@ -221,11 +227,14 @@ uv run examples/dutch-flatmates/build_link.test.py
   row-major (an id order scrambled by the mock, so a build by index fails); a
   rectangle or a missing cell throws; 5,000 random partial boards consistent
   with the shipped solution lose no true value, and some lose candidates (the
-  prune is live).
+  prune is live), and the same on a 6x6 board with digits 1-9, an 8x8 with 1-8
+  and a 9x9 with 2-10, 2,000 boards each.
 - `update-prune.test.mjs` — targeted cases through what a caller sees (columns
   declared houses; a second set with none declared: a column that can repeat
   keeps the 1s the house rule would drop, still loses a 5 with no flatmate, and
-  is not stopped for lacking a 5): a 5 with
+  is not stopped for lacking a 5; a 6x6 board with digits 1-9, an 8x8 board with
+  digits 1-8 and a 9x9 board with digits 2-10, every column declared
+  all-different, get the per-cell rule and no column reasoning): a 5 with
   no 1 above and no 9 below is pruned, as is a top-row 5 with no 9 below and a
   bottom-row 5 with no 1 above; a pinned 5 pins its flatmate; an open board
   loses nothing; a column with no possible 5 stops the branch; repeat calls are
@@ -234,8 +243,11 @@ uv run examples/dutch-flatmates/build_link.test.py
 - `no-five.test.mjs` — `NoFiveComponent`'s `initialize` removes the 5 from exactly
   the 28 circle cells, `validate` refuses a 5 there, and the recorded solution
   keeps every true value.
-- `support-equivalence.test.mjs` — the readable `supportedRows` returns the same
-  three row sets as the floor's 9³ triple loop on every 1/5/9 column state: all
+- `support-equivalence.test.mjs` — the plain-language `rowsToKeep` (row lists in,
+  row sets out) keeps the same rows as the floor's 9³ triple loop and as #690's
+  bit-set `supportedRows`, and `rowsToKeepIfRepeatsAllowed` the same as #690's
+  `flatmatedRows` (both frozen in `.golden/DutchFlatmatesComponent.bitmask.js`),
+  on every 1/5/9 column state: all
   2,396,672 states of 3- to 7-row columns, and 497,336 on the real 9-row column
   (a fixed-seed fuzz across densities plus every state with at most two rows per
   digit). The 9-row column is fuzzed, not exhaustive (2^27 states).
@@ -312,3 +324,48 @@ rule of an added deduction. The rewrite adds none, so the bar is the gate-change
 bar of `docs/real-app-timing.md`: ≤ 1.1x on both rows. All three links were
 rebuilt from the rewrite (`build_link.py`, `--puzzle gen_18g.json`, `--puzzle
 gen_0g.json`).
+
+Plain-language rewrite (#693), 2026-10-02, same board and command, 3 reps,
+interleaved, non-deterministic solve off, #690's component (committed link)
+against the rewrite (row lists, `getCandidates(cell).has(digit)`, no shifts):
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 12000ms | 13100ms | 1.09 | PASS (≤ 1.1x) |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11200ms | 12500ms | 1.12 | **FAIL** (≤ 1.1x) |
+
+The after-logical row misses the bar by 0.02x (the rows are from the run on the component after review's fixes; the run before them read 1.09x and 1.12x too, 12000 -> 13100 ms and 11300 -> 12600 ms). The driver's baseline-only run of
+the rewrite read 13200 ms cold and 12300 ms after-logical, so the same code
+swings about 0.3 s between runs. Where the time goes: a diagnostic run
+with the candidate read swapped for `getCandidatesBitMask` (not shipped: it
+needs the digit-bit constants #693 removes) read 11600 ms -> 12500 ms (1.08x)
+cold and 11200 ms -> 12000 ms (1.07x) after-logical. So the allocation in
+`getCandidates` is a small part of the cost, and the rest comes from the plain
+row lists, row sets and the unchanged-column key. Left as is, for Chris to rule
+on whether the readability is worth ~1.1x.
+
+Digit-keyed rewrite (Chris's ruling on #693: row lists and keep-sets keyed by
+the digit 1, 5, 9, no name table), one more run, same board and command:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11600ms | 13200ms | 1.14 | over the 1.1x bar |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11300ms | 12300ms | 1.09 | PASS (≤ 1.1x) |
+
+The candidate's own times match the earlier run (13200 / 12300 ms against
+13100 / 12500 ms); the ratio moved because this run's baseline read 11600 ms
+cold where the earlier ones read 12000 ms. The rows above are the ones Chris
+accepted at about 1.09x / 1.12x.
+
+Digit-range rule (Chris's finding on #693: the `size < 9` guard dropped, column
+reasoning only where a column holds each digit once and 1, 5, 9 are digits), one
+more run, same board and command. This board's path is unchanged:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) | 11500ms | 12900ms | 1.12 | within the accepted ~1.1x |
+| 2026-10-02 | v2026.08.14-d47fc4b | dutch-flatmates (PUZZLE_LINK_0g.txt) after-logical | 11000ms | 12100ms | 1.10 | PASS (≤ 1.1x) |
+
+The candidate's times (12900 / 12100 ms) are no slower than the last run's
+(13200 / 12300 ms).
+
