@@ -8,7 +8,7 @@
 
 **Finding.** A bare n x n document with `"type": "sudoku"` gets the solver's
 own row and column houses, and a custom constraint (type 1000) on it still
-registers and prunes. That is the header `framebuild.no_ring_doc` writes.
+registers and prunes. That is the header `framebuild.no_ring_doc` wrote (now `no_ring.NoRing.build_doc`).
 **[verified headless, 4x4]**
 
 ## Why the question came up

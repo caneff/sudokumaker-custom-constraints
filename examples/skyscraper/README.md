@@ -45,7 +45,7 @@ The example ships two links from the same files (`../../docs/line-contract.md`):
 
 Each link ships what its own backend registers, and nothing else: a global
 link carries the two-clue DP, a local link the one-sided DP. `build_size.py` names the two sets as `COMPONENTS` and
-`LOCAL_COMPONENTS`, and `framebuild.check` asserts both that the link matches
+`LOCAL_COMPONENTS`, and each lane's `check` (`framebuild.Lane.check`) asserts both that the link matches
 its lane and that no backend registers a component the link left out.
 
 ## What the components deduce

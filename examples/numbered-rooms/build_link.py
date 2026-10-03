@@ -59,7 +59,7 @@ def refresh():
     declared to prevent -- and rules text for a different puzzle.
 
     This board is hand-built. No `gen_*.json` describes it, so
-    `framebuild.rebuild` cannot reach it and nothing else re-embeds
+    `framebuild.Lane.rebuild` cannot reach it and nothing else re-embeds
     `main-global.js`, `frame-rowcol.js` or `frame-corners.js` when they change,
     pins the range both frame backends read off `helpers.digits`, or corrects
     the comment. Without this the link keeps a stale copy and

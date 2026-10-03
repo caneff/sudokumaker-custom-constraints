@@ -19,7 +19,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
-# it lands as PUZZLE_LINK.txt and gen.json (framebuild.board_files).
+# it lands as PUZZLE_LINK.txt and gen.json (framebuild.RingGlobal.files).
 # --rebuild re-encodes a committed board against the code in the tree right
 # now, with no fresh CP-SAT search.
 #

@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE))
 import dataclasses
 
 from build_size import SPEC
-from framebuild import board_files, load_board, unique
+from framebuild import RingGlobal, load_board, unique
 from link_codec import decode_puzzle
 from verify import (
     boards,
@@ -30,7 +30,7 @@ from verify import (
 def _shipped():
     """The shipped 9x9 as both halves see it: the decoded link, and the
     recorded board load_board reads out of gen.json."""
-    link_path, gen_path = board_files(SPEC, 9)
+    link_path, gen_path = RingGlobal(SPEC).files(9)
     doc = decode_puzzle(link_path.read_text().strip())["puzzle"]
     return doc, load_board(gen_path)
 
@@ -132,9 +132,9 @@ def test_boards_finds_every_global_board_and_no_local_one():
             "a drawn-path board is not verify.py's to read"
         )
     # Discovery, not a list: every committed global gen file is in there, under
-    # the name framebuild.board_files gives it.
+    # the name framebuild.RingGlobal.files gives it.
     gens = {p.stem for p in HERE.glob("gen*.json") if not p.stem.endswith("_local")}
-    assert {board_files(SPEC, b.n)[1].stem for b, _ in found} == gens
+    assert {RingGlobal(SPEC).files(b.n)[1].stem for b, _ in found} == gens
 
 
 if __name__ == "__main__":

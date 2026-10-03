@@ -151,8 +151,8 @@ uv run examples/up-to-n/build_size.py --rebuild-minimal-9x9
 **Clue labels.** A drawn group renders nothing in the app, so the builder
 draws each clued marker's number as a text label half a cell outside the grid,
 beyond the marker's border cell (a type-2002 cosmetic symbol,
-`framebuild.clue_labels`). The label is written from the group's own value,
-and `framebuild.check` and `build_link.test.py` hold the two equal; a blank
+`no_ring.clue_labels`). The label is written from the group's own value,
+and the lane's `check` (`no_ring.NoRing`) and `build_link.test.py` hold the two equal; a blank
 marker gets no label. The labels exist only on generated boards: a setter who
 draws a marker by hand in the editor must add a text cosmetic for its clue by
 hand (Add element, "Cosmetic symbols", Text).

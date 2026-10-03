@@ -20,9 +20,9 @@ from frame import ring_cell
 from framebuild import (
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
-    board_files,
+    RingGlobal,
+    RingLocal,
     make_lines,
-    rebuild,
 )
 from link_codec import decode_puzzle
 from minify import minify_file
@@ -33,15 +33,15 @@ SIZES = [(4, 2, 2), (6, 2, 3), (9, 3, 3)]
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 
 
-def link_path(n, local=False):
+def link_path(n, lane=RingGlobal):
     """The committed link for this board -- the 9x9 global board is the
-    shipped one, so it is plain-named (framebuild.board_files, #294)."""
-    return board_files(SPEC, n, local)[0]
+    shipped one, so it is plain-named (framebuild.RingGlobal.files, #294)."""
+    return lane(SPEC).files(n)[0]
 
 
-def gen_path(n, local=False):
+def gen_path(n, lane=RingGlobal):
     """The recorded seed for this board, named by the same rule."""
-    return board_files(SPEC, n, local)[1]
+    return lane(SPEC).files(n)[1]
 
 
 # One row line and one column line of each shipped size, as framebuild draws
@@ -90,9 +90,11 @@ def test_rebuild_reproduces_every_shipped_link_byte_for_byte():
     # back out of its recorded seed data, with no fresh search.
     for n, _bh, _bw in SIZES:
         link = link_path(n).read_text()
-        assert rebuild(SPEC, n) + "\n" == link, f"{n}x{n} does not rebuild byte-equal"
-    local = link_path(9, local=True).read_text()
-    assert rebuild(SPEC, 9, local=True) + "\n" == local, (
+        assert RingGlobal(SPEC).rebuild(n) + "\n" == link, (
+            f"{n}x{n} does not rebuild byte-equal"
+        )
+    local = link_path(9, RingLocal).read_text()
+    assert RingLocal(SPEC).rebuild(9) + "\n" == local, (
         "the local board does not rebuild byte-equal"
     )
 
@@ -142,14 +144,14 @@ def test_the_two_lanes_ship_the_boards_their_names_promise():
     # (docs/example-layout.md, "Which lane a link runs"). The local board draws
     # the STRAIGHT frame lines: this rule's window is a box extent along the
     # line's direction, and a bent path has none, so main.js throws on one.
-    for local, backend, drawn in (
-        (False, "main-global.js", False),
-        (True, "main.js", True),
+    for lane, backend, drawn in (
+        (RingGlobal, "main-global.js", False),
+        (RingLocal, "main.js", True),
     ):
-        doc = decode_puzzle(link_path(9, local=local).read_text().strip())
+        doc = decode_puzzle(link_path(9, lane).read_text().strip())
         lc = find_constraint(doc, CONSTRAINT_NAME)
         assert lc["definition"]["backend"]["code"] == minify_file(HERE / backend), (
-            f"{link_path(9, local=local).name} must run {backend}"
+            f"{link_path(9, lane).name} must run {backend}"
         )
         groups = lc["input"].get("groups", [])
         assert bool(groups) is drawn, f"{backend}: drawn groups {drawn} expected"
@@ -172,13 +174,13 @@ def test_the_two_lanes_ship_the_boards_their_names_promise():
 
 
 def test_the_local_board_is_share_ready():
-    doc = decode_puzzle(link_path(9, local=True).read_text().strip())["puzzle"]
+    doc = decode_puzzle(link_path(9, RingLocal).read_text().strip())["puzzle"]
     assert doc["comment"].startswith(RULES_PREFIX)
     assert not [c for c in doc["cells"] if "value" in c and not c.get("given")]
     # Its lines are rows and columns, so the rules text must not tell a solver
     # a line is no house -- that sentence belongs to a bent-path board (#268).
     assert LOCAL_RULES_SUFFIX not in doc["comment"]
-    shown = len(json.loads(gen_path(9, local=True).read_text())["active"])
+    shown = len(json.loads(gen_path(9, RingLocal).read_text())["active"])
     assert shown < 4 * 9, (
         "the local board shows every clue -- the ring must stay sparse"
     )

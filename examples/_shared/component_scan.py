@@ -1,5 +1,5 @@
 # Lexical scan for `new <Name>Component` registrations in a backend source
-# string. Shared by `framebuild.check` (checked at build time, before a link
+# string. Shared by `framebuild.Lane.check` (checked at build time, before a link
 # is committed) and `check_layout.check_components` (checked at sweep time,
 # over already-committed links) so the two do not carry their own copies of
 # the same regex (#292). stdlib `re` only, no ortools: `check_layout.py`
@@ -26,7 +26,7 @@ def builtin_components():
 
     A backend that constructs one of these ships no component file for it --
     the class lives in the app -- so the shipped-vs-registered checks in
-    `framebuild.check` and `check_layout.check_components` subtract this set
+    `framebuild.Lane.check` and `check_layout.check_components` subtract this set
     before they compare. Read from the doc rather than copied into code, so
     the two cannot drift.
     """
@@ -61,7 +61,7 @@ def mismatch(shipped, backend_code):
     weight the recipient still reads as part of the rule (#287, #289, #290,
     #291). SudokuMaker's built-ins are subtracted first: the app provides
     those classes, so a backend that constructs one ships no file for it
-    (#394). The one comparison `framebuild.check` asserts at build time and
+    (#394). The one comparison `framebuild.Lane.check` asserts at build time and
     `check_layout.check_components` sweeps over committed links.
     """
     registered = registered_components(backend_code) - builtin_components()

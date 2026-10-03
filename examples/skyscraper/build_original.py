@@ -26,7 +26,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
-from framebuild import board_files, build_doc, check, frame_groups, load_board
+from framebuild import RingGlobal, frame_groups, load_board
 from link_codec import encode_link
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
@@ -42,11 +42,11 @@ def build(n, out_dir=HERE):
     and original wrapper code from beside this script regardless of
     `out_dir`; only the two written links move."""
     # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
-    link_path, gen_path = board_files(build_size.SPEC, n)
+    link_path, gen_path = RingGlobal(build_size.SPEC).files(n)
     board = load_board(gen_path)
-    improved = build_doc(build_size.SPEC, board)
+    improved = RingGlobal(build_size.SPEC).build_doc(board)
     improved_link = encode_link(improved)
-    check(build_size.SPEC, improved_link, improved, board)
+    RingGlobal(build_size.SPEC).check(improved_link, improved, board)
     improved_name = link_path.name
     (out_dir / improved_name).write_text(improved_link + "\n")
     print(
