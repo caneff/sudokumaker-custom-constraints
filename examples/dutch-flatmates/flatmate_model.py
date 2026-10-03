@@ -96,14 +96,6 @@ def _solve(m, limit):
     return status, s
 
 
-def solve_one(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
-    """One solution of the board as {(row, column): digit}, or None when it
-    has none. Raises TimeoutError on no verdict."""
-    m, x = build_model(givens, flatmate, extras)
-    status, s = _solve(m, limit)
-    return {k: s.Value(v) for k, v in x.items()} if status in SOLVED else None
-
-
 def unique_solution(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
     """The board's one solution, or None when it has none or several (the two
     are not told apart). Raises TimeoutError on no verdict."""
