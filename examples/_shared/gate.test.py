@@ -22,7 +22,9 @@
 #   uv run examples/_shared/gate.test.py
 
 import pathlib
+import shutil
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -90,6 +92,8 @@ def on_disk(root=ROOT):
             want.add(f"{runner} {f.relative_to(root).as_posix()}")
     for f in root.glob("finders/**/test_*.py"):
         rel = f.relative_to(root).as_posix()
+        if any(part.startswith(".") for part in rel.split("/")):
+            continue  # the recipe's bash glob skips dot-directories too
         want.add(FINDER_COMMAND.get(rel, f"uv run {rel}"))
     return want - SLOW
 
@@ -99,6 +103,38 @@ def research_tests():
     return {
         f.relative_to(ROOT).as_posix() for f in ROOT.glob("docs/research/**/*.test.mjs")
     }
+
+
+def pytest_style_outside_list():
+    """Finder tests that import pytest but would run as a plain script, which
+    defines the tests and exits 0 without calling any of them."""
+    pytest_files = {k for k, v in FINDER_COMMAND.items() if "pytest" in v}
+    return sorted(
+        rel
+        for rel in (
+            p.relative_to(ROOT).as_posix() for p in ROOT.glob("finders/**/test_*.py")
+        )
+        if rel not in pytest_files
+        and "import pytest" in (ROOT / rel).read_text(encoding="utf-8")
+    )
+
+
+def planted_finder_test_is_run():
+    """A finder test no list can name must appear in what `just test` runs, and
+    in what on_disk() demands -- else the glob here has gone narrower than the
+    recipe's, or the recipe's narrower than the tree."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = pathlib.Path(tmp)
+        shutil.copy(ROOT / "justfile", tree / "justfile")
+        planted = tree / "finders/zz_new/deep"
+        planted.mkdir(parents=True)
+        (planted / "test_planted.py").touch()
+        demanded = on_disk(tree)
+        assert demanded == {"uv run finders/zz_new/deep/test_planted.py"}, (
+            f"on_disk() misses a planted finder test: {sorted(demanded)}"
+        )
+        ran = set(commands("test", root=tree))
+        assert demanded <= ran, f"just test misses {sorted(demanded - ran)}"
 
 
 if __name__ == "__main__":
@@ -113,8 +149,27 @@ if __name__ == "__main__":
         f"allowlist {sorted(BY_HAND)}: wire a new one into a recipe or list it"
     )
 
+    stale = sorted(
+        p
+        for p in [s.removeprefix("uv run ") for s in SLOW] + list(FINDER_COMMAND)
+        if not (ROOT / p).is_file()
+    )
+    assert not stale, f"exception lists name files that do not exist: {stale}"
+
+    outside = pytest_style_outside_list()
+    assert not outside, f"pytest suites the recipe would run as scripts: {outside}"
+
+    planted_finder_test_is_run()
+
     slow = set(commands("test-finders-slow"))
-    assert slow >= SLOW, f"test-finders-slow does not run {sorted(SLOW - slow)}"
+    covers = {
+        c.removesuffix(" --cover")
+        for c in FINDER_COMMAND.values()
+        if c.endswith(" --cover")
+    }
+    assert slow >= SLOW | covers, (
+        f"test-finders-slow does not run {sorted((SLOW | covers) - slow)} in full"
+    )
     assert not SLOW & set(full), (
         f"check-full runs a slow test: {sorted(SLOW & set(full))}"
     )
