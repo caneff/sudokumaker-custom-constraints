@@ -681,7 +681,7 @@ def check_gen_frame_backends(example_dir):
     build reads and nothing rebuilds -- it can only drift from the file it
     copies, and a reader comparing the two has no way to tell which one runs.
     Keep the field empty. A gen JSON that does not parse is
-    `check_gen_json_parses`' to report.
+    `check_gen_json_parses`'s to report.
     """
     name = example_dir.name
     titles = {title for _, title in FRAME_BACKENDS} | {HOUSE_GAC_BACKEND_TITLE}
