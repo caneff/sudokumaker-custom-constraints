@@ -172,8 +172,9 @@ function * update (instance, puzzle) {
   // Drop N wherever the first N cannot sit. On a house the first N is the only
   // N, so every infeasible position loses it. On a bare line a cell past the
   // first feasible position may hold a second N the sum never reads, so only
-  // the cells before it lose N. Both prefix bounds only grow along the line, so
-  // no cell that allows N sits infeasible between two feasible positions.
+  // the cells before it lose N. On a bare line both prefix bounds only grow, so
+  // no cell that allows N sits infeasible between two feasible positions; a
+  // house's feasible positions can have gaps, and the `next` walk skips them.
   const end = house ? line.length : at[0]
   const bitN = 1 << target
   let next = 0
