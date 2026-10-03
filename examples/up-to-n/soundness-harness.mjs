@@ -17,7 +17,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, total, violates, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -59,27 +59,25 @@ function lineWith (kind, n, D, target, atLeast = 1) {
 function fuzz (label, { kind, D, n, atLeast = 1 }) {
   installGlobals(1, D)
   const cells = Array.from({ length: n }, (_, i) => i)
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < ITERS; iter++) {
-    const target = 1 + ((rnd() * D) | 0)
-    const digits = lineWith(kind, n, D, target, atLeast)
-    const clue = upToN(digits, target)
-    const truth = {}
-    for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder(D), { houses: housesOf(kind, cells) })
-    const inst = {}
-    mod.setParams(inst, cells, target, clue)
-    const before = total(p)
-    const v = violates(mod, inst, p, truth)
-    if (total(p) < before) fired++
-    if (v) {
-      bad++
-      if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join(''), 'N', target, 'clue', clue)
+  return fuzzSoundness(label.padEnd(28), {
+    iters: ITERS,
+    draw: () => {
+      const target = 1 + ((rnd() * D) | 0)
+      const digits = lineWith(kind, n, D, target, atLeast)
+      const clue = upToN(digits, target)
+      const truth = {}
+      for (let i = 0; i < n; i++) truth[i] = digits[i]
+      const inst = {}
+      mod.setParams(inst, cells, target, clue)
+      return {
+        truth,
+        seed: seeder(D),
+        houses: housesOf(kind, cells),
+        parts: [{ mod, inst }],
+        note: `line ${digits.join('')} N ${target} clue ${clue}`
+      }
     }
-  }
-  console.log(`${label.padEnd(28)}`, ITERS, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
+  })
 }
 
 let bad = 0
@@ -92,7 +90,7 @@ for (const D of SIZES) {
   ]
   for (const [label, opts] of pools) {
     const r = fuzz(label, opts)
-    bad += r.bad
+    bad += r.failures
     assert.ok(r.fired > 0, `${label}: the component never pruned, so the pool proves nothing`)
   }
 }
@@ -146,6 +144,4 @@ console.log('update/validate agreement on filled lines:', runs, 'lines,', disagr
 }
 
 console.log('UpToNComponent:', bad, 'violations')
-assert.strictEqual(bad, 0)
-assert.strictEqual(disagree, 0)
-console.log('PASS')
+finishHarness(bad === 0 && disagree === 0)
