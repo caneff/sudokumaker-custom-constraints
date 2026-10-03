@@ -162,6 +162,15 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
     f = tie_finder.TieFinder("r1c5", "r7c7", "tr", 1, True, [a])
+    cand = tie_finder.Candidate(
+        tuple(int(d) for d in G_SAME if d != "/"), "r1c5", "r7c7", "tr", True, G_CORNER
+    )
+    saved = f.record(cand)
+    check(
+        "an example records the grid its solve was hinted with",
+        saved["warm"] == G_CORNER,
+    )
+    check("... and reads it back", f.candidate_from_record(saved).warm == G_CORNER)
     check(
         "config names the sources and the starting grid",
         f.config["warm_from"]
