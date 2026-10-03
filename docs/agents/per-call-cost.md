@@ -3,7 +3,7 @@
 `enforceConsistency` — ISS's `update` — runs on every propagation pass, so its
 cost is paid millions of times per solve. Source: ISS
 `js/solver/handlers.js`, `class Skyscraper` at :1241, `class
-HiddenSkyscraper` at :1439 (`~/src/iss-stuff/Interactive-Sudoku-Solver`), and
+HiddenSkyscraper` at :1439 (`~/src/iss-stuff/Interactive-Sudoku-Solver`, commit `ed5688d`), and
 `js/solver/SOLVER_ENGINE.md` "Writing `enforceConsistency`" (:219-237). Each
 item is a pattern to copy into a SudokuMaker `update`. A pattern still has to
 pay for itself in real-app solve time (`CODING_STANDARDS.md`,

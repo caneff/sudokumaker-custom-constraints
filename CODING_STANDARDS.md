@@ -5,15 +5,8 @@ The rules a change to a constraint (or its tests and generators) must satisfy.
 on the Python generators, the probe goldens, and the soundness fuzz; `just
 check` is its fast subset for the build loop. The rules
 below are the part a gate cannot judge: a human reviewer or an agent reads them
-off the diff. StandardJS lints the `.js` constraint snippets too; the
-exclusions are the vendored files kept for comparison — the `original/`
-snippets and `docs/research/fillomino-baseline/` — which must stay
-byte-for-byte as their author wrote them, plus that baseline's
-`FillominoComponentNoLog.js`, the same vendored code minus its one
-`console.log`, kept in the vendor's style so the timing comparison stays
-apples-to-apples — plus a `docs/research/<n>/` investigation's own frozen
-probe scripts, which are the closed-out record of that ticket rather than
-maintained source. `package.json`'s `standard.ignore` is the list.
+off the diff. StandardJS lints the `.js` constraint snippets too; the exclusions
+are the vendored and frozen files named in `package.json`'s `standard.ignore`.
 Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points there.
 
 ## Soundness is the invariant

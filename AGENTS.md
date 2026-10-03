@@ -28,8 +28,8 @@ there with the code.
 
 ## Include closure
 
-The burn clumper (`burndown/closure.py`) reads this section to find which
-files a change really regenerates; `docs/example-layout.md` § The shared
+The burn clumper (`~/.agents/skills/burndown/closure.py`) reads this section
+to find which files a change really regenerates; `docs/example-layout.md` § The shared
 frame reader explains the directive itself.
 
 - **Directive**: `// #include <path>`
@@ -68,6 +68,9 @@ frame reader explains the directive itself.
   error, the solver just rules out the answer. Re-run the soundness harness on
   every constraint change and expect zero violations. Full standards in
   `CODING_STANDARDS.md`.
+
+## Puzzle links (always on)
+
 - **Never print a puzzle link in chat.** A link is a 10 KB blob. Write it to a
   file (`PUZZLE_LINK*.txt` in the example, or a temp file) and report the path.
   The trap that has broken this rule twice is `shot-scraper`: its default `shot`
@@ -117,7 +120,7 @@ merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
   `just check-full` — `check` plus the heavy tests (the fillomino pipeline and
   generator, the skyscraper and hit-counts recovery probes) and the soundness
   fuzz. CI runs it on every pull request, and `check` on pushes to main.
-- Lint + auto-fix: `just fmt` (StandardJS on `.mjs`, ruff on the Python generators)
+- Lint + auto-fix: `just fmt` (StandardJS on `.js`/`.mjs`, ruff on `examples/` and `finders/`)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
 - Most tests are standalone scripts run by name. `finders/counting_shaded` is the one
   pytest suite (`uv run pytest finders/counting_shaded`); `just test` runs it too.
@@ -133,7 +136,7 @@ merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
   `sandbox: read-only` unless the call passes `--write`, and even
   `workspace-write` has no network by default, so such a run dies before the
   puzzle loads. Delegate the reading and the reasoning; drive the browser here.
-- Node dev tools install with `npm ci`; Python runs through `uv`.
+- Node dev tools install with `npm ci`.
 
 ## Pointers
 
