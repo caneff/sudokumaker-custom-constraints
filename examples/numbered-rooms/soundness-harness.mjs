@@ -4,9 +4,10 @@
 //
 //   node examples/numbered-rooms/soundness-harness.mjs
 //
-// The component gates two rules on the line being a house, so every kind in
-// docs/line-contract.md gets its own fuzz: a bare line (a drawn path, digits
-// may repeat), a house, and a full house. The mock answers
+// The component gates two rules on the line being a house, so each of the two
+// line kinds in docs/line-contract.md gets a fuzz: a bare line (a drawn path,
+// digits may repeat) and a house, the house in two fill shapes (a house, and a
+// full house, which is only a fixture). The mock answers
 // getCellsCanHaveRepeats from the houses the case declares, never from the
 // digits, so a run cannot pass by inferring a kind the app would not give it.
 //
@@ -55,7 +56,7 @@ function swapIndexerIntoRange (line) {
   return line
 }
 
-// The three kinds over 1..D, from the shared builder.
+// The three fill shapes over 1..D, from the shared builder.
 function drawLine (kind, m, D) {
   return swapIndexerIntoRange(makeLine(rnd, kind, m, D))
 }
