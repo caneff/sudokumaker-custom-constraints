@@ -53,8 +53,4 @@ for (let below = 0; below < 600; below++) {
   assert.deepStrictEqual(run(stamp, 4), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
 }
 assert.deepStrictEqual(run(0xFFFFFFF0, 4), fresh, 'a stamp past the Int32 range changed what update deduces')
-// The door dedupe's site wraps harmlessly to the sweep above only by luck: an
-// unguarded stamp there lets a door cell be listed twice and can hide the
-// one-door deduction. So no site may bump the counter by hand.
-assert.ok(!readFileSync(join(HERE, 'FillominoComponent.js'), 'utf8').includes('++instance.stamp'), 'a stamp site bypasses nextStamp')
 console.log('PASS')

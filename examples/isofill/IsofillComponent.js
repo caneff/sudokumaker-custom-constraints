@@ -619,8 +619,7 @@ function budget (instance, state, near, lo, hi, size) {
   for (let x = 0; x < n; x++) {
     if (!b.isOpen[x]) continue
     open++
-    if (b.seenStamp >= 0xFFFFFFFF) { b.seen.fill(0); b.seenStamp = 0 }
-    b.seenStamp++
+    b.seenStamp = bumpStamp(b.seen, b.seenStamp)
     if (!augment(b, x)) { b.dead = x; return b }
   }
   if (open !== slots) return b // an emptied cell: not perfect, prune unsound

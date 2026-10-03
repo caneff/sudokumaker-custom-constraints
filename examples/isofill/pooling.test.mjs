@@ -80,4 +80,25 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   }
   assert.deepStrictEqual(run(0xFFFFFFFF), run(0))
 }
+
+// 5. The budget matcher's own stamp (`seen`, a Uint32Array): started near the
+// top of its range after the first call has built the matcher, same deductions.
+{
+  const run = below => {
+    const out = []
+    for (let rep = 0; rep < 60; rep++) {
+      const r = makeRng(3000 + rep).rnd
+      const inst = {}
+      mod.setParams(inst, CELLS)
+      Array.from(mod.update(inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))))
+      if (below !== null) inst.budget.seenStamp = 0xFFFFFFFF - below
+      const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
+      Array.from(mod.update(inst, p))
+      out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
+    }
+    return out
+  }
+  const fresh = run(null)
+  for (let below = 0; below < 40; below++) assert.deepStrictEqual(run(below), fresh, `seen stamp ${below} below the cap changed what update deduces`)
+}
 console.log('PASS')
