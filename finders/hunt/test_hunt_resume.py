@@ -39,9 +39,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, canonical_key
 from protocol import Verdict
 from render import GridCanvas
-from subprocess_env import success_env
+from subprocess_env import pin_idle_load, success_env
 from toy_stateful_finder import StatefulToyFinder
 from toy_tiny_key_finder import TinyKeyFinder
+
+pin_idle_load()
 
 HERE = Path(__file__).resolve().parent
 SLOW_FINDER = HERE / "toy_slow_finder.py"

@@ -12,12 +12,24 @@ setting it -- the way to ask for a truly unset var rather than an empty one."""
 
 import os
 
+IDLE_LOAD = "0"
+
 
 def success_env(overrides=None):
-    env = {**os.environ, "HUNT_FAKE_LOAD1": "0"}
+    env = {**os.environ, "HUNT_FAKE_LOAD1": IDLE_LOAD}
     for key, value in (overrides or {}).items():
         if value is None:
             env.pop(key, None)
         else:
             env[key] = value
     return env
+
+
+def pin_idle_load():
+    """Pin the load gate idle for this process and every child it starts.
+
+    A test file that launches hunts in-process (`driver.run`) or through a
+    bare `dict(os.environ, ...)` calls this once at import, so a launch
+    cannot inherit the box's real load (#669). A test of the gate itself
+    still passes its own `HUNT_FAKE_LOAD1` through `success_env`."""
+    os.environ["HUNT_FAKE_LOAD1"] = IDLE_LOAD

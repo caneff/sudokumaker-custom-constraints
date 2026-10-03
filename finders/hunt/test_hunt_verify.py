@@ -16,7 +16,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from subprocess_env import pin_idle_load
 from verified_io import read_verified
+
+pin_idle_load()
 
 HERE = Path(__file__).resolve().parent
 TOY_FINDER = HERE / "toy_finder.py"

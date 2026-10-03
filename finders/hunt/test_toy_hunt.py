@@ -15,7 +15,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedupe import D4, canonical_key
-from subprocess_env import success_env
+from subprocess_env import pin_idle_load, success_env
+
+pin_idle_load()
 
 HERE = Path(__file__).resolve().parent
 TOY_FINDER = HERE / "toy_finder.py"
