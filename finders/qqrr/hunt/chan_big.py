@@ -107,7 +107,8 @@ def earlier_hits(hunt, ten_s, corner):
 def build(hunt, ten_s, corner, flags, hits=None):
     """The big channelled model for one (hunt, QR-10 window, corner) under `flags`.
     `hits` are the (ten, corner, grid) hits `warm` hints from, where the finder logs
-    are not the source (the tie finder's `--warm-from`).
+    are not the source (the tie finder's `--warm-from`); they are taken in the order
+    given, the caller having ordered them.
     Returns (q, warm_from, known): the model, the hit it is warm-started
     from (or None) and how many known grids it forbids."""
     TEN = parse_ten(ten_s)
@@ -129,8 +130,7 @@ def build(hunt, ten_s, corner, flags, hits=None):
     warm_from = None
     if "warm" in flags:
         if hits is None:
-            hits = earlier_hits(hunt, ten_s, corner)
-        hits = criterion_first(nearest_first(hits, ten_s, corner), CRIT)
+            hits = criterion_first(earlier_hits(hunt, ten_s, corner), CRIT)
         if hits:
             warm_from = hits[0]
     if "hint" in flags or warm_from:
