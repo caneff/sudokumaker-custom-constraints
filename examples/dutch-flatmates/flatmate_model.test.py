@@ -7,8 +7,9 @@
 # the top and bottom rows, so both edge cases are in the sample. Edge rows then
 # get grids of their own, where one edge-row 5 is the grid's only violation: a
 # top-row 5 with no 9 below, a bottom-row 5 with no 1 above, and a bottom-row 5
-# whose 9 sits at the top of its column, which a model that wraps rows round
-# would accept.
+# whose 9 sits at the top of its column, which a model that wraps the 9 below
+# round to the top row would accept. A top-row 5 leaning on a 1 wrapped up from
+# the bottom row is not covered.
 #
 #   uv run examples/dutch-flatmates/flatmate_model.test.py
 
