@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, patchSource, shuffle, strengthSweep, total
+  columnsOf, fixpointAll, fuzzSoundness, patchSource, shuffle, strengthSweep, total
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -369,4 +369,93 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(mk([]).getLargestDigit(), undefined)
   // Intersecting nothing keeps every digit up to bit 30.
   assert.strictEqual(+DigitSet.getIntersection([]), 2147483647)
+}
+
+// ---- fuzzSoundness: the runner fails on an unsound component, and on a validate that rejects the truth ----
+// A planted component over three cells holding 1..3. `update` is a generator
+// like the app's; each variant breaks exactly one thing, so a run that fails
+// fails for that reason alone.
+{
+  const { rnd } = makeRng(3)
+  const seed = makeSeeder(rnd, [1, 2, 3])
+  const quiet = []
+  const run = (mod, extra = {}) => fuzzSoundness('planted', {
+    iters: 50,
+    log: (...a) => quiet.push(a.join(' ')),
+    draw: () => ({ truth: { 0: 1, 1: 2, 2: 3 }, seed, parts: [{ mod, inst: {} }], note: 'line 123', ...extra })
+  })
+  const sound = { * update () {}, validate: (inst, p) => p.getValue(0) === 1 }
+  const clean = run(sound)
+  assert.strictEqual(clean.ok, true, 'a sound component with a true validate passes')
+  assert.strictEqual(clean.tests, 50)
+  assert.strictEqual(clean.violations, 0)
+  assert.strictEqual(clean.validateRejects, 0)
+
+  // Unsound: update drops the true value of cell 0 whenever it has company.
+  const unsound = { * update (inst, p) { if (p.getCandidates(0).size > 1) p.removeCandidateFromCell(1, 0) }, validate: () => true }
+  quiet.length = 0
+  const bad = run(unsound)
+  assert.strictEqual(bad.ok, false, 'a component that removes the truth fails the run')
+  assert.ok(bad.violations > 0 && bad.fired > 0)
+  assert.ok(quiet.filter(l => l.startsWith('planted violation')).length === 5, 'only the first five violations are logged')
+  assert.ok(quiet.some(l => l.includes('line 123')), 'a violation names its state')
+  assert.ok(quiet.some(l => l.startsWith('planted:') && l.includes('violations')), 'a summary line is logged')
+
+  // A stop() is a violation: the states all still allow the truth.
+  const stopper = { * update (inst, p) { yield p.stop('dead') }, validate: () => true }
+  assert.strictEqual(run(stopper).ok, false, 'a component that stops the branch fails the run')
+
+  // validate rejecting the true solution fails the run, though update is sound.
+  const rejecting = { * update () {}, validate: () => false }
+  const rej = run(rejecting)
+  assert.strictEqual(rej.violations, 0, 'update is sound here')
+  assert.strictEqual(rej.validateRejects, 50)
+  assert.strictEqual(rej.ok, false, 'a validate that rejects the truth fails the run')
+
+  // inspect sees each seeded puzzle BEFORE the components run: this update
+  // prunes every cell to its truth, so a state seen after it totals exactly 3.
+  const pruner = { * update (inst, p) { for (const [c, v] of [[0, 1], [1, 2], [2, 3]]) p.filterCandidatesInCell(1 << v, c) } }
+  const seen0 = []
+  run(pruner, { inspect: p => seen0.push(total(p)) })
+  assert.strictEqual(seen0.length, 50)
+  assert.ok(seen0.every(n => n >= 3) && Math.max(...seen0) > 3, 'inspect reads the seeded state, not the pruned one')
+
+  // failures is the two counts the harnesses gate on, summed.
+  assert.strictEqual(rej.failures, 50)
+  assert.strictEqual(bad.failures, bad.violations + bad.validateRejects)
+
+  // A part with no validate is not judged on one.
+  assert.strictEqual(run({ * update () {} }).ok, true)
+  // validate sees a fully filled puzzle on the declared houses.
+  let seen = null
+  run({ * update () {}, validate: (inst, p) => { seen = [p.getCellsAreFilled([0, 1, 2]), p.getCellsCanHaveRepeats([0, 1, 2])]; return true } }, { houses: [[0, 1, 2]] })
+  assert.deepStrictEqual(seen, [true, false])
+}
+
+// ---- fixpointAll: several components run until none removes anything ----
+{
+  const mk = () => makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
+  // b only prunes once a has run: a needs a second pass of b to finish the job.
+  const a = { * update (inst, p) { p.removeCandidateFromCell(3, 0) } }
+  const b = { * update (inst, p) { if (!p.getCandidates(0).has(3)) p.removeCandidateFromCell(3, 1) } }
+  const p = mk()
+  fixpointAll([{ mod: b, inst: {} }, { mod: a, inst: {} }], p)
+  assert.deepStrictEqual([...p._cand.get(1)], [1, 2], 'order does not matter: the pass repeats until nothing is removed')
+  // One meaning of stopped: any component's stop() ends propagation for all.
+  const q = mk()
+  let laterRan = false
+  const stops = { * update (inst, p) { yield p.stop('dead') } }
+  const later = { * update () { laterRan = true } }
+  fixpointAll([{ mod: stops, inst: {} }, { mod: later, inst: {} }], q)
+  assert.strictEqual(q._stopped, 'dead')
+  assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
+}
+
+// ---- finishHarness: the exit status is the verdict ----
+{
+  const run = ok => execFileSync(process.execPath, ['--input-type=module', '-e',
+    `import { finishHarness } from ${JSON.stringify(new URL('./harness-lib.mjs', import.meta.url).href)}; finishHarness(${ok})`],
+  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  assert.strictEqual(run(true).trim(), 'PASS')
+  assert.throws(() => run(false), e => e.status === 1 && e.stdout.trim() === 'FAIL')
 }
