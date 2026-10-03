@@ -46,9 +46,10 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from link_codec import decode_puzzle, encode_link
+from link_codec import decode_puzzle
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
+from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "required-digits-gac"
@@ -97,20 +98,13 @@ def build_original(base):
     return _build(base, [{"type": "code", "name": TIMED_COMPONENT, "code": host_code}])
 
 
-def write(doc, out_path):
-    link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
-
-
 def build(out_dir=RESEARCH_DIR):
     """Rebuild both derived links into `out_dir`. Reads the shipped
     PUZZLE_LINK.txt and every source file from its own fixed locations
     regardless of `out_dir`; only the written links move."""
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    gac_link = write(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
-    original_link = write(
+    gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
+    original_link = write_link(
         build_original(base), out_dir / "PUZZLE_LINK_required_digits_original.txt"
     )
     return gac_link, original_link

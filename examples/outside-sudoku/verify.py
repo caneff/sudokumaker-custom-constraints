@@ -29,8 +29,8 @@ from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
 from link_codec import decode_puzzle
-from link_swap import find_constraint
 from outside_rule import post_membership, window_length_by_region
+from sm_document import find_constraint
 
 # Seconds per solve. Generous: this runs by hand on a shipped board, and a
 # board that needs two minutes is a board worth waiting for.

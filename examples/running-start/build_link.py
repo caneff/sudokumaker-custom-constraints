@@ -37,9 +37,10 @@ from framebuild import (
     refresh_frame_backends,
 )
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, swap_main
+from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from sm_document import find_constraint
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -62,23 +63,15 @@ def build_from_template():
         if not cell.get("given"):
             cell.pop("value", None)
     doc["puzzle"]["author"] = ""
-    for c in doc["puzzle"]["constraints"]:
-        d = c.get("definition", {})
-        if c.get("type") == 1000 and d.get("name") == CONSTRAINT_NAME:
-            d["backend"]["code"] = minify_file(HERE / "main-global.js")
-            d["components"] = [
-                {
-                    "type": "code",
-                    "name": f[:-3],
-                    "code": minify_file(HERE / f),
-                }
-                for f in COMPONENTS
-            ]
-            d["input"] = []
-            c["input"] = {}
-            break
-    else:
-        raise SystemExit(f"template is missing the {CONSTRAINT_NAME!r} constraint")
+    lc = find_constraint(doc, CONSTRAINT_NAME)
+    d = lc["definition"]
+    d["backend"]["code"] = minify_file(HERE / "main-global.js")
+    d["components"] = [
+        {"type": "code", "name": f[:-3], "code": minify_file(HERE / f)}
+        for f in COMPONENTS
+    ]
+    d["input"] = []
+    lc["input"] = {}
     # replace the template's hand-drawn cosmetics with generated ones, so the
     # outlines box exactly the given outside cells (same rule as the 4x4/6x6)
     cons = doc["puzzle"]["constraints"]

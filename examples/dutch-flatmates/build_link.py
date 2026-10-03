@@ -47,6 +47,7 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from sm_document import code_constraint
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name
@@ -107,26 +108,17 @@ def circles_constraints(circles, keep_comments=False):
     no_five = f"puzzle.addConstraintComponent(new {NO_FIVE_COMPONENT}('no 5 in a circle', {json.dumps(list(circles))}))"
     return [
         {"type": 306, "cells": list(circles), "style": CIRCLE_STYLE},
-        {
-            "name": NO_FIVE_NAME,
-            "type": 1000,
-            "definition": {
-                "name": NO_FIVE_NAME,
-                "input": [],
-                "backend": {"type": "code", "code": no_five},
-                "components": [
-                    {
-                        "type": "code",
-                        "name": NO_FIVE_COMPONENT,
-                        "code": minify_file(
-                            HERE / f"{NO_FIVE_COMPONENT}.js", keep_comments
-                        ),
-                    }
-                ],
-            },
-            "input": {},
-            "style": {},
-        },
+        code_constraint(
+            NO_FIVE_NAME,
+            no_five,
+            [
+                (
+                    NO_FIVE_COMPONENT,
+                    minify_file(HERE / f"{NO_FIVE_COMPONENT}.js", keep_comments),
+                )
+            ],
+            named=True,
+        ),
     ]
 
 
@@ -171,27 +163,12 @@ def build(
                 # without it the app lists no givens
                 {"type": 0},
                 grid_backend_constraint(),
-                {
-                    "name": CONSTRAINT_NAME,
-                    "type": 1000,
-                    "definition": {
-                        "name": CONSTRAINT_NAME,
-                        "input": [],
-                        "backend": {
-                            "type": "code",
-                            "code": minify_file(HERE / "main.js", keep_comments),
-                        },
-                        "components": [
-                            {
-                                "type": "code",
-                                "name": TIMED_COMPONENT,
-                                "code": minify_file(component_path, keep_comments),
-                            }
-                        ],
-                    },
-                    "input": {},
-                    "style": {},
-                },
+                code_constraint(
+                    CONSTRAINT_NAME,
+                    minify_file(HERE / "main.js", keep_comments),
+                    [(TIMED_COMPONENT, minify_file(component_path, keep_comments))],
+                    named=True,
+                ),
                 # one `Extras` field per rule, for the proof and the document alike
                 *(
                     [{"type": t, "style": LINE_STYLE} for t in (10, 11)]

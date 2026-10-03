@@ -15,7 +15,8 @@ sys.path.insert(0, str(HERE))
 from build_clued import CONSTRAINT_NAME, build
 from build_original import frame_groups
 from link_codec import decode_puzzle
-from link_swap import find_constraint, frame_only
+from link_swap import frame_only
+from sm_document import find_constraint
 
 if __name__ == "__main__":
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())

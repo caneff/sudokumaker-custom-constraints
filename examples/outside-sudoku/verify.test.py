@@ -14,7 +14,7 @@ sys.path.insert(0, str(HERE))
 
 import verify
 from link_codec import decode_puzzle
-from link_swap import find_constraint
+from sm_document import find_constraint
 from verify import CONSTRAINT_NAME, clue_groups
 
 

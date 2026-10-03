@@ -11,38 +11,9 @@ import copy
 import pathlib
 
 from frame import UndescribableInk, segments
-from link_codec import decode_puzzle, encode_link
+from link_codec import decode_puzzle
 from minify import minify_file
-
-
-def find_constraint(doc, constraint_name):
-    """The constraint `doc` ships under `constraint_name`.
-
-    Raises naming the constraint it could not find: a caller that reaches
-    through this -- `framebuild.refresh_frame_backends`, `frame_and_comment_only`
-    -- is asserting the board carries it, and a bare StopIteration names
-    nothing to go and look for.
-    """
-    for c in doc["puzzle"]["constraints"]:
-        if c.get("definition", {}).get("name") == constraint_name:
-            return c
-    raise ValueError(f"the document has no constraint named {constraint_name!r}")
-
-
-def constraint_with(doc, component_name):
-    """The name of doc's constraint that registers `component_name`. Raises if
-    none does -- a typo'd component must not silently no-op.
-
-    A board is searched by component, not by constraint name, because one
-    example's boards need not agree on the name: numbered-rooms' hand-built
-    board says "Custom Numbered Rooms", its generated ones "Numbered Rooms"."""
-    for c in doc["puzzle"]["constraints"]:
-        definition = c.get("definition", {})
-        if any(
-            comp["name"] == component_name for comp in definition.get("components", [])
-        ):
-            return definition["name"]
-    raise ValueError(f"no constraint registers a component named {component_name!r}")
+from sm_document import find_constraint, registering_constraint_name, write_link
 
 
 def blanked(doc, constraint_name):
@@ -150,19 +121,6 @@ def swap_component_code(doc, constraint_name, component_name, new_code):
     return replace_constraint_code(doc, constraint_name, components=components)
 
 
-def write_link(doc, out_path):
-    """Encode `doc`, assert the link decodes back to it, and write it.
-
-    Every path through this module writes its link here, and a builder that
-    encodes its own should assert the same thing: the encoder is lossy on a
-    document it cannot represent, and a link that does not round-trip is a
-    board nobody can rebuild from what is on disk."""
-    link = encode_link(doc)
-    assert decode_puzzle(link) == doc, "link does not round-trip"
-    pathlib.Path(out_path).write_text(link + "\n")
-    return link
-
-
 def check_and_write(base_doc, new_doc, constraint_name, out_path):
     """Assert new_doc differs from base_doc only in the named constraint's
     code, then encode, round-trip check, and write the link to out_path."""
@@ -183,7 +141,7 @@ def swap_build(board, component, out, backend=None):
     so before writing. Returns the link."""
     component = pathlib.Path(component)
     base = decode_puzzle(pathlib.Path(board).read_text().strip())
-    name = constraint_with(base, component.stem)
+    name = registering_constraint_name(base, component.stem)
     doc = swap_component_code(base, name, component.stem, minify_file(component))
     if backend is not None:
         doc = replace_constraint_code(

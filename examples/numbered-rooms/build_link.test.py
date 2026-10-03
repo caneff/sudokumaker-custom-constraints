@@ -22,8 +22,9 @@ from board_checks import check_local_board
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from link_codec import decode_puzzle
-from link_swap import find_constraint, swap_build
+from link_swap import swap_build
 from minify import minify_file
+from sm_document import find_constraint
 
 
 def numbered_room(values):

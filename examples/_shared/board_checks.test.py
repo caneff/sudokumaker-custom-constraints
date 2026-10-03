@@ -13,6 +13,7 @@ from board_checks import check_local_board
 from frame import ring_cell
 from link_codec import encode_link
 from minify import minify_file
+from sm_document import code_constraint
 
 GRID = [[1, 2, 3, 4], [3, 4, 1, 2], [2, 1, 4, 3], [4, 3, 2, 1]]
 KEYS = [f"{side}{i}" for side in "LRTB" for i in range(4)]
@@ -50,15 +51,12 @@ def write_example(root, *, paths=None, clue=None, backend="const A = 1\n", group
         "puzzle": {
             "cells": [{} for _ in range(W * W)],
             "constraints": [
-                {
-                    "type": 1000,
-                    "definition": {
-                        "name": "Sum",
-                        "backend": {"code": minify_file(root / "shipped.js")},
-                        "components": [{"name": COMPONENT, "code": ""}],
-                    },
-                    "input": {"groups": [{"cells": g} for g in drawn]},
-                }
+                code_constraint(
+                    "Sum",
+                    minify_file(root / "shipped.js"),
+                    [(COMPONENT, "")],
+                    groups=[{"cells": g} for g in drawn],
+                )
             ],
         }
     }
