@@ -29,10 +29,9 @@ import random
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-from cpsat import SOLVED, forbid, solver
+from cpsat import SOLVED, solve_unique, solver, sudoku_model
 from link_codec import decode_puzzle, encode_link
 from minify import minify_file, minify_js
-from ortools.sat.python import cp_model
 
 HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = (
@@ -73,15 +72,7 @@ def is_house(cells):
 def model(groups, givens):
     """The board's CP-SAT model: sudoku plus, per group, every listed digit
     (a digit listed twice wants two cells) in at least its count of cells."""
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, N, f"x{r}{c}") for r in range(N) for c in range(N)}
-    for i in range(N):
-        m.AddAllDifferent([x[i, c] for c in range(N)])
-        m.AddAllDifferent([x[r, i] for r in range(N)])
-    for b in range(N):
-        m.AddAllDifferent(
-            [x[r, c] for r in range(N) for c in range(N) if box(r, c) == b]
-        )
+    m, x = sudoku_model(N, (3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
     for g in groups:
@@ -100,18 +91,10 @@ def model(groups, givens):
 def count_solutions(groups, givens, limit=60):
     """1 for a unique board, 2 for "at least two" -- TimeoutError if no verdict."""
     m, x = model(groups, givens)
-    s = solver(limit)
-    status = s.Solve(m)
-    if status == cp_model.UNKNOWN:
-        raise TimeoutError("no verdict")
-    if status not in SOLVED:
+    first, unique = solve_unique(m, x, limit)
+    if first is None:
         return 0
-    first = {k: s.Value(v) for k, v in x.items()}
-    forbid(m, x, first)
-    st = solver(limit).Solve(m)
-    if st == cp_model.UNKNOWN:
-        raise TimeoutError("no verdict")
-    return 2 if st in SOLVED else 1
+    return 1 if unique else 2
 
 
 def snake(rng, taken):

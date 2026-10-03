@@ -12,7 +12,7 @@ import sys
 from ortools.sat.python import cp_model
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "_shared"))
-from cpsat import SOLVED, has_second_solution, solver
+from cpsat import SOLVED, solve_unique, solver, sudoku_model
 
 N = 9
 BOX = 3
@@ -35,18 +35,9 @@ def build_model(givens=(), flatmate=True, extras=NO_EXTRAS):
     """(model, x) for sudoku with `givens` ({(row, column): digit}), `extras`
     and, when `flatmate` is true, the flatmate rule on every cell. `x` maps
     (row, column) to its variable."""
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, N, f"x{r}{c}") for r in range(N) for c in range(N)}
+    m, x = sudoku_model(N, (BOX, BOX))
     for (r, c), v in dict(givens).items():
         m.Add(x[r, c] == v)
-    for i in range(N):
-        m.AddAllDifferent([x[i, c] for c in range(N)])
-        m.AddAllDifferent([x[r, i] for r in range(N)])
-    for br in range(0, N, BOX):
-        for bc in range(0, N, BOX):
-            m.AddAllDifferent(
-                [x[br + i, bc + j] for i in range(BOX) for j in range(BOX)]
-            )
     if flatmate:
         _post_flatmate(m, x)
     if extras.diagonals:
@@ -116,11 +107,9 @@ def solve_one(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
 def unique_solution(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
     """The board's one solution, or None when it has none or several (the two
     are not told apart). Raises TimeoutError on no verdict."""
-    first = solve_one(givens, flatmate, limit, extras)
-    if first is None:
-        return None
     m, x = build_model(givens, flatmate, extras)
-    return None if has_second_solution(m, x, first, limit) else first
+    first, unique = solve_unique(m, x, limit)
+    return first if unique else None
 
 
 def rows_of(solution):

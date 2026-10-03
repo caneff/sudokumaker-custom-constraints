@@ -278,19 +278,9 @@ def unique(post_clue, board):
     # file that needs a solver, so document assembly (build_doc, check,
     # load_board) and a caller's Spec stay importable without one.
     import cpsat
-    from ortools.sat.python import cp_model
 
     n, bh, bw = board.n, board.bh, board.bw
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
-    for i in range(n):
-        m.AddAllDifferent([x[i, c] for c in range(n)])
-        m.AddAllDifferent([x[r, i] for r in range(n)])
-    for br in range(0, n, bh):
-        for bc in range(0, n, bw):
-            m.AddAllDifferent(
-                [x[br + dr, bc + dc] for dr in range(bh) for dc in range(bw)]
-            )
+    m, x = cpsat.sudoku_model(n, (bh, bw))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
     # sorted: `active` is a set, whose iteration order is randomized per
@@ -299,17 +289,13 @@ def unique(post_clue, board):
     for k in sorted(board.active):
         cells = board.lines[k]
         post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
-    s = cpsat.solver(SOLVE_LIMIT)
-    if s.Solve(m) not in cpsat.SOLVED:
-        return None
-    s1 = {(r, c): s.Value(x[r, c]) for r in range(n) for c in range(n)}
     try:
-        return not cpsat.has_second_solution(m, x, s1, SOLVE_LIMIT)
+        first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
     except TimeoutError:
-        # The board has a solution but the search for a second one ran out of
-        # time: no verdict either way, same answer as a first solve that found
-        # nothing.
+        # No verdict either way: a first solve that spent the limit, or a
+        # second one that did, reads as a first solve that found nothing.
         return None
+    return unique if first is not None else None
 
 
 def generate(spec, n, bh, bw, seeds, paths=False):

@@ -5,7 +5,7 @@
 #
 #   uv run --with ortools examples/_shared/cpsat.test.py
 
-from cpsat import forbid, has_second_solution, solver
+from cpsat import forbid, has_second_solution, solve_unique, solver, sudoku_model
 from ortools.sat.python import cp_model
 
 
@@ -95,6 +95,136 @@ def test_search_mode_leaves_the_portfolio_and_the_caller_s_seed_alone():
     assert s.parameters.randomize_search is True
 
 
+def test_solve_unique_on_unique_nonunique_and_infeasible_models():
+    # total 6 admits only 3+3; total 4 admits three assignments; total 9
+    # admits none over 1..3.
+    m, x = _model(6)
+    assert solve_unique(m, x, 10) == ({"x": 3, "y": 3}, True)
+    m, x = _model(4)
+    first, unique = solve_unique(m, x, 10)
+    assert unique is False and first["x"] + first["y"] == 4
+    m, x = _model(9)
+    assert solve_unique(m, x, 10) == (None, False)
+
+
+def test_solve_unique_raises_on_a_spent_cap_in_either_solve():
+    # A first solve that cannot finish is no verdict, not "infeasible".
+    m, x = _model(4)
+    try:
+        solve_unique(m, x, 0.0)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("a spent cap on the first solve must raise")
+
+
+def test_solve_unique_raises_when_only_the_second_solve_times_out():
+    # The second solve is the only one that can hang a real proof; the first
+    # is cheap here. Hand solve_unique a cap the first solve meets and the
+    # second cannot by shrinking the cap between them through the solver
+    # factory.
+    import cpsat
+
+    real, calls = cpsat.solver, []
+
+    def stingy(limit, **kw):
+        calls.append(limit)
+        return real(limit if len(calls) == 1 else 0.0, **kw)
+
+    cpsat.solver = stingy
+    try:
+        m, x = _model(4)
+        try:
+            solve_unique(m, x, 10)
+        except TimeoutError:
+            pass
+        else:
+            raise AssertionError("a spent cap on the second solve must raise")
+    finally:
+        cpsat.solver = real
+    assert len(calls) == 2, calls
+
+
+def _count(m, x):
+    """Every solution of (m, x), by forbid-and-resolve."""
+    found = []
+    while True:
+        s = solver(30)
+        if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            return found
+        a = {k: s.Value(v) for k, v in x.items()}
+        found.append(a)
+        forbid(m, x, a, tag=len(found))
+
+
+def _count_up_to_one(m, x):
+    s = solver(30)
+    return s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+
+
+def _houses_ok(a, n, houses):
+    return all(len({a[c] for c in h}) == n for h in houses)
+
+
+def test_sudoku_model_on_a_square_board():
+    # 4x4 with 2x2 boxes: 288 grids, and every one is a valid sudoku.
+    m, x = sudoku_model(4, (2, 2))
+    assert sorted(x) == [(r, c) for r in range(4) for c in range(4)]
+    boxes = [
+        [(br + i, bc + j) for i in range(2) for j in range(2)]
+        for br in (0, 2)
+        for bc in (0, 2)
+    ]
+    rows = [[(r, c) for c in range(4)] for r in range(4)]
+    cols = [[(r, c) for r in range(4)] for c in range(4)]
+    sols = _count(m, x)
+    assert len(sols) == 288
+    assert all(_houses_ok(a, 4, rows + cols + boxes) for a in sols)
+
+
+def test_sudoku_model_on_a_rectangular_box_board():
+    # 6x6 with 2-row by 3-column boxes: a solution is checked house by house.
+    m, x = sudoku_model(6, (2, 3))
+    boxes = [
+        [(br + i, bc + j) for i in range(2) for j in range(3)]
+        for br in (0, 2, 4)
+        for bc in (0, 3)
+    ]
+    rows = [[(r, c) for c in range(6)] for r in range(6)]
+    cols = [[(r, c) for r in range(6)] for c in range(6)]
+    s = solver(30)
+    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    found = {k: s.Value(v) for k, v in x.items()}
+    assert _houses_ok(found, 6, rows + cols + boxes)
+
+    # The pair is (height, width): (0,0) and (1,2) share a 2x3 box but not a
+    # 3x2 one, and (0,0) and (2,1) share a 3x2 box but not a 2x3 one.
+    def pinned(box, cell):
+        m, x = sudoku_model(6, box)
+        m.Add(x[0, 0] == 1)
+        m.Add(x[cell] == 1)
+        return bool(_count_up_to_one(m, x))
+
+    assert not pinned((2, 3), (1, 2)) and pinned((3, 2), (1, 2))
+    assert not pinned((3, 2), (2, 1)) and pinned((2, 3), (2, 1))
+
+
+def test_sudoku_model_on_region_and_latin_boards():
+    # latin=True is rows and columns only: the 12 Latin squares of order 3.
+    m, x = sudoku_model(3, None, latin=True)
+    latin = _count(m, x)
+    assert len(latin) == 12
+    # A region replaces the boxes: it adds one pair, (0,1) and (1,0), to keep
+    # apart, so the board's solutions are exactly the Latin squares that do.
+    region = [(0, 0), (0, 1), (1, 0)]
+    m, x = sudoku_model(3, None, regions=[region])
+    sols = _count(m, x)
+    expected = [a for a in latin if len({a[c] for c in region}) == 3]
+    assert 0 < len(expected) < 12
+    key = lambda a: sorted(a.items())
+    assert sorted(sols, key=key) == sorted(expected, key=key)
+
+
 if __name__ == "__main__":
     test_forbid_rules_out_exactly_the_named_assignment()
     test_has_second_solution_on_a_unique_and_an_ambiguous_model()
@@ -102,4 +232,10 @@ if __name__ == "__main__":
     test_reproducible_pins_one_worker_and_seed_zero()
     test_a_seed_handed_to_the_reproducible_solver_is_a_loud_mistake()
     test_search_mode_leaves_the_portfolio_and_the_caller_s_seed_alone()
+    test_solve_unique_on_unique_nonunique_and_infeasible_models()
+    test_solve_unique_raises_on_a_spent_cap_in_either_solve()
+    test_solve_unique_raises_when_only_the_second_solve_times_out()
+    test_sudoku_model_on_a_square_board()
+    test_sudoku_model_on_a_rectangular_box_board()
+    test_sudoku_model_on_region_and_latin_boards()
     print("cpsat.test.py: ok")

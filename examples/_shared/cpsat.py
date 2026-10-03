@@ -2,7 +2,9 @@
 
 Every proof in this repo has one shape: solve, read the assignment back,
 forbid it, solve again. `forbid` posts that clause, `has_second_solution`
-posts it and solves, and `solver` is the configuration both run under.
+posts it and solves, `solve_unique` runs the whole shape, `solver` is the
+configuration they run under, and `sudoku_model` is the standard board they
+run it on.
 
 The configuration is the part worth stating once, because a solver is asked
 for two different things:
@@ -87,3 +89,54 @@ def has_second_solution(m, x, first, limit, reproducible=True, tag=""):
     if status == cp_model.UNKNOWN:
         raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
     return status in SOLVED
+
+
+def sudoku_model(n, box, *, regions=None, latin=False):
+    """(m, x) for an n x n sudoku: digits 1..n, rows and columns distinct.
+
+    `x` maps (row, column) to its variable. `box` is (height, width) of the
+    boxes, which must tile the board; a 6x6 board with boxes two rows tall and
+    three columns wide is `sudoku_model(6, (2, 3))`. `regions`, a list of cell
+    lists, replaces the boxes with houses of the caller's own shape, and
+    `latin=True` drops them altogether; either way `box` is not read, so pass
+    None. Givens and every other rule are the caller's to post on `m`.
+    """
+    if regions is not None and latin:
+        raise ValueError("a board has regions or is a plain Latin square, not both")
+    m = cp_model.CpModel()
+    x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
+    for i in range(n):
+        m.AddAllDifferent([x[i, c] for c in range(n)])
+        m.AddAllDifferent([x[r, i] for r in range(n)])
+    if latin:
+        return m, x
+    if regions is None:
+        bh, bw = box
+        if n % bh or n % bw:
+            raise ValueError(f"{bh}x{bw} boxes do not tile a {n}x{n} board")
+        regions = [
+            [(br + dr, bc + dc) for dr in range(bh) for dc in range(bw)]
+            for br in range(0, n, bh)
+            for bc in range(0, n, bw)
+        ]
+    for house in regions:
+        m.AddAllDifferent([x[cell] for cell in house])
+    return m, x
+
+
+def solve_unique(m, x, limit, reproducible=True):
+    """(first, is_unique) for model `m` whose cell variables are `x`.
+
+    `first` is a solution as {cell: digit}, or None when `m` has none, in which
+    case is_unique is False. Raises TimeoutError when either solve spends
+    `limit` without a verdict: a timeout is "don't know", never "infeasible"
+    and never "unique". Spends `m`, as has_second_solution does.
+    """
+    s = solver(limit, reproducible=reproducible)
+    status = s.Solve(m)
+    if status == cp_model.UNKNOWN:
+        raise TimeoutError(f"CP-SAT hit the {limit}s limit; no verdict")
+    if status not in SOLVED:
+        return None, False
+    first = {k: s.Value(v) for k, v in x.items()}
+    return first, not has_second_solution(m, x, first, limit, reproducible)

@@ -20,8 +20,6 @@
 import pathlib
 import sys
 
-from ortools.sat.python import cp_model
-
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
@@ -85,14 +83,14 @@ def main(argv):
     column = [i % W for i in range(W * W)]
     interior = [i for i in range(W * W) if region[i] >= 0]
 
-    m = cp_model.CpModel()
-    x = {i: m.NewIntVar(1, n, f"x{i}") for i in interior}
-    for r in range(1, n + 1):
-        m.AddAllDifferent([x[r * W + c] for c in range(1, n + 1)])
-    for c in range(1, n + 1):
-        m.AddAllDifferent([x[r * W + c] for r in range(1, n + 1)])
-    for box in {region[i] for i in interior}:
-        m.AddAllDifferent([x[i] for i in interior if region[i] == box])
+    houses = {}
+    for i in interior:
+        houses.setdefault(region[i], []).append(divmod(i, W))
+    m, grid = cpsat.sudoku_model(
+        n, None, regions=[[(r - 1, c - 1) for r, c in h] for h in houses.values()]
+    )
+    # The model is n x n; the clue posts below address the ringed W x W board.
+    x = {(r + 1) * W + c + 1: v for (r, c), v in grid.items()}
     for i in interior:
         if cells[i].get("given"):
             m.Add(x[i] == cells[i]["value"])
