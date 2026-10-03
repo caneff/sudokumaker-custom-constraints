@@ -110,7 +110,7 @@ KNOWN_BAD_SEED_1_GRID = [
 ]
 
 
-def test_is_striped_reads_rows_with_at_most_two_digits():
+def test_is_striped_flags_a_mostly_dull_grid():
     assert is_striped(KNOWN_BAD_SEED_1_GRID), "known-bad seed 1 grid expected striped"
     shipped = json.loads((HERE / "gen.json").read_text())["grid"]
     assert not is_striped(shipped), "the shipped grid is not dull"
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     print("dropped grids log seed and clue set: ok")
     test_cap_wider_than_side()
     print("cap wider than side: ok")
-    test_is_striped_reads_rows_with_at_most_two_digits()
+    test_is_striped_flags_a_mostly_dull_grid()
     test_sample_retries_past_a_striped_grid()
     print("striped grids detected and retried: ok")
     print("generate.test.py: ok")
