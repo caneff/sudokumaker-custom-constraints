@@ -53,9 +53,6 @@ BASE_LINK = REPO / "docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt"
 COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 
-CONSTRAINT_NAME = "House GAC (standalone)"
-TIMED_COMPONENT = "HouseGacComponent"
-
 sys.path.insert(0, str(REPO / "examples/_shared"))
 sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
 from cpsat import SOLVED, has_second_solution, solver
@@ -63,6 +60,11 @@ from framebuild import NO_RING_RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, swap_main
+from manifest import load_manifest
+
+MANIFEST = load_manifest(HERE)
+CONSTRAINT_NAME = MANIFEST.constraint_name
+TIMED_COMPONENT = MANIFEST.timed_component
 
 
 def prove_unique(givens):

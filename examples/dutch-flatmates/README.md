@@ -51,9 +51,9 @@ The one solution:
 
 No local lane (`main-global.js`, `PUZZLE_LINK_local.txt`, `gen_local.json`):
 one whole-grid constraint has no drawn groups to split a lane from, so
-`check_layout.py` lists the example in `NO_LOCAL_GLOBAL_SPLIT`; that entry is
-what the checker needed. The ticket also asked for a `RINGLESS_SUDOKU` entry,
-which is in place but does no work for this board: the link carries the shared
+its `example.toml` says `lanes = "single"`; that is what the checker needed.
+The ticket also asked for `rules_prefix = "ringless"`, which is in place but
+does no work for this board: the link carries the shared
 grid backend, so `check_layout.is_no_ring` already gives it the "Normal sudoku
 rules apply." opening. It matters only if the board is ever rebuilt without that
 backend.

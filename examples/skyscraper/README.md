@@ -519,7 +519,7 @@ just time skyscraper --ring-clues --board PUZZLE_LINK_6x6_local.txt \
 
 `--component` names the component to follow, because skyscraper's global board
 registers the two-clue DP and its local boards register this one; without it
-the driver follows `build_link.py`'s `TIMED_COMPONENT` and would time an edit
+the driver follows `example.toml`'s `timed_component` and would time an edit
 the local board does not run (`docs/real-app-timing.md`).
 
 The baseline in both ratio rows is the link as it stood before this change, on

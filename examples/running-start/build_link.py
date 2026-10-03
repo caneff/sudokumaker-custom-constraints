@@ -38,12 +38,13 @@ from framebuild import (
 )
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, swap_main
+from manifest import load_manifest
 from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
-CONSTRAINT_NAME = "Running Start"
-TIMED_COMPONENT = "RunningStartComponent"
+MANIFEST = load_manifest(HERE)
+CONSTRAINT_NAME = MANIFEST.constraint_name
 
 
 def build_from_template():

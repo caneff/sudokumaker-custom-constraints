@@ -4,9 +4,9 @@ Divide the grid into orthogonally connected **regions**; every cell of a region
 of `k` cells holds the digit `k`; two distinct regions of the same size may not
 touch orthogonally. No houses, no rows, no boxes — fillomino is not sudoku, so
 this example's rules text carries no sudoku sentence, and the shared layout
-checker exempts it (`NO_RULES_PREFIX`). It is also a whole-grid constraint with
-no drawn groups, so it ships `main.js` alone and no local board
-(`NO_LOCAL_GLOBAL_SPLIT`).
+checker exempts it (`rules_prefix = "none"` in `example.toml`). It is also a
+whole-grid constraint with no drawn groups, so it ships `main.js` alone and no
+local board (`lanes = "single"`).
 
 Spec #303, on map #277. Tickets #305 (the example scaffold and **rung 1**),
 #308 (**rung 2**, the growth test), #312 (**rung 2.5**, the bound made cheap)

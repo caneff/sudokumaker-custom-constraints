@@ -1,0 +1,3 @@
+# Examples folded into another and deleted: name = the example that took over.
+# check_layout.py fails if such a directory comes back (#238).
+numbered-rooms-lines = "numbered-rooms"

@@ -12,7 +12,7 @@ so a missing required file or a bad link name fails the gate.
 | `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
 | `main.js` | The SudokuMaker constraint definition for the **local** link (paste target); registers the line component per drawn group |
 | `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194). It does not build the frame itself: it splices in the one shared reader (below) |
-| `*Component.js` (at least one) | The pasted constraint snippet(s). One example, `house-gac`, ships none of its own: its one component lives in `examples/_shared/` on purpose, shared with every other board that registers the same filter, and `check_layout.py`'s `SHARED_COMPONENT` names it there instead of demanding a local copy that could drift |
+| `*Component.js` (at least one) | The pasted constraint snippet(s). One example, `house-gac`, ships none of its own: its one component lives in `examples/_shared/` on purpose, shared with every other board that registers the same filter, and its `example.toml`'s `shared_component` names it there instead of demanding a local copy that could drift |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
@@ -27,7 +27,31 @@ every example except one with no local/global duality: it ships `main.js`
 alone. The reason is either a whole-grid or fixed-geometry constraint with no
 drawn groups to split a local lane from, or groups drawn but no global lane,
 the clues being typed into them. `examples/_shared/check_layout.py` owns the
-members as `NO_LOCAL_GLOBAL_SPLIT`.
+members as `lanes = "single"` in the manifest.
+
+## The manifest
+
+Each example states what is special about it in an `example.toml` beside its
+code, and `check_layout.py` and `just time` read it, so neither names an
+example. `examples/_shared/manifest.py` loads and validates it: an unknown key
+or a bad value fails, and `check_layout.py` reports a missing manifest as a
+violation.
+
+| Key | Meaning | Default |
+| --- | --- | --- |
+| `timed_component` | The registered component `just time` follows (`--component` overrides it for one run). Required | — |
+| `constraint_name` | The constraint's name on its board, for a builder that reads it | none |
+| `lanes` | `"split"` (local and global lane) or `"single"` (`main.js` alone; the case for a whole-grid or fixed-geometry constraint, or one whose clues are typed into its groups) | `"split"` |
+| `rules_prefix` | What the link's rules text opens on: `"inner-grid"`, `"ringless"` (a plain board with no clue ring) or `"none"` (not sudoku) | `"inner-grid"` |
+| `houses` | `false` for a bare board with no row, column or box rule | `true` |
+| `digits_exceed_lines` | `true` where the digit range is deliberately wider than the interior lines | `false` |
+| `shared_component` | A component whose one file lives in `examples/_shared/` | none |
+| `generator_less_links` | Links with no `gen*.json` behind them | `[]` |
+| `rowcol_backend` | The name a borrowed, non-frame rows-and-columns backend ships under | none |
+
+`rules_prefix = "none"` and `houses = false` stay two separate fields: each is
+its own question, and a new non-sudoku example argues both (2026-09-07 ruling).
+A new example writes its manifest first; the checker has nothing to guess from.
 
 ## Which lane a link runs (#268)
 
@@ -54,7 +78,7 @@ A rule gets one example directory, with the local and global variants above.
 A second directory for the same rule drifts from the first: `numbered-rooms`
 and `numbered-rooms-lines` grew two components for one rule, and only one of
 them was sound on a drawn line. `check_layout.py` holds the folded-away names
-as `MERGED_AWAY` and fails if such a directory comes back (#238).
+in `retired-examples.toml` and fails if such a directory comes back (#238).
 
 ## Optional files
 
@@ -105,10 +129,10 @@ lzstring`, for the `lzstring` codec dependency) and gates the two mechanical
 pre-share criteria: the link opens clean (no entered values on non-given
 cells — except a `_clued` link, which fills the outside-clue ring on
 purpose) and the comment starts with "Normal sudoku rules apply on the
-inner grid" — except an example in `NO_RULES_PREFIX` (isofill and fillomino
-are not sudoku, and their rules text must not mention sudoku), and a no-ring
-board (below) or an example in `RINGLESS_SUDOKU` (`check_layout.py`),
-whose comment starts "Normal sudoku rules apply." instead. See
+inner grid" — except an example whose manifest says `rules_prefix = "none"`
+(isofill and fillomino are not sudoku, and their rules text must not mention
+sudoku), and a no-ring board (below) or an example whose manifest says
+`rules_prefix = "ringless"`, whose comment starts "Normal sudoku rules apply." instead. See
 `docs/share-checklist.md` for the full pre-share list.
 
 The **name** grammar above binds `PUZZLE_LINK*.txt` only, but the share
@@ -150,7 +174,7 @@ Two things a plain 9x9 pays for choosing `"custom"` anyway:
 
 - **Rows and columns stop being free.** `SudokuRules` is prepended only for
   `spec.type === Sudoku` (`bundle.claude.js:11455`), so the board has to carry
-  a row/column backend of its own, plus the `RESEARCH_ROWCOL_BACKENDS`
+  a row/column backend of its own, plus the manifest's `rowcol_backend`
   exemption below that lets a static decode see through it.
 - **The technique set narrows.** A sudoku document gets
   `StandardLogicStepsGenerator`; a custom one gets `CustomLogicStepsGenerator`,
@@ -173,7 +197,7 @@ docs/research/406-gac-demo's own non-frame "Rows & Columns" backend instead —
 it declares its houses in a `postprocessJSON` function too, the same blind
 spot a static decode has for the frame's backend. house-gac does not own or
 rebuild that backend, so there is no `check_frame_backends`-style staleness
-check for it; `check_layout.py`'s `RESEARCH_ROWCOL_BACKENDS` names the one
+check for it; the example's `example.toml` `rowcol_backend` names the one
 constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
 recognizes.
 
@@ -233,8 +257,8 @@ in the live app and record what it said:
   and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
   committed link (`docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt`),
   re-proved unique with CP-SAT rather than generated from a `gen*.json` this
-  example owns. `check_layout.py` holds these last two by `(example, link
-  name)` pair as `NO_GENERATOR_LINKS`.
+  example owns. each example's `example.toml` names its own in
+  `generator_less_links`.
 
 ## The `original/` baseline
 

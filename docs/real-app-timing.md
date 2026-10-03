@@ -82,12 +82,11 @@ no `build_link.py` yet.
 
 An example that registers more than one component (hit-counts and
 running-start each register a `Pair` component alongside the main one)
-declares which one `just time` follows: `build_link.py` sets
-`TIMED_COMPONENT = "<ComponentName>"`, a sibling of the existing
-`CONSTRAINT_NAME` constant. Without that declaration, the driver falls back
-to the one registered component that has a same-named `.js` file in the
-example directory, and still fails loud — `FileNotFoundError` for zero
-matches, `ValueError` for several — rather than guess which edit to time.
+declares which one `just time` follows: its `example.toml` sets
+`timed_component = "<ComponentName>"`, which every example's manifest carries.
+The driver fails loud — `ValueError` for a name the board does not register,
+`FileNotFoundError` for a name with no `.js` file in the example directory or in
+`_shared/` — rather than guess which edit to time.
 
 `--component <ComponentName>` overrides that declaration for one run. An
 example whose boards register different components has no single right answer

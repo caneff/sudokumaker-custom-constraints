@@ -45,10 +45,12 @@ from flatmate_model import Extras, N, prove_recorded
 from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
+from manifest import load_manifest
 from minify import minify_file
 
-CONSTRAINT_NAME = "Dutch Flatmates"
-TIMED_COMPONENT = "DutchFlatmatesComponent"
+MANIFEST = load_manifest(HERE)
+CONSTRAINT_NAME = MANIFEST.constraint_name
+TIMED_COMPONENT = MANIFEST.timed_component
 RULE = (
     "Dutch Flatmates: every 5 needs a flatmate, a 1 directly above it or a 9 "
     "directly below it. A 5 in the top row needs the 9 below it, and a 5 in the "

@@ -33,6 +33,7 @@ sys.path.insert(0, str(HERE))
 
 from link_codec import decode_puzzle, encode_link
 from link_swap import find_constraint, replace_constraint_code
+from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
 
@@ -50,71 +51,44 @@ def shipped_component_code(doc):
     return result
 
 
-TIMED_COMPONENT_RE = re.compile(r'^TIMED_COMPONENT\s*=\s*"([^"]+)"', re.MULTILINE)
-
-
-def read_timed_component(example_dir):
-    """The name in build_link.py's TIMED_COMPONENT = "..." line, or None if
-    the example declares no such constant. Reads the file as text -- no
-    import -- so a side-effect-heavy build_link.py module body never runs."""
-    build_link_py = example_dir / "build_link.py"
-    m = TIMED_COMPONENT_RE.search(build_link_py.read_text())
-    return m.group(1) if m else None
-
-
 def find_component_file(example_dir, base_doc, component=None):
     """The working-tree component file the timing loop follows.
 
     `component` (the --component flag) names the component outright and wins
-    over everything else: an example that registers different components on
-    different boards has no single right answer for its build_link.py to
+    over the manifest: an example that registers different components on
+    different boards has no single right answer for its example.toml to
     declare, so the caller says which board's component to time.
 
-    Otherwise, if build_link.py declares TIMED_COMPONENT = "<Name>", that name
-    settles it: <example_dir>/<Name>.js, or a loud failure naming the problem
-    (missing file, or a name not registered on the base doc).
-
-    Otherwise, the one registered component with a same-named .js file on
-    disk. Raises if none or more than one file matches: a silent pick among
-    several would time the wrong edit (CODING_STANDARDS: fail loud)."""
+    Otherwise the manifest's `timed_component` names it. Either way the name
+    settles the file: <example_dir>/<Name>.js, or the `_shared/` copy, or a
+    loud failure naming the problem (missing file, or a name not registered on
+    the base doc) -- a silent pick would time the wrong edit (CODING_STANDARDS:
+    fail loud)."""
     names = sorted(shipped_component_code(base_doc))
 
-    declared = component if component is not None else read_timed_component(example_dir)
-    if declared is not None:
-        source = "--component" if component is not None else "TIMED_COMPONENT"
-        if declared not in names:
-            raise ValueError(
-                f"{example_dir.name}'s {source} ({declared!r}) is not "
-                f"a registered component ({', '.join(names)})"
-            )
-        component_file = example_dir / f"{declared}.js"
-        if component_file.exists():
-            return component_file
-        # A component whose canonical file lives in `_shared/` (house-gac:
-        # HouseGacComponent.js, shared with #421's frame boards) has no
-        # working-tree copy of its own to drift from its committed one --
-        # follow that copy instead of demanding a duplicate.
-        shared_file = example_dir.parent / "_shared" / f"{declared}.js"
-        if shared_file.exists():
-            return shared_file
-        raise FileNotFoundError(
-            f"{example_dir.name}'s {source} ({declared!r}) has no "
-            f"working-tree file at {component_file} or {shared_file}"
-        )
-
-    matches = [n for n in names if (example_dir / f"{n}.js").exists()]
-    if not matches:
-        raise FileNotFoundError(
-            f"no working-tree component file in {example_dir} for any of "
-            f"the registered components ({', '.join(names)})"
-        )
-    if len(matches) > 1:
+    if component is not None:
+        declared, source = component, "--component"
+    else:
+        declared, source = load_manifest(example_dir).timed_component, "timed_component"
+    if declared not in names:
         raise ValueError(
-            f"{example_dir.name} has a working-tree file for more than one "
-            f"registered component ({', '.join(matches)}); time_example.py "
-            "follows only one"
+            f"{example_dir.name}'s {source} ({declared!r}) is not "
+            f"a registered component ({', '.join(names)})"
         )
-    return example_dir / f"{matches[0]}.js"
+    component_file = example_dir / f"{declared}.js"
+    if component_file.exists():
+        return component_file
+    # A component whose canonical file lives in `_shared/` (house-gac:
+    # HouseGacComponent.js, shared with #421's frame boards) has no
+    # working-tree copy of its own to drift from its committed one --
+    # follow that copy instead of demanding a duplicate.
+    shared_file = example_dir.parent / "_shared" / f"{declared}.js"
+    if shared_file.exists():
+        return shared_file
+    raise FileNotFoundError(
+        f"{example_dir.name}'s {source} ({declared!r}) has no "
+        f"working-tree file at {component_file} or {shared_file}"
+    )
 
 
 def find_component_constraint(doc, component_name):
@@ -464,8 +438,8 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     keeps the outer ring for edge-clue puzzles (probe_link.py `empty`).
     `board` names a link file (relative to example_dir) other than
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
-    `component` names the registered component to follow, over build_link.py's
-    TIMED_COMPONENT -- which board registers which component is the caller's
+    `component` names the registered component to follow, over the manifest's
+    the manifest's timed_component -- which board registers which component is the caller's
     to say."""
     mode = "empty" if ring_clues else "strip"
     baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
@@ -540,7 +514,7 @@ if __name__ == "__main__":
     )
     p.add_argument(
         "--component",
-        help="registered component to time, instead of build_link.py's TIMED_COMPONENT",
+        help="registered component to time, instead of example.toml's timed_component",
     )
     a = p.parse_args()
     rows, ship = run(

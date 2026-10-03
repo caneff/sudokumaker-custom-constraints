@@ -15,9 +15,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from bareboard import BareBoard
+from manifest import load_manifest
 
-CONSTRAINT_NAME = "Fillomino"
-TIMED_COMPONENT = "FillominoComponent"
+MANIFEST = load_manifest(pathlib.Path(__file__).parent)
+CONSTRAINT_NAME = MANIFEST.constraint_name
+TIMED_COMPONENT = MANIFEST.timed_component
 # Fillomino is not sudoku, so the rules text carries no RULES_PREFIX -- the
 # same exception isofill takes (docs/example-layout.md, #271, #305).
 RULE = (

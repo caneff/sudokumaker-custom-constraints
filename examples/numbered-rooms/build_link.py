@@ -17,6 +17,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import RULES_PREFIX, refresh_frame_backends
 from link_codec import decode_puzzle
 from link_swap import find_constraint, swap_main, write_link
+from manifest import load_manifest
 from minify import minify_file
 
 HERE = pathlib.Path(__file__).parent
@@ -24,8 +25,8 @@ HERE = pathlib.Path(__file__).parent
 # boards (build_size.py, PUZZLE_LINK_local.txt among them) call it "Numbered
 # Rooms", which is why a swap finds the constraint by the component it
 # registers.
-CONSTRAINT_NAME = "Custom Numbered Rooms"
-TIMED_COMPONENT = "NumberedRoomsComponent"
+MANIFEST = load_manifest(HERE)
+CONSTRAINT_NAME = MANIFEST.constraint_name
 
 # The shipped board's rules text. It has to live here: the board is hand-built,
 # no generator writes its comment, and `refresh` is the only thing that can keep
