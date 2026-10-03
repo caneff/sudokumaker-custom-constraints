@@ -1023,12 +1023,12 @@ with tempfile.TemporaryDirectory() as tmp:
     class SaveOnlyFinder(StatefulToyFinder):
         load_state = None
 
-    for label, cls in (
-        ("load_state only", LoadOnlyFinder),
-        ("save_state only", SaveOnlyFinder),
+    for label, dirname, cls in (
+        ("load_state only", "half-load", LoadOnlyFinder),
+        ("save_state only", "half-save", SaveOnlyFinder),
     ):
-        out = Path(tmp) / f"half-{label.split('_')[0]}"
-        code = half_driver.run(cls(), ["--out", str(out), "--seeds=0:3"])
+        out = Path(tmp) / dirname
+        code = driver_module.run(cls(), ["--out", str(out), "--seeds=0:3"])
         check(f"a finder with {label} is refused at launch (exit 2)", code == 2)
         check(
             f"a finder with {label} leaves no hunt file behind",
