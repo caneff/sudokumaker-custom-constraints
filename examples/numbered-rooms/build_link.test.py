@@ -79,7 +79,11 @@ def check_refresh_rejects_another_board():
             capture_output=True,
             text=True,
         )
-        assert run.returncode != 0, f"--refresh --board was accepted: {run.stdout}"
+        # argparse's usage error, exit 2, naming --board: a crash for some other
+        # reason does not pass as the refusal. (The shared swap_main refuses it
+        # before `rebuild`'s own --board guard is reached.)
+        assert run.returncode == 2, (run.returncode, run.stdout, run.stderr)
+        assert "error: --board" in run.stderr, run.stderr
         assert copy.read_text() == before, "--refresh rewrote the board it was given"
 
 
