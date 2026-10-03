@@ -16,7 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from subprocess_env import read_verified
+from verified_io import read_verified
 
 HERE = Path(__file__).resolve().parent
 TOY_FINDER = HERE / "toy_finder.py"

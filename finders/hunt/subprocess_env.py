@@ -8,13 +8,8 @@ subprocess launch that expects the hunt to actually run uses `success_env`
 so the gate always reads idle regardless of the real machine; a test that
 means to exercise the gate itself passes its own `HUNT_FAKE_LOAD1` through
 `overrides` instead. An override value of `None` deletes that key instead of
-setting it -- the way to ask for a truly unset var rather than an empty one.
+setting it -- the way to ask for a truly unset var rather than an empty one."""
 
-`read_verified` is the other thing every `hunt verify` test needs: the reader
-of verified.jsonl's stamp line plus verdicts.
-"""
-
-import json
 import os
 
 
@@ -26,10 +21,3 @@ def success_env(overrides=None):
         else:
             env[key] = value
     return env
-
-
-def read_verified(path):
-    """(stamp, verdicts): verified.jsonl's first line is the stamp
-    {"verified_examples": N} (#517), every later line one verdict."""
-    lines = [json.loads(line) for line in path.read_text().splitlines() if line]
-    return lines[0], lines[1:]

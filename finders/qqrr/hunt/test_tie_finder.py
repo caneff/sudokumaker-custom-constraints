@@ -17,7 +17,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "finders" / "hunt"))
-from subprocess_env import read_verified, success_env
+from subprocess_env import success_env
+from verified_io import read_verified
 
 HERE = Path(__file__).resolve().parent
 FINDER = HERE / "tie_finder.py"
