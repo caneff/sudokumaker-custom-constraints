@@ -405,7 +405,7 @@ def frame_backend_files():
     """`{constraint name: (source file name, its minified code in the tree)}`
     for the frame's two always-on shared backends, plus the opt-in house-GAC
     filter (#421) and a no-ring board's whole-grid rows and columns when a link
-    carries them -- `check_frame_backends` only checks a title it finds in a
+    carries them -- `check_stale_backend_code` only checks a title it finds in a
     link's own constraints, so an opt-in backend needs no separate gate here."""
     code = dict(frame_backend_code())
     files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
@@ -418,7 +418,7 @@ def frame_backend_files():
 
 def house_gac_component_file():
     """(component name, source file name, its minified code in the tree) for
-    the house-GAC filter's one component -- `check_frame_backends` compares
+    the house-GAC filter's one component -- `check_stale_backend_code` compares
     it against a link's own copy the same way it compares the backend, since
     HouseGacComponent.js is not a per-example file `check_components` would
     ever look for."""
@@ -503,7 +503,7 @@ def check_houses(example_dir, link, puzzle, manifest):
     # A board carrying a row/column backend declares its lines in JS, so
     # counting missing rows here would send the reader after a constraint that
     # is already present. Whether the copy embedded there is the current one is
-    # `check_frame_backends`' question, with its own message and its own fix
+    # `check_stale_backend_code`' question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns_in_js).
     if declares_rows_and_columns_in_js(manifest, puzzle):
@@ -525,29 +525,28 @@ def check_houses(example_dir, link, puzzle, manifest):
     return violations
 
 
-def check_frame_backends(example_dir, link, puzzle, manifest):
-    """Return one violation per shared frame backend `link` (decoded as
-    `puzzle`) ships under its own
-    name with code that is not the copy in the tree, plus one if it ships
-    either backend and declares no digit range.
+def carried_backend_titles(puzzle):
+    """The titles of the frame backends `puzzle` ships under their own name,
+    whatever code is embedded there."""
+    current = frame_backend_files()
+    return [
+        title
+        for constraint in puzzle.get("constraints", [])
+        if (title := (constraint.get("definition") or {}).get("name")) in current
+    ]
 
-    BOTH backends need checking here and only here. `check_components` cannot
-    see `frame-corners.js` at all: it registers a `PredefinedCandidatesComponent`,
-    which is a built-in, so that constraint ships no component file and the
-    shipped/registered sets agree whatever its code says. A changed
-    `frame-corners.js` with un-rebuilt links would otherwise pass every gate in
-    silence -- and the corner pin is the whole reason a frame board comes back
-    unique (#394).
 
-    The digit range is the other silent one. Both backends read
-    `helpers.digits`, and the app defaults a custom puzzle to 1..9 whatever the
-    grid size (#461). With no `minDigit`/`maxDigit` the range rests on that
-    default, not on the document. A range that does not span the interior line
-    degrades every row and column from a named `HouseComponent` to a bare
-    `DifferentDigitsComponent` -- the weaker rule, with no houseType for the
-    solver's row/column machinery -- and pins the corners to a digit the puzzle
-    never uses, so the range is checked against the line and not merely for
-    being there. None of it shows on the board or in the source text.
+def check_stale_backend_code(example_dir, link, puzzle, manifest):
+    """Return one violation per shared frame backend or shared component `link`
+    (decoded as `puzzle`) ships with code that is not the copy in the tree.
+
+    BOTH frame backends need checking here and only here. `check_components`
+    cannot see `frame-corners.js` at all: it registers a
+    `PredefinedCandidatesComponent`, which is a built-in, so that constraint
+    ships no component file and the shipped/registered sets agree whatever its
+    code says. A changed `frame-corners.js` with un-rebuilt links would
+    otherwise pass every gate in silence -- and the corner pin is the whole
+    reason a frame board comes back unique (#394).
 
     The component staleness check is keyed on the shipped component's own
     name, not the constraint's title: house-gac's standalone board splices in
@@ -555,7 +554,9 @@ def check_frame_backends(example_dir, link, puzzle, manifest):
     to avoid the reserved "House GAC" -- see build_link.py's module
     docstring) with a backend that is legitimately not house-gac.js, so only
     the component -- the one thing that board does share -- is compared
-    against the tree (#439).
+    against the tree (#439). A MISSING component is not this check's job:
+    `check_components` already flags any constraint whose backend registers a
+    name its own `components` list omits.
 
     `minify_js` drops comments, so editing a backend file's prose leaves every
     committed link valid; only a real code change makes them stale, and a stale
@@ -564,25 +565,19 @@ def check_frame_backends(example_dir, link, puzzle, manifest):
     name = example_dir.name
     current = frame_backend_files()
     comp_name, comp_source, comp_want = house_gac_component_file()
-    # The annotated link (#433) embeds the same component file through the
+    # An annotated link (#433) embeds the shared component through the
     # comment-keeping minify mode, not the usual full strip -- compare it
-    # against that copy instead, or every rebuild would read as stale.
-    # Scoped to the example whose manifest names this shared component, the
-    # only one that builds an annotated link today: a bare "annotated" tag on
-    # some other example's link is not this carve-out's business, and
-    # comparing it against a keep-comments copy it never embedded would be its
-    # own false stale reading.
-    if manifest.shared_component == comp_name and "annotated" in link.stem.split("_"):
+    # against that copy instead, or every rebuild would read as stale. The
+    # manifest says which example builds one.
+    if manifest.annotated_keeps_comments and "annotated" in link.stem.split("_"):
         comp_want = minify_file(
             pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
         )
     violations = []
-    carried = []
     for constraint in puzzle.get("constraints", []):
         definition = constraint.get("definition") or {}
         title = definition.get("name")
         if title in current:
-            carried.append(title)
             source, want = current[title]
             if definition.get("backend", {}).get("code") != want:
                 violations.append(
@@ -591,18 +586,6 @@ def check_frame_backends(example_dir, link, puzzle, manifest):
                     f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                     f"for a hand-built board)"
                 )
-        # Keyed on the COMPONENT's own name, not the constraint's title: a
-        # board that splices HouseGacComponent.js under a title of its own
-        # (house-gac's standalone board renames away from the reserved
-        # "House GAC" -- see build_link.py's module docstring) still ships
-        # this exact shared file, and a title-keyed lookup here is exactly
-        # the miss #439 was filed about -- a second title literal to keep in
-        # sync with build_link.py's own rename would only reopen it the next
-        # time either name changes. A MISSING component is not this check's
-        # job: `check_components` already flags any constraint whose backend
-        # registers a name its own `components` list omits (shipped-minus-
-        # registered mismatch, checked for every constraint), so guarding it
-        # again here would just double-report the same link.
         comp = next(
             (c for c in definition.get("components", []) if c["name"] == comp_name),
             None,
@@ -614,39 +597,79 @@ def check_frame_backends(example_dir, link, puzzle, manifest):
                 f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                 f"for a hand-built board)"
             )
+    return violations
 
+
+def check_digit_range(example_dir, link, puzzle, manifest):
+    """Return one violation if `puzzle` ships a frame backend and declares no
+    digit range, or a range that does not span the interior line.
+
+    Both backends read `helpers.digits`, and the app defaults a custom puzzle
+    to 1..9 whatever the grid size (#461). With no `minDigit`/`maxDigit` the
+    range rests on that default, not on the document. A range that does not
+    span the interior line degrades every row and column from a named
+    `HouseComponent` to a bare `DifferentDigitsComponent` -- the weaker rule,
+    with no houseType for the solver's row/column machinery -- and pins the
+    corners to a digit the puzzle never uses, so the range is checked against
+    the line and not merely for being there. None of it shows on the board or
+    in the source text.
+    """
+    name = example_dir.name
+    carried = carried_backend_titles(puzzle)
     if not carried:
-        return violations
+        return []
 
     lo, hi = puzzle.get("minDigit"), puzzle.get("maxDigit")
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
-        violations.append(
+        return [
             f"{name}: {link.name} ships {sorted(carried)} but declares no "
             f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
             f"the grid size, so the range rests on that default, not on the "
             f"document. Pin minDigit/maxDigit on the document (#394)"
-        )
-        return violations
+        ]
 
     width, height = puzzle.get("width"), puzzle.get("height")
     if manifest.digits_exceed_lines or not (
         isinstance(width, int) and isinstance(height, int)
     ):
-        return violations
+        return []
 
     lengths = interior_line_lengths(puzzle, width, height)
     span = hi - lo + 1
     if lengths and lengths != {span}:
         cells = "/".join(str(n) for n in sorted(lengths))
-        violations.append(
+        return [
             f"{name}: {link.name} ships {sorted(carried)} and declares "
             f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
             f"cell interior lines -- a line as long as the range is a house, "
             f"any other length falls back to plain all-different, and the "
             f"corner pin lands on minDigit whether or not the board uses it. "
             f"Match the range to the interior (#394)"
-        )
-    return violations
+        ]
+    return []
+
+
+def _parse_gen(gen):
+    """`(document, None)` for a `gen*.json` that parses, `(None, error)` for one
+    that does not."""
+    try:
+        return json.loads(gen.read_text()), None
+    except json.JSONDecodeError as e:
+        return None, e
+
+
+def check_gen_json_parses(example_dir):
+    """Return one violation per `gen*.json` that is not valid JSON.
+
+    A corrupt board record must stop the gate, not drop out of the checks that
+    read it.
+    """
+    name = example_dir.name
+    return [
+        f"{name}: {gen.name} is not valid JSON: {error}"
+        for gen in sorted(example_dir.glob("gen*.json"))
+        if (error := _parse_gen(gen)[1])
+    ]
 
 
 def check_gen_frame_backends(example_dir):
@@ -657,16 +680,19 @@ def check_gen_frame_backends(example_dir):
     (`framebuild.refresh_frame_backends`), so a copy kept here is dead data no
     build reads and nothing rebuilds -- it can only drift from the file it
     copies, and a reader comparing the two has no way to tell which one runs.
-    Keep the field empty.
+    Keep the field empty. A gen JSON that does not parse is
+    `check_gen_json_parses`' to report.
     """
     name = example_dir.name
     titles = {title for _, title in FRAME_BACKENDS} | {HOUSE_GAC_BACKEND_TITLE}
     violations = []
     for gen in sorted(example_dir.glob("gen*.json")):
+        doc, error = _parse_gen(gen)
+        if error:
+            continue
         try:
-            doc = json.loads(gen.read_text())
             constraints = doc["puzzle"]["constraints"]
-        except Exception:
+        except KeyError:
             continue  # a board-data gen JSON carries no document at all
         for constraint in constraints:
             definition = constraint.get("definition") or {}
@@ -724,6 +750,7 @@ def check_example(example_dir):
 
     violations.extend(check_lanes(example_dir))
     violations.extend(check_gen_link_pairing(example_dir, manifest))
+    violations.extend(check_gen_json_parses(example_dir))
     violations.extend(check_gen_frame_backends(example_dir))
 
     for link in committed_links(example_dir):
@@ -741,7 +768,8 @@ def check_example(example_dir):
             continue
         violations.extend(check_share_ready(example_dir, link, puzzle, manifest))
         violations.extend(check_components(example_dir, link, puzzle))
-        violations.extend(check_frame_backends(example_dir, link, puzzle, manifest))
+        violations.extend(check_stale_backend_code(example_dir, link, puzzle, manifest))
+        violations.extend(check_digit_range(example_dir, link, puzzle, manifest))
         violations.extend(check_houses(example_dir, link, puzzle, manifest))
 
     return violations

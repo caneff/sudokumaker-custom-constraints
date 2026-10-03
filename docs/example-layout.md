@@ -48,6 +48,7 @@ violation.
 | `digits_exceed_lines` | `true` where the digit range is deliberately wider than the interior lines | `false` |
 | `shared_component` | A component whose one file lives in `examples/_shared/` | none |
 | `generator_less_links` | Links with no `gen*.json` behind them | `[]` |
+| `annotated_keeps_comments` | `true` where the example's `_annotated` link embeds the shared component through the comment-keeping minify, so `check_stale_backend_code` compares it against that copy (`house-gac`) | `false` |
 | `rowcol_backend` | The name a borrowed, non-frame rows-and-columns backend ships under | none |
 | `boardless` | `true` for an example that holds components and the harness that checks them and ships no board of its own: it needs only `README.md`, a `*Component.js` and `soundness-harness.mjs` (`count-digits-gac`) | `false` |
 
@@ -155,7 +156,7 @@ link from its committed `gen_*.json` with the example's
 The frame's own two shared backends (`_shared/frame-rowcol.js`,
 `_shared/frame-corners.js`) go stale the same way, and every framebuilt link
 carries a copy of both: a real change to either means rebuilding all of them in
-that commit. `check_frame_backends` compares each embedded copy against the
+that commit. `check_stale_backend_code` compares each embedded copy against the
 file in the tree and names the stale one; `check_houses` steps aside for a link
 that carries the row/column backend, rather than counting missing rows at it.
 Both backends need this sweep, and `frame-corners.js` needs it most: it
@@ -187,8 +188,8 @@ Two things a plain 9x9 pays for choosing `"custom"` anyway:
 A **no-ring** board (`no_ring.NoRing`, up-to-n's) is a bare n x n
 `"custom"` document with no clue ring, and its shared backend is
 `_shared/grid-rowcol.js`, which declares every whole row and column. A link
-carrying it is what `check_layout.py` treats as no-ring: `check_frame_backends`
-checks its copy for staleness and its digit range the same way, `check_houses`
+carrying it is what `check_layout.py` treats as no-ring: `check_stale_backend_code`
+checks its copy for staleness and `check_digit_range` its digit range the same way, `check_houses`
 steps aside for it, the filled-ring check does not apply (its edge cells are
 the puzzle), and its comment opens with the no-ring sentence above. The live
 editor opens a `"sudoku"` document as 9x9 whatever its width says, which is
@@ -198,7 +199,7 @@ why the header is not used (`docs/research/368-up-to-n-setup-throw.md`).
 docs/research/406-gac-demo's own non-frame "Rows & Columns" backend instead —
 it declares its houses in a `postprocessJSON` function too, the same blind
 spot a static decode has for the frame's backend. house-gac does not own or
-rebuild that backend, so there is no `check_frame_backends`-style staleness
+rebuild that backend, so there is no `check_stale_backend_code`-style staleness
 check for it; the example's `example.toml` `rowcol_backend` names the one
 constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
 recognizes.
