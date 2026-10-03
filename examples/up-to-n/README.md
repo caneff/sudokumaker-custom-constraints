@@ -111,7 +111,7 @@ forced to N, and the clue lies inside those bounds.
   refuses a line with no N.
 
 The line kind comes from
-`getCellsCanHaveRepeats`, asked in `update` and cached once true.
+`getCellsCanHaveRepeats`, asked in `update`; the repeats answer is cached once asked.
 
 ## The board
 
