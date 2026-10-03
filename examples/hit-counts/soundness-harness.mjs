@@ -14,7 +14,7 @@
 // house of {0..8}. Ungated, the rule removes that true clue value and the run
 // goes red.
 //
-// A second pass runs every component over real grids, where both clues of a
+// A second pass runs the joint components and the side hit matching over real grids, where both clues of a
 // line are true together, all to one fixpoint as the solver runs them, and a
 // third names the mirrored-pair exclusion by running one state as a house and
 // again as bare.
