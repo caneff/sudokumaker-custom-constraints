@@ -33,8 +33,8 @@ Per call (10 seeds): build 10.7 ms, first solve 69.3 ms, second solve 68.5 ms.
   seeds gives `a` of about 26 per seed, and 4 to 6 givens survive the removal
   pass. `a` is inferred from the call count, not measured directly.
 - Most of those calls solve the full 36-clue board (about 538 of 575). The
-  "20 shown clues" of the chosen board describes only the ring pass and the
-  final assert.
+  ring pass, run once, drops clues one at a time from 36 toward the chosen
+  board's 20, so only its last solves and the final assert see 20 clues.
 - Extrapolated to the 40-seed default: about 5.5 to 5.7 min under this load
   (the `up-to-n` README says about 4 min for its own 9x9). Single runs, so the
   difference between the two is noise. The cost scales with seed count and is
@@ -43,8 +43,8 @@ Per call (10 seeds): build 10.7 ms, first solve 69.3 ms, second solve 68.5 ms.
 ## What follows
 
 - Removing all model build (the best a C solver or a reused model could do on
-  that axis) saves at most 7%. The CP-SAT solves are about 70 ms each at 9x9
-  with 20 shown clues, not "milliseconds".
+  that axis) saves at most 7%. The CP-SAT solves are about 70 ms each at 9x9,
+  mostly on the full 36-clue board, not "milliseconds".
 - A C bitmask DFS would replace the solves, not the build, so its payoff is a
   different question from the ticket's premise: it would have to beat about
   70 ms per proof at 9x9 with the Spec's clue check at the leaves. This
