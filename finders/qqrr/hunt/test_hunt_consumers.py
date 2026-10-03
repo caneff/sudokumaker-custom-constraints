@@ -21,7 +21,7 @@ import sync_presets
 
 SEED_A = hc.HUNTS["r5c1"][2]
 SEED_B = hc.HUNTS["r1c5"][2]
-G_PLAIN = "/".join(["123456789"] * 9)  # a grid no preset holds, whatever the seeds are
+G_PLAIN = "/".join(["123456789"] * 9)  # differs from both seeds
 ACROSS = "  tie r3c2 1|2 = r3c8 3|4, number 1234567, QQRR 35"
 BOXONLY = "  tie r1c1 1|2 = r2c2 3|4, number 7654321, QQRR 34"
 
@@ -52,22 +52,25 @@ with tempfile.TemporaryDirectory() as tmp:
     d = Path(tmp)
 
     # sync_presets: the label names number and QQRR each by its own field, in the right order.
+    # its own directory: a q34 log beside the others would tie earlier_hits' best sort key
+    q = d / "q34"
+    q.mkdir()
     write(
-        d, "big-r5c1-r5c5-tl-q34.log", hit(1, ACROSS, G_PLAIN) + hit(2, BOXONLY, SEED_A)
+        q, "big-r5c1-r5c5-tl-q34.log", hit(1, ACROSS, G_PLAIN) + hit(2, BOXONLY, SEED_A)
     )
     page = d / "explorer.html"
     page.write_text("x\nconst PRESETS=[\nold,\n];\n")
-    assert sync_presets.sync(page, d) == 2
+    assert sync_presets.sync(page, q) == 2
     text = page.read_text()
     assert "tie r3c2 = r3c8 (1234567, QQRR 35) · tl #1 · 34–36 hunt" in text, text
     assert "tie r1c1 = r2c2 (7654321, QQRR 34, box only) · tl #2" in text, text
     assert '"tl","4,0",{"4,4":"10"}],' in text, text
-    assert sync_presets.sync(page, d) == 0  # grids already present are skipped
+    assert sync_presets.sync(page, q) == 0  # grids already present are skipped
     # ... and the page is read through the parser: a stubbed hit is what lands in it.
     fake = hc.Tie("r2c2", "r2c3", "11", "22")
     with Stub("parse_hits", lambda t: [{"ties": [fake], "grid": "STUBGRID"}]):
         page.write_text("const PRESETS=[\n")
-        assert sync_presets.sync(page, d) == 1
+        assert sync_presets.sync(page, q) == 1
         assert page.read_text().count("tie r2c2 = r2c3 (11, QQRR 22)") == 1
 
     # chan_big.earlier_hits: this hunt's logs only, the nearest window and corner first.
@@ -90,15 +93,11 @@ with tempfile.TemporaryDirectory() as tmp:
     # check_3436: one line per distinct grid, named for the first log that holds it.
     lines = check_3436.report(d)
     srcs = {ln.split()[0] for ln in lines}
-    assert (
-        len(lines) == 3
-        and srcs
-        == {
-            "big-r1c5-r5c5-tl.log",
-            "big-r5c1-r1c1-tr.log",
-            "big-r5c1-r5c5-tl-q34.log",  # sorts before big-r5c1-r5c5-tl.log, which repeats its grid
-        }
-    ), lines
+    assert len(lines) == 3 and srcs == {
+        "big-r1c5-r5c5-tl.log",
+        "big-r5c1-r1c1-tr.log",
+        "big-r5c1-r5c5-tl.log",
+    }, lines
     seed_b = next(ln for ln in lines if ln.startswith("big-r1c5-"))
     assert "QR1 ['r3c1'] clean: ['r7c8'] grid " + SEED_B in seed_b, seed_b
     assert all(
