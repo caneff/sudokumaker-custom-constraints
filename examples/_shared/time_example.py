@@ -311,18 +311,19 @@ def build_candidate(example_dir, component_file, out_path, board=None):
     )
 
 
-def parse_app_solve_output(link_path, stdout, allow_timeout=False):
-    """Parse app-solve.mjs's JSON line and return its {median, version,
-    repsRun, repsTimedOut}. Raises loud, naming link_path: no JSON line, every
-    rep timed out (median null, unless allow_timeout: run_app_solve's one-rep
-    calls tolerate a null and let combine_reps judge), or the app version could
-    not be read."""
+def read_app_solve_json(stdout):
+    """app-solve.mjs's JSON line, parsed. Raises when there is none."""
     m = JSON_LINE.search(stdout)
     if not m:
         raise RuntimeError(f"app-solve.mjs printed no JSON line:\n{stdout}")
-    data = json.loads(m.group(1))
-    if data["median"] is None and allow_timeout:
-        return data
+    return json.loads(m.group(1))
+
+
+def check_app_solve_result(link_path, data):
+    """`data` back, or a loud failure naming link_path: every rep timed out
+    (median null), or the app version could not be read. The one owner of the
+    timeout verdict, for both the driver's own aggregate (parse_app_solve_output)
+    and one built from interleaved one-rep calls (combine_reps)."""
     if data["median"] is None:
         # Name app-solve.mjs's fixed 300s per-rep wait (its
         # page.waitForFunction timeout) and the rep counts, so a reader learns
@@ -336,6 +337,13 @@ def parse_app_solve_output(link_path, stdout, allow_timeout=False):
             f"app-solve.mjs could not read the app version for {link_path}"
         )
     return data
+
+
+def parse_app_solve_output(link_path, stdout):
+    """Parse app-solve.mjs's JSON line and return its {median, version,
+    repsRun, repsTimedOut}, or raise per read_app_solve_json and
+    check_app_solve_result."""
+    return check_app_solve_result(link_path, read_app_solve_json(stdout))
 
 
 def app_solve(link_path, reps, ring_clues=False, after_logical=False):
@@ -363,7 +371,7 @@ def run_app_solve(
     """Time the links REPS times each, interleaved as docs/real-app-timing.md
     requires: every round times one rep of each link, and the lead alternates
     (baseline first in round 1) so neither always gets the colder slot. Returns
-    (baseline, candidate): each a {median, version} over that link's own reps,
+    (baseline, candidate): each combine_reps's result over that link's own reps,
     candidate None when `candidate_link` is None. A rep that times out is left
     out of its link's median, and a link whose every rep timed out raises."""
     links = [baseline_link] + ([candidate_link] if candidate_link else [])
@@ -372,23 +380,29 @@ def run_app_solve(
         order = links if rnd % 2 == 0 else links[::-1]
         for link in order:
             stdout = app_solve(link, 1, ring_clues, after_logical)
-            data[link].append(parse_app_solve_output(link, stdout, allow_timeout=True))
+            data[link].append(read_app_solve_json(stdout))
     timed = [combine_reps(link, data[link]) for link in links]
     return timed[0], (timed[1] if candidate_link else None)
 
 
 def combine_reps(link_path, reps):
-    """One link's {median, version} from its one-rep driver results. The median
-    is app-solve.mjs's own: the upper middle of the reps that finished."""
-    done = sorted(r["median"] for r in reps if r["median"] is not None)
-    if not done:
-        raise RuntimeError(
-            f"app-solve.mjs: {link_path}: all {len(reps)} reps hit the "
-            f"300s per-rep timeout"
-        )
-    # A rep with a median passed parse_app_solve_output's version check.
-    version = next(r["version"] for r in reps if r["median"] is not None)
-    return {"median": done[len(done) // 2], "version": version}
+    """One link's {median, version, repsRun, repsTimedOut} from its one-rep
+    driver results, judged by check_app_solve_result: every rep that finished
+    must carry the app version, and a link with none finished is a timeout. The
+    median is app-solve.mjs's own (`median` in app-solve-lib.mjs, the upper
+    middle of the reps that finished), recomputed here because the driver only
+    ever sees one rep per call."""
+    finished = [r for r in reps if r["median"] is not None]
+    for r in finished:
+        check_app_solve_result(link_path, r)
+    done = sorted(r["median"] for r in finished)
+    data = {
+        "median": done[len(done) // 2] if done else None,
+        "version": finished[0]["version"] if finished else None,
+        "repsRun": len(reps),
+        "repsTimedOut": len(reps) - len(finished),
+    }
+    return check_app_solve_result(link_path, data)
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None):

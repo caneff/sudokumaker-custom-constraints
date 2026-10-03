@@ -703,10 +703,6 @@ if __name__ == "__main__":
         finally:
             time_example.app_solve = real
 
-    def per_link(cold, logical):
-        """Per-rep medians for one link: its cold reps, then its logical ones."""
-        return [*cold, *logical]
-
     R = time_example.REPS
     B, C = "baseline_probe.txt", "candidate_probe.txt"
 
@@ -727,9 +723,7 @@ if __name__ == "__main__":
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
-        with fake_solve(
-            {B: per_link([1000] * R, [800] * R), C: per_link([500] * R, [400] * R)}
-        ) as calls:
+        with fake_solve({B: [1000] * R + [800] * R, C: [500] * R + [400] * R}) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["PASS", "PASS"]
         assert ship == "SHIP"
@@ -756,9 +750,7 @@ if __name__ == "__main__":
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
-        with fake_solve(
-            {B: per_link([1000] * R, [1000] * R), C: per_link([1000] * R, [1500] * R)}
-        ):
+        with fake_solve({B: [1000] * R + [1000] * R, C: [1000] * R + [1500] * R}):
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["FAIL", "FAIL"]
         assert ship == "NO SHIP"
@@ -770,7 +762,7 @@ if __name__ == "__main__":
         _make_widget_example(
             example_dir, "console.log('same')\n", "function update(){return 1}\n"
         )
-        with fake_solve({B: per_link([1000] * R, [900] * R)}) as calls:
+        with fake_solve({B: [1000] * R + [900] * R}) as calls:
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["BASELINE", "BASELINE"]
         assert ship is None, "nothing to judge means no ship verdict"
@@ -820,7 +812,7 @@ if __name__ == "__main__":
         )
         (example_dir / "PUZZLE_LINK_alt.txt").write_text(encode_link(base_doc) + "\n")
         _git_commit_all(example_dir)
-        with fake_solve({B: per_link([1000] * R, [900] * R)}) as calls:
+        with fake_solve({B: [1000] * R + [900] * R}) as calls:
             rows, _ship = run(example_dir, ring_clues=True, board="PUZZLE_LINK_alt.txt")
         assert all(ring for _name, ring, _al in calls), (
             "ring_clues must reach the driver"
@@ -837,8 +829,8 @@ if __name__ == "__main__":
         (example_dir / "WidgetComponent.js").write_text("function update(){return 2}\n")
         with fake_solve(
             {
-                B: per_link([900, 3000, 1000], [100, 100, 100]),
-                C: per_link([400, 500, 9000], [100, 100, 100]),
+                B: [900, 3000, 1000, 100, 100, 100],
+                C: [400, 500, 9000, 100, 100, 100],
             }
         ):
             rows, _ship = run(example_dir)
@@ -853,8 +845,24 @@ if __name__ == "__main__":
         try:
             time_example.run_app_solve(B, C)
         except RuntimeError as e:
-            assert C in str(e) and "300s" in str(e), e
+            assert str(e) == (
+                f"app-solve.mjs: {C}: all {R} reps hit the 300s per-rep timeout "
+                f"({R} timed out)"
+            ), e
         else:
             raise AssertionError("an all-timeout link must raise")
+
+    # an unreadable app version on any rep that finished fails the link, not
+    # only on the first one
+    ok = {"median": 100, "version": "v1", "repsRun": 1, "repsTimedOut": 0}
+    no_version = {**ok, "median": 200, "version": None}
+    for reps in ([ok, no_version, ok], [no_version, ok]):
+        try:
+            time_example.combine_reps(B, reps)
+        except RuntimeError as e:
+            assert "could not read the app version" in str(e) and B in str(e), e
+        else:
+            raise AssertionError("a finished rep with no version must raise")
+    assert time_example.combine_reps(B, [ok, ok, ok])["version"] == "v1"
 
     print("ok")
