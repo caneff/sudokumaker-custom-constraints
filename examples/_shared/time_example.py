@@ -371,7 +371,7 @@ def run_app_solve(
     """Time the links REPS times each, interleaved as docs/real-app-timing.md
     requires: every round times one rep of each link, and the lead alternates
     (baseline first in round 1) so neither always gets the colder slot. Returns
-    (baseline, candidate): each a {median, version} over that link's own reps,
+    (baseline, candidate): each combine_reps's result over that link's own reps,
     candidate None when `candidate_link` is None. A rep that times out is left
     out of its link's median, and a link whose every rep timed out raises."""
     links = [baseline_link] + ([candidate_link] if candidate_link else [])
@@ -387,15 +387,20 @@ def run_app_solve(
 
 def combine_reps(link_path, reps):
     """One link's {median, version, repsRun, repsTimedOut} from its one-rep
-    driver results, judged by check_app_solve_result. The median is
-    app-solve.mjs's own (`median` in app-solve-lib.mjs): the upper middle of
-    the reps that finished."""
-    done = sorted(r["median"] for r in reps if r["median"] is not None)
+    driver results, judged by check_app_solve_result: every rep that finished
+    must carry the app version, and a link with none finished is a timeout. The
+    median is app-solve.mjs's own (`median` in app-solve-lib.mjs, the upper
+    middle of the reps that finished), recomputed here because the driver only
+    ever sees one rep per call."""
+    finished = [r for r in reps if r["median"] is not None]
+    for r in finished:
+        check_app_solve_result(link_path, r)
+    done = sorted(r["median"] for r in finished)
     data = {
         "median": done[len(done) // 2] if done else None,
-        "version": next((r["version"] for r in reps if r["median"] is not None), None),
+        "version": finished[0]["version"] if finished else None,
         "repsRun": len(reps),
-        "repsTimedOut": len(reps) - len(done),
+        "repsTimedOut": len(reps) - len(finished),
     }
     return check_app_solve_result(link_path, data)
 

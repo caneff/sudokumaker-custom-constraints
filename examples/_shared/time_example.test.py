@@ -852,4 +852,17 @@ if __name__ == "__main__":
         else:
             raise AssertionError("an all-timeout link must raise")
 
+    # an unreadable app version on any rep that finished fails the link, not
+    # only on the first one
+    ok = {"median": 100, "version": "v1", "repsRun": 1, "repsTimedOut": 0}
+    no_version = {**ok, "median": 200, "version": None}
+    for reps in ([ok, no_version, ok], [no_version, ok]):
+        try:
+            time_example.combine_reps(B, reps)
+        except RuntimeError as e:
+            assert "could not read the app version" in str(e) and B in str(e), e
+        else:
+            raise AssertionError("a finished rep with no version must raise")
+    assert time_example.combine_reps(B, [ok, ok, ok])["version"] == "v1"
+
     print("ok")
