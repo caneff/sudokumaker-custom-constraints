@@ -107,7 +107,7 @@ def test_solve_unique_on_unique_nonunique_and_infeasible_models():
     assert solve_unique(m, x, 10) == (None, False)
 
 
-def test_solve_unique_raises_on_a_spent_cap_in_either_solve():
+def test_solve_unique_raises_on_a_spent_cap_in_the_first_solve():
     # A first solve that cannot finish is no verdict, not "infeasible".
     m, x = _model(4)
     try:
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     test_a_seed_handed_to_the_reproducible_solver_is_a_loud_mistake()
     test_search_mode_leaves_the_portfolio_and_the_caller_s_seed_alone()
     test_solve_unique_on_unique_nonunique_and_infeasible_models()
-    test_solve_unique_raises_on_a_spent_cap_in_either_solve()
+    test_solve_unique_raises_on_a_spent_cap_in_the_first_solve()
     test_solve_unique_raises_when_only_the_second_solve_times_out()
     test_sudoku_model_on_a_square_board()
     test_sudoku_model_on_a_rectangular_box_board()
