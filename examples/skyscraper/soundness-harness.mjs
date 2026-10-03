@@ -13,7 +13,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import {
-  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, violates, fixpoint
+  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, violates, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -73,22 +73,17 @@ function disagreement (p, oracle) {
 function fuzzOneSided (label, { allowTies, kind, n, iters }) {
   const oneSidedMod = loadOneSided(allowTies)
   const cells = Array.from({ length: n }, (_, i) => i)
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const digits = makeLine(rnd, kind, n, N)
-    const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
-    for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, cells) })
-    const inst = {}
-    oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
-    const before = total(p)
-    const v = violates(oneSidedMod, inst, p, truth)
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
-  }
-  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
+  return fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const digits = makeLine(rnd, kind, n, N)
+      const truth = { [ONE_SIDED_CLUE]: visibleWith(allowTies, digits) }
+      for (let i = 0; i < n; i++) truth[i] = digits[i]
+      const inst = {}
+      oneSidedMod.setParams(inst, ONE_SIDED_CLUE, cells)
+      return { truth, seed: seeder, houses: housesOf(kind, cells), parts: [{ mod: oneSidedMod, inst }], note: `line ${digits.join('')}` }
+    }
+  })
 }
 
 // `validate` is the component's last word on a filled line, and it reads the
@@ -123,7 +118,7 @@ for (const allowTies of [false, true]) {
   // six distinct digits out of nine; a full house is a permutation of 1..9.
   for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
     const r = fuzzOneSided(`one-sided, ${kind.padEnd(9)} ${tag}`, { allowTies, kind, n, iters: 20000 })
-    oneSidedBad += r.bad
+    oneSidedBad += r.violations + r.validateRejects
     if (r.fired === 0) oneSidedSilent++
   }
 }
@@ -191,21 +186,19 @@ const LINE = [...Array(N).keys()]
 // The DP is a full-house rule and gates on the kind the mock declares
 // (docs/line-contract.md), so every state built around a permutation says so.
 const FULL = { houses: [LINE] }
-let bad = 0
-let fired = 0 // coverage: the prune removed something, so the DP actually ran
-for (let iter = 0; iter < FUZZ; iter++) {
-  const perm = shuffled()
-  const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
-  for (const i of LINE) truth[i] = perm[i]
-  const p = makePuzzle(truth, seeder, FULL)
-  const inst = {}
-  mod.setParams(inst, CA, CB, LINE)
-  const before = total(p)
-  const v = violates(mod, inst, p, truth)
-  if (total(p) < before) fired++
-  if (v) { bad++; if (bad <= 5) console.log('violation', v, 'perm', perm) }
-}
-console.log('line component:', FUZZ, 'tests,', bad, 'violations,', fired, 'prune firings')
+const lineRun = fuzzSoundness('line component', {
+  iters: FUZZ,
+  draw: () => {
+    const perm = shuffled()
+    const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }
+    for (const i of LINE) truth[i] = perm[i]
+    const inst = {}
+    mod.setParams(inst, CA, CB, LINE)
+    return { truth, seed: seeder, houses: FULL.houses, parts: [{ mod, inst }], note: `perm ${perm.join('')}` }
+  }
+})
+const bad = lineRun.violations + lineRun.validateRejects
+const fired = lineRun.fired // coverage: the prune removed something, so the DP actually ran
 
 // The component's DP runs in one buffer shared by every instance, so a line's
 // removals must be read out of it before the first yield. The solver may run
@@ -437,5 +430,4 @@ const ok = clueQueryFired === 0 && lineQueryFired > 0 && bad === 0 && fired > 0 
   bareRemovals === 0 && bareRepeats > 0 &&
   zeroRemovals === 0 && zeroValidates && shutWhileZeroLive && opensAfterZeroGoes &&
   lineLatchBad === null
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)

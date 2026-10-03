@@ -386,7 +386,8 @@ function lostTruth (p, truth) {
 // `draw(iter)` supplies a state: `{ truth, seed, parts, houses?, note? }` --
 // the cell -> true value map, makePuzzle's seed function, the `{ mod, inst }`
 // list to run, the declared houses, and what to print beside a violation
-// (a value or a function returning one). The oracle is the example's: it
+// (a value or a function returning one), and `inspect(p)`, called on the
+// seeded puzzle before it runs, for a harness's own coverage counts. The oracle is the example's: it
 // derives `truth` from whatever it draws.
 // Returns `{ tests, violations, validateRejects, fired, ok }`; `ok` is true
 // when both counts are zero. Whether `fired` is enough coverage is the
@@ -396,9 +397,10 @@ export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   let validateRejects = 0
   let fired = 0
   for (let iter = 0; iter < iters; iter++) {
-    const { truth, seed, parts, houses = [], note = '' } = draw(iter)
+    const { truth, seed, parts, houses = [], note = '', inspect } = draw(iter)
     const noteOf = () => (typeof note === 'function' ? note() : note)
     const p = makePuzzle(truth, seed, { houses })
+    if (inspect) inspect(p)
     const before = total(p)
     fixpointAll(parts, p)
     if (total(p) < before) fired++

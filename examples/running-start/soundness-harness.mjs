@@ -20,7 +20,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import {
-  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, total, violates, fixpoint
+  TIES_FLAG, installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, fixpoint, fuzzSoundness, finishHarness
 } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -74,22 +74,17 @@ const LINE_CLUE = 200
 function fuzzLine (label, { allowTies, kind, n, iters, digitsOf }) {
   const mod = loadLine(allowTies)
   const cells = Array.from({ length: n }, (_, i) => i)
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const digits = digitsOf ? digitsOf(n) : makeLine(rnd, kind, n, N)
-    const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
-    for (let i = 0; i < n; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, cells) })
-    const inst = {}
-    mod.setParams(inst, LINE_CLUE, cells)
-    const before = total(p)
-    const v = violates(mod, inst, p, truth)
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
-  }
-  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
+  return fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const digits = digitsOf ? digitsOf(n) : makeLine(rnd, kind, n, N)
+      const truth = { [LINE_CLUE]: runWith(allowTies, digits) }
+      for (let i = 0; i < n; i++) truth[i] = digits[i]
+      const inst = {}
+      mod.setParams(inst, LINE_CLUE, cells)
+      return { truth, seed: seeder, houses: housesOf(kind, cells), parts: [{ mod, inst }], note: `line ${digits.join('')}` }
+    }
+  })
 }
 
 let lineBad = 0
@@ -107,7 +102,7 @@ for (const allowTies of [false, true]) {
   for (const [kind, n, digitsOf] of pools) {
     const name = digitsOf ? 'bare, tied' : kind
     const r = fuzzLine(`line, ${name.padEnd(10)} ${tag}`, { allowTies, kind, n, iters: 20000, digitsOf })
-    lineBad += r.bad
+    lineBad += r.violations + r.validateRejects
     if (r.fired === 0) lineSilent++
   }
 }
@@ -118,19 +113,18 @@ const sol = JSON.parse(read('seed104_solution.json'))
 let realBad = 0
 for (const allowTies of [false, true]) {
   const mod = loadLine(allowTies)
-  let bad = 0
-  for (let iter = 0; iter < 20000; iter++) {
-    const [clue, line] = sol.groups[iter % sol.groups.length]
-    const truth = {}
-    for (const c of [clue, ...line]) truth[c] = sol.val[c]
-    const p = makePuzzle(truth, seeder, { houses: [line] })
-    const inst = {}
-    mod.setParams(inst, clue, line)
-    const v = violates(mod, inst, p, truth)
-    if (v) { bad++; if (bad <= 5) console.log('seed-104 violation', v, 'clue', clue) }
-  }
-  console.log(`line, seed 104   ${allowTies ? 'ties continue' : 'ties end     '}:`, 20000, 'tests,', bad, 'violations')
-  realBad += bad
+  const r = fuzzSoundness(`line, seed 104   ${allowTies ? 'ties continue' : 'ties end     '}`, {
+    iters: 20000,
+    draw: iter => {
+      const [clue, line] = sol.groups[iter % sol.groups.length]
+      const truth = {}
+      for (const c of [clue, ...line]) truth[c] = sol.val[c]
+      const inst = {}
+      mod.setParams(inst, clue, line)
+      return { truth, seed: seeder, houses: [line], parts: [{ mod, inst }], note: `clue ${clue}` }
+    }
+  })
+  realBad += r.violations + r.validateRejects
 }
 
 console.log('line component:', lineBad + realBad, 'violations,', lineSilent, 'pools that never pruned')
@@ -188,25 +182,28 @@ const mountain = [2, 4, 7, 9, 8, 6, 5, 3, 1]
 
 function fuzzPair (label, { allowTies, kind, digitsOf, iters }) {
   const mod = pairMod
-  let bad = 0
-  let fired = 0
   let unimodal = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const digits = digitsOf()
-    const line = digits.map((_, i) => i)
-    const truth = { [CA]: runWith(allowTies, digits), [CB]: runWith(allowTies, [...digits].reverse()) }
-    for (let i = 0; i < digits.length; i++) truth[i] = digits[i]
-    const p = makePuzzle(truth, seeder, { houses: housesOf(kind, line) })
-    const inst = {}
-    mod.setParams(inst, CA, CB, line)
-    if (Math.min(...p.getCandidates(CA)) + Math.min(...p.getCandidates(CB)) === line.length + 1) unimodal++
-    const before = total(p)
-    const v = violates(mod, inst, p, truth)
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', digits.join('')) }
-  }
-  console.log(`${label}:`, iters, 'tests,', bad, 'violations,', fired, 'states pruned,', unimodal, 'unimodal firings')
-  return { bad, fired, unimodal }
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const digits = digitsOf()
+      const line = digits.map((_, i) => i)
+      const truth = { [CA]: runWith(allowTies, digits), [CB]: runWith(allowTies, [...digits].reverse()) }
+      for (let i = 0; i < digits.length; i++) truth[i] = digits[i]
+      const inst = {}
+      mod.setParams(inst, CA, CB, line)
+      return {
+        truth,
+        seed: seeder,
+        houses: housesOf(kind, line),
+        parts: [{ mod, inst }],
+        note: `line ${digits.join('')}`,
+        // The unimodal branch fires when the two clues' smallest values sum to n + 1.
+        inspect: p => { if (Math.min(...p.getCandidates(CA)) + Math.min(...p.getCandidates(CB)) === line.length + 1) unimodal++ }
+      }
+    }
+  })
+  return { ...r, unimodal }
 }
 
 let pairBad = 0
@@ -224,7 +221,7 @@ for (const allowTies of [false, true]) {
   const bareRun = fuzzPair(`pair, bare, tied ${tag}`, {
     allowTies, kind: 'bare', digitsOf: () => makeTieLine(7), iters: 10000
   })
-  pairBad += mountainRun.bad + houseRun.bad + bareRun.bad
+  pairBad += [mountainRun, houseRun, bareRun].reduce((n, r) => n + r.violations + r.validateRejects, 0)
   pairUnimodal += mountainRun.unimodal
   pairHouseFired += mountainRun.fired + houseRun.fired
   pairBareFired += bareRun.fired
@@ -240,5 +237,4 @@ console.log('pair gate: pruned', pairHouseFired, 'house states,', pairBareFired,
 const ok = lineBad === 0 && realBad === 0 && lineSilent === 0 && agreeBad === 0 && agreeRuns > 0 &&
   pairBad === 0 && pairUnimodal > 0 &&
   pairHouseFired > 0 && pairBareFired === 0
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)

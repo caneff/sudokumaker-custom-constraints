@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, finishHarness, fixpointAll, fuzzSoundness, patchSource, shuffle, strengthSweep, total
+  columnsOf, fixpointAll, fuzzSoundness, patchSource, shuffle, strengthSweep, total
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -411,6 +411,11 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(rej.violations, 0, 'update is sound here')
   assert.strictEqual(rej.validateRejects, 50)
   assert.strictEqual(rej.ok, false, 'a validate that rejects the truth fails the run')
+
+  // inspect sees each seeded puzzle before the components run.
+  let inspected = 0
+  run(sound, { inspect: p => { inspected += total(p) > 0 ? 1 : 0 } })
+  assert.strictEqual(inspected, 50)
 
   // A part with no validate is not judged on one.
   assert.strictEqual(run({ * update () {} }).ok, true)
