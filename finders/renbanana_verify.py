@@ -74,10 +74,10 @@ def shape(group):
     return (max(rows) - min(rows) + 1, max(cols) - min(cols) + 1)
 
 
-def group_key(group, is_choc):
+def group_key(group, chocolate):
     """What a group exercises in a probe's model: a chocolate rectangle's
     (rows, cols) or a banana group's size."""
-    if is_choc:
+    if chocolate:
         return ("chocolate", len({r for r, _ in group}), len({c for _, c in group}))
     return ("banana", len(group))
 
