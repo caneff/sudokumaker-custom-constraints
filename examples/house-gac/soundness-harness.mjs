@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzleApi } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -97,40 +97,20 @@ function seeder (c, v) {
   return [...s]
 }
 
-function fixpointAll (cand) {
-  const size = () => { let n = 0; for (const s of cand.values()) n += s.size; return n }
-  for (let pass = 0; pass < 20; pass++) {
-    let changed = false
-    for (const cells of HOUSES) {
-      // As the app's constructor does: cells first, then setParams.
+const ITERS = 500
+const { failures } = fuzzSoundness('full-grid fuzz', {
+  iters: ITERS,
+  draw: () => ({
+    truth,
+    seed: seeder,
+    houses: HOUSES,
+    // As the app's constructor does: cells first, then setParams.
+    parts: HOUSES.map(cells => {
       const inst = { cells }
       mod.setParams(inst, cells)
-      const p = {
-        ...makePuzzleApi(cell => cand.get(cell), { houses: HOUSES }),
-        stop: (message = '', cells = []) => ({ message, cells, __stop: true })
-      }
-      const before = size()
-      for (const r of mod.update(inst, p)) if (r && r.__stop) return { stopped: true }
-      if (size() !== before) changed = true
-    }
-    if (!changed) break
-  }
-  return { stopped: false }
-}
+      return { mod, inst }
+    })
+  })
+})
 
-const ITERS = 500
-let violations = 0
-for (let iter = 0; iter < ITERS; iter++) {
-  const cand = new Map()
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) cand.set(r * N + c, new Set(seeder(r * N + c, GRID[r][c])))
-  const { stopped } = fixpointAll(cand)
-  if (stopped) { violations++; console.log('iter', iter, 'stopped on a grid that has a solution'); continue }
-  for (const [cell, v] of Object.entries(truth)) {
-    if (!cand.get(+cell).has(v)) { violations++; console.log('iter', iter, 'cell', cell, 'lost its true digit', v) }
-  }
-}
-console.log(`full-grid fuzz: ${ITERS} states, ${violations} violations`)
-
-const ok = violations === 0
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(failures === 0)

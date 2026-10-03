@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, fixpointAll, fuzzSoundness, patchSource, shuffle, strengthSweep, total
+  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep, total
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -449,6 +449,35 @@ console.log('harness-lib.test.mjs: all seams pass')
   fixpointAll([{ mod: stops, inst: {} }, { mod: later, inst: {} }], q)
   assert.strictEqual(q._stopped, 'dead')
   assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
+}
+
+// ---- makeWaker: update runs only when a watched cell changed since the last call ----
+{
+  const p = makePuzzle({ 0: 1, 1: 2, 2: 3 }, () => [1, 2, 3])
+  let calls = 0
+  // The load pass prunes a watched cell, so what the waker has seen must be the
+  // state after update ran, or its own prune wakes it again.
+  const mod = { * update () { calls++; if (calls === 1) p._cand.get(0).delete(2) } }
+  const { wake, settle } = makeWaker(mod, {}, p, [0, 1])
+  wake()
+  assert.strictEqual(calls, 1, 'the first wake is the load pass')
+  wake()
+  assert.strictEqual(calls, 1, 'no watched cell changed: asleep')
+  p._cand.get(2).delete(3)
+  wake()
+  assert.strictEqual(calls, 1, 'a cell nobody watches changed: still asleep')
+  p._cand.get(1).delete(3)
+  wake()
+  assert.strictEqual(calls, 2, 'a watched cell lost a candidate: woken')
+  // A backtrack restores candidates without waking anyone; settle takes that
+  // state as already seen.
+  p._cand.get(1).add(3)
+  settle()
+  wake()
+  assert.strictEqual(calls, 2, 'settled on the restored state: asleep')
+  p._cand.get(0).delete(3)
+  wake()
+  assert.strictEqual(calls, 3, 'a change after the restore wakes it')
 }
 
 // ---- finishHarness: the exit status is the verdict ----

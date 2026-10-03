@@ -17,7 +17,7 @@
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, randomCandidates, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -64,18 +64,26 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
   const w = Math.min(down ? bh : bw, m)
   // pinned, full, or a random subset — always keeping the cell's true value
   const seed = (c, v) => randomCandidates(rnd, 1, D, v)
+  const states = []
   for (const truth of validTuples(geo.clue, line, w, D)) {
-    for (let rep = 0; rep < 8; rep++) {
-      const p = makePuzzle(truth, seed)
-      Object.assign(p, geo.api)
+    for (let rep = 0; rep < 8; rep++) states.push(truth)
+  }
+  const r = fuzzSoundness(`outside-sudoku N=${N} m=${m} D=${D}`, {
+    iters: states.length,
+    draw: iter => {
       const inst = {}
       mod.setParams(inst, geo.clue, line, w)
-      const v = violates(mod, inst, p, truth)
-      tests++
-      if (v) { bad++; if (bad <= 5) console.log('violation', v, 'truth', truth, `N=${N} m=${m} D=${D}`) }
+      return {
+        truth: states[iter],
+        seed,
+        parts: [{ mod, inst }],
+        note: `truth ${JSON.stringify(states[iter])}`,
+        inspect: p => Object.assign(p, geo.api)
+      }
     }
-  }
+  })
+  tests += r.tests
+  bad += r.failures
 }
 console.log('soundness:', tests, 'tests,', bad, 'violations')
-console.log(bad === 0 ? 'PASS' : 'FAIL')
-process.exit(bad === 0 ? 0 : 1)
+finishHarness(bad === 0)

@@ -354,6 +354,23 @@ export function fixpointAll (parts, p) {
   }
 }
 
+// A solver that runs a component's `update` only when a cell in `cells` (its
+// getAffectedCells list) has changed since the last call. `wake()` is that
+// solver's call; `settle()` takes the current candidates as already seen, which
+// is what a backtrack does: it restores candidates without waking anyone.
+export function makeWaker (mod, inst, p, cells) {
+  const snapshot = () => cells.map(c => p.getCandidatesBitMask(c)).join()
+  let seen = null
+  return {
+    wake () {
+      if (snapshot() === seen) return
+      Array.from(mod.update(inst, p))
+      seen = snapshot()
+    },
+    settle () { seen = snapshot() }
+  }
+}
+
 // One component: fixpointAll over a single part.
 export const fixpoint = (mod, inst, p) => fixpointAll([{ mod, inst }], p)
 

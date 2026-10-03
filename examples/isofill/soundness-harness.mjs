@@ -16,7 +16,7 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -92,13 +92,14 @@ function once (truth, seed) {
 const FUZZ = Number(process.env.FUZZ) || 2000
 let bad = 0
 for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder], ['shipped', shipped, seeder], ['hard', hard, seeder], ['silent35', silent35, silentSeeder(2)]]) {
-  let fails = 0
-  for (let iter = 0; iter < FUZZ; iter++) {
-    const { v } = run(truth, seed)
-    if (v) { fails++; if (fails <= 5) console.log(name, 'violation', v) }
-  }
-  console.log('isofill', name, `fixture: ${FUZZ} tests,`, fails, 'violations')
-  bad += fails
+  bad += fuzzSoundness(`isofill ${name} fixture`, {
+    iters: FUZZ,
+    draw: () => {
+      const inst = {}
+      mod.setParams(inst, CELLS)
+      return { truth, seed, parts: [{ mod, inst }] }
+    }
+  }).failures
 }
 
 // ---- Cap: digit 0 fills row 0, so no other cell may keep 0 ----
@@ -277,16 +278,15 @@ const CELLS9 = Array.from({ length: N9 * N9 }, (_, i) => i)
 const ALL9 = Array.from({ length: N9 }, (_, d) => d + 1)
 const rows9 = {}
 for (const c of CELLS9) rows9[c] = Math.floor(c / N9) + 1
-let bad9 = 0
 const seeder9 = makeSeeder(rnd, ALL9)
-for (let iter = 0; iter < FUZZ; iter++) {
-  const p = makePuzzle(rows9, seeder9)
-  const inst = {}
-  mod.setParams(inst, CELLS9)
-  const v = violates(mod, inst, p, rows9)
-  if (v) { bad9++; if (bad9 <= 5) console.log('9x9 violation', v) }
-}
-console.log('isofill 9x9 fixture:', `${FUZZ} tests,`, bad9, 'violations')
+const bad9 = fuzzSoundness('isofill 9x9 fixture', {
+  iters: FUZZ,
+  draw: () => {
+    const inst = {}
+    mod.setParams(inst, CELLS9)
+    return { truth: rows9, seed: seeder9, parts: [{ mod, inst }] }
+  }
+}).failures
 const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
 const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9)
@@ -330,5 +330,4 @@ const CHECKS = {
 console.log(Object.entries(CHECKS).map(([name, pass]) => `${name}: ${pass}`).join(' | '), `(${reads} reads)`)
 
 const ok = bad === 0 && bad9 === 0 && Object.values(CHECKS).every(Boolean)
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)
