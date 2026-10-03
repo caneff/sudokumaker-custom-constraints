@@ -47,10 +47,10 @@ const run = (stamp, reps) => {
 }
 // Every distance below the cap: each of the stamp's call sites is, for some
 // distance, the one that wraps.
-const fresh = run(0, 10)
-for (let below = 0; below < 80; below++) {
+const fresh = run(0, 4)
+for (let below = 0; below < 600; below++) {
   const stamp = 0x7FFFFFFF - below
-  assert.deepStrictEqual(run(stamp, 10), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
+  assert.deepStrictEqual(run(stamp, 4), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
 }
-assert.deepStrictEqual(run(0xFFFFFFF0, 10), fresh, 'a stamp past the Int32 range changed what update deduces')
+assert.deepStrictEqual(run(0xFFFFFFF0, 4), fresh, 'a stamp past the Int32 range changed what update deduces')
 console.log('PASS')
