@@ -54,6 +54,10 @@ from link_codec import decode_puzzle
 from manifest import load_manifest
 from minify import minify_file
 
+# What a boardless example (manifest `boardless = true`) still needs: it ships
+# components and a harness, and no board.
+BOARDLESS_REQUIRED_FILES = ["README.md", "soundness-harness.mjs"]
+
 REQUIRED_FILES = [
     "README.md",
     "main.js",
@@ -696,7 +700,9 @@ def check_example(example_dir):
 
     violations = [
         f"{name}: missing required file {required}"
-        for required in REQUIRED_FILES
+        for required in (
+            BOARDLESS_REQUIRED_FILES if manifest.boardless else REQUIRED_FILES
+        )
         if not (example_dir / required).is_file()
     ]
 
@@ -710,7 +716,7 @@ def check_example(example_dir):
     elif not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
-    if manifest.lanes == "split":
+    if manifest.lanes == "split" and not manifest.boardless:
         violations.extend(
             f"{name}: missing required file {required}"
             for required in ["main-global.js", *REQUIRED_LOCAL_FILES]

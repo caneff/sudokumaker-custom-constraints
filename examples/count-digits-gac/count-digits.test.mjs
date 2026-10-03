@@ -2,7 +2,7 @@
 // deduction the component makes, so a rule that stops firing fails here
 // rather than only showing up as a strength number in the fuzz.
 //
-//   node docs/research/count-digits-gac/count-digits.test.mjs
+//   node examples/count-digits-gac/count-digits.test.mjs
 //
 // Every expected candidate set below is worked out by hand from the rule
 // ("the counter cell holds the number of target cells whose digit is in the
@@ -11,7 +11,7 @@
 import assert from 'assert'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { installGlobals, makeIo, makePuzzle } from '../../../examples/_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)

@@ -20,6 +20,7 @@ sys.path.insert(0, str(HERE))
 
 import time_example
 from link_codec import decode_puzzle, encode_link
+from manifest import load_manifest
 from minify import minify_file, minify_js
 from time_example import (
     app_solve,
@@ -344,10 +345,13 @@ if __name__ == "__main__":
         assert got == root / "_shared" / "WidgetComponent.js", got
 
     # every real example resolves its timed component from its manifest: the
-    # name is registered on its shipped link, and its working-tree file exists
+    # name is registered on its shipped link, and its working-tree file exists.
+    # A boardless example ships no link to time.
     examples = HERE.parent
     for example_dir in sorted(examples.iterdir()):
         if not example_dir.is_dir() or example_dir.name == "_shared":
+            continue
+        if load_manifest(example_dir).boardless:
             continue
         doc = decode_puzzle((example_dir / "PUZZLE_LINK.txt").read_text().strip())
         got = find_component_file(example_dir, doc)

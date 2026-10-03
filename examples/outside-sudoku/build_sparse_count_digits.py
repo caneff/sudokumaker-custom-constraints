@@ -52,9 +52,7 @@ HERE = pathlib.Path(__file__).parent
 RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac" / "sparse"
 GEN = RESEARCH_DIR / "gen.json"
 BACKEND = RESEARCH_DIR / "main-sparse-global.js"
-COMPONENT = (
-    HERE.parent.parent / "docs/research/count-digits-gac/CountDigitsGacComponent.js"
-)
+COMPONENT = HERE.parent / "count-digits-gac" / "CountDigitsGacComponent.js"
 CANDIDATE_NAME = "CountDigitsGacComponent"
 BASELINE_NAME = "CountDigitsComponent"
 CONSTRAINT_NAME = "Sparse count digits"
