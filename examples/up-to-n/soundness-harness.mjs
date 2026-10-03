@@ -59,7 +59,7 @@ function lineWith (kind, n, D, target, atLeast = 1) {
 function fuzz (label, { kind, D, n, atLeast = 1 }) {
   installGlobals(1, D)
   const cells = Array.from({ length: n }, (_, i) => i)
-  return fuzzSoundness(label.padEnd(28), {
+  return fuzzSoundness(label, {
     iters: ITERS,
     draw: () => {
       const target = 1 + ((rnd() * D) | 0)
