@@ -28,16 +28,16 @@ const frozen = load('.golden/DutchFlatmatesComponent.bitmask.js', ['supportedRow
 // ascending row lists and sets of rows; these two translate at the boundary.
 const toRows = (mask, side) => Array.from({ length: side }, (_, row) => row).filter(row => mask >> row & 1)
 const toMask = rows => [...rows].reduce((mask, row) => mask | 1 << row, 0)
-const asMasks = keep => [toMask(keep.ones), toMask(keep.fives), toMask(keep.nines)]
+const asMasks = keep => [toMask(keep[1]), toMask(keep[5]), toMask(keep[9])]
 
 let checked = 0
 function same (ones, fives, nines, side) {
-  const lists = [ones, fives, nines].map(mask => toRows(mask, side))
+  const rows = { 1: toRows(ones, side), 5: toRows(fives, side), 9: toRows(nines, side) }
   const label = `side ${side}: ones ${ones.toString(2)} fives ${fives.toString(2)} nines ${nines.toString(2)}`
-  const house = asMasks(cur.rowsToKeep(...lists))
+  const house = asMasks(cur.rowsToKeep(rows))
   assert.deepStrictEqual(house, frozen.supportedRows(ones, fives, nines, side), `${label}: normal column vs frozen`)
   assert.deepStrictEqual(house, floor.supportedRows(ones, fives, nines, side), `${label}: normal column vs floor`)
-  assert.deepStrictEqual(asMasks(cur.rowsToKeepIfRepeatsAllowed(...lists)), frozen.flatmatedRows(ones, fives, nines), `${label}: repeating column vs frozen`)
+  assert.deepStrictEqual(asMasks(cur.rowsToKeepIfRepeatsAllowed(rows)), frozen.flatmatedRows(ones, fives, nines), `${label}: repeating column vs frozen`)
   checked++
 }
 

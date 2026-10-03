@@ -28,21 +28,19 @@ function setParams (instance, cells) {
 
 // Rows (0 = top) of this column where each of the digits 1, 5 and 9 can still go.
 function readColumn (puzzle, column) {
-  const ones = []
-  const fives = []
-  const nines = []
+  const rows = { 1: [], 5: [], 9: [] }
   for (let row = 0; row < column.length; row++) {
     const candidates = puzzle.getCandidates(column[row])
-    if (candidates.has(1)) ones.push(row)
-    if (candidates.has(5)) fives.push(row)
-    if (candidates.has(9)) nines.push(row)
+    for (const digit of [1, 5, 9]) {
+      if (candidates.has(digit)) rows[digit].push(row)
+    }
   }
-  return { ones, fives, nines }
+  return rows
 }
 
 // A short text for a column's state, to tell whether it has changed.
-function columnState ({ ones, fives, nines }) {
-  return `${ones}|${fives}|${nines}`
+function columnState (rows) {
+  return `${rows[1]}|${rows[5]}|${rows[9]}`
 }
 
 // Whether this column may repeat digits. The app only knows once solving has
@@ -56,27 +54,27 @@ function columnMayRepeat (instance, puzzle, col) {
 }
 
 // Which rows of a normal column can still hold its 1, 5 and 9.
-function rowsToKeep (ones, fives, nines) {
-  const keep = { ones: new Set(), fives: new Set(), nines: new Set() }
-  for (const five of fives) {
+function rowsToKeep (rows) {
+  const keep = { 1: new Set(), 5: new Set(), 9: new Set() }
+  for (const five of rows[5]) {
     // The 1 directly above, with the 9 anywhere else it can go.
     const one = five - 1
-    if (ones.includes(one)) {
-      const otherNines = nines.filter(row => row !== five && row !== one)
+    if (rows[1].includes(one)) {
+      const otherNines = rows[9].filter(row => row !== five && row !== one)
       if (otherNines.length > 0) {
-        keep.fives.add(five)
-        keep.ones.add(one)
-        for (const row of otherNines) keep.nines.add(row)
+        keep[5].add(five)
+        keep[1].add(one)
+        for (const row of otherNines) keep[9].add(row)
       }
     }
     // The 9 directly below, with the 1 anywhere else it can go.
     const nine = five + 1
-    if (nines.includes(nine)) {
-      const otherOnes = ones.filter(row => row !== five && row !== nine)
+    if (rows[9].includes(nine)) {
+      const otherOnes = rows[1].filter(row => row !== five && row !== nine)
       if (otherOnes.length > 0) {
-        keep.fives.add(five)
-        keep.nines.add(nine)
-        for (const row of otherOnes) keep.ones.add(row)
+        keep[5].add(five)
+        keep[9].add(nine)
+        for (const row of otherOnes) keep[1].add(row)
       }
     }
   }
@@ -85,11 +83,11 @@ function rowsToKeep (ones, fives, nines) {
 
 // A column that may repeat digits: a 5 stays only if a 1 can go above it or a
 // 9 below it. Nothing is known about the 1s and 9s, so they all stay.
-function rowsToKeepIfRepeatsAllowed (ones, fives, nines) {
+function rowsToKeepIfRepeatsAllowed (rows) {
   return {
-    ones: new Set(ones),
-    fives: new Set(fives.filter(row => ones.includes(row - 1) || nines.includes(row + 1))),
-    nines: new Set(nines)
+    1: new Set(rows[1]),
+    5: new Set(rows[5].filter(row => rows[1].includes(row - 1) || rows[9].includes(row + 1))),
+    9: new Set(rows[9])
   }
 }
 
@@ -98,22 +96,20 @@ function * update (instance, puzzle) {
   if (size < 9) return // no 9 fits on a board this small, so there is nothing to prune
   for (let col = 0; col < size; col++) {
     const column = columns[col]
-    const { ones, fives, nines } = readColumn(puzzle, column)
-    if (columnState({ ones, fives, nines }) === lastPruned[col]) continue // nothing new since we pruned it
+    const rows = readColumn(puzzle, column)
+    if (columnState(rows) === lastPruned[col]) continue // nothing new since we pruned it
     const mayRepeat = columnMayRepeat(instance, puzzle, col)
-    const keep = mayRepeat
-      ? rowsToKeepIfRepeatsAllowed(ones, fives, nines)
-      : rowsToKeep(ones, fives, nines)
+    const keep = mayRepeat ? rowsToKeepIfRepeatsAllowed(rows) : rowsToKeep(rows)
     // A normal column must hold a 5 somewhere, so if none can stay, this branch is dead.
-    if (!mayRepeat && keep.fives.size === 0) {
+    if (!mayRepeat && keep[5].size === 0) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
     // Remove each digit from the rows we are not keeping, and note the rows left.
-    const left = { ones: [], fives: [], nines: [] }
-    for (const [name, digit, rows] of [['ones', 1, ones], ['fives', 5, fives], ['nines', 9, nines]]) {
-      for (const row of rows) {
-        if (keep[name].has(row)) left[name].push(row)
+    const left = { 1: [], 5: [], 9: [] }
+    for (const digit of [1, 5, 9]) {
+      for (const row of rows[digit]) {
+        if (keep[digit].has(row)) left[digit].push(row)
         else yield puzzle.removeCandidateFromCell(digit, column[row])
       }
     }
