@@ -4,7 +4,7 @@
 # links byte-identically without touching them, and the two links differ only
 # in the one class the backend registers.
 #
-#   uv run examples/outside-sudoku/build_sparse_required_digits.test.py
+#   uv run examples/count-digits-gac/build_sparse_required_digits.test.py
 
 import json
 import pathlib
@@ -15,18 +15,24 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
+from board_kit import box, givens_of
+from board_kit import count_solutions as count_with
 from build_sparse_required_digits import (
     BASELINE_NAME,
     CANDIDATE_NAME,
     GEN,
     RESEARCH_DIR,
     backend_code,
-    box,
     build,
-    count_solutions,
     is_house,
+    model,
 )
 from link_codec import decode_puzzle
+
+
+def count_solutions(groups, givens):
+    return count_with(model, groups, givens)
+
 
 NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
 
@@ -46,8 +52,9 @@ def check_board(gen):
             assert held.count(d) >= g["values"].count(d), (
                 f"{g['name']}: the solution does not hold {d}"
             )
-    givens = {tuple(p): gen["grid"][p[0]][p[1]] for p in gen["givens"]}
-    assert count_solutions(groups, givens) == 1, "not unique under the CP-SAT model"
+    assert count_solutions(groups, givens_of(gen)) == 1, (
+        "not unique under the CP-SAT model"
+    )
 
 
 def check_rule_is_enforced(gen):

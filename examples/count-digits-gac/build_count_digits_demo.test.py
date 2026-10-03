@@ -5,7 +5,7 @@
 # GAC one ships, and that code is the annotated copy; and a rebuild reproduces
 # the committed link byte for byte without touching it.
 #
-#   uv run examples/outside-sudoku/build_count_digits_demo.test.py
+#   uv run examples/count-digits-gac/build_count_digits_demo.test.py
 
 import json
 import pathlib
@@ -16,10 +16,11 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 
+from board_kit import count_solutions as count_with
+from board_kit import givens_of
 from build_count_digits_demo import (
     BASELINE_NAME,
     CANDIDATE_NAME,
-    COLOURS,
     COMPONENT,
     DEMO_DIR,
     GEN,
@@ -27,16 +28,26 @@ from build_count_digits_demo import (
     OUTSIDE_LINK_NAME,
     SHIPPED,
     VARIANTS,
-    backend_code,
     build,
     build_doc,
-    cage_constraints,
-    grow_region,
     is_selfcount,
 )
-from build_sparse_count_digits import count_solutions, givens_of
+from count_board import (
+    COLOURS,
+    cage_constraints,
+    grow_group,
+    model,
+)
+from count_board import (
+    demo_backend_code as backend_code,
+)
 from link_codec import decode_puzzle
 from minify import minify_file
+
+
+def count_solutions(groups, givens):
+    return count_with(model, groups, givens)
+
 
 LINK = DEMO_DIR / "PUZZLE_LINK_demo.txt"
 OUTSIDE_LINK = DEMO_DIR / OUTSIDE_LINK_NAME
@@ -81,7 +92,7 @@ def check_board(gen, selfcount):
         counter = tuple(g["counter"])
         assert len(set(cells)) == len(cells), f"{g['name']}: repeated target cell"
         assert connected(cells), (
-            f"{g['name']}: not one connected region, so its cage would be hard to read"
+            f"{g['name']}: not one connected group, so its cage would be hard to read"
         )
         if selfcount:
             assert cells[0] == counter, f"{g['name']}: the counter is not first"
@@ -117,16 +128,16 @@ def check_uniqueness_detects_a_wrong_count(gen):
     assert count_solutions([{**g, "values": sorted(g["values"] + [other])}], full) == 0
 
 
-def check_grow_region_is_connected_and_disjoint():
-    """Every seed, with the left four columns taken: a region that ignored
+def check_grow_group_is_connected_and_disjoint():
+    """Every seed, with the left four columns taken: a group that ignored
     `taken` would land in them on most draws (a two-cell taken set never did)."""
     import random
 
     taken = {(r, c) for r in range(N) for c in range(4)}
     for seed in range(40):
-        cells = grow_region(random.Random(seed), taken, 8)
+        cells = grow_group(random.Random(seed), taken, 8)
         assert len(cells) == 8 and connected(cells), f"seed {seed}"
-        assert not set(cells) & taken, f"seed {seed}: a region grew onto a taken cell"
+        assert not set(cells) & taken, f"seed {seed}: a group grew onto a taken cell"
 
 
 def check_palette_guard(gen):
@@ -283,7 +294,7 @@ if __name__ == "__main__":
     check_board(json.loads((DEMO_DIR / "gen_4x10.json").read_text()), selfcount=False)
     check_uniqueness_detects_a_wrong_count(gen)
     check_uniqueness_detects_a_wrong_count(outside)
-    check_grow_region_is_connected_and_disjoint()
+    check_grow_group_is_connected_and_disjoint()
     check_palette_guard(gen)
     check_link(gen, LINK, selfcount=True)
     check_link(outside, OUTSIDE_LINK, selfcount=False)

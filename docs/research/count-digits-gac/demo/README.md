@@ -14,10 +14,10 @@ draws the constraint and keeps it to five groups of eight cells.
 | `gen_4x10.json` | The smaller counter-outside alternative from #568's ladder. |
 | `../self-count/` | #581's self-counting board, GAC against its own pre-#578 self. Kept as #578's evidence; it is not the demo, since the demo compares built-in against GAC. |
 
-**#572 (share the builders' carve/draw code) is not made obsolete.** This change
-added a link-name rule and a rules-text switch to the demo builder, and reused the
-self-count builder's draw; the demo builder's own `search`/carve loop is still a
-copy of the sparse builder's, which is what #572 covers.
+**The demo builder shares its draw and carve loop.** #658 moved the grid draw,
+the carve loop and search into `examples/count-digits-gac/board_kit.py`, and the
+count rule's model and drawn-group helpers into `count_board.py`; the demo,
+self-count and sparse builders each keep only their own rule.
 
 Everything below "The link" describes the shipped self-counting board unless a
 heading says counter-outside. The **built-in vs GAC timing of the shipped board
@@ -164,7 +164,7 @@ cages, 40 cells, 5 counters, on 17 givens) than the four-cage one. The 4 x 10
 draw is kept as the smaller alternative, `gen_4x10.json` (a draw is not
 replayable from its seed: the grid comes from CP-SAT's portfolio search, so
 neither draw is re-derived; a swap is a rename plus a rebuild):
-`uv run examples/outside-sudoku/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_4x10.json --out <dir>`.
+`uv run examples/count-digits-gac/build_count_digits_demo.py --gen docs/research/count-digits-gac/demo/gen_4x10.json --out <dir>`.
 
 ### Confirmation run on the counter-outside link (2026-09-19, v2026.08.14-d47fc4b)
 
@@ -249,8 +249,8 @@ In the app the disabled element is greyed in the Elements panel.
 ## Rebuild and check
 
 ```
-uv run examples/outside-sudoku/build_count_digits_demo.py          # rebuild the link from gen.json
-uv run examples/outside-sudoku/build_count_digits_demo.test.py     # board, uniqueness, flags, annotation, reproduction
+uv run examples/count-digits-gac/build_count_digits_demo.py          # rebuild the link from gen.json
+uv run examples/count-digits-gac/build_count_digits_demo.test.py     # board, uniqueness, flags, annotation, reproduction
 node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_LINK_demo.txt 3
 ```
 
@@ -259,7 +259,7 @@ on, for timing outside the app's menu. The counter-outside link rebuilds with
 `--gen docs/research/count-digits-gac/demo/gen_counter_outside.json` (the link name follows the gen).
 
 **Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
-sparse builder's `model()` and `count_solutions()`), from the 17 givens, in the
+`count_board.model()` and `board_kit.count_solutions()`), from the 17 givens, in the
 test. **Readability caveat:** the app draws cosmetic cages as thin dashed
-outlines, and the regions grow at random, so two regions that meet can be
+outlines, and the groups grow at random, so two groups that meet can be
 hard to tell apart; the colour and the `#` marker are what carry it.
