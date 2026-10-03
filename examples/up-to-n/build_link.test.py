@@ -228,7 +228,7 @@ def test_every_committed_board_is_unique_and_rebuilds_without_a_search():
         # And not by accident: with no clue shown the givens alone do not pin it.
         assert unique(add_up_to_n, replace(board, active=set())) is False, link_name
         link = (HERE / link_name).read_text()
-        assert NoRing(SPEC).rebuild(n, files=files) + "\n" == link, (
+        assert NoRing(SPEC).rebuild(n, pair=files) + "\n" == link, (
             f"{link_name} is not what --rebuild makes of {gen_name}: regenerate "
             f"it with `build_size.py "
             f"{'--rebuild-minimal-9x9' if named else f'--rebuild {n} --local'}`"

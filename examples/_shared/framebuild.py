@@ -12,7 +12,7 @@
 # (no_ring.py) -- owns the rest: the document, its check, its file names.
 #
 # `main(spec, argv)` is the command line every example's `build_size.py` ends
-# with -- it parses, picks the lane (`spec_lanes`), and calls its `run` (fresh
+# with -- it parses, picks the lane (`lane_kinds`), and calls its `run` (fresh
 # search) or `rebuild` (re-encode a committed board against the code in the
 # tree right now).
 #
@@ -478,7 +478,7 @@ def house_gac_constraint(n):
     )
 
 
-def _document(spec, board, width, cells, constraints, comment):
+def puzzle_document(spec, board, width, cells, constraints, comment):
     """The document around one board's cells and constraints: the header
     fields every framebuild link shares, in the order they are encoded."""
     n = board.n
@@ -565,7 +565,7 @@ def load_board(path):
 # ---- the three lanes ------------------------------------------------------
 
 
-def _named(spec, tag):
+def named_files(spec, tag):
     """The (link, gen) paths for a board whose file tag is `tag`: the plain
     names when it is empty, `PUZZLE_LINK_<tag>.txt` / `gen_<tag>.json`
     otherwise."""
@@ -577,9 +577,9 @@ def _named(spec, tag):
 @dataclass(frozen=True)
 class Lane:
     """One kind of board a Spec builds. Three exist -- `RingGlobal`,
-    `RingLocal` and `no_ring.NoRing` -- and `spec_lanes` says which ones a
-    Spec builds, so a combination with no meaning (a no-ring board that draws
-    no groups) has no class that could build it.
+    `RingLocal` and `no_ring.NoRing` -- and `lane_kinds` says which ones a
+    Spec builds. A lane refuses a Spec that is not its kind, so a combination
+    with no meaning (a no-ring board that draws no groups) cannot be built.
 
     A lane owns everything that differs between kinds of board: its document
     (`build_doc`), its drawn groups (`drawn`, None for a lane that draws
@@ -592,6 +592,18 @@ class Lane:
 
     spec: Spec
     derived = frozenset()
+
+    def __post_init__(self):
+        kinds = lane_kinds(self.spec)
+        if not isinstance(self, kinds):
+            raise ValueError(
+                f"the {self.name} lane cannot build this Spec: it builds "
+                f"{', '.join(k.name for k in kinds)} only"
+            )
+
+    @property
+    def paths(self):
+        return self.spec.bent_lines
 
     def components(self):
         """The component filenames this lane's link carries."""
@@ -641,13 +653,13 @@ class Lane:
             for c in doc["puzzle"]["constraints"]
             if c.get("definition", {}).get("name") == spec.constraint_name
         )
-        # Each lane's `_check_lane` names its backend file and component list
-        # itself, not through `backend` / `components()`: an assertion built
-        # from the same call the builder used would still pass if that call
-        # stopped telling the lanes apart.
+        # `_check_lane` names the backend and components itself: an assertion
+        # built from the builder's own call passes when that call breaks.
         backend_file, want = self._check_lane(lc, doc, board)
         backend = minify_file(spec.dir / backend_file)
-        assert lc["definition"]["backend"]["code"] == backend
+        assert lc["definition"]["backend"]["code"] == backend, (
+            f"the link runs the wrong lane's backend ({self.name})"
+        )
         names = [c["name"] for c in lc["definition"]["components"]]
         assert names == [PurePath(f).stem for f in want], (
             f"the link carries the wrong lane's components ({self.name}): {names}"
@@ -681,23 +693,20 @@ class Lane:
         save_board(board, gen_path)
         print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
 
-    def rebuild(self, n, files=None):
+    def rebuild(self, n, pair=None):
         """The link for a committed board, re-encoded against the code in the
         tree right now, with no fresh CP-SAT search.
 
-        The grid, givens and shown clues come straight from the recorded seed,
-        so only the constraint's own configuration (component code, backend,
-        input) and the comment follow the working tree: a shipped link never
-        carries a component snapshot from whenever its search last ran.
-        Asserts exactly that against the link it replaces, and returns the new
-        link without writing it, so a test can compare bytes without touching
-        the tree.
+        The grid, givens and shown clues come from the recorded seed; only
+        the constraint's code, backend, input and the comment follow the
+        working tree. Asserts exactly that against the link it replaces, and
+        returns the new link unwritten, so a test can compare bytes.
 
-        `files` names the (link, gen) pair for a board that does not own its
-        size's default names (`files`) -- a second board of one size.
+        `pair` names the (link, gen) files for a board that does not own its
+        size's default names (`files(n)`) -- a second board of one size.
         """
         spec = self.spec
-        link_path, gen_path = files or self.files(n)
+        link_path, gen_path = pair or self.files(n)
         assert gen_path.exists(), (
             f"{gen_path.name} does not exist: this example ships no framebuild "
             f"board at n={n} on the {self.name} lane. A link whose board was "
@@ -726,15 +735,10 @@ class Lane:
         )
 
         def _without_generated_constraints(d):
-            """Drop the House GAC constraint entirely, rather than blank it in
-            place: unlike the always-on shared backends, it is opt-in
-            (`spec.house_gac`), so a rebuild that turns it on for the first
-            time adds a whole constraint the OLD link never carried --
-            blanking its code in place would still leave that structural
-            difference for the equality check below to trip on. Its code is
-            generated the same as the always-on backends', so dropping it from
-            this comparison is the same call: not board data (#421). The
-            lane's `derived` constraints go too."""
+            """Drop House GAC whole, not blanked: it is opt-in
+            (`spec.house_gac`), so a rebuild that first turns it on adds a
+            constraint the old link never carried. Its code is generated, not
+            board data (#421). The lane's `derived` constraints go too."""
             d = dict(d)
             d["puzzle"] = dict(d["puzzle"])
             d["puzzle"]["constraints"] = [
@@ -745,9 +749,7 @@ class Lane:
             ]
             return d
 
-        # The shared backends are blanked alongside the example's own
-        # constraint: all carry code generated from the working tree, and a
-        # rebuild exists precisely to refresh it.
+        # The shared backends' code is generated, so blanked like the example's.
         assert _without_generated_constraints(
             frame_and_comment_only(before, spec.constraint_name, self.generated)
         ) == _without_generated_constraints(
@@ -834,7 +836,7 @@ class _RingLane(Lane):
         ]
 
         comment = spec.rules_prefix + spec.comment_fn(n) + self._rules_close(board)
-        return _document(spec, board, W, cells, constraints, comment)
+        return puzzle_document(spec, board, W, cells, constraints, comment)
 
 
 class RingGlobal(_RingLane):
@@ -857,7 +859,7 @@ class RingGlobal(_RingLane):
 
     def files(self, n):
         plain = n == 9 and self.spec.plain_global_9x9
-        return _named(self.spec, "" if plain else f"{n}x{n}")
+        return named_files(self.spec, "" if plain else f"{n}x{n}")
 
     def _house_gac(self, n):
         # `spec.house_gac` names sizes on this lane only (#421).
@@ -886,10 +888,6 @@ class RingLocal(_RingLane):
     name = "local"
     backend = "main.js"
 
-    @property
-    def paths(self):
-        return self.spec.bent_lines
-
     def components(self):
         if self.spec.local_components is not None:
             return self.spec.local_components
@@ -899,7 +897,7 @@ class RingLocal(_RingLane):
         return frame_groups(board.n, board.lines)
 
     def files(self, n):
-        return _named(self.spec, "local" if n == 9 else f"{n}x{n}_local")
+        return named_files(self.spec, "local" if n == 9 else f"{n}x{n}_local")
 
     def _house_gac(self, n):
         # Never on this lane: no measured local board cleared the timing bar
@@ -924,8 +922,9 @@ class RingLocal(_RingLane):
         return "main.js", want
 
 
-def spec_lanes(spec):
-    """The (default, `--local`) lanes `main` builds for `spec`.
+def lane_kinds(spec):
+    """The lane classes `spec` builds, the default first and the `--local`
+    one last.
 
     A ring Spec builds both ring lanes. A Spec with a `groups_fn` builds the
     no-ring lane and only that: its clues live in its drawn groups, so a
@@ -933,11 +932,11 @@ def spec_lanes(spec):
     lane either way.
     """
     if spec.groups_fn is None:
-        return RingGlobal(spec), RingLocal(spec)
+        return (RingGlobal, RingLocal)
     # Imported here: no_ring builds its lane on this module's `Lane`.
     from no_ring import NoRing
 
-    return NoRing(spec), NoRing(spec)
+    return (NoRing,)
 
 
 def main(spec, argv=None):
@@ -949,7 +948,7 @@ def main(spec, argv=None):
     `--paths` and `--local` are two names for the same lane: both build the
     LOCAL board. The Spec's `bent_lines` -- not the flag -- says whether that
     board's drawn lines bend. A no-ring Spec has one lane, which the flag
-    names either way (`spec_lanes`).
+    names either way (`lane_kinds`).
 
     `argv` defaults to the process's, and is passed explicitly by
     `framebuild.test.py`: nothing below `main` reads `sys.argv`.
@@ -969,11 +968,12 @@ def main(spec, argv=None):
         "--local",
         dest="local",
         action="store_true",
-        help="build the local board (main.js, drawn groups) instead",
+        help="build the drawn-groups lane (main.js) instead; a no-ring Spec has "
+        "only that lane",
     )
     args = p.parse_args(argv)
-    default, drawn = spec_lanes(spec)
-    lane = drawn if args.local else default
+    kinds = lane_kinds(spec)
+    lane = (kinds[-1] if args.local else kinds[0])(spec)
 
     if args.rebuild and (args.box_height is not None or args.box_width is not None):
         p.error("--rebuild re-encodes a committed board: pass n and the lane only")

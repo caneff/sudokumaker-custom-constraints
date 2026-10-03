@@ -172,7 +172,7 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["--derive-shipped-9x9"]:
         derive_shipped_9x9()
     elif sys.argv[1:] == ["--rebuild-minimal-9x9"]:
-        link = NoRing(SPEC).rebuild(9, files=MINIMAL_9X9)
+        link = NoRing(SPEC).rebuild(9, pair=MINIMAL_9X9)
         MINIMAL_9X9[0].write_text(link + "\n")
         print(f"wrote {MINIMAL_9X9[0].name} -- current component code, same board")
     else:

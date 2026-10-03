@@ -1,6 +1,6 @@
 # The no-ring lane: a board with no clue ring around it, its clues typed into
 # drawn groups on the bare n x n grid (up-to-n's shape, #366). A Spec with a
-# `groups_fn` builds this lane and no other -- `framebuild.spec_lanes` says
+# `groups_fn` builds this lane and no other -- `framebuild.lane_kinds` says
 # so -- because the groups are the only place its clues live.
 #
 # The ring lanes, the shared generator and the board round trip stay in
@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import Lane, _document, _named
+from framebuild import Lane, named_files, puzzle_document
 from minify import minify_file
 from sm_document import code_constraint
 
@@ -110,15 +110,21 @@ class NoRing(Lane):
     # compares the groups, so the labels are not board data either.
     derived = frozenset({2002})
 
-    @property
-    def paths(self):
-        return self.spec.bent_lines
+    def __post_init__(self):
+        super().__post_init__()
+        # One lane, so a second lane's component set has nowhere to go:
+        # refused rather than silently ignored.
+        if self.spec.local_components is not None:
+            raise ValueError(
+                "a no-ring Spec has one lane: name its components in "
+                "`components`, not `local_components`"
+            )
 
     def drawn(self, board):
         return no_ring_groups(self.spec, board)
 
     def files(self, n):
-        return _named(self.spec, "" if n == 9 else f"{n}x{n}")
+        return named_files(self.spec, "" if n == 9 else f"{n}x{n}")
 
     def build_doc(self, board):
         """The whole document: the bare n x n grid, its boxes and givens, and
@@ -151,7 +157,7 @@ class NoRing(Lane):
             *([labels] if labels else []),
         ]
         comment = spec.rules_prefix + spec.comment_fn(n)
-        return _document(spec, board, n, cells, constraints, comment)
+        return puzzle_document(spec, board, n, cells, constraints, comment)
 
     def _check_lane(self, lc, doc, board):
         spec = self.spec

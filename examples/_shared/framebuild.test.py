@@ -30,6 +30,7 @@ from framebuild import (
     Spec,
     generate,
     house_gac_constraint,
+    lane_kinds,
     load_board,
     main,
     make_grid,
@@ -37,7 +38,6 @@ from framebuild import (
     make_paths,
     repeating_lines,
     save_board,
-    spec_lanes,
     unique,
 )
 from minify import minify_js
@@ -184,9 +184,6 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
 
 
 def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
-    # Each lane's check reads its backend and component list on its own, not
-    # from the call its build made: a document built on the other lane fails,
-    # whichever way round.
     with _spec(
         ["FooComponent.js", "BarComponent.js"],
         main_global=(
@@ -196,16 +193,33 @@ def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
         local_components=["FooComponent.js"],
     ) as spec:
         board = _board()
-        for lane, other in ((RingGlobal, RingLocal), (RingLocal, RingGlobal)):
+        for lane in (RingGlobal, RingLocal):
             doc = lane(spec).build_doc(board)
-            link = link_codec.encode_link(doc)
-            lane(spec).check(link, doc, board)
+            lane(spec).check(link_codec.encode_link(doc), doc, board)
+
+        # A build that stops telling the lanes apart -- the local lane
+        # shipping the global lane's components, or running its backend -- is
+        # caught, because check names the lane's own list and file itself
+        # rather than asking the build.
+        class SharedComponents(RingLocal):
+            def components(self):
+                return self.spec.components
+
+        class SharedBackend(RingLocal):
+            backend = "main-global.js"
+
+        for broken, fault in (
+            (SharedComponents, "wrong lane's components"),
+            (SharedBackend, "wrong lane's backend"),
+        ):
+            doc = broken(spec).build_doc(board)
             try:
-                other(spec).check(link, doc, board)
-            except AssertionError:
-                pass
+                broken(spec).check(link_codec.encode_link(doc), doc, board)
+            except AssertionError as e:
+                assert fault in str(e), e
             else:
-                raise AssertionError(f"{other.__name__} passed a {lane.__name__} doc")
+                raise AssertionError(f"{broken.__name__}'s document passed")
+
         # the local lane's own fault: a line whose drawn group went missing
         doc = RingLocal(spec).build_doc(board)
         lc = next(
@@ -218,6 +232,62 @@ def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
             assert "one drawn group per line" in str(e), e
         else:
             raise AssertionError("a local board missing a drawn group passed")
+
+
+def test_a_lane_refuses_a_spec_of_another_kind():
+    # A no-ring Spec's clues live only in its drawn groups, so no ring lane
+    # may build it, and the no-ring lane builds nothing else. Its one lane
+    # has no second component set either.
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
+        for lane in (RingGlobal, RingLocal):
+            try:
+                lane(spec)
+            except ValueError as e:
+                assert "builds no-ring only" in str(e), e
+            else:
+                raise AssertionError(f"{lane.__name__} took a no-ring Spec")
+    with _spec(["FooComponent.js"]) as spec:
+        try:
+            NoRing(spec)
+        except ValueError as e:
+            assert "builds global, local only" in str(e), e
+        else:
+            raise AssertionError("NoRing took a ring Spec")
+    with _spec(
+        ["FooComponent.js"],
+        groups_fn=_column_markers,
+        local_components=["FooComponent.js"],
+    ) as spec:
+        try:
+            NoRing(spec)
+        except ValueError as e:
+            assert "local_components" in str(e), e
+        else:
+            raise AssertionError("NoRing ignored a local_components it cannot ship")
+
+
+def test_run_and_rebuild_check_the_link_before_writing_it():
+    # The lanes' entry points, not only `check` called by hand: a Spec whose
+    # rules text drops the project sentence fails inside run and rebuild.
+    n, bh, bw = 4, 2, 2
+    fields = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
+    with _spec(["FooComponent.js"], rules_prefix="Rules. ", **fields) as spec:
+        try:
+            RingGlobal(spec).run(n, bh, bw, range(101, 103))
+        except AssertionError as e:
+            assert "Normal sudoku rules apply" in str(e), e
+        else:
+            raise AssertionError("run wrote a link check rejects")
+        assert not RingGlobal(spec).files(n)[0].exists()
+    with _spec(["FooComponent.js"], **fields) as spec:
+        main(spec, [str(n), str(bh), str(bw), "2"])
+        unruled = dataclasses.replace(spec, rules_prefix="Rules. ")
+        try:
+            RingGlobal(unruled).rebuild(n)
+        except AssertionError as e:
+            assert "Normal sudoku rules apply" in str(e), e
+        else:
+            raise AssertionError("rebuild returned a link check rejects")
 
 
 def test_build_doc_ships_no_house_gac_constraint_by_default():
@@ -579,8 +649,8 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
 
 def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
     # A no-ring board's clues live only in its drawn groups, so it has one
-    # lane and no global board to refuse: with or without --local, main builds
-    # the same no-ring board into the same files.
+    # lane: with or without --local, main builds the same no-ring board into
+    # the same files.
     n, bh, bw = 4, 2, 2
     built = []
     for flags in ([], ["--local"]):
@@ -591,7 +661,7 @@ def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
             groups_fn=_column_markers,
             rules_prefix="Normal sudoku rules apply. ",
         ) as spec:
-            assert spec_lanes(spec) == (NoRing(spec), NoRing(spec))
+            assert lane_kinds(spec) == (NoRing,)
             main(spec, [str(n), str(bh), str(bw), "2", *flags])
             link_path, _ = NoRing(spec).files(n)
             p = link_codec.decode_puzzle(link_path.read_text().strip())["puzzle"]
@@ -635,7 +705,7 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         link_path.rename(other_link)
         gen_path.rename(other_gen)
         files = (other_link, other_gen)
-        assert NoRing(spec).rebuild(n, files=files) + "\n" == other_link.read_text()
+        assert NoRing(spec).rebuild(n, pair=files) + "\n" == other_link.read_text()
         other_link.rename(link_path)
         other_gen.rename(gen_path)
         # The labels are drawn from the groups the rebuild already guards, so a
@@ -1112,6 +1182,8 @@ if __name__ == "__main__":
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()
     test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag()
     test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane()
+    test_a_lane_refuses_a_spec_of_another_kind()
+    test_run_and_rebuild_check_the_link_before_writing_it()
     test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
