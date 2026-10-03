@@ -83,12 +83,15 @@ async function checkStripped (page, name) {
 //                 probe that reads an answer, not a time, can skip the clicks.
 //   timeoutMs     how long to wait for a verdict; none read is verdict '?'
 //                 with null times, as parseReadout reports it.
+//   alsoWaitFor   a RegExp whose match also ends the wait, for a probe fed a
+//                 link the app rejects outright (no verdict is ever printed);
+//                 it does not change what counts as a verdict.
 //   name          what to call the link in an error message.
 //   afterOpen     `async page => {}`, run once the link has loaded and before
 //                 anything is clicked: for a probe that reads the opening board.
 // Returns parseReadout's { first, unique, sum, verdict } plus the app's
 // `version` and the page `text` the readout came from.
-export async function solveInApp (page, link, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, deterministic = true, timeoutMs = 300000, name = 'link', afterOpen } = {}) {
+export async function solveInApp (page, link, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, deterministic = true, alsoWaitFor = null, timeoutMs = 300000, name = 'link', afterOpen } = {}) {
   await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(1200)
   if (afterOpen) await afterOpen(page)
@@ -104,7 +107,8 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   try {
     await page.waitForFunction(
       ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
-      [VERDICT_PATTERN.source, VERDICT_PATTERN.flags], { timeout: timeoutMs })
+      [alsoWaitFor ? `${VERDICT_PATTERN.source}|${alsoWaitFor.source}` : VERDICT_PATTERN.source, VERDICT_PATTERN.flags],
+      { timeout: timeoutMs })
   } catch { /* fall through; a missing verdict shows as a null time */ }
   await page.waitForTimeout(300)
   const text = await page.evaluate(() => document.body.innerText)
