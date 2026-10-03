@@ -222,6 +222,7 @@ with tempfile.TemporaryDirectory() as tmp:
     empty = source(tmp, "empty", [rec(G_SAME, "r7c7", "tr", hunt="r5c1")])
     r = cli("--out", str(Path(tmp) / "none"), *base, "--warm-from", empty)
     check("a source with no grid for this hunt refuses (exit 2)", r.returncode == 2)
+    check("... saying it holds no r1c5 grid", "holds no r1c5 grid" in r.stderr)
     r = cli(
         "--out",
         str(Path(tmp) / "gone"),
@@ -230,5 +231,6 @@ with tempfile.TemporaryDirectory() as tmp:
         str(Path(tmp) / "missing"),
     )
     check("a source that is not a hunt directory refuses (exit 2)", r.returncode == 2)
+    check("... saying it has no examples.jsonl", "has no examples.jsonl" in r.stderr)
 
 sys.exit(0 if ok else 1)
