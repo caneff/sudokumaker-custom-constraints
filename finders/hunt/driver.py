@@ -596,9 +596,10 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
             new_event["render_error"] = f"{type(e).__name__}: {e}"
         else:
             if _is_empty(candidate):
-                # `None` or `Empty` (a time-capped `propose()`, or a record
-                # `candidate_from_record` cannot rebuild) is truthy and would
-                # render a wrong picture (#645): keep the seed's failure.
+                # A rebuild that yields nothing (`None`, or the `Empty` a
+                # time-capped `propose()` returns) must not reach `render`:
+                # `Empty` is truthy and draws a wrong picture (#645). Keep
+                # the seed's failure.
                 new_event["render_error"] = event.get(
                     "render_error", "repair could not rebuild the candidate"
                 )

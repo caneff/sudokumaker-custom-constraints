@@ -18,6 +18,19 @@ HERE = Path(__file__).resolve().parent
 TOY_FINDER = HERE / "toy_finder.py"
 TOY_RENDER_FINDER = HERE / "toy_render_finder.py"
 
+# The `render` method both inline finder scripts below share: a 2x2 picture
+# that fails on demand (TOY_RENDER_FAIL) to simulate a transient render error.
+TOY_2X2_RENDER = """\
+    def render(self, candidate):
+        if os.environ.get("TOY_RENDER_FAIL"):
+            raise RuntimeError("simulated transient render failure")
+        canvas = GridCanvas(2, 2, cell=10)
+        for i, cell in enumerate(candidate):
+            if cell:
+                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
+        return canvas.image
+"""
+
 ok = True
 
 
@@ -254,15 +267,7 @@ class StatefulRenderFinder:
             self.seeds_seen += 100
         return tuple(record["grid"])
 
-    def render(self, candidate):
-        if os.environ.get("TOY_RENDER_FAIL"):
-            raise RuntimeError("simulated transient render failure")
-        canvas = GridCanvas(2, 2, cell=10)
-        for i, cell in enumerate(candidate):
-            if cell:
-                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
-        return canvas.image
-
+{TOY_2X2_RENDER}
 if os.environ.get("TOY_NO_HOOK"):
     StatefulRenderFinder.candidate_from_record = None
 if os.environ.get("TOY_NO_SAVE"):
@@ -746,15 +751,7 @@ class EmptyRepairFinder:
     def key(self, candidate):
         return candidate
 
-    def render(self, candidate):
-        if os.environ.get("TOY_RENDER_FAIL"):
-            raise RuntimeError("simulated transient render failure")
-        canvas = GridCanvas(2, 2, cell=10)
-        for i, cell in enumerate(candidate):
-            if cell:
-                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
-        return canvas.image
-
+{TOY_2X2_RENDER}
 sys.exit(run(EmptyRepairFinder(), sys.argv[1:]))
 """
     empty_argv = [sys.executable, "-c", empty_repair_script, "--out", str(out)]
