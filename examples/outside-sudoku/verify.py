@@ -55,22 +55,6 @@ def clue_groups(link, W, n):
     return groups
 
 
-def solve(model, x):
-    """The interior assignment, or None when the model has no solution.
-
-    Raises TimeoutError when the search spends `SOLVE_LIMIT` without a verdict:
-    "no answer yet" is not "no solution", and this script's caller reads a None
-    as proof of the second kind.
-    """
-    s = cpsat.solver(SOLVE_LIMIT)
-    status = s.Solve(model)
-    if status == cpsat.UNKNOWN:
-        raise TimeoutError(f"CP-SAT hit the {SOLVE_LIMIT}s limit; no verdict")
-    if status not in cpsat.SOLVED:
-        return None
-    return {cell: s.Value(var) for cell, var in x.items()}
-
-
 def main(argv):
     path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
     link = decode_puzzle(path.read_text().strip())
@@ -85,10 +69,9 @@ def main(argv):
 
     houses = {}
     for i in interior:
-        houses.setdefault(region[i], []).append(divmod(i, W))
-    m, grid = cpsat.sudoku_model(
-        n, None, regions=[[(r - 1, c - 1) for r, c in h] for h in houses.values()]
-    )
+        r, c = divmod(i, W)
+        houses.setdefault(region[i], []).append((r - 1, c - 1))
+    m, grid = cpsat.sudoku_model(n, None, regions=list(houses.values()))
     # The model is n x n; the clue posts below address the ringed W x W board.
     x = {(r + 1) * W + c + 1: v for (r, c), v in grid.items()}
     for i in interior:
@@ -110,13 +93,11 @@ def main(argv):
     givens = sum(1 for i in interior if cells[i].get("given"))
     print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
 
-    first = solve(m, x)
+    # solve_unique raises rather than answer on a spent time cap, so a slow
+    # search can never print the "exactly one" line below.
+    first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
     assert first is not None, "the shipped board has no solution"
-    # has_second_solution raises rather than answer on a spent time cap, so a
-    # slow search can never print the "exactly one" line below.
-    assert not cpsat.has_second_solution(m, x, first, SOLVE_LIMIT), (
-        "the shipped board has two solutions"
-    )
+    assert unique, "the shipped board has two solutions"
     print("ok — exactly one solution")
 
 
