@@ -21,17 +21,21 @@ from cpsat import SOLVED, solver
 from flatmate_model import N, build_model, count_plain_completions
 
 
+def bad_fives(grid):
+    """The cells of 5s with no 1 above and no 9 below, the rule's breaks."""
+    return [
+        (r, c)
+        for r in range(N)
+        for c in range(N)
+        if grid[r, c] == 5
+        and not (r > 0 and grid[r - 1, c] == 1)
+        and not (r < N - 1 and grid[r + 1, c] == 9)
+    ]
+
+
 def rule_holds(grid):
     """The rule, stated plainly: every 5 has a 1 above or a 9 below."""
-    for r in range(N):
-        for c in range(N):
-            if grid[r, c] != 5:
-                continue
-            above = r > 0 and grid[r - 1, c] == 1
-            below = r < N - 1 and grid[r + 1, c] == 9
-            if not (above or below):
-                return False
-    return True
+    return not bad_fives(grid)
 
 
 def model_accepts(grid, flatmate):
@@ -87,14 +91,7 @@ if __name__ == "__main__":
             accepted += 1
         else:
             rejected += 1
-            edge_rejected += any(
-                g[r, c] == 5
-                and not (r > 0 and g[r - 1, c] == 1)
-                and not (r < N - 1 and g[r + 1, c] == 9)
-                and r in (0, N - 1)
-                for r in range(N)
-                for c in range(N)
-            )
+            edge_rejected += any(r in (0, N - 1) for r, _c in bad_fives(g))
     assert accepted and rejected, "the sample never exercised both verdicts"
     assert edge_rejected, "no rejected grid had a bad 5 in the top or bottom row"
     print(

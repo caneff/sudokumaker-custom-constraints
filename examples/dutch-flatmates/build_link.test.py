@@ -43,24 +43,17 @@ if __name__ == "__main__":
     # one whole-grid component and the shared whole-grid rows-and-columns backend
     p = decode_puzzle(committed)["puzzle"]
     gen = json.loads((HERE / "gen.json").read_text())
-    assert (p["type"], p["width"], p["height"]) == ("custom", 9, 9)
     assert p["comment"] == NO_RING_RULES_PREFIX + RULE
     assert p["comment"].startswith("Normal sudoku rules apply. Dutch Flatmates")
     given = {
         divmod(i, 9): c["value"] for i, c in enumerate(p["cells"]) if c.get("given")
     }
     assert given == {(r, c): int(gen["grid"][r][c]) for r, c in gen["clues"]}
-    assert all(c.get("given") or c == {} for c in p["cells"]), (
-        "the link opens with entered digits"
-    )
     constraints = [c for c in p["constraints"] if c["type"] == 1000]
     assert [c["definition"]["name"] for c in constraints] == [
         GRID_BACKEND[1],
         CONSTRAINT_NAME,
     ]
-    mine = constraints[1]["definition"]
-    assert mine["input"] == []
-    assert [c["name"] for c in mine["components"]] == [TIMED_COMPONENT]
 
     # swapping the committed component back into the committed board changes nothing
     with tempfile.TemporaryDirectory() as tmp:

@@ -81,8 +81,8 @@ frame reader explains the directive itself.
   fillomino are not sudoku and skip the line (`NO_RULES_PREFIX` in
   `check_layout.py`). A ringless sudoku board has no inner grid to name, so its
   text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
-  `framebuild.py`): up-to-n, and the plain 9x9s of house-gac and dutch-flatmates
-  (`RINGLESS_SUDOKU` in `check_layout.py`).
+  `framebuild.py`); `check_layout.py` names the examples (`RINGLESS_SUDOKU`
+  and the no-ring boards).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 
