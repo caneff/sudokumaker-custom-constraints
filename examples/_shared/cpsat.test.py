@@ -1,7 +1,8 @@
-# cpsat.py: the three CP-SAT calls every generator and uniqueness proof here
-# shares. The models are two-variable toys, not puzzle boards -- what is under
-# test is the forbid clause, the solver configuration, and the second-solution
-# verdict, none of which care what the model says.
+# cpsat.py: the CP-SAT calls every generator and uniqueness proof here shares.
+# The forbid, solver and second-solution tests use two-variable toy models --
+# what is under test there is the forbid clause, the solver configuration and
+# the verdict, none of which care what the model says; the solve_unique tests
+# use the same toys, and the sudoku_model tests run on real (small) boards.
 #
 #   uv run --with ortools examples/_shared/cpsat.test.py
 
@@ -145,21 +146,25 @@ def test_solve_unique_raises_when_only_the_second_solve_times_out():
     assert len(calls) == 2, calls
 
 
+def _feasible(m):
+    """Whether `m` has a solution, and the solver that found it. A spent cap
+    fails the test instead of reading as "no solution"."""
+    s = solver(30)
+    status = s.Solve(m)
+    assert status != cp_model.UNKNOWN, "the test model spent its 30s cap"
+    return status in (cp_model.OPTIMAL, cp_model.FEASIBLE), s
+
+
 def _count(m, x):
     """Every solution of (m, x), by forbid-and-resolve."""
     found = []
     while True:
-        s = solver(30)
-        if s.Solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        ok, s = _feasible(m)
+        if not ok:
             return found
         a = {k: s.Value(v) for k, v in x.items()}
         found.append(a)
         forbid(m, x, a, tag=len(found))
-
-
-def _count_up_to_one(m, x):
-    s = solver(30)
-    return s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
 
 def _houses_ok(a, n, houses):
@@ -192,8 +197,8 @@ def test_sudoku_model_on_a_rectangular_box_board():
     ]
     rows = [[(r, c) for c in range(6)] for r in range(6)]
     cols = [[(r, c) for r in range(6)] for c in range(6)]
-    s = solver(30)
-    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    ok, s = _feasible(m)
+    assert ok
     found = {k: s.Value(v) for k, v in x.items()}
     assert _houses_ok(found, 6, rows + cols + boxes)
 
@@ -203,10 +208,31 @@ def test_sudoku_model_on_a_rectangular_box_board():
         m, x = sudoku_model(6, box)
         m.Add(x[0, 0] == 1)
         m.Add(x[cell] == 1)
-        return bool(_count_up_to_one(m, x))
+        return _feasible(m)[0]
 
     assert not pinned((2, 3), (1, 2)) and pinned((3, 2), (1, 2))
     assert not pinned((3, 2), (2, 1)) and pinned((2, 3), (2, 1))
+
+
+def test_sudoku_model_refuses_boxes_that_are_not_n_cells():
+    # (2, 2) boxes on a 6x6 divide it but hold 4 cells, a weaker rule than
+    # sudoku; (4, 2) does not even tile it.
+    for box in ((2, 2), (4, 2), (3, 1)):
+        try:
+            sudoku_model(6, box)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{box} boxes on a 6x6 board were accepted")
+
+
+def test_sudoku_model_refuses_regions_with_latin():
+    try:
+        sudoku_model(3, None, regions=[[(0, 0), (0, 1)]], latin=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("regions and latin together were accepted")
 
 
 def test_sudoku_model_on_region_and_latin_boards():
@@ -237,5 +263,7 @@ if __name__ == "__main__":
     test_solve_unique_raises_when_only_the_second_solve_times_out()
     test_sudoku_model_on_a_square_board()
     test_sudoku_model_on_a_rectangular_box_board()
+    test_sudoku_model_refuses_boxes_that_are_not_n_cells()
+    test_sudoku_model_refuses_regions_with_latin()
     test_sudoku_model_on_region_and_latin_boards()
     print("cpsat.test.py: ok")

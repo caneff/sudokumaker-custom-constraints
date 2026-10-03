@@ -95,7 +95,7 @@ def sudoku_model(n, box, *, regions=None, latin=False):
     """(m, x) for an n x n sudoku: digits 1..n, rows and columns distinct.
 
     `x` maps (row, column) to its variable. `box` is (height, width) of the
-    boxes, which must tile the board; a 6x6 board with boxes two rows tall and
+    boxes, whose area must be n; a 6x6 board with boxes two rows tall and
     three columns wide is `sudoku_model(6, (2, 3))`. `regions`, a list of cell
     lists, replaces the boxes with houses of the caller's own shape, and
     `latin=True` drops them altogether; either way `box` is not read, so pass
@@ -112,8 +112,8 @@ def sudoku_model(n, box, *, regions=None, latin=False):
         return m, x
     if regions is None:
         bh, bw = box
-        if n % bh or n % bw:
-            raise ValueError(f"{bh}x{bw} boxes do not tile a {n}x{n} board")
+        if bh * bw != n:
+            raise ValueError(f"{bh}x{bw} boxes do not hold {n} cells")
         regions = [
             [(br + dr, bc + dc) for dr in range(bh) for dc in range(bw)]
             for br in range(0, n, bh)
