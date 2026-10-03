@@ -149,7 +149,7 @@ ship a same-board pair: `PUZZLE_LINK.txt` (ours) and `PUZZLE_LINK_original.txt`
 
 To count how often the app calls a component's `update` on one run:
 `uv run --with lzstring examples/_shared/count_calls.py skyscraper
-examples/skyscraper/SkyscraperLineComponent.js --ring-clues`. It makes a probe
+examples/skyscraper/SkyscraperPairComponent.js --ring-clues`. It makes a probe
 copy of the component that `console.log('[probe] calls=...')` every 500
 calls, builds a link from it with `build_link.py --component`, and runs
 `app-solve.mjs` on the emptied link; the driver relays every browser console

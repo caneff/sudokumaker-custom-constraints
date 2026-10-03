@@ -51,20 +51,20 @@ const { load } = makeIo(HERE)
 // at load.
 {
   const { read } = makeIo(HERE)
-  const FILES = ['SideSumComponent.js', 'HitCountsJointComponent.js', 'SideHitMatchingComponent.js', 'HitCountsComponent.js']
+  const FILES = ['SideSumComponent.js', 'HitCountsPairComponent.js', 'SideHitMatchingComponent.js', 'HitCountsComponent.js']
   const defining = FILES.filter(f => /^function\s*\*\s*initialize\b/m.test(read(f)))
   assert.deepEqual(defining, [], 'the base initialize already runs update once')
   console.log('hit-counts initialize: none defined; the base runs update at load')
 }
 
-// ---- The joint component removes with raw masks ----
+// ---- The pair component removes with raw masks ----
 // The app's removal builders take a bitmask as readily as a DigitSet
 // (docs/research/bundle-api-reference.md, "removeCandidatesFromCell"), so
 // building a SudokuDigitSet per removal is an allocation nothing reads. With
 // a SudokuDigitSet that throws, both sweeps must still remove from clue A,
 // clue B and the line cells.
 {
-  const joint = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const joint = load('HitCountsPairComponent.js', ['setParams', 'update'])
   const { rnd } = makeRng(452)
   installGlobals(0, 9)
   const real = globalThis.SudokuDigitSet
@@ -106,7 +106,7 @@ const { load } = makeIo(HERE)
 }
 
 // ---- The per-line reverse bound and side sum remove with raw masks too ----
-// Same contract as the joint component's (#628, S4): with a SudokuDigitSet
+// Same contract as the pair component's (#628, S4): with a SudokuDigitSet
 // that throws, the per-line clue's [forced, possible] bound and side sum's
 // bounds propagation must still make their removals.
 {
@@ -227,14 +227,14 @@ const { load } = makeIo(HERE)
   console.log('hit-counts side matching: a forced hit already in place yields nothing')
 }
 
-// ---- The joint component reads each line cell once on an unchanged state ----
+// ---- The pair component reads each line cell once on an unchanged state ----
 // A call that finds its memo unchanged does no sweep, so what it costs is the
 // reads. The component reads each line mask once and hands it to the
 // signature; lineKind keeps its own read (the shared gate reads the cells
 // itself), so two reads per line cell is the whole cost.
 {
   installGlobals(0, 9)
-  const joint = load('HitCountsJointComponent.js', ['setParams', 'update'])
+  const joint = load('HitCountsPairComponent.js', ['setParams', 'update'])
   for (const kind of ['fullHouse', 'bare']) {
     const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     const truth = { 100: 0, 101: 0 }
@@ -269,7 +269,7 @@ const { load } = makeIo(HERE)
   for (const l of LINES) l.forEach((c, j) => { truth[c] = j + 1 })
   const cases = [
     ['HitCountsComponent.js', [CLUES[0], LINES[0]]],
-    ['HitCountsJointComponent.js', [CLUES[0], CLUES[1], LINES[0]]],
+    ['HitCountsPairComponent.js', [CLUES[0], CLUES[1], LINES[0]]],
     ['SideHitMatchingComponent.js', [CLUES, LINES]]
   ]
   for (const [file, args] of cases) {

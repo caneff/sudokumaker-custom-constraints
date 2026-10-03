@@ -129,7 +129,7 @@ makeFrameProbe({
   here: HERE,
   clueRange: n => [0, n],
   files: [
-    { file: 'HitCountsJointComponent.js', names: ['setParams', 'update'], ctorName: 'HitCountsJointComponent' },
+    { file: 'HitCountsPairComponent.js', names: ['setParams', 'update'], ctorName: 'HitCountsPairComponent' },
     { file: 'SideSumComponent.js', names: ['setParams', 'update'], ctorName: 'SideSumComponent' },
     { file: 'SideHitMatchingComponent.js', names: ['setParams', 'update'], ctorName: 'SideHitMatchingComponent' }
   ],

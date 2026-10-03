@@ -68,15 +68,15 @@ pay for itself in real-app solve time (`CODING_STANDARDS.md`,
   SudokuMaker's equivalent is `setParams`, called once per instance, not per
   propagation.
 
-## Split handlers per direction vs. one joint component
+## Split handlers per direction vs. one pair component
 
 - ISS's `Skyscraper` takes a single `(cells, numVisible)` — one direction.
   Both ends of a line means two instances sharing the same cells, coupled
   only by writing the same grid (handlers.js:1242-1244).
-- SudokuMaker's `SkyscraperLineComponent.js` reads both clues in one
+- SudokuMaker's `SkyscraperPairComponent.js` reads both clues in one
   component instead: the peak join needs both clue candidate sets in the same
   pass, to pair a left-side digit subset with its complement on the right
-  (`examples/skyscraper/SkyscraperLineComponent.js`, module docstring and
+  (`examples/skyscraper/SkyscraperPairComponent.js`, module docstring and
   `prune`). This joint shape won at 9x9 (#124).
 - When each wins: split when each direction's deduction is useful alone and
   coupling adds little. Joint when the deduction only gets strong by sharing
@@ -87,13 +87,13 @@ pay for itself in real-app solve time (`CODING_STANDARDS.md`,
 - ISS keys a layer by `(cell index, visible count)` → mask of running maxima
   (handlers.js:1304-1306) — a position-keyed DP.
 - Ours keys a layer by `(subset of sub-peak digits used, visible count)` →
-  mask of counts (`SkyscraperLineComponent.js`, module docstring: "The DP
+  mask of counts (`SkyscraperPairComponent.js`, module docstring: "The DP
   state is (subset of sub-peak digits used, visible count)"). The subset
   encodes both the prefix length (popcount) and the running max (its highest
   bit) and gives exactness via distinctness — a prefix and suffix partition
   the sub-peak digits exactly, so the peak join pairs a left subset with its
   exact complement on the right instead of matching on count alone
-  (`SkyscraperLineComponent.js`, `prune`'s join loop). Measured: #134
+  (`SkyscraperPairComponent.js`, `prune`'s join loop). Measured: #134
   (Sets → bitmask scratch, ISS shape) took the timing board from 45.0 s to
   3.6 s; #137 (subset-keyed exact DP) took it from 3.6 s to 0 ms
   (`docs/real-app-timing.md`, `docs/research/137-exact-line-dp.md`).

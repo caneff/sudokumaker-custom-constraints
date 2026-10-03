@@ -14,7 +14,7 @@
 // house of {0..8}. Ungated, the rule removes that true clue value and the run
 // goes red.
 //
-// A second pass runs the joint components and the side hit matching over real grids, where both clues of a
+// A second pass runs the pair components and the side hit matching over real grids, where both clues of a
 // line are true together, all to one fixpoint as the solver runs them, and a
 // third names the mirrored-pair exclusion by running one state as a house and
 // again as bare.
@@ -35,14 +35,14 @@ import { frameGeometry } from '../_shared/frame-geometry.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load, loadAt } = makeIo(HERE)
-// The joint component with the case sweep alone, before the permutation sweep.
+// The pair component with the case sweep alone, before the permutation sweep.
 // It is the floor that sweep's coverage counter measures against.
 const CASE_SWEEP_COMMIT = '4cc09eb'
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
+const joint = load('HitCountsPairComponent.js', ['setParams', 'update', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
 const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
 const sideMod = load('SideSumComponent.js', SIDE_NAMES)
@@ -178,7 +178,7 @@ function reshuffle (grid, bh, bw) {
 // The whole-grid corpus: each shipped size, its committed grid first and then
 // band/stack shuffles of it, every cell seeded with a random candidate superset
 // that keeps its true value, and the grid's rows and columns declared as its
-// houses. `joints` adds one joint component per pair of opposite clues and
+// houses. `joints` adds one pair component per pair of opposite clues and
 // `sides` adds the side hit matching over each of the four sides; the parts
 // chosen run together to one fixpoint, joints first, as the solver runs them.
 // The side hit matching forces hits as well as forbidding them, so an
@@ -287,12 +287,14 @@ const exclusion = fuzzBeating('mirrored-pair exclusion', {
 console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the house run pruned more')
 
 // ---- the permutation sweep fires, and takes no true value with it ----
-// The counters above show the joint component pruned; this one names the
+// The counters above show the pair component pruned; this one names the
 // permutation sweep, by running the same state through the component as it stands
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
-const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
+// The file carried a different name at the pinned commit, so the floor names its own path.
+const CASE_SWEEP_FILE = 'HitCountsJointComponent.js'
+const caseSweep = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_FILE, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {

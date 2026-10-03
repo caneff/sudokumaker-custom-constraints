@@ -1,6 +1,6 @@
 # Skyscraper — optimization log
 
-Every speed-up tried on `SkyscraperLineComponent.js`, kept or rejected, with
+Every speed-up tried on `SkyscraperPairComponent.js`, kept or rejected, with
 the numbers that decided it. Read this before trying a new one — a dead end
 here does not need a second attempt. Background: `docs/research/133-skip-unchanged.md`,
 `docs/research/137-exact-line-dp.md`, `docs/real-app-timing.md` (the method).

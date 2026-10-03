@@ -18,15 +18,15 @@ no ordering. That makes Hit Counts simpler than Running Start.
 
 ## Files
 
-- `main.js` — the local backend segment: one joint component per pair of drawn
+- `main.js` — the local backend segment: one pair component per pair of drawn
   groups that cover the same line from opposite ends, and the per-line component
   for every group with no such partner.
 - `main-global.js` — the global backend segment: reads all 4n frame lines off
   the board through the shared reader it splices in (`examples/_shared/frame-lines.js`,
-  `docs/example-layout.md`), then registers the joint component per line plus
+  `docs/example-layout.md`), then registers the pair component per line plus
   the side-sum and side-hit-matching components below (both need a whole side,
   so only a full frame has them).
-- `HitCountsJointComponent.js` — one component for a whole line and both its
+- `HitCountsPairComponent.js` — one component for a whole line and both its
   clues, used wherever a line is clued at both ends. It reads the hits as a
   matching between digits and positions and prunes cells and clues against the
   `(A, B)` hit counts the line can still reach. On a line that holds `1..n` once
@@ -76,7 +76,7 @@ no ordering. That makes Hit Counts simpler than Running Start.
 - `build_link.py` — rebuilds `PUZZLE_LINK.txt` with one component's code
   swapped for a candidate file, leaving the board and the sibling components
   untouched. It is the same-board pair `just time hit-counts` needs:
-  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsJointComponent.js --out /tmp/candidate.txt`
+  `uv run --with lzstring examples/hit-counts/build_link.py --component HitCountsPairComponent.js --out /tmp/candidate.txt`
 - `../_shared/frame.py`, `../_shared/minify.py` — build helpers shared with
   Running Start (the interactive-outside frame cosmetics and the link-shrinking
   pass). `../_shared/harness-lib.mjs` holds the soundness-harness scaffold.
@@ -142,9 +142,9 @@ solve time (`docs/line-contract.md`). Hit Counts splits this way:
 |-|-|-|
 | reverse clue bound `[forced, possible]` | nothing — a bare line | line component |
 | forward "no more hits" / "all must hit" | nothing — a bare line | line component |
-| the hit sweep: cells and clues against the reachable `(A, B)` | nothing — a bare line | joint component |
-| a mirrored pair never gives one A hit and one B hit | a house | joint component |
-| the permutation sweep: cells and clues against the reachable `(A, B)` over whole permutations | a full house of `{1..n}` | joint component |
+| the hit sweep: cells and clues against the reachable `(A, B)` | nothing — a bare line | pair component |
+| a mirrored pair never gives one A hit and one B hit | a house | pair component |
+| the permutation sweep: cells and clues against the reachable `(A, B)` over whole permutations | a full house of `{1..n}` | pair component |
 | a clue is never `n - 1` | a full house of `{1..n}` | both line components |
 | side sum `= n` | `n` perpendicular full houses of `{1..n}` | side-sum component |
 | the position-to-line assignment | every position a house of `{1..n}` | side-hit-matching component |
@@ -211,7 +211,7 @@ Note what the exclusion says: **a mirrored pair can never give one A hit and one
 B hit.** A cap on `A + B` counts positions and knows nothing about digits, so it
 cannot see this at all.
 
-`HitCountsJointComponent` runs the standard forward and backward sweep over
+`HitCountsPairComponent` runs the standard forward and backward sweep over
 those sets:
 
 - `F[u]` — the `(A, B)` sums reachable from the pairs before `u`.
@@ -326,7 +326,7 @@ ship as `input.groups` on the `main.js` lane — the local variant — so the ap
 hands each drawn group to one `HitCountsComponent` and nothing builds a frame.
 A path has a clue at one end only. On the committed seed, `R2` and `T2` trace
 the identical nine-cell route in opposite directions, so that one pair does
-get a joint component -- gated to its non-house mode, since a bent path is
+get a pair component -- gated to its non-house mode, since a bent path is
 never a house. Every other path is unpaired and runs the per-line component
 alone.
 
@@ -353,16 +353,16 @@ interactive.
 ## Paste into SudokuMaker
 
 To draw your own lines, add a custom local constraint and paste `main.js` as
-the main code, plus the `HitCountsJointComponent` and `HitCountsComponent`
+the main code, plus the `HitCountsPairComponent` and `HitCountsComponent`
 segments. Each group is one line: cell 0 the outside clue, the rest the line
-read inward. Draw both ends of a line and it gets the joint component, which is
+read inward. Draw both ends of a line and it gets the pair component, which is
 much the stronger of the two; draw one end, or a bent path, and it gets the
 per-line component.
 
 To use the whole grid as an interactive-outside frame instead (see
 `../../docs/patterns.md`), add a custom global constraint and paste
 `main-global.js` as the main code, plus the component segments:
-`HitCountsJointComponent`, `SideSumComponent` and `SideHitMatchingComponent`.
+`HitCountsPairComponent`, `SideSumComponent` and `SideHitMatchingComponent`.
 
 ## What the component deduces
 
@@ -521,7 +521,7 @@ Strength (needs Node):
 node examples/hit-counts/update-strength.test.mjs
 ```
 
-The joint component's floor is the per-line and pair components it replaced, run
+The pair component's floor is the per-line and opposite-pair components it replaced, run
 together at the commit that last shipped them: on random states it must never
 leave a candidate they removed. Two deterministic cases pin the inferences it
 adds. The first is the mirrored pair that can never give one A hit and one B hit,
@@ -540,7 +540,7 @@ previous commit keeps.
 
 `just time hit-counts`, run in a checkout of the commit before the change with
 only the new `_shared/line-kind.js` in its working tree, so the baseline is
-the link as it stood and the candidate is the joint component with the new
+the link as it stood and the candidate is the pair component with the new
 include spliced in. `lineKind` now answers `BARE` or `HOUSE` and drops the
 popcount that told a full house of any other digit set apart; every gate
 reads `kind >= HOUSE` or `oneToN`, so no rule changes. That is a change that
@@ -706,9 +706,9 @@ hoisted out of the per-call path. The cap moved because nothing has measured a
 line longer than the shipped boards.
 
 **#116 is fixed:** the shipped 9x9 (35 givens, 0 entered values) now returns a
-verdict in seconds, where the old per-line and pair components gave no verdict
+verdict in seconds, where the old per-line and opposite-pair components gave no verdict
 at all. The 2026-08-30 rows print `BASELINE`, not a ratio, because on that day
-the working-tree `HitCountsJointComponent.js` was byte-equal to the code
+the working-tree `HitCountsPairComponent.js` was byte-equal to the code
 `PUZZLE_LINK.txt` already shipped — C′ and D landed in #249/#250, so the command
 had no candidate edit to gate. See `docs/real-app-timing.md` for what a
 `BASELINE` row means and #248 for the prototype's 0.40×/0.41× measurement

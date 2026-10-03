@@ -417,7 +417,7 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
 // Its region still lies inside a single orthogonally connected component of the
 // cells that allow it, so a component smaller than `size` can hold no region
 // (ticket #142).
-function * noSeedRule (instance, puzzle, state, d, size) {
+function * silentDigitRule (instance, puzzle, state, d, size) {
   const { cells } = instance
   const { open, allowed } = state[d]
   const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
@@ -462,7 +462,7 @@ function * digitRule (instance, puzzle, state, d, size) {
   } else if (placed.length > 0) {
     return yield * seededRule(instance, puzzle, state, d, size, walk)
   } else if (open.length > 0) {
-    return yield * noSeedRule(instance, puzzle, state, d, size)
+    return yield * silentDigitRule(instance, puzzle, state, d, size)
   }
   return null
 }

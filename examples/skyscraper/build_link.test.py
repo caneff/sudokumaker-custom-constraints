@@ -44,7 +44,7 @@ if __name__ == "__main__":
     board = HERE / "PUZZLE_LINK.txt"
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "candidate.txt"
-        assert swap_build(board, HERE / "SkyscraperLineComponent.js", out) == (
+        assert swap_build(board, HERE / "SkyscraperPairComponent.js", out) == (
             board.read_text().strip()
         ), "the committed component must round-trip to PUZZLE_LINK.txt"
 

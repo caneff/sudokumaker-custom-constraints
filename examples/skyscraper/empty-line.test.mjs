@@ -9,7 +9,7 @@ import { dirname } from 'path'
 import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
 
 const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
-const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
+const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
 
 installGlobals(1, 4)
 const CA = 100

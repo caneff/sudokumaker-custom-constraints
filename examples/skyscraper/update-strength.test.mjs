@@ -22,8 +22,10 @@ const { load, loadAt } = makeIo(HERE)
 // The floor: the component as it stands at the commit that pins this test.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
-const cur = load('SkyscraperLineComponent.js', NAMES)
-const ref = loadAt(REF_COMMIT, 'SkyscraperLineComponent.js', NAMES)
+const cur = load('SkyscraperPairComponent.js', NAMES)
+// The file carried a different name at the pinned commit, so the floor names its own path.
+const REF_FILE = 'SkyscraperLineComponent.js'
+const ref = loadAt(REF_COMMIT, REF_FILE, NAMES)
 
 // The local line component's own floor (docs/example-layout.md). It runs on a
 // line an author drew, so its states are bare: any length, digits may repeat,
