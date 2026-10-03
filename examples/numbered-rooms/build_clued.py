@@ -19,8 +19,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from build_original import build_original, frame_groups, write
+from build_original import build_original, frame_groups
 from link_codec import decode_puzzle
+from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -93,12 +94,12 @@ def build():
     verify_solution(base, values)
 
     clued = fill_ring(base, values, frame_groups())
-    write(clued, HERE / "PUZZLE_LINK_clued.txt")
+    write_link(clued, HERE / "PUZZLE_LINK_clued.txt")
 
     # The clued board runs the same global lane its parent does; its original
     # twin gets the drawn frame groups the wrapper reads (build_original.py).
     clued_original = build_original(clued)
-    write(clued_original, HERE / "PUZZLE_LINK_clued_original.txt")
+    write_link(clued_original, HERE / "PUZZLE_LINK_clued_original.txt")
     return clued, clued_original
 
 
