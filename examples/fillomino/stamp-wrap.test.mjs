@@ -24,14 +24,20 @@ const truth = {}
 rows.forEach((row, r) => [...row].forEach((ch, x) => { truth[r * n + x] = Number(ch) }))
 installGlobals(1, n)
 
-const run = stamp => {
+// `stamp` is where the counter starts. A wrapped run's mask is pre-filled with
+// small stamps, the values the restarted counter walks through: a guard that
+// restarts the counter without clearing the mask reads them as visited.
+const run = (stamp, reps) => {
   const out = []
-  for (let rep = 0; rep < 100; rep++) {
+  for (let rep = 0; rep < reps; rep++) {
     const r = makeRng(2000 + rep).rnd
     const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, n, v))
     const inst = {}
     mod.setParams(inst, CELLS)
-    if (stamp) inst.stamp = stamp
+    if (stamp) {
+      inst.stamp = stamp
+      for (let i = 0; i < inst.mask.length; i++) inst.mask[i] = 1 + (i * 7 + rep) % 60
+    }
     const log = console.log
     console.log = () => {}
     try { fixpoint(mod, inst, p) } finally { console.log = log }
@@ -39,8 +45,12 @@ const run = stamp => {
   }
   return out
 }
-const fresh = run(0)
-for (const stamp of [0x7FFFFFF0, 0x7FFFFFFF, 0xFFFFFFF0]) {
-  assert.deepStrictEqual(run(stamp), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
+// Every distance below the cap: each of the stamp's call sites is, for some
+// distance, the one that wraps.
+const fresh = run(0, 10)
+for (let below = 0; below < 80; below++) {
+  const stamp = 0x7FFFFFFF - below
+  assert.deepStrictEqual(run(stamp, 10), fresh, `stamp ${stamp.toString(16)} changed what update deduces`)
 }
+assert.deepStrictEqual(run(0xFFFFFFF0, 10), fresh, 'a stamp past the Int32 range changed what update deduces')
 console.log('PASS')
