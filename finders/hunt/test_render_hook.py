@@ -714,4 +714,73 @@ sys.exit(run(PartialRenderFinder(), sys.argv[1:]))
         decodes(victim),
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # A stateless finder whose repair `propose()` comes back empty (a
+    # time-capped solve returns `Empty`, #645): repair must keep the seed's
+    # render_error and write no picture, never render the empty candidate.
+    out = Path(tmp) / "hunt-out"
+    empty_repair_script = f"""
+import os
+import sys
+sys.path.insert(0, {str(HERE)!r})
+from dedupe import D4
+from driver import run
+from protocol import Empty, Verdict
+from render import GridCanvas
+
+class EmptyRepairFinder:
+    symmetry = D4
+
+    def propose(self, rng):
+        # TOY_EMPTY_PROPOSE marks the resume run: the repair call times out.
+        if os.environ.get("TOY_EMPTY_PROPOSE"):
+            return Empty("timeout")
+        return tuple(rng.randint(0, 1) for _ in range(4))
+
+    def verify(self, candidate):
+        return Verdict(ok=True)
+
+    def record(self, candidate):
+        return {{"grid": list(candidate)}}
+
+    def key(self, candidate):
+        return candidate
+
+    def render(self, candidate):
+        if os.environ.get("TOY_RENDER_FAIL"):
+            raise RuntimeError("simulated transient render failure")
+        canvas = GridCanvas(2, 2, cell=10)
+        for i, cell in enumerate(candidate):
+            if cell:
+                canvas.shade_cell(i // 2, i % 2, (0, 0, 0))
+        return canvas.image
+
+sys.exit(run(EmptyRepairFinder(), sys.argv[1:]))
+"""
+    empty_argv = [sys.executable, "-c", empty_repair_script, "--out", str(out)]
+    empty_argv += ["--seeds", "0:10"]
+    subprocess.run(
+        empty_argv,
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, TOY_RENDER_FAIL="1"),
+    )
+    failed = [e for e in read_jsonl(out / "progress.jsonl") if "render_error" in e]
+    check("the first run left render_errors to repair", len(failed) > 0)
+    resume_env = dict(os.environ, TOY_EMPTY_PROPOSE="1")
+    resume_env.pop("TOY_RENDER_FAIL", None)
+    subprocess.run(empty_argv, capture_output=True, text=True, env=resume_env)
+    still_failed = [
+        e for e in read_jsonl(out / "progress.jsonl") if "render_error" in e
+    ]
+    check(
+        "repair keeps render_error when propose() returns Empty",
+        len(still_failed) == len(failed),
+    )
+    renders_dir = out / "renders"
+    check(
+        "repair writes no picture from an Empty candidate",
+        not renders_dir.is_dir() or not list(renders_dir.glob("*.png")),
+    )
+
 sys.exit(0 if ok else 1)

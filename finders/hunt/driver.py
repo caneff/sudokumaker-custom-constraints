@@ -594,7 +594,14 @@ def _repair_renders(finder, out, progress_lines, progress_events, examples_recor
             # lands on the seed's event, it never stops the resume.
             new_event["render_error"] = f"{type(e).__name__}: {e}"
         else:
-            _render_example(finder, out, seed, candidate, new_event)
+            if _is_empty(candidate):
+                # A time-capped `propose()` returns `Empty`, which is truthy
+                # and renders as a wrong picture (#645): keep the failure.
+                new_event["render_error"] = event.get(
+                    "render_error", "repair could not rebuild the candidate"
+                )
+            else:
+                _render_example(finder, out, seed, candidate, new_event)
         finally:
             if stateful:
                 finder.load_state(snapshot)
