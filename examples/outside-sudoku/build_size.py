@@ -14,7 +14,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the shipped board, so it lands as
-# PUZZLE_LINK.txt and gen.json (framebuild.board_files).
+# PUZZLE_LINK.txt and gen.json (framebuild.RingGlobal.files).
 #
 # --local builds the LOCAL board instead: the same frame lines shipped as drawn
 # groups on the main.js lane, written as PUZZLE_LINK_local.txt with

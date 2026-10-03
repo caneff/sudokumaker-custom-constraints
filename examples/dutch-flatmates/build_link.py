@@ -18,11 +18,11 @@
 # loses its `/* eslint-disable */` line, which is for this repo's linter
 # (minify.py's keep_comments mode drops it, #695).
 #
-# framebuild cannot host this board: its only ringless path (`no_ring_doc`)
+# framebuild cannot host this board: its only ringless path (`no_ring.NoRing`)
 # reads drawn groups and a clue function from a `Spec`, and a flatmate board has
-# neither. The document is written out here, in the shape `no_ring_doc`
-# produces, and takes its two shared parts -- the whole-grid rows-and-columns
-# backend and the rules opening -- from framebuild.
+# neither. The document is written out here, in the shape `NoRing`
+# builds, and takes its two shared parts -- the whole-grid rows-and-columns
+# backend from no_ring and the rules opening from framebuild.
 #
 # A gen JSON with a "circles" list is Flinty's Counting Circles board
 # (gen_0g.json): the same document plus the app's built-in Counting Circles and

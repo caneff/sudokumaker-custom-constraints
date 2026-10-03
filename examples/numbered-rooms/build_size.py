@@ -14,7 +14,7 @@
 # Args: n box_height box_width [seed_count] [--paths], or --rebuild n [--paths]
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script; the
-# local 9x9 pair is plain-named (framebuild.board_files), and PUZZLE_LINK.txt
+# local 9x9 pair is plain-named (framebuild.RingLocal.files), and PUZZLE_LINK.txt
 # itself is this example's hand-built original board, not a generated one.
 # --rebuild re-encodes a committed board against the code in the tree right
 # now, with no fresh CP-SAT search.
@@ -72,7 +72,7 @@ SPEC = Spec(
     cp_sat_clue_fn=add_numbered_room,
     comment_fn=comment_text,
     # PUZZLE_LINK.txt is this example's hand-built original board, so the
-    # framebuild 9x9 keeps its NxN name (framebuild.board_files).
+    # framebuild 9x9 keeps its NxN name (framebuild.RingGlobal.files).
     plain_global_9x9=False,
 )
 

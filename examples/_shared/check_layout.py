@@ -81,7 +81,7 @@ RETIRED_EXAMPLES = tomllib.loads(
 
 def is_no_ring(puzzle):
     """Does this link carry the whole-grid rows-and-columns backend
-    (framebuild.no_ring_doc), whatever code is embedded there? Carrying it is
+    (no_ring.NoRing), whatever code is embedded there? Carrying it is
     what marks a board as no-ring: its rows and columns are declared in JS, and
     its edge cells are real cells, not a clue ring."""
     return any(
@@ -340,12 +340,12 @@ def check_components(example_dir, link, puzzle):
     A component the backend never instantiates is dead weight, and the
     recipient reads its source as part of the rule; a component the backend
     instantiates but the link omits fails inside the app, where the author
-    never sees it. `framebuild.check` asserts this when it builds a link, but
+    never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
     changes, the link is not regenerated, and nothing notices (#287, #289,
     #290, #291).
 
-    A lexical check, like the one in `framebuild.check`: it reads
+    A lexical check, like the one in `framebuild.Lane.check`: it reads
     `new <Name>Component` off the backend source, so a class reached through
     an alias, or named some other way, is invisible to it. SudokuMaker's own
     built-ins are subtracted first (`component_scan.builtin_components`): the
@@ -390,7 +390,7 @@ def declared_houses(puzzle):
     return houses
 
 
-# The constraint name `framebuild.build_doc` ships the row/column backend
+# The constraint name `framebuild`'s ring lanes' `build_doc` ships the row/column backend
 # under, read off the one place that pairing lives so a rename reaches this
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.

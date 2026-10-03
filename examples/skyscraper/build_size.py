@@ -20,7 +20,7 @@
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except for n=9: that size is the plain-named pair build_link.py and
 # build_original.py reuse, so it lands as PUZZLE_LINK.txt and gen.json
-# (framebuild.board_files).
+# (framebuild.RingGlobal.files).
 # --rebuild re-encodes a committed board against the code in the tree right
 # now, with no fresh CP-SAT search.
 #

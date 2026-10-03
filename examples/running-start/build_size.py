@@ -22,7 +22,7 @@
 # than one row and more than one column, so the app reads it as a bare line and
 # its digits may repeat -- the shape the local variant exists to prove
 # (docs/line-contract.md). At n = 9 the pair is the plain-named
-# PUZZLE_LINK_local.txt and gen_local.json (framebuild.board_files). There is
+# PUZZLE_LINK_local.txt and gen_local.json (framebuild.RingLocal.files). There is
 # no framebuild 9x9 GLOBAL board here: PUZZLE_LINK.txt is a known-good decoded
 # board that build_link.py rebuilds.
 
@@ -95,7 +95,7 @@ SPEC = Spec(
     comment_fn=rule_text,
     # PUZZLE_LINK.txt is this example's known-good decoded board, rebuilt by
     # build_link.py rather than searched for, so it owns the plain names and
-    # there is no framebuild 9x9 global board (framebuild.board_files).
+    # there is no framebuild 9x9 global board (framebuild.RingGlobal.files).
     plain_global_9x9=False,
 )
 
