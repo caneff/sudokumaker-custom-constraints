@@ -11,12 +11,11 @@
 // HAR stays as it is.
 // The link is read from disk and sent as the page's own URL; it is never printed.
 
-import { chromium } from 'playwright'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { useRecordedApp, clickIcon, readGrid } from '../_shared/app-dom.mjs'
-import { VERDICT_PATTERN, parseReadout, parseVersion } from '../_shared/app-solve-lib.mjs'
+import { readGrid } from '../_shared/app-dom.mjs'
+import { withApp, solveInApp } from '../_shared/app-session.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const live = process.argv.includes('--live')
@@ -24,45 +23,39 @@ const linkFile = process.argv.slice(2).find(a => !a.startsWith('--')) ?? join(HE
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 const gen = JSON.parse(fs.readFileSync(join(HERE, 'gen.json'), 'utf8'))
 
-const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
-if (!live) await useRecordedApp(context)
-const page = await context.newPage()
-page.on('pageerror', e => console.error('PAGEERROR', e.message))
-await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
-await page.waitForTimeout(1500)
+await withApp({ live }, async app => {
+  const page = await app.newPage()
+  page.on('pageerror', e => console.error('PAGEERROR', e.message))
 
-const opening = await readGrid(page)
-const title = await page.title()
+  let opening, title, rules
+  const readOpening = async openPage => {
+    opening = await readGrid(openPage)
+    title = await openPage.title()
 
-// The rules text shows on the play page, which "Playtest" opens in a new tab.
-// The recorded app holds no play page (replay aborts it), so only --live reads it.
-let rules = null
-if (live) {
-  const [play] = await Promise.all([context.waitForEvent('page'), page.getByText('Playtest', { exact: true }).click()])
-  await play.waitForLoadState('networkidle')
-  await play.waitForTimeout(1500)
-  rules = (await play.evaluate(() => document.body.innerText)).match(/Normal sudoku rules apply\.[^\n]*/)?.[0] ?? null
-  await play.close()
-}
+    // The rules text shows on the play page, which "Playtest" opens in a new tab.
+    // The recorded app holds no play page (replay aborts it), so only --live reads it.
+    rules = null
+    if (live) {
+      const [play] = await Promise.all([openPage.context().waitForEvent('page'), openPage.getByText('Playtest', { exact: true }).click()])
+      await play.waitForLoadState('networkidle')
+      await play.waitForTimeout(1500)
+      rules = (await play.evaluate(() => document.body.innerText)).match(/Normal sudoku rules apply\.[^\n]*/)?.[0] ?? null
+      await play.close()
+    }
+  }
 
-if (!await clickIcon(page, 'ShowCandidates')) throw new Error('solve button not found: Icon ShowCandidates')
-await page.waitForFunction(
-  ([source, flags]) => new RegExp(source, flags).test(document.body.innerText),
-  [VERDICT_PATTERN.source, VERDICT_PATTERN.flags], { timeout: 300000 })
-await page.waitForTimeout(500)
-const text = await page.evaluate(() => document.body.innerText)
-const solved = await readGrid(page)
+  const { first, unique, sum, verdict, version } = await solveInApp(page, link, { afterOpen: readOpening, ringClues: true, deterministic: false, name: linkFile })
+  if (verdict === '?') throw new Error('no verdict from the app')
+  const solved = await readGrid(page)
 
-console.log(JSON.stringify({
-  source: live ? 'live sudokumaker.app' : 'recorded app',
-  version: parseVersion(text),
-  title,
-  rules,
-  givensShown: opening.join('').replace(/\./g, '').length,
-  readout: parseReadout(text),
-  grid: solved,
-  matchesGenSolution: solved.join() === gen.grid.join()
-}, null, 1))
-await context.close()
-await browser.close()
+  console.log(JSON.stringify({
+    source: live ? 'live sudokumaker.app' : 'recorded app',
+    version,
+    title,
+    rules,
+    givensShown: opening.join('').replace(/\./g, '').length,
+    readout: { first, unique, sum, verdict },
+    grid: solved,
+    matchesGenSolution: solved.join() === gen.grid.join()
+  }, null, 1))
+})

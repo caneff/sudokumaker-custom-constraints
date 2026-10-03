@@ -1,40 +1,51 @@
 // Readout parsing and print formats for app-solve.mjs, split out so they run
 // under node:assert without a browser. See docs/real-app-timing.md.
 
+import { parseArgs as parseCli } from 'node:util'
+
 // The app prints "✨ Solved took 3.7s" for the first solution, then "This is
 // a unique solution. took 0.4s" once the uniqueness search finishes.
 // "Found 10,000 solutions" is the app's cap: many solutions, search ended.
 // "Stopped solving/counting (time limit ...)" is the app's own timeout: no
 // verdict, though a "took" the app printed before stopping still names the
 // first-solve time.
+
 // The driver's command line:
 // `<link_file> [reps] [icon_name] [--ring-clues] [--after-logical]`.
 //
 // --ring-clues allows entered values, for edge-clue puzzles whose clues are
 // stored as non-given values in the outer ring; without it a link that is not
-// stripped to its givens is refused (see checkStripped in app-solve.mjs).
+// stripped to its givens is refused (see checkStripped in app-session.mjs).
 // --after-logical runs the app's logical solver to its fixpoint before the
 // timed search, so the row measures the search a player still faces. Both
-// flags may sit anywhere on the line, so they are removed before the
-// positionals are read off. Split out here because it is the one branchy part
-// of app-solve.mjs a browser is not needed to exercise (#315).
+// flags may sit anywhere on the line. A flag the driver does not know is a
+// usage error: a misspelt --after-logical would otherwise run the cold row
+// and print it as the row asked for. Split out here because it is the one
+// branchy part of app-solve.mjs a browser is not needed to exercise (#315).
+const USAGE = 'usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]'
 export function parseArgs (argv) {
-  const flags = ['--ring-clues', '--after-logical']
-  const args = argv.filter(a => !flags.includes(a))
-  const linkFile = args[0]
-  if (!linkFile) {
-    throw new Error('usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]')
+  let parsed
+  try {
+    parsed = parseCli({
+      args: argv,
+      options: { 'ring-clues': { type: 'boolean' }, 'after-logical': { type: 'boolean' } },
+      allowPositionals: true
+    })
+  } catch (e) {
+    throw new Error(`${USAGE}\n${e.message}`)
   }
+  const [linkFile, repsArg, iconArg] = parsed.positionals
+  if (!linkFile) throw new Error(USAGE)
   return {
     linkFile,
     // 7 reps: the solve time swings more than 10x run to run, so the default
     // has to be wide enough for a median to mean something.
-    reps: parseInt(args[1] || '7', 10),
+    reps: parseInt(repsArg || '7', 10),
     // ShowCandidates is "Find all solutions and valid candidates" -- the full
     // search that proves uniqueness, and the only one worth timing by default.
-    iconName: args[2] || 'ShowCandidates',
-    ringClues: argv.includes('--ring-clues'),
-    afterLogical: argv.includes('--after-logical')
+    iconName: iconArg || 'ShowCandidates',
+    ringClues: parsed.values['ring-clues'] === true,
+    afterLogical: parsed.values['after-logical'] === true
   }
 }
 

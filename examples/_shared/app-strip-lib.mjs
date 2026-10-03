@@ -4,6 +4,7 @@
 // alongside parseReadout from app-solve-lib.mjs.
 
 import { parseArgs as parseCli } from 'node:util'
+import { shuffle } from './harness-lib.mjs'
 
 // The driver's command line: `<link_file> <out.json> [seed] --grid <puzzle.json>`.
 // `--grid` may sit anywhere among the positionals. A missing link file, out
@@ -40,14 +41,10 @@ function mulberry32 (seed) {
   }
 }
 
+// A copy of `arr` in the order harness-lib's `shuffle` gives under a
+// mulberry32 stream seeded with `seed`.
 export function seededShuffle (arr, seed) {
-  const rng = mulberry32(seed)
-  const a = arr.slice()
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+  return shuffle(mulberry32(seed), arr.slice())
 }
 
 // The surviving clue set, sorted, alongside the grid it was cut from.
