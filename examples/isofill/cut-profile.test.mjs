@@ -38,8 +38,9 @@ check('patched removals match plain', snaps.every(s => removalsOf(plain, s) === 
 
 // ---- The accumulator is wired: cut runs, and its time is part of update's ----
 // timeUpdate itself throws on a run that recorded no cut time, so reaching the
-// check at all is the proof that cut ran. A cut span that grew to cover all of
-// `update` would read a share of 1.
+// check at all is the proof that cut ran. A patch that accumulates something
+// other than the cut span (a clock reading, a double count) reads more than
+// all of `update`.
 const { totalMs, cutMs } = timeUpdate(timed, snaps, 1)
 check('cut time is a part of update time', cutMs < totalMs)
 
