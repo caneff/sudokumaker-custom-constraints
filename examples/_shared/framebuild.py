@@ -996,17 +996,13 @@ def rebuild(spec, n, local=False, files=None):
 
         A no-ring board's clue labels go too: `check` holds them to the drawn
         groups, and the groups are compared above, so the labels are not
-        board data either. So does its grid backend, whole: `check` holds it
-        to `grid_backend_constraint()`, and blanking only its code would read
-        a change to the entry's shape (#653 gave it `input` and `style`) as a
-        changed board."""
+        board data either."""
         d = dict(d)
         d["puzzle"] = dict(d["puzzle"])
         d["puzzle"]["constraints"] = [
             c
             for c in d["puzzle"]["constraints"]
-            if c.get("definition", {}).get("name")
-            not in (HOUSE_GAC_BACKEND_TITLE, GRID_BACKEND[1])
+            if c.get("definition", {}).get("name") != HOUSE_GAC_BACKEND_TITLE
             and not (spec.groups_fn is not None and c.get("type") == 2002)
         ]
         return d
