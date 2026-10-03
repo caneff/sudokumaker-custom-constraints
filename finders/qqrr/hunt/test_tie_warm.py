@@ -144,7 +144,22 @@ with tempfile.TemporaryDirectory() as tmp:
     )
 
     q, warm_from, _ = chan_big.build("r1c5", "r7c7", "tr", {"tables", "hint"})
-    check("without warm hits the seed grid is the hint", warm_from is None)
+    check("without warm hits build reports no warm start", warm_from is None)
+    seed_hint = dict(
+        zip(
+            q.m.Proto().solution_hint.vars,
+            q.m.Proto().solution_hint.values,
+            strict=True,
+        )
+    )
+    check(
+        "... and the hint is the hunt's seed grid",
+        all(
+            seed_hint.get(q.x[r][c].Index()) == int(d)
+            for r, row in enumerate(SEED.split("/"))
+            for c, d in enumerate(row)
+        ),
+    )
 
     f = tie_finder.TieFinder("r1c5", "r7c7", "tr", 1, True, [a])
     check(
