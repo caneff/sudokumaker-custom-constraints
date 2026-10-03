@@ -128,7 +128,12 @@ class Enumeration:
     shapes: int
     solvable: int
     unique: int
-    solvable_shapes: list  # [(set of cells, solutions up to cap)], capped at max_stored
+    solvable_shapes: list  # [(set of cells, solutions up to cap)], at most max_stored
+
+    @property
+    def truncated(self):
+        """True when more solvable shapes were found than `solvable_shapes` holds."""
+        return self.solvable > len(self.solvable_shapes)
 
 
 def enumerate_shapes(
@@ -148,7 +153,9 @@ def enumerate_shapes(
         size, int(all_digits), int(symmetry), cap, seconds, out, ks, max_stored, stats
     )
     if rc:
-        raise ValueError("gf_enumerate: size out of range, or symmetry with pins")
+        raise ValueError(
+            "gf_enumerate: size not in 1-81, cap below 2, or symmetry with pins"
+        )
     found = [
         ({i for i in range(81) if out.raw[81 * s + i]}, ks[s]) for s in range(stats[3])
     ]

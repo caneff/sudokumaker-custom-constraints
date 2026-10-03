@@ -341,7 +341,8 @@ def test_dfs_matches_record_pinned_r9c12_all_digits(size, shapes_found, solvable
 
 
 @pytest.mark.parametrize(
-    "size, shapes_found", [(22, 1), (23, 0), (24, 1), (25, 0), (26, 0)]
+    "size, shapes_found",
+    [(22, 1), (23, 0), (24, 1), (25, 0), (26, 0), (27, 0), (28, 0), (29, 0), (30, 0)],
 )
 def test_dfs_matches_record_pinned_r9c12_without_all_digits(size, shapes_found):
     # Same note: one shape at 22 and one at 24, none at 23 or 25 and up.
@@ -388,6 +389,20 @@ def test_dfs_unpinned_size_17_matches_cpsat_native_symmetry_record():
     r = dfs(17, force=(), symmetry=True)
     assert r.exhausted
     assert (r.shapes, r.solvable, r.unique) == (26, 12, 0)
+
+
+def test_dfs_flags_a_solvable_list_cut_short_by_max_stored():
+    full = dfs(21)
+    assert not full.truncated
+    capped = dfs(21, max_stored=1)
+    assert capped.solvable == 2 and len(capped.solvable_shapes) == 1
+    assert capped.truncated
+
+
+@pytest.mark.parametrize("cap", [0, 1])
+def test_dfs_refuses_a_cap_that_would_call_every_solvable_shape_unique(cap):
+    with pytest.raises(ValueError):
+        dfs(21, cap=cap)
 
 
 def test_dfs_refuses_symmetry_with_pins():

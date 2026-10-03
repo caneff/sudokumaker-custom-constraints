@@ -235,10 +235,14 @@ int gf_climb(uint8_t *shape, uint64_t seed, double seconds, int cap, int64_t *st
 #define OUT 2
 
 typedef struct {
-    int size, n, root_free, all_digits, symmetry, cap;
-    uint8_t st[81], visited[81], shape[81], reg[81];
-    int inn[81], key[81];
-    uint16_t hr[9], hc[9], hb[81];
+    int size, n, all_digits, symmetry, cap;
+    uint8_t st[81];       // per cell: OPEN, IN the shape, or OUT of it
+    uint8_t visited[81];  // ever offered to the untried set on this branch
+    uint8_t shape[81];    // the shape so far, 0/1
+    uint8_t reg[81];      // count settled and entered in the house masks
+    int inn[81];          // shaded king neighbours so far
+    int key[81];          // pick order: distance from the root row, then column
+    uint16_t hr[9], hc[9], hb[81];  // settled counts used per row, column, box
     int regstack[81], regtop;
     int64_t shapes, solvable, unique, nodes, out_cap, stored;
     double deadline;
@@ -429,7 +433,7 @@ static void grow(Enum *e, const int *untried_in, int cnt) {
 // seconds > 0 stops the search after that long. Solvable shapes (81 bytes each,
 // with their count in out_k) are stored up to out_cap. stats receives shapes,
 // solvable, unique, stored and 1 if the search ran to completion (0 if cut off).
-// Returns 0, or -1 on bad arguments.
+// Returns 0, or -1 on bad arguments (cap below 2 would call every solvable shape unique).
 int gf_enumerate(int size, int all_digits, int symmetry, int cap, double seconds,
                  uint8_t *out, int *out_k, int64_t out_cap, int64_t *stats) {
     init();
@@ -439,12 +443,11 @@ int gf_enumerate(int size, int all_digits, int symmetry, int cap, double seconds
         pinned |= force_on[i] | force_off[i];
         if (force_on[i] && first_on < 0) first_on = i;
     }
-    if (size < 1 || size > 81 || (symmetry && pinned)) return -1;
+    if (size < 1 || size > 81 || cap < 2 || (symmetry && pinned)) return -1;
     static Enum e;
     memset(&e, 0, sizeof e);
     e.size = size; e.all_digits = all_digits; e.symmetry = symmetry; e.cap = cap;
     e.out = out; e.out_k = out_k; e.out_cap = out_cap;
-    e.root_free = first_on >= 0;
     e.deadline = seconds > 0 ? now() + seconds : 0;
     int lo = first_on >= 0 ? first_on : 0, hi = first_on >= 0 ? first_on : 80;
     for (int root = lo; root <= hi && !e.timed_out; root++) {
@@ -454,7 +457,7 @@ int gf_enumerate(int size, int all_digits, int symmetry, int cap, double seconds
         memset(e.hr, 0, sizeof e.hr); memset(e.hc, 0, sizeof e.hc); memset(e.hb, 0, sizeof e.hb);
         e.regtop = 0; e.n = 0;
         for (int i = 0; i < 81; i++)
-            if (force_off[i] || (!e.root_free && i < root)) {
+            if (force_off[i] || (first_on < 0 && i < root)) {
                 e.visited[i] = 1;
                 e.st[i] = OUT;
             }
