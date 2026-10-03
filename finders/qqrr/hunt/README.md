@@ -19,7 +19,8 @@ and the box rules in `AGENTS.md` before launching, and run one hunt at a time.
   2026-09-22 hunt. Why hunt output directories: they carry the hunt, window and corner of
   each grid, so the ordering needs no parsing; the other tracked sources do not (the
   research note's grids sit in prose, the explorer's presets in an HTML page, and
-  `verified.jsonl` holds verdicts, not grids).
+  `verified.jsonl` repeats `examples.jsonl`'s records with a verdict, so reading both
+  would count each grid twice).
 - `pair_sweep.py` — one solve per seeing pair, resumable.
   `pair_sweep.py <corner> <procs> <per-pair timeout> <log> [<hunt> [<workers> [retry]]]`
 - `chan_sweep.py` — the digit-channelled pair sweep.
