@@ -854,7 +854,7 @@ if __name__ == "__main__":
         assert "House GAC" in violations[0], violations[0]
 
     # A gen JSON that does not parse stops the gate. It is the board's record,
-    # and a corrupt one used to drop out of every check that reads it.
+    # and a corrupt one must not drop out of the checks that read it.
     with example(
         extra_links=["PUZZLE_LINK_6x6.txt"],
         extra_gens=["gen_6x6.json"],
