@@ -23,7 +23,7 @@ SIZES = {
 if __name__ == "__main__":
     # read the shipped links before any rebuild runs. Their bytes and their
     # modification times both: a rebuild that also wrote to HERE rewrites the
-    # same bytes (the byte check above proves the rebuild reproduces them), so
+    # same bytes (the byte check below proves the rebuild reproduces them), so
     # only the modification time shows the write.
     shipped = {
         name: (HERE / name).read_bytes() for pair in SIZES.values() for name in pair
