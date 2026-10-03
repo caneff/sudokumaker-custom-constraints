@@ -1,7 +1,7 @@
 # Shared codec for SudokuMaker puzzle links: https://sudokumaker.app/?puzzle=<payload>
 #
-# Both functions carry the full link, not the bare payload: decode_puzzle
-# takes a full link or a bare payload and splits out the payload itself, so encode_link's
+# encode_link returns the full link, not the bare payload. decode_puzzle takes a
+# full link or a bare payload and splits out the payload itself, so encode_link's
 # output can be fed straight back into decode_puzzle.
 
 import json
