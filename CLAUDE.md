@@ -1,6 +1,6 @@
 @AGENTS.md
 
-## Coding invariant (always on)
+## Solve-time invariant (always on)
 
 - **A deduction must pay for itself in solve time.** On a deduction added or
   removed, run `just time <example>`; it prints a cold row and an
