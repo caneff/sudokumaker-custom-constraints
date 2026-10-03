@@ -338,17 +338,24 @@ export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
 // top to bottom: the houses a column-rule example declares.
 export const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
 
-// Run a component's update until a pass removes nothing, at most MAX_PASSES
-// times.
+// Run components' updates until a pass removes nothing, at most MAX_PASSES
+// times. `parts` is a list of `{ mod, inst }`, run in order each pass. A
+// stop() on the puzzle means the branch is dead, and that ends propagation for
+// every part at once, mid-pass included.
 const MAX_PASSES = 20
-export function fixpoint (mod, inst, p) {
+export function fixpointAll (parts, p) {
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = total(p)
-    Array.from(mod.update(inst, p)) // drain
-    if (p._stopped !== null) break // the branch was declared dead; stop propagating
-    if (total(p) === before) break
+    for (const { mod, inst } of parts) {
+      Array.from(mod.update(inst, p)) // drain
+      if (p._stopped !== null) return
+    }
+    if (total(p) === before) return
   }
 }
+
+// One component: fixpointAll over a single part.
+export const fixpoint = (mod, inst, p) => fixpointAll([{ mod, inst }], p)
 
 // Run to a fixpoint, then report a cell that lost its true value or went
 // empty. Returns null when the true values all survive. A stop() is a
@@ -356,10 +363,60 @@ export function fixpoint (mod, inst, p) {
 // still contains the true solution, so no branch here is ever dead.
 export function violates (mod, inst, p, truth) {
   fixpoint(mod, inst, p)
+  return lostTruth(p, truth)
+}
+
+// What `violates` reads off a puzzle already run to a fixpoint.
+function lostTruth (p, truth) {
   if (p._stopped !== null) return { stopped: p._stopped }
   for (const [c, v] of Object.entries(truth)) {
     if (!p._cand.get(+c).has(v)) return { cell: +c, lost: v }
     if (p._cand.get(+c).size === 0) return { cell: +c, empty: true }
   }
   return null
+}
+
+// The soundness runner: draw `iters` states, run the components to a fixpoint,
+// count the states where a true value was lost (or the branch stopped) and the
+// states where something was pruned, log the first five violations and one
+// summary line, and also ask each part's `validate` to accept the true
+// solution -- the solver calls it at every node, and a validate that rejects
+// the truth rules the answer out as surely as a bad prune.
+//
+// `draw(iter)` supplies a state: `{ truth, seed, parts, houses?, note? }` --
+// the cell -> true value map, makePuzzle's seed function, the `{ mod, inst }`
+// list to run, the declared houses, and what to print beside a violation
+// (a value or a function returning one). The oracle is the example's: it
+// derives `truth` from whatever it draws.
+// Returns `{ tests, violations, validateRejects, fired, ok }`; `ok` is true
+// when both counts are zero. Whether `fired` is enough coverage is the
+// harness's call, so it can differ per pool.
+export function fuzzSoundness (label, { iters, draw, log = console.log }) {
+  let violations = 0
+  let validateRejects = 0
+  let fired = 0
+  for (let iter = 0; iter < iters; iter++) {
+    const { truth, seed, parts, houses = [], note = '' } = draw(iter)
+    const noteOf = () => (typeof note === 'function' ? note() : note)
+    const p = makePuzzle(truth, seed, { houses })
+    const before = total(p)
+    fixpointAll(parts, p)
+    if (total(p) < before) fired++
+    const v = lostTruth(p, truth)
+    if (v) { violations++; if (violations <= 5) log(label, 'violation', v, noteOf()) }
+    const filled = makePuzzle(truth, (c, val) => [val], { houses })
+    for (const { mod, inst } of parts) {
+      if (typeof mod.validate !== 'function' || mod.validate(inst, filled)) continue
+      validateRejects++
+      if (validateRejects <= 5) log(label, 'validate rejected the true solution', noteOf())
+    }
+  }
+  log(`${label}:`, iters, 'tests,', violations, 'violations,', validateRejects, 'validate rejections,', fired, 'states pruned')
+  return { tests: iters, violations, validateRejects, fired, ok: violations === 0 && validateRejects === 0 }
+}
+
+// End a harness: print the verdict and exit with its status.
+export function finishHarness (ok) {
+  console.log(ok ? 'PASS' : 'FAIL')
+  process.exit(ok ? 0 : 1)
 }
