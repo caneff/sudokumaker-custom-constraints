@@ -38,15 +38,14 @@ from build_size import (
 )
 from framebuild import (
     NO_RING_RULES_PREFIX,
-    board_files,
     load_board,
     make_lines,
-    rebuild,
     unique,
 )
 from link_codec import decode_puzzle
 from link_swap import swap_build
 from minify import minify_file
+from no_ring import NoRing
 from ortools.sat.python import cp_model
 
 # Hand-built lines, read from the marked end: (digits, target, the sum of the
@@ -222,14 +221,14 @@ def test_every_committed_board_is_unique_and_rebuilds_without_a_search():
     for link_name, gen_name, n, box in BOARDS:
         files = (HERE / link_name, HERE / gen_name)
         named = files == MINIMAL_9X9
-        assert named or board_files(SPEC, n, local=True) == files
+        assert named or NoRing(SPEC).files(n) == files
         board = shipped_board_matches_its_link(link_name, gen_name)
         assert board.n == n and board.box == box, link_name
         assert unique(add_up_to_n, board) is True, link_name
         # And not by accident: with no clue shown the givens alone do not pin it.
         assert unique(add_up_to_n, replace(board, active=set())) is False, link_name
         link = (HERE / link_name).read_text()
-        assert rebuild(SPEC, n, local=True, files=files) + "\n" == link, (
+        assert NoRing(SPEC).rebuild(n, files=files) + "\n" == link, (
             f"{link_name} is not what --rebuild makes of {gen_name}: regenerate "
             f"it with `build_size.py "
             f"{'--rebuild-minimal-9x9' if named else f'--rebuild {n} --local'}`"

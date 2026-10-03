@@ -15,7 +15,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import board_files, load_board, rebuild
+from framebuild import load_board, spec_lanes
 
 EXAMPLES = pathlib.Path(__file__).parent.parent
 
@@ -30,27 +30,27 @@ def _spec(builder):
     return module.SPEC
 
 
-def _lanes(spec):
-    """The lanes `spec` builds, each as the `local` value rebuild takes."""
-    return [True] if spec.groups_fn is not None else [False, True]
-
-
 def _rebuild(spec, gen):
     """`gen`'s link as `--rebuild` makes it, and the committed link it must
     equal. A board its lane does not name by default (a second board of one
     size) is rebuilt through `files=`, which only a one-lane example can
     resolve without guessing."""
     n = load_board(gen).n
-    lanes = _lanes(spec)
-    for local in lanes:
-        link, owned = board_files(spec, n, local)
+    # a one-lane (no-ring) Spec names its lane twice
+    lanes = [
+        lane
+        for i, lane in enumerate(spec_lanes(spec))
+        if lane not in spec_lanes(spec)[:i]
+    ]
+    for lane in lanes:
+        link, owned = lane.files(n)
         if owned == gen:
-            return rebuild(spec, n, local=local), link
-    assert len(lanes) == 1, f"{gen} is no lane's board: name it in board_files"
+            return lane.rebuild(n), link
+    assert len(lanes) == 1, f"{gen} is no lane's board: name it in its lane's files()"
     link = gen.parent / gen.name.replace("gen", "PUZZLE_LINK", 1).replace(
         ".json", ".txt"
     )
-    return rebuild(spec, n, local=lanes[0], files=(link, gen)), link
+    return lanes[0].rebuild(n, files=(link, gen)), link
 
 
 def test_every_size_builder_rebuilds_its_committed_boards_byte_for_byte():

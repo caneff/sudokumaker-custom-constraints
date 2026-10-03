@@ -1,9 +1,10 @@
-# framebuild's generator half (make_grid, make_paths, unique, generate, run),
-# its check, and the board lane the examples drive: `board_files` names a
-# board's two files, `save_board`/`load_board` are its round trip, `rebuild`
+# framebuild's generator half (make_grid, make_paths, unique, generate) and
+# its three lanes -- ring global, ring local and no ring (no_ring.py) -- each
+# with its own document build and check: a lane's `files` names a board's two
+# files, `save_board`/`load_board` are its round trip, a lane's `rebuild`
 # re-encodes a committed board against the code in the tree, and `main` is the
 # command line every build_size.py ends with. These fixtures build a minimal
-# doc via build_doc itself (a real n=4 board, one dummy component) rather than
+# doc via a lane's build_doc itself (a real n=4 board, one dummy component) rather than
 # reconstructing framebuild's document shape by hand, so a case tracks the
 # real builder instead of drifting from it. n=4 throughout: every uniqueness
 # proof is a real CP-SAT double solve, and a 4x4 keeps `just check` in the
@@ -19,15 +20,14 @@ import pathlib
 import random
 import tempfile
 
-import framebuild
 import link_codec
+import no_ring
 from framebuild import (
     LOCAL_RULES_SUFFIX,
     Board,
+    RingGlobal,
+    RingLocal,
     Spec,
-    board_files,
-    build_doc,
-    check,
     generate,
     house_gac_constraint,
     load_board,
@@ -35,13 +35,13 @@ from framebuild import (
     make_grid,
     make_lines,
     make_paths,
-    rebuild,
     repeating_lines,
-    run,
     save_board,
+    spec_lanes,
     unique,
 )
 from minify import minify_js
+from no_ring import NoRing
 
 
 @contextlib.contextmanager
@@ -125,16 +125,17 @@ def _board(n=4, bh=2, bw=2, **fields):
 
 
 def _build(spec, board=None):
-    """A real board built through `build_doc`, no drawn groups (global lane)."""
+    """A real board built through the global lane's `build_doc`: no drawn
+    groups."""
     board = board or _board()
-    doc = build_doc(spec, board, local=False)
+    doc = RingGlobal(spec).build_doc(board)
     return link_codec.encode_link(doc), doc, board
 
 
 def test_check_passes_when_the_backend_registers_the_declared_component():
     with _spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
-        check(spec, link, doc, board, local=False)
+        RingGlobal(spec).check(link, doc, board)
 
 
 def test_check_catches_a_shipped_component_the_backend_never_registers():
@@ -145,7 +146,7 @@ def test_check_catches_a_shipped_component_the_backend_never_registers():
     with _spec(["FooComponent.js", "BarComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
-            check(spec, link, doc, board, local=False)
+            RingGlobal(spec).check(link, doc, board)
         except AssertionError as e:
             assert "BarComponent" in str(e), e
         else:
@@ -165,7 +166,7 @@ def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
         ),
     ) as spec:
         link, doc, board = _build(spec)
-        check(spec, link, doc, board, local=False)
+        RingGlobal(spec).check(link, doc, board)
 
 
 def test_check_catches_a_document_that_is_not_the_board_s_size():
@@ -175,11 +176,48 @@ def test_check_catches_a_document_that_is_not_the_board_s_size():
     with _spec(["FooComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
-            check(spec, link, doc, dataclasses.replace(board, n=6), local=False)
+            RingGlobal(spec).check(link, doc, dataclasses.replace(board, n=6))
         except AssertionError as e:
             assert "maxDigit" in str(e), e
         else:
             raise AssertionError("a document of the wrong size was not caught")
+
+
+def test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane():
+    # Each lane's check reads its backend and component list on its own, not
+    # from the call its build made: a document built on the other lane fails,
+    # whichever way round.
+    with _spec(
+        ["FooComponent.js", "BarComponent.js"],
+        main_global=(
+            "puzzle.addConstraintComponent(new FooComponent())\n"
+            "puzzle.addConstraintComponent(new BarComponent())"
+        ),
+        local_components=["FooComponent.js"],
+    ) as spec:
+        board = _board()
+        for lane, other in ((RingGlobal, RingLocal), (RingLocal, RingGlobal)):
+            doc = lane(spec).build_doc(board)
+            link = link_codec.encode_link(doc)
+            lane(spec).check(link, doc, board)
+            try:
+                other(spec).check(link, doc, board)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"{other.__name__} passed a {lane.__name__} doc")
+        # the local lane's own fault: a line whose drawn group went missing
+        doc = RingLocal(spec).build_doc(board)
+        lc = next(
+            c for c in doc["puzzle"]["constraints"] if c.get("name") == "Widget Lines"
+        )
+        lc["input"]["groups"].pop()
+        try:
+            RingLocal(spec).check(link_codec.encode_link(doc), doc, board)
+        except AssertionError as e:
+            assert "one drawn group per line" in str(e), e
+        else:
+            raise AssertionError("a local board missing a drawn group passed")
 
 
 def test_build_doc_ships_no_house_gac_constraint_by_default():
@@ -224,7 +262,7 @@ def test_build_doc_refuses_house_gac_above_nine_cells():
     with _spec(["FooComponent.js"], house_gac=frozenset({10})) as spec:
         board = _board(n=10, bh=2, bw=5)
         try:
-            build_doc(spec, board, local=False)
+            RingGlobal(spec).build_doc(board)
             raise AssertionError("build_doc accepted a house_gac board above 9 cells")
         except ValueError as e:
             assert "9" in str(e)
@@ -265,7 +303,7 @@ def test_build_doc_house_gac_names_one_board_not_the_whole_example():
         ]
         assert "House GAC" not in names
 
-        local_doc = build_doc(spec, _board(n=4), local=True)
+        local_doc = RingLocal(spec).build_doc(_board(n=4))
         names = [
             c.get("definition", {}).get("name")
             for c in local_doc["puzzle"]["constraints"]
@@ -332,7 +370,7 @@ def _no_ring_board():
 def test_build_doc_without_a_ring_is_the_bare_grid_with_the_caller_s_groups():
     with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         board = _no_ring_board()
-        p = build_doc(spec, board, local=True)["puzzle"]
+        p = NoRing(spec).build_doc(board)["puzzle"]
         assert (p["width"], p["height"]) == (4, 4), "no ring cells around the grid"
         assert len(p["cells"]) == 16
         # cell ids are row * n + column: the given at (3, 3) is the last cell
@@ -388,7 +426,7 @@ def test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row():
     # board cannot tell box height from box width
     with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         board = _board(n=6, bh=2, bw=3, clue={("T", c): 0 for c in range(6)})
-        p = build_doc(spec, board, local=True)["puzzle"]
+        p = NoRing(spec).build_doc(board)["puzzle"]
         assert _regions(p) == (
             [0, 0, 0, 1, 1, 1] * 2 + [2, 2, 2, 3, 3, 3] * 2 + [4, 4, 4, 5, 5, 5] * 2
         )
@@ -400,20 +438,20 @@ def test_clue_labels_refuse_a_group_they_cannot_place():
     # cells with the first on the border. Anything else is refused rather
     # than drawn over the puzzle's own cells.
     n = 4
-    assert framebuild.clue_labels([{"cells": [0, 4], "value": "3"}], n) is not None
+    assert no_ring.clue_labels([{"cells": [0, 4], "value": "3"}], n) is not None
     for cells, why in (
         ([5], "a one-cell group"),
         ([5, 9], "a group away from the border"),
         ([1, 0], "a border cell listed second"),
     ):
         try:
-            framebuild.clue_labels([{"cells": cells, "value": "3"}], n)
+            no_ring.clue_labels([{"cells": cells, "value": "3"}], n)
         except ValueError as e:
             assert str(cells) in str(e), (why, e)
         else:
             raise AssertionError(f"labelled {why}")
     # an empty group is never labelled, so its shape is not this check's job
-    assert framebuild.clue_labels([{"cells": [5], "value": ""}], n) is None
+    assert no_ring.clue_labels([{"cells": [5], "value": ""}], n) is None
 
 
 def test_build_doc_refuses_a_group_cell_off_the_grid():
@@ -424,7 +462,7 @@ def test_build_doc_refuses_a_group_cell_off_the_grid():
 
     with _spec(["FooComponent.js"], groups_fn=off_grid) as spec:
         try:
-            build_doc(spec, _no_ring_board(), local=True)
+            NoRing(spec).build_doc(_no_ring_board())
         except ValueError as e:
             assert "(0, 5)" in str(e), e
         else:
@@ -445,14 +483,14 @@ def test_build_doc_opens_the_rules_text_with_the_spec_s_prefix():
         groups_fn=_column_markers,
         rules_prefix="Normal sudoku rules apply. ",
     ) as spec:
-        doc = build_doc(spec, _no_ring_board(), local=True)
+        doc = NoRing(spec).build_doc(_no_ring_board())
         assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
 
 
 def _check_fails(spec, doc, board, fault):
     """`check` on `doc` raises an AssertionError naming `fault`."""
     try:
-        check(spec, link_codec.encode_link(doc), doc, board, local=True)
+        NoRing(spec).check(link_codec.encode_link(doc), doc, board)
     except AssertionError as e:
         assert fault in str(e), e
     else:
@@ -466,8 +504,8 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
         rules_prefix="Normal sudoku rules apply. ",
     ) as spec:
         board = _no_ring_board()
-        doc = build_doc(spec, board, local=True)
-        check(spec, link_codec.encode_link(doc), doc, board, local=True)
+        doc = NoRing(spec).build_doc(board)
+        NoRing(spec).check(link_codec.encode_link(doc), doc, board)
 
         # the same faults `check` rejects on a ring board
         wrong_range = json.loads(json.dumps(doc))
@@ -530,43 +568,36 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
     ) as spec:
         board = _no_ring_board()
         _check_fails(
-            spec, build_doc(spec, board, local=True), board, "Normal sudoku rules apply"
+            spec, NoRing(spec).build_doc(board), board, "Normal sudoku rules apply"
         )
     with _spec(
         ["FooComponent.js", "BarComponent.js"], groups_fn=_column_markers
     ) as spec:
         board = _no_ring_board()
-        _check_fails(spec, build_doc(spec, board, local=True), board, "BarComponent")
+        _check_fails(spec, NoRing(spec).build_doc(board), board, "BarComponent")
 
 
-def test_build_doc_refuses_a_no_ring_board_on_the_global_lane():
-    # The global lane reads no drawn groups, and a no-ring board's clues live
-    # nowhere else: built that way it would ship a board with no clues at all.
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
-        try:
-            build_doc(spec, _no_ring_board(), local=False)
-        except ValueError as e:
-            assert "local=True" in str(e), e
-        else:
-            raise AssertionError("a no-ring board built on the global lane")
-
-
-def test_main_refuses_a_no_ring_global_lane_before_searching():
-    # The refusal costs nothing only if it comes first: a 9x9 search is
-    # minutes of CP-SAT spent on a board that is then thrown away.
-    def searched(*args):
-        raise AssertionError("the search ran before the lane was refused")
-
-    with _spec(
-        ["FooComponent.js"], groups_fn=_column_markers, cp_sat_clue_fn=searched
-    ) as spec:
-        try:
-            main(spec, ["4", "2", "2", "2"])
-        except ValueError as e:
-            assert "local=True" in str(e), e
-        else:
-            raise AssertionError("a no-ring board ran on the global lane")
-        assert not board_files(spec, 4)[1].exists()
+def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
+    # A no-ring board's clues live only in its drawn groups, so it has one
+    # lane and no global board to refuse: with or without --local, main builds
+    # the same no-ring board into the same files.
+    n, bh, bw = 4, 2, 2
+    built = []
+    for flags in ([], ["--local"]):
+        with _spec(
+            ["FooComponent.js"],
+            clue_fn=_first_digit,
+            cp_sat_clue_fn=_post_first_digit,
+            groups_fn=_column_markers,
+            rules_prefix="Normal sudoku rules apply. ",
+        ) as spec:
+            assert spec_lanes(spec) == (NoRing(spec), NoRing(spec))
+            main(spec, [str(n), str(bh), str(bw), "2", *flags])
+            link_path, _ = NoRing(spec).files(n)
+            p = link_codec.decode_puzzle(link_path.read_text().strip())["puzzle"]
+            assert p["width"] == n, "the bare grid, no ring around it"
+            built.append(link_path.read_text())
+    assert built[0] == built[1]
 
 
 def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
@@ -579,23 +610,23 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         rules_prefix="Normal sudoku rules apply. ",
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
-        link_path, gen_path = board_files(spec, n, local=True)
-        assert rebuild(spec, n, local=True) + "\n" == link_path.read_text()
+        link_path, gen_path = NoRing(spec).files(n)
+        assert NoRing(spec).rebuild(n) + "\n" == link_path.read_text()
         # The grid backend is code from the tree, not board data: a changed
         # grid-rowcol.js rebuilds into the new code instead of failing the
         # board comparison.
-        real = framebuild.grid_backend_constraint
+        real = no_ring.grid_backend_constraint
 
         def edited():
             c = real()
             c["definition"]["backend"]["code"] += ";"
             return c
 
-        framebuild.grid_backend_constraint = edited
+        no_ring.grid_backend_constraint = edited
         try:
-            relinked = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+            relinked = link_codec.decode_puzzle(NoRing(spec).rebuild(n))
         finally:
-            framebuild.grid_backend_constraint = real
+            no_ring.grid_backend_constraint = real
         assert edited() in relinked["puzzle"]["constraints"]
         # A second board of the same size keeps its own named pair; `files`
         # points the rebuild at it instead of the size's default names.
@@ -604,9 +635,7 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         link_path.rename(other_link)
         gen_path.rename(other_gen)
         files = (other_link, other_gen)
-        assert (
-            rebuild(spec, n, local=True, files=files) + "\n" == other_link.read_text()
-        )
+        assert NoRing(spec).rebuild(n, files=files) + "\n" == other_link.read_text()
         other_link.rename(link_path)
         other_gen.rename(gen_path)
         # The labels are drawn from the groups the rebuild already guards, so a
@@ -617,7 +646,7 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
             c for c in old["puzzle"]["constraints"] if c.get("type") != 2002
         ]
         link_path.write_text(link_codec.encode_link(old) + "\n")
-        relabelled = link_codec.decode_puzzle(rebuild(spec, n, local=True))
+        relabelled = link_codec.decode_puzzle(NoRing(spec).rebuild(n))
         assert [c for c in relabelled["puzzle"]["constraints"] if c["type"] == 2002]
         # A no-ring board's shown clues live only in its groups' typed values:
         # hide one in the gen JSON and the rebuilt groups no longer match.
@@ -627,7 +656,7 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         )
         gen_path.write_text(json.dumps(g))
         try:
-            rebuild(spec, n, local=True)
+            NoRing(spec).rebuild(n)
         except AssertionError as e:
             assert "draws different lines" in str(e), e
         else:
@@ -762,16 +791,19 @@ def test_generate_carves_a_unique_and_minimal_board():
             )
 
 
-def test_board_files_plain_names_the_9x9_and_tags_every_other_size():
+def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
     with _spec(["FooComponent.js"]) as spec:
         d = spec.dir
-        assert board_files(spec, 9) == (d / "PUZZLE_LINK.txt", d / "gen.json")
-        assert board_files(spec, 9, local=True) == (
+        assert RingGlobal(spec).files(9) == (d / "PUZZLE_LINK.txt", d / "gen.json")
+        assert RingLocal(spec).files(9) == (
             d / "PUZZLE_LINK_local.txt",
             d / "gen_local.json",
         )
-        assert board_files(spec, 6) == (d / "PUZZLE_LINK_6x6.txt", d / "gen_6x6.json")
-        assert board_files(spec, 6, local=True) == (
+        assert RingGlobal(spec).files(6) == (
+            d / "PUZZLE_LINK_6x6.txt",
+            d / "gen_6x6.json",
+        )
+        assert RingLocal(spec).files(6) == (
             d / "PUZZLE_LINK_6x6_local.txt",
             d / "gen_6x6_local.json",
         )
@@ -780,8 +812,11 @@ def test_board_files_plain_names_the_9x9_and_tags_every_other_size():
     # is still the plain-named one, because nothing else claims those names
     with _spec(["FooComponent.js"], plain_global_9x9=False) as spec:
         d = spec.dir
-        assert board_files(spec, 9) == (d / "PUZZLE_LINK_9x9.txt", d / "gen_9x9.json")
-        assert board_files(spec, 9, local=True) == (
+        assert RingGlobal(spec).files(9) == (
+            d / "PUZZLE_LINK_9x9.txt",
+            d / "gen_9x9.json",
+        )
+        assert RingLocal(spec).files(9) == (
             d / "PUZZLE_LINK_local.txt",
             d / "gen_local.json",
         )
@@ -789,11 +824,11 @@ def test_board_files_plain_names_the_9x9_and_tags_every_other_size():
     # is plain-named and every other size is tagged by size alone (#370)
     with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         d = spec.dir
-        assert board_files(spec, 9, local=True) == (
+        assert NoRing(spec).files(9) == (
             d / "PUZZLE_LINK.txt",
             d / "gen.json",
         )
-        assert board_files(spec, 4, local=True) == (
+        assert NoRing(spec).files(4) == (
             d / "PUZZLE_LINK_4x4.txt",
             d / "gen_4x4.json",
         )
@@ -833,12 +868,12 @@ def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
-        link_path, gen_path = board_files(spec, n)
+        link_path, gen_path = RingGlobal(spec).files(n)
         link = link_path.read_text().strip()
         doc = link_codec.decode_puzzle(link)
         board = load_board(gen_path)
         # the written link decodes, and passes the same check main ran
-        check(spec, link, doc, board, local=False)
+        RingGlobal(spec).check(link, doc, board)
         # a cell holds a value only when it is a given: the shipped board must
         # never carry the solution or a hidden clue as an entered digit
         assert not [
@@ -851,7 +886,7 @@ def test_main_generates_a_board_from_its_own_argv_and_writes_both_files():
         assert unique(_post_first_digit, board) is True, (
             "the recorded board must be the unique one main proved"
         )
-        assert link_codec.encode_link(build_doc(spec, board, local=False)) == link, (
+        assert link_codec.encode_link(RingGlobal(spec).build_doc(board)) == link, (
             "rebuilding from the gen JSON must reproduce the written link"
         )
 
@@ -863,10 +898,10 @@ def test_main_builds_the_local_lane_under_either_flag_name():
             ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
         ) as spec:
             main(spec, [str(n), str(bh), str(bw), "4", flag])
-            link_path, gen_path = board_files(spec, n, local=True)
+            link_path, gen_path = RingLocal(spec).files(n)
             link = link_path.read_text().strip()
             doc = link_codec.decode_puzzle(link)
-            check(spec, link, doc, load_board(gen_path), local=True)
+            RingLocal(spec).check(link, doc, load_board(gen_path))
             assert not [
                 c for c in doc["puzzle"]["cells"] if "value" in c and not c.get("given")
             ]
@@ -891,7 +926,7 @@ def test_a_spec_whose_local_lines_stay_straight_draws_the_frame():
         bent_lines=False,
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
-        link_path, gen_path = board_files(spec, n, local=True)
+        link_path, gen_path = RingLocal(spec).files(n)
         board = load_board(gen_path)
         assert board.lines == make_lines(n), "straight local lines, not bent paths"
         doc = link_codec.decode_puzzle(link_path.read_text().strip())
@@ -906,13 +941,13 @@ def test_the_rules_text_follows_the_board_not_the_spec():
     with _spec(["FooComponent.js"]) as spec:
         assert spec.bent_lines
         straight = _board()
-        doc = build_doc(spec, straight, local=True)
+        doc = RingLocal(spec).build_doc(straight)
         assert LOCAL_RULES_SUFFIX not in doc["puzzle"]["comment"]
         bent = dataclasses.replace(
             straight, lines=make_paths(random.Random(3), straight.n)
         )
         assert (
-            LOCAL_RULES_SUFFIX in build_doc(spec, bent, local=True)["puzzle"]["comment"]
+            LOCAL_RULES_SUFFIX in RingLocal(spec).build_doc(bent)["puzzle"]["comment"]
         )
 
 
@@ -926,17 +961,17 @@ def test_rebuild_names_the_file_it_cannot_find():
     ) as spec:
         # no board of this size has been built at all
         try:
-            rebuild(spec, n)
+            RingGlobal(spec).rebuild(n)
         except AssertionError as e:
-            assert board_files(spec, n)[1].name in str(e), e
+            assert RingGlobal(spec).files(n)[1].name in str(e), e
         else:
             raise AssertionError("a rebuild with no recorded board said nothing")
 
         main(spec, [str(n), str(bh), str(bw), "2"])
-        link_path, _ = board_files(spec, n)
+        link_path, _ = RingGlobal(spec).files(n)
         link_path.unlink()
         try:
-            rebuild(spec, n)
+            RingGlobal(spec).rebuild(n)
         except AssertionError as e:
             assert link_path.name in str(e), e
         else:
@@ -952,7 +987,7 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines():
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "4", "--paths"])
-        _, gen_path = board_files(spec, n, local=True)
+        _, gen_path = RingLocal(spec).files(n)
         g = json.loads(gen_path.read_text())
         # bend one path somewhere else on the grid: the shown clues no longer
         # describe the cells the rebuilt link would draw
@@ -960,7 +995,7 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_drawn_lines():
         g["paths"][key] = list(reversed(g["paths"][key]))
         gen_path.write_text(json.dumps(g))
         try:
-            rebuild(spec, n, local=True)
+            RingLocal(spec).rebuild(n)
         except AssertionError as e:
             assert "draws different lines" in str(e), e
         else:
@@ -986,8 +1021,8 @@ def test_rebuild_reproduces_a_committed_link_byte_for_byte():
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
-        link_path, _ = board_files(spec, n)
-        assert rebuild(spec, n) + "\n" == link_path.read_text()
+        link_path, _ = RingGlobal(spec).files(n)
+        assert RingGlobal(spec).rebuild(n) + "\n" == link_path.read_text()
 
 
 def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
@@ -1000,7 +1035,7 @@ def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
         opted_in = dataclasses.replace(spec, house_gac=frozenset({n}))
-        link = rebuild(opted_in, n)
+        link = RingGlobal(opted_in).rebuild(n)
         doc = link_codec.decode_puzzle(link)
         names = [
             c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
@@ -1014,14 +1049,14 @@ def test_rebuild_refuses_a_gen_json_that_moved_the_board():
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
-        _, gen_path = board_files(spec, n)
+        _, gen_path = RingGlobal(spec).files(n)
         g = json.loads(gen_path.read_text())
         # drop one shown clue: the rebuilt board is a different puzzle, which
         # is exactly what a rebuild-from-seed must never quietly ship
         g["active"] = g["active"][1:]
         gen_path.write_text(json.dumps(g))
         try:
-            rebuild(spec, n)
+            RingGlobal(spec).rebuild(n)
         except AssertionError as e:
             assert "shown clues" in str(e), e
         else:
@@ -1034,14 +1069,14 @@ def test_main_rebuild_writes_the_committed_link_back():
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
-        link_path, _ = board_files(spec, n)
+        link_path, _ = RingGlobal(spec).files(n)
         before = link_path.read_bytes()
         # a component edit reaches the shipped link, and nothing else moves
         (spec.dir / "FooComponent.js").write_text("class FooComponent { /* v2 */ }")
         main(spec, ["--rebuild", str(n)])
         after = link_path.read_bytes()
         assert after != before, "the rebuild must pick the working tree's code up"
-        assert rebuild(spec, n) + "\n" == after.decode()
+        assert RingGlobal(spec).rebuild(n) + "\n" == after.decode()
 
 
 def test_run_takes_its_arguments_and_never_reads_sys_argv():
@@ -1050,8 +1085,8 @@ def test_run_takes_its_arguments_and_never_reads_sys_argv():
     with _spec(
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
     ) as spec:
-        run(spec, n, bh, bw, range(107, 109))
-        link_path, gen_path = board_files(spec, n)
+        RingGlobal(spec).run(n, bh, bw, range(107, 109))
+        link_path, gen_path = RingGlobal(spec).files(n)
         assert link_path.exists()
         # the seeds it searched are the ones it was handed, not a default range
         assert load_board(gen_path).seed in (107, 108)
@@ -1075,14 +1110,14 @@ if __name__ == "__main__":
     test_build_doc_refuses_a_group_cell_off_the_grid()
     test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()
-    test_build_doc_refuses_a_no_ring_board_on_the_global_lane()
-    test_main_refuses_a_no_ring_global_lane_before_searching()
+    test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag()
+    test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane()
     test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues()
     test_make_grid_is_a_real_sudoku_reproducible_from_its_seed()
     test_make_paths_draws_one_bent_l_per_ring_key()
     test_unique_is_the_cp_sat_double_solve()
     test_generate_carves_a_unique_and_minimal_board()
-    test_board_files_plain_names_the_9x9_and_tags_every_other_size()
+    test_lane_files_plain_names_the_9x9_and_tags_every_other_size()
     test_save_board_and_load_board_round_trip_a_frame_board()
     test_save_board_records_bent_geometry_and_load_board_reads_it_back()
     test_main_generates_a_board_from_its_own_argv_and_writes_both_files()

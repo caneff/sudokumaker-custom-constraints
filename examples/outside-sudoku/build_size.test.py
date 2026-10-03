@@ -20,9 +20,9 @@ from frame import ring_cell
 from framebuild import (
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
-    board_files,
+    RingGlobal,
+    RingLocal,
     make_lines,
-    rebuild,
 )
 from link_codec import decode_puzzle
 from minify import minify_file
@@ -35,13 +35,13 @@ CONSTRAINT_NAME = "Custom Outside Sudoku"
 
 def link_path(n, local=False):
     """The committed link for this board -- the 9x9 global board is the
-    shipped one, so it is plain-named (framebuild.board_files, #294)."""
-    return board_files(SPEC, n, local)[0]
+    shipped one, so it is plain-named (framebuild.RingGlobal.files, #294)."""
+    return (RingLocal if local else RingGlobal)(SPEC).files(n)[0]
 
 
 def gen_path(n, local=False):
     """The recorded seed for this board, named by the same rule."""
-    return board_files(SPEC, n, local)[1]
+    return (RingLocal if local else RingGlobal)(SPEC).files(n)[1]
 
 
 # One row line and one column line of each shipped size, as framebuild draws
@@ -90,9 +90,11 @@ def test_rebuild_reproduces_every_shipped_link_byte_for_byte():
     # back out of its recorded seed data, with no fresh search.
     for n, _bh, _bw in SIZES:
         link = link_path(n).read_text()
-        assert rebuild(SPEC, n) + "\n" == link, f"{n}x{n} does not rebuild byte-equal"
+        assert RingGlobal(SPEC).rebuild(n) + "\n" == link, (
+            f"{n}x{n} does not rebuild byte-equal"
+        )
     local = link_path(9, local=True).read_text()
-    assert rebuild(SPEC, 9, local=True) + "\n" == local, (
+    assert RingLocal(SPEC).rebuild(9) + "\n" == local, (
         "the local board does not rebuild byte-equal"
     )
 

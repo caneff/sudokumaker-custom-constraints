@@ -65,7 +65,7 @@ has neither. `build_link.py` writes the document itself, in the shape
 `no_ring_doc` produces: a `"custom"` document, a region constraint for the
 boxes, the given-digits constraint, and the shared whole-grid rows-and-columns
 backend (`examples/_shared/grid-rowcol.js`, through
-`framebuild.grid_backend_constraint`), then the flatmate constraint. Because the
+`no_ring.grid_backend_constraint`), then the flatmate constraint. Because the
 link carries that backend, `check_layout.py` reads it as a no-ring board.
 
 A `"sudoku"` document would have kept the app's full technique set and given

@@ -42,11 +42,12 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from flatmate_model import Extras, N, prove_recorded
-from framebuild import NO_RING_RULES_PREFIX, grid_backend_constraint
+from framebuild import NO_RING_RULES_PREFIX
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from no_ring import grid_backend_constraint
 from sm_document import code_constraint
 
 MANIFEST = load_manifest(HERE)

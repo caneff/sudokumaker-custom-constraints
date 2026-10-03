@@ -41,18 +41,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from component_scan import describe_mismatch, mismatch
 from framebuild import (
     FRAME_BACKENDS,
-    GRID_BACKEND,
     HOUSE_GAC_BACKEND_TITLE,
     HOUSE_GAC_COMPONENT_NAME,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
     frame_backend_code,
-    grid_backend_constraint,
     house_gac_backend_code,
 )
 from link_codec import decode_puzzle
 from manifest import load_manifest
 from minify import minify_file
+from no_ring import GRID_BACKEND, grid_backend_constraint
 
 REQUIRED_FILES = [
     "README.md",
