@@ -311,3 +311,66 @@ def test_build_dir_is_outside_scratch_so_a_worker_sweep_cannot_delete_it():
     # a directory that happens to be named .scratch (e.g. a seam worktree)
     # would otherwise fail this test for a reason the sweep can't cause.
     assert ".scratch" not in fastclimb.BUILD.relative_to(fastclimb.REPO).parts
+
+
+# --- depth-first shape enumerator (#506): the second engine, sharing nothing with CP-SAT ---
+
+R9C12 = (72, 73)
+
+
+def dfs(size, force=R9C12, ban=(), all_digits=True, symmetry=False, seconds=0, **kw):
+    fastclimb.pins(force, ban)
+    return fastclimb.enumerate_shapes(size, all_digits, symmetry, seconds=seconds, **kw)
+
+
+@pytest.mark.parametrize(
+    "size, shapes_found, solvable",
+    [(21, 2, 2), (20, 2, 2), (19, 2, 0), (18, 0, 0), (17, 0, 0)],
+)
+def test_dfs_matches_record_pinned_r9c12_all_digits(size, shapes_found, solvable):
+    # docs/research/2026-09-16-counting-shaded-connected.md, "No unique shading
+    # exists under r9c1 + r9c2": two shapes at 21 and at 20, none below, no unique.
+    r = dfs(size)
+    assert r.exhausted
+    assert (r.shapes, r.solvable, r.unique) == (shapes_found, solvable, 0)
+
+
+@pytest.mark.parametrize(
+    "size, shapes_found", [(22, 1), (23, 0), (24, 1), (25, 0), (26, 0)]
+)
+def test_dfs_matches_record_pinned_r9c12_without_all_digits(size, shapes_found):
+    # Same note: one shape at 22 and one at 24, none at 23 or 25 and up.
+    r = dfs(size, all_digits=False)
+    assert r.exhausted
+    assert r.shapes == shapes_found
+    # the 24-cell shape has no grid ("pinned-r9c12-24-nogrid"); the 22-cell one does
+    assert r.solvable == (1 if size == 22 else 0)
+
+
+def test_dfs_solvable_shapes_are_admissible_and_solvable_by_the_python_counter():
+    r = dfs(21)
+    assert len(r.solvable_shapes) == r.solvable == 2
+    for shape, k in r.solvable_shapes:
+        assert len(shape) == 21 and set(R9C12) <= shape
+        g = shapes.givens(shape)
+        assert shapes.eight_ok(g)
+        assert shapes.count_solutions(g, 2) == k >= 1
+
+
+def test_dfs_agrees_with_cpsat_native_enumeration_pinned(tmp_path):
+    import shapeenum
+
+    for size in (19, 20):
+        fastclimb.pins(R9C12)
+        _, n, solvable, unique = shapeenum.enumerate_native(
+            size, R9C12, (), 120, tmp_path, lambda _m: None
+        )
+        r = dfs(size)
+        assert (r.shapes, r.solvable, r.unique) == (n, solvable, unique)
+
+
+def test_dfs_reports_timeout_not_exhaustion():
+    # Unpinned size 21 cannot finish in a few milliseconds; a cut-off run must
+    # say so rather than report a count as if the size were exhausted.
+    r = dfs(21, force=(), seconds=0.05, symmetry=True)
+    assert not r.exhausted
