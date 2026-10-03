@@ -30,7 +30,7 @@ from framebuild import make_lines
 from link_codec import decode_puzzle
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
-from sm_document import find_constraint, write_link
+from sm_document import GROUPS_INPUT, find_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -48,9 +48,7 @@ def with_frame_groups(doc):
     """Return a copy of `doc` with the constraint's drawn groups filled in:
     the local-lane input a groups-reading backend needs."""
     lc = find_constraint(doc, CONSTRAINT_NAME)
-    lc["definition"]["input"] = [
-        {"id": "groups", "label": "Groups", "params": {"type": "raw"}}
-    ]
+    lc["definition"]["input"] = [GROUPS_INPUT]
     lc["input"] = {"groups": frame_groups()}
     return doc
 
