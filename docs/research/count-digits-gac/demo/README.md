@@ -17,7 +17,8 @@ draws the constraint and keeps it to five groups of eight cells.
 **#572 (share the builders' carve/draw code) is not made obsolete.** This change
 added a link-name rule and a rules-text switch to the demo builder, and reused the
 self-count builder's draw; the demo builder's own `search`/carve loop is still a
-copy of the sparse builder's, which is what #572 covers.
+copy of the sparse builder's, which is what #572 covers. (#658 has since moved
+the draw and carve loop into `examples/count-digits-gac/board_kit.py`.)
 
 Everything below "The link" describes the shipped self-counting board unless a
 heading says counter-outside. The **built-in vs GAC timing of the shipped board
@@ -259,7 +260,7 @@ on, for timing outside the app's menu. The counter-outside link rebuilds with
 `--gen docs/research/count-digits-gac/demo/gen_counter_outside.json` (the link name follows the gen).
 
 **Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
-sparse builder's `model()` and `count_solutions()`), from the 17 givens, in the
+`count_board.model()` and `board_kit.count_solutions()`), from the 17 givens, in the
 test. **Readability caveat:** the app draws cosmetic cages as thin dashed
 outlines, and the groups grow at random, so two groups that meet can be
 hard to tell apart; the colour and the `#` marker are what carry it.

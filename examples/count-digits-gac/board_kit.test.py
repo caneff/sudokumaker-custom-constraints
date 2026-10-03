@@ -52,7 +52,9 @@ def check_carve_policy():
     asked, gone = [], set()
 
     def unique(givens):
-        (cell,) = set(cells) - set(givens) - gone  # the cell this check is about
+        missing = set(cells) - set(givens) - gone
+        assert len(missing) == 1, "a cell no check cleared was carved"
+        (cell,) = missing  # the cell this check is about
         asked.append(cell)
         if cell == (0, 0):
             raise TimeoutError("no verdict")
