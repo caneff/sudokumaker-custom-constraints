@@ -51,7 +51,7 @@ nothing entered.
 Looked at with `shot-scraper`, on the shipped link:
 
 - **Unselected**, a custom constraint's groups are not drawn at all: the grid
-  shows only the givens. (`framebuild.clue_labels` says the same for the frame
+  shows only the givens. (`no_ring.clue_labels` says the same for the frame
   boards.)
 - **Selected** in the Elements panel, the app opens the group editor: one tab
   per group (1-5), a `Value:` field (`5 6 8`), and the group's cells shaded blue

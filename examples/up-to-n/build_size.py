@@ -39,15 +39,12 @@ import link_codec
 from framebuild import (
     NO_RING_RULES_PREFIX,
     Spec,
-    board_files,
-    build_doc,
-    check,
     load_board,
     main,
-    rebuild,
     save_board,
     unique,
 )
+from no_ring import NoRing
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"
@@ -161,10 +158,11 @@ def shipped_9x9(minimal):
 def derive_shipped_9x9():
     board = shipped_9x9(load_board(MINIMAL_9X9[1]))
     assert unique(SPEC.cp_sat_clue_fn, board) is True
-    doc = build_doc(SPEC, board, local=True)
+    lane = NoRing(SPEC)
+    doc = lane.build_doc(board)
     link = link_codec.encode_link(doc)
-    check(SPEC, link, doc, board, local=True)
-    link_path, gen_path = board_files(SPEC, 9, local=True)
+    lane.check(link, doc, board)
+    link_path, gen_path = lane.files(9)
     link_path.write_text(link + "\n")
     save_board(board, gen_path)
     print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
@@ -174,7 +172,7 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["--derive-shipped-9x9"]:
         derive_shipped_9x9()
     elif sys.argv[1:] == ["--rebuild-minimal-9x9"]:
-        link = rebuild(SPEC, 9, local=True, files=MINIMAL_9X9)
+        link = NoRing(SPEC).rebuild(9, pair=MINIMAL_9X9)
         MINIMAL_9X9[0].write_text(link + "\n")
         print(f"wrote {MINIMAL_9X9[0].name} -- current component code, same board")
     else:

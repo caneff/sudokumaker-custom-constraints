@@ -146,7 +146,7 @@ is not a link (a golden, a note) is left alone.
 
 It also checks each link's component set against the backend embedded in
 that same link: a link ships exactly the components its backend registers.
-The builder asserts this when it writes a link (`framebuild.check`), but a
+The builder asserts this when it writes a link (`framebuild.Lane.check`), but a
 committed link goes stale on its own — the builder's list changes and the
 link is never regenerated (#287, #289, #290, #291). Regenerate the stale
 link from its committed `gen_*.json` with the example's
@@ -184,7 +184,7 @@ Two things a plain 9x9 pays for choosing `"custom"` anyway:
   taken on a custom board is therefore taken against a restricted set of
   techniques, which is worth saying out loud when the row is the evidence.
 
-A **no-ring** board (`framebuild.no_ring_doc`, up-to-n's) is a bare n x n
+A **no-ring** board (`no_ring.NoRing`, up-to-n's) is a bare n x n
 `"custom"` document with no clue ring, and its shared backend is
 `_shared/grid-rowcol.js`, which declares every whole row and column. A link
 carrying it is what `check_layout.py` treats as no-ring: `check_frame_backends`
@@ -241,14 +241,15 @@ in the live app and record what it said:
   (`gen_35g_silent.json` pairs with `PUZZLE_LINK_35g_silent.txt`).
 - A generator may keep extra input files; they are inputs, not "the board."
 - On the shared interactive-outside frame that pairing is stated once in code:
-  `framebuild.board_files(spec, n, local)`. The 9x9 is plain-named on both
+  each lane's `files(n)` (`framebuild.RingGlobal`, `framebuild.RingLocal`,
+  `no_ring.NoRing`). The 9x9 is plain-named on both
   lanes (`PUZZLE_LINK.txt` / `PUZZLE_LINK_local.txt`), every other size carries
   its `NxN` tag, and an example whose `PUZZLE_LINK.txt` is some other,
   hand-built board says so with `Spec.plain_global_9x9 = False`. A no-ring
   example has only the drawn-groups lane, so its names carry no lane tag: its
   9x9 is `PUZZLE_LINK.txt` and every other size `PUZZLE_LINK_<n>x<n>.txt`. A
   second board of one size takes a size tag on its own and is rebuilt through
-  `framebuild.rebuild(..., files=...)` (up-to-n's `PUZZLE_LINK_9x9.txt`).
+  the lane's `rebuild(n, pair=...)` (up-to-n's `PUZZLE_LINK_9x9.txt`).
 - The pairing runs both ways where a link is generated: `check_layout.py`
   flags a `gen*.json` with no matching link, and a link with no matching
   `gen*.json`, same as above. Three kinds of link are exempt from needing one

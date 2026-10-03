@@ -35,7 +35,7 @@
 # What it deliberately leaves to the neighbours, one home per rule: that a link
 # opens clean (no non-given cell carrying a value) is check_layout.py's, run in
 # the same gate; that a link ships its lane's own components and input is
-# framebuild.check's, run by build_size.py's two lanes.
+# the lanes' own check (framebuild.Lane.check), run by build_size.py.
 #
 # Global boards only. A local (--paths) board carries its clues on drawn bent
 # groups rather than on ring keys, so its clue set is not read the way this
@@ -51,7 +51,7 @@ sys.path.insert(0, str(HERE))
 
 from build_size import SPEC
 from frame import ring_cell
-from framebuild import board_files, load_board, unique
+from framebuild import RingGlobal, load_board, unique
 from link_codec import decode_puzzle
 
 
@@ -175,7 +175,7 @@ def boards():
         if not path.exists() or path.stem.endswith("_local"):
             continue
         board = load_board(path)
-        found.append((board, board_files(SPEC, board.n)[0]))
+        found.append((board, RingGlobal(SPEC).files(board.n)[0]))
     return sorted(found, key=lambda pair: pair[0].n)
 
 
