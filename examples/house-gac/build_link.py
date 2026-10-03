@@ -45,8 +45,6 @@ import argparse
 import pathlib
 import sys
 
-from ortools.sat.python import cp_model
-
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 BASE_LINK = REPO / "docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt"
@@ -55,7 +53,7 @@ BACKEND = HERE / "main.js"
 
 sys.path.insert(0, str(REPO / "examples/_shared"))
 sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
-from cpsat import SOLVED, has_second_solution, solver
+from cpsat import solve_unique, sudoku_model
 from framebuild import NO_RING_RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
@@ -68,22 +66,12 @@ TIMED_COMPONENT = MANIFEST.timed_component
 
 
 def prove_unique(givens):
-    m = cp_model.CpModel()
-    x = {(r, c): m.NewIntVar(1, 9, f"x{r}{c}") for r in range(9) for c in range(9)}
+    m, x = sudoku_model(9, (3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
-    for i in range(9):
-        m.AddAllDifferent([x[i, c] for c in range(9)])
-        m.AddAllDifferent([x[r, i] for r in range(9)])
-    for br in range(3):
-        for bc in range(3):
-            m.AddAllDifferent(
-                [x[br * 3 + i, bc * 3 + j] for i in range(3) for j in range(3)]
-            )
-    s = solver(60)
-    assert s.Solve(m) in SOLVED
-    first = {k: s.Value(v) for k, v in x.items()}
-    assert not has_second_solution(m, x, first, 60)
+    first, unique = solve_unique(m, x, 60)
+    assert first is not None, "the board has no solution"
+    assert unique, "the board has a second solution"
     return first
 
 

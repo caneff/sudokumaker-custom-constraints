@@ -20,8 +20,6 @@
 import pathlib
 import sys
 
-from ortools.sat.python import cp_model
-
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
@@ -57,22 +55,6 @@ def clue_groups(link, W, n):
     return groups
 
 
-def solve(model, x):
-    """The interior assignment, or None when the model has no solution.
-
-    Raises TimeoutError when the search spends `SOLVE_LIMIT` without a verdict:
-    "no answer yet" is not "no solution", and this script's caller reads a None
-    as proof of the second kind.
-    """
-    s = cpsat.solver(SOLVE_LIMIT)
-    status = s.Solve(model)
-    if status == cpsat.UNKNOWN:
-        raise TimeoutError(f"CP-SAT hit the {SOLVE_LIMIT}s limit; no verdict")
-    if status not in cpsat.SOLVED:
-        return None
-    return {cell: s.Value(var) for cell, var in x.items()}
-
-
 def main(argv):
     path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
     link = decode_puzzle(path.read_text().strip())
@@ -85,14 +67,13 @@ def main(argv):
     column = [i % W for i in range(W * W)]
     interior = [i for i in range(W * W) if region[i] >= 0]
 
-    m = cp_model.CpModel()
-    x = {i: m.NewIntVar(1, n, f"x{i}") for i in interior}
-    for r in range(1, n + 1):
-        m.AddAllDifferent([x[r * W + c] for c in range(1, n + 1)])
-    for c in range(1, n + 1):
-        m.AddAllDifferent([x[r * W + c] for r in range(1, n + 1)])
-    for box in {region[i] for i in interior}:
-        m.AddAllDifferent([x[i] for i in interior if region[i] == box])
+    houses = {}
+    for i in interior:
+        r, c = divmod(i, W)
+        houses.setdefault(region[i], []).append((r - 1, c - 1))
+    m, grid = cpsat.sudoku_model(n, None, regions=list(houses.values()))
+    # The model is n x n; the clue posts below address the ringed W x W board.
+    x = {(r + 1) * W + c + 1: v for (r, c), v in grid.items()}
     for i in interior:
         if cells[i].get("given"):
             m.Add(x[i] == cells[i]["value"])
@@ -112,13 +93,11 @@ def main(argv):
     givens = sum(1 for i in interior if cells[i].get("given"))
     print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
 
-    first = solve(m, x)
+    # solve_unique raises rather than answer on a spent time cap, so a slow
+    # search can never print the "exactly one" line below.
+    first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
     assert first is not None, "the shipped board has no solution"
-    # has_second_solution raises rather than answer on a spent time cap, so a
-    # slow search can never print the "exactly one" line below.
-    assert not cpsat.has_second_solution(m, x, first, SOLVE_LIMIT), (
-        "the shipped board has two solutions"
-    )
+    assert unique, "the shipped board has two solutions"
     print("ok — exactly one solution")
 
 
