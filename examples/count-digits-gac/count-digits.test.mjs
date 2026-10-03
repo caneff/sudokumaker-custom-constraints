@@ -9,11 +9,9 @@
 // set"), not read back off the component.
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 installGlobals(1, 9)
 

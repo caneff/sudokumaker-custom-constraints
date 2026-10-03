@@ -18,11 +18,9 @@
 //      supported digits off them. The component must remove no more than the
 //      oracle (sound) and we report how much less it removes (weak).
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, total } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 installGlobals(1, 9)
