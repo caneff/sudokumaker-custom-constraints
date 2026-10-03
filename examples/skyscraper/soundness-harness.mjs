@@ -118,7 +118,7 @@ for (const allowTies of [false, true]) {
   // six distinct digits out of nine; a full house is a permutation of 1..9.
   for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
     const r = fuzzOneSided(`one-sided, ${kind.padEnd(9)} ${tag}`, { allowTies, kind, n, iters: 20000 })
-    oneSidedBad += r.violations + r.validateRejects
+    oneSidedBad += r.failures
     if (r.fired === 0) oneSidedSilent++
   }
 }
@@ -197,7 +197,7 @@ const lineRun = fuzzSoundness('line component', {
     return { truth, seed: seeder, houses: FULL.houses, parts: [{ mod, inst }], note: `perm ${perm.join('')}` }
   }
 })
-const bad = lineRun.violations + lineRun.validateRejects
+const bad = lineRun.failures
 const fired = lineRun.fired // coverage: the prune removed something, so the DP actually ran
 
 // The component's DP runs in one buffer shared by every instance, so a line's

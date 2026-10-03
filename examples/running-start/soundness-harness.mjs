@@ -36,7 +36,7 @@ const loadLine = allowTies => load('RunningStartComponent.js', ['setParams', 'up
 // The pair carries no flag of its own -- it only prunes on a house, where the
 // two readings coincide -- so it loads once, and every pair pool below runs it
 // against truth clues derived under both readings all the same.
-const pairMod = load('RunningStartPairComponent.js', ['setParams', 'update'])
+const pairMod = load('RunningStartPairComponent.js', ['setParams', 'update', 'validate'])
 
 // The truth clue for one line of digits: the length of the first run read
 // inward. A tie ends the run when ties are hidden and continues it when they
@@ -102,7 +102,7 @@ for (const allowTies of [false, true]) {
   for (const [kind, n, digitsOf] of pools) {
     const name = digitsOf ? 'bare, tied' : kind
     const r = fuzzLine(`line, ${name.padEnd(10)} ${tag}`, { allowTies, kind, n, iters: 20000, digitsOf })
-    lineBad += r.violations + r.validateRejects
+    lineBad += r.failures
     if (r.fired === 0) lineSilent++
   }
 }
@@ -124,7 +124,7 @@ for (const allowTies of [false, true]) {
       return { truth, seed: seeder, houses: [line], parts: [{ mod, inst }], note: `clue ${clue}` }
     }
   })
-  realBad += r.violations + r.validateRejects
+  realBad += r.failures
 }
 
 console.log('line component:', lineBad + realBad, 'violations,', lineSilent, 'pools that never pruned')
@@ -221,7 +221,7 @@ for (const allowTies of [false, true]) {
   const bareRun = fuzzPair(`pair, bare, tied ${tag}`, {
     allowTies, kind: 'bare', digitsOf: () => makeTieLine(7), iters: 10000
   })
-  pairBad += [mountainRun, houseRun, bareRun].reduce((n, r) => n + r.violations + r.validateRejects, 0)
+  pairBad += [mountainRun, houseRun, bareRun].reduce((n, r) => n + r.failures, 0)
   pairUnimodal += mountainRun.unimodal
   pairHouseFired += mountainRun.fired + houseRun.fired
   pairBareFired += bareRun.fired
