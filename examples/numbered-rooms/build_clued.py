@@ -3,7 +3,7 @@
 # for the one given), plus its original-wrapper twin for a same-board timing
 # comparison. Mirrors build_original.py; see docs/real-app-timing.md.
 #
-#   uv run --with lzstring examples/numbered-rooms/build_clued.py [--out DIR]
+#   uv run --with lzstring examples/numbered-rooms/build_clued.py
 #
 # SOLUTION is the real app's own solved grid for PUZZLE_LINK.txt (read from
 # the SVG cell text after clicking "Find all solutions and valid candidates"
@@ -14,7 +14,6 @@
 # (rows/columns/boxes all different), so a stale or mistyped SOLUTION string
 # fails loud here instead of silently shipping a wrong clue.
 
-import argparse
 import pathlib
 import sys
 
@@ -107,11 +106,6 @@ def build(out_dir=HERE):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument(
-        "--out", help="directory to write into (default: next to this script)"
-    )
-    args = p.parse_args()
-    build(pathlib.Path(args.out) if args.out else HERE)
+    build()
     print("wrote PUZZLE_LINK_clued.txt")
     print("wrote PUZZLE_LINK_clued_original.txt")
