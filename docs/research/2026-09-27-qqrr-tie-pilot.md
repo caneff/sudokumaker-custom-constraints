@@ -132,7 +132,8 @@ print(f"C hinted with grid 0 -> {status} in {secs} s {got}", flush=True)
 **Outcome, 3 seeds: 0 found, 3 timed out, 0 proven infeasible.** A capped
 empty run is not a proof, and this one says nothing about whether a grid exists.
 It shows that `--warm-from` runs end to end and that, at this cap, warming from
-a *different* hunt's grid did not reproduce the 2026-09-22 find.
+the r1c5 grids of other corners and windows (same hunt, not this block's own) did not
+reproduce the 2026-09-22 find.
 
 **Run.** `finders/qqrr/hunt/tie_finder.py --out docs/research/2026-10-03-qqrr-tie-warm-demo
 --seeds 0:3 --workers 1 --hunt r1c5 --ten r7c7 --corner tr --timeout 300 --q34
