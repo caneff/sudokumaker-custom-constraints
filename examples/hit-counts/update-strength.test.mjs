@@ -17,7 +17,7 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { CLUES as SIDE_CLUES, cell, LINES as SIDE_LINES, CANDS, HOUSES } from './side-fixture.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES } from './side-fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -218,8 +218,6 @@ function stateOf (start, houses) {
   installGlobals(0, 4)
   const side = load('SideHitMatchingComponent.js', ['setParams', 'update'])
   const line = load('HitCountsComponent.js', ['setParams', 'update'])
-  const CLUES = SIDE_CLUES
-  const LINES = SIDE_LINES
   const start = new Map()
   for (const c of CLUES) start.set(c, [1])
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) start.set(cell(r, c), CANDS[r][c])
