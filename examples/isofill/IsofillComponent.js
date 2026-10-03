@@ -98,19 +98,18 @@ function perimeter (side) {
 // FILLOMINO):
 // #include ../_shared/dominator.js
 
-// The next visit stamp. `mask` and `targets` are Uint32Array, so a counter
-// that reached 2^32 would store 0 and every cell would read as unvisited; clear
-// the array and start over one step before that.
+// The visit stamp guard (shared with FILLOMINO):
+// #include ../_shared/stamp.js
+
+// The next visit stamp, on `mask`.
 function nextStamp (instance) {
-  if (instance.stamp >= 0xFFFFFFFF) { instance.mask.fill(0); instance.stamp = 0 }
-  return ++instance.stamp
+  return (instance.stamp = bumpStamp(instance.mask, instance.stamp))
 }
 
-// The same wrap guard for the target stamp `reachesAll` reads: a stale one
-// would read as "no targets" and report a cut that is not there.
+// The same for the target stamp `reachesAll` reads: a stale one would read as
+// "no targets" and report a cut that is not there.
 function nextTargetStamp (instance) {
-  if (instance.targetStamp >= 0xFFFFFFFF) { instance.targets.fill(0); instance.targetStamp = 0 }
-  return ++instance.targetStamp
+  return (instance.targetStamp = bumpStamp(instance.targets, instance.targetStamp))
 }
 
 // How far a walk from `starts` spreads: the cells reachable in at most `depth`
