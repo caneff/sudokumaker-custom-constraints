@@ -14,13 +14,16 @@
 // house of {0..8}. Ungated, the rule removes that true clue value and the run
 // goes red.
 //
-// A second pass runs the component over real grids, where both clues of a line
-// are true together, and a third names the mirrored-pair exclusion by running
-// one state as a house and again as bare.
+// A second pass runs every component over real grids, where both clues of a
+// line are true together, all to one fixpoint as the solver runs them, and a
+// third names the mirrored-pair exclusion by running one state as a house and
+// again as bare.
 //
 // The side hit matching reads a whole side at once, so its corpus is whole
-// grids only. It forces hits as well as forbidding them, which is why it gets
-// its own gate probe: while the clue ring's 0 is still live on the inner grid a
+// grids only. Run after the joints it sees only states they have already
+// narrowed, so it is fuzzed on freshly seeded grids by itself as well. It
+// forces hits as well as forbidding them, which is why it gets its own gate
+// probe: while the clue ring's 0 is still live on the inner grid a
 // position is not a house of 1..n, and a component that pruned there would take
 // true values out.
 
@@ -175,14 +178,13 @@ function reshuffle (grid, bh, bw) {
 // The whole-grid corpus: each shipped size, its committed grid first and then
 // band/stack shuffles of it, every cell seeded with a random candidate superset
 // that keeps its true value, and the grid's rows and columns declared as its
-// houses. Every component a board carries over those lines runs together to
-// one fixpoint, as the solver runs them: one joint component per pair of
-// opposite clues, and the side hit matching over each of the four sides. The
-// side hit matching reads a whole side at once, so it only ever meets whole
-// grids. It forces hits as well as forbidding them, so an assignment bug takes
-// a true value straight out.
+// houses. `joints` adds one joint component per pair of opposite clues and
+// `sides` adds the side hit matching over each of the four sides; the parts
+// chosen run together to one fixpoint, joints first, as the solver runs them.
+// The side hit matching forces hits as well as forbidding them, so an
+// assignment bug takes a true value straight out.
 const ITERS = 4000
-function fuzzGrids () {
+function fuzzGrids (label, { joints, sides }) {
   const sum = { tests: 0, failures: 0, fired: 0 }
   for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
     const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
@@ -193,7 +195,7 @@ function fuzzGrids () {
       ...Array.from({ length: n }, (_, i) => lineCells('L', i)),
       ...Array.from({ length: n }, (_, i) => lineCells('T', i))
     ]
-    const r = fuzzSoundness(`whole grids ${file}`, {
+    const r = fuzzSoundness(`${label} ${file}`, {
       iters: ITERS,
       draw: iter => {
         const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
@@ -206,14 +208,14 @@ function fuzzGrids () {
         const lineSeed = seeder(1, n)
         const clueSeed = seeder(0, n)
         const parts = []
-        for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
+        for (const [sa, sb] of joints ? [['L', 'R'], ['T', 'B']] : []) {
           for (let i = 0; i < n; i++) {
             const inst = { cells: [clueCell(sa, i), clueCell(sb, i), ...lineCells(sa, i)] }
             joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
             parts.push({ mod: joint, inst })
           }
         }
-        for (const side of ['L', 'R', 'T', 'B']) {
+        for (const side of sides ? ['L', 'R', 'T', 'B'] : []) {
           const clues = Array.from({ length: n }, (_, i) => clueCell(side, i))
           const lines = Array.from({ length: n }, (_, i) => lineCells(side, i))
           const inst = { cells: [...clues, ...lines.flat()] }
@@ -229,8 +231,10 @@ function fuzzGrids () {
   }
   return sum
 }
-const grids = fuzzGrids()
+const grids = fuzzGrids('joint and side hit matching, whole grids', { joints: true, sides: true })
 console.log('joint and side hit matching, whole grids:', grids.tests, 'tests,', grids.failures, 'failures,', grids.fired, 'states pruned')
+const sideGrids = fuzzGrids('side hit matching alone, whole grids', { joints: false, sides: true })
+console.log('side hit matching alone, whole grids:', sideGrids.tests, 'tests,', sideGrids.failures, 'failures,', sideGrids.fired, 'states pruned')
 
 // A state run by the component under test, set against a rival's leftover
 // candidates on the same state: `draw` also returns `rivalLeft`, the total the
@@ -592,9 +596,9 @@ const ok = staleWakeLost === null && staleWakeBites &&
   full.failures === 0 && bare.failures === 0 && house.failures === 0 && zero.failures === 0 &&
   lineFull.failures === 0 && lineBare.failures === 0 && lineHouse.failures === 0 && lineZero.failures === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
-  grids.failures === 0 && exclusion.failures === 0 && permutation.failures === 0 && sideFull.failures === 0 && sideBare.failures === 0 &&
+  grids.failures === 0 && sideGrids.failures === 0 && exclusion.failures === 0 && permutation.failures === 0 && sideFull.failures === 0 && sideBare.failures === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
-  grids.fired > 0 && exclusion.beaten > 0 && permutation.beaten > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
+  grids.fired > 0 && sideGrids.fired > 0 && exclusion.beaten > 0 && permutation.beaten > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
   retestOk && wrongSetOk && latchOk && sideLatchBad === null && validateOk && sideGateOk && sideValidateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
 finishHarness(ok)
