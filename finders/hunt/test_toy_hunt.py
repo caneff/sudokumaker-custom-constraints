@@ -118,9 +118,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # A second hunt started on an --out whose first hunt is still running
     # must refuse and leave the first one's output alone. The first hunt is
     # slow and the second starts only once the first's lock exists, so the
-    # overlap is certain: two plain simultaneous launches may legitimately
-    # both exit 0 when one finishes before the other starts (the second then
-    # resumes a finished hunt), so that race proves nothing (#669).
+    # overlap is certain.
     out = Path(tmp) / "hunt-out"
     argv = [sys.executable, str(SLOW_FINDER), "--out", str(out), "--seeds", "0:400"]
     first = subprocess.Popen(

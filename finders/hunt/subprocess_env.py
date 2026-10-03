@@ -7,8 +7,10 @@ success-directed test fails whenever the box happens to be busy. Every
 subprocess launch that expects the hunt to actually run uses `success_env`
 so the gate always reads idle regardless of the real machine; a test that
 means to exercise the gate itself passes its own `HUNT_FAKE_LOAD1` through
-`overrides` instead. An override value of `None` deletes that key instead of
-setting it -- the way to ask for a truly unset var rather than an empty one."""
+`overrides` instead. A test file that runs hunts in-process, or launches one
+with no `env=`, calls `pin_idle_load` once at import (#669). An override
+value of `None` deletes that key instead of setting it -- the way to ask for
+a truly unset var rather than an empty one."""
 
 import os
 

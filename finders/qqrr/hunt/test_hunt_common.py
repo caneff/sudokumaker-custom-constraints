@@ -103,10 +103,12 @@ with tempfile.TemporaryDirectory() as d:
     assert hc.logged_grids(log) == [G2]
 
 # tie_line and grid_line are what parse_hits reads back.
-grid = [[(r + c) % 9 + 1 for c in range(9)] for r in range(9)]
+# Not symmetric about the diagonal, so a grid line that swapped rows and
+# columns would differ from the literal.
+grid = [[(r * 3 + c) % 9 + 1 for c in range(9)] for r in range(9)]
 assert hc.grid_line(grid) == (
-    "  grid 123456789/234567891/345678912/456789123/567891234"
-    "/678912345/789123456/891234567/912345678"
+    "  grid 123456789/456789123/789123456/123456789/456789123"
+    "/789123456/123456789/456789123/789123456"
 )
 line = hc.tie_line((2, 1), (2, 4), 1234567, [1, 2], [3, 4], 12)
 assert line == "  tie r3c2 1|2 = r3c5 3|4, number 1234567, QQRR 12", line

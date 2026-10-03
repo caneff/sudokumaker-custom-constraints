@@ -90,8 +90,8 @@ check(
     result2c.status == "not_unique",
 )
 # `a != b` has the witnesses (0, 1) and (1, 0) over (a, b); read through
-# `[a, b.Not()]` they are (0, 0) and (1, 1). Resolving the negated literal
-# to its raw variable instead would give (0, 1) and (1, 0).
+# `[a, b.Not()]` they are (0, 0) and (1, 1), so both coordinates of each
+# witness are equal. Reading the raw variable instead would not give that.
 check(
     "the witnesses read the negated literal's value, not the raw variable's",
     result2c.first is not None
