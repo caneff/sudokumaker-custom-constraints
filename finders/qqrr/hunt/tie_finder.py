@@ -70,10 +70,20 @@ def read_warm_hits(dirs, hunt):
     directories `dirs`, in the order read."""
     hits = []
     for d in dirs:
-        for line in (Path(d) / "examples.jsonl").read_text().splitlines():
-            rec = json.loads(line)
-            if rec["hunt"] == hunt:
-                hits.append((rec["ten"], rec["corner"], rec["grid"]))
+        path = Path(d) / "examples.jsonl"
+        for i, line in enumerate(path.read_text().splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+                if rec["hunt"] == hunt:
+                    ten, corner, grid = rec["ten"], rec["corner"], rec["grid"]
+                    if len(grid.split("/")) != N:
+                        raise ValueError(grid)
+                    hits.append((ten, corner, grid))
+            except (ValueError, KeyError, TypeError, AttributeError):
+                print(f"tie_finder: {path}:{i} is not a hunt example", file=sys.stderr)
+                sys.exit(2)
     return hits
 
 

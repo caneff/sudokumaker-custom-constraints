@@ -157,4 +157,30 @@ with tempfile.TemporaryDirectory() as d:
     check("a hunt with a window off the board refuses (exit 2)", r.returncode == 2)
     check("the refused hunt wrote no run.json", not (out / "run.json").exists())
 
+with tempfile.TemporaryDirectory() as d:
+    flags = ["--hunt", "r1c5", "--ten", "r7c7", "--corner", "bl", "--timeout", "1"]
+    flags += ["--seeds=0:1", "--q34"]
+    good = json.dumps(record(GOOD)) + "\n"
+    for name, text in [
+        ("a half-written last line", good + '{"grid": "4367'),
+        ("a record of another finder", good + '{"x": 1}\n'),
+        (
+            "a grid with no slashes",
+            good + json.dumps(record(GOOD.replace("/", ""))) + "\n",
+        ),
+    ]:
+        src = Path(d) / name.replace(" ", "-")
+        src.mkdir()
+        (src / "examples.jsonl").write_text(text)
+        r = run_cli(
+            "--out", str(Path(d) / ("o-" + src.name)), *flags, "--warm-from", str(src)
+        )
+        check(f"--warm-from over {name} refuses (exit 2)", r.returncode == 2)
+        check(f"... naming the file and line ({name})", "examples.jsonl:2" in r.stderr)
+    src = Path(d) / "blank"
+    src.mkdir()
+    (src / "examples.jsonl").write_text(good + "\n")
+    r = run_cli("--out", str(Path(d) / "o-blank"), *flags, "--warm-from", str(src))
+    check("--warm-from tolerates a trailing blank line", r.returncode == 0)
+
 sys.exit(0 if ok else 1)
