@@ -9,6 +9,7 @@ so a missing required file or a bad link name fails the gate.
 
 | File | Holds |
 | --- | --- |
+| `example.toml` | The example's traits, read by `check_layout.py` and `just time` (see [The manifest](#the-manifest)) |
 | `README.md` | What the example builds, how to regenerate it, the `## Timing` row |
 | `main.js` | The SudokuMaker constraint definition for the **local** link (paste target); registers the line component per drawn group |
 | `main-global.js` | The definition for the **global** link (paste target); builds frame lines from the grid, registers the line component plus the global-only components. Never reads `input.groups` (#194). It does not build the frame itself: it splices in the one shared reader (below) |
@@ -26,8 +27,8 @@ so a missing required file or a bad link name fails the gate.
 every example except one with no local/global duality: it ships `main.js`
 alone. The reason is either a whole-grid or fixed-geometry constraint with no
 drawn groups to split a local lane from, or groups drawn but no global lane,
-the clues being typed into them. `examples/_shared/check_layout.py` owns the
-members as `lanes = "single"` in the manifest.
+the clues being typed into them. Each such example's manifest says
+`lanes = "single"`, and `check_layout.py` reads it.
 
 ## The manifest
 

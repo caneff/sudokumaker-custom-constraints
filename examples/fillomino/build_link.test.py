@@ -15,7 +15,7 @@ from build_link import RULE, TIMED_COMPONENT, build, check
 
 if __name__ == "__main__":
     # fillomino is not sudoku, so its rules text must not carry the sudoku
-    # sentence -- the NO_RULES_PREFIX half of the layout exemption (#305)
+    # sentence -- the `rules_prefix = "none"` half of the layout exemption (#305)
     assert not RULE.startswith("Normal sudoku rules apply"), (
         "fillomino rules must not open with the sudoku sentence"
     )

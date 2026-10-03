@@ -267,7 +267,7 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
 - **Ring not filled end to end** ✓ — 14 of 32 ring cells hold a given. See
   criterion 3 below for what the ring means on this board.
 - **Rules prefix** — **exempt**, and deliberately: fillomino is not sudoku, so
-  the example is in `NO_RULES_PREFIX` and `build_link.test.py` asserts the
+  its `example.toml` says `rules_prefix = "none"` and `build_link.test.py` asserts the
   rules text does *not* open with the sudoku sentence.
 
 1. **Uniqueness proven on the shipped board** ✓ — `generate.py unique` on this
