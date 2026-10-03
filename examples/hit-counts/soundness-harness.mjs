@@ -20,7 +20,7 @@
 // again as bare.
 //
 // The side hit matching reads a whole side at once, so its corpus is whole
-// grids only. Run after the pairComps it sees only states they have already
+// grids only. Run after the pair components it sees only states they have already
 // narrowed, so it is fuzzed on freshly seeded grids by itself as well. It
 // forces hits as well as forbidding them, which is why it gets its own gate
 // probe: while the clue ring's 0 is still live on the inner grid a
@@ -180,7 +180,7 @@ function reshuffle (grid, bh, bw) {
 // that keeps its true value, and the grid's rows and columns declared as its
 // houses. `pairComps` adds one pair component per pair of opposite clues and
 // `sides` adds the side hit matching over each of the four sides; the parts
-// chosen run together to one fixpoint, pairComps first, as the solver runs them.
+// chosen run together to one fixpoint, pair components first, as the solver runs them.
 // The side hit matching forces hits as well as forbidding them, so an
 // assignment bug takes a true value straight out.
 const ITERS = 4000

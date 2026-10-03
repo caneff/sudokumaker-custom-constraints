@@ -10,8 +10,8 @@
 // the pair update must leave a subset of what they left, cell for cell. A line
 // clued at one end keeps the per-line component, compared against itself. So is
 // the side sum. Two deterministic cases pin the inferences the pair component
-// adds: a mirrored pair can never give one A hit and one B hit, which the pair
-// component's count-only cap cannot reach; and on a line holding 1..n once each
+// adds: a mirrored pair can never give one A hit and one B hit, which the opposite-pair
+// floor's count-only cap cannot reach; and on a line holding 1..n once each
 // the permutation sweep drops a digit no permutation can put in the cell, which
 // the case sweep keeps.
 

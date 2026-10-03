@@ -525,7 +525,7 @@ The pair component's floor is the per-line and opposite-pair components it repla
 together at the commit that last shipped them: on random states it must never
 leave a candidate they removed. Two deterministic cases pin the inferences it
 adds. The first is the mirrored pair that can never give one A hit and one B hit,
-which the pair component's count-only cap cannot reach; it runs on a line with a
+which the opposite-pair floor's count-only cap cannot reach; it runs on a line with a
 live `0`, five digits over four cells, so the permutation sweep stands down and the
 exclusion is what the case reaches. The second is the permutation sweep's own: the
 `n = 4` line above, where the sweep drops a digit that the case sweep at the
