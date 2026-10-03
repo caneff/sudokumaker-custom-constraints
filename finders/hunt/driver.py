@@ -508,7 +508,9 @@ def _can_repair_renders(finder):
 def _render_repair_gap(finder):
     """Why `_repair_renders` cannot regenerate this finder's missing picture,
     or None when it can: the one place the refusal conditions live, so the
-    warning `_warn_unrepaired_renders` prints cannot drift from them."""
+    warning `_warn_unrepaired_renders` prints cannot drift from them. A
+    finder with no render has no pictures, so that warning stays silent
+    before it reads the gap."""
     if getattr(finder, "render", None) is None:
         return "the finder has no render"
     if _is_stateful(finder) and (
@@ -539,11 +541,12 @@ def _warn_unrepaired_renders(finder, out, progress_events):
     no pictures to miss."""
     if getattr(finder, "render", None) is None:
         return
+    gap = _render_repair_gap(finder)
     missing = sum(1 for _ in _missing_example_renders(out, progress_events))
-    if missing:
+    if gap and missing:
         print(
             f"hunt: {missing} example render(s) left unrepaired -- "
-            f"{_render_repair_gap(finder)} for render repair on resume "
+            f"{gap} for render repair on resume "
             "(protocol.py, render)",
             file=sys.stderr,
         )
