@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, shuffle, violates, total, fixpoint } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, columnsOf, shuffle, violates, total, fixpoint } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -54,7 +54,7 @@ const seeder = makeSeeder(rnd, ALL)
 
 // Once with the columns declared houses (the shipped board), once with none
 // (every column can repeat, so only the per-cell rule runs).
-const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => row * N + col))
+const COLUMNS = columnsOf(N)
 const ITERS = 5000
 for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (no houses)', []]]) {
   let bad = 0
@@ -82,7 +82,7 @@ for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, 
   installGlobals(lo, hi)
   const digits = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
   const cells = Array.from({ length: width * width }, (_, i) => i)
-  const columns = Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
+  const columns = columnsOf(width)
   const flatmated = column => column.every((d, i) => d !== 5 || column[i - 1] === 1 || column[i + 1] === 9)
   const drawColumn = () => {
     for (;;) {

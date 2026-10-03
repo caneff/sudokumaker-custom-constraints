@@ -95,19 +95,21 @@ def circles_comment(extras, spec):
     return "\n\n".join(parts)
 
 
-def read_board(puzzle_path):
-    """(grid, givens) from a gen JSON: `grid` the solved rows as strings,
-    `givens` {(row, column): digit}."""
+def read_gen(puzzle_path):
+    """(grid, givens, extras, spec) from one read of a gen JSON: `grid` the
+    solved rows as strings, `givens` {(row, column): digit}, `extras` the
+    `Extras` it asks for (no "circles" key is the plain flatmate board), `spec`
+    the raw JSON."""
     spec = json.loads(pathlib.Path(puzzle_path).read_text())
     givens = {(r, c): int(spec["grid"][r][c]) for r, c in spec["clues"]}
-    return spec["grid"], givens
+    extras = Extras(tuple(spec.get("circles", ())), spec.get("diagonals", False))
+    return spec["grid"], givens, extras, spec
 
 
-def read_extras(puzzle_path):
-    """The `Extras` a gen JSON asks for, plus its raw spec: no "circles" key is
-    the plain flatmate board."""
-    spec = json.loads(pathlib.Path(puzzle_path).read_text())
-    return Extras(tuple(spec.get("circles", ())), spec.get("diagonals", False)), spec
+def read_board(puzzle_path):
+    """(grid, givens) from a gen JSON, for a caller that needs no extras."""
+    grid, givens, _extras, _spec = read_gen(puzzle_path)
+    return grid, givens
 
 
 def circles_constraints(circles, keep_comments=False):
@@ -148,8 +150,7 @@ def build(
     proving it has exactly the solution the gen JSON records. `keep_comments`
     builds the annotated link: the embedded code keeps its comments. Returns
     (link, doc, number of givens)."""
-    grid, givens = read_board(puzzle_path)
-    extras, spec = read_extras(puzzle_path)
+    grid, givens, extras, spec = read_gen(puzzle_path)
     prove_recorded(givens, grid, extras)
     # a cell holds a value only when it is a given: a non-given value ships as
     # an entered digit and the recipient opens a solved board

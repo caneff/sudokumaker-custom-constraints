@@ -334,6 +334,10 @@ export function makePuzzle (truth, seed, { houses = [] } = {}) {
 // kinds: none for a bare line, the line itself for a house or a full house.
 export const housesOf = (kind, cells) => (kind === 'bare' ? [] : [cells])
 
+// The columns of a square board of `width`, each a list of row-major cell ids
+// top to bottom: the houses a column-rule example declares.
+export const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
+
 // Run a component's update until a pass removes nothing, at most MAX_PASSES
 // times.
 const MAX_PASSES = 20

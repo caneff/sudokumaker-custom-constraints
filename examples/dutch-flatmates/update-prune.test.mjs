@@ -13,7 +13,7 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import assert from 'assert'
-import { installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
+import { columnsOf, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { load } = makeIo(HERE)
@@ -26,7 +26,7 @@ const at = (row, col) => row * N + col
 
 // The nine columns, each a house the app reports cannot repeat. `board()`
 // declares them unless a test hands it none: the repeat-column cases below.
-const COLUMNS = Array.from({ length: N }, (_, col) => Array.from({ length: N }, (_, row) => at(row, col)))
+const COLUMNS = columnsOf(N)
 
 // A full-candidate board; `edit(cand)` narrows cells before the call.
 function board (edit = () => {}, houses = COLUMNS) {
@@ -195,7 +195,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
 // the per-cell rule alone. Each case declares every column all-different, so
 // only the digits and the column length tell the cases apart.
 {
-  const columnsOf = width => Array.from({ length: width }, (_, col) => Array.from({ length: width }, (_, row) => row * width + col))
   // A square board of `width` with digits lo..hi; `edit(cand)` narrows cells.
   function small (width, lo, hi, edit) {
     installGlobals(lo, hi)

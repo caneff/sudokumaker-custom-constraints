@@ -25,6 +25,7 @@ from build_link import (
     TIMED_COMPONENT,
     build,
     check,
+    read_gen,
 )
 from framebuild import GRID_BACKEND, NO_RING_RULES_PREFIX
 from link_codec import decode_puzzle
@@ -32,6 +33,25 @@ from link_swap import swap_build
 from verify import verify
 
 if __name__ == "__main__":
+    # read_gen returns the board and the extras from ONE read of the gen JSON
+    reads = []
+    real_read_text = pathlib.Path.read_text
+
+    def counting_read_text(self, *args, **kwargs):
+        reads.append(self)
+        return real_read_text(self, *args, **kwargs)
+
+    pathlib.Path.read_text = counting_read_text
+    try:
+        grid, givens, extras, spec = read_gen(HERE / "gen_0g.json")
+    finally:
+        pathlib.Path.read_text = real_read_text
+    assert len(reads) == 1, f"read_gen read the gen JSON {len(reads)} times"
+    raw = json.loads((HERE / "gen_0g.json").read_text())
+    assert grid == raw["grid"] and spec == raw
+    assert givens == {(r, c): int(raw["grid"][r][c]) for r, c in raw["clues"]}
+    assert extras.circles == tuple(raw["circles"]) and extras.diagonals is True
+
     committed = (HERE / "PUZZLE_LINK.txt").read_text().strip()
 
     # the committed link is exactly what the builder writes from gen.json
