@@ -502,7 +502,9 @@ def _validate_stateful(finder):
     has_load, has_save = _state_hooks(finder)
     if has_load == has_save:
         return None
-    have, lack = ("load_state", "save_state") if has_load else ("save_state", "load_state")
+    have, lack = (
+        ("load_state", "save_state") if has_load else ("save_state", "load_state")
+    )
     print(
         f"hunt: refusing to run -- the finder has {have} but not {lack}; "
         "a stateful finder needs both",
