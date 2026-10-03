@@ -253,13 +253,13 @@ const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === fla
 // ---- One pass: update reads each cell's candidate mask at most once per call ----
 // (The scan reads masks, never getCandidates: pooling.test.mjs holds that.)
 const onePass = makePuzzle(rows, () => ALL)
-let reads = 0
 const readsPerCell = new Map()
 const getMask = onePass.getCandidatesBitMask.bind(onePass)
-onePass.getCandidatesBitMask = c => { reads++; readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
+onePass.getCandidatesBitMask = c => { readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
 const onePassInst = {}
 mod.setParams(onePassInst, CELLS)
 Array.from(mod.update(onePassInst, onePass))
+const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
 const full = makePuzzle(bent, (c, v) => [v])
