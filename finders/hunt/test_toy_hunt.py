@@ -131,9 +131,7 @@ with tempfile.TemporaryDirectory() as tmp:
         while not (out / "progress.jsonl").exists() and time.time() < deadline:
             time.sleep(0.01)
         check("the first hunt is running", first.poll() is None)
-        second = subprocess.run(
-            argv, capture_output=True, text=True, env=success_env()
-        )
+        second = subprocess.run(argv, capture_output=True, text=True, env=success_env())
         check(
             f"a second hunt on a running hunt's --out exits 2 "
             f"(exit {second.returncode}, stderr: {second.stderr[-300:]})",
