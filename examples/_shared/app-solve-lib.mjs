@@ -31,8 +31,8 @@ export function parseArgs (argv) {
       options: { 'ring-clues': { type: 'boolean' }, 'after-logical': { type: 'boolean' } },
       allowPositionals: true
     })
-  } catch {
-    throw new Error(USAGE)
+  } catch (e) {
+    throw new Error(`${USAGE}\n${e.message}`)
   }
   const [linkFile, repsArg, iconArg] = parsed.positionals
   if (!linkFile) throw new Error(USAGE)

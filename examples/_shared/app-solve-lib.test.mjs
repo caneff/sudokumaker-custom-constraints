@@ -3,7 +3,7 @@
 // examples/_shared/app-solve-lib.test.mjs
 
 import assert from 'assert'
-import { execFileSync } from 'child_process'
+import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
@@ -296,12 +296,21 @@ assert.strictEqual(parseVersion('no footer here'), null)
 
 // The pattern is written once. A probe that waits for a verdict imports
 // VERDICT_PATTERN (or calls solveInApp); one that spells the alternation out
-// again drifts the next time the app words a verdict differently. Every
-// tracked script that spells a verdict phrase is named here.
+// again drifts the next time the app words a verdict differently. Any tracked
+// script that spells the not-unique or timeout verdict phrases is named here.
 {
-  const files = execFileSync('git', ['grep', '-lE', 'stopped \\(solving', '--', '*.mjs', '*.js', '*.py'],
-    { cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).split('\n').filter(Boolean)
-  assert.deepStrictEqual(files, ['examples/_shared/app-solve-lib.mjs'])
+  const files = execFileSync('git', ['grep', '-lEi', 'multiple solutions|stopped \\(solving', '--', '*.mjs', '*.js', '*.py'],
+    { cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).split('\n').filter(Boolean).sort()
+  assert.deepStrictEqual(files, ['examples/_shared/app-solve-lib.mjs', 'examples/_shared/app-solve-lib.test.mjs'])
+}
+
+// An unknown flag stops app-solve.mjs itself, not only parseArgs: the CLI
+// exits non-zero with the usage line before any browser opens.
+{
+  const run = spawnSync('node', [fileURLToPath(new URL('./app-solve.mjs', import.meta.url)), 'link.txt', '--after-logic'], { encoding: 'utf8' })
+  assert.notStrictEqual(run.status, 0)
+  assert.match(run.stderr, /usage: app-solve.mjs/)
+  assert.match(run.stderr, /after-logic/, 'the message names the flag that was refused')
 }
 
 // ---- ALREADY_ENTERED: the phrase marksRejected reads ----

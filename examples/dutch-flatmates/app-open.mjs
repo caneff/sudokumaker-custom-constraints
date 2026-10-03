@@ -28,15 +28,15 @@ await withApp({ live }, async app => {
   page.on('pageerror', e => console.error('PAGEERROR', e.message))
 
   let opening, title, rules
-  const readOpening = async page => {
-    opening = await readGrid(page)
-    title = await page.title()
+  const readOpening = async openPage => {
+    opening = await readGrid(openPage)
+    title = await openPage.title()
 
     // The rules text shows on the play page, which "Playtest" opens in a new tab.
     // The recorded app holds no play page (replay aborts it), so only --live reads it.
     rules = null
     if (live) {
-      const [play] = await Promise.all([page.context().waitForEvent('page'), page.getByText('Playtest', { exact: true }).click()])
+      const [play] = await Promise.all([openPage.context().waitForEvent('page'), openPage.getByText('Playtest', { exact: true }).click()])
       await play.waitForLoadState('networkidle')
       await play.waitForTimeout(1500)
       rules = (await play.evaluate(() => document.body.innerText)).match(/Normal sudoku rules apply\.[^\n]*/)?.[0] ?? null
@@ -44,7 +44,7 @@ await withApp({ live }, async app => {
     }
   }
 
-  const { first, unique, sum, verdict, version } = await solveInApp(page, link, { afterOpen: readOpening, ringClues: true, name: linkFile })
+  const { first, unique, sum, verdict, version } = await solveInApp(page, link, { afterOpen: readOpening, ringClues: true, deterministic: false, name: linkFile })
   if (verdict === '?') throw new Error('no verdict from the app')
   const solved = await readGrid(page)
 

@@ -30,6 +30,12 @@ jobs:
       - name: Install JS dev tools (StandardJS)
         run: npm ci
 
+      # app-session.test.mjs drives Chromium against the recorded app; only the
+      # leg that runs `check` runs it.
+      - name: Install Chromium (Playwright)
+        if: matrix.recipe == 'check'
+        run: npx playwright install --with-deps chromium
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:

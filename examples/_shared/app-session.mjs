@@ -1,6 +1,7 @@
 // Open a puzzle in the real SudokuMaker app and read its verdict -- written
-// once, for the timing driver (app-solve.mjs) and every probe that needs the
-// app's own answer. What counts as a verdict is app-solve-lib.mjs's
+// once, for the timing driver (app-solve.mjs) and the probes that open a
+// fresh page per solve. app-strip.mjs keeps its own loop: it solves many times
+// on one page, which solveInApp, reloading the link each call, cannot do. What counts as a verdict is app-solve-lib.mjs's
 // (ADR-0001: the app's readout is the only verdict).
 //
 //   await withApp({ live: false }, async app => {
@@ -24,7 +25,8 @@ const VIEWPORT = { width: 1400, height: 900 }
 // takes over a reused context's second page and the Tools tab never renders,
 // and fresh state keeps repeated solves independent. `app.closePage(page)`
 // closes that page's context, which is what flushes a HAR recording;
-// withApp closes any left open.
+// withApp closes any left open when `fn` returns, and leaves them when it
+// throws, so a failed run never overwrites a good recording with a partial one.
 export async function withApp ({ live = false } = {}, fn) {
   const browser = await chromium.launch()
   const contexts = new Map()
@@ -42,9 +44,10 @@ export async function withApp ({ live = false } = {}, fn) {
     }
   }
   try {
-    return await fn(app)
-  } finally {
+    const result = await fn(app)
     for (const context of contexts.values()) await context.close()
+    return result
+  } finally {
     await browser.close()
   }
 }
@@ -66,7 +69,7 @@ async function checkStripped (page, name) {
   const entered = countEnteredValues(cells)
   if (entered > 0) {
     throw new Error(`${name}: ${entered} entered values on the board; strip it first ` +
-      '(probe_link.py strip), or pass --ring-clues for an edge-clue puzzle')
+      '(probe_link.py strip), or pass ringClues (--ring-clues) for an edge-clue puzzle')
   }
 }
 
@@ -76,6 +79,8 @@ async function checkStripped (page, name) {
 //                 that proves uniqueness (see app-solve.mjs's header).
 //   afterLogical  run the app's logical solver to its fixpoint first.
 //   ringClues     the board may carry entered values (edge-clue puzzles).
+//   deterministic turn off "Non-deterministic solve" first (default true); a
+//                 probe that reads an answer, not a time, can skip the clicks.
 //   timeoutMs     how long to wait for a verdict; none read is verdict '?'
 //                 with null times, as parseReadout reports it.
 //   name          what to call the link in an error message.
@@ -83,12 +88,12 @@ async function checkStripped (page, name) {
 //                 anything is clicked: for a probe that reads the opening board.
 // Returns parseReadout's { first, unique, sum, verdict } plus the app's
 // `version` and the page `text` the readout came from.
-export async function solveInApp (page, link, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, timeoutMs = 300000, name = 'link', afterOpen } = {}) {
+export async function solveInApp (page, link, { iconName = 'ShowCandidates', afterLogical = false, ringClues = false, deterministic = true, timeoutMs = 300000, name = 'link', afterOpen } = {}) {
   await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(1200)
   if (afterOpen) await afterOpen(page)
   if (!ringClues) await checkStripped(page, name)
-  await makeDeterministic(page)
+  if (deterministic) await makeDeterministic(page)
   // The stripped-board check above already ran, so the only marks the search
   // can meet are the ones this pass makes.
   if (afterLogical) await solveLogically(page)

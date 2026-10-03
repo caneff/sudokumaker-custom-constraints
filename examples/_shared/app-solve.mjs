@@ -50,17 +50,17 @@ const { linkFile, reps, iconName, ringClues, afterLogical } = parseArgs(process.
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 const rows = await withApp({ live: false }, async app => {
-  const rows = []
+  const results = []
   for (let k = 0; k < reps; k++) {
     // A fresh context per rep keeps the reps independent (see withApp).
     const page = await app.newPage()
     // A component under measurement may console.log('[probe] ...') counters
     // (calls, skips); relay only those lines, the site's own logging stays out.
     page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
-    rows.push(await solveInApp(page, link, { iconName, afterLogical, ringClues, name: linkFile }))
+    results.push(await solveInApp(page, link, { iconName, afterLogical, ringClues, name: linkFile }))
     await app.closePage(page) // flushes a HAR recording
   }
-  return rows
+  return results
 })
 
 const mode = afterLogical ? 'after-logical' : 'cold'
