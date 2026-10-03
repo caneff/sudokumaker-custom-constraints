@@ -4,7 +4,9 @@
 hunt found (explorer preset "33 at r1c5, r1c4 < 8, QR 10 at r7c7 ... bl #1")
 and three corruptions of it; then a fresh hunt with a solve cap too short to
 find anything, for the config run.json records and the empty seed's reason.
-One CP-SAT worker; about ten seconds in all.
+One CP-SAT worker; about ten seconds in all. Also the `--warm-from` sources the
+finder refuses (a malformed example) or tolerates (a blank line), and a resume
+after the source changed (#643); the warm start's own checks are test_tie_warm.py.
 
     uv run finders/qqrr/hunt/test_tie_finder.py
 """
@@ -164,6 +166,7 @@ with tempfile.TemporaryDirectory() as d:
     for name, text in [
         ("a half-written last line", good + '{"grid": "4367'),
         ("a record of another finder", good + '{"x": 1}\n'),
+        ("a grid with a short row", good + json.dumps(record(GOOD[:-1])) + "\n"),
         (
             "a grid with no slashes",
             good + json.dumps(record(GOOD.replace("/", ""))) + "\n",

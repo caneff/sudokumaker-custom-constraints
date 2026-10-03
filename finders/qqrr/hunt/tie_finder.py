@@ -28,6 +28,7 @@ The driver's flags (`--out`, `--seeds`, `--workers`, ...) are its own
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -80,7 +81,7 @@ def read_warm_hits(dirs, hunt):
                 rec = json.loads(line)
                 if rec["hunt"] == hunt:
                     ten, corner, grid = rec["ten"], rec["corner"], rec["grid"]
-                    if len(grid.split("/")) != N:
+                    if not re.fullmatch(r"\d{9}(/\d{9}){8}", grid):
                         raise ValueError(grid)
                     hits.append((ten, corner, grid))
             except (ValueError, KeyError, TypeError, AttributeError):
