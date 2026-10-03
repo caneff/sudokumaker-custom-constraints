@@ -58,7 +58,7 @@ def test_keeps_block_comments_when_asked_to():
     assert kept == "const x = 1\n", repr(kept)
 
 
-def test_keeps_every_comment_when_asked_to():
+def test_keeps_comments_and_blank_lines_when_asked_to():
     # keep_comments=True is the annotated-link mode (#433): line and block
     # comments both survive, drop_blocks is ignored, and blank lines stay so
     # the commentary reads in paragraphs (#695). The one comment that goes is
@@ -407,7 +407,7 @@ if __name__ == "__main__":
     test_drops_a_marked_comment_that_trails_code()
     test_drops_a_block_comment()
     test_keeps_block_comments_when_asked_to()
-    test_keeps_every_comment_when_asked_to()
+    test_keeps_comments_and_blank_lines_when_asked_to()
     test_keep_comments_drops_the_lint_directive_and_the_blank_after_it()
     test_keep_comments_keeps_blank_lines_between_functions()
     test_keep_comments_prune_leaves_no_doubled_blank_line()

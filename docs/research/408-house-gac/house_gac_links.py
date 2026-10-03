@@ -28,8 +28,8 @@ def with_filter(doc, component, backend=None, keep_comments=False):
     by `backend`, or by house-gac.js with its constructor renamed to `component`'s
     stem when no backend is given.
 
-    `keep_comments=True` embeds both files' code with every comment kept
-    (only blank lines dropped) instead of the usual full strip -- the
+    `keep_comments=True` embeds both files' code with every comment and
+    blank line kept (bar the lint directive) instead of the usual full strip -- the
     annotated-link path (#433)."""
     name = pathlib.Path(component).stem
     if backend is None:

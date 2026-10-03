@@ -50,7 +50,7 @@
 # close on its line, an unterminated string, template or regex, and a "/" whose
 # reading (division or regex) depends on more than the token before it, all stop
 # the build naming the line. `keep_comments=True` never scans -- every line
-# survives as written, but the directive's.
+# survives as written, bar the lint directive and the blank line after it.
 
 import pathlib
 import re
@@ -60,12 +60,12 @@ import re
 # comment.
 _INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
 
-# A top-level function declaration: no leading whitespace, so a helper nested
-# inside another function (indented) is never a prune candidate.
 # The repo's lint directive: a block comment opening a line, which the annotated
 # mode drops (the plain mode drops every comment anyway).
 _LINT_DIRECTIVE = "/* eslint-disable"
 
+# A top-level function declaration: no leading whitespace, so a helper nested
+# inside another function (indented) is never a prune candidate.
 _FUNC_DECL_RE = re.compile(r"^function\s+([A-Za-z_$][\w$]*)\s*\(")
 
 # Dispatch through a name this strip cannot read: a computed member call
@@ -113,20 +113,20 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
     included = bool(stack)
     out = []
     frames = ()  # open template literals / block comments, carried across lines
-    after_directive = False  # the last line read was a dropped lint directive
+    after_lint = False  # the last line read was a dropped lint directive
     for line in src.splitlines():
         if keep_comments:
             if line.startswith(_LINT_DIRECTIVE):
-                after_directive = True
+                after_lint = True
                 continue
-            if after_directive and not line.strip():
-                after_directive = False
+            if after_lint and not line.strip():
+                after_lint = False
                 continue
-            after_directive = False
+            after_lint = False
         directive = _INCLUDE_RE.match(line)
         if directive:
-            # An include that minifies to nothing appends nothing: every blank
-            # line is dropped, an included file's included.
+            # An include that minifies to nothing appends nothing (in the plain
+            # mode every blank line is dropped, an included file's included).
             out.extend(
                 _include(
                     directive.group(1), drop_blocks, base_dir, stack, keep_comments
