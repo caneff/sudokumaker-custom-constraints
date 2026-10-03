@@ -10,6 +10,7 @@
 #   uv run --with lzstring examples/numbered-rooms/build_link.test.py
 
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -83,7 +84,7 @@ def check_refresh_rejects_another_board():
         # reason does not pass as the refusal. Either guard's message will do:
         # the shared swap_main refuses first, `rebuild`'s own guard behind it.
         assert run.returncode == 2, (run.returncode, run.stdout, run.stderr)
-        assert "--board" in run.stderr, run.stderr
+        assert re.search(r"error: .*--board", run.stderr), run.stderr
         assert copy.read_text() == before, "--refresh rewrote the board it was given"
 
 
