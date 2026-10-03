@@ -1012,4 +1012,28 @@ with tempfile.TemporaryDirectory() as tmp:
         not (out / "verified.jsonl").exists(),
     )
 
+with tempfile.TemporaryDirectory() as tmp:
+    # #664: a finder with only one of load_state/save_state is refused at
+    # launch, before any hunt file exists. Load-only used to resume by
+    # trimming every event, since nothing ever wrote state.json.
+    import driver as half_driver
+
+    class LoadOnlyFinder(StatefulToyFinder):
+        save_state = None
+
+    class SaveOnlyFinder(StatefulToyFinder):
+        load_state = None
+
+    for label, cls in (
+        ("load_state only", LoadOnlyFinder),
+        ("save_state only", SaveOnlyFinder),
+    ):
+        out = Path(tmp) / f"half-{label.split('_')[0]}"
+        code = half_driver.run(cls(), ["--out", str(out), "--seeds=0:3"])
+        check(f"a finder with {label} is refused at launch (exit 2)", code == 2)
+        check(
+            f"a finder with {label} leaves no hunt file behind",
+            not out.exists() or not any(out.iterdir()),
+        )
+
 sys.exit(0 if ok else 1)
