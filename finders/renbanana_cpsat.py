@@ -209,8 +209,9 @@ class Shadings:
         rm.rectangle_lemma(m, self.choc)
 
         # Banana size cap, structurally, on component labels. Unpinned: the
-        # restriction to "min cell index in the component" is always
-        # available to every member, so it loses nothing.
+        # solver may let two components share a label, but it can always give
+        # each its own least index, so no legal shading is lost; the pin would
+        # only add clauses to a model that has no per-label digit rule.
         lab = rm.banana_labels(m, self.choc, pin=False)
         for ell in range(len(CELLS)):
             covering = [lab[p, ell] for p in CELLS if IDX[p] >= ell]

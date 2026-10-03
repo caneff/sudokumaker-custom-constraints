@@ -1,6 +1,6 @@
 """The shared Renbanana encodings, one behaviour at a time (#663).
 
-    uv run --with ortools finders/renbanana/tools/test_renbanana_model.py
+    uv run finders/renbanana/tools/test_renbanana_model.py
 
 Each encoding is pinned to a small board and the solver's verdict read back:
 a legal pin must solve, an illegal one must be INFEASIBLE (a proof, not a
@@ -58,6 +58,11 @@ def test_sudoku():
     m.add(d[0, 0] == 4)
     m.add(d[2, 2] == 4)  # same box
     assert status_of(m) == "INFEASIBLE"
+    m, d, _ = digits_and_shading()
+    rm.sudoku(m, d)
+    m.add(d[0, 0] == 4)
+    m.add(d[8, 0] == 4)  # same column
+    assert status_of(m) == "INFEASIBLE"
 
 
 def test_rectangle_lemma():
@@ -107,6 +112,20 @@ def test_whisper_on_a_fixed_shading():
         assert status_of(m) == want, (lo, hi)
 
 
+def test_whisper_on_digits():
+    """Fixed digits: an adjacent pair under 5 apart cannot both be chocolate."""
+    grid = dict.fromkeys(rm.CELLS, 1)
+    grid[4, 4], grid[4, 5], grid[3, 4] = 3, 7, 8
+    for pair, want in (
+        ({(4, 4), (4, 5)}, "INFEASIBLE"),  # 3 and 7: gap 4
+        ({(4, 4), (3, 4)}, "OPTIMAL"),  # 3 and 8: gap 5
+    ):
+        m, _, choc = digits_and_shading()
+        rm.whisper_on_digits(m, choc, grid)
+        pin(m, choc, pair)
+        assert status_of(m) == want, pair
+
+
 def test_maximal_rectangle_literals():
     """Chocolate 2x2 inside, banana border: all literals hold; a chocolate
     border cell breaks it."""
@@ -147,24 +166,124 @@ def test_banana_labels():
     assert held[0, 1] == held[1, 1] == held[1, 0]  # banana neighbours share it
 
 
-def test_encodings_have_one_definition():
-    """The hunt and the probes reuse these objects, they do not carry copies."""
-    import max_house_circles
-    import probe_circle_pattern
-    import probe_inverted
-    import prove_pair
-    import renbanana_cpsat
+def test_banana_labels_pin_and_sharing():
+    """Banana cells (0,1) and (0,2) only; every other cell is chocolate."""
+    banana = {(0, 1), (0, 2)}
+    chocolate = set(rm.CELLS) - banana
+    for pin_labels, want in ((True, "INFEASIBLE"), (False, "OPTIMAL")):
+        # Label 0 belongs to (0,0), which is chocolate: only an unpinned model
+        # lets (0,1) take it.
+        m, _, choc = digits_and_shading()
+        lab = rm.banana_labels(m, choc, pin=pin_labels)
+        pin(m, choc, chocolate)
+        m.add(lab[(0, 1), 0] == 1)
+        assert status_of(m) == want, pin_labels
+    # Adjacent banana cells cannot hold two different labels.
+    m, _, choc = digits_and_shading()
+    lab = rm.banana_labels(m, choc)
+    pin(m, choc, chocolate)
+    m.add(lab[(0, 1), 1] == 1)
+    m.add(lab[(0, 2), 2] == 1)
+    assert status_of(m) == "INFEASIBLE"
 
-    for mod in (
-        renbanana_cpsat,
-        probe_inverted,
-        prove_pair,
-        probe_circle_pattern,
-        max_house_circles,
-    ):
-        assert mod.CELLS is rm.CELLS, mod.__name__
-        assert getattr(mod, "ADJACENT", rm.ADJACENT) is rm.ADJACENT, mod.__name__
-    assert not hasattr(renbanana_cpsat, "neighbours")  # rv.neighbours is the one
+
+SHARED = (
+    "sudoku",
+    "rectangle_lemma",
+    "whisper",
+    "whisper_on_shading",
+    "whisper_on_digits",
+    "banana_labels",
+    "forbid_banana_rectangles",
+    "forbid_dead_chocolate",
+)
+
+
+def calls_while(build):
+    """Which shared encodings `build()` calls through the model module."""
+    seen = set()
+    real = {name: getattr(rm, name) for name in SHARED}
+
+    def spy(name):
+        def wrapped(*a, **k):
+            seen.add(name)
+            return real[name](*a, **k)
+
+        return wrapped
+
+    for name in SHARED:
+        setattr(rm, name, spy(name))
+    try:
+        build()
+    finally:
+        for name in SHARED:
+            setattr(rm, name, real[name])
+    return seen
+
+
+def test_encodings_have_one_definition():
+    """Each builder reaches the shared encodings it needs through the model
+    module. A builder that stops calling one -- because it carries its own
+    copy again -- fails here. The builders and the encodings they use:"""
+    import max_house_circles as mh
+    import probe_circle_pattern as pc
+    import probe_inverted as pi
+    import prove_pair as pp
+    import renbanana_cpsat as rc
+
+    path = sorted(DATA_ROOT.glob("candidates*/cand_*.json"))[0]
+    grid, is_choc, _ = rv.load(path)
+    house = mh.house("row5")
+    wanted = {
+        "rc.Shadings": (
+            lambda: rc.Shadings(),
+            {"rectangle_lemma", "banana_labels", "forbid_dead_chocolate"},
+        ),
+        "rc.digit_model": (
+            lambda: rc.digit_model(is_choc),
+            {"sudoku", "whisper_on_shading"},
+        ),
+        "pi.random_grid": (lambda: pi.random_grid(0, 5, 1), {"sudoku"}),
+        "pi.Shadings": (
+            lambda: pi.Shadings(grid),
+            {
+                "rectangle_lemma",
+                "whisper_on_digits",
+                "banana_labels",
+                "forbid_dead_chocolate",
+            },
+        ),
+        "pp.JointPair": (
+            lambda: pp.JointPair([(2, 2, 0, 0), (2, 3, 4, 4)], renban=False),
+            {"sudoku", "rectangle_lemma", "whisper", "forbid_banana_rectangles"}
+            | {"forbid_dead_chocolate"},
+        ),
+        "pp.JointPair.labels": (
+            lambda: pp.JointPair([(2, 2, 0, 0), (2, 3, 4, 4)]),
+            {"banana_labels"},
+        ),
+        "pc.build": (
+            lambda: pc.build([]),
+            {
+                "sudoku",
+                "rectangle_lemma",
+                "whisper",
+                "forbid_banana_rectangles",
+                "banana_labels",
+            },
+        ),
+        "mh.shading_model": (
+            lambda: mh.shading_model(house),
+            {"rectangle_lemma", "forbid_banana_rectangles"},
+        ),
+        "mh.digits_on": (
+            lambda: mh.digits_on(is_choc, house, 0, 1, 1),
+            {"sudoku", "whisper_on_shading"},
+        ),
+    }
+    for name, (build, need) in wanted.items():
+        got = calls_while(build)
+        assert need <= got, f"{name} no longer calls {sorted(need - got)}"
 
 
 if __name__ == "__main__":
@@ -172,8 +291,10 @@ if __name__ == "__main__":
     test_rectangle_lemma()
     test_whisper()
     test_whisper_on_a_fixed_shading()
+    test_whisper_on_digits()
     test_maximal_rectangle_literals()
     test_forbid_banana_rectangles()
     test_banana_labels()
+    test_banana_labels_pin_and_sharing()
     test_encodings_have_one_definition()
     print("OK")

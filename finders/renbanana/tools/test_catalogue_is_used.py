@@ -26,9 +26,8 @@ FAIL = []
 
 @contextlib.contextmanager
 def poisoned(name, replacement):
-    """Swap one catalogue reader for the duration of a call site's run. A call
-    site that still reads the catalogue changes its answer; one that dropped
-    it does not -- which is what a source-text grep could never tell."""
+    """Swap one catalogue reader for the duration of a run. A call site that
+    reads the catalogue changes its answer; one that does not keeps it."""
     real = getattr(R, name)
     setattr(R, name, replacement)
     try:
@@ -69,7 +68,7 @@ def stage_1_forbids_dead_placements():
             got[label] = solve_status(model.m)
     check(
         "stage 1 forbids catalogue-dead placements",
-        got["real"] != "INFEASIBLE" and got["2x2 dead"] == "INFEASIBLE",
+        got["real"] in ("OPTIMAL", "FEASIBLE") and got["2x2 dead"] == "INFEASIBLE",
         str(got),
     )
 
@@ -115,18 +114,17 @@ def stage_3_domains_and_circles_come_from_the_catalogue():
     )
 
 
-def whisper_is_checkerboard():
-    """Two adjacent chocolate cells land on opposite sides of 5."""
+def whisper_holds():
+    """Two adjacent chocolate cells differ by 5 or more in stage 3's model."""
     is_choc = pool_shading()
-    m, d, _ = R.digit_model(is_choc)
-    pairs = [(p, q) for p, q in R.ADJACENT if is_choc[p] and is_choc[q]]
-    if not pairs:
-        return False
-    p, q = pairs[0]
-    # Both on the low side contradicts the whisper; the model must say so.
-    m.add(d[p] <= 4)
-    m.add(d[q] <= 4)
-    return solve_status(m) == "INFEASIBLE"
+    p, q = next((p, q) for p, q in R.ADJACENT if is_choc[p] and is_choc[q])
+    verdicts = {}
+    for lo, hi in ((6, 4), (9, 4)):  # 6/4 sits on opposite sides of 5, gap 2
+        m, d, _ = R.digit_model(is_choc)
+        m.add(d[p] == lo)
+        m.add(d[q] == hi)
+        verdicts[lo, hi] = solve_status(m)
+    return verdicts[6, 4] == "INFEASIBLE" and verdicts[9, 4] != "INFEASIBLE"
 
 
 def check(name, ok, detail=""):
@@ -144,7 +142,7 @@ def main():
     stage_1_forbids_dead_placements()
     stage_1_circleable_spots_follow_the_catalogue()
     stage_3_domains_and_circles_come_from_the_catalogue()
-    check("the whisper holds on adjacent chocolate cells", whisper_is_checkerboard())
+    check("stage 3 states the whisper gap", whisper_holds())
 
     # Soundness: nothing the catalogue rules out appears in a grid we accepted.
     cells = dead = circles = unpredicted = 0

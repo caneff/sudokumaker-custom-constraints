@@ -15,11 +15,11 @@ One worker by default and one process, ever: this box is shared (AGENTS.md).
 Why the model is sharper here than stage 1. With the digits known, the whisper
 stops being a digit-stage question and becomes a plain clause — an adjacent
 pair differing by less than 5 simply cannot both be chocolate. The renban rule
-stops being lazy too: component labels already exist in stage 1 for the size
-cap, and with fixed digits a label plus a digit is enough to state both halves
-of renban exactly (at most one cell of each digit per label; no gap between two
-digits present in a label). Only the banana-non-rectangle rule stays lazy, cut
-one pattern at a time exactly as stage 1 does.
+becomes a filter on the component labels: with fixed digits a label plus a
+digit states both halves of renban (at most one cell of each digit per label;
+no gap between two digits present in a label). It is not exact, because two
+components can share a label; `Shadings.offenders` catches those on the
+solution and cuts them, as it does a rectangular banana group (rule 4).
 
 So an INFEASIBLE from this model is a proof: that solved grid carries no legal
 Renbanana shading at all.

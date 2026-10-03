@@ -37,7 +37,7 @@ def pin_shading(house_name, is_choc, seconds=120):
 
     sizes is {cell: measured size} on OPTIMAL/FEASIBLE and None otherwise. The
     status is returned so a caller can tell a proof (INFEASIBLE) from a
-    timeout (UNKNOWN): both used to come back as a bare None.
+    timeout (UNKNOWN).
     """
     target = mhc.house(house_name)
     m, choc, size, _ = mhc.shading_model(target)

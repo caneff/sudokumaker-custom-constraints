@@ -22,15 +22,19 @@ What is exact here and what is lazy:
   rectangle. So rule 3 alone carries it.
 - Banana size cap: exact, structurally, on component labels.
 - Whisper: exact -- two adjacent chocolate cells differ by 5 or more.
-- Renban: exact, and this is the expensive half. Per label, the member digits
-  are distinct and span a run: max - min == size - 1. It cannot be lazy the way
-  rule 4 is, because a component shape that is illegal with one set of digits
-  is legal with another, so a shape-level cut would be unsound.
-- Banana non-rectangle: lazy, exactly as stage 1 does it. A rectangular banana
-  group is illegal whatever its digits, so forbidding that one pattern is
-  sound forever.
+- Renban: a filter, and this is the expensive half. Per label, the member
+  digits are distinct and span a run: max - min == size - 1. It cannot be lazy
+  the way rule 4 is, because a component shape that is illegal with one set of
+  digits is legal with another, so a shape-level cut would be unsound. Two
+  disjoint banana components may still share a label (`banana_labels`), so a
+  hit can break renban; `rv.check` re-checks every hit and `violations` says so.
+- Banana non-rectangle: exact, up front -- one clause per rectangle placement
+  forbidding it as a maximal banana group. A rectangular banana group is
+  illegal whatever its digits. `solve` still cuts any rectangular group a
+  solution shows, as a guard.
 
-An INFEASIBLE is therefore a proof for that geometry.
+Everything above is exact or a relaxation, so an INFEASIBLE is a proof for that
+geometry.
 
     uv run --with ortools finders/renbanana/tools/prove_pair.py \
         --procs 20 --seconds 120 --limit 50 --out docs/research/renbanana/pair-proof
@@ -141,9 +145,8 @@ class JointPair:
                         )
                         <= 1
                     )
-        # Rule 4 outright, up front, instead of one cut at a time: every cut
-        # would cost a full joint solve, and the measured loop ran a median of
-        # 31 per geometry -- which is why 20 of 40 geometries timed out.
+        # Rule 4 outright, up front: a cut per solution would cost a full
+        # joint solve each.
         rm.forbid_banana_rectangles(m, choc)
         self._forbid_dead_chocolate()
         self._fives_are_lonely()

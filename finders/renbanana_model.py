@@ -1,9 +1,11 @@
 """Renbanana puzzle rules as CP-SAT constraints, shared by the hunt and probes.
 
-The rules are in `renbanana/FEASIBILITY.md`. Each encoding that a proof leans
-on lives here once, so a fix reaches every user: `renbanana_cpsat` (the hunt)
-and the probes `probe_inverted`, `prove_pair`, `probe_circle_pattern` and
-`max_house_circles` import them and keep only what they do differently.
+The rules are in `renbanana/FEASIBILITY.md`. The encodings below live here
+once, so a fix reaches every user: `renbanana_cpsat` (the hunt) and the probes
+`probe_inverted`, `prove_pair`, `probe_circle_pattern` and `max_house_circles`
+import them and keep only what they do differently. The counting and hunting
+scripts (`count_circled_pairs`, `count_circled_sets`, `hunt_circled_pair`) do
+not use this module yet and carry their own sudoku and whisper code.
 
 An encoding is either exact or a relaxation (never excludes a legal grid), and
 its docstring says which: an INFEASIBLE from a model built of these is a proof
@@ -65,10 +67,8 @@ def whisper_on_shading(m, d, is_choc):
     """Rule 5 on a fixed shading: each chocolate adjacency differs by >= 5."""
     for p, q in ADJACENT:
         if is_choc[p] and is_choc[q]:
-            gap = m.new_int_var(-8, 8, f"g{p}{q}")
-            m.add(gap == d[p] - d[q])
             mag = m.new_int_var(0, 8, f"a{p}{q}")
-            m.add_abs_equality(mag, gap)
+            m.add_abs_equality(mag, d[p] - d[q])
             m.add(mag >= 5)
 
 
@@ -109,10 +109,6 @@ def maximal_chocolate_lits(choc, h, w, r0, c0):
     ]
 
 
-def forbid_chocolate_rectangle(m, choc, h, w, r0, c0):
-    m.add_bool_or([lit.negated() for lit in maximal_chocolate_lits(choc, h, w, r0, c0)])
-
-
 def chocolate_spot(m, choc, h, w, r0, c0, name):
     """One bool that is true only if that rectangle is a maximal chocolate
     group. Implication one way, so the shading never forces it true."""
@@ -122,15 +118,17 @@ def chocolate_spot(m, choc, h, w, r0, c0, name):
     return here
 
 
-def forbid_dead_chocolate(m, choc, is_dead, placements=PLACEMENTS):
+def forbid_dead_chocolate(m, choc, is_dead):
     """Forbid every placement `is_dead(h, w, r0, c0)` calls dead as a maximal
     chocolate rectangle. What is dead is the caller's catalogue question
     (`renbanana_cpsat.fillings_at`); the clause is the same everywhere.
     Returns how many placements it forbade."""
     count = 0
-    for h, w, r0, c0 in placements:
+    for h, w, r0, c0 in PLACEMENTS:
         if is_dead(h, w, r0, c0):
-            forbid_chocolate_rectangle(m, choc, h, w, r0, c0)
+            m.add_bool_or(
+                [lit.negated() for lit in maximal_chocolate_lits(choc, h, w, r0, c0)]
+            )
             count += 1
     return count
 
@@ -164,9 +162,11 @@ def banana_labels(m, choc, pin=True):
     two disjoint banana components can still share a label, and then a per-label
     rule (renban's "distinct and consecutive") lands on their union, a gap in
     one plugged by a digit from the other. Neither setting closes that. The
-    callers that need it closed do it themselves -- `probe_circle_pattern` with
-    a rank chain to the owner, `probe_inverted` and `prove_pair` with lazy cuts
-    on the solution. A component can always take its own least index, so no
+    callers that need it closed do it themselves: `probe_circle_pattern` with a
+    rank chain to the owner, `probe_inverted` with lazy cuts on the solved
+    shading (`Shadings.offenders`). `prove_pair` leaves it open and re-checks
+    each hit with `renbanana_verify.check`, so its INFEASIBLE is a proof and
+    its hits are candidates. A component can always take its own least index, so no
     legal grid is excluded and an INFEASIBLE stays a proof.
     """
     lab = {
