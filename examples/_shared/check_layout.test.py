@@ -651,10 +651,11 @@ if __name__ == "__main__":
         assert "BarComponent" in violations[0]
 
     # a link that declares its interior rows and columns in the shared frame
-    # backend, not in the document, still satisfies the house check: the
-    # cage form cannot be named and the named houses cost nothing once their
-    # ids are coerced, so framebuilt boards declare them in JS. The guard matches the committed frame-rowcol.js byte for byte,
-    # so a stale or hand-edited copy is still caught.
+    # backend, not in the document, still satisfies the house check: the cage
+    # form cannot be named and the named houses cost nothing once their ids are
+    # coerced, so framebuilt boards declare them in JS. The guard matches the
+    # committed frame-rowcol.js byte for byte, so a stale or hand-edited copy
+    # is still caught.
     framed = _link(houses="none", frame_backend=True)
     with example(contents={"PUZZLE_LINK.txt": framed}) as (root, _):
         violations = check_tree(root)

@@ -1,8 +1,9 @@
-# The houseless board isofill and fillomino share: a custom n x n board with
-# no rows, columns or boxes, built from scratch out of a gen JSON (the grid and
+# The houseless board isofill and fillomino share: a custom n x n board with no
+# rows, columns or boxes, built from scratch out of a gen JSON (the grid and
 # its clue cells) and the example's main.js and one component. There is no
-# template -- such a board is small enough to write out. What differs between the two examples is the
-# digit range and the rules text, so each supplies those and nothing else.
+# template -- such a board is small enough to write out. What differs between
+# the two examples is the digit range and the rules text, so each supplies
+# those and nothing else.
 
 import argparse
 import dataclasses

@@ -1,8 +1,10 @@
 # Lexical scan for `new <Name>Component` registrations in a link's code: its
-# backend's, and for `check_layout` its shipped components' too. Shared by `framebuild.Lane.check` (checked at build time, before a link
-# is committed) and `check_layout.check_components` (checked at sweep time,
-# over already-committed links) so the two do not carry their own copies of
-# the same regex.
+# backend's, and for `check_layout` its shipped components' too. Shared by
+# `framebuild.Lane.check` (checked at build time, before a link is committed)
+# and `check_layout.check_components` (checked at sweep time, over
+# already-committed links) so the two do not carry their own copies of the
+# same regex. stdlib `re` only, no ortools: `check_layout.py` imports this
+# module under `--with lzstring` alone.
 
 import functools
 import pathlib
@@ -60,11 +62,12 @@ def mismatch(shipped, backend_code):
     `backend_code` registers (the backend's code, plus the shipped components'
     when the caller passes them), and return `(unshipped, dead)`, each sorted.
 
-    Unshipped: registered but not shipped -- it fails inside the app, where
-    the author never sees it. Dead: shipped but never registered -- dead
-    weight the recipient still reads as part of the rule. SudokuMaker's
-    built-ins are subtracted first: the app provides those classes, so a
-    backend that constructs one ships no file for it. The one comparison `framebuild.Lane.check` asserts at build time and
+    Unshipped: registered but not shipped -- it fails inside the app, where the
+    author never sees it. Dead: shipped but never registered -- dead weight the
+    recipient still reads as part of the rule. SudokuMaker's built-ins are
+    subtracted first: the app provides those classes, so a backend that
+    constructs one ships no file for it. The one comparison
+    `framebuild.Lane.check` asserts at build time and
     `check_layout.check_components` sweeps over committed links.
     """
     registered = registered_components(backend_code) - builtin_components()
