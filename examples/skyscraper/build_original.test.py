@@ -42,7 +42,6 @@ if __name__ == "__main__":
                     f"n={n}: {name} does not reproduce byte-identically"
                 )
 
-    # --out must not have touched the shipped files themselves
     for name, before in shipped.items():
         assert (HERE / name).read_bytes() == before, f"{name} was touched by --out"
         assert (HERE / name).stat().st_mtime_ns == stamped[name], (

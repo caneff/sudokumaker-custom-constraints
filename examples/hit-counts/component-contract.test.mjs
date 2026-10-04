@@ -12,7 +12,6 @@ import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
-// ---- Side sum wakes on the lines its gate reads ----
 // The app runs `update` only after a change to a cell `getAffectedCells`
 // listed. The gate opens when the last perpendicular line loses its 0, which
 // is a line cell's change, not a clue's: a component listing the clues alone
@@ -33,17 +32,15 @@ const { load } = makeIo(HERE)
   const affected = sideSum.getAffectedCells(SIDE, N, PERP)
   const inst = { cells: affected }
   sideSum.setParams(inst, SIDE, N, PERP)
-  // A solver that wakes the component only when a listed cell has changed.
   const { wake } = makeWaker(sideSum, inst, p, affected)
-  wake() // the load pass: the 0 is live on line 0, so the gate is shut
+  wake()
   assert.deepEqual([...p._cand.get(SIDE[0])], [1, 5], 'the gate is shut while line 0 holds a 0')
-  p._cand.get(PERP[0][0]).delete(0) // line 0 becomes a house of 1..9: the gate opens
+  p._cand.get(PERP[0][0]).delete(0)
   wake()
   assert.deepEqual([...p._cand.get(SIDE[0])], [1], 'the line change that opens the gate wakes the side sum')
   console.log('hit-counts side sum: a line cell opening the gate wakes the component')
 }
 
-// ---- No component defines `initialize` ----
 // The app wraps a custom `initialize` and then runs the base one, which runs
 // `update` once (docs/research/bundle-api-reference.md, "*initialize"). A body
 // that runs `update`, or any rule `update` already runs, does that work twice
@@ -56,7 +53,6 @@ const { load } = makeIo(HERE)
   console.log('hit-counts initialize: none defined; the base runs update at load')
 }
 
-// ---- The pair component removes with raw masks ----
 // The app's removal builders take a bitmask as readily as a DigitSet
 // (docs/research/bundle-api-reference.md, "removeCandidatesFromCell"), so
 // building a SudokuDigitSet per removal is an allocation nothing reads. With
@@ -104,8 +100,7 @@ const { load } = makeIo(HERE)
   }
 }
 
-// ---- The per-line reverse bound and side sum remove with raw masks too ----
-// Same contract as the pair component's (#628, S4): with a SudokuDigitSet
+// Same contract as the pair component's: with a SudokuDigitSet
 // that throws, the per-line clue's [forced, possible] bound and side sum's
 // bounds propagation must still make their removals.
 {
@@ -115,7 +110,6 @@ const { load } = makeIo(HERE)
   const real = globalThis.SudokuDigitSet
   globalThis.SudokuDigitSet = { from () { throw new Error('SudokuDigitSet built') } }
   try {
-    // A bare line pinned to 2 1 4 3 has no hit, so the clue keeps only 0.
     const C = 100
     const line = [0, 1, 2, 3]
     const truth = { [C]: 0, 0: 2, 1: 1, 2: 4, 3: 3 }
@@ -125,8 +119,6 @@ const { load } = makeIo(HERE)
     Array.from(perLine.update(inst, p))
     assert.deepEqual([...p._cand.get(C)], [0], 'the reverse bound leaves the clue at 0')
 
-    // Every line a house of 1..9 and every clue but the first pinned to 1:
-    // the side's bound forces the first to 1.
     const N = 9
     const SIDE = Array.from({ length: N }, (_, i) => 200 + i)
     const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
@@ -144,7 +136,6 @@ const { load } = makeIo(HERE)
   console.log('hit-counts per-line and side sum raw masks: removals with no SudokuDigitSet built')
 }
 
-// ---- A forced hit is one keep-only change ----
 // Pinning a cell to its target is `filterCandidatesInCell(1 << target, cell)`:
 // one change, no candidate list to read and filter first. The state is the
 // side the update-strength test pins (update-strength.test.mjs, "side hit
@@ -158,7 +149,6 @@ const { load } = makeIo(HERE)
   for (const c of CLUES) truth[c] = 1
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
   const seed = c => (CLUES.includes(c) ? [1] : CANDS[Math.floor(c / 4)][c % 4])
-  // Record every removal builder a component calls, then let it apply.
   const spied = () => {
     const p = makePuzzle(truth, seed, { houses: HOUSES })
     const calls = []
@@ -189,7 +179,6 @@ const { load } = makeIo(HERE)
     'the per-line rule pins its one possible hit with one keep-only change')
   console.log('hit-counts forced hits: one filterCandidatesInCell per pinned cell, side and per-line')
 
-  // ---- A backtrack makes the side deduce again ----
   // The side skips a state it has already swept. After a sweep, and a state
   // with a position missing a digit (not swept at all), the search backtracks
   // to the state before the first sweep: the side must make the same four
@@ -199,7 +188,7 @@ const { load } = makeIo(HERE)
   side.setParams(im, CLUES, LINES)
   Array.from(side.update(im, m.p))
   assert.equal(pins(m.calls).length, 4, 'the first sweep pins the diagonal')
-  for (const l of LINES) m.p._cand.get(l[3]).delete(4) // position 3 no longer holds a 4
+  for (const l of LINES) m.p._cand.get(l[3]).delete(4)
   m.calls.length = 0
   Array.from(side.update(im, m.p))
   assert.deepEqual(m.calls, [], 'a position missing a digit is not swept')
@@ -208,7 +197,6 @@ const { load } = makeIo(HERE)
   assert.equal(pins(m.calls).length, 4, 'after the backtrack the side pins the diagonal again')
   console.log('hit-counts side matching: a backtrack makes the side deduce again')
 
-  // ---- The missing-digit exit forgets the last sweep ----
   // The memo hashes which digits are live at each position and the clue masks,
   // not the rest of a cell's candidates. Sweep, reach a position missing a
   // digit, then backtrack to the state the sweep left with digit 2 put back on
@@ -221,7 +209,7 @@ const { load } = makeIo(HERE)
   Array.from(side.update(ifr, f.p))
   const swept = new Map(LINES.flat().map(c => [c, new Set(f.p._cand.get(c))]))
   for (const l of LINES) f.p._cand.get(l[3]).delete(4)
-  Array.from(side.update(ifr, f.p)) // the missing-digit exit
+  Array.from(side.update(ifr, f.p))
   for (const [c, cands] of swept) f.p._cand.set(c, new Set(cands))
   f.p._cand.get(cell(0, 0)).add(2)
   f.calls.length = 0
@@ -230,7 +218,6 @@ const { load } = makeIo(HERE)
     'the restored swept state is swept again: cell (0, 0) is pinned once more')
   console.log('hit-counts side matching: the missing-digit exit forgets the last sweep')
 
-  // ---- A forced hit already in place yields nothing ----
   // Line 0's cell at position 0 already holds only its target: the side still
   // forces that edge, and a pin there would be a change that changes nothing.
   const q = spied()
@@ -243,7 +230,6 @@ const { load } = makeIo(HERE)
   console.log('hit-counts side matching: a forced hit already in place yields nothing')
 }
 
-// ---- The pair component reads each line cell once on an unchanged state ----
 // A call that finds its memo unchanged does no sweep, so what it costs is the
 // reads. The component reads each line mask once and hands it to the
 // signature; lineKind keeps its own read (the shared gate reads the cells
@@ -259,8 +245,8 @@ const { load } = makeIo(HERE)
     const p = makePuzzle(truth, c => (c >= 100 ? [0, 1, 2] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), { houses: kind === 'bare' ? [] : [LINE] })
     const inst = { cells: [100, 101, ...LINE] }
     pairComp.setParams(inst, 100, 101, LINE)
-    Array.from(pairComp.update(inst, p)) // sweeps and memoises
-    Array.from(pairComp.update(inst, p)) // settles on a state its memo names
+    Array.from(pairComp.update(inst, p))
+    Array.from(pairComp.update(inst, p))
     const reads = new Map()
     const real = p.getCandidatesBitMask
     p.getCandidatesBitMask = c => { reads.set(c, (reads.get(c) || 0) + 1); return real(c) }
@@ -271,7 +257,6 @@ const { load } = makeIo(HERE)
   console.log('hit-counts pair: a memo hit reads each line cell at most twice')
 }
 
-// ---- validate reads the cell list the app already built ----
 // The app stores `getAffectedCells`'s result as `instance.cells` before
 // `setParams` runs (docs/research/bundle-api-reference.md, the custom
 // component wrapper), and calls `validate` on every search node. Rebuilding

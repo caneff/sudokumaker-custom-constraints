@@ -1,29 +1,20 @@
-# Build the RequiredDigits-wrapper comparison boards (#534): the shipped
+# Build the RequiredDigits-wrapper comparison boards: the shipped
 # Outside Sudoku board (PUZZLE_LINK.txt), with "Custom Outside Sudoku"
 # replaced by RequiredDigitsWrapperComponent.js -- a wrapper that idles while
 # its clue is blank, then swaps itself for a required-digits rule over the
-# clue's window (docs/gotchas.md #1's edge-clue shape). Only that
+# clue's window (the edge-clue shape of gotcha 1 in docs/gotchas.md). Only that
 # constraint's backend, components and input change; grid, givens and every
 # other constraint are the shipped board's.
 #
-# The two links this writes are not this example's own board -- they exist
-# only to time RequiredDigitsGacComponent in the real app
-# (docs/real-app-timing.md), the way docs/research/required-digits-gac/'s
-# soundness-harness.mjs and bench-required-digits.mjs already do offline --
-# so they, and the component/backend source they are built from, are written
-# and read from that directory, not committed as a PUZZLE_LINK*.txt of this
-# example: examples/_shared/check_layout.py's fixed link-naming convention
-# and its "every shipped component is one the backend registers" check both
-# assume a real example's own board, neither of which this is (the second
-# component here, RequiredDigitsGacComponent, is reachable only through the
-# wrapper's own `customComponents.RequiredDigitsGacComponent`
-# (docs/gotchas.md #1), never `new`'d by the backend itself). This script
-# stays in examples/count-digits-gac/ because a .py file under docs/research/
-# is refused by that gate (check_research_python, #469/#474) -- finder code
-# goes in finders/, and everything else research goes through an example's
-# own build script instead.
-#
-#   uv run examples/count-digits-gac/build_required_digits.py
+# The two links are not this example's own board -- they exist only to time
+# RequiredDigitsGacComponent in the real app (docs/real-app-timing.md) -- so
+# they and their component/backend source live in
+# docs/research/required-digits-gac/, not as a PUZZLE_LINK*.txt here:
+# check_layout.py's link naming and its "every shipped component is one the
+# backend registers" check both assume an example's own board, and
+# RequiredDigitsGacComponent is reached only through the wrapper's
+# `customComponents`, never `new`'d by the backend. The script itself stays
+# here because check_research_python refuses a .py under docs/research/.
 #
 # Writes, into docs/research/required-digits-gac/:
 #   PUZZLE_LINK_required_digits.txt          -- ours: RequiredDigitsGacComponent
@@ -37,9 +28,6 @@
 # so it can never be mistaken for the real Outside Sudoku backend -- does not
 # match. See docs/research/required-digits-gac/ for the reproduce commands
 # and the recorded rows.
-#
-# --out names a directory to write into instead; omitting it keeps the
-# default of docs/research/required-digits-gac/.
 
 import argparse
 import pathlib
@@ -63,10 +51,6 @@ def _backend_code():
 
 
 def _build(base, components):
-    """`base` with "Custom Outside Sudoku"'s backend and components replaced
-    -- everything else, checked against `base` itself, is the shipped
-    board's. Shared tail of build_gac/build_original: only the components
-    list differs between the two swap-target variants."""
     doc = replace_constraint_code(
         base, CONSTRAINT_NAME, backend_code=_backend_code(), components=components
     )
@@ -77,8 +61,6 @@ def _build(base, components):
 
 
 def build_gac(base):
-    """`base` with the wrapper registered alongside RequiredDigitsGacComponent
-    itself, swapped to GAC."""
     host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
     gac_code = minify_file(HERE / "RequiredDigitsGacComponent.js")
     assert host_code and gac_code, "component code empty"
@@ -92,17 +74,12 @@ def build_gac(base):
 
 
 def build_original(base):
-    """`base` with the wrapper's baseline variant -- the built-in
-    RequiredDigitsComponent as the swap target, no second component needed."""
     host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponentBuiltin.js")
     assert host_code, "component code empty"
     return _build(base, [{"type": "code", "name": TIMED_COMPONENT, "code": host_code}])
 
 
 def build(out_dir=RESEARCH_DIR):
-    """Rebuild both derived links into `out_dir`. Reads the shipped
-    PUZZLE_LINK.txt and every source file from its own fixed locations
-    regardless of `out_dir`; only the written links move."""
     base = decode_puzzle((OUTSIDE_SUDOKU / "PUZZLE_LINK.txt").read_text().strip())
     gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
     original_link = write_link(

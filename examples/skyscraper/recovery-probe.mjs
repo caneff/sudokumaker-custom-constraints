@@ -20,25 +20,20 @@
 //
 // MODELLING THE ORIGINAL. The real wrapper calls replaceComponent to swap in the
 // built-in SkyscraperComponent once the clue is pinned; this engine does not model
-// replaceComponent, and SudokuMaker's built-in is not in this repo. So we model the
-// original line as a per-line component gated to fire only when the clue is
-// pinned, which then runs the forward "keep only line candidates that reach k
-// visible" prune the built-in does (`forwardPrune` below). This GIVES the
+// replaceComponent. So we model the original line as a per-line component gated
+// to fire only when the clue is pinned, which then runs a forward "keep only line
+// candidates that reach k visible" prune (`forwardPrune` below). This GIVES the
 // original every per-line deduction for a KNOWN clue. The only differences left
-// are the features under test: blank-clue deduction and two-clue coupling. If
-// the real built-in is WEAKER than this forward pass,
-// the original is slower still, so the comparison is conservative.
-//
-// The generic engine (all-different floor, component loader, fixpoint, DFS search)
-// lives in ../_shared/recovery-lib.mjs, and the frame-probe skeleton (seeding,
-// report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file is the
-// Skyscraper glue only: the original wiring and the visible-count leaf check.
+// are the features under test: blank-clue deduction and two-clue coupling. The
+// built-in's own update (docs/research/humanify-pedagogy/bundle.claude.js,
+// SkyscraperComponent) is only a running digit cap, weaker than this forward
+// pass, so the real original is slower still and the comparison is conservative.
 
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 
 const HERE = import.meta.dirname
 
-// The built-in forward prune for a KNOWN clue k: the digits to drop from each
+// The forward prune for a KNOWN clue k: the digits to drop from each
 // line cell, keeping only candidates on some path whose visible count is k.
 // State (j, m) = buildings visible so far, tallest so far; F[i] reaches forward,
 // C[i] holds the states after cell i from which the suffix can still finish at
@@ -86,8 +81,6 @@ function forwardPrune (puzzle, line, k) {
   }
   return bad
 }
-// The original: one gated per-line component per clued line. Nothing fires while
-// the clue is blank; once pinned, the forward prune stands in for the built-in.
 const gatedLine = {
   setParams (inst, clue, line) { inst.clue = clue; inst.line = line },
   * update (inst, puzzle) {
@@ -105,8 +98,6 @@ function buildOriginal ({ groups }) {
   })
 }
 
-// A full assignment is a real solution only when every line's visible count equals
-// its clue. update prunes toward this but does not reject a completed line itself.
 function validLeaf ({ st, groups }) {
   const visibleCount = line => {
     let cnt = 0; let max = 0
@@ -121,8 +112,6 @@ function validLeaf ({ st, groups }) {
   return true
 }
 
-// A skyscraper line and clue both range over 1..n (you always see at least the
-// first building, at most n).
 makeFrameProbe({
   here: HERE,
   clueRange: n => [1, n],
@@ -130,8 +119,6 @@ makeFrameProbe({
     { file: 'SkyscraperPairComponent.js', names: ['setParams', 'update'], ctorName: 'SkyscraperPairComponent' }
   ],
   blankWord: 'blank',
-  // 'original' — the wrapper ChinStrap shipped (gatedLine above); 'ours' —
-  // main-global.js, one SkyscraperPairComponent per line reading both end clues.
   modes: [
     { key: 'original', label: 'original', build: buildOriginal },
     { key: 'ours', label: 'ours    ' }

@@ -3,8 +3,7 @@
 # 1. Swapping the shipped component back into PUZZLE_LINK.txt reproduces it
 #    byte for byte. What a swap may change is link_swap.test.py's.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`, pass
-#    board_checks.check_local_board under this example's clue rule (#237,
-#    #240).
+#    board_checks.check_local_board under this example's clue rule.
 #
 #   uv run examples/skyscraper/build_link.test.py
 

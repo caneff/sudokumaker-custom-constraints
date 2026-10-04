@@ -1,20 +1,8 @@
-// Soundness fuzz for this example's own use of the shared HouseGacComponent:
-// that main.js registers exactly the 27 houses a plain 9x9 has (9 rows, 9
-// columns, 9 boxes, correctly numbered), and that running all 27 instances
-// together over a real solved grid never removes a cell's TRUE value.
-//
-// HouseGacComponent.js's own soundness (the bitmask GAC math, exact vs a
-// matching-based reference, the interleaved-yield and gate cases) is already
-// proven in examples/_shared/house-gac.test.mjs -- this file does not repeat
-// that. What is new here is the *registration*: this board has no ring to
-// slice off (examples/_shared/house-gac.js assumes one and cannot register
-// this board -- see README, "Why its own backend"), so main.js reads
-// helpers.geometry.getAllRows()/getAllColumns() and puzzle.getRegions() whole.
-// A bug there would register the wrong cells, or too few houses, with no
-// error from the shared component -- it only ever sees whatever cells it is
-// handed.
-//
-//   node examples/house-gac/soundness-harness.mjs
+// Soundness fuzz for this example's registration of the shared
+// HouseGacComponent. The component's own math is proven in
+// examples/_shared/house-gac.test.mjs; what is new here is main.js reading the
+// rows, columns and regions whole (no ring to slice), and a bug there
+// registers the wrong cells or too few houses with no error from the component.
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
@@ -28,10 +16,6 @@ const { rnd } = makeRng(425)
 
 installGlobals(1, 9)
 
-// ---- registration: main.js on a real plain 9x9 ----------------------------
-// helpers.geometry here returns exactly what the app's own geometry helper
-// returns for a 9x9 (row-major ids 0..80), and puzzle.getRegions() the same
-// 3x3 boxes a "Rows & Columns" backend's region constraint declares.
 const N = 9
 const id = (r, c) => r * N + c
 function houses () {
@@ -61,8 +45,6 @@ const names = registered.map(c => c.args[0])
 assert.strictEqual(new Set(names).size, 27, 'house names are not distinct')
 assert.deepStrictEqual([names[0], names[9], names[18]], ['row 1', 'column 1', 'box 1'], 'misnamed')
 
-// A resized geometry (a short row list) must fail loud rather than register a
-// weaker filter silently -- main.js's own guard.
 assert.throws(() => runBackend(SRC, {
   puzzle: { addConstraintComponent: () => {}, getRegions: () => houses().boxes.slice(0, 8) },
   helpers: { geometry: { getAllRows: () => houses().rows, getAllColumns: () => houses().cols } }
@@ -70,8 +52,6 @@ assert.throws(() => runBackend(SRC, {
 
 console.log('registration: 27 houses, correctly named and ordered; short geometry throws')
 
-// ---- full-grid soundness: all 27 houses together, over a real solution ----
-// The shipped grid this example ships (README, "The 81/81 grid").
 const GRID = [
   '265783149',
   '387149562',

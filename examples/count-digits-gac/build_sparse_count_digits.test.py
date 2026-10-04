@@ -1,11 +1,3 @@
-# build_sparse_count_digits.py (#543): the committed sparse board's gen.json is
-# a valid board (scattered non-trivial groups, its own solution obeying the
-# count rule, CP-SAT-unique from its givens), the rebuild reproduces both
-# committed links byte-identically without touching them, and the two links
-# differ only in the one class the backend registers.
-#
-#   uv run examples/count-digits-gac/build_sparse_count_digits.test.py
-
 import json
 import pathlib
 import sys
@@ -73,9 +65,6 @@ def check_board(gen):
 
 
 def check_rule_is_enforced(gen):
-    """The CP-SAT model states the rule: with the whole solution as givens, a
-    group whose counter digit is the count is feasible, and the same group with
-    a digit set that moves the count is not."""
     full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
     g = gen["groups"][0]
     assert count_solutions([g], full) == 1, (
@@ -95,8 +84,6 @@ def check_rule_is_enforced(gen):
 
 
 def check_annotated(gen, plain_doc):
-    """--keep-comments (#567): the annotated link is the candidate's board with
-    the component and backend code kept commented, written alone."""
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp)
         build(out, keep_comments=True)
@@ -112,8 +99,7 @@ def check_annotated(gen, plain_doc):
     component = constraint["components"][0]["code"]
     assert component == minify_file(COMPONENT, keep_comments=True)
     assert constraint["backend"]["code"] == backend_code(gen, CANDIDATE_NAME, True)
-    # same board: only the two code strings differ from the plain candidate link
-    plain_doc = json.loads(json.dumps(plain_doc))  # the caller's stays untouched
+    plain_doc = json.loads(json.dumps(plain_doc))
     plain_c = plain_doc["puzzle"]["constraints"][-1]["definition"]
     plain_c["components"][0]["code"] = component
     plain_c["backend"]["code"] = constraint["backend"]["code"]
@@ -146,7 +132,7 @@ if __name__ == "__main__":
     cand_doc, base_doc = docs
     cand_doc_full = json.loads(json.dumps(cand_doc))
     for d in docs:
-        # a plain 9x9 is a sudoku document (#565): rows and columns come from
+        # a plain 9x9 is a sudoku document: rows and columns come from
         # the app's own rules, so no "Rows & Columns" backend rides along
         assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
         names = [

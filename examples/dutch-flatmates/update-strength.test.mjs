@@ -1,14 +1,3 @@
-// Strength check for DutchFlatmatesComponent.update. Soundness (never remove a
-// true value) lives in soundness-harness.mjs; this file checks the other
-// direction: that a rewrite does not quietly prune LESS than the floor. The
-// floor is the per-column 1/5/9 prune, so a later deduction is held to at least
-// that strength.
-//
-//   node examples/dutch-flatmates/update-strength.test.mjs
-//
-// On random states the current update must leave a subset of what the floor
-// left, cell for cell.
-//
 // The floor is a frozen copy, `.golden/DutchFlatmatesComponent.floor.js`, not a
 // `REF_COMMIT` read with `loadAt` as the siblings do. The component and its
 // floor land in one squash-merged pull request, and a squash rewrites every

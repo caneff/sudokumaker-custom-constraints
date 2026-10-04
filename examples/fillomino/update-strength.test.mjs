@@ -4,11 +4,8 @@
 // (never remove a true value) lives in soundness-harness.mjs; this file checks
 // the other direction, against a real reference.
 //
-//   node examples/fillomino/update-strength.test.mjs
-//
 // The reference is the community catalog's fillomino constraint, vendored
-// verbatim at docs/research/fillomino-baseline/ (#281). Half two binds from
-// rung 2, the growth test (#303, #308).
+// verbatim at docs/research/fillomino-baseline/.
 //
 // The rules read placed digits and walk regions, so a state drawn at random is
 // contradictory and prunes nothing worth comparing. States are drawn around a
@@ -18,16 +15,10 @@
 // call and then yields as it goes, so by its third island the list can be a
 // deduction out of date. Two of its rules read that list as fact -- the seal
 // and the one-door force -- and on a stale, under-sized island neither is
-// sound: the force says "the region has to grow through the one open cell
-// beside this island" when the island's other half is a placed cell it never
-// saw. Driven that way it removes a true value on about one state in ten of
+// sound: driven that way it removes a true value on about one state in ten of
 // this fuzz. So the reference here is driven ONE CHANGE PER CALL: every island
 // it reads is freshly scanned, and every rule it fires is the sound reading of
-// itself. Measured on this fuzz, that is the whole difference -- 22 candidates
-// over 536 states where the published drive prunes more, none of them under
-// the fresh drive.
-//
-// Our own component reads each island's live extent instead, which is why it
+// itself. Our own component reads each island's live extent instead, so it
 // needs no such handling.
 
 import { join } from 'path'
@@ -45,10 +36,6 @@ const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'updat
 const { rnd } = makeRng(9001)
 const REPS = 300
 
-// One version's whole run on a state. The baseline sets its scratch up in
-// `initialize` off `instance.cells`; ours does it in `setParams`. The baseline
-// is stopped after each change so its next island comes off a fresh scan --
-// see HOW THE REFERENCE IS DRIVEN above.
 const apply = (mod, p, CELLS) => {
   const inst = { cells: CELLS }
   if (mod.setParams) {
@@ -89,8 +76,6 @@ for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]
     for (const c of CELLS) start.set(c, randomCandidates(rnd, 1, N, truth[c]))
     const w = quiet(() => compareStrength(cur, ref, applyN, start))
     if (w === null) continue
-    // Half two, the same comparison read the other way round: the candidates
-    // the baseline keeps and we remove.
     const st = quiet(() => compareStrength(ref, cur, applyN, start))
     states++
     fixtureWeaker += w.length
@@ -102,22 +87,16 @@ for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]
   stronger += fixtureStronger
 }
 console.log('fillomino strength gate:', states, 'states,', weaker, 'weaker cells,', stronger, 'stronger cells')
-// Every state keeps a real solution, so no state may die: a dead one would
-// mean a version emptied a cell the solution needs, or called stop on a live
-// branch.
 assert.strictEqual(states, 2 * REPS, 'a state built around a solution must never die')
 assert.strictEqual(weaker, 0)
-// Half two: rung 2 out-deduces the baseline, it does not merely match it
-// (#303, #308). The count alone does not separate the rungs -- rung 1 already
-// removed candidates the baseline keeps on this fuzz (7352 cells over the 600
-// states, against rung 2's 21084). The directed demo below is what only the
-// growth test passes.
+// Half two. The count alone does not show the growth test earns its place:
+// the per-island rules already remove candidates the baseline keeps. The
+// directed silent-region demo below is what only the growth test passes.
 assert.ok(stronger > 0, 'the component must remove a candidate the baseline keeps on some state')
 
-// The fixpoint floor: rung 2 exactly as it shipped, read out of git. Every
-// rung above it has to stand on it -- never one candidate less, anywhere --
-// and has to be worth its name: it must reach something rung 2 does not. The
-// directed demo at the end of this file names the deduction that does it.
+// The fixpoint floor: rung 2 (the growth test) exactly as it shipped, read out
+// of git. The component must never prune one candidate less than it, and must
+// reach something it does not -- the cut-starve demo at the end of this file.
 const SHIPPED = 'ac20771'
 const shippedRung2 = io.loadAt(SHIPPED, 'FillominoComponent.js', ['setParams', 'update'])
 const { rnd: frnd } = makeRng(4242)
@@ -141,10 +120,10 @@ assert.strictEqual(floorStates, 200, 'a state built around a solution must never
 assert.ok(pastRung2 > 0, `rung 3 must remove a candidate rung 2 (${SHIPPED}) keeps`)
 console.log('fillomino fixpoint floor:', floorStates, 'states, 0 weaker than', SHIPPED + ',', pastRung2, 'stronger')
 
-// The reused instance (#312). The component bound caches the allowed-digit
-// row it last finished on and re-floods only what moved since -- the one thing
-// the component carries between calls. The solver never says it backtracked,
-// so the same instance sees states that jump around: a candidate it watched
+// The reused instance. The component bound caches the allowed-digit row it
+// last finished on and re-floods only what moved since -- the one thing the
+// component carries between calls. The solver never says it backtracked, so
+// the same instance sees states that jump around: a candidate it watched
 // disappear comes back. Drive ONE instance over a run of unrelated states and
 // each has to settle exactly where a fresh instance settles it. Run once per
 // fixture -- a reused instance is bound to one cells array, so it cannot jump
@@ -175,8 +154,8 @@ for (const { truth, n } of [shipped, varied]) {
 }
 console.log('fillomino reused instance:', reuseStates, 'states, same fixpoint as a fresh one')
 
-// The silent-region win and cut-starve demos are hand-built on their own
-// fixed 6x6 board (transfer doc §6, §4) -- unrelated to gen.json's shape.
+// The silent-region and cut-starve demos are hand-built on their own fixed
+// 6x6 board, unrelated to gen.json's shape.
 installGlobals(1, 6)
 const CELLS6 = Array.from({ length: 36 }, (_, i) => i)
 const applyOn6 = (mod, p) => apply(mod, p, CELLS6)

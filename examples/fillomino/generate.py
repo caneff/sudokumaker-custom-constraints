@@ -1,18 +1,12 @@
-"""Fillomino generator (OR-Tools CP-SAT). Grown from the research prototype
-docs/research/fillomino-cpsat.md records (#280/#288) -- same model, same rule,
-the {"grid": [...], "clues": [...]} shape ISOFILL's verify.py prints, so
-app-strip and the link builders drive it unchanged for a real (cap <= 9)
-puzzle. This generates; app-strip.mjs strips, in the app.
+"""Fillomino generator (OR-Tools CP-SAT). It prints the {"grid", "clues"}
+shape app-strip.mjs and the link builders read; app-strip.mjs does the
+stripping, in the app.
 
     uv run --with ortools examples/fillomino/generate.py               # self-check
     uv run --with ortools examples/fillomino/generate.py sample 7      # a full grid
     uv run --with ortools examples/fillomino/generate.py sample 7 9 12 # side 9, cap 12
     uv run --with ortools examples/fillomino/generate.py unique gen.json
     uv run --with ortools examples/fillomino/generate.py unique gen.json 30  # 30s cap
-
-A dropped grid -- no solution for the pinned cells, a striped grid, or a
-uniqueness solve that timed out -- prints one `drop (...)` line on stderr
-naming the seed and the clue set, so the run reproduces (#303, story 14).
 
 gen.json: {"grid": [N rows of digits], "clues": [[r, c], ...], "cap": N}. Each
 row is a list of ints -- a joined char string is ambiguous once a digit can
@@ -50,15 +44,6 @@ LIMIT = 600
 
 @dataclass(frozen=True)
 class Board:
-    """A fillomino board's shape: `side` x `side`, digits 1..`cap`.
-
-    `cap` and `side` are independent -- a 9x9 board carries a digit above 9
-    when `cap` says so. `cells` is every cell in reading order, `edges` every
-    ordered orthogonal step between two of them, and `uedges` each of those
-    pairs once. All three fall out of `side`, so a board is built with
-    `Board.of` rather than by naming them.
-    """
-
     side: int
     cap: int
     cells: list
@@ -79,20 +64,16 @@ class Board:
 
     @classmethod
     def of_doc(cls, doc):
-        """The board a gen.json describes."""
         return cls.of(len(doc["grid"]), doc.get("cap"))
 
     def givens(self, doc):
-        """The clue cells of a gen.json, as {(row, column): digit}."""
         return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
 
     def idx(self, p):
-        """The cell's index, 0..side*side-1, in reading order."""
         return p[0] * self.side + p[1]
 
 
 def model(board, givens):
-    """The fillomino model with `givens` pinned; returns (model, cell vars)."""
     side, cap, cells = board.side, board.cap, board.cells
     m = cp_model.CpModel()
     x = {p: m.NewIntVar(1, cap, f"x{p}") for p in cells}
@@ -132,25 +113,20 @@ def model(board, givens):
 
 
 def rows(board, s, x):
-    """Each row as a list of ints -- unambiguous once a digit can reach two
-    digits wide (cap > 9), unlike a joined char string."""
     return [[s.Value(x[r, c]) for c in range(board.side)] for r in range(board.side)]
 
 
 def is_striped(grid):
-    """A dull board: CP-SAT's default search, seeded but not diversified,
-    keeps returning a grid whose majority of rows use only two digit values
-    (an alternating checkerboard band) -- docs/research/fillomino-cpsat.md.
-    A row using at most two digits is "dull"; more than half such rows
-    across the board means the whole grid is dull."""
+    """A dull board: CP-SAT's default search, seeded but not diversified, keeps
+    returning grids whose rows mostly alternate two digits
+    (docs/research/fillomino-cpsat.md)."""
     dull_rows = sum(1 for row in grid if len(set(row)) <= 2)
     return dull_rows > len(grid) // 2
 
 
 def drop(board, why, seed, givens, sub=None):
     """Log a dropped grid with the seed and the clue set that produced it, so
-    any generator run reproduces (#303, story 14). Goes to stderr: `sample`
-    prints its JSON on stdout."""
+    the run reproduces. Goes to stderr: `sample` prints its JSON on stdout."""
     clues = {f"{r},{c}": d for (r, c), d in sorted(givens.items())}
     print(
         f"drop ({why}): seed={seed}"
@@ -279,7 +255,6 @@ def _rows_from_dict(board, g):
 
 
 def self_check():
-    """Assert the model against brute force on 2x2 and 3x3, then on a 9x9."""
     for n in (2, 3):
         board = Board.of(n)
         want = sorted(brute(board, {}))
@@ -287,7 +262,6 @@ def self_check():
         assert got == want, f"{n}x{n}: model {len(got)} grids, brute {len(want)}"
         print(f"{n}x{n}: {len(want)} grids, model agrees with brute force")
 
-    # A 3x3 clue set the model must call unique, checked against brute force.
     board = Board.of(3)
     for clues in ({(0, 0): 1}, {(1, 1): 3}, {(0, 0): 3, (2, 2): 3}):
         assert unique(board, clues) == (len(brute(board, clues)) == 1)
@@ -322,8 +296,6 @@ if __name__ == "__main__":
         try:
             ok = unique(board, givens, limit=limit)
         except TimeoutError:
-            # A timeout is no verdict, and the grid is dropped -- but never
-            # silently: the log names the clue set that has to be re-run.
             drop(board, f"timeout at {limit}s", doc.get("seed", "unrecorded"), givens)
             sys.exit(2)
         print("unique" if ok else "not unique")

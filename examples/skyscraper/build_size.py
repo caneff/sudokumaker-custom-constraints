@@ -37,14 +37,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
-# Each lane ships what its own backend registers, and nothing else.
-# main-global.js builds the 4n frame lines and puts the two-clue DP on each one.
 COMPONENTS = [
     "SkyscraperPairComponent.js",
 ]
-# main.js registers one one-sided DP per drawn group and nothing else: a drawn
-# group carries a single clue on a line of any shape, so the two-clue DP has
-# not got the frame it needs.
 LOCAL_COMPONENTS = ["SkyscraperOneSidedComponent.js"]
 
 # One worked example per size, read inward from the clue -- a local board's
@@ -71,7 +66,6 @@ def rule_text(n):
 
 
 def sky(v, _cells, _box):
-    # visible buildings: count left-to-right maxima
     count = 0
     mx = 0
     for d in v:
@@ -82,7 +76,6 @@ def sky(v, _cells, _box):
 
 
 def add_visibility(m, x, cells, kk, n, tag, _box):
-    # exactly kk cells top every cell before them along `cells`.
     # `g` is "taller than", so its negation is "no taller" -- a tie is hidden,
     # which is what SkyscraperOneSidedComponent's ALLOW_TIES = false says. A
     # drawn path may hold the same digit twice, so `<=` here and `<` are not
@@ -91,7 +84,7 @@ def add_visibility(m, x, cells, kk, n, tag, _box):
     for i in range(len(cells)):
         b = m.NewBoolVar(f"v{tag}_{i}")
         if i == 0:
-            m.Add(b == 1)  # the first building is always visible
+            m.Add(b == 1)
         else:
             greater = []
             for j in range(i):

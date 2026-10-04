@@ -1,20 +1,8 @@
-// The cut filter yields exactly what the unfiltered cut yields (#258).
-//
-//   node examples/isofill/cut-filter.test.mjs
-//
-// Cut asks two questions of every open cell in a digit's walk — does removing
-// it starve the walk below `size` cells, and does it strand a placed cell —
-// and answers them with one or two re-walks per cell. The filter answers both
-// for every cell at once, in front of those re-walks, and clears the cells it
-// can prove are no cut; the re-walk stays for the rest. So the filter may only
-// ever remove *work*, never a removal. This file is that claim: over states
+// The cut filter may only ever remove *work*, never a removal: over states
 // drawn around a real solution, the filtered component and the same component
 // with its filter verdict ignored must yield the identical removal sequence.
-//
-// The unfiltered side is the shipped source with one line deleted, the way
-// `cut-profile.mjs` patches the same file by anchor: the filter still runs,
-// its verdict is not read, and every cell re-walks. An anchor that no longer
-// matches throws rather than compare a component against itself.
+// The unfiltered side is the shipped source with the verdict line deleted: the
+// filter still runs, but every cell re-walks.
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
@@ -26,17 +14,13 @@ const HERE = import.meta.dirname
 const N = 10
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 
-// The line the filter's verdict is read on, and the first re-walk every cell
-// the filter did not clear reaches. Both are unique in the component.
 const SKIP = '  if (skip[x]) return false // the filter cleared this cell: no cut\n'
 const WALKED = '  let cut = reachSize(instance, placed, depth, allowed, size).size < size\n'
 
-// Drop the filter's verdict: every open cell falls through to the re-walks.
 function unfiltered (src) {
   return patchSource(src, SKIP, '')
 }
 
-// Count the cells the filter clears and the cells it leaves to the re-walk.
 function counted (src) {
   src = patchSource(src, SKIP, '  globalThis.__skipped += skip[x] ? 1 : 0\n' + SKIP)
   return patchSource(src, WALKED, '  globalThis.__walked++\n' + WALKED)
@@ -44,7 +28,6 @@ function counted (src) {
 
 installGlobals(0, 9)
 
-// ---- A source without the anchors fails loud ----
 let threw = false
 try { unfiltered('function * update (instance, puzzle) {}') } catch { threw = true }
 assert.ok(threw, 'a missing anchor must throw, not silently compare a component with itself')
@@ -52,7 +35,6 @@ assert.ok(threw, 'a missing anchor must throw, not silently compare a component 
 const filtered = loadComponent(HERE, counted)
 const plain = loadComponent(HERE, unfiltered)
 
-// Every removal either version makes, in order, as one string.
 function removals (mod, start) {
   const cells = {}
   for (const c of CELLS) cells[c] = 0
@@ -69,9 +51,8 @@ function removals (mod, start) {
   return log.join('|')
 }
 
-// The fixtures the soundness and strength harnesses draw on: `rows` (row r
-// holds digit r), `bent` (L-shaped regions), and the grids of the shipped
-// board and the three hard fixtures, whose cut rule does the most work.
+// `bent` has L-shaped regions; the hard fixtures are where cut does the most
+// work.
 const rows = {}
 for (const c of CELLS) rows[c] = Math.floor(c / N)
 

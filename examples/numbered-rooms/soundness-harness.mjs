@@ -1,22 +1,9 @@
-// Soundness fuzz for NumberedRoomsComponent. Soundness = update never removes
-// a cell's TRUE value. A removed true value is the silent bug that makes a real
-// puzzle unsolvable.
+// The mock answers getCellsCanHaveRepeats from the houses the case declares,
+// never from the digits, so a run cannot pass by inferring a kind the app
+// would not give it.
 //
-//   node examples/numbered-rooms/soundness-harness.mjs
-//
-// The component gates two rules on the line being a house, so each of the two
-// line kinds in docs/line-contract.md gets a fuzz: a bare line (a drawn path,
-// digits may repeat) and a house, the house in two fill shapes (a house, and a
-// full house, which is only a fixture). The mock answers
-// getCellsCanHaveRepeats from the houses the case declares, never from the
-// digits, so a run cannot pass by inferring a kind the app would not give it.
-//
-// A fourth run puts the board on minDigit 0: an index of 0 is out of range, and
-// 0 is an ordinary digit everywhere else on the line.
-//
-// A closing strength block proves the point of the component: with the clue
-// still unsolved it already prunes. The wrapper it replaced did nothing until
-// the clue collapsed, so its removal count here would be zero.
+// The minDigit 0 runs exist because an index of 0 is out of range while 0 is an
+// ordinary digit everywhere else on the line.
 
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, randomCandidates, housesOf, shuffle, fixpoint, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 
@@ -26,22 +13,16 @@ const { rnd } = makeRng()
 
 const mod = load('NumberedRoomsComponent.js', ['setParams', 'update'])
 
-// Cell 0 is the clue; cells 1..m are the line, nearest the clue first.
 const CLUE = 0
 const ITERS = 20000
 const lineCells = m => Array.from({ length: m }, (_, i) => i + 1)
 
-// The truth a line of digits carries: the indexer line[0] is a 1-based index k
-// and the clue is the digit at line[k - 1].
 function truthOf (line) {
   const truth = { [CLUE]: line[line[0] - 1] }
   for (let i = 0; i < line.length; i++) truth[i + 1] = line[i]
   return truth
 }
 
-// A drawn line is a truth only when its indexer points at one of its own
-// cells. `swapIndexerIntoRange` keeps a house's distinct digits distinct while
-// moving an in-range digit to the front; null means the draw has none.
 function inRange (line) {
   return line[0] >= 1 && line[0] <= line.length
 }
@@ -54,7 +35,6 @@ function swapIndexerIntoRange (line) {
   return line
 }
 
-// The three fill shapes over 1..D, from the shared builder.
 function drawLine (kind, m, D) {
   return swapIndexerIntoRange(makeLine(rnd, kind, m, D))
 }
@@ -81,7 +61,6 @@ function fuzz (label, kind, minDigit, sizes, draw) {
     const r = fuzzSoundness(`${label} m=${m} D=${D}`, {
       iters: ITERS,
       draw: () => {
-        // a draw with no cell the indexer can point at is no truth: draw again
         let line = null
         while (line === null) line = draw(kind, m, D)
         const inst = {}
@@ -110,9 +89,7 @@ bad += fuzz('full house', 'fullHouse', 1, [[4, 4], [5, 5], [6, 6]], drawLine)
 bad += fuzz('minDigit 0, bare', 'bare', 0, [[4, 6], [6, 6]], drawZeroLine)
 bad += fuzz('minDigit 0, house', 'house', 0, [[4, 6], [5, 6]], drawZeroLine)
 
-// ---- Strength: it prunes with the clue unsolved ----
-// m=4, D=4, one house. line[0] pinned to 2 => the index is 2 => the clue is
-// line[1], pinned to 3. The clue starts full {1,2,3,4} and must come out {3}.
+// It prunes with the clue unsolved: the clue starts full and must come out {3}.
 installGlobals(1, 4)
 const p = makePuzzle({ 0: 3, 1: 2, 2: 3, 3: 1, 4: 4 }, (c, v) => {
   if (c === 1) return [2] // index forced to 2

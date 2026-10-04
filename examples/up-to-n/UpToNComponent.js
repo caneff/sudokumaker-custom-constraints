@@ -17,10 +17,8 @@ function setParams (instance, line, target, clue) {
   instance.clue = clue
 }
 
-// The line's kind: lineKind(instance, puzzle, cells).
 // #include ../_shared/line-kind.js
 
-// The smallest and largest digit in a candidate mask, or -1 for an empty one.
 function lowBit (mask) {
   return mask === 0 ? -1 : 31 - Math.clz32(mask & -mask)
 }
@@ -52,10 +50,10 @@ function feasiblePositions (instance, puzzle) {
       feasible.hi.push(hi)
     }
     const rest = mask & ~bitN
-    if (rest === 0) break // this cell must be N, so no later N is the first
+    if (rest === 0) break
     lo += lowBit(rest)
     hi += highBit(rest)
-    if (lo > clue) break // every later prefix sums higher still
+    if (lo > clue) break
   }
   return feasible
 }
@@ -185,8 +183,6 @@ function * update (instance, puzzle) {
     }
   }
 
-  // A cell before every feasible position keeps only the digits its `keep`
-  // admits.
   for (let i = 0; i < at[0]; i++) {
     const rest = puzzle.getCandidatesBitMask(line[i]) & ~bitN
     const drop = []

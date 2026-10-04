@@ -1,7 +1,3 @@
-// Seam: FillominoComponent.update with the visit stamp near the top of the
-// mask's range (#665):
-//   node examples/fillomino/stamp-wrap.test.mjs
-//
 // `instance.mask` is an Int32Array, so a counter that reached 2^31 would be
 // stored negative and no cell would ever read as visited again. The component
 // must clear the mask and restart the stamp before that, and `update` must

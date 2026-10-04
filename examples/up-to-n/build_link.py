@@ -1,7 +1,6 @@
 # Build a same-board comparison link for `just time` (docs/real-app-timing.md):
 # the committed PUZZLE_LINK.txt, or --board, with UpToNComponent's code swapped
-# for a candidate file and nothing else changed. The rule's Python half and the
-# board builder are build_size.py's.
+# for a candidate file and nothing else changed.
 #
 #   uv run examples/up-to-n/build_link.py --component FILE --out FILE [--board LINK]
 

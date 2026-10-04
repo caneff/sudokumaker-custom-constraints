@@ -1,11 +1,3 @@
-# build_sparse_required_digits.py (#541): the committed sparse board's gen.json
-# is a valid board (9-cell non-house groups, its own solution obeying the
-# rule, CP-SAT-unique from its givens), the rebuild reproduces both committed
-# links byte-identically without touching them, and the two links differ only
-# in the one class the backend registers.
-#
-#   uv run examples/count-digits-gac/build_sparse_required_digits.test.py
-
 import json
 import pathlib
 import sys
@@ -58,9 +50,6 @@ def check_board(gen):
 
 
 def check_rule_is_enforced(gen):
-    """The CP-SAT model states the rule: with the whole solution as givens,
-    a group requiring a digit its cells hold is feasible, and one requiring a
-    digit they lack is not."""
     full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
     g = gen["groups"][0]
     held = {full[tuple(p)] for p in g["cells"]}
@@ -95,7 +84,7 @@ if __name__ == "__main__":
     docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs
     for d in docs:
-        # a plain 9x9 is a sudoku document (#565): rows and columns come from
+        # a plain 9x9 is a sudoku document: rows and columns come from
         # the app's own rules, so no "Rows & Columns" backend rides along
         assert d["puzzle"]["type"] == "sudoku", "the board is not a sudoku document"
         names = [

@@ -1,9 +1,3 @@
-# Tests for generate.py -- the shipped fillomino generator (#306), grown from
-# the research prototype whose model docs/research/fillomino-cpsat.md records.
-# Each function below is one acceptance criterion from #306.
-#
-#   uv run examples/fillomino/generate.test.py
-
 import json
 import pathlib
 import subprocess
@@ -17,8 +11,6 @@ from ortools.sat.python import cp_model
 
 
 def test_self_check():
-    # The model-vs-flood-fill self-check: small boards enumerated both ways
-    # must agree exactly. self_check() raises AssertionError on disagreement.
     self_check()
 
 
@@ -39,9 +31,6 @@ def test_cap_wider_than_side():
 
 
 def test_model_and_rows_read_the_board_they_are_given():
-    # Two boards alive at once, each with its own digit cap: a given of 5 fits
-    # the cap-5 board and nothing else, and `rows` shapes the grid from the
-    # board it is handed rather than from whichever was built last.
     wide, plain = Board.of(3, 5), Board.of(3)
     m_wide, x_wide = model(wide, {(0, 0): 5})
     m_plain, _ = model(plain, {(0, 0): 5})
@@ -54,9 +43,6 @@ def test_model_and_rows_read_the_board_they_are_given():
 
 
 def test_dropped_grid_logs_seed_and_clue_set():
-    # #303 story 14: a dropped grid is logged with the seed and the clue set,
-    # so any generator run reproduces. The log goes to stderr, since `sample`
-    # prints its grid JSON on stdout.
     err = _stderr_of(
         lambda: drop(Board.of(9), "striped", 7, {(0, 0): 3, (4, 2): 9}, sub=1234)
     )
@@ -66,8 +52,6 @@ def test_dropped_grid_logs_seed_and_clue_set():
 
 
 def test_unique_cli_logs_the_clue_set_it_dropped():
-    # The `unique` CLI drops a timed-out grid and exits 2, naming the clue
-    # set it dropped on stderr.
     gen = HERE / "gen.json"
     r = subprocess.run(
         [sys.executable, str(HERE / "generate.py"), "unique", str(gen), "0.001"],
@@ -119,8 +103,6 @@ def test_is_striped_flags_a_mostly_dull_grid():
 
 
 def test_sample_retries_past_a_striped_grid():
-    # `rows` is what sample() reads each solve through: hand it the striped
-    # grid first, a good one second, and sample() must skip the first.
     import generate
 
     good = SHIPPED_GRID

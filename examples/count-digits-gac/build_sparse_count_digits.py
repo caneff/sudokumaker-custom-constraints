@@ -1,4 +1,4 @@
-# Build the sparse count-digits timing board (#543): a plain 9x9 sudoku
+# Build the sparse count-digits timing board: a plain 9x9 sudoku
 # carrying a set of count-digits groups -- one counter cell whose digit is the
 # number of cells in a large, scattered target group holding a digit from that
 # group's set -- with the givens carved back until the app's solver actually
@@ -7,24 +7,20 @@
 # It exists to give CountDigitsGacComponent a real-app timing row against the
 # built-in CountDigits, which is validate-only and prunes nothing
 # (docs/research/bundle-api-reference.md, "CountDigits"). Unlike the sparse
-# required-digits board next door (#541), nothing here is confounded by the
+# required-digits board next door, nothing here is confounded by the
 # app's candidate-set map: `addConstraintComponent` special-cases House,
 # SameDigit and RequiredDigits only, so a CountDigits registration buys the
 # built-in no help a custom component gives up.
-#
-# The rule, stated once for both sides: the digit in the counter cell equals
-# the number of the group's target cells whose digit is in the group's set.
-# `count_board.model()` is the CP-SAT side; CountDigitsGacComponent.js is the
-# JS side.
 #
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py
 #       rebuild both links from the committed gen.json
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py --carved K
 #       set the board's depth -- how many of the gen's carve order it drops --
 #       and rebuild. See `board_kit.givens_of`; the whole carve left the app's
-#       solver unable to finish the baseline link at all (README, "Depth").
+#       solver unable to finish the baseline link at all
+#       (docs/research/count-digits-gac/README.md, "Depth").
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py --keep-comments
-#       write only PUZZLE_LINK_sparse_annotated.txt (#567): the candidate link's
+#       write only PUZZLE_LINK_sparse_annotated.txt: the candidate link's
 #       board and givens, with the component and backend code keeping every
 #       comment, for a reader who opens it in SudokuMaker and reads the code
 #       box. Same flag as examples/house-gac/build_link.py.
@@ -33,8 +29,8 @@
 #       comes from CP-SAT's portfolio search, which is not reproducible from
 #       the seed: the committed gen.json is the artifact, this a one-shot.
 #
-# Lives here, not in docs/research/, because that gate refuses a new .py there
-# (check_research_python, #469). The board's shared steps are board_kit.py's.
+# Lives here, not in docs/research/, because check_research_python refuses a
+# new .py there.
 
 import argparse
 import json
@@ -71,9 +67,6 @@ RULES = (
 
 
 def draw_group(rng, grid, index, n_targets, n_digits):
-    """One group: scattered target cells, a digit set, and a counter cell
-    outside the group whose solution digit is the count. None when this draw
-    has no counter cell to offer (a count of 0, or no cell holding it)."""
     cells = rng.sample([(r, c) for r in range(N) for c in range(N)], n_targets)
     values = sorted(rng.sample(range(1, N + 1), n_digits))
     count = sum(1 for r, c in cells if grid[r][c] in values)
@@ -96,7 +89,6 @@ def draw_group(rng, grid, index, n_targets, n_digits):
 
 
 def make_groups(rng, grid, n_groups, n_targets, n_digits):
-    """`n_groups` groups over `grid`, each from `draw_group`."""
     groups = []
     for _attempt in range(2000):
         if len(groups) == n_groups:
@@ -110,9 +102,6 @@ def make_groups(rng, grid, n_groups, n_targets, n_digits):
 
 
 def search(seed, n_groups=20, n_targets=14, n_digits=3):
-    """Draw a board: a solution grid, `n_groups` count-digits groups over it,
-    and givens carved (in seeded random order) until no more can go while the
-    board stays unique."""
     return search_board(
         seed,
         lambda rng, grid: make_groups(rng, grid, n_groups, n_targets, n_digits),
@@ -127,10 +116,6 @@ def backend_code(gen, name, keep_comments=False):
 
 
 def build_doc(gen, name, keep_comments=False):
-    """The board's document: `name` is the class the backend registers --
-    CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in).
-    `keep_comments` keeps every comment (the lint directive aside) in the
-    embedded code (#567)."""
     components = (
         [(CANDIDATE_NAME, minify_file(COMPONENT, keep_comments))]
         if name == CANDIDATE_NAME

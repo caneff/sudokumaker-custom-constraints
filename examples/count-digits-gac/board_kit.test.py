@@ -1,10 +1,3 @@
-# board_kit.py: the steps every count/required-digits builder shares -- the
-# solution-grid draw, the carve loop and its timeout policy, search, the
-# givens a gen implies, the document skeleton -- and the rule that no builder
-# imports another builder.
-#
-#   uv run examples/count-digits-gac/board_kit.test.py
-
 import pathlib
 import random
 import re
@@ -45,8 +38,6 @@ def check_draw_grid():
 
 
 def check_carve_policy():
-    """A cell goes when the board stays unique without it; a cell whose check
-    times out stays, the one way a carve can lie."""
     grid = [[(r * 3 + r // 3 + c) % N + 1 for c in range(N)] for r in range(N)]
     cells = [(r, c) for r in range(N) for c in range(N)]
     asked, gone = [], set()
@@ -54,11 +45,11 @@ def check_carve_policy():
     def unique(givens):
         missing = set(cells) - set(givens) - gone
         assert len(missing) == 1, "a cell no check cleared was carved"
-        (cell,) = missing  # the cell this check is about
+        (cell,) = missing
         asked.append(cell)
         if cell == (0, 0):
             raise TimeoutError("no verdict")
-        if cell[0] == 1:  # row 1 is never removable
+        if cell[0] == 1:
             return False
         gone.add(cell)
         return True
@@ -75,7 +66,6 @@ def check_carve_policy():
 
 
 def check_carve_trial_is_the_running_board():
-    """Each trial drops one more cell from the board the earlier ones left."""
     grid = [[1] * N for _ in range(N)]
     sizes = []
 

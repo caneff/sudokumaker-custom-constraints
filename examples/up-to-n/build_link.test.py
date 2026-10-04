@@ -1,20 +1,3 @@
-# Checks on the Up to N rule (build_size.SPEC) and the boards it ships.
-#
-# 1. The rule's clue function, its CP-SAT model and the JS component's
-#    `validate` agree on hand-built lines: `up_to_n` gives the sum worked out
-#    by hand, and for each line, target and clue, the model with the line
-#    fixed is satisfiable exactly when `validate` accepts the filled line, and
-#    both match that sum. The lines include bare ones -- a
-#    repeated digit, a repeated target, the target absent.
-# 2. Every committed board -- the shipped 9x9 and the 4x4 and 6x6 variants:
-#    its link decodes to a bare n x n sudoku whose drawn markers carry the
-#    clues its gen JSON records, every clue is the true one for the recorded
-#    solution, CP-SAT proves the givens and shown clues have exactly one
-#    solution, and `build_size.py --rebuild` re-encodes it, with no search, to
-#    the committed link byte for byte.
-#
-#   uv run examples/up-to-n/build_link.test.py
-
 import json
 import pathlib
 import subprocess
@@ -48,32 +31,29 @@ from minify import minify_file
 from no_ring import NoRing
 from ortools.sat.python import cp_model
 
-# Hand-built lines, read from the marked end: (digits, target, the sum of the
-# digits strictly before the first target, or None when the line never holds
-# it). Worked by hand, not by any copy of the rule.
+# (digits, target, sum before the first target or None), worked by hand
+# rather than by any copy of the rule.
 LINES = [
-    ([3, 1, 4, 2], 4, 4),  # 3 + 1
-    ([3, 1, 4, 2], 3, 0),  # the target is the first cell: nothing is read
-    ([3, 1, 4, 2], 2, 8),  # the target is the last cell: 10 - 2
-    ([2, 2, 1, 3], 1, 4),  # a repeated digit before the target
-    ([1, 4, 4, 2], 4, 1),  # the target twice: only the first counts
-    ([2, 3, 2, 3], 4, None),  # the target absent
-    ([6, 5, 4, 3, 2, 1], 1, 20),  # a 6-cell line, target last: 21 - 1
-    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20),  # a 9-cell line
-    ([1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36),  # a 9-cell line, target last: 45 - 9
-    ([7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0),  # a 9-cell line, target first
+    ([3, 1, 4, 2], 4, 4),
+    ([3, 1, 4, 2], 3, 0),
+    ([3, 1, 4, 2], 2, 8),
+    ([2, 2, 1, 3], 1, 4),
+    ([1, 4, 4, 2], 4, 1),
+    ([2, 3, 2, 3], 4, None),
+    ([6, 5, 4, 3, 2, 1], 1, 20),
+    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20),
+    ([1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36),
+    ([7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0),
     # The rules text's three worked examples.
-    ([3, 1, 2, 4], 2, 4),  # 3 + 1
-    ([4, 1, 6, 2, 5, 3], 2, 11),  # 4 + 1 + 6
-    ([9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12),  # 9 + 2 + 1
+    ([3, 1, 2, 4], 2, 4),
+    ([4, 1, 6, 2, 5, 3], 2, 11),
+    ([9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12),
 ]
 
 
 def model_accepts(digits, target, clue):
-    """Is `digits` a solution of the CP-SAT clue model for (target, clue)?
-
-    The line is posted as a row of a grid (row index target - 1), which is
-    where a row marker's target comes from, and every cell is fixed."""
+    """The line is posted as grid row target - 1, since a row marker's target
+    is its row number."""
     n = len(digits)
     row = target - 1
     m = cp_model.CpModel()
@@ -86,8 +66,6 @@ def model_accepts(digits, target, clue):
 
 
 def validate_accepts(cases):
-    """`UpToNComponent.validate` on each filled line, run in Node through the
-    shared harness mock. `cases` is [(digits, target, clue)]."""
     script = f"""
 import {{ makeIo, makePuzzle, installGlobals }} from './examples/_shared/harness-lib.mjs'
 const {{ load }} = makeIo({json.dumps(str(HERE))})
@@ -114,12 +92,8 @@ console.log(JSON.stringify(out))
 def test_model_and_validate_agree_on_hand_built_lines():
     cases = []
     for digits, target, true_sum in LINES:
-        # The clue function the search fills every marker from, on the line
-        # posted as row target - 1, as model_accepts does.
         row = [(target - 1, c) for c in range(len(digits))]
         assert up_to_n(digits, row, None) == true_sum, ("up_to_n", digits, target)
-        # The true sum, one off either way, and an arbitrary clue for a line
-        # with no target at all.
         clues = (
             [true_sum, true_sum - 1, true_sum + 1] if true_sum is not None else [5, 10]
         )
@@ -142,11 +116,9 @@ def shipped_board_matches_its_link(link_name, gen_name):
     assert "Grid Rows and Columns" in names
     assert (puzzle["width"], puzzle["height"]) == (n, n), "no ring around the grid"
     assert (puzzle["minDigit"], puzzle["maxDigit"]) == (1, n)
-    # no ring, so no "inner grid" for the rules text to name
     assert puzzle["comment"].startswith(NO_RING_RULES_PREFIX)
 
-    # Givens: exactly the recorded ones. Nothing entered elsewhere is
-    # check_layout's rule.
+    # A cell entered outside the givens is check_layout's rule, not this test's.
     for i, cell in enumerate(puzzle["cells"]):
         r, c = divmod(i, n)
         if (r, c) in board.givens:
@@ -159,7 +131,6 @@ def shipped_board_matches_its_link(link_name, gen_name):
     )
     assert lc["definition"]["backend"]["code"] == minify_file(HERE / "main.js")
     groups = lc["input"]["groups"]
-    # Every one of the 4n marker slots is drawn; the shown clues carry a value.
     assert len(groups) == 4 * n
     lines = make_lines(n)
     shown = {}
@@ -170,8 +141,6 @@ def shipped_board_matches_its_link(link_name, gen_name):
             shown[key] = int(g["value"])
     assert set(shown) == board.active
 
-    # Each clued marker shows its number as a text label half a cell outside
-    # the grid beyond its border cell; an empty marker shows none.
     symbols = [c for c in puzzle["constraints"] if c.get("type") == 2002]
     assert len(symbols) == 1, "one cosmetic-symbols constraint holds every label"
     params, points = symbols[0]["params"], symbols[0]["symbols"]
@@ -180,7 +149,6 @@ def shipped_board_matches_its_link(link_name, gen_name):
     for point in points:
         x, y, i = (*point, 0) if len(point) == 2 else point
         assert params[i]["type"] == "text"
-        # the grid cell the label sits next to, and which side it is on
         r, c = min(max(int(y), 0), n - 1), min(max(int(x), 0), n - 1)
         side = "L" if x < 0 else "R" if x > n else "T" if y < 0 else "B"
         assert (x, y) == {
@@ -207,7 +175,6 @@ def shipped_board_matches_its_link(link_name, gen_name):
     return board
 
 
-# Every committed board: (link, gen JSON, size, box).
 BOARDS = [
     ("PUZZLE_LINK.txt", "gen.json", 9, (3, 3)),
     ("PUZZLE_LINK_9x9.txt", "gen_9x9.json", 9, (3, 3)),

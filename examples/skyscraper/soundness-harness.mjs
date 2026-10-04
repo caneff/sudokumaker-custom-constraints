@@ -22,20 +22,16 @@ const FUZZ = Number(process.env.FUZZ) || 2000
 const N = 9
 installGlobals(1, N)
 const DIGITS = [...Array(N).keys()].map(i => i + 1)
-// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 const seeder = makeSeeder(rnd, DIGITS)
 
 const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
 
-// ---------------------------------------------------------------------------
 // The one-sided DP: the LOCAL line component, one clue at one end of a drawn
 // line. It claims soundness on every line kind (docs/line-contract.md), so it
 // meets all three, and twice over: the ALLOW_TIES constant at the top of the
 // file decides whether a building tied with the tallest so far is hidden
 // (false) or counted (true), and both readings must be sound.
-// ---------------------------------------------------------------------------
 
-// The component as it would read with the constant set either way.
 function loadOneSided (allowTies) {
   return load('SkyscraperOneSidedComponent.js', ['setParams', 'update', 'validate'],
     src => patchSource(src, TIES_FLAG, `const ALLOW_TIES = ${allowTies}`))
@@ -56,9 +52,6 @@ function visibleWith (allowTies, vals) {
 
 const ONE_SIDED_CLUE = 200
 
-// The first cell where the candidates left standing differ from the oracle's,
-// or null when every cell agrees. Both exactness checks below compare the same
-// way and only differ in what they enumerate, so the comparison lives here once.
 function disagreement (p, oracle) {
   for (const [c, want] of oracle) {
     const got = p._cand.get(c)
@@ -84,9 +77,6 @@ function fuzzOneSided (label, { allowTies, kind, n, iters }) {
   })
 }
 
-// `validate` is the component's last word on a filled line, and it reads the
-// same tie flag `update` does. A filled line, its true clue, and that clue off
-// by one: the first must pass and the second must fail, under both readings.
 let oneSidedValidateBad = 0
 for (const allowTies of [false, true]) {
   const oneSidedMod = loadOneSided(allowTies)
@@ -112,8 +102,6 @@ let oneSidedBad = 0
 let oneSidedSilent = 0
 for (const allowTies of [false, true]) {
   const tag = allowTies ? 'ties visible' : 'ties hidden '
-  // A bare line is shorter than the digit count and may repeat; a house is
-  // six distinct digits out of nine; a full house is a permutation of 1..9.
   for (const [kind, n] of [['bare', 7], ['house', 6], ['fullHouse', N]]) {
     const r = fuzzOneSided(`one-sided, ${kind.padEnd(9)} ${tag}`, { allowTies, kind, n, iters: 20000 })
     oneSidedBad += r.failures
@@ -147,7 +135,6 @@ for (const allowTies of [false, true]) {
       return [...s]
     })
     const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
-    // Every fill the starting candidates and the clue allow, by brute force.
     const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
     const fill = new Array(EXACT_N)
     const walk = i => {
@@ -161,7 +148,7 @@ for (const allowTies of [false, true]) {
       for (const d of start.get(i)) { fill[i] = d; walk(i + 1) }
     }
     walk(0)
-    if (oracle.get(ONE_SIDED_CLUE).size === 0) continue // no valid fill: anything may stay
+    if (oracle.get(ONE_SIDED_CLUE).size === 0) continue
     oneSidedExactRuns++
     fixpoint(oneSidedMod, inst, p)
     const d = disagreement(p, oracle)
@@ -174,7 +161,6 @@ for (const allowTies of [false, true]) {
 }
 console.log('one-sided exactness vs brute force (n=5):', oneSidedExactRuns, 'states,', oneSidedExactBad, 'disagreements')
 
-// The two-clue DP's rule is the ties-hidden reading.
 const visible = vals => visibleWith(false, vals)
 const shuffled = () => shuffle(rnd, [...DIGITS])
 
@@ -196,7 +182,7 @@ const lineRun = fuzzSoundness('pair component', {
   }
 })
 const bad = lineRun.failures
-const fired = lineRun.fired // coverage: the prune removed something, so the DP actually ran
+const fired = lineRun.fired
 
 // The component's DP runs in one buffer shared by every instance, so a line's
 // removals must be read out of it before the first yield. The solver may run
@@ -228,11 +214,9 @@ for (let iter = 0; iter < PAIRS; iter++) {
   for (let i = 0; i < N; i++) truth[LINE2[i]] = permB[i]
   const start = makePuzzle(truth, seeder, BOTH)
 
-  // Serial: drain A fully, then B.
   const serial = copyOf(start)
   Array.from(mod.update(instA, serial))
   Array.from(mod.update(instB, serial))
-  // Interleaved: take A's first change, run all of B, then finish A.
   const mixed = copyOf(start)
   const genA = mod.update(instA, mixed)
   genA.next()
@@ -278,7 +262,6 @@ for (let iter = 0; iter < EXACT; iter++) {
     return [...s]
   }, { houses: [smallLine] })
   const start = new Map([...p._cand].map(([c, s]) => [c, new Set(s)]))
-  // Every line the STARTING candidates and both clues allow, by brute force.
   const oracle = new Map([...start.keys()].map(c => [c, new Set()]))
   for (const q of PERMS) {
     const a = visible(q)
@@ -289,7 +272,7 @@ for (let iter = 0; iter < EXACT; iter++) {
     oracle.get(CB).add(b)
     for (const i of smallLine) oracle.get(i).add(q[i])
   }
-  if (oracle.get(CA).size === 0) continue // no valid line: the DP may leave anything
+  if (oracle.get(CA).size === 0) continue
   exactRuns++
   while (Array.from(mod.update(smallInst, p)).length > 0) { /* to fixpoint */ }
   const d = disagreement(p, oracle)
@@ -301,16 +284,6 @@ for (let iter = 0; iter < EXACT; iter++) {
 installGlobals(1, N)
 console.log('exactness vs brute force (n=5):', exactRuns, 'states,', exactBad, 'disagreements')
 
-// ---------------------------------------------------------------------------
-// The DP's gate. The DP reads the line as a permutation of 1..n, so it needs a
-// full house whose digit set is {1..n} and it asks for that inside `update`
-// (docs/line-contract.md). Three things to prove: it stands down on a bare
-// line, it stands down on a full house of the wrong digit set, and it re-tests
-// until the gate opens rather than caching the first, shut answer.
-// ---------------------------------------------------------------------------
-
-// A bare line an author drew: nine cells that may repeat. Ungated, the DP
-// would read them as a permutation and prune what the line needs.
 const bareInst = {}
 mod.setParams(bareInst, CA, CB, LINE)
 let bareRemovals = 0
@@ -351,8 +324,6 @@ for (const pinClues of [false, true]) {
 }
 console.log('zero-based board:', zeroRemovals, 'candidates removed')
 
-// `validate` judges a line the DP never gated, so it stands down behind the
-// same gate.
 const filled = { [CA]: 9, [CB]: 1 }
 for (const i of zeroLine) filled[i] = i
 const zeroValidates = mod.validate(zeroInst, makePuzzle(filled, (c, v) => [v], zeroOpts))
@@ -367,7 +338,7 @@ const permOf19 = [4, 1, 7, 2, 9, 3, 8, 5, 6]
 mod.setParams(liveZeroInst, CA, CB, zeroLine)
 const liveTruth = { [CA]: visible(permOf19), [CB]: visible([...permOf19].reverse()) }
 for (const i of zeroLine) liveTruth[i] = permOf19[i]
-const openLine = [...Array(10).keys()] // every digit of the 0..9 board
+const openLine = [...Array(10).keys()]
 const withZero = makePuzzle(liveTruth, (c, v) => (c === CA || c === CB ? [v] : openLine), zeroOpts)
 const zeroLiveBefore = total(withZero)
 fixpoint(mod, liveZeroInst, withZero)
@@ -379,7 +350,7 @@ const opensAfterZeroGoes = total(withZero) < afterZeroGone
 console.log('0 live on the first update:', shutWhileZeroLive ? 'gate shut' : 'GATE OPEN',
   '/ after the 0 goes:', opensAfterZeroGoes ? 'gate opens' : 'STAYS SHUT')
 
-// One instance across a backtrack (#336). The app shares the component object
+// One instance across a backtrack. The app shares the component object
 // across every search node, so a gate cached open deep in a branch is still
 // open after the search returns to a parent state where the line has regained
 // its 0. Same zero-based board as above, judged by an instance that saw a
@@ -387,14 +358,13 @@ console.log('0 live on the first update:', shutWhileZeroLive ? 'gate shut' : 'GA
 const latchInst = {}
 mod.setParams(latchInst, CA, CB, zeroLine)
 const deepOpen = makePuzzle(liveTruth, (c, v) => (c === CA || c === CB ? [v] : [1, 2, 3, 4, 5, 6, 7, 8, 9]), zeroOpts)
-fixpoint(mod, latchInst, deepOpen) // a {1..9} line: the gate opens here
+fixpoint(mod, latchInst, deepOpen)
 const backTruth = { [CA]: 9, [CB]: 1 }
 for (const i of zeroLine) backTruth[i] = i
 const backP = makePuzzle(backTruth, (c, v) => (c === CA || c === CB ? unclued : [v]), zeroOpts)
 const lineLatchBad = violates(mod, latchInst, backP, backTruth)
 console.log('line gate after a backtrack:', lineLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(lineLatchBad)}`)
 
-// ---- a clue cell in the house query (#357) ----
 // The mock answers getCellsCanHaveRepeats from the houses a case declares,
 // and a clue cell is in no house with its line -- as in the app. So the same
 // DP, loaded with its clue cell passed into the gate's query, reads every full
@@ -405,7 +375,7 @@ const clueInQuery = load('SkyscraperPairComponent.js', ['setParams', 'update'], 
   'lineKind(instance, puzzle, line).oneToN) return\n', 'lineKind(instance, puzzle, [clueA, ...line]).oneToN) return\n'))
 installGlobals(1, N)
 let clueQueryFired = 0
-let lineQueryFired = 0 // the shipped DP on the same states: the control
+let lineQueryFired = 0
 for (let iter = 0; iter < 300; iter++) {
   const perm = shuffled()
   const truth = { [CA]: visible(perm), [CB]: visible([...perm].reverse()) }

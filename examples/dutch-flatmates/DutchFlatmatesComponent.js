@@ -12,23 +12,20 @@
 // list of digits) only gets the simple check: a 5 must have a possible 1 above
 // or 9 below.
 
-// Every cell takes part in the rule, so a change to any cell wakes `update`.
 function getAffectedCells (cells) {
   return cells
 }
 
-// `cells` lists the grid row by row. We also keep each column's cells, top row
-// first, and a note of how each column looked the last time we pruned it.
+// `cells` lists the grid row by row, top row first.
 function setParams (instance, cells) {
   const size = Math.round(Math.sqrt(cells.length))
   instance.size = size
   instance.columns = Array.from({ length: size }, (_, col) =>
     Array.from({ length: size }, (_, row) => cells[row * size + col]))
-  instance.holdsEachDigitOnce = new Array(size).fill(null) // filled in by columnHoldsEachDigitOnce
-  instance.lastPruned = new Array(size).fill(null) // each column's state when we last pruned it
+  instance.holdsEachDigitOnce = new Array(size).fill(null)
+  instance.lastPruned = new Array(size).fill(null)
 }
 
-// Rows (0 = top) of this column where each of the digits 1, 5 and 9 can still go.
 function readColumn (puzzle, column) {
   const rows = { 1: [], 5: [], 9: [] }
   for (let row = 0; row < column.length; row++) {
@@ -40,19 +37,15 @@ function readColumn (puzzle, column) {
   return rows
 }
 
-// A short text for a column's state, to tell whether it has changed.
 function columnState (rows) {
   return `${rows[1]}|${rows[5]}|${rows[9]}`
 }
 
-// Whether this column holds each of the board's digits exactly once, as a
-// column of an ordinary sudoku does, and 1, 5 and 9 are among those digits. Only
-// then does it hold exactly one 1, one 5 and one 9. That takes three facts:
-// the app says the column cannot repeat a digit, the column is as long as the
-// list of digits, and the digits run from at most 1 to at least 9.
+// Only a column that holds each of the board's digits exactly once, 1, 5 and 9
+// among them, is sure to hold exactly one 1, one 5 and one 9.
 // The app only knows whether a column can repeat once solving has started, so
-// this is asked here and not in the setup code, and only once: the board's
-// layout decides it, so one answer is kept for the whole solve.
+// this is asked here and not in the setup code. The board's layout decides it,
+// so one answer is kept for the whole solve.
 function columnHoldsEachDigitOnce (instance, puzzle, col) {
   if (instance.holdsEachDigitOnce[col] === null) {
     const { minDigit, maxDigit } = helpers.digits
@@ -107,7 +100,7 @@ function * update (instance, puzzle) {
   for (let col = 0; col < size; col++) {
     const column = columns[col]
     const rows = readColumn(puzzle, column)
-    if (columnState(rows) === lastPruned[col]) continue // nothing new since we pruned it
+    if (columnState(rows) === lastPruned[col]) continue
     const holdsEachDigitOnce = columnHoldsEachDigitOnce(instance, puzzle, col)
     const keep = holdsEachDigitOnce ? rowsToKeep(rows) : rowsToKeepIfRepeatsAllowed(rows)
     // Such a column must hold a 5 somewhere, so if none can stay, this branch is dead.
@@ -115,7 +108,6 @@ function * update (instance, puzzle) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
-    // Remove each digit from the rows we are not keeping, and note the rows left.
     const left = { 1: [], 5: [], 9: [] }
     for (const digit of [1, 5, 9]) {
       for (const row of rows[digit]) {
@@ -128,7 +120,6 @@ function * update (instance, puzzle) {
   }
 }
 
-// On a full grid, every 5 needs a 1 directly above it or a 9 directly below it.
 // `instance.cells` is the list of every cell, row by row, which the app fills in.
 function validate (instance, puzzle) {
   const { cells, size } = instance

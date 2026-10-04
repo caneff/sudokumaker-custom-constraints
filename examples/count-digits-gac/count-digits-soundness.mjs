@@ -16,7 +16,7 @@
 //   3. Completeness. A brute-force oracle enumerates every assignment the
 //      candidates allow, keeps the ones obeying the rule, and reads each cell's
 //      supported digits off them. The component must remove no more than the
-//      oracle (sound) and we report how much less it removes (weak).
+//      oracle (sound); on `exact` shapes it must remove no less either.
 
 import { fuzzSoundness, installGlobals, makeIo, makePuzzle, makeRng, makeSeeder, total } from '../_shared/harness-lib.mjs'
 
@@ -31,7 +31,6 @@ const builtin = load('BuiltinCountDigitsComponent.js', ['setParams', 'validate']
 const { rnd } = makeRng(4242)
 function maskOf (digits) { let m = 0; for (const d of digits) m |= 1 << d; return m }
 
-// ---- states: always satisfiable, always keeping every true value ----
 // `counterIsTarget` puts the counter cell in its own target list, which the
 // built-in's constructor allows (its cellIds are [counterCell, ...targetCells]
 // either way). The truth then has to be a fixed point of the count, so it is
@@ -52,7 +51,7 @@ function makeState ({ targetCount, digitCount, digitRange, counterIsTarget }) {
     return targets.reduce((n, cell) => n + (inSet.has(truth[cell]) ? 1 : 0), 0)
   }
   const fixed = allDigits.filter(value => countWith(value) === value)
-  if (fixed.length === 0) return null // no legal counter digit: redraw
+  if (fixed.length === 0) return null
   truth[counter] = fixed[(rnd() * fixed.length) | 0]
 
   const seeder = makeSeeder(rnd, allDigits)
@@ -69,7 +68,6 @@ function runComponent (mod, state) {
   return instance
 }
 
-// ---- oracle: every assignment the candidates allow that obeys the rule ----
 // Independent of the component: it enumerates digits and counts hits, rather
 // than reasoning about bounds. Returns cell -> Set of supported digits, or null
 // when nothing satisfies the rule (the state is dead).
@@ -99,7 +97,6 @@ function supportedDigits (state, candidates) {
 
 // One shape: `iters` states through the shared soundness loop, then checks 2
 // and 3 read off each state's puzzle, which the loop left at its fixpoint.
-// Returns the failure count.
 function run (label, shape) {
   const { iters, oracle = false, exact = false } = shape
   const records = []
@@ -124,7 +121,6 @@ function run (label, shape) {
   let removedOracle = 0
   let missedByGac = 0
   for (const { state, p, start } of records) {
-    // 2. what the built-in's validate makes of the same starting state
     const pruned = total(p) < [...start.values()].reduce((n, set) => n + set.size, 0)
     if (pruned || p._stopped !== null) {
       const q = puzzleOf(state)
@@ -132,13 +128,10 @@ function run (label, shape) {
       if (builtin.validate(runComponent(builtin, state), q)) builtinBlind++
     }
 
-    // 3. completeness against the oracle, on the shapes small enough to
-    //    enumerate: compare the component's final sets with the oracle's
-    //    supported digits on the same start.
     if (!oracle) continue
     const support = supportedDigits(state, start)
     oracleChecked++
-    if (support === null) continue // dead state: the fuzz never builds one
+    if (support === null) continue
     for (const [cell, startSet] of start) {
       for (const digit of startSet) {
         const supportedHere = support.get(cell).has(digit)
@@ -146,7 +139,6 @@ function run (label, shape) {
         if (!supportedHere) removedOracle++
         if (!supportedHere && keptHere) {
           missedByGac++
-          //! `exact` shapes claim full arc consistency: a removal the oracle makes and we do not is a failure.
           if (exact) {
             bad++
             if (bad <= 5) console.log(label, 'MISSED', { cell, digit }, 'truth', JSON.stringify(state.truth))
@@ -164,7 +156,6 @@ function run (label, shape) {
   return bad
 }
 
-// Returns the failure count over every shape.
 export function countDigitsSoundness () {
   let failures = 0
   failures += run('count: 5 targets, 2 digits, oracle  ', { targetCount: 5, digitCount: 2, digitRange: 5, counterIsTarget: false, iters: 4000, oracle: true })

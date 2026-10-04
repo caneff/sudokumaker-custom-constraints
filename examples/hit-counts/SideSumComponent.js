@@ -7,21 +7,17 @@
 
 // The clue cells and every cell of the perpendicular lines the gate reads, so
 // the change that opens the gate -- a line losing its last 0 -- wakes the
-// component instead of waiting for a clue to move: n + n^2 cells in all. The
-// list does not bear on soundness: the gate is re-read in full on every call
-// (lineKind latches only the repeats answer, geometry a backtrack cannot
-// undo), so whenever `update` runs it judges the lines as they stand then
-// (#362's "side-sum stale wake" in the soundness harness). The app retires a
-// component once every listed cell is filled and it validates, so this one
-// retires only once its lines are filled as well. That costs nothing: the side
-// sum is derived, and main-global.js gives every framed line a pair component
-// that enforces its own clues.
+// component instead of waiting for a clue to move. The list does not bear on
+// soundness: the gate is re-read in full on every call, so whenever `update`
+// runs it judges the lines as they stand then ("side-sum stale wake" in the
+// soundness harness). The app retires a component once every listed cell is
+// filled and it validates, so this one retires only once its lines are filled
+// too. That costs nothing: main-global.js gives every framed line a pair
+// component that enforces its own clues.
 function getAffectedCells (clueCells, target, lines) {
   return [...clueCells, ...lines.flat()]
 }
 
-// `lines` are the n perpendicular lines the main code hands over. The component
-// checks them itself rather than trusting the caller (docs/line-contract.md).
 // The clues live in `instance.clues`: the app has already set `instance.cells`
 // to the list above, and the bound reads the clues alone.
 function setParams (instance, clueCells, target, lines) {
@@ -30,15 +26,13 @@ function setParams (instance, clueCells, target, lines) {
   instance.lines = lines
 }
 
-// The gate: one perpendicular line per clue, each a full house whose digit set
-// is {1..n} -- exactly one hit each, so the side sums to n, which is what the
-// target must be. Asked at solve time, because main code runs before the
-// built-in row/column houses are registered (gotcha 6) and a hit-counts board
-// only loses the 0 off its inner grid once the cage bites during solving. The
-// answer is never cached: the app shares one component object across every
-// search node, so a gate latched open deep in a branch stays open after the
-// backtrack to a parent state whose perpendiculars have regained a 0 (#336).
-// lineKind's `oneToN` is that test, per line.
+// The gate: one perpendicular line per clue, each a full house of {1..n}. Asked
+// at solve time, because main code runs before the built-in row/column houses
+// are registered (gotcha 6) and a hit-counts board only loses the 0 off its
+// inner grid once the cage bites during solving. The answer is never cached:
+// the app shares one component object across every search node, so a gate
+// latched open deep in a branch stays open after the backtrack to a parent
+// state whose perpendiculars have regained a 0.
 // #include ../_shared/line-kind.js
 
 function sumsToN (instance, puzzle) {
@@ -48,8 +42,6 @@ function sumsToN (instance, puzzle) {
   return true
 }
 
-// Bounds propagation for sum(cells) === target. Each cell sits in
-// [target - (sum of other maxima), target - (sum of other minima)].
 function * propagate (cells, target, puzzle) {
   const mins = []
   const maxs = []
@@ -64,7 +56,7 @@ function * propagate (cells, target, puzzle) {
   for (let i = 0; i < cells.length; i++) {
     const lo = target - (sumMax - maxs[i])
     const hi = target - (sumMin - mins[i])
-    let bad = 0 // raw mask, bit d = digit d
+    let bad = 0
     for (const d of puzzle.getCandidates(cells[i])) if (d < lo || d > hi) bad |= 1 << d
     if (bad !== 0) yield puzzle.removeCandidatesFromCell(bad, cells[i])
   }

@@ -1,10 +1,5 @@
-// The soundness fuzz for this example's two components, CountDigitsGacComponent
-// and RequiredDigitsGacComponent. Each has its own file for its state
-// generator and oracle; this one runs them both and ends on one verdict, so
-// `just soundness` (which runs the file of this name in every example) covers
-// both.
-//
-//   node examples/count-digits-gac/soundness-harness.mjs
+// `just soundness` runs the file of this name in every example, so this one
+// runs both components' fuzzes and ends on one verdict.
 
 import { finishHarness } from '../_shared/harness-lib.mjs'
 import { countDigitsSoundness } from './count-digits-soundness.mjs'

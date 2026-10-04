@@ -1,10 +1,3 @@
-// This is the backend: the code that runs once, at setup, to decide which
-// cells `HouseGacComponent` (below, embedded as this constraint's one
-// component) watches. It reads the board's own geometry and registers one
-// component instance per house -- a row, a column, or a box -- so a plain
-// 9x9 ends up with 27 instances, each running the all-different check on its
-// own 9 cells. It does not run again once the solve starts.
-//
 // The shipped `HouseGacComponent` on every row, column and box of a plain 9x9
 // with no clue ring. `examples/_shared/house-gac.js` cannot register this
 // board -- it assumes a frame board's ring and would clip two houses and a
@@ -15,11 +8,10 @@ const cols = [...helpers.geometry.getAllColumns()].map(line => line.map(cell => 
 // plain integers.
 const boxes = puzzle.getRegions()
 
-// A silently short list here (empty regions, a resized board) would register
-// fewer than 27 houses with no error -- the filter just goes quietly weaker.
-// A board that isn't a plain 9x9 with all 27 houses intact throws here, at
-// setup, instead. The RangeError fails the Node harness loudly; in the app it
-// only reaches the console, and the board ships with no filter at all.
+// A short list (empty regions, a resized board) would register fewer than 27
+// houses with no error and quietly weaken the filter, so throw at setup. In
+// the app the throw only reaches the console, and the board ships with no
+// filter at all.
 if (rows.length !== 9 || cols.length !== 9 || boxes.length !== 9) {
   throw new RangeError(`House GAC: expected 9 rows, 9 columns and 9 boxes, got ${rows.length}/${cols.length}/${boxes.length}`)
 }

@@ -1,10 +1,6 @@
-// The one runnable check for cut-profile.mjs. The profiler patches the
-// component's source by matching two anchor lines, so the way it breaks is
-// silent: an edit to `IsofillComponent.js` moves an anchor, the patch no
-// longer applies, and the share it reports is wrong rather than absent.
-// These assertions are what fails when that happens.
-//
-//   node examples/isofill/cut-profile.test.mjs
+// The profiler patches the component's source by matching two anchor lines,
+// so the way it breaks is silent: an edit to `IsofillComponent.js` moves an
+// anchor and the share it reports is wrong rather than absent.
 
 import { installGlobals, makePuzzle } from '../_shared/harness-lib.mjs'
 import { instrument, snapshots, loadComponent, timeUpdate, GRIDS } from './cut-profile.mjs'
@@ -15,12 +11,10 @@ installGlobals(0, 9)
 let ok = true
 const check = (name, pass) => { console.log(`${name}: ${pass}`); ok = ok && pass }
 
-// ---- The anchors are still there, and a source without them fails loud ----
 let threw = false
 try { instrument('function * update (instance, puzzle) {}') } catch { threw = true }
 check('missing anchor throws', threw)
 
-// ---- The patch does not change what the component removes ----
 const plain = loadComponent(HERE, s => s)
 const timed = loadComponent(HERE, instrument)
 const snaps = snapshots(GRIDS(HERE).gen_28g, 6)
@@ -36,16 +30,11 @@ const removalsOf = (mod, snap) => {
 }
 check('patched removals match plain', snaps.every(s => removalsOf(plain, s) === removalsOf(timed, s)))
 
-// ---- The accumulator is wired: cut runs, and its time is part of update's ----
-// timeUpdate throws on a run that recorded exactly no cut time. Between that
-// and all of `update` sits the span itself: a patch that accumulates a clock
-// reading, or a negative span, falls outside it. A cut counted twice does not
-// (the share is about a half here), so this is a range check, not a measure.
+// A cut counted twice still passes (the share is about a half here), so this
+// is a range check, not a measure.
 const { totalMs, cutMs } = timeUpdate(timed, snaps, 1)
 check('cut time is within (0, update time)', cutMs > 0 && cutMs < totalMs)
 
-// ---- An uninstrumented component reads as no cut time at all, and that
-// fails loud rather than reporting a 0% share ----
 let silent = false
 try { timeUpdate(plain, snaps, 1) } catch { silent = true }
 check('unpatched component fails loud', silent)

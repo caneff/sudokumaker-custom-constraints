@@ -41,13 +41,6 @@ const CASE_L = 0
 const CASE_R = 1
 const CASE_M = 2
 
-// The line's kind: lineKind(instance, puzzle, cells). The mirrored-pair
-// exclusion needs a house; the no-n-1 rule and the permutation sweep need a
-// full house whose digit set is {1..n}, which is lineKind's `oneToN`.
-// The repeats answer is latched both ways, since it is geometry fixed once
-// `update` first runs. The solver can retire a filled built-in house for the
-// rest of a branch, which can only weaken a latched answer, never make a
-// removal unsound.
 // #include ../_shared/line-kind.js
 
 function getAffectedCells (clueA, clueB, line) {
@@ -59,7 +52,6 @@ function setParams (instance, clueA, clueB, line) {
   instance.clueB = clueB
   instance.line = line
   instance.n = line.length
-  // Units: one per mirrored pair {j, n-1-j}, then the centre on its own (k = -1).
   const units = []
   const n = line.length
   for (let j = 0; j * 2 < n - 1; j++) units.push([j, n - 1 - j])
@@ -67,15 +59,13 @@ function setParams (instance, clueA, clueB, line) {
   instance.units = units
 }
 
-// The three cases a position can take, read off its candidate mask, as bits
-// 1 << CASE_L, 1 << CASE_R and 1 << CASE_M.
 function caseBits (mask, j, n) {
   const lBit = 1 << (j + 1)
   const rBit = 1 << (n - j)
   let bits = 0
   if (mask & lBit) bits |= 1 << CASE_L
   if (mask & rBit) bits |= 1 << CASE_R
-  if (mask & ~(lBit | rBit)) bits |= 1 << CASE_M // any digit that is neither target
+  if (mask & ~(lBit | rBit)) bits |= 1 << CASE_M
   return bits
 }
 
@@ -88,8 +78,7 @@ function centreCombos (c) {
   return out
 }
 
-// One unit's combinations, flat: caseJ, caseK, dA, dB per entry. k < 0 is the
-// centre.
+// One unit's combinations, flat: caseJ, caseK, dA, dB per entry.
 function unitCombos (cm, j, k, n, house) {
   if (k < 0) return centreCombos(caseBits(cm[j], j, n))
   return pairCombos(caseBits(cm[j], j, n), caseBits(cm[k], k, n), house)
@@ -113,14 +102,12 @@ const PAIR_CASES_OFF_HOUSE = [
   2, 1, CASE_R, CASE_L, 1, 1
 ]
 
-// Emit every case in `table` both ends can still take.
 function pushCases (out, table, a, b) {
   for (let t = 0; t < table.length; t += 6) {
     if ((a & table[t]) && (b & table[t + 1])) out.push(table[t + 2], table[t + 3], table[t + 4], table[t + 5])
   }
 }
 
-// A mirrored pair's combinations, from the case bits of each end.
 function pairCombos (a, b, house) {
   const out = []
   pushCases(out, PAIR_CASES, a, b)
@@ -168,7 +155,7 @@ function permScratch (instance, n) {
   instance.F = new Int32Array(size)
   instance.H = new Int32Array(size)
   instance.reach = new Uint8Array(1 << n)
-  instance.dig = new Int32Array(n) // filled per call from the cells' own masks
+  instance.dig = new Int32Array(n)
   instance.keep = new Int32Array(n)
   const pc = new Uint8Array(1 << n)
   for (let m = 1; m < pc.length; m++) pc[m] = pc[m >> 1] + (m & 1)
@@ -224,7 +211,6 @@ function permBackward (H, reach, dig, pc, n, W, last, maskA, maskB) {
   }
 }
 
-// Clue candidates: the (A, B) pairs a full permutation reaches inside the box.
 function permKeepClues (F, tail, maskA, maskB, n) {
   let keepA = 0
   let keepB = 0
@@ -263,13 +249,6 @@ function permKeepDigits (F, H, keep, reach, dig, pc, n, W, last) {
 // The permutation sweep, for a line that holds 1..n once each. A state is the
 // set of digits already placed; its size names the position to fill next, so
 // `permForward` and `permBackward` walk the same states in opposite directions.
-//   F[mask][a] — the B counts a prefix can reach with A count a, having used
-//     exactly the digits in `mask`.
-//   H[mask][a] — the B counts that, added to a prefix already holding (a, b),
-//     let the rest of the line finish on a pair both clues still hold.
-// Digit d at position i is possible when some state meets its own future: the
-// prefix reaches (a, b) and the suffix after d finishes from there. Anything no
-// state supports is a digit no permutation can put in that cell.
 // The three sweeps step a digit the same way -- read the low bit, name the
 // digit, work out whether it hits for A, for B, and where it lands. That inner
 // step is written out three times rather than shared, because a call in a loop
@@ -290,8 +269,6 @@ function * permutationPrune (instance, puzzle, cm, maskA, maskB) {
   const tail = last * W
   permBackward(H, reach, dig, pc, n, W, last, maskA, maskB)
 
-  // No permutation of the line lands both clues on a candidate: the branch is
-  // dead. Stop with the reason, the same signal the case sweep raises too.
   if ((H[0] & 1) === 0) {
     yield puzzle.stop(`no ordering of the line satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return true
@@ -333,7 +310,6 @@ function * update (instance, puzzle) {
   const maskA = rawA & all
   const maskB = rawB & all
   if (maskA === 0 || maskB === 0) return
-  // Each line mask is read once here and handed to the signature and the sweep.
   const cm = []
   for (let j = 0; j < n; j++) cm.push(puzzle.getCandidatesBitMask(line[j]))
   const lk = lineKind(instance, puzzle, line)
@@ -406,8 +382,6 @@ function caseBackward (combos, U, n, box) {
   return H
 }
 
-// Which cases each position can still take: a combination survives where the
-// units before it reach a state the units after it can finish from.
 function openCases (combos, units, F, H, U, n) {
   const open = new Array(n).fill(0)
   for (let u = 0; u < U; u++) {
@@ -431,7 +405,6 @@ function openCases (combos, units, F, H, U, n) {
   return open
 }
 
-// Clue candidates: keep the values that appear in a reachable pair in the box.
 function caseKeepClues (S, box, n) {
   let keepA = 0
   let keepB = 0
@@ -444,7 +417,6 @@ function caseKeepClues (S, box, n) {
   return { keepA, keepB }
 }
 
-// The digits an impossible case takes with it at position j.
 function caseCellDrop (o, j, n) {
   const lBit = 1 << (j + 1)
   const rBit = 1 << (n - j)
@@ -456,8 +428,6 @@ function caseCellDrop (o, j, n) {
   return rm
 }
 
-// The case sweep: a forward and a backward pass over the mirrored units, each
-// unit contributing the (case, hit) combinations its two cells still allow.
 // Weaker than the permutation sweep but it runs on any line kind. Returns true
 // when it stopped on a dead branch, which is what keeps `update` from memoising
 // the state it stopped on.
@@ -473,8 +443,6 @@ function * caseSweep (instance, puzzle, cm, maskA, maskB, kind, all) {
   for (let a = 0; a <= n; a++) if ((maskA >> a) & 1) box[a] = maskB
   const H = caseBackward(combos, U, n, box)
 
-  // No (A, B) the line can reach lies in the box: the branch is dead. Stop
-  // with the reason, the same signal the per-line rule already raises.
   if ((H[0][0] & 1) === 0) {
     yield puzzle.stop(`no hit count the line can reach satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return true
@@ -494,9 +462,6 @@ function * caseSweep (instance, puzzle, cm, maskA, maskB, kind, all) {
   return false
 }
 
-// A full line must realise both its clues exactly. The n - 1 reject rides the
-// same gate the rule in `update` does: a clue of n - 1 is illegal only on a line
-// that holds 1..n once each.
 function validate (instance, puzzle) {
   const { clueA, clueB, line, n } = instance
   if (n >= 2 && lineKind(instance, puzzle, line).oneToN) {

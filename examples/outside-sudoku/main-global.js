@@ -1,8 +1,5 @@
-// Outside Sudoku, GLOBAL variant. No groups arrive: the frame lines come from
-// the shared reader below, one { side, clue, line } per clued line
-// (examples/_shared/frame-lines.js). Every frame line is one row or column by
-// construction, so no direction check is needed here (main.js keeps it, for a
-// drawn group of any shape).
+// Every frame line is one row or column by construction, so no direction
+// check is needed here (main.js keeps one for drawn groups).
 // #include ../_shared/frame-lines.js
 // #include window-length.js
 

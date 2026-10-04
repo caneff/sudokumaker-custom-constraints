@@ -1,9 +1,7 @@
 // Strength check for the shared HouseGacComponent, as this example uses it:
 // on the full 9-cell houses a plain 9x9 has. Soundness lives in
 // soundness-harness.mjs; this checks the other direction -- that the current
-// component never prunes LESS than the commit that introduced it (#422).
-//
-//   node examples/house-gac/update-strength.test.mjs
+// component never prunes LESS than the commit that introduced it.
 //
 // This is the shared component's own file, not one owned by this example, so
 // the floor is pinned at the commit that shipped it, the same way every other

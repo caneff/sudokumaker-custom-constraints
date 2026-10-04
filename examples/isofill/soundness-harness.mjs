@@ -1,18 +1,3 @@
-// Soundness fuzz for the ISOFILL component. Soundness = a component never
-// removes a cell's TRUE value. We seed random partial states in which every
-// cell still allows its true value, run the component to a fixpoint, and check
-// the true value survived.
-//
-//   node examples/isofill/soundness-harness.mjs
-//
-// Two fixtures, both valid ISOFILL solutions:
-//   rows — row r holds digit r (covers cap and force).
-//   bent — each pair of rows splits into two L-shaped regions, so the seed
-//          walk goes around corners.
-//   silent35 — the grid of gen_35g_silent.json, fuzzed with a seeder that
-//          never pins digit 2, so that digit stays silent (no placed cell) in
-//          every state and only the silent-digit rule prunes it.
-
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, makePuzzle, makeSeeder, violates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
@@ -53,7 +38,6 @@ function silentSeeder (d) {
   }
 }
 
-// A random candidate seed for a cell: pinned, full, or a subset that keeps true.
 const seeder = makeSeeder(rnd, ALL)
 
 function run (truth, seed) {
@@ -63,20 +47,17 @@ function run (truth, seed) {
   return { p, v: violates(mod, inst, p, truth) }
 }
 
-// shipped — the grid in gen.json (also the grid of the 44-clue fixture).
 const grid = f => JSON.parse(readFileSync(join(HERE, f), 'utf8')).grid
 const shippedGrid = grid('gen.json')
 if (shippedGrid.join() !== grid('gen_44g.json').join()) throw new Error('gen_44g.json grid differs from gen.json')
 const shipped = {}
 shippedGrid.forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))
-// hard — the 32-given fixture's grid, the one budget was tuned on.
 const hard = {}
 grid('gen_32g.json').forEach((row, r) => [...row].forEach((ch, x) => { hard[r * N + x] = Number(ch) }))
 // silent35 — the grid whose 35-given fixture leaves digit 2 with no given.
 const silent35 = {}
 grid('gen_35g_silent.json').forEach((row, r) => [...row].forEach((ch, x) => { silent35[r * N + x] = Number(ch) }))
 
-// Run update once (one call is enough for a directed check) and return the puzzle.
 function once (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
@@ -85,7 +66,6 @@ function once (truth, seed) {
   return p
 }
 
-// ---- Fuzz: true values survive, on all fixtures ----
 // ponytail: 2,000 per fixture keeps this harness at ~10 s now that cut
 // pruning walks per open cell; FUZZ=20000 for the deep run before a ship.
 const FUZZ = Number(process.env.FUZZ) || 2000
@@ -101,11 +81,9 @@ for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder
   }).failures
 }
 
-// ---- Cap: digit 0 fills row 0, so no other cell may keep 0 ----
 const cap = run(rows, (c, v) => (v === 0 ? [v] : ALL))
 const capOk = !cap.v && CELLS.slice(N).every(c => !cap.p.getCandidates(c).has(0))
 
-// ---- Force: digit 0 has exactly ten open cells (row 0), so they must be 0 ----
 const force = run(rows, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
 const forceOk = !force.v && CELLS.slice(0, N).every(c => force.p.getCandidates(c).size === 1)
 
@@ -140,13 +118,12 @@ const farDeadOk = farDead.getCandidates(0).size === 0
 const farLive = once(bent, (c, v) => (c === 0 || c === 18 ? [0] : ALL))
 const farLiveOk = farLive.getCandidates(0).has(0) && farLive.getCandidates(18).has(0)
 
-// ---- Tighter than the old walk: digit 1 placed at cells 7, 14 and 17, digit
-// 0 at cell 12, which walls off row 1 to the left of 14. The seed is cell 7
-// and the budget is seven open cells. Linking 7 to 14 costs two of them
-// (cells 16 and 15), so the six cells from 14 down and back along row 2 to
-// cell 10 come to eight in all and cell 10 falls outside the walk. The old
-// walk started from every placed cell at no cost, so it reached cell 10 in
-// six steps from 14 and kept the candidate ----
+// ---- Linked walk: digit 1 placed at cells 7, 14 and 17, digit 0 at cell 12,
+// which walls off row 1 to the left of 14. The seed is cell 7 and the budget
+// is seven open cells. Linking 7 to 14 costs two of them (cells 16 and 15), so
+// the six cells from 14 down and back along row 2 to cell 10 come to eight in
+// all and cell 10 falls outside the walk. A walk started from every placed
+// cell at no cost would reach cell 10 in six steps from 14 ----
 const linked = once(bent, (c, v) => ([7, 14, 17].includes(c) ? [1] : c === 12 ? [0] : ALL))
 const linkedOk = !linked.getCandidates(10).has(1)
 
@@ -242,16 +219,13 @@ const arcOk = CELLS.some(c => arc.getCandidates(c).size === 0)
 // cells 1 and 2, and digit 1 is placed at border cell 6, outside that arc. So
 // cell 1 cannot be 1 -- that reads 0, 1, 0, 1 round the border -- and it loses
 // nothing else: digit 2, placed only at interior cell 12, has no border
-// witness, and the silent digits stay. Interior cell 11 is not on the walk ----
+// witness, and the silent digits stay. Interior cell 11 is off the border, so
+// it keeps 1 ----
 const flank = once(rows, c => (c === 0 || c === 3 ? [0] : c === 6 ? [1] : c === 12 ? [2] : ALL))
-// Cell 1 keeps every digit but 1 -- the assertion is the whole surviving set,
-// so a rule that stripped more than the outside digit would fail here.
 const flankKept = ALL.filter(d => d !== 1)
 const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
   !flank.getCandidates(2).has(1) && flank.getCandidates(11).has(1)
 
-// ---- One pass: update reads each cell's candidate mask at most once per call ----
-// (The scan reads masks, never getCandidates: pooling.test.mjs holds that.)
 const onePass = makePuzzle(rows, () => ALL)
 const readsPerCell = new Map()
 const getMask = onePass.getCandidatesBitMask.bind(onePass)
@@ -269,9 +243,6 @@ const swapped = { ...bent, 0: bent[99], 99: bent[0] }
 const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
 
-// ---- 9x9 with digits 1-9: the same component on the other supported board.
-// One fuzz fixture (rows, one digit per row) plus a cap check, with the
-// globals re-installed for the 1-9 range ----
 installGlobals(1, 9)
 const N9 = 9
 const CELLS9 = Array.from({ length: N9 * N9 }, (_, i) => i)
@@ -292,8 +263,6 @@ const cap9Inst = {}
 mod.setParams(cap9Inst, CELLS9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
-// The directed checks, by name: each one's line in the verdict, and all of
-// them in the pass.
 const CHECKS = {
   'cap fired': capOk,
   'force fired': forceOk,

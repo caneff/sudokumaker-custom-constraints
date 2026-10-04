@@ -1,9 +1,3 @@
-// NoFiveComponent: `initialize` removes the 5 from exactly its cells and
-// nothing else, `validate` refuses a filled 5 in them, and the Counting Circles
-// board's solution loses no true value to it (soundness).
-//
-//   node examples/dutch-flatmates/no-five.test.mjs
-
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'

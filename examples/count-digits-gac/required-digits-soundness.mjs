@@ -30,10 +30,6 @@ const seeder = makeSeeder(rndSeeder(), [...Array(N).keys()].map(i => i + 1))
 const { rnd } = makeRng()
 function rndSeeder () { return makeRng(777).rnd }
 
-// ---- the built-in's rule, ported from the bundle body for comparison ----
-// update: subtract each FILLED value from a copy of `values`, collect the
-// unfilled cells, and filter them to the remaining values only when the two
-// counts match exactly. No candidate is ever read.
 function builtinUpdate (values, cells, p) {
   const unsolved = []
   const remaining = values.slice()
@@ -55,9 +51,8 @@ function builtinUpdate (values, cells, p) {
   return removed
 }
 
-// ---- oracle: is there an SDR for `values` over `cells` given candidates? ----
 function hasSdr (values, cells, candOf) {
-  const matchOf = new Map() // cell -> value index
+  const matchOf = new Map()
   const seenStamp = new Map()
   let stamp = 0
   const tryAssign = (valueIndex) => {
@@ -93,7 +88,6 @@ function oracleRemovals (values, cells, sets) {
   return removed
 }
 
-// ---- state generator: always satisfiable, always keeps the true values ----
 // A declared house means the cells really cannot repeat, so its true digits
 // must be distinct -- otherwise the "truth" is not a legal state and any
 // component that trusts the house is marked wrong for being right.
@@ -122,7 +116,6 @@ function makeState (cellCount, valueCount, { houses = [], forceRepeat = false } 
 
 // One shape: `iters` states through the shared soundness loop, then checks 2
 // and 3 read off each state's puzzle, which the loop left at its fixpoint.
-// Returns the failure count.
 function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = false }) {
   const records = []
   const result = fuzzSoundness(label, {
@@ -152,8 +145,6 @@ function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = 
     for (const [c, s] of snapshot) for (const d of s) if (!p._cand.get(c).has(d)) gacRemoved.add(`${c}:${d}`)
     removedGac += gacRemoved.size
 
-    // 2. the built-in on the same starting state: whatever it removes, the
-    //    component removes too.
     const q = makePuzzle(truth, () => [], { houses: declared })
     for (const [c, s] of snapshot) q._cand.set(c, new Set(s))
     const builtinRemoved = builtinUpdate(values, cells, q)
@@ -164,7 +155,6 @@ function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = 
       if (bad <= 5) console.log(label, 'WEAKER THAN BUILT-IN', key, 'values', values.join(''), 'truth', cells.map(c => truth[c]).join(''))
     }
 
-    // 3. completeness: the component removes no more than the oracle.
     if (cellCount <= 6) {
       const oracleRemoved = oracleRemovals(values, cells, snapshot)
       removedOracle += oracleRemoved.size
@@ -181,7 +171,6 @@ function run (label, { cellCount, valueCount, iters, houses = [], forceRepeat = 
   return bad
 }
 
-// Returns the failure count over every shape.
 export function requiredDigitsSoundness () {
   let failures = 0
   failures += run('required: 4 cells, 3 digits, bare   ', { cellCount: 4, valueCount: 3, iters: 4000 })

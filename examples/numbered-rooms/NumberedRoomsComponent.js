@@ -10,15 +10,7 @@
 //! An index of 0, or any index past the end of the line, is out of range.
 //!
 //! The clue is a CELL, not a constant, so the built-in IndexComponent (which
-//! needs a fixed value to index) cannot enforce this. This component does it
-//! directly: each update pass prunes the indexer line[0], prunes the clue down
-//! to the still-feasible targets, equates the target with the clue once one
-//! index remains, and once the clue is solved drops its digit from every line
-//! cell at a dead index — all from the first pass.
-//!
-//! Two of those rules need the line's cells to hold distinct digits, which only
-//! a house gives. They ask at solve time, so a drawn path that repeats a digit
-//! keeps the three rules that hold on any line and nothing more.
+//! needs a fixed value to index) cannot enforce this.
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -29,29 +21,24 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// The line's kind: lineKind(instance, puzzle, cells), BARE or HOUSE.
-// The repeats answer is latched both ways, since it is geometry fixed once
-// `update` first runs. The solver can retire a filled built-in house for the
-// rest of a branch, which can only weaken a latched answer, never make a
-// removal unsound.
 // #include ../_shared/line-kind.js
 
 // Candidate sets are bitmasks: bit d set = digit d possible.
-// One pass, all reads from the pre-pass masks, so no step depends on another.
+// The clue and index masks are read once, before the pass, so one step's
+// removals reach the others only on the next pass.
 function * update (instance, puzzle) {
   const { clue, line } = instance
   const m = line.length
   const house = lineKind(instance, puzzle, line).kind >= HOUSE
-  const clueM = puzzle.getCandidatesBitMask(clue) // what the clue can still be
-  const idxM = puzzle.getCandidatesBitMask(line[0]) // what the index k can still be
+  const clueM = puzzle.getCandidatesBitMask(clue)
+  const idxM = puzzle.getCandidatesBitMask(line[0])
   const drop = (mask, cell) => puzzle.removeCandidatesFromCell(new SudokuDigitSet(mask), cell)
 
-  // Step 1: try every index k. Keep k if line[k-1] shares a digit with the clue.
   let K = 0 // indices that still work, as a mask
   let reach = 0 // clue digits that some working index can produce
-  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) { // bit = 1 << k
-    if (!(idxM & bit)) continue // k is not a candidate of line[0]
-    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM // digits target and clue share
+  for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
+    if (!(idxM & bit)) continue
+    let t = puzzle.getCandidatesBitMask(line[k - 1]) & clueM
     // k = 1: the target IS line[0], which holds k, so the clue must be 1. True
     // on any line. k > 1: target and indexer are two cells of the line, so on a
     // house they differ and the target cannot be k; on a bare line it may be.
@@ -59,9 +46,8 @@ function * update (instance, puzzle) {
     if (t) { K |= bit; reach |= t }
   }
 
-  // Step 2: line[0] keeps only working indices (which drops 0 and every index
-  // past the end of the line); the clue keeps only reachable digits. No working
-  // index -> the branch is dead; stop with the reason.
+  // Keeping only working indices also drops 0 and every index past the end of
+  // the line.
   if (!K) {
     yield puzzle.stop(`no index lets the line reach the clue of ${instance.name}`, [clue, line[0]])
     return
@@ -69,11 +55,10 @@ function * update (instance, puzzle) {
   if (idxM & ~K) yield drop(idxM & ~K, line[0])
   if (clueM & ~reach) yield drop(clueM & ~reach, clue)
 
-  // Step 3: clue solved to c (mask has one bit). On a house c appears once in
-  // the line, at the target, so remove c from every cell at a non-working
-  // index. On a bare line c may sit at a dead index too, so this stands down.
-  // One plural change covers every dead cell that still holds c.
-  if (house && (clueM & (clueM - 1)) === 0) { // x & (x-1) clears the lowest bit; zero = one bit set
+  // Clue solved to c: on a house c appears once in the line, at the target, so
+  // remove c from every cell at a non-working index. On a bare line c may sit
+  // at a dead index too, so this stands down.
+  if (house && (clueM & (clueM - 1)) === 0) {
     const dead = []
     for (let k = 1, bit = 2; k <= m; k++, bit <<= 1) {
       if (!(K & bit) && (puzzle.getCandidatesBitMask(line[k - 1]) & clueM)) dead.push(line[k - 1])
@@ -81,10 +66,10 @@ function * update (instance, puzzle) {
     if (dead.length > 0) yield puzzle.removeCandidatesFromCells(clueM, dead)
   }
 
-  // Step 4: one index k left, so the target is known: it must equal the clue.
-  // reach is then exactly the digits the target and clue share; keep only those.
+  // One working index left: its target must equal the clue, and reach is then
+  // exactly the digits they share.
   if ((K & (K - 1)) === 0) {
-    // 31 - clz32(K) is the set bit's position, i.e. k (clz32 is exact; Math.log2 is not by spec)
+    // 31 - clz32(K) is k; Math.log2 is not exact by spec
     const target = line[31 - Math.clz32(K) - 1]
     const rm = puzzle.getCandidatesBitMask(target) & ~reach
     if (rm) yield drop(rm, target)

@@ -1,10 +1,3 @@
-// Soundness fuzz for UpToNComponent. Soundness = the component never removes a
-// cell's TRUE value. Each state is a line whose digits satisfy the clue, seeded
-// with random candidate sets that keep every true digit; the component runs to
-// a fixpoint and every true digit must survive.
-//
-//   node examples/up-to-n/soundness-harness.mjs
-//
 // The rule is defined on any line (docs/line-contract.md), so the pools cover
 // every kind at each shipped size: a full house (a row of the grid), a house
 // shorter than the digit count, and a bare line whose digits repeat -- one
@@ -28,8 +21,6 @@ const SIZES = [4, 6, 9]
 
 const seeder = D => makeSeeder(rnd, Array.from({ length: D }, (_, i) => i + 1))
 
-// A line of the kind asked for that holds `target` at least once (`atLeast`
-// times for the repeated-target pool).
 function lineWith (kind, n, D, target, atLeast = 1) {
   for (;;) {
     const digits = makeLine(rnd, kind, n, D)
@@ -81,8 +72,6 @@ for (const D of SIZES) {
   }
 }
 
-// ---- `update` and `validate` agree on a filled line ----
-//
 // Pinned to its digits, a line is a finished assignment. `validate` accepts it
 // exactly when the clue holds, and `update` must then leave it whole; when the
 // clue fails -- a wrong sum, or no target at all -- `update` must empty a cell
@@ -117,8 +106,6 @@ for (const D of SIZES) {
 }
 console.log('update/validate agreement on filled lines:', runs, 'lines,', disagree, 'disagreements')
 
-// A dead line's stop names its marker: the line's first cell, the border cell
-// the clue is read from, even when that is the line's highest cell id.
 {
   installGlobals(1, 4)
   const inst = {}

@@ -40,15 +40,12 @@ const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
 
-// A deterministic case's state: `start` (cell -> candidate array) as a mock
-// puzzle declaring `houses`.
 function stateOf (start, houses) {
   const cells = {}
   for (const c of start.keys()) cells[c] = 0
   return makePuzzle(cells, c => start.get(c), { houses })
 }
 
-// ---- 1. HitCountsPairComponent against the per-line + opposite-pair floor ----
 {
   const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
   const lineRef = loadAt(REPLACED_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
@@ -105,7 +102,6 @@ function stateOf (start, houses) {
   }
 }
 
-// ---- 2. HitCountsComponent: one clue over a nine-cell line ----
 // A drawn line with no clue at its far end still gets this component, so it
 // keeps its own floor.
 {
@@ -152,7 +148,6 @@ function stateOf (start, houses) {
   })
 }
 
-// ---- 3. The mirrored-pair exclusion, deterministic ----
 // n = 4. Position j hits for clue A with digit j+1 and for clue B with digit
 // 4-j, so the mirrored pair (0, 3) shares digit 1 (A at position 0, B at
 // position 3) and digit 4 (B at position 0, A at position 3). On a house one
@@ -207,7 +202,6 @@ function stateOf (start, houses) {
   console.log('hit-counts mirrored pair: the pair component removes 2 candidates, the opposite-pair floor 0')
 }
 
-// ---- 3b. A forced hit the per-line scan misses, deterministic ----
 // The 4x4 left side of fixture.mjs: the matching pins its whole diagonal.
 //
 // The per-line scan reaches only the first of those. Line 0 has one possible
@@ -250,7 +244,6 @@ function stateOf (start, houses) {
   console.log('hit-counts side matching: the side pins 4 cells, the per-line scan 1')
 }
 
-// ---- 3c. The permutation sweep, deterministic ----
 // The case sweep asks only whether a position can hit for A, hit for B, or
 // miss. It never asks whether the misses can be filled with the digits that are
 // left. The permutation sweep does: it runs the same forward/backward sweep over
@@ -300,7 +293,6 @@ function stateOf (start, houses) {
   console.log('hit-counts permutation sweep: the sweep drops 1 cell candidate the case sweep keeps')
 }
 
-// ---- 4. SideSumComponent: nine clues on a side summing to nine ----
 {
   const NAMES = ['setParams', 'update']
   const cur = load('SideSumComponent.js', NAMES)
@@ -335,7 +327,6 @@ function stateOf (start, houses) {
   })
 }
 
-// ---- A stopped sweep is swept again ----
 // `update` memoises the signature it last swept so an unchanged state costs one
 // pass and no solve. A state the sweep STOPPED on must not be memoised: the
 // search clears the stop on backtrack but the memo would survive, and the

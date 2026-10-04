@@ -1,5 +1,5 @@
-// Recovery probe: does the matching bound (issue #12) actually help SOLVE a real
-// puzzle, or is it just tighter in the abstract?
+// Recovery probe: does the matching bound actually help SOLVE a real puzzle, or
+// is it just tighter in the abstract?
 //
 //   node examples/hit-counts/recovery-probe.mjs            # gen_6x6.json
 //   node examples/hit-counts/recovery-probe.mjs gen.json
@@ -12,21 +12,14 @@
 // That is the honest floor: the matching bound must earn its keep ON TOP of an
 // all-different that already kills the gross matching-infeasible states.
 //
-// We run the fixpoint twice from the same start — matching bound ON, then OFF
-// (matchingBounds patched to return null, so the reverse clue bound falls back to
-// the naive [forced, possible]) — and diff what propagation alone recovers:
-//   - hidden clues pinned (the number the issue is about);
+// We run the fixpoint from the same start with the matching bound ON (the extra
+// propagator `matchingReverse`) and OFF (the shipped components alone, with the
+// naive [forced, possible] clue bound), and diff what propagation alone recovers:
+//   - hidden clues pinned (the number this probe is about);
 //   - interior cells solved;
 //   - candidates removed.
 // A true value that does not survive either run is a probe (or soundness) bug and
 // is reported.
-//
-// The engine pieces that do not vary per example (the all-different floor, the
-// component loader, the fixpoint runner, the DFS uniqueness search) live in
-// ../_shared/recovery-lib.mjs, and the frame-probe skeleton (seeding,
-// report, argv, DELTA/exit) in ../_shared/frame-probe.mjs. This file keeps only
-// the Hit Counts glue: the matching-bound extra propagator and the hit-count
-// leaf check.
 
 import { makeFrameProbe } from '../_shared/frame-probe.mjs'
 import { runToFixpoint } from '../_shared/recovery-lib.mjs'
@@ -76,14 +69,6 @@ function matchingReverse ({ st, groups }) {
   }
 }
 
-// Diagnostic: does the matching bound have any teeth on this puzzle? Count the
-// lines where matchingBounds is strictly tighter than the naive scan — first on
-// the raw start state, then after the floor alone reaches a fixpoint. Zero at both
-// means the feature never fires here, so a zero recovery delta is expected, not a
-// bug in the probe.
-// The naive bound the matching is compared against: a cell is a forced hit once
-// it is pinned to its target digit, and a possible hit while that digit is still
-// a candidate, so the hit count lies in [forced, possible].
 function naiveBounds (st, line) {
   let forced = 0
   let possible = 0
@@ -95,6 +80,11 @@ function naiveBounds (st, line) {
   }
   return { forced, possible }
 }
+// Diagnostic: does the matching bound have any teeth on this puzzle? Count the
+// lines where matchingBounds is strictly tighter than the naive scan — first on
+// the raw start state, then after the floor alone reaches a fixpoint. Zero at both
+// means the feature never fires here, so a zero recovery delta is expected, not a
+// bug in the probe.
 function tighterLines ({ st, groups }) {
   let count = 0
   for (const g of groups) {
@@ -107,9 +97,8 @@ function tighterLines ({ st, groups }) {
 }
 
 // A full interior is a real solution only if every line's hit count equals its
-// clue. update prunes toward this but does not reject a completed line on its own
-// (it skips the reverse check once the clue is pinned), so the real solver leans
-// on validate at the leaf; this is that leaf check, model-independent.
+// clue: the check the real solver makes through `validate` at the leaf,
+// model-independent.
 function validLeaf ({ st, groups }) {
   for (const g of groups) {
     const clueCellId = g.cells[0]

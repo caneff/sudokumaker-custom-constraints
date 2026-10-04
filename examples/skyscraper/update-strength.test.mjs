@@ -17,7 +17,6 @@ import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, s
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
-// The floor: the component as it stands at the commit that pins this test.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('SkyscraperPairComponent.js', NAMES)
@@ -25,10 +24,6 @@ const cur = load('SkyscraperPairComponent.js', NAMES)
 const REF_FILE = 'SkyscraperLineComponent.js'
 const ref = loadAt(REF_COMMIT, REF_FILE, NAMES)
 
-// The local line component's own floor (docs/example-layout.md). It runs on a
-// line an author drew, so its states are bare: any length, digits may repeat,
-// one clue at one end. The file carried a different name at the pinned commit,
-// so the floor names its own path.
 const ONE_SIDED_REF_COMMIT = 'c776ab7'
 const ONE_SIDED_REF_FILE = 'SkyscraperRunningCapComponent.js'
 const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
@@ -37,7 +32,6 @@ const oneSidedRef = loadAt(ONE_SIDED_REF_COMMIT, ONE_SIDED_REF_FILE, NAMES)
 
 const { rnd } = makeRng(31415)
 
-// Buildings visible reading `vals` in order: the count of running maxima.
 function visible (vals) {
   let count = 0
   let max = 0
@@ -74,8 +68,6 @@ for (const m of [4, 6, 9]) {
   })
 }
 
-// The one-sided DP, on bare lines of assorted lengths. A state is built around a
-// real line and its true clue, so it always has a solution.
 const ONE_SIDED_CLUE = 200
 for (const m of [4, 6, 9]) {
   installGlobals(1, m)

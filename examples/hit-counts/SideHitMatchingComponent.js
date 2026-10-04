@@ -38,16 +38,14 @@ function getAffectedCells (clues, lines) {
 function setParams (instance, clues, lines) {
   instance.clues = clues
   instance.lines = lines
-  // Position i, as its own cell list: one cell per line, i steps in.
   instance.positions = lines.length === 0
     ? []
     : lines[0].map((_, i) => lines.map(line => line[i]))
 }
 
-// Half the gate: n clues, n lines of n cells, and every position a house
-// (lineKind, which latches each position's repeats answer). The size bound is
-// the reachability search below, which holds one bitmask of 2n + 1 nodes in a
-// 31-bit integer.
+// Half the gate: n clues, n lines of n cells, and every position a house. n is
+// capped at 15 because the reachability search below holds 2n + 1 nodes in one
+// 31-bit bitmask.
 // #include ../_shared/line-kind.js
 
 function positionsAreHouses (instance, puzzle) {
@@ -58,8 +56,6 @@ function positionsAreHouses (instance, puzzle) {
   for (const at of positions) if (lineKind(instance, puzzle, at).kind === BARE) return false
   return true
 }
-
-// ---- a tiny max-flow (Edmonds-Karp; the graphs here are ~20 nodes) ----
 
 function newGraph (nodes) {
   return { head: new Array(nodes).fill(-1), to: [], nxt: [], cap: [], size: nodes }
@@ -101,7 +97,6 @@ function maxflow (g, s, t) {
 //   live[i][L]  edge (position i, line L) is available
 //   lo[L], hi[L]  how many positions line L may host
 function solveFlow (live, lo, hi, n) {
-  // Node numbering: position i is i, line L is n + L, then the four terminals.
   const LINE = L => n + L
   const T = 2 * n
   const S = 2 * n + 1
@@ -120,8 +115,8 @@ function solveFlow (live, lo, hi, n) {
     edge.push(row)
   }
   for (let L = 0; L < n; L++) addEdge(g, LINE(L), T, hi[L] - lo[L])
-  addEdge(g, T, S, n + loSum) // the circulation's return edge; n is its ceiling
-  for (let i = 0; i < n; i++) addEdge(g, SS, i, 1) // supply: each position is hosted once
+  addEdge(g, T, S, n + loSum)
+  for (let i = 0; i < n; i++) addEdge(g, SS, i, 1)
   if (loSum > 0) addEdge(g, SS, T, loSum)
   addEdge(g, S, TT, n)
   for (let L = 0; L < n; L++) if (lo[L] > 0) addEdge(g, LINE(L), TT, lo[L])
@@ -180,8 +175,7 @@ function fixedEdges (live, flow, load, lo, hi, n) {
   }
 }
 
-// Read the side's state, solve the assignment, and return the candidate changes.
-// A clue counts positions, so it never exceeds n; candidates above n are read
+// A clue counts positions, so it never exceeds n: candidates above n are masked
 // off before the range is taken.
 function sideDeductions (puzzle, clues, lines, live) {
   const n = lines.length
@@ -197,8 +191,8 @@ function sideDeductions (puzzle, clues, lines, live) {
   if (solved === null) return null
   const { flow, load } = solved
   const fixed = fixedEdges(live, flow, load, lo, hi, n)
-  const forbid = [] // [cell, digit the cell cannot hold]
-  const force = [] // [cell, the one digit the cell must hold]
+  const forbid = []
+  const force = []
   for (let i = 0; i < n; i++) {
     for (let L = 0; L < n; L++) {
       if (!live[i][L] || !fixed(i, L)) continue
@@ -209,21 +203,19 @@ function sideDeductions (puzzle, clues, lines, live) {
   return { forbid, force }
 }
 
-// Read every line cell once and fold the masks three ways: the live edges the
-// assignment needs, the digits still live at each position, and a hash of
-// exactly those bits plus the clue masks. Returns null when some position no
-// longer holds all of 1..n, which is the half of the gate that can come and go.
+// Returns null when some position no longer holds all of 1..n, which is the
+// half of the gate that can come and go.
 //
-// The hash is the change check. The side sees 4n cells on a 9x9 board and the
-// solver calls update after every change to any of them, but the assignment
-// reads only whether digit i + 1 is still a candidate at position i of each
-// line and what each clue still allows. `update` records the hash of the state
-// it left behind; an entry hash equal to it means the assignment cannot have
-// moved, so there is nothing to find. A backtrack restores candidates and
-// changes the hash, so the deductions are made again on the way back down.
-// (The prototype measured the narrowing at about a third of the deduction's
-// whole win in the app, 25.5 s to 20.3 s -- #233, the real-app measurement
-// docs/agents/per-call-cost.md asks for before a skip-unchanged check ships.)
+// The hash is the change check. The solver calls update after every change to
+// any of the side's n + n^2 cells, but the assignment reads only whether digit
+// i + 1 is still a candidate at position i of each line and what each clue
+// still allows. `update` records the hash of the state it left behind; an entry
+// hash equal to it means the assignment cannot have moved, so there is nothing
+// to find. A backtrack restores candidates and changes the hash, so the
+// deductions are made again on the way back down. (The prototype measured the
+// narrowing at about a third of the deduction's whole win in the app, 25.5 s to
+// 20.3 s -- the real-app measurement docs/agents/per-call-cost.md asks for
+// before a skip-unchanged check ships.)
 function readSide (puzzle, instance) {
   const { clues, lines } = instance
   const n = lines.length
@@ -242,7 +234,7 @@ function readSide (puzzle, instance) {
     h = (Math.imul(h, 31) + puzzle.getCandidatesBitMask(clues[L])) | 0
   }
   for (let i = 0; i < n; i++) {
-    if (union[i] !== (1 << (n + 1)) - 2) return null // bits 1..n set, bit 0 clear
+    if (union[i] !== (1 << (n + 1)) - 2) return null
   }
   return { live, sig: h }
 }
@@ -251,14 +243,11 @@ function * update (instance, puzzle) {
   if (!positionsAreHouses(instance, puzzle)) return
   const { clues, lines } = instance
   const read = readSide(puzzle, instance)
-  // A position missing a digit: nothing to sweep, and a memo kept here would
-  // name a state this call never read. Null it, as the exit below does.
+  // A memo kept past this exit would name a state this call never read.
   if (read === null) { instance.sig = null; return }
   if (read.sig === instance.sig) return
   const found = sideDeductions(puzzle, clues, lines, read.live)
   if (found === null) {
-    // No assignment of positions to lines survives: this branch is dead. Stop
-    // with the reason, the same signal the per-line rule already raises.
     yield puzzle.stop(`no assignment of hit positions to lines satisfies ${instance.name}`, clues)
     return
   }
@@ -273,7 +262,6 @@ function * update (instance, puzzle) {
   instance.sig = after === null ? null : after.sig
 }
 
-// Every line of a filled side must realise its clue exactly.
 function validate (instance, puzzle) {
   const { clues, lines } = instance
   if (!puzzle.getCellsAreFilled(instance.cells)) return true

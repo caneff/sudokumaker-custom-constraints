@@ -1,10 +1,3 @@
-# clue_groups(link, W, n): the local board ships drawn groups, the global
-# board rebuilds the same 4n frame lines from framebuild + frame. No single
-# shipped link has both branches, so this checks the two branches agree with
-# each other on the two boards that each carry one.
-#
-#   uv run --with lzstring --with ortools examples/outside-sudoku/verify.test.py
-
 import pathlib
 import sys
 
@@ -56,20 +49,15 @@ def test_drawn_groups_and_rebuilt_frame_lines_agree():
 
 
 def test_local_branch_returns_the_link_s_own_drawn_cells_verbatim():
-    # The rebuild math reproduces the drawn board's cells by design, so
-    # forcing clue_groups off the drawn branch still passes the agreement
-    # check above -- both sides land on the rebuild path and match by
-    # coincidence, not because the drawn branch ran. A planted sentinel the
-    # rebuild could never produce closes that gap.
+    # Both branches produce the same cells, so the agreement check passes even
+    # if the drawn branch never runs; a sentinel the rebuild cannot produce
+    # proves it does.
     doc = _decode("PUZZLE_LINK_local.txt")
     find_constraint(doc, CONSTRAINT_NAME)["input"]["groups"][0]["cells"] = [999999]
     assert [999999] in _groups(doc), "clue_groups must return drawn cells verbatim"
 
 
 def test_a_spent_time_cap_raises_instead_of_printing_a_verdict():
-    # A solve that runs out of time is no verdict. The script's whole output is
-    # one "exactly one solution" line, so a timeout that came back as None
-    # would print proof of uniqueness for a board nobody finished checking.
     limit = verify.SOLVE_LIMIT
     verify.SOLVE_LIMIT = 0.0001
     try:

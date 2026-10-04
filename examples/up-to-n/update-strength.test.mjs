@@ -1,12 +1,3 @@
-// Strength check for UpToNComponent.update. Soundness (never remove a true
-// value) lives in soundness-harness.mjs; this file checks the other direction:
-// that a rewrite does not quietly prune LESS than the floor.
-//
-//   node examples/up-to-n/update-strength.test.mjs
-//
-// On random states the current update must leave a subset of what the floor
-// left, cell for cell.
-//
 // The floor is a frozen copy, `.golden/UpToNComponent.floor.js`, not a
 // `REF_COMMIT` read with `loadAt` as the siblings do. The component and its
 // floor land in one squash-merged pull request, and a squash rewrites every
@@ -60,11 +51,6 @@ for (const D of [4, 6, 9]) {
   }
 }
 
-// ---- Worked states: the prefix-cell prune (#369) ----
-//
-// A cell before every feasible position of N keeps only the digits some
-// feasible position admits within its sum bounds. Worked by hand on a bare
-// 4-cell line over 1..4, every cell open.
 function settle (target, clue, opts) {
   installGlobals(1, 4)
   const LINE = [0, 1, 2, 3]
@@ -101,8 +87,6 @@ assert.deepStrictEqual(settle(4, 1)[0], [1])
   for (const c of [1, 2, 3]) assert.ok(!house[c].includes(2), `a house's first 2 is the only one: cell ${c}`)
 }
 
-// ---- Worked states: the prefix as a set of distinct digits (#465) ----
-//
 // On a house the cells before the first N hold distinct digits, so they are a
 // set summing to the clue. N = 4, clue 2: a first 4 in the second cell needs
 // a one-digit set {2}; in the third cell it needs two distinct digits summing

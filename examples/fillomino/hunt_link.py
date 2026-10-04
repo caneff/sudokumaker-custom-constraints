@@ -1,5 +1,5 @@
 """Read a committed puzzle link back into the clue set the offline scorer
-reads (#317).
+reads.
 
 A link records which cells are GIVEN and what digit each given holds -- not
 the solution grid, which the share checklist keeps out of the blob. That is
@@ -21,7 +21,6 @@ from link_codec import decode_puzzle
 
 
 def clues(link_text):
-    """The {"side", "cap", "givens"} board a link describes."""
     p = decode_puzzle(link_text.strip())["puzzle"]
     side = p["width"]
     return {

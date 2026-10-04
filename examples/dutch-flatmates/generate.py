@@ -1,20 +1,3 @@
-# Generate the Dutch Flatmates board: a random solved grid under sudoku plus the
-# flatmate rule, then greedy given removal for as long as the board stays
-# uniquely solvable, written to gen.json (the board `build_link.py` encodes).
-#
-#   uv run examples/dutch-flatmates/generate.py [--seed N] [--out gen.json] [--max-plain N]
-#
-# The carve also keeps plain sudoku's completions few (MAX_PLAIN_COMPLETIONS by
-# default; --max-plain raises it for a board with fewer givens),
-# because the app enumerates them, and the pruning in `update` shrinks that search
-# only so far.
-#
-# Two things the carve must leave true, asserted before anything is written:
-# the flatmate rule is needed (plain sudoku on the same givens has more than one
-# solution), and at least one 5 has its flatmate forced by the rule rather
-# than by the givens (`flatmate_model.rule_forced_flatmates`). A seed that
-# fails either is skipped and the next one tried.
-#
 # Workers: the grid search takes CP-SAT's portfolio (`cpsat.SEARCH_WORKERS`, 8
 # workers) for a fraction of a second; every uniqueness check is one worker.
 
@@ -47,7 +30,6 @@ MAX_SEEDS = 50
 
 
 def random_grid(seed):
-    """A solved grid under sudoku plus the flatmate rule, varied by `seed`."""
     m, x = build_model()
     s = solver(SEARCH_LIMIT, reproducible=False, seed=seed, randomize=True)
     assert s.Solve(m) in SOLVED, "the flatmate rule has no solved grid"
@@ -55,9 +37,6 @@ def random_grid(seed):
 
 
 def carve(grid, rng, max_plain=MAX_PLAIN_COMPLETIONS):
-    """The givens left after dropping every one of `grid`'s cells that the
-    board can spare, in random order, while the solution stays unique under the
-    rule and plain sudoku keeps at most `max_plain` completions."""
     givens = dict(grid)
     cells = list(givens)
     rng.shuffle(cells)
@@ -72,14 +51,12 @@ def carve(grid, rng, max_plain=MAX_PLAIN_COMPLETIONS):
 
 
 def make_board(seed, max_plain=MAX_PLAIN_COMPLETIONS):
-    """(grid, givens, forced) for `seed`, or None when its carve does not need
-    the rule. `forced` is `rule_forced_flatmates`' list for the shipped givens."""
     rng = random.Random(seed)
     grid = random_grid(seed)
     givens = carve(grid, rng, max_plain)
     assert unique_solution(givens) == grid, "the carve lost the solution"
     if unique_solution(givens, flatmate=False) is not None:
-        return None  # plain sudoku already solves it: the rule is decoration
+        return None
     forced = rule_forced_flatmates(givens, grid)
     if not forced:
         return None
