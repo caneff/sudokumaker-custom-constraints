@@ -34,20 +34,20 @@ from ortools.sat.python import cp_model
 # (digits, target, sum before the first target or None), worked by hand
 # rather than by any copy of the rule.
 LINES = [
-    ([3, 1, 4, 2], 4, 4),
-    ([3, 1, 4, 2], 3, 0),
-    ([3, 1, 4, 2], 2, 8),
-    ([2, 2, 1, 3], 1, 4),
-    ([1, 4, 4, 2], 4, 1),
-    ([2, 3, 2, 3], 4, None),
-    ([6, 5, 4, 3, 2, 1], 1, 20),
-    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20),
-    ([1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36),
-    ([7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0),
+    ([3, 1, 4, 2], 4, 4),  # 3 + 1
+    ([3, 1, 4, 2], 3, 0),  # the target is the first cell: nothing is read
+    ([3, 1, 4, 2], 2, 8),  # the target is the last cell: 10 - 2
+    ([2, 2, 1, 3], 1, 4),  # a repeated digit before the target
+    ([1, 4, 4, 2], 4, 1),  # the target twice: only the first counts
+    ([2, 3, 2, 3], 4, None),  # the target absent
+    ([6, 5, 4, 3, 2, 1], 1, 20),  # a 6-cell line, target last: 21 - 1
+    ([9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20),  # a 9-cell line
+    ([1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36),  # a 9-cell line, target last: 45 - 9
+    ([7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0),  # a 9-cell line, target first
     # The rules text's three worked examples.
-    ([3, 1, 2, 4], 2, 4),
-    ([4, 1, 6, 2, 5, 3], 2, 11),
-    ([9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12),
+    ([3, 1, 2, 4], 2, 4),  # 3 + 1
+    ([4, 1, 6, 2, 5, 3], 2, 11),  # 4 + 1 + 6
+    ([9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12),  # 9 + 2 + 1
 ]
 
 

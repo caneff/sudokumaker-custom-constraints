@@ -1,5 +1,10 @@
 // Runs the code embedded in the committed links, not the tree, through the
 // real solver bundle; build_link.test.py catches drift between the two.
+//
+// What a green run does not cover: the live app at sudokumaker.app (how the
+// link loads and renders, the rules text on the play page, the app's own
+// verdict; `app-open.mjs --live` is that check), and whether the deduction
+// pays for itself in solve time (`just time dutch-flatmates`).
 
 import { join } from 'path'
 import { existsSync, readFileSync } from 'fs'
