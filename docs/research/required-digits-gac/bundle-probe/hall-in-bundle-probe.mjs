@@ -17,7 +17,7 @@
 import fs from 'fs'
 import crypto from 'crypto'
 
-const REFERENCE = 'docs/research/humanify-pedagogy/bundle.claude.js'
+const REFERENCE = 'examples/_shared/vendor/bundle.claude.js'
 const REFERENCE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
 
 const raw = fs.readFileSync(REFERENCE, 'utf8')

@@ -293,7 +293,7 @@ Node rather than the browser -- a ratio between two runs in one process, not a
 wall-clock row comparable to the tables above.
 
 **Quarantine.** The probe never writes a modified bundle: it reads
-`docs/research/humanify-pedagogy/bundle.claude.js` verbatim, refuses to run if
+`examples/_shared/vendor/bundle.claude.js` verbatim, refuses to run if
 its sha256 has changed, appends only the `globalThis.__probe` export line
 bugcheck.mjs already uses, and swaps the rule on the exported class at runtime.
 Nothing here may build or verify a shipped link -- it would be measuring a

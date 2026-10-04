@@ -98,7 +98,7 @@ frame reader explains the directive itself.
   there (solve loop, the two `puzzle` views, change types) are the shortest
   route to the call order.
 - **When the reference is not enough, read the body**: the renamed bundle is
-  `docs/research/humanify-pedagogy/bundle.claude.js`; `sed -n` the cited
+  `examples/_shared/vendor/bundle.claude.js`; `sed -n` the cited
   range. To run it in Node, copy the loading trick in
   `docs/research/humanify-pedagogy/tools/bugcheck.mjs`. Never assert solver
   behaviour from a method name or from memory when the body is one command away.

@@ -4,7 +4,7 @@
 // The two seams under test (#429): `buildStartMessage`, a pure mapping from a
 // decoded puzzle document to the worker's `start` message, and
 // `solveDocument`, which loads the renamed solver bundle
-// (docs/research/humanify-pedagogy/bundle.claude.js) and runs it for real.
+// (examples/_shared/vendor/bundle.claude.js) and runs it for real.
 
 import assert from 'assert'
 import { spawnSync } from 'child_process'

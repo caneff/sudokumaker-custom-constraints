@@ -1,6 +1,6 @@
 // Run the app's real solver in Node, on a decoded puzzle document, without a
 // browser (#429). Loads the renamed solver bundle
-// (docs/research/humanify-pedagogy/bundle.claude.js) the way
+// (examples/_shared/vendor/bundle.claude.js) the way
 // docs/research/humanify-pedagogy/tools/bugcheck.mjs does: stub the worker
 // globals, `new Function` the trimmed source, then drive it through its own
 // `onmessage` wire protocol -- the same "start" then "findAll" messages the
@@ -13,7 +13,7 @@ import { execFileSync } from 'child_process'
 import { join } from 'path'
 
 const HERE = import.meta.dirname
-const BUNDLE_PATH = join(HERE, '..', '..', 'docs', 'research', 'humanify-pedagogy', 'bundle.claude.js')
+const BUNDLE_PATH = join(HERE, 'vendor', 'bundle.claude.js')
 const DECODE_CLI = join(HERE, 'link_codec_cli.py')
 
 // The worker's own sentinel for "no value in this cell"
