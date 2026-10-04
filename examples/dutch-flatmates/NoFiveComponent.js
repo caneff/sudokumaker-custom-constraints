@@ -10,11 +10,13 @@ function setParams (instance, cells) {
   instance.cells = cells
 }
 
-// A removed 5 never comes back, so nothing needs checking after setup.
+// Remove 5 from every one of these cells before solving starts. A 5 can never
+// come back, so there is nothing more to check later.
 function * initialize (instance, puzzle) {
   for (const cell of instance.cells) yield puzzle.removeCandidateFromCell(5, cell)
 }
 
+// A full or partial grid is fine as long as none of these cells holds a 5.
 function validate (instance, puzzle) {
   return !instance.cells.some(cell => puzzle.getValue(cell) === 5)
 }
