@@ -3,7 +3,7 @@
 // and on some state it removes one the baseline keeps (half two).
 //
 // The reference is the community catalog's fillomino constraint, vendored
-// verbatim at docs/research/fillomino-baseline/.
+// verbatim in original/.
 //
 // The rules read placed digits and walk regions, so a state drawn at random is
 // contradictory and prunes nothing worth comparing. States are drawn around a
@@ -25,7 +25,7 @@ import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates
 import { shipped, varied } from './fixture.mjs'
 
 const HERE = import.meta.dirname
-const BASELINE = join(HERE, '..', '..', 'docs', 'research', 'fillomino-baseline')
+const BASELINE = join(HERE, 'original')
 
 const io = makeIo(HERE)
 const cur = io.load('FillominoComponent.js', ['setParams', 'update'])

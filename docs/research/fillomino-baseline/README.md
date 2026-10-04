@@ -4,30 +4,36 @@ The thing a better fillomino constraint has to beat. Ticket #281, on map #277.
 
 The community catalog (`docs/catalog.md`, row 55) ships one fillomino
 constraint, by SudokuFan, at <https://tinyurl.com/2cckzhow>. `main.js` and
-`FillominoComponent.js` here are that constraint's code, decoded from the link
+`FillominoComponent.js`, now in `examples/fillomino/original/` (#659), are that
+constraint's code, decoded from the link
 and vendored **verbatim** — including its `console.log`, its `==` comparisons,
 and its `Array.includes` scans. Both files are in StandardJS's `ignore` list in
 `package.json`, the way the `numbered-rooms/original/` and
 `skyscraper/original/` snippets are. Do not tidy them: a baseline that has been
 edited is no longer a baseline.
 
-## Why this is not under `examples/`
+## Why the links are not under `examples/`
 
-`examples/_shared/check_layout.py` requires eight files of every directory
-under `examples/`. A half-populated `examples/fillomino/` fails `just check`
-before the real example exists, so the baseline waits here until there is an
-example to sit beside.
+The baseline waited here until there was an example to sit beside. Once
+`examples/fillomino/` existed and its strength test loaded the baseline
+component, the two code files moved to `examples/fillomino/original/` (#659):
+the gate's code loads nothing from `docs/research/`. The board, its link, the
+timing fixtures and the log-free variant stay here as the record.
 
 `time_example.py` resolves its argument relative to `examples/`, so a relative
-path reaches this directory with no change to the harness:
+path once reached this directory with no change to the harness:
 
 ```
 just time ../docs/research/fillomino-baseline
 ```
 
+That route no longer runs as written: the harness reads an `example.toml`
+(#650) and the timed component beside it, and this directory has neither.
+
 ## Files
 
-- `main.js`, `FillominoComponent.js` — the catalog constraint, verbatim.
+- `examples/fillomino/original/main.js`, `FillominoComponent.js` — the
+  catalog constraint, verbatim.
 - `FillominoComponentNoLog.js` — the same code minus its one
   `console.log(islands)` line (the log-free timing variant, #283/#307 —
   see "The baseline's `console.log`" below). Also in `package.json`'s
