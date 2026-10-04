@@ -316,9 +316,9 @@ def check_research_loads(repo_root):
 
     docs/research/ holds records, not live code: a file the gate's code
     loads from there is maintained source the gate never lints. A citation in
-    a comment or docstring is not a load. Finders keep their catalogues and
-    hunt outputs under docs/research/ by ruling, so finders/ is not
-    scanned, and neither is a dot directory (scratch) or node_modules.
+    a comment or docstring is not a load. Finders read their catalogues and
+    hunt outputs from docs/research/, where they live as data, so finders/ is
+    not scanned, and neither is a dot directory (scratch) or node_modules.
 
     It reads text, not a parse tree, so a pass is not proof: a path segment
     held in a variable, and code hidden behind a `//` or `/*` that sits after

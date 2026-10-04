@@ -32,7 +32,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from gate_lib import commands
 
-# The heavy tier, as ruled: a fixed list, not a glob.
+# The heavy tier, named file by file: `just test` skips exactly these by path.
 HEAVY = {
     "uv run examples/fillomino/pipeline.test.py",
     "uv run examples/fillomino/generate.test.py",
