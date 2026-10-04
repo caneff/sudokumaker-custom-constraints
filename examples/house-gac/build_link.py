@@ -15,10 +15,9 @@
 #   uv run --with lzstring examples/house-gac/build_link.py \
 #       --component /path/HouseGacComponent.js --out /tmp/candidate.txt
 #
-# --keep-comments builds the annotated sibling link (#433): same board, same
-# givens, same component and backend files, but the embedded code keeps every
-# comment and blank line (bar the lint directive; indentation is untouched)
-# instead of the usual full strip -- for a reader who opens the link in
+# --keep-comments builds the annotated sibling link: same board, same givens,
+# same component and backend files, but the embedded code keeps every comment
+# and blank line (bar the lint directive) -- for a reader who opens the link in
 # SudokuMaker and reads the code in its own box. Regenerate
 # PUZZLE_LINK_annotated.txt with
 #
@@ -28,18 +27,15 @@
 # --component swaps a candidate's code into PUZZLE_LINK.txt, or into --board,
 # and nothing else changes (_shared/link_swap.swap_main) -- the way
 # `just time house-gac --board <fixture>` reaches a fixture other than the
-# default board (the room #428 leaves for the harder #427 fixture, kept
-# beside this one under its own name once it lands).
+# default board.
 #
 # The constraint ships under the name "House GAC (standalone)", not the bare
-# "House GAC" `house_gac_links.with_filter` writes by default: #421/#434
-# (landed while this ticket was in flight) made "House GAC" a reserved title
-# meaning ONE specific thing repo-wide -- the shared `examples/_shared/
-# house-gac.js` backend on a frame board, always checked for staleness and a
-# declared digit range (`check_layout.py`'s `check_frame_backends`). This
-# board's backend is a different file (`main.js`, no ring to slice), so it is
-# not that thing and must not answer to that name -- `build()` renames the
-# spliced constraint below before returning it.
+# "House GAC" `house_gac_links.with_filter` writes by default: "House GAC" is a
+# reserved title meaning ONE thing repo-wide -- the shared
+# `examples/_shared/house-gac.js` backend on a frame board, checked by
+# `check_layout.py`'s `check_stale_backend_code` and `check_digit_range`. This
+# board's backend is a different file (`main.js`, no ring to slice), so
+# `build()` renames the spliced constraint.
 
 import argparse
 import pathlib
@@ -57,8 +53,9 @@ from cpsat import solve_unique, sudoku_model
 from framebuild import NO_RING_RULES_PREFIX
 from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, swap_main
+from link_swap import swap_main
 from manifest import load_manifest
+from sm_document import find_constraint
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name
@@ -81,16 +78,6 @@ def build(
     base_link=BASE_LINK,
     keep_comments=False,
 ):
-    """Rebuild the standalone House GAC link from `base_link`'s board and
-    givens, re-proving uniqueness with CP-SAT, and splicing in the House GAC
-    constraint via `backend_path`/`component_path`. Returns (link, doc,
-    solution, n_givens).
-
-    `keep_comments=True` is the annotated-link build (#433): the embedded
-    component and backend code keep every comment and blank line (bar
-    the lint directive; indentation is untouched), instead of the usual full
-    comment strip. Board, givens and every other constraint are unaffected --
-    only how this one constraint's code is minified changes."""
     base = decode_puzzle(pathlib.Path(base_link).read_text().strip())
     width = base["puzzle"]["width"]
     assert width == base["puzzle"]["height"] == 9, "expected the plain 9x9 board"
@@ -103,9 +90,8 @@ def build(
 
     sol = prove_unique(givens)
 
-    # Splicing `with_filter` onto a base that already carries a House GAC
-    # constraint would double it silently (AGENTS.md: a splicing generator
-    # run twice on one file duplicates the scene) -- refuse instead.
+    # Splicing `with_filter` onto a base that already carries the constraint
+    # would double it silently -- refuse instead.
     existing_names = {
         c.get("definition", {}).get("name") for c in base["puzzle"]["constraints"]
     }
@@ -119,9 +105,6 @@ def build(
         backend=pathlib.Path(backend_path),
         keep_comments=keep_comments,
     )
-    # with_filter always names the constraint "House GAC"; rename it to this
-    # example's own name (see the module docstring for why) before it is
-    # checked against anything that title means repo-wide.
     find_constraint(doc, "House GAC")["definition"]["name"] = CONSTRAINT_NAME
     doc["puzzle"]["name"] = "Standalone House GAC"
     doc["puzzle"]["comment"] = (
@@ -147,8 +130,6 @@ def check(link, doc):
 
 
 def rebuild(args, _parser):
-    """No --component: rebuild the link from source, to --out or
-    PUZZLE_LINK.txt."""
     out = args.out or HERE / "PUZZLE_LINK.txt"
     link, doc, sol, n_givens = build(
         COMPONENT, args.backend or BACKEND, keep_comments=args.keep_comments

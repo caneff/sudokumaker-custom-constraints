@@ -1,7 +1,3 @@
-// Up to N — main (backend) code segment. There is no global variant: every
-// clue lives in a drawn group's typed value, and there is no ring to read one
-// from.
-//
 // Each drawn group is a MARKER: two adjacent cells at one end of a whole row
 // or column. The border cell is the reading end. The marked line's 1-based
 // index is the TARGET DIGIT N (column 3 aims at 3, row 5 at 5), and the typed
@@ -19,14 +15,10 @@ const W = puzzle.spec.size.width
 const H = puzzle.spec.size.height
 const lo = helpers.digits.minDigit
 const hi = helpers.digits.maxDigit
-// Every digit once: what a whole house sums to. A line aiming at N reads at
-// most TOTAL - N (N last) and at least 0 (N first).
 const TOTAL = ((lo + hi) * (hi - lo + 1)) / 2
 
 const cellNames = cells => cells.map(c => helpers.naming.getCellName(c)).join(' and ')
 
-//! A marker's line, its reading end, and its target digit, or a throw naming
-//! the group's cells.
 function readMarker (cells) {
   if (cells.length !== 2) {
     throw new Error(`Up to N: the marker at ${cellNames(cells)} must be exactly two cells`)

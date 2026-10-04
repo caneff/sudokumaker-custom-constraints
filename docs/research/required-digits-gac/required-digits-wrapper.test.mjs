@@ -16,13 +16,11 @@
 //
 //   node docs/research/required-digits-gac/required-digits-wrapper.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { makeIo } from '../../../examples/_shared/harness-lib.mjs'
 import { gridGeometry } from '../../../examples/outside-sudoku/grid-geometry.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
 // The two swap targets the wrapper's `update` can reach: a bare built-in

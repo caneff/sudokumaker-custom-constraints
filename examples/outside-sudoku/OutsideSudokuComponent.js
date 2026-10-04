@@ -14,12 +14,9 @@
 //! The component is valid only when its own main builds it: a missing `w`
 //! empties every clue.
 //!
-//! The rule is a pure membership test: no index, no order, no DP. It holds on
-//! a line of any kind — a bare line may repeat the clue digit inside the
-//! window and the rule is still satisfied — so the component needs no gate.
+//! The rule holds on a line of any kind — a bare line may repeat the clue digit
+//! inside the window and still satisfy it — so the component needs no gate.
 
-// The clue plus the window, the only cells update and validate read. Main code
-// computes w (window-length.js) because getAffectedCells never gets `puzzle`.
 function getAffectedCells (clue, line, w) {
   return [clue, ...line.slice(0, w)]
 }
@@ -30,26 +27,19 @@ function setParams (instance, clue, line, w) {
   instance.w = w
 }
 
-// Candidate sets are bitmasks: bit d set = digit d possible (bit 0 unused).
-// One pass, all reads from the pre-pass masks, so no step depends on another.
 function * update (instance, puzzle) {
   const { clue, line, w } = instance
   const clueM = puzzle.getCandidatesBitMask(clue)
 
-  // Deduction 1: the clue keeps only digits some window cell can still hold.
-  // This also covers the dead branch — a clue solved to a digit no window cell
-  // admits is not in the union, so its last candidate goes and the solver sees
-  // an empty cell.
+  // Pruning the clue to the window's union also kills the dead branch: a
+  // solved clue no window cell admits loses its last candidate here.
   let union = 0
   for (let i = 0; i < w; i++) union |= puzzle.getCandidatesBitMask(line[i])
   if (clueM & ~union) {
     yield puzzle.removeCandidatesFromCell(clueM & ~union, clue)
   }
 
-  // Deduction 2: the clue is solved to d (one bit) and exactly one window cell
-  // still admits d, so that cell is d. Sound on every line kind: the rule needs
-  // d somewhere in the window, and only one cell is left to hold it.
-  if (clueM === 0 || (clueM & (clueM - 1))) return // x & (x-1) clears the lowest bit
+  if (clueM === 0 || (clueM & (clueM - 1))) return
   let holders = 0
   let only = -1
   for (let i = 0; i < w; i++) {

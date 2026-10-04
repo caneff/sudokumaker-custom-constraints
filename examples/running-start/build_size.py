@@ -2,10 +2,9 @@
 #
 # Generates a fresh grid, derives the running-start clue for every line, carves
 # minimal interior givens and a minimal shown-clue set to a unique solution
-# (OR-Tools), then assembles the whole SudokuMaker document parametrically and
-# encodes it. Clues that stay hidden are the interactive ones: the solver reads
-# them off the line as it solves. The shared machinery (grid, CP-SAT model,
-# carve loop, frame assembly, round-trip check) lives in `_shared/framebuild.py`.
+# (OR-Tools), then assembles the whole SudokuMaker document and encodes it.
+# Clues that stay hidden are the interactive ones: the solver reads them off
+# the line as it solves.
 #
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 4 2 2
 #   uv run --with ortools --with lzstring examples/running-start/build_size.py 6 2 3
@@ -22,7 +21,7 @@
 # than one row and more than one column, so the app reads it as a bare line and
 # its digits may repeat -- the shape the local variant exists to prove
 # (docs/line-contract.md). At n = 9 the pair is the plain-named
-# PUZZLE_LINK_local.txt and gen_local.json (framebuild.board_files). There is
+# PUZZLE_LINK_local.txt and gen_local.json (framebuild.RingLocal.files). There is
 # no framebuild 9x9 GLOBAL board here: PUZZLE_LINK.txt is a known-good decoded
 # board that build_link.py rebuilds.
 
@@ -39,7 +38,6 @@ COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
 # shared frame, which a drawn group on its own does not carry.
 LOCAL_COMPONENTS = ["RunningStartComponent.js"]
 
-# One worked example per size: a line, then the left and right clue it gives.
 RULE_EXAMPLES = {
     4: "a row with 1324 gives a left clue of 2 (1, 3) and a right clue of 1 (4)",
     6: "a row with 142356 gives a left clue of 2 (1, 4) and a right clue of 1 (6)",
@@ -75,8 +73,6 @@ def rs(v, _cells, _box):
 
 
 def add_running_start(m, x, cells, kk, n, tag, _box):
-    # the first kk cells strictly ascend; the run breaks at cell kk unless it
-    # already fills the whole line
     for i in range(1, kk):
         m.Add(x[cells[i]] > x[cells[i - 1]])
     if kk < n:
@@ -95,7 +91,7 @@ SPEC = Spec(
     comment_fn=rule_text,
     # PUZZLE_LINK.txt is this example's known-good decoded board, rebuilt by
     # build_link.py rather than searched for, so it owns the plain names and
-    # there is no framebuild 9x9 global board (framebuild.board_files).
+    # there is no framebuild 9x9 global board (framebuild.RingGlobal.files).
     plain_global_9x9=False,
 )
 

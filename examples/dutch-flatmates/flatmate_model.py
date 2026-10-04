@@ -1,5 +1,4 @@
-# The Dutch Flatmates rule as a CP-SAT model -- sudoku, plus: every 5 has a 1
-# directly above it or a 9 directly below it. The generator, the uniqueness
+# The Dutch Flatmates rule as a CP-SAT model. The generator, the uniqueness
 # proof and the rule-forces-a-flatmate check all build this one model, so the
 # rule has one CP-SAT home (CODING_STANDARDS.md, "The rule has one home"). Its
 # other homes are DutchFlatmatesComponent.js, and the independent statements in
@@ -49,7 +48,6 @@ def build_model(givens=(), flatmate=True, extras=NO_EXTRAS):
 
 
 def _is(m, var, digit, tag):
-    """A literal that is true exactly when `var` takes `digit`."""
     b = m.NewBoolVar(tag)
     m.Add(var == digit).OnlyEnforceIf(b)
     m.Add(var != digit).OnlyEnforceIf(b.Not())
@@ -57,9 +55,6 @@ def _is(m, var, digit, tag):
 
 
 def _post_flatmate(m, x):
-    """Every 5 has a 1 at (r-1, c) or a 9 at (r+1, c). A top-row 5 has only
-    the 9 below to lean on and a bottom-row 5 only the 1 above, so the missing
-    neighbour is simply not an option."""
     for r in range(N):
         for c in range(N):
             options = []
@@ -72,9 +67,8 @@ def _post_flatmate(m, x):
 
 
 def _post_counting_circles(m, x, circles):
-    """Counting Circles: a digit in a circle is the number of circles holding
-    that digit. The board also bans 5 from every circle, so no circle holds
-    a 5 (and "five circles hold a 5" never has to be counted)."""
+    """No circle may hold a 5 (a separate rule of the board), so 5 is excluded
+    rather than counted."""
     cells = [divmod(i, N) for i in circles]
     for d in range(1, N + 1):
         if d == 5:
@@ -105,13 +99,10 @@ def unique_solution(givens, flatmate=True, limit=60, extras=NO_EXTRAS):
 
 
 def rows_of(solution):
-    """`solution` as nine strings of digits, the shape gen.json records."""
     return ["".join(str(solution[r, c]) for c in range(N)) for r in range(N)]
 
 
 def prove_recorded(givens, grid, extras=NO_EXTRAS):
-    """The board's one solution, proved to be the recorded `grid` (nine digit
-    strings). Raises AssertionError naming which part failed."""
     solution = unique_solution(givens, extras=extras)
     assert solution is not None, "the board is not uniquely solvable"
     assert rows_of(solution) == grid, "the gen JSON's grid is not the board's solution"
@@ -133,11 +124,7 @@ class _Counter(cp_model.CpSolverSolutionCallback):
 def count_plain_completions(givens, cap, limit=60):
     """How many solutions plain sudoku has with `givens`, counted up to `cap`
     (a result equal to `cap` means "`cap` or more"). Raises TimeoutError on no
-    verdict.
-
-    This is what the app searches through when the component only validates:
-    it fills the grid by plain sudoku and judges the flatmate rule on each full
-    grid, so a board with many plain completions is slow to solve."""
+    verdict."""
     m, _x = build_model(givens, flatmate=False)
     s = solver(limit)
     s.parameters.enumerate_all_solutions = True
@@ -151,8 +138,6 @@ def count_plain_completions(givens, cap, limit=60):
 
 
 def flatmate_of(solution, r, c):
-    """The flatmate cell of the 5 at (r, c) in `solution`: the 1 above it, or
-    the 9 below it (the one above when both hold)."""
     if r > 0 and solution[r - 1, c] == 1:
         return (r - 1, c)
     if r < N - 1 and solution[r + 1, c] == 9:

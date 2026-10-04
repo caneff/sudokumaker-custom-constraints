@@ -5,19 +5,18 @@
 //
 // Run: node examples/_shared/whole-grid-mains.test.mjs
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
 
-const EXAMPLES = join(dirname(fileURLToPath(import.meta.url)), '..')
+const EXAMPLES = join(import.meta.dirname, '..')
 
-function boardFor (W, H) {
+function boardFor (W, H, registered = []) {
   return {
     puzzle: {
       spec: { size: { width: W, height: H } },
-      addConstraintComponent: () => {}
+      addConstraintComponent: c => registered.push(c)
     },
     helpers: {
       cellIds: {
@@ -30,8 +29,10 @@ function boardFor (W, H) {
 for (const [name, ctor] of [['isofill', 'IsofillComponent'], ['fillomino', 'FillominoComponent']]) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
 
-  const square = runBackend(src, boardFor(4, 4))
-  assert.ok(square.ctorNames.includes(ctor), `${name}: a square board registers ${ctor}`)
+  // What the backend hands the app, read from the puzzle's side.
+  const registered = []
+  runBackend(src, boardFor(4, 4, registered))
+  assert.deepStrictEqual(registered.map(c => c.ctor), [ctor], `${name}: a square board registers one ${ctor}`)
 
   assert.throws(() => runBackend(src, boardFor(4, 3)), /square/, `${name}: a board with height under width throws`)
   assert.throws(() => runBackend(src, boardFor(3, 4)), /square/, `${name}: a board with width under height throws`)

@@ -34,8 +34,14 @@ class Manifest:
     shared_component: str | None = None
     # Links with no gen*.json behind them (hand-made or derived from another).
     generator_less_links: tuple[str, ...] = ()
+    # True: the example's `_annotated` link embeds its shared component with
+    # the comments kept (#433), not the usual full strip.
+    annotated_keeps_comments: bool = False
     # The name a borrowed, non-frame rows-and-columns backend ships under.
     rowcol_backend: str | None = None
+    # True: no shipped board of its own -- the example holds components and the
+    # harness that checks them, so the board files are not required.
+    boardless: bool = False
 
 
 def _check(path, key, value):
@@ -45,7 +51,12 @@ def _check(path, key, value):
     if key == "generator_less_links":
         ok = isinstance(value, list) and all(isinstance(v, str) for v in value)
         value = tuple(value) if ok else value
-    elif key in ("houses", "digits_exceed_lines"):
+    elif key in (
+        "houses",
+        "digits_exceed_lines",
+        "boardless",
+        "annotated_keeps_comments",
+    ):
         ok = isinstance(value, bool)
     else:
         ok = isinstance(value, str) and (choices is None or value in choices)

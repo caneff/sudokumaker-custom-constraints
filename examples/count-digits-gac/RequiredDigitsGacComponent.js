@@ -24,15 +24,6 @@
 //!     cell of N(S) may hold a digit from outside S.
 //! Checking every S is Hall's condition on the digit side.
 //!
-//! Worked example. Four cells, required {1,2,3}:
-//!   A = {1,2,7}   B = {1,2}   C = {3,4}   D = {5,6,7}
-//! The built-in prunes nothing: four cells are unfilled and three values are
-//! unplaced, so its one gate never opens. Here, S = {1,2} has N(S) = {A,B} and
-//! need(S) = 2, so A and B are spoken for and the 7 leaves A. The same walk
-//! covers the hidden single (S of one digit whose N(S) is one cell) and the
-//! built-in's own rule (S of everything), but off candidates rather than
-//! fills, so it fires while the group is still mostly empty.
-//!
 //! Sound: in the true solution S's digits sit in need(S) different cells, each
 //! able to hold a digit of S, so each lies in N(S). No S pools fewer cells than
 //! it needs, and an S that pools exactly need(S) takes all of them.
@@ -41,7 +32,7 @@
 //! file checks every removal against a brute-force oracle -- pin a candidate,
 //! ask whether a system of distinct representatives still exists. On 4- and
 //! 6-cell instances, bare, in a house, and with a repeated digit, the two agree
-//! exactly across 16,000 random states. Two known gaps: removing a REQUIRED
+//! exactly across 20,000 random states. Two known gaps: removing a REQUIRED
 //! digit from a cell can need the Dulmage-Mendelsohn refinement on maximum
 //! matchings, which this does not do, and `repeatsFit` below only half-checks
 //! that a repeated digit has cells that may repeat. Both make it weaker, never
@@ -72,7 +63,7 @@ const MAX_DISTINCT = 12
 //! calls, as HouseGacComponent shares `pooledDigitsOf`: the walk fills slot s
 //! before anything reads it, and it never yields, so no other component can
 //! run in the middle of it. Allocating these per call was measurable
-//! (bench-required-digits.mjs).
+//! (docs/research/required-digits-gac/bench-required-digits.mjs).
 const cellsOfSubset = new Int32Array(2 ** MAX_DISTINCT)
 const cellsWantedBySubset = new Int32Array(2 ** MAX_DISTINCT)
 const digitsOfSubset = new Int32Array(2 ** MAX_DISTINCT)
@@ -85,7 +76,6 @@ function setParams (instance, values, cells) {
   if (cells.length > MAX_CELLS) {
     throw new RangeError(`${instance.name}: RequiredDigitsGacComponent takes at most ${MAX_CELLS} cells, got ${cells.length}`)
   }
-  //! The required digits, each with the number of cells it wants.
   const wantedCellsByDigit = new Map()
   for (const value of values) {
     wantedCellsByDigit.set(value, (wantedCellsByDigit.get(value) ?? 0) + 1)
@@ -102,21 +92,8 @@ function setParams (instance, values, cells) {
   instance.cells = cells
 }
 
-function lowestBit (bits) {
-  return bits & -bits
-}
+// #include ../_shared/bit-helpers.js
 
-function withoutLowestBit (bits) {
-  return bits & (bits - 1)
-}
-
-//! The index of a single set bit: 1 -> 0, 2 -> 1, 4 -> 2, ...
-function positionOf (singleBit) {
-  return 31 - Math.clz32(singleBit)
-}
-
-//! Set bits counted in one pass of shifts rather than one iteration per bit: a
-//! cell mask runs to 24 bits and this is asked once per subset.
 function countBits (bits) {
   let counted = bits - ((bits >> 1) & 0x55555555)
   counted = (counted & 0x33333333) + ((counted >> 2) & 0x33333333)
@@ -124,9 +101,6 @@ function countBits (bits) {
   return Math.imul(counted, 0x01010101) >> 24
 }
 
-//! N({d}) for each required digit d, as a cell mask. A placed cell has one
-//! candidate left, so it appears for that digit alone: placements need no pass
-//! of their own.
 function cellsHoldingEachDigit (instance, candidates) {
   return instance.requiredDigits.map(digit => {
     const digitBit = 1 << digit
@@ -139,8 +113,7 @@ function cellsHoldingEachDigit (instance, candidates) {
 }
 
 //! A digit wanted twice needs two cells the app allows to repeat. Hall counting
-//! cannot see that -- to it, two cells of a row are two cells. Asked of the
-//! puzzle rather than assumed, and only when some digit actually repeats.
+//! cannot see that -- to it, two cells of a row are two cells.
 function repeatsFit (instance, puzzle, cellsHoldingDigit) {
   for (let index = 0; index < instance.requiredDigits.length; index++) {
     if (instance.cellsWantedByDigit[index] < 2) continue
@@ -156,11 +129,6 @@ function repeatsFit (instance, puzzle, cellsHoldingDigit) {
   return true
 }
 
-//! Walk every subset once, counting up, and hand each one to `visit` as
-//! (cells it can use, cells it wants, digits it is). `visit` returns true to
-//! stop the walk. Filling the memo and reading it happen in the same pass:
-//! later subsets read only slots already written, and the walk never touches
-//! `candidates`, so nothing it reads can go stale underneath it.
 function walkSubsets (instance, cellsHoldingDigit, visit) {
   const requiredDigits = instance.requiredDigits
   const cellsWantedByDigit = instance.cellsWantedByDigit
@@ -200,7 +168,6 @@ function * update (instance, puzzle) {
     const cellsAvailable = countBits(cellsInSubset)
     if (cellsAvailable < cellsWanted) return true
     if (cellsAvailable === cellsWanted) {
-      //! Those cells are used up by those digits: nothing else may sit there.
       for (let rest = cellsInSubset; rest !== 0; rest = withoutLowestBit(rest)) {
         candidates[positionOf(lowestBit(rest))] &= digitsInSubset
       }
@@ -209,16 +176,12 @@ function * update (instance, puzzle) {
   })
 
   if (doesNotFit) {
-    //! puzzle.stop fails the search node being tried, so the solver backs up
-    //! and tries the next candidate elsewhere on the board.
     yield puzzle.stop(`${instance.name} has nowhere left to put the digits it requires`, cells)
     return
   }
 
-  //! Hand the removals to the app, one change per cell that shrank. The walk
-  //! only clears bits, so the snapshot minus the working mask is the whole
-  //! difference. Yielding here and not inside the walk keeps the memo ours
-  //! until the walk is done: a yield lets the solver run another component.
+  //! Yield only after the walk: a yield lets the solver run another component,
+  //! which would overwrite the shared memo mid-walk.
   for (let position = 0; position < cells.length; position++) {
     if (candidates[position] !== startingCandidates[position]) {
       const removedDigits = startingCandidates[position] & ~candidates[position]
@@ -227,9 +190,8 @@ function * update (instance, puzzle) {
   }
 }
 
-//! Backstop, and the fix for the built-in's greedy `validate`: greedy
-//! strike-off accepts states with no valid assignment, Hall's condition does
-//! not. Same walk, the first test only, no removals.
+//! The fix for the built-in's greedy `validate`: greedy strike-off accepts
+//! states with no valid assignment, Hall's condition does not.
 function validate (instance, puzzle) {
   const candidates = instance.cells.map(cell => puzzle.getCandidatesBitMask(cell))
   const cellsHoldingDigit = cellsHoldingEachDigit(instance, candidates)

@@ -19,7 +19,7 @@
 #       (box_height * box_width == n)
 # Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
 # except that the 9x9 is the board the timing loop and build_link.py reuse, so
-# it lands as PUZZLE_LINK.txt and gen.json (framebuild.board_files).
+# it lands as PUZZLE_LINK.txt and gen.json (framebuild.RingGlobal.files).
 # --rebuild re-encodes a committed board against the code in the tree right
 # now, with no fresh CP-SAT search.
 #
@@ -44,15 +44,15 @@ from framebuild import Spec, main
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = [
-    "HitCountsJointComponent.js",
+    "HitCountsPairComponent.js",
     "SideSumComponent.js",
     "SideHitMatchingComponent.js",
 ]
-# main.js registers the joint component per paired ends and the single-line
+# main.js registers the pair component per paired ends and the single-line
 # component per unpaired group; the side components are main-global.js's
 # alone -- they need a whole side's clues, which only exists once every frame
 # line is drawn.
-LOCAL_COMPONENTS = ["HitCountsJointComponent.js", "HitCountsComponent.js"]
+LOCAL_COMPONENTS = ["HitCountsPairComponent.js", "HitCountsComponent.js"]
 
 
 def comment_text(n):
@@ -63,12 +63,10 @@ def comment_text(n):
 
 
 def hits(v, _cells, _box):
-    # cells whose digit equals their 1-based distance from the clue
     return sum(1 for i, x in enumerate(v) if x == i + 1)
 
 
 def add_hit_count(m, x, cells, kk, n, tag, _box):
-    # exactly kk cells hold their 1-based distance from the clue
     bs = []
     for i, cell in enumerate(cells):
         b = m.NewBoolVar(f"h{tag}_{i}")
@@ -79,8 +77,6 @@ def add_hit_count(m, x, cells, kk, n, tag, _box):
 
 
 def no_zero_cage(interior):
-    # look-and-say cage "00" = "zero 0s": keeps the digit 0 out of the interior,
-    # so only the clue ring may be 0. Paired with minDigit=0 on the puzzle.
     return [
         {
             "type": 304,
@@ -104,7 +100,7 @@ SPEC = Spec(
     extra_cages=no_zero_cage,
     # Real-app timing clears the two-row bar on the shipped 9x9's GLOBAL
     # lane only (0.83x cold, 0.61x after-logical --
-    # docs/research/421-frame-link-timing.md, #421); the 4x4, 6x6 and every
+    # docs/research/421-frame-link-timing.md); the 4x4, 6x6 and every
     # local board were never measured and must not pick it up on a routine
     # rebuild, hence a set of sizes rather than a bool.
     house_gac=frozenset({9}),

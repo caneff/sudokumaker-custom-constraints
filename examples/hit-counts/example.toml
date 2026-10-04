@@ -1,2 +1,2 @@
-timed_component = "HitCountsJointComponent"
+timed_component = "HitCountsPairComponent"
 digits_exceed_lines = true

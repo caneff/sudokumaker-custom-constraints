@@ -17,7 +17,7 @@ Same board, one component swapped (same-board comparison,
 
 | link | component |
 |---|---|
-| `PUZZLE_LINK_selfcount_current.txt` | `../CountDigitsGacComponent.js` (with #578) |
+| `PUZZLE_LINK_selfcount_current.txt` | `examples/count-digits-gac/CountDigitsGacComponent.js` (with #578) |
 | `PUZZLE_LINK_selfcount_pre578.txt` | `CountDigitsGacComponent.pre578.js` (`git show d0b1854:docs/research/count-digits-gac/CountDigitsGacComponent.js`) |
 
 Each is a 9x9 sudoku, CP-SAT-unique (the app's `[unique]` readout is the controller's to confirm), `entered: 0`, one custom constraint, digits
@@ -31,7 +31,7 @@ test. Backend and cages are byte-equal across the two links.
 `gen.json`: 17 givens, CP-SAT-unique, 1 of 6 counters holds an even digit (that
 does not matter: the coupling prunes on the counter's candidates during search,
 whatever its final digit). Picked on **search nodes**, below. Known cosmetic
-flaw: in group 3 the counter is the region's top-left cell, so a cage label
+flaw: in group 3 the counter is the group's top-left cell, so a cage label
 draws the digit list and the `#` in one corner; the search now rejects that, but
 this draw predates the rule.
 
@@ -111,6 +111,6 @@ search size, then time the top few in the browser.
 ## Rebuild and check
 
 ```
-uv run examples/outside-sudoku/build_count_digits_selfcount.py
-uv run examples/outside-sudoku/build_count_digits_selfcount.test.py
+uv run examples/count-digits-gac/build_count_digits_selfcount.py
+uv run examples/count-digits-gac/build_count_digits_selfcount.test.py
 ```

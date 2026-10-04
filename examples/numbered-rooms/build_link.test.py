@@ -1,15 +1,5 @@
-# Two checks on the example's links.
-#
-# 1. The shipped board and its wrapper twins run the lanes they claim, --refresh
-#    refuses another board, and swapping the committed component and
-#    main-global.js back into PUZZLE_LINK.txt reproduces it byte for byte. What
-#    a swap may change is link_swap.test.py's.
-# 2. The committed local links, built by `build_size.py <n> --paths`, pass
-#    board_checks.check_local_board under this example's clue rule (#238).
-#
-#   uv run --with lzstring examples/numbered-rooms/build_link.test.py
-
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -22,8 +12,9 @@ from board_checks import check_local_board
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from link_codec import decode_puzzle
-from link_swap import find_constraint, swap_build
+from link_swap import swap_build
 from minify import minify_file
+from sm_document import find_constraint
 
 
 def numbered_room(values):
@@ -42,9 +33,6 @@ def numbered_room(values):
 
 
 def check_shipped_link():
-    """The shipped board runs the GLOBAL lane: main-global.js as the backend
-    and no drawn groups, so the backend builds the 4n frame lines itself
-    (docs/example-layout.md, "Which lane a link runs")."""
     doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     lc = find_constraint(doc, CONSTRAINT_NAME)
     assert lc["definition"]["backend"]["code"] == minify_file(
@@ -56,13 +44,10 @@ def check_shipped_link():
 
 
 def check_refresh_rejects_another_board():
-    """`--refresh` stamps DIGITS and COMMENT, and both are written for this one
-    hand-built 9x9 board. Aimed at any other committed link it would hand a
-    smaller interior a 1..9 range -- nine digits against six-cell lines, the
-    silent HouseComponent -> DifferentDigitsComponent degradation the range is
-    declared to prevent -- and rules text describing a different puzzle. So the
-    two flags must not combine, and the named board must come back untouched.
-    """
+    """`--refresh` stamps DIGITS and COMMENT, both written for the one
+    hand-built 9x9. On a smaller board the 1..9 range would silently degrade
+    every HouseComponent to a DifferentDigitsComponent, and the rules text
+    would describe a different puzzle."""
     with tempfile.TemporaryDirectory() as tmp:
         copy = pathlib.Path(tmp) / "PUZZLE_LINK_6x6.txt"
         before = (HERE / "PUZZLE_LINK_6x6.txt").read_text()
@@ -78,7 +63,11 @@ def check_refresh_rejects_another_board():
             capture_output=True,
             text=True,
         )
-        assert run.returncode != 0, f"--refresh --board was accepted: {run.stdout}"
+        # argparse's usage error, exit 2, naming --board: a crash for some other
+        # reason does not pass as the refusal. Either guard's message will do:
+        # the shared swap_main refuses first, `rebuild`'s own guard behind it.
+        assert run.returncode == 2, (run.returncode, run.stdout, run.stderr)
+        assert re.search(r"error: .*--board", run.stderr), run.stderr
         assert copy.read_text() == before, "--refresh rewrote the board it was given"
 
 
@@ -138,7 +127,6 @@ if __name__ == "__main__":
             "main-global.js must round-trip to it"
         )
 
-    # the 9x9 stress board and the 6x6 twin that carries the local timing row
     for tag in ("local", "6x6_local"):
         spec, doc = check_local_board(
             HERE, tag, "NumberedRoomsComponent", numbered_room

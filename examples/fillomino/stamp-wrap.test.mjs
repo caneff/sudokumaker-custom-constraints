@@ -1,20 +1,15 @@
-// Seam: FillominoComponent.update with the visit stamp near the top of the
-// mask's range (#665):
-//   node examples/fillomino/stamp-wrap.test.mjs
-//
 // `instance.mask` is an Int32Array, so a counter that reached 2^31 would be
 // stored negative and no cell would ever read as visited again. The component
 // must clear the mask and restart the stamp before that, and `update` must
 // deduce exactly what it does from a fresh instance. Same check as the isofill
 // one in pooling.test.mjs, on the fillomino fixture.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makePuzzle, fixpoint, randomCandidates } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const mod = makeIo(HERE).load('FillominoComponent.js', ['setParams', 'update'])
 
 const rows = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid

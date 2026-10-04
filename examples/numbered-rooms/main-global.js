@@ -1,6 +1,3 @@
-// Numbered Rooms (escape-the-grid), GLOBAL variant. No groups arrive: the
-// frame lines come from the shared reader below, one { side, clue, line } per
-// clued line (examples/_shared/frame-lines.js).
 // Every frame line is one row or column, so the component's house rules all
 // fire — but it asks the app for that at solve time, not here
 // (docs/line-contract.md).

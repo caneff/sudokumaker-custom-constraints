@@ -65,7 +65,7 @@ function framePairs (lines) {
     // Construction only holds for the list frameLines produced whole. This
     // catches the two misuses that reach here: a list filtered by side
     // (framePairs(lines.filter(g => g.side === 'L'))) would otherwise pair L0
-    // with L1 and hand a joint component two clues on one side and the wrong
+    // with L1 and hand a pair component two clues on one side and the wrong
     // line, and an odd-length one would pair the last entry with undefined and
     // throw inside the app at solve time. It does not check that a and b are
     // the two ends of the same line. The throw is loud in the Node harnesses

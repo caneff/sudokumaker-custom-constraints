@@ -26,6 +26,38 @@ def matrix_recipes(text):
     return [r.strip() for r in m.group(1).split(",") if r.strip()]
 
 
+def job_blocks(text):
+    """Map job name -> its indented body, read from the `jobs:` section.
+
+    A job is a two-space-indented `name:` key under a top-level `jobs:`.
+    Narrow on purpose (no PyYAML here): this file's layout is ours to keep.
+    """
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if ln.rstrip() == "jobs:"), None)
+    assert start is not None, "ci.yml has no top-level `jobs:` section"
+    blocks, name = {}, None
+    for ln in lines[start + 1 :]:
+        if ln and not ln.startswith(" "):
+            break  # next top-level key
+        m = re.match(r"  ([A-Za-z0-9_-]+):\s*$", ln)
+        if m:
+            name = m.group(1)
+            blocks[name] = []
+        elif name:
+            blocks[name].append(ln)
+    return {k: "\n".join(v) for k, v in blocks.items()}
+
+
+def step_lines(body):
+    """Each step's `uses:`/`run:` line, with the list dash stripped."""
+    out = []
+    for ln in body.splitlines():
+        m = re.match(r"\s*(?:- )?((?:uses|run):\s.*?)\s*$", ln)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
 if __name__ == "__main__":
     text = WORKFLOW.read_text()
 
@@ -33,7 +65,14 @@ if __name__ == "__main__":
     assert recipes, "ci.yml's gate matrix lists no recipes"
 
     # Shared setup: one steps template for every matrix leg, not one copied
-    # per job.
+    # per job. The gate job's own steps hold each setup step exactly once, and
+    # no other job repeats it.
+    jobs = job_blocks(text)
+    assert "gate" in jobs, f"ci.yml has no `gate` job (jobs: {sorted(jobs)})"
+    gate_steps = step_lines(jobs["gate"])
+    other_steps = [
+        ln for name, body in jobs.items() if name != "gate" for ln in step_lines(body)
+    ]
     for step in (
         "uses: actions/checkout@v4",
         "uses: actions/setup-node@v4",
@@ -41,8 +80,12 @@ if __name__ == "__main__":
         "uses: astral-sh/setup-uv@v5",
         "run: uv sync",
     ):
-        assert text.count(step) == 1, (
-            f"expected one shared '{step}' step, found {text.count(step)}"
+        assert gate_steps.count(step) == 1, (
+            f"expected one shared '{step}' step in the gate job, "
+            f"found {gate_steps.count(step)}"
+        )
+        assert step not in other_steps, (
+            f"'{step}' is copied into another job; the gate matrix is the one home"
         )
 
     # `just check` still runs alone on a push to main; the rest are PR-only.

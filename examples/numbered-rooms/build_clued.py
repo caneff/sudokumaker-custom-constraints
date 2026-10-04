@@ -1,26 +1,21 @@
 # Build the clued-board twins: PUZZLE_LINK.txt with all 36 outside clues
-# filled from the puzzle's own solution (interior unchanged, still blank but
-# for the one given), plus its original-wrapper twin for a same-board timing
-# comparison. Mirrors build_original.py; see docs/real-app-timing.md.
-#
-#   uv run --with lzstring examples/numbered-rooms/build_clued.py
+# filled from the puzzle's own solution, plus its original-wrapper twin for a
+# same-board timing comparison.
 #
 # SOLUTION is the real app's own solved grid for PUZZLE_LINK.txt (read from
-# the SVG cell text after clicking "Find all solutions and valid candidates"
-# at https://sudokumaker.app, the same solve app-solve.mjs times -- the app
-# confirmed it "a unique solution"). `verify_solution` below re-derives every
-# outside clue from it via the Numbered Rooms rule
-# (line[k - 1] === clue, k = value(line[0])) and checks standard sudoku
-# (rows/columns/boxes all different), so a stale or mistyped SOLUTION string
-# fails loud here instead of silently shipping a wrong clue.
+# the SVG cell text after clicking "Find all solutions and valid candidates";
+# the app confirmed it "a unique solution"). `verify_solution` re-derives every
+# outside clue from it and checks the sudoku, so a stale or mistyped SOLUTION
+# fails loud instead of silently shipping a wrong clue.
 
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from build_original import build_original, frame_groups, write
+from build_original import build_original, frame_groups
 from link_codec import decode_puzzle
+from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -36,8 +31,6 @@ SOLUTION = (
 
 
 def verify_solution(doc, values):
-    """Raise AssertionError if `values` does not satisfy this board's own
-    sudoku and Numbered Rooms rules, or does not match its given cells."""
     p = doc["puzzle"]
     for i, c in enumerate(p["cells"]):
         if c and c.get("given"):
@@ -51,9 +44,9 @@ def verify_solution(doc, values):
         if r >= 0:
             boxes.setdefault(r, []).append(i)
     # The interior's rows and columns are named houses the frame backend
-    # builds from the board's own geometry, not cages in the document (#394),
-    # so read them off the region map the same way that backend reads them off
-    # the grid: an interior cell is one the region map places in a region.
+    # builds from the board's own geometry, not cages in the document, so read
+    # them off the region map the same way that backend reads them off the
+    # grid: an interior cell is one the region map places in a region.
     W = p["width"]
     inside = [i for i, r in enumerate(regions) if r >= 0]
     rows = {}
@@ -74,9 +67,8 @@ def verify_solution(doc, values):
 
 
 def fill_ring(doc, values, groups):
-    """Return a copy of doc with each group's clue cell set to its solved
-    digit. Stored as a non-given value -- outside clues live in the cell
-    array without a `given` flag, not as givens (docs/real-app-timing.md)."""
+    """Outside clues are stored as plain values with no `given` flag, not as
+    givens (docs/real-app-timing.md)."""
     import copy
 
     doc = copy.deepcopy(doc)
@@ -86,19 +78,17 @@ def fill_ring(doc, values, groups):
     return doc
 
 
-def build():
+def build(out_dir=HERE):
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     values = [int(d) for d in SOLUTION]
     assert len(values) == len(base["puzzle"]["cells"]), "SOLUTION is the wrong size"
     verify_solution(base, values)
 
     clued = fill_ring(base, values, frame_groups())
-    write(clued, HERE / "PUZZLE_LINK_clued.txt")
+    write_link(clued, out_dir / "PUZZLE_LINK_clued.txt")
 
-    # The clued board runs the same global lane its parent does; its original
-    # twin gets the drawn frame groups the wrapper reads (build_original.py).
     clued_original = build_original(clued)
-    write(clued_original, HERE / "PUZZLE_LINK_clued_original.txt")
+    write_link(clued_original, out_dir / "PUZZLE_LINK_clued_original.txt")
     return clued, clued_original
 
 

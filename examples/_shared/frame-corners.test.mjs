@@ -16,13 +16,12 @@
 // are read from different fields, and a backend that reads one of them twice
 // names cells that are not corners on any board that is not square.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { runBackend } from './backend-runner.mjs'
 
-const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'frame-corners.js'), 'utf8')
+const SRC = readFileSync(join(import.meta.dirname, 'frame-corners.js'), 'utf8')
 
 // Run the backend against a W x H board and return what it registered.
 function run (W, H, minDigit) {

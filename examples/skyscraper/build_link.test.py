@@ -3,10 +3,7 @@
 # 1. Swapping the shipped component back into PUZZLE_LINK.txt reproduces it
 #    byte for byte. What a swap may change is link_swap.test.py's.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`, pass
-#    board_checks.check_local_board under this example's clue rule (#237,
-#    #240).
-#
-#   uv run examples/skyscraper/build_link.test.py
+#    board_checks.check_local_board under this example's clue rule.
 
 import pathlib
 import sys
@@ -44,7 +41,7 @@ if __name__ == "__main__":
     board = HERE / "PUZZLE_LINK.txt"
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "candidate.txt"
-        assert swap_build(board, HERE / "SkyscraperLineComponent.js", out) == (
+        assert swap_build(board, HERE / "SkyscraperPairComponent.js", out) == (
             board.read_text().strip()
         ), "the committed component must round-trip to PUZZLE_LINK.txt"
 

@@ -59,13 +59,13 @@ backend.
 
 ## Board: a ringless 9x9, built here and not by framebuild
 
-`framebuild` cannot host this board. Its only ringless path (`no_ring_doc`)
+`framebuild` cannot host this board. Its only ringless path (`no_ring.NoRing`)
 reads drawn groups and a per-line clue function from a `Spec`; a flatmate board
 has neither. `build_link.py` writes the document itself, in the shape
-`no_ring_doc` produces: a `"custom"` document, a region constraint for the
+`NoRing` builds: a `"custom"` document, a region constraint for the
 boxes, the given-digits constraint, and the shared whole-grid rows-and-columns
 backend (`examples/_shared/grid-rowcol.js`, through
-`framebuild.grid_backend_constraint`), then the flatmate constraint. Because the
+`no_ring.grid_backend_constraint`), then the flatmate constraint. Because the
 link carries that backend, `check_layout.py` reads it as a no-ring board.
 
 A `"sudoku"` document would have kept the app's full technique set and given
@@ -195,7 +195,7 @@ Read from the source (`examples/_shared/time_example.py`, `probe_link.py`):
   no `--ring-clues` the board is stripped to its givens (`strip_to_givens`: every
   non-given cell cleared, ring or not). A ringless board has no ring to keep and
   needs no flag.
-- `check_stripped(..., ring_clues=False)` then insists every non-given cell is
+- `check_searchable(..., ring_clues=False)` then insists every non-given cell is
   empty, which a stripped board is. The same strip mode serves isofill.
 - The candidate is built by `build_link.py --component FILE --out FILE`
   (`link_swap.swap_main`), the baseline backend found by `resolve_backend_file`

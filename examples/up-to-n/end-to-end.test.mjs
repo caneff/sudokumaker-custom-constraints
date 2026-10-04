@@ -1,24 +1,14 @@
-// End to end: Up to N (spec #366, rule corrected by #589) through the app's
-// own solver.
-//
-//   node examples/up-to-n/end-to-end.test.mjs
-//
 // Each case takes a committed link, as a setter would share it, and runs it
-// through the real SudokuMaker solver bundle in Node (bundle-solve-lib.mjs,
-// #429): the link's own main code reads the drawn markers, registers the
-// component, and the app's search solves. Nothing here is mocked, so the
-// marker contract, the component and the board data are checked together.
+// through the real SudokuMaker solver bundle in Node (bundle-solve-lib.mjs):
+// the link's own main code reads the drawn markers, registers the component,
+// and the app's search solves. Nothing here is mocked, so the marker contract,
+// the component and the board data are checked together. Which malformed
+// markers setup refuses, and with what message, is marker-contract.test.mjs's;
+// the clue-range case here shows one refusal surfacing through the real
+// solver.
 //
 // Expected answers come from the board's gen JSON, which CP-SAT built and
-// proved unique, and from spec #589's own literals -- never from the JS rule.
-//
-// #589's rule: reading inward, the clue is the sum of the digits strictly
-// before the first target digit N; N is never added. A clue runs 0 (N first)
-// to TOTAL - N (N last), TOTAL = n(n+1)/2, and the two ends of one line sum to
-// TOTAL - N. The cases below pin, on all four committed boards: the rules
-// text's rule and worked example, the shown clues against the recorded ones,
-// every marker's corrected value accepted and its old up-to-and-including
-// value refused, a typed 0 read as a clue, and the range's top end.
+// proved unique, and from the rule's spec -- never from the JS rule.
 //
 // It witnesses the rule as a whole, not each half: the search still finds the
 // one solution with `update` pruning nothing (validate alone refuses every
@@ -40,13 +30,13 @@
 //   labels render on a board, and the typed-marker path a setter uses (a 0
 //   typed into a marker). This bundle reads the document, not the page.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { decodeLinkFile, solveDocument } from '../_shared/bundle-solve-lib.mjs'
+import { entered } from './fixture.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 
 const BOARDS = [
   ['PUZZLE_LINK_4x4.txt', 'gen_4x4.json'],
@@ -55,7 +45,6 @@ const BOARDS = [
   ['PUZZLE_LINK.txt', 'gen.json']
 ]
 
-// The worked example #589 ruled for each size, as the rules text must carry it.
 const WORKED = {
   4: 'a clue of 4 at the left end of row 2 is true of the row 3124, since 3 + 1 = 4.',
   6: 'a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11.',
@@ -70,14 +59,12 @@ const load = (link, gen) => ({
 const markers = doc =>
   doc.puzzle.constraints.find(c => c.definition?.name === 'Up to N').input.groups
 
-// The recorded solution as the solver prints it: one digit per cell, row-major.
 const solution = board => board.grid.flat().join('')
 
-// A fresh copy to edit, so one case never leaks into the next.
 const copy = doc => structuredClone(doc)
 
-// A marker's gen JSON key (L/R per row, T/B per column, 0-based) and its
-// target digit, read off its border cell: cells[0] is the border.
+// A marker's gen JSON key and target digit; cells[0] is its border cell in
+// every committed link.
 function where (g, n) {
   const [a, b] = g.cells
   const x = a % n
@@ -86,14 +73,6 @@ function where (g, n) {
   return { key: `${y === 0 ? 'T' : 'B'}${x}`, target: x + 1 }
 }
 
-// The document with the recorded grid entered in full.
-const entered = (d, board) => {
-  d.puzzle.cells = board.grid.flat().map(value => ({ value }))
-  return d
-}
-
-// A document the solver refuses: the entered grid rejected, or setup refusing
-// a marker.
 const refused = d => solveDocument(d).then(
   ({ solutions }) => solutions.length === 0,
   err => /rejected the initial grid|Up to N: /.test(err.message)
@@ -104,21 +83,17 @@ for (const [link, gen] of BOARDS) {
   const n = board.n
   const TOTAL = (n * (n + 1)) / 2
 
-  // The rules text states the corrected rule and #589's worked example for
-  // this size.
   assert.match(doc.puzzle.comment, /the digits before the first N sum to the clue; N itself is not added\./, link)
   assert.ok(doc.puzzle.comment.includes(WORKED[n]), `${link}: rules text lacks the ${n}x${n} worked example`)
 
-  // The labels drawn are the recorded clues: the markers carrying a value are
-  // the recorded shown set, each showing its recorded value.
   {
     const shown = Object.fromEntries(markers(doc).filter(g => g.value !== '').map(g => [where(g, n).key, Number(g.value)]))
     const recorded = Object.fromEntries(board.active.map(k => [k, board.clue[k]]))
     assert.deepStrictEqual(shown, recorded, `${link}: shown clues`)
   }
 
-  // The recorded clues keep #589's identity: the two ends of a line sum to
-  // TOTAL - N, so the far end says nothing the near end does not.
+  // The two ends of a line sum to TOTAL - N, so the far end says nothing the
+  // near end does not.
   for (let i = 0; i < n; i++) {
     for (const [near, far] of [['L', 'R'], ['T', 'B']]) {
       assert.strictEqual(board.clue[near + i] + board.clue[far + i], TOTAL - (i + 1), `${link}: ${near}${i} + ${far}${i}`)
@@ -147,8 +122,6 @@ for (const [link, gen] of BOARDS) {
     }
   }
 
-  // A typed 0 is a clue, not a blank: on a marker whose N is not first it
-  // refuses the true grid.
   {
     const d = entered(copy(doc), board)
     const g = markers(d).find(g => board.clue[where(g, n).key] > 0)
@@ -156,7 +129,6 @@ for (const [link, gen] of BOARDS) {
     assert.ok(await refused(d), `${link}: a 0 read as no clue`)
   }
 
-  // The clue range tops out at TOTAL - N: one more is refused at setup.
   {
     const d = copy(doc)
     const g = markers(d)[0]
@@ -165,11 +137,8 @@ for (const [link, gen] of BOARDS) {
     await assert.rejects(solveDocument(d), new RegExp(`Up to N: .* above ${top}`), `${link}: above the range`)
   }
 
-  // The search runs on the 4x4 and 6x6 only: see the header.
   if (n === 9) continue
 
-  // The shared board has exactly one solution, the recorded one. The shown
-  // clues are the only thing pinning it: this board has no givens.
   {
     // A no-ring board ships "custom" at its own size. The headless bundle
     // honours a "sudoku" header's size where the live editor forces 9x9
@@ -191,51 +160,6 @@ for (const [link, gen] of BOARDS) {
     for (const g of markers(blank)) g.value = ''
     const { solutions } = await solveDocument(blank)
     assert.ok(solutions.length > 1, `${link}: ${solutions.length} solutions with every marker empty`)
-  }
-
-  // The recorded solution entered in full is accepted with the true clues and
-  // refused once one shown clue is off by one.
-  {
-    const entered = d => {
-      d.puzzle.cells = board.grid.flat().map(value => ({ value }))
-      return d
-    }
-    const { solutions } = await solveDocument(entered(copy(doc)))
-    assert.deepStrictEqual(solutions, [solution(board)], `${link}: the true grid, entered`)
-
-    const wrong = entered(copy(doc))
-    const clued = markers(wrong).find(g => g.value !== '')
-    clued.value = String(Number(clued.value) + 1)
-    const rejected = await solveDocument(wrong).then(
-      ({ solutions }) => solutions.length === 0,
-      err => /rejected the initial grid/.test(err.message)
-    )
-    assert.ok(rejected, `${link}: the true grid passed a wrong clue`)
-  }
-
-  // A malformed marker is refused at setup with the marker contract's own
-  // message, not solved as though it were absent or read as some other clue.
-  // Each edit takes the document and its first marker, two cells [a, b] with
-  // b one step inward from the border cell a.
-  const inward = g => g.cells[1] - g.cells[0]
-  for (const [what, edit, message] of [
-    ['a three-cell marker', (d, g) => g.cells.push(g.cells[1] + inward(g)), /Up to N: .* must be exactly two cells/],
-    ['a marker one step in from the end', (d, g) => { g.cells = g.cells.map(c => c + inward(g)) }, /Up to N: .* not at either end/],
-    ['a second marker on the same end', (d, g) => markers(d).push({ ...g, value: '1' }), /Up to N: .* same line and end/],
-    ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a whole number/],
-    // Digits stop one short of the board, every clue is cleared, and only the
-    // marker at the top of the last column is clued: its target digit is one
-    // the board cannot hold, and the refusal names that marker.
-    ['a target digit past maxDigit', d => {
-      const n = board.n
-      d.puzzle.maxDigit = n - 1
-      for (const m of markers(d)) m.value = ''
-      markers(d).find(m => m.cells[0] === n - 1 && m.cells[1] === 2 * n - 1).value = '1'
-    }, new RegExp(`Up to N: the marker at R1C${board.n} and R2C${board.n} aims at target digit ${board.n}, outside 1\\.\\.${board.n - 1}`)]
-  ]) {
-    const bad = copy(doc)
-    edit(bad, markers(bad)[0])
-    await assert.rejects(solveDocument(bad), message, `${link}: ${what}`)
   }
 }
 

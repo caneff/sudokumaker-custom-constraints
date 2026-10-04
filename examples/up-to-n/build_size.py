@@ -3,8 +3,7 @@
 # The board is a plain n x n sudoku with no ring: framebuild's no-ring mode
 # draws all 4n markers, fills every clue from a fresh grid, carves givens and
 # then shown clues while CP-SAT still proves one solution, and encodes the
-# link. The rule itself -- clue function, CP-SAT model, rules text, markers --
-# is `SPEC` below.
+# link.
 #
 #   uv run examples/up-to-n/build_size.py 4 2 2 --local
 #   uv run examples/up-to-n/build_size.py 6 2 3 --local
@@ -39,21 +38,16 @@ import link_codec
 from framebuild import (
     NO_RING_RULES_PREFIX,
     Spec,
-    board_files,
-    build_doc,
-    check,
     load_board,
     main,
-    rebuild,
     save_board,
     unique,
 )
+from no_ring import NoRing
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"
 
-# The worked example in the rules text, per size: a row read from its left
-# marker. Row 2 aims at the 2.
 RULE_EXAMPLES = {
     4: "a clue of 4 at the left end of row 2 is true of the row 3124, since 3 + 1 = 4",
     6: "a clue of 11 at the left end of row 2 is true of the row 416253, since 4 + 1 + 6 = 11",
@@ -75,14 +69,11 @@ def rule_text(n):
 
 
 def target_digit(cells):
-    """N for a line given as (row, column) cells from its marked end: the row's
-    1-based number for a row, the column's for a column."""
     (r0, c0), (r1, _) = cells[0], cells[1]
     return r0 + 1 if r0 == r1 else c0 + 1
 
 
 def up_to_n(values, cells, _box):
-    # the digits strictly before the first N, summed; None if N is absent
     target = target_digit(cells)
     total = 0
     for v in values:
@@ -93,9 +84,8 @@ def up_to_n(values, cells, _box):
 
 
 def add_up_to_n(m, x, cells, kk, n, tag, _box):
-    # hit[i]: cell i holds N. before[i]: no cell up to and including i holds
-    # N, so cell i is read -- the first N itself never is. The read cells sum
-    # to kk, and some cell holds N -- on a row of a sudoku that is automatic,
+    # before[i]: no cell up to and including i holds N, so cell i is read -- the
+    # first N itself never is. Some cell must hold N: automatic on a sudoku row,
     # but the rule itself demands it.
     target = target_digit(cells)
     hit = []
@@ -118,7 +108,6 @@ def add_up_to_n(m, x, cells, kk, n, tag, _box):
 
 
 def markers(board):
-    # every line's two cells at its marked end, clued when the board shows it
     return [
         (cells[:2], board.clue[key] if key in board.active else None)
         for key, cells in sorted(board.lines.items())
@@ -135,9 +124,7 @@ SPEC = Spec(
     cp_sat_clue_fn=add_up_to_n,
     comment_fn=rule_text,
     groups_fn=markers,
-    # a marker names a whole row or column, so the lines never bend
     bent_lines=False,
-    # the board has no ring, so no "inner grid" to name
     rules_prefix=NO_RING_RULES_PREFIX,
 )
 
@@ -161,10 +148,11 @@ def shipped_9x9(minimal):
 def derive_shipped_9x9():
     board = shipped_9x9(load_board(MINIMAL_9X9[1]))
     assert unique(SPEC.cp_sat_clue_fn, board) is True
-    doc = build_doc(SPEC, board, local=True)
+    lane = NoRing(SPEC)
+    doc = lane.build_doc(board)
     link = link_codec.encode_link(doc)
-    check(SPEC, link, doc, board, local=True)
-    link_path, gen_path = board_files(SPEC, 9, local=True)
+    lane.check(link, doc, board)
+    link_path, gen_path = lane.files(9)
     link_path.write_text(link + "\n")
     save_board(board, gen_path)
     print(f"wrote {link_path.name} ({len(link)} chars) and {gen_path.name}")
@@ -174,7 +162,7 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["--derive-shipped-9x9"]:
         derive_shipped_9x9()
     elif sys.argv[1:] == ["--rebuild-minimal-9x9"]:
-        link = rebuild(SPEC, 9, local=True, files=MINIMAL_9X9)
+        link = NoRing(SPEC).rebuild(9, pair=MINIMAL_9X9)
         MINIMAL_9X9[0].write_text(link + "\n")
         print(f"wrote {MINIMAL_9X9[0].name} -- current component code, same board")
     else:

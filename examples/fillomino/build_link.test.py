@@ -1,9 +1,3 @@
-# The fillomino board builds through _shared/bareboard.py: the committed
-# component and gen.json reproduce PUZZLE_LINK.txt byte for byte. The
-# component swap is link_swap.test.py's.
-#
-#   uv run examples/fillomino/build_link.test.py
-
 import pathlib
 import sys
 
@@ -14,8 +8,6 @@ sys.path.insert(0, str(HERE))
 from build_link import RULE, TIMED_COMPONENT, build, check
 
 if __name__ == "__main__":
-    # fillomino is not sudoku, so its rules text must not carry the sudoku
-    # sentence -- the `rules_prefix = "none"` half of the layout exemption (#305)
     assert not RULE.startswith("Normal sudoku rules apply"), (
         "fillomino rules must not open with the sudoku sentence"
     )

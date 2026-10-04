@@ -1,15 +1,11 @@
 // A two-wide frame leaves the two-clue skyscraper an empty line. The
 // component must stand down: no throw, no removal, no stop, and validate holds on filled clues.
-//
-//   node examples/skyscraper/empty-line.test.mjs
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
 
-const { load } = makeIo(dirname(fileURLToPath(import.meta.url)))
-const mod = load('SkyscraperLineComponent.js', ['setParams', 'update', 'validate'])
+const { load } = makeIo(import.meta.dirname)
+const mod = load('SkyscraperPairComponent.js', ['setParams', 'update', 'validate'])
 
 installGlobals(1, 4)
 const CA = 100

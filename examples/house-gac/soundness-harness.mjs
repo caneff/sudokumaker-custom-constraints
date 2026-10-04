@@ -1,38 +1,21 @@
-// Soundness fuzz for this example's own use of the shared HouseGacComponent:
-// that main.js registers exactly the 27 houses a plain 9x9 has (9 rows, 9
-// columns, 9 boxes, correctly numbered), and that running all 27 instances
-// together over a real solved grid never removes a cell's TRUE value.
-//
-// HouseGacComponent.js's own soundness (the bitmask GAC math, exact vs a
-// matching-based reference, the interleaved-yield and gate cases) is already
-// proven in examples/_shared/house-gac.test.mjs -- this file does not repeat
-// that. What is new here is the *registration*: this board has no ring to
-// slice off (examples/_shared/house-gac.js assumes one and cannot register
-// this board -- see README, "Why its own backend"), so main.js reads
-// helpers.geometry.getAllRows()/getAllColumns() and puzzle.getRegions() whole.
-// A bug there would register the wrong cells, or too few houses, with no
-// error from the shared component -- it only ever sees whatever cells it is
-// handed.
-//
-//   node examples/house-gac/soundness-harness.mjs
+// Soundness fuzz for this example's registration of the shared
+// HouseGacComponent. The component's own math is proven in
+// examples/_shared/house-gac.test.mjs; what is new here is main.js reading the
+// rows, columns and regions whole (no ring to slice), and a bug there
+// registers the wrong cells or too few houses with no error from the component.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
-import { installGlobals, makeIo, makeRng, makePuzzleApi } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { runBackend } from '../_shared/backend-runner.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng(425)
 
 installGlobals(1, 9)
 
-// ---- registration: main.js on a real plain 9x9 ----------------------------
-// helpers.geometry here returns exactly what the app's own geometry helper
-// returns for a 9x9 (row-major ids 0..80), and puzzle.getRegions() the same
-// 3x3 boxes a "Rows & Columns" backend's region constraint declares.
 const N = 9
 const id = (r, c) => r * N + c
 function houses () {
@@ -62,8 +45,6 @@ const names = registered.map(c => c.args[0])
 assert.strictEqual(new Set(names).size, 27, 'house names are not distinct')
 assert.deepStrictEqual([names[0], names[9], names[18]], ['row 1', 'column 1', 'box 1'], 'misnamed')
 
-// A resized geometry (a short row list) must fail loud rather than register a
-// weaker filter silently -- main.js's own guard.
 assert.throws(() => runBackend(SRC, {
   puzzle: { addConstraintComponent: () => {}, getRegions: () => houses().boxes.slice(0, 8) },
   helpers: { geometry: { getAllRows: () => houses().rows, getAllColumns: () => houses().cols } }
@@ -71,8 +52,6 @@ assert.throws(() => runBackend(SRC, {
 
 console.log('registration: 27 houses, correctly named and ordered; short geometry throws')
 
-// ---- full-grid soundness: all 27 houses together, over a real solution ----
-// The shipped grid this example ships (README, "The 81/81 grid").
 const GRID = [
   '265783149',
   '387149562',
@@ -97,40 +76,20 @@ function seeder (c, v) {
   return [...s]
 }
 
-function fixpointAll (cand) {
-  const size = () => { let n = 0; for (const s of cand.values()) n += s.size; return n }
-  for (let pass = 0; pass < 20; pass++) {
-    let changed = false
-    for (const cells of HOUSES) {
-      // As the app's constructor does: cells first, then setParams.
+const ITERS = 500
+const { failures } = fuzzSoundness('full-grid fuzz', {
+  iters: ITERS,
+  draw: () => ({
+    truth,
+    seed: seeder,
+    houses: HOUSES,
+    // As the app's constructor does: cells first, then setParams.
+    parts: HOUSES.map(cells => {
       const inst = { cells }
       mod.setParams(inst, cells)
-      const p = {
-        ...makePuzzleApi(cell => cand.get(cell), { houses: HOUSES }),
-        stop: (message = '', cells = []) => ({ message, cells, __stop: true })
-      }
-      const before = size()
-      for (const r of mod.update(inst, p)) if (r && r.__stop) return { stopped: true }
-      if (size() !== before) changed = true
-    }
-    if (!changed) break
-  }
-  return { stopped: false }
-}
+      return { mod, inst }
+    })
+  })
+})
 
-const ITERS = 500
-let violations = 0
-for (let iter = 0; iter < ITERS; iter++) {
-  const cand = new Map()
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) cand.set(r * N + c, new Set(seeder(r * N + c, GRID[r][c])))
-  const { stopped } = fixpointAll(cand)
-  if (stopped) { violations++; console.log('iter', iter, 'stopped on a grid that has a solution'); continue }
-  for (const [cell, v] of Object.entries(truth)) {
-    if (!cand.get(+cell).has(v)) { violations++; console.log('iter', iter, 'cell', cell, 'lost its true digit', v) }
-  }
-}
-console.log(`full-grid fuzz: ${ITERS} states, ${violations} violations`)
-
-const ok = violations === 0
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(failures === 0)

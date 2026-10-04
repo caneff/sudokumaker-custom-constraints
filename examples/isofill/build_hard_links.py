@@ -11,7 +11,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 from build_link import build, check
 from link_codec import encode_link
-from probe_link import check_stripped, strip_to_givens
+from probe_link import check_searchable, strip_to_givens
 
 FIXTURES = {
     "gen_30g.json": "PUZZLE_LINK_30g.txt",
@@ -27,13 +27,12 @@ FIXTURES = {
 
 
 def write_links(out_dir=HERE):
-    """Build each fixture's link, strip it to its givens, write it to out_dir."""
     for name, out_name in FIXTURES.items():
         link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / name)
         check(link, doc, n_clues)
         # A hard-fixture link never ships the solution: every non-given cell is {}.
         stripped = strip_to_givens(doc)
-        check_stripped(stripped)
+        check_searchable(stripped)
         (out_dir / out_name).write_text(encode_link(stripped))
         print(f"{out_name}: {n_clues} givens, rest empty")
 

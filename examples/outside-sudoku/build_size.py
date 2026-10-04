@@ -9,27 +9,6 @@
 #   uv run --with ortools --with lzstring \
 #       examples/outside-sudoku/build_size.py 9 3 3 1 --local
 #   uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
-#
-# Args: n box_height box_width [seed_count] [--local], or --rebuild n [--local]
-#       (box_height * box_width == n)
-# Writes PUZZLE_LINK_<n>x<n>.txt and gen_<n>x<n>.json next to this script,
-# except for n=9: that size is the shipped board, so it lands as
-# PUZZLE_LINK.txt and gen.json (framebuild.board_files).
-#
-# --local builds the LOCAL board instead: the same frame lines shipped as drawn
-# groups on the main.js lane, written as PUZZLE_LINK_local.txt with
-# gen_local.json beside it. The lines stay straight -- this rule's window is a
-# box extent along the line's DIRECTION, and a bent path has none, so main.js
-# throws on one (see the README).
-#
-# The rule: the clue digit appears in the line's window -- its first w cells,
-# w being the extent of the nearest box along the line's direction. Hidden
-# clues are the interactive ones: the solver deduces them.
-#
-# The window length depends on the line's DIRECTION, which a 6x6 shows: boxes
-# 2 tall by 3 wide give a window of 3 across a row and 2 down a column.
-# framebuild hands both clue functions the line's cells and the board's box
-# shape, so each sizes its own window and one Spec serves every size.
 
 import pathlib
 import sys
@@ -51,9 +30,8 @@ def comment_text(_n):
 
 
 def clue_fn(values, cells, box):
-    # The largest digit of the window. Any window digit satisfies the rule;
-    # picking one deterministically is what lets a rebuild re-derive the same
-    # clues from the recorded seed, with no fresh search.
+    # Any window digit satisfies the rule; picking one deterministically is
+    # what lets a rebuild re-derive the same clues from the recorded seed.
     return max(values[: window_length_by_box(cells, *box)])
 
 
@@ -73,7 +51,7 @@ SPEC = Spec(
     comment_fn=comment_text,
     # This rule's window is a box extent along the line's DIRECTION, and a bent
     # path has none, so the local board draws the STRAIGHT frame lines and its
-    # rules text must not say a line is no house (#268).
+    # rules text must not say a line is no house.
     bent_lines=False,
 )
 

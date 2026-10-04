@@ -78,7 +78,7 @@ copy exists).
 `#421`/`#434` also made the constraint name "House GAC" mean one specific
 thing repo-wide: a frame board carrying `examples/_shared/house-gac.js`
 itself, always checked for staleness and a declared digit range
-(`check_layout.py`'s `check_frame_backends`). This board's backend is a
+(`check_layout.py`'s `check_stale_backend_code` and `check_digit_range`). This board's backend is a
 different file (`main.js`, no ring to slice — see above), so its constraint
 ships under its own name, "House GAC (standalone)", instead.
 

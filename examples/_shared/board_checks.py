@@ -14,8 +14,8 @@ import pathlib
 
 from frame import ring_cell
 from link_codec import decode_puzzle
-from link_swap import constraint_with, find_constraint
 from minify import minify_file
+from sm_document import find_constraint, registering_constraint_name
 
 
 def check_local_board(example_dir, tag, component, clue):
@@ -37,7 +37,7 @@ def check_local_board(example_dir, tag, component, clue):
 
     link = example_dir / f"PUZZLE_LINK_{tag}.txt"
     doc = decode_puzzle(link.read_text().strip())
-    lc = find_constraint(doc, constraint_with(doc, component))
+    lc = find_constraint(doc, registering_constraint_name(doc, component))
     assert lc["definition"]["backend"]["code"] == minify_file(
         example_dir / "main.js"
     ), f"{link.name}: the local board runs the main.js lane, not main-global.js"

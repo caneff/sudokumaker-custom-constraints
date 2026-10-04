@@ -24,18 +24,12 @@
 # So this is a staleness check, not a second opinion on the rule: it shares the
 # generator's model on purpose, and what it catches is a board that outlived
 # its proof. Fast enough for `just check` -- every size is one solve, well
-# under a second -- unlike isofill's verify.py, which searches for minutes.
-#
-# One limit worth naming: framebuild.unique answers True when its
-# second-solution search finds nothing, and a search that timed out found
-# nothing too. Every board here solves in well under its 10 s limit, so the
-# two are not confusable today; a board slow enough to reach that limit would
-# need unique() to separate them.
+# under a second.
 #
 # What it deliberately leaves to the neighbours, one home per rule: that a link
 # opens clean (no non-given cell carrying a value) is check_layout.py's, run in
 # the same gate; that a link ships its lane's own components and input is
-# framebuild.check's, run by build_size.py's two lanes.
+# the lanes' own check (framebuild.Lane.check), run by build_size.py.
 #
 # Global boards only. A local (--paths) board carries its clues on drawn bent
 # groups rather than on ring keys, so its clue set is not read the way this
@@ -51,7 +45,7 @@ sys.path.insert(0, str(HERE))
 
 from build_size import SPEC
 from frame import ring_cell
-from framebuild import board_files, load_board, unique
+from framebuild import RingGlobal, load_board, unique
 from link_codec import decode_puzzle
 
 
@@ -86,8 +80,6 @@ def link_board(doc):
 
 
 def mismatches(doc, givens, shown):
-    """Every way the link's board differs from the recorded one, as lines a
-    reader can act on. Empty means the two agree."""
     link_givens, link_shown = link_board(doc)
     return [
         f"interior given {key}: link {link_givens.get(key)}, gen {givens.get(key)}"
@@ -101,9 +93,6 @@ def mismatches(doc, givens, shown):
 
 
 def grid_problems(board):
-    """Every way `board`'s recorded solution fails to be a solution of the
-    recorded board: a repeat in some house, a given it contradicts, or a line
-    whose clue it does not produce. Empty means the grid stands up."""
     n, grid = board.n, board.grid
     houses = [[(r, c) for c in range(n)] for r in range(n)]
     houses += [[(r, c) for r in range(n)] for c in range(n)]
@@ -133,8 +122,6 @@ def grid_problems(board):
 
 
 def boxes(n, bh, bw):
-    """The board's boxes, as sets of (row, column). One home: the house check
-    and the box check below both read the same partition."""
     return {
         frozenset((br + r, bc + c) for r in range(bh) for c in range(bw))
         for br in range(0, n, bh)
@@ -143,10 +130,8 @@ def boxes(n, bh, bw):
 
 
 def box_problems(doc, board):
-    """Whether the link draws the same boxes `board` records. The proof runs
-    on gen's box shape, so a link whose houses differ is a different puzzle
-    however well its givens and clues line up. Compared as a partition: the
-    app is free to number the boxes as it likes."""
+    """Compared as a partition: the app is free to number the boxes as it
+    likes."""
     n, bh, bw = board.n, board.bh, board.bw
     W = doc["width"]
     # type 1 is the app's region constraint, the one that draws the boxes
@@ -164,18 +149,12 @@ def box_problems(doc, board):
 
 
 def boards():
-    """Every global board committed here, as (Board, link file), found by its
-    gen file so a new size needs no edit and sized by what that file records
-    rather than by its name. The 9x9 is the plain-named pair; a `_local` board
-    is a drawn-path board, which this does not read."""
     found = []
     for path in [HERE / "gen.json", *HERE.glob("gen_*x*.json")]:
-        # gen.json is named, not globbed, so this example may simply not have
-        # one; a _local board is a drawn-path board and is not read here.
         if not path.exists() or path.stem.endswith("_local"):
             continue
         board = load_board(path)
-        found.append((board, board_files(SPEC, board.n)[0]))
+        found.append((board, RingGlobal(SPEC).files(board.n)[0]))
     return sorted(found, key=lambda pair: pair[0].n)
 
 
@@ -198,10 +177,9 @@ def check(board, link_file):
     )
 
     verdict = unique(SPEC.cp_sat_clue_fn, board)
-    # unique() answers None when its first solve finds nothing inside the time
-    # limit -- a timeout or an unsatisfiable model, not a verdict on a second
-    # solution. Reporting that as "two solutions" would send a reader hunting
-    # the wrong bug.
+    # unique() answers None when either solve spends the time limit or the
+    # model is unsatisfiable -- no verdict at all. Reporting that as "two
+    # solutions" would send a reader hunting the wrong bug.
     assert verdict is not None, (
         f"{link_file.name}: no solution found inside the CP-SAT limit, a "
         "timeout or a board the model cannot satisfy, so uniqueness was never "

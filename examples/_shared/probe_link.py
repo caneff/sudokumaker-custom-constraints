@@ -1,4 +1,4 @@
-# Turn a finished puzzle link into a solver-probe link: one the app must
+# Turn a finished puzzle link into a searchable link: one the app must
 # actually search, not just verify.
 #
 # A shared/finished SudokuMaker link stores the whole solution in the cells
@@ -62,7 +62,7 @@ def strip_to_givens(doc):
 MODES = {"empty": empty_interior, "strip": strip_to_givens}
 
 
-def check_stripped(doc, ring_clues=False):
+def check_searchable(doc, ring_clues=False):
     """Raise ValueError unless every non-given cell is empty. With ring_clues,
     outer-ring cells may keep a value (edge-clue puzzles store clues there).
     This is the gate: a timing run on a grid with entered values or pencil
@@ -87,7 +87,7 @@ def check_stripped(doc, ring_clues=False):
 def empty_link_file(src_path, out_path, mode="empty"):
     """Read the link at src_path, apply the mode, check it, write it to out_path."""
     doc = MODES[mode](decode_puzzle(pathlib.Path(src_path).read_text().strip()))
-    check_stripped(doc, ring_clues=(mode == "empty"))
+    check_searchable(doc, ring_clues=(mode == "empty"))
     pathlib.Path(out_path).write_text(encode_link(doc))
 
 

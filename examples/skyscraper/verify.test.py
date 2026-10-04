@@ -2,8 +2,6 @@
 # reads the shipped link, mismatches / box_problems / grid_problems compare it
 # to the recorded board, and framebuild.unique is the proof itself. Every
 # expectation comes from gen.json, so a regenerated board changes no line here.
-#
-#   uv run --with lzstring --with ortools examples/skyscraper/verify.test.py
 
 import pathlib
 import sys
@@ -15,7 +13,7 @@ sys.path.insert(0, str(HERE))
 import dataclasses
 
 from build_size import SPEC
-from framebuild import board_files, load_board, unique
+from framebuild import RingGlobal, load_board, unique
 from link_codec import decode_puzzle
 from verify import (
     boards,
@@ -28,9 +26,7 @@ from verify import (
 
 
 def _shipped():
-    """The shipped 9x9 as both halves see it: the decoded link, and the
-    recorded board load_board reads out of gen.json."""
-    link_path, gen_path = board_files(SPEC, 9)
+    link_path, gen_path = RingGlobal(SPEC).files(9)
     doc = decode_puzzle(link_path.read_text().strip())["puzzle"]
     return doc, load_board(gen_path)
 
@@ -69,8 +65,6 @@ def test_mismatches_flags_a_changed_given_and_a_changed_clue():
 def test_box_problems_flags_boxes_the_link_does_not_draw():
     doc, board = _shipped()
     assert box_problems(doc, board) == []
-    # The shipped link draws 3x3 boxes; a board recorded with any other shape
-    # is a different puzzle wearing the same givens.
     assert box_problems(doc, dataclasses.replace(board, bh=1, bw=9))
 
 
@@ -78,21 +72,19 @@ def test_grid_problems_speaks_for_each_of_its_three_checks():
     _, board = _shipped()
     assert grid_problems(board) == []
 
-    # A given the grid contradicts: only the givens check can see it.
     bent = dict(board.givens)
     key = next(iter(sorted(bent)))
     bent[key] = bent[key] % 9 + 1
     out = grid_problems(dataclasses.replace(board, givens=bent))
     assert out and all(m.startswith("given") for m in out)
 
-    # A clue the grid does not read: only the clue check can see it.
     bent = dict(board.clue)
     key = next(iter(sorted(bent)))
     bent[key] = bent[key] % 9 + 1
     out = grid_problems(dataclasses.replace(board, clue=bent))
     assert out and all(m.startswith("clue") for m in out)
 
-    # A repeat in a house. Uniqueness cannot catch this on its own: bend the
+    # Uniqueness cannot catch a repeat in a house on its own: bend the
     # recorded solution and CP-SAT still proves the board has exactly one --
     # the one gen no longer records.
     grid = [list(row) for row in board.grid]
@@ -131,10 +123,8 @@ def test_boards_finds_every_global_board_and_no_local_one():
         assert "local" not in link_file.name, (
             "a drawn-path board is not verify.py's to read"
         )
-    # Discovery, not a list: every committed global gen file is in there, under
-    # the name framebuild.board_files gives it.
     gens = {p.stem for p in HERE.glob("gen*.json") if not p.stem.endswith("_local")}
-    assert {board_files(SPEC, b.n)[1].stem for b, _ in found} == gens
+    assert {RingGlobal(SPEC).files(b.n)[1].stem for b, _ in found} == gens
 
 
 if __name__ == "__main__":

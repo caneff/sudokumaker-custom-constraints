@@ -15,14 +15,13 @@
 // ran, so the zero-disagreement count here is the same measurement as the
 // ticket's 3000-state one (#408).
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, makeRng, housesOf, shuffle } from './harness-lib.mjs'
 import { runBackend } from './backend-runner.mjs'
 
-const here = dirname(fileURLToPath(import.meta.url))
+const here = import.meta.dirname
 const NAMES = ['getAffectedCells', 'setParams', 'update']
 const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
 
@@ -334,11 +333,15 @@ for (const kind of ['bare', 'fullHouse']) {
 
 // ---- setParams leaves instance.cells to the app ----
 // The compiled constructor already stores getAffectedCells's list as
-// instance.cells, so setParams has nothing to add.
+// instance.cells, so setParams must not replace it (a copy or a reordered list
+// would desynchronise the cells the app watches from the ones update filters).
+// Other fields it may add are its own business.
 {
-  const inst = { name: 'row 1' }
+  const mine = [...CELLS]
+  const inst = { name: 'row 1', cells: mine }
   gac.setParams(inst, CELLS)
-  assert.deepStrictEqual(inst, { name: 'row 1' }, 'setParams wrote to the instance')
+  assert.strictEqual(inst.cells, mine, 'setParams replaced instance.cells')
+  assert.strictEqual(inst.name, 'row 1', 'setParams renamed the instance')
 }
 
 // ---- removals go to the app as raw masks ----

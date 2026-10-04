@@ -1,24 +1,3 @@
-# Prove the shipped Dutch Flatmates board: the one solution gen.json records,
-# unique under sudoku plus the flatmate rule, and the committed link carries
-# exactly its givens.
-#
-#   uv run examples/dutch-flatmates/verify.py
-#
-# Four checks, each a handful of single-worker CP-SAT solves:
-#
-#   1. The board has exactly one solution, and it is the grid gen.json records.
-#      A timeout is never read as "no second solution" (`unique_solution` raises).
-#   2. The rule is needed: plain sudoku on the same givens has more than one
-#      solution, so the flatmate rule is not decoration.
-#   3. At least one 5 has its flatmate forced by the rule rather than by the
-#      givens alone: under plain sudoku with the givens, the flatmate cell can
-#      take another digit, and only the rule pins it. The 5s that do are listed.
-#   4. PUZZLE_LINK.txt decodes to the same givens as gen.json, cell for cell.
-#
-# `build_link.test.py` runs this on both boards (`gen.json` and the Counting
-# Circles `gen_0g.json`, whose extras -- diagonals, circles, no 5 in a circle --
-# are part of "sudoku" in checks 1-3), so `just check` re-proves both.
-
 import pathlib
 import sys
 
@@ -32,8 +11,8 @@ from link_codec import decode_puzzle
 
 
 def verify(gen=HERE / "gen.json", link=HERE / "PUZZLE_LINK.txt"):
-    """Run the four checks; return the rule-forced (5, flatmate) cell pairs.
-    Raises AssertionError naming the first check that fails."""
+    """Return the rule-forced (5, flatmate) cell pairs. Raises AssertionError
+    naming the first check that fails."""
     grid, givens, extras, _spec = read_gen(gen)
     solution = prove_recorded(givens, grid, extras)
     assert unique_solution(givens, flatmate=False, extras=extras) is None, (

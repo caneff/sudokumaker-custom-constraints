@@ -1,20 +1,16 @@
 // Strength check for the shared HouseGacComponent, as this example uses it:
-// on the full 9-cell houses a plain 9x9 has. Soundness lives in
-// soundness-harness.mjs; this checks the other direction -- that the current
-// component never prunes LESS than the commit that introduced it (#422).
-//
-//   node examples/house-gac/update-strength.test.mjs
+// on the full 9-cell houses a plain 9x9 has. The current component must
+// never prune LESS than the commit that introduced it.
 //
 // This is the shared component's own file, not one owned by this example, so
 // the floor is pinned at the commit that shipped it, the same way every other
 // example pins its own component's floor at the commit that adds its
 // update-strength test (docs/example-layout.md).
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 // The component lives in `_shared`, not owned by this example, so `loadAt`
 // (which resolves a commit path off `git rev-parse --show-prefix` of its own
 // `here`) is rooted at `_shared` itself rather than passed a `../` path --

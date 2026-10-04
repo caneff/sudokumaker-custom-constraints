@@ -97,15 +97,15 @@ export function makeAllDifferentFloor (state, { kind = 'regin', maxDigit } = {})
 //   mainSrc: the text of main.js.
 //   input: the object main.js reads as `input` (its groups/geometry). Empty
 //     for main-global.js, which builds its own frame instead of reading it.
-//   frame: { W, H, idx }, from frame-geometry.mjs's frameGeometry() — when
-//     given, the registrar also answers getCellAt(col, row) = idx(row, col)
+//   frame: { W, H, idx }, from frame-geometry.mjs's frameGeometry(). The
+//     registrar answers getCellAt(col, row) = idx(row, col)
 //     and spec.size.width = W, spec.size.height = H, the three calls
 //     main-global.js's own frame-building makes, so a probe can run that code
 //     instead of handing it a pre-built `groups` list. The app's getCellAt
 //     takes the column first and `idx` takes the row first, so the arguments
 //     swap here: a mock that fed them straight through would hand the backend
 //     the transposed frame.
-export function loadComponents ({ here, files, mainSrc, input, frame = null }) {
+export function loadComponents ({ here, files, mainSrc, input, frame }) {
   const { load } = makeIo(here)
   const makeCtor = mod => function (name, ...args) {
     const inst = { name }
@@ -114,22 +114,27 @@ export function loadComponents ({ here, files, mainSrc, input, frame = null }) {
     return inst
   }
   const comps = []
-  const frameMethods = frame ? { getCellAt: (a, b) => frame.idx(b, a), spec: { size: { width: frame.W, height: frame.H } } } : {}
-  const registrar = { addConstraintComponent: inst => comps.push(inst), ...frameMethods }
+  const registrar = {
+    addConstraintComponent: inst => comps.push(inst),
+    getCellAt: (a, b) => frame.idx(b, a),
+    spec: { size: { width: frame.W, height: frame.H } }
+  }
   const ctors = files.map(f => ({ ctorName: f.ctorName, mod: load(f.file, f.names) }))
   const run = new Function('input', 'helpers', 'puzzle', ...ctors.map(c => c.ctorName), mainSrc) // eslint-disable-line no-new-func
   run(input, globalThis.helpers, registrar, ...ctors.map(c => makeCtor(c.mod)))
   return comps
 }
 
+const MAX_PASSES = 500
+
 // One propagation pass is: every component's update, then the all-different
 // floor over every group, then an optional extra propagator (an
 // example-specific candidate deduction layered on top, e.g. a matching
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
-// `maxPasses`. Returns the pass count it took, or -1 if it never settled.
-export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null, maxPasses = 500 } = {}) {
+// `MAX_PASSES`. Returns the pass count it took, or -1 if it never settled.
+export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
   if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle)) // n-1 prune
-  for (let pass = 0; pass < maxPasses; pass++) {
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = state.total()
     for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle)) // apply
     if (state.stopped) return pass + 1 // the branch is dead; no point propagating on

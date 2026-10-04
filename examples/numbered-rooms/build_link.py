@@ -1,13 +1,7 @@
-# Build a same-board comparison link (docs/real-app-timing.md): the committed
-# PUZZLE_LINK.txt, or --board, with one component's code swapped for a
-# candidate file and nothing else changed. PUZZLE_LINK.txt runs the global lane
-# (docs/example-layout.md), so a --backend to swap in is main-global.js.
-#
-#   uv run examples/numbered-rooms/build_link.py --component FILE --out FILE \
-#       [--board LINK] [--backend main-global.js]
-#
-# --refresh instead rewrites PUZZLE_LINK.txt in place (see refresh below). It
-# writes values belonging to that board alone, so it refuses --board.
+# Build a same-board comparison link: the committed PUZZLE_LINK.txt, or
+# --board, with one component's code swapped for a candidate file.
+# PUZZLE_LINK.txt runs the global lane (docs/example-layout.md), so a
+# --backend to swap in is main-global.js.
 
 import argparse
 import pathlib
@@ -16,9 +10,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import RULES_PREFIX, refresh_frame_backends
 from link_codec import decode_puzzle
-from link_swap import find_constraint, swap_main, write_link
+from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from sm_document import find_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
 # The shipped board is hand-built and calls its constraint this; the generated
@@ -38,12 +33,11 @@ COMMENT = RULES_PREFIX + (
 )
 
 # The interior is a 9x9 sudoku on 1-9, and the document has to say so. The app
-# defaults a custom puzzle to 1..9 whatever the grid size (#461), and both shared
+# defaults a custom puzzle to 1..9 whatever the grid size, and both shared
 # frame backends read `helpers.digits`; declaring the range keeps the rule from
 # resting on that default. A range that does not span the interior line makes
 # every row and column fall back from a named HouseComponent to a plain
-# DifferentDigitsComponent with no houseType. Same pin and the same reason as
-# running-start/build_link.py's template (#394).
+# DifferentDigitsComponent with no houseType.
 DIGITS = (1, 9)
 
 
@@ -52,24 +46,23 @@ def refresh():
     frame's shared ones as they stand in the tree, the digit range those
     backends read, and the rules text.
 
-    PUZZLE_LINK.txt and no other board. DIGITS and COMMENT below describe this
+    PUZZLE_LINK.txt and no other board. DIGITS and COMMENT describe this
     one hand-built 9x9; stamped on a smaller board they would give six-cell
     interior lines a nine-digit range -- the very degradation the range is
     declared to prevent -- and rules text for a different puzzle.
 
     This board is hand-built. No `gen_*.json` describes it, so
-    `framebuild.rebuild` cannot reach it and nothing else re-embeds
+    `framebuild.Lane.rebuild` cannot reach it and nothing else re-embeds
     `main-global.js`, `frame-rowcol.js` or `frame-corners.js` when they change,
     pins the range both frame backends read off `helpers.digits`, or corrects
     the comment. Without this the link keeps a stale copy and
     `check_layout.check_houses` reads it as a board that declares no interior
     rows or columns at all.
 
-    `main-global.js` is refreshed here for the same reason as the other two:
-    it is assembled from the tree (an `// #include` of the shared frame reader
-    resolves at minify time, #359), so a link built before that file moved
-    ships a body no source file matches. `check_shipped_link` asserts exactly
-    that equality, and this is the only writer that can satisfy it.
+    `main-global.js` is assembled from the tree (its `// #include` resolves at
+    minify time), so a link built before an included file moved ships a body
+    no source file matches. `check_shipped_link` asserts that equality, and
+    this is the only writer that can satisfy it.
 
     PUZZLE_LINK.txt is the source of truth for this example's three other
     hand-built links, so build_original.py and build_clued.py run after it.

@@ -1,20 +1,7 @@
-// Seams for the #454 pooling pass on IsofillComponent.update:
-//   node examples/isofill/pooling.test.mjs
-//
-// The pass is behaviour-preserving (update-strength.test.mjs pins the floor,
-// soundness-harness.mjs the truth), so this file checks the three things the
-// pass changes that those two cannot see:
-//   1. a board that does not split evenly stops the branch (puzzle.stop, which
-//      reaches the step log) instead of throwing;
-//   2. the hot scan reads the candidate mask, not a DigitSet per open cell;
-//   3. a visit stamp about to wrap does not change what update deduces.
-
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, fixpoint, makeRng, randomCandidates } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const mod = load('IsofillComponent.js', ['setParams', 'update'])
 
@@ -27,7 +14,6 @@ for (const c of CELLS) truth[c] = Math.floor(c / N)
 const { rnd } = makeRng(454)
 const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
 
-// 1. 99 cells among 10 digits: 9.9 cells a digit.
 {
   const cells = CELLS.slice(0, 99)
   const short = {}
@@ -40,7 +26,6 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.match(p._stopped, /evenly/)
 }
 
-// 2. The scan never builds a DigitSet per cell.
 {
   const p = makePuzzle(truth, seed)
   p.getCandidates = () => { throw new Error('scan called getCandidates; read getCandidatesBitMask') }
@@ -49,7 +34,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   Array.from(mod.update(inst, p))
 }
 
-// 3. Stamps sitting at the top of their range: the same deductions as fresh.
+// Stamps sitting at the top of their range: the same deductions as fresh.
 {
   const run = stamp => {
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
@@ -62,7 +47,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.deepStrictEqual(run(0xFFFFFFF0), run(0))
 }
 
-// 4. The target stamp too: a stale one reads as "no targets" and reports a cut
+// The target stamp too: a stale one reads as "no targets" and reports a cut
 // that is not there. Many random states, so the cut rule's re-walk is reached.
 {
   const run = stamp => {
@@ -81,7 +66,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.deepStrictEqual(run(0xFFFFFFFF), run(0))
 }
 
-// 5. The budget matcher's own stamp (`seen`, a Uint32Array): started near the
+// The budget matcher's own stamp (`seen`, a Uint32Array): started near the
 // top of its range after the first call has built the matcher, same deductions.
 {
   const run = below => {

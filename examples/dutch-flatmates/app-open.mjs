@@ -1,8 +1,3 @@
-// Open a Dutch Flatmates link in the app once, and print what it shows: the
-// rules text, the verdict of "Find all solutions and valid candidates", and the
-// grid the solver reached ('.' for a cell it did not fill). Compare the grid
-// with gen.json's solution.
-//
 //   node examples/dutch-flatmates/app-open.mjs [link_file] [--live]
 //
 // Default: the recorded app (examples/_shared/sudokumaker.har, replay), which
@@ -12,12 +7,11 @@
 // The link is read from disk and sent as the page's own URL; it is never printed.
 
 import fs from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readGrid } from '../_shared/app-dom.mjs'
 import { withApp, solveInApp } from '../_shared/app-session.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const live = process.argv.includes('--live')
 const linkFile = process.argv.slice(2).find(a => !a.startsWith('--')) ?? join(HERE, 'PUZZLE_LINK.txt')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
@@ -33,7 +27,6 @@ await withApp({ live }, async app => {
     title = await openPage.title()
 
     // The rules text shows on the play page, which "Playtest" opens in a new tab.
-    // The recorded app holds no play page (replay aborts it), so only --live reads it.
     rules = null
     if (live) {
       const [play] = await Promise.all([openPage.context().waitForEvent('page'), openPage.getByText('Playtest', { exact: true }).click()])

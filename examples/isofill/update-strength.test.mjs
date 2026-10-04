@@ -1,21 +1,15 @@
-// Strength check for IsofillComponent.update. Soundness (never remove a true
-// value) lives in soundness-harness.mjs; this file checks the other direction —
-// that a rewrite does not quietly prune LESS than before.
-//
-//   node examples/isofill/update-strength.test.mjs
+// Strength check for IsofillComponent.update: a rewrite must not quietly prune
+// LESS than before.
 //
 // The rules read placed digits and walk regions, so a state drawn at random is
 // contradictory and prunes nothing worth comparing. States are drawn around a
-// real solution instead, the way soundness-harness.mjs draws them. Three
-// fixtures: `rows` (row r holds digit r), `bent` (L-shaped regions), and the
-// grid of gen.json, the shipped board.
+// real solution instead.
 
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
 
 // The floor: the component as it stands at the commit that pins this test.
@@ -46,7 +40,6 @@ for (const c of CELLS) {
   bent[c] = (top ? x <= 5 : x <= 3) ? 2 * band : 2 * band + 1
 }
 
-// shipped — the grid in gen.json, the board the example ships.
 const shipped = {}
 JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid
   .forEach((row, r) => [...row].forEach((ch, x) => { shipped[r * N + x] = Number(ch) }))

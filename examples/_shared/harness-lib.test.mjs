@@ -5,11 +5,10 @@ import assert from 'assert'
 import { execFileSync } from 'child_process'
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import {
   DigitSet, TIES_FLAG, installGlobals, makeIo, makeLine, makePuzzle, makePuzzleApi, makeRng, makeSeeder,
-  columnsOf, fixpointAll, fuzzSoundness, patchSource, shuffle, strengthSweep, total
+  columnsOf, fixpointAll, fuzzSoundness, makeWaker, patchSource, shuffle, strengthSweep, total
 } from './harness-lib.mjs'
 
 const { rnd } = makeRng()
@@ -171,7 +170,7 @@ const { rnd } = makeRng()
 // A harness runs one component twice with a flag at the top of the file
 // flipped, which means evaluating edited source rather than a file on disk.
 {
-  const { loadSource } = makeIo(dirname(fileURLToPath(import.meta.url)))
+  const { loadSource } = makeIo(import.meta.dirname)
   const src = 'const FLAG = false\nfunction reading () { return FLAG }'
   assert.strictEqual(loadSource(src, ['reading']).reading(), false)
   assert.strictEqual(loadSource(src.replace('= false', '= true'), ['reading']).reading(), true)
@@ -219,7 +218,9 @@ const { rnd } = makeRng()
 
 // ---- installGlobals: the naming helper a component calls for a message ----
 installGlobals(1, 9)
-assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]), 'string')
+// A cage is named after its SMALLEST cell, whatever order the cells come in.
+assert.strictEqual(globalThis.helpers.naming.getCageName('region', [10, 1, 5]), 'the region at R1C2')
+assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 
 // ---- makeIo().loadAt assembles an #include as of the commit ----
 // `read` splices includes from the working tree; `loadAt` splices them from the
@@ -449,6 +450,35 @@ console.log('harness-lib.test.mjs: all seams pass')
   fixpointAll([{ mod: stops, inst: {} }, { mod: later, inst: {} }], q)
   assert.strictEqual(q._stopped, 'dead')
   assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
+}
+
+// ---- makeWaker: update runs only when a watched cell changed since the last call ----
+{
+  const p = makePuzzle({ 0: 1, 1: 2, 2: 3 }, () => [1, 2, 3])
+  let calls = 0
+  // The load pass prunes a watched cell, so what the waker has seen must be the
+  // state after update ran, or its own prune wakes it again.
+  const mod = { * update () { calls++; if (calls === 1) p._cand.get(0).delete(2) } }
+  const { wake, settle } = makeWaker(mod, {}, p, [0, 1])
+  wake()
+  assert.strictEqual(calls, 1, 'the first wake is the load pass')
+  wake()
+  assert.strictEqual(calls, 1, 'no watched cell changed: asleep')
+  p._cand.get(2).delete(3)
+  wake()
+  assert.strictEqual(calls, 1, 'a cell nobody watches changed: still asleep')
+  p._cand.get(1).delete(3)
+  wake()
+  assert.strictEqual(calls, 2, 'a watched cell lost a candidate: woken')
+  // A backtrack restores candidates without waking anyone; settle takes that
+  // state as already seen.
+  p._cand.get(1).add(3)
+  settle()
+  wake()
+  assert.strictEqual(calls, 2, 'settled on the restored state: asleep')
+  p._cand.get(0).delete(3)
+  wake()
+  assert.strictEqual(calls, 3, 'a change after the restore wakes it')
 }
 
 // ---- finishHarness: the exit status is the verdict ----

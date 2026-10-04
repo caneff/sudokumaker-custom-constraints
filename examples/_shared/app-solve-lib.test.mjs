@@ -5,7 +5,7 @@
 import assert from 'assert'
 import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
-import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
 // ---- first "took" only, no verdict yet: all three times report null ----
 // The solve phase printed its "took" but the uniqueness search has not
@@ -68,10 +68,10 @@ import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion
   assert.strictEqual(line, '  first 2300ms  unique 400ms  sum 2700ms  [unique]')
 }
 
-// ---- rep line for a rep with no verdict prints null times and a ? verdict ----
+// ---- rep line for a rep with no verdict: no time is printed as "null" ----
 {
   const line = repLine({ first: null, unique: null, sum: null, verdict: '?' })
-  assert.strictEqual(line, '  first nullms  unique nullms  sum nullms  [?]')
+  assert.strictEqual(line, '  first n/a  unique n/a  sum n/a  [?]')
 }
 
 // ---- rep line for a timeout with a first-solve time names the time, not three nulls ----
@@ -96,6 +96,12 @@ import { ALREADY_ENTERED, VERDICT_PATTERN, parseArgs, parseReadout, parseVersion
   ]
   const line = medianLine(rows)
   assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')
+}
+
+// ---- median line with no rep that finished: no time is printed as "null" ----
+{
+  const line = medianLine([{ first: 6800, unique: null, sum: null, verdict: 'timeout' }])
+  assert.strictEqual(line, '  MEDIAN first n/a  unique n/a  sum n/a  over 0/1 reps')
 }
 
 // ---- median line excludes a timeout row even though it now carries a first time ----
@@ -312,9 +318,5 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.match(run.stderr, /usage: app-solve.mjs/)
   assert.match(run.stderr, /after-logic/, 'the message names the flag that was refused')
 }
-
-// ---- ALREADY_ENTERED: the phrase marksRejected reads ----
-assert.ok(marksRejected(`a unique solution (${ALREADY_ENTERED} and pencil marks.)`, false))
-assert.ok(!marksRejected('a unique solution', false))
 
 console.log('app-solve-lib.test.mjs: all seams pass')

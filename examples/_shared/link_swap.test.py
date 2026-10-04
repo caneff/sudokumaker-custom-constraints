@@ -18,13 +18,13 @@ from link_codec import decode_puzzle, encode_link
 from link_swap import (
     blanked,
     check_and_write,
-    find_constraint,
     frame_and_comment_only,
     replace_constraint_code,
     swap_build,
     swap_component_code,
 )
 from minify import minify_file
+from sm_document import find_constraint
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK.txt"
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # swap_component_code: only the named component's code changes
     swapped = swap_component_code(
-        base, CONSTRAINT_NAME, "SkyscraperLineComponent", "NEW CODE"
+        base, CONSTRAINT_NAME, "SkyscraperPairComponent", "NEW CODE"
     )
     base_components = find_constraint(base, CONSTRAINT_NAME)["definition"]["components"]
     new_components = find_constraint(swapped, CONSTRAINT_NAME)["definition"][
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     got = {c["name"]: c["code"] for c in new_components}
     want = {c["name"]: c["code"] for c in base_components}
     diffs = [name for name in got if got[name] != want[name]]
-    assert diffs == ["SkyscraperLineComponent"], (
-        f"expected only SkyscraperLineComponent to change, got {diffs}"
+    assert diffs == ["SkyscraperPairComponent"], (
+        f"expected only SkyscraperPairComponent to change, got {diffs}"
     )
     assert (
         find_constraint(swapped, CONSTRAINT_NAME)["definition"]["backend"]["code"]
@@ -186,9 +186,9 @@ if __name__ == "__main__":
         # `// #include` resolves against
         (tmp / "_shared").symlink_to(HERE)
         (tmp / "hit-counts").mkdir()
-        candidate = tmp / "hit-counts" / "HitCountsJointComponent.js"
+        candidate = tmp / "hit-counts" / "HitCountsPairComponent.js"
         candidate.write_text(
-            (hc / "HitCountsJointComponent.js").read_text()
+            (hc / "HitCountsPairComponent.js").read_text()
             + "\nconst CANDIDATE_EDIT = 1\n"
         )
 
@@ -210,12 +210,12 @@ if __name__ == "__main__":
         assert new_backend == base_backend, "no backend given: backend untouched"
         assert new_comps.keys() == base_comps.keys()
         changed = [n for n in new_comps if new_comps[n] != base_comps[n]]
-        assert changed == ["HitCountsJointComponent"], changed
-        assert new_comps["HitCountsJointComponent"] == minify_file(candidate)
+        assert changed == ["HitCountsPairComponent"], changed
+        assert new_comps["HitCountsPairComponent"] == minify_file(candidate)
 
         # the shipped component swapped back in is the board, byte for byte
         assert (
-            swap_build(hc_board, hc / "HitCountsJointComponent.js", out)
+            swap_build(hc_board, hc / "HitCountsPairComponent.js", out)
             == hc_board.read_text().strip()
         )
 
@@ -262,50 +262,76 @@ if __name__ == "__main__":
     ex = HERE.parent
     with tempfile.TemporaryDirectory() as tmp:
         out = str(pathlib.Path(tmp) / "out.txt")
+        belongs = "belongs to the rebuild; drop it or --component"
+        no_swap = "names the link a --component swaps into; give --component"
+        no_backend = "swaps a backend in beside --component; this rebuild reads its own"
         refused = [
-            [
-                "isofill",
-                "--component",
-                str(ex / "isofill/IsofillComponent.js"),
-                "--out",
-                out,
-                "--puzzle",
-                str(ex / "isofill/gen_24g.json"),
-            ],
-            [
-                "isofill",
-                "--board",
-                str(ex / "isofill/PUZZLE_LINK_24g.txt"),
-                "--out",
-                out,
-            ],
-            [
-                "numbered-rooms",
-                "--refresh",
-                "--component",
-                str(ex / "numbered-rooms/NumberedRoomsComponent.js"),
-                "--out",
-                out,
-            ],
+            (
+                [
+                    "isofill",
+                    "--component",
+                    str(ex / "isofill/IsofillComponent.js"),
+                    "--out",
+                    out,
+                    "--puzzle",
+                    str(ex / "isofill/gen_24g.json"),
+                ],
+                f"--puzzle {belongs}",
+            ),
+            (
+                [
+                    "isofill",
+                    "--board",
+                    str(ex / "isofill/PUZZLE_LINK_24g.txt"),
+                    "--out",
+                    out,
+                ],
+                f"--board {no_swap}",
+            ),
+            (
+                [
+                    "numbered-rooms",
+                    "--refresh",
+                    "--component",
+                    str(ex / "numbered-rooms/NumberedRoomsComponent.js"),
+                    "--out",
+                    out,
+                ],
+                f"--refresh {belongs}",
+            ),
             # --backend on a rebuild that never reads it: the bare boards and
             # running-start's template take their backend from the tree
-            ["isofill", "--backend", str(ex / "isofill/main.js"), "--out", out],
-            ["fillomino", "--backend", str(ex / "fillomino/main.js"), "--out", out],
-            [
-                "running-start",
-                "--backend",
-                str(ex / "running-start/main-global.js"),
-                "--out",
-                out,
-            ],
+            (
+                ["isofill", "--backend", str(ex / "isofill/main.js"), "--out", out],
+                f"--backend {no_backend}",
+            ),
+            (
+                ["fillomino", "--backend", str(ex / "fillomino/main.js"), "--out", out],
+                f"--backend {no_backend}",
+            ),
+            (
+                [
+                    "running-start",
+                    "--backend",
+                    str(ex / "running-start/main-global.js"),
+                    "--out",
+                    out,
+                ],
+                f"--backend {no_backend}",
+            ),
         ]
-        for example, *argv in refused:
+        for (example, *argv), message in refused:
             run = subprocess.run(
                 [sys.executable, str(ex / example / "build_link.py"), *argv],
                 capture_output=True,
                 text=True,
             )
-            assert run.returncode != 0, f"{example} {argv} was accepted: {run.stdout}"
+            # argparse's refusal exits 2 and names the flag; a crash exits 1
+            # with a traceback and says neither
+            assert run.returncode == 2, (
+                f"{example} {argv} exited {run.returncode}: {run.stderr}"
+            )
+            assert message in run.stderr, f"{example} {argv}: {run.stderr}"
             assert not pathlib.Path(out).exists(), f"{example} {argv} wrote a link"
 
         # house-gac's rebuild does read --backend, so there it is accepted

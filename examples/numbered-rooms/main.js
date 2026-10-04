@@ -1,8 +1,5 @@
-// Numbered Rooms (escape-the-grid), LOCAL variant. Each group the author draws
-// is one clued line: cells[0] is the outside clue, the rest is the line read
-// inward from the cell next to the clue (trust the author's group order).
-// One self-contained component per line does all the work — no split across a
-// wrapper and a built-in.
+// Each drawn group is one clued line: the clue first, then the line read
+// inward; trust the author's group order.
 //
 // The line may bend and may repeat a digit. NumberedRoomsComponent asks the app
 // at solve time whether the line is a house and runs its two house rules only

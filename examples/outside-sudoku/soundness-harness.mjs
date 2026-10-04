@@ -1,26 +1,13 @@
-// Soundness fuzz for OutsideSudokuComponent. Soundness = update never removes
-// a cell's TRUE value. We enumerate every valid (clue, line) tuple for short
-// lines, seed random partial candidate states that still allow the truth, run
-// the component to a fixpoint, and check the truth survived. A removed true
-// value is the silent bug that makes a real puzzle unsolvable.
-//
-//   node examples/outside-sudoku/soundness-harness.mjs
-//
 // The lines enumerated are BARE: any digits, repeats allowed. Every house and
 // full-house fill is also a bare fill, and the component has no kind gate, so
 // the bare enumeration covers all three line kinds (docs/line-contract.md).
-//
-// Each case pins its own board geometry, because the window length depends on
-// the board: 3 along a row of a 9x9, 3 across and 2 down on a 6x6,
-// 2 on a 4x4. The digit count is smaller than the board so the enumeration
-// stays exhaustive; main code hands the component the window length.
+// The digit count D stays below the board's so the enumeration stays
+// exhaustive.
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
-import { installGlobals, makeIo, makeRng, makePuzzle, randomCandidates, violates } from '../_shared/harness-lib.mjs'
+import { installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
@@ -44,8 +31,6 @@ function * validTuples (clue, line, w, D) {
   }
 }
 
-// Board geometry, line direction, line length and digit count per case. The
-// mid-box start (from: 1) checks a window that straddles a box boundary.
 const CASES = [
   { N: 9, bh: 3, bw: 3, down: false, from: 0, m: 5, D: 4 },
   { N: 9, bh: 3, bw: 3, down: true, from: 1, m: 5, D: 4 },
@@ -62,20 +47,27 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
   const geo = gridGeometry(N, bh, bw)
   const line = down ? geo.columnLine(0, from, m) : geo.rowLine(0, from, m)
   const w = Math.min(down ? bh : bw, m)
-  // pinned, full, or a random subset — always keeping the cell's true value
   const seed = (c, v) => randomCandidates(rnd, 1, D, v)
+  const states = []
   for (const truth of validTuples(geo.clue, line, w, D)) {
-    for (let rep = 0; rep < 8; rep++) {
-      const p = makePuzzle(truth, seed)
-      Object.assign(p, geo.api)
+    for (let rep = 0; rep < 8; rep++) states.push(truth)
+  }
+  const r = fuzzSoundness(`outside-sudoku N=${N} m=${m} D=${D}`, {
+    iters: states.length,
+    draw: iter => {
       const inst = {}
       mod.setParams(inst, geo.clue, line, w)
-      const v = violates(mod, inst, p, truth)
-      tests++
-      if (v) { bad++; if (bad <= 5) console.log('violation', v, 'truth', truth, `N=${N} m=${m} D=${D}`) }
+      return {
+        truth: states[iter],
+        seed,
+        parts: [{ mod, inst }],
+        note: `truth ${JSON.stringify(states[iter])}`,
+        inspect: p => Object.assign(p, geo.api)
+      }
     }
-  }
+  })
+  tests += r.tests
+  bad += r.failures
 }
 console.log('soundness:', tests, 'tests,', bad, 'violations')
-console.log(bad === 0 ? 'PASS' : 'FAIL')
-process.exit(bad === 0 ? 0 : 1)
+finishHarness(bad === 0)

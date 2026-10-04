@@ -186,10 +186,10 @@ the same board comes back out:
     uv run --with lzstring examples/outside-sudoku/build_size.py --rebuild 6
 
 `build_size.test.py` holds that to a byte: each committed link must equal what
-`framebuild.rebuild(SPEC, n)` produces from its gen JSON, the local board
+the lane's `rebuild(n)` (`framebuild.RingGlobal`, `framebuild.RingLocal`) produces from its gen JSON, the local board
 included. The 9x9 global board is the shipped one, so `build_size.py 9 3 3`
 and `build_size.py --rebuild 9` write `PUZZLE_LINK.txt`, not
-`PUZZLE_LINK_9x9.txt` (`framebuild.board_files`).
+`PUZZLE_LINK_9x9.txt` (`framebuild.RingGlobal.files`).
 
 ### Which window digit is the clue
 

@@ -1,11 +1,3 @@
-// Soundness fuzz for the Hit Counts components. Soundness = a component never
-// removes a cell's TRUE value. We seed random partial states in which every cell
-// still allows its true value, run the component to a fixpoint, and check the
-// true value survived. A removed true value is a bug that can make a real puzzle
-// unsolvable.
-//
-//   node examples/hit-counts/soundness-harness.mjs
-//
 // Both line components are fuzzed on all three line kinds (docs/line-contract.md):
 // a bare line an author drew, a house, and a full house. The hit sweep is sound
 // on every kind; the mirrored-pair exclusion needs a house, and the no-n-1 rule
@@ -14,40 +6,40 @@
 // house of {0..8}. Ungated, the rule removes that true clue value and the run
 // goes red.
 //
-// A second pass runs the component over real grids, where both clues of a line
-// are true together, and a third names the mirrored-pair exclusion by running
-// one state as a house and again as bare.
+// A second pass runs the pair components and the side hit matching over real grids, where both clues of a
+// line are true together, all to one fixpoint as the solver runs them, and a
+// third names the mirrored-pair exclusion by running one state as a house and
+// again as bare.
 //
 // The side hit matching reads a whole side at once, so its corpus is whole
-// grids only. It forces hits as well as forbidding them, which is why it gets
-// its own gate probe: while the clue ring's 0 is still live on the inner grid a
+// grids only. Run after the pair components it sees only states they have already
+// narrowed, so it is fuzzed on freshly seeded grids by itself as well. It
+// forces hits as well as forbidding them, which is why it gets its own gate
+// probe: while the clue ring's 0 is still live on the inner grid a
 // position is not a house of 1..n, and a component that pruned there would take
 // true values out.
 
 import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, violates } from '../_shared/harness-lib.mjs'
+import { join } from 'path'
+import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
-// The joint component with the case sweep alone, before the permutation sweep.
+// The pair component with the case sweep alone, before the permutation sweep.
 // It is the floor that sweep's coverage counter measures against.
 const CASE_SWEEP_COMMIT = '4cc09eb'
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
-const joint = load('HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
+const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
 const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
 const sideMod = load('SideSumComponent.js', SIDE_NAMES)
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
 
-// A random candidate seed keeping the true value: pinned a third of the time,
-// else a subset keeping truth. `hi` bounds the range: line cells use 1..n, a
-// clue cell uses 0..n (it can be 0).
 const seeder = (lo, hi) => makeSeeder(rnd, Array.from({ length: hi - lo + 1 }, (_, i) => lo + i), ['pin', 'subset', 'subset'])
 
 const A = 100
@@ -57,93 +49,92 @@ const rev = a => a.slice().reverse()
 
 // One line-kind fuzz. `kind` declares the line's houses, which is what the mock
 // answers `getCellsCanHaveRepeats` from, per case and never inferred from the
-// digits. Both clues of the line are true together, which is what the joint
+// digits. Both clues of the line are true together, which is what the pair
 // component reads.
 function fuzzLines (label, { kind, lines, lo, hi, clueHi, iters }) {
-  let tests = 0
-  let bad = 0
-  let fired = 0
   const seen = new Set()
-  for (let iter = 0; iter < iters; iter++) {
-    const line = lines[iter % lines.length]
-    const cells = line.map((_, i) => i)
-    const truth = { [A]: hits(line), [B]: hits(rev(line)) }
-    seen.add(truth[A])
-    for (let i = 0; i < line.length; i++) truth[i] = line[i]
-    const lineSeed = seeder(lo, hi)
-    const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
-    const before = total(p)
-    const inst = {}
-    joint.setParams(inst, A, B, cells)
-    const v = violates(joint, inst, p, truth)
-    tests++
-    if (total(p) < before) fired++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', line.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired, seen }
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const line = lines[iter % lines.length]
+      const cells = line.map((_, i) => i)
+      const truth = { [A]: hits(line), [B]: hits(rev(line)) }
+      seen.add(truth[A])
+      for (let i = 0; i < line.length; i++) truth[i] = line[i]
+      const lineSeed = seeder(lo, hi)
+      const clueSeed = seeder(0, clueHi)
+      const inst = { cells: [A, B, ...cells] }
+      pairComp.setParams(inst, A, B, cells)
+      return {
+        truth,
+        seed: (c, v) => (c === A || c === B ? clueSeed : lineSeed)(c, v),
+        houses: housesOf(kind, cells),
+        parts: [{ mod: pairComp, inst }],
+        note: `line ${line.join('')}`
+      }
+    }
+  })
+  return { ...r, seen }
 }
 
-// ---- full house: a permutation of 1..9, plus the two forced extremes ----
 const fullLines = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [2, 3, 4, 5, 6, 7, 8, 9, 1]] // identity (9), derangement (0)
 for (let i = 0; i < 400; i++) fullLines.push(makeLine(rnd, 'fullHouse', 9, 9))
-const full = fuzzLines('joint line, full house', { kind: 'fullHouse', lines: fullLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
+const full = fuzzLines('pair line, full house', { kind: 'fullHouse', lines: fullLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
 console.log('clue values exercised:', [...full.seen].sort((a, b) => a - b).join(' '))
 
-// ---- bare: an author-drawn line, digits may repeat and n - 1 hits is legal ----
 const bareLines = [[1, 2, 3, 4, 5, 6, 7, 8, 1]] // eight hits on nine cells: clue 8 = n - 1
 for (let i = 0; i < 400; i++) bareLines.push(makeLine(rnd, 'bare', 9, 9))
-const bare = fuzzLines('joint line, bare      ', { kind: 'bare', lines: bareLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
+const bare = fuzzLines('pair line, bare      ', { kind: 'bare', lines: bareLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
 
-// ---- house: six distinct digits out of nine, so n - 1 hits is legal ----
 const houseLines = [[1, 2, 3, 4, 5, 9]] // five hits on six cells: clue 5 = n - 1
 for (let i = 0; i < 400; i++) houseLines.push(makeLine(rnd, 'house', 6, 9))
-const house = fuzzLines('joint line, house     ', { kind: 'house', lines: houseLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
+const house = fuzzLines('pair line, house     ', { kind: 'house', lines: houseLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
 
-// ---- minDigit 0: a nine-cell house of {0..8}, all different but not {1..9} ----
 // The board runs minDigit 0 for the clue ring. A line whose live digits are
 // {0..8} passes the full-house count (nine digits over nine cells) yet can hit
 // n - 1 times, so the no-n-1 rule must check the digit set itself. The sweep
 // must also read a 0 as an ordinary miss, not as a cell with no case open.
 const zeroLines = [[1, 2, 3, 4, 5, 6, 7, 8, 0]] // eight hits: clue 8 = n - 1
 for (let i = 0; i < 400; i++) {
-  zeroLines.push(makeLine(rnd, 'fullHouse', 9, 9).map(d => d - 1)) // a permutation of 0..8
+  zeroLines.push(makeLine(rnd, 'fullHouse', 9, 9).map(d => d - 1))
 }
-const zero = fuzzLines('joint line, {0..8}    ', { kind: 'fullHouse', lines: zeroLines, lo: 0, hi: 8, clueHi: 8, iters: 40000 })
+const zero = fuzzLines('pair line, {0..8}    ', { kind: 'fullHouse', lines: zeroLines, lo: 0, hi: 8, clueHi: 8, iters: 40000 })
 
-// ---- the per-line component on the same pools ----
 // A drawn line with no clue at its far end keeps this component, so it meets
 // the same four pools: the count bounds are bare, the no-n-1 rule is gated.
 function fuzzLine (label, { kind, lines, lo, hi, clueHi, iters }) {
-  let tests = 0
-  let bad = 0
   let prunes = 0
   const CLUE = 102
-  for (let iter = 0; iter < iters; iter++) {
-    const line = lines[iter % lines.length]
-    const cells = line.map((_, i) => i)
-    const clueVal = hits(line)
-    const truth = { [CLUE]: clueVal }
-    for (let i = 0; i < line.length; i++) truth[i] = line[i]
-    const lineSeed = seeder(lo, hi)
-    const clueSeed = seeder(0, clueHi)
-    const p = makePuzzle(truth, (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v), { houses: housesOf(kind, cells) })
-    const inst = {}
-    mod.setParams(inst, CLUE, cells)
-    const nMinus1 = line.length - 1
-    // Bracket the no-n-1 rule alone, so this counts that rule's firings. Over
-    // the whole fixpoint the bare count bounds also take n - 1 in plenty of
-    // states, which says nothing about the gate.
-    const had = p.getCandidates(CLUE).has(nMinus1)
-    Array.from(mod.noNMinusOne(inst, p))
-    if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
-    const v = violates(mod, inst, p, truth)
-    tests++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'line', line.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', prunes, 'n-1 prunes')
-  return { bad, prunes }
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const line = lines[iter % lines.length]
+      const cells = line.map((_, i) => i)
+      const truth = { [CLUE]: hits(line) }
+      for (let i = 0; i < line.length; i++) truth[i] = line[i]
+      const lineSeed = seeder(lo, hi)
+      const clueSeed = seeder(0, clueHi)
+      const inst = { cells: [CLUE, ...cells] }
+      mod.setParams(inst, CLUE, cells)
+      const nMinus1 = line.length - 1
+      return {
+        truth,
+        seed: (c, v) => (c === CLUE ? clueSeed : lineSeed)(c, v),
+        houses: housesOf(kind, cells),
+        parts: [{ mod, inst }],
+        note: `line ${line.join('')}`,
+        // Bracket the no-n-1 rule alone, so this counts that rule's firings.
+        // Over the whole fixpoint the bare count bounds also take n - 1 in
+        // plenty of states, which says nothing about the gate.
+        inspect: p => {
+          const had = p.getCandidates(CLUE).has(nMinus1)
+          Array.from(mod.noNMinusOne(inst, p))
+          if (had && !p.getCandidates(CLUE).has(nMinus1)) prunes++
+        }
+      }
+    }
+  })
+  return { ...r, prunes }
 }
 
 const lineFull = fuzzLine('line, full house', { kind: 'fullHouse', lines: fullLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
@@ -151,7 +142,6 @@ const lineBare = fuzzLine('line, bare      ', { kind: 'bare', lines: bareLines, 
 const lineHouse = fuzzLine('line, house     ', { kind: 'house', lines: houseLines, lo: 1, hi: 9, clueHi: 9, iters: 40000 })
 const lineZero = fuzzLine('line, {0..8}    ', { kind: 'fullHouse', lines: zeroLines, lo: 0, hi: 8, clueHi: 8, iters: 40000 })
 
-// ---- Joint component, house lines: real grids, both clues of every line ----
 // The line pools above give one line at a time. A real grid gives every line of
 // a board at once, over the three shipped sizes and band/stack shuffles of them,
 // which keep a grid valid while moving every hit.
@@ -168,12 +158,17 @@ function reshuffle (grid, bh, bw) {
   return rows.map(r => cols.map(c => grid[r][c]))
 }
 
-// Every whole-grid state both grid corpora below run on: each shipped size,
-// its committed grid first and then band/stack shuffles of it, every cell
-// seeded with a random candidate superset that keeps its true value, and the
-// grid's rows and columns declared as its houses.
+// The whole-grid corpus: each shipped size, its committed grid first and then
+// band/stack shuffles of it, every cell seeded with a random candidate superset
+// that keeps its true value, and the grid's rows and columns declared as its
+// houses. `pairComps` adds one pair component per pair of opposite clues and
+// `sides` adds the side hit matching over each of the four sides; the parts
+// chosen run together to one fixpoint, pair components first, as the solver runs them.
+// The side hit matching forces hits as well as forbidding them, so an
+// assignment bug takes a true value straight out.
 const ITERS = 4000
-function * gridStates () {
+function fuzzGrids (label, { pairComps, sides }) {
+  const sum = { tests: 0, failures: 0, fired: 0 }
   for (const file of ['gen_4x4.json', 'gen_6x6.json', 'gen.json']) {
     const gen = JSON.parse(readFileSync(join(HERE, file), 'utf8'))
     const { n, box: [bh, bw] } = gen
@@ -183,118 +178,131 @@ function * gridStates () {
       ...Array.from({ length: n }, (_, i) => lineCells('L', i)),
       ...Array.from({ length: n }, (_, i) => lineCells('T', i))
     ]
-    for (let iter = 0; iter < ITERS; iter++) {
-      const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
-      const truth = {}
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
-      for (const k of keys) {
-        const side = k[0]; const i = +k.slice(1)
-        truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+    const r = fuzzSoundness(`${label} ${file}`, {
+      iters: ITERS,
+      draw: iter => {
+        const grid = iter === 0 ? gen.grid : reshuffle(gen.grid, bh, bw)
+        const truth = {}
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) truth[interior(r, c)] = grid[r][c]
+        for (const k of keys) {
+          const side = k[0]; const i = +k.slice(1)
+          truth[clueCell(side, i)] = hits(lineCells(side, i).map(c => truth[c]))
+        }
+        const lineSeed = seeder(1, n)
+        const clueSeed = seeder(0, n)
+        const parts = []
+        for (const [sa, sb] of pairComps ? [['L', 'R'], ['T', 'B']] : []) {
+          for (let i = 0; i < n; i++) {
+            const inst = { cells: [clueCell(sa, i), clueCell(sb, i), ...lineCells(sa, i)] }
+            pairComp.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
+            parts.push({ mod: pairComp, inst })
+          }
+        }
+        for (const side of sides ? ['L', 'R', 'T', 'B'] : []) {
+          const clues = Array.from({ length: n }, (_, i) => clueCell(side, i))
+          const lines = Array.from({ length: n }, (_, i) => lineCells(side, i))
+          const inst = { cells: [...clues, ...lines.flat()] }
+          matchMod.setParams(inst, clues, lines)
+          parts.push({ mod: matchMod, inst })
+        }
+        return { truth, seed: (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), houses, parts, note: `${file} iter ${iter}` }
       }
-      const lineSeed = seeder(1, n)
-      const clueSeed = seeder(0, n)
-      const p = makePuzzle(truth, (c, v) => (clueCells.has(c) ? clueSeed : lineSeed)(c, v), { houses })
-      yield { file, n, truth, p, clueCell, lineCells }
-    }
+    })
+    sum.tests += r.tests
+    sum.failures += r.failures
+    sum.fired += r.fired
   }
+  return sum
+}
+const grids = fuzzGrids('pair and side hit matching, whole grids', { pairComps: true, sides: true })
+console.log('pair and side hit matching, whole grids:', grids.tests, 'tests,', grids.failures, 'failures,', grids.fired, 'states pruned')
+const sideGrids = fuzzGrids('side hit matching alone, whole grids', { pairComps: false, sides: true })
+console.log('side hit matching alone, whole grids:', sideGrids.tests, 'tests,', sideGrids.failures, 'failures,', sideGrids.fired, 'states pruned')
+
+// A state run by the component under test, set against a rival's leftover
+// candidates on the same state: `draw` also returns `rivalLeft`, the total the
+// rival leaves, and `beaten` counts the states where the component left less.
+function fuzzBeating (label, { iters, draw }) {
+  const runs = []
+  const r = fuzzSoundness(label, {
+    iters,
+    draw: iter => {
+      const { rivalLeft, ...state } = draw(iter)
+      return { ...state, inspect: p => runs.push({ p, rivalLeft }) }
+    }
+  })
+  return { ...r, beaten: runs.filter(({ p, rivalLeft }) => total(p) < rivalLeft).length }
 }
 
-let gTests = 0
-let gBad = 0
-let gFired = 0
-for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
-  const before = total(p)
-  for (const [sa, sb] of [['L', 'R'], ['T', 'B']]) {
-    for (let i = 0; i < n; i++) {
-      const inst = {}
-      joint.setParams(inst, clueCell(sa, i), clueCell(sb, i), lineCells(sa, i))
-      const v = violates(joint, inst, p, truth)
-      gTests++
-      if (v) { gBad++; if (gBad <= 5) console.log('JOINT grid violation', file, sa + i, v) }
-    }
-  }
-  if (total(p) < before) gFired++
-}
-console.log('joint, whole grids:', gTests, 'tests,', gBad, 'violations,', gFired, 'states pruned')
-
-// ---- The mirrored-pair exclusion fires, and only on a house ----
 // The counters above show that SOMETHING pruned; this one names the rule. It
 // runs the same random state twice — once declared a full house, once bare —
 // and counts the states where the house run removed strictly more. The kind
 // gates two rules, so the clue seeds drop n - 1 up front: with that value gone
 // the no-n-1 rule can never fire, and the only difference left between the two
 // runs is the mirrored-pair exclusion.
-let exTests = 0
-let exFired = 0
-let exBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const n = 4 + ((rnd() * 6) | 0) // 4..9
-  const perm = makeLine(rnd, 'fullHouse', n, n)
-  const cells = Array.from({ length: n }, (_, j) => j)
-  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-  for (let j = 0; j < n; j++) truth[j] = perm[j]
-  const lineSeed = seeder(1, n)
-  const clueSeed = seeder(0, n)
-  const draw = new Map()
-  for (const c of Object.keys(truth)) {
-    const isClue = +c === A || +c === B
-    const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
-    draw.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
+const exclusion = fuzzBeating('mirrored-pair exclusion', {
+  iters: 20000,
+  draw: () => {
+    const n = 4 + ((rnd() * 6) | 0)
+    const perm = makeLine(rnd, 'fullHouse', n, n)
+    const cells = Array.from({ length: n }, (_, j) => j)
+    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+    for (let j = 0; j < n; j++) truth[j] = perm[j]
+    const lineSeed = seeder(1, n)
+    const clueSeed = seeder(0, n)
+    const cands = new Map()
+    for (const c of Object.keys(truth)) {
+      const isClue = +c === A || +c === B
+      const set = (isClue ? clueSeed : lineSeed)(+c, truth[c])
+      cands.set(+c, isClue ? set.filter(d => d !== n - 1) : set)
+    }
+    const part = () => {
+      const inst = { cells: [A, B, ...cells] }
+      pairComp.setParams(inst, A, B, cells)
+      return [{ mod: pairComp, inst }]
+    }
+    const bare = makePuzzle(truth, c => cands.get(c), { houses: housesOf('bare', cells) })
+    fixpointAll(part(), bare)
+    return { truth, seed: c => cands.get(c), houses: housesOf('fullHouse', cells), parts: part(), note: `n = ${n}`, rivalLeft: total(bare) }
   }
-  const run = kind => {
-    const p = makePuzzle(truth, c => draw.get(c), { houses: housesOf(kind, cells) })
-    const inst = {}
-    joint.setParams(inst, A, B, cells)
-    const v = violates(joint, inst, p, truth)
-    return { v, left: total(p) }
-  }
-  const asHouse = run('fullHouse')
-  const asBare = run('bare')
-  exTests++
-  if (asHouse.v) { exBad++; if (exBad <= 5) console.log('EXCLUSION violation, n =', n, asHouse.v) }
-  if (asHouse.left < asBare.left) exFired++
-}
-console.log('mirrored-pair exclusion:', exTests, 'tests,', exBad, 'violations,', exFired, 'states where the house run pruned more')
+})
+console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the house run pruned more')
 
-// ---- the permutation sweep fires, and takes no true value with it ----
-// The counters above show the joint component pruned; this one names the
+// The counters above show the pair component pruned; this one names the
 // permutation sweep, by running the same state through the component as it stands
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
-const caseSweep = loadAt(CASE_SWEEP_COMMIT, 'HitCountsJointComponent.js', ['setParams', 'update', 'validate'])
-let permTests = 0
-let permFired = 0
-let permBad = 0
-for (let iter = 0; iter < 20000; iter++) {
-  const n = 4 + ((rnd() * 6) | 0) // 4..9
-  const perm = makeLine(rnd, 'fullHouse', n, n)
-  const cells = Array.from({ length: n }, (_, j) => j)
-  const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
-  for (let j = 0; j < n; j++) truth[j] = perm[j]
-  const lineSeed = seeder(1, n)
-  const clueSeed = seeder(0, n)
-  const draw = new Map()
-  for (const c of Object.keys(truth)) {
-    const isClue = +c === A || +c === B
-    draw.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
+// The file carried a different name at the pinned commit, so the floor names its own path.
+const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
+const caseSweep = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE, ['setParams', 'update', 'validate'])
+const permutation = fuzzBeating('permutation sweep', {
+  iters: 20000,
+  draw: () => {
+    const n = 4 + ((rnd() * 6) | 0)
+    const perm = makeLine(rnd, 'fullHouse', n, n)
+    const cells = Array.from({ length: n }, (_, j) => j)
+    const truth = { [A]: hits(perm), [B]: hits(rev(perm)) }
+    for (let j = 0; j < n; j++) truth[j] = perm[j]
+    const lineSeed = seeder(1, n)
+    const clueSeed = seeder(0, n)
+    const cands = new Map()
+    for (const c of Object.keys(truth)) {
+      const isClue = +c === A || +c === B
+      cands.set(+c, (isClue ? clueSeed : lineSeed)(+c, truth[c]))
+    }
+    const part = component => {
+      const inst = { cells: [A, B, ...cells] }
+      component.setParams(inst, A, B, cells)
+      return [{ mod: component, inst }]
+    }
+    const old = makePuzzle(truth, c => cands.get(c), { houses: [cells] })
+    fixpointAll(part(caseSweep), old)
+    return { truth, seed: c => cands.get(c), houses: [cells], parts: part(pairComp), note: `n = ${n}`, rivalLeft: total(old) }
   }
-  const run = component => {
-    const p = makePuzzle(truth, c => draw.get(c), { houses: [cells] })
-    const inst = {}
-    component.setParams(inst, A, B, cells)
-    const v = violates(component, inst, p, truth)
-    return { v, left: total(p) }
-  }
-  const now = run(joint)
-  const before = run(caseSweep)
-  permTests++
-  if (now.v) { permBad++; if (permBad <= 5) console.log('PERMUTATION SWEEP violation, n =', n, now.v) }
-  if (now.left < before.left) permFired++
-}
-console.log('permutation sweep:', permTests, 'tests,', permBad, 'violations,', permFired, 'states where the permutation sweep pruned more')
+})
+console.log('permutation sweep:', permutation.beaten, 'states where the permutation sweep pruned more')
 
-// ---- the gate re-opens once the cage removes 0 ----
 // On a hit-counts board 0 is live on the inner grid at the first update and a
 // cage takes it away during solving. While 0 is live the line is not a full
 // house of {1..n} and the no-n-1 rule must stand down; once 0 goes, the SAME
@@ -304,19 +312,18 @@ const rTruth = { [A]: 0, [B]: 0, 0: 2, 1: 1, 2: 4, 3: 3 } // a derangement both 
 function gateProbe (seed) {
   const p = makePuzzle(rTruth, () => seed.slice(), { houses: [R] })
   const inst = {}
-  joint.setParams(inst, A, B, R)
-  Array.from(joint.update(inst, p)) // the load pass: the base initialize runs update once
+  pairComp.setParams(inst, A, B, R)
+  Array.from(pairComp.update(inst, p)) // the load pass: the base initialize runs update once
   return { p, inst }
 }
 // Five digits over four cells: not a full house at all, so the gate is shut.
 const cage = gateProbe([0, 1, 2, 3, 4])
 const heldWhileZeroLive = cage.p.getCandidates(A).has(3)
 for (const c of R) cage.p._cand.get(c).delete(0) // the cage bites
-Array.from(joint.update(cage.inst, cage.p))
+Array.from(pairComp.update(cage.inst, cage.p))
 const retestOk = heldWhileZeroLive && !cage.p.getCandidates(A).has(3)
 console.log('minDigit 0 re-test:', retestOk ? 'OK' : `FAIL (held ${heldWhileZeroLive})`)
 
-// ---- a full house of the wrong digit set does not lock the gate shut ----
 // Four cells holding {0..3} are four digits over four cells, so the line counts
 // as a full house while its digit set is still wrong. Cache the answer on the
 // kind there and the gate would stay shut for good. It must keep asking: once
@@ -324,11 +331,10 @@ console.log('minDigit 0 re-test:', retestOk ? 'OK' : `FAIL (held ${heldWhileZero
 const wrong = gateProbe([0, 1, 2, 3])
 const heldOnWrongSet = wrong.p.getCandidates(A).has(3)
 for (const c of R) { wrong.p._cand.get(c).delete(0); wrong.p._cand.get(c).add(4) }
-Array.from(joint.update(wrong.inst, wrong.p))
+Array.from(pairComp.update(wrong.inst, wrong.p))
 const wrongSetOk = heldOnWrongSet && !wrong.p.getCandidates(A).has(3)
 console.log('{0..n-1} full house re-test:', wrongSetOk ? 'OK' : `FAIL (held ${heldOnWrongSet})`)
 
-// ---- one instance across a backtrack: no cached fact may latch (#336) ----
 // The app shares one component object across every search node, so a fact
 // written on `instance` deep in a branch is still there when the search returns
 // to the parent state -- where a union that was {1..n} has regained digits.
@@ -344,12 +350,11 @@ function latchProbe (component, params) {
   Array.from(component.update(inst, latchState([1, 2, 3, 4]))) // deep node: the union is exactly {1..4}
   return violates(component, inst, latchState([1, 2, 3, 4, 5, 6, 7, 8, 9]), lTruth) // the parent it backtracks to
 }
-const latchJoint = latchProbe(joint, [A, B, LATCH])
+const latchPair = latchProbe(pairComp, [A, B, LATCH])
 const latchLine = latchProbe(mod, [A, LATCH])
-const latchOk = latchJoint === null && latchLine === null
-console.log('backtrack re-test:', latchOk ? 'OK' : `FAIL (joint ${JSON.stringify(latchJoint)}, line ${JSON.stringify(latchLine)})`)
+const latchOk = latchPair === null && latchLine === null
+console.log('backtrack re-test:', latchOk ? 'OK' : `FAIL (pair ${JSON.stringify(latchPair)}, line ${JSON.stringify(latchLine)})`)
 
-// ---- validate gates on the same fact ----
 // A clue of n - 1 is illegal only on a full house of {1..n}. On a bare line it
 // is a legal state and validate must accept it.
 function validateAt (kind) {
@@ -364,40 +369,13 @@ function validateAt (kind) {
     if (c === B) return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     return line
   }, { houses: housesOf(kind, [0, 1, 2, 3, 4, 5, 6, 7, 8]) })
-  // The app sets `instance.cells` to getAffectedCells' list before setParams.
   const inst = { cells: [A, B, 0, 1, 2, 3, 4, 5, 6, 7, 8] }
-  joint.setParams(inst, A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
-  return joint.validate(inst, p)
+  pairComp.setParams(inst, A, B, [0, 1, 2, 3, 4, 5, 6, 7, 8])
+  return pairComp.validate(inst, p)
 }
 const validateOk = validateAt('bare') === true && validateAt('fullHouse') === false
 console.log('validate gate:', validateOk ? 'OK' : 'FAIL')
 
-// ---- Side hit matching: a whole side of a real grid ----
-// The component reads all n clues of a side at once, so its corpus is whole
-// grids, not single lines: the three shipped sizes and band/stack shuffles of
-// them, every cell seeded with a random candidate superset that keeps its true
-// value. It forces hits as well as forbidding them, so an assignment bug takes
-// a true value straight out.
-let sTests = 0
-let sBad = 0
-let sFired = 0
-for (const { file, n, truth, p, clueCell, lineCells } of gridStates()) {
-  const before = total(p)
-  for (const side of ['L', 'R', 'T', 'B']) {
-    const clues = []
-    const lines = []
-    for (let i = 0; i < n; i++) { clues.push(clueCell(side, i)); lines.push(lineCells(side, i)) }
-    const inst = {}
-    matchMod.setParams(inst, clues, lines)
-    const v = violates(matchMod, inst, p, truth)
-    sTests++
-    if (v) { sBad++; if (sBad <= 5) console.log('SIDE-MATCH violation', file, side, v) }
-  }
-  if (total(p) < before) sFired++
-}
-console.log('side hit matching, whole grids:', sTests, 'tests,', sBad, 'violations,', sFired, 'states pruned')
-
-// ---- Side hit matching: the gate, and 0 as an ordinary miss ----
 // The assignment needs each position to be a house holding 1..n exactly once.
 // A hit-counts board runs minDigit 0 for its clue ring, so until the cage takes
 // the 0 off the inner grid a position holds {0..n} and the component must stay
@@ -407,78 +385,53 @@ console.log('side hit matching, whole grids:', sTests, 'tests,', sBad, 'violatio
 // a gate held open over a restored 0 would put a digit in a cell that need not
 // hold it.
 //
-// The side below is the one shape that pins the matching outright, and
-// `update-strength.test.mjs` case 3b uses the same one to show what the
-// per-line scan cannot reach. The two runs are separate processes with nothing
-// to share through, so the table is written out twice — change one copy, change
-// the other.
-//
-// Four rows
-// clued 1, position 0 live on lines 0 and 1, position 1 on lines 1 and 2,
-// position 2 on lines 2 and 3, position 3 on line 3 alone. Only one assignment
-// survives, so every cell of the diagonal is forced. A 0 read as anything but
-// an ordinary miss would change that answer.
-const GRID_CLUES = [400, 401, 402, 403]
-const gcell = (r, c) => r * 4 + c
-const GRID_LINES = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => gcell(r, c)))
-const GRID_CANDS = [
-  [[1, 2, 3, 4], [1, 3, 4], [1, 2, 4], [1, 2, 3]],
-  [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 4], [1, 2, 3]],
-  [[2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3]],
-  [[2, 3, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
-]
-// The grid those candidates admit: row r is a permutation of 1..4, each column
-// too, and every line hits exactly once. So the truth really does complete this
-// state, which is what makes a lost candidate a violation.
-const GRID_TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
-// The side's lines and the positions across them: every one a house.
-const GRID_HOUSES = [...GRID_LINES, ...[0, 1, 2, 3].map(c => GRID_LINES.map(line => line[c]))]
+// The side below is the one shape that pins the matching outright; it lives in
+// fixture.mjs, shared with the other hit-counts tests. A 0 read as anything
+// but an ordinary miss would change its answer.
 function sideGateProbe (withZero) {
   const truth = {}
-  for (const c of GRID_CLUES) truth[c] = 1
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
-  const p = makePuzzle(truth, c => (c >= 400 ? [1] : GRID_CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
-    { houses: GRID_HOUSES })
+  for (const c of CLUES) truth[c] = 1
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
+  const p = makePuzzle(truth, c => (c >= 400 ? [1] : CANDS[(c / 4) | 0][c % 4].concat(withZero ? [0] : [])),
+    { houses: HOUSES })
   const inst = {}
-  matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
+  matchMod.setParams(inst, CLUES, LINES)
   return { p, inst, v: violates(matchMod, inst, p, truth) }
 }
 const zeroLive = sideGateProbe(true)
-const gateShut = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size > 1)
-for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) zeroLive.p._cand.get(gcell(r, c)).delete(0) // the cage bites
+const gateShut = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(cell(i, i)).size > 1)
+for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) zeroLive.p._cand.get(cell(r, c)).delete(0) // the cage bites
 fixpoint(matchMod, zeroLive.inst, zeroLive.p)
-const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(gcell(i, i)).size === 1)
+const gateOpened = [0, 1, 2, 3].every(i => zeroLive.p.getCandidates(cell(i, i)).size === 1)
 // A backtrack: the state goes back to where it was and the 0 comes back with
 // it. The same instance must forget it ever opened.
 const undone = sideGateProbe(true)
-Array.from(matchMod.update(undone.inst, undone.p)) // shut, and no hash stored
-for (const c of GRID_LINES.flat()) undone.p._cand.get(c).delete(0)
-fixpoint(matchMod, undone.inst, undone.p) // open: the diagonal is forced
-for (const c of GRID_LINES.flat()) undone.p._cand.set(c, new Set(GRID_CANDS[(c / 4) | 0][c % 4].concat([0])))
 Array.from(matchMod.update(undone.inst, undone.p))
-const gateReshut = GRID_LINES.flat().every(c => undone.p._cand.get(c).has(0))
+for (const c of LINES.flat()) undone.p._cand.get(c).delete(0)
+fixpoint(matchMod, undone.inst, undone.p)
+for (const c of LINES.flat()) undone.p._cand.set(c, new Set(CANDS[(c / 4) | 0][c % 4].concat([0])))
+Array.from(matchMod.update(undone.inst, undone.p))
+const gateReshut = LINES.flat().every(c => undone.p._cand.get(c).has(0))
 const sideGateOk = gateShut && gateOpened && gateReshut && !zeroLive.v && !sideGateProbe(false).v
 console.log('side hit matching, minDigit 0 gate:', sideGateOk ? 'OK' : `FAIL (shut ${gateShut}, reopened ${gateOpened}, re-shut ${gateReshut})`)
 
-// ---- Side hit matching: validate ----
 // Once the whole side is filled every line must realise its own clue exactly.
 // The grid above hits once per line, so clues of 1 are right and anything else
 // is not; a side still holding an open cell is not yet judged either way.
 function sideValidate (clueVals, openCell) {
   const truth = {}
-  GRID_CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[gcell(r, c)] = GRID_TRUTH[r][c]
-  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: GRID_HOUSES })
-  const inst = { cells: [...GRID_CLUES, ...GRID_LINES.flat()] } // as the app sets it
-  matchMod.setParams(inst, GRID_CLUES, GRID_LINES)
+  CLUES.forEach((c, i) => { truth[c] = clueVals[i] })
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) truth[cell(r, c)] = TRUTH[r][c]
+  const p = makePuzzle(truth, (c, v) => (c === openCell ? [v, (v % 4) + 1] : [v]), { houses: HOUSES })
+  const inst = { cells: [...CLUES, ...LINES.flat()] }
+  matchMod.setParams(inst, CLUES, LINES)
   return matchMod.validate(inst, p)
 }
 const sideValidateOk = sideValidate([1, 1, 1, 1], null) === true &&
   sideValidate([1, 2, 1, 1], null) === false &&
-  sideValidate([1, 2, 1, 1], gcell(2, 2)) === true
+  sideValidate([1, 2, 1, 1], cell(2, 2)) === true
 console.log('side hit matching, validate:', sideValidateOk ? 'OK' : 'FAIL')
 
-// ---- Side-sum component: n clues on a side sum to exactly n ----
 // The proof regroups the side's hits by the perpendicular line each lands on:
 // every such line holds its own digit exactly once, so it contributes one hit,
 // n in all. The component therefore gets the n perpendicular lines and fires
@@ -488,36 +441,34 @@ const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
 const PERP = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => 1000 + i * N + j))
 function composition () {
   const v = new Array(N).fill(0)
-  for (let h = 0; h < N; h++) v[(rnd() * N) | 0]++ // drop nine hits into nine slots
+  for (let h = 0; h < N; h++) v[(rnd() * N) | 0]++
   return v
 }
-// A Latin square: every perpendicular line holds 1..9 exactly once.
 const perpValue = (i, j) => ((i + j) % N) + 1
 
 // `sums` decides the clue truths: full-house perpendiculars come with a side
 // that really does sum to N; the bare run uses clues that do not, which the
 // gate must leave alone.
 function fuzzSide (label, { kind, sums, iters }) {
-  let tests = 0
-  let bad = 0
-  let fired = 0
-  for (let iter = 0; iter < iters; iter++) {
-    const vals = sums()
-    const truth = {}
-    for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
-    const clueSeed = seeder(0, 9)
-    const p = makePuzzle(truth, (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)), { houses: kind === 'bare' ? [] : PERP })
-    const before = total(p)
-    const inst = {}
-    sideMod.setParams(inst, SIDE, N, PERP)
-    const v = violates(sideMod, inst, p, truth)
-    if (total(p) < before) fired++
-    tests++
-    if (v) { bad++; if (bad <= 5) console.log(label, 'violation', v, 'vals', vals.join('')) }
-  }
-  console.log(`${label}:`, tests, 'tests,', bad, 'violations,', fired, 'states pruned')
-  return { bad, fired }
+  return fuzzSoundness(label, {
+    iters,
+    draw: () => {
+      const vals = sums()
+      const truth = {}
+      for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
+      const clueSeed = seeder(0, 9)
+      const inst = {}
+      sideMod.setParams(inst, SIDE, N, PERP)
+      return {
+        truth,
+        seed: (c, v) => (c >= 1000 ? [v] : clueSeed(c, v)),
+        houses: kind === 'bare' ? [] : PERP,
+        parts: [{ mod: sideMod, inst }],
+        note: `vals ${vals.join('')}`
+      }
+    }
+  })
 }
 
 const sideFull = fuzzSide('side-sum, full-house perpendiculars', { kind: 'fullHouse', sums: composition, iters: 20000 })
@@ -529,7 +480,6 @@ const sideBare = fuzzSide('side-sum, bare perpendiculars      ', {
   iters: 20000
 })
 
-// ---- side-sum: one instance across a backtrack (#336) ----
 // The gate is not cached, for the reason the line gate is not: the app shares
 // one component object across every search node, so a gate latched open deep in
 // a branch is still open in the parent state the search returns to -- where the
@@ -551,7 +501,6 @@ const backSide = sideSumState([3, 1, 1, 1, 1, 1, 1, 1, 1], v => [0, v], (c, v) =
 const sideLatchBad = violates(sideMod, sideLatchInst, backSide.p, backSide.truth)
 console.log('side-sum gate after a backtrack:', sideLatchBad === null ? 'gate re-shuts' : `STAYS OPEN ${JSON.stringify(sideLatchBad)}`)
 
-// ---- side-sum: the stale wake (#362) ----
 // The component can run on a line state it was never told about: the app
 // restores a backtrack's candidates without waking anyone. The case: a solver
 // that calls `update` only when an affected cell has lost a candidate since
@@ -568,23 +517,17 @@ function staleWakeRun (mod) {
   const vals = [3, 1, 1, 1, 1, 1, 1, 1, 1]
   for (let i = 0; i < N; i++) truth[SIDE[i]] = vals[i]
   for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) truth[PERP[i][j]] = perpValue(i, j)
-  truth[PERP[0][0]] = 0 // line 0 holds a 0, so it is no house of 1..N
+  truth[PERP[0][0]] = 0
   const start = c => (c === SIDE[0] ? [0, 1, 3] : c === SIDE[2] ? [1, 2] : c === PERP[0][0] ? [0, 1] : [truth[c]])
   const p = makePuzzle(truth, start, { houses: PERP })
-  const snapshot = () => affected.map(c => p.getCandidatesBitMask(c)).join()
-  let seen = null
-  const wake = () => {
-    if (snapshot() === seen) return
-    Array.from(mod.update(inst, p))
-    seen = snapshot()
-  }
-  const restore = () => { for (const [c] of p._cand) p._cand.set(c, new Set(start(c))); seen = snapshot() }
+  const { wake, settle } = makeWaker(mod, inst, p, affected)
   wake() // the root: 0 live on line 0, the gate shut
   p._cand.get(PERP[0][0]).delete(0) // branch: the line's 0 goes, woken, gate open
   wake()
   p._cand.get(SIDE[2]).delete(2) // a clue narrows in the branch: woken
   wake()
-  restore() // backtrack: the 0 is back, and nobody is woken
+  for (const [c] of p._cand) p._cand.set(c, new Set(start(c))) // backtrack: the 0 is back, and nobody is woken
+  settle()
   p._cand.get(SIDE[0]).delete(0) // a clue narrows in the parent: woken
   wake()
   return [...p._cand].find(([c, set]) => !set.has(truth[c])) || null
@@ -599,13 +542,12 @@ console.log('side-sum stale wake:', staleWakeLost === null ? 'sound' : `LOST ${J
   '/ a latched gate:', staleWakeBites ? 'loses a true value' : 'DOES NOT BITE')
 
 const ok = staleWakeLost === null && staleWakeBites &&
-  full.bad === 0 && bare.bad === 0 && house.bad === 0 && zero.bad === 0 &&
-  lineFull.bad === 0 && lineBare.bad === 0 && lineHouse.bad === 0 && lineZero.bad === 0 &&
+  full.failures === 0 && bare.failures === 0 && house.failures === 0 && zero.failures === 0 &&
+  lineFull.failures === 0 && lineBare.failures === 0 && lineHouse.failures === 0 && lineZero.failures === 0 &&
   lineFull.prunes > 0 && lineBare.prunes === 0 && lineHouse.prunes === 0 && lineZero.prunes === 0 &&
-  gBad === 0 && exBad === 0 && permBad === 0 && sBad === 0 && sideFull.bad === 0 && sideBare.bad === 0 &&
+  grids.failures === 0 && sideGrids.failures === 0 && exclusion.failures === 0 && permutation.failures === 0 && sideFull.failures === 0 && sideBare.failures === 0 &&
   full.fired > 0 && bare.fired > 0 && house.fired > 0 && zero.fired > 0 &&
-  gFired > 0 && exFired > 0 && permFired > 0 && sFired > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
+  grids.fired > 0 && sideGrids.fired > 0 && exclusion.beaten > 0 && permutation.beaten > 0 && sideFull.fired > 0 && sideBare.fired === 0 &&
   retestOk && wrongSetOk && latchOk && sideLatchBad === null && validateOk && sideGateOk && sideValidateOk &&
   !full.seen.has(8) && full.seen.has(0) && full.seen.has(9)
-console.log(ok ? 'PASS' : 'FAIL')
-process.exit(ok ? 0 : 1)
+finishHarness(ok)

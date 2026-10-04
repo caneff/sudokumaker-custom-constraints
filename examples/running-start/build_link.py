@@ -1,5 +1,3 @@
-# Two jobs in one script.
-#
 # No args: rebuild PUZZLE_LINK.txt from scratch from the current source files.
 # The grid, clue ring, given flags, regions, cages, and cosmetic lines never
 # change for this example; they live in gen.json (a document decoded once
@@ -37,9 +35,10 @@ from framebuild import (
     refresh_frame_backends,
 )
 from link_codec import decode_puzzle, encode_link
-from link_swap import find_constraint, swap_main
+from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
+from sm_document import find_constraint
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]
@@ -48,47 +47,33 @@ CONSTRAINT_NAME = MANIFEST.constraint_name
 
 
 def build_from_template():
-    """Rebuild the whole link from gen.json, main-global.js, and both
-    component files -- the source of truth for PUZZLE_LINK.txt. The shipped
-    board draws no groups: main-global.js builds all 4n frame lines itself
-    (#235), so the constraint's input is emptied here too."""
+    """The shipped board draws no groups: main-global.js builds all 4n frame
+    lines itself, so the constraint's input is emptied too."""
     doc = json.loads((HERE / "gen.json").read_text())
-    # the template was decoded from a finished board, so it carries the whole
-    # solution and every hidden clue as non-given values. Same rule as
-    # framebuild.build_doc: a cell holds a value only when it is a given —
-    # anything else ships as an entered digit and the recipient opens a
+    # The template was decoded from a finished board: a value on a non-given
+    # cell would ship as an entered digit, and the recipient would open a
     # filled-in board.
     for cell in doc["puzzle"]["cells"]:
         if not cell.get("given"):
             cell.pop("value", None)
     doc["puzzle"]["author"] = ""
-    for c in doc["puzzle"]["constraints"]:
-        d = c.get("definition", {})
-        if c.get("type") == 1000 and d.get("name") == CONSTRAINT_NAME:
-            d["backend"]["code"] = minify_file(HERE / "main-global.js")
-            d["components"] = [
-                {
-                    "type": "code",
-                    "name": f[:-3],
-                    "code": minify_file(HERE / f),
-                }
-                for f in COMPONENTS
-            ]
-            d["input"] = []
-            c["input"] = {}
-            break
-    else:
-        raise SystemExit(f"template is missing the {CONSTRAINT_NAME!r} constraint")
-    # replace the template's hand-drawn cosmetics with generated ones, so the
-    # outlines box exactly the given outside cells (same rule as the 4x4/6x6)
+    lc = find_constraint(doc, CONSTRAINT_NAME)
+    d = lc["definition"]
+    d["backend"]["code"] = minify_file(HERE / "main-global.js")
+    d["components"] = [
+        {"type": "code", "name": f[:-3], "code": minify_file(HERE / f)}
+        for f in COMPONENTS
+    ]
+    d["input"] = []
+    lc["input"] = {}
+    # Generated cosmetics (type 2000), so the outlines box exactly the given
+    # outside cells.
     cons = doc["puzzle"]["constraints"]
     cons[:] = [c for c in cons if c.get("type") != 2000]
-    # The shared house-GAC filter, on this board only (real-app timing clears
-    # the two-row bar here: 0.71x cold, ~0x after-logical --
-    # docs/research/421-frame-link-timing.md, #421). This is the GLOBAL 9x9's
-    # own template, not framebuild's Spec (running-start's local/4x4/6x6
-    # lanes are framebuild-native and unaffected -- their timing was not
-    # measured, so they do not carry it).
+    # The shared house-GAC filter, on this 9x9 global board only: real-app
+    # timing clears the two-row bar here (0.71x cold, ~0x after-logical;
+    # docs/research/421-frame-link-timing.md). The local, 4x4 and 6x6 lanes are
+    # framebuild-native and were not timed, so they do not carry it.
     cons[:] = [
         c
         for c in cons
@@ -96,22 +81,14 @@ def build_from_template():
     ]
     cons.append(house_gac_constraint(9))
     cons.extend(cosmetics(doc["puzzle"]["width"], doc["puzzle"]["cells"]))
-    # pin the digit range to 9 (the app defaults a custom puzzle to 1..9, #461) and
-    # match the rule wording used by the 4x4/6x6 builder
     doc["puzzle"]["minDigit"] = 1
     doc["puzzle"]["maxDigit"] = 9
-    # The rule text has one home: build_size.rule_text, which the 4x4, the 6x6
-    # and the local board also use. Read it here rather than restate it, so a
-    # wording change (the tie sentence, say) reaches every link at once.
     doc["puzzle"]["comment"] = RULES_PREFIX + rule_text(9)
-    # The frame's shared backends live in _shared, not in this template, so
-    # they are refreshed from the tree the way the example's own code is.
     refresh_frame_backends(doc)
     return encode_link(doc), doc
 
 
 def check(link, doc):
-    # round-trips, and the injected code is really in there
     back = decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
     rs = next(
@@ -129,7 +106,6 @@ def check(link, doc):
 
 
 def rebuild(_args, _parser):
-    """No --component: rebuild PUZZLE_LINK.txt from source."""
     link, doc = build_from_template()
     check(link, doc)
     (HERE / "PUZZLE_LINK.txt").write_text(link + "\n")

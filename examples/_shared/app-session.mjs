@@ -58,7 +58,7 @@ export async function withApp ({ live = false } = {}, fn) {
 // values"). Refuse before solving. See countEnteredValues (app-solve-lib.mjs)
 // for how a real cell digit is told apart from a constraint's own decoration
 // text.
-async function checkStripped (page, name) {
+async function checkSearchable (page, name) {
   const cells = await page.evaluate(() =>
     [...document.querySelectorAll('svg text')].map(t => {
       const fill = t.getAttribute('fill') || window.getComputedStyle(t).fill
@@ -95,9 +95,9 @@ export async function solveInApp (page, link, { iconName = 'ShowCandidates', aft
   await page.goto(link, { waitUntil: 'networkidle', timeout: 90000 })
   await page.waitForTimeout(1200)
   if (afterOpen) await afterOpen(page)
-  if (!ringClues) await checkStripped(page, name)
+  if (!ringClues) await checkSearchable(page, name)
   if (deterministic) await makeDeterministic(page)
-  // The stripped-board check above already ran, so the only marks the search
+  // The searchable-link check above already ran, so the only marks the search
   // can meet are the ones this pass makes.
   if (afterLogical) await solveLogically(page)
   if (!await clickIcon(page, iconName)) throw new Error('solve button not found: Icon ' + iconName)

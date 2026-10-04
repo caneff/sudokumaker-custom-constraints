@@ -44,6 +44,27 @@ import { frameGeometry } from './frame-geometry.mjs'
   const g = frameGeometry(4, [2, 2])
   assert.strictEqual(g.alldiffGroups.length, 4 + 4 + 4)
   for (const grp of g.alldiffGroups) assert.strictEqual(grp.length, 4)
+
+  // The boxes (the last four groups) are the 2x2 blocks of the interior, by
+  // cell id: the interior of a 4-wide board starts at id 7 (W = 6).
+  assert.deepStrictEqual(g.alldiffGroups.slice(8), [
+    [7, 8, 13, 14], [9, 10, 15, 16],
+    [19, 20, 25, 26], [21, 22, 27, 28]
+  ])
+}
+
+// ---- boxes on a non-square box shape: [rows, cols] is not swapped
+{
+  // 6x6 with 2-row x 3-column boxes: six boxes, each two interior rows and
+  // three interior columns. A swapped [3, 2] would give 3-row x 2-column boxes.
+  const g = frameGeometry(6, [2, 3])
+  const boxes = g.alldiffGroups.slice(12)
+  assert.strictEqual(boxes.length, 6)
+  assert.deepStrictEqual(boxes[0], [g.interior(0, 0), g.interior(0, 1), g.interior(0, 2), g.interior(1, 0), g.interior(1, 1), g.interior(1, 2)])
+  assert.deepStrictEqual(boxes[1], [g.interior(0, 3), g.interior(0, 4), g.interior(0, 5), g.interior(1, 3), g.interior(1, 4), g.interior(1, 5)])
+  // together the boxes cover every interior cell exactly once
+  const all = boxes.flat().sort((a, b) => a - b)
+  assert.deepStrictEqual(all, Array.from({ length: 36 }, (_, i) => g.interior(Math.floor(i / 6), i % 6)).sort((a, b) => a - b))
 }
 
 // ---- alldiffGroups on a rectangle: refused, not silently wrong

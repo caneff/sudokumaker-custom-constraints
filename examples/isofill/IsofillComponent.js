@@ -4,7 +4,7 @@
 //! digit fills exactly N cells. N is the digit count, which must equal the
 //! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9.
 //!
-//! One whole-grid component, five deductions per digit and two across digits:
+//! One whole-grid component, six deductions per digit and two across digits:
 //!   Cap:   a digit already in N cells leaves every other cell.
 //!   Force: a digit with exactly N cells still open takes all of them.
 //!   Seed walk: a 0-1 BFS from the digit's lowest-index placed cell. A cell
@@ -14,6 +14,8 @@
 //!          lose the digit. A placed cell the walk never meets, or a walk
 //!          under N cells, is a dead branch: a placed cell is emptied so
 //!          the solver sees it.
+//!   Tour:  with two or more placed cells, a cell whose round trip through it
+//!          and the placed cells needs more than N cells loses the digit.
 //!   Cut:   an open cell in that walk whose removal starves it below N,
 //!          or strands a placed cell, must hold the digit. Two dominator
 //!          passes clear most open cells before the per-cell walks that
@@ -27,9 +29,7 @@
 //!          A digit whose placed border cells fall in two arcs separated by
 //!          one other digit both ways is that interleave: a dead branch. An
 //!          open border cell flanked by digit a both ways loses every digit
-//!          placed elsewhere on the border. The flank pass is one lap of the
-//!          border; the split-arc pass is one lap per digit holding two or
-//!          more border cells, over the compacted list of placed cells.
+//!          placed elsewhere on the border.
 //!   Budget: every open cell needs a digit, and each digit can take at most
 //!          (N - placed) more cells, only inside its walk. If no assignment
 //!          covers every open cell (max flow falls short) the branch is dead.
@@ -37,7 +37,6 @@
 //!          matching uses loses that candidate (Régin). This rule weighs
 //!          every digit at once: a wrong region for one digit starves the
 //!          others' budgets.
-//! validate is the exact leaf check: each digit one connected island of N.
 
 function getAffectedCells (cells) {
   return cells
@@ -46,27 +45,21 @@ function getAffectedCells (cells) {
 function setParams (instance, cells) {
   instance.cells = cells
   instance.side = Math.round(Math.sqrt(cells.length))
-  // Neighbour lists once, not per visit: update runs on every search node and
-  // the cut rule walks the grid hundreds of times per call.
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  instance.mask = new Uint32Array(cells.length) // stamped visit mask, see seedWalk
+  instance.mask = new Uint32Array(cells.length)
   instance.targets = new Uint32Array(cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
-  instance.holds = new Uint8Array(cells.length) // validate's per-digit mask
+  instance.holds = new Uint8Array(cells.length)
   instance.budget = null // sized on first update, once the digit range is known
-  // Per-call scratch, reused so update allocates almost nothing (GC was 12%
-  // of a call): one allowed and one walk mask per digit, BFS frontiers,
-  // distance rows for the tour bound, and the "every other digit" masks.
+  // Per-call scratch, reused so update allocates almost nothing: GC was 12%
+  // of a call.
   instance.allowed = []
   instance.near = []
   instance.frontier = [new Int16Array(cells.length), new Int16Array(cells.length)]
   instance.dist = []
   instance.others = []
   instance.allMask = 0
-  // Cut filter scratch: the two shortest-path DAGs cut's tests walk (one from
-  // all placed cells, one from the seed), their dominator trees, the subtree
-  // counts read off them, and the per-cell verdict. See cutFilter.
   instance.distStarve = new Int16Array(cells.length)
   instance.distStrand = new Int16Array(cells.length)
   instance.domOrder = new Int16Array(cells.length)
@@ -74,17 +67,12 @@ function setParams (instance, cells) {
   instance.ddep = new Int16Array(cells.length)
   instance.domCount = new Int16Array(cells.length)
   instance.skip = new Uint8Array(cells.length)
-  // The border cells in cyclic order, and the scratch the perimeter rule walks
-  // them with: the placed positions and their digits. Its arc-id row is sized
-  // from the digit range, which only update reads.
   instance.border = perimeter(instance.side)
   instance.value = new Int8Array(cells.length)
   instance.at = new Int16Array(instance.border.length)
   instance.dig = new Int8Array(instance.border.length)
 }
 
-// The border cells of a `side` x `side` grid, in cyclic order clockwise from
-// the top-left corner.
 function perimeter (side) {
   const out = []
   for (let x = 0; x < side; x++) out.push(x)
@@ -94,29 +82,23 @@ function perimeter (side) {
   return out
 }
 
-// The neighbour table, the dominator fold and the starve verdict (shared with
-// FILLOMINO):
 // #include ../_shared/dominator.js
 
-// The visit stamp guard (shared with FILLOMINO):
 // #include ../_shared/stamp.js
 
-// The next visit stamp, on `mask`.
 function nextStamp (instance) {
   return (instance.stamp = bumpStamp(instance.mask, instance.stamp))
 }
 
-// The same for the target stamp `reachesAll` reads: a stale one would read as
-// "no targets" and report a cut that is not there.
+// A stale target stamp reads as "no targets" and reports a cut that is not
+// there.
 function nextTargetStamp (instance) {
   return (instance.targetStamp = bumpStamp(instance.targets, instance.targetStamp))
 }
 
-// How far a walk from `starts` spreads: the cells reachable in at most `depth`
-// steps through `allowed`, stopping once it holds `limit` cells. Returns
-// { size, stamp }: `instance.mask[i] === stamp` marks a visited cell until the
-// next walk. Mask and stamp live on `instance` so a walk allocates nothing --
-// this is the hot loop of every search node.
+// The cells reachable from `starts` in at most `depth` steps through
+// `allowed`, stopping once it holds `limit` cells. Returns { size, stamp }:
+// `instance.mask[i] === stamp` marks a visited cell until the next walk.
 function reachSize (instance, starts, depth, allowed, limit = Infinity) {
   const { nbrs, mask } = instance
   const stamp = nextStamp(instance)
@@ -143,8 +125,7 @@ function reachSize (instance, starts, depth, allowed, limit = Infinity) {
 }
 
 // Does a walk from `start`, at most `depth` steps through `allowed`, reach all
-// `want` cells of the stamped target set `instance.targets`? Stops the moment
-// it has seen them all.
+// `want` cells of the stamped target set `instance.targets`?
 function reachesAll (instance, start, depth, allowed, want) {
   const { nbrs, mask, targets, targetStamp } = instance
   const stamp = nextStamp(instance)
@@ -168,14 +149,11 @@ function reachesAll (instance, start, depth, allowed, want) {
   return false
 }
 
-// The seed walk: a 0-1 BFS from `start`, one placed cell of digit `d`. A cell
-// already holding `d` costs nothing to enter, an open cell that allows `d`
-// costs one step, and `budget` is how many open cells the region has left.
-// Every cell of the region is inside the walk: the region is connected and
-// holds `start`, so a path inside it from `start` to any region cell crosses
-// at most `budget` open cells. Returns { size, stamp }, with
-// `instance.mask[i] === stamp` marking a visited cell until the next walk.
-// Buffers live on `instance`, so a walk allocates nothing.
+// The seed walk from `start`, one placed cell of digit `d`, with `budget`
+// open cells to spend. Every cell of the region is inside the walk: the region
+// is connected and holds `start`, so a path inside it from `start` to any
+// region cell crosses at most `budget` open cells. Returns { size, stamp }
+// as reachSize does.
 function seedWalk (instance, start, budget, allowed, value, d) {
   const { nbrs, mask } = instance
   const stamp = nextStamp(instance)
@@ -204,8 +182,7 @@ function seedWalk (instance, start, budget, allowed, value, d) {
   return { size, stamp }
 }
 
-// BFS distance from `start` to every cell through `allowed`; unreachable
-// cells read as 999, so any bound they enter fails.
+// Unreachable cells read as 999, so any bound they enter fails.
 function distances (instance, start, allowed, dist) {
   const { nbrs } = instance
   dist.fill(999)
@@ -224,12 +201,10 @@ function distances (instance, start, allowed, dist) {
 }
 
 // BFS from `starts` through `allowed`, no further than `maxDist` steps, and
-// the dominator tree of the shortest-path DAG it builds. A cell y keeps a path
-// of its own length from some start when the removed cell does not dominate y,
-// which is what the cut filter reads. Fills `dist` (-1 where unreached),
-// `domOrder` (the cells in BFS order), `idom` (the dominator, -1 for a cell no
-// other cell dominates) and `ddep` (its depth in that tree); returns how many
-// cells the walk reached.
+// the dominator tree of the shortest-path DAG it builds. Fills `dist` (-1
+// where unreached), `domOrder` (the cells in BFS order), `idom` (the
+// dominator, -1 for a cell no other cell dominates) and `ddep` (its depth in
+// that tree); returns how many cells the walk reached.
 function domTree (instance, starts, maxDist, allowed, dist) {
   const { nbrs, domOrder } = instance
   dist.fill(-1)
@@ -244,7 +219,7 @@ function domTree (instance, starts, maxDist, allowed, dist) {
   return len
 }
 
-// The cut filter (#258): answer both of cut's tests for every open cell at
+// The cut filter: answer both of cut's tests for every open cell at
 // once, so the cells it clears need no walk of their own.
 //
 // Cut asks, of each open cell x in the digit's walk, whether removing x leaves
@@ -262,15 +237,12 @@ function domTree (instance, starts, maxDist, allowed, dist) {
 // re-walks. Returns the per-cell verdict, 1 where cut is proved false.
 function cutFilter (instance, placed, open, allowed, size, depth) {
   const { skip, domCount, distStrand, distStarve } = instance
-  // Starve: how many cells each cell dominates in the walk from all placed
-  // cells. A cell outside that walk changes nothing by leaving it. This
-  // verdict is read before the strand walk below overwrites the tree.
+  // Read the starve verdict before the strand walk below overwrites the tree.
   const reached = domTree(instance, placed, depth, allowed, distStarve)
   starveVerdict(instance, reached, distStarve, open, size)
-  if (placed.length < 2) return skip // one placed cell strands nothing
-  // Strand: how many placed cells each cell dominates in the walk from the
-  // seed. A placed cell the seed does not reach inside the budget already
-  // fails the test with nothing removed, so the filter clears no cell there.
+  if (placed.length < 2) return skip
+  // A placed cell the seed does not reach inside the budget already fails the
+  // strand test with nothing removed, so the filter clears no cell there.
   const seen = domTree(instance, [placed[0]], size - 1, allowed, distStrand)
   domCount.fill(0)
   for (const i of placed) {
@@ -282,11 +254,8 @@ function cutFilter (instance, placed, open, allowed, size, depth) {
   return skip
 }
 
-// One scan of the grid builds every digit's state (update runs on every search
-// node, so each cell is read once). Every digit then sees this snapshot, not
-// the removals earlier digits yield in the same call. `state[d]` holds d's
-// placed cells, its open cells, and a per-cell mask of the cells that allow it;
-// `state.digits` is the digit range itself.
+// Every digit sees this snapshot, not the removals earlier digits yield in the
+// same call.
 function scanBoard (instance, puzzle, lo, hi) {
   const { cells } = instance
   instance.allMask = 0
@@ -300,7 +269,7 @@ function scanBoard (instance, puzzle, lo, hi) {
     if (instance.others[d] === undefined) instance.others[d] = instance.allMask & ~(1 << d)
     state.digits.push(d)
   }
-  const value = instance.value // cell -> its value, or -1 while open
+  const value = instance.value
   value.fill(-1)
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i]
@@ -311,7 +280,6 @@ function scanBoard (instance, puzzle, lo, hi) {
       s.placed.push(i)
       s.allowed[i] = 1
     } else {
-      // Lowest set bit first, so digits come in ascending order.
       for (let m = puzzle.getCandidatesBitMask(c); m; m &= m - 1) {
         const d = 31 - Math.clz32(m & -m)
         state[d].open.push(i)
@@ -322,10 +290,6 @@ function scanBoard (instance, puzzle, lo, hi) {
   return state
 }
 
-//! Seed walk: bound d's region to what one placed cell can still reach.
-// The region holds every placed cell and lies inside the walk. So a placed cell
-// the walk misses, or a walk under `size` cells, is a dead branch: empty a
-// placed cell and the solver drops it.
 function seedIsDead (instance, placed, walk, size) {
   if (walk.size < size) return true
   for (const i of placed) if (instance.mask[i] !== walk.stamp) return true
@@ -362,9 +326,6 @@ function tourBoundIsDead (instance, placed, open, allowed, near, size) {
   return near.size < size
 }
 
-// Does removing open cell x break d's region? Either test: the walk starves
-// below `size` cells, or a placed cell is stranded (ticket #101). Each walk
-// stops as soon as it has its answer: `size` cells, or every placed cell.
 function cutsRegion (instance, x, placed, allowed, near, size, depth, skip) {
   let ways = 0
   for (const n of instance.nbrs[x]) if (allowed[n]) ways++
@@ -378,7 +339,6 @@ function cutsRegion (instance, x, placed, allowed, near, size, depth, skip) {
   return cut
 }
 
-//! Cut: an open cell whose removal breaks the region must hold d.
 function * cutRule (instance, puzzle, state, d, size, near) {
   const { cells } = instance
   const { placed, open, allowed } = state[d]
@@ -395,7 +355,6 @@ function * cutRule (instance, puzzle, state, d, size, near) {
   if (held.length) yield puzzle.removeCandidatesFromCells(others, held)
 }
 
-//! Tour bound and cut filter, for a digit with a seed and room left to grow.
 function * seededRule (instance, puzzle, state, d, size, walk) {
   const { cells } = instance
   const { placed, open, allowed } = state[d]
@@ -409,15 +368,10 @@ function * seededRule (instance, puzzle, state, d, size, walk) {
   const out = open.filter(i => !near.mask[i]).map(i => cells[i])
   if (out.length) yield puzzle.removeCandidateFromCells(d, out)
   yield * cutRule(instance, puzzle, state, d, size, near)
-  return near.mask // budget limits this digit to its walk
+  return near.mask
 }
 
-//! Silent: d has no seed, so it needs one component of size cells or more.
-// Every walk above starts from a placed cell, so a digit with none gets none.
-// Its region still lies inside a single orthogonally connected component of the
-// cells that allow it, so a component smaller than `size` can hold no region
-// (ticket #142).
-function * noSeedRule (instance, puzzle, state, d, size) {
+function * silentDigitRule (instance, puzzle, state, d, size) {
   const { cells } = instance
   const { open, allowed } = state[d]
   const near = instance.near[d] || (instance.near[d] = new Uint8Array(cells.length))
@@ -431,17 +385,14 @@ function * noSeedRule (instance, puzzle, state, d, size) {
     for (const i of open) if (instance.mask[i] === comp.stamp) { near[i] = 1; if (comp.size < size) { small.push(i); smallCells.push(cells[i]) } }
     if (comp.size >= size) big = true
   }
-  // No component fits the region: a dead branch, so empty a cell.
   if (!big) { yield puzzle.removeCandidatesFromCell(instance.allMask, cells[open[0]]); return null }
   for (const i of small) near[i] = 0
   if (smallCells.length) yield puzzle.removeCandidateFromCells(d, smallCells)
-  return near // budget limits this digit to the components that fit
+  return near
 }
 
-// Everything one digit's own region says, in order: the seed walk that bounds
-// it, then whichever of cap, force, the seeded rules or the no-seed component
-// search applies. Returns the digit's `near` bound for the budget -- a mask of
-// the cells its region can still reach -- or null when no rule drew one.
+// Returns the digit's `near` bound for the budget -- a mask of the cells its
+// region can still reach -- or null when no rule drew one.
 function * digitRule (instance, puzzle, state, d, size) {
   const { cells } = instance
   const { placed, open, allowed } = state[d]
@@ -454,15 +405,13 @@ function * digitRule (instance, puzzle, state, d, size) {
     }
   }
   if (placed.length === size) {
-    //! Cap: d already fills all size cells, so every open cell loses it.
     if (open.length) yield puzzle.removeCandidateFromCells(d, open.map(i => cells[i]))
   } else if (placed.length + open.length === size) {
-    //! Force: exactly size cells can hold d, so every open one takes d.
     if (open.length) yield puzzle.removeCandidatesFromCells(instance.others[d], open.map(i => cells[i]))
   } else if (placed.length > 0) {
     return yield * seededRule(instance, puzzle, state, d, size, walk)
   } else if (open.length > 0) {
-    return yield * noSeedRule(instance, puzzle, state, d, size)
+    return yield * silentDigitRule(instance, puzzle, state, d, size)
   }
   return null
 }
@@ -471,7 +420,7 @@ function * update (instance, puzzle) {
   const { cells } = instance
   const lo = helpers.digits.minDigit
   const hi = helpers.digits.maxDigit
-  const size = cells.length / (hi - lo + 1) // cells per digit: 10 on a 10x10
+  const size = cells.length / (hi - lo + 1)
   if (!Number.isInteger(size)) {
     // stop, not throw: a throw in update reaches only the console, and the
     // board would solve as if ISOFILL were absent.
@@ -481,9 +430,6 @@ function * update (instance, puzzle) {
   const state = scanBoard(instance, puzzle, lo, hi)
   const near = []
   for (let d = lo; d <= hi; d++) near[d] = yield * digitRule(instance, puzzle, state, d, size)
-  // Budget: every open cell needs a digit, and digit d can take at most
-  // (size - placed) more cells, all inside its walk. If no assignment covers
-  // every open cell the branch is dead: empty that cell.
   const b = budget(instance, state, near, lo, hi, size)
   if (b.dead >= 0) yield puzzle.removeCandidatesFromCell(instance.allMask, cells[b.dead])
   for (let d = lo; d <= hi; d++) {
@@ -501,31 +447,19 @@ function * update (instance, puzzle) {
 // gives two curves in the rectangle whose ends interleave on its boundary, so
 // the curves cross -- and two axis-aligned centre-to-centre paths cross only at
 // a cell centre, which the regions cannot share.
-//
-// Two deductions follow, both reading only the border cycle:
-//   Split arc: a digit whose placed border cells fall in two arcs with one
-//     other digit placed in each is exactly that a, b, a, b -- a dead branch,
-//     so a placed cell is emptied and the solver sees it.
-//   Flank: an open border cell whose nearest placed border cells in both
-//     directions hold digit a loses every digit b placed elsewhere on the
-//     border, since a, b, a, b is what the cycle would then read. A digit
-//     placed only in the interior witnesses no such arc and is left alone.
-//! Perimeter: two regions cannot interleave, so no four border cells in cyclic
-//! order read a, b, a, b.
 function * perimeterRule (instance, puzzle, lo, hi) {
   const { cells, border, value, at, dig } = instance
-  const arcOf = instance.arcOf || (instance.arcOf = new Int8Array(hi + 1)) // arc id per digit
+  const arcOf = instance.arcOf || (instance.arcOf = new Int8Array(hi + 1))
   const n = border.length
-  let m = 0 // placed border cells, in cyclic order
-  let mask = 0 // digits placed somewhere on the border
+  let m = 0
+  let mask = 0
   for (let k = 0; k < n; k++) {
     const d = value[border[k]]
     if (d >= 0) { at[m] = k; dig[m++] = d; mask |= 1 << d }
   }
-  if (m < 2) return // one arc at most, and no second digit to interleave with
-  // Split arc: for a digit placed at two or more border cells, walk the cycle
-  // from one of them. Its cells cut the cycle into arcs; a digit that lands in
-  // two of them interleaves with it.
+  if (m < 2) return
+  // Digit a's border cells cut the cycle into arcs; a digit that lands in two
+  // of them interleaves with it.
   for (let a = lo; a <= hi; a++) {
     if (!(mask & (1 << a))) continue
     let first = -1
@@ -541,8 +475,6 @@ function * perimeterRule (instance, puzzle, lo, hi) {
       else if (arcOf[d] !== id) { yield puzzle.removeCandidateFromCell(a, cells[border[at[first]]]); return }
     }
   }
-  // Flank: one lap, stripping each gap whose two flanking cells hold the same
-  // digit. Every cell strictly between two consecutive placed cells is open.
   for (let s = 0; s < m; s++) {
     const a = dig[s]
     if (dig[(s + 1) % m] !== a) continue
@@ -557,32 +489,28 @@ function * perimeterRule (instance, puzzle, lo, hi) {
 
 // Bipartite matching, open cells to digits, where digit d has (size - placed)
 // slots and offers them only to open cells inside its walk. Kuhn's augmenting
-// path per cell. Open cells and slots count the same, so a full matching is
-// perfect: `dead` is the first cell no matching covers (else -1).
+// path per cell. `dead` is the first cell no matching covers (else -1).
 // Then Régin's prune on a perfect matching: an unmatched pair (cell, digit)
 // lies in some other perfect matching only if cell and digit share a strongly
 // connected component of the residual graph (cell -> digit for an unmatched
 // pair, digit -> cell for a matched one). Every other pair is in no solution,
 // so they go in `dropCell`/`dropDigit`.
-//! Budget: match open cells to the digits' free slots. No full matching is a
-//! dead branch; a pair no matching can use loses that candidate.
-// Every buffer is owned by `instance.budget`, sized once from the board and the
-// digit range, so a call allocates nothing. Returns that scratch object: `dead`
-// (a cell, or -1) and `dropCell[k]`/`dropDigit[k]` for k < `dropCount`.
+// Returns the reused scratch object `instance.budget`: `dead` (a cell, or -1)
+// and `dropCell[k]`/`dropDigit[k]` for k < `dropCount`.
 function budget (instance, state, near, lo, hi, size) {
   const n = state[lo].allowed.length
   const D = hi + 1
   const b = instance.budget || (instance.budget = {
     D,
     isOpen: new Uint8Array(n),
-    optCount: new Uint8Array(n), // cell -> how many digits' walks hold it
+    optCount: new Uint8Array(n),
     optList: new Uint8Array(n * D), // cell x -> optList[x * D ...], ascending digits
     taken: new Int16Array(D * size), // digit d -> cells matched to it, taken[d * size ...]
     takenLen: new Uint8Array(D),
     matched: new Int8Array(n),
     seen: new Uint32Array(D),
     seenStamp: 0,
-    adjStart: new Int32Array(n + D + 1), // residual graph in CSR form
+    adjStart: new Int32Array(n + D + 1),
     adjFill: new Int32Array(n + D),
     adjList: new Int32Array(n * D),
     idx: new Int32Array(n + D),
@@ -654,8 +582,6 @@ function budget (instance, state, near, lo, hi, size) {
   return b
 }
 
-// Kuhn's augmenting path from open cell x; `b.seenStamp` marks the digits this
-// search already tried.
 function augment (b, x) {
   const { D, size, state, taken, takenLen, seen } = b
   for (let k = 0; k < b.optCount[x]; k++) {
@@ -670,8 +596,6 @@ function augment (b, x) {
   return false
 }
 
-// Tarjan's strongly connected components over the CSR graph in `b`; fills
-// `b.comp` with a component id per node.
 function sccVisit (b, v) {
   const { idx, low, comp, stack, adjStart, adjList } = b
   idx[v] = low[v] = b.next++
@@ -687,7 +611,6 @@ function sccVisit (b, v) {
   }
 }
 
-// Exact check on a full grid: every digit is one connected island of `size` cells.
 function validate (instance, puzzle) {
   const { cells, nbrs } = instance
   if (!puzzle.getCellsAreFilled(cells)) return true

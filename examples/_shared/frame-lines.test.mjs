@@ -9,11 +9,9 @@
 // on its own, which is where a refusal can be asked for.
 
 import assert from 'assert'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { makeIo } from './harness-lib.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+const HERE = import.meta.dirname
 const { frameLines, framePairs } = makeIo(HERE).load('frame-lines.js', ['frameLines', 'framePairs'])
 
 // A board of plain integer ids, the shape frameLines reads: getCellAt(col, row).
@@ -36,7 +34,7 @@ const board = (W, H) => ({
 // ---- a filtered list is refused, not mispaired ----
 // The misuse the guard exists for: hit-counts already has a bySide helper, so
 // framePairs(bySide('L')) is a plausible edit, and pairing L0 with L1 would
-// hand a joint component two clues on the same side and the wrong line.
+// hand a pair component two clues on the same side and the wrong line.
 {
   const lines = frameLines(board(7, 5))
   assert.throws(() => framePairs(lines.filter(g => g.side === 'L')), /whole frameLines output/)

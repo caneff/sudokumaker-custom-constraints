@@ -364,16 +364,20 @@ def test_prunes_a_spliced_function_the_assembled_script_never_calls():
     assert got == "function used () { return 1 }\nused()\n", repr(got)
 
 
-def test_keeps_a_multiline_spliced_function_the_script_calls():
-    # The brace count, not the line count, decides where a function ends.
+def test_prunes_and_keeps_multiline_spliced_functions_by_brace_count():
+    # The brace count, not the line count, decides where a function ends. A
+    # called multiline function stays whole; an uncalled one with a nested
+    # block is pruned to its closing brace -- not left half-deleted -- and the
+    # sibling after it survives intact.
     with tempfile.TemporaryDirectory() as d:
         root = pathlib.Path(d)
-        (root / "seg.js").write_text(
-            "function used (x) {\n  if (x) {\n    return 1\n  }\n  return 0\n}\n"
-        )
-        (root / "main.js").write_text("// #include seg.js\nused(1)\n")
+        used = "function used (x) {\n  if (x) {\n    return 1\n  }\n  return 0\n}\n"
+        unused = "function unused (x) {\n  if (x) {\n    return 2\n  }\n  return 3\n}\n"
+        after = "function after () {\n  return 4\n}\n"
+        (root / "seg.js").write_text(used + unused + after)
+        (root / "main.js").write_text("// #include seg.js\nused(1)\nafter()\n")
         got = minify_file(root / "main.js")
-    assert "function used" in got and got.endswith("used(1)\n"), repr(got)
+    assert got == used + after + "used(1)\nafter()\n", repr(got)
 
 
 def test_never_prunes_the_including_files_own_unused_function():
@@ -455,7 +459,7 @@ if __name__ == "__main__":
     test_refuses_an_include_when_no_base_directory_is_known()
     test_refuses_an_include_cycle()
     test_prunes_a_spliced_function_the_assembled_script_never_calls()
-    test_keeps_a_multiline_spliced_function_the_script_calls()
+    test_prunes_and_keeps_multiline_spliced_functions_by_brace_count()
     test_never_prunes_the_including_files_own_unused_function()
     test_refuses_to_prune_when_a_name_could_be_reached_dynamically()
     test_refuses_a_directive_with_no_path()
