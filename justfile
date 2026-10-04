@@ -182,8 +182,8 @@ soundness:
 
 # Real-app timing for one example: baseline (committed PUZZLE_LINK.txt) vs a
 # candidate built from the working-tree component, on the recorded app (HAR
-# replay; SM_LIVE=1 re-records). Prints one paste-ready row. Not part of `check` -- it drives a browser.
-# See docs/real-app-timing.md.
+# replay; SM_LIVE=1 re-records). Prints one paste-ready row. Not part of
+# `check` -- it drives a browser. See docs/real-app-timing.md.
 # Links are stripped to their givens first. An edge-clue example (skyscraper,
 # numbered-rooms) keeps its ring: just time skyscraper --ring-clues
 [doc("Real-app timing of one example on the recorded app (HAR replay of sudokumaker.app; SM_LIVE=1 re-records it); prints a paste-ready row.")]
