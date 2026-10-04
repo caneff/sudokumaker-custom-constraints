@@ -12,20 +12,18 @@
 // list of digits) only gets the simple check: a 5 must have a possible 1 above
 // or 9 below.
 
-// Every cell takes part in the rule, so a change to any cell wakes `update`.
 function getAffectedCells (cells) {
   return cells
 }
 
-// `cells` lists the grid row by row. We also keep each column's cells, top row
-// first, and a note of how each column looked the last time we pruned it.
+// `cells` lists the grid row by row.
 function setParams (instance, cells) {
   const size = Math.round(Math.sqrt(cells.length))
   instance.size = size
   instance.columns = Array.from({ length: size }, (_, col) =>
     Array.from({ length: size }, (_, row) => cells[row * size + col]))
   instance.holdsEachDigitOnce = new Array(size).fill(null) // filled in by columnHoldsEachDigitOnce
-  instance.lastPruned = new Array(size).fill(null) // each column's state when we last pruned it
+  instance.lastPruned = new Array(size).fill(null)
 }
 
 // Rows (0 = top) of this column where each of the digits 1, 5 and 9 can still go.
@@ -107,7 +105,7 @@ function * update (instance, puzzle) {
   for (let col = 0; col < size; col++) {
     const column = columns[col]
     const rows = readColumn(puzzle, column)
-    if (columnState(rows) === lastPruned[col]) continue // nothing new since we pruned it
+    if (columnState(rows) === lastPruned[col]) continue
     const holdsEachDigitOnce = columnHoldsEachDigitOnce(instance, puzzle, col)
     const keep = holdsEachDigitOnce ? rowsToKeep(rows) : rowsToKeepIfRepeatsAllowed(rows)
     // Such a column must hold a 5 somewhere, so if none can stay, this branch is dead.
@@ -115,7 +113,6 @@ function * update (instance, puzzle) {
       yield puzzle.stop(`no 5 in column ${col + 1} can have a flatmate`)
       return
     }
-    // Remove each digit from the rows we are not keeping, and note the rows left.
     const left = { 1: [], 5: [], 9: [] }
     for (const digit of [1, 5, 9]) {
       for (const row of rows[digit]) {
@@ -128,7 +125,6 @@ function * update (instance, puzzle) {
   }
 }
 
-// On a full grid, every 5 needs a 1 directly above it or a 9 directly below it.
 // `instance.cells` is the list of every cell, row by row, which the app fills in.
 function validate (instance, puzzle) {
   const { cells, size } = instance
