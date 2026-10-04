@@ -23,12 +23,9 @@
 #       portfolio search, which the seed does not reproduce)
 #   ... --enabled builtin --out DIR
 #       the same board with the other component switched on, for timing
-#   ... --gen docs/research/count-digits-gac/demo/gen_counter_outside.json
+#   ... --gen examples/count-digits-gac/demo/gen_counter_outside.json
 #       the counter-outside board (counters outside their targets); its link
 #       name follows the gen, so it never overwrites the shipped link
-#
-# Lives here, not in docs/research/, because check_research_python refuses a
-# new .py there.
 
 import argparse
 import json
@@ -43,7 +40,6 @@ from count_board import (
     BASELINE_NAME,
     CANDIDATE_NAME,
     COMPONENT,
-    RESEARCH_DIR,
     cage_constraints,
     demo_backend_code,
     groups_input,
@@ -54,7 +50,7 @@ from minify import minify_file
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-DEMO_DIR = RESEARCH_DIR / "demo"
+DEMO_DIR = HERE / "demo"
 GEN = DEMO_DIR / "gen.json"
 OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
 OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"

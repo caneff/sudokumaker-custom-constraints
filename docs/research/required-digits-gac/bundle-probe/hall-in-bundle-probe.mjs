@@ -45,7 +45,7 @@ console.log('exports resolved:', Object.entries(P).filter(([, v]) => v === undef
 //! hand-rolled setRegions -- the same construction the worker uses.
 const SPEC = { size: { width: 9, height: 9 }, minDigit: 1, maxDigit: 9, digitCount: 9, type: P.PuzzleKind.Sudoku }
 
-const gen = JSON.parse(fs.readFileSync('docs/research/required-digits-gac/sparse/gen.json', 'utf8'))
+const gen = JSON.parse(fs.readFileSync('examples/count-digits-gac/required-digits/sparse/gen.json', 'utf8'))
 const N = 9
 //! gen.json stores (row, column) pairs, not (x, y) -- build_sparse_required_digits.py's own convention.
 const cellId = (row, column) => row * N + column

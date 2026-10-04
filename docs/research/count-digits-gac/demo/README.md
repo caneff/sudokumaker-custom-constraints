@@ -1,5 +1,8 @@
 # CountDigits demo board (#568, self-counting from #584)
 
+> **Moved (#659).** `main-demo.js`, the `gen*.json` files and the links now
+> live in `examples/count-digits-gac/demo/`.
+
 A small board a reader can read, carrying **both** count-digits components in
 one link, so they can switch between them and feel the difference. The timing
 rig (`../sparse/`, #543) proves the gap with 20 undrawn groups; this board

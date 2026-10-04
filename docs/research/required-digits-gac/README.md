@@ -1,5 +1,11 @@
 # RequiredDigitsGacComponent
 
+> **Moved (#659).** `main-required-digits-global.js`, the two wrapper
+> components and the two links now live in
+> `examples/count-digits-gac/required-digits/`, and `sparse/`'s gen JSON,
+> backend and links in `examples/count-digits-gac/required-digits/sparse/`.
+> Paths below name where they were when written.
+
 A full-strength, drop-in replacement for the app's built-in RequiredDigits
 rule (`RequiredDigitsComponent(name, values, cells)`): Hall's condition on
 the value side instead of the built-in's greedy strike-off (see

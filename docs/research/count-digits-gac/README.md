@@ -1,5 +1,10 @@
 # CountDigitsGacComponent
 
+> **Moved (#659).** The board files the builders load — `demo/`, `self-count/`
+> and `sparse/`'s gen JSONs, backends and links, and
+> `CountDigitsGacComponent.pre578.js` — now live in the same subdirectories of
+> `examples/count-digits-gac/`. Paths below name where they were when written.
+
 A pruning replacement for the app's built-in CountDigits rule
 (`CountDigitsComponent(name, digits, counterCell, targetCells)`), which is
 validate-only and removes no candidate ever. See

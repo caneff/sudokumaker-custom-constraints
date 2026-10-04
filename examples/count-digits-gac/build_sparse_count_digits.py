@@ -28,9 +28,6 @@
 #       draw a fresh board (grid, groups, carve order) into --gen. The grid
 #       comes from CP-SAT's portfolio search, which is not reproducible from
 #       the seed: the committed gen.json is the artifact, this a one-shot.
-#
-# Lives here, not in docs/research/, because check_research_python refuses a
-# new .py there.
 
 import argparse
 import json
@@ -47,14 +44,13 @@ from count_board import (
     COMPONENT,
     model,
 )
-from count_board import RESEARCH_DIR as COUNT_RESEARCH_DIR
 from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-RESEARCH_DIR = COUNT_RESEARCH_DIR / "sparse"
-GEN = RESEARCH_DIR / "gen.json"
-BACKEND = RESEARCH_DIR / "main-sparse-global.js"
+LINK_DIR = HERE / "sparse"
+GEN = LINK_DIR / "gen.json"
+BACKEND = LINK_DIR / "main-sparse-global.js"
 CONSTRAINT_NAME = "Sparse count digits"
 # The groups are not drawn: they live in the constraint's code, so the text
 # says so rather than promise an outline the document does not carry.
@@ -136,7 +132,7 @@ def build_doc(gen, name, keep_comments=False):
     )
 
 
-def build(out_dir=RESEARCH_DIR, gen_path=GEN, keep_comments=False):
+def build(out_dir=LINK_DIR, gen_path=GEN, keep_comments=False):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     if keep_comments:
         names = ["PUZZLE_LINK_sparse_annotated.txt"]
@@ -172,7 +168,7 @@ if __name__ == "__main__":
     )
     p.add_argument(
         "--out",
-        help="directory for the links (default: docs/research/count-digits-gac/sparse/)",
+        help="directory for the links (default: sparse/)",
     )
     args = p.parse_args()
     if args.search is not None:
@@ -204,7 +200,7 @@ if __name__ == "__main__":
             gen_path.write_text(json.dumps(gen) + "\n")
             print(f"set carved={args.carved} in {args.gen}")
         written = build(
-            pathlib.Path(args.out) if args.out else RESEARCH_DIR,
+            pathlib.Path(args.out) if args.out else LINK_DIR,
             args.gen,
             args.keep_comments,
         )

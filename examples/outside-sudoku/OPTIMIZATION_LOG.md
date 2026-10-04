@@ -43,7 +43,7 @@ board, at 500ms / 300ms. Both are BASELINE rows on the same component.
   give `examples/count-digits-gac/RequiredDigitsGacComponent.js` a
   real-app timing row it had none of: no example registered a
   RequiredDigits-shaped component to swap. The wrapper
-  (`docs/research/required-digits-gac/RequiredDigitsWrapperComponent.js`)
+  (`examples/count-digits-gac/required-digits/RequiredDigitsWrapperComponent.js`)
   idles while its clue is blank, then swaps itself
   (`puzzle.replaceComponent`, docs/gotchas.md #1) for a required-digits rule
   over the clue's window, window-sized with its own copy of

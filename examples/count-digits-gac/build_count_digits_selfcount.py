@@ -14,9 +14,6 @@
 #       rebuild both links from the committed gen.json
 #   uv run examples/count-digits-gac/build_count_digits_selfcount.py --search SEED --groups G --targets T --gen FILE
 #       draw a fresh board (one-shot: CP-SAT's portfolio search is not seeded)
-#
-# Lives here, not in docs/research/, because check_research_python refuses a
-# new .py there.
 
 import argparse
 import json
@@ -29,7 +26,6 @@ from board_kit import board_doc
 from board_kit import search as search_board
 from count_board import (
     CANDIDATE_NAME,
-    RESEARCH_DIR,
     cage_constraints,
     demo_backend_code,
     groups_input,
@@ -43,7 +39,7 @@ from minify import minify_file
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-BOARD_DIR = RESEARCH_DIR / "self-count"
+BOARD_DIR = HERE / "self-count"
 GEN = BOARD_DIR / "gen.json"
 PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
 VARIANTS = {"current": CURRENT, "pre578": PRE578}

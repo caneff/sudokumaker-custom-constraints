@@ -1,5 +1,9 @@
 # Self-counting CountDigits board (#581)
 
+> **Moved (#659).** The `gen*.json` files, the two links and
+> `CountDigitsGacComponent.pre578.js` now live in
+> `examples/count-digits-gac/self-count/`.
+
 A board where **every group's counter is its own first target**, the shape
 #578 made exact (`../counter-in-targets/NOTES.md`). It exists so the gain from
 #578 can be timed: the colleague's board has two givens and no unique solution.

@@ -13,11 +13,10 @@ from minify import minify_js
 from ortools.sat.python import cp_model
 
 HERE = pathlib.Path(__file__).parent
-RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "count-digits-gac"
 COMPONENT = HERE / "CountDigitsGacComponent.js"
 CANDIDATE_NAME = "CountDigitsGacComponent"
 BASELINE_NAME = "CountDigitsComponent"
-DEMO_BACKEND = RESEARCH_DIR / "demo" / "main-demo.js"
+DEMO_BACKEND = HERE / "demo" / "main-demo.js"
 COLOURS = ["#d0342c", "#1a6fd1", "#1f9d55", "#c77800", "#8a3ffc", "#0f8b8d"]
 
 

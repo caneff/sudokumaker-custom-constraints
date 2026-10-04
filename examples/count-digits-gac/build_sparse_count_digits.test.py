@@ -11,7 +11,7 @@ from board_kit import count_solutions as count_with
 from board_kit import givens_of
 from build_sparse_count_digits import (
     GEN,
-    RESEARCH_DIR,
+    LINK_DIR,
     backend_code,
     build,
 )
@@ -91,7 +91,7 @@ def check_annotated(gen, plain_doc):
             "--keep-comments writes only the annotated link"
         )
         built = (out / ANNOTATED).read_bytes()
-    assert built == (RESEARCH_DIR / ANNOTATED).read_bytes(), (
+    assert built == (LINK_DIR / ANNOTATED).read_bytes(), (
         f"{ANNOTATED} does not reproduce"
     )
     doc = decode_puzzle(built.decode().strip())
@@ -116,17 +116,15 @@ if __name__ == "__main__":
     assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
     assert cand != base and BASELINE_NAME in base
 
-    shipped = {n: (RESEARCH_DIR / n).read_bytes() for n in NAMES}
-    mtime = {n: (RESEARCH_DIR / n).stat().st_mtime_ns for n in NAMES}
+    shipped = {n: (LINK_DIR / n).read_bytes() for n in NAMES}
+    mtime = {n: (LINK_DIR / n).stat().st_mtime_ns for n in NAMES}
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp)
         build(out)
         for n in NAMES:
             assert (out / n).read_bytes() == shipped[n], f"{n} does not reproduce"
     for n in NAMES:
-        assert (RESEARCH_DIR / n).stat().st_mtime_ns == mtime[n], (
-            f"{n} touched by --out"
-        )
+        assert (LINK_DIR / n).stat().st_mtime_ns == mtime[n], f"{n} touched by --out"
 
     docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs

@@ -6,8 +6,11 @@ linter and `just soundness` look, and not under `docs/research/`.
 
 This example has no board of its own (`boardless = true` in `example.toml`,
 `docs/example-layout.md`): the links that ship the components are built by
-the `build_*.py` files here, and the boards and measurements sit in
-`docs/research/count-digits-gac/` and `docs/research/required-digits-gac/`.
+the `build_*.py` files here into the board directories below, and the
+measurements sit in `docs/research/count-digits-gac/` and
+`docs/research/required-digits-gac/`. The boards' gen files, backends and links
+live here, not in research, because the builders and their tests load them
+(#659).
 
 ## Files
 
@@ -18,7 +21,8 @@ the `build_*.py` files here, and the boards and measurements sit in
 | `BuiltinCountDigitsComponent.js` | The built-in CountDigits rule, ported from the bundle body, for the strength comparison. Not for use in a puzzle. |
 | `board_kit.py` | The steps every board builder shares: the solution-grid draw, the carve loop (carve order, and the carve-on-timeout policy), search, the givens a gen implies and the document skeleton. A builder keeps only its rule. |
 | `count_board.py` | What the count-digits boards share beyond the kit: the rule's CP-SAT model, the demo backend, and the drawn-group helpers. |
-| `build_count_digits_demo.py`, `build_count_digits_selfcount.py`, `build_sparse_count_digits.py`, `build_sparse_required_digits.py` | One board builder each. None imports another (`board_kit.test.py` checks it). Each writes its links into `docs/research/`. |
+| `build_count_digits_demo.py`, `build_count_digits_selfcount.py`, `build_sparse_count_digits.py`, `build_sparse_required_digits.py` | One board builder each. None imports another (`board_kit.test.py` checks it). Each writes its links into its own board directory. |
+| `demo/`, `self-count/`, `sparse/`, `required-digits/`, `required-digits/sparse/` | One board directory each: its gen JSON, its backend and its committed links, which the builder's test rebuilds byte for byte. `self-count/` also keeps the pre-#578 component its comparison link ships. |
 | `build_required_digits.py` | Not a board of its own: takes the core outside-sudoku link and swaps in the required-digits wrapper, for timing. |
 | `count-digits.test.mjs` | One hand-worked case per CountDigits deduction, both stop paths and `validate`. |
 | `soundness-harness.mjs` | The entry `just soundness` runs: both components below, one verdict. |
