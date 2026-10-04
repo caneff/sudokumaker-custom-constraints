@@ -1,40 +1,49 @@
 """One end-to-end test for the 2026-09-29 audit spec (#649, closing slice #739).
 
 A new example is added the way an agent adds one: a copy of up-to-n under a
-name no shared file has ever seen, in a throwaway copy of `examples/`. It then
-lives through the spec's acceptance criteria in order, at the shared layer's
-public seams:
+name no shared file has ever seen, in a throwaway copy of `examples/` and
+`docs/`. The copy is then taken through the shared layer, in order:
 
-  1. the layout gate accepts it from its `example.toml` alone, and refuses it
-     once the manifest is gone (user story 1, card 1);
+  1. the layout gate accepts it from its `example.toml` alone, and refuses
+     it once the manifest is gone;
   2. the timing driver resolves its timed component from that manifest, and
-     refuses a name the board does not register (card 1);
-  3. the document module finds its custom-constraint entry, with the `input`
-     and `style` every entry carries, and writes it back byte-for-byte
-     (the thermo-nuclear headline);
-  4. its soundness harness passes through the shared fuzz runner, and fails on
-     a component that drops a true candidate or a `validate` that rejects the
-     true solution (user story 2, card 2, crap-audit);
-  5. the lint run fails on a style break in every shipped component, the moved
-     GAC components included (user story 2, card 5);
-  6. the layout gate refuses a load from docs/research/ (card 5);
-  7. its link opens in the app session's HAR adapter and solves unique
-     (card 7).
+     refuses a name the board does not register;
+  3. its 4x4 board rebuilds byte-for-byte through framebuild and the
+     document module, and every custom-constraint entry on it carries
+     `input` and `style`;
+  4. its soundness harness passes, and the shared fuzz runner fails a run of
+     its component that drops a true candidate, and one whose `validate`
+     rejects the true solution;
+  5. the lint run reports a style break planted in every shipped component,
+     the GAC components moved out of docs/research included;
+  6. the layout gate's research rule refuses a load from docs/research/;
+  7. its 4x4 link opens in the app session's HAR adapter and solves unique.
 
-Then three sweeps over the real tree: every example's timed component resolves
-(card 1), every shipped component is soundness-fuzzed or listed with a reason
-(user story 2), and every component a committed link registers still has a
-file of that name (user story 3, the glossary renames).
+Then three sweeps over the real tree: every example's timed component
+resolves; every shipped component is loaded by a soundness harness that asks
+it `validate` when it has one, or is listed in NOT_FUZZED with a reason; and
+every component a committed link registers has a file of that name, so a
+rename that leaves a link behind fails here.
 
 WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
   - the live site: whether each rebuilt link opens and solves unique in
-    sudokumaker.app itself, `withApp({ live: true })`, and `just time`'s
+    sudokumaker.app itself (`withApp({ live: true })`), and `just time`'s
     timings. Step 7 replays the recorded app (sudokumaker.har), so a
     SudokuMaker release that changes the solver or the link format is not
-    seen. #739's PR records the live-site open of every link the spec rebuilt.
+    seen here. docs/research/2026-10-04-spec-649-live-open.md records the
+    live open of every link this spec rebuilt.
   - solve time: no deduction changed in this spec, and nothing here times one.
-  - the finders: the Renbanana model pieces, the hunt driver's half-stateful
-    refusal and the hunt tests are the finders' own suites.
+  - whether a component name matches CONTEXT.md: sweep 3 catches a link left
+    behind by a rename, not a name the glossary does not use.
+  - sweep 2 reads harness source for `load(...)` calls: it proves a harness
+    loads the file and names `validate`, not that every draw reaches it.
+
+Left to their own suites in the same gate, not driven here: the CP-SAT base
+model and solve_unique (cpsat.test.py), loadBundle and the bundle-solve
+import (bundle-load.test.mjs, bundle-solve.test.mjs), the framebuild lanes
+(framebuild.test.py), the finder-test glob (gate.test.py), the stamp guard
+(the fillomino and isofill stamp tests), and the finders' Renbanana model,
+half-stateful refusal and hunt tests.
 
     uv run examples/_shared/spec_649_closing.test.py
 """
@@ -52,15 +61,16 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from check_layout import check_research_loads
+from check_layout import _js_code, check_example, check_research_loads
 from link_codec import decode_puzzle
 from manifest import load_manifest
-from sm_document import find_constraint, registering_constraint_name, write_link
-from time_example import find_component_file
+from sm_document import find_constraint, registering_constraint_name
+from time_example import find_component_file, shipped_component_code
 
 SOURCE_EXAMPLE = "up-to-n"
 NEW_EXAMPLE = "zz-new-example"
 COMPONENT = "UpToNComponent"
+BOARD = "PUZZLE_LINK_4x4.txt"
 
 # Shipped components no soundness harness loads, each with the reason. A new
 # component fails sweep 2 until a harness loads it or it is listed here.
@@ -74,6 +84,9 @@ NOT_FUZZED = {
     "examples/count-digits-gac/required-digits/RequiredDigitsWrapperComponent.js": (
         "a replaceComponent delegate that removes no candidate itself; "
         "RequiredDigitsGacComponent, which it swaps in, is fuzzed"
+    ),
+    "examples/count-digits-gac/required-digits/RequiredDigitsWrapperComponentBuiltin.js": (
+        "a replaceComponent delegate to the app's built-in RequiredDigitsComponent"
     ),
 }
 
@@ -127,8 +140,7 @@ def edited(path, old, new):
 
 
 def step_layout_gate(tmp, ex):
-    gate = [sys.executable, "examples/_shared/check_layout.py", "examples"]
-    r = run(gate, tmp)
+    r = run([sys.executable, "examples/_shared/check_layout.py", "examples"], tmp)
     assert r.returncode == 0, (
         f"the gate refused a copied example:\n{r.stdout}{r.stderr}"
     )
@@ -136,10 +148,11 @@ def step_layout_gate(tmp, ex):
     text = manifest.read_text()
     manifest.unlink()
     try:
-        r = run(gate, tmp)
-        assert r.returncode == 1, r.stdout
-        assert f"{NEW_EXAMPLE}: missing" in r.stdout, r.stdout
-        assert "example.toml" in r.stdout, r.stdout
+        found = check_example(ex)
+        assert any(
+            v.startswith(f"{NEW_EXAMPLE}: missing") and "example.toml" in v
+            for v in found
+        ), found
     finally:
         manifest.write_text(text)
 
@@ -158,62 +171,96 @@ def step_timed_component(ex):
         (ex / "example.toml").write_text(original)
 
 
-def step_document(tmp, ex):
-    link = (ex / "PUZZLE_LINK.txt").read_text().strip()
-    doc = decode_puzzle(link)
-    entry = find_constraint(doc, registering_constraint_name(doc, COMPONENT))
-    assert entry["type"] == 1000
-    assert {"input", "style"} <= entry.keys(), sorted(entry)
-    assert COMPONENT in [c["name"] for c in entry["definition"]["components"]]
-    out = tmp / "rewritten.txt"
-    write_link(doc, out)
-    assert decode_puzzle(out.read_text().strip()) == doc
+def step_rebuild(ex):
+    r = run([sys.executable, "build_size.py", "--rebuild", "4", "--local"], ex)
+    assert r.returncode == 0, r.stdout + r.stderr
+    rebuilt = (ex / BOARD).read_text()
+    assert rebuilt == (ROOT / "examples" / SOURCE_EXAMPLE / BOARD).read_text(), (
+        "the rebuild moved the committed board's bytes"
+    )
+    doc = decode_puzzle(rebuilt.strip())
+    entries = [c for c in doc["puzzle"]["constraints"] if c.get("type") == 1000]
+    assert len(entries) > 1, [c.get("definition", {}).get("name") for c in entries]
+    for entry in entries:
+        name = entry["definition"]["name"]
+        assert {"input", "style"} <= entry.keys(), f"{name}: {sorted(entry)}"
+    assert COMPONENT in shipped_component_code(doc)
+    assert find_constraint(doc, registering_constraint_name(doc, COMPONENT)) in entries
 
 
-def step_fuzz_runner(ex):
-    # A tenth of the shipped draw count: both faults below show within it,
-    # and `just soundness` runs the full count on the real harness.
+# One house line 4 1 2 3 read from cell 0 with N = 4, so the clue is 0: a
+# component that drops 4 from cell 0 loses the truth, and `validate` on the
+# filled line must accept it.
+RUNNER = """
+import { installGlobals, makeIo, fuzzSoundness } from './examples/_shared/harness-lib.mjs'
+const [dir, from, to] = process.argv.slice(1)
+installGlobals(1, 4)
+const mod = makeIo(dir).load('UpToNComponent.js', ['setParams', 'update', 'validate'],
+  src => from ? src.replace(from, to) : src)
+const line = [0, 1, 2, 3]
+const r = fuzzSoundness('toy', { iters: 1, log: () => {}, draw: () => {
+  const inst = {}
+  mod.setParams(inst, line, 4, 0)
+  return { truth: { 0: 4, 1: 1, 2: 2, 3: 3 }, seed: () => [1, 2, 3, 4], parts: [{ mod, inst }], houses: [line] }
+} })
+console.log(JSON.stringify(r))
+"""
+
+
+def fuzz_once(tmp, ex, patch=None):
+    """fuzzSoundness's result for one draw of the copy's component, with
+    `patch` (old, new) applied to its source first."""
+    source = (ex / f"{COMPONENT}.js").read_text()
+    if patch:
+        assert patch[0] in source, patch[0]
+    argv = ["node", "--input-type=module", "-e", RUNNER, str(ex), *(patch or ())]
+    r = run(argv, tmp)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout.strip().splitlines()[-1])
+
+
+def step_fuzz_runner(tmp, ex):
+    # A tenth of the shipped draw count: `just soundness` runs the full count
+    # on the real harness.
     edited(
         ex / "soundness-harness.mjs", "const ITERS = 20000\n", "const ITERS = 2000\n"
     )
-    harness = ["node", "soundness-harness.mjs"]
-    r = run(harness, ex)
+    r = run(["node", "soundness-harness.mjs"], ex)
     assert r.returncode == 0 and "PASS" in r.stdout, r.stdout + r.stderr
-    component = ex / f"{COMPONENT}.js"
-    # Drops N from the clue's first cell on every call: wrong whenever the
-    # first N sits there.
-    unsound = edited(
-        component,
-        "  const { line, target } = instance\n",
-        "  const { line, target } = instance\n"
-        "  yield puzzle.removeCandidateFromCell(target, line[0])\n",
+
+    clean = fuzz_once(tmp, ex)
+    assert clean["ok"], clean
+    unsound = fuzz_once(
+        tmp,
+        ex,
+        (
+            "  const { line, target } = instance\n",
+            "  const { line, target } = instance\n"
+            "  yield puzzle.removeCandidateFromCell(target, line[0])\n",
+        ),
     )
-    try:
-        r = run(harness, ex)
-        assert r.returncode == 1, r.stdout
-        assert re.search(r" [1-9]\d* violations,", r.stdout), r.stdout
-    finally:
-        component.write_text(unsound)
-    rejecting = edited(
-        component,
-        "function validate (instance, puzzle) {\n",
-        "function validate (instance, puzzle) {\n  return false\n",
+    assert unsound["violations"] == 1 and not unsound["ok"], unsound
+    rejecting = fuzz_once(
+        tmp,
+        ex,
+        (
+            "function validate (instance, puzzle) {\n",
+            "function validate (instance, puzzle) {\n  return false\n",
+        ),
     )
-    try:
-        r = run(harness, ex)
-        assert r.returncode == 1, r.stdout
-        assert re.search(r" [1-9]\d* validate rejections,", r.stdout), r.stdout
-    finally:
-        component.write_text(rejecting)
+    assert rejecting["validateRejects"] == 1 and not rejecting["ok"], rejecting
 
 
 def shipped_components(tree):
-    """Every *Component.js under `tree`/examples except the verbatim
-    third-party original/ snippets, as repo-relative paths."""
+    """Every component file under `tree`/examples except the verbatim or
+    frozen original/ snippets and the dot-directory strength floors, as
+    repo-relative paths."""
+    rels = (p.relative_to(tree) for p in (tree / "examples").rglob("*Component*.js"))
     return sorted(
-        p.relative_to(tree).as_posix()
-        for p in (tree / "examples").rglob("*Component.js")
-        if "original" not in p.parts
+        rel.as_posix()
+        for rel in rels
+        if "original" not in rel.parts
+        and not any(part.startswith(".") for part in rel.parts)
     )
 
 
@@ -251,8 +298,7 @@ console.log(JSON.stringify({ verdict: r.verdict, version: r.version }))
 
 
 def step_app_session(tmp, ex):
-    link = ex / "PUZZLE_LINK_4x4.txt"
-    r = run(["node", "--input-type=module", "-e", APP_SOLVE, str(link)], tmp)
+    r = run(["node", "--input-type=module", "-e", APP_SOLVE, str(ex / BOARD)], tmp)
     assert r.returncode == 0, r.stderr
     result = json.loads(r.stdout.strip().splitlines()[-1])
     assert result["verdict"] == "unique", result
@@ -268,50 +314,68 @@ def sweep_timed_components(tree):
         assert find_component_file(ex, doc).is_file(), ex.name
 
 
-LOAD = re.compile(r"""load(?:Source|At)?\(\s*['"]([^'"]+Component\.js)['"]""")
+# makeIo's `load(file, names, ...)`, with `names` an array literal or the name
+# of a `const` holding one.
+LOAD = re.compile(
+    r"""\bload\(\s*['"]([^'"]+Component[^'"]*\.js)['"]\s*,\s*(\[[^\]]*\]|[A-Za-z_$][\w$]*)"""
+)
+NAMES_CONST = r"""\bconst\s+{}\s*=\s*(\[[^\]]*\])"""
 LOCAL_IMPORT = re.compile(r"""from\s+['"](\./[^'"]+\.mjs)['"]""")
 
 
 def harness_loads(harness):
-    """The component files `harness` loads through makeIo, itself or through
-    the example-local modules it imports, as resolved paths."""
-    seen, todo, loads = set(), [harness], set()
+    """{component path: names loaded} for every component file `harness`
+    loads through makeIo, itself or through the example-local modules it
+    imports. Comments are blanked first, so a commented-out load is no load."""
+    seen, todo, loads = set(), [harness], {}
     while todo:
         module = todo.pop()
         if module in seen:
             continue
         seen.add(module)
-        text = module.read_text()
-        loads.update((module.parent / m).resolve() for m in LOAD.findall(text))
-        todo.extend((module.parent / m).resolve() for m in LOCAL_IMPORT.findall(text))
+        code = _js_code(module.read_text())
+        for file, names in LOAD.findall(code):
+            if not names.startswith("["):
+                const = re.search(NAMES_CONST.format(re.escape(names)), code)
+                assert const, f"{module.name}: load({file!r}, {names}) not resolved"
+                names = const.group(1)
+            path = (module.parent / file).resolve()
+            loads.setdefault(path, set()).update(re.findall(r"['\"](\w+)['\"]", names))
+        todo.extend((module.parent / m).resolve() for m in LOCAL_IMPORT.findall(code))
     return loads
 
 
 def sweep_fuzzed(tree):
-    fuzzed = set()
+    loads = {}
     for harness in (tree / "examples").glob("*/soundness-harness.mjs"):
-        fuzzed |= harness_loads(harness)
+        for path, names in harness_loads(harness).items():
+            loads.setdefault(path, set()).update(names)
     shipped = shipped_components(tree)
-    unfuzzed = [
-        c for c in shipped if (tree / c).resolve() not in fuzzed and c not in NOT_FUZZED
-    ]
-    assert not unfuzzed, (
-        f"no soundness harness loads {unfuzzed} (or list it in NOT_FUZZED)"
-    )
-    stale = sorted(set(NOT_FUZZED) - set(shipped))
-    assert not stale, f"NOT_FUZZED names a file that is gone: {stale}"
-    also = sorted(c for c in NOT_FUZZED if (tree / c).resolve() in fuzzed)
-    assert not also, f"NOT_FUZZED names a component a harness loads: {also}"
+    problems = []
+    for c in shipped:
+        names = loads.get((tree / c).resolve())
+        if c in NOT_FUZZED:
+            if names is not None:
+                problems.append(f"{c}: in NOT_FUZZED but a harness loads it")
+        elif names is None:
+            problems.append(f"{c}: no soundness harness loads it")
+        elif "validate" not in names and re.search(
+            r"^function validate\b", (tree / c).read_text(), re.M
+        ):
+            problems.append(
+                f"{c}: loaded without validate, so the runner never asks it"
+            )
+    problems += [f"{c}: in NOT_FUZZED but gone" for c in set(NOT_FUZZED) - set(shipped)]
+    assert not problems, "\n".join(problems)
 
 
 def sweep_registered_names(tree):
-    names = {p.stem for p in (tree / "examples").rglob("*Component.js")}
+    names = {p.stem for p in (tree / "examples").rglob("*Component*.js")}
     missing = [
-        f"{link.relative_to(tree)}: {comp['name']}"
+        f"{link.relative_to(tree)}: {name}"
         for link in sorted((tree / "examples").rglob("PUZZLE_LINK*.txt"))
-        for c in decode_puzzle(link.read_text().strip())["puzzle"]["constraints"]
-        for comp in c.get("definition", {}).get("components", [])
-        if comp["name"] not in names
+        for name in shipped_component_code(decode_puzzle(link.read_text().strip()))
+        if name not in names
     ]
     assert not missing, f"links register components with no file: {missing}"
 
@@ -322,8 +386,8 @@ def main():
         ex = copy_tree(tmp)
         step_layout_gate(tmp, ex)
         step_timed_component(ex)
-        step_document(tmp, ex)
-        step_fuzz_runner(ex)
+        step_rebuild(ex)
+        step_fuzz_runner(tmp, ex)
         step_lint(tmp)
         step_research_load(tmp, ex)
         step_app_session(tmp, ex)
