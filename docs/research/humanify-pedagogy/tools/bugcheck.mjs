@@ -1,12 +1,5 @@
-import fs from 'fs'
-let src = fs.readFileSync(process.argv[2], 'utf8')
-const tail = '})();'
-if (!src.trimEnd().endsWith(tail)) throw new Error('unexpected bundle tail')
-src = src.trimEnd().slice(0, -tail.length) +
-  '\n  globalThis.__probe = { createHelpers, OuterPosition, groupsArePolarityPair, describeDigitGroupKind, SudokuDigitSet, DigitsHelper };\n' + tail
-globalThis.self = globalThis; globalThis.onmessage = null; globalThis.postMessage = () => {}; globalThis.addEventListener = () => {}
-new Function(src)()
-const P = globalThis.__probe
+import { loadBundle } from '../../../../examples/_shared/bundle-load.mjs'
+const P = loadBundle({ expose: ['createHelpers', 'OuterPosition', 'groupsArePolarityPair', 'describeDigitGroupKind', 'SudokuDigitSet', 'DigitsHelper'] }).exposed
 const spec = { size: { width: 9, height: 9 }, minDigit: 1, maxDigit: 9, type: 'sudoku' }
 const h = P.createHelpers(spec)
 console.log('== corner rays (straight, no diagonalType): outer corner -> first three cells of the ray')

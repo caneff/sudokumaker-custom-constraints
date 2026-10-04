@@ -4,9 +4,8 @@
 // time; that is the number on record for a shipped board, but a browser tab
 // per puzzle does not scale past a handful of boards. This loads the same
 // renamed solver bundle app-solve.mjs's app runs
-// (examples/_shared/vendor/bundle.claude.js) directly in Node, the
-// way docs/research/humanify-pedagogy/tools/bugcheck.mjs loads it for a
-// probe, and drives its worker protocol (bundle-solve-lib.mjs) to score
+// (examples/_shared/vendor/bundle.claude.js) directly in Node
+// through bundle-load.mjs's `loadBundle`, and drives its worker protocol (bundle-solve-lib.mjs) to score
 // thousands of puzzles in the time a browser scores a few dozen. The Node
 // number is a ranking tool, not the number on record -- see
 // docs/research/429-headless-solver-calibration.md.

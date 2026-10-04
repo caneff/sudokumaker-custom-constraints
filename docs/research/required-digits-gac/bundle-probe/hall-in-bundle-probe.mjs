@@ -10,34 +10,18 @@
 //
 // Run it from the repo root; paths are relative to it.
 //
-// Quarantine: the reference bundle is read verbatim and hash-checked; the
-// only in-memory edit is the probe export line bugcheck.mjs already uses. The
-// rule swap happens on the exported class at runtime, so nothing on disk ever
-// holds a modified bundle, and nothing here can build or verify a real link.
+// Quarantine: loadBundle (examples/_shared/bundle-load.mjs) reads the
+// reference bundle verbatim and hash-checks it; the only in-memory edit is
+// its export lines. The rule swap happens on the exported class at runtime,
+// so nothing on disk ever holds a modified bundle, and nothing here can build or verify a real link.
 import fs from 'fs'
-import crypto from 'crypto'
+import { loadBundle } from '../../../../examples/_shared/bundle-load.mjs'
 
-const REFERENCE = 'examples/_shared/vendor/bundle.claude.js'
-const REFERENCE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
-
-const raw = fs.readFileSync(REFERENCE, 'utf8')
-const sha = crypto.createHash('sha256').update(raw).digest('hex')
-if (sha !== REFERENCE_SHA) throw new Error(`reference bundle changed (${sha}); re-read it before trusting this probe`)
-
-const TAIL = '})();'
-if (!raw.trimEnd().endsWith(TAIL)) throw new Error('unexpected bundle tail')
 const EXPORTS = ['setPuzzleSpec', 'SolverState', 'Solver', 'HouseComponent', 'HouseType',
   'RequiredDigitsComponent', 'CustomLogicStepsGenerator', 'digitsInMask', 'toDigitMask',
   'filterCandidatesAtCellsChange', 'abortSolverChange', 'removeFirstValue', 'ValidResult', 'CustomPuzzleEnabledStepTypes', 'buildSolverStateFromPuzzle', 'PuzzleKind', 'applyInitialGridToState', 'EmptyValueSentinel']
-const src = raw.trimEnd().slice(0, -TAIL.length) +
-  `\n globalThis.__probe = { ${EXPORTS.join(', ')} };\n` + TAIL
-
-globalThis.self = globalThis
-globalThis.onmessage = null
-globalThis.postMessage = () => {}
-globalThis.addEventListener = () => {}
-new Function(src)()
-const P = globalThis.__probe
+const bundle = loadBundle({ expose: EXPORTS, countNodes: true })
+const P = bundle.exposed
 console.log('exports resolved:', Object.entries(P).filter(([, v]) => v === undefined).map(([k]) => k).join(',') || 'all')
 
 //! The board is a plain 9x9 sudoku plus the required-digits groups, so the
@@ -129,9 +113,7 @@ function buildState () {
 }
 
 function solve (label) {
-  let nodes = 0
-  const clone = P.SolverState.prototype.clone
-  P.SolverState.prototype.clone = function (...args) { nodes++; return clone.apply(this, args) }
+  const nodesBefore = bundle.nodes()
   const state = buildState()
   const solver = new P.Solver(state)
   new P.CustomLogicStepsGenerator({ stepTypes: [...P.CustomPuzzleEnabledStepTypes], useRandomness: false }).setLogicSteps(solver)
@@ -145,7 +127,7 @@ function solve (label) {
   }
   globalThis.__found = found
   const ms = Number(process.hrtime.bigint() - t0) / 1e6
-  P.SolverState.prototype.clone = clone
+  const nodes = bundle.nodes() - nodesBefore
   console.log(`  ${label.padEnd(16)} solutions ${solutions}  nodes ${nodes}  ${ms.toFixed(0)}ms`)
   return { solutions, nodes, ms }
 }

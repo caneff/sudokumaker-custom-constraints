@@ -302,8 +302,8 @@ wall-clock row comparable to the tables above.
 
 **Quarantine.** The probe never writes a modified bundle: it reads
 `examples/_shared/vendor/bundle.claude.js` verbatim, refuses to run if
-its sha256 has changed, appends only the `globalThis.__probe` export line
-bugcheck.mjs already uses, and swaps the rule on the exported class at runtime.
+its sha256 has changed, appends only the export lines `loadBundle`
+(`examples/_shared/bundle-load.mjs`) adds, and swaps the rule on the exported class at runtime.
 Nothing here may build or verify a shipped link -- it would be measuring a
 solver nobody runs.
 
