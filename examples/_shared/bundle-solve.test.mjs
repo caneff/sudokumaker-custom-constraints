@@ -283,8 +283,7 @@ function* update (instance, puzzle) {
 }
 console.log('bundle-solve-lib: solveDocument throwing-component ok')
 
-// ---- bundle-solve.mjs: the CLI module imports cleanly (#668). It imported
-// `median` from app-solve-lib.mjs, which did not export it, so the tool died
-// at load. Importing must neither fail nor run the CLI (no argv here). ----
+// ---- bundle-solve.mjs: the CLI module loads (#668): its imports resolve, and
+// loading it does not run the CLI (there is no argv here to run it on). ----
 await import('./bundle-solve.mjs')
 console.log('bundle-solve: module imports ok')
