@@ -8,6 +8,8 @@
 
 import assert from 'assert'
 import { spawnSync } from 'child_process'
+import { mkdtempSync, symlinkSync } from 'fs'
+import { tmpdir } from 'os'
 import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve-lib.mjs'
 
 // ---- buildStartMessage: spec, grid, constraints, strategy ----
@@ -291,9 +293,12 @@ console.log('bundle-solve: module imports ok')
 
 // ---- bundle-solve.mjs: run directly, it runs the CLI (#668): no argument is
 // the usage error and a failing exit, not a silent success. ----
-{
-  const run = spawnSync(process.execPath, [new URL('./bundle-solve.mjs', import.meta.url).pathname], { encoding: 'utf8' })
+const cli = new URL('./bundle-solve.mjs', import.meta.url).pathname
+const link = `${mkdtempSync(`${tmpdir()}/bundle solve `)}/cli.mjs` // a symlink, in a path with a space
+symlinkSync(cli, link)
+for (const path of [cli, link]) {
+  const run = spawnSync(process.execPath, [path], { encoding: 'utf8' })
   assert.notStrictEqual(run.status, 0)
   assert.match(run.stderr, /usage: bundle-solve\.mjs <link_file>/)
 }
-console.log('bundle-solve: direct run ok')
+console.log('bundle-solve: direct and symlinked runs ok')

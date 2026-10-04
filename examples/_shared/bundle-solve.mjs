@@ -17,6 +17,8 @@
 // (default 3) reps. Decoding shells out to Python -- see
 // bundle-solve-lib.mjs's decodeLinkFile for why.
 
+import { realpathSync } from 'fs'
+import { fileURLToPath } from 'url'
 import { decodeLinkFile, solveDocument } from './bundle-solve-lib.mjs'
 import { median } from './app-solve-lib.mjs'
 
@@ -50,4 +52,4 @@ async function main () {
   console.log(`  MEDIAN ${median(times)}ms`)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) await main()
+if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) await main()
