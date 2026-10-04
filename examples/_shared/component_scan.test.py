@@ -32,6 +32,11 @@ if __name__ == "__main__":
     code = "    // a new BarComponent goes here\nnew FooComponent()"
     assert registered_components(code) == {"FooComponent"}
 
+    # a component reached through the app's table of the link's own classes
+    # (`customComponents`, bundle-api-reference.md) is constructed all the same
+    code = "new customComponents.FooComponent(name, cells)"
+    assert registered_components(code) == {"FooComponent"}
+
     # no registrations at all
     assert registered_components("") == set()
     assert registered_components("const x = 1;") == set()

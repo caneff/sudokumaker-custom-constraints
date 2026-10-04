@@ -9,7 +9,10 @@ import functools
 import pathlib
 import re
 
-_NEW_COMPONENT = re.compile(r"new ([A-Za-z0-9_]+Component)\b")
+# `new FooComponent(...)`, or `new customComponents.FooComponent(...)`: the
+# app's table of the link's own compiled classes, keyed by name
+# (bundle-api-reference.md, `compileCustomComponentClass`).
+_NEW_COMPONENT = re.compile(r"new (?:customComponents\.)?([A-Za-z0-9_]+Component)\b")
 
 # The built-in list of record: the component tables in
 # docs/builtin-components.md, reproduced there from the SudokuMaker docs. The
@@ -35,7 +38,7 @@ def builtin_components():
 
 def registered_components(backend_code):
     """Return the set of component names `backend_code` constructs with
-    `new <Name>Component(...)`.
+    `new <Name>Component(...)` or `new customComponents.<Name>Component(...)`.
 
     Comment lines are dropped first, so a note that mentions a component does
     not read as a registration. A shipped link carries no comments at all

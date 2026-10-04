@@ -368,8 +368,11 @@ LINK_PREFIX = "https://sudokumaker.app/?puzzle="
 
 
 def committed_links(example_dir):
-    """Every committed link .txt directly under `example_dir`, PUZZLE_LINK*.txt
-    first.
+    """Every committed link .txt under `example_dir`, its board subdirectories
+    included, PUZZLE_LINK*.txt first. A dot directory is scratch, not a board,
+    and is skipped: a link may sit in a board's own subdirectory, and every
+    one is gated (#659, reversing the flat-only rule of #177 without losing
+    its guarantee).
 
     A PUZZLE_LINK*.txt is a link by its name -- one that does not decode is a
     broken shipped board and gets reported as one. Any other .txt is a link
@@ -377,7 +380,9 @@ def committed_links(example_dir):
     is covered without a naming rule of its own and a golden or a note is left
     alone."""
     named, sniffed = [], []
-    for f in sorted(example_dir.glob("*.txt")):
+    for f in sorted(example_dir.rglob("*.txt")):
+        if any(p.startswith(".") for p in f.relative_to(example_dir).parts):
+            continue
         if f.name.startswith("PUZZLE_LINK"):
             named.append(f)
             continue
@@ -387,6 +392,19 @@ def committed_links(example_dir):
         except (OSError, UnicodeDecodeError):
             continue
     return named + sniffed
+
+
+def _shown(example_dir, link):
+    """`link`'s path inside its example, as a violation names it."""
+    return link.relative_to(example_dir).as_posix()
+
+
+def is_sudoku_document(puzzle):
+    """Is this a "sudoku" document? The app prepends SudokuRules to one --
+    every row and column of the whole grid a house (bundle.claude.js:11450-11456,
+    the handler at :11066) -- so its lines need no declaration and its edge
+    cells are real cells, not a clue ring."""
+    return puzzle.get("type") == "sudoku"
 
 
 def _ring_state(puzzle):
@@ -429,14 +447,14 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     )
     if entered and not clued:
         violations.append(
-            f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
+            f"{name}: {_shown(example_dir, link)} has {entered} entered value(s) on non-given cells"
         )
 
-    no_ring = is_no_ring(puzzle)
+    no_ring = is_no_ring(puzzle) or is_sudoku_document(puzzle)
     ring_filled, ring_total = (0, 0) if no_ring else _ring_state(puzzle)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
-            f"{name}: {link.name} fills all {ring_total} ring cells -- curate "
+            f"{name}: {_shown(example_dir, link)} fills all {ring_total} ring cells -- curate "
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
@@ -445,7 +463,9 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     if manifest.rules_prefix != "none" and not puzzle.get("comment", "").startswith(
         prefix
     ):
-        violations.append(f"{name}: {link.name} comment missing rules prefix")
+        violations.append(
+            f"{name}: {_shown(example_dir, link)} comment missing rules prefix"
+        )
 
     return violations
 
@@ -483,11 +503,19 @@ def check_components(example_dir, link, puzzle):
             continue
         shipped = [c["name"] for c in definition.get("components", [])]
         # A definition with no code backend registers nothing; its component
-        # list is then empty too, so the two sets still match.
-        backend = definition.get("backend", {}).get("code", "")
+        # list is then empty too, so the two sets still match. A shipped
+        # component can construct another in its place (a wrapper swapping
+        # itself out through `customComponents`), so their code registers
+        # too.
+        registering = "\n".join(
+            [
+                definition.get("backend", {}).get("code", ""),
+                *(c.get("code", "") for c in definition.get("components", [])),
+            ]
+        )
         violations.extend(
-            f"{name}: {link.name} constraint {definition['name']!r}: {problem}"
-            for problem in describe_mismatch(*mismatch(shipped, backend))
+            f"{name}: {_shown(example_dir, link)} constraint {definition['name']!r}: {problem}"
+            for problem in describe_mismatch(*mismatch(shipped, registering))
         )
 
     return violations
@@ -620,7 +648,7 @@ def check_houses(example_dir, link, puzzle, manifest):
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(manifest, puzzle):
+    if declares_rows_and_columns_in_js(manifest, puzzle) or is_sudoku_document(puzzle):
         return []
 
     houses = declared_houses(puzzle)
@@ -632,7 +660,7 @@ def check_houses(example_dir, link, puzzle, manifest):
         missing = sum(1 for line in lines if line and frozenset(line) not in houses)
         if missing:
             violations.append(
-                f"{name}: {link.name} declares no house for {missing} interior "
+                f"{name}: {_shown(example_dir, link)} declares no house for {missing} interior "
                 f"{label}(s) -- a region constraint gives boxes only, so rows and "
                 f"columns need their own constraints (docs/gotchas.md #9)"
             )
@@ -695,7 +723,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
             source, want = current[title]
             if definition.get("backend", {}).get("code") != want:
                 violations.append(
-                    f"{name}: {link.name} embeds a stale copy of {source} -- "
+                    f"{name}: {_shown(example_dir, link)} embeds a stale copy of {source} -- "
                     f"rebuild it in the same commit as the change (the example's "
                     f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                     f"for a hand-built board)"
@@ -706,7 +734,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
         )
         if comp is not None and comp.get("code") != comp_want:
             violations.append(
-                f"{name}: {link.name} embeds a stale copy of {comp_source} -- "
+                f"{name}: {_shown(example_dir, link)} embeds a stale copy of {comp_source} -- "
                 f"rebuild it in the same commit as the change (the example's "
                 f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                 f"for a hand-built board)"
@@ -736,7 +764,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     lo, hi = puzzle.get("minDigit"), puzzle.get("maxDigit")
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
         return [
-            f"{name}: {link.name} ships {sorted(carried)} but declares no "
+            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} but declares no "
             f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
             f"the grid size, so the range rests on that default, not on the "
             f"document. Pin minDigit/maxDigit on the document (#394)"
@@ -753,7 +781,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     if lengths and lengths != {span}:
         cells = "/".join(str(n) for n in sorted(lengths))
         return [
-            f"{name}: {link.name} ships {sorted(carried)} and declares "
+            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} and declares "
             f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
             f"cell interior lines -- a line as long as the range is a house, "
             f"any other length falls back to plain all-different, and the "
@@ -871,7 +899,7 @@ def check_example(example_dir):
     for link in committed_links(example_dir):
         if link.name.startswith("PUZZLE_LINK") and not LINK_RE.match(link.name):
             violations.append(
-                f"{name}: link name {link.name} does not match "
+                f"{name}: link name {_shown(example_dir, link)} does not match "
                 f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
                 f"(size=NxN, tags in fixed order {list(TAGS)})"
             )
@@ -879,7 +907,9 @@ def check_example(example_dir):
         try:
             puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
         except Exception as e:
-            violations.append(f"{name}: {link.name} failed to decode: {e}")
+            violations.append(
+                f"{name}: {_shown(example_dir, link)} failed to decode: {e}"
+            )
             continue
         violations.extend(check_share_ready(example_dir, link, puzzle, manifest))
         violations.extend(check_components(example_dir, link, puzzle))

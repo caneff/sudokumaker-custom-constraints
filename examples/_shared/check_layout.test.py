@@ -1023,6 +1023,48 @@ if __name__ == "__main__":
         assert "docs/research/zzz/x.py" in violations[0], violations[0]
         assert "finders/" in violations[0], violations[0]
 
+    # a link in a board's own subdirectory is gated like one at the top level
+    # (#659): the share criteria and the name grammar both reach it, and the
+    # violation names its path inside the example
+    with example() as (root, d):
+        (d / "board").mkdir()
+        (d / "board" / "PUZZLE_LINK.txt").write_text(_link(entered=True))
+        (d / "board" / "PUZZLE_LINK_demo.txt").write_text(_link())
+        violations = check_tree(root)
+        assert len(violations) == 2, violations
+        assert "board/PUZZLE_LINK.txt has 1 entered value" in violations[0], violations
+        assert "link name board/PUZZLE_LINK_demo.txt" in violations[1], violations
+
+    # ...but a dot directory is scratch, not a board, and is left alone
+    with example() as (root, d):
+        (d / ".scratch").mkdir()
+        (d / ".scratch" / "PUZZLE_LINK_x.txt").write_text(_link(entered=True))
+        assert check_tree(root) == [], check_tree(root)
+
+    # a "sudoku" document gets its rows and columns from the app itself
+    # (SudokuRules, prepended for a sudoku document: bundle.claude.js:11450-11456),
+    # and has no clue ring, so it needs no declared lines and opens on the
+    # plain rules sentence
+    doc = decode_puzzle(_link(houses="none", ringless=True))
+    doc["puzzle"]["type"] = "sudoku"
+    with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+    doc["puzzle"]["type"] = "custom"
+    with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
+        violations = check_tree(root)
+        assert any("declares no house" in v for v in violations), violations
+
+    # a component a shipped component constructs through `customComponents` is
+    # registered, not dead weight
+    doc = decode_puzzle(
+        _link(ships=("FooComponent", "BarComponent"), registers=("FooComponent",))
+    )
+    custom = next(c for c in doc["puzzle"]["constraints"] if c.get("type") == 1000)
+    foo = custom["definition"]["components"][0]
+    foo["code"] += "\nnew customComponents.BarComponent(name, cells)"
+    with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
     # a path into docs/research/ in examples/ code fails, in each spelling the
     # tree has used: a joined path, a pathlib chain, a URL, a plain string
     loads = {
