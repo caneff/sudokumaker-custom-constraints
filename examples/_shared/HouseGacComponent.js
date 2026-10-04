@@ -7,7 +7,7 @@
 //!
 //! A candidate survives only if some filling of the whole house with different
 //! digits uses it. The app's own `HouseComponent` and `DifferentDigitsComponent`
-//! stop short of that: neither finds a Hall set (#406).
+//! stop short of that: neither finds a Hall set.
 //!
 //! The rule. Take any group of k cells in the house. Pool every digit those
 //! cells could still hold.
@@ -37,7 +37,7 @@
 //! digits before and after them.
 //!
 //! Placed cells (one candidate left) are stripped from the house and skipped
-//! by the walk (#435; the argument for why that loses nothing is with the
+//! by the walk (the argument for why that loses nothing is with the
 //! strip loop in `update`, below).
 
 //! 2^n groups per call over the free cells: about 2 us at n=9 free cells
@@ -121,7 +121,7 @@ function * update (instance, puzzle) {
   //! placed cell owns its digits iff the rest of the group does, and its only
   //! extra removal is the placed digit -- already stripped here -- so the
   //! free-cell walk below removes exactly what walking every group of the
-  //! whole house would remove (#435).
+  //! whole house would remove.
   let freeCount = 0
   for (let position = 0; position < cellCount; position++) {
     if (digitCountOf[candidates[position]] === 1) {
