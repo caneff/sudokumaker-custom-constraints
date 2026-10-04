@@ -60,6 +60,19 @@ frame reader explains the directive itself.
   appears exactly once and the diff against main holds only the intended
   change — a splicing generator run twice on one file duplicates the scene
   silently.
+- Before launching a long solver, search or hunt, list every available
+  speedup (tighter model, channeling or decomposition, per-task splits,
+  portfolio workers, warm starts, dropping constraints the goal does not
+  need), apply the ones that pay and name the rest in the launch message.
+  The fast approach should not wait for Chris to ask for it.
+
+## A board state Chris shows (always on)
+
+When Chris shows a board state and asks what is forced, every step you claim
+is derived from the cells he has actually entered and is checked against the
+model before you state it — never from the solver's own solution, and never
+from pencilmarks, which narrow one cell without ruling the digit out of the
+others. If no step is forced from that state, say so.
 
 ## Coding invariant (always on)
 
