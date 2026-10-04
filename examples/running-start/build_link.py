@@ -91,11 +91,7 @@ def build_from_template():
 def check(link, doc):
     back = decode_puzzle(link)
     assert back == doc, "link does not decode back to the built document"
-    rs = next(
-        c
-        for c in doc["puzzle"]["constraints"]
-        if c.get("definition", {}).get("name") == CONSTRAINT_NAME
-    )
+    rs = find_constraint(doc, CONSTRAINT_NAME)
     names = [comp["name"] for comp in rs["definition"]["components"]]
     assert names == [f[:-3] for f in COMPONENTS], f"components wrong: {names}"
     assert rs["definition"]["backend"]["code"] == minify_file(HERE / "main-global.js")
