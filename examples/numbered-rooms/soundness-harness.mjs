@@ -11,7 +11,7 @@ const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const mod = load('NumberedRoomsComponent.js', ['setParams', 'update'])
+const mod = load('NumberedRoomsComponent.js', ['setParams', 'update', 'validate'])
 
 const CLUE = 0
 const ITERS = 20000

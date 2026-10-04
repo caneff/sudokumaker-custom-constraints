@@ -36,7 +36,7 @@ installGlobals(0, 9)
 
 const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
-const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
+const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update', 'validate']
 const sideMod = load('SideSumComponent.js', SIDE_NAMES)
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
 
