@@ -11,10 +11,13 @@
 # example whose manifest sets rules_prefix = "none" (not sudoku). A _clued
 # link is exempt from the first two -- filling every clue is what that name
 # means. It also checks that every link ships exactly the components its own
-# embedded backend registers, so a link cannot go stale behind its builder, and
-# that every interior row and column of a sudoku example's board is a house the
-# link actually declares (a region constraint gives boxes only -- see #335 and
-# docs/gotchas.md #9; a manifest with houses = false is a bare board, exempt).
+# embedded code registers (the backend, or a shipped component that constructs
+# another through `customComponents`), so a link cannot go stale behind its
+# builder, and that every interior row and column of a sudoku example's board is
+# a house the link actually declares (a region constraint gives boxes only --
+# see #335 and docs/gotchas.md #9; a manifest with houses = false is a bare
+# board, and a "sudoku" document gets its lines from the app, so both are
+# exempt).
 #
 # What is special about an example is that example's own: each carries an
 # example.toml (manifest.py), and this sweep names no example.
@@ -472,8 +475,10 @@ def check_share_ready(example_dir, link, puzzle, manifest):
 
 def check_components(example_dir, link, puzzle):
     """Return one violation string per custom constraint in `puzzle`
-    whose shipped component set differs from the set its own embedded backend
-    registers.
+    whose shipped component set differs from the set its own embedded code
+    registers: the backend, plus any shipped component that constructs another
+    in its place (`new customComponents.<Name>`, a wrapper swapping itself
+    out).
 
     A component the backend never instantiates is dead weight, and the
     recipient reads its source as part of the rule; a component the backend
@@ -484,7 +489,8 @@ def check_components(example_dir, link, puzzle):
     #290, #291).
 
     A lexical check, like the one in `framebuild.Lane.check`: it reads
-    `new <Name>Component` off the backend source, so a class reached through
+    `new <Name>Component` (or `new customComponents.<Name>Component`) off that
+    code, so a class reached through
     an alias, or named some other way, is invisible to it. SudokuMaker's own
     built-ins are subtracted first (`component_scan.builtin_components`): the
     app provides those classes, so a backend that constructs one ships no
@@ -629,6 +635,9 @@ def check_houses(example_dir, link, puzzle, manifest):
     constraint list has to do the same. This cost three tickets of quad-rank
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
     a 6x6 whose true count is 2 came back as 5 (#335, docs/gotchas.md #9).
+
+    A "sudoku" document is exempt: the app prepends SudokuRules to it, every
+    row and column of the whole grid (`is_sudoku_document`).
 
     Interior is `interior_cells` above.
     """
