@@ -1,8 +1,5 @@
-// Strength checks for the Hit Counts components. Soundness (never remove a true
-// value) lives in soundness-harness.mjs; this file checks the other direction —
-// that a rewrite does not quietly prune LESS than before.
-//
-//   node examples/hit-counts/update-strength.test.mjs
+// Strength checks for the Hit Counts components: a rewrite must not quietly
+// prune LESS than before.
 //
 // A line clued at both ends gets the pair component, which carries the work the
 // per-line and opposite-pair components used to split between them, so its floor is
@@ -102,8 +99,8 @@ function stateOf (start, houses) {
   }
 }
 
-// A drawn line with no clue at its far end still gets this component, so it
-// keeps its own floor.
+// A drawn line with no clue at its far end still gets HitCountsComponent, so
+// it keeps its own floor.
 {
   // The floor still has its `initialize`; the current file leaves the load
   // pass to the base, which runs `update` once -- the fixpoint's first pass.

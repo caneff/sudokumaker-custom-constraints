@@ -47,8 +47,9 @@ def check_board(gen):
 
 
 def check_self_counting_is_modelled(gen):
-    """Only a counter holding an even digit tells the two readings apart: an
-    odd counter changes no count either way, so a test on one proves nothing."""
+    """Only a counter holding an even digit tells counting itself apart from
+    not counting itself: an odd counter changes no count either way, so a test
+    on one proves nothing."""
     full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
     evens = [g for g in gen["groups"] if full[tuple(g["counter"])] in EVENS]
     assert evens, "fixture: no group's counter holds an even digit"
@@ -65,7 +66,7 @@ def check_self_counting_is_modelled(gen):
 def check_search_keeps_counter_off_the_label_corner():
     """A cage label draws in the group's top-left cell, so a draw never puts
     the counter's own # there. (The committed gen.json breaks this once;
-    self-count/README.md names it.)"""
+    docs/research/count-digits-gac/self-count/README.md names it.)"""
     import random
 
     from build_count_digits_selfcount import draw_group

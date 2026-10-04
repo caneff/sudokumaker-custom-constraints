@@ -67,8 +67,8 @@ def _post_flatmate(m, x):
 
 
 def _post_counting_circles(m, x, circles):
-    """The board also bans 5 from every circle, so 5 is excluded rather than
-    counted."""
+    """No circle may hold a 5 (a separate rule of the board), so 5 is excluded
+    rather than counted."""
     cells = [divmod(i, N) for i in circles]
     for d in range(1, N + 1):
         if d == 5:

@@ -1,3 +1,5 @@
+# Build a same-board comparison link: the committed PUZZLE_LINK.txt, or
+# --board, with one component's code swapped for a candidate file.
 # PUZZLE_LINK.txt runs the global lane (docs/example-layout.md), so a
 # --backend to swap in is main-global.js.
 
