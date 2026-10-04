@@ -165,7 +165,7 @@ node examples/_shared/house-gac.test.mjs
 
 ## Timing
 
-`just time house-gac` drives the live app on `PUZZLE_LINK.txt`. The
+`just time house-gac` drives the recorded app on `PUZZLE_LINK.txt`. The
 component is unmodified from its shipped form, so the run times the baseline
 against itself (`time_example.py`: byte-equal candidate code times the
 baseline only).

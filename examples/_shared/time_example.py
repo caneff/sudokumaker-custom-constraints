@@ -11,7 +11,8 @@
 #
 #   uv run --with lzstring examples/_shared/time_example.py <example>
 #
-# Stays out of `just check`: it drives the live site (docs/real-app-timing.md).
+# Stays out of `just check`: it drives the recorded app, a HAR replay that
+# `SM_LIVE=1` re-records (docs/real-app-timing.md).
 
 import argparse
 import atexit

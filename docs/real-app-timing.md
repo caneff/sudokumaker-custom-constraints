@@ -281,7 +281,7 @@ the method, not a running log.
   `app-solve.mjs` addresses them by their `<svg class="Icon NAME">`
   (`ShowCandidates`). SudokuMaker is pre-release — if an icon name changes,
   re-probe.
-- **This hits the live site.** It is not part of `just check`.
+- **This replays the recorded app (the HAR replay of sudokumaker.app; `SM_LIVE=1` re-records it).** It is not part of `just check`.
 - **Never time with entered values present.** The app solves from the cells as
   loaded, givens and entered values alike, and says so: "This is a unique
   solution (based on already entered values and pencil marks)". Strip first.

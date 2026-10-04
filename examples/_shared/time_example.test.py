@@ -2,7 +2,7 @@
 # PASS/FAIL verdict, the loud-fail behavior for a missing PUZZLE_LINK.txt or
 # build_link.py, and run()'s own orchestration with the browser call faked out
 # (the app_solve adapter reassigned to a canned-median stub, which is the only
-# thing in run() that needs the live site). Fake medians only; no live
+# thing in run() that needs the app). Fake medians only; no live
 # browser. The CLI's real run against numbered-rooms is a manual check,
 # not here — see docs/real-app-timing.md.
 #

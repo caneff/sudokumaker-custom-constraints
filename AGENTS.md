@@ -122,7 +122,7 @@ others. If no step is forced from that state, say so.
 ## End-to-end seam
 
 - **Seam**: `just check-full`
-- **Blind to**: the live app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
+- **Blind to**: the app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
 
 The controller re-runs it on a PR merged into current `main` before the
 merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
@@ -143,8 +143,8 @@ merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
   `uv run <file>`. The `uv run --with ...` usage lines in older file headers
   and READMEs still work; the justfile never passes `--with`.
 - Real-app timing for one example: `just time <example>` — prints a
-  paste-ready row; drives the live site, so it stays out of both gates. See
-  `docs/real-app-timing.md`.
+  paste-ready row; drives the recorded app (HAR replay; `SM_LIVE=1`
+  re-records it), so it stays out of both gates. See `docs/real-app-timing.md`.
 - **A browser-driving probe runs in the local session, never a sandboxed
   delegate.** `just time`, `app-solve.mjs`, `app-strip.mjs` and any Playwright
   probe need Chromium and a writable profile. The Codex rescue companion pins
