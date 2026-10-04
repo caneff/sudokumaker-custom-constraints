@@ -266,10 +266,13 @@ in the live app and record what it said:
 
 ## The `original/` baseline
 
-Baseline code and links for `just time` comparisons live under an
-`original/` subdir, which mirrors the example's own layout for the baseline
-component. `_original` links pair with it. Keep an `original/` baseline only
-where `just time` actually compares against it — not as a general changelog.
+A vendored baseline — code and links a test or `just time` compares
+against — lives under an `original/` subdir, which mirrors the example's own
+layout for the baseline component. `_original` links pair with it where
+`just time` is the comparison; fillomino's `original/` has none, because
+`update-strength.test.mjs` is (#659). Keep an `original/` baseline only where a
+test or `just time` actually compares against it — not as a general
+changelog.
 
 ## The shared frame reader, and `#include`
 
