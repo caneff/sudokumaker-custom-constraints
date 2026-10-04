@@ -1,9 +1,3 @@
-// Soundness fuzz for every skyscraper component. Soundness = a component never
-// removes a cell's TRUE value. Each case is a random line with its true clues,
-// one per clued end. We seed random partial candidate states that still allow
-// every true value, run the component to a fixpoint, and check the true values
-// survived. A removed true value can make a real puzzle unsolvable.
-//
 // Both DPs claim more than soundness -- each is a decision procedure for the
 // line it reads -- so each is also held to a brute-force oracle at n=5.
 //

@@ -1,8 +1,6 @@
 // Strength gate for FillominoComponent.update, both halves: on any state the
 // component never keeps a candidate the vendored baseline removed (half one),
-// and on some state it removes one the baseline keeps (half two). Soundness
-// (never remove a true value) lives in soundness-harness.mjs; this file checks
-// the other direction, against a real reference.
+// and on some state it removes one the baseline keeps (half two).
 //
 // The reference is the community catalog's fillomino constraint, vendored
 // verbatim at docs/research/fillomino-baseline/.

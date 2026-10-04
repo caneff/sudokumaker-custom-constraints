@@ -1,9 +1,3 @@
-// Soundness fuzz for the Hit Counts components. Soundness = a component never
-// removes a cell's TRUE value. We seed random partial states in which every cell
-// still allows its true value, run the component to a fixpoint, and check the
-// true value survived. A removed true value is a bug that can make a real puzzle
-// unsolvable.
-//
 // Both line components are fuzzed on all three line kinds (docs/line-contract.md):
 // a bare line an author drew, a house, and a full house. The hit sweep is sound
 // on every kind; the mirrored-pair exclusion needs a house, and the no-n-1 rule
