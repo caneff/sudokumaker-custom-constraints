@@ -1,4 +1,4 @@
-// Time the REAL SudokuMaker solver on a puzzle link, in the live app.
+// Time the REAL SudokuMaker solver on a puzzle link, in the recorded app (HAR replay; SM_LIVE=1 re-records it).
 //
 // The recovery probes in this repo time our own GAC + DFS mock. That measures
 // deduction strength, not what the app does: SudokuMaker has its own solver,
