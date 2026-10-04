@@ -139,7 +139,7 @@ function * update (instance, puzzle) {
   if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return
   const tallest = maxDigit - minDigit + 2
   const clueCand = puzzle.getCandidatesBitMask(clue)
-  if (clueCand === 0) return
+  if (clueCand === 0) return // contradiction; the solver sees it on the clue cell
   const { fwd, bwd, cand, keep } = scratchFor()
   const layers = (len + 1) * tallest
   fwd.fill(0, 0, layers)
@@ -149,7 +149,7 @@ function * update (instance, puzzle) {
   const inRange = (-1 << minDigit) & ~(-2 << maxDigit)
   for (let i = 0; i < len; i++) {
     const c = puzzle.getCandidatesBitMask(line[i]) & inRange
-    if (c === 0) return
+    if (c === 0) return // no legal digit here; the solver sees it on the cell
     cand[i] = c
   }
 

@@ -42,11 +42,11 @@ function runningStart (puzzle, line) {
 // and, if k < n, a break at line[k].
 //
 // Walk the line tracking, per prefix length, the smallest and largest end
-// value a climbing prefix can reach: minEnd[j] (`mn`, greedy
-// smallest-above-previous) and maxEnd[j] (`mx`, the largest candidate that
-// still climbs from minEnd[j-1]). A prefix of length j+1 exists while minEnd
-// stays defined. The break at k is tested against maxEnd[k-1], the largest
-// reachable predecessor, so a true clue is never dropped.
+// value a climbing prefix can reach: `mn` is the smallest end (greedy
+// smallest-above-previous) and `mx` the largest candidate that still climbs
+// from the previous `mn`. A prefix exists while `mn` stays defined. The break
+// at k is tested against the `mx` one cell back, the largest reachable
+// predecessor, so a true clue is never dropped.
 //
 // Bitmasks: -(1 << d) masks every digit >= d, (1 << d) - 1 every digit < d,
 // m & -m isolates the lowest set bit, and 31 - clz32 reads a bit's position.
@@ -116,7 +116,7 @@ function * update (instance, puzzle) {
   }
 
   if (puzzle.hasValue(clue)) {
-    const k = puzzle.getValue(clue)
+    const k = puzzle.getValue(clue) // k === kmin here, so the window above already ran
     // A 0 clue (a board whose digits start at 0) has no last cell; validate rejects it.
     if (k >= 1 && k < n) yield * below(puzzle, line[k], line[k - 1], breakStrict)
   }

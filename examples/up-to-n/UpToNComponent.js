@@ -50,7 +50,7 @@ function feasiblePositions (instance, puzzle) {
       feasible.hi.push(hi)
     }
     const rest = mask & ~bitN
-    if (rest === 0) break
+    if (rest === 0) break // this cell must be N, so no later N is the first
     lo += lowBit(rest)
     hi += highBit(rest)
     if (lo > clue) break
