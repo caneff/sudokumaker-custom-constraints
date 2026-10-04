@@ -86,7 +86,7 @@ frame reader explains the directive itself.
   text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
   `framebuild.py`); its `example.toml` says `rules_prefix = "ringless"`, and
   `check_layout.py` finds the other no-ring boards from their backend
-  (`is_no_ring`).
+  (`is_no_ring`) or from a `"sudoku"` document type (`is_sudoku_document`).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 

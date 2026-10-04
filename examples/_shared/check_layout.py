@@ -480,9 +480,9 @@ def check_components(example_dir, link, puzzle):
     in its place (`new customComponents.<Name>`, a wrapper swapping itself
     out).
 
-    A component the backend never instantiates is dead weight, and the
-    recipient reads its source as part of the rule; a component the backend
-    instantiates but the link omits fails inside the app, where the author
+    A component nothing in the link instantiates is dead weight, and the
+    recipient reads its source as part of the rule; a component the link's
+    code instantiates but the link omits fails inside the app, where the author
     never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
     changes, the link is not regenerated, and nothing notices (#287, #289,
