@@ -44,7 +44,7 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   return search(state, { interior: cells, comps: [], alldiffGroups: [cells], floorGroup: floor, validLeaf, nodeCap })
 }
 {
-  // (1,2) and (2,1) are both legal: two solutions, not "one per branch tried".
+  // (1,2) and (2,1) are both legal: two solutions.
   const two = solve([[1, 2], [1, 2]])
   assert.strictEqual(two.solutions, 2, `two legal assignments, got ${two.solutions}`)
   assert.strictEqual(two.capped, false)
