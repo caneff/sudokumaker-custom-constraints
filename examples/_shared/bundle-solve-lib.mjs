@@ -1,19 +1,16 @@
 // Run the app's real solver in Node, on a decoded puzzle document, without a
-// browser (#429). Loads the renamed solver bundle
-// (examples/_shared/vendor/bundle.claude.js) the way
-// docs/research/humanify-pedagogy/tools/bugcheck.mjs does: stub the worker
-// globals, `new Function` the trimmed source, then drive it through its own
+// browser (#429). Loads the renamed solver bundle through bundle-load.mjs's
+// `loadBundle`, then drives it through its own
 // `onmessage` wire protocol -- the same "start" then "findAll" messages the
 // real worker gets, read straight from the bundle body
 // (bundle.claude.js:11461-11591; docs/research/bundle-api-reference.md
 // "Worker handler for..." entries), never guessed.
 
-import { readFileSync } from 'fs'
 import { execFileSync } from 'child_process'
 import { join } from 'path'
+import { loadBundle } from './bundle-load.mjs'
 
 const HERE = import.meta.dirname
-const BUNDLE_PATH = join(HERE, 'vendor', 'bundle.claude.js')
 const DECODE_CLI = join(HERE, 'link_codec_cli.py')
 
 // The worker's own sentinel for "no value in this cell"
@@ -21,7 +18,7 @@ const DECODE_CLI = join(HERE, 'link_codec_cli.py')
 const EMPTY_VALUE = 4294967295
 
 // Every LogicStepType string, read off the live bundle at load time
-// (loadWorker's `__expose.LogicStepType`) rather than hand-copied here, so a
+// (loadWorker's `LogicStepType` expose) rather than hand-copied here, so a
 // bundle refresh can never drift this out of sync with bundle.claude.js:4752-
 // 4768. The search itself (`Solver.findSolutions`) is correct with any subset
 // enabled or none at all -- these only pick which cheap deductions run
@@ -133,8 +130,7 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
 // plain, blocking function -- bundle.claude.js:11578 -- so a thrown-and-
 // caught component error surfaces synchronously through the console.error
 // override in solveDocument). `handleStartMessage` and `LogicStepType` are
-// exposed separately, the way bugcheck.mjs exposes internals with a trailing
-// `globalThis.__probe = ...` before the bundle's closing `})();`:
+// exposed separately, through loadBundle's `expose` list:
 // `handleStartMessage` is itself `async` with no internal `await`
 // (bundle.claude.js:11511), so calling it through `onmessage`'s fire-and-
 // forget dispatch turns a thrown error into an unobserved rejected promise
@@ -142,30 +138,8 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
 // `LogicStepType` is module-local (bundle.claude.js:4752), so this is the
 // only way to build a `strategy.stepTypes` list pinned to the loaded bundle.
 function loadWorker () {
-  let src = readFileSync(BUNDLE_PATH, 'utf8')
-  const tail = '})();'
-  if (!src.trimEnd().endsWith(tail)) throw new Error('unexpected bundle tail')
-  src = src.trimEnd().slice(0, -tail.length) +
-    '\n  __expose.handleStartMessage = handleStartMessage\n' +
-    '\n  __expose.LogicStepType = LogicStepType\n' + tail
-
-  const posted = []
-  const expose = {}
-  // `new Function` runs in global scope (bundle-api-reference.md:1577), so
-  // `onmessage = ...` and `postMessage(...)` in the bundle resolve as bare
-  // identifiers against whichever globals are in scope when it runs -- bind
-  // the names as parameters instead of relying on `globalThis`, so this
-  // bundle load never clobbers another one running in the same process.
-  const fn = new Function('self', 'onmessage', 'postMessage', 'addEventListener', '__expose', // eslint-disable-line no-new-func
-    src + '\nreturn onmessage')
-  const self = {}
-  const onmessage = fn(self, null, (msg) => posted.push(msg), () => {}, expose)
-  return {
-    onmessage,
-    handleStartMessage: expose.handleStartMessage,
-    LogicStepType: expose.LogicStepType,
-    drain: () => posted.splice(0)
-  }
+  const { onmessage, drain, exposed } = loadBundle({ expose: ['handleStartMessage', 'LogicStepType'] })
+  return { onmessage, drain, handleStartMessage: exposed.handleStartMessage, LogicStepType: exposed.LogicStepType }
 }
 
 // Runs a decoded puzzle document through the real solver: a "start" message,

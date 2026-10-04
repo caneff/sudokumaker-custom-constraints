@@ -99,8 +99,9 @@ frame reader explains the directive itself.
   route to the call order.
 - **When the reference is not enough, read the body**: the renamed bundle is
   `examples/_shared/vendor/bundle.claude.js`; `sed -n` the cited
-  range. To run it in Node, copy the loading trick in
-  `docs/research/humanify-pedagogy/tools/bugcheck.mjs`. Never assert solver
+  range. To run it in Node, call `loadBundle({ expose: [...] })` from
+  `examples/_shared/bundle-load.mjs` (SHA guard, `countNodes` hook); never copy
+  the splice from `docs/research/humanify-pedagogy/tools/bugcheck.mjs`. Never assert solver
   behaviour from a method name or from memory when the body is one command away.
 - Folder guide, page build and the artifact link:
   `docs/research/humanify-pedagogy/README.md`.
