@@ -17,7 +17,7 @@
 import fs from 'fs'
 import crypto from 'crypto'
 
-const REFERENCE = 'docs/research/humanify-pedagogy/bundle.claude.js'
+const REFERENCE = 'examples/_shared/vendor/bundle.claude.js'
 const REFERENCE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
 
 const raw = fs.readFileSync(REFERENCE, 'utf8')
@@ -45,7 +45,7 @@ console.log('exports resolved:', Object.entries(P).filter(([, v]) => v === undef
 //! hand-rolled setRegions -- the same construction the worker uses.
 const SPEC = { size: { width: 9, height: 9 }, minDigit: 1, maxDigit: 9, digitCount: 9, type: P.PuzzleKind.Sudoku }
 
-const gen = JSON.parse(fs.readFileSync('docs/research/required-digits-gac/sparse/gen.json', 'utf8'))
+const gen = JSON.parse(fs.readFileSync('examples/count-digits-gac/required-digits/sparse/gen.json', 'utf8'))
 const N = 9
 //! gen.json stores (row, column) pairs, not (x, y) -- build_sparse_required_digits.py's own convention.
 const cellId = (row, column) => row * N + column

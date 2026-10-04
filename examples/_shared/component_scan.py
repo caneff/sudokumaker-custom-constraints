@@ -1,5 +1,5 @@
-# Lexical scan for `new <Name>Component` registrations in a backend source
-# string. Shared by `framebuild.Lane.check` (checked at build time, before a link
+# Lexical scan for `new <Name>Component` registrations in a link's code: its
+# backend's, and for `check_layout` its shipped components' too. Shared by `framebuild.Lane.check` (checked at build time, before a link
 # is committed) and `check_layout.check_components` (checked at sweep time,
 # over already-committed links) so the two do not carry their own copies of
 # the same regex (#292). stdlib `re` only, no ortools: `check_layout.py`
@@ -9,7 +9,10 @@ import functools
 import pathlib
 import re
 
-_NEW_COMPONENT = re.compile(r"new ([A-Za-z0-9_]+Component)\b")
+# `new FooComponent(...)`, or `new customComponents.FooComponent(...)`: the
+# app's table of the link's own compiled classes, keyed by name
+# (bundle-api-reference.md, `compileCustomComponentClass`).
+_NEW_COMPONENT = re.compile(r"new (?:customComponents\.)?([A-Za-z0-9_]+Component)\b")
 
 # The built-in list of record: the component tables in
 # docs/builtin-components.md, reproduced there from the SudokuMaker docs. The
@@ -34,8 +37,9 @@ def builtin_components():
 
 
 def registered_components(backend_code):
-    """Return the set of component names `backend_code` constructs with
-    `new <Name>Component(...)`.
+    """Return the set of component names `backend_code` (a backend's code, or
+    a backend's and its shipped components' together) constructs with
+    `new <Name>Component(...)` or `new customComponents.<Name>Component(...)`.
 
     Comment lines are dropped first, so a note that mentions a component does
     not read as a registration. A shipped link carries no comments at all
@@ -53,8 +57,9 @@ def registered_components(backend_code):
 
 
 def mismatch(shipped, backend_code):
-    """Compare the component names a link ships with the ones its backend
-    registers, and return `(unshipped, dead)`, each sorted.
+    """Compare the component names a link ships with the ones
+    `backend_code` registers (the backend's code, plus the shipped components'
+    when the caller passes them), and return `(unshipped, dead)`, each sorted.
 
     Unshipped: registered but not shipped -- it fails inside the app, where
     the author never sees it. Dead: shipped but never registered -- dead

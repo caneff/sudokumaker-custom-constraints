@@ -108,7 +108,12 @@ PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt
   `PUZZLE_LINK_clued_original.txt` is valid, `PUZZLE_LINK_original_clued.txt`
   is not.
 - Parts join with `_`. No hyphens, no seeds, no other free text.
-- Links stay flat in the example dir — no `links/` subdir.
+- A link may sit in a board's own subdirectory (`count-digits-gac/sparse/`,
+  `house-gac/base/`); every one is gated: `check_layout` reads every
+  committed link under the example, so the name grammar and the share
+  criteria reach it (#659). Name it by this grammar inside its own
+  directory. The gen/link pairing below is checked at an example's top level
+  only. A dot directory is scratch and is not read.
 - A link file holds one URL and nothing else. Seed, date, and solve time go
   in the README or `OPTIMIZATION_LOG.md`, not the filename.
 
@@ -135,7 +140,9 @@ purpose) and the comment starts with "Normal sudoku rules apply on the
 inner grid" — except an example whose manifest says `rules_prefix = "none"`
 (isofill and fillomino are not sudoku, and their rules text must not mention
 sudoku), and a no-ring board (below) or an example whose manifest says
-`rules_prefix = "ringless"`, whose comment starts "Normal sudoku rules apply." instead. See
+`rules_prefix = "ringless"`, or a `"sudoku"` document (the app gives it every
+row and column and it has no ring), whose comment starts "Normal sudoku rules
+apply." instead. See
 `docs/share-checklist.md` for the full pre-share list.
 
 The **name** grammar above binds `PUZZLE_LINK*.txt` only, but the share
@@ -145,8 +152,10 @@ whatever it is called. That covers fillomino's 19 frozen fixture triples and
 its hunt records — 50 links that used to sit outside the glob. A `.txt` that
 is not a link (a golden, a note) is left alone.
 
-It also checks each link's component set against the backend embedded in
-that same link: a link ships exactly the components its backend registers.
+It also checks each link's component set against the code embedded in
+that same link: a link ships exactly the components its backend registers,
+plus any a shipped component constructs through `customComponents` (a
+wrapper that swaps itself out, as `count-digits-gac/required-digits/` does).
 The builder asserts this when it writes a link (`framebuild.Lane.check`), but a
 committed link goes stale on its own — the builder's list changes and the
 link is never regenerated (#287, #289, #290, #291). Regenerate the stale
@@ -158,7 +167,9 @@ The frame's own two shared backends (`_shared/frame-rowcol.js`,
 carries a copy of both: a real change to either means rebuilding all of them in
 that commit. `check_stale_backend_code` compares each embedded copy against the
 file in the tree and names the stale one; `check_houses` steps aside for a link
-that carries the row/column backend, rather than counting missing rows at it.
+that carries the row/column backend, rather than counting missing rows at it,
+and for a `"sudoku"` document, whose rows and columns the app adds itself
+(`SudokuRules`, `bundle.claude.js:11450-11456`).
 Both backends need this sweep, and `frame-corners.js` needs it most: it
 registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
 component file and the component check above has no set to compare it against.
@@ -259,17 +270,20 @@ in the live app and record what it said:
   clues, never their own fresh gen JSON), numbered-rooms' hand-made
   `PUZZLE_LINK.txt`, which its own README says no generator produces at all,
   and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
-  committed link (`docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt`),
+  committed link (`examples/house-gac/base/PUZZLE_LINK.txt`),
   re-proved unique with CP-SAT rather than generated from a `gen*.json` this
   example owns. Each example's `example.toml` names its own in
   `generator_less_links`.
 
 ## The `original/` baseline
 
-Baseline code and links for `just time` comparisons live under an
-`original/` subdir, which mirrors the example's own layout for the baseline
-component. `_original` links pair with it. Keep an `original/` baseline only
-where `just time` actually compares against it — not as a general changelog.
+A vendored baseline — code and links a test or `just time` compares
+against — lives under an `original/` subdir, which mirrors the example's own
+layout for the baseline component. `_original` links pair with it where
+`just time` is the comparison; fillomino's `original/` has none, because
+`update-strength.test.mjs` is (#659). Keep an `original/` baseline only where a
+test or `just time` actually compares against it — not as a general
+changelog.
 
 ## The shared frame reader, and `#include`
 

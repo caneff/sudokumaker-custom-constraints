@@ -2,7 +2,7 @@
 # own first target (docs/research/count-digits-gac/counter-in-targets/). The
 # link ships twice, same board, one component swapped: the current
 # CountDigitsGacComponent and the copy from before it handled a self-listed
-# counter (self-count/CountDigitsGacComponent.pre578.js, from d0b1854).
+# counter (self-count/original/CountDigitsGacComponent.pre578.js, from d0b1854).
 # Same-board comparison per docs/real-app-timing.md.
 #
 # A group in `input.groups` is [counter, counter, *others]: the counter, then
@@ -14,9 +14,6 @@
 #       rebuild both links from the committed gen.json
 #   uv run examples/count-digits-gac/build_count_digits_selfcount.py --search SEED --groups G --targets T --gen FILE
 #       draw a fresh board (one-shot: CP-SAT's portfolio search is not seeded)
-#
-# Lives here, not in docs/research/, because check_research_python refuses a
-# new .py there.
 
 import argparse
 import json
@@ -29,7 +26,6 @@ from board_kit import board_doc
 from board_kit import search as search_board
 from count_board import (
     CANDIDATE_NAME,
-    RESEARCH_DIR,
     cage_constraints,
     demo_backend_code,
     groups_input,
@@ -43,10 +39,12 @@ from minify import minify_file
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-BOARD_DIR = RESEARCH_DIR / "self-count"
+BOARD_DIR = HERE / "self-count"
 GEN = BOARD_DIR / "gen.json"
-PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
+PRE578 = BOARD_DIR / "original" / "CountDigitsGacComponent.pre578.js"
 VARIANTS = {"current": CURRENT, "pre578": PRE578}
+# The pre-#578 component is the baseline the current one is timed against.
+LINK_NAMES = {"current": "PUZZLE_LINK.txt", "pre578": "PUZZLE_LINK_original.txt"}
 EVENS = [2, 4, 6, 8]
 
 RULES = (
@@ -124,7 +122,7 @@ def build(out_dir=BOARD_DIR, gen_path=GEN):
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for variant in VARIANTS:
-        path = out_dir / f"PUZZLE_LINK_selfcount_{variant}.txt"
+        path = out_dir / LINK_NAMES[variant]
         write_link(build_doc(gen, variant), path)
         paths.append(path)
     return paths

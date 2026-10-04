@@ -35,6 +35,7 @@ def minify_js_keep_blocks(src):
     return minify_js(src, drop_blocks=False)
 
 HERE = pathlib.Path(__file__).parent
+ORIGINAL = ROOT / "examples" / "fillomino" / "original"
 CONSTRAINT_NAME = "Fillomino"
 TIMED_COMPONENT = "FillominoComponent"
 # Fillomino is not sudoku, so the rules text carries no RULES_PREFIX -- the
@@ -86,7 +87,7 @@ def build(component_path, puzzle_path, cap=None):
                         "input": [],
                         "backend": {
                             "type": "code",
-                            "code": minify_js_keep_blocks((HERE / "main.js").read_text()),
+                            "code": minify_js_keep_blocks((ORIGINAL / "main.js").read_text()),
                         },
                         "components": [
                             {
@@ -133,7 +134,7 @@ def build_on_board(component_path, out_path, board_path):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--component", default=HERE / f"{TIMED_COMPONENT}.js")
+    p.add_argument("--component", default=ORIGINAL / f"{TIMED_COMPONENT}.js")
     p.add_argument("--out", default=HERE / "PUZZLE_LINK.txt")
     p.add_argument("--puzzle", default=HERE / "gen.json")
     p.add_argument("--board", help="committed link to swap the component into")

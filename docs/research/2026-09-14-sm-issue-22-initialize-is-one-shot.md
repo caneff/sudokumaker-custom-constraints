@@ -1,5 +1,7 @@
 # SudokuMaker issue #22: "Solver ignores broken puzzle sometimes"
 
+> **Moved (#659).** The bundle cited below is now `examples/_shared/vendor/bundle.claude.js` (#659).
+
 Upstream: https://github.com/SudokuMaker/issues/issues/22 (curlingclips, 2026).
 Read and reproduced 2026-09-14 against bundle v2026.08.14-d47fc4b in Node,
 using `examples/_shared/bundle-solve-lib.mjs` (#429).

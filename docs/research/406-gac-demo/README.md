@@ -5,7 +5,7 @@ constraint anywhere** and no clue ring. The only difference between them is one 
 
 | link | AutoStep (Icon AutoStep, run to fixpoint) |
 | --- | --- |
-| `PUZZLE_LINK_without_gac.txt` | 25 -> **53/81** |
+| `PUZZLE_LINK_without_gac.txt` (now `examples/house-gac/base/PUZZLE_LINK.txt`, #659) | 25 -> **53/81** |
 | `PUZZLE_LINK_with_gac.txt` | 25 -> **81/81** |
 
 The added constraint is `AllDiffGacComponent`, registered once per interior row,
@@ -53,7 +53,8 @@ drawn state concludes, wrongly, that the component cannot be doing anything.
 `tools/build9.py` writes both links on a bare 9x9, carrying the 25 givens over
 from the committed without-GAC link, and proves uniqueness with CP-SAT on the
 way. `tools/logic9.mjs <link>` runs AutoStep in the recorded app and prints the
-grid it reached. The component is `tools/AllDiffGacComponent.js` with
+grid it reached. The component is `examples/_shared/AllDiffGacComponent.js` (moved
+from `tools/` by #659) with
 `tools/gac9-main.js` as its backend.
 
 The first pair was cut from the Skyscrapers 11x11 document with the skyscraper

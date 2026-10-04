@@ -8,17 +8,15 @@
 #
 # The two links are not this example's own board -- they exist only to time
 # RequiredDigitsGacComponent in the real app (docs/real-app-timing.md) -- so
-# they and their component/backend source live in
-# docs/research/required-digits-gac/, not as a PUZZLE_LINK*.txt here:
-# check_layout.py's link naming and its "every shipped component is one the
-# backend registers" check both assume an example's own board, and
-# RequiredDigitsGacComponent is reached only through the wrapper's
-# `customComponents`, never `new`'d by the backend. The script itself stays
-# here because check_research_python refuses a .py under docs/research/.
+# they and their component/backend source live in their own board
+# subdirectory, required-digits/, which check_layout.py gates like any example
+# link. RequiredDigitsGacComponent is reached only through the wrapper's
+# `customComponents`, never `new`'d by the backend; check_layout counts that
+# as a registration.
 #
-# Writes, into docs/research/required-digits-gac/:
-#   PUZZLE_LINK_required_digits.txt          -- ours: RequiredDigitsGacComponent
-#   PUZZLE_LINK_required_digits_original.txt -- baseline: built-in RequiredDigitsComponent
+# Writes, into required-digits/:
+#   PUZZLE_LINK.txt          -- ours: RequiredDigitsGacComponent
+#   PUZZLE_LINK_original.txt -- baseline: built-in RequiredDigitsComponent
 #
 # Timed directly through examples/_shared/app-solve.mjs, not
 # examples/_shared/time_example.py's `just time` automation: that driver
@@ -40,14 +38,14 @@ from minify import minify_file
 from sm_document import write_link
 
 HERE = pathlib.Path(__file__).parent
-RESEARCH_DIR = HERE.parent.parent / "docs" / "research" / "required-digits-gac"
+BOARD_DIR = HERE / "required-digits"
 OUTSIDE_SUDOKU = HERE.parent / "outside-sudoku"
 CONSTRAINT_NAME = "Custom Outside Sudoku"
 TIMED_COMPONENT = "RequiredDigitsWrapperComponent"
 
 
 def _backend_code():
-    return minify_file(RESEARCH_DIR / "main-required-digits-global.js")
+    return minify_file(BOARD_DIR / "main-required-digits-global.js")
 
 
 def _build(base, components):
@@ -61,7 +59,7 @@ def _build(base, components):
 
 
 def build_gac(base):
-    host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponent.js")
+    host_code = minify_file(BOARD_DIR / "RequiredDigitsWrapperComponent.js")
     gac_code = minify_file(HERE / "RequiredDigitsGacComponent.js")
     assert host_code and gac_code, "component code empty"
     return _build(
@@ -74,16 +72,16 @@ def build_gac(base):
 
 
 def build_original(base):
-    host_code = minify_file(RESEARCH_DIR / "RequiredDigitsWrapperComponentBuiltin.js")
+    host_code = minify_file(BOARD_DIR / "RequiredDigitsWrapperComponentBuiltin.js")
     assert host_code, "component code empty"
     return _build(base, [{"type": "code", "name": TIMED_COMPONENT, "code": host_code}])
 
 
-def build(out_dir=RESEARCH_DIR):
+def build(out_dir=BOARD_DIR):
     base = decode_puzzle((OUTSIDE_SUDOKU / "PUZZLE_LINK.txt").read_text().strip())
-    gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
+    gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK.txt")
     original_link = write_link(
-        build_original(base), out_dir / "PUZZLE_LINK_required_digits_original.txt"
+        build_original(base), out_dir / "PUZZLE_LINK_original.txt"
     )
     return gac_link, original_link
 
@@ -92,13 +90,11 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument(
         "--out",
-        help="directory to write into (default: docs/research/required-digits-gac/)",
+        help="directory to write into (default: required-digits/ beside this script)",
     )
     args = p.parse_args()
-    gac_link, original_link = build(
-        pathlib.Path(args.out) if args.out else RESEARCH_DIR
-    )
+    gac_link, original_link = build(pathlib.Path(args.out) if args.out else BOARD_DIR)
     print(
-        f"wrote PUZZLE_LINK_required_digits.txt ({len(gac_link)} chars) "
-        f"and PUZZLE_LINK_required_digits_original.txt ({len(original_link)} chars)"
+        f"wrote PUZZLE_LINK.txt ({len(gac_link)} chars) "
+        f"and PUZZLE_LINK_original.txt ({len(original_link)} chars)"
     )

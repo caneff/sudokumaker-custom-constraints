@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 // Matching-based all-different (Regin GAC) over one house.
 //
 // A candidate survives only if some assignment of distinct digits to the whole

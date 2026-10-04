@@ -4,7 +4,7 @@
 // The two seams under test (#429): `buildStartMessage`, a pure mapping from a
 // decoded puzzle document to the worker's `start` message, and
 // `solveDocument`, which loads the renamed solver bundle
-// (docs/research/humanify-pedagogy/bundle.claude.js) and runs it for real.
+// (examples/_shared/vendor/bundle.claude.js) and runs it for real.
 
 import assert from 'assert'
 import { spawnSync } from 'child_process'
@@ -144,7 +144,7 @@ console.log('bundle-solve-lib: buildStartMessage ok')
 // "CP-SAT cross-check" section, not re-run here. ----
 {
   const CPSAT_SOLUTION = '265783149387149562941562783594627831726831495138495627413956278872314956659278314'
-  const doc = decodeLinkFile(new URL('../../docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt', import.meta.url).pathname)
+  const doc = decodeLinkFile(new URL('../house-gac/base/PUZZLE_LINK.txt', import.meta.url).pathname)
   const { solutions, ms } = await solveDocument(doc)
   assert.strictEqual(solutions.length, 1)
   assert.strictEqual(solutions[0], CPSAT_SOLUTION)

@@ -1,6 +1,6 @@
 # The puzzle API
 
-Full extracted surface: `docs/research/bundle-api-index.md`, regenerate with
+Full extracted surface: `docs/bundle-api-index.md`, regenerate with
 `node examples/_shared/bundle-index.mjs`.
 What each method actually does, read from the bundle body:
 `docs/research/bundle-api-reference.md`. Look there first when a signature
@@ -86,7 +86,7 @@ connected groups, or per-region splits in the main code and pass the result
 in as a constructor parameter. **[verified]** (bundle: `createHelpers` at
 `bundle.claude.js:1614`, `createExtendedHelpers` at 9201, `setupPuzzle` at
 9349, `compileCustomComponentClass` at 9994 and its `SolverPuzzleView` facade
-at 10072, in `docs/research/humanify-pedagogy/`)
+at 10072, in `examples/_shared/vendor/`)
 
 ## helpers.connectivity
 

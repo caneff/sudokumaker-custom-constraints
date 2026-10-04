@@ -1,5 +1,7 @@
 ## Geometry
 
+> **Moved (#659).** `docs/research/bundle-api-index.md` is now `docs/bundle-api-index.md` (#659).
+
 Everything here is reached as `helpers.geometry` inside a component. It turns
 one cell/corner/edge/outer-clue id into the cells around it, and enumerates
 whole-board patterns (rows, dominoes, knight pairs, 2x2 quadruples). It knows

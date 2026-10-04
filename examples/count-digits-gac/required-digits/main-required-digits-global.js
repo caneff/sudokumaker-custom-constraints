@@ -5,7 +5,7 @@
 // (RequiredDigitsWrapperComponent.js's own header says why). Never shipped
 // as the real Outside Sudoku backend; build_required_digits.py splices this
 // in over "Custom Outside Sudoku" only on the derived boards it writes.
-// #include ../../../examples/_shared/frame-lines.js
+// #include ../../_shared/frame-lines.js
 
 for (const g of frameLines(puzzle)) {
   const name = `the outside-sudoku clue at ${helpers.naming.getCellName(g.clue)}`

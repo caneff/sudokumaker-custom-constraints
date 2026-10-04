@@ -14,7 +14,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 import { decodeLinkFile, buildStartMessage } from '../../../../examples/_shared/bundle-solve-lib.mjs'
 
-const REFERENCE = 'docs/research/humanify-pedagogy/bundle.claude.js'
+const REFERENCE = 'examples/_shared/vendor/bundle.claude.js'
 const REFERENCE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
 const raw = fs.readFileSync(REFERENCE, 'utf8')
 if (crypto.createHash('sha256').update(raw).digest('hex') !== REFERENCE_SHA) {

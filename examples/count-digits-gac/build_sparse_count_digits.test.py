@@ -10,8 +10,8 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 from board_kit import count_solutions as count_with
 from board_kit import givens_of
 from build_sparse_count_digits import (
+    BOARD_DIR,
     GEN,
-    RESEARCH_DIR,
     backend_code,
     build,
 )
@@ -19,8 +19,8 @@ from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
 from link_codec import decode_puzzle
 from minify import minify_file
 
-NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
-ANNOTATED = "PUZZLE_LINK_sparse_annotated.txt"
+NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
+ANNOTATED = "PUZZLE_LINK_annotated.txt"
 N = 9
 
 
@@ -91,7 +91,7 @@ def check_annotated(gen, plain_doc):
             "--keep-comments writes only the annotated link"
         )
         built = (out / ANNOTATED).read_bytes()
-    assert built == (RESEARCH_DIR / ANNOTATED).read_bytes(), (
+    assert built == (BOARD_DIR / ANNOTATED).read_bytes(), (
         f"{ANNOTATED} does not reproduce"
     )
     doc = decode_puzzle(built.decode().strip())
@@ -116,17 +116,15 @@ if __name__ == "__main__":
     assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
     assert cand != base and BASELINE_NAME in base
 
-    shipped = {n: (RESEARCH_DIR / n).read_bytes() for n in NAMES}
-    mtime = {n: (RESEARCH_DIR / n).stat().st_mtime_ns for n in NAMES}
+    shipped = {n: (BOARD_DIR / n).read_bytes() for n in NAMES}
+    mtime = {n: (BOARD_DIR / n).stat().st_mtime_ns for n in NAMES}
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp)
         build(out)
         for n in NAMES:
             assert (out / n).read_bytes() == shipped[n], f"{n} does not reproduce"
     for n in NAMES:
-        assert (RESEARCH_DIR / n).stat().st_mtime_ns == mtime[n], (
-            f"{n} touched by --out"
-        )
+        assert (BOARD_DIR / n).stat().st_mtime_ns == mtime[n], f"{n} touched by --out"
 
     docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs

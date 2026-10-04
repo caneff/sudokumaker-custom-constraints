@@ -6,7 +6,7 @@
 // Reads the tracked HAR (`sudokumaker.har`), picks the JS bundle entries
 // whose body contains `getCellsCanHaveRepeats` -- the app's solver/main/query
 // bundles, de-duplicated by content -- and writes
-// `docs/research/bundle-api-index.md`.
+// `docs/bundle-api-index.md`.
 //
 // Parses each bundle with `acorn` and extracts off the resulting AST, rather
 // than scanning the minified text for brackets/braces. The three bundles are
@@ -29,7 +29,7 @@ import * as acorn from 'acorn'
 
 const HERE = import.meta.dirname
 const HAR_PATH = join(HERE, 'sudokumaker.har')
-export const OUTPUT_PATH = join(HERE, '..', '..', 'docs', 'research', 'bundle-api-index.md')
+export const OUTPUT_PATH = join(HERE, '..', '..', 'docs', 'bundle-api-index.md')
 
 const MARKER = 'getCellsCanHaveRepeats'
 

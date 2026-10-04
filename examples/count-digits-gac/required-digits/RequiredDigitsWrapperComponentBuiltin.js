@@ -2,9 +2,9 @@
 //! The baseline half of the RequiredDigits wrapper comparison (#534): same
 //! shape as RequiredDigitsWrapperComponent.js, but the swap target is the
 //! built-in RequiredDigitsComponent instead of RequiredDigitsGacComponent.
-//! Built by build_required_digits.py into PUZZLE_LINK_required_digits_original.txt,
+//! Built by build_required_digits.py into PUZZLE_LINK_original.txt,
 //! the same-board pair timed (docs/real-app-timing.md's "link vs link"
-//! provision) against PUZZLE_LINK_required_digits.txt -- see this
+//! provision) against PUZZLE_LINK.txt -- see this
 //! directory's README.md for the reproduce commands and the recorded rows.
 
 function getAffectedCells (clue, line) {

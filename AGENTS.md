@@ -86,7 +86,7 @@ frame reader explains the directive itself.
   text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
   `framebuild.py`); its `example.toml` says `rules_prefix = "ringless"`, and
   `check_layout.py` finds the other no-ring boards from their backend
-  (`is_no_ring`).
+  (`is_no_ring`) or from a `"sudoku"` document type (`is_sudoku_document`).
 
 ## The solver bundle is on file — read it, do not guess (always on)
 
@@ -98,7 +98,7 @@ frame reader explains the directive itself.
   there (solve loop, the two `puzzle` views, change types) are the shortest
   route to the call order.
 - **When the reference is not enough, read the body**: the renamed bundle is
-  `docs/research/humanify-pedagogy/bundle.claude.js`; `sed -n` the cited
+  `examples/_shared/vendor/bundle.claude.js`; `sed -n` the cited
   range. To run it in Node, copy the loading trick in
   `docs/research/humanify-pedagogy/tools/bugcheck.mjs`. Never assert solver
   behaviour from a method name or from memory when the body is one command away.
@@ -143,7 +143,7 @@ merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
 
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
-- The app bundle's full extracted API surface (names + arities, generated) → `docs/research/bundle-api-index.md`
+- The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
 - The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming, the shared

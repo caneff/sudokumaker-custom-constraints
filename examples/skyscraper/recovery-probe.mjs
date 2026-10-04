@@ -25,7 +25,7 @@
 // candidates that reach k visible" prune (`forwardPrune` below). This GIVES the
 // original every per-line deduction for a KNOWN clue. The only differences left
 // are the features under test: blank-clue deduction and two-clue coupling. The
-// built-in's own update (docs/research/humanify-pedagogy/bundle.claude.js,
+// built-in's own update (examples/_shared/vendor/bundle.claude.js,
 // SkyscraperComponent) is only a running digit cap, weaker than this forward
 // pass, so the real original is slower still and the comparison is conservative.
 

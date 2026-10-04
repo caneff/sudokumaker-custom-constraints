@@ -1,5 +1,7 @@
 # 429: calibrating the headless solver harness against the browser
 
+> **Moved (#659).** The without-GAC link this note opens is now `examples/house-gac/base/PUZZLE_LINK.txt` (#659).
+
 `bundle-solve.mjs` (examples/_shared) runs the app's real solver bundle in
 Node, no browser, so a batch of links can be scored in the time a single
 browser tab takes to solve one. This calibrates its number against the

@@ -1,5 +1,13 @@
 # RequiredDigitsGacComponent
 
+> **Moved (#659).** `main-required-digits-global.js`, the two wrapper
+> components and the two links now live in
+> `examples/count-digits-gac/required-digits/`, and `sparse/`'s gen JSON,
+> backend and links in `examples/count-digits-gac/required-digits/sparse/`.
+> Each directory's links are renamed `PUZZLE_LINK.txt` (ours) and
+> `PUZZLE_LINK_original.txt` (the built-in). Paths below name where they
+> were when written.
+
 A full-strength, drop-in replacement for the app's built-in RequiredDigits
 rule (`RequiredDigitsComponent(name, values, cells)`): Hall's condition on
 the value side instead of the built-in's greedy strike-off (see
@@ -293,7 +301,7 @@ Node rather than the browser -- a ratio between two runs in one process, not a
 wall-clock row comparable to the tables above.
 
 **Quarantine.** The probe never writes a modified bundle: it reads
-`docs/research/humanify-pedagogy/bundle.claude.js` verbatim, refuses to run if
+`examples/_shared/vendor/bundle.claude.js` verbatim, refuses to run if
 its sha256 has changed, appends only the `globalThis.__probe` export line
 bugcheck.mjs already uses, and swaps the rule on the exported class at runtime.
 Nothing here may build or verify a shipped link -- it would be measuring a

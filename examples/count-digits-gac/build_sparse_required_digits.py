@@ -18,9 +18,6 @@
 #       draw a fresh board (grid, groups, carved givens) into --gen. The
 #       grid comes from CP-SAT's portfolio search, which is not reproducible
 #       from the seed: the committed gen.json is the artifact, this a one-shot.
-#
-# Lives here, not in docs/research/, because check_research_python refuses a
-# new .py there.
 
 import argparse
 import json
@@ -36,11 +33,9 @@ from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-RESEARCH_DIR = (
-    HERE.parent.parent / "docs" / "research" / "required-digits-gac" / "sparse"
-)
-GEN = RESEARCH_DIR / "gen.json"
-BACKEND = RESEARCH_DIR / "main-sparse-global.js"
+BOARD_DIR = HERE / "required-digits" / "sparse"
+GEN = BOARD_DIR / "gen.json"
+BACKEND = BOARD_DIR / "main-sparse-global.js"
 COMPONENT = HERE / "RequiredDigitsGacComponent.js"
 CANDIDATE_NAME = "RequiredDigitsGacComponent"
 BASELINE_NAME = "RequiredDigitsComponent"
@@ -155,12 +150,10 @@ def build_doc(gen, name):
     )
 
 
-def build(out_dir=RESEARCH_DIR, gen_path=GEN):
+def build(out_dir=BOARD_DIR, gen_path=GEN):
     gen = json.loads(pathlib.Path(gen_path).read_text())
-    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
-    write_link(
-        build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt"
-    )
+    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK.txt")
+    write_link(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_original.txt")
 
 
 if __name__ == "__main__":
@@ -177,7 +170,7 @@ if __name__ == "__main__":
     )
     p.add_argument(
         "--out",
-        help="directory for the links (default: docs/research/required-digits-gac/sparse/)",
+        help="directory for the links (default: required-digits/sparse/ beside this script)",
     )
     args = p.parse_args()
     if args.search is not None:
@@ -187,5 +180,5 @@ if __name__ == "__main__":
         )
         print(f"wrote {args.gen}")
     else:
-        build(pathlib.Path(args.out) if args.out else RESEARCH_DIR, args.gen)
-        print("wrote PUZZLE_LINK_sparse.txt and PUZZLE_LINK_sparse_original.txt")
+        build(pathlib.Path(args.out) if args.out else BOARD_DIR, args.gen)
+        print("wrote PUZZLE_LINK.txt and PUZZLE_LINK_original.txt")

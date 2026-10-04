@@ -20,8 +20,7 @@ import assert from 'assert'
 import { makeIo } from '../../../examples/_shared/harness-lib.mjs'
 import { gridGeometry } from '../../../examples/outside-sudoku/grid-geometry.mjs'
 
-const HERE = import.meta.dirname
-const { load } = makeIo(HERE)
+const { load } = makeIo(new URL('../../../examples/count-digits-gac/required-digits', import.meta.url).pathname)
 
 // The two swap targets the wrapper's `update` can reach: a bare built-in
 // global, and a custom sibling reached only through `customComponents`

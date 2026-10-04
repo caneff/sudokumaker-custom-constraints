@@ -1,7 +1,8 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
-# decodes every committed link IN AN EXAMPLE -- the shipped PUZZLE_LINK*.txt
+# decodes every committed link under an example, a board's own subdirectory
+# included (#659) -- the shipped PUZZLE_LINK*.txt
 # boards and the other link .txt files an example commits beside them
 # (fillomino's frozen timing fixtures and its hunt records) -- and checks the
 # three mechanical pre-share criteria from docs/share-checklist.md: the link
@@ -10,10 +11,13 @@
 # example whose manifest sets rules_prefix = "none" (not sudoku). A _clued
 # link is exempt from the first two -- filling every clue is what that name
 # means. It also checks that every link ships exactly the components its own
-# embedded backend registers, so a link cannot go stale behind its builder, and
-# that every interior row and column of a sudoku example's board is a house the
-# link actually declares (a region constraint gives boxes only -- see #335 and
-# docs/gotchas.md #9; a manifest with houses = false is a bare board, exempt).
+# embedded code registers (the backend, or a shipped component that constructs
+# another through `customComponents`), so a link cannot go stale behind its
+# builder, and that every interior row and column of a sudoku example's board is
+# a house the link actually declares (a region constraint gives boxes only --
+# see #335 and docs/gotchas.md #9; a manifest with houses = false is a bare
+# board, and a "sudoku" document gets its lines from the app, so both are
+# exempt).
 #
 # What is special about an example is that example's own: each carries an
 # example.toml (manifest.py), and this sweep names no example.
@@ -31,10 +35,13 @@
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
+import ast
+import io
 import json
 import pathlib
 import re
 import sys
+import tokenize
 import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -50,7 +57,7 @@ from framebuild import (
 )
 from link_codec import decode_puzzle
 from manifest import load_manifest
-from minify import minify_file
+from minify import INCLUDE_RE, minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
@@ -247,6 +254,116 @@ def check_research_python(repo_root):
     return violations
 
 
+# A path into docs/research/, in each spelling a loader writes it: one string,
+# path.join's separate arguments (on one line or several), or a pathlib `/`
+# chain.
+RESEARCH_PATH = re.compile(r"""docs(?:/|['"]\s*[,/]\s*['"])research""")
+
+# The gate's own files, which name docs/research/ to police it, not to load
+# from it.
+RESEARCH_INSPECTORS = frozenset(
+    {
+        "examples/_shared/check_layout.py",
+        "examples/_shared/check_layout.test.py",
+        "examples/_shared/gate.test.py",
+    }
+)
+
+# A JavaScript comment, opening a line or after whitespace: a `//` or `/*`
+# inside a string (a URL, a glob) follows other characters, so it is left be.
+_JS_COMMENT = re.compile(r"(?:^|(?<=\s))(?://[^\n]*|/\*.*?\*/)", re.M | re.S)
+
+
+def _blank(text, spans):
+    """`text` with each (start, end) offset span replaced by spaces, keeping its
+    newlines, so every offset left keeps its line number."""
+    chars = list(text)
+    for start, end in spans:
+        for i in range(start, end):
+            if chars[i] != "\n":
+                chars[i] = " "
+    return "".join(chars)
+
+
+def _python_code(text):
+    """Python source with its comments and docstrings blanked."""
+    prose = set()
+    for node in ast.walk(ast.parse(text)):
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            prose.update(range(node.lineno, node.end_lineno + 1))
+    starts = [0]
+    for line in text.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    spans = []
+    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+        if tok.type == tokenize.COMMENT or (
+            tok.type == tokenize.STRING and tok.start[0] in prose
+        ):
+            (r0, c0), (r1, c1) = tok.start, tok.end
+            spans.append((starts[r0 - 1] + c0, starts[r1 - 1] + c1))
+    return _blank(text, spans)
+
+
+def _js_code(text):
+    """JavaScript source with its comments blanked."""
+    return _blank(text, [m.span() for m in _JS_COMMENT.finditer(text)])
+
+
+def check_research_loads(repo_root):
+    """Return one violation string per load of a docs/research/ path from
+    examples/ code: a path built in code, or a `// #include` that resolves
+    into docs/research/ (minify splices the included file into the link).
+
+    docs/research/ holds records, not live code (#649): a file the gate's code
+    loads from there is maintained source the gate never lints. A citation in
+    a comment or docstring is not a load. Finders keep their catalogues and
+    hunt outputs under docs/research/ by ruling (#469), so finders/ is not
+    scanned, and neither is a dot directory (scratch) or node_modules.
+
+    It reads text, not a parse tree, so a pass is not proof: a path segment
+    held in a variable, and code hidden behind a `//` or `/*` that sits after
+    whitespace inside a string, are not seen."""
+    repo_root = pathlib.Path(repo_root)
+    research = (repo_root / "docs" / "research").resolve()
+    violations = []
+    for path in sorted((repo_root / "examples").rglob("*")):
+        parts = path.relative_to(repo_root).parts
+        if path.suffix not in {".py", ".js", ".mjs", ".cjs"} or any(
+            p == "node_modules" or p.startswith(".") for p in parts
+        ):
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        if rel in RESEARCH_INSPECTORS:
+            continue
+        text = path.read_text()
+        loads = set()
+        if path.suffix == ".py":
+            try:
+                code = _python_code(text)
+            except SyntaxError as e:
+                violations.append(
+                    f"{rel}: does not parse ({e.msg}), so its loads cannot be checked"
+                )
+                continue
+        else:
+            code = _js_code(text)
+            for n, line in enumerate(text.splitlines(), 1):
+                directive = INCLUDE_RE.match(line)
+                target = (
+                    directive and (path.parent / directive.group(1).strip()).resolve()
+                )
+                if target and target.is_relative_to(research):
+                    loads.add(n)
+        for m in RESEARCH_PATH.finditer(code):
+            loads.add(code.count("\n", 0, m.start()) + 1)
+        violations.extend(
+            f"{rel}:{n}: loads from docs/research/ -- research holds records, "
+            "so move what it loads into examples/"
+            for n in sorted(loads)
+        )
+    return violations
+
+
 # The prefix every SudokuMaker link starts with. A committed .txt beside an
 # example is a link when it starts with this and nothing else is; a golden or a
 # note is not decoded and not checked.
@@ -254,8 +371,11 @@ LINK_PREFIX = "https://sudokumaker.app/?puzzle="
 
 
 def committed_links(example_dir):
-    """Every committed link .txt directly under `example_dir`, PUZZLE_LINK*.txt
-    first.
+    """Every committed link .txt under `example_dir`, its board subdirectories
+    included, PUZZLE_LINK*.txt first. A dot directory is scratch, not a board,
+    and is skipped: a link may sit in a board's own subdirectory, and every
+    one is gated (#659, reversing the flat-only rule of #177 without losing
+    its guarantee).
 
     A PUZZLE_LINK*.txt is a link by its name -- one that does not decode is a
     broken shipped board and gets reported as one. Any other .txt is a link
@@ -263,7 +383,9 @@ def committed_links(example_dir):
     is covered without a naming rule of its own and a golden or a note is left
     alone."""
     named, sniffed = [], []
-    for f in sorted(example_dir.glob("*.txt")):
+    for f in sorted(example_dir.rglob("*.txt")):
+        if any(p.startswith(".") for p in f.relative_to(example_dir).parts):
+            continue
         if f.name.startswith("PUZZLE_LINK"):
             named.append(f)
             continue
@@ -273,6 +395,19 @@ def committed_links(example_dir):
         except (OSError, UnicodeDecodeError):
             continue
     return named + sniffed
+
+
+def _shown(example_dir, link):
+    """`link`'s path inside its example, as a violation names it."""
+    return link.relative_to(example_dir).as_posix()
+
+
+def is_sudoku_document(puzzle):
+    """Is this a "sudoku" document? The app prepends SudokuRules to one --
+    every row and column of the whole grid a house (bundle.claude.js:11450-11456,
+    the handler at :11066) -- so its lines need no declaration and its edge
+    cells are real cells, not a clue ring."""
+    return puzzle.get("type") == "sudoku"
 
 
 def _ring_state(puzzle):
@@ -315,14 +450,14 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     )
     if entered and not clued:
         violations.append(
-            f"{name}: {link.name} has {entered} entered value(s) on non-given cells"
+            f"{name}: {_shown(example_dir, link)} has {entered} entered value(s) on non-given cells"
         )
 
-    no_ring = is_no_ring(puzzle)
+    no_ring = is_no_ring(puzzle) or is_sudoku_document(puzzle)
     ring_filled, ring_total = (0, 0) if no_ring else _ring_state(puzzle)
     if ring_total and ring_filled == ring_total and not clued:
         violations.append(
-            f"{name}: {link.name} fills all {ring_total} ring cells -- curate "
+            f"{name}: {_shown(example_dir, link)} fills all {ring_total} ring cells -- curate "
             f"the clue set, or name the link _clued if every clue is meant"
         )
 
@@ -331,26 +466,31 @@ def check_share_ready(example_dir, link, puzzle, manifest):
     if manifest.rules_prefix != "none" and not puzzle.get("comment", "").startswith(
         prefix
     ):
-        violations.append(f"{name}: {link.name} comment missing rules prefix")
+        violations.append(
+            f"{name}: {_shown(example_dir, link)} comment missing rules prefix"
+        )
 
     return violations
 
 
 def check_components(example_dir, link, puzzle):
     """Return one violation string per custom constraint in `puzzle`
-    whose shipped component set differs from the set its own embedded backend
-    registers.
+    whose shipped component set differs from the set its own embedded code
+    registers: the backend, plus any shipped component that constructs another
+    in its place (`new customComponents.<Name>`, a wrapper swapping itself
+    out).
 
-    A component the backend never instantiates is dead weight, and the
-    recipient reads its source as part of the rule; a component the backend
-    instantiates but the link omits fails inside the app, where the author
+    A component nothing in the link instantiates is dead weight, and the
+    recipient reads its source as part of the rule; a component the link's
+    code instantiates but the link omits fails inside the app, where the author
     never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
     changes, the link is not regenerated, and nothing notices (#287, #289,
     #290, #291).
 
     A lexical check, like the one in `framebuild.Lane.check`: it reads
-    `new <Name>Component` off the backend source, so a class reached through
+    `new <Name>Component` (or `new customComponents.<Name>Component`) off that
+    code, so a class reached through
     an alias, or named some other way, is invisible to it. SudokuMaker's own
     built-ins are subtracted first (`component_scan.builtin_components`): the
     app provides those classes, so a backend that constructs one ships no
@@ -369,11 +509,19 @@ def check_components(example_dir, link, puzzle):
             continue
         shipped = [c["name"] for c in definition.get("components", [])]
         # A definition with no code backend registers nothing; its component
-        # list is then empty too, so the two sets still match.
-        backend = definition.get("backend", {}).get("code", "")
+        # list is then empty too, so the two sets still match. A shipped
+        # component can construct another in its place (a wrapper swapping
+        # itself out through `customComponents`), so their code registers
+        # too.
+        registering = "\n".join(
+            [
+                definition.get("backend", {}).get("code", ""),
+                *(c.get("code", "") for c in definition.get("components", [])),
+            ]
+        )
         violations.extend(
-            f"{name}: {link.name} constraint {definition['name']!r}: {problem}"
-            for problem in describe_mismatch(*mismatch(shipped, backend))
+            f"{name}: {_shown(example_dir, link)} constraint {definition['name']!r}: {problem}"
+            for problem in describe_mismatch(*mismatch(shipped, registering))
         )
 
     return violations
@@ -488,6 +636,9 @@ def check_houses(example_dir, link, puzzle, manifest):
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
     a 6x6 whose true count is 2 came back as 5 (#335, docs/gotchas.md #9).
 
+    A "sudoku" document is exempt: the app prepends SudokuRules to it, every
+    row and column of the whole grid (`is_sudoku_document`).
+
     Interior is `interior_cells` above.
     """
     name = example_dir.name
@@ -506,7 +657,7 @@ def check_houses(example_dir, link, puzzle, manifest):
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
     # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(manifest, puzzle):
+    if declares_rows_and_columns_in_js(manifest, puzzle) or is_sudoku_document(puzzle):
         return []
 
     houses = declared_houses(puzzle)
@@ -518,7 +669,7 @@ def check_houses(example_dir, link, puzzle, manifest):
         missing = sum(1 for line in lines if line and frozenset(line) not in houses)
         if missing:
             violations.append(
-                f"{name}: {link.name} declares no house for {missing} interior "
+                f"{name}: {_shown(example_dir, link)} declares no house for {missing} interior "
                 f"{label}(s) -- a region constraint gives boxes only, so rows and "
                 f"columns need their own constraints (docs/gotchas.md #9)"
             )
@@ -581,7 +732,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
             source, want = current[title]
             if definition.get("backend", {}).get("code") != want:
                 violations.append(
-                    f"{name}: {link.name} embeds a stale copy of {source} -- "
+                    f"{name}: {_shown(example_dir, link)} embeds a stale copy of {source} -- "
                     f"rebuild it in the same commit as the change (the example's "
                     f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                     f"for a hand-built board)"
@@ -592,7 +743,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
         )
         if comp is not None and comp.get("code") != comp_want:
             violations.append(
-                f"{name}: {link.name} embeds a stale copy of {comp_source} -- "
+                f"{name}: {_shown(example_dir, link)} embeds a stale copy of {comp_source} -- "
                 f"rebuild it in the same commit as the change (the example's "
                 f"`build_size.py --rebuild <n>`, or `build_link.py --refresh` "
                 f"for a hand-built board)"
@@ -622,7 +773,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     lo, hi = puzzle.get("minDigit"), puzzle.get("maxDigit")
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
         return [
-            f"{name}: {link.name} ships {sorted(carried)} but declares no "
+            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} but declares no "
             f"digit range -- the app defaults a custom puzzle to 1..9 whatever "
             f"the grid size, so the range rests on that default, not on the "
             f"document. Pin minDigit/maxDigit on the document (#394)"
@@ -639,7 +790,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     if lengths and lengths != {span}:
         cells = "/".join(str(n) for n in sorted(lengths))
         return [
-            f"{name}: {link.name} ships {sorted(carried)} and declares "
+            f"{name}: {_shown(example_dir, link)} ships {sorted(carried)} and declares "
             f"{span} digits (minDigit {lo}, maxDigit {hi}) against {cells} "
             f"cell interior lines -- a line as long as the range is a house, "
             f"any other length falls back to plain all-different, and the "
@@ -757,7 +908,7 @@ def check_example(example_dir):
     for link in committed_links(example_dir):
         if link.name.startswith("PUZZLE_LINK") and not LINK_RE.match(link.name):
             violations.append(
-                f"{name}: link name {link.name} does not match "
+                f"{name}: link name {_shown(example_dir, link)} does not match "
                 f"PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt "
                 f"(size=NxN, tags in fixed order {list(TAGS)})"
             )
@@ -765,7 +916,9 @@ def check_example(example_dir):
         try:
             puzzle = decode_puzzle(link.read_text().strip())["puzzle"]
         except Exception as e:
-            violations.append(f"{name}: {link.name} failed to decode: {e}")
+            violations.append(
+                f"{name}: {_shown(example_dir, link)} failed to decode: {e}"
+            )
             continue
         violations.extend(check_share_ready(example_dir, link, puzzle, manifest))
         violations.extend(check_components(example_dir, link, puzzle))
@@ -793,6 +946,9 @@ def check_tree(root):
     return violations
 
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
@@ -805,8 +961,8 @@ def main(argv):
     # scratch .py another session happens to have under docs/research/ right
     # now, unrelated to the temp tree under test.
     if len(argv) <= 1:
-        repo_root = pathlib.Path(__file__).resolve().parents[2]
-        violations.extend(check_research_python(repo_root))
+        violations.extend(check_research_python(REPO_ROOT))
+        violations.extend(check_research_loads(REPO_ROOT))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")

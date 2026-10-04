@@ -14,6 +14,7 @@ from build_count_digits_selfcount import (
     CURRENT,
     EVENS,
     GEN,
+    LINK_NAMES,
     PRE578,
     VARIANTS,
     build,
@@ -90,7 +91,7 @@ def only_custom(doc):
 def check_links(gen):
     docs = {}
     for variant in VARIANTS:
-        link = BOARD_DIR / f"PUZZLE_LINK_selfcount_{variant}.txt"
+        link = BOARD_DIR / LINK_NAMES[variant]
         doc = decode_puzzle(link.read_text().strip())
         docs[variant] = doc
         p = doc["puzzle"]
@@ -131,12 +132,10 @@ def check_links(gen):
     assert strip(docs["current"]) == strip(docs["pre578"])
     assert docs["current"]["puzzle"]["cells"] == docs["pre578"]["puzzle"]["cells"]
 
-    shipped = {
-        v: (BOARD_DIR / f"PUZZLE_LINK_selfcount_{v}.txt").read_bytes() for v in VARIANTS
-    }
+    shipped = {v: (BOARD_DIR / LINK_NAMES[v]).read_bytes() for v in VARIANTS}
     with tempfile.TemporaryDirectory() as tmp:
         for path in build(pathlib.Path(tmp) / "not" / "yet"):
-            v = path.name.removeprefix("PUZZLE_LINK_selfcount_").removesuffix(".txt")
+            v = next(v for v, n in LINK_NAMES.items() if n == path.name)
             assert path.read_bytes() == shipped[v], f"{v} does not reproduce"
 
 
