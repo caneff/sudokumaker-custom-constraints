@@ -3,12 +3,10 @@
 
 import assert from 'assert'
 import { execFileSync } from 'child_process'
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { join } from 'path'
 import { loadBundle, BUNDLE_PATH } from './bundle-load.mjs'
-
-const scratch = join(import.meta.dirname, '..', '..', '.scratch', 'bundle-load-test')
-mkdirSync(scratch, { recursive: true })
 
 // A named symbol comes back from the bundle's own scope.
 {
@@ -22,14 +20,21 @@ mkdirSync(scratch, { recursive: true })
 // An unknown symbol fails loud instead of coming back undefined.
 assert.throws(() => loadBundle({ expose: ['noSuchBinding'] }), ReferenceError)
 
-// A bundle whose bytes differ from the pinned SHA is refused.
+// A bundle whose bytes differ from the pinned SHA is refused. The fixtures go
+// in the OS temp dir, never the checkout: a file left there blocks
+// merge-cleanup.
 {
-  const changed = join(scratch, 'changed.js')
-  writeFileSync(changed, readFileSync(BUNDLE_PATH, 'utf8').replace('\n', '\n// edited\n'))
-  assert.throws(() => loadBundle({ bundlePath: changed }), /bundle changed/)
-  const same = join(scratch, 'same.js')
-  copyFileSync(BUNDLE_PATH, same)
-  loadBundle({ bundlePath: same })
+  const scratch = mkdtempSync(join(tmpdir(), 'bundle-load-test-'))
+  try {
+    const changed = join(scratch, 'changed.js')
+    writeFileSync(changed, readFileSync(BUNDLE_PATH, 'utf8').replace('\n', '\n// edited\n'))
+    assert.throws(() => loadBundle({ bundlePath: changed }), /bundle changed/)
+    const same = join(scratch, 'same.js')
+    copyFileSync(BUNDLE_PATH, same)
+    loadBundle({ bundlePath: same })
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
 }
 
 // The node counter counts SolverState.clone calls on this load only.
