@@ -103,7 +103,7 @@ name, whatever went wrong. The wrapper also forces `validateDuringSolve` to
 `replaceComponent`, its `validate` returns the object form directly, with a
 specific message, and only runs if that class opted in. **[verified]** (bundle:
 wrapper at `bundle.claude.js:10049-10062`, base class at 2675-2712,
-`SolverState.validate` at 9045, in `docs/research/humanify-pedagogy/`)
+`SolverState.validate` at 9045, in `examples/_shared/vendor/`)
 
 **A component needs a working `update` to prune.** A validate-only component
 does run: the solver calls `validate` on every state and rejects the ones it

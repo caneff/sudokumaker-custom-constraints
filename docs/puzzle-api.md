@@ -86,7 +86,7 @@ connected groups, or per-region splits in the main code and pass the result
 in as a constructor parameter. **[verified]** (bundle: `createHelpers` at
 `bundle.claude.js:1614`, `createExtendedHelpers` at 9201, `setupPuzzle` at
 9349, `compileCustomComponentClass` at 9994 and its `SolverPuzzleView` facade
-at 10072, in `docs/research/humanify-pedagogy/`)
+at 10072, in `examples/_shared/vendor/`)
 
 ## helpers.connectivity
 
