@@ -31,10 +31,13 @@
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
+import ast
+import io
 import json
 import pathlib
 import re
 import sys
+import tokenize
 import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -244,6 +247,77 @@ def check_research_python(repo_root):
         violations.append(
             f"{rel}: new .py file under docs/research/ -- finder code goes in finders/"
         )
+    return violations
+
+
+# A path into docs/research/, in each spelling a loader writes it: one string,
+# path.join's separate arguments, or a pathlib `/` chain.
+RESEARCH_PATH = re.compile(r"""docs(?:/|['"]\s*[,/]\s*['"])research""")
+
+# The gate's own files, which name docs/research/ to police it, not to load
+# from it.
+RESEARCH_INSPECTORS = frozenset(
+    {
+        "examples/_shared/check_layout.py",
+        "examples/_shared/check_layout.test.py",
+        "examples/_shared/gate.test.py",
+    }
+)
+
+
+def _python_code_lines(text):
+    """{line number: the line's tokens} for Python source, without its
+    comments and docstrings."""
+    prose = set()
+    for node in ast.walk(ast.parse(text)):
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            prose.update(range(node.lineno, node.end_lineno + 1))
+    lines = {}
+    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+        if tok.type == tokenize.COMMENT or (
+            tok.type == tokenize.STRING and tok.start[0] in prose
+        ):
+            continue
+        lines[tok.start[0]] = lines.get(tok.start[0], "") + " " + tok.string
+    return lines
+
+
+def _js_code_lines(text):
+    """{line number: line} for JavaScript source, without its comments."""
+    text = re.sub(
+        r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group()), text, flags=re.S
+    )
+    return {
+        n: re.sub(r"(^|\s)//.*", "", line)
+        for n, line in enumerate(text.splitlines(), 1)
+    }
+
+
+def check_research_loads(repo_root):
+    """Return one violation string per line of examples/ code that builds a
+    path into docs/research/.
+
+    docs/research/ holds records, not live code (#649): a file the gate's code
+    loads from there is maintained source the gate never lints. A citation in
+    a comment or docstring is not a load. Finders keep their catalogues and
+    hunt outputs under docs/research/ by ruling (#469), so finders/ is not
+    scanned."""
+    repo_root = pathlib.Path(repo_root)
+    violations = []
+    for path in sorted((repo_root / "examples").rglob("*")):
+        if path.suffix not in {".py", ".js", ".mjs"} or "node_modules" in path.parts:
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        if rel in RESEARCH_INSPECTORS:
+            continue
+        text = path.read_text()
+        lines = (_python_code_lines if path.suffix == ".py" else _js_code_lines)(text)
+        for n, line in sorted(lines.items()):
+            if RESEARCH_PATH.search(line):
+                violations.append(
+                    f"{rel}:{n}: loads from docs/research/ -- research holds "
+                    "records, so move what it loads into examples/"
+                )
     return violations
 
 
@@ -807,6 +881,7 @@ def main(argv):
     if len(argv) <= 1:
         repo_root = pathlib.Path(__file__).resolve().parents[2]
         violations.extend(check_research_python(repo_root))
+        violations.extend(check_research_loads(repo_root))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")

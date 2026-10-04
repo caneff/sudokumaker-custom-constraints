@@ -23,6 +23,7 @@ from check_layout import (
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
+    check_research_loads,
     check_research_python,
     check_stale_backend_code,
     check_tree,
@@ -1019,6 +1020,51 @@ if __name__ == "__main__":
         assert len(violations) == 1, violations
         assert "docs/research/zzz/x.py" in violations[0], violations[0]
         assert "finders/" in violations[0], violations[0]
+
+    # a path into docs/research/ in examples/ code fails, in each spelling the
+    # tree has used: a joined path, a pathlib chain, a URL, a plain string
+    loads = {
+        "examples/a/x.mjs": "const B = join(HERE, '..', '..', 'docs', 'research', 'b.js')\n",
+        "examples/a/y.py": 'BASE = REPO / "docs" / "research" / "x.txt"\n',
+        "examples/_shared/z.test.mjs": (
+            "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
+        ),
+        "examples/a/w.py": 'sys.path.insert(0, str(REPO / "docs/research/h"))\n',
+    }
+    for rel, text in loads.items():
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / rel).parent.mkdir(parents=True)
+            (root / rel).write_text("\n" + text)
+            violations = check_research_loads(root)
+            assert len(violations) == 1, (rel, violations)
+            assert violations[0].startswith(f"{rel}:2:"), violations[0]
+
+    # ...but a citation in a comment or a docstring is a reference, not a load
+    citations = {
+        "examples/a/x.mjs": (
+            "// see docs/research/a.md\n//! (docs/research/b.md)\n"
+            "/* docs/research/c.md\n   docs/research/d.md */\nconst n = 1 // docs/research/e.md\n"
+        ),
+        "examples/a/y.py": (
+            '"""Module notes: docs/research/a.md."""\n# docs/research/b.md\n'
+            'def f():\n    """docs/research/c.md"""\n    return 1  # docs/research/d.md\n'
+        ),
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        for rel, text in citations.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        assert check_research_loads(root) == [], check_research_loads(root)
+
+    # the gate's own files name docs/research/ to police it, and pass
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        target = root / "examples" / "_shared" / "check_layout.py"
+        target.parent.mkdir(parents=True)
+        target.write_text('research_dir = repo_root / "docs" / "research"\n')
+        assert check_research_loads(root) == [], check_research_loads(root)
 
     # an example with no example.toml fails and names the file: its traits
     # are what the checker reads, so there is nothing to guess from
