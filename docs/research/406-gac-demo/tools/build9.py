@@ -23,7 +23,9 @@ from cpsat import SOLVED, has_second_solution, solver
 from link_codec import decode_puzzle, encode_link
 
 out = Path(sys.argv[1])
-old = decode_puzzle((out / "PUZZLE_LINK_without_gac.txt").read_text().strip())
+# The without-GAC link moved to examples/house-gac/base/ (#659).
+without_gac = repo / "examples" / "house-gac" / "base" / "PUZZLE_LINK_without_gac.txt"
+old = decode_puzzle(without_gac.read_text().strip())
 old_w = old["puzzle"]["width"]
 inset = (old_w - 9) // 2
 givens = {}
@@ -135,7 +137,7 @@ def make9(gac, title):
     return link
 
 
-(out / "PUZZLE_LINK_without_gac.txt").write_text(
+without_gac.write_text(
     make9(False, "GAC demo - without the component") + "\n"
 )
 (out / "PUZZLE_LINK_with_gac.txt").write_text(
