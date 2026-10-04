@@ -24,7 +24,7 @@
 // later as bare), never make a removal unsound. The digit set is a
 // candidate fact: the app shares one component object across every search node,
 // so a set latched deep in a branch would survive the backtrack to a parent
-// where the line has regained a digit (#336). Nothing else is written to the
+// where the line has regained a digit. Nothing else is written to the
 // instance. The answers are shared constant objects, so a call allocates
 // nothing.
 const BARE = 0

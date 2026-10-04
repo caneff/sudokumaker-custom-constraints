@@ -5,7 +5,6 @@
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
 
-// ---- the frame, on a rectangle
 {
   const nw = 5
   const nh = 3
@@ -39,7 +38,6 @@ import { frameGeometry } from './frame-geometry.mjs'
   assert.deepStrictEqual(byKey.get('R1').cells.slice(1), byKey.get('L1').cells.slice(1).reverse())
 }
 
-// ---- alldiffGroups on a square: rows, columns, boxes
 {
   const g = frameGeometry(4, [2, 2])
   assert.strictEqual(g.alldiffGroups.length, 4 + 4 + 4)
@@ -53,7 +51,6 @@ import { frameGeometry } from './frame-geometry.mjs'
   ])
 }
 
-// ---- boxes on a non-square box shape: [rows, cols] is not swapped
 {
   // 6x6 with 2-row x 3-column boxes: six boxes, each two interior rows and
   // three interior columns. A swapped [3, 2] would give 3-row x 2-column boxes.
@@ -67,7 +64,6 @@ import { frameGeometry } from './frame-geometry.mjs'
   assert.deepStrictEqual(all, Array.from({ length: 36 }, (_, i) => g.interior(Math.floor(i / 6), i % 6)).sort((a, b) => a - b))
 }
 
-// ---- alldiffGroups on a rectangle: refused, not silently wrong
 {
   // It is built for a square interior only -- it uses nw for both dimensions,
   // so on a rectangle it would hand back rows of the wrong length and boxes

@@ -1,6 +1,6 @@
 # component_scan.registered_components is a lexical scan over backend
-# source text, shared by framebuild.Lane.check and check_layout.check_components
-# (#292). Tested in isolation here so a change to the scan itself does not
+# source text, shared by framebuild.Lane.check and check_layout.check_components.
+# Tested in isolation here so a change to the scan itself does not
 # need a full link/doc fixture to exercise.
 #
 #   uv run --with lzstring examples/_shared/component_scan.test.py
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     assert registered_components(code) == {"FooComponent"}
 
     # a comment line naming a component is not a registration. A link built
-    # today ships no comments (#385), but the sweep also reads backends off
+    # today ships no comments, but the sweep also reads backends off
     # links no builder rebuilds -- fillomino's frozen fixtures and hunt
     # records, whose committed backends still carry comment lines.
     code = "// a paired end gets a new BarComponent\nnew FooComponent()"
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # the built-ins SudokuMaker ships are read off docs/builtin-components.md,
     # the list of record. A backend may construct one of these without the
     # link carrying any component file for it -- they live in the app, not in
-    # the link -- so the shipped-vs-registered checks subtract them (#394).
+    # the link -- so the shipped-vs-registered checks subtract them.
     builtins = builtin_components()
     assert "PredefinedCandidatesComponent" in builtins
     assert "HouseComponent" in builtins

@@ -51,8 +51,6 @@ def rect(x, y):
     ]
 
 
-# ---- drawing the same picture with fewer points ---------------------------
-#
 # A layer built a cell at a time draws each shared edge twice and spends five
 # points on every unit square, and the link carries every one of those points
 # as JSON. `merge` re-draws the same ink: it reduces a layer to the set of unit
@@ -60,7 +58,7 @@ def rect(x, y):
 # viewer sees is the union of the segments, so redrawing that union any other
 # way is invisible on screen -- which is what makes this free. It cuts the three
 # layers to well under half their points; the measured sizes are in
-# docs/research/skyscraper-builtin-constraint-baseline.md (#385).
+# docs/research/skyscraper-builtin-constraint-baseline.md.
 
 
 class UndescribableInk(ValueError):
@@ -118,12 +116,10 @@ def _trails(segs):
 
     Where the walk starts decides the point lists, not just their length: move
     it and every committed link re-encodes with the same ink and the same point
-    count, but different bytes. One example pins that down:
-    `test_rebuild_reproduces_every_shipped_link_byte_for_byte`
-    (examples/outside-sudoku/build_size.test.py) rebuilds outside-sudoku's four
-    links and demands the exact committed bytes. No other example's links are
-    pinned that way -- their rebuild guards compare ink
-    (`link_swap.frame_and_comment_only`), which a moved start vertex passes.
+    count, but different bytes. `size_builders.test.py` rebuilds every size
+    builder's committed boards and demands the exact committed bytes, so a
+    moved start vertex fails there even though the rebuild guards, which
+    compare ink (`link_swap.frame_and_comment_only`), pass it.
     """
     adj = {}
     for a, b in segs:

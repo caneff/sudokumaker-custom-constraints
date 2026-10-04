@@ -2,7 +2,7 @@
 
 The one JS-side consumer of `link_codec.decode_puzzle`: there is no JS
 LZString decompressor in this repo (`pyproject.toml`'s `lzstring` is the only
-codec dependency, #429), so `bundle-solve.mjs` shells out to this instead of
+codec dependency), so `bundle-solve-lib.mjs` shells out to this instead of
 carrying a second decoder or a new npm dependency.
 
     uv run examples/_shared/link_codec_cli.py <link_file>

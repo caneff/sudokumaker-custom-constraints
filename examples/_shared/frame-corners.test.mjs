@@ -8,7 +8,7 @@
 // cage, and nothing reaches it at all. Left free it takes any digit, and the
 // app reports the board NOT UNIQUE -- measured on the shipped skyscraper 9x9,
 // which goes from unique to not-unique in 400ms when the corners are emptied
-// and nothing replaces them (#394). This backend holds them down invisibly: a
+// and nothing replaces them. This backend holds them down invisibly: a
 // component pins the cell, so the board draws no digit there for a recipient
 // to read.
 //

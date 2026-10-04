@@ -7,7 +7,7 @@ import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
 
-// ---- first "took" only, no verdict yet: all three times report null ----
+// first "took" only, no verdict yet: all three times report null
 // The solve phase printed its "took" but the uniqueness search has not
 // finished, so there is no verdict -- a partial "took" is not a time.
 {
@@ -19,7 +19,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, '?')
 }
 
-// ---- both "took"s plus a unique verdict ----
+// both "took"s plus a unique verdict
 {
   const text = '✨ Solved took 2.3s\nThis is a unique solution. took 0.4s'
   const r = parseReadout(text)
@@ -29,7 +29,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, 'unique')
 }
 
-// ---- no verdict within the cap: both "took"s absent, times report null ----
+// no verdict within the cap: both "took"s absent, times report null
 {
   const text = 'still solving...'
   const r = parseReadout(text)
@@ -39,7 +39,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, '?')
 }
 
-// ---- a timeout after a first solve: first reports its time, unique and sum stay null ----
+// a timeout after a first solve: first reports its time, unique and sum stay null
 // The uniqueness search never finished, so unique and sum are not times -- but
 // the solve phase already printed its "took", and a timeout row should not
 // hide that.
@@ -52,7 +52,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, 'timeout')
 }
 
-// ---- a not-unique verdict still reports both times ----
+// a not-unique verdict still reports both times
 {
   const text = '✨ Solved took 100ms\nThis puzzle has multiple solutions. took 50ms'
   const r = parseReadout(text)
@@ -62,31 +62,31 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, 'not-unique')
 }
 
-// ---- rep line prints first, unique, sum, and verdict ----
+// rep line prints first, unique, sum, and verdict
 {
   const line = repLine({ first: 2300, unique: 400, sum: 2700, verdict: 'unique' })
   assert.strictEqual(line, '  first 2300ms  unique 400ms  sum 2700ms  [unique]')
 }
 
-// ---- rep line for a rep with no verdict: no time is printed as "null" ----
+// rep line for a rep with no verdict: no time is printed as "null"
 {
   const line = repLine({ first: null, unique: null, sum: null, verdict: '?' })
   assert.strictEqual(line, '  first n/a  unique n/a  sum n/a  [?]')
 }
 
-// ---- rep line for a timeout with a first-solve time names the time, not three nulls ----
+// rep line for a timeout with a first-solve time names the time, not three nulls
 {
   const line = repLine({ first: 6800, unique: null, sum: null, verdict: 'timeout' })
   assert.strictEqual(line, '  first 6800ms, no verdict  [timeout]')
 }
 
-// ---- rep line for a timeout with no first-solve time either ----
+// rep line for a timeout with no first-solve time either
 {
   const line = repLine({ first: null, unique: null, sum: null, verdict: 'timeout' })
   assert.strictEqual(line, '  no first solve, no verdict  [timeout]')
 }
 
-// ---- median line reports the median of each of the three numbers, over reps with a verdict ----
+// median line reports the median of each of the three numbers, over reps with a verdict
 {
   const rows = [
     { first: 100, unique: 10, sum: 110, verdict: 'unique' },
@@ -98,13 +98,13 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')
 }
 
-// ---- median line with no rep that finished: no time is printed as "null" ----
+// median line with no rep that finished: no time is printed as "null"
 {
   const line = medianLine([{ first: 6800, unique: null, sum: null, verdict: 'timeout' }])
   assert.strictEqual(line, '  MEDIAN first n/a  unique n/a  sum n/a  over 0/1 reps')
 }
 
-// ---- median line excludes a timeout row even though it now carries a first time ----
+// median line excludes a timeout row even though it carries a first time
 // A timeout row's first time is real (it prints in repLine), but it must not
 // enter the median or the "over n/N" count -- the app never proved a verdict
 // on that rep, so the number is not comparable to a rep that finished.
@@ -119,7 +119,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(line, '  MEDIAN first 200ms  unique 20ms  sum 220ms  over 3/4 reps')
 }
 
-// ---- after the app's own logical pass: the verdict carries a parenthetical ----
+// after the app's own logical pass: the verdict carries a parenthetical
 // With --after-logical the driver runs the app's logical solver first, so the
 // board holds values and marks when the timed search starts and the app says
 // so inside the verdict sentence. The readout is otherwise the cold one: two
@@ -133,7 +133,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(r.verdict, 'unique')
 }
 
-// ---- the marks rule and its one exception ----
+// the marks rule and its one exception
 // A run with marks present is never a timing, so the phrase is an error --
 // except in the two modes that put the marks there on purpose: --ring-clues
 // (an edge-clue puzzle stores its clues as ring values) and --after-logical
@@ -145,7 +145,7 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(marksRejected('This is a unique solution. took 0.4s', false), false)
 }
 
-// ---- solveSummary: every rep times out, median null, both counts named ----
+// solveSummary: every rep times out, median null, both counts named
 // The JSON line's aggregate carries the rep counts alongside the median, so
 // the driver can name the timeout rather than reading a bare null.
 {
@@ -160,13 +160,13 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(s.repsTimedOut, 3)
 }
 
-// ---- solveSummary: a rep with no verdict at all ('?', the driver's own
+// solveSummary: a rep with no verdict at all ('?', the driver's own
 // 300s wait ran out with no recognized text -- not even the app's own
 // "stopped solving" message) counts toward repsTimedOut too, same as an
 // explicit [timeout] verdict. Both leave sum null, and both are reps that
 // never produced a comparable time within the fixed per-rep wait -- a rep
 // counted in the null median must be reflected in the count, or the
-// timeout message can claim "all N reps timed out (M < N timed out)". ----
+// timeout message can claim "all N reps timed out (M < N timed out)".
 {
   const rows = [
     { first: null, unique: null, sum: null, verdict: '?' },
@@ -179,8 +179,8 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(s.repsTimedOut, 3)
 }
 
-// ---- solveSummary: mixed outcome keeps median-over-finishers, still names
-// the timeout count for the reps that did not ----
+// solveSummary: mixed outcome keeps median-over-finishers, still names
+// the timeout count for the reps that did not
 {
   const rows = [
     { first: 100, unique: 10, sum: 110, verdict: 'unique' },
@@ -193,11 +193,11 @@ import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, median
   assert.strictEqual(s.repsTimedOut, 1)
 }
 
-// ---- app version from the footer ----
+// app version from the footer
 assert.strictEqual(parseVersion('SudokuMaker v2026.08.14-d47fc4b  Solved took 1s'), 'v2026.08.14-d47fc4b')
 assert.strictEqual(parseVersion('no footer here'), null)
 
-// ---- entered-value count reads cell digits, not every colored SVG text ----
+// entered-value count reads cell digits, not every colored SVG text
 // A cell's digit (given or entered) is an <svg text> whose closest
 // transformed ancestor <g> sits at a cell center: `translate(<25+50*col>
 // <25+50*row>) scale(25)` (see app-strip.mjs's cellFill). A constraint's own
@@ -205,7 +205,7 @@ assert.strictEqual(parseVersion('no footer here'), null)
 // other transform, so it must not count as an entered value even though its
 // fill is not black. Fixture: 35 black given digits at cell transforms, plus
 // one white "00" decoration at a fractional transform, matching the real Hit
-// Counts board from #231.
+// Counts board.
 {
   const givenOnly = [
     ...Array.from({ length: 35 }, (_, i) => ({ fill: '#000', transform: `translate(${25 + 50 * (i % 9)} ${25 + 50 * Math.floor(i / 9)}) scale(25)` })),
@@ -214,7 +214,7 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.strictEqual(countEnteredValues(givenOnly), 0)
 }
 
-// ---- a real entered value at a cell transform is still counted ----
+// a real entered value at a cell transform is still counted
 // A ring-clue puzzle's entered digits render blue, at the same cell-center
 // transform as a given -- this must still count so the guard still refuses
 // a link that carries a real played value.
@@ -226,7 +226,7 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.strictEqual(countEnteredValues(withEntered), 1)
 }
 
-// ---- parseArgs: the driver's command line ----
+// parseArgs: the driver's command line
 {
   // link file alone: 7 reps and the uniqueness-proving icon by default, both
   // flags off
@@ -281,7 +281,7 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.throws(() => parseArgs(['link.txt', '3', '--bogus']), /usage: app-solve.mjs/)
 }
 
-// ---- VERDICT_PATTERN: the one readout the drivers wait for ----
+// VERDICT_PATTERN: the one readout the drivers wait for
 // app-solve.mjs and app-strip.mjs both wait in the page for a verdict. Every
 // readout readVerdict classifies must end that wait, and nothing else may: a
 // wait that ends on a first-solve "took" times half the run.

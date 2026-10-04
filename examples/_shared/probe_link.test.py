@@ -80,7 +80,7 @@ if __name__ == "__main__":
         via_file = decode_puzzle(out.read_text().rstrip("\n"))
         assert via_file == doc, "empty_link_file did not match empty_interior"
 
-    # check_searchable: the enforcement. A shipped link (solution entered) is
+    # check_searchable: the enforcement. A link with entered values is
     # refused; a searchable one passes; ring values pass only with ring_clues.
     shipped = decode_puzzle(ISO.read_text().rstrip("\n"))
     # every non-given cell holding anything is one the refusal must count

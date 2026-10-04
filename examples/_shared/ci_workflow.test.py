@@ -38,7 +38,7 @@ def job_blocks(text):
     blocks, name = {}, None
     for ln in lines[start + 1 :]:
         if ln and not ln.startswith(" "):
-            break  # next top-level key
+            break
         m = re.match(r"  ([A-Za-z0-9_-]+):\s*$", ln)
         if m:
             name = m.group(1)

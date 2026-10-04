@@ -1,5 +1,5 @@
 // Extract the app bundle's public API surface into a checked-in Markdown
-// index (#410).
+// index.
 //
 //   node examples/_shared/bundle-index.mjs
 //
@@ -50,7 +50,7 @@ const DIGITSET_MUTATORS = new Map(DIGITSET_MUTATOR_NAMES.map(name => [name, 'yes
 
 // The change-object type enum names the shape, not the fields; the fields
 // are read here off the app's own factory functions (see docs/research/
-// bundle-api-index.md's Change objects section for the source read), keyed
+// bundle-api-reference.md's Change objects section for the source read), keyed
 // on the enum's own public names so a renumbering can't desync this table.
 const CHANGE_PAYLOADS = {
   SetValue: 'value, cell',
@@ -187,7 +187,7 @@ function extractHelperClassNames (fns) {
 }
 
 // Read the DigitSet class name off a namespace factory's `SudokuDigitSet`
-// key (same idea as the digits above; the app's own `zs()`-shaped
+// key (same idea as extractHelperClassNames; the app's own `zs()`-shaped
 // `function(){return{...,SudokuDigitSet:X,...}}`). Same shared `fns`.
 function extractDigitSetClassName (fns) {
   for (const fn of fns) {
@@ -230,7 +230,6 @@ function extractExtendedHelperClassNames (ast) {
   return result
 }
 
-// Find the class defining a method with this public name.
 function findClassDefiningMethod (byName, methodName) {
   for (const [name, cls] of byName) {
     if (cls.body.body.some(el => el.type === 'MethodDefinition' && el.key.name === methodName)) {
@@ -262,8 +261,7 @@ function requireClass (byName, name, context) {
 // on DifferentCombinations), or an object literal carrying `type` plus
 // extra constraints (`{type:f.CellArray,amount:2}` on Between's
 // `endPoints`, `{type:f.ObjectArray,fields:{...}}` on SameSum's `groups`).
-// Reading only the first shape silently drops the param on the other two --
-// which is what this function existed to fix (see #410 review).
+// Reading only the first shape silently drops the param on the other two.
 function describeParamType (node) {
   if (node.type === 'MemberExpression' && node.property.type === 'Identifier') {
     return node.property.name

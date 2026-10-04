@@ -72,7 +72,7 @@ def frame_and_comment_only(doc, constraint_name, also_blank=()):
 
     The decoration layers are derived from the board, and a rebuild redraws
     them: merging the per-cell squares into runs changes every polyline and
-    nothing a solver sees (#385). Comparing the ink instead of the point
+    nothing a solver sees. Comparing the ink instead of the point
     lists still catches a layer that moved, gained a line, or lost one.
 
     Layers whose ink has no name in segments are compared as authored --

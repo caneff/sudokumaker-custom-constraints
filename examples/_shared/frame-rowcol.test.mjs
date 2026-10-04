@@ -6,7 +6,7 @@
 // Why this matters. A region constraint gives BOXES ONLY: nothing in the app
 // makes a row or a column a house, so a frame board that declares neither is
 // not the puzzle it looks like -- it solves, times and counts solutions on a
-// different board (#335, docs/gotchas.md #9). Two consumers need those lines
+// different board (docs/gotchas.md #9). Two consumers need those lines
 // and they must be the same lines: the app's solver, through registered
 // components, and SudokuPad, through the publish-time userscript hook.
 //
@@ -18,8 +18,7 @@
 // global-backends.test.mjs uses. An id that reaches a component unboxed has
 // been coerced with `| 0`, which is load-bearing and not decoration: on the
 // shipped 9x9 skyscraper board these eighteen houses ran 1.18x its baseline
-// solve time built straight from `getAllRows()`, and 0.97x once coerced
-// (#394, #276).
+// solve time built straight from `getAllRows()`, and 0.97x once coerced.
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
@@ -122,7 +121,6 @@ for (const [W, H] of [[11, 11], [8, 6], [6, 8]]) {
     }
   }
 
-  // ---- the publish-time hook -------------------------------------------
   assert.ok(postprocessJSON, `${where}: the backend defines no postprocessJSON`)
 
   // A solution string the way SudokuPad reads one: one character per cell in

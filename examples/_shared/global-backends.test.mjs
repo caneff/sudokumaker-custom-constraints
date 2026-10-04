@@ -1,7 +1,7 @@
 // Every backend must coerce the cell ids it gets from the app to plain
-// integers before it registers a component (#276), and a global one must build
+// integers before it registers a component, and a global one must build
 // the frame it says it builds: the 4n lines of the shared frameGeometry, and a
-// side label that names the side its clues actually sit on (#295).
+// side label that names the side its clues actually sit on.
 //
 // Both lanes run here (docs/line-contract.md). The GLOBAL lane is
 // main-global.js with no `input`: it derives every cell id from the board size,
@@ -185,9 +185,9 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // 1. The line set: every line the backend registers is a frame line, and it
   // registers all nw + nh of them. A square frame is symmetric under
   // transpose, so on a square board this set is the same whichever way round
-  // the coordinates are read and it pins the frame, not the reading (#295). A
+  // the coordinates are read and it pins the frame, not the reading. A
   // rectangular board breaks that symmetry: a backend that reads one dimension
-  // twice builds the wrong lines and this check catches it on its own (#299).
+  // twice builds the wrong lines and this check catches it on its own.
   // The off-board count above usually reports the same backend first, since
   // reading one dimension twice also walks off the short side.
   //
@@ -195,7 +195,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // its two readings. `frameGeometry` states each line twice, once read inward
   // from each of its two clues, and a backend owes the line, not both readings
   // of it: a component that reads both end clues at once takes one line per
-  // pair (#404). A reading that is not one of the two the geometry states
+  // pair. A reading that is not one of the two the geometry states
   // still fails here, since neither of its orientations canonicalizes to a
   // frame line.
   const undirected = g => {
@@ -213,7 +213,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // both-ends component register one line per pair, and on its own it would
   // stop seeing whether every CLUE got a component: a backend registering one
   // component per clue could drop half the frame's clues and still register
-  // the whole line set (#404). So every one of the 4n (clue, line) pairs the
+  // the whole line set. So every one of the 4n (clue, line) pairs the
   // geometry states must be covered by some single component that was handed
   // that clue AND that line -- which a both-ends component does for two pairs
   // at once, and a one-clue component for one.
@@ -232,7 +232,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
 
   // 2. The labels: a component named for a side holds that side's clues. This
   // is the check that pins the reading on a square board, since a transposed
-  // `getCellAt` puts the top ring under the name "left" (#295). It reaches only
+  // `getCellAt` puts the top ring under the name "left". It reaches only
   // a backend that names a side -- where every component is named after its own
   // cells, a transposed frame carries the same names and nothing here can see
   // it.
@@ -293,8 +293,6 @@ for (const name of dirs) {
 assert.ok(sideChecks > 0, 'no backend registered a side-labelled component: the side check checked nothing')
 assert.ok(pairChecks > 0, 'no backend registered a pair component: the pair check checked nothing')
 
-// ---- the local lane
-//
 // An example has a local lane exactly when it has both paste targets: main.js
 // reading the author's drawn groups and main-global.js building the frame
 // itself (docs/example-layout.md). `dirs` is already that list. fillomino and

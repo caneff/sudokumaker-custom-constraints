@@ -3,8 +3,8 @@
 # build_link.py, and run()'s own orchestration with the browser call faked out
 # (the app_solve adapter reassigned to a canned-median stub, which is the only
 # thing in run() that needs the live site). Fake medians only; no live
-# browser. The CLI's real run against numbered-rooms is a manual check
-# recorded in the PR, not here — see docs/real-app-timing.md.
+# browser. The CLI's real run against numbered-rooms is a manual check,
+# not here — see docs/real-app-timing.md.
 #
 #   uv run --with lzstring examples/_shared/time_example.test.py
 
@@ -75,9 +75,9 @@ def _widget_doc(backend_code, component_code):
     encode_link/decode_puzzle the way a build_link.py stub needs.
 
     It carries a 4x4 board too -- one ring clue, one interior given, one
-    entered interior digit -- because the timing driver strips a link to its
-    givens before probing it (probe_link.py), and a doc with no `cells` never
-    reaches that step.
+    entered interior digit -- because the timing driver turns a link into a
+    searchable link before timing it (probe_link.py), and a doc with no
+    `cells` never reaches that step.
     """
     cells = [{} for _ in range(16)]
     cells[1] = {"value": 3}  # a ring clue: kept by `empty`, cleared by `strip`
@@ -408,7 +408,7 @@ if __name__ == "__main__":
     assert row_ratio(0, 5000) == float("inf")
     assert row_ratio(1000, 800) == 0.8
 
-    # #151: build_candidate_doc's byte-equal decision must cover the
+    # build_candidate_doc's byte-equal decision must cover the
     # constraint's backend, not only registered component code --
     # build_link.py stubs here mirror skyscraper/hit-counts/running-start,
     # which never touch the backend on a --component swap. Assertions read
@@ -449,8 +449,8 @@ if __name__ == "__main__":
         )
         assert byte_equal, "an unchanged working tree must still read byte-equal"
 
-    # component-only change, backend unchanged -> unchanged behaviour: not
-    # byte-equal, backend stays the committed one
+    # component-only change, backend unchanged -> not byte-equal, backend
+    # stays the committed one
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "component-changed"
         base_doc = _make_widget_example(
@@ -472,8 +472,8 @@ if __name__ == "__main__":
     # local/global duality (docs/example-layout.md): a board whose committed
     # backend is main-global.js, with an untouched main.js sitting alongside
     # it (the file the board does NOT ship) -- editing the unused lane must
-    # not register as a change. This is the #151 follow-up bug: naively
-    # always overlaying main.js would silently swap in the wrong lane here.
+    # not register as a change. Always overlaying main.js would silently swap
+    # in the wrong lane here.
     with tempfile.TemporaryDirectory() as tmp:
         example_dir = pathlib.Path(tmp) / "global-lane-untouched"
         base_doc = _make_widget_example(
@@ -593,12 +593,12 @@ if __name__ == "__main__":
         ), "an edited include must not change which backend file HEAD resolves to"
 
     # a backend declared in examples/_shared/ rather than per-example
-    # (house-gac.js, #421): a board that opts into it can still ship its own
+    # (house-gac.js): a board that opts into it can still ship its own
     # main.js and main-global.js for an unrelated constraint -- real
     # hit-counts does, for its "Hit Counts" backend, alongside the shared
     # "House GAC" one -- so resolve_backend_file must add SHARED_BACKEND_FILES
     # as a further candidate, not only fall back to it when BACKEND_FILES
-    # turns up nothing (#629).
+    # turns up nothing.
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         example_dir = root / "hit-counts"
@@ -654,7 +654,7 @@ if __name__ == "__main__":
             "per-rep timeout (3 timed out)"
         )
 
-    # mixed outcome (median present) still returns the data -- unaffected
+    # mixed outcome (median present) still returns the data
     stdout = (
         'JSON: {"median": 220, "version": "v2026.08.14-d47fc4b", '
         '"repsRun": 3, "repsTimedOut": 1}\n'
@@ -663,14 +663,14 @@ if __name__ == "__main__":
     assert data["median"] == 220
     assert data["repsTimedOut"] == 1
 
-    # no JSON line at all -- unchanged loud failure
+    # no JSON line at all -- loud failure
     try:
         parse_app_solve_output("PUZZLE_LINK.txt", "no json here\n")
         raise AssertionError("expected a no-JSON-line failure")
     except RuntimeError as e:
         assert "printed no JSON line" in str(e)
 
-    # unreadable app version -- unchanged loud failure
+    # unreadable app version -- loud failure
     stdout = 'JSON: {"median": 100, "version": null, "repsRun": 3, "repsTimedOut": 0}\n'
     try:
         parse_app_solve_output("PUZZLE_LINK.txt", stdout)
@@ -678,7 +678,7 @@ if __name__ == "__main__":
     except RuntimeError as e:
         assert "could not read the app version" in str(e)
 
-    # ---- app_solve: the one adapter that builds app-solve.mjs's argv ----
+    # app_solve: the one adapter that builds app-solve.mjs's argv
     real_run = time_example.subprocess.run
     seen = []
 
@@ -702,7 +702,7 @@ if __name__ == "__main__":
     assert seen[0] == [*node, "board.txt", "3"]
     assert seen[1] == [*node, "board.txt", "1", "--ring-clues", "--after-logical"]
 
-    # ---- run()'s success path, with the one live-app call faked out.
+    # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
     # driver arguments run() derives (which link, ring-clues, after-logical)
     # as well as on the rows it builds from the medians it gets back.
@@ -763,7 +763,7 @@ if __name__ == "__main__":
         assert "faster after-logical" in rows[1][0], "the second row is the logical one"
         # baseline and candidate are timed against separate links, cold first
         # then after-logical, neither run asks for the ring, and the reps are
-        # interleaved round by round (#681): one rep of each variant per
+        # interleaved round by round: one rep of each variant per
         # round, the lead alternating, never one variant's reps as a block
         assert calls == interleaved(False) + interleaved(True)
         assert calls[:4] == [
@@ -802,7 +802,7 @@ if __name__ == "__main__":
     # A link regenerated against edited code is not a baseline: the link that
     # was the baseline is gone from this tree. Every link the run times comes
     # from the working tree, so timing it would time the change against itself
-    # -- two probes carrying the same new code, a ratio near 1, and a
+    # -- two searchable links carrying the same new code, a ratio near 1, and a
     # paste-ready verdict for a change nobody measured. Refuse instead, and
     # name the link, because the message otherwise blames the backend files.
     with tempfile.TemporaryDirectory() as tmp:

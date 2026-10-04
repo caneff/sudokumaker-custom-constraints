@@ -1,7 +1,7 @@
 // The isofill and fillomino mains build their cell list by coordinates. A
 // coordinate the board does not have must stay visible: `getIdFromCoordsSafe`
 // returns undefined off the board and `undefined | 0` is 0, a real cell, so a
-// miss coerced silently repeats cell 0 (#547).
+// miss coerced silently repeats cell 0.
 //
 // Run: node examples/_shared/whole-grid-mains.test.mjs
 

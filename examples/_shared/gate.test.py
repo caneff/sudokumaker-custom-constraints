@@ -1,4 +1,4 @@
-# The two gate tiers (#411): `just check` is the fast loop, `just check-full`
+# The two gate tiers: `just check` is the fast loop, `just check-full`
 # is everything and runs on every pull request. This runs both recipes with
 # node, npx, uv and uvx replaced by stubs that log their argv and exit 0, then
 # checks what each tier would have run against the files on disk:
@@ -10,8 +10,8 @@
 #     drop out of both tiers;
 #   - the research .test.mjs files are run by hand, and BY_HAND names them: a
 #     new one fails here until it is wired into a recipe or added to BY_HAND;
-#   - what check-full adds over check is exactly the heavy tests the ruling
-#     names and the soundness harnesses -- nothing heavy runs in check, and
+#   - what check-full adds over check is exactly the heavy tests HEAVY names
+#     and the soundness harnesses -- nothing heavy runs in check, and
 #     nothing light is moved out of it;
 #   - every command check runs, check-full runs too;
 #   - lint runs `uv lock --check`, which fails when uv.lock no longer matches
@@ -32,7 +32,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from gate_lib import commands
 
-# The heavy tier, as the #411 ruling names it.
+# The heavy tier, as ruled: a fixed list, not a glob.
 HEAVY = {
     "uv run examples/fillomino/pipeline.test.py",
     "uv run examples/fillomino/generate.test.py",

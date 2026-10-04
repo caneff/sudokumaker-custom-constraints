@@ -1,5 +1,5 @@
 // The one way to load the app's renamed solver bundle
-// (examples/_shared/vendor/bundle.claude.js) into Node (#660).
+// (examples/_shared/vendor/bundle.claude.js) into Node.
 //
 // The bundle is one `(function () { ... })();`, so nothing inside it is
 // reachable from outside. `loadBundle` appends `__expose.<name> = <name>`

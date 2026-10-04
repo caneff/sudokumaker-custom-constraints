@@ -2,8 +2,7 @@
 # backend's, and for `check_layout` its shipped components' too. Shared by `framebuild.Lane.check` (checked at build time, before a link
 # is committed) and `check_layout.check_components` (checked at sweep time,
 # over already-committed links) so the two do not carry their own copies of
-# the same regex (#292). stdlib `re` only, no ortools: `check_layout.py`
-# imports this module under `--with lzstring` alone.
+# the same regex.
 
 import functools
 import pathlib
@@ -18,7 +17,7 @@ _NEW_COMPONENT = re.compile(r"new (?:customComponents\.)?([A-Za-z0-9_]+Component
 # docs/builtin-components.md, reproduced there from the SudokuMaker docs. The
 # app injects these classes into a backend's scope by name -- they are not
 # properties of `globalThis`, so nothing can enumerate them at run time and
-# this doc is the only list there is (#394).
+# this doc is the only list there is.
 _BUILTINS_DOC = pathlib.Path(__file__).parents[2] / "docs" / "builtin-components.md"
 _DOC_COMPONENT = re.compile(r"`([A-Z][A-Za-z0-9_]*Component)[(`]")
 
@@ -43,7 +42,7 @@ def registered_components(backend_code):
 
     Comment lines are dropped first, so a note that mentions a component does
     not read as a registration. A shipped link carries no comments at all
-    (#385, minify.py), but this scan also reads backends off already-committed
+    (minify.py strips them), but this scan also reads backends off already-committed
     links that were not built that way -- fillomino's frozen timing fixtures
     and hunt records, which `check_layout` sweeps and no builder rebuilds. A
     class reached through an alias, or registered some other way than a
@@ -63,10 +62,9 @@ def mismatch(shipped, backend_code):
 
     Unshipped: registered but not shipped -- it fails inside the app, where
     the author never sees it. Dead: shipped but never registered -- dead
-    weight the recipient still reads as part of the rule (#287, #289, #290,
-    #291). SudokuMaker's built-ins are subtracted first: the app provides
-    those classes, so a backend that constructs one ships no file for it
-    (#394). The one comparison `framebuild.Lane.check` asserts at build time and
+    weight the recipient still reads as part of the rule. SudokuMaker's
+    built-ins are subtracted first: the app provides those classes, so a
+    backend that constructs one ships no file for it. The one comparison `framebuild.Lane.check` asserts at build time and
     `check_layout.check_components` sweeps over committed links.
     """
     registered = registered_components(backend_code) - builtin_components()

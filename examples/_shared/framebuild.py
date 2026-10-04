@@ -80,7 +80,7 @@ class Spec:
     # Does a fresh local board for this example GENERATE bent paths? True
     # everywhere but outside-sudoku, whose window is a box extent along the
     # line's DIRECTION and a bent path has none, so its local board draws the
-    # straight frame lines (#268). Only a search reads this; whether a rules text
+    # straight frame lines. Only a search reads this; whether a rules text
     # says a line is no house is read off the board being encoded, not here.
     bent_lines: bool = True
     # Does this example's framebuild 9x9 GLOBAL board own the plain names
@@ -90,9 +90,9 @@ class Spec:
     plain_global_9x9: bool = True
     # Which GLOBAL-lane sizes carry the shared house-GAC filter (house-gac.js
     # + HouseGacComponent.js) on every interior row, column and box. Per
-    # BOARD, not per example: the filter is a real strength upgrade (#406)
-    # but only pays for itself in real-app solve time on some boards
-    # (docs/real-app-timing.md, #421), so a size not in this set -- the local
+    # BOARD, not per example: the filter is a real strength upgrade but only
+    # pays for itself in real-app solve time on some boards
+    # (docs/real-app-timing.md), so a size not in this set -- the local
     # lane at any size, always -- never carries it, and a routine rebuild of
     # one size cannot silently add it to another. A size in this set past the
     # filter's 9-cell cap is refused at build time rather than shipped as a
@@ -116,10 +116,10 @@ class Spec:
 SOLVE_LIMIT = 10
 
 # A bent-path link's rules text closes with this: its lines are drawn paths,
-# not rows and columns, so a solver must not read them as houses (spec #232,
-# user story 9). One sentence for every example, since the fact is the
-# variant's, not the rule's. A local board whose drawn lines ARE the frame
-# lines does not get it -- there the lines are houses (#268).
+# not rows and columns, so a solver must not read them as houses. One
+# sentence for every example, since the fact is the variant's, not the rule's.
+# A local board whose drawn lines ARE the frame lines does not get it -- there
+# the lines are houses.
 LOCAL_RULES_SUFFIX = (
     " Each clue sits at the end of a drawn line, read inward. A line is not a "
     "row, a column, or any other house: a digit may repeat along it."
@@ -173,9 +173,6 @@ def _ring_name(key):
     key as a string, shared by the gen JSON, the ring-cell lookup and the
     CP-SAT variable tags."""
     return f"{key[0]}{key[1]}"
-
-
-# ---- grid generation ------------------------------------------------------
 
 
 def make_grid(rng, n, bh, bw):
@@ -308,8 +305,8 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     `paths` builds the local board: bent paths in place of the straight frame
     lines, and a seed whose lines carry no repeated digit is skipped, because
     a bent-path board that happens to repeat nothing proves nothing about bare
-    lines. The geometry is drawn from its own random stream, so the frame-line
-    case (which ignores its rng) makes every other draw exactly as before.
+    lines. The geometry is drawn from its own random stream, so a seed's grid
+    and carve draws are the same whether or not paths are drawn.
     """
     box = (bh, bw)
     best = None
@@ -378,9 +375,6 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     return board
 
 
-# ---- document assembly ----------------------------------------------------
-
-
 def frame_groups(n, lines):
     """The drawn groups for `lines` on an n x n interior: each group is the
     clue's ring cell, then that line's cells inward, which is the order
@@ -442,7 +436,7 @@ def refresh_frame_backends(doc):
     return doc
 
 
-# The shared house-GAC filter (#406, #408, #421): opt-in per board
+# The shared house-GAC filter: opt-in per board
 # (`Spec.house_gac`), so it is a separate name from FRAME_BACKENDS, whose two
 # entries are always-on and whose absence `refresh_frame_backends` treats as
 # an error.
@@ -510,9 +504,6 @@ def puzzle_document(spec, board, width, cells, constraints, comment):
     }
 
 
-# ---- the board on disk ----------------------------------------------------
-
-
 def save_board(board, path):
     """Write `board` to `path` as the gen JSON `load_board` reads back.
 
@@ -568,9 +559,6 @@ def load_board(path):
         ),
         seed=g.get("seed"),
     )
-
-
-# ---- the three lanes ------------------------------------------------------
 
 
 def named_files(spec, tag):
@@ -677,7 +665,7 @@ class Lane:
         # leaves out (that one fails inside the app, where the author never
         # sees it), and the link must not carry a name the backend never
         # registers (that one is dead weight the recipient still reads as part
-        # of the rule -- #287, #289, #290, #291). `component_scan.mismatch` is
+        # of the rule). `component_scan.mismatch` is
         # a lexical check: it reads `new <Name>Component` off the backend
         # source, so a class reached through an alias, or named some other
         # way, is invisible to it.
@@ -746,7 +734,7 @@ class Lane:
             """Drop House GAC whole, not blanked: it is opt-in
             (`spec.house_gac`), so a rebuild that first turns it on adds a
             constraint the old link never carried. Its code is generated, not
-            board data (#421). The lane's `derived` constraints go too."""
+            board data. The lane's `derived` constraints go too."""
             d = dict(d)
             d["puzzle"] = dict(d["puzzle"])
             d["puzzle"]["constraints"] = [
@@ -812,7 +800,6 @@ class _RingLane(Lane):
                 {"value": board.clue[key], "given": True} if key in board.active else {}
             )
 
-        # regions: interior boxes, ring = -1
         regions = [-1] * (W * W)
         for r in range(n):
             for c in range(n):
@@ -870,7 +857,7 @@ class RingGlobal(_RingLane):
         return named_files(self.spec, "" if plain else f"{n}x{n}")
 
     def _house_gac(self, n):
-        # `spec.house_gac` names sizes on this lane only (#421).
+        # `spec.house_gac` names sizes on this lane only.
         return n in self.spec.house_gac
 
     def _rules_close(self, board):

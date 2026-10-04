@@ -7,7 +7,7 @@
 //!
 //! Pinning them to the puzzle's lowest digit costs the solver one candidate
 //! set each, and does it invisibly: a component holds the cell, so the board
-//! draws nothing there and the recipient reads no digit off a corner (#394).
+//! draws nothing there and the recipient reads no digit off a corner.
 
 const { width: W, height: H } = helpers.cellIds
 // No `| 0` here: arithmetic on a width or height yields a primitive number

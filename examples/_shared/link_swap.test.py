@@ -4,7 +4,7 @@
 # differs" invariant that build_link.py and build_original.py rely on, and
 # frame_and_comment_only is the same invariant for a rebuild-from-seed
 # script, judging the decoration layers by the ink they lay down rather than
-# by the polylines that carry it (#385).
+# by the polylines that carry it.
 #
 #   uv run --with lzstring examples/_shared/link_swap.test.py
 

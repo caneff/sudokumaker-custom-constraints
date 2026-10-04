@@ -5,7 +5,7 @@
 import assert from 'assert'
 import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
 
-// ---- seededShuffle: a fixed seed reproduces one exact, known permutation ----
+// seededShuffle: a fixed seed reproduces one exact, known permutation
 {
   const a = seededShuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 7)
   assert.deepStrictEqual(a, [6, 5, 8, 1, 2, 3, 4, 7, 9, 0])
@@ -13,14 +13,14 @@ import { parseArgs, seededShuffle, outputJson } from './app-strip-lib.mjs'
   assert.deepStrictEqual(a, b, 'same seed must reproduce the same order')
 }
 
-// ---- output JSON sorts the surviving clues and keeps the grid as given ----
+// output JSON sorts the surviving clues and keeps the grid as given
 {
   const grid = ['01', '23']
   const json = outputJson(grid, [[1, 1], [0, 0]])
   assert.strictEqual(json, '{"grid":["01","23"],"clues":[[0,0],[1,1]]}\n')
 }
 
-// ---- parseArgs: the driver's command line ----
+// parseArgs: the driver's command line
 {
   // the documented order, seed given
   assert.deepStrictEqual(

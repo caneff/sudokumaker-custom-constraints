@@ -1,5 +1,5 @@
 # The no-ring lane: a board with no clue ring around it, its clues typed into
-# drawn groups on the bare n x n grid (up-to-n's shape, #366). A Spec with a
+# drawn groups on the bare n x n grid (up-to-n's shape). A Spec with a
 # `groups_fn` builds this lane and no other -- `framebuild.lane_kinds` says
 # so -- because the groups are the only place its clues live.
 #
@@ -99,7 +99,7 @@ class NoRing(Lane):
     """The bare n x n grid, its clues typed into `spec.groups_fn`'s groups.
 
     One lane per no-ring example, so its file names carry no lane tag: the
-    9x9 is plain-named and every other size is tagged by size alone (#370).
+    9x9 is plain-named and every other size is tagged by size alone.
     """
 
     name = "no-ring"

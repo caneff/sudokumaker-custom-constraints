@@ -6,13 +6,13 @@
 # and every blank line is dropped, block comments included -- a component's
 # `/* eslint-disable ... */` is an apology to a linter the recipient does not
 # run, and the commentary a source file carries in its "//!" blocks is a large
-# fraction of both the shipped code and the link it goes into (#385; the
-# measured shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
+# fraction of both the shipped code and the link it goes into (the measured
+# shares are in docs/research/skyscraper-builtin-constraint-baseline.md).
 # The source files keep those blocks; how a reuser gets the commentary is a
 # separate question -- `keep_comments=True` is that answer for a link that
 # wants it: every comment and blank line survives, bar the `/* eslint-disable`
 # directive (a line for this repo's linter, and the blank line after it), for
-# the rare link built to be read inside the app's own code box (#433, #695).
+# the rare link built to be read inside the app's own code box.
 #
 # One source file can splice in another with a line reading
 #
@@ -27,7 +27,7 @@
 #
 # After every include resolves, a top-level `function name (...) { ... }`
 # declaration that came FROM an include and that the assembled script never
-# references by name is dropped (#395). Scoped to spliced-in code only: a
+# references by name is dropped. Scoped to spliced-in code only: a
 # component's own unused top-level function is still shipped, so it stays a
 # lint error instead of a silent deletion. A reference is any other
 # occurrence of the bare name in the assembled text -- a call, a value

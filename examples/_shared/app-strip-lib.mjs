@@ -10,7 +10,7 @@ import { shuffle } from './harness-lib.mjs'
 // `--grid` may sit anywhere among the positionals. A missing link file, out
 // file or grid file, or a flag the driver does not know, is a usage error, not
 // a run with a null path. Split out here because it is the one branchy part of
-// app-strip.mjs a browser is not needed to exercise (#315).
+// app-strip.mjs a browser is not needed to exercise.
 const USAGE = 'usage: app-strip.mjs <link_file> <out.json> [seed] --grid <puzzle.json>'
 export function parseArgs (argv) {
   let parsed
@@ -28,8 +28,7 @@ export function parseArgs (argv) {
 }
 
 // A small deterministic PRNG (mulberry32) so a "seeded-random" removal order
-// is reproducible across runs without pulling in a dependency. Module-local:
-// only seededShuffle needs it.
+// is reproducible across runs without pulling in a dependency.
 function mulberry32 (seed) {
   let a = seed >>> 0
   return function () {
