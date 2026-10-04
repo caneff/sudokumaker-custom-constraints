@@ -89,13 +89,16 @@ const median = xs => {
   return s.length ? s[Math.floor(s.length / 2)] : null
 }
 
+// A time the readout never gave is "n/a", not the word "null".
+const fmtMs = v => (v == null ? 'n/a' : `${v}ms`)
+
 export function repLine (r) {
   if (r.verdict === 'timeout') {
     return r.first != null
       ? `  first ${r.first}ms, no verdict  [timeout]`
       : '  no first solve, no verdict  [timeout]'
   }
-  return `  first ${r.first}ms  unique ${r.unique}ms  sum ${r.sum}ms  [${r.verdict}]`
+  return `  first ${fmtMs(r.first)}  unique ${fmtMs(r.unique)}  sum ${fmtMs(r.sum)}  [${r.verdict}]`
 }
 
 // Medians of first, unique, and sum over the reps that returned a verdict
@@ -109,7 +112,7 @@ export function medianLine (rows) {
   const first = median(verdicts.map(r => r.first))
   const unique = median(verdicts.map(r => r.unique))
   const sum = median(verdicts.map(r => r.sum))
-  return `  MEDIAN first ${first}ms  unique ${unique}ms  sum ${sum}ms  over ${n}/${rows.length} reps`
+  return `  MEDIAN first ${fmtMs(first)}  unique ${fmtMs(unique)}  sum ${fmtMs(sum)}  over ${n}/${rows.length} reps`
 }
 
 // The JSON line's aggregate for time_example.py: the median sum over reps

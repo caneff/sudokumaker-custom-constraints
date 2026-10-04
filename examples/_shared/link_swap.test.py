@@ -262,50 +262,76 @@ if __name__ == "__main__":
     ex = HERE.parent
     with tempfile.TemporaryDirectory() as tmp:
         out = str(pathlib.Path(tmp) / "out.txt")
+        belongs = "belongs to the rebuild; drop it or --component"
+        no_swap = "names the link a --component swaps into; give --component"
+        no_backend = "swaps a backend in beside --component; this rebuild reads its own"
         refused = [
-            [
-                "isofill",
-                "--component",
-                str(ex / "isofill/IsofillComponent.js"),
-                "--out",
-                out,
-                "--puzzle",
-                str(ex / "isofill/gen_24g.json"),
-            ],
-            [
-                "isofill",
-                "--board",
-                str(ex / "isofill/PUZZLE_LINK_24g.txt"),
-                "--out",
-                out,
-            ],
-            [
-                "numbered-rooms",
-                "--refresh",
-                "--component",
-                str(ex / "numbered-rooms/NumberedRoomsComponent.js"),
-                "--out",
-                out,
-            ],
+            (
+                [
+                    "isofill",
+                    "--component",
+                    str(ex / "isofill/IsofillComponent.js"),
+                    "--out",
+                    out,
+                    "--puzzle",
+                    str(ex / "isofill/gen_24g.json"),
+                ],
+                f"--puzzle {belongs}",
+            ),
+            (
+                [
+                    "isofill",
+                    "--board",
+                    str(ex / "isofill/PUZZLE_LINK_24g.txt"),
+                    "--out",
+                    out,
+                ],
+                f"--board {no_swap}",
+            ),
+            (
+                [
+                    "numbered-rooms",
+                    "--refresh",
+                    "--component",
+                    str(ex / "numbered-rooms/NumberedRoomsComponent.js"),
+                    "--out",
+                    out,
+                ],
+                f"--refresh {belongs}",
+            ),
             # --backend on a rebuild that never reads it: the bare boards and
             # running-start's template take their backend from the tree
-            ["isofill", "--backend", str(ex / "isofill/main.js"), "--out", out],
-            ["fillomino", "--backend", str(ex / "fillomino/main.js"), "--out", out],
-            [
-                "running-start",
-                "--backend",
-                str(ex / "running-start/main-global.js"),
-                "--out",
-                out,
-            ],
+            (
+                ["isofill", "--backend", str(ex / "isofill/main.js"), "--out", out],
+                f"--backend {no_backend}",
+            ),
+            (
+                ["fillomino", "--backend", str(ex / "fillomino/main.js"), "--out", out],
+                f"--backend {no_backend}",
+            ),
+            (
+                [
+                    "running-start",
+                    "--backend",
+                    str(ex / "running-start/main-global.js"),
+                    "--out",
+                    out,
+                ],
+                f"--backend {no_backend}",
+            ),
         ]
-        for example, *argv in refused:
+        for (example, *argv), message in refused:
             run = subprocess.run(
                 [sys.executable, str(ex / example / "build_link.py"), *argv],
                 capture_output=True,
                 text=True,
             )
-            assert run.returncode != 0, f"{example} {argv} was accepted: {run.stdout}"
+            # argparse's refusal exits 2 and names the flag; a crash exits 1
+            # with a traceback and says neither
+            assert run.returncode == 2, (
+                f"{example} {argv} exited {run.returncode}: {run.stderr}"
+            )
+            assert message in run.stderr, f"{example} {argv}: {run.stderr}"
             assert not pathlib.Path(out).exists(), f"{example} {argv} wrote a link"
 
         # house-gac's rebuild does read --backend, so there it is accepted

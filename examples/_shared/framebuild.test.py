@@ -18,7 +18,9 @@ import itertools
 import json
 import pathlib
 import random
+import sys
 import tempfile
+from unittest import mock
 
 import link_codec
 import no_ring
@@ -333,9 +335,10 @@ def test_build_doc_refuses_house_gac_above_nine_cells():
         board = _board(n=10, bh=2, bw=5)
         try:
             RingGlobal(spec).build_doc(board)
-            raise AssertionError("build_doc accepted a house_gac board above 9 cells")
         except ValueError as e:
-            assert "9" in str(e)
+            assert "9-cell house cap" in str(e), e
+        else:
+            raise AssertionError("build_doc accepted a house_gac board above 9 cells")
 
 
 def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
@@ -347,9 +350,10 @@ def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
     house_gac_constraint(9)  # does not raise
     try:
         house_gac_constraint(10)
-        raise AssertionError("house_gac_constraint accepted n=10")
     except ValueError as e:
-        assert "9" in str(e)
+        assert "9-cell house cap" in str(e), e
+    else:
+        raise AssertionError("house_gac_constraint accepted n=10")
 
 
 def test_build_doc_house_gac_names_one_board_not_the_whole_example():
@@ -702,12 +706,11 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         # points the rebuild at it instead of the size's default names.
         other_link = spec.dir / "PUZZLE_LINK_9x9.txt"
         other_gen = spec.dir / "gen_9x9.json"
-        link_path.rename(other_link)
-        gen_path.rename(other_gen)
+        # (copies, so a failed assertion leaves the default pair in place)
+        other_link.write_bytes(link_path.read_bytes())
+        other_gen.write_bytes(gen_path.read_bytes())
         files = (other_link, other_gen)
         assert NoRing(spec).rebuild(n, pair=files) + "\n" == other_link.read_text()
-        other_link.rename(link_path)
-        other_gen.rename(gen_path)
         # The labels are drawn from the groups the rebuild already guards, so a
         # committed link without them rebuilds into one that has them rather
         # than failing the board comparison.
@@ -1151,15 +1154,39 @@ def test_main_rebuild_writes_the_committed_link_back():
 
 def test_run_takes_its_arguments_and_never_reads_sys_argv():
     # `run` is the library entry point: `main` parses, `run` is handed values.
+    # The process's own argv is set to something that would fail any parse,
+    # so a `run` that read it would crash or build another board.
     n, bh, bw = 4, 2, 2
-    with _spec(
-        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
-    ) as spec:
+    with (
+        _spec(
+            ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+        ) as spec,
+        mock.patch.object(sys, "argv", ["build_size.py", "not-a-size", "--bogus"]),
+    ):
         RingGlobal(spec).run(n, bh, bw, range(107, 109))
         link_path, gen_path = RingGlobal(spec).files(n)
         assert link_path.exists()
         # the seeds it searched are the ones it was handed, not a default range
         assert load_board(gen_path).seed in (107, 108)
+
+
+def test_main_reads_the_process_argv_only_when_handed_none():
+    # `main(spec)` is how every build_size.py calls it: argv comes from the
+    # process. Handed a list it must ignore the process's.
+    n, bh, bw = 4, 2, 2
+    with _spec(
+        ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit
+    ) as spec:
+        with mock.patch.object(
+            sys, "argv", ["build_size.py", str(n), str(bh), str(bw), "2"]
+        ):
+            main(spec)
+        link_path, gen_path = RingGlobal(spec).files(n)
+        assert link_path.exists() and load_board(gen_path).n == n
+        link_path.unlink()
+        with mock.patch.object(sys, "argv", ["build_size.py", "not-a-size"]):
+            main(spec, [str(n), str(bh), str(bw), "2"])
+        assert link_path.exists()
 
 
 if __name__ == "__main__":
@@ -1204,4 +1231,5 @@ if __name__ == "__main__":
     test_rebuild_refuses_a_gen_json_that_moved_the_board()
     test_main_rebuild_writes_the_committed_link_back()
     test_run_takes_its_arguments_and_never_reads_sys_argv()
+    test_main_reads_the_process_argv_only_when_handed_none()
     print("framebuild self-check OK")

@@ -218,7 +218,9 @@ const { rnd } = makeRng()
 
 // ---- installGlobals: the naming helper a component calls for a message ----
 installGlobals(1, 9)
-assert.strictEqual(typeof globalThis.helpers.naming.getCageName('region', [0, 1]), 'string')
+// A cage is named after its SMALLEST cell, whatever order the cells come in.
+assert.strictEqual(globalThis.helpers.naming.getCageName('region', [10, 1, 5]), 'the region at R1C2')
+assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 
 // ---- makeIo().loadAt assembles an #include as of the commit ----
 // `read` splices includes from the working tree; `loadAt` splices them from the
