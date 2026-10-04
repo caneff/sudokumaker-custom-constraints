@@ -145,8 +145,8 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 //
 // `groups` switches lanes: null runs the global backend with no `input` at all
 // and checks the whole frame; an array runs a local backend on those drawn
-// groups and checks the cell ids alone. `file` names the run in an assertion
-// message, and `note` does too and keys the registered counts by case.
+// groups and checks the cell ids alone. `file` and `note` only name the run in
+// an assertion message.
 function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '', mayRegisterNothing = false } = {}) {
   const p = mockPuzzle(W, H)
   // The app runs a backend segment as a bare script with `input` in scope;
