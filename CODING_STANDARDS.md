@@ -31,6 +31,10 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
   model, and the uniqueness proof now describes a different puzzle than the app
   enforces. When you change the rule, change all three in the same diff. See the
   modeling note at the end of `docs/testing-and-generation.md`.
+- **Reuse the shared helper; never write a second copy.** A copy drifts the
+  first time the original is fixed, and nothing flags the stale one. When
+  `examples/_shared/` already does the job, call it; when it almost does,
+  extend it.
 
 ## Fail loud, never silently no-op
 
@@ -43,6 +47,9 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
   (`docs/gotchas.md` #1). Prefer a design that cannot misbehave in silence:
   a build-time check, `puzzle.stop()` for a solve-time refusal, and where the
   API gives no signal, prove the behavior off the app before relying on it.
+- **A script refuses bad input with a named reason; it never skips it in
+  silence.** A skipped file or a swallowed exception turns into a result that
+  looks complete and is not.
 
 ## Argue design calls on merits, not "no puzzle uses it"
 
@@ -66,6 +73,17 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
   removed true candidates; a generator asserts a *unique* solution (no second
   solution exists), not merely that one solution was found. A run with no
   assertion is worse than no test. See `docs/testing-and-generation.md`.
+- **A test must go red when the bug it names is planted.** A witness that
+  passes against the broken code proves nothing and reads as coverage. Plant
+  the bug once before you trust the test. A test of a refusal or a subprocess
+  checks both the exit status and the reason it printed, because a crash for
+  an unrelated reason passes a status-only check.
+
+## A solver's UNKNOWN is not an answer
+
+- **A solver's UNKNOWN or timeout is never "no solution" and never a pass.**
+  Only a proven INFEASIBLE rules a case out. See
+  `docs/agents/grid-finder-lessons.md`.
 
 ## Comments describe the code, not its history
 
@@ -73,10 +91,25 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
   code. Cut the diff-against-a-version-nobody-can-see: "used to," "no longer,"
   "replacing X," "same as before." Git holds that story. When you change code,
   delete the comment that described the old shape in the same diff.
+- **A diff that makes a doc, docstring, header or README false fixes it in
+  the same diff.** A stale claim does not fail any gate; the next reader acts
+  on it. Grep the names and paths you changed before calling the diff done.
+- **A comment, docstring or test name claims no more than the code
+  delivers.** "Checks every link" over a top-level scan, or a test named for
+  a case it never builds, tells the reviewer the gap is covered.
+- A comment-kept annotated-link component keeps its commentary: that text is
+  what the link's recipient reads (#732).
 
 ## Style
 
 - Boring over clever. The reader at 3am wins.
+- **Name things with `CONTEXT.md`'s terms.** A synonym splits one concept
+  into two in the reader's head, and a name that shadows another misleads
+  every grep.
+- **No parameter, flag or function that nothing calls.** Most of the code
+  holds to this; a few defaulted parameters still have no caller. An unused
+  option is a promise nobody tests, and it rots the first time the code
+  around it changes.
 
 ## Per-call cost patterns
 
