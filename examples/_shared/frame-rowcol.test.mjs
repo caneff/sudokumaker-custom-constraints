@@ -121,6 +121,7 @@ for (const [W, H] of [[11, 11], [8, 6], [6, 8]]) {
     }
   }
 
+  // the publish-time hook
   assert.ok(postprocessJSON, `${where}: the backend defines no postprocessJSON`)
 
   // A solution string the way SudokuPad reads one: one character per cell in

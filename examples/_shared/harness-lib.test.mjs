@@ -13,6 +13,7 @@ import {
 
 const { rnd } = makeRng()
 
+// bare: any length, digits in range, repeats possible (forced by pigeonhole)
 {
   const line = makeLine(rnd, 'bare', 20, 3)
   assert.strictEqual(line.length, 20)
@@ -21,11 +22,13 @@ const { rnd } = makeRng()
   assert.ok(distinct.size < line.length, '20 draws from 3 digits must repeat')
 }
 
+// bare: can be shorter than the digit count
 {
   const line = makeLine(rnd, 'bare', 2, 9)
   assert.strictEqual(line.length, 2)
 }
 
+// house: n distinct digits, n < digitCount
 {
   const line = makeLine(rnd, 'house', 5, 9)
   assert.strictEqual(line.length, 5)
@@ -33,18 +36,20 @@ const { rnd } = makeRng()
   for (const d of line) assert.ok(d >= 1 && d <= 9, `digit ${d} out of range 1..9`)
 }
 
+// fullHouse: a permutation of every digit 1..D exactly once
 {
   const line = makeLine(rnd, 'fullHouse', 9, 9)
   assert.strictEqual(line.length, 9)
   assert.deepStrictEqual([...line].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9])
 }
 
+// makePuzzleApi: getCellsCanHaveRepeats answers from the declared houses
 // The mock's answer: false exactly when one house holds every queried cell
-// (the app's is pairwise; see `makePuzzleApi`). Declared, never inferred from the digits: a house whose
-// seeded digits repeat still answers false. And the clue cell is no cell of
-// the line's house, so a component that passes it into the query gets "may
-// repeat" back -- its gate shuts, and the harness case that needs it open
-// fails.
+// (the app's is pairwise; see `makePuzzleApi`). Declared, never inferred from
+// the digits: a house whose seeded digits repeat still answers false. And the
+// clue cell is no cell of the line's house, so a component that passes it into
+// the query gets "may repeat" back -- its gate shuts, and the harness case
+// that needs it open fails.
 {
   const cand = new Map([[0, new Set([1])], [1, new Set([1])], [2, new Set([2])], [100, new Set([3])]])
   const api = makePuzzleApi(c => cand.get(c), { houses: [[0, 1, 2]] })
@@ -58,6 +63,7 @@ const { rnd } = makeRng()
   assert.deepStrictEqual([...api.getCandidates(2)], [2, 3])
 }
 
+// makePuzzle serves the same API over its own fixed map
 {
   const p = makePuzzle({ 0: 1, 1: 1, 100: 2 }, (c, v) => [v], { houses: [[0, 1]] })
   assert.strictEqual(p.getCellsCanHaveRepeats([0, 1]), false)
@@ -65,6 +71,7 @@ const { rnd } = makeRng()
   assert.strictEqual(makePuzzle({ 0: 1 }, (c, v) => [v]).getCellsCanHaveRepeats([0]), true)
 }
 
+// makeSeeder: every seed keeps the true value, inside the digits
 // Pinned, full, and subset each land about a third of the time -- the mix the
 // examples tuned their soundness pools on. The bounds are loose on purpose:
 // they catch a mode that never fires, not a tuning drift.
@@ -95,6 +102,7 @@ const { rnd } = makeRng()
   assert.ok(pins > DRAWS * 0.28 && pins < DRAWS * 0.4, `pin drawn ${pins} of ${DRAWS} with full dropped`)
 }
 
+// shuffle and total
 {
   const { rnd } = makeRng(3)
   const a = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -103,6 +111,7 @@ const { rnd } = makeRng()
   assert.strictEqual(total(makePuzzle({ 0: 1, 1: 2 }, c => (c ? [1, 2, 3] : [1]))), 4)
 }
 
+// strengthSweep: the never-weaker contract
 // A version that prunes as hard as the reference passes; one that keeps a
 // candidate the reference removed fails; so does a sweep whose states nearly
 // all die, which compared nothing.
@@ -136,6 +145,7 @@ const { rnd } = makeRng()
   assert.deepStrictEqual(seen, ['a', 'a'])
 }
 
+// patchSource: an edit by an anchor that must be there
 {
   const src = 'const ALLOW_TIES = false\nfunction f () { return ALLOW_TIES }\n'
   assert.strictEqual(patchSource(src, TIES_FLAG, 'const ALLOW_TIES = true'), src.replace('false', 'true'))
@@ -143,6 +153,7 @@ const { rnd } = makeRng()
   assert.throws(() => patchSource('a\na\n', 'a\n', 'b\n'), /not unique/)
 }
 
+// makeIo().load with a patch: the patched source, under the file's name
 // A patched load keeps the file's name, which is what V8 coverage attributes
 // the run to, so it still counts toward the component's own file.
 {
@@ -155,6 +166,7 @@ const { rnd } = makeRng()
   assert.match(patched.where(), /comp\.js/)
 }
 
+// makeIo().loadSource: eval source a caller already holds and edited
 // A harness runs one component twice with a flag at the top of the file
 // flipped, which means evaluating edited source rather than a file on disk.
 {
@@ -164,6 +176,7 @@ const { rnd } = makeRng()
   assert.strictEqual(loadSource(src.replace('= false', '= true'), ['reading']).reading(), true)
 }
 
+// makePuzzle: getValue answers undefined on an unsolved cell
 // docs/puzzle-api.md: getValue is the SOLVED digit, undefined if not solved.
 // A component that floods `getValue(cell) === digit` without a hasValue guard
 // reads a mock that hands back the first candidate as a board full of placed
@@ -176,6 +189,7 @@ const { rnd } = makeRng()
   assert.strictEqual(p.getValue(1), undefined)
 }
 
+// makePuzzle: the whole-grid calls a region-building component makes
 // A vendored baseline reads the grid through the app's own names rather than
 // index arithmetic, so the mock answers them: orthogonal neighbours on the
 // square the cells form, the two multi-cell change calls, and stop.
@@ -202,11 +216,13 @@ const { rnd } = makeRng()
   assert.strictEqual(p._stopped, 'no room')
 }
 
+// installGlobals: the naming helper a component calls for a message
 installGlobals(1, 9)
 // A cage is named after its SMALLEST cell, whatever order the cells come in.
 assert.strictEqual(globalThis.helpers.naming.getCageName('region', [10, 1, 5]), 'the region at R1C2')
 assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
 
+// makeIo().loadAt assembles an #include as of the commit
 // `read` splices includes from the working tree; `loadAt` splices them from the
 // tree at the commit, so a pinned component that carries a directive still
 // loads as it shipped -- even after the included file has since changed.
@@ -256,6 +272,7 @@ assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
   assert.deepStrictEqual([...p.getCandidates(1)].sort(), [1, 2, 3], 'a refused call changes nothing')
 }
 
+// a complement mask is a mask: the app ANDs it, so the mock takes it
 // `~used` is the natural raw form of "keep everything but these", and it is
 // negative. Refusing it would make the mock stricter than the app it stands in
 // for, and send an author back to allocating a set.
@@ -267,6 +284,7 @@ assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
   assert.deepStrictEqual([...p.getCandidates(0)], [1], 'drop everything but digit 1')
 }
 
+// every plural and singular form follows the one rule
 // Mask first, cells second, the bundle's argument order.
 {
   const p = makePuzzle({ 0: 1, 1: 1, 2: 1, 3: 1 }, () => [1, 2, 3])
@@ -305,6 +323,7 @@ assert.deepStrictEqual(columnsOf(9)[8], [8, 17, 26, 35, 44, 53, 62, 71, 80])
 
 console.log('harness-lib.test.mjs: all seams pass')
 
+// DigitSet: a set reads as its mask, as the app's SmallNumberSet does
 // `new SudokuDigitSet(someSet)` coerces its argument through `+`, so without
 // `valueOf` it is NaN and the copy is empty.
 {
@@ -313,6 +332,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(+DigitSet.from([1, 2, 3]), 0b1110)
 }
 
+// DigitSet: every member agrees with a JS Set on the same digits
 // The oracle is Set arithmetic, not mask arithmetic, so a flipped `&`/`|` or a
 // dropped `~` in the mock turns a row red.
 {
@@ -352,6 +372,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(+DigitSet.getIntersection([]), 2147483647)
 }
 
+// fuzzSoundness: the runner fails on an unsound component, and on a validate that rejects the truth
 // A planted component over three cells holding 1..3. `update` is a generator
 // like the app's; each variant breaks exactly one thing, so a run that fails
 // fails for that reason alone.
@@ -412,6 +433,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.deepStrictEqual(seen, [true, false])
 }
 
+// fixpointAll: several components run until none removes anything
 {
   const mk = () => makePuzzle({ 0: 1, 1: 2 }, () => [1, 2, 3])
   // b only prunes once a has run: a needs a second pass of b to finish the job.
@@ -430,6 +452,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(laterRan, false, 'a stopped branch propagates no further, mid-pass included')
 }
 
+// makeWaker: update runs only when a watched cell changed since the last call
 {
   const p = makePuzzle({ 0: 1, 1: 2, 2: 3 }, () => [1, 2, 3])
   let calls = 0
@@ -458,6 +481,7 @@ console.log('harness-lib.test.mjs: all seams pass')
   assert.strictEqual(calls, 3, 'a change after the restore wakes it')
 }
 
+// finishHarness: the exit status is the verdict
 {
   const run = ok => execFileSync(process.execPath, ['--input-type=module', '-e',
     `import { finishHarness } from ${JSON.stringify(new URL('./harness-lib.mjs', import.meta.url).href)}; finishHarness(${ok})`],

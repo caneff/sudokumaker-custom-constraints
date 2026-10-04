@@ -20,6 +20,7 @@ const board = (W, H) => ({
   getCellAt: (c, r) => r * W + c
 })
 
+// the pairs of a whole frame: L_i with R_i, T_i with B_i
 {
   const lines = frameLines(board(7, 5))
   const pairs = framePairs(lines)
@@ -30,6 +31,7 @@ const board = (W, H) => ({
   }
 }
 
+// a filtered list is refused, not mispaired
 // The misuse the guard exists for: hit-counts already has a bySide helper, so
 // framePairs(bySide('L')) is a plausible edit, and pairing L0 with L1 would
 // hand a pair component two clues on the same side and the wrong line.
@@ -39,6 +41,7 @@ const board = (W, H) => ({
   assert.throws(() => framePairs(lines.filter(g => 'LT'.includes(g.side))), /whole frameLines output/)
 }
 
+// an odd-length list is refused rather than pairing with undefined
 {
   const lines = frameLines(board(7, 5))
   assert.throws(() => framePairs(lines.slice(0, 3)), /whole frameLines output/)

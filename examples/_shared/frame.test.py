@@ -46,6 +46,9 @@ def _points(lines):
     return sum(len(pts) for pts in lines)
 
 
+# The picture, restated independently of frame.py.
+
+
 def _ring_cells(W):
     """Every cell of the one-cell clue ring around a (W-2) x (W-2) interior."""
     return (
