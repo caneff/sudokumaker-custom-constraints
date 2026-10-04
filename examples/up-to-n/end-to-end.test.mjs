@@ -8,6 +8,9 @@
 // #429): the link's own main code reads the drawn markers, registers the
 // component, and the app's search solves. Nothing here is mocked, so the
 // marker contract, the component and the board data are checked together.
+// Which malformed markers setup refuses, and with what message, is
+// marker-contract.test.mjs's; the clue-range case here shows one refusal
+// surfacing through the real solver.
 //
 // Expected answers come from the board's gen JSON, which CP-SAT built and
 // proved unique, and from spec #589's own literals -- never from the JS rule.
@@ -44,6 +47,7 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
 import { decodeLinkFile, solveDocument } from '../_shared/bundle-solve-lib.mjs'
+import { entered } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 
@@ -83,12 +87,6 @@ function where (g, n) {
   const y = (a / n) | 0
   if (Math.abs(a - b) === 1) return { key: `${x === 0 ? 'L' : 'R'}${y}`, target: y + 1 }
   return { key: `${y === 0 ? 'T' : 'B'}${x}`, target: x + 1 }
-}
-
-// The document with the recorded grid entered in full.
-const entered = (d, board) => {
-  d.puzzle.cells = board.grid.flat().map(value => ({ value }))
-  return d
 }
 
 // A document the solver refuses: the entered grid rejected, or setup refusing
@@ -190,51 +188,6 @@ for (const [link, gen] of BOARDS) {
     for (const g of markers(blank)) g.value = ''
     const { solutions } = await solveDocument(blank)
     assert.ok(solutions.length > 1, `${link}: ${solutions.length} solutions with every marker empty`)
-  }
-
-  // The recorded solution entered in full is accepted with the true clues and
-  // refused once one shown clue is off by one.
-  {
-    const entered = d => {
-      d.puzzle.cells = board.grid.flat().map(value => ({ value }))
-      return d
-    }
-    const { solutions } = await solveDocument(entered(copy(doc)))
-    assert.deepStrictEqual(solutions, [solution(board)], `${link}: the true grid, entered`)
-
-    const wrong = entered(copy(doc))
-    const clued = markers(wrong).find(g => g.value !== '')
-    clued.value = String(Number(clued.value) + 1)
-    const rejected = await solveDocument(wrong).then(
-      ({ solutions }) => solutions.length === 0,
-      err => /rejected the initial grid/.test(err.message)
-    )
-    assert.ok(rejected, `${link}: the true grid passed a wrong clue`)
-  }
-
-  // A malformed marker is refused at setup with the marker contract's own
-  // message, not solved as though it were absent or read as some other clue.
-  // Each edit takes the document and its first marker, two cells [a, b] with
-  // b one step inward from the border cell a.
-  const inward = g => g.cells[1] - g.cells[0]
-  for (const [what, edit, message] of [
-    ['a three-cell marker', (d, g) => g.cells.push(g.cells[1] + inward(g)), /Up to N: .* must be exactly two cells/],
-    ['a marker one step in from the end', (d, g) => { g.cells = g.cells.map(c => c + inward(g)) }, /Up to N: .* not at either end/],
-    ['a second marker on the same end', (d, g) => markers(d).push({ ...g, value: '1' }), /Up to N: .* same line and end/],
-    ['a non-numeric value', (d, g) => { g.value = 'x' }, /Up to N: .* not a whole number/],
-    // Digits stop one short of the board, every clue is cleared, and only the
-    // marker at the top of the last column is clued: its target digit is one
-    // the board cannot hold, and the refusal names that marker.
-    ['a target digit past maxDigit', d => {
-      const n = board.n
-      d.puzzle.maxDigit = n - 1
-      for (const m of markers(d)) m.value = ''
-      markers(d).find(m => m.cells[0] === n - 1 && m.cells[1] === 2 * n - 1).value = '1'
-    }, new RegExp(`Up to N: the marker at R1C${board.n} and R2C${board.n} aims at target digit ${board.n}, outside 1\\.\\.${board.n - 1}`)]
-  ]) {
-    const bad = copy(doc)
-    edit(bad, markers(bad)[0])
-    await assert.rejects(solveDocument(bad), message, `${link}: ${what}`)
   }
 }
 

@@ -2,7 +2,7 @@
 // component's source by matching two anchor lines, so the way it breaks is
 // silent: an edit to `IsofillComponent.js` moves an anchor, the patch no
 // longer applies, and the share it reports is wrong rather than absent.
-// These three assertions are what fails when that happens.
+// These assertions are what fails when that happens.
 //
 //   node examples/isofill/cut-profile.test.mjs
 
@@ -36,10 +36,13 @@ const removalsOf = (mod, snap) => {
 }
 check('patched removals match plain', snaps.every(s => removalsOf(plain, s) === removalsOf(timed, s)))
 
-// ---- The accumulator is wired: cut runs, and its time is inside update's ----
+// ---- The accumulator is wired: cut runs, and its time is part of update's ----
+// timeUpdate throws on a run that recorded exactly no cut time. Between that
+// and all of `update` sits the span itself: a patch that accumulates a clock
+// reading, or a negative span, falls outside it. A cut counted twice does not
+// (the share is about a half here), so this is a range check, not a measure.
 const { totalMs, cutMs } = timeUpdate(timed, snaps, 1)
-check('cut time is positive', cutMs > 0)
-check('cut time is inside update time', cutMs <= totalMs)
+check('cut time is within (0, update time)', cutMs > 0 && cutMs < totalMs)
 
 // ---- An uninstrumented component reads as no cut time at all, and that
 // fails loud rather than reporting a 0% share ----

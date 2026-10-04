@@ -1,12 +1,14 @@
 # build_clued.py: the clued link decodes to the hard board's interior plus 36
 # filled ring cells, and its original-wrapper twin differs from it only in the
-# constraint code (the same check build_original.py runs). Prior art:
+# constraint code (the same check build_original.py runs), and rebuilding into
+# a temp directory reproduces both shipped links byte-identically. Prior art:
 # build_link.test.py.
 #
 #   uv run --with lzstring examples/numbered-rooms/build_clued.test.py
 
 import pathlib
 import sys
+import tempfile
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
@@ -20,7 +22,26 @@ from sm_document import find_constraint
 
 if __name__ == "__main__":
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    clued, clued_original = build()
+    # read the shipped links before the rebuild runs, so a rebuild that also
+    # wrote to HERE could not satisfy the untouched check below
+    names = ["PUZZLE_LINK_clued.txt", "PUZZLE_LINK_clued_original.txt"]
+    shipped = {n: (HERE / n).read_bytes() for n in names}
+    # modification times too: a rebuild that also wrote to HERE rewrites the
+    # same bytes, so only the time shows it
+    stamped = {n: (HERE / n).stat().st_mtime_ns for n in names}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = pathlib.Path(tmp)
+        clued, clued_original = build(out_dir)
+        for n in names:
+            assert (out_dir / n).read_bytes() == shipped[n], (
+                f"{n} does not reproduce byte-identically"
+            )
+    for n in names:
+        assert (HERE / n).read_bytes() == shipped[n], f"{n} was touched by build()"
+        assert (HERE / n).stat().st_mtime_ns == stamped[n], (
+            f"{n} was rewritten by build()"
+        )
 
     ring = {g["cells"][0] for g in frame_groups()}
     assert len(ring) == 36, f"expected 36 clue cells, found {len(ring)}"

@@ -142,6 +142,8 @@ def shipped_board_matches_its_link(link_name, gen_name):
     assert "Grid Rows and Columns" in names
     assert (puzzle["width"], puzzle["height"]) == (n, n), "no ring around the grid"
     assert (puzzle["minDigit"], puzzle["maxDigit"]) == (1, n)
+    # no ring, so no "inner grid" for the rules text to name
+    assert puzzle["comment"].startswith(NO_RING_RULES_PREFIX)
 
     # Givens: exactly the recorded ones. Nothing entered elsewhere is
     # check_layout's rule.
@@ -258,12 +260,6 @@ def test_committed_component_swaps_back_to_the_board():
         out = pathlib.Path(tmp) / "candidate.txt"
         link = swap_build(board, HERE / "UpToNComponent.js", out)
         assert link == board.read_text().strip()
-
-
-def test_spec_is_a_no_ring_spec():
-    assert SPEC.groups_fn is not None
-    assert SPEC.rules_prefix == NO_RING_RULES_PREFIX
-    assert SPEC.bent_lines is False, "a marker names a straight row or column"
 
 
 if __name__ == "__main__":

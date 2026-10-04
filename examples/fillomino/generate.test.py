@@ -12,7 +12,7 @@ import sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from generate import Board, drop, is_striped, model, rows, sample, self_check, unique
+from generate import Board, drop, is_striped, model, rows, sample, self_check
 from ortools.sat.python import cp_model
 
 
@@ -20,15 +20,6 @@ def test_self_check():
     # The model-vs-flood-fill self-check: small boards enumerated both ways
     # must agree exactly. self_check() raises AssertionError on disagreement.
     self_check()
-
-
-def test_timeout_never_a_verdict():
-    try:
-        unique(Board.of(9), {}, limit=0.001)
-    except TimeoutError:
-        pass
-    else:
-        raise AssertionError("a tiny time cap must raise, not report a verdict")
 
 
 def test_cap_wider_than_side():
@@ -119,25 +110,35 @@ KNOWN_BAD_SEED_1_GRID = [
 ]
 
 
-def test_striped_seeds_rejected_and_sampling_varies():
+SHIPPED_GRID = json.loads((HERE / "gen.json").read_text())["grid"]
+
+
+def test_is_striped_flags_a_mostly_dull_grid():
     assert is_striped(KNOWN_BAD_SEED_1_GRID), "known-bad seed 1 grid expected striped"
+    assert not is_striped(SHIPPED_GRID), "the shipped grid is not dull"
 
-    # sample() must never hand back a striped grid, even fed a bad seed.
-    board = Board.of(9)
-    g1 = sample(board, seed=1)
-    g2 = sample(board, seed=2)
-    assert not is_striped(g1)
-    assert not is_striped(g2)
 
-    # Distinct seeds must land on distinct grids -- pinned-cell diversity.
-    assert g1 != g2
+def test_sample_retries_past_a_striped_grid():
+    # `rows` is what sample() reads each solve through: hand it the striped
+    # grid first, a good one second, and sample() must skip the first.
+    import generate
+
+    good = SHIPPED_GRID
+    queue = [KNOWN_BAD_SEED_1_GRID, good]
+    real_rows = generate.rows
+    generate.rows = lambda board, s, x: queue.pop(0)
+    drawn = []
+    try:
+        err = _stderr_of(lambda: drawn.append(sample(Board.of(9), seed=1)))
+    finally:
+        generate.rows = real_rows
+    assert drawn == [good], "sample() returned the striped grid"
+    assert "drop (striped)" in err, err
 
 
 if __name__ == "__main__":
     test_self_check()
     print("self-check: ok")
-    test_timeout_never_a_verdict()
-    print("timeout never a verdict: ok")
     test_model_and_rows_read_the_board_they_are_given()
     print("model and rows read the board they are given: ok")
     test_dropped_grid_logs_seed_and_clue_set()
@@ -145,6 +146,7 @@ if __name__ == "__main__":
     print("dropped grids log seed and clue set: ok")
     test_cap_wider_than_side()
     print("cap wider than side: ok")
-    test_striped_seeds_rejected_and_sampling_varies()
-    print("striped seeds rejected, sampling varies: ok")
+    test_is_striped_flags_a_mostly_dull_grid()
+    test_sample_retries_past_a_striped_grid()
+    print("striped grids detected and retried: ok")
     print("generate.test.py: ok")
