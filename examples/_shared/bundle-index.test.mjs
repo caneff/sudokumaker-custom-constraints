@@ -1,5 +1,5 @@
 // bundle-index.mjs reads the tracked HAR and derives docs/
-// bundle-api-index.md from it (#410). Tested here against the real HAR --
+// bundle-api-index.md from it. Tested here against the real HAR --
 // there's no smaller fixture worth building, since the whole point is
 // reading the bundle's own JS -- so this also doubles as the drift check:
 // a bundle update that reshapes something this script matches on shows up
@@ -49,7 +49,7 @@ assert.ok(generated.includes('| House | cells: CellArray |'),
 assert.ok(generated.includes('| Between | endPoints: CellArray (amount: 2), midPoints: CellArray |'),
   'Between should list both params, including the object-typed endPoints')
 
-// (e) #415: registrations whose first arg is an array of names (aliases)
+// (e) registrations whose first arg is an array of names (aliases)
 // emit one row per name, the non-primary ones marked as aliases.
 assert.ok(generated.includes('| Pair | filterOrMapping: ((d1: number, d2: number) => boolean) | DigitSet[], cell1: Cell, cell2: Cell |'),
   'Pair (primary name of the ["Pair","AsymmetricalPair"] registration) should be listed unmarked')
@@ -60,7 +60,7 @@ assert.ok(generated.includes('| GreaterThan | lesserCell: Cell, greaterCell: Cel
 assert.ok(generated.includes('| LessThan (alias of GreaterThan) | lesserCell: Cell, greaterCell: Cell |'),
   'LessThan should be listed as an alias of GreaterThan')
 
-// (f) #415: registrations whose message is a template literal (used for a
+// (f) registrations whose message is a template literal (used for a
 // multi-line "**Note:**" message) are read instead of being dropped, with
 // the newline rendered as <br> so the markdown table row stays one line.
 assert.ok(generated.includes(
@@ -81,7 +81,7 @@ assert.ok(generated.includes(
 assert.ok(generated.includes('44 registered component names (42 constructors, 2 of them aliasing'),
   'header should count all 44 component name rows and call out the 2 aliases')
 
-// (h) #417: helpers.geometry lists the base class's own members plus the
+// (h) helpers.geometry lists the base class's own members plus the
 // main-code-only RegionAwareGeometryHelper's getSubsetsPerRegion, marked as
 // such; helpers.lines and helpers.misc get their own sections, same marker.
 const geometrySection = generated.slice(

@@ -142,9 +142,9 @@ def test_check_passes_when_the_backend_registers_the_declared_component():
 
 def test_check_catches_a_shipped_component_the_backend_never_registers():
     # the declared list carries a dead name the backend never registers with
-    # `new`: the existing two checks both pass (names == want; registered is
+    # `new`: the other two checks both pass (names == want; registered is
     # a subset of shipped), so only the shipped-minus-registered assertion
-    # catches it (#292)
+    # catches it
     with _spec(["FooComponent.js", "BarComponent.js"]) as spec:
         link, doc, board = _build(spec)
         try:
@@ -159,7 +159,7 @@ def test_check_accepts_a_backend_that_reaches_for_a_built_in_component():
     # SudokuMaker provides the built-ins, so a backend that constructs one
     # ships no component file for it and the link is not missing anything.
     # `check_layout.check_components` says the same at the sweep seam; the two
-    # copies of this rule have to agree (#394).
+    # copies of this rule have to agree.
     with _spec(
         ["FooComponent.js"],
         main_global=(
@@ -293,8 +293,8 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
 
 
 def test_build_doc_ships_no_house_gac_constraint_by_default():
-    # `Spec.house_gac` defaults False, so every already-shipped link stays
-    # byte-unchanged until a board opts in (#421).
+    # `Spec.house_gac` defaults to no size, so every already-shipped link
+    # stays byte-unchanged until a board opts in.
     with _spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         names = [
@@ -305,8 +305,8 @@ def test_build_doc_ships_no_house_gac_constraint_by_default():
 
 def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
     # Opting in adds one more constraint: the shared house-gac.js backend,
-    # carrying HouseGacComponent.js as its one component (#421, following
-    # docs/research/408-house-gac/house_gac_links.py's shape).
+    # carrying HouseGacComponent.js as its one component (the shape of
+    # docs/research/408-house-gac/house_gac_links.py).
     with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
         _, doc, _ = _build(spec)
         gac = next(
@@ -330,7 +330,7 @@ def test_build_doc_house_gac_wires_the_shared_filter_onto_every_house():
 def test_build_doc_refuses_house_gac_above_nine_cells():
     # HouseGacComponent.js refuses to register past a 9-cell house at setup
     # (MAX_CELLS); a board that would silently ship a house past that size
-    # fails loud here instead, at build time (#421).
+    # fails loud here instead, at build time.
     with _spec(["FooComponent.js"], house_gac=frozenset({10})) as spec:
         board = _board(n=10, bh=2, bw=5)
         try:
@@ -346,7 +346,7 @@ def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
     # hand-built board (running-start/build_link.py's build_from_template)
     # appends `house_gac_constraint()` directly, bypassing build_doc
     # entirely, so the cap has to live in the one function every caller goes
-    # through, not just in build_doc (#421 review round 1).
+    # through, not just in build_doc.
     house_gac_constraint(9)  # does not raise
     try:
         house_gac_constraint(10)
@@ -359,10 +359,9 @@ def test_house_gac_constraint_refuses_above_nine_cells_on_its_own():
 def test_build_doc_house_gac_names_one_board_not_the_whole_example():
     # A Spec is shared by every size and both lanes a build_size.py builds
     # (framebuild.main), so naming one size must not silently carry onto a
-    # rebuild of another size or of the local lane -- a real bug caught in
-    # review (#421): the same Spec's 9x9 was measured and shipped, but a
-    # plain bool put it on every rebuild of that example, sizes and lanes
-    # that were never timed included.
+    # rebuild of another size or of the local lane: a plain bool would put
+    # it on every rebuild of that example, sizes and lanes that were never
+    # timed included.
     with _spec(["FooComponent.js"], house_gac=frozenset({4})) as spec:
         _, doc, _ = _build(spec, board=_board(n=4))
         names = [
@@ -389,7 +388,7 @@ def test_build_doc_leaves_the_frame_corners_empty():
     # A corner belongs to no line, no region and no cage, so a given is the
     # only thing the document itself could hold it down with -- and a given is
     # a digit the recipient reads off the board. The document leaves the
-    # corners empty and the frame backend pins them instead (#394).
+    # corners empty and the frame backend pins them instead.
     with _spec(["FooComponent.js"]) as spec:
         _, doc, board = _build(spec)
         W = board.n + 2
@@ -399,10 +398,10 @@ def test_build_doc_leaves_the_frame_corners_empty():
 
 def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
     # A region constraint gives boxes only, so the interior lines have to be
-    # declared somewhere or the board is not the puzzle it looks like (#335).
+    # declared somewhere or the board is not the puzzle it looks like.
     # They are declared in the frame backend, as named houses: a house carries
     # a name the app prints in its own step log, and costs nothing once its
-    # ids are coerced (#394). A document cage cannot carry one -- the app
+    # ids are coerced. A document cage cannot carry one -- the app
     # hard-codes "the cage at <cell>" and duplicates it between row 1 and
     # column 1. This pins that the link runs both frame backends -- the ones
     # `frame-rowcol.test.mjs` and `frame-corners.test.mjs` cover -- and that no
@@ -425,7 +424,7 @@ def test_build_doc_declares_the_interior_rows_and_columns_in_its_backends():
 
 # A no-ring caller's groups: a two-cell marker at the top of every column,
 # typed with that column's clue when the clue is shown and left empty when it
-# is not. The shape up-to-n draws (#366), which is all these cases need.
+# is not. The shape up-to-n draws, which is all these cases need.
 def _column_markers(board):
     return [
         ([(0, c), (1, c)], board.clue[("T", c)] if ("T", c) in board.active else None)
@@ -900,7 +899,7 @@ def test_lane_files_plain_names_the_9x9_and_tags_every_other_size():
             d / "gen_local.json",
         )
     # a no-ring example has one lane, so its names carry no lane tag: the 9x9
-    # is plain-named and every other size is tagged by size alone (#370)
+    # is plain-named and every other size is tagged by size alone
     with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         d = spec.dir
         assert NoRing(spec).files(9) == (
@@ -996,7 +995,7 @@ def test_main_builds_the_local_lane_under_either_flag_name():
 def test_a_spec_whose_local_lines_stay_straight_draws_the_frame():
     # outside-sudoku's shape: its rule needs a direction, so its local board
     # draws the straight frame lines and its rules text must not say a line is
-    # no house (#268). The Spec says so, not the caller.
+    # no house. The Spec says so, not the caller.
     n, bh, bw = 4, 2, 2
     with _spec(
         ["FooComponent.js"],
@@ -1016,7 +1015,7 @@ def test_the_rules_text_follows_the_board_not_the_spec():
     # The "a digit may repeat along it" sentence belongs to a board whose drawn
     # lines really bend. A Spec that GENERATES bent paths still must not put it
     # on a board whose recorded lines are the straight frame lines -- there the
-    # lines are houses (#268).
+    # lines are houses.
     with _spec(["FooComponent.js"]) as spec:
         assert spec.bent_lines
         straight = _board()
@@ -1107,7 +1106,7 @@ def test_rebuild_reproduces_a_committed_link_byte_for_byte():
 def test_rebuild_opts_a_board_into_house_gac_for_the_first_time():
     # A board that never carried House GAC turning it on is not board drift:
     # the guard must not read "new constraint appeared" as "the puzzle
-    # changed" (#421).
+    # changed".
     n, bh, bw = 4, 2, 2
     with _spec(
         ["FooComponent.js"], clue_fn=_first_digit, cp_sat_clue_fn=_post_first_digit

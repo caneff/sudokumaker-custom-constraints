@@ -21,8 +21,8 @@ import { runBackend } from './backend-runner.mjs'
 
 const SRC = readFileSync(join(import.meta.dirname, 'grid-rowcol.js'), 'utf8')
 
-// A W x H board whose geometry helpers yield boxed ids, as the app's own do
-// (#394): numerically right, not plain numbers.
+// A W x H board whose geometry helpers yield boxed ids, as the app's own do:
+// numerically right, not plain numbers.
 function run (W, H, minDigit, maxDigit) {
   const registered = []
   /* eslint-disable no-new-wrappers -- a boxed id is what the coercion check is for */

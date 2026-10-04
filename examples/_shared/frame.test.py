@@ -1,5 +1,5 @@
 # frame.cosmetics: the three decoration layers every frame board ships, and
-# the merge that draws them with fewer points (#385).
+# the merge that draws them with fewer points.
 #
 # The picture is the contract, not the polylines: these layers hide the ring's
 # cell borders, box the shown clue cells, and draw the interior's outer border,
@@ -46,7 +46,7 @@ def _points(lines):
     return sum(len(pts) for pts in lines)
 
 
-# ---- the picture, restated independently of frame.py ----------------------
+# The picture, restated independently of frame.py.
 
 
 def _ring_cells(W):
@@ -75,7 +75,7 @@ def _cells_with_given_ring(W, shown):
     """A board's cell list: every corner is a given, and `shown` names the ring
     keys whose clue cell is a shown given.
 
-    `framebuild` leaves the corners empty (#394), so this is a board it never
+    `framebuild` leaves the corners empty, so this is a board it never
     builds -- deliberately, because the guard under test is what stops a
     corner given being drawn as a clue, and only a corner given exercises it.
     """
@@ -98,9 +98,6 @@ def _layer(W, cells, role):
     layers = cosmetics(W, cells)
     assert len(layers) == 3, f"want 3 cosmetic layers, got {len(layers)}"
     return layers[role]
-
-
-# ---- the cases ------------------------------------------------------------
 
 
 def test_white_lines_still_cover_every_ring_cell_border():

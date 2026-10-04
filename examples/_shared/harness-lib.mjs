@@ -24,7 +24,7 @@ export class DigitSet {
   // Copied from the bundle's SudokuDigitSet and its SmallNumberSet base
   // (bundle.claude.js:541-626): every member, each reading its argument through `valueOf` as the app does. A
   // member left out fails silently, not loudly -- `new SudokuDigitSet(set)`
-  // without `valueOf` is an empty set (#563). `getUnion` returns a fresh set.
+  // without `valueOf` is an empty set. `getUnion` returns a fresh set.
   add (n) { this.mask |= 1 << n }
   delete (n) { this.mask &= ~(1 << n) }
   clear () { this.mask = 0 }
@@ -252,8 +252,8 @@ export function makeLine (rnd, kind, n, D) {
 // six change builders), so a DigitSet and a plain integer both work there --
 // a negative one included, since `~used` is how "everything but these" is
 // written without allocating a set. An array does not work: its `valueOf` is
-// not a number, so the `&` gives 0 and the change silently removes nothing
-// (a rule went dead that way). That is the hazard this check exists to catch.
+// not a number, so the `&` gives 0 and the change silently removes nothing.
+// That is the hazard this check exists to catch.
 function maskOf (s, caller) {
   if (s instanceof DigitSet) return s.mask
   if (Number.isInteger(s)) return s
@@ -371,7 +371,6 @@ export function makeWaker (mod, inst, p, cells) {
   }
 }
 
-// One component: fixpointAll over a single part.
 export const fixpoint = (mod, inst, p) => fixpointAll([{ mod, inst }], p)
 
 // Run to a fixpoint, then report a cell that lost its true value or went
@@ -435,7 +434,6 @@ export function fuzzSoundness (label, { iters, draw, log = console.log }) {
   return { tests: iters, violations, validateRejects, failures, fired, ok: failures === 0 }
 }
 
-// End a harness: print the verdict and exit with its status.
 export function finishHarness (ok) {
   console.log(ok ? 'PASS' : 'FAIL')
   process.exit(ok ? 0 : 1)

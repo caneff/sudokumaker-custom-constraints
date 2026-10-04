@@ -1,5 +1,5 @@
 // Run the app's real solver in Node, on a decoded puzzle document, without a
-// browser (#429). Loads the renamed solver bundle through bundle-load.mjs's
+// browser. Loads the renamed solver bundle through bundle-load.mjs's
 // `loadBundle`, then drives it through its own
 // `onmessage` wire protocol -- the same "start" then "findAll" messages the
 // real worker gets, read straight from the bundle body
@@ -34,7 +34,7 @@ const FALLBACK_STEP_TYPES = [
 
 // Decodes a SudokuMaker link into its puzzle document. There is no JS
 // LZString decoder in this repo -- `pyproject.toml`'s `lzstring` (used by
-// examples/_shared/link_codec.py) is the only codec dependency (#429) -- so
+// examples/_shared/link_codec.py) is the only codec dependency -- so
 // this shells out to the existing Python codec (link_codec_cli.py) rather
 // than adding one.
 export function decodeLinkFile (linkFile) {
@@ -56,11 +56,11 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // spec: puzzle-api.md "spec" -- size, minDigit, maxDigit, type. A document
   // that does not declare minDigit/maxDigit defaults to 1..9 whatever the
   // width: the live app's own default for a custom puzzle, probed in
-  // docs/research/2026-09-20-default-digit-range/ (#461). A board narrower or
+  // docs/research/2026-09-20-default-digit-range/. A board narrower or
   // wider than 9 that wants another range must declare it, as
-  // examples/_shared/frame-rowcol.js:40 does ("Hit Counts runs minDigit 0").
-  // Before #461 the default was 1..width: the 6x6 docs/research/fillomino-baseline
-  // link now solves 1..9 (as the app does), and a minDigit-0 link with no max
+  // examples/_shared/frame-rowcol.js does ("Hit Counts runs minDigit 0").
+  // Do not default to 1..width: the 6x6 docs/research/fillomino-baseline
+  // link solves 1..9 (as the app does), and a minDigit-0 link with no max
   // (the isofill 10x10s) is 0..9 and clears the single-digit guard below.
   const minDigit = p.minDigit ?? 1
   const maxDigit = p.maxDigit ?? 9
@@ -99,17 +99,16 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   }
 
   // constraints: setupPuzzle reads `constraint.config.type`
-  // (bundle.claude.js:9349-9351), so each raw constraint record from the
+  // (bundle.claude.js:9351-9352), so each raw constraint record from the
   // document is wrapped, unchanged, as one `{ config }` entry -- the numeric
   // `type` codes in a saved link already match `ConstraintType`
-  // (bundle.claude.js:9395-9450) one for one.
+  // (bundle.claude.js:9395-9454) one for one.
   // A saved constraint switched off in the app carries `disabled: true`, and
   // one marked "Disable for solver" carries `solverIgnored: true`
   // (docs/research/count-digits-gac/demo/README.md). The app's main thread
   // hands the solver only `enabled && !solverIgnored` constraints
   // (`getConstraintsForSolver` in main-D44ZZMA9.js), so the bundle never reads
-  // either key. Both are dropped here so a probe solves what the app would
-  // (#586, #628).
+  // either key. Both are dropped here so a probe solves what the app would.
   const constraints = p.constraints
     .filter(config => !config.disabled && !config.solverIgnored)
     .map(config => ({ config }))
@@ -124,7 +123,7 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   }
 }
 
-// Loads the trimmed solver bundle into stubbed worker globals and returns
+// Loads the renamed solver bundle into stubbed worker globals and returns
 // `{ onmessage, handleStartMessage, LogicStepType, drain }`. `onmessage` is
 // the bundle's own dispatcher (bundle.claude.js:11461), used for "findAll" (a
 // plain, blocking function -- bundle.claude.js:11578 -- so a thrown-and-

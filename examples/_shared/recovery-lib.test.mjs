@@ -4,7 +4,7 @@
 import assert from 'assert'
 import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, reportLine } from './recovery-lib.mjs'
 
-// ---- the GAC floor prunes a group to only values some perfect matching allows ----
+// the GAC floor prunes a group to only values some perfect matching allows
 // A 3-cell all-different group with values 1..3: cell 0 is pinned to 1, cell
 // 1 ranges over {1,2}, cell 2 over {1,2,3}. Only one perfect matching exists
 // (cell0=1, cell1=2, cell2=3), so the GAC floor must collapse the group to
@@ -22,7 +22,7 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, repor
   assert.deepStrictEqual([...state.cand.get(2)], [3], 'cell 2 loses the taken values 1 and 2')
 }
 
-// ---- the GAC floor leaves a feasible group untouched beyond dead values ----
+// the GAC floor leaves a feasible group untouched beyond dead values
 {
   const state = makeCandidateState()
   state.cand.set(0, new Set([1, 2]))
@@ -33,7 +33,7 @@ import { makeCandidateState, makeAllDifferentFloor, runToFixpoint, search, repor
   assert.deepStrictEqual([...state.cand.get(1)].sort(), [1, 2])
 }
 
-// ---- the uniqueness search counts every solution, and says when it gave up ----
+// the uniqueness search counts every solution, and says when it gave up
 // A 2-cell all-different group over {1,2}, no components, every full
 // assignment a valid leaf. `solve` runs the search on a fresh state.
 function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } = {}) {
@@ -67,7 +67,7 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   assert.deepStrictEqual([full.solutions, full.capped], [6, false], 'the uncapped search counts all 6 permutations')
 }
 
-// ---- runToFixpoint stops on the first pass that removes nothing ----
+// runToFixpoint stops on the first pass that removes nothing
 // A chain a={1}, b={1,2}, c={2,3} with the groups listed back to front. Pass 1
 // can only fix b (via a); pass 2 fixes c (via b); pass 3 changes nothing and
 // stops. So it must run past the first pass, settle to the chain's
@@ -85,8 +85,8 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
   assert.strictEqual(runToFixpoint(state, [], [[1, 2], [0, 1]], floor, { init: false }), 1)
 }
 
-// ---- reportLine prints settled / NEVER SETTLED, not a pass count ----
-// The pass count is order-dependent noise (issue #301); the line states only
+// reportLine prints settled / NEVER SETTLED, not a pass count
+// The pass count is order-dependent noise; the report line states only
 // whether the fixpoint settled.
 {
   const settled = reportLine('label', { removed: 3, passes: 4, lost: 0 })
@@ -101,7 +101,7 @@ function solve (cands, { validLeaf = () => true, nodeCap = 1000, maxDigit = 2 } 
 
 console.log('recovery-lib.test.mjs: all seams pass')
 
-// ---- the mock puzzle's bitmask read mirrors the app: bit d = digit d ----
+// the mock puzzle's bitmask read mirrors the app: bit d = digit d
 {
   const state = makeCandidateState()
   state.cand.set(0, new Set([1, 3, 9]))

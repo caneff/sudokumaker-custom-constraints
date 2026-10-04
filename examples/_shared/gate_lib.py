@@ -1,7 +1,7 @@
 # Shared helper for tests that need to know what a `just` recipe actually
-# runs. Used by gate.test.py (check vs check-full) and ci_workflow.test.py
-# (the CI matrix vs check-full) so both compare against the same ground
-# truth instead of each re-implementing the stub trick.
+# runs. Used by gate.test.py (check vs check-full), ci_workflow.test.py
+# (the CI matrix vs check-full) and recipe_discovery.test.py, so all of them
+# compare against the same ground truth.
 
 import os
 import pathlib

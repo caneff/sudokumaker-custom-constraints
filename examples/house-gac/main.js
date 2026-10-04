@@ -1,10 +1,3 @@
-// This is the backend: the code that runs once, at setup, to decide which
-// cells `HouseGacComponent` (below, embedded as this constraint's one
-// component) watches. It reads the board's own geometry and registers one
-// component instance per house -- a row, a column, or a box -- so a plain
-// 9x9 ends up with 27 instances, each running the all-different check on its
-// own 9 cells. It does not run again once the solve starts.
-//
 // The shipped `HouseGacComponent` on every row, column and box of a plain 9x9
 // with no clue ring. `examples/_shared/house-gac.js` cannot register this
 // board -- it assumes a frame board's ring and would clip two houses and a

@@ -3,7 +3,7 @@
 //! A frame board is an interior sudoku inside a one-cell clue ring. Its region
 //! constraint gives BOXES ONLY -- nothing in the app makes a row or a column a
 //! house -- so the interior lines have to be declared, or the board is not the
-//! puzzle it looks like (#335, docs/gotchas.md #9).
+//! puzzle it looks like (docs/gotchas.md #9).
 //!
 //! Two consumers need those lines, and `rowsAndColumns` is the single source
 //! both read: the app's solver, through the components registered below, and
@@ -13,8 +13,7 @@
 //! of the app's own geometry helpers is not a plain integer, and the solver
 //! runs slower on it until it is one again: on the shipped 9x9 skyscraper
 //! board these eighteen houses measured 1.18x the board's baseline solve time
-//! built straight from `getAllRows()`, and 0.97x coerced (#394, the same trap
-//! as #276).
+//! built straight from `getAllRows()`, and 0.97x coerced (docs/gotchas.md #10).
 //!
 //! `houseType` is what makes a house legible to the solver's row and column
 //! machinery -- its Fishes and its row/column mappings read `Row` and `Column`

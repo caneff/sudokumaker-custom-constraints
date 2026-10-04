@@ -30,7 +30,7 @@ function frameLines (puzzle) {
   const nh = H - 2
   // `| 0` is load-bearing, not decoration: an id derived from the board size
   // costs the app's solver ~1.3x per candidate read until it is a plain
-  // integer again (docs/puzzle-api.md, `getCellAt`; #276). Every coordinate
+  // integer again (docs/puzzle-api.md, `getCellAt`). Every coordinate
   // here is in range, so getCellAt never returns undefined -- and it must stay
   // that way, because `undefined | 0` is 0, a real cell.
   const at = (r, c) => puzzle.getCellAt(c, r) | 0

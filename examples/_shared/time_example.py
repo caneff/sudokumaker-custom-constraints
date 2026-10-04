@@ -1,8 +1,8 @@
 # `just time <example>` -- the shared real-app timing driver. Builds a
 # same-board pair (docs/real-app-timing.md): the committed PUZZLE_LINK.txt is
 # the baseline, and the example's build_link.py rebuilds a candidate from the
-# working-tree component. Both are emptied (probe_link.py) and timed
-# (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
+# working-tree component. Both become searchable links (probe_link.py) and are
+# timed (app-solve.mjs), 3 reps each, non-deterministic solve off. Prints one
 # paste-ready row per mode -- cold, then after the app's own logical pass --
 # with date, app version, board, baseline median, candidate median, ratio and
 # that row's PASS/FAIL at 0.9x, then a SHIP line applying the two-row rule
@@ -80,7 +80,7 @@ def find_component_file(example_dir, base_doc, component=None):
     if component_file.exists():
         return component_file
     # A component whose canonical file lives in `_shared/` (house-gac:
-    # HouseGacComponent.js, shared with #421's frame boards) has no
+    # HouseGacComponent.js, shared with the frame boards) has no
     # working-tree copy of its own to drift from its committed one --
     # follow that copy instead of demanding a duplicate.
     shared_file = example_dir.parent / "_shared" / f"{declared}.js"
@@ -110,7 +110,7 @@ def registered_backend(doc, constraint_name):
 BACKEND_FILES = ("main.js", "main-global.js")
 
 # A backend declared in `_shared/` rather than per-example: house-gac.js backs
-# the shared HouseGacComponent (framebuild.HOUSE_GAC_BACKEND_TITLE, #421). A
+# the shared HouseGacComponent (framebuild.HOUSE_GAC_BACKEND_TITLE). A
 # board that opts in has no per-example copy of its own to drift from the
 # committed one -- resolve_backend_file follows the shared file the same way
 # find_component_file already follows the shared component file, above.
@@ -291,8 +291,8 @@ def check_app_solve_result(link_path, data):
     timeout verdict, for both the driver's own aggregate (parse_app_solve_output)
     and one built from interleaved one-rep calls (combine_reps)."""
     if data["median"] is None:
-        # Name app-solve.mjs's fixed 300s per-rep wait (its
-        # page.waitForFunction timeout) and the rep counts, so a reader learns
+        # Name app-solve.mjs's fixed 300s per-rep wait (solveInApp's default
+        # timeoutMs in app-session.mjs) and the rep counts, so a reader learns
         # the app never finished a solve without opening the harness.
         raise RuntimeError(
             f"app-solve.mjs: {link_path}: all {data['repsRun']} reps hit the "
@@ -442,12 +442,13 @@ def run(example_dir, ring_clues=False, board=None, component=None):
         raise FileNotFoundError(f"missing {build_link_py}")
 
     # The working-tree link, which is also what build_link.py bases the
-    # candidate on and what empty_link_file strips into the baseline probe --
-    # every link this function times comes from one tree. Reading it from HEAD
-    # instead would leave the two TIMED probes here in the working tree while
-    # only the decisions moved, and a regenerated link would then be timed
-    # against itself: two probes carrying the same new code, a ratio near 1,
-    # and a paste-ready verdict for a change nobody measured.
+    # candidate on and what empty_link_file turns into the baseline's
+    # searchable link -- every link this function times comes from one tree.
+    # Reading it from HEAD instead would leave the two TIMED searchable links
+    # here in the working tree while only the decisions moved, and a
+    # regenerated link would then be timed against itself: two searchable
+    # links carrying the same new code, a ratio near 1, and a paste-ready
+    # verdict for a change nobody measured.
     #
     # The backend file is still identified at HEAD (resolve_backend_file), so
     # an edit to a paste target or to something it includes cannot hide the

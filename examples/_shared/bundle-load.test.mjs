@@ -1,4 +1,4 @@
-// Tests for bundle-load.mjs (#660).
+// Tests for bundle-load.mjs.
 // Run: node examples/_shared/bundle-load.test.mjs
 
 import assert from 'assert'
@@ -51,7 +51,7 @@ assert.throws(() => loadBundle({ expose: ['x; globalThis.pwned = 1'] }), /not an
 // nodes() on a load without countNodes fails loud, not 0.
 assert.throws(() => loadBundle().nodes(), /countNodes/)
 
-// The export splice exists once (#660): no other tracked script writes into
+// The export splice exists once: no other tracked script writes into
 // the bundle's scope. Catches a loader that bypasses loadBundle, and with it
 // the SHA guard.
 {

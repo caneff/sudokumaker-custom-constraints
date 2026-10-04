@@ -133,10 +133,10 @@ const MAX_PASSES = 500
 // bound). Repeats to a fixpoint (no candidate removed this pass) or
 // `MAX_PASSES`. Returns the pass count it took, or -1 if it never settled.
 export function runToFixpoint (state, comps, alldiffGroups, floorGroup, { init = true, extra = null } = {}) {
-  if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle)) // n-1 prune
+  if (init) for (const inst of comps) if (inst.__mod.initialize) Array.from(inst.__mod.initialize(inst, state.puzzle))
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const before = state.total()
-    for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle)) // apply
+    for (const inst of comps) Array.from(inst.__mod.update(inst, state.puzzle))
     if (state.stopped) return pass + 1 // the branch is dead; no point propagating on
     for (const g of alldiffGroups) floorGroup(g)
     if (extra) extra()
@@ -160,8 +160,8 @@ export function dead (state, alldiffGroups) {
 // dead state. `interior` is the cell list to branch over; `validLeaf` is the
 // caller's model-specific check that a full assignment is a real solution
 // (the components prune toward this but do not reject a completed instance
-// on their own). Returns {nodes, solutions, capped} — capped means the
-// NODE_CAP was hit before the search finished.
+// on their own). Returns {nodes, solutions, capped} — capped means
+// `nodeCap` was hit before the search finished.
 export function search (state, { interior, comps, alldiffGroups, floorGroup, extra = null, validLeaf, nodeCap = 3_000_000 }) {
   let nodes = 0
   let solutions = 0
@@ -204,7 +204,7 @@ export function countLost (state, truthPairs) {
 // removed/lost are the generic measures every recovery run has. `passes` is
 // runToFixpoint's return value (a pass count, or -1 if it never settled) —
 // the line states only whether the fixpoint settled, not the count, because
-// the count depends on the order components run in (issue #301).
+// the count depends on the order components run in.
 export function reportLine (label, { extra = '', removed, passes, lost }) {
   const settledText = passes === -1 ? 'NEVER SETTLED' : 'settled'
   return `  ${label}: ${extra}removed ${removed} cands, ${settledText}${lost ? `, TRUE-VALUE LOST x${lost}` : ''}`

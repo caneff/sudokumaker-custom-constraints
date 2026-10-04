@@ -8,7 +8,7 @@
 # interior so it solves from the givens.
 #
 # To compare two code variants, empty each half of a same-board pair -- the
-# "ours" link and the "original" link each example's build_original.py writes.
+# "ours" link and the "original" link an example's build_original.py writes.
 #
 #   uv run --with lzstring examples/_shared/probe_link.py empty a.txt a_probe.txt
 #
@@ -28,7 +28,7 @@
 # Because a clue is not always a given. Numbered Rooms stores its 36 outside
 # clues as non-given cell VALUES in the ring, not as givens -- and no ring cell
 # is a given at all: even the four corners, which belong to no line, are held
-# by a component rather than filled in (#394).
+# by a component rather than filled in.
 # Empty every non-given cell and you delete the clues -- verified:
 # the app then reports the puzzle "not unique". The given flag does not separate
 # clue from solution here, so we separate them by position instead.

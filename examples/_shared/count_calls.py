@@ -1,7 +1,7 @@
 # Count how many times the REAL app calls a component's `update` on one
 # "Find all solutions" run. The first question before any per-call
-# optimisation: is this component's update hot at all? (#133 asked it of the
-# skyscraper line component: 57,000 calls, so 0.1 ms per call is the lever.)
+# optimisation: is this component's update hot at all? (The skyscraper line
+# component took 57,000 calls, so 0.1 ms per call is the lever.)
 #
 #   uv run --with lzstring examples/_shared/count_calls.py skyscraper \
 #       examples/skyscraper/SkyscraperPairComponent.js [--ring-clues]
@@ -78,7 +78,7 @@ def main(example, component, ring_clues, board=None):
         sys.exit(f"{component}: {e}")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        # build_link.py swaps by basename, and the probe sits in an example
+        # build_link.py swaps by file stem, and the probe sits in an example
         # directory beside a `_shared`, where a `// #include
         # ../_shared/...` in the component still resolves
         (tmp / "_shared").symlink_to(EXAMPLES / "_shared")

@@ -7,13 +7,14 @@
 // Why this matters. The app's own house constraints are below GAC: neither
 // `HouseComponent` nor `DifferentDigitsComponent` finds a Hall set, and a plain
 // 9x9 that stalls at 53/81 under AutoStep reaches 81/81 with a GAC filter added
-// (#406, docs/research/all-different-gac.md). The filter is only worth that if
+// (docs/research/all-different-gac.md). The filter is only worth that if
 // it is exactly GAC -- naked subsets capped below n-1 miss a quarter of all
 // states -- and it is only safe if it never drops a digit the solution needs.
 //
-// The reference is the matching-based `AllDiffGacComponent.js` the #406 demo
-// ran, so the zero-disagreement count here is the same measurement as the
-// ticket's 3000-state one (#408).
+// The reference is the matching-based `AllDiffGacComponent.js` the GAC demo
+// (docs/research/406-gac-demo/) ran, so the zero-disagreement count here is
+// the same measurement as the 3000-state one in
+// docs/research/all-different-gac.md.
 
 import { join } from 'path'
 import { readFileSync } from 'fs'
@@ -82,10 +83,10 @@ function openState (rnd, lo, hi, rate, size = 9) {
 board(1, 9)
 const { rnd } = makeRng(408)
 
-// ---- exactly GAC, and sound, on 9 cells of digits 1..9 -------------------
-// The ticket's 3000 states, drawn the way `tools/bench.mjs` drew them: a hidden
-// permutation plus each other digit at 35%. Every state has a solution, so the
-// filter must keep every true digit and never stop.
+// exactly GAC, and sound, on 9 cells of digits 1..9
+// 3000 states, drawn the way docs/research/406-gac-demo/tools/bench.mjs drew
+// them: a hidden permutation plus each other digit at 35%. Every state has a
+// solution, so the filter must keep every true digit and never stop.
 {
   let disagree = 0
   for (let t = 0; t < 3000; t++) {
@@ -99,7 +100,7 @@ const { rnd } = makeRng(408)
   assert.strictEqual(disagree, 0, `${disagree} of 3000 states disagree with matching GAC`)
 }
 
-// ---- exactly GAC on 9 cells of ten digits (hit-counts runs 0..9) ---------
+// exactly GAC on 9 cells of ten digits (hit-counts runs 0..9)
 // A house shorter than its digit range: a Hall set still prunes, but no digit
 // is forced to appear, so the subset form must not read "9 cells" as "every
 // digit once".
@@ -117,7 +118,7 @@ board(0, 9)
 }
 board(1, 9)
 
-// ---- a house with no solution stops, exactly when matching says so -------
+// a house with no solution stops, exactly when matching says so
 // Sparse random states with no planted solution: many have none, and the filter
 // must declare that branch dead rather than quietly leave it open.
 {
@@ -132,7 +133,7 @@ board(1, 9)
   assert.ok(stops > 100, `only ${stops} of 2000 open states had no solution; the case is not exercised`)
 }
 
-// ---- digits above 9 (a 16-digit board) -------------------------------------
+// digits above 9 (a 16-digit board)
 // Digit counts come from a table sized to the board's digits, so a 16-digit
 // board needs every entry up to digit 16. Nine cells over digits 1..16, with and
 // without a planted solution, land exactly where the matching filter lands.
@@ -155,7 +156,7 @@ board(1, 16)
 }
 board(1, 9)
 
-// ---- houses shorter than 9 cells ------------------------------------------
+// houses shorter than 9 cells
 // A frame board's 6x6 or 8x8 interior hands the backend houses of 6 or 8 cells,
 // and nothing about the rule depends on the house holding 9. Every size from 1
 // to 8 over digits 1..9, with and without a planted solution, lands exactly
@@ -174,7 +175,7 @@ for (let size = 1; size <= 8; size++) {
   if (size >= 3) assert.ok(stops > 10, `${size} cells: only ${stops} of 400 states had no filling; the stop is not exercised`)
 }
 
-// ---- a worked Hall set, independent of any reference ----------------------
+// a worked Hall set, independent of any reference
 // Cells 0-2 hold only {1,2,3}: a naked triple, so 1, 2 and 3 leave the other
 // six cells. Cell 3 is then left with 4 alone, a naked single, so 4 leaves the
 // last five as well -- all in one call.
@@ -185,10 +186,10 @@ for (let size = 1; size <= 8; size++) {
   for (const s of got.slice(4)) assert.deepStrictEqual(s, [5, 6, 7, 8, 9], 'the triple and the single are not removed from the rest')
 }
 
-// ---- placed cells are stripped from the house before the free-cell walk --
+// placed cells are stripped from the house before the free-cell walk
 // Cells 0 and 1 are already solved (1, then 2), and the walk itself only ever
-// runs over cells 2-8 (#435: filled cells are excluded from the subset walk
-// entirely). Cells 2 and 3 hold {1, 2, 3, 4} apiece: that is a naked pair on
+// runs over cells 2-8: filled cells are excluded from the subset walk
+// entirely. Cells 2 and 3 hold {1, 2, 3, 4} apiece: that is a naked pair on
 // {3, 4} only once 1 and 2 are gone, so this fails without the strip step --
 // cells 2 and 3 would stay {1, 2, 3, 4}, no pair would be found, and 1, 2, 3, 4
 // would all still sit in cells 4-8's candidates too. Checked directly: with
@@ -204,7 +205,7 @@ for (let size = 1; size <= 8; size++) {
   assert.deepStrictEqual(got, runOnce(ref, cands), 'disagrees with matching GAC once cells are pre-filled')
 }
 
-// ---- gated: a line that may repeat is left alone --------------------------
+// gated: a line that may repeat is left alone
 // docs/line-contract.md: all-different only holds where the app says the cells
 // cannot repeat. The same Hall set on a bare line removes nothing.
 {
@@ -213,14 +214,14 @@ for (let size = 1; size <= 8; size++) {
   assert.deepStrictEqual(runOnce(gac, cands, 'bare'), cands, 'pruned a line whose digits may repeat')
 }
 
-// ---- refuses a house above 9 cells, loudly --------------------------------
+// refuses a house above 9 cells, loudly
 // It checks all 2^n groups of cells, so its cost doubles with each cell and it
 // is slower than the matching filter from n=12-13
 // (docs/research/all-different-gac.md, "Larger houses"). Registering one on a
 // larger house is a mistake the author must see at setup.
 assert.throws(() => gac.setParams({ name: 'row 1' }, Array.from({ length: 10 }, (_, i) => i)), /9 cells/)
 
-// ---- refuses a board with digits above 16, loudly -------------------------
+// refuses a board with digits above 16, loudly
 // Its digit table holds an entry per digit set, 2^(maxDigit+1) of them: 131 KB
 // at 16 digits, doubling with each digit after. Loading on such a board must
 // still work, since the app loads the code before any house is registered.
@@ -230,7 +231,7 @@ for (const maxDigit of [17, 30]) {
 }
 board(1, 9)
 
-// ---- no scratch state crosses a yield --------------------------------------
+// no scratch state crosses a yield
 // The solver may run another instance's `update` while this one is suspended at
 // a yield. Suspend house A after its first removal, run house B to the end on a
 // different state, then finish A: A must end where it ends when run alone.
@@ -256,7 +257,7 @@ board(1, 9)
   assert.deepStrictEqual(got, runOnce(gac, aCands), 'house A changed because house B ran at its yield')
 }
 
-// ---- the backend: one filter per interior row, column and box -------------
+// the backend: one filter per interior row, column and box
 // A frame board: the ring is the first and last row and column, and the region
 // constraint gives the interior boxes and leaves the ring out. The board is
 // rectangular so a backend that reads one dimension twice is caught.
@@ -296,7 +297,7 @@ for (const [W, H, bw, bh] of [[11, 11, 3, 3], [8, 6, 3, 2]]) {
   const rows = Array.from({ length: ih }, (_, y) => Array.from({ length: iw }, (_, x) => (x + 1) + (y + 1) * W))
   const cols = Array.from({ length: iw }, (_, x) => Array.from({ length: ih }, (_, y) => (x + 1) + (y + 1) * W))
   assert.deepStrictEqual([...new Set(registered.map(c => c.ctor))], ['HouseGacComponent'], `${where}: wrong component`)
-  // Plain numbers on the right, so an uncoerced id object also fails here (#276, #394).
+  // Plain numbers on the right, so an uncoerced id object also fails here.
   assert.deepStrictEqual(registered.map(c => c.args[1]), [...rows, ...cols, ...regions],
     `${where}: the houses are not the interior rows, then columns, then boxes, as plain numbers`)
   const names = registered.map(c => c.args[0])
@@ -304,7 +305,7 @@ for (const [W, H, bw, bh] of [[11, 11, 3, 3], [8, 6, 3, 2]]) {
   assert.deepStrictEqual([names[0], names[ih], names[ih + iw]], ['GAC row 1', 'GAC column 1', 'GAC box 1'], `${where}: misnamed -- the filter must not share a name with the row it filters`)
 }
 
-// ---- the backend refuses a region list that does not tile the interior ----
+// the backend refuses a region list that does not tile the interior
 // A short list would register fewer box filters with no error, and
 // `getRegions` back-fills a missing region id with an empty array, which
 // would register a zero-cell filter: either way the filter goes quietly
@@ -316,9 +317,8 @@ for (const [what, regionsOf] of [
   assert.throws(() => runFrameBackend(11, 11, 3, 3, regionsOf), /House GAC: expected 9 boxes of 9 cells/, `${what} did not throw`)
 }
 
-// ---- the repeats answer is latched both ways ----
-// Geometry-fixed once update first runs. The bare arm witnesses #451; the
-// fullHouse arm guards the latch that already held.
+// The repeats answer is latched both ways: it is geometry, fixed once update
+// first runs.
 for (const kind of ['bare', 'fullHouse']) {
   const cells = CELLS.slice(0, 4)
   const p = makePuzzle(Object.fromEntries(cells.map(c => [c, 0])), () => [1, 2, 3, 4], { houses: housesOf(kind, cells) })
@@ -331,7 +331,7 @@ for (const kind of ['bare', 'fullHouse']) {
   assert.strictEqual(asked, 1, `${kind}: asked once, not per update`)
 }
 
-// ---- setParams leaves instance.cells to the app ----
+// setParams leaves instance.cells to the app
 // The compiled constructor already stores getAffectedCells's list as
 // instance.cells, so setParams must not replace it (a copy or a reordered list
 // would desynchronise the cells the app watches from the ones update filters).
@@ -344,7 +344,7 @@ for (const kind of ['bare', 'fullHouse']) {
   assert.strictEqual(inst.name, 'row 1', 'setParams renamed the instance')
 }
 
-// ---- removals go to the app as raw masks ----
+// removals go to the app as raw masks
 // The removal builders take a bitmask (docs/research/bundle-api-reference.md),
 // so a SudokuDigitSet per removal is an allocation nothing reads. With a
 // SudokuDigitSet that throws, the worked Hall set must still be removed.

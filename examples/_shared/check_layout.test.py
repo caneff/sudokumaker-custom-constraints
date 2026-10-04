@@ -72,22 +72,22 @@ def _link(
     `houses` shapes the board's house constraints on this 3x3: "full" (the
     default) is a real board -- three regions, one per row, plus a column cage
     each; "boxes" drops the column cages, the shape that cost three tickets of
-    quad-rank work (#335); "none" drops both. `frame_backend` adds a constraint
+    quad-rank work; "none" drops both. `frame_backend` adds a constraint
     carrying the shared frame row/column backend, which declares the interior
     lines in JS instead of in the document, and `corners_backend` the corner-pin
     one; either takes "stale" to embed an older copy. `house_gac_backend` adds
     the shared house-GAC filter constraint the same way, with its
-    HouseGacComponent.js as the one component it ships (#421); "stale" stales
+    HouseGacComponent.js as the one component it ships; "stale" stales
     the backend, "stale_component" stales the component instead, and
     "no_component" ships the backend with no component at all.
     `house_gac_renamed` builds house-gac's own standalone shape instead: the
     filter spliced under a backend that is legitimately not house-gac.js (so
     its own staleness check does not apply) and a constraint name other than
     "House GAC" (examples/house-gac/build_link.py renames it to avoid the
-    reserved title -- #439); "stale_component" stales the shared component the
+    reserved title); "stale_component" stales the shared component the
     same way `house_gac_backend` does. `digits` is the
     document's declared range -- None leaves it off, which leaves the range
-    to the app default (1..9) instead of the document (#394).
+    to the app default (1..9) instead of the document.
 
     `no_ring` builds a no-ring board instead: its comment is `no_ring` (the
     whole text) rather than RULES_PREFIX, and it carries the shared whole-grid
@@ -237,7 +237,7 @@ def example(
     """
     contents = contents or {}
     # A ringless board's links open on the plain sentence, not the inner-grid
-    # one (#460).
+    # one.
     traits = manifest or {}
     default_link = _link(ringless=traits.get("rules_prefix") == "ringless")
     with tempfile.TemporaryDirectory() as tmp:
@@ -296,8 +296,8 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a split example ships a local board: both halves of the pair are
-    # required, and each is named on its own (#268). Dropping one half also
-    # leaves the other unpaired (#294), so two violations fire, not one --
+    # required, and each is named on its own. Dropping one half also
+    # leaves the other unpaired, so two violations fire, not one --
     # the missing-required-file one, and the pairing one for the survivor.
     missing_local_cases = {
         "PUZZLE_LINK_local.txt": "gen_local.json has no matching PUZZLE_LINK_local.txt",
@@ -329,7 +329,7 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a global constraint with no drawn groups ships main.js alone and no local
-    # board (#305).
+    # board.
     fillomino_files = [
         f
         for f in REQUIRED
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a gen*.json with no matching link is unpaired: the naming-follows-the-
-    # rename bug this check exists to catch (#294)
+    # rename bug this check exists to catch
     with example(extra_gens=["gen_9x9.json"]) as (root, _):
         violations = check_tree(root)
         assert len(violations) == 1, violations
@@ -380,9 +380,8 @@ if __name__ == "__main__":
         assert "widget" in violations[0], violations
         assert "gen.json" in violations[0], violations
 
-    # numbered-rooms-lines was folded into numbered-rooms (#238, retired-
-    # examples.toml): the
-    # directory must not come back, complete file set or not
+    # numbered-rooms-lines was folded into numbered-rooms (retired-examples.toml):
+    # the directory must not come back, complete file set or not
     with example(name="numbered-rooms-lines") as (root, _):
         violations = check_tree(root)
         assert len(violations) == 1, violations
@@ -440,9 +439,8 @@ if __name__ == "__main__":
         "PUZZLE_LINK_timing.txt",
         "PUZZLE_LINK_original_clued.txt",
         "PUZZLE_LINK_global_local.txt",
-        # the `global` tag is gone: PUZZLE_LINK.txt is the global-lane board
+        # there is no `global` tag: PUZZLE_LINK.txt is the global-lane board
         # in every split example, so a _global link has nothing left to name
-        # (#268)
         "PUZZLE_LINK_global.txt",
         "PUZZLE_LINK_6x6_global.txt",
     ]
@@ -466,7 +464,7 @@ if __name__ == "__main__":
         "PUZZLE_LINK_clued_original.txt",
     ]
     # each non-hand-derived name above needs its own gen*.json to stay paired
-    # (#294); the clued/original/local ones either are hand-derived twins or
+    # the clued/original/local ones either are hand-derived twins or
     # already have theirs from REQUIRED
     good_gens = [
         "gen_6x6.json",
@@ -521,7 +519,7 @@ if __name__ == "__main__":
         assert "rules prefix" in violations[0]
 
     # `rules_prefix = "none"` exempts the rules-prefix check -- the example is
-    # not sudoku, and its rules text must not mention sudoku (#271)
+    # not sudoku, and its rules text must not mention sudoku
     missing = [f for f in REQUIRED if f != "main-global.js"]
     with example(
         files=missing,
@@ -532,7 +530,7 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
-    # ...and the sudoku sentence is not required of it either (#305)
+    # ...and the sudoku sentence is not required of it either
     with example(
         files=fillomino_files,
         name="whole-grid",
@@ -544,7 +542,7 @@ if __name__ == "__main__":
 
     # a link with boxes but no column houses fails: a region constraint gives
     # boxes only, and the app solves the under-constrained board without a
-    # word (#335)
+    # word
     with example(contents={"PUZZLE_LINK.txt": _link(houses="boxes")}) as (root, _):
         violations = check_tree(root)
         assert len(violations) == 1, violations
@@ -559,7 +557,7 @@ if __name__ == "__main__":
         assert any("interior column(s)" in v for v in violations), violations
 
     # isofill and fillomino are exempt: whole-grid constraints on a bare
-    # board, with no row, column or box rule to declare (#232, #303)
+    # board, with no row, column or box rule to declare
     with example(
         files=missing,
         name="whole-grid",
@@ -578,7 +576,7 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a no-ring example with a local lane only ships main.js and
-    # PUZZLE_LINK.txt with no global lane and no _local pair (#368)
+    # PUZZLE_LINK.txt with no global lane and no _local pair
     with example(files=fillomino_files, name="single-lane", manifest=SINGLE_LANE) as (
         root,
         _,
@@ -590,8 +588,7 @@ if __name__ == "__main__":
     # rows and columns are declared in JS, so a link whose document holds only
     # boxes is not missing a house, and every edge cell is a real cell, so a
     # board given along its whole edge is not a filled clue ring. Its rules
-    # text opens on the plain sentence -- there is no inner grid to name
-    # (#368).
+    # text opens on the plain sentence -- there is no inner grid to name.
     no_ring = _link(
         houses="boxes", full_ring=True, no_ring="Normal sudoku rules apply. Up to N."
     )
@@ -611,7 +608,7 @@ if __name__ == "__main__":
 
     # a plain board with no ring and no grid backend cannot be detected by the
     # checker: its manifest says `rules_prefix = "ringless"` and it opens on the
-    # plain sentence (#460), and the inner-grid sentence fails there.
+    # plain sentence, and the inner-grid sentence fails there.
     # (the manifest also arms the shared-component check, so only the prefix
     # violation is asserted on)
     with example(name="shared-gac", manifest=SHARED_GAC) as (root, _):
@@ -636,7 +633,7 @@ if __name__ == "__main__":
         assert "stale copy of grid-rowcol.js" in violations[0], violations
 
     # a link shipping a component its backend never registers fails: dead
-    # weight the recipient reads as part of the rule (#291)
+    # weight the recipient reads as part of the rule
     stale = _link(ships=("FooComponent", "BarComponent"), registers=("FooComponent",))
     with example(contents={"PUZZLE_LINK.txt": stale}) as (root, _):
         violations = check_tree(root)
@@ -654,11 +651,11 @@ if __name__ == "__main__":
         assert "BarComponent" in violations[0]
 
     # a link that declares its interior rows and columns in the shared frame
-    # backend, not in the document, still satisfies the house check: the
-    # cage form cannot be named and the named houses cost nothing once their
-    # ids are coerced, so framebuilt boards moved the declaration into JS
-    # (#394). The guard matches the committed frame-rowcol.js byte for byte,
-    # so a stale or hand-edited copy is still caught.
+    # backend, not in the document, still satisfies the house check: the cage
+    # form cannot be named and the named houses cost nothing once their ids are
+    # coerced, so framebuilt boards declare them in JS. The guard matches the
+    # committed frame-rowcol.js byte for byte, so a stale or hand-edited copy
+    # is still caught.
     framed = _link(houses="none", frame_backend=True)
     with example(contents={"PUZZLE_LINK.txt": framed}) as (root, _):
         violations = check_tree(root)
@@ -681,7 +678,7 @@ if __name__ == "__main__":
     # The corner-pin backend goes stale the same way, and NOTHING ELSE can see
     # it: it registers a built-in, so its constraint ships no component file and
     # check_components has no set to compare. The pin is what makes a frame
-    # board unique at all, so a stale copy has to be its own finding (#394).
+    # board unique at all, so a stale copy has to be its own finding.
     stale_corners = _link(corners_backend="stale")
     with example(contents={"PUZZLE_LINK.txt": stale_corners}) as (root, _):
         violations = check_tree(root)
@@ -694,7 +691,7 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": fresh_corners}) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
-    # The house-GAC filter is opt-in per board (#421), so a link that never
+    # The house-GAC filter is opt-in per board, so a link that never
     # carries it is fine -- and one that does gets the same staleness check as
     # the other two shared backends, with its component checked too since it
     # ships one where the other two ship none.
@@ -733,7 +730,7 @@ if __name__ == "__main__":
 
     # A constraint renamed away from "House GAC" (examples/house-gac's own
     # standalone board, which cannot keep the reserved title since its
-    # backend is legitimately not house-gac.js -- #439) still ships the
+    # backend is legitimately not house-gac.js) still ships the
     # shared HouseGacComponent.js, and a stale copy of it is caught the same
     # way: `check_components` cannot see it (component names still agree),
     # so this check keys the component comparison on its own name rather
@@ -766,8 +763,8 @@ if __name__ == "__main__":
         assert check_tree(root) == [], check_tree(root)
 
     # A frame link that declares no digit range leaves it to the app default
-    # (1..9 whatever the grid size, #461), not to the document. The source text
-    # still reads right, so only the document can be asked (#394).
+    # (1..9 whatever the grid size), not to the document. The source text
+    # still reads right, so only the document can be asked.
     for kwargs in (
         {"frame_backend": True, "houses": "none"},
         {"corners_backend": True},
@@ -797,8 +794,7 @@ if __name__ == "__main__":
 
     # A gen JSON records the BOARD. The frame backends' code is read from the
     # tree at build time, so a copy kept in a gen JSON is dead data no build
-    # reads and nothing rebuilds -- it can only drift from the file it copies
-    # (#394).
+    # reads and nothing rebuilds -- it can only drift from the file it copies.
     def _gen(code, name="Frame Rows and Columns"):
         return json.dumps({"puzzle": {"constraints": [code_constraint(name, code)]}})
 
@@ -821,7 +817,7 @@ if __name__ == "__main__":
         assert check_tree(root) == [], check_tree(root)
 
     # The house-GAC filter is opt-in, but once a board carries it, a gen JSON
-    # that records its code goes stale the same way (#421).
+    # that records its code goes stale the same way.
     with example(
         extra_links=["PUZZLE_LINK_6x6.txt"],
         extra_gens=["gen_6x6.json"],
@@ -912,8 +908,7 @@ if __name__ == "__main__":
 
     # a built-in is not a component the link must carry: SudokuMaker provides
     # the class, so a backend that constructs one ships no file for it and the
-    # link is not stale (#394). The frame boards' corner pin is the first
-    # backend in this repo to do that.
+    # link is not stale. The frame boards' corner pin is such a backend.
     builtin = _link(
         ships=("FooComponent",),
         registers=("FooComponent", "PredefinedCandidatesComponent"),
@@ -923,7 +918,7 @@ if __name__ == "__main__":
         assert violations == [], violations
 
     # a comment naming a component is not a registration. A link built today
-    # ships no comments (#385), but this sweep also reads backends off links
+    # ships no comments, but this sweep also reads backends off links
     # no builder rebuilds -- fillomino's frozen fixtures and hunt records --
     # and one of their notes must not read as a `new BarComponent` the link
     # is missing
@@ -1023,8 +1018,8 @@ if __name__ == "__main__":
         assert "docs/research/zzz/x.py" in violations[0], violations[0]
         assert "finders/" in violations[0], violations[0]
 
-    # a link in a board's own subdirectory is gated like one at the top level
-    # (#659): the share criteria and the name grammar both reach it, and the
+    # a link in a board's own subdirectory is gated like one at the top level:
+    # the share criteria and the name grammar both reach it, and the
     # violation names its path inside the example
     with example() as (root, d):
         (d / "board").mkdir()

@@ -73,7 +73,7 @@ annotated_keeps_comments = true
     assert m.boardless is True and m.annotated_keeps_comments is True
     tmp.cleanup()
 
-    # NO_RULES_PREFIX and NO_HOUSES stay two separate fields (2026-09-07 ruling)
+    # rules_prefix = "none" and houses stay two separate fields
     tmp, d = manifest_in('timed_component = "W"\nrules_prefix = "none"\n')
     m = load_manifest(d)
     assert m.rules_prefix == "none" and m.houses is True

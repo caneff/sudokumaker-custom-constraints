@@ -127,7 +127,7 @@ if __name__ == "__main__":
     assert "median" not in bare, bare
     assert not bare.rstrip().endswith(";"), f"dangling separator: {bare!r}"
 
-    # ---- main(): what it builds, and the argv it hands the driver
+    # main(): what it builds, and the argv it hands the driver
     with tempfile.TemporaryDirectory() as tmp:
         component = pathlib.Path(tmp) / "WidgetComponent.js"
         component.write_text(WIDGET)

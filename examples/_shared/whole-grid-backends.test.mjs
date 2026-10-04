@@ -1,5 +1,5 @@
 // The whole-grid mains (isofill, fillomino) hand their component a plain
-// integer for every cell id (#450).
+// integer for every cell id.
 //
 //   node examples/_shared/whole-grid-backends.test.mjs
 //

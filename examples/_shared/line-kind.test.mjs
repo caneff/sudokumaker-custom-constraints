@@ -14,7 +14,7 @@ const state = (cands, houses = [LINE]) =>
   makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, [CLUE]: 0 }, c => (c === CLUE ? [1] : cands[c]), { houses })
 const ONE_TO_FOUR = [[1, 2], [2, 3], [3, 4], [4, 1]]
 
-// ---- the two kinds, and the digit set on a house ----
+// the two kinds, and the digit set on a house
 assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR, []), LINE), { kind: BARE, oneToN: false })
 assert.deepStrictEqual(lineKind({}, state([[1, 5], [2], [3], [4]]), LINE), { kind: HOUSE, oneToN: false })
 assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR), LINE), { kind: HOUSE, oneToN: true })
@@ -22,10 +22,10 @@ assert.deepStrictEqual(lineKind({}, state(ONE_TO_FOUR), LINE), { kind: HOUSE, on
 assert.deepStrictEqual(lineKind({}, state([[0], [1], [2], [3]]), LINE), { kind: HOUSE, oneToN: false })
 assert.ok(BARE < HOUSE, 'a gate reads `kind >= HOUSE`')
 
-// ---- query the line alone: the clue cell is in no house with it ----
+// query the line alone: the clue cell is in no house with it
 assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
 
-// ---- one instance, a union that changes between calls (#336) ----
+// one instance, a union that changes between calls
 // The app shares one component object across every search node. Deep in a
 // branch the union is {1..4}; the search backtracks to a parent where a 0 is
 // live again, then comes back. Each call must answer for the state it is
@@ -42,7 +42,7 @@ assert.strictEqual(lineKind({}, state(ONE_TO_FOUR), [CLUE, ...LINE]).kind, BARE)
   assert.ok(!('oneToN' in inst) && !('kind' in inst), `no hidden write: ${Object.keys(inst)}`)
 }
 
-// ---- the repeats fact is latched both ways, per line ----
+// the repeats fact is latched both ways, per line
 // Whether a line can repeat is geometry, fixed once update first runs, so a
 // house and a bare line are each asked about once. A component reading several
 // lines (a side's positions, its perpendiculars) latches each on its own. The

@@ -1,7 +1,7 @@
 // Tests for bundle-solve.mjs's message-building and the real-solver seam.
 // Run: node examples/_shared/bundle-solve.test.mjs
 //
-// The two seams under test (#429): `buildStartMessage`, a pure mapping from a
+// The two seams under test: `buildStartMessage`, a pure mapping from a
 // decoded puzzle document to the worker's `start` message, and
 // `solveDocument`, which loads the renamed solver bundle
 // (examples/_shared/vendor/bundle.claude.js) and runs it for real.
@@ -12,7 +12,7 @@ import { mkdtempSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve-lib.mjs'
 
-// ---- buildStartMessage: spec, grid, constraints, strategy ----
+// buildStartMessage: spec, grid, constraints, strategy
 {
   const doc = {
     puzzle: {
@@ -34,9 +34,9 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
   assert.strictEqual(msg.verbose, false)
 }
 
-// ---- buildStartMessage: a constraint with `disabled: true` is not sent to the
-// worker (#586): the probe of a two-constraint link with one disabled must run
-// the enabled one alone. ----
+// buildStartMessage: a constraint with `disabled: true` is not sent to the
+// worker: the probe of a two-constraint link with one disabled must run
+// the enabled one alone.
 {
   const on = { type: 1, regions: [0, 0, 0, 0] }
   const off = { type: 1, regions: [0, 0, 1, 1], disabled: true }
@@ -49,10 +49,10 @@ import { buildStartMessage, solveDocument, decodeLinkFile } from './bundle-solve
 }
 console.log('bundle-solve-lib: buildStartMessage skips disabled constraints ok')
 
-// ---- buildStartMessage: a constraint marked "Disable for solver" is not sent
-// either (#628, C1). The app saves it as `solverIgnored: true` and hands the
+// buildStartMessage: a constraint marked "Disable for solver" is not sent
+// either. The app saves it as `solverIgnored: true` and hands the
 // solver only `enabled && !solverIgnored` constraints (main-D44ZZMA9.js
-// `Ec.save`, `getConstraintsForSolver`). ----
+// `Ec.save`, `getConstraintsForSolver`).
 {
   const on = { type: 1, regions: [0, 0, 0, 0] }
   const ignored = { type: 1, regions: [0, 0, 1, 1], solverIgnored: true }
@@ -62,11 +62,11 @@ console.log('bundle-solve-lib: buildStartMessage skips disabled constraints ok')
 }
 console.log('bundle-solve-lib: buildStartMessage skips solver-ignored constraints ok')
 
-// ---- buildStartMessage: an undeclared range is 1..9 whatever the width, and a
-// declared minDigit alone keeps the 9 ceiling (#461: the live app's default,
+// buildStartMessage: an undeclared range is 1..9 whatever the width, and a
+// declared minDigit alone keeps the 9 ceiling (the live app's default,
 // probed in docs/research/2026-09-20-default-digit-range/). The rangeless half
 // is probed (4,104 solutions); the minDigit-0 half is inferred from it, not
-// probed. ----
+// probed.
 {
   const mk = (extra) => ({ puzzle: { type: 'custom', width: 6, height: 6, cells: Array.from({ length: 36 }, () => ({})), constraints: [], ...extra } })
   const bare = buildStartMessage(mk({})).spec
@@ -76,7 +76,7 @@ console.log('bundle-solve-lib: buildStartMessage skips solver-ignored constraint
 }
 console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
 
-// ---- buildStartMessage: declared minDigit/maxDigit pass through unchanged ----
+// buildStartMessage: declared minDigit/maxDigit pass through unchanged
 // minDigit 0 (the real examples/hit-counts value), not 1 -- 1 would equal the
 // undeclared default and pass whether or not the declared value is read.
 {
@@ -96,11 +96,11 @@ console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
   assert.strictEqual(msg.spec.maxDigit, 9)
 }
 
-// ---- buildStartMessage: a two-digit maxDigit throws up front, before any
+// buildStartMessage: a two-digit maxDigit throws up front, before any
 // solve runs -- not only once a solution is found to stringify. A shipped
 // board already reaches this (examples/skyscraper/PUZZLE_LINK_10x10.txt
 // declares maxDigit 10), so a zero-solution run on such a board must still
-// fail loud rather than report a clean "0 solutions". ----
+// fail loud rather than report a clean "0 solutions".
 {
   const doc = {
     puzzle: {
@@ -116,12 +116,12 @@ console.log('bundle-solve-lib: buildStartMessage default range 1..9 ok')
 }
 console.log('bundle-solve-lib: buildStartMessage two-digit-maxDigit guard ok')
 
-// ---- buildStartMessage: a non-given value (an outside clue on a frame
+// buildStartMessage: a non-given value (an outside clue on a frame
 // board) still populates the grid. The worker protocol makes no given/
 // non-given distinction (bundle.claude.js:11479 applyInitialGridToState);
 // only the document does, for the app's own display. See
 // examples/numbered-rooms/build_clued.py's `fill_ring` and
-// docs/real-app-timing.md's "Numbered Rooms, Skyscraper" note. ----
+// docs/real-app-timing.md's "Numbered Rooms, Skyscraper" note.
 {
   const doc = {
     puzzle: {
@@ -138,10 +138,10 @@ console.log('bundle-solve-lib: buildStartMessage two-digit-maxDigit guard ok')
 
 console.log('bundle-solve-lib: buildStartMessage ok')
 
-// ---- solveDocument: the 406 GAC-demo without-GAC link has exactly one
+// solveDocument: the without-GAC link (house-gac/base) has exactly one
 // solution, matching CP-SAT. The solve, the CP-SAT model and the derivation
 // of this literal are docs/research/429-headless-solver-calibration.md's
-// "CP-SAT cross-check" section, not re-run here. ----
+// "CP-SAT cross-check" section, not re-run here.
 {
   const CPSAT_SOLUTION = '265783149387149562941562783594627831726831495138495627413956278872314956659278314'
   const doc = decodeLinkFile(new URL('../house-gac/base/PUZZLE_LINK.txt', import.meta.url).pathname)
@@ -152,12 +152,12 @@ console.log('bundle-solve-lib: buildStartMessage ok')
 }
 console.log('bundle-solve-lib: solveDocument unique-solution ok')
 
-// ---- solveDocument: a link whose clues are non-given entered values (a
+// solveDocument: a link whose clues are non-given entered values (a
 // frame board's outside clues, not blank/interactive here) still solves as
-// the puzzle it encodes, not as the unclued board. Regression for the bug
-// buildStartMessage's `cell.given ? ... : EMPTY_VALUE` line had: it dropped
-// every non-given value, so this link ran unconstrained and never
-// terminated. Recorded verdict: unique (docs/frame-link-verdicts.md). ----
+// the puzzle it encodes, not as the unclued board. A grid built from
+// `cell.given ? ... : EMPTY_VALUE` drops every non-given value, and this link
+// then runs unconstrained and never terminates. Recorded verdict: unique
+// (docs/frame-link-verdicts.md).
 {
   const doc = decodeLinkFile(new URL('../../examples/numbered-rooms/PUZZLE_LINK_clued.txt', import.meta.url).pathname)
   const { solutions } = await solveDocument(doc)
@@ -204,7 +204,7 @@ function boxRegionsConstraint (boxSize, width, height) {
   return { type: 1, regions }
 }
 
-// ---- solveDocument: exactly two solutions ----
+// solveDocument: exactly two solutions
 // A solved 4x4 grid with four cells blanked so that swapping two digit pairs
 // across the top two boxes both still satisfy every row, column and box --
 // found by brute-force CP-SAT search over which pairs to blank (recorded in
@@ -229,7 +229,7 @@ function boxRegionsConstraint (boxSize, width, height) {
       width: 4,
       height: 4,
       minDigit: 1,
-      maxDigit: 4, // declared: an undeclared range is 1..9 (#461)
+      maxDigit: 4, // declared: an undeclared range is 1..9
       cells,
       constraints: [boxRegionsConstraint(2, 4, 4), rowsAndColumnsConstraint()]
     }
@@ -239,7 +239,7 @@ function boxRegionsConstraint (boxSize, width, height) {
   assert.notStrictEqual(solutions[0], solutions[1])
   // Wrapped anti-diagonal regions clash with the givens, so the solver
   // rejects the grid when it sees them; marked "Disable for solver",
-  // solveDocument must still find two (#628, C5).
+  // solveDocument must still find two.
   const diagonals = { type: 1, regions: cells.map((_, i) => (Math.floor(i / 4) + i % 4) % 4) }
   const withRule = extra => ({ puzzle: { ...doc.puzzle, constraints: [...doc.puzzle.constraints, extra] } })
   await assert.rejects(() => solveDocument(withRule(diagonals)), /rejected the initial grid/)
@@ -247,11 +247,11 @@ function boxRegionsConstraint (boxSize, width, height) {
 }
 console.log('bundle-solve-lib: solveDocument two-solutions ok')
 
-// ---- solveDocument: a custom component's update runs, and its throw makes
+// solveDocument: a custom component's update runs, and its throw makes
 // the run throw. The bundle itself only logs a component's thrown error
 // (logConstraintError, bundle.claude.js:9911) and carries on -- wrong for a
 // batch scorer, so solveDocument makes console.error throw for the run
-// (see its comment). ----
+// (see its comment).
 {
   const THROWING_MAIN = `
 puzzle.addConstraintComponent(new ThrowingComponent('boom', [0]))
@@ -286,13 +286,13 @@ function* update (instance, puzzle) {
 }
 console.log('bundle-solve-lib: solveDocument throwing-component ok')
 
-// ---- bundle-solve.mjs: the CLI module loads (#668): its imports resolve, and
-// loading it does not run the CLI (there is no argv here to run it on). ----
+// bundle-solve.mjs: the CLI module loads: its imports resolve, and
+// loading it does not run the CLI (there is no argv here to run it on).
 await import('./bundle-solve.mjs')
 console.log('bundle-solve: module imports ok')
 
-// ---- bundle-solve.mjs: run directly, it runs the CLI (#668): no argument is
-// the usage error and a failing exit, not a silent success. ----
+// bundle-solve.mjs: run directly, it runs the CLI: no argument is
+// the usage error and a failing exit, not a silent success.
 const cli = new URL('./bundle-solve.mjs', import.meta.url).pathname
 const link = `${mkdtempSync(`${tmpdir()}/bundle solve `)}/cli.mjs` // a symlink, in a path with a space
 symlinkSync(cli, link)

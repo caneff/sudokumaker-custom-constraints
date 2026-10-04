@@ -44,7 +44,7 @@ export function frameGeometry (nw, [bh, bw], nh = nw) {
   // its own count, because a left/right line and a top/bottom line are
   // different lengths -- and `keys` is then their own keys, so the two cannot
   // disagree. Key order is not a contract: the frame is compared as a set of
-  // lines (#295), so a caller that depends on the sequence is depending on an
+  // lines, so a caller that depends on the sequence is depending on an
   // accident.
   const groups = [['L', nh], ['R', nh], ['T', nw], ['B', nw]].flatMap(([side, count]) =>
     Array.from({ length: count }, (_, i) => ({
@@ -71,7 +71,7 @@ export function frameGeometry (nw, [bh, bw], nh = nw) {
   // rectangular frame is a legitimate thing to build -- global-backends.test.mjs
   // runs every backend on an 11x8 board precisely because a square frame is
   // symmetric under transpose and hides a backend that reads one dimension
-  // twice (#299). Throwing in the constructor would take that board away to
+  // twice. Throwing in the constructor would take that board away to
   // guard a field that board never reads.
   return {
     W,

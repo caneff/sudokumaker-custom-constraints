@@ -18,7 +18,7 @@ import { assembleSource } from './include.mjs'
 const HERE = import.meta.dirname
 const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
 
-// ---- splices the named file, resolved against the INCLUDING file's dir ----
+// splices the named file, resolved against the INCLUDING file's dir
 {
   const root = fixtures()
   mkdirSync(join(root, '_shared'))
@@ -28,7 +28,7 @@ const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
     'function f () { return 1 }\nf()\n')
 }
 
-// ---- refuses a directive naming a file that is not there ----
+// refuses a directive naming a file that is not there
 // Leaving it in would eval as a comment and fail much later, as a missing
 // function.
 {
@@ -37,7 +37,7 @@ const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
   assert.throws(() => assembleSource(join(root, 'main.js')), /nope\.js|ENOENT/)
 }
 
-// ---- refuses a cycle instead of recursing until the stack gives out ----
+// refuses a cycle instead of recursing until the stack gives out
 {
   const root = fixtures()
   writeFileSync(join(root, 'a.js'), '// #include b.js\n')
@@ -45,7 +45,7 @@ const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
   assert.throws(() => assembleSource(join(root, 'a.js')), /cycle/)
 }
 
-// ---- refuses a directive with no path, and one naming two ----
+// refuses a directive with no path, and one naming two
 // `// #include` alone is a half-written directive, not a comment to keep.
 {
   const root = fixtures()
@@ -55,7 +55,7 @@ const fixtures = () => mkdtempSync(join(tmpdir(), 'include-'))
   assert.throws(() => assembleSource(join(root, 'two.js')), /exactly one path/)
 }
 
-// ---- both halves read the same directive out of the same fixture ----
+// both halves read the same directive out of the same fixture
 // Python's answer is minified and Node's is not, so the comparison runs
 // Python's strip over Node's assembled text: what is left has to be what
 // Python got by splicing the file itself. A half that missed the directive, or

@@ -1,4 +1,4 @@
-// Run SudokuMaker's real solver on a puzzle link, in Node -- no browser (#429).
+// Run SudokuMaker's real solver on a puzzle link, in Node -- no browser.
 //
 // app-solve.mjs drives the live app in a browser and reads its own printed
 // time; that is the number on record for a shipped board, but a browser tab

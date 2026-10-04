@@ -8,7 +8,7 @@
 //! ring, the edge lines and edge cells are the puzzle.
 //!
 //! `| 0` turns each id from the geometry helpers into a plain integer, which
-//! the solver reads faster (#394). `houseType` lets the solver's row and column
+//! the solver reads faster. `houseType` lets the solver's row and column
 //! logic read the house as a row or a column.
 
 const digitCount = helpers.digits.maxDigit - helpers.digits.minDigit + 1

@@ -35,7 +35,7 @@ class Manifest:
     # Links with no gen*.json behind them (hand-made or derived from another).
     generator_less_links: tuple[str, ...] = ()
     # True: the example's `_annotated` link embeds its shared component with
-    # the comments kept (#433), not the usual full strip.
+    # the comments kept, not the usual full strip.
     annotated_keeps_comments: bool = False
     # The name a borrowed, non-frame rows-and-columns backend ships under.
     rowcol_backend: str | None = None

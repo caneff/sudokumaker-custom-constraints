@@ -21,7 +21,7 @@ import { parseArgs as parseCli } from 'node:util'
 // flags may sit anywhere on the line. A flag the driver does not know is a
 // usage error: a misspelt --after-logical would otherwise run the cold row
 // and print it as the row asked for. Split out here because it is the one
-// branchy part of app-solve.mjs a browser is not needed to exercise (#315).
+// branchy part of app-solve.mjs a browser is not needed to exercise.
 const USAGE = 'usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]'
 export function parseArgs (argv) {
   let parsed
@@ -89,7 +89,6 @@ export const median = xs => {
   return s.length ? s[Math.floor(s.length / 2)] : null
 }
 
-// A time the readout never gave is "n/a", not the word "null".
 const fmtMs = v => (v == null ? 'n/a' : `${v}ms`)
 
 export function repLine (r) {
@@ -102,7 +101,7 @@ export function repLine (r) {
 }
 
 // Medians of first, unique, and sum over the reps that returned a verdict
-// ('unique' or 'not-unique'). A timeout rep now carries a real first-solve
+// ('unique' or 'not-unique'). A timeout rep carries a real first-solve
 // time (see parseReadout), so it is excluded by verdict here, not by a null
 // check -- the app never proved that rep's uniqueness, so its numbers are
 // not comparable to a rep that finished.

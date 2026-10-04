@@ -12,7 +12,7 @@ from minify import minify_file, minify_js
 
 def test_drops_every_comment_including_the_marked_ones():
     # A "//!" block is commentary for the source file, not for the link: the
-    # shipped copy carries no comments at all (#385).
+    # shipped copy carries no comments at all.
     got = minify_js(
         "// ordinary, dropped\n"
         "  //! marked, dropped too\n"
@@ -53,15 +53,15 @@ def test_keeps_block_comments_when_asked_to():
     assert minify_js(src, drop_blocks=False) == src, repr(minify_js(src, False))
     assert "/*" not in minify_js(src)
     # Sparing block comments does not spare line comments -- marked or not.
-    # No vendored file carries a "//!", so this path loses nothing (#385).
+    # No vendored file carries a "//!", so this path loses nothing.
     kept = minify_js("//! marked\n// plain\nconst x = 1\n", drop_blocks=False)
     assert kept == "const x = 1\n", repr(kept)
 
 
 def test_keeps_comments_and_blank_lines_when_asked_to():
-    # keep_comments=True is the annotated-link mode (#433): line and block
+    # keep_comments=True is the annotated-link mode: line and block
     # comments both survive, drop_blocks is ignored, and blank lines stay so
-    # the commentary reads in paragraphs (#695). The one comment that goes is
+    # the commentary reads in paragraphs. The one comment that goes is
     # the repo's `/* eslint-disable` directive.
     src = (
         "/* eslint-disable no-unused-vars -- the component API */\n"
@@ -79,13 +79,12 @@ def test_keeps_comments_and_blank_lines_when_asked_to():
         "\n"
         "  const u = 'http://a/b'\n"
     ), repr(got)
-    # drop_blocks is ignored in this mode
     assert minify_js(src, drop_blocks=True, keep_comments=True) == got
 
 
 def test_keep_comments_drops_the_lint_directive_and_the_blank_after_it():
     # The directive is for this repo's linter; a recipient reading the code in
-    # the app's box has no use for it (#695). The blank line that followed it
+    # the app's box has no use for it. The blank line that followed it
     # would open the link on empty space, so it goes too -- from an included
     # file as well as the top-level one.
     with tempfile.TemporaryDirectory() as d:
@@ -221,7 +220,7 @@ def test_a_template_literal_keeps_markers_across_lines():
 def test_keep_comments_never_reads_the_text():
     # The annotated mode returns every line as written (blank lines aside), so
     # nothing the scan refuses -- a multi-line block, an apostrophe in prose --
-    # can stop it (#433).
+    # can stop it.
     src = (
         "const a = 1 // see /* here\n"
         'const sep = "a//b" // note */\n'
@@ -352,7 +351,7 @@ def test_refuses_an_include_cycle():
 
 
 def test_prunes_a_spliced_function_the_assembled_script_never_calls():
-    # #395: an included file's helper that nothing in the assembled script
+    # An included file's helper that nothing in the assembled script
     # calls ships for nothing. Its called sibling in the same include stays.
     with tempfile.TemporaryDirectory() as d:
         root = pathlib.Path(d)
@@ -382,7 +381,7 @@ def test_prunes_and_keeps_multiline_spliced_functions_by_brace_count():
 
 def test_never_prunes_the_including_files_own_unused_function():
     # Scoped to the splice output: a component's own unused top-level helper
-    # is still a lint error, not a silent deletion (#395).
+    # is still a lint error, not a silent deletion.
     with tempfile.TemporaryDirectory() as d:
         root = pathlib.Path(d)
         (root / "seg.js").write_text("function used () { return 1 }\n")
@@ -396,7 +395,7 @@ def test_never_prunes_the_including_files_own_unused_function():
 def test_refuses_to_prune_when_a_name_could_be_reached_dynamically():
     # `obj[key]()` calls through a name this strip cannot read, so it cannot
     # confirm -- or rule out -- that `unused` is the target. Refuse rather
-    # than guess, the same way a missing include or a cycle refuses (#395).
+    # than guess, the same way a missing include or a cycle refuses.
     with tempfile.TemporaryDirectory() as d:
         root = pathlib.Path(d)
         (root / "seg.js").write_text(

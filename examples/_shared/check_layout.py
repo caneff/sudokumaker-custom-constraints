@@ -2,7 +2,7 @@
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
 # decodes every committed link under an example, a board's own subdirectory
-# included (#659) -- the shipped PUZZLE_LINK*.txt
+# included -- the shipped PUZZLE_LINK*.txt
 # boards and the other link .txt files an example commits beside them
 # (fillomino's frozen timing fixtures and its hunt records) -- and checks the
 # three mechanical pre-share criteria from docs/share-checklist.md: the link
@@ -15,7 +15,7 @@
 # another through `customComponents`), so a link cannot go stale behind its
 # builder, and that every interior row and column of a sudoku example's board is
 # a house the link actually declares (a region constraint gives boxes only --
-# see #335 and docs/gotchas.md #9; a manifest with houses = false is a bare
+# see docs/gotchas.md #9; a manifest with houses = false is a bare
 # board, and a "sudoku" document gets its lines from the app, so both are
 # exempt).
 #
@@ -31,7 +31,7 @@
 # The link-NAME grammar binds only PUZZLE_LINK*.txt: a fixture or a hunt record
 # is not a shipped board and names itself for what it records. The share
 # criteria bind all of them -- a link is a link, and any of these can be handed
-# to a person (#310's board was picked out of exactly such a batch).
+# to a person (a board has been picked out of exactly such a batch).
 #
 #   uv run --with lzstring examples/_shared/check_layout.py [root]
 
@@ -77,14 +77,14 @@ REQUIRED_FILES = [
 
 # The local lane's own files. PUZZLE_LINK.txt is the GLOBAL-lane board in
 # every split example, so the local lane needs a board of its own: the link
-# plus the gen JSON that records it (#268). An example whose manifest says
+# plus the gen JSON that records it. An example whose manifest says
 # `lanes = "single"` ships main.js alone and neither.
 REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 
 # Examples folded into another and deleted, name -> the example that took over.
 # One rule has one example, so the directory must not come back -- a second one
 # would drift from the first the way numbered-rooms-lines drifted from
-# numbered-rooms (#238). Data, not code: a retired name is not an example.
+# numbered-rooms. Data, not code: a retired name is not an example.
 RETIRED_EXAMPLES = tomllib.loads(
     (pathlib.Path(__file__).parent / "retired-examples.toml").read_text()
 )
@@ -109,9 +109,9 @@ def is_no_ring(puzzle):
 # PUZZLE_LINK_original.txt reads gen.json the same way -- or, for
 # a hand-made link, no gen JSON at all (the manifest's generator_less_links).
 # Either way, a link whose suffix carries either tag never gets its
-# own separate gen*.json (#294). "annotated" is the same shape: a link of the
+# own separate gen*.json. "annotated" is the same shape: a link of the
 # same board as PUZZLE_LINK.txt with only its embedded code's minification
-# changed, not a fresh generation (#433).
+# changed, not a fresh generation.
 NO_GENERATOR_TAGS = {"clued", "original", "annotated"}
 
 # NxN: the same digit run on both sides, so 6x7 is rejected same as 6-7.
@@ -174,7 +174,7 @@ def check_gen_link_pairing(example_dir, manifest):
     with `PUZZLE_LINK_6x6.txt`, and so on. A gen JSON always needs its link;
     a link needs a gen JSON back only where one is generated -- not a
     build_original.py/build_clued.py twin (NO_GENERATOR_TAGS) or a hand-made
-    exception (the manifest's generator_less_links) (#294)."""
+    exception (the manifest's generator_less_links)."""
     name = example_dir.name
     violations = []
 
@@ -206,8 +206,8 @@ def check_gen_link_pairing(example_dir, manifest):
     return violations
 
 
-# Exactly the docs/research/*.py paths present at the commit that landed this
-# rule (#474): docs/research reads as not-code to the global gate, so finder
+# Exactly the docs/research/*.py paths present when this rule landed:
+# docs/research reads as not-code to the global gate, so finder
 # code kept landing there instead of finders/ and ruff never saw it. This
 # list only SHRINKS as paths move to finders/ -- a new directory must not be
 # added to it; new finder code goes in finders/ from the start.
@@ -236,7 +236,7 @@ def check_research_python(repo_root):
 
     docs/research/ reads as not-code to the global gate (it is not code per
     AGENTS.md's Gate 2), so finder code landing there skips the code lane and
-    ruff never sees it. Finder code belongs in finders/ instead (#469, #474).
+    ruff never sees it. Finder code belongs in finders/ instead.
     """
     repo_root = pathlib.Path(repo_root)
     research_dir = repo_root / "docs" / "research"
@@ -314,11 +314,11 @@ def check_research_loads(repo_root):
     examples/ code: a path built in code, or a `// #include` that resolves
     into docs/research/ (minify splices the included file into the link).
 
-    docs/research/ holds records, not live code (#649): a file the gate's code
+    docs/research/ holds records, not live code: a file the gate's code
     loads from there is maintained source the gate never lints. A citation in
-    a comment or docstring is not a load. Finders keep their catalogues and
-    hunt outputs under docs/research/ by ruling (#469), so finders/ is not
-    scanned, and neither is a dot directory (scratch) or node_modules.
+    a comment or docstring is not a load. Finders read their catalogues and
+    hunt outputs from docs/research/, where they live as data, so finders/ is
+    not scanned, and neither is a dot directory (scratch) or node_modules.
 
     It reads text, not a parse tree, so a pass is not proof: a path segment
     held in a variable, and code hidden behind a `//` or `/*` that sits after
@@ -374,8 +374,7 @@ def committed_links(example_dir):
     """Every committed link .txt under `example_dir`, its board subdirectories
     included, PUZZLE_LINK*.txt first. A dot directory is scratch, not a board,
     and is skipped: a link may sit in a board's own subdirectory, and every
-    one is gated (#659, reversing the flat-only rule of #177 without losing
-    its guarantee).
+    one is gated.
 
     A PUZZLE_LINK*.txt is a link by its name -- one that does not decode is a
     broken shipped board and gets reported as one. Any other .txt is a link
@@ -485,8 +484,7 @@ def check_components(example_dir, link, puzzle):
     code instantiates but the link omits fails inside the app, where the author
     never sees it. `framebuild.Lane.check` asserts this when it builds a link, but
     a committed link goes stale on its own: the builder's component list
-    changes, the link is not regenerated, and nothing notices (#287, #289,
-    #290, #291).
+    changes, the link is not regenerated, and nothing notices.
 
     A lexical check, like the one in `framebuild.Lane.check`: it reads
     `new <Name>Component` (or `new customComponents.<Name>Component`) off that
@@ -494,8 +492,8 @@ def check_components(example_dir, link, puzzle):
     an alias, or named some other way, is invisible to it. SudokuMaker's own
     built-ins are subtracted first (`component_scan.builtin_components`): the
     app provides those classes, so a backend that constructs one ships no
-    component file for it and the link is not stale (#394). Comment lines are
-    dropped first: a link built today ships none (#385, minify.py), but this
+    component file for it and the link is not stale. Comment lines are
+    dropped first: a link built today ships none (minify.py strips them), but this
     sweep also reads backends off links no builder rebuilds -- fillomino's
     frozen timing fixtures and hunt records -- whose committed backends still
     carry them, and a note that names a component must not read as a
@@ -552,7 +550,7 @@ FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 def frame_backend_files():
     """`{constraint name: (source file name, its minified code in the tree)}`
     for the frame's two always-on shared backends, plus the opt-in house-GAC
-    filter (#421) and a no-ring board's whole-grid rows and columns when a link
+    filter and a no-ring board's whole-grid rows and columns when a link
     carries them -- `check_stale_backend_code` only checks a title it finds in a
     link's own constraints, so an opt-in backend needs no separate gate here."""
     code = dict(frame_backend_code())
@@ -588,8 +586,8 @@ def declares_rows_and_columns_in_js(manifest, puzzle):
     houses in JS, invisible to declared_houses' static read of the document?
     The frame's shared row/col backend, a no-ring board's whole-grid one, or
     the one borrowed backend the manifest's rowcol_backend names (house-gac's
-    "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified --
-    #428; nothing here compares it to a file in the tree). Scoped per example,
+    "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified;
+    nothing here compares it to a file in the tree). Scoped per example,
     not by name alone: a name match on some other example's own unrelated
     constraint must not silently exempt it too."""
     if carries_frame_rowcol(puzzle) or is_no_ring(puzzle):
@@ -634,7 +632,7 @@ def check_houses(example_dir, link, puzzle, manifest):
     them as two type-301 cage constraints; a builder that writes its own
     constraint list has to do the same. This cost three tickets of quad-rank
     work, where a 9x9 that CP-SAT proves unique in 0.01s timed out at 300s and
-    a 6x6 whose true count is 2 came back as 5 (#335, docs/gotchas.md #9).
+    a 6x6 whose true count is 2 came back as 5 (docs/gotchas.md #9).
 
     A "sudoku" document is exempt: the app prepends SudokuRules to it, every
     row and column of the whole grid (`is_sudoku_document`).
@@ -697,15 +695,15 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     ships no component file and the shipped/registered sets agree whatever its
     code says. A changed `frame-corners.js` with un-rebuilt links would
     otherwise pass every gate in silence -- and the corner pin is the whole
-    reason a frame board comes back unique (#394).
+    reason a frame board comes back unique.
 
     The component staleness check is keyed on the shipped component's own
     name, not the constraint's title: house-gac's standalone board splices in
     HouseGacComponent.js under a title of its own ("House GAC (standalone)",
-    to avoid the reserved "House GAC" -- see build_link.py's module
-    docstring) with a backend that is legitimately not house-gac.js, so only
+    to avoid the reserved "House GAC" -- see house-gac/build_link.py's
+    header comment) with a backend that is legitimately not house-gac.js, so only
     the component -- the one thing that board does share -- is compared
-    against the tree (#439). A MISSING component is not this check's job:
+    against the tree. A MISSING component is not this check's job:
     `check_components` already flags any constraint whose backend registers a
     name its own `components` list omits.
 
@@ -716,7 +714,7 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     name = example_dir.name
     current = frame_backend_files()
     comp_name, comp_source, comp_want = house_gac_component_file()
-    # An annotated link (#433) embeds the shared component through the
+    # An annotated link embeds the shared component through the
     # comment-keeping minify mode, not the usual full strip -- compare it
     # against that copy instead, or every rebuild would read as stale. The
     # manifest says which example builds one.
@@ -756,7 +754,7 @@ def check_digit_range(example_dir, link, puzzle, manifest):
     digit range, or a range that does not span the interior line.
 
     Both backends read `helpers.digits`, and the app defaults a custom puzzle
-    to 1..9 whatever the grid size (#461). With no `minDigit`/`maxDigit` the
+    to 1..9 whatever the grid size. With no `minDigit`/`maxDigit` the
     range rests on that default, not on the document. A range that does not
     span the interior line degrades every row and column from a named
     `HouseComponent` to a bare `DifferentDigitsComponent` -- the weaker rule,

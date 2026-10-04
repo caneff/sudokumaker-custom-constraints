@@ -24,8 +24,6 @@
 // and is also written to <out>.timeout-<n>.json: that rung is a candidate
 // hard grid, worth a CP-SAT uniqueness check later.
 //
-// ---- How this drives the app ----
-//
 // The puzzle link opens directly in SudokuMaker's puzzle EDITOR, not a
 // player view: the "Given digits" element is already the selected editing
 // target in the left Elements panel, so clicking a cell and pressing a digit

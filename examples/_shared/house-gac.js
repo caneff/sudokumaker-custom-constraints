@@ -3,11 +3,11 @@
 //!
 //! The component adds no rule. Every one of these houses is already declared
 //! all-different -- rows and columns by `frame-rowcol.js`, boxes by the region
-//! constraint -- and this only filters them harder (#406, #408).
+//! constraint -- and this only filters them harder.
 //!
 //! Rows and columns are read the way `frame-rowcol.js` reads them: the ring is
 //! the first and last line, and the first and last cell of every line between,
-//! with `| 0` on every id (#276, #394). Boxes come from `puzzle.getRegions()`,
+//! with `| 0` on every id. Boxes come from `puzzle.getRegions()`,
 //! which leaves out every cell outside a region, so the ring never joins one.
 //! Its ids are the state's own loop indices, already plain integers. The
 //! region constraint registers before any custom constraint, so the boxes are

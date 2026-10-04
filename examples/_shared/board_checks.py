@@ -2,7 +2,7 @@
 # board built by `build_size.py <n> ... --paths` ships its bent paths as drawn
 # groups on the main.js lane, derives every clue from the solution in its gen
 # JSON, bends every path, and repeats a digit on at least one -- the property
-# that makes it a bare-line board rather than a frame board in disguise (#237).
+# that makes it a bare-line board rather than a frame board in disguise.
 #
 # The clue rule is the caller's: each example's build_link.test.py restates its
 # own rather than importing the generator's (CODING_STANDARDS.md, "The rule has

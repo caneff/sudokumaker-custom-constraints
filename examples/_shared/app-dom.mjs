@@ -86,18 +86,18 @@ export async function makeDeterministic (page) {
     if (!label) return 'no-label'
     const input = document.getElementById(label.getAttribute('for'))
     if (!input) return 'no-input'
-    if (input.checked) label.click() // was on -> turn off
+    if (input.checked) label.click()
     return document.getElementById(label.getAttribute('for')).checked ? 'still-on' : 'off'
   })
   if (state !== 'off') throw new Error('non-deterministic toggle: ' + state)
-  await page.keyboard.press('Escape') // close the modal
+  await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
 }
 
 // Open the on-screen digit pad and reselect "Given digits" as the active
 // editing element. Needed once, before the first digit above 9 is entered
-// (#307, the 9x9-digits-1-12 fixtures -- SudokuMaker has no keyboard hotkey
-// past 9, #293): opening the pad (Icon DigitBox) drops "Given digits" as the
+// (fillomino's 9x9-digits-1-12 boards -- SudokuMaker has no keyboard hotkey
+// past 9): opening the pad (Icon DigitBox) drops "Given digits" as the
 // selected element, so a pad click would otherwise land as an entered
 // (played) value instead of a given -- verified empirically by comparing the
 // clicked cell's fill (#000 for a given, the entered-value blue otherwise).
@@ -113,7 +113,7 @@ export async function openWidePad (page) {
 // instead. Once the pad is open (openWidePad has run), the keyboard hotkeys
 // address whichever of the pad's two screens is currently showing -- 1-9 on
 // its first screen, 10-12 on its second, and pressing "2" while the second
-// screen shows does nothing at all (verified empirically, #307) -- so this
+// screen shows does nothing at all (verified empirically) -- so this
 // pages to the right screen (the "..." button, Icon VerticalDots) before
 // either a click or a keypress, whenever the pad is open. With no pad open
 // (a cap <= 9 run, openWidePad never called) 1-9 just presses the key.
