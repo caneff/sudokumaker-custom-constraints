@@ -2,7 +2,7 @@
 # own first target (docs/research/count-digits-gac/counter-in-targets/). The
 # link ships twice, same board, one component swapped: the current
 # CountDigitsGacComponent and the copy from before it handled a self-listed
-# counter (self-count/CountDigitsGacComponent.pre578.js, from d0b1854).
+# counter (self-count/original/CountDigitsGacComponent.pre578.js, from d0b1854).
 # Same-board comparison per docs/real-app-timing.md.
 #
 # A group in `input.groups` is [counter, counter, *others]: the counter, then
@@ -41,7 +41,7 @@ from sm_document import code_constraint, write_link
 HERE = pathlib.Path(__file__).parent
 BOARD_DIR = HERE / "self-count"
 GEN = BOARD_DIR / "gen.json"
-PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
+PRE578 = BOARD_DIR / "original" / "CountDigitsGacComponent.pre578.js"
 VARIANTS = {"current": CURRENT, "pre578": PRE578}
 # The pre-#578 component is the baseline the current one is timed against.
 LINK_NAMES = {"current": "PUZZLE_LINK.txt", "pre578": "PUZZLE_LINK_original.txt"}
