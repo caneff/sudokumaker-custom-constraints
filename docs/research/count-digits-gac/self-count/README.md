@@ -1,7 +1,7 @@
 # Self-counting CountDigits board (#581)
 
 > **Moved (#659).** The `gen*.json` files, the two links and
-> `CountDigitsGacComponent.pre578.js` now live in
+> `CountDigitsGacComponent.pre578.js` (in `original/`) now live in
 > `examples/count-digits-gac/self-count/`, the links renamed `PUZZLE_LINK.txt`
 > (current) and `PUZZLE_LINK_original.txt` (pre-#578).
 

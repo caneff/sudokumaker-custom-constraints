@@ -1,5 +1,7 @@
 ## Cell, corner, edge and outer-cell ids, connectivity, lines, misc
 
+> **Moved (#659).** `docs/research/bundle-api-index.md` is now `docs/bundle-api-index.md` (#659).
+
 Everything in this section is pure coordinate arithmetic over the board's
 dimensions — no puzzle state is read, so these calls are cheap and safe to make
 anywhere in `update`. A component reaches them as `helpers.cellIds`,

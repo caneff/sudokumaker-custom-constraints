@@ -2,7 +2,7 @@
 
 > **Moved (#659).** The board files the builders load — `demo/`, `self-count/`
 > and `sparse/`'s gen JSONs, backends and links, and
-> `CountDigitsGacComponent.pre578.js` — now live in the same subdirectories of
+> `CountDigitsGacComponent.pre578.js` (now `self-count/original/`) — live in the same subdirectories of
 > `examples/count-digits-gac/` (the counter-outside board in its own
 > `demo-counter-outside/`), each board's links renamed to the example grammar:
 > `PUZZLE_LINK.txt` for the candidate, `_original` for the baseline (the
