@@ -48,9 +48,9 @@ from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-LINK_DIR = HERE / "sparse"
-GEN = LINK_DIR / "gen.json"
-BACKEND = LINK_DIR / "main-sparse-global.js"
+BOARD_DIR = HERE / "sparse"
+GEN = BOARD_DIR / "gen.json"
+BACKEND = BOARD_DIR / "main-sparse-global.js"
 CONSTRAINT_NAME = "Sparse count digits"
 # The groups are not drawn: they live in the constraint's code, so the text
 # says so rather than promise an outline the document does not carry.
@@ -132,7 +132,7 @@ def build_doc(gen, name, keep_comments=False):
     )
 
 
-def build(out_dir=LINK_DIR, gen_path=GEN, keep_comments=False):
+def build(out_dir=BOARD_DIR, gen_path=GEN, keep_comments=False):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     if keep_comments:
         names = ["PUZZLE_LINK_sparse_annotated.txt"]
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     )
     p.add_argument(
         "--out",
-        help="directory for the links (default: sparse/)",
+        help="directory for the links (default: sparse/ beside this script)",
     )
     args = p.parse_args()
     if args.search is not None:
@@ -200,7 +200,7 @@ if __name__ == "__main__":
             gen_path.write_text(json.dumps(gen) + "\n")
             print(f"set carved={args.carved} in {args.gen}")
         written = build(
-            pathlib.Path(args.out) if args.out else LINK_DIR,
+            pathlib.Path(args.out) if args.out else BOARD_DIR,
             args.gen,
             args.keep_comments,
         )

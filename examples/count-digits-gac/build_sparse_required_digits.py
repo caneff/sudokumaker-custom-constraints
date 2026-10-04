@@ -33,9 +33,9 @@ from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
 
 HERE = pathlib.Path(__file__).parent
-LINK_DIR = HERE / "required-digits" / "sparse"
-GEN = LINK_DIR / "gen.json"
-BACKEND = LINK_DIR / "main-sparse-global.js"
+BOARD_DIR = HERE / "required-digits" / "sparse"
+GEN = BOARD_DIR / "gen.json"
+BACKEND = BOARD_DIR / "main-sparse-global.js"
 COMPONENT = HERE / "RequiredDigitsGacComponent.js"
 CANDIDATE_NAME = "RequiredDigitsGacComponent"
 BASELINE_NAME = "RequiredDigitsComponent"
@@ -150,7 +150,7 @@ def build_doc(gen, name):
     )
 
 
-def build(out_dir=LINK_DIR, gen_path=GEN):
+def build(out_dir=BOARD_DIR, gen_path=GEN):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
     write_link(
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     )
     p.add_argument(
         "--out",
-        help="directory for the links (default: required-digits/sparse/)",
+        help="directory for the links (default: required-digits/sparse/ beside this script)",
     )
     args = p.parse_args()
     if args.search is not None:
@@ -182,5 +182,5 @@ if __name__ == "__main__":
         )
         print(f"wrote {args.gen}")
     else:
-        build(pathlib.Path(args.out) if args.out else LINK_DIR, args.gen)
+        build(pathlib.Path(args.out) if args.out else BOARD_DIR, args.gen)
         print("wrote PUZZLE_LINK_sparse.txt and PUZZLE_LINK_sparse_original.txt")
