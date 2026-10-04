@@ -12,16 +12,14 @@
 //! `RequiredDigitsGacComponent` throws a ReferenceError the app only prints
 //! to the console -- the rule goes dead with nothing in the UI).
 //!
-//! `windowLength` is examples/outside-sudoku/OutsideSudokuComponent.js's own,
-//! duplicated here per examples/outside-sudoku/OPTIMIZATION_LOG.md ("A
-//! hand-built `original/` wrapper", grep it): this file is not a rebuild of
-//! that component, so it carries its own copy of the geometry rather than
-//! importing one.
+//! `windowLength` restates examples/outside-sudoku/window-length.js's
+//! geometry, cached on the instance: this file is not a rebuild of that
+//! component (examples/outside-sudoku/OPTIMIZATION_LOG.md, "A hand-built
+//! `original/` wrapper"), so it keeps its own copy instead of an include.
 //!
 //! `RequiredDigitsWrapperComponentBuiltin.js` is the same shape with the
-//! built-in `RequiredDigitsComponent` as the swap target instead -- the
-//! baseline `PUZZLE_LINK_original.txt` is built from
-//! (build_required_digits.py).
+//! built-in `RequiredDigitsComponent` as the swap target; the baseline
+//! `PUZZLE_LINK_original.txt` is built from it (../build_required_digits.py).
 
 function getAffectedCells (clue, line) {
   return [clue, ...line]
@@ -32,10 +30,9 @@ function setParams (instance, clue, line) {
   instance.line = line
 }
 
-// Verbatim copy of OutsideSudokuComponent.js's windowLength: the extent of
-// line[0]'s box along the line's direction, cached on the instance. See that
-// file for the reasoning; a region-less line[0] (e.g. a ring cell) falls
-// back to the whole line, weaker but never unsound.
+// The extent of line[0]'s box along the line's direction, cached on the
+// instance. A region-less line[0] (a ring cell) gets the whole line: weaker,
+// never unsound.
 function windowLength (instance, puzzle) {
   if (instance.w !== undefined) return instance.w
   const { line } = instance

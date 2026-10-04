@@ -11,7 +11,7 @@ const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
-const mod = load('OutsideSudokuComponent.js', ['setParams', 'update'])
+const mod = load('OutsideSudokuComponent.js', ['setParams', 'update', 'validate'])
 
 // Every valid tuple for one line shape: the line ranges over {1..D}^m, and the
 // clue over the distinct digits of the window — the rule says the clue appears

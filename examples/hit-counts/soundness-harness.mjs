@@ -23,20 +23,17 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
-import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
-// The pair component with the case sweep alone, before the permutation sweep.
-// It is the floor that sweep's coverage counter measures against.
-const CASE_SWEEP_COMMIT = '4cc09eb'
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
 
 const pairComp = load('HitCountsPairComponent.js', ['setParams', 'update', 'validate'])
 const mod = load('HitCountsComponent.js', ['setParams', 'update', 'noNMinusOne', 'validate'])
-const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update']
+const SIDE_NAMES = ['getAffectedCells', 'setParams', 'update', 'validate']
 const sideMod = load('SideSumComponent.js', SIDE_NAMES)
 const matchMod = load('SideHitMatchingComponent.js', ['setParams', 'update', 'validate'])
 
@@ -273,8 +270,6 @@ console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the hous
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
-// The file carried a different name at the pinned commit, so the floor names its own path.
-const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
 const caseSweep = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,

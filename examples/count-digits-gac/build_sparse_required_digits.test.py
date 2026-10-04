@@ -20,6 +20,7 @@ from build_sparse_required_digits import (
     model,
 )
 from link_codec import decode_puzzle
+from untouched import leaves_untouched
 
 
 def count_solutions(groups, givens):
@@ -69,17 +70,18 @@ if __name__ == "__main__":
     assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
     assert cand != base and BASELINE_NAME in base
 
-    shipped = {n: (BOARD_DIR / n).read_bytes() for n in NAMES}
-    mtime = {n: (BOARD_DIR / n).stat().st_mtime_ns for n in NAMES}
-    with tempfile.TemporaryDirectory() as tmp:
+    with (
+        leaves_untouched([BOARD_DIR / n for n in NAMES]) as before,
+        tempfile.TemporaryDirectory() as tmp,
+    ):
         out = pathlib.Path(tmp)
         build(out)
         for n in NAMES:
-            assert (out / n).read_bytes() == shipped[n], f"{n} does not reproduce"
-    for n in NAMES:
-        assert (BOARD_DIR / n).stat().st_mtime_ns == mtime[n], f"{n} touched by --out"
+            assert (out / n).read_bytes() == before[BOARD_DIR / n], (
+                f"{n} does not reproduce"
+            )
 
-    docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
+    docs = [decode_puzzle(before[BOARD_DIR / n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs
     for d in docs:
         # a plain 9x9 is a sudoku document: rows and columns come from

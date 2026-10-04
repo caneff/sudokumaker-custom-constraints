@@ -18,6 +18,7 @@ from build_sparse_count_digits import (
 from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
 from link_codec import decode_puzzle
 from minify import minify_file
+from untouched import leaves_untouched
 
 NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 ANNOTATED = "PUZZLE_LINK_annotated.txt"
@@ -116,17 +117,18 @@ if __name__ == "__main__":
     assert cand.replace(CANDIDATE_NAME, BASELINE_NAME) == base
     assert cand != base and BASELINE_NAME in base
 
-    shipped = {n: (BOARD_DIR / n).read_bytes() for n in NAMES}
-    mtime = {n: (BOARD_DIR / n).stat().st_mtime_ns for n in NAMES}
-    with tempfile.TemporaryDirectory() as tmp:
+    with (
+        leaves_untouched([BOARD_DIR / n for n in NAMES]) as before,
+        tempfile.TemporaryDirectory() as tmp,
+    ):
         out = pathlib.Path(tmp)
         build(out)
         for n in NAMES:
-            assert (out / n).read_bytes() == shipped[n], f"{n} does not reproduce"
-    for n in NAMES:
-        assert (BOARD_DIR / n).stat().st_mtime_ns == mtime[n], f"{n} touched by --out"
+            assert (out / n).read_bytes() == before[BOARD_DIR / n], (
+                f"{n} does not reproduce"
+            )
 
-    docs = [decode_puzzle(shipped[n].decode().strip()) for n in NAMES]
+    docs = [decode_puzzle(before[BOARD_DIR / n].decode().strip()) for n in NAMES]
     cand_doc, base_doc = docs
     cand_doc_full = json.loads(json.dumps(cand_doc))
     for d in docs:

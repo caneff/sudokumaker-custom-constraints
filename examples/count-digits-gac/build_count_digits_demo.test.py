@@ -33,6 +33,7 @@ from count_board import (
 )
 from link_codec import decode_puzzle
 from minify import minify_file
+from untouched import leaves_untouched
 
 
 def count_solutions(groups, givens):
@@ -240,15 +241,13 @@ def check_link(gen, link, selfcount):
     colours = [c["style"]["cage"]["color"] for c in cages]
     assert len(set(colours)) == len(colours), "two groups share a colour"
 
-    mtime = link.stat().st_mtime_ns
-    with tempfile.TemporaryDirectory() as tmp:
+    with leaves_untouched([link]), tempfile.TemporaryDirectory() as tmp:
         out = build(
             pathlib.Path(tmp) / "not" / "yet",
             GEN if selfcount else OUTSIDE_GEN,
         )
         assert out.name == link.name, "the link name does not follow the gen"
         assert out.read_bytes() == shipped, "the link does not reproduce"
-    assert link.stat().st_mtime_ns == mtime, "--out touched the committed link"
 
     flipped = build_doc(gen, "builtin")
     was = build_doc(gen, "gac")

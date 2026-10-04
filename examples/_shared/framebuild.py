@@ -644,11 +644,7 @@ class Lane:
         assert not [
             c for c in doc["puzzle"]["cells"] if "value" in c and not c.get("given")
         ], "a non-given cell carries a value"
-        lc = next(
-            c
-            for c in doc["puzzle"]["constraints"]
-            if c.get("definition", {}).get("name") == spec.constraint_name
-        )
+        lc = find_constraint(doc, spec.constraint_name)
         # `_check_lane` names the backend and components itself: an assertion
         # built from the builder's own call passes when that call breaks.
         backend_file, want = self._check_lane(lc, doc, board)

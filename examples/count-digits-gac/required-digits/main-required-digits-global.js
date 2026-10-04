@@ -1,5 +1,5 @@
 // Backend for the RequiredDigits-wrapper comparison board (#534). Same frame
-// lines as main-global.js, but registers RequiredDigitsWrapperComponent
+// lines as examples/outside-sudoku/main-global.js, but registers RequiredDigitsWrapperComponent
 // instead of OutsideSudokuComponent -- the host that idles until its clue
 // fills, then swaps itself for a required-digits rule over the window
 // (RequiredDigitsWrapperComponent.js's own header says why). Never shipped
