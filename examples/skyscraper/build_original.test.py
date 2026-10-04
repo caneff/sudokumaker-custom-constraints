@@ -1,8 +1,6 @@
 # build_original.py --out: rebuilding sizes 4, 6, 9 and 10 into a temp
 # directory must reproduce the committed link pair byte-identically, and must
 # leave the shipped links themselves untouched.
-#
-#   uv run --with lzstring examples/skyscraper/build_original.test.py
 
 import pathlib
 import sys

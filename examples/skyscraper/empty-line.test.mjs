@@ -1,7 +1,5 @@
 // A two-wide frame leaves the two-clue skyscraper an empty line. The
 // component must stand down: no throw, no removal, no stop, and validate holds on filled clues.
-//
-//   node examples/skyscraper/empty-line.test.mjs
 
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'

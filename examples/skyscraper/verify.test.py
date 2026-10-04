@@ -2,8 +2,6 @@
 # reads the shipped link, mismatches / box_problems / grid_problems compare it
 # to the recorded board, and framebuild.unique is the proof itself. Every
 # expectation comes from gen.json, so a regenerated board changes no line here.
-#
-#   uv run --with lzstring --with ortools examples/skyscraper/verify.test.py
 
 import pathlib
 import sys

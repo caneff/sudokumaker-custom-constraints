@@ -4,8 +4,6 @@
 // true value survived. A removed true value is a bug that can make a real puzzle
 // unsolvable.
 //
-//   node examples/hit-counts/soundness-harness.mjs
-//
 // Both line components are fuzzed on all three line kinds (docs/line-contract.md):
 // a bare line an author drew, a house, and a full house. The hit sweep is sound
 // on every kind; the mirrored-pair exclusion needs a house, and the no-n-1 rule

@@ -3,8 +3,6 @@
 // to wake it on, what it builds for a removal, and what it hands the puzzle
 // back. The seams are each component's `getAffectedCells`, `update` and
 // `validate` on the harness mock.
-//
-//   node examples/hit-counts/component-contract.test.mjs
 import assert from 'node:assert/strict'
 import { installGlobals, makeIo, makeLine, makePuzzle, makeRng, makeWaker, randomCandidates } from '../_shared/harness-lib.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES } from './fixture.mjs'

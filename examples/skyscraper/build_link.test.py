@@ -4,8 +4,6 @@
 #    byte for byte. What a swap may change is link_swap.test.py's.
 # 2. The committed local links, built by `build_size.py <n> ... --paths`, pass
 #    board_checks.check_local_board under this example's clue rule.
-#
-#   uv run examples/skyscraper/build_link.test.py
 
 import pathlib
 import sys

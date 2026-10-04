@@ -87,95 +87,95 @@ const capOk = !cap.v && CELLS.slice(N).every(c => !cap.p.getCandidates(c).has(0)
 const force = run(rows, (c, v) => (v === 0 ? ALL : ALL.slice(1)))
 const forceOk = !force.v && CELLS.slice(0, N).every(c => force.p.getCandidates(c).size === 1)
 
-// ---- Outside the walk: only cell 0 is placed (digit 0), so cell 99 (18
-// steps away, far past the budget of nine) loses 0 ----
+// Outside the walk: only cell 0 is placed (digit 0), so cell 99 (18
+// steps away, far past the budget of nine) loses 0
 const outside = run(bent, (c, v) => (c === 0 ? [v] : ALL))
 const outsideOk = !outside.v && !outside.p.getCandidates(99).has(0) && outside.p.getCandidates(9).has(0)
 
-// ---- Stranded: cells 0 and 99 both placed as 0 can never join, so the walk
-// misses one of them and a placed cell empties ----
+// Stranded: cells 0 and 99 both placed as 0 can never join, so the walk
+// misses one of them and a placed cell empties
 const stranded = once(bent, (c, v) => (c === 0 || c === 99 ? [0] : ALL))
 const strandedOk = stranded.getCandidates(0).size === 0
 
-// ---- Stranded at cap: ten placed 0s (cells 0-8 and 99) can never join
-// either, and at cap the walk has no budget at all ----
+// Stranded at cap: ten placed 0s (cells 0-8 and 99) can never join
+// either, and at cap the walk has no budget at all
 const capStranded = once(bent, (c, v) => (c <= 8 || c === 99 ? [0] : ALL))
 const capStrandedOk = capStranded.getCandidates(0).size === 0
 
-// ---- Starved: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
-// cells in all) can never grow to ten; the placed cell empties ----
+// Starved: digit 0 placed at cell 0 and allowed only in cells 1-8 (nine
+// cells in all) can never grow to ten; the placed cell empties
 const starved = once(bent, (c, v) => (c === 0 ? [0] : c <= 8 ? ALL : ALL.slice(1)))
 const starvedOk = starved.getCandidates(0).size === 0
 
-// ---- Seed walk, budget boundary: digit 0 placed at cells 0 and 19. The
+// Seed walk, budget boundary: digit 0 placed at cells 0 and 19. The
 // shortest path between them crosses nine open cells, one more than the
-// budget of ten minus two placed, so the walk never meets cell 19: dead ----
+// budget of ten minus two placed, so the walk never meets cell 19: dead
 const farDead = once(bent, (c, v) => (c === 0 || c === 19 ? [0] : ALL))
 const farDeadOk = farDead.getCandidates(0).size === 0
 
-// ---- Seed walk, the other side of that boundary: cells 0 and 18 are eight
-// open cells apart, exactly the budget, so both placed cells survive ----
+// Seed walk, the other side of that boundary: cells 0 and 18 are eight
+// open cells apart, exactly the budget, so both placed cells survive
 const farLive = once(bent, (c, v) => (c === 0 || c === 18 ? [0] : ALL))
 const farLiveOk = farLive.getCandidates(0).has(0) && farLive.getCandidates(18).has(0)
 
-// ---- Linked walk: digit 1 placed at cells 7, 14 and 17, digit 0 at cell 12,
+// Linked walk: digit 1 placed at cells 7, 14 and 17, digit 0 at cell 12,
 // which walls off row 1 to the left of 14. The seed is cell 7 and the budget
 // is seven open cells. Linking 7 to 14 costs two of them (cells 16 and 15), so
 // the six cells from 14 down and back along row 2 to cell 10 come to eight in
 // all and cell 10 falls outside the walk. A walk started from every placed
-// cell at no cost would reach cell 10 in six steps from 14 ----
+// cell at no cost would reach cell 10 in six steps from 14
 const linked = once(bent, (c, v) => ([7, 14, 17].includes(c) ? [1] : c === 12 ? [0] : ALL))
 const linkedOk = !linked.getCandidates(10).has(1)
 
-// ---- Seed walk, walled off: digit 0 is placed at cell 0 and at cell 55,
+// Seed walk, walled off: digit 0 is placed at cell 0 and at cell 55,
 // whose four neighbours all hold digit 1. No path of cells allowing 0 joins
-// them, so the walk cannot meet cell 55 whatever the budget: dead ----
+// them, so the walk cannot meet cell 55 whatever the budget: dead
 const walled = once(bent, (c, v) => (c === 0 || c === 55 ? [0] : [45, 54, 56, 65].includes(c) ? [1] : ALL))
 const walledOk = walled.getCandidates(0).size === 0
 
-// ---- Cut, the starve half alone: digit 0 placed at cell 0, allowed in row 0
+// Cut, the starve half alone: digit 0 placed at cell 0, allowed in row 0
 // and cell 10 (eleven cells). Without cell 1 the walk holds two cells, so cell
 // 1 must be 0; without cell 10 it still holds ten, so cell 10 stays open. One
 // placed cell means the strand test never runs here, so starve carries the
-// board on its own ----
+// board on its own
 const cutStarve = once(bent, (c, v) => (c === 0 ? [0] : c <= 10 ? ALL : ALL.slice(1)))
 const cutStarveOk = cutStarve.getCandidates(1).size === 1 && cutStarve.getCandidates(1).has(0) && cutStarve.getCandidates(10).size > 1
 
-// ---- Cut, the strand half alone: digit 0 placed at cells 0 and 2, allowed in
+// Cut, the strand half alone: digit 0 placed at cells 0 and 2, allowed in
 // row 0 and in the six cells of column 0 below it. Cell 1 is the only cell
 // joining the two placed cells, so without it cell 2 is stranded and cell 1
 // must be 0. Without cell 1 the walk from the placed cells still reaches
 // fifteen cells, so the starve test alone would leave cell 1 open. Cell 5 is on
-// the walk and is no cut either way ----
+// the walk and is no cut either way
 const strandOpen = [1, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60]
 const cutStrand = once(bent, (c, v) => (c === 0 || c === 2 ? [0] : strandOpen.includes(c) ? ALL : ALL.slice(1)))
 const cutStrandOk = cutStrand.getCandidates(1).size === 1 && cutStrand.getCandidates(1).has(0) && cutStrand.getCandidates(5).size > 1
 
-// ---- Budget: rows 0-1 (twenty cells) allow only digits 1 and 2 while every
+// Budget: rows 0-1 (twenty cells) allow only digits 1 and 2 while every
 // other row is fixed, so digit 2 is complete and digit 1 can take ten cells:
 // no assignment covers twenty cells. Per digit nothing is wrong (cap only
-// drops 2), but the max flow falls short and a cell empties ----
+// drops 2), but the max flow falls short and a cell empties
 const budget = once(rows, (c, v) => (c < 2 * N ? [1, 2] : [v]))
 const budgetOk = CELLS.some(c => budget.getCandidates(c).size === 0)
 
-// ---- Tour bound: digit 0 placed at cells 0 and 9 (nine apart). Cell 50 is
+// Tour bound: digit 0 placed at cells 0 and 9 (nine apart). Cell 50 is
 // five steps from cell 0, inside the depth bound (8), but a region holding
-// cells 0, 9 and 50 needs 1 + (5 + 14 + 9) / 2 = 15 cells; cell 4 needs 10 ----
+// cells 0, 9 and 50 needs 1 + (5 + 14 + 9) / 2 = 15 cells; cell 4 needs 10
 const tour = once(rows, (c, v) => (c === 0 || c === 9 ? [0] : ALL))
 const tourOk = !tour.getCandidates(50).has(0) && tour.getCandidates(4).has(0)
 
-// ---- Budget prune: rows 0-1 allow [0,1], row 2 [0,1,2], row 3 [2,3], row 4
+// Budget prune: rows 0-1 allow [0,1], row 2 [0,1,2], row 3 [2,3], row 4
 // [2,3,4], rows 5-9 fixed. Rows 0-1 use up digits 0 and 1, so row 2 must be
-// 2: no single digit is forced, but the matching prune drops 0 and 1 there ----
+// 2: no single digit is forced, but the matching prune drops 0 and 1 there
 const prune = once(rows, (c, v) => (c < 2 * N ? [0, 1] : c < 3 * N ? [0, 1, 2] : c < 4 * N ? [2, 3] : c < 5 * N ? [2, 3, 4] : [v]))
 const pruneOk = CELLS.slice(2 * N, 3 * N).every(c => prune.getCandidates(c).size === 1 && prune.getCandidates(c).has(2))
 
-// ---- Silent digit: digits 0 and 1 have no placed cell anywhere. Their
+// Silent digit: digits 0 and 1 have no placed cell anywhere. Their
 // candidate cells are a sixteen-cell island B and a detached two-by-two corner
 // S, walled off by digit 2. A ten-cell region does not fit in four cells, so
 // S loses both digits and B keeps them. No other rule sees this: every walk
 // rule starts from a placed cell, and the budget matching is perfect with or
-// without the pair (S cell, 0) ----
+// without the pair (S cell, 0)
 const S = [0, 1, 10, 11]
 const B = [3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17, 18, 19, 23, 24]
 const pinned = {}
@@ -192,9 +192,9 @@ const silent = once(rows, c => (c in pinned ? [pinned[c]] : [0, 1]))
 const silentOk = S.every(c => !silent.getCandidates(c).has(0) && !silent.getCandidates(c).has(1)) &&
   B.every(c => silent.getCandidates(c).has(0) && silent.getCandidates(c).has(1))
 
-// ---- Silent digit, dead board: same shape, but digit 2's comb cuts the open
+// Silent digit, dead board: same shape, but digit 2's comb cuts the open
 // cells into islands of eight, six and six. No island holds ten, so neither silent
-// digit has anywhere to go and the branch is dead: a cell empties ----
+// digit has anywhere to go and the branch is dead: a cell empties
 const deadPinned = {}
 const deadPut = (d, cs) => cs.forEach(c => { deadPinned[c] = d })
 deadPut(2, [2, 12, 22, 21, 23, 24, 25, 26, 16, 6]) // the comb
@@ -208,19 +208,19 @@ deadPut(9, [90, 91, 92, 93, 94, 95, 96, 97, 98, 99])
 const silentDead = once(rows, c => (c in deadPinned ? [deadPinned[c]] : [0, 1]))
 const silentDeadOk = CELLS.some(c => silentDead.getCandidates(c).size === 0)
 
-// ---- Perimeter split arc: digit 0 sits at border cells 0 and 3, digit 1 at
+// Perimeter split arc: digit 0 sits at border cells 0 and 3, digit 1 at
 // border cells 1 and 5. Read round the border those four are 0, 1, 0, 1, so
 // the two regions would have to interleave. Two disjoint connected regions
-// cannot, so the board is dead and a cell empties ----
+// cannot, so the board is dead and a cell empties
 const arc = once(rows, c => (c === 0 || c === 3 ? [0] : c === 1 || c === 5 ? [1] : ALL))
 const arcOk = CELLS.some(c => arc.getCandidates(c).size === 0)
 
-// ---- Perimeter flank: digit 0 at border cells 0 and 3 flanks open border
+// Perimeter flank: digit 0 at border cells 0 and 3 flanks open border
 // cells 1 and 2, and digit 1 is placed at border cell 6, outside that arc. So
 // cell 1 cannot be 1 -- that reads 0, 1, 0, 1 round the border -- and it loses
 // nothing else: digit 2, placed only at interior cell 12, has no border
 // witness, and the silent digits stay. Interior cell 11 is off the border, so
-// it keeps 1 ----
+// it keeps 1
 const flank = once(rows, c => (c === 0 || c === 3 ? [0] : c === 6 ? [1] : c === 12 ? [2] : ALL))
 const flankKept = ALL.filter(d => d !== 1)
 const flankOk = [...flank.getCandidates(1)].sort((a, b) => a - b).join() === flankKept.join() &&
@@ -235,7 +235,7 @@ mod.setParams(onePassInst, CELLS)
 Array.from(mod.update(onePassInst, onePass))
 const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
-// ---- Validate: full valid grid passes; swap two cells across regions (still ten each) fails ----
+// Validate: full valid grid passes; swap two cells across regions (still ten each) fails
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
 mod.setParams(inst, CELLS)

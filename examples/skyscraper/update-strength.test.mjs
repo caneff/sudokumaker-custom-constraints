@@ -1,8 +1,5 @@
-// Strength check for the pair and one-sided components' update. Soundness (never remove
-// a true value) lives in soundness-harness.mjs; this file checks the other
-// direction — that a rewrite does not quietly prune LESS than before.
-//
-//   node examples/skyscraper/update-strength.test.mjs
+// Strength check for the pair and one-sided components' update: a rewrite
+// must not quietly prune LESS than before.
 //
 // On fuzzed states the current update must leave a subset of what the pinned
 // reference commit's update left, cell for cell. The DP is exact, so a state
