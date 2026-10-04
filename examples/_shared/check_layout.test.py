@@ -1053,6 +1053,11 @@ if __name__ == "__main__":
     with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
         violations = check_tree(root)
         assert any("declares no house" in v for v in violations), violations
+    # ...and its edge cells are real cells, so givens filling them are no ring
+    doc = decode_puzzle(_link(full_ring=True, ringless=True))
+    doc["puzzle"]["type"] = "sudoku"
+    with example(contents={"PUZZLE_LINK.txt": encode_link(doc)}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
 
     # a component a shipped component constructs through `customComponents` is
     # registered, not dead weight
