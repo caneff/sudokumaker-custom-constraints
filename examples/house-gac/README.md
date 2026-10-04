@@ -121,7 +121,7 @@ $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LIN
 ```
 
 Size against the minified link: `PUZZLE_LINK.txt` is 4,720 characters,
-`PUZZLE_LINK_annotated.txt` is 10,001 -- roughly double, the commentary being
+`PUZZLE_LINK_annotated.txt` is 9,151 -- roughly double, the commentary being
 about as large a share of the embedded code as #385 found it elsewhere.
 
 The pre-share decode check (`sm-link` skill, gridfind's `inspect_link.py`)

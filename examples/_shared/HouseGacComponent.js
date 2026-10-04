@@ -1,9 +1,6 @@
 /* eslint-disable no-unused-vars -- setParams/update/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
 //! All-different at full strength (generalized arc consistency) over one house
-//! of at most 9 cells. A house is any one of the board's fixed groups that
-//! must all hold different digits -- a row, a column, or a box; one instance
-//! of this file runs per house, so a plain 9x9 wires up 27 of them, one per
-//! row, column and box.
+//! of at most 9 cells, one instance per house.
 //!
 //! A candidate survives only if some filling of the whole house with different
 //! digits uses it. The app's own `HouseComponent` and `DifferentDigitsComponent`
@@ -35,10 +32,6 @@
 //! One pass is enough. Removals made during the walk only take away digits no
 //! filling uses, so a group that pools exactly k digits pools the same k
 //! digits before and after them.
-//!
-//! Placed cells (one candidate left) are stripped from the house and skipped
-//! by the walk (the argument for why that loses nothing is with the
-//! strip loop in `update`, below).
 
 //! 2^n groups per call over the free cells: about 2 us at n=9 free cells
 //! against 26 us for a matching filter, but the cost doubles with each free
@@ -71,9 +64,7 @@ const freePositions = new Uint8Array(MAX_CELLS)
 //! a RangeError as visible as `MAX_CELLS`'s. Its table is capped so that
 //! loading the code on such a board still works.
 const MAX_DIGIT = 16
-//! Set-bit count of every group index: how many cells a group holds.
 const cellsInGroupOf = countTable(2 ** MAX_CELLS)
-//! Set-bit count of every digit mask the board can make: how many digits a pool holds.
 const digitCountOf = countTable(2 ** (Math.min(helpers.digits.maxDigit, MAX_DIGIT) + 1))
 
 function getAffectedCells (cells) {
@@ -89,8 +80,7 @@ function setParams (instance, cells) {
   }
 }
 
-//! `table[bits]` is how many bits are set in `bits`, for every value below
-//! `size`: a number has one more set bit than itself without its lowest one.
+//! A number has one more set bit than itself without its lowest one.
 function countTable (size) {
   const table = new Uint8Array(size)
   for (let bits = 1; bits < size; bits++) table[bits] = table[withoutLowestBit(bits)] + 1
@@ -138,11 +128,6 @@ function * update (instance, puzzle) {
   for (let group = 1; group <= wholeGroup; group++) {
     const newestCellBit = lowestBit(group)
     const newestPosition = freePositions[positionOf(newestCellBit)]
-    //! pooledDigitsOf is a memo: slot g holds group g's pool once the loop has
-    //! reached g, and junk before that. Storing this group's pool here is what
-    //! lets later groups skip re-pooling their cells: every group that is this
-    //! group plus one lower cell reads this slot instead. Group 7 (cells
-    //! 0,1,2) reads slot 6 (cells 1,2) and ORs in cell 0.
     const pooledDigits = pooledDigitsOf[withoutLowestBit(group)] | candidates[newestPosition]
     pooledDigitsOf[group] = pooledDigits
 
@@ -150,20 +135,12 @@ function * update (instance, puzzle) {
     const digitsInGroup = digitCountOf[pooledDigits]
 
     if (digitsInGroup < cellsInGroup) {
-      //! puzzle.stop tells the solver this branch is a dead end, full stop --
-      //! it fails only the search node currently being tried, so the solver
-      //! backs up and tries the next candidate elsewhere on the board.
       yield puzzle.stop(`the cells of ${instance.name} cannot all hold different digits`, cells)
       return
     }
 
     const groupOwnsItsDigits = digitsInGroup === cellsInGroup
     if (groupOwnsItsDigits) {
-      //! The cells not in this group, as a mask: flip the group's bits and keep
-      //! only the house's. The loop then visits just those cells: each pass
-      //! takes the lowest set bit, turns it into the cell's position, strips the
-      //! group's digits there, and drops that bit from `rest`. Mask 10100 is
-      //! cells 2 and 4, two passes, nothing tested in between.
       const cellsOutside = wholeGroup & ~group
       for (let rest = cellsOutside; rest !== 0; rest = withoutLowestBit(rest)) {
         const restPosition = freePositions[positionOf(lowestBit(rest))]
@@ -176,9 +153,6 @@ function * update (instance, puzzle) {
   //! only clears bits, so snapshot minus working mask is the whole difference.
   //! Yielding here and not inside the walk keeps pooledDigitsOf ours until the
   //! walk is done: a yield lets the solver run another house's update.
-  //! puzzle.removeCandidatesFromCell narrows one cell's candidates and hands
-  //! that narrower board back to the app, which re-runs every component's
-  //! `update` (this one included) over it looking for the next deduction.
   for (let position = 0; position < cellCount; position++) {
     if (candidates[position] !== startingCandidates[position]) {
       const removedDigits = startingCandidates[position] & ~candidates[position]
