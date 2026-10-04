@@ -22,7 +22,7 @@ const FUNCTIONS = ['getAffectedCells', 'setParams', 'update']
 const here = makeIo(new URL('.', import.meta.url).pathname)
 const shared = makeIo(new URL('../../../examples/_shared', import.meta.url).pathname)
 const components = {
-  'matching (AllDiffGacComponent)': makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('AllDiffGacComponent.js', FUNCTIONS),
+  'matching (AllDiffGacComponent)': shared.load('AllDiffGacComponent.js', FUNCTIONS),
   'shipped (HouseGacComponent)': shared.load('HouseGacComponent.js', FUNCTIONS),
   'terse (TerseHouseGacComponent)': here.load('TerseHouseGacComponent.js', FUNCTIONS),
   'incremental (IncrementalHouseGacComponent)': here.load('IncrementalHouseGacComponent.js', FUNCTIONS),

@@ -76,12 +76,12 @@ def build(
     base_link=BASE_LINK,
     keep_comments=False,
 ):
-    base = decode_puzzle(pathlib.Path(base_link).read_text().strip())
-    width = base["puzzle"]["width"]
-    assert width == base["puzzle"]["height"] == 9, "expected the plain 9x9 board"
+    doc = decode_puzzle(pathlib.Path(base_link).read_text().strip())
+    width = doc["puzzle"]["width"]
+    assert width == doc["puzzle"]["height"] == 9, "expected the plain 9x9 board"
 
     givens = {}
-    for i, cell in enumerate(base["puzzle"]["cells"]):
+    for i, cell in enumerate(doc["puzzle"]["cells"]):
         if cell.get("given"):
             r, c = divmod(i, width)
             givens[(r, c)] = int(cell["value"])
@@ -91,14 +91,13 @@ def build(
     # Appending onto a base that already carries the constraint would double
     # it silently -- refuse instead.
     existing_names = {
-        c.get("definition", {}).get("name") for c in base["puzzle"]["constraints"]
+        c.get("definition", {}).get("name") for c in doc["puzzle"]["constraints"]
     }
     assert CONSTRAINT_NAME not in existing_names, (
         "base link already carries a House GAC constraint"
     )
 
     component_path = pathlib.Path(component_path)
-    doc = base
     doc["puzzle"]["constraints"].append(
         code_constraint(
             CONSTRAINT_NAME,
