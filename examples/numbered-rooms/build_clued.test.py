@@ -11,29 +11,21 @@ from build_original import frame_groups
 from link_codec import decode_puzzle
 from link_swap import frame_only
 from sm_document import find_constraint
+from untouched import leaves_untouched
 
 if __name__ == "__main__":
     base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
-    # read the shipped links before the rebuild runs, so a rebuild that also
-    # wrote to HERE could not satisfy the untouched check below
     names = ["PUZZLE_LINK_clued.txt", "PUZZLE_LINK_clued_original.txt"]
-    shipped = {n: (HERE / n).read_bytes() for n in names}
-    # modification times too: a rebuild that also wrote to HERE rewrites the
-    # same bytes, so only the time shows it
-    stamped = {n: (HERE / n).stat().st_mtime_ns for n in names}
-
-    with tempfile.TemporaryDirectory() as tmp:
+    with (
+        leaves_untouched([HERE / n for n in names]) as shipped,
+        tempfile.TemporaryDirectory() as tmp,
+    ):
         out_dir = pathlib.Path(tmp)
         clued, clued_original = build(out_dir)
         for n in names:
-            assert (out_dir / n).read_bytes() == shipped[n], (
+            assert (out_dir / n).read_bytes() == shipped[HERE / n], (
                 f"{n} does not reproduce byte-identically"
             )
-    for n in names:
-        assert (HERE / n).read_bytes() == shipped[n], f"{n} was touched by build()"
-        assert (HERE / n).stat().st_mtime_ns == stamped[n], (
-            f"{n} was rewritten by build()"
-        )
 
     ring = {g["cells"][0] for g in frame_groups()}
     assert len(ring) == 36, f"expected 36 clue cells, found {len(ring)}"

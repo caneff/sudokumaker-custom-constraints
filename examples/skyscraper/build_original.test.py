@@ -8,8 +8,10 @@ import tempfile
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "_shared"))
 
 from build_original import build
+from untouched import leaves_untouched
 
 SIZES = {
     4: ("PUZZLE_LINK_4x4.txt", "PUZZLE_LINK_4x4_original.txt"),
@@ -19,16 +21,8 @@ SIZES = {
 }
 
 if __name__ == "__main__":
-    # read the shipped links before any rebuild runs. Their bytes and their
-    # modification times both: a rebuild that also wrote to HERE rewrites the
-    # same bytes (the byte check below proves the rebuild reproduces them), so
-    # only the modification time shows the write.
-    shipped = {
-        name: (HERE / name).read_bytes() for pair in SIZES.values() for name in pair
-    }
-    stamped = {name: (HERE / name).stat().st_mtime_ns for name in shipped}
-
-    with tempfile.TemporaryDirectory() as tmp:
+    links = [HERE / name for pair in SIZES.values() for name in pair]
+    with leaves_untouched(links) as shipped, tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         for n, (improved_name, original_name) in SIZES.items():
             out_dir = tmp / str(n)
@@ -36,14 +30,8 @@ if __name__ == "__main__":
             build(n, out_dir)
             for name in (improved_name, original_name):
                 got = (out_dir / name).read_bytes()
-                assert got == shipped[name], (
+                assert got == shipped[HERE / name], (
                     f"n={n}: {name} does not reproduce byte-identically"
                 )
-
-    for name, before in shipped.items():
-        assert (HERE / name).read_bytes() == before, f"{name} was touched by --out"
-        assert (HERE / name).stat().st_mtime_ns == stamped[name], (
-            f"{name} was rewritten by --out"
-        )
 
     print("ok")
