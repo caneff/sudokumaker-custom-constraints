@@ -1,9 +1,9 @@
-# Build the self-counting CountDigits board (#581): every group's counter is
-# also its own first target, the shape #578 made exact
-# (docs/research/count-digits-gac/counter-in-targets/). The link ships twice,
-# same board, one component swapped: the current CountDigitsGacComponent and
-# the pre-#578 copy (self-count/CountDigitsGacComponent.pre578.js, from
-# d0b1854). Same-board comparison per docs/real-app-timing.md.
+# Build the self-counting CountDigits board: every group's counter is also its
+# own first target (docs/research/count-digits-gac/counter-in-targets/). The
+# link ships twice, same board, one component swapped: the current
+# CountDigitsGacComponent and the copy from before it handled a self-listed
+# counter (self-count/CountDigitsGacComponent.pre578.js, from d0b1854).
+# Same-board comparison per docs/real-app-timing.md.
 #
 # A group in `input.groups` is [counter, counter, *others]: the counter, then
 # the targets with the counter as the first of them -- the colleague's spelling.
@@ -15,8 +15,8 @@
 #   uv run examples/count-digits-gac/build_count_digits_selfcount.py --search SEED --groups G --targets T --gen FILE
 #       draw a fresh board (one-shot: CP-SAT's portfolio search is not seeded)
 #
-# Lives here, not in docs/research/, because that gate refuses a new .py there
-# (check_research_python, #469).
+# Lives here, not in docs/research/, because check_research_python refuses a
+# new .py there.
 
 import argparse
 import json
@@ -46,7 +46,6 @@ HERE = pathlib.Path(__file__).parent
 BOARD_DIR = RESEARCH_DIR / "self-count"
 GEN = BOARD_DIR / "gen.json"
 PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
-# link name -> component source
 VARIANTS = {"current": CURRENT, "pre578": PRE578}
 EVENS = [2, 4, 6, 8]
 
@@ -59,10 +58,6 @@ RULES = (
 
 
 def draw_group(rng, grid, taken, index, size):
-    """A connected group of `size` free cells whose first cell is a counter:
-    a cell whose solution digit equals the group's count of evens (the
-    counter itself counted), off the group's top-left corner. None when this
-    draw has no such cell."""
     cells = grow_group(rng, taken, size)
     if cells is None:
         return None
@@ -86,7 +81,6 @@ def draw_group(rng, grid, taken, index, size):
 
 
 def make_groups(rng, grid, n_groups, size):
-    """`n_groups` disjoint groups over `grid`, each from `draw_group`."""
     groups, taken = [], set()
     for _attempt in range(5000):
         if len(groups) == n_groups:

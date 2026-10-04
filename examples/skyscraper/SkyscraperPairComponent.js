@@ -54,16 +54,10 @@ function setParams (instance, clueA, clueB, line) {
 //
 // Bit d-1 also keeps a 16-cell line inside a Uint16Array. A DP layer is one
 // entry per subset of the sub-peak digits, so the work per call doubles with
-// the board size: 12 us at n=9 against 353 us at n=16 (2,000 calls of the
-// soundness fuzz's random states). 16 is the mask width; sizes up to 10 are
-// timed in the app (README, Timing): at 10x10 the DP proves the board unique
-// in 0.1 s where no deduction at all times the solver out.
+// the board size: 12 us at n=9 against 353 us at n=16. At 10x10 the DP proves
+// the board unique in 0.1 s where no deduction at all times the solver out.
 const MAXN = 16
 
-// One entry per subset of the sub-peak digits, per direction: a bitmask of the
-// visible counts that subset can be laid out with. The subset already fixes the
-// prefix length (its popcount) and the running max (its highest digit), so the
-// pair (subset, count) is the whole DP state.
 const dps = []
 function dpFor (m) {
   const size = 1 << m
@@ -91,10 +85,8 @@ function dpFor (m) {
   return dp
 }
 
-//! Forward sweep, run once from each end inward: which (subset, visible
-//! count) states a prefix can reach. Laying digit b at position
-//! popcount(subset) is a new maximum exactly when b tops every digit already
-//! used, which is what `mask < b` tests.
+//! Laying digit b at position popcount(subset) is a new maximum exactly when b
+//! tops every digit already used, which is what `mask < b` tests.
 function sweepForward (s, d) {
   const { m, size, pc } = s
   const sub = s.sub[d]
@@ -114,10 +106,8 @@ function sweepForward (s, d) {
   }
 }
 
-//! Backward sweep: keep only the reachable states a peak and the far side can
-//! still complete. `feas` arrives holding the near clue's mask at every subset
-//! the join accepted; this walks it back to the empty subset and records, per
-//! position, the digits that sit on a surviving path.
+//! `feas` arrives holding the near clue's mask at every subset the join
+//! accepted.
 function sweepBackward (s, d) {
   const { m, size, pc } = s
   const sub = s.sub[d]
@@ -144,12 +134,9 @@ function sweepBackward (s, d) {
   }
 }
 
-// Reads the line's candidates, prunes, and returns the raw and surviving masks
-// per cell plus the surviving clue masks. The returned arrays are scratch: read
-// them before the next call.
 function prune (puzzle, line, Lc, Rc, peak) {
   const len = line.length
-  const m = peak - 1 // the sub-peak digits 1..peak-1
+  const m = peak - 1
   const s = dpFor(m)
   const peakBit = 1 << m
   const subMask = peakBit - 1
@@ -158,15 +145,11 @@ function prune (puzzle, line, Lc, Rc, peak) {
     const c = puzzle.getCandidatesBitMask(line[i]) >> 1
     cand[i] = c
     s.sub[0][i] = c & subMask
-    s.sub[1][len - 1 - i] = c & subMask // the right-to-left reading
+    s.sub[1][len - 1 - i] = c & subMask
   }
   sweepForward(s, 0)
   sweepForward(s, 1)
 
-  //! The join, over every peak position: prefix and suffix partition the
-  //! sub-peak digits exactly, so a subset on the left pairs with its
-  //! complement on the right. A position survives when it can still hold the
-  //! peak and both sides reach it with a count their own clue allows.
   const R0 = s.reach[0]
   const R1 = s.reach[1]
   const F0 = s.feas[0]
@@ -192,8 +175,6 @@ function prune (puzzle, line, Lc, Rc, peak) {
 
   sweepBackward(s, 0)
   sweepBackward(s, 1)
-  // A sub-peak digit survives on either side of the peak; the peak itself
-  // survives where the join found a feasible position.
   const keep = s.keep[0]
   for (let i = 0; i < len; i++) {
     keep[i] |= s.keep[1][len - 1 - i] | ((peakPos >> i) & 1 ? peakBit : 0)
@@ -201,31 +182,18 @@ function prune (puzzle, line, Lc, Rc, peak) {
   return { cand, keep, L: keepL, R: keepR }
 }
 
-//! The gate: the line is a house and its live candidates union to exactly
-//! {1..length}, so it holds every digit 1..length once -- the full house the
-//! DP needs. Until that proves out the component removes nothing.
-// The gate is asked at solve time, because main code runs before the built-in
-// row and column houses are registered (gotcha 6) and a board that starts its
-// digits at 0 keeps a 0 on the line until something else takes it away. Query
-// the line alone: a ring cell in the list flips getCellsCanHaveRepeats to true.
-// The digit-set answer is never cached: the app shares one component object across every
-// search node, so a gate latched open deep in a branch stays open after the
-// backtrack to a parent state whose line has regained the digits that shut it
-// (#336). lineKind's `oneToN` is that test.
 // #include ../_shared/line-kind.js
 
 function * update (instance, puzzle) {
   const { clueA, clueB, line } = instance
   const peak = line.length // the gate proves the line holds 1..length once each
-  // peak < 1: an empty line (a two-wide frame) has no cells to prune, and the
-  // gate would pass it as a vacuous full house
+  // An empty line (a two-wide frame) would pass the gate as a vacuous full
+  // house.
   if (peak < 1 || peak > MAXN || !lineKind(instance, puzzle, line).oneToN) return
   const Lc = puzzle.getCandidatesBitMask(clueA) >> 1
   const Rc = puzzle.getCandidatesBitMask(clueB) >> 1
   if (Lc === 0 || Rc === 0) return // contradiction; the solver sees it on the clue
   const r = prune(puzzle, line, Lc, Rc, peak)
-  // A clue with no surviving value means no arrangement satisfies the pair:
-  // the branch is dead.
   if (r.L === 0 || r.R === 0) {
     yield puzzle.stop(`no arrangement of heights satisfies both clues of ${instance.name}`, [clueA, clueB, ...line])
     return
@@ -250,9 +218,6 @@ function * update (instance, puzzle) {
   }
 }
 
-// Visible buildings reading `line` front to back, or back to front when
-// `reversed`, on a line the gate has proved a permutation of 1..n: count the
-// running maxima, no tie possible.
 function visibleCountPermutation (puzzle, line, reversed) {
   const len = line.length
   let count = 0
@@ -267,8 +232,6 @@ function visibleCountPermutation (puzzle, line, reversed) {
 function validate (instance, puzzle) {
   const { clueA, clueB, line } = instance
   if (line.length === 0) return true // nothing to judge; the gate would read it as a vacuous full house
-  // The filled check short-circuits on the first open cell; the O(n) gate runs
-  // only once the line is settled.
   if (!puzzle.getCellsAreFilled([clueA, clueB, ...line])) return true
   // Judge only a line `update` gates in: the running max below starts at 0, so
   // a board whose digits start at 0 would read a leading 0 as no building.

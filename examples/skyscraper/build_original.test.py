@@ -1,8 +1,6 @@
 # build_original.py --out: rebuilding sizes 4, 6, 9 and 10 into a temp
 # directory must reproduce the committed link pair byte-identically, and must
 # leave the shipped links themselves untouched.
-#
-#   uv run --with lzstring examples/skyscraper/build_original.test.py
 
 import pathlib
 import sys
@@ -42,7 +40,6 @@ if __name__ == "__main__":
                     f"n={n}: {name} does not reproduce byte-identically"
                 )
 
-    # --out must not have touched the shipped files themselves
     for name, before in shipped.items():
         assert (HERE / name).read_bytes() == before, f"{name} was touched by --out"
         assert (HERE / name).stat().st_mtime_ns == stamped[name], (

@@ -1,12 +1,3 @@
-# build_link.py: decode the output and assert it matches the committed
-# PUZZLE_LINK.txt exactly, rebuilt or swapped back in (what a swap may change
-# is link_swap.test.py's), and that --keep-comments
-# reproduces the committed PUZZLE_LINK_annotated.txt with the same board and
-# givens and code that differs from the plain link only by comments and
-# whitespace (#433).
-#
-#   uv run --with lzstring examples/house-gac/build_link.test.py
-
 import pathlib
 import sys
 import tempfile
@@ -25,8 +16,6 @@ if __name__ == "__main__":
     base_text = (HERE / "PUZZLE_LINK.txt").read_text().strip()
     base = decode_puzzle(base_text)
 
-    # the committed component and backend round-trip to PUZZLE_LINK.txt
-    # byte-for-byte, rebuilt from source and swapped back into the board
     link, doc, _sol, n_givens = build()
     check(link, doc)
     assert n_givens == 25
@@ -38,11 +27,6 @@ if __name__ == "__main__":
         board = HERE / "PUZZLE_LINK.txt"
         assert swap_build(board, COMPONENT, out, backend=BACKEND) == base_text
 
-    # --keep-comments: the annotated link (#433) reproduces the committed
-    # PUZZLE_LINK_annotated.txt exactly, carries the same board and givens as
-    # the plain link, and its embedded code differs from the plain link's
-    # only by comments and whitespace -- stripping both down to a full
-    # minify makes them equal.
     annotated_text = (HERE / "PUZZLE_LINK_annotated.txt").read_text().strip()
     annotated_link, annotated_doc, _annotated_sol, annotated_n_givens = build(
         keep_comments=True
@@ -78,9 +62,6 @@ if __name__ == "__main__":
         "the annotated backend's code, stripped, must match the plain link's"
     )
 
-    # the double-splice guard: a base link that already carries a House GAC
-    # constraint must refuse rather than double it (AGENTS.md: a splicing
-    # generator run twice on one file duplicates the scene silently)
     try:
         build(base_link=HERE / "PUZZLE_LINK.txt")
     except AssertionError as e:

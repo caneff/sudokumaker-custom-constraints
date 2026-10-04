@@ -1,19 +1,8 @@
-// Soundness fuzz for OutsideSudokuComponent. Soundness = update never removes
-// a cell's TRUE value. We enumerate every valid (clue, line) tuple for short
-// lines, seed random partial candidate states that still allow the truth, run
-// the component to a fixpoint, and check the truth survived. A removed true
-// value is the silent bug that makes a real puzzle unsolvable.
-//
-//   node examples/outside-sudoku/soundness-harness.mjs
-//
 // The lines enumerated are BARE: any digits, repeats allowed. Every house and
 // full-house fill is also a bare fill, and the component has no kind gate, so
 // the bare enumeration covers all three line kinds (docs/line-contract.md).
-//
-// Each case pins its own board geometry, because the window length depends on
-// the board: 3 along a row of a 9x9, 3 across and 2 down on a 6x6,
-// 2 on a 4x4. The digit count is smaller than the board so the enumeration
-// stays exhaustive; main code hands the component the window length.
+// The digit count D stays below the board's so the enumeration stays
+// exhaustive.
 
 import { installGlobals, makeIo, makeRng, randomCandidates, fuzzSoundness, finishHarness } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
@@ -42,8 +31,6 @@ function * validTuples (clue, line, w, D) {
   }
 }
 
-// Board geometry, line direction, line length and digit count per case. The
-// mid-box start (from: 1) checks a window that straddles a box boundary.
 const CASES = [
   { N: 9, bh: 3, bw: 3, down: false, from: 0, m: 5, D: 4 },
   { N: 9, bh: 3, bw: 3, down: true, from: 1, m: 5, D: 4 },
@@ -60,7 +47,6 @@ for (const { N, bh, bw, down, from, m, D } of CASES) {
   const geo = gridGeometry(N, bh, bw)
   const line = down ? geo.columnLine(0, from, m) : geo.rowLine(0, from, m)
   const w = Math.min(down ? bh : bw, m)
-  // pinned, full, or a random subset — always keeping the cell's true value
   const seed = (c, v) => randomCandidates(rnd, 1, D, v)
   const states = []
   for (const truth of validTuples(geo.clue, line, w, D)) {

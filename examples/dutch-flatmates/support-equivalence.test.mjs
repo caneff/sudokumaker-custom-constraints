@@ -1,17 +1,3 @@
-// The plain-language `rowsToKeep` (row lists in, row sets out) keeps exactly the
-// rows the frozen bit-set functions keep, for every 1/5/9 column state. Two
-// references: `.golden/DutchFlatmatesComponent.bitmask.js`, the
-// `supportedRows` and `flatmatedRows` functions #690 shipped, and
-// `.golden/DutchFlatmatesComponent.floor.js`, the 9^3 loop over (5, 1, 9) row
-// triples. This test is the proof that the rewrite is the same deduction, not
-// an argument for it.
-//
-//   node examples/dutch-flatmates/support-equivalence.test.mjs
-//
-// Exhaustive over every (ones, fives, nines) row-set triple on a column of 3 to
-// 7 rows, and on the real 9-row column over a fixed-seed fuzz of sparse, dense
-// and half-full sets plus every set with at most two rows per digit.
-
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng } from '../_shared/harness-lib.mjs'
 
@@ -22,8 +8,6 @@ const cur = load('DutchFlatmatesComponent.js', ['rowsToKeep', 'rowsToKeepIfRepea
 const floor = load('.golden/DutchFlatmatesComponent.floor.js', ['supportedRows'])
 const frozen = load('.golden/DutchFlatmatesComponent.bitmask.js', ['supportedRows', 'flatmatedRows'])
 
-// The frozen functions speak in bit sets (bit `row` = row), the rewrite in
-// ascending row lists and sets of rows; these two translate at the boundary.
 const toRows = (mask, side) => Array.from({ length: side }, (_, row) => row).filter(row => mask >> row & 1)
 const toMask = rows => [...rows].reduce((mask, row) => mask | 1 << row, 0)
 const asMasks = keep => [toMask(keep[1]), toMask(keep[5]), toMask(keep[9])]
@@ -51,7 +35,6 @@ console.log(`exhaustive, sides 3-7: ${checked} states equal`)
 
 const SIDE = 9
 const { rnd } = makeRng(690)
-// a row set at a given density: each row in with probability `p`
 const draw = p => { let s = 0; for (let r = 0; r < SIDE; r++) if (rnd() < p) s |= 1 << r; return s }
 const before = checked
 for (let i = 0; i < 400000; i++) {

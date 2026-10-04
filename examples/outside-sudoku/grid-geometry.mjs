@@ -1,12 +1,5 @@
-// The board geometry OutsideSudokuComponent reads, mocked for the Node
-// harnesses. The component sizes its window from the box the line starts in,
-// so a mock puzzle has to answer getRow/getColumn/getRegion/getRegionCells the
-// way the app does — a fuzz over a mock with no boxes would never exercise the
-// rule the app enforces.
-//
-// Cells are an N x N grid in row-major order (id = row * N + col), boxes bh
-// tall and bw wide. The clue cell sits outside the grid: it gets the id N * N,
-// row and column -1, and region -1, as a ring cell does in the app.
+// The board geometry window-length.js reads, mocked for the Node harnesses.
+// The clue cell gets row, column and region -1, as a ring cell does in the app.
 
 export function gridGeometry (N, bh, bw) {
   const clue = N * N
@@ -26,7 +19,6 @@ export function gridGeometry (N, bh, bw) {
     return cells
   }
 
-  // The puzzle-mock methods, ready to Object.assign onto a makePuzzle result.
   const api = {
     getRow: row,
     getColumn: column,
@@ -34,8 +26,6 @@ export function gridGeometry (N, bh, bw) {
     getRegionCells: regionCells
   }
 
-  // `rowLine(r, from, len)` and `columnLine(c, from, len)` return the line
-  // cells of one row/column, nearest-first from the given index.
   const rowLine = (r, from, len) => Array.from({ length: len }, (_, k) => r * N + from + k)
   const columnLine = (c, from, len) => Array.from({ length: len }, (_, k) => (from + k) * N + c)
 

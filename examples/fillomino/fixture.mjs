@@ -1,13 +1,3 @@
-// The grids the fillomino soundness harness and update-strength test fuzz
-// around: one definition for both (#671).
-//
-//   shipped — the grid of gen.json, the board the example ships (size follows
-//             whatever gen.json holds).
-//   varied  — a second valid 6x6 solution: many 1s, 2s and 3s and one 4-region.
-//
-// `gridOf` reads a grid written as one digit string per row into the truth map
-// (cell index -> digit) and its side `n`.
-
 import { join } from 'path'
 import { readFileSync } from 'fs'
 

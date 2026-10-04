@@ -1,11 +1,11 @@
-# Build the sparse required-digits timing board (#541): a plain 9x9 sudoku
+# Build the sparse required-digits timing board: a plain 9x9 sudoku
 # carrying 20 overlapping 9-cell groups that are not houses, each required
 # to hold 5 given digits, with the givens carved back until the app's solver
 # actually searches (the defaults below draw that shape; fewer or smaller
 # groups close in 0ms, more leave the built-in timing out). It exists to give RequiredDigitsGacComponent a real-app
 # timing row on the shape the offline bench says it wins on (a sparse, large
 # group -- docs/research/required-digits-gac/README.md), which the Outside
-# Sudoku wrapper board of #534/#535 could not surface.
+# Sudoku wrapper board (build_required_digits.py) could not surface.
 #
 # The rule, stated once for both sides: every listed digit appears in at
 # least one cell of its group (the built-in RequiredDigitsComponent's own
@@ -19,9 +19,8 @@
 #       grid comes from CP-SAT's portfolio search, which is not reproducible
 #       from the seed: the committed gen.json is the artifact, this a one-shot.
 #
-# Lives here, not in docs/research/, because that gate refuses a new .py
-# there (check_research_python, #469). The board's shared steps are
-# board_kit.py's.
+# Lives here, not in docs/research/, because check_research_python refuses a
+# new .py there.
 
 import argparse
 import json
@@ -64,8 +63,6 @@ def is_house(cells):
 
 
 def model(groups, givens):
-    """The board's CP-SAT model: sudoku plus, per group, every listed digit
-    (a digit listed twice wants two cells) in at least its count of cells."""
     m, x = sudoku_model(N, (3, 3))
     for (r, c), v in givens.items():
         m.Add(x[r, c] == v)
@@ -83,7 +80,6 @@ def model(groups, givens):
 
 
 def snake(rng, taken):
-    """A 9-cell orthogonally connected self-avoiding walk on free cells."""
     for _ in range(2000):
         cur = (rng.randrange(N), rng.randrange(N))
         if cur in taken:
@@ -109,8 +105,6 @@ def snake(rng, taken):
 
 
 def make_groups(rng, grid, n_groups, n_required, overlap):
-    """Disjoint-or-overlapping snake groups over `grid`, each requiring
-    `n_required` digits its own cells hold."""
     taken, groups = set(), []
     for i in range(n_groups):
         cells = snake(rng, set() if overlap else taken)
@@ -132,9 +126,6 @@ def make_groups(rng, grid, n_groups, n_required, overlap):
 
 
 def search(seed, n_groups=20, n_required=5, overlap=True):
-    """Draw a board: a solution grid, snake groups each requiring `n_required`
-    digits its own cells hold, and givens carved (in seeded random order)
-    until no more can go while the board stays unique."""
     return search_board(
         seed,
         lambda rng, grid: make_groups(rng, grid, n_groups, n_required, overlap),
@@ -149,8 +140,6 @@ def backend_code(gen, name):
 
 
 def build_doc(gen, name):
-    """The board's document: `name` is the class the backend registers --
-    CANDIDATE_NAME (with its component shipped) or BASELINE_NAME (built-in)."""
     components = (
         [(CANDIDATE_NAME, minify_file(COMPONENT))] if name == CANDIDATE_NAME else []
     )

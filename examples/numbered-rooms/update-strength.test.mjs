@@ -1,18 +1,5 @@
-// Strength checks for NumberedRoomsComponent.update. Soundness (never remove a
-// true value) lives in soundness-harness.mjs; this file checks the other
-// direction — that a rewrite does not quietly prune LESS than before.
-//
-//   node examples/numbered-rooms/update-strength.test.mjs
-//
-// 1. The index rules, on both kinds of line. The clue≠index rule needs a house
-//    and must stand down on a bare line; the k=1 self-reference and the
-//    1-based range rule hold on any line. A rewrite that drops a rule, or that
-//    runs a house rule ungated, fails here.
-// 2. Never-weaker fuzz against one pinned floor per kind: on a house the
-//    component the frame board shipped, on a bare line the drawn-line
-//    component that was folded into this one (#238). This is the old-vs-new
-//    comparison OPTIMIZATION_LOG.md asks of every rewrite — the k=1 ordering
-//    trap is invisible to the soundness harness.
+// The never-weaker fuzz is the old-vs-new comparison OPTIMIZATION_LOG.md asks
+// of every rewrite: the k=1 ordering trap is invisible to the soundness harness.
 
 import { execFileSync } from 'child_process'
 import assert from 'assert'
@@ -34,9 +21,8 @@ const gitShow = (commit, path) =>
   execFileSync('git', ['show', `${commit}:${path}`], { cwd: HERE, encoding: 'utf8' })
 const floor = kind => loadSource(gitShow(...FLOORS[kind]), NAMES)
 
-// Cell 0 is the clue; cells 1..m are the line, nearest the clue first. The
-// pre-merge drawn-line component reads a `distinct` flag as its fourth
-// setParams argument; the current one reads the kind off the puzzle and
+// The pre-merge drawn-line floor reads a `distinct` flag as its fourth
+// setParams argument; the current component reads the kind off the puzzle and
 // ignores it.
 const CLUE = 0
 const lineCells = m => Array.from({ length: m }, (_, i) => i + 1)
@@ -46,10 +32,6 @@ const applyOn = (kind, line) => (mod, p) => {
   fixpoint(mod, inst, p)
 }
 
-// ---- 1. the index rules ----
-// The clue≠index rule: index pinned to 2, every other cell open. On a house the
-// target and the indexer are two cells of one house, so the clue cannot be 2.
-// On a bare line they may both hold 2.
 for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
   installGlobals(1, 4)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [2] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
@@ -60,8 +42,6 @@ for (const [kind, wantClue] of [['house', [1, 3, 4]], ['bare', [1, 2, 3, 4]]]) {
     `${kind}: the clue≠index rule must be ${kind === 'house' ? 'on' : 'off'}`)
 }
 
-// k = 1 keeps the self-reference on any line: the target IS the indexer, which
-// holds 1, so the clue is 1.
 for (const kind of ['house', 'bare']) {
   installGlobals(1, 4)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, c => (c === 1 ? [1] : [1, 2, 3, 4]), { houses: housesOf(kind, lineCells(4)) })
@@ -71,8 +51,6 @@ for (const kind of ['house', 'bare']) {
   assert.deepStrictEqual([...p._cand.get(CLUE)], [1], `${kind}: k=1 forces the clue to 1`)
 }
 
-// The index is 1-based over the line's own cells: on a three-cell line, 0 and
-// every digit past 3 is out of range and leaves the indexer.
 for (const kind of ['house', 'bare']) {
   installGlobals(0, 5)
   const p = makePuzzle({ 0: 0, 1: 0, 2: 0, 3: 0 }, () => [0, 1, 2, 3, 4, 5], { houses: housesOf(kind, lineCells(3)) })
@@ -82,11 +60,8 @@ for (const kind of ['house', 'bare']) {
   assert.deepStrictEqual([...p._cand.get(1)].sort(), [1, 2, 3], `${kind}: only 1..3 index a three-cell line`)
 }
 
-// ---- 2. never weaker than the pinned floor, on each kind ----
-//
-// States are drawn around a real valid line — one whose first digit is a live
-// index — so every state has a solution and neither version may empty a cell.
-// A state drawn with no solution would die and compare nothing.
+// States are drawn around a real valid line, so every state has a solution:
+// one with none would die and compare nothing.
 const { rnd } = makeRng(4242)
 const REPS = 8000
 
@@ -105,9 +80,6 @@ for (const [kind, sizes] of [['bare', [[4, 6], [5, 5], [6, 6]]], ['house', [[4, 
         for (let rep = 0; rep < REPS; rep++) {
           const digits = makeLine(rnd, kind, m, D)
           if (digits[0] < 1 || digits[0] > m) {
-            // a draw whose indexer points off the line is no truth; for a
-            // house, moving an in-range digit to the front keeps the digits
-            // distinct
             const i = digits.findIndex(d => d >= 1 && d <= m)
             if (i < 0) continue
             ;[digits[0], digits[i]] = [digits[i], digits[0]]

@@ -1,6 +1,3 @@
-// The offline fillomino board hunt (#317). Three commands over hunt-lib.mjs.
-// The record the acceptance runs left is HUNT.md.
-//
 // `score` and `strip` also take --node-cap N, which raises the search budget
 // for a board the default cannot finish. A spent budget scores `capped`,
 // never a verdict.
@@ -35,16 +32,12 @@ const py = (script, args, input) =>
   JSON.parse(execFileSync('uv', ['run', '--project', join(HERE, '..', '..'), join(HERE, script), ...args],
     { input, encoding: 'utf8', maxBuffer: 1 << 26 }))
 
-// A command's arguments with `--node-cap N` taken out: it raises the search
-// budget for a board the default cannot finish. Reported, never silent: a
-// spent budget scores 'capped'. An unknown flag throws.
 function takeNodeCap (args) {
   const { values, positionals } = parseArgs({ args, options: { 'node-cap': { type: 'string' } }, allowPositionals: true })
   if (values['node-cap'] !== undefined) nodeCap = Number(values['node-cap'])
   return positionals
 }
 
-// A board file, as either shape, plus the grid when the file carries one.
 function readBoard (path) {
   if (path.endsWith('.txt')) return py('hunt_link.py', [path])
   const doc = JSON.parse(readFileSync(path, 'utf8'))
@@ -56,8 +49,7 @@ function readBoard (path) {
 let nodeCap = 200000
 const scoreOf = b => score(mod, b, { nodeCap })
 
-// The {"grid","clues"} shape app-strip.mjs writes, plus the digit cap when the
-// board has one -- build_link.py reads `cap` to ship explicit min/maxDigit.
+// build_link.py reads `cap` to ship an explicit min/maxDigit.
 const boardJson = (grid, clues, cap) =>
   cap && cap !== grid.length
     ? JSON.stringify({ ...JSON.parse(outputJson(grid, clues)), cap }) + '\n'

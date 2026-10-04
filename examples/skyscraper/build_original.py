@@ -1,7 +1,7 @@
 # Rebuild an already-generated puzzle's link pair from its gen JSON (gen.json
 # for n=9, the plain-named pair; gen_<n>x<n>.json for every other size): the
-# improved link with the current main.js and component files, and the same
-# board with ChinStrap's ORIGINAL wrapper code, so the two can be compared on
+# improved link with the current main-global.js and component files, and the
+# same board with ChinStrap's ORIGINAL wrapper code, so the two can be compared on
 # the same grid, givens, and clues. No solving: it re-encodes. Run it after
 # every component change so the shipped link carries the code in the repo.
 #
@@ -13,12 +13,6 @@
 # the custom constraint's own configuration. The original wrapper renames its
 # component and swaps the backend too, so it uses replace_constraint_code
 # directly rather than build_link.py's same-name-only --component contract.
-# It also reads `input.groups` directly, so the original variant gets the
-# shared `framebuild.frame_groups` -- same board, same lines, just handed to
-# the wrapper the way it expects them.
-#
-# --out names a directory to write into instead; omitting it keeps the
-# default of writing next to this script.
 
 import argparse
 import pathlib
@@ -38,10 +32,6 @@ CONSTRAINT_NAME = "Skyscrapers"
 
 
 def build(n, out_dir=HERE):
-    """Rebuild the link pair for size `n` into `out_dir`. Reads the gen JSON
-    and original wrapper code from beside this script regardless of
-    `out_dir`; only the two written links move."""
-    # the 9x9 global board is the plain-named pair: gen.json, not gen_9x9.json
     link_path, gen_path = RingGlobal(build_size.SPEC).files(n)
     board = load_board(gen_path)
     improved = RingGlobal(build_size.SPEC).build_doc(board)

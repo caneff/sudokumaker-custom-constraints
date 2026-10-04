@@ -1,6 +1,5 @@
 //! Skyscrapers with interactive outside clues, on a whole-grid frame. No
-//! groups are drawn: the frame lines come from the shared reader below, one
-//! { side, clue, line } per clued line (examples/_shared/frame-lines.js).
+//! groups are drawn: the frame lines come from the shared reader below.
 //!
 //! Every line is clued at both ends, which is what the two-clue DP in
 //! SkyscraperPairComponent reads: the line, both clues, and every way the

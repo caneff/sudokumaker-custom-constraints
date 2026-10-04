@@ -1,14 +1,5 @@
-# The fillomino board: a houseless n x n built by _shared/bareboard.py from
-# gen.json, main.js and FillominoComponent.js -- the isofill shape. Digits run
-# 1..side unless the puzzle spec has a `cap` key, which ships an explicit
-# minDigit/maxDigit (1..cap) so a region can run past the board side (#293).
-#
 #   uv run examples/fillomino/build_link.py [--puzzle FILE] [--out FILE]
 #   uv run examples/fillomino/build_link.py --component FILE --out FILE [--board LINK]
-#
-# No --component rebuilds PUZZLE_LINK.txt (or --out) from --puzzle; --component
-# swaps a candidate into PUZZLE_LINK.txt or --board, which `just time --board`
-# needs.
 
 import pathlib
 import sys
@@ -20,8 +11,7 @@ from manifest import load_manifest
 MANIFEST = load_manifest(pathlib.Path(__file__).parent)
 CONSTRAINT_NAME = MANIFEST.constraint_name
 TIMED_COMPONENT = MANIFEST.timed_component
-# Fillomino is not sudoku, so the rules text carries no RULES_PREFIX -- the
-# same exception isofill takes (docs/example-layout.md, #271, #305).
+# Fillomino is not sudoku, so the rules text carries no RULES_PREFIX.
 RULE = (
     "Fillomino: Place a digit from 1-{hi} in every cell. Orthogonally "
     "connected cells with the same digit are regions; the number of cells in "

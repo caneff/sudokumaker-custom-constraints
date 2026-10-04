@@ -1,14 +1,3 @@
-# The ISOFILL board builds through _shared/bareboard.py: the committed
-# component and gen.json reproduce PUZZLE_LINK.txt byte for byte. The
-# component swap is link_swap.test.py's.
-#
-# Also covers build_hard_links.py's FIXTURES: write_links, run into a temp
-# dir with every subprocess call made to fail, must write each hard-fixture
-# link (PUZZLE_LINK_30g.txt and friends) byte-equal to the committed one, so
-# drift in a fixture is caught and the build stays in-process.
-#
-#   uv run examples/isofill/build_link.test.py
-
 import pathlib
 import subprocess
 import sys
@@ -29,7 +18,6 @@ if __name__ == "__main__":
         "the committed component must reproduce PUZZLE_LINK.txt exactly"
     )
 
-    # build_hard_links writes the committed links byte for byte, spawning nothing
     def no_subprocess(*args, **kwargs):
         raise AssertionError(f"build_hard_links spawned a process: {args}")
 

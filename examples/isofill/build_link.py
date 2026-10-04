@@ -1,8 +1,3 @@
-# The ISOFILL board: a houseless n x n built by _shared/bareboard.py from
-# gen.json, main.js and IsofillComponent.js. The side comes from the grid's row
-# count and the lowest digit from the optional "minDigit" key (default 0):
-# 10x10 with 0-9, or 9x9 with 1-9.
-#
 #   uv run examples/isofill/build_link.py [--puzzle gen_44g.json] [--out FILE]
 #   uv run examples/isofill/build_link.py --component FILE --out FILE [--board LINK]
 #

@@ -1,16 +1,11 @@
-// Offline board hunting for fillomino (#317): score a clue set's hardness in
-// Node instead of in the live app.
-//
-// The app judges a board in minutes; this scores one in milliseconds by
-// running the SHIPPED component as the propagator inside a plain
-// propagate-and-branch search. Hardness = search nodes, tie-broken by
-// propagation passes. Offline scores RANK candidate boards; the app still
-// has the last word on any board that ships (docs/real-app-timing.md).
+// Offline board hunting: score a clue set's hardness in Node, in milliseconds,
+// with the shipped component as the propagator of a plain propagate-and-branch
+// search. Offline scores only RANK candidate boards; the live app has the last
+// word on any board that ships (docs/real-app-timing.md).
 
 import { installGlobals, makeIo, makePuzzle, total } from '../_shared/harness-lib.mjs'
 import { seededShuffle } from '../_shared/app-strip-lib.mjs'
 
-// The component, loaded the way the soundness harness loads it.
 export function loadComponent (here) {
   const { load } = makeIo(here)
   return load('FillominoComponent.js', ['setParams', 'update', 'validate'])
@@ -18,7 +13,6 @@ export function loadComponent (here) {
 
 const dead = p => { for (const s of p._cand.values()) if (s.size === 0) return true; return false }
 
-// A fresh board state: every given pinned, every other cell open over 1..cap.
 function newPuzzle (side, cap, givens) {
   const all = Array.from({ length: cap }, (_, i) => i + 1)
   const truth = {}
@@ -26,8 +20,6 @@ function newPuzzle (side, cap, givens) {
   return makePuzzle(truth, i => (givens[i] === undefined ? all : [givens[i]]))
 }
 
-// Run update until a pass removes nothing. Bounded well above the component's
-// own reach so the bound is a guard, not a policy.
 const MAX_PASSES = 200
 
 function propagate (mod, inst, p) {
@@ -44,9 +36,8 @@ const rowsOf = (p, side) =>
   Array.from({ length: side }, (_, r) =>
     Array.from({ length: side }, (_, c) => [...p._cand.get(r * side + c)][0]))
 
-// Score a clue set. `verdict` is 'unique', 'multiple', 'none', or 'capped'
-// when the node budget ran out -- capped is never read as a verdict, the same
-// rule CP-SAT timeouts follow (generate.py).
+// A 'capped' verdict means the node budget ran out; it is never read as a
+// verdict on the board.
 export function score (mod, { side, cap, givens }, { nodeCap = 200000 } = {}) {
   installGlobals(1, cap)
   const inst = {}
@@ -63,9 +54,8 @@ export function score (mod, { side, cap, givens }, { nodeCap = 200000 } = {}) {
   }
 }
 
-// Depth-first search over the open cells, smallest candidate set first.
-// Returns false when the node budget ran out. Stops after two solutions:
-// "more than one" is the whole question a uniqueness check asks.
+// Returns false only when the node budget ran out. Stops after two solutions:
+// "more than one" is all a uniqueness check asks.
 function search (mod, inst, p, side, counts, found, nodeCap) {
   const { passes, dead: isDead } = propagate(mod, inst, p)
   counts.passes += passes
@@ -91,21 +81,17 @@ function search (mod, inst, p, side, counts, found, nodeCap) {
   return true
 }
 
-// The clue set as a cell-index -> digit map, the shape `score` reads.
 export function givensOf (grid, clues) {
   const side = grid.length
   return Object.fromEntries(clues.map(([r, c]) => [r * side + c, grid[r][c]]))
 }
 
-// Greedy given-removal against the offline scorer, in the same order
-// semantics app-strip.mjs uses in the live app: a seeded shuffle of the clue
-// list, one pass, a removal kept only when the board still closes on the same
-// grid. The invariant the app tool holds is held here -- what changes is the
-// oracle, not the walk. Returns the surviving clues, sorted.
-// `nodeCap` is deliberately lower than a scoring run's: a strip makes ~one
-// trial per cell, and a trial that runs away costs more than the clue it
-// might have removed. A 'capped' trial keeps the clue, so a low cap can only
-// leave the board with more clues than it needed -- never fewer.
+// Greedy given-removal with the same order semantics app-strip.mjs uses in the
+// live app: a seeded shuffle of the clue list, one pass, a removal kept only
+// when the board still closes on the same grid. Only the oracle differs.
+// `nodeCap` is lower than a scoring run's: a strip makes ~one trial per cell,
+// and a 'capped' trial keeps its clue, so a low cap can only leave more clues
+// than needed -- never fewer.
 export function stripOffline (mod, { side, cap, grid }, seed, onTrial = () => {}, nodeCap = 20000) {
   const clues = seededShuffle(grid.flatMap((row, r) => row.map((_, c) => [r, c])), seed)
   let kept = clues

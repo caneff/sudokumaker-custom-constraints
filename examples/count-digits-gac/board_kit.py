@@ -3,9 +3,6 @@
 # gen implies, and the document skeleton. A builder passes its rule in as a
 # `model(groups, givens) -> (m, x)` and a `make_groups(rng, grid)`; nothing
 # here knows what a group means.
-#
-# Not for the builders' own rule: the count-digits rule's model and drawn-group
-# helpers are in count_board.py, the one thing three builders share beside this.
 
 import random
 
@@ -37,8 +34,7 @@ def givens_of(gen):
     prefix of a carve order that ended unique is unique too, and a shallower
     board is a rebuild rather than another search. (required-digits-gac's
     sparse gen.json is the exception to "the order it removed them": its
-    order is the dropped cells row-major, rebuilt from the givens list it
-    used to carry; its one depth is the deepest.)
+    order is the dropped cells row-major, and its one depth is the deepest.)
     """
     dropped = {tuple(p) for p in gen["carve_order"][: gen["carved"]]}
     return {
@@ -50,8 +46,7 @@ def givens_of(gen):
 
 
 def draw_grid(rng, seed):
-    """A random solved 9x9 sudoku, from CP-SAT's portfolio search with `rng`'s
-    hints. Not reproducible from the seed: the grid is written to a gen, and
+    """Not reproducible from the seed: the grid is written to a gen, and
     proved from there."""
     m, x = sudoku_model(N, (3, 3))
     for cell in x:
@@ -67,8 +62,7 @@ def carve(rng, grid, unique):
     Starts from every cell given and tries the cells in `rng`'s order. A cell
     goes when `unique(givens)` is true for the board without it. A check that
     raises TimeoutError has no verdict, so the given stays: nothing is lost,
-    and "no verdict" is never read as "unique". This is the one place that
-    policy lives."""
+    and "no verdict" is never read as "unique"."""
     givens = {(r, c): grid[r][c] for r in range(N) for c in range(N)}
     order = list(givens)
     rng.shuffle(order)
@@ -86,11 +80,6 @@ def carve(rng, grid, unique):
 
 
 def search(seed, make_groups, model, limit=60):
-    """Draw a board into a gen: a solution grid, the groups `make_groups(rng,
-    grid)` draws over it, and givens carved while `model` stays unique.
-
-    `make_groups` raises when it cannot draw; `carved` is the carve order's
-    whole length, the deepest board the search proved."""
     rng = random.Random(seed)
     grid = draw_grid(rng, seed)
     groups = make_groups(rng, grid)

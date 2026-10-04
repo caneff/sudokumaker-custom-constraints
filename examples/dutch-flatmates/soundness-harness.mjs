@@ -1,14 +1,3 @@
-// Soundness fuzz for the Dutch Flatmates component: `update` never removes a
-// cell's TRUE value, on random partial boards consistent with the shipped
-// solution. It also asserts the prune is not dead code: some states lose
-// candidates.
-//
-//   node examples/dutch-flatmates/soundness-harness.mjs
-//
-// It also runs main.js against a mock board: one component over all 81 cells,
-// row-major, and a refusal of a board that is not a square or has a missing
-// cell.
-
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import assert from 'assert'
@@ -26,7 +15,6 @@ const N = 9
 const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-// ---- registration: main.js on a mock board --------------------------------
 // The mock hands out ids in a scrambled order, so a main.js that trusted the
 // id order instead of building by coordinates would register the wrong list.
 const SRC = readFileSync(join(HERE, 'main.js'), 'utf8')
@@ -45,14 +33,11 @@ assert.throws(() => runBackend(SRC, board(N, 8)), /needs a square board/, 'a rec
 assert.throws(() => runBackend(SRC, board(N, N, (x, y) => (x === 3 && y === 4 ? undefined : y * N + x))), /no cell at x=3, y=4/, 'a missing cell did not throw')
 console.log('registration: one component over 81 cells, row-major by coordinates; bad boards throw')
 
-// ---- soundness: states around the shipped solution ------------------------
 const gen = JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8'))
 const truth = {}
 gen.grid.forEach((row, r) => [...row].forEach((ch, c) => { truth[r * N + c] = Number(ch) }))
 const seeder = makeSeeder(rnd, ALL)
 
-// Once with the columns declared houses (the shipped board), once with none
-// (every column can repeat, so only the per-cell rule runs).
 const COLUMNS = columnsOf(N)
 const ITERS = 5000
 for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (no houses)', []]]) {
@@ -68,12 +53,8 @@ for (const [label, houses] of [['dutch-flatmates', COLUMNS], ['dutch-flatmates (
   assert.ok(r.fired > 0, `${label}: update never removed a candidate: the prune is dead`)
 }
 
-// ---- soundness on boards whose columns are not a plain sudoku's (#693) -----
-// A board narrower than its digit list (6x6, digits 1-9), a full set of digits
-// with no 9 (8x8, digits 1-8) and one with no 1 (9x9, digits 2-10). Every column
-// is declared all-different. Each truth column is a random draw of distinct
-// digits in which every 5 has a 1 above it or a 9 below it; the columns are
-// independent because the rule never looks across them.
+// Truth columns are drawn independently because the rule never looks across
+// columns.
 for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, hi: 8 }, { width: 9, lo: 2, hi: 10 }]) {
   installGlobals(lo, hi)
   const digits = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
@@ -102,7 +83,6 @@ for (const { width, lo, hi } of [{ width: 6, lo: 1, hi: 9 }, { width: 8, lo: 1, 
   assert.ok(r.fired > 0, `${label}: update never removed a candidate`)
 }
 
-// ---- validate agrees with the truth on the solved grid --------------------
 {
   const inst = { cells: CELLS }
   mod.setParams(inst, CELLS)

@@ -27,7 +27,6 @@ FIXTURES = {
 
 
 def write_links(out_dir=HERE):
-    """Build each fixture's link, strip it to its givens, write it to out_dir."""
     for name, out_name in FIXTURES.items():
         link, doc, n_clues = build(HERE / "IsofillComponent.js", HERE / name)
         check(link, doc, n_clues)

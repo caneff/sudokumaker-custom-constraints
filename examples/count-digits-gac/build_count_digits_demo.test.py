@@ -1,12 +1,3 @@
-# build_count_digits_demo.py (#568): the committed demo board is a valid, drawn,
-# CP-SAT-unique board; its link carries BOTH count-digits constraints with
-# exactly one switched off (the wire key is `disabled`, not `enabled`); the two
-# differ only in the class their backend registers and the component code the
-# GAC one ships, and that code is the annotated copy; and a rebuild reproduces
-# the committed link byte for byte without touching it.
-#
-#   uv run examples/count-digits-gac/build_count_digits_demo.test.py
-
 import json
 import pathlib
 import sys
@@ -55,8 +46,7 @@ N = 9
 
 
 def count(gen, group):
-    """The group's own count in the solution grid: cells holding a listed
-    digit. The rule, restated here rather than imported. `cells` is the whole
+    """The rule, restated here rather than imported. `cells` is the whole
     target list, the counter included on a self-counting board."""
     return sum(
         1
@@ -82,8 +72,6 @@ def connected(cells):
 
 
 def check_board(gen, selfcount):
-    """`selfcount`: the board the demo ships, every counter its own first
-    target. Not selfcount: the counter-outside case."""
     assert is_selfcount(gen) == selfcount
     groups = gen["groups"]
     used = []
@@ -114,8 +102,6 @@ def check_board(gen, selfcount):
 
 
 def check_uniqueness_detects_a_wrong_count(gen):
-    """The CP-SAT model states the rule: a group whose counter digit is not the
-    count is infeasible with the whole solution as givens."""
     full = {(r, c): v for r, row in enumerate(gen["grid"]) for c, v in enumerate(row)}
     g = gen["groups"][0]
     assert count_solutions([g], full) == 1
@@ -141,8 +127,6 @@ def check_grow_group_is_connected_and_disjoint():
 
 
 def check_palette_guard(gen):
-    """A redraw with more groups than colours refuses, rather than wrap the
-    palette and give two groups one colour."""
     many = {**gen, "groups": [gen["groups"][0]] * (len(COLOURS) + 1)}
     try:
         cage_constraints(many)
@@ -161,10 +145,8 @@ def check_link(gen, link, selfcount):
     p = doc["puzzle"]
     assert p["type"] == "sudoku"
     assert p["comment"].startswith("Normal sudoku rules apply")
-    # the rules text tells the reader which shape this is, and how to toggle
     assert ("one of its own cells" in p["comment"]) == selfcount
     assert "Disable / Enable" in p["comment"]
-    # `entered: 0`: every non-given cell is empty
     givens = givens_of(gen)
     for i, cell in enumerate(p["cells"]):
         assert bool(cell.get("given")) == ((i // N, i % N) in givens), f"cell {i}"
@@ -219,7 +201,6 @@ def check_link(gen, link, selfcount):
         "the built-in registers the app's own class: no code to ship"
     )
     assert [c["name"] for c in gac["components"]] == [CANDIDATE_NAME]
-    # the annotated copy: the committed file's own comments, kept
     assert gac["components"][0]["code"] == minify_file(COMPONENT, keep_comments=True)
     for phrase in (
         "HIT",
@@ -234,7 +215,6 @@ def check_link(gen, link, selfcount):
         == base["backend"]["code"]
     )
 
-    # both variants drawn: one cage element per group, group cage + counter cage
     cages = [c for c in p["constraints"] if c.get("type") == 2001]
     assert len(cages) == len(gen["groups"])
     for c, g, drawn in zip(cages, gen["groups"], groups[0], strict=True):
@@ -254,8 +234,6 @@ def check_link(gen, link, selfcount):
             r * N + col for r, col in g["cells"]
         )
         assert counter_cage["cells"] == [g["counter"][0] * N + g["counter"][1]]
-        # the drawing is the board's payload: the label lists this group's
-        # digits, the counter is marked #, both in the group's own colour
         assert group_cage["value"] == " ".join(map(str, g["values"]))
         assert counter_cage["value"] == "#"
         assert c["style"]["cage"]["color"] == c["style"]["text"]["color"]
@@ -263,8 +241,6 @@ def check_link(gen, link, selfcount):
     colours = [c["style"]["cage"]["color"] for c in cages]
     assert len(set(colours)) == len(colours), "two groups share a colour"
 
-    # the shipped link reproduces, and the rebuild leaves the committed file
-    # alone -- into a directory that does not exist yet, too
     mtime = link.stat().st_mtime_ns
     with tempfile.TemporaryDirectory() as tmp:
         out = build(
@@ -275,7 +251,6 @@ def check_link(gen, link, selfcount):
         assert out.read_bytes() == shipped, "the link does not reproduce"
     assert link.stat().st_mtime_ns == mtime, "--out touched the committed link"
 
-    # flipping which one is on swaps the disabled flag and nothing else
     flipped = build_doc(gen, "builtin")
     was = build_doc(gen, "gac")
     for a, b in zip(customs(was), customs(flipped), strict=True):

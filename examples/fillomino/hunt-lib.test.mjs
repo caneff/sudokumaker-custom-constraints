@@ -1,7 +1,3 @@
-// Seams of the offline board hunt (#317): the hardness scorer's verdict and
-// node/pass counts, and the offline strip's closable invariant.
-// Run: node examples/fillomino/hunt-lib.test.mjs
-//
 // The expected verdicts on 3x3 and 2x2 boards come from generate.py's
 // `brute` -- the solver-free reading of the rule -- not from this scorer:
 //   3x3, no clues, digits 1-3      -> 38 grids
@@ -18,7 +14,6 @@ const mod = loadComponent(HERE)
 const rowsToGivens = rows => Object.fromEntries(rows.flat().map((d, i) => [i, d]))
 const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
 
-// ---- A fully given valid grid is read off, not searched: no branch node ----
 {
   const s = score(mod, { side: 3, cap: 3, givens: rowsToGivens(GRID3) })
   assert.strictEqual(s.verdict, 'unique')
@@ -27,7 +22,6 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
   assert.deepStrictEqual(s.grid, GRID3)
 }
 
-// ---- The verdicts match brute force on 3x3 and 2x2 ----
 {
   const unique = score(mod, { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } })
   assert.strictEqual(unique.verdict, 'unique')
@@ -39,7 +33,6 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
   assert.strictEqual(score(mod, { side: 2, cap: 2, givens: {} }).verdict, 'none')
 }
 
-// ---- Scoring is deterministic: the same clue set scores the same twice ----
 {
   const board = { side: 3, cap: 3, givens: { 0: 1, 4: 1, 8: 3 } }
   const a = score(mod, board)
@@ -47,13 +40,11 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
   assert.deepStrictEqual([a.verdict, a.nodes, a.passes], [b.verdict, b.nodes, b.passes])
 }
 
-// ---- A node budget spent mid-search reports 'capped', never a verdict ----
 {
   const s = score(mod, { side: 3, cap: 3, givens: {} }, { nodeCap: 1 })
   assert.strictEqual(s.verdict, 'capped')
 }
 
-// ---- The offline strip keeps the board closable, and only removes ----
 {
   const board = { side: 3, cap: 3, grid: GRID3 }
   const clues = stripOffline(mod, board, 7)
@@ -64,7 +55,6 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
   assert.strictEqual(left.verdict, 'unique', 'the stripped board must still close')
   assert.deepStrictEqual(left.grid, GRID3, 'and close on the grid it was cut from')
 
-  // Every surviving clue is load-bearing: drop one more and the board opens.
   for (const drop of clues) {
     const rest = clues.filter(p => p !== drop)
     assert.notStrictEqual(
@@ -74,12 +64,9 @@ const GRID3 = [[1, 2, 2], [2, 1, 3], [2, 3, 3]]
   }
 }
 
-// ---- The strip is reproducible from its seed, and the seed changes it ----
 {
   const board = { side: 3, cap: 3, grid: GRID3 }
   assert.deepStrictEqual(stripOffline(mod, board, 7), stripOffline(mod, board, 7))
-  // Seeds 1-8 cut this grid to several different clue sets; a strip that
-  // ignores its seed returns one.
   const cuts = new Set([1, 2, 3, 4, 5, 6, 7, 8].map(seed => JSON.stringify(stripOffline(mod, board, seed))))
   assert.ok(cuts.size > 1, 'eight seeds all cut the same clue set: the seed is ignored')
 }

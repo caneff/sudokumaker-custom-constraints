@@ -1,15 +1,3 @@
-// Targeted cases for DutchFlatmatesComponent.update: what a caller sees come
-// out of a given candidate state. Each column is a full house, so it holds one
-// 5, one 1 and one 9; a 5 needs the 1 directly above it or the 9 directly below
-// it. `update` keeps only the 5, 1 and 9 positions some consistent triple still
-// supports, and stops the branch when no triple does.
-//
-//   node examples/dutch-flatmates/update-prune.test.mjs
-//
-// Soundness (never remove a true value) lives in soundness-harness.mjs and
-// strength in update-strength.test.mjs. The skip-unchanged cache is witnessed
-// here only through what `update` removes from states a caller hands it.
-
 import assert from 'assert'
 import { columnsOf, installGlobals, makeIo, makePuzzle } from '../_shared/harness-lib.mjs'
 
@@ -22,11 +10,8 @@ const CELLS = Array.from({ length: N * N }, (_, i) => i)
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 const at = (row, col) => row * N + col
 
-// The nine columns, each a house the app reports cannot repeat. `board()`
-// declares them unless a test hands it none: the repeat-column cases below.
 const COLUMNS = columnsOf(N)
 
-// A full-candidate board; `edit(cand)` narrows cells before the call.
 function board (edit = () => {}, houses = COLUMNS) {
   const cand = new Map(CELLS.map(c => [c, new Set(ALL)]))
   edit(cand)
@@ -37,11 +22,8 @@ function board (edit = () => {}, houses = COLUMNS) {
 }
 const run = ({ p, inst }) => { Array.from(mod.update(inst, p)); return p }
 const has = (p, row, col, d) => p._cand.get(at(row, col)).has(d)
-// Candidates of every digit but 1, 5 and 9, which `update` has no business touching.
 const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d => ![1, 5, 9].includes(d))))
 
-// Column 0: a 5 at row 3 has no 1 above (row 2 lacks 1) and no 9 below (row 4
-// lacks 9), so it is pruned; the 5 at row 6 has a 1 candidate above at row 5.
 {
   const b = board(cand => {
     for (let r = 0; r < N; r++) if (r !== 3 && r !== 6) cand.get(at(r, 0)).delete(5)
@@ -56,8 +38,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('column with an unsupported 5: pruned, supported 5 kept')
 }
 
-// A top-row 5 needs the 9 below it: row 1 has no 9 candidate, so the 5 at row 0
-// goes while the 5 at row 4 (1 above at row 3) stays.
 {
   const b = board(cand => {
     for (let r = 0; r < N; r++) if (r !== 0 && r !== 4) cand.get(at(r, 2)).delete(5)
@@ -69,7 +49,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('top-row 5 with no 9 below: pruned')
 }
 
-// A bottom-row 5 needs the 1 above it: row 7 has no 1 candidate.
 {
   const b = board(cand => {
     for (let r = 0; r < N; r++) if (r !== 8 && r !== 4) cand.get(at(r, 5)).delete(5)
@@ -81,15 +60,12 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('bottom-row 5 with no 1 above: pruned')
 }
 
-// 1 and 9 prune too: with the 5 pinned at row 4, its flatmate is the 1 at row 3
-// or the 9 at row 5, and a 1 and a 9 cannot both be missing from those rows, so
-// a 1 elsewhere survives only while a 9 at row 5 can pair with it.
 {
   const b = board(cand => {
     for (let r = 0; r < N; r++) if (r !== 4) cand.get(at(r, 1)).delete(5)
     cand.get(at(4, 1)).clear()
     cand.get(at(4, 1)).add(5)
-    cand.get(at(5, 1)).delete(9) // no 9 below the 5, so the 1 must sit at row 3
+    cand.get(at(5, 1)).delete(9)
   })
   run(b)
   for (let r = 0; r < N; r++) {
@@ -98,7 +74,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('a pinned 5 with no 9 below pins its 1 above')
 }
 
-// A fully open board has every position supported: nothing is removed.
 {
   const b = board()
   run(b)
@@ -107,23 +82,18 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('open board: nothing removed')
 }
 
-// No cell of a column can take a 5: no triple exists, so the branch is stopped.
 {
   const b = board(cand => { for (let r = 0; r < N; r++) cand.get(at(r, 7)).delete(5) })
   run(b)
   assert.notStrictEqual(b.p._stopped, null, 'a column with no possible 5 did not stop')
-  b.p._stopped = null // a second call on the same dead state must stop again
+  b.p._stopped = null
   run(b)
   assert.notStrictEqual(b.p._stopped, null, 'a repeat call on a dead column did not stop again')
   console.log('column with no 5 anywhere: stopped')
 }
 
-// A column that can repeat is not a house: it need not hold a 1, a 5 or a 9, so
-// the triple rule does not apply, but the per-cell rule still does.
 {
   const none = []
-  // the house-only prune: a 5 pinned at row 4 whose 9 below is gone pins the 1
-  // above it, so a house loses every other 1; a column that can repeat keeps them
   const pinned = cand => {
     for (let r = 0; r < N; r++) if (r !== 4) cand.get(at(r, 1)).delete(5)
     cand.get(at(5, 1)).delete(9)
@@ -136,7 +106,6 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     assert.strictEqual(has(house.p, r, 1, 1), r === 3, `house: 1 at row ${r} should ${r === 3 ? 'stay' : 'go'}`)
     assert.ok(has(open.p, r, 1, 1), `repeat column: the 1 at row ${r} was pruned by the house rule`)
   }
-  // the per-cell rule: a 5 with no 1 above and no 9 below goes, on a column that can repeat too
   const lone = board(cand => {
     cand.get(at(2, 0)).delete(1)
     cand.get(at(4, 0)).delete(9)
@@ -145,16 +114,12 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   assert.ok(!has(lone.p, 3, 0, 5), 'repeat column: the 5 with no flatmate survived')
   assert.ok(has(lone.p, 6, 0, 5), 'repeat column: a 5 with a 1 above was removed')
   assert.ok(has(lone.p, 3, 0, 1) && has(lone.p, 3, 0, 9), 'repeat column: the per-cell rule touched a 1 or 9')
-  // a repeat column with no 5 anywhere is fine: it need not hold one
   const noFive = board(cand => { for (let r = 0; r < N; r++) cand.get(at(r, 7)).delete(5) }, none)
   run(noFive)
   assert.strictEqual(noFive.p._stopped, null, 'a column that can repeat was stopped for holding no 5')
   console.log('repeat column: not pruned by the house rule, still loses an unflatmated 5, never stopped for lacking a 5')
 }
 
-// Repeat calls: a second call on the pruned state removes nothing more, and the
-// same removal comes back after a caller restores the candidates (a backtrack),
-// so nothing a caller sees depends on what an earlier call did.
 {
   const b = board(cand => {
     for (let r = 0; r < N; r++) if (r !== 3 && r !== 6) cand.get(at(r, 0)).delete(5)
@@ -165,17 +130,16 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   const pruned = JSON.stringify(CELLS.map(c => [...b.p._cand.get(c)]))
   run(b)
   assert.strictEqual(JSON.stringify(CELLS.map(c => [...b.p._cand.get(c)])), pruned, 'a second call changed a pruned state')
-  b.p._cand.get(at(3, 0)).add(5) // backtrack: the 5 is a candidate again
+  b.p._cand.get(at(3, 0)).add(5)
   run(b)
   assert.ok(!has(b.p, 3, 0, 5), 'the 5 restored by a backtrack was not pruned again')
-  // The only flatmate left for a pinned 5 is removed, and nothing else moves: a
-  // 9 alone, then a 1 alone. A column whose key ignored either digit would be
-  // skipped here and miss the dead state.
+  // A column whose cache key ignored the 1s or the 9s would be skipped here
+  // and miss the dead state.
   for (const [flatmate, row, label] of [[9, 4, '9'], [1, 2, '1']]) {
     const e = board(cand => {
       for (let r = 0; r < N; r++) if (r !== 3) cand.get(at(r, 6)).delete(5)
-      if (flatmate === 9) cand.get(at(2, 6)).delete(1) // only the 9 below can flatmate it
-      else cand.get(at(4, 6)).delete(9) // only the 1 above can flatmate it
+      if (flatmate === 9) cand.get(at(2, 6)).delete(1)
+      else cand.get(at(4, 6)).delete(9)
     })
     run(e)
     assert.strictEqual(e.p._stopped, null, `the ${label} case was dead before the change`)
@@ -187,13 +151,9 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
   console.log('repeat calls: idempotent, re-prunes after a restore, sees a column whose only change is a 1 or a 9')
 }
 
-// Boards whose columns are not a plain sudoku's (#693): the column reasoning
-// (exactly one 1, one 5 and one 9) is used only when a column holds each of the
-// board's digits once and 1, 5 and 9 are among them. Every other column gets
-// the per-cell rule alone. Each case declares every column all-different, so
-// only the digits and the column length tell the cases apart.
+// Each case declares every column all-different, so only the digits and the
+// column length tell the cases apart.
 {
-  // A square board of `width` with digits lo..hi; `edit(cand)` narrows cells.
   function small (width, lo, hi, edit) {
     installGlobals(lo, hi)
     const cells = Array.from({ length: width * width }, (_, i) => i)
@@ -208,17 +168,15 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     return p
   }
 
-  // 6x6 with digits 1-9: a column is shorter than the digit list, so it need not
-  // hold a 1, a 5 or a 9. Column 0 below has its only 1 and only 9 in the same
-  // row 2 and its only 5 in row 3: the column reasoning would find no partner
-  // for the 5 and stop the branch, but the 5 has a possible 1 directly above it.
+  // Column 0's only 1 and only 9 share row 2, above its only 5: the column
+  // reasoning would find no partner and stop the branch, though the 5 has a
+  // possible 1 directly above it.
   {
     const p = small(6, 1, 9, (cand, at6) => {
       for (let r = 0; r < 6; r++) {
         if (r !== 2) { cand.get(at6(r, 0)).delete(1); cand.get(at6(r, 0)).delete(9) }
         if (r !== 3) cand.get(at6(r, 0)).delete(5)
       }
-      // column 1: a 5 with no 1 above and no 9 below, so the per-cell rule removes it
       for (let r = 0; r < 6; r++) {
         if (r !== 3) cand.get(at6(r, 1)).delete(5)
       }
@@ -231,23 +189,20 @@ const others = p => JSON.stringify(CELLS.map(c => [...p._cand.get(c)].filter(d =
     console.log('6x6 board, digits 1-9: per-cell rule only, no column reasoning')
   }
 
-  // 8x8 with digits 1-8: every column is a set of all the digits, but there is no
-  // 9, so no column holds a 9 for the column reasoning to place. It must not stop.
   {
     const p = small(8, 1, 8, (cand, at8) => {
       for (let r = 0; r < 8; r++) if (r !== 3) cand.get(at8(r, 0)).delete(5)
-      cand.get(at8(2, 0)).delete(1) // the 5 at row 3 now has no 1 above and (no 9 at all) no 9 below
+      cand.get(at8(2, 0)).delete(1)
     })
     assert.strictEqual(p._stopped, null, 'a board without a 9 got the column reasoning and was stopped')
     assert.ok(!p._cand.get(3 * 8 + 0).has(5), 'the per-cell rule did not remove an unflatmated 5 on a board without a 9')
     console.log('8x8 board, digits 1-8: no 9, per-cell rule only')
   }
 
-  // 9x9 with digits 2-10: each column holds all the digits once but there is no 1.
   {
     const p = small(9, 2, 10, (cand, at9) => {
       for (let r = 0; r < 9; r++) if (r !== 3 && r !== 6) cand.get(at9(r, 0)).delete(5)
-      cand.get(at9(4, 0)).delete(9) // the 5 at row 3 has no 9 below; there is no 1 on this board
+      cand.get(at9(4, 0)).delete(9)
     })
     assert.strictEqual(p._stopped, null, 'a board without a 1 got the column reasoning and was stopped')
     assert.ok(!p._cand.get(3 * 9 + 0).has(5), 'the 5 with no 9 below and no 1 anywhere was kept')

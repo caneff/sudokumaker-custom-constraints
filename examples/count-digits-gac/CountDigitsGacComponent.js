@@ -53,8 +53,8 @@
 //! the component prunes less than the oracle there (still sound). A counter
 //! listed any number of times is exact. Cells are compared with `===`, which
 //! assumes primitive cell ids (docs/puzzle-api.md says the id type is not a
-//! contract): a non-primitive id would read as no self-listing and fall back to
-//! the pre-#578 strength.
+//! contract): a non-primitive id would read as no self-listing, and the counter
+//! would be read as an ordinary target -- sound, but weaker.
 //!
 //! Sound: each deduction is a statement about the true solution, read off the
 //! candidates the true solution is still inside. A target cell listed twice is

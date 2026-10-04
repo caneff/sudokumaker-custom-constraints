@@ -1,8 +1,3 @@
-// Open a Dutch Flatmates link in the app once, and print what it shows: the
-// rules text, the verdict of "Find all solutions and valid candidates", and the
-// grid the solver reached ('.' for a cell it did not fill). Compare the grid
-// with gen.json's solution.
-//
 //   node examples/dutch-flatmates/app-open.mjs [link_file] [--live]
 //
 // Default: the recorded app (examples/_shared/sudokumaker.har, replay), which
@@ -32,7 +27,6 @@ await withApp({ live }, async app => {
     title = await openPage.title()
 
     // The rules text shows on the play page, which "Playtest" opens in a new tab.
-    // The recorded app holds no play page (replay aborts it), so only --live reads it.
     rules = null
     if (live) {
       const [play] = await Promise.all([openPage.context().waitForEvent('page'), openPage.getByText('Playtest', { exact: true }).click()])

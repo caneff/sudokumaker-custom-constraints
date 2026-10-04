@@ -1,10 +1,3 @@
-// Strength checks for OutsideSudokuComponent.update. Soundness (never remove a
-// true value) lives in soundness-harness.mjs; this file checks the other
-// direction — that the component never prunes LESS than the three documented
-// deductions.
-//
-//   node examples/outside-sudoku/update-strength.test.mjs
-
 import assert from 'assert'
 import { installGlobals, makeIo, makePuzzle, makeRng, randomCandidates, fixpoint, strengthSweep } from '../_shared/harness-lib.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
@@ -13,11 +6,8 @@ const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 const mod = load('OutsideSudokuComponent.js', ['getAffectedCells', 'setParams', 'update', 'validate'])
 
-// One clue and one line on a 9x9 grid with 3x3 boxes: window = 3 cells.
 const g = gridGeometry(9, 3, 3)
 
-// `cands` maps cell id -> candidate array. Returns the state after update runs
-// to a fixpoint, as cell id -> sorted candidate array.
 function run (line, cands, w) {
   const p = makePuzzle(Object.fromEntries([...cands.keys()].map(c => [c, 0])), c => cands.get(c))
   Object.assign(p, g.api)
@@ -29,21 +19,14 @@ function run (line, cands, w) {
 
 installGlobals(1, 9)
 
-// ---- 1. the clue keeps only digits a window cell can still hold
 {
   const line = g.rowLine(0, 0, 9)
   const cands = new Map([[g.clue, [1, 2, 3, 4, 5, 6, 7, 8, 9]]])
-  // window (line[0..2]) can hold only 1, 2, 3; 9 lives outside the window
   for (const [i, c] of line.entries()) cands.set(c, i < 3 ? [1, 2, 3] : [9])
   const after = run(line, cands, 3)
   assert.deepStrictEqual(after.get(g.clue), [1, 2, 3], 'clue must keep only window digits')
 }
 
-// ---- 2. the window is the box's extent, even when the line starts mid-box
-// The line runs columns 1..8 of row 0, so its first box holds only two of its
-// cells — but the window is still three cells, the box's extent along a row.
-// Digit 3 lives in the third cell alone: a window cut short at the box edge
-// would drop it from the clue.
 {
   const line = g.rowLine(0, 1, 8)
   const cands = new Map([[g.clue, [1, 2, 3, 4, 5, 6, 7, 8, 9]]])
@@ -52,7 +35,6 @@ installGlobals(1, 9)
   assert.deepStrictEqual(after.get(g.clue), [1, 2, 3], 'window is 3 cells from line[0], not 2')
 }
 
-// ---- 3. clue solved, one window cell left that admits it: that cell is it
 {
   const line = g.rowLine(0, 0, 9)
   const cands = new Map([[g.clue, [4]]])
@@ -61,7 +43,6 @@ installGlobals(1, 9)
   assert.deepStrictEqual(after.get(line[1]), [4], 'the only window cell that admits the clue is pinned')
 }
 
-// ---- 4. clue solved, no window cell admits it: the branch is dead
 {
   const line = g.rowLine(0, 0, 9)
   const cands = new Map([[g.clue, [4]]])
@@ -70,7 +51,6 @@ installGlobals(1, 9)
   assert.deepStrictEqual(after.get(g.clue), [], 'a clue no window cell can hold empties')
 }
 
-// ---- 4b. the trigger set is the clue plus the window, nothing else
 {
   const line = g.rowLine(0, 0, 9)
   assert.deepStrictEqual(mod.getAffectedCells(g.clue, line, 3), [g.clue, ...line.slice(0, 3)],
@@ -78,9 +58,8 @@ installGlobals(1, 9)
   assert.deepStrictEqual(mod.getAffectedCells(g.clue, line, 9), [g.clue, ...line], 'a full window lists the whole line')
 }
 
-// ---- 4c. validate checks the window only, and rejects a violated full window
-// Cells past the window stay open: a filled check over the whole line would
-// return true on them, and the component would retire on a vacuous true.
+// Cells past the window stay open: a validate that waited on the whole line
+// would return a vacuous true here.
 {
   const line = g.rowLine(0, 0, 9)
   const state = (clueDigit, windowDigits) => {
@@ -96,12 +75,9 @@ installGlobals(1, 9)
   assert.strictEqual(state(2, [1, 2, 3]), true, 'a filled window holding the clue digit passes')
 }
 
-// ---- 5. never weaker than the three documented deductions
-// The floor is a naive reference written straight off the spec: plain digit
-// arrays, no bitmasks, and the window length handed to it by the case instead
-// of read off the board. On every random state the component must leave a
-// subset of what the reference leaves, cell for cell — a refactor that loses a
-// deduction, or that sizes the window wrong, shows up here.
+// The floor is a naive reference written straight off the spec, with plain
+// digit arrays instead of bitmasks; the component must leave a subset of what
+// it leaves, cell for cell.
 const reference = {
   setParams (inst, clue, line, w) { Object.assign(inst, { clue, line, w }) },
   * update (inst, p) {
@@ -131,13 +107,11 @@ for (const [N, bh, bw] of [[9, 3, 3], [6, 2, 3], [4, 2, 2]]) {
     apply: (version, p, { line, w }) => {
       Object.assign(p, geo.api)
       const inst = {}
-      // Both versions get the window length main code would compute.
       version.setParams(inst, geo.clue, line, w)
       fixpoint(version, inst, p)
     },
     * states () {
       for (let rep = 0; rep < 4000; rep++) {
-        // a row or a column line, starting anywhere, of any length that fits
         const down = rnd() < 0.5
         const from = (rnd() * N) | 0
         const len = 1 + ((rnd() * (N - from)) | 0)

@@ -1,14 +1,3 @@
-# Two checks on the example's links.
-#
-# 1. The shipped board and its wrapper twins run the lanes they claim, --refresh
-#    refuses another board, and swapping the committed component and
-#    main-global.js back into PUZZLE_LINK.txt reproduces it byte for byte. What
-#    a swap may change is link_swap.test.py's.
-# 2. The committed local links, built by `build_size.py <n> --paths`, pass
-#    board_checks.check_local_board under this example's clue rule (#238).
-#
-#   uv run --with lzstring examples/numbered-rooms/build_link.test.py
-
 import pathlib
 import re
 import subprocess
@@ -44,9 +33,6 @@ def numbered_room(values):
 
 
 def check_shipped_link():
-    """The shipped board runs the GLOBAL lane: main-global.js as the backend
-    and no drawn groups, so the backend builds the 4n frame lines itself
-    (docs/example-layout.md, "Which lane a link runs")."""
     doc = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
     lc = find_constraint(doc, CONSTRAINT_NAME)
     assert lc["definition"]["backend"]["code"] == minify_file(
@@ -58,13 +44,10 @@ def check_shipped_link():
 
 
 def check_refresh_rejects_another_board():
-    """`--refresh` stamps DIGITS and COMMENT, and both are written for this one
-    hand-built 9x9 board. Aimed at any other committed link it would hand a
-    smaller interior a 1..9 range -- nine digits against six-cell lines, the
-    silent HouseComponent -> DifferentDigitsComponent degradation the range is
-    declared to prevent -- and rules text describing a different puzzle. So the
-    two flags must not combine, and the named board must come back untouched.
-    """
+    """`--refresh` stamps DIGITS and COMMENT, both written for the one
+    hand-built 9x9. On a smaller board the 1..9 range would silently degrade
+    every HouseComponent to a DifferentDigitsComponent, and the rules text
+    would describe a different puzzle."""
     with tempfile.TemporaryDirectory() as tmp:
         copy = pathlib.Path(tmp) / "PUZZLE_LINK_6x6.txt"
         before = (HERE / "PUZZLE_LINK_6x6.txt").read_text()
@@ -144,7 +127,6 @@ if __name__ == "__main__":
             "main-global.js must round-trip to it"
         )
 
-    # the 9x9 stress board and the 6x6 twin that carries the local timing row
     for tag in ("local", "6x6_local"):
         spec, doc = check_local_board(
             HERE, tag, "NumberedRoomsComponent", numbered_room

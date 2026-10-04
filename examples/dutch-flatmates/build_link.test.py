@@ -1,12 +1,3 @@
-# build_link.py: the committed PUZZLE_LINK.txt is exactly what the builder
-# writes from gen.json, decodes to the board the README describes (ringless 9x9,
-# gen.json's givens, the rules text, exactly one whole-grid flatmate component),
-# survives a component swap unchanged, and the builder refuses a board that is
-# not uniquely solvable. Also runs verify.py's proof of the shipped board, and
-# the same checks on Flinty's Counting Circles board (gen_0g.json).
-#
-#   uv run examples/dutch-flatmates/build_link.test.py
-
 import json
 import pathlib
 import re
@@ -34,7 +25,6 @@ from no_ring import GRID_BACKEND
 from verify import verify
 
 if __name__ == "__main__":
-    # read_gen returns the board and the extras from ONE read of the gen JSON
     reads = []
     real_read_text = pathlib.Path.read_text
 
@@ -55,13 +45,10 @@ if __name__ == "__main__":
 
     committed = (HERE / "PUZZLE_LINK.txt").read_text().strip()
 
-    # the committed link is exactly what the builder writes from gen.json
     link, doc, n_givens = build()
     check(link, doc, n_givens)
     assert link == committed, "PUZZLE_LINK.txt is not what build_link.py writes"
 
-    # the decoded board, past what check() asserts: the exact rules text, gen.json's
-    # givens, and the rows-and-columns backend ahead of the flatmate constraint
     p = decode_puzzle(committed)["puzzle"]
     gen = json.loads((HERE / "gen.json").read_text())
     assert p["comment"] == NO_RING_RULES_PREFIX + RULE
@@ -76,7 +63,6 @@ if __name__ == "__main__":
         CONSTRAINT_NAME,
     ]
 
-    # swapping the committed component back into the committed board changes nothing
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "board.txt"
         assert (
@@ -84,7 +70,6 @@ if __name__ == "__main__":
             == committed
         )
 
-        # a board that is not uniquely solvable is refused: drop half the givens
         loose = dict(gen, clues=gen["clues"][len(gen["clues"]) // 2 :])
         loose_path = pathlib.Path(tmp) / "loose.json"
         loose_path.write_text(json.dumps(loose))
@@ -95,8 +80,6 @@ if __name__ == "__main__":
         else:
             raise AssertionError("build accepted a board with half its givens removed")
 
-        # a grid that is not the board's solution is refused: change the digit
-        # of one non-given cell
         r, c = next(
             (r, c) for r in range(9) for c in range(9) if [r, c] not in gen["clues"]
         )
@@ -126,7 +109,6 @@ if __name__ == "__main__":
         f"link matches the builder; verify.py: unique, {len(forced)} rule-forced flatmate(s)"
     )
 
-    # ---- the Counting Circles board (gen_0g.json -> PUZZLE_LINK_0g.txt) ----
     committed_0g = (HERE / "PUZZLE_LINK_0g.txt").read_text().strip()
     link_0g, doc_0g, n_0g = build(puzzle_path=HERE / "gen_0g.json")
     check(link_0g, doc_0g, n_0g)
@@ -154,7 +136,6 @@ if __name__ == "__main__":
     assert [c["name"] for c in no_five["components"]] == [NO_FIVE_COMPONENT]
     assert json.dumps(gen0["circles"]) in no_five["backend"]["code"]
 
-    # the recorded grid, against an independent statement of every rule
     g = [[int(ch) for ch in row] for row in gen0["grid"]]
     assert all(sorted(row) == list(range(1, 10)) for row in g)
     assert all(sorted(col) == list(range(1, 10)) for col in zip(*g, strict=True))
@@ -170,7 +151,6 @@ if __name__ == "__main__":
         if g[r][c] == 5
     ), "a 5 has no flatmate"
 
-    # the circle board swaps like the plain one, and only the flatmate code moves
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "board.txt"
         assert (
@@ -178,8 +158,6 @@ if __name__ == "__main__":
             == committed_0g
         )
 
-    # the annotated twin (#693): same board, the embedded code keeps its
-    # comments and loses the repo's lint line
     annotated_path = HERE / "PUZZLE_LINK_0g_annotated.txt"
     link_ann, doc_ann, n_ann = build(
         puzzle_path=HERE / "gen_0g.json", keep_comments=True
@@ -190,8 +168,6 @@ if __name__ == "__main__":
     )
 
     def embedded(doc):
-        """name -> code for every component and backend a constraint embeds
-        ("<name> backend" for the backend), main.js's included."""
         code = {}
         for k in doc["puzzle"]["constraints"]:
             if k["type"] != 1000:

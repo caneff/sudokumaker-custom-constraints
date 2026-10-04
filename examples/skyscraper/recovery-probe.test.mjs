@@ -6,8 +6,6 @@
 // so the golden pins the capped run; `just time` judges deductions). The node
 // and solution counts are deterministic — MRV branching
 // with a fixed tie-break — so a drift in the counts fails the test.
-//
-//   node examples/skyscraper/recovery-probe.test.mjs
 
 import { join } from 'path'
 import { runGoldenCases } from '../_shared/golden-runner.mjs'

@@ -1,8 +1,3 @@
-# What the count-digits boards share beyond the board kit (board_kit.py): the
-# rule's CP-SAT model, the names of the two classes a board registers, the
-# shared demo backend, and the drawn-group helpers the demo and the self-count
-# board both use. The sparse board shares the model and the names only.
-#
 # The rule, stated once for both sides: the digit in a group's counter cell
 # equals the number of the group's cells holding one of the group's listed
 # digits. `model()` is the CP-SAT side; CountDigitsGacComponent.js is the JS
@@ -50,7 +45,6 @@ def model(groups, givens):
 
 
 def grow_group(rng, taken, size):
-    """A connected group of `size` free cells, grown from a random seed cell."""
     free = [(r, c) for r in range(N) for c in range(N) if (r, c) not in taken]
     cells = [rng.choice(free)]
     while len(cells) < size:
@@ -70,7 +64,6 @@ def grow_group(rng, taken, size):
 
 
 def demo_backend_code(class_name):
-    """The demo backend, registering `class_name`."""
     src = DEMO_BACKEND.read_text().replace(CANDIDATE_NAME, class_name)
     return minify_js(src, base_dir=DEMO_BACKEND.parent, keep_comments=True)
 
@@ -90,8 +83,6 @@ def groups_input(gen):
 
 
 def cage_constraints(gen):
-    """One cosmetic-cage element per group: the group's cage labelled with its
-    digit list, and a one-cell cage on its counter labelled "#"."""
     if len(gen["groups"]) > len(COLOURS):
         # colour is what ties a # counter to its group: a wrapped palette
         # would give two groups one colour

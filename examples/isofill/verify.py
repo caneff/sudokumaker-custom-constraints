@@ -8,9 +8,9 @@ gen.json: {"grid": [N strings of digits], "clues": [[r, c], ...],
 grid. The board is N x N with N digits from minDigit (default 0): 10x10 with
 0-9, or 9x9 with 1-9.
 
-Rule (decision #49): N regions of N orthogonally connected cells, one
+Rule: N regions of N orthogonally connected cells, one
 digit per region, all N digits present. Modelled as exact counts plus a
-single-commodity flow per digit: one root cell sends nine units, every other
+single-commodity flow per digit: one root cell sends N - 1 units, every other
 cell of that digit absorbs one, and flow moves only between orthogonal
 neighbours that both hold the digit. A cut-off cell starves, so a split
 region is infeasible.
@@ -62,16 +62,13 @@ class Board:
 
     @classmethod
     def of_doc(cls, doc):
-        """The board a gen.json describes."""
         return cls.of(len(doc["grid"]), doc.get("minDigit", 0))
 
     def givens(self, doc):
-        """The clue cells of a gen.json, as {(row, column): digit}."""
         return {(r, c): int(doc["grid"][r][c]) for r, c in doc["clues"]}
 
 
 def model(board, givens):
-    """The ISOFILL model with `givens` pinned; returns (model, cell vars)."""
     n, lo = board.n, board.lo
     m = cp_model.CpModel()
     x = {p: m.NewIntVar(lo, lo + n - 1, f"x{p}") for p in board.cells}
@@ -98,14 +95,12 @@ def model(board, givens):
 
 
 def rows(board, s, x):
-    """The solved board as `n` row strings."""
     return [
         "".join(str(s.Value(x[r, c])) for c in range(board.n)) for r in range(board.n)
     ]
 
 
 def sample(board, seed):
-    """A random ISOFILL grid (no givens) as `n` row strings."""
     m, x = model(board, {})
     # A seed alone barely moves the default search (it hands back striped
     # grids); randomize_search makes the seed pick a genuinely different grid.
@@ -122,10 +117,7 @@ def sample(board, seed):
 
 
 def strip(board, grid, seed):
-    """Greedily drop givens from a full grid in a seeded random order, keeping
-    only those whose removal breaks uniqueness. Returns the clue list.
-
-    Hundreds of solves, none of them the proof that ships: the clue set this
+    """Hundreds of solves, none of them the proof that ships: the clue set this
     lands on is written to a gen JSON and re-proved by `unique` before the
     link is shared, so these run on the portfolio."""
     givens = {(r, c): int(grid[r][c]) for r, c in board.cells}
@@ -179,7 +171,6 @@ def self_check(board):
         pass
     else:
         raise AssertionError("disconnected region accepted")
-    # A blank grid under a 1ms cap must raise, never report a verdict.
     try:
         unique(board, {}, limit=0.001)
     except TimeoutError:

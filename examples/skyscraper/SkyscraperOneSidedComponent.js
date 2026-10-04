@@ -27,18 +27,14 @@
 //! An author flips it here, and the puzzle's rules text must say the same
 //! thing it says.
 const ALLOW_TIES = false
-//! `d + TIE > max` reads "a building of height d is visible over a running max
-//! of `max`": strict when a tie is hidden, `>=` when a tie counts.
 const TIE = ALLOW_TIES ? 1 : 0
 
 //! Digit and count masks are the app's: bit d means digit d. A count of j is a
 //! clue value, so it lives in the same encoding and a clue's candidate mask
-//! doubles as a mask of visible counts. MAXLEN caps the line length and the
-//! digit range: past it the component stands down rather than wrap a shift.
+//! doubles as a mask of visible counts.
 // The widest shift is `1 << count` for a count up to the line length, so a cap
-// of 24 leaves every mask well inside a 32-bit int. A longer line, or a board
-// with more digits than this, stands the component down rather than wrap a
-// shift.
+// of 24 keeps every mask inside a 32-bit int; a longer line, or a board with
+// more digits, stands the component down rather than wrap a shift.
 const MAXLEN = 24
 // A DP layer holds one count mask per value of the tallest so far: the digits
 // maxDigit - minDigit + 1 of them, plus "nothing built yet".
@@ -61,8 +57,8 @@ let scratch = null
 function scratchFor () {
   if (scratch === null) {
     scratch = {
-      fwd: new Int32Array(CAP), // reachable counts per (position, tallest)
-      bwd: new Int32Array(CAP), // counts a completion can still finish from
+      fwd: new Int32Array(CAP),
+      bwd: new Int32Array(CAP),
       cand: new Int32Array(MAXLEN),
       keep: new Int32Array(MAXLEN)
     }
@@ -70,17 +66,15 @@ function scratchFor () {
   return scratch
 }
 
-//! Forward sweep from the clue inward: which (tallest so far, visible count)
-//! states a prefix of the line can reach.
 function forwardSweep (fwd, cand, len, tallest, minDigit) {
-  fwd[0] = 1 // nothing built, nothing visible
+  fwd[0] = 1
   for (let i = 0; i < len; i++) {
     const base = i * tallest
     const next = base + tallest
     for (let t = 0; t < tallest; t++) {
       const counts = fwd[base + t]
       if (counts === 0) continue
-      const max = t + minDigit - 1 // t === 0 reads as below every digit
+      const max = t + minDigit - 1
       let avail = cand[i]
       while (avail !== 0) {
         const bit = avail & -avail
@@ -96,8 +90,7 @@ function forwardSweep (fwd, cand, len, tallest, minDigit) {
 //! Backward sweep from the far end, seeded with the clue's own candidates --
 //! the counts a finished line may show. `bwd[i][t]` holds the counts a prefix
 //! may already have used; a digit is kept at cell i where some reachable
-//! state there leads into a count the rest of the line can finish. `keep[i]`
-//! collects those digits.
+//! state there leads into a count the rest of the line can finish.
 function backwardSweep (fwd, bwd, cand, keep, len, tallest, minDigit, clueCand) {
   const last = len * tallest
   for (let t = 0; t < tallest; t++) bwd[last + t] = clueCand
@@ -107,7 +100,7 @@ function backwardSweep (fwd, bwd, cand, keep, len, tallest, minDigit, clueCand) 
     let kept = 0
     for (let t = 0; t < tallest; t++) {
       const counts = fwd[base + t]
-      if (counts === 0) continue // unreachable, so nothing asks about it
+      if (counts === 0) continue
       const max = t + minDigit - 1
       let feasible = 0
       let avail = cand[i]
@@ -127,10 +120,6 @@ function backwardSweep (fwd, bwd, cand, keep, len, tallest, minDigit, clueCand) 
   }
 }
 
-//! Collect every removal before yielding: the scratch is shared, and a yield
-//! hands the solver control, which may run another line's update. The list is
-//! (cell, mask) pairs, or null when there is nothing to remove -- most calls
-//! remove nothing, so it is built only when there is something in it.
 function collectRemovals (clue, line, len, clueDrop, cand, keep) {
   let pending = null
   if (clueDrop !== 0) pending = [clue, clueDrop]
@@ -147,9 +136,7 @@ function * update (instance, puzzle) {
   const { clue, line } = instance
   const len = line.length
   const { minDigit, maxDigit } = helpers.digits
-  // a clue with no line, or a line or digit range too wide to mask
   if (len === 0 || len > MAXLEN || maxDigit > MAXLEN) return
-  // Tallest-so-far index: 0 is "nothing built yet", digit d is d - minDigit + 1.
   const tallest = maxDigit - minDigit + 2
   const clueCand = puzzle.getCandidatesBitMask(clue)
   if (clueCand === 0) return // contradiction; the solver sees it on the clue cell
@@ -171,11 +158,8 @@ function * update (instance, puzzle) {
   const last = len * tallest
   backwardSweep(fwd, bwd, cand, keep, len, tallest, minDigit, clueCand)
 
-  // The clue shows a count the whole line can reach.
   let reached = 0
   for (let t = 0; t < tallest; t++) reached |= fwd[last + t]
-  // No arrangement of the line shows any count the clue allows: the branch is
-  // dead.
   if ((clueCand & reached) === 0) {
     yield puzzle.stop(`no arrangement of the line shows the count ${instance.name} asks for`, [clue, ...line])
     return
@@ -188,9 +172,8 @@ function * update (instance, puzzle) {
   }
 }
 
-// Visible buildings reading `cells` in order: the running maxima, with a tie
-// counted or not per ALLOW_TIES. The running max starts below every digit, so a
-// board whose digits start at 0 reads the same as any other.
+// The running max starts below every digit, so a board whose digits start at
+// 0 reads the same as any other.
 function visibleCountTies (puzzle, cells) {
   let count = 0
   let max = -1

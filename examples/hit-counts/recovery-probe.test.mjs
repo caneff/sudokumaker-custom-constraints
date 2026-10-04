@@ -4,8 +4,6 @@
 // gen_9 with it off). The gen_9 search is the board the pair component was
 // built for, so a pruning regression there fails this test; it runs about a
 // minute, the slowest case here.
-//
-//   node examples/hit-counts/recovery-probe.test.mjs
 
 import { join } from 'path'
 import { runGoldenCases } from '../_shared/golden-runner.mjs'

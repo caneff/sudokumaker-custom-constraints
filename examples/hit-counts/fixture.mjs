@@ -1,6 +1,4 @@
-// The 4x4 left side the side hit matching tests share: one definition for
-// update-strength.test.mjs (case 3b), component-contract.test.mjs and
-// soundness-harness.mjs (#671).
+// The 4x4 left side the side hit matching tests share.
 //
 // Four rows, each clued 1, so the four clues host the four positions between
 // them, one line each. Position i is live on line L while digit i + 1 is still
@@ -28,5 +26,4 @@ export const CANDS = [
 // too, and every line hits exactly once. So the truth really does complete this
 // state, which is what makes a lost candidate a violation.
 export const TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
-// The side's lines and the positions across them: every one a house.
 export const HOUSES = [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(line => line[c]))]
