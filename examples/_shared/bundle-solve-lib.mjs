@@ -139,7 +139,7 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
 // only way to build a `strategy.stepTypes` list pinned to the loaded bundle.
 function loadWorker () {
   const { onmessage, drain, exposed } = loadBundle({ expose: ['handleStartMessage', 'LogicStepType'] })
-  return { onmessage, drain, handleStartMessage: exposed.handleStartMessage, LogicStepType: exposed.LogicStepType }
+  return { onmessage, drain, ...exposed }
 }
 
 // Runs a decoded puzzle document through the real solver: a "start" message,

@@ -5,8 +5,8 @@
 // reachable from outside. `loadBundle` appends `__expose.<name> = <name>`
 // lines before the closing `})();`, evaluates the result with the worker
 // globals bound as parameters (a load never clobbers another load in the same
-// process), and returns the exposed bindings. Agents call this instead of
-// copying the splice; docs/research/bundle-api-reference.md lists the names.
+// process), and returns the exposed bindings. Agents call this rather than
+// hand-rolling a loader; docs/research/bundle-api-reference.md lists the names.
 
 import { readFileSync } from 'fs'
 import { createHash } from 'crypto'
@@ -15,14 +15,14 @@ import { join } from 'path'
 export const BUNDLE_PATH = join(import.meta.dirname, 'vendor', 'bundle.claude.js')
 // sha256 of the bundle every caller was written against. A different file
 // means the line numbers and binding names the callers cite may have moved.
-export const BUNDLE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
+const BUNDLE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
 
 const TAIL = '})();'
 
 // `expose`: binding names to read out of the bundle's scope; a name the bundle
 // does not define throws a ReferenceError at load. `countNodes`: also expose
 // SolverState and count its `clone` calls (a search node) on this load only;
-// read the count with `nodes()`.
+// `nodes()` throws on a load without it, never a silent 0.
 // Returns `{ onmessage, drain, exposed, nodes }`: `onmessage` is the bundle's
 // own worker dispatcher and `drain()` empties what it posted.
 export function loadBundle ({ expose = [], countNodes = false, bundlePath = BUNDLE_PATH } = {}) {
@@ -51,5 +51,9 @@ export function loadBundle ({ expose = [], countNodes = false, bundlePath = BUND
     const clone = exposed.SolverState.prototype.clone
     exposed.SolverState.prototype.clone = function (...args) { count++; return clone.apply(this, args) }
   }
-  return { onmessage, drain: () => posted.splice(0), exposed, nodes: () => count }
+  const nodes = () => {
+    if (!countNodes) throw new Error('nodes(): load with countNodes: true')
+    return count
+  }
+  return { onmessage, drain: () => posted.splice(0), exposed, nodes }
 }

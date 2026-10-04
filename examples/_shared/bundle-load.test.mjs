@@ -2,6 +2,7 @@
 // Run: node examples/_shared/bundle-load.test.mjs
 
 import assert from 'assert'
+import { execFileSync } from 'child_process'
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { loadBundle, BUNDLE_PATH } from './bundle-load.mjs'
@@ -42,6 +43,25 @@ assert.throws(() => loadBundle({ expose: ['noSuchBinding'] }), ReferenceError)
   assert.throws(() => SolverState.prototype.clone.call(fake)) // reaches the real clone
   assert.strictEqual(a.nodes(), 1)
   assert.strictEqual(b.nodes(), 0)
+}
+
+// A non-identifier name is refused before it reaches the spliced source.
+assert.throws(() => loadBundle({ expose: ['x; globalThis.pwned = 1'] }), /not an identifier/)
+
+// nodes() on a load without countNodes fails loud, not 0.
+assert.throws(() => loadBundle().nodes(), /countNodes/)
+
+// The export splice exists once (#660): no other tracked script writes into
+// the bundle's scope. Catches a loader that bypasses loadBundle, and with it
+// the SHA guard.
+{
+  let out = ''
+  try {
+    out = execFileSync('git', ['grep', '-lE', "__expose|'\\}\\)\\(\\);'", '--', '*.mjs', '*.js',
+      ':!examples/_shared/vendor', ':!examples/_shared/bundle-load.mjs', ':!examples/_shared/bundle-load.test.mjs'],
+    { cwd: join(import.meta.dirname, '..', '..'), encoding: 'utf8' })
+  } catch (e) { if (e.status !== 1) throw e }
+  assert.strictEqual(out.trim(), '', `a second bundle splice:\n${out}`)
 }
 
 console.log('bundle-load: expose, unknown symbol, SHA refusal, node count ok')
