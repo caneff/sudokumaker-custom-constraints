@@ -14,7 +14,7 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { CLUES, cell, LINES, CANDS, HOUSES } from './fixture.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load, loadAt } = makeIo(HERE)
@@ -29,10 +29,6 @@ const REPLACED_COMMIT = '7b3f9af'
 // component, not the pair component under test (which was then called
 // HitCountsJointComponent.js). Each floor names the file as it was at its commit.
 const OPPOSITE_PAIR_REF_FILE = 'HitCountsPairComponent.js'
-// The pair component with the case sweep alone, before the permutation sweep.
-const CASE_SWEEP_COMMIT = '4cc09eb'
-// The file carried a different name at that commit, so the floor names its own path.
-const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)

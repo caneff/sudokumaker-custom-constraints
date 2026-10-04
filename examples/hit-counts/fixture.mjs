@@ -27,3 +27,9 @@ export const CANDS = [
 // state, which is what makes a lost candidate a violation.
 export const TRUTH = [[1, 3, 4, 2], [4, 2, 1, 3], [2, 4, 3, 1], [3, 1, 2, 4]]
 export const HOUSES = [...LINES, ...[0, 1, 2, 3].map(c => LINES.map(line => line[c]))]
+
+// The pair component with the case sweep alone, before the permutation sweep:
+// the floor the strength test holds it to and the harness's coverage counter
+// measures against. The file carried a different name at that commit.
+export const CASE_SWEEP_COMMIT = '4cc09eb'
+export const CASE_SWEEP_REF_FILE = 'HitCountsJointComponent.js'
