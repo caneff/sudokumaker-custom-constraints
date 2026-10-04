@@ -12,6 +12,7 @@
 
 import itertools
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -87,8 +88,16 @@ def _cells_with_given_ring(W, shown):
     return cells
 
 
-def _layer(W, cells, name):
-    return next(layer for layer in cosmetics(W, cells) if layer["name"] == name)
+# The layers are told apart by draw order, the contract the picture depends on
+# (white paint first, the black border on top), not by the display names the
+# app shows, which a rewording must not break.
+WHITE, OUTLINES, BORDER = 0, 1, 2
+
+
+def _layer(W, cells, role):
+    layers = cosmetics(W, cells)
+    assert len(layers) == 3, f"want 3 cosmetic layers, got {len(layers)}"
+    return layers[role]
 
 
 # ---- the cases ------------------------------------------------------------
@@ -98,7 +107,7 @@ def test_white_lines_still_cover_every_ring_cell_border():
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
         want = _unit_segments([_square(c, r, c + 1, r + 1) for r, c in _ring_cells(W)])
-        got = _layer(W, cells, "White Lines (to hide outside cell borders)")["lines"]
+        got = _layer(W, cells, WHITE)["lines"]
         assert _unit_segments(got) == want, f"W={W}: the white layer changed shape"
 
 
@@ -111,9 +120,7 @@ def test_white_lines_cost_far_fewer_points_than_a_square_per_cell():
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
         before = 5 * len(_ring_cells(W))
-        after = _points(
-            _layer(W, cells, "White Lines (to hide outside cell borders)")["lines"]
-        )
+        after = _points(_layer(W, cells, WHITE)["lines"])
         assert 20 * after <= 9 * before, (
             f"W={W}: {after} points, want at most {9 * before // 20}"
         )
@@ -126,7 +133,7 @@ def test_outlines_box_the_shown_clue_cells_and_nothing_else():
         cells = _cells_with_given_ring(W, shown)
         boxes = [ring_cell(k, W) for k in shown]
         want = _unit_segments([_square(c, r, c + 1, r + 1) for r, c in boxes])
-        got = _layer(W, cells, "Outside Cell Outlines")["lines"]
+        got = _layer(W, cells, OUTLINES)["lines"]
         assert _unit_segments(got) == want, f"W={W}: the boxed cells changed"
 
 
@@ -136,7 +143,7 @@ def test_outlines_never_box_a_corner():
     # boxed givens blindly would draw four boxes here.
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
-        got = _layer(W, cells, "Outside Cell Outlines")["lines"]
+        got = _layer(W, cells, OUTLINES)["lines"]
         assert _unit_segments(got) == set(), f"W={W}: a corner got boxed"
 
 
@@ -148,7 +155,7 @@ def test_adjacent_boxed_cells_keep_the_border_between_them():
     cells = _cells_with_given_ring(W, shown)
     boxes = [ring_cell(k, W) for k in shown]
     want = _unit_segments([_square(c, r, c + 1, r + 1) for r, c in boxes])
-    got = _layer(W, cells, "Outside Cell Outlines")["lines"]
+    got = _layer(W, cells, OUTLINES)["lines"]
     assert _unit_segments(got) == want
     assert ((4, 0), (4, 1)) in _unit_segments(got), "the shared edge went missing"
 
@@ -157,27 +164,38 @@ def test_the_outer_border_is_the_interior_square():
     for W in WIDTHS:
         cells = _cells_with_given_ring(W, [])
         want = _unit_segments([_square(1, 1, W - 1, W - 1)])
-        layer = _layer(W, cells, "Grid Outer Border")
+        layer = _layer(W, cells, BORDER)
         assert _unit_segments(layer["lines"]) == want, f"W={W}: the border moved"
         # One closed square needs five points, whatever the width: the border
         # has four turns and no other point survives the collapse.
         assert _points(layer["lines"]) == 5, f"W={W}: {_points(layer['lines'])} points"
 
 
-def test_every_layer_keeps_its_name_type_and_style():
+def _luminance(color):
+    """Grey level 0-255 of a `#rrggbbaa` colour, and its alpha."""
+    assert re.fullmatch(r"#[0-9a-f]{8}", color), color
+    r, g, b, a = (int(color[k : k + 2], 16) for k in (1, 3, 5, 7))
+    return (r + g + b) / 3, a
+
+
+def test_layers_stack_white_then_grey_outlines_then_black_border():
+    # What a viewer sees: opaque paint that fades to black, so the ring's own
+    # cell borders are hidden, the clue boxes read as soft grey and the
+    # interior's border is the heaviest, darkest line.
     W = 11
     layers = cosmetics(W, _cells_with_given_ring(W, ["T3"]))
-    assert [layer["name"] for layer in layers] == [
-        "White Lines (to hide outside cell borders)",
-        "Outside Cell Outlines",
-        "Grid Outer Border",
-    ]
-    assert [layer["type"] for layer in layers] == [2000, 2000, 2000]
-    assert [layer["style"] for layer in layers] == [
-        {"thickness": 0.05, "color": "#ffffffff"},
-        {"thickness": 0.03, "color": "#d7d7d7ff"},
-        {"thickness": 0.07, "color": "#000000ff"},
-    ]
+    assert len(layers) == 3
+    assert len({layer["type"] for layer in layers}) == 1, "layers differ in type"
+    names = [layer["name"] for layer in layers]
+    assert all(names) and len(set(names)) == 3, f"layer names {names}"
+    grey = [_luminance(layer["style"]["color"]) for layer in layers]
+    assert all(a == 255 for _, a in grey), "a layer is see-through"
+    white, outline, border = (g for g, _ in grey)
+    assert white == 255 and border == 0, f"white {white}, border {border}"
+    assert 0 < outline < 255, f"outline grey {outline} is not between them"
+    thick = [layer["style"]["thickness"] for layer in layers]
+    assert all(t > 0 for t in thick)
+    assert thick[BORDER] == max(thick), "the outer border is not the heaviest line"
 
 
 def test_no_layer_draws_the_same_segment_twice():
@@ -204,6 +222,6 @@ if __name__ == "__main__":
     test_outlines_never_box_a_corner()
     test_adjacent_boxed_cells_keep_the_border_between_them()
     test_the_outer_border_is_the_interior_square()
-    test_every_layer_keeps_its_name_type_and_style()
+    test_layers_stack_white_then_grey_outlines_then_black_border()
     test_no_layer_draws_the_same_segment_twice()
     print("frame self-check OK")

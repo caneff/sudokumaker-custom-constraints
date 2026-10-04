@@ -8,6 +8,7 @@
 #   uv run --with lzstring examples/_shared/count_calls.test.py
 
 import contextlib
+import io
 import pathlib
 import sys
 import tempfile
@@ -121,9 +122,10 @@ if __name__ == "__main__":
 
     # a run that logged probe marks but no median must not end on a dangling
     # separator
-    assert summarize("[probe] calls=500\n", "WidgetComponent.js").endswith(
-        "(each at its own last mark)"
-    )
+    bare = summarize("[probe] calls=500\n", "WidgetComponent.js")
+    assert "[probe] calls=500" in bare, bare
+    assert "median" not in bare, bare
+    assert not bare.rstrip().endswith(";"), f"dangling separator: {bare!r}"
 
     # ---- main(): what it builds, and the argv it hands the driver
     with tempfile.TemporaryDirectory() as tmp:
@@ -131,8 +133,14 @@ if __name__ == "__main__":
         component.write_text(WIDGET)
         stdout = "[probe] calls=1500\nmedian 900ms\n"
 
-        with _stubbed(stdout) as seen:
+        printed = io.StringIO()
+        with _stubbed(stdout) as seen, contextlib.redirect_stdout(printed):
             main("widget", str(component), ring_clues=False)
+        # what main prints is the report the user reads: summarize's line for
+        # the driver's stdout, named after the component file
+        report = printed.getvalue().strip()
+        assert report == summarize(stdout, "WidgetComponent.js"), report
+        assert "[probe] calls=1500" in report and "median 900ms" in report, report
         # the link is built from the HOOKED copy, not the file on disk: an
         # unhooked probe would time the component and count nothing
         example_dir, probe_src, board = seen["build"]
@@ -147,8 +155,10 @@ if __name__ == "__main__":
 
         # --ring-clues reaches both the empty mode and the driver argv: an
         # edge-clue board stripped to its givens loses the clues it is timing
-        with _stubbed(stdout) as seen:
+        printed = io.StringIO()
+        with _stubbed(stdout) as seen, contextlib.redirect_stdout(printed):
             main("widget", str(component), ring_clues=True, board="PUZZLE_LINK_28g.txt")
+        assert " on PUZZLE_LINK_28g.txt: " in printed.getvalue(), printed.getvalue()
         assert seen["empty"][1] == "empty", "--ring-clues must keep the ring"
         assert seen["solve"][2] is True, "--ring-clues must reach the driver"
         assert seen["build"][2] == "PUZZLE_LINK_28g.txt", "--board must reach the build"

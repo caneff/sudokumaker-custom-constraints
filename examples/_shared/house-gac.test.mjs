@@ -333,11 +333,15 @@ for (const kind of ['bare', 'fullHouse']) {
 
 // ---- setParams leaves instance.cells to the app ----
 // The compiled constructor already stores getAffectedCells's list as
-// instance.cells, so setParams has nothing to add.
+// instance.cells, so setParams must not replace it (a copy or a reordered list
+// would desynchronise the cells the app watches from the ones update filters).
+// Other fields it may add are its own business.
 {
-  const inst = { name: 'row 1' }
+  const mine = [...CELLS]
+  const inst = { name: 'row 1', cells: mine }
   gac.setParams(inst, CELLS)
-  assert.deepStrictEqual(inst, { name: 'row 1' }, 'setParams wrote to the instance')
+  assert.strictEqual(inst.cells, mine, 'setParams replaced instance.cells')
+  assert.strictEqual(inst.name, 'row 1', 'setParams renamed the instance')
 }
 
 // ---- removals go to the app as raw masks ----

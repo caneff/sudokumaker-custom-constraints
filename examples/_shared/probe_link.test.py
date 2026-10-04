@@ -83,18 +83,21 @@ if __name__ == "__main__":
     # check_searchable: the enforcement. A shipped link (solution entered) is
     # refused; a searchable one passes; ring values pass only with ring_clues.
     shipped = decode_puzzle(ISO.read_text().rstrip("\n"))
+    # every non-given cell holding anything is one the refusal must count
+    held = sum(1 for c in shipped["puzzle"]["cells"] if c and not c.get("given"))
+    assert held, "fixture has no entered cells for the refusal to count"
     try:
         check_searchable(shipped)
         raise AssertionError("check_searchable accepted a link with entered values")
     except ValueError as e:
-        assert "65 non-given cells" in str(e), str(e)
+        assert f"{held} non-given cells" in str(e), str(e)
     check_searchable(strip_to_givens(decode_puzzle(ISO.read_text().rstrip("\n"))))
     ring_kept = empty_interior(decode_puzzle(ISO.read_text().rstrip("\n")))
     try:
         check_searchable(ring_kept)
         raise AssertionError("check_searchable accepted ring values without ring_clues")
-    except ValueError:
-        pass
+    except ValueError as e:
+        assert "non-given cells" in str(e), str(e)
     check_searchable(ring_kept, ring_clues=True)
 
     # empty clears pencil marks from inner cells, not just values
@@ -104,10 +107,30 @@ if __name__ == "__main__":
     empty_interior(marked)
     assert marked["puzzle"]["cells"][inner] == {}, "empty left pencil marks"
 
-    # empty_link_file refuses to write a probe that is not searchable
+    # empty_link_file refuses to write a probe that is not searchable: an
+    # outer-ring cell holding a value AND pencil marks survives `empty` (the
+    # ring is kept) but is not a bare clue, so the check must raise and leave
+    # no output file behind.
+    ring_marked = decode_puzzle(LINK_FILE.read_text().rstrip("\n"))
+    ring_cell = next(
+        i
+        for i in range(w)  # top row
+        if not ring_marked["puzzle"]["cells"][i].get("given")
+    )
+    ring_marked["puzzle"]["cells"][ring_cell] = {"value": 3, "pencilMarks": [1, 2]}
     with tempfile.TemporaryDirectory() as tmp:
+        src = pathlib.Path(tmp) / "marked.txt"
+        src.write_text(encode_link(ring_marked))
         out = pathlib.Path(tmp) / "probe.txt"
-        empty_link_file(ISO, out, "strip")
+        try:
+            empty_link_file(src, out, "empty")
+            raise AssertionError("empty_link_file wrote a link that is not searchable")
+        except ValueError as e:
+            assert "non-given cells" in str(e), str(e)
+        assert not out.exists(), "a refused probe must not leave an output file"
+
+        # while `strip` clears that same cell and writes a searchable link
+        empty_link_file(src, out, "strip")
         assert check_searchable(decode_puzzle(out.read_text())) is None
 
     print("ok")

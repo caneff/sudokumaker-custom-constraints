@@ -145,8 +145,8 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 //
 // `groups` switches lanes: null runs the global backend with no `input` at all
 // and checks the whole frame; an array runs a local backend on those drawn
-// groups and checks the cell ids alone. `file` and `note` only name the run in
-// an assertion message.
+// groups and checks the cell ids alone. `file` names the run in an assertion
+// message, and `note` does too and keys the registered counts by case.
 function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '', mayRegisterNothing = false } = {}) {
   const p = mockPuzzle(W, H)
   // The app runs a backend segment as a bare script with `input` in scope;
@@ -165,7 +165,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // The two checks below describe a WHOLE FRAME -- all 4n lines, and a ring
   // cell per row and column. A drawn board owes neither: it ships the groups
   // its author drew and nothing else.
-  if (groups) return
+  if (groups) return { registered: p.registered.length }
 
   // Every cell group a backend hands a component is either a line (all
   // interior) or a side's clues (all ring), so the two are told apart by their
@@ -236,11 +236,13 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // a backend that names a side -- where every component is named after its own
   // cells, a transposed frame carries the same names and nothing here can see
   // it.
+  let sideChecks = 0
   for (const c of p.registered) {
     const side = typeof c.args[0] === 'string' ? labelledSide(c.args[0]) : null
     if (!side) continue
     const clues = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => ringCells.has(id)))
     for (const g of clues) {
+      sideChecks++
       assert.deepStrictEqual([...g].sort((a, b) => a - b), ring.get(side),
         `${where}: "${c.args[0]}" does not hold side ${side}'s clue cells`)
     }
@@ -251,6 +253,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   // line. Nothing above sees this -- a backend that pairs every clue with some
   // other clue's opposite still registers the right line set and the right
   // side labels, and the puzzle it builds is a different puzzle.
+  let pairChecks = 0
   const clueOfLine = new Map(geom.groups.map(g => [g.cells.slice(1).join(','), g.cells[0]]))
   for (const c of p.registered) {
     const ownLines = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
@@ -261,10 +264,12 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
     // number on some boards, so the length is dropped before counting clues.
     const ownClues = [...new Set(ringIdsIn(c.args.filter(a => a !== line.length), ringCells))]
     if (ownClues.length !== 2) continue
+    pairChecks++
     const ends = [clueOfLine.get(line.join(',')), clueOfLine.get([...line].reverse().join(','))]
     assert.deepStrictEqual([...ownClues].sort((a, b) => a - b), ends.sort((a, b) => a - b),
       `${where}: "${c.args[0]}" pairs clues that are not the two ends of the line it was given`)
   }
+  return { registered: p.registered.length, sideChecks, pairChecks }
 }
 
 // 11x11 is the shipped board size. 11x8 is the same width with a shorter
@@ -272,10 +277,21 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
 // asymmetric frame to bite on.
 const BOARDS = [[11, 11], [11, 8]]
 
+// Not every backend names a side or takes a pair, so the side and pair checks
+// are counted across all of them: a loop that finds no component to check
+// would pass whatever the backends build, and the two checks would be dead.
+let sideChecks = 0
+let pairChecks = 0
 for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main-global.js'))
-  for (const [W, H] of BOARDS) checkBackend(name, src, W, H)
+  for (const [W, H] of BOARDS) {
+    const r = checkBackend(name, src, W, H)
+    sideChecks += r.sideChecks
+    pairChecks += r.pairChecks
+  }
 }
+assert.ok(sideChecks > 0, 'no backend registered a side-labelled component: the side check checked nothing')
+assert.ok(pairChecks > 0, 'no backend registered a pair component: the pair check checked nothing')
 
 // ---- the local lane
 //
@@ -288,10 +304,6 @@ for (const name of dirs) {
 for (const name of dirs) {
   assert.ok(existsSync(join(EXAMPLES, name, 'main.js')),
     `${name} has a main-global.js and must have the main.js that is its other lane`)
-  // The assembled text, like every other read of a paste target here: a body
-  // delivered through an `// #include` is still the lane's body.
-  assert.ok(assembleSource(join(EXAMPLES, name, 'main.js')).includes('input.groups'),
-    `${name}/main.js is the local lane and must read the drawn groups`)
 }
 
 // A drawn group as framebuild.frame_groups ships it: the clue's ring cell,
@@ -350,10 +362,16 @@ let localRuns = 0
 for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
   for (const [W, H] of BOARDS) {
+    const registered = {}
     for (const { note, groups, bentPath } of localCases(W, H)) {
-      checkBackend(name, src, W, H, { groups, file: 'main.js', note, mayRegisterNothing: bentPath && name === BENT_SKIPPER })
+      registered[note] = checkBackend(name, src, W, H, { groups, file: 'main.js', note, mayRegisterNothing: bentPath && name === BENT_SKIPPER }).registered
       localRuns++
     }
+    // The local lane reads the drawn groups: one clued line registers fewer
+    // components than the whole drawn frame. A main.js that ignored its
+    // `input.groups` and built the frame itself would register the same either way.
+    assert.ok(registered[', lone clue'] < registered[', drawn frame'],
+      `${name}/main.js on ${W}x${H} must build from the drawn groups: a lone clue registered ${registered[', lone clue']}, the whole frame ${registered[', drawn frame']}`)
   }
 }
 
