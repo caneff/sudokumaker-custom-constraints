@@ -84,7 +84,7 @@ export function parseReadout (text) {
   return { first, unique, sum, verdict }
 }
 
-const median = xs => {
+export const median = xs => {
   const s = xs.filter(x => x != null).sort((a, b) => a - b)
   return s.length ? s[Math.floor(s.length / 2)] : null
 }

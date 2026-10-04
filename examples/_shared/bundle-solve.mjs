@@ -17,6 +17,8 @@
 // (default 3) reps. Decoding shells out to Python -- see
 // bundle-solve-lib.mjs's decodeLinkFile for why.
 
+import { realpathSync } from 'fs'
+import { fileURLToPath } from 'url'
 import { decodeLinkFile, solveDocument } from './bundle-solve-lib.mjs'
 import { median } from './app-solve-lib.mjs'
 
@@ -30,20 +32,24 @@ function parseArgs (argv) {
   return { linkFile, reps }
 }
 
-const { linkFile, reps } = parseArgs(process.argv.slice(2))
-const doc = decodeLinkFile(linkFile)
+async function main () {
+  const { linkFile, reps } = parseArgs(process.argv.slice(2))
+  const doc = decodeLinkFile(linkFile)
 
-const times = []
-let solutionCount = null
-for (let i = 0; i < reps; i++) {
-  const { solutions, ms } = await solveDocument(doc)
-  if (solutionCount === null) solutionCount = solutions.length
-  else if (solutionCount !== solutions.length) {
-    throw new Error(`rep ${i}: ${solutions.length} solutions, rep 0 found ${solutionCount}`)
+  const times = []
+  let solutionCount = null
+  for (let i = 0; i < reps; i++) {
+    const { solutions, ms } = await solveDocument(doc)
+    if (solutionCount === null) solutionCount = solutions.length
+    else if (solutionCount !== solutions.length) {
+      throw new Error(`rep ${i}: ${solutions.length} solutions, rep 0 found ${solutionCount}`)
+    }
+    times.push(ms)
   }
-  times.push(ms)
+
+  console.log(`${linkFile}  (${reps} reps)`)
+  console.log(`  solutions: ${solutionCount}`)
+  console.log(`  MEDIAN ${median(times)}ms`)
 }
 
-console.log(`${linkFile}  (${reps} reps)`)
-console.log(`  solutions: ${solutionCount}`)
-console.log(`  MEDIAN ${median(times)}ms`)
+if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) await main()
