@@ -143,7 +143,7 @@ merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
 
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
-- The app bundle's full extracted API surface (names + arities, generated) → `docs/research/bundle-api-index.md`
+- The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
 - The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
 - Example layout: required files, link grammar, board naming, the shared

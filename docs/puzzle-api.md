@@ -1,6 +1,6 @@
 # The puzzle API
 
-Full extracted surface: `docs/research/bundle-api-index.md`, regenerate with
+Full extracted surface: `docs/bundle-api-index.md`, regenerate with
 `node examples/_shared/bundle-index.mjs`.
 What each method actually does, read from the bundle body:
 `docs/research/bundle-api-reference.md`. Look there first when a signature

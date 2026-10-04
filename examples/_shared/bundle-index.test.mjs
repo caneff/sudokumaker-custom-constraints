@@ -1,4 +1,4 @@
-// bundle-index.mjs reads the tracked HAR and derives docs/research/
+// bundle-index.mjs reads the tracked HAR and derives docs/
 // bundle-api-index.md from it (#410). Tested here against the real HAR --
 // there's no smaller fixture worth building, since the whole point is
 // reading the bundle's own JS -- so this also doubles as the drift check:
@@ -17,7 +17,7 @@ const generated = generate()
 // whose regeneration was skipped, is a failing test.
 const committed = readFileSync(OUTPUT_PATH, 'utf8')
 assert.strictEqual(generated, committed,
-  'docs/research/bundle-api-index.md is stale -- regenerate with `node examples/_shared/bundle-index.mjs`')
+  'docs/bundle-api-index.md is stale -- regenerate with `node examples/_shared/bundle-index.mjs`')
 
 // (b) a handful of known names are present, spanning every section --
 // catches a shape change silently emptying one of them.
