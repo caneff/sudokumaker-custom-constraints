@@ -124,7 +124,7 @@ def make9(gac, title):
                         {
                             "type": "code",
                             "name": "AllDiffGacComponent",
-                            "code": (root / "AllDiffGacComponent.js").read_text(),
+                            "code": (root.parents[3] / "examples/_shared/AllDiffGacComponent.js").read_text(),
                         }
                     ],
                 },

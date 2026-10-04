@@ -259,7 +259,7 @@ in the live app and record what it said:
   clues, never their own fresh gen JSON), numbered-rooms' hand-made
   `PUZZLE_LINK.txt`, which its own README says no generator produces at all,
   and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
-  committed link (`docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt`),
+  committed link (`examples/house-gac/base/PUZZLE_LINK_without_gac.txt`),
   re-proved unique with CP-SAT rather than generated from a `gen*.json` this
   example owns. Each example's `example.toml` names its own in
   `generator_less_links`.

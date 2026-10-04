@@ -5,8 +5,8 @@
 # this folder's own `main.js` (examples/_shared/house-gac.js assumes a frame
 # board's ring and cannot register a bare 9x9 -- see the README).
 #
-# Reuses the plain-9x9 board and givens from
-# docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt (25 givens, boxes as
+# Reuses the plain-9x9 board and givens from #406's GAC demo,
+# base/PUZZLE_LINK_without_gac.txt (25 givens, boxes as
 # regions, rows and columns declared by the Rows & Columns backend, no GAC
 # filter yet) and re-proves uniqueness with CP-SAT so the AutoStep readout can
 # be checked cell for cell.
@@ -30,12 +30,11 @@
 # default board.
 #
 # The constraint ships under the name "House GAC (standalone)", not the bare
-# "House GAC" `house_gac_links.with_filter` writes by default: "House GAC" is a
+# "House GAC" the frame boards carry: "House GAC" is a
 # reserved title meaning ONE thing repo-wide -- the shared
 # `examples/_shared/house-gac.js` backend on a frame board, checked by
 # `check_layout.py`'s `check_stale_backend_code` and `check_digit_range`. This
-# board's backend is a different file (`main.js`, no ring to slice), so
-# `build()` renames the spliced constraint.
+# board's backend is a different file (`main.js`, no ring to slice).
 
 import argparse
 import pathlib
@@ -43,19 +42,18 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-BASE_LINK = REPO / "docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt"
+BASE_LINK = HERE / "base/PUZZLE_LINK_without_gac.txt"
 COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 
 sys.path.insert(0, str(REPO / "examples/_shared"))
-sys.path.insert(0, str(REPO / "docs/research/408-house-gac"))
 from cpsat import solve_unique, sudoku_model
 from framebuild import NO_RING_RULES_PREFIX
-from house_gac_links import with_filter
 from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from manifest import load_manifest
-from sm_document import find_constraint
+from minify import minify_file
+from sm_document import code_constraint, find_constraint
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name
@@ -90,8 +88,8 @@ def build(
 
     sol = prove_unique(givens)
 
-    # Splicing `with_filter` onto a base that already carries the constraint
-    # would double it silently -- refuse instead.
+    # Appending onto a base that already carries the constraint would double
+    # it silently -- refuse instead.
     existing_names = {
         c.get("definition", {}).get("name") for c in base["puzzle"]["constraints"]
     }
@@ -99,13 +97,20 @@ def build(
         "base link already carries a House GAC constraint"
     )
 
-    doc = with_filter(
-        base,
-        pathlib.Path(component_path),
-        backend=pathlib.Path(backend_path),
-        keep_comments=keep_comments,
+    component_path = pathlib.Path(component_path)
+    doc = base
+    doc["puzzle"]["constraints"].append(
+        code_constraint(
+            CONSTRAINT_NAME,
+            minify_file(pathlib.Path(backend_path), keep_comments=keep_comments),
+            [
+                (
+                    component_path.stem,
+                    minify_file(component_path, keep_comments=keep_comments),
+                )
+            ],
+        )
     )
-    find_constraint(doc, "House GAC")["definition"]["name"] = CONSTRAINT_NAME
     doc["puzzle"]["name"] = "Standalone House GAC"
     doc["puzzle"]["comment"] = (
         NO_RING_RULES_PREFIX

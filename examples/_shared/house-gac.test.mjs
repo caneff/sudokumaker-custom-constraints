@@ -23,7 +23,7 @@ import { runBackend } from './backend-runner.mjs'
 
 const here = import.meta.dirname
 const NAMES = ['getAffectedCells', 'setParams', 'update']
-const ref = makeIo(join(here, '../../docs/research/406-gac-demo/tools')).load('AllDiffGacComponent.js', NAMES)
+const ref = makeIo(here).load('AllDiffGacComponent.js', NAMES)
 
 // The component sizes its digit table from helpers.digits when its code loads,
 // as the app loads it once per puzzle, so each board's globals are installed

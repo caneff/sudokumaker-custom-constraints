@@ -24,7 +24,7 @@ const subsetSrc = readFileSync(here + 'TerseHouseGacComponent.js', 'utf8').repla
 if (!subsetSrc.includes('const MAX_CELLS = 16')) throw new Error('MAX_CELLS not found in TerseHouseGacComponent.js')
 const io = makeIo(here)
 const subsets = io.loadSource(subsetSrc, FUNCTIONS)
-const matching = makeIo(new URL('../406-gac-demo/tools', import.meta.url).pathname).load('AllDiffGacComponent.js', FUNCTIONS)
+const matching = makeIo(new URL('../../../examples/_shared', import.meta.url).pathname).load('AllDiffGacComponent.js', FUNCTIONS)
 
 const STATES = 2000
 const REPS = 3

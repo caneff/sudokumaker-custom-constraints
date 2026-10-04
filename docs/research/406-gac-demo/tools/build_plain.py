@@ -162,7 +162,7 @@ nm8 = 'GAC all-different over every house'
 d8['puzzle']['constraints'].append({'name': nm8, 'type': 1000, 'definition': {'name': nm8, 'input': [],
   'backend': {'type': 'code', 'code': (root / 'alldiff-main.js').read_text()},
   'components': [{'type': 'code', 'name': 'AllDiffGacComponent',
-                  'code': (root / 'AllDiffGacComponent.js').read_text()}]},
+                  'code': (root.parents[3] / 'examples/_shared/AllDiffGacComponent.js').read_text()}]},
   'input': {}, 'style': {}})
 lk8 = encode_link(d8); assert decode_puzzle(lk8) == d8
 (root / 'link_plain_hard_gac.txt').write_text(lk8 + '\n')

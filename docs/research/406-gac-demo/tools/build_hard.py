@@ -25,7 +25,7 @@ def make9(s, gac, title):
             'name': nm, 'input': [],
             'backend': {'type': 'code', 'code': (root / 'gac9-main.js').read_text()},
             'components': [{'type': 'code', 'name': 'AllDiffGacComponent',
-                            'code': (root / 'AllDiffGacComponent.js').read_text()}]}})
+                            'code': (root.parents[3] / 'examples/_shared/AllDiffGacComponent.js').read_text()}]}})
     p['comment'] = 'Normal sudoku rules apply.'
     lk = encode_link(d); assert decode_puzzle(lk) == d
     return lk
