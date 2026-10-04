@@ -58,7 +58,7 @@ import re
 # A whole line whose only content is the directive. Group 1 is everything after
 # the keyword, so a pathless "// #include" is caught rather than read as a
 # comment.
-_INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
+INCLUDE_RE = re.compile(r"^\s*//\s*#include\b(.*)$")
 
 # The repo's lint directive: a block comment opening a line, which the annotated
 # mode drops (the plain mode drops every comment anyway).
@@ -127,7 +127,7 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
                 after_lint = False
                 continue
             after_lint = False
-        directive = _INCLUDE_RE.match(line)
+        directive = INCLUDE_RE.match(line)
         if directive:
             # An include that minifies to nothing appends nothing (in the plain
             # mode every blank line is dropped, an included file's included).

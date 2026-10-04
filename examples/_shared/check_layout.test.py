@@ -9,6 +9,7 @@
 
 import ast
 import contextlib
+import io
 import json
 import pathlib
 import subprocess
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import tomllib
 
+import check_layout
 from check_layout import (
     GRANDFATHERED_RESEARCH_PY,
     NO_RING_RULES_PREFIX,
@@ -1057,6 +1059,67 @@ if __name__ == "__main__":
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             (root / rel).write_text(text)
         assert check_research_loads(root) == [], check_research_loads(root)
+
+    # a load that hides from a line-by-line read still fails: an `#include`
+    # resolving into research (minify splices it into the link), a join split
+    # over lines, a .cjs file, and code after a `/*` inside a string
+    hidden = {
+        "examples/a/x.js": "// #include ../../docs/research/h.js\n",
+        "examples/a/y.mjs": "const B = join(HERE,\n  'docs',\n  'research', 'b.js')\n",
+        "examples/a/z.cjs": "const B = join(HERE, 'docs', 'research', 'b.js')\n",
+        "examples/a/w.mjs": "const g = '**/*.js'; const B = join(HERE, 'docs', 'research')\n",
+    }
+    for rel, text in hidden.items():
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / rel).parent.mkdir(parents=True)
+            (root / rel).write_text(text)
+            violations = check_research_loads(root)
+            assert len(violations) == 1, (rel, violations)
+            assert violations[0].startswith(f"{rel}:"), violations[0]
+
+    # ...an `#include` of a sibling file is not a load from research, and
+    # node_modules and dot directories (scratch) are not scanned
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        skipped = {
+            "examples/a/x.js": "// #include ../_shared/frame-lines.js\n",
+            "examples/node_modules/p/i.js": "require('../../docs/research/x')\n",
+            "examples/a/.scratch/s.py": 'P = "docs/research/x"\n',
+        }
+        for rel, text in skipped.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        assert check_research_loads(root) == [], check_research_loads(root)
+
+    # a .py that does not parse is a violation naming it, not a traceback
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        (root / "examples" / "a").mkdir(parents=True)
+        (root / "examples" / "a" / "b.py").write_text("def (:\n")
+        violations = check_research_loads(root)
+        assert len(violations) == 1 and "examples/a/b.py" in violations[0], violations
+
+    # the no-args run `just test` makes applies both research rules to the repo
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        (root / "examples" / "_shared").mkdir(parents=True)
+        (root / "examples" / "_shared" / "z.mjs").write_text(
+            "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
+        )
+        (root / "docs" / "research" / "zzz").mkdir(parents=True)
+        (root / "docs" / "research" / "zzz" / "x.py").write_text("# new\n")
+        real_root = check_layout.REPO_ROOT
+        out = io.StringIO()
+        try:
+            check_layout.REPO_ROOT = root
+            with contextlib.chdir(root), contextlib.redirect_stdout(out):
+                code = check_layout.main(["check_layout.py"])
+        finally:
+            check_layout.REPO_ROOT = real_root
+        assert code == 1, out.getvalue()
+        assert "examples/_shared/z.mjs:1: loads from docs/research/" in out.getvalue()
+        assert "docs/research/zzz/x.py" in out.getvalue(), out.getvalue()
 
     # the gate's own files name docs/research/ to police it, and pass
     with tempfile.TemporaryDirectory() as tmp:

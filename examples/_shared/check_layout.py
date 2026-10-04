@@ -53,7 +53,7 @@ from framebuild import (
 )
 from link_codec import decode_puzzle
 from manifest import load_manifest
-from minify import minify_file
+from minify import INCLUDE_RE, minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
@@ -251,7 +251,8 @@ def check_research_python(repo_root):
 
 
 # A path into docs/research/, in each spelling a loader writes it: one string,
-# path.join's separate arguments, or a pathlib `/` chain.
+# path.join's separate arguments (on one line or several), or a pathlib `/`
+# chain.
 RESEARCH_PATH = re.compile(r"""docs(?:/|['"]\s*[,/]\s*['"])research""")
 
 # The gate's own files, which name docs/research/ to police it, not to load
@@ -264,60 +265,94 @@ RESEARCH_INSPECTORS = frozenset(
     }
 )
 
+# A JavaScript comment, opening a line or after whitespace: a `//` or `/*`
+# inside a string (a URL, a glob) follows other characters, so it is left be.
+_JS_COMMENT = re.compile(r"(?:^|(?<=\s))(?://[^\n]*|/\*.*?\*/)", re.M | re.S)
 
-def _python_code_lines(text):
-    """{line number: the line's tokens} for Python source, without its
-    comments and docstrings."""
+
+def _blank(text, spans):
+    """`text` with each (start, end) offset span replaced by spaces, keeping its
+    newlines, so every offset left keeps its line number."""
+    chars = list(text)
+    for start, end in spans:
+        for i in range(start, end):
+            if chars[i] != "\n":
+                chars[i] = " "
+    return "".join(chars)
+
+
+def _python_code(text):
+    """Python source with its comments and docstrings blanked."""
     prose = set()
     for node in ast.walk(ast.parse(text)):
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
             prose.update(range(node.lineno, node.end_lineno + 1))
-    lines = {}
+    starts = [0]
+    for line in text.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    spans = []
     for tok in tokenize.generate_tokens(io.StringIO(text).readline):
         if tok.type == tokenize.COMMENT or (
             tok.type == tokenize.STRING and tok.start[0] in prose
         ):
-            continue
-        lines[tok.start[0]] = lines.get(tok.start[0], "") + " " + tok.string
-    return lines
+            (r0, c0), (r1, c1) = tok.start, tok.end
+            spans.append((starts[r0 - 1] + c0, starts[r1 - 1] + c1))
+    return _blank(text, spans)
 
 
-def _js_code_lines(text):
-    """{line number: line} for JavaScript source, without its comments."""
-    text = re.sub(
-        r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group()), text, flags=re.S
-    )
-    return {
-        n: re.sub(r"(^|\s)//.*", "", line)
-        for n, line in enumerate(text.splitlines(), 1)
-    }
+def _js_code(text):
+    """JavaScript source with its comments blanked."""
+    return _blank(text, [m.span() for m in _JS_COMMENT.finditer(text)])
 
 
 def check_research_loads(repo_root):
-    """Return one violation string per line of examples/ code that builds a
-    path into docs/research/.
+    """Return one violation string per load of a docs/research/ path from
+    examples/ code: a path built in code, or a `// #include` that resolves
+    into docs/research/ (minify splices the included file into the link).
 
     docs/research/ holds records, not live code (#649): a file the gate's code
     loads from there is maintained source the gate never lints. A citation in
     a comment or docstring is not a load. Finders keep their catalogues and
     hunt outputs under docs/research/ by ruling (#469), so finders/ is not
-    scanned."""
+    scanned, and neither is a dot directory (scratch) or node_modules."""
     repo_root = pathlib.Path(repo_root)
+    research = (repo_root / "docs" / "research").resolve()
     violations = []
     for path in sorted((repo_root / "examples").rglob("*")):
-        if path.suffix not in {".py", ".js", ".mjs"} or "node_modules" in path.parts:
+        parts = path.relative_to(repo_root).parts
+        if path.suffix not in {".py", ".js", ".mjs", ".cjs"} or any(
+            p == "node_modules" or p.startswith(".") for p in parts
+        ):
             continue
         rel = path.relative_to(repo_root).as_posix()
         if rel in RESEARCH_INSPECTORS:
             continue
         text = path.read_text()
-        lines = (_python_code_lines if path.suffix == ".py" else _js_code_lines)(text)
-        for n, line in sorted(lines.items()):
-            if RESEARCH_PATH.search(line):
+        loads = set()
+        if path.suffix == ".py":
+            try:
+                code = _python_code(text)
+            except SyntaxError as e:
                 violations.append(
-                    f"{rel}:{n}: loads from docs/research/ -- research holds "
-                    "records, so move what it loads into examples/"
+                    f"{rel}: does not parse ({e.msg}), so its loads cannot be checked"
                 )
+                continue
+        else:
+            code = _js_code(text)
+            for n, line in enumerate(text.splitlines(), 1):
+                directive = INCLUDE_RE.match(line)
+                target = (
+                    directive and (path.parent / directive.group(1).strip()).resolve()
+                )
+                if target and target.is_relative_to(research):
+                    loads.add(n)
+        for m in RESEARCH_PATH.finditer(code):
+            loads.add(code.count("\n", 0, m.start()) + 1)
+        violations.extend(
+            f"{rel}:{n}: loads from docs/research/ -- research holds records, "
+            "so move what it loads into examples/"
+            for n in sorted(loads)
+        )
     return violations
 
 
@@ -867,6 +902,9 @@ def check_tree(root):
     return violations
 
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
@@ -879,9 +917,8 @@ def main(argv):
     # scratch .py another session happens to have under docs/research/ right
     # now, unrelated to the temp tree under test.
     if len(argv) <= 1:
-        repo_root = pathlib.Path(__file__).resolve().parents[2]
-        violations.extend(check_research_python(repo_root))
-        violations.extend(check_research_loads(repo_root))
+        violations.extend(check_research_python(REPO_ROOT))
+        violations.extend(check_research_loads(REPO_ROOT))
     for v in violations:
         print(v)
     print(f"{'FAILED' if violations else 'ok'} — {len(violations)} violation(s)")
