@@ -1,3 +1,9 @@
+# Generate the Dutch Flatmates board: a random solved grid under sudoku plus the
+# flatmate rule, then greedy given removal for as long as the board stays
+# uniquely solvable, written to gen.json (the board `build_link.py` encodes).
+#
+#   uv run examples/dutch-flatmates/generate.py [--seed N] [--out gen.json] [--max-plain N]
+#
 # Workers: the grid search takes CP-SAT's portfolio (`cpsat.SEARCH_WORKERS`, 8
 # workers) for a fraction of a second; every uniqueness check is one worker.
 
