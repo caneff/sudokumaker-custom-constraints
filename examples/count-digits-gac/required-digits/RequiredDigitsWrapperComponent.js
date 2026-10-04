@@ -20,7 +20,7 @@
 //!
 //! `RequiredDigitsWrapperComponentBuiltin.js` is the same shape with the
 //! built-in `RequiredDigitsComponent` as the swap target instead -- the
-//! baseline `PUZZLE_LINK_required_digits_original.txt` is built from
+//! baseline `PUZZLE_LINK_original.txt` is built from
 //! (build_required_digits.py).
 
 function getAffectedCells (clue, line) {

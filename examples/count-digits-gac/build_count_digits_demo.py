@@ -23,9 +23,9 @@
 #       portfolio search, which the seed does not reproduce)
 #   ... --enabled builtin --out DIR
 #       the same board with the other component switched on, for timing
-#   ... --gen examples/count-digits-gac/demo/gen_counter_outside.json
-#       the counter-outside board (counters outside their targets); its link
-#       name follows the gen, so it never overwrites the shipped link
+#   ... --gen examples/count-digits-gac/demo-counter-outside/gen.json
+#       the counter-outside board (counters outside their targets); a link is
+#       written beside its own gen, so it never overwrites the shipped link
 
 import argparse
 import json
@@ -52,8 +52,7 @@ from sm_document import code_constraint, write_link
 HERE = pathlib.Path(__file__).parent
 DEMO_DIR = HERE / "demo"
 GEN = DEMO_DIR / "gen.json"
-OUTSIDE_GEN = DEMO_DIR / "gen_counter_outside.json"
-OUTSIDE_LINK_NAME = "PUZZLE_LINK_demo_counter_outside.txt"
+OUTSIDE_GEN = HERE / "demo-counter-outside" / "gen.json"
 VARIANTS = {
     "builtin": ("CountDigits (built-in)", BASELINE_NAME),
     "gac": ("CountDigits (GAC)", CANDIDATE_NAME),
@@ -167,17 +166,19 @@ def build_doc(gen, enabled=SHIPPED):
 
 
 def link_name(gen_path, enabled):
-    """The link's file name follows its gen, so a board never overwrites
-    another's link: gen.json -> PUZZLE_LINK_demo, gen_<x>.json ->
-    PUZZLE_LINK_demo_<x>; a non-shipped `enabled` adds its own suffix."""
-    stem = pathlib.Path(gen_path).stem
-    board = "" if pathlib.Path(gen_path) == GEN else "_" + stem.removeprefix("gen_")
-    return f"PUZZLE_LINK_demo{board}{'' if enabled == SHIPPED else '_' + enabled}.txt"
+    """The link's file name pairs with its gen, so a board never overwrites
+    another's link: gen.json -> PUZZLE_LINK.txt, gen_<x>.json ->
+    PUZZLE_LINK_<x>.txt; a non-shipped `enabled` adds its own suffix."""
+    board = pathlib.Path(gen_path).stem.removeprefix("gen").lstrip("_")
+    variant = "" if enabled == SHIPPED else enabled
+    return "_".join(["PUZZLE_LINK", *filter(None, (board, variant))]) + ".txt"
 
 
-def build(out_dir=DEMO_DIR, gen_path=GEN, enabled=SHIPPED):
+def build(out_dir=None, gen_path=GEN, enabled=SHIPPED):
+    """Write the link beside its gen, or into `out_dir`."""
     gen = json.loads(pathlib.Path(gen_path).read_text())
     name = link_name(gen_path, enabled)
+    out_dir = out_dir or pathlib.Path(gen_path).parent
     out_dir.mkdir(parents=True, exist_ok=True)
     write_link(build_doc(gen, enabled), out_dir / name)
     return out_dir / name
@@ -201,7 +202,7 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         out = build(
-            pathlib.Path(args.out) if args.out else DEMO_DIR,
+            pathlib.Path(args.out) if args.out else None,
             args.gen,
             args.enabled,
         )

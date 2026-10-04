@@ -43,6 +43,8 @@ BOARD_DIR = HERE / "self-count"
 GEN = BOARD_DIR / "gen.json"
 PRE578 = BOARD_DIR / "CountDigitsGacComponent.pre578.js"
 VARIANTS = {"current": CURRENT, "pre578": PRE578}
+# The pre-#578 component is the baseline the current one is timed against.
+LINK_NAMES = {"current": "PUZZLE_LINK.txt", "pre578": "PUZZLE_LINK_original.txt"}
 EVENS = [2, 4, 6, 8]
 
 RULES = (
@@ -120,7 +122,7 @@ def build(out_dir=BOARD_DIR, gen_path=GEN):
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for variant in VARIANTS:
-        path = out_dir / f"PUZZLE_LINK_selfcount_{variant}.txt"
+        path = out_dir / LINK_NAMES[variant]
         write_link(build_doc(gen, variant), path)
         paths.append(path)
     return paths

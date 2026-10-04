@@ -26,7 +26,7 @@ def count_solutions(groups, givens):
     return count_with(model, groups, givens)
 
 
-NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
+NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 
 
 def check_board(gen):

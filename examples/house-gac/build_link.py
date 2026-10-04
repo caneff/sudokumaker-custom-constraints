@@ -6,7 +6,7 @@
 # board's ring and cannot register a bare 9x9 -- see the README).
 #
 # Reuses the plain-9x9 board and givens from #406's GAC demo,
-# base/PUZZLE_LINK_without_gac.txt (25 givens, boxes as
+# base/PUZZLE_LINK.txt (25 givens, boxes as
 # regions, rows and columns declared by the Rows & Columns backend, no GAC
 # filter yet) and re-proves uniqueness with CP-SAT so the AutoStep readout can
 # be checked cell for cell.
@@ -42,7 +42,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-BASE_LINK = HERE / "base/PUZZLE_LINK_without_gac.txt"
+BASE_LINK = HERE / "base" / "PUZZLE_LINK.txt"
 COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 

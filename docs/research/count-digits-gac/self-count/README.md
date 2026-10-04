@@ -2,7 +2,8 @@
 
 > **Moved (#659).** The `gen*.json` files, the two links and
 > `CountDigitsGacComponent.pre578.js` now live in
-> `examples/count-digits-gac/self-count/`.
+> `examples/count-digits-gac/self-count/`, the links renamed `PUZZLE_LINK.txt`
+> (current) and `PUZZLE_LINK_original.txt` (pre-#578).
 
 A board where **every group's counter is its own first target**, the shape
 #578 made exact (`../counter-in-targets/NOTES.md`). It exists so the gain from

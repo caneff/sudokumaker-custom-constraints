@@ -108,7 +108,11 @@ PUZZLE_LINK[_<size>][_<givens>g][_<tag>]*.txt
   `PUZZLE_LINK_clued_original.txt` is valid, `PUZZLE_LINK_original_clued.txt`
   is not.
 - Parts join with `_`. No hyphens, no seeds, no other free text.
-- Links stay flat in the example dir — no `links/` subdir.
+- A link may sit in a board's own subdirectory (`count-digits-gac/sparse/`,
+  `house-gac/base/`); every one is gated: `check_layout` reads every
+  committed link under the example, so the name grammar and the share
+  criteria reach it (#659). Name it inside its directory as if that
+  directory were the example. A dot directory is scratch and is not read.
 - A link file holds one URL and nothing else. Seed, date, and solve time go
   in the README or `OPTIMIZATION_LOG.md`, not the filename.
 
@@ -259,7 +263,7 @@ in the live app and record what it said:
   clues, never their own fresh gen JSON), numbered-rooms' hand-made
   `PUZZLE_LINK.txt`, which its own README says no generator produces at all,
   and house-gac's `PUZZLE_LINK.txt`, whose board and givens come from another
-  committed link (`examples/house-gac/base/PUZZLE_LINK_without_gac.txt`),
+  committed link (`examples/house-gac/base/PUZZLE_LINK.txt`),
   re-proved unique with CP-SAT rather than generated from a `gen*.json` this
   example owns. Each example's `example.toml` names its own in
   `generator_less_links`.

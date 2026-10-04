@@ -152,10 +152,8 @@ def build_doc(gen, name):
 
 def build(out_dir=BOARD_DIR, gen_path=GEN):
     gen = json.loads(pathlib.Path(gen_path).read_text())
-    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
-    write_link(
-        build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt"
-    )
+    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK.txt")
+    write_link(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_original.txt")
 
 
 if __name__ == "__main__":
@@ -183,4 +181,4 @@ if __name__ == "__main__":
         print(f"wrote {args.gen}")
     else:
         build(pathlib.Path(args.out) if args.out else BOARD_DIR, args.gen)
-        print("wrote PUZZLE_LINK_sparse.txt and PUZZLE_LINK_sparse_original.txt")
+        print("wrote PUZZLE_LINK.txt and PUZZLE_LINK_original.txt")

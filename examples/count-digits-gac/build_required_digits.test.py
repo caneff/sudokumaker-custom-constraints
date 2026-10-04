@@ -7,7 +7,7 @@ sys.path.insert(0, str(HERE))
 
 from build_required_digits import BOARD_DIR, build
 
-NAMES = ["PUZZLE_LINK_required_digits.txt", "PUZZLE_LINK_required_digits_original.txt"]
+NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 
 if __name__ == "__main__":
     # Content alone can't witness "untouched": a rebuild that also wrote

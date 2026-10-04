@@ -19,8 +19,8 @@ from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
 from link_codec import decode_puzzle
 from minify import minify_file
 
-NAMES = ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
-ANNOTATED = "PUZZLE_LINK_sparse_annotated.txt"
+NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
+ANNOTATED = "PUZZLE_LINK_annotated.txt"
 N = 9
 
 

@@ -1,7 +1,9 @@
 # CountDigits demo board (#568, self-counting from #584)
 
 > **Moved (#659).** `main-demo.js`, the `gen*.json` files and the links now
-> live in `examples/count-digits-gac/demo/`.
+> live in `examples/count-digits-gac/demo/`, as `PUZZLE_LINK.txt`; the
+> counter-outside board's gen and link are
+> `examples/count-digits-gac/demo-counter-outside/{gen.json,PUZZLE_LINK.txt}`.
 
 A small board a reader can read, carrying **both** count-digits components in
 one link, so they can switch between them and feel the difference. The timing

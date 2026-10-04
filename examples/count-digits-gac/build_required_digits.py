@@ -8,15 +8,15 @@
 #
 # The two links are not this example's own board -- they exist only to time
 # RequiredDigitsGacComponent in the real app (docs/real-app-timing.md) -- so
-# they and their component/backend source live in the required-digits/
-# subdirectory, not at this example's top level: check_layout.py, which reads
-# only the top level, names and checks links as an example's own board, and
-# RequiredDigitsGacComponent is reached only through the wrapper's
-# `customComponents`, never `new`'d by the backend.
+# they and their component/backend source live in their own board
+# subdirectory, required-digits/, which check_layout.py gates like any example
+# link. RequiredDigitsGacComponent is reached only through the wrapper's
+# `customComponents`, never `new`'d by the backend; check_layout counts that
+# as a registration.
 #
 # Writes, into required-digits/:
-#   PUZZLE_LINK_required_digits.txt          -- ours: RequiredDigitsGacComponent
-#   PUZZLE_LINK_required_digits_original.txt -- baseline: built-in RequiredDigitsComponent
+#   PUZZLE_LINK.txt          -- ours: RequiredDigitsGacComponent
+#   PUZZLE_LINK_original.txt -- baseline: built-in RequiredDigitsComponent
 #
 # Timed directly through examples/_shared/app-solve.mjs, not
 # examples/_shared/time_example.py's `just time` automation: that driver
@@ -79,9 +79,9 @@ def build_original(base):
 
 def build(out_dir=BOARD_DIR):
     base = decode_puzzle((OUTSIDE_SUDOKU / "PUZZLE_LINK.txt").read_text().strip())
-    gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK_required_digits.txt")
+    gac_link = write_link(build_gac(base), out_dir / "PUZZLE_LINK.txt")
     original_link = write_link(
-        build_original(base), out_dir / "PUZZLE_LINK_required_digits_original.txt"
+        build_original(base), out_dir / "PUZZLE_LINK_original.txt"
     )
     return gac_link, original_link
 
@@ -95,6 +95,6 @@ if __name__ == "__main__":
     args = p.parse_args()
     gac_link, original_link = build(pathlib.Path(args.out) if args.out else BOARD_DIR)
     print(
-        f"wrote PUZZLE_LINK_required_digits.txt ({len(gac_link)} chars) "
-        f"and PUZZLE_LINK_required_digits_original.txt ({len(original_link)} chars)"
+        f"wrote PUZZLE_LINK.txt ({len(gac_link)} chars) "
+        f"and PUZZLE_LINK_original.txt ({len(original_link)} chars)"
     )

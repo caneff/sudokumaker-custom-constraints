@@ -20,7 +20,7 @@
 #       solver unable to finish the baseline link at all
 #       (docs/research/count-digits-gac/README.md, "Depth").
 #   uv run examples/count-digits-gac/build_sparse_count_digits.py --keep-comments
-#       write only PUZZLE_LINK_sparse_annotated.txt: the candidate link's
+#       write only PUZZLE_LINK_annotated.txt: the candidate link's
 #       board and givens, with the component and backend code keeping every
 #       comment, for a reader who opens it in SudokuMaker and reads the code
 #       box. Same flag as examples/house-gac/build_link.py.
@@ -135,16 +135,14 @@ def build_doc(gen, name, keep_comments=False):
 def build(out_dir=BOARD_DIR, gen_path=GEN, keep_comments=False):
     gen = json.loads(pathlib.Path(gen_path).read_text())
     if keep_comments:
-        names = ["PUZZLE_LINK_sparse_annotated.txt"]
+        names = ["PUZZLE_LINK_annotated.txt"]
         write_link(
             build_doc(gen, CANDIDATE_NAME, keep_comments=True), out_dir / names[0]
         )
         return names
-    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK_sparse.txt")
-    write_link(
-        build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_sparse_original.txt"
-    )
-    return ["PUZZLE_LINK_sparse.txt", "PUZZLE_LINK_sparse_original.txt"]
+    write_link(build_doc(gen, CANDIDATE_NAME), out_dir / "PUZZLE_LINK.txt")
+    write_link(build_doc(gen, BASELINE_NAME), out_dir / "PUZZLE_LINK_original.txt")
+    return ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]
 
 
 if __name__ == "__main__":
@@ -163,7 +161,7 @@ if __name__ == "__main__":
     p.add_argument(
         "--keep-comments",
         action="store_true",
-        help="write only PUZZLE_LINK_sparse_annotated.txt: the candidate link "
+        help="write only PUZZLE_LINK_annotated.txt: the candidate link "
         "with every comment kept in the embedded code, the lint directive aside (#567)",
     )
     p.add_argument(

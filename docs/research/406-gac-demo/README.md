@@ -5,7 +5,7 @@ constraint anywhere** and no clue ring. The only difference between them is one 
 
 | link | AutoStep (Icon AutoStep, run to fixpoint) |
 | --- | --- |
-| `PUZZLE_LINK_without_gac.txt` (now `examples/house-gac/base/`, #659) | 25 -> **53/81** |
+| `PUZZLE_LINK_without_gac.txt` (now `examples/house-gac/base/PUZZLE_LINK.txt`, #659) | 25 -> **53/81** |
 | `PUZZLE_LINK_with_gac.txt` | 25 -> **81/81** |
 
 The added constraint is `AllDiffGacComponent`, registered once per interior row,

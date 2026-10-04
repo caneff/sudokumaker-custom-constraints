@@ -22,7 +22,7 @@ standalone GAC demo lives with the other examples rather than under research
 
 | link | AutoStep (Icon AutoStep, run to fixpoint) |
 | --- | --- |
-| `base/PUZZLE_LINK_without_gac.txt` (same board, no GAC) | 25 -> **53/81** |
+| `base/PUZZLE_LINK.txt` (same board, no GAC) | 25 -> **53/81** |
 | `PUZZLE_LINK.txt` | 25 -> **81/81** |
 | `PUZZLE_LINK_annotated.txt` (same board, comments kept) | 25 -> **81/81** |
 
@@ -85,7 +85,7 @@ ships under its own name, "House GAC (standalone)", instead.
 ## Rebuilding
 
 `build_link.py` reuses the board and 25 givens from #406's GAC demo,
-`base/PUZZLE_LINK_without_gac.txt` (regions, the Rows & Columns backend, no
+`base/PUZZLE_LINK.txt` (regions, the Rows & Columns backend, no
 GAC filter yet), re-proves uniqueness with CP-SAT, and appends the House GAC
 constraint (`examples/_shared/sm_document.code_constraint`), with `main.js`
 as the backend and the shipped `examples/_shared/HouseGacComponent.js` as the
@@ -113,8 +113,8 @@ recorded app and prints the grid it reached, for every row of the table above:
 $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LINK.txt
 {"file":"PUZZLE_LINK.txt","before":25,"after":81,"grid":["265783149","387149562","941562783","594627831","726831495","138495627","413956278","872314956","659278314"]}
 
-$ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/base/PUZZLE_LINK_without_gac.txt
-{"file":"PUZZLE_LINK_without_gac.txt","before":25,"after":53,"grid":[...]}
+$ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/base/PUZZLE_LINK.txt
+{"file":"PUZZLE_LINK.txt","before":25,"after":53,"grid":[...]}
 
 $ node docs/research/406-gac-demo/tools/logic9.mjs examples/house-gac/PUZZLE_LINK_annotated.txt
 {"file":"PUZZLE_LINK_annotated.txt","before":25,"after":81,"grid":["265783149","387149562","941562783","594627831","726831495","138495627","413956278","872314956","659278314"]}

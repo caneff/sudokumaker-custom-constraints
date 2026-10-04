@@ -1,8 +1,8 @@
 # Every example under examples/ (all but _shared) must carry the same file
 # set and name its puzzle links by the same grammar, so a tool can discover
 # a new example with no justfile edit. See docs/example-layout.md. It also
-# decodes every committed link at an example's top level (it reads no
-# subdirectory) -- the shipped PUZZLE_LINK*.txt
+# decodes every committed link under an example, a board's own subdirectory
+# included (#659) -- the shipped PUZZLE_LINK*.txt
 # boards and the other link .txt files an example commits beside them
 # (fillomino's frozen timing fixtures and its hunt records) -- and checks the
 # three mechanical pre-share criteria from docs/share-checklist.md: the link

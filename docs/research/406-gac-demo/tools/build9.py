@@ -23,8 +23,8 @@ from cpsat import SOLVED, has_second_solution, solver
 from link_codec import decode_puzzle, encode_link
 
 out = Path(sys.argv[1])
-# The without-GAC link moved to examples/house-gac/base/ (#659).
-without_gac = repo / "examples" / "house-gac" / "base" / "PUZZLE_LINK_without_gac.txt"
+# The without-GAC link moved to examples/house-gac/base/PUZZLE_LINK.txt (#659).
+without_gac = repo / "examples" / "house-gac" / "base" / "PUZZLE_LINK.txt"
 old = decode_puzzle(without_gac.read_text().strip())
 old_w = old["puzzle"]["width"]
 inset = (old_w - 9) // 2

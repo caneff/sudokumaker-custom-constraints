@@ -144,7 +144,7 @@ console.log('bundle-solve-lib: buildStartMessage ok')
 // "CP-SAT cross-check" section, not re-run here. ----
 {
   const CPSAT_SOLUTION = '265783149387149562941562783594627831726831495138495627413956278872314956659278314'
-  const doc = decodeLinkFile(new URL('../house-gac/base/PUZZLE_LINK_without_gac.txt', import.meta.url).pathname)
+  const doc = decodeLinkFile(new URL('../house-gac/base/PUZZLE_LINK.txt', import.meta.url).pathname)
   const { solutions, ms } = await solveDocument(doc)
   assert.strictEqual(solutions.length, 1)
   assert.strictEqual(solutions[0], CPSAT_SOLUTION)

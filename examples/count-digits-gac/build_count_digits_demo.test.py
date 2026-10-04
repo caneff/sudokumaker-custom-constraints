@@ -16,7 +16,6 @@ from build_count_digits_demo import (
     DEMO_DIR,
     GEN,
     OUTSIDE_GEN,
-    OUTSIDE_LINK_NAME,
     SHIPPED,
     VARIANTS,
     build,
@@ -40,8 +39,8 @@ def count_solutions(groups, givens):
     return count_with(model, groups, givens)
 
 
-LINK = DEMO_DIR / "PUZZLE_LINK_demo.txt"
-OUTSIDE_LINK = DEMO_DIR / OUTSIDE_LINK_NAME
+LINK = DEMO_DIR / "PUZZLE_LINK.txt"
+OUTSIDE_LINK = OUTSIDE_GEN.parent / "PUZZLE_LINK.txt"
 N = 9
 
 
