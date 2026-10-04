@@ -706,11 +706,17 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         # points the rebuild at it instead of the size's default names.
         other_link = spec.dir / "PUZZLE_LINK_9x9.txt"
         other_gen = spec.dir / "gen_9x9.json"
-        # (copies, so a failed assertion leaves the default pair in place)
-        other_link.write_bytes(link_path.read_bytes())
-        other_gen.write_bytes(gen_path.read_bytes())
-        files = (other_link, other_gen)
-        assert NoRing(spec).rebuild(n, pair=files) + "\n" == other_link.read_text()
+        # The default pair moves away while the named one is rebuilt, so the
+        # named pair is the only place the board can come from; the finally
+        # puts it back when an assertion fails.
+        link_path.rename(other_link)
+        gen_path.rename(other_gen)
+        try:
+            files = (other_link, other_gen)
+            assert NoRing(spec).rebuild(n, pair=files) + "\n" == other_link.read_text()
+        finally:
+            other_link.rename(link_path)
+            other_gen.rename(gen_path)
         # The labels are drawn from the groups the rebuild already guards, so a
         # committed link without them rebuilds into one that has them rather
         # than failing the board comparison.
