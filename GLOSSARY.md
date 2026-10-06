@@ -1,4 +1,4 @@
-# CONTEXT
+# GLOSSARY
 
 The ubiquitous language of this repo. Read this before exploring; it defines the
 terms the docs and examples use, and points at the doc that holds each detail.

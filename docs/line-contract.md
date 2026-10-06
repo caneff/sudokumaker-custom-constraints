@@ -2,7 +2,7 @@
 
 What an outside-clue component may assume about its line, how it learns the
 rest from the app, and how the local and global variants of one example share
-code. Decided on the map issue #187, ticket #191. Terms are in `CONTEXT.md`.
+code. Decided on the map issue #187, ticket #191. Terms are in `GLOSSARY.md`.
 
 ## Line kinds
 
