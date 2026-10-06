@@ -179,7 +179,7 @@ Default six canonical triage roles, each label string equal to its name. See `do
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ## SudokuMaker links (always on)
 

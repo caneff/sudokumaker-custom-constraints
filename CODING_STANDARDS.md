@@ -103,7 +103,7 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 ## Style
 
 - Boring over clever. The reader at 3am wins.
-- **Name things with `CONTEXT.md`'s terms.** A synonym splits one concept
+- **Name things with `GLOSSARY.md`'s terms.** A synonym splits one concept
   into two in the reader's head, and a name that shadows another misleads
   every grep.
 - **No parameter, flag or function that nothing calls.** Most of the code

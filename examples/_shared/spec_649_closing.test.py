@@ -33,7 +33,7 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
     seen here. docs/research/2026-10-04-spec-649-live-open.md records the
     live open of every link this spec rebuilt.
   - solve time: no deduction changed in this spec, and nothing here times one.
-  - whether a component name matches CONTEXT.md: sweep 3 catches a link left
+  - whether a component name matches GLOSSARY.md: sweep 3 catches a link left
     behind by a rename, not a name the glossary does not use.
   - sweep 2 reads harness source for `load(...)` calls: it proves a harness
     loads the file and names `validate`, not that every draw reaches it.
