@@ -410,8 +410,13 @@ def enumerate_all(m, choc, d, circled, a):
                 else "  (cap or time limit hit -- there may be more)"
             )
         )
-        if not exhausted and st is not None and st not in (cp.OPTIMAL, cp.FEASIBLE):
-            print(f"last solve status: {s.status_name(st)}")
+        stopped = (
+            f"last solve status: {s.status_name(st)}"
+            if st is not None and st not in (cp.OPTIMAL, cp.FEASIBLE, cp.INFEASIBLE)
+            else None
+        )
+        if stopped:
+            print(stopped)
         strict = [x for x in sols if not x[2]]
         print(
             f"of those, strict (no uncircled cell reads its group size): {len(strict)}"
@@ -419,7 +424,12 @@ def enumerate_all(m, choc, d, circled, a):
         if sink:
             print(
                 f"# {len(sols)} distinct solutions"
-                + (" -- exhaustive" if exhausted else " -- cap or time limit hit"),
+                + (
+                    " -- exhaustive"
+                    if exhausted
+                    else " -- cap or time limit hit, there may be more"
+                    + (f" ({stopped})" if stopped else "")
+                ),
                 file=sink,
                 flush=True,
             )

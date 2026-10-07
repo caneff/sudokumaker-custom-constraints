@@ -58,6 +58,7 @@ def test_unknown_before_the_budget_is_spent_is_not_exhausted():
     assert NOT_EXHAUSTED in text and EXHAUSTED not in text, text
     assert "UNKNOWN" in text, text
     assert "cap or time limit hit" in footer and "exhaustive" not in footer, footer
+    assert "UNKNOWN" in footer, footer
 
 
 def test_infeasible_last_solve_is_exhausted():
@@ -66,7 +67,17 @@ def test_infeasible_last_solve_is_exhausted():
     assert footer.strip().endswith("-- exhaustive"), footer
 
 
+def test_real_solver_on_a_contradictory_clue_set_is_exhausted():
+    m, choc, d = pcp.build([], givens=[((0, 0), 1), ((0, 1), 1)])
+    a = SimpleNamespace(workers=1, enumerate=10, seconds=60.0, out=None)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pcp.enumerate_all(m, choc, d, [], a)
+    assert "distinct solutions: 0  (search exhausted" in buf.getvalue(), buf.getvalue()
+
+
 if __name__ == "__main__":
     test_unknown_before_the_budget_is_spent_is_not_exhausted()
     test_infeasible_last_solve_is_exhausted()
+    test_real_solver_on_a_contradictory_clue_set_is_exhausted()
     print("OK")
