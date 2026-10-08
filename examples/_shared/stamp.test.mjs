@@ -32,6 +32,6 @@ for (const [Type, cap] of [[Int32Array, 0x7FFFFFFF], [Uint32Array, 0xFFFFFFFF]])
 }
 
 // The wrap guard itself holds no throw and no type test.
-const body = SRC.slice(SRC.indexOf('function bumpStamp'), SRC.indexOf('// The marks array'))
-assert.ok(body.includes('function bumpStamp') && !/throw|instanceof/.test(body), 'bumpStamp tests or throws on the type per call')
+const body = /function bumpStamp[\s\S]*?\n}\n/.exec(SRC)[0]
+assert.ok(!/throw|instanceof/.test(body), 'bumpStamp tests or throws on the type per call')
 console.log('PASS')
