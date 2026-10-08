@@ -61,10 +61,24 @@ function mockPuzzle (W, H) {
     },
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
-    // No boxes here: every cell is region-less, which is the weakest window a
-    // backend can compute (the whole line). outside-sudoku's own
-    // backends.test.mjs runs real boxes.
-    getRegion: () => -1,
+    // Real 3x3 boxes inside the one-cell ring, as outside-sudoku's own
+    // backends.test.mjs runs them: ring cells have no region, so outside-sudoku's
+    // window length is 3 -- a ring cell id, which a clue scan that goes by value
+    // would read as a clue.
+    getRegion: c => {
+      const r = Math.floor(c / W) - 1
+      const k = (c % W) - 1
+      if (r < 0 || k < 0 || r >= H - 2 || k >= W - 2) return -1
+      return Math.floor(r / 3) * ((W - 2) / 3) + Math.floor(k / 3)
+    },
+    getRegionCells: reg => {
+      const across = (W - 2) / 3
+      const cells = []
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dk = 0; dk < 3; dk++) cells.push((Math.floor(reg / across) * 3 + dr + 1) * W + (reg % across) * 3 + dk + 1)
+      }
+      return cells
+    },
     addConstraintComponent: comp => registered.push(comp)
   }
   return p
@@ -123,13 +137,21 @@ function cellGroupsIn (value, cells, lengths) {
   return Object.values(value).flatMap(v => cellGroupsIn(v, cells, lengths))
 }
 
-// Every in-range cell id reachable from a component's arguments as a bare
-// number that is one of the frame's ring cells. A pair component takes its two
-// clues that way, one argument each, not as a group.
-function ringIdsIn (value, ringCells) {
-  if (typeof value === 'number') return ringCells.has(value) ? [value] : []
-  if (!value || typeof value !== 'object') return []
-  return Object.values(value).flatMap(v => ringIdsIn(v, ringCells))
+// The ring cells a component was handed as clues. A clue is a bare number
+// argument that comes BEFORE the component's first array, or a number inside
+// any array or object; a bare number after the first array (outside-sudoku's
+// window length) is a parameter. A length or window shares its value with some
+// ring cell id, so the position, not the value, says which it is. Every
+// component takes its clue ids first and its line after (docs/line-contract.md).
+function clueIdsIn (args, ringCells) {
+  const inside = v => {
+    if (typeof v === 'number') return ringCells.has(v) ? [v] : []
+    if (!v || typeof v !== 'object') return []
+    return Object.values(v).flatMap(inside)
+  }
+  const firstArray = args.findIndex(a => a && typeof a === 'object')
+  const end = firstArray === -1 ? args.length : firstArray
+  return [...args.slice(0, end).flatMap(inside), ...args.slice(end).flatMap(a => typeof a === 'number' ? [] : inside(a))]
 }
 
 const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
@@ -147,14 +169,17 @@ assert.ok(dirs.length > 0, 'found no global backends to check')
 // and checks the whole frame; an array runs a local backend on those drawn
 // groups and checks the cell ids alone. `file` names the run in an assertion
 // message, and `note` does too and keys the registered counts by case.
-function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '', mayRegisterNothing = false } = {}) {
+function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js', note = '', registersNothing = false } = {}) {
   const p = mockPuzzle(W, H)
   // The app runs a backend segment as a bare script with `input` in scope;
   // backend-runner.mjs is that setup, shared with the frame backends' own tests.
   runBackend(src, { puzzle: p, helpers, input: groups ? { groups } : undefined })
 
   const where = `${name}/${file} on ${W}x${H}${note}`
-  assert.ok(mayRegisterNothing || p.registered.length > 0, `${where}: registered nothing`)
+  // A case that must be skipped asserts the skip, so a gutted lane (which also
+  // registers nothing) is not told apart from it by being let off the check.
+  assert.ok(registersNothing ? p.registered.length === 0 : p.registered.length > 0,
+    registersNothing ? `${where}: must register nothing` : `${where}: registered nothing`)
   assert.strictEqual(p.offBoard, 0,
     `${where} asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
   const cells = W * H
@@ -220,7 +245,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   const covered = new Set()
   for (const c of p.registered) {
     const own = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
-    for (const clue of new Set(ringIdsIn(c.args, ringCells))) {
+    for (const clue of new Set(clueIdsIn(c.args, ringCells))) {
       for (const g of own) covered.add(`${clue}:${undirected(g)}`)
     }
   }
@@ -259,10 +284,7 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
     const ownLines = cellGroupsIn(c.args, cells, lengths).filter(g => g.every(id => !ringCells.has(id)))
     if (ownLines.length !== 1) continue
     const line = ownLines[0]
-    // A top-level argument equal to the line's length is a window or a length
-    // (outside-sudoku's third argument), not a clue: the two are the same
-    // number on some boards, so the length is dropped before counting clues.
-    const ownClues = [...new Set(ringIdsIn(c.args.filter(a => a !== line.length), ringCells))]
+    const ownClues = [...new Set(clueIdsIn(c.args, ringCells))]
     if (ownClues.length !== 2) continue
     pairChecks++
     const ends = [clueOfLine.get(line.join(',')), clueOfLine.get([...line].reverse().join(','))]
@@ -362,7 +384,7 @@ for (const name of dirs) {
   for (const [W, H] of BOARDS) {
     const registered = {}
     for (const { note, groups, bentPath } of localCases(W, H)) {
-      registered[note] = checkBackend(name, src, W, H, { groups, file: 'main.js', note, mayRegisterNothing: bentPath && name === BENT_SKIPPER }).registered
+      registered[note] = checkBackend(name, src, W, H, { groups, file: 'main.js', note, registersNothing: bentPath && name === BENT_SKIPPER }).registered
       localRuns++
     }
     // The local lane reads the drawn groups: one clued line registers fewer
