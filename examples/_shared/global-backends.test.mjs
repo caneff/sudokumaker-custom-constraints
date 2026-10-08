@@ -38,6 +38,7 @@ import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
 import { runBackend } from './backend-runner.mjs'
 import { assembleSource } from './include.mjs'
+import { boxRegions } from './box-regions.mjs'
 
 const EXAMPLES = join(import.meta.dirname, '..')
 
@@ -65,20 +66,7 @@ function mockPuzzle (W, H) {
     // backends.test.mjs runs them: ring cells have no region, so outside-sudoku's
     // window length is 3 -- a ring cell id, which a clue scan that goes by value
     // would read as a clue.
-    getRegion: c => {
-      const r = Math.floor(c / W) - 1
-      const k = (c % W) - 1
-      if (r < 0 || k < 0 || r >= H - 2 || k >= W - 2) return -1
-      return Math.floor(r / 3) * ((W - 2) / 3) + Math.floor(k / 3)
-    },
-    getRegionCells: reg => {
-      const across = (W - 2) / 3
-      const cells = []
-      for (let dr = 0; dr < 3; dr++) {
-        for (let dk = 0; dk < 3; dk++) cells.push((Math.floor(reg / across) * 3 + dr + 1) * W + (reg % across) * 3 + dk + 1)
-      }
-      return cells
-    },
+    ...boxRegions(W, H),
     addConstraintComponent: comp => registered.push(comp)
   }
   return p
@@ -142,7 +130,9 @@ function cellGroupsIn (value, cells, lengths) {
 // any array or object; a bare number after the first array (outside-sudoku's
 // window length) is a parameter. A length or window shares its value with some
 // ring cell id, so the position, not the value, says which it is. Every
-// component takes its clue ids first and its line after (docs/line-contract.md).
+// backend registers its clue ids first and its line after; this test
+// relies on that convention, and a component that broke it would fail check 1b
+// loudly rather than slip past.
 function clueIdsIn (args, ringCells) {
   const inside = v => {
     if (typeof v === 'number') return ringCells.has(v) ? [v] : []
@@ -150,8 +140,7 @@ function clueIdsIn (args, ringCells) {
     return Object.values(v).flatMap(inside)
   }
   const firstArray = args.findIndex(a => a && typeof a === 'object')
-  const end = firstArray === -1 ? args.length : firstArray
-  return [...args.slice(0, end).flatMap(inside), ...args.slice(end).flatMap(a => typeof a === 'number' ? [] : inside(a))]
+  return args.flatMap((a, i) => firstArray !== -1 && i >= firstArray && typeof a === 'number' ? [] : inside(a))
 }
 
 const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
@@ -176,10 +165,10 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
   runBackend(src, { puzzle: p, helpers, input: groups ? { groups } : undefined })
 
   const where = `${name}/${file} on ${W}x${H}${note}`
-  // A case that must be skipped asserts the skip, so a gutted lane (which also
-  // registers nothing) is not told apart from it by being let off the check.
-  assert.ok(registersNothing ? p.registered.length === 0 : p.registered.length > 0,
-    registersNothing ? `${where}: must register nothing` : `${where}: registered nothing`)
+  // A case that must be skipped asserts the skip: a lane that stopped skipping
+  // (or one that registers nothing everywhere) fails here instead of passing.
+  if (registersNothing) assert.strictEqual(p.registered.length, 0, `${where}: must register nothing`)
+  else assert.ok(p.registered.length > 0, `${where}: registered nothing`)
   assert.strictEqual(p.offBoard, 0,
     `${where} asked for a cell off the board; \`| 0\` would turn that miss into cell 0`)
   const cells = W * H
@@ -364,18 +353,18 @@ function localCases (W, H) {
   return [
     { note: ', drawn frame', groups: frame },
     { note: ', lone clue', groups: [frame[0]] },
-    // Only the bent path may be skipped, and only by BENT_SKIPPER: a rule can
-    // genuinely need a straight line. A drawn frame and a lone clue are shapes
+    // Only BENT_SKIPPER skips the bent path, and it must: a rule can genuinely
+    // need a straight line, and the check asserts the skip. A drawn frame and a lone clue are shapes
     // every local lane owes an answer to, so a throw there is a failure.
     { note: ', bent path', groups: [drawn(bent)], bentPath: true }
   ]
 }
 
-// The one local lane allowed to skip a bent path: outside-sudoku's window is a
+// The one local lane that skips a bent path, and must register nothing for it: outside-sudoku's window is a
 // box's extent along the line's DIRECTION, which a bent path has none of, so
 // its main.js registers nothing for that group (a throw would show no message
 // in the app and half-apply the groups around it). Named, not a blanket
-// allowance -- any other main.js must register a bent path.
+// rule -- any other main.js must register a bent path.
 const BENT_SKIPPER = 'outside-sudoku'
 
 let localRuns = 0
