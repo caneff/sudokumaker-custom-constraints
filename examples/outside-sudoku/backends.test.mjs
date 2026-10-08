@@ -2,6 +2,7 @@ import { join } from 'path'
 import assert from 'assert'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { assembleSource } from '../_shared/include.mjs'
+import { boxRegions } from '../_shared/box-regions.mjs'
 import { gridGeometry } from './grid-geometry.mjs'
 
 const HERE = import.meta.dirname
@@ -18,20 +19,7 @@ function mockPuzzle (W) {
     getRow: c => Math.floor(c / W),
     getColumn: c => c % W,
     // A 3x3-box grid inside a one-cell ring: ring cells have no region.
-    getRegion: c => {
-      const r = Math.floor(c / W) - 1
-      const k = (c % W) - 1
-      if (r < 0 || k < 0 || r >= W - 2 || k >= W - 2) return -1
-      return Math.floor(r / 3) * ((W - 2) / 3) + Math.floor(k / 3)
-    },
-    getRegionCells: reg => {
-      const across = (W - 2) / 3
-      const cells = []
-      for (let dr = 0; dr < 3; dr++) {
-        for (let dk = 0; dk < 3; dk++) cells.push((Math.floor(reg / across) * 3 + dr + 1) * W + (reg % across) * 3 + dk + 1)
-      }
-      return cells
-    },
+    ...boxRegions(W, W),
     addConstraintComponent: comp => registered.push(comp)
   }
 }
