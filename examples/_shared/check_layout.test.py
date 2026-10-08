@@ -54,6 +54,7 @@ def _link(
     no_ring=None,
     grid_backend=None,
     ringless=False,
+    borrowed_rowcol=None,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -94,7 +95,11 @@ def _link(
     rows-and-columns backend. `grid_backend` overrides that backend alone --
     False drops it, "stale" embeds an older copy. `ringless` opens the comment on
     NO_RING_RULES_PREFIX, as a plain 9x9 board with no ring does
-    (house-gac; `house_gac_renamed` implies it).
+    (house-gac; `house_gac_renamed` implies it). `borrowed_rowcol` adds a
+    constraint of that name with no components, the shape of a borrowed
+    rows-and-columns backend (house-gac's "Rows & Columns"); `house_gac_renamed`
+    takes "annotated" to embed the shared component through the comment-keeping
+    minify mode, as an `_annotated` link does (its other values are above).
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -153,7 +158,10 @@ def _link(
     if house_gac_renamed:
         # A backend of its own (never house-gac.js -- that is the point of
         # the rename), carrying only the shared HouseGacComponent.js.
-        comp_code = minify_file(HERE / "HouseGacComponent.js")
+        comp_code = minify_file(
+            HERE / "HouseGacComponent.js",
+            keep_comments=house_gac_renamed == "annotated",
+        )
         if house_gac_renamed == "stale_component":
             comp_code += "\n// an older copy"
         extra.append(
@@ -163,6 +171,8 @@ def _link(
                 [("HouseGacComponent", comp_code)],
             )
         )
+    if borrowed_rowcol:
+        extra.append(code_constraint(borrowed_rowcol, "// borrowed backend", []))
     puzzle = {
         "width": 3,
         "height": 3,
@@ -761,6 +771,86 @@ if __name__ == "__main__":
         (root / "_shared").mkdir()
         (root / "_shared" / "HouseGacComponent.js").write_text("x")
         assert check_tree(root) == [], check_tree(root)
+
+    # The manifest traits check_layout reads each need a witness here: strip
+    # the branch in check_layout.py and the case below goes red (#712).
+    # rowcol_backend: a borrowed rows-and-columns backend, named in the
+    # manifest, stands in for the interior houses the document omits. Without
+    # the key the same link is a missing-house violation, and a constraint of
+    # another name is not exempted by it.
+    borrowed = {
+        "PUZZLE_LINK.txt": _link(
+            houses="none", borrowed_rowcol="Rows & Columns", ringless=True
+        )
+    }
+    with example(name="shared-gac", manifest=SHARED_GAC, contents=borrowed) as (
+        root,
+        _,
+    ):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "HouseGacComponent.js").write_text("x")
+        assert check_tree(root) == [], check_tree(root)
+    no_key = {k: v for k, v in SHARED_GAC.items() if k != "rowcol_backend"}
+    with example(name="shared-gac", manifest=no_key, contents=borrowed) as (root, _):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "HouseGacComponent.js").write_text("x")
+        violations = check_tree(root)
+        assert any("declares no house" in v for v in violations), violations
+    other = {
+        "PUZZLE_LINK.txt": _link(
+            houses="none", borrowed_rowcol="Other Lines", ringless=True
+        )
+    }
+    with example(name="shared-gac", manifest=SHARED_GAC, contents=other) as (root, _):
+        (root / "_shared").mkdir()
+        (root / "_shared" / "HouseGacComponent.js").write_text("x")
+        violations = check_tree(root)
+        assert any("declares no house" in v for v in violations), violations
+
+    # digits_exceed_lines: a frame board whose range (1..4) is wider than its
+    # 3-cell interior lines is a violation, unless the manifest says the
+    # excess is deliberate.
+    wide = {"PUZZLE_LINK.txt": _link(frame_backend=True, houses="none", digits=(1, 4))}
+    with example(contents=wide) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1 and "against 3" in violations[0], violations
+    with example(contents=wide, manifest={"digits_exceed_lines": True}) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
+
+    # annotated_keeps_comments: an `_annotated` link embeds the shared
+    # component with its comments kept. The manifest key makes that the copy
+    # to compare against; without it the link reads stale. A plain link under
+    # the key still carries the stripped copy, so the carve-out is scoped to
+    # the link's name.
+    handmade = {
+        **SHARED_GAC,
+        "generator_less_links": ["PUZZLE_LINK.txt", "PUZZLE_LINK_annotated.txt"],
+    }
+    keeps = {**handmade, "annotated_keeps_comments": True}
+    annotated = {"PUZZLE_LINK_annotated.txt": _link(house_gac_renamed="annotated")}
+    plain_and_annotated = {
+        "PUZZLE_LINK.txt": _link(house_gac_renamed=True),
+        **annotated,
+    }
+
+    def annotated_violations(traits, contents):
+        with example(
+            name="shared-gac",
+            manifest=traits,
+            extra_links=["PUZZLE_LINK_annotated.txt"],
+            contents=contents,
+        ) as (root, _):
+            (root / "_shared").mkdir()
+            (root / "_shared" / "HouseGacComponent.js").write_text("x")
+            return check_tree(root)
+
+    assert annotated_violations(keeps, plain_and_annotated) == []
+    violations = annotated_violations(handmade, annotated)
+    assert len(violations) == 1 and "stale" in violations[0].lower(), violations
+    # the plain link given the comment-keeping copy is stale even under the key
+    plain_annotated_copy = {"PUZZLE_LINK.txt": _link(house_gac_renamed="annotated")}
+    violations = annotated_violations(keeps, plain_annotated_copy)
+    assert len(violations) == 1 and "PUZZLE_LINK.txt" in violations[0], violations
 
     # A frame link that declares no digit range leaves it to the app default
     # (1..9 whatever the grid size), not to the document. The source text
