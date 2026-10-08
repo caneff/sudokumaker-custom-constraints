@@ -99,7 +99,7 @@ def _link(
     constraint of that name with no components, the shape of a borrowed
     rows-and-columns backend (house-gac's "Rows & Columns"); `house_gac_renamed`
     takes "annotated" to embed the shared component through the comment-keeping
-    minify mode, as an `_annotated` link does.
+    minify mode, as an `_annotated` link does (its other values are above).
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -819,30 +819,38 @@ if __name__ == "__main__":
 
     # annotated_keeps_comments: an `_annotated` link embeds the shared
     # component with its comments kept. The manifest key makes that the copy
-    # to compare against; without it the link reads stale, and a plain link
-    # under the key still must carry the stripped copy.
-    annotated = {"PUZZLE_LINK_annotated.txt": _link(house_gac_renamed="annotated")}
+    # to compare against; without it the link reads stale. A plain link under
+    # the key still carries the stripped copy, so the carve-out is scoped to
+    # the link's name.
     handmade = {
         **SHARED_GAC,
         "generator_less_links": ["PUZZLE_LINK.txt", "PUZZLE_LINK_annotated.txt"],
     }
     keeps = {**handmade, "annotated_keeps_comments": True}
-    for traits, stale in ((keeps, False), (handmade, True)):
+    annotated = {"PUZZLE_LINK_annotated.txt": _link(house_gac_renamed="annotated")}
+    plain_and_annotated = {
+        "PUZZLE_LINK.txt": _link(house_gac_renamed=True),
+        **annotated,
+    }
+
+    def annotated_violations(traits, contents):
         with example(
             name="shared-gac",
             manifest=traits,
             extra_links=["PUZZLE_LINK_annotated.txt"],
-            contents=annotated,
+            contents=contents,
         ) as (root, _):
             (root / "_shared").mkdir()
             (root / "_shared" / "HouseGacComponent.js").write_text("x")
-            violations = check_tree(root)
-            if stale:
-                assert len(violations) == 1 and "stale" in violations[0].lower(), (
-                    violations
-                )
-            else:
-                assert violations == [], violations
+            return check_tree(root)
+
+    assert annotated_violations(keeps, plain_and_annotated) == []
+    violations = annotated_violations(handmade, annotated)
+    assert len(violations) == 1 and "stale" in violations[0].lower(), violations
+    # the plain link given the comment-keeping copy is stale even under the key
+    plain_annotated_copy = {"PUZZLE_LINK.txt": _link(house_gac_renamed="annotated")}
+    violations = annotated_violations(keeps, plain_annotated_copy)
+    assert len(violations) == 1 and "PUZZLE_LINK.txt" in violations[0], violations
 
     # A frame link that declares no digit range leaves it to the app default
     # (1..9 whatever the grid size), not to the document. The source text
