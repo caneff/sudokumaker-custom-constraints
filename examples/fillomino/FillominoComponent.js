@@ -32,7 +32,7 @@ function setParams (instance, cells) {
   // `mask` is one stamped visit mask shared by the scan, every walk and flood,
   // and the door dedupe, which relies on doorRules running last and scan being
   // eager. It is never cleared: a new stamp does that.
-  instance.mask = new Int32Array(cells.length)
+  instance.mask = newStampMarks(Int32Array, cells.length)
   instance.stamp = 0
   instance.queue = new Int16Array(cells.length)
   instance.members = new Int16Array(cells.length)

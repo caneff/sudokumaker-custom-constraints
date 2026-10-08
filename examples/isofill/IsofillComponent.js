@@ -46,8 +46,8 @@ function setParams (instance, cells) {
   instance.cells = cells
   instance.side = Math.round(Math.sqrt(cells.length))
   instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
-  instance.mask = new Uint32Array(cells.length)
-  instance.targets = new Uint32Array(cells.length)
+  instance.mask = newStampMarks(Uint32Array, cells.length)
+  instance.targets = newStampMarks(Uint32Array, cells.length)
   instance.stamp = 0
   instance.targetStamp = 0
   instance.holds = new Uint8Array(cells.length)
@@ -508,7 +508,7 @@ function budget (instance, state, near, lo, hi, size) {
     taken: new Int16Array(D * size), // digit d -> cells matched to it, taken[d * size ...]
     takenLen: new Uint8Array(D),
     matched: new Int8Array(n),
-    seen: new Uint32Array(D),
+    seen: newStampMarks(Uint32Array, D),
     seenStamp: 0,
     adjStart: new Int32Array(n + D + 1),
     adjFill: new Int32Array(n + D),
