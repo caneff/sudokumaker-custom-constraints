@@ -78,6 +78,16 @@ def main():
             known["value"] == len(KNOWN_CHOC) + len(KNOWN_BANANA),
             str(known["value"]),
         )
+        # Chris's ruling (#761): every size circle is drawn, banana groups and
+        # 5-cell bananas included. The page draws a class's ring through its
+        # ::after rule, and each toggle starts checked.
+        for cls in ("c", "bc", "fc"):
+            check(f"the .{cls} ring is drawn", f".cell.{cls}::after" in html)
+        for box in ("circles", "bcircles", "forced"):
+            check(
+                f"the {box} toggle starts checked",
+                f'<input id="{box}" type="checkbox" checked>' in html,
+            )
         check("forced count", known["forcedCircles"] == 2)
         # The page's own record of checked grids: ten grids, scores 13 down to 5.
         record = Path(tmp) / "record.html"
