@@ -7,6 +7,13 @@ import them and keep only what they do differently. The counting and hunting
 scripts (`count_circled_pairs`, `count_circled_sets`, `hunt_circled_pair`) do
 not use this module yet and carry their own sudoku and whisper code.
 
+The rule-5 pieces (`whisper`, `whisper_on_shading`, `whisper_on_digits`) take
+the chocolate `difference` (default 5, Renbanana). Nothing here encodes the
+banana rule: the callers do, and `renbanana_verify.check` takes it as
+`banana_rule`. Encodings that assume a difference of 5 (the high/low
+checkerboard, no 5 in a chocolate group of two or more) stay in the renban
+callers and are not offered for nabner.
+
 An encoding is either exact or a relaxation (never excludes a legal grid), and
 its docstring says which: an INFEASIBLE from a model built of these is a proof
 only while every piece is one of those two.
@@ -45,9 +52,9 @@ def sudoku(m, d):
             )
 
 
-def whisper(m, d, choc):
+def whisper(m, d, choc, difference=5):
     """Rule 5, shading and digits both free: two adjacent chocolate cells
-    differ by 5 or more. Exact.
+    differ by `difference` or more. Exact.
 
     The magnitude gets its own variable and `far` is a genuine reification of
     it -- enforcing one branch on `far` and the other on its negation would
@@ -58,25 +65,26 @@ def whisper(m, d, choc):
         mag = m.new_int_var(0, 8, f"m{p}{q}")
         m.add_abs_equality(mag, d[p] - d[q])
         far = m.new_bool_var(f"far{p}{q}")
-        m.add(mag >= 5).only_enforce_if(far)
-        m.add(mag <= 4).only_enforce_if(far.negated())
+        m.add(mag >= difference).only_enforce_if(far)
+        m.add(mag <= difference - 1).only_enforce_if(far.negated())
         m.add_bool_or([choc[p].negated(), choc[q].negated(), far])
 
 
-def whisper_on_shading(m, d, is_choc):
-    """Rule 5 on a fixed shading: each chocolate adjacency differs by >= 5."""
+def whisper_on_shading(m, d, is_choc, difference=5):
+    """Rule 5 on a fixed shading: each chocolate adjacency differs by
+    >= `difference`."""
     for p, q in ADJACENT:
         if is_choc[p] and is_choc[q]:
             mag = m.new_int_var(0, 8, f"a{p}{q}")
             m.add_abs_equality(mag, d[p] - d[q])
-            m.add(mag >= 5)
+            m.add(mag >= difference)
 
 
-def whisper_on_digits(m, choc, grid):
-    """Rule 5 with the digits fixed: an adjacent pair differing by less than 5
-    cannot both be chocolate. A plain clause, and exact."""
+def whisper_on_digits(m, choc, grid, difference=5):
+    """Rule 5 with the digits fixed: an adjacent pair differing by less than
+    `difference` cannot both be chocolate. A plain clause, and exact."""
     for p, q in ADJACENT:
-        if abs(grid[p] - grid[q]) < 5:
+        if abs(grid[p] - grid[q]) < difference:
             m.add_bool_or([choc[p].negated(), choc[q].negated()])
 
 
