@@ -121,3 +121,58 @@ and `run.json` copied into `docs/research/banabner/hunt-2h/` every 300 s. The
 hunt output itself lives in `~/.cache/banabner-hunt-764/out`. Expected wall
 clock: 2 h. The result decides how many grids the Banabner Lineup offers
 for puzzle setting, and whether the space ran dry (an INFEASIBLE) within 2 h.
+
+## 2026-10-09 — #764 two-hour hunt: results
+
+The run as launched above: `run.json` records argv, config
+(`timeout 1200, max_choc_side 4, speedups true`), git sha `c626aec` and start
+17:23:15 UTC. The 7200 s wall stopped it at 19:23 UTC (`timeout` exit 124).
+The driver's output is synced in `docs/research/banabner/hunt-2h/`
+(`examples.jsonl`, `progress.jsonl`, `summary.json`, `run.json`,
+`verified.jsonl`).
+
+**Space covered.** Legal Dutch Chocolate Banabner grids (difference 4, nabner
+bananas, normal sudoku, no givens) whose chocolate rectangles have both sides
+at most 4. Every legal grid meets that limit: it is a proven fact of the rules
+(`banabner_model.MAX_CHOC_SIDE`), not a cap, so the searched space is the whole
+space. Grids are counted up to the board's 8 rotations and reflections. Digit
+reversal (d -> 10-d) is not broken, so a grid and its reversal would count as two.
+
+**Results, by seed outcome** (`summary.json`):
+
+| outcome | seeds |
+|---|---|
+| proven infeasible (no grid left) | 0 |
+| timed out at 1200 s (capped) | 0 |
+| found a new grid | 44 (seeds 0-43) |
+| stopped mid-solve by the 2 h wall (capped) | 1 (seed 44) |
+
+44 grids in 7200 s, about 164 s a grid with 8 workers, steady across the run.
+The search was not exhausted: no seed proved the space empty. **This run says
+nothing about how many grids exist** beyond "at least 44 + the 10 earlier",
+and nothing about whether that number is small.
+
+**Checks.** All 44 pass `banabner_finder.check` (`renbanana_verify.check` at
+difference 4, nabner) inline as found, again in the driver's `verify` pass
+(`verified.jsonl`: 44 of 44 ok), and a third time in `build_lineup.py`. They
+are 44 distinct D4 orbits, every one already in lex-leader form. None is one of
+the 10 earlier grids in `checked-grids/` and no two are reversals of each other.
+The 44 are added to `checked-grids/examples.jsonl` as `764-<seed>`.
+
+**What they look like.** Circle score (the lineup's count): 4 to 12, median 7;
+one grid scores 12 (`764-14`), against the best earlier grid's 13 (`761-2`).
+Largest chocolate group: 4 cells in 27 grids, 6 in 13, 9 (a 3x3) in 2.
+The hunt does not aim at circles; a circle-seeking objective is a different
+search.
+
+**Lineup.** The Banabner Lineup is
+https://claude.ai/artifact/N5uQ4JBGdGydL5V3aAUyGB, republished as version 7
+(`1791574193-f200`) from `build_lineup.py` over `checked-grids/` and the
+controller's opener solutions (`.scratch/banabner-opener-solutions/`, outside
+git), merged onto the live version 6: 56 grids, every card and Record entry of
+version 6 kept. The opener's Record entry now also lives in
+`lineup-record.json`, so a rebuild keeps it.
+
+**Wrapper.** The hunt ran from a throwaway wrapper (not committed): the finder
+under `timeout -s TERM 7200`, a 300 s loop copying the four driver files above
+into `hunt-2h/`, under `job-run --name banabner-hunt-764`.
