@@ -24,6 +24,8 @@ from dedupe import d4_cell_maps
 from ortools.sat.python import cp_model as cp
 
 KNOWN = json.loads((HERE / "known_grid.json").read_text())
+# A second legal grid, accepted only: a 3x3 chocolate holding a 5.
+SECOND = json.loads((HERE / "known_grid_3x3.json").read_text())
 FAIL = []
 
 
@@ -69,6 +71,12 @@ def main():
     known = bf.leader(pinned)
     check("the checker accepts the known grid", bf.check(pinned) == [])
     check("the model accepts the known grid's leading copy", model_accepts(known))
+    second = bf.Candidate(tuple(SECOND["grid"]), tuple(SECOND["shading"]))
+    check("the checker accepts the 3x3 grid", bf.check(second) == [])
+    check(
+        "the model accepts the 3x3 grid's leading copy",
+        model_accepts(bf.leader(second)),
+    )
     others = {
         bf.from_key(tuple(bf.BanabnerFinder.key(known)[i] for i in image))
         for image in d4_cell_maps(9)
