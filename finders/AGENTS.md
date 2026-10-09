@@ -22,6 +22,12 @@ because the checker reads them and nothing under `docs/research/` does
 - `finders/renbanana/tools/test_catalogue_is_used.py` fails if a call site
   drops it. Run it after touching `renbanana_cpsat.py`.
 
+- The catalogue is rebuilt by `finders/renbanana/tools/build_rectangle_catalogue.py
+  --difference <n>`; difference 5 reproduces the file above byte for byte, and
+  other differences write `rectangle-catalogue-d<n>.json` beside it (#760).
+  At difference 4 the biggest layers hit the builder's count cap (`truncated`:
+  the count is a floor, the support is exact from CP-SAT).
+
 ## Pointers
 
 - Before writing a new finder, start from `finders/hunt/`: the shared hunt
