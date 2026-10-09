@@ -4,10 +4,11 @@ for Renbanana.
 
     uv run finders/banabner/test_catalogue_is_used.py
 
-Each check pins the known grid and poisons one half of the catalogue: a call
+Each check pins the known grid's leading copy (the one the lex-leader keeps)
+and poisons one half of the catalogue: a call
 site that reads it turns the pinned grid INFEASIBLE, one that dropped it
-leaves the grid FEASIBLE and fails the check. The known grid's 2x2 at r5c3 is
-the rectangle poisoned.
+leaves the grid FEASIBLE and fails the check. The known grid's one 2x2 is the
+rectangle poisoned.
 """
 
 import copy
@@ -37,7 +38,7 @@ def status_with(catalogue):
         model = bm.Model()
     finally:
         bm.CATALOGUE = real
-    model.pin(*bf.to_maps(bf.Candidate(KNOWN["grid"], KNOWN["shading"])))
+    model.pin(*bf.to_maps(bf.leader(bf.Candidate(KNOWN["grid"], KNOWN["shading"]))))
     status, _, _ = model.solve(30, 1)
     return status.name
 
@@ -59,8 +60,7 @@ def main():
         dead == "INFEASIBLE",
         dead,
     )
-    # A 2x2 holds four distinct digits, so a support of {5} alone is unfillable
-    # by any digit the known grid's 2x2 (2, 6, 8, 1) holds.
+    # The known grid's 2x2 holds 1, 2, 6 and 8, none of them a 5.
     narrow = status_with(poisoned("support", [[[5], [5]], [[5], [5]]]))
     check(
         "the digit side takes cell domains from the catalogue",

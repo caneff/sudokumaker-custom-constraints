@@ -15,6 +15,7 @@ The driver's flags (`--out`, `--seeds`, `--workers`, ...) are its own
 (`finders/hunt/driver.py`); `--workers` is the solver's worker count.
 `--max-choc-side` is the chocolate side bound, 4 by default
 (`banabner_model.MAX_CHOC_SIDE` says why it is a fact, not a cap).
+`--no-speedups` drops #762's facts and lex-leader, for timing against them.
 """
 
 import argparse
@@ -29,7 +30,7 @@ sys.path.insert(0, str(ROOT / "finders" / "hunt"))
 sys.path.insert(0, str(ROOT))
 import banabner_model as bm
 import renbanana_verify as rv
-from dedupe import D4
+from dedupe import D4, canonical_key
 from driver import run
 from ortools.sat.python import cp_model as cp
 from protocol import Empty, Verdict
@@ -64,6 +65,19 @@ def from_maps(grid, is_choc):
     )
 
 
+def from_key(key):
+    """The candidate a `BanabnerFinder.key` tuple reads as."""
+    grid = {(r, c): key[r * N + c] % 10 for r in range(N) for c in range(N)}
+    is_choc = {(r, c): key[r * N + c] >= 10 for r in range(N) for c in range(N)}
+    return from_maps(grid, is_choc)
+
+
+def leader(candidate):
+    """The candidate's least image under the board's 8 symmetries: the one copy
+    of it the model's lex-leader accepts."""
+    return from_key(canonical_key(BanabnerFinder.key(candidate), D4))
+
+
 def check(candidate):
     """`renbanana_verify.check` under the Banabner rules."""
     grid, is_choc = to_maps(candidate)
@@ -74,13 +88,17 @@ class BanabnerFinder:
     # The rules are the same under every rotation and reflection of the board.
     symmetry = D4
 
-    def __init__(self, timeout=None, max_side=bm.MAX_CHOC_SIDE):
-        self.config = {"timeout": timeout, "max_choc_side": max_side}
+    def __init__(self, timeout=None, max_side=bm.MAX_CHOC_SIDE, speedups=True):
+        self.config = {
+            "timeout": timeout,
+            "max_choc_side": max_side,
+            "speedups": speedups,
+        }
         self.found = []
 
     def model(self):
         """The model with every grid found so far forbidden."""
-        model = bm.Model(self.config["max_choc_side"])
+        model = bm.Model(self.config["max_choc_side"], self.config["speedups"])
         cells = {("d", p): v for p, v in model.d.items()}
         cells |= {("c", p): v for p, v in model.choc.items()}
         for i, (rows, shading) in enumerate(self.found):
@@ -109,9 +127,10 @@ class BanabnerFinder:
     def record(self, candidate):
         return {"grid": list(candidate.grid), "shading": list(candidate.shading)}
 
-    def key(self, candidate):
+    @staticmethod
+    def key(candidate):
         return tuple(
-            int(candidate.grid[r][c]) * (10 if candidate.shading[r][c] == "C" else 1)
+            bm.cell_value(int(candidate.grid[r][c]), candidate.shading[r][c] == "C")
             for r in range(N)
             for c in range(N)
         )
@@ -130,13 +149,15 @@ def main(argv):
     parser = argparse.ArgumentParser(prog="banabner_finder", add_help=False)
     parser.add_argument("--timeout", type=float)
     parser.add_argument("--max-choc-side", type=int, default=bm.MAX_CHOC_SIDE)
+    parser.add_argument("--no-speedups", action="store_true")
     own, rest = parser.parse_known_args(argv)
     if rest[:1] == ["verify"]:
         return run(BanabnerFinder(), rest)
     if own.timeout is None:
         print("banabner_finder: a hunt needs --timeout", file=sys.stderr)
         return 2
-    return run(BanabnerFinder(own.timeout, own.max_choc_side), rest)
+    finder = BanabnerFinder(own.timeout, own.max_choc_side, not own.no_speedups)
+    return run(finder, rest)
 
 
 if __name__ == "__main__":

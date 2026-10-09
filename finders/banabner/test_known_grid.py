@@ -4,7 +4,9 @@ broken copy is rejected by both (#761).
     uv run finders/banabner/test_known_grid.py
 
 The model accepts a grid when, with every variable pinned to it, it is
-FEASIBLE. Broken copies: one digit changed (the ticket's own), which breaks
+FEASIBLE. The model's lex-leader keeps one copy of each grid under the board's
+8 symmetries, so it is the known grid's leading copy that must be accepted,
+and every other distinct copy rejected. Broken copies, made from the leader: one digit changed (the ticket's own), which breaks
 sudoku as well as a Banabner rule; and two digit swaps that keep sudoku, each
 breaking only one Banabner rule, so the model's gap and table are each
 witnessed on their own.
@@ -18,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import banabner_finder as bf
 import banabner_model as bm
+from dedupe import d4_cell_maps
 from ortools.sat.python import cp_model as cp
 
 KNOWN = json.loads((HERE / "known_grid.json").read_text())
@@ -62,12 +65,24 @@ def main():
         [len(bm.NABNER_SETS[k]) for k in (3, 4, 5)] == [35, 15, 1]
         and bm.NABNER_SETS[5] == [(1, 3, 5, 7, 9)],
     )
-    known = bf.Candidate(tuple(KNOWN["grid"]), tuple(KNOWN["shading"]))
-    check("the checker accepts the known grid", bf.check(known) == [])
-    check("the model accepts the known grid", model_accepts(known))
+    pinned = bf.Candidate(tuple(KNOWN["grid"]), tuple(KNOWN["shading"]))
+    known = bf.leader(pinned)
+    check("the checker accepts the known grid", bf.check(pinned) == [])
+    check("the model accepts the known grid's leading copy", model_accepts(known))
+    others = {
+        bf.from_key(tuple(bf.BanabnerFinder.key(known)[i] for i in image))
+        for image in d4_cell_maps(9)
+    } - {known}
+    check(
+        "the model rejects the 7 other copies",
+        len(others) == 7 and not any(model_accepts(c) for c in others),
+        f"{len(others)} distinct",
+    )
 
-    # r1c1 is 8 in a banana with 2 and 6; a 7 there sits next to the 6.
-    one = with_digit(known, 0, 0, 7)
+    # Give a banana cell a digit consecutive with another of its group's.
+    grid, is_choc = bf.to_maps(known)
+    (r, c), q = bf.rv.components(is_choc, False)[0][:2]
+    one = with_digit(known, r, c, grid[q] + 1 if grid[q] < 9 else 8)
     bad = bf.check(one)
     check(
         "the checker rejects the one-digit copy on rule 6",

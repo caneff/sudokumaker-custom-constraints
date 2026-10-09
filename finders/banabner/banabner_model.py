@@ -23,8 +23,15 @@ twice: a placement the catalogue cannot fill where it sits is forbidden as a
 maximal chocolate group (the shading side), and a placed rectangle's cells take
 the catalogue's per-cell digit support (the digit side).
 
+Speedups (#762), each a fact every legal grid obeys: a 5-cell banana holds
+only odd digits; at most 5 cells of a row, column or box lie in 5-cell
+bananas, and each even digit has a placement (one per row, column and box)
+avoiding them; and a lex-leader breaks the board's 8 rotations and
+reflections. Digit reversal is not broken: it moves the circles.
+
 Every piece is exact or a relaxation, so an INFEASIBLE from the model is a
-proof that no grid exists.
+proof that no grid exists. The lex-leader keeps one grid of each symmetry
+orbit, so it is a proof that no grid exists up to symmetry, which is the same.
 """
 
 import functools
@@ -36,20 +43,34 @@ from ortools.sat.python import cp_model as cp
 
 FINDERS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(FINDERS))
+sys.path.insert(0, str(FINDERS / "hunt"))
 import renbanana_model as rm
 import renbanana_verify as rv
+from dedupe import d4_cell_maps
 from renbanana_model import CELLS, N
 
 DIFFERENCE = 4
 
-# No chocolate rectangle has a side longer than 4 (Chris, #761). A side of
+# No chocolate rectangle has a side longer than 4 (#761). A side of
 # length >= 5 off the board edge borders >= 5 banana cells in a straight line,
 # all in one banana group: five in a line is the I-pentomino, a rectangle, and
 # more than five breaks nabner. So such a side lies on the board edge, which
 # forces the rectangle to be the whole 9x9 board -- and the difference-4
-# catalogue fills 9x9 zero ways (as does any size circle, needing the digit
-# 81). A fact of the rules, not a search cap.
+# catalogue fills 9x9 zero ways (and a circle anywhere on it would need the
+# digit 81). A fact of the rules, not a search cap.
 MAX_CHOC_SIDE = 4
+
+ODD = (1, 3, 5, 7, 9)
+EVEN = (2, 4, 6, 8)
+HOUSES = (
+    [[(i, c) for c in range(N)] for i in range(N)]
+    + [[(r, i) for r in range(N)] for i in range(N)]
+    + [
+        [(br * 3 + r, bc * 3 + c) for r in range(3) for c in range(3)]
+        for br in range(3)
+        for bc in range(3)
+    ]
+)
 
 CATALOGUE = rm.load_catalogue(DIFFERENCE)
 
@@ -120,11 +141,21 @@ def chocolate_placements(max_side=MAX_CHOC_SIDE):
     return [p for p in rm.PLACEMENTS if max(p[0], p[1]) <= max_side]
 
 
+def cell_value(digit, chocolate):
+    """One number per cell carrying its digit and shading: the digit on banana,
+    the digit plus 10 on chocolate. The lex-leader and the hunt's dedupe key
+    both read the board through it."""
+    return digit + 10 * chocolate
+
+
 class Model:
     """The joint model. `choc[p]`, `d[p]` and `x[i]` (placement i of
-    `PLACEMENTS` is a banana group) are the decision variables."""
+    `PLACEMENTS` is a banana group) are the decision variables.
 
-    def __init__(self, max_side=MAX_CHOC_SIDE):
+    `speedups` adds #762's facts and the lex-leader; off, the model is #761's,
+    kept for the timing comparison in the hunt's decision log."""
+
+    def __init__(self, max_side=MAX_CHOC_SIDE, speedups=True):
         m = cp.CpModel()
         self.m = m
         self.max_side = max_side
@@ -134,6 +165,63 @@ class Model:
         rm.sudoku(m, self.d)
         self._bananas()
         self._chocolate()
+        if speedups:
+            self._five_cell_facts()
+            self._lex_leader()
+
+    def _five_cell_facts(self):
+        """A 5-cell banana is {1,3,5,7,9}, so it holds only odd digits. Each
+        even digit appears once per row, column and box, never in a 5-cell
+        banana: so at most 5 cells of a house lie in one, and each even digit
+        has a placement avoiding them. The placements are stated on the
+        shading alone, the way Renbanana states where the fives go: that one
+        exists is implied by every legal grid, so the model stays a
+        relaxation."""
+        m = self.m
+        in5 = {p: m.new_bool_var(f"in5{p}") for p in CELLS}
+        covering = {p: [] for p in CELLS}
+        for i, cells in enumerate(PLACEMENTS):
+            if len(cells) == 5:
+                for p in cells:
+                    covering[p].append(self.x[i])
+        for p in CELLS:
+            m.add(in5[p] == sum(covering[p]))
+            m.add_linear_expression_in_domain(
+                self.d[p], cp.Domain.from_values(ODD)
+            ).only_enforce_if(in5[p])
+        for house in HOUSES:
+            m.add(sum(in5[p] for p in house) <= len(house) - len(EVEN))
+        even = {(e, p): m.new_bool_var(f"even{e}{p}") for e in EVEN for p in CELLS}
+        for e in EVEN:
+            for house in HOUSES:
+                m.add_exactly_one(even[e, p] for p in house)
+        for p in CELLS:
+            m.add(sum(even[e, p] for e in EVEN) + in5[p] <= 1)
+
+    def _lex_leader(self):
+        """The board read row by row through `cell_value` is no greater, in
+        lexicographic order, than its image under each of the 7 other
+        rotations and reflections. Every orbit holds its least image, so no
+        grid is lost up to symmetry.
+
+        `same[k]` says the first k compared cells equal their images. It is
+        never true unless they do, and when it is false at the first
+        difference, that cell must be smaller."""
+        m = self.m
+        value = [cell_value(self.d[p], self.choc[p]) for p in CELLS]
+        for g, image in enumerate(d4_cell_maps(N)[1:]):
+            same = None  # true: every cell so far equals its image
+            for k, j in enumerate(image):
+                if j == k:
+                    continue
+                here = [] if same is None else [same]
+                m.add(value[k] <= value[j]).only_enforce_if(here)
+                nxt = m.new_bool_var(f"lex{g}_{k}")
+                if same is not None:
+                    m.add_implication(nxt, same)
+                m.add(value[k] == value[j]).only_enforce_if(nxt)
+                m.add(value[k] < value[j]).only_enforce_if([*here, nxt.negated()])
+                same = nxt
 
     def _bananas(self):
         m, x = self.m, self.x
