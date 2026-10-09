@@ -26,6 +26,9 @@ because the checker reads them and nothing under `docs/research/` does
   other differences write `rectangle-catalogue-d<n>.json` beside it (#760).
   At difference 4 the biggest layers hit the builder's count cap (`truncated`:
   the count is a floor, the support is exact from CP-SAT).
+- The Banabner finder (`finders/banabner/`) reads `rectangle-catalogue-d4.json`
+  the same way, at both call sites; `finders/banabner/test_catalogue_is_used.py`
+  fails if one drops it.
 
 ## Pointers
 

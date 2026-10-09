@@ -21,6 +21,9 @@ only while every piece is one of those two.
 `renbanana/tools/test_renbanana_model.py` pins each one to a small board.
 """
 
+import json
+from pathlib import Path
+
 from renbanana_verify import neighbours
 
 N = 9
@@ -35,6 +38,44 @@ PLACEMENTS = [
     for r0 in range(N - h + 1)
     for c0 in range(N - w + 1)
 ]
+
+
+# --------------------------------------------------------------- catalogue
+
+CATALOGUE_DIR = Path(__file__).resolve().parent.parent / "docs/research/renbanana"
+
+
+def load_catalogue(difference=5):
+    """The chocolate rectangle catalogue for one chocolate difference, as
+    `finders/renbanana/tools/build_rectangle_catalogue.py` wrote it."""
+    name = "rectangle-catalogue" + ("" if difference == 5 else f"-d{difference}")
+    return json.loads((CATALOGUE_DIR / f"{name}.json").read_text())
+
+
+def catalogue_fact(catalogue, a, b, ro, co):
+    """Layer B of `catalogue` for an `a` by `b` rectangle whose top-left cell
+    sits at box offset (ro, co), turned to that orientation: `count` (0 when
+    the shape or offset is absent), `support` (per-cell digit lists, or None)
+    and `circle_cells` ((i, j) offsets).
+
+    The catalogue stores a <= b only. Transposing swaps rows and columns, and
+    the 3x3 boxes are symmetric under it, so the offset swaps too.
+    """
+    flip = a > b
+    if flip:
+        a, b, ro, co = b, a, co, ro
+    entry = catalogue.get(f"{a}x{b}", {}).get("B", {}).get(f"{ro},{co}", {})
+    support = entry.get("support")
+    if not support or not support[0]:
+        support = None
+    elif flip:  # stored rows are the other orientation's columns
+        support = [[support[j][i] for j in range(a)] for i in range(b)]
+    circles = entry.get("circle_cells", [])
+    return {
+        "count": entry.get("count", 0),
+        "support": support,
+        "circle_cells": [(c, r) if flip else (r, c) for r, c in circles],
+    }
 
 
 # ------------------------------------------------------------------ digits
@@ -105,7 +146,12 @@ def inside_of(h, w, r0, c0):
 
 
 def border_of(h, w, r0, c0):
-    inside = set(inside_of(h, w, r0, c0))
+    return border_of_cells(inside_of(h, w, r0, c0))
+
+
+def border_of_cells(cells):
+    """The cells outside `cells` that touch one of them orthogonally."""
+    inside = set(cells)
     return sorted({q for p in inside for q in neighbours(*p) if q not in inside})
 
 

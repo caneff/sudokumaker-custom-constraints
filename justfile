@@ -31,7 +31,7 @@ heavy := heavy-fillomino + " " + heavy-recovery
 #   finder-pytest: the pytest suites, run as `uv run pytest <file> -q`.
 # The two research .test.mjs files (docs/research/) run by hand; gate.test.py
 # names them in BY_HAND.
-finder-slow := "finders/renbanana/tools/test_prove_two_stage_slow.py"
+finder-slow := "finders/renbanana/tools/test_prove_two_stage_slow.py finders/banabner/test_hunt.py"
 finder-cover := "finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py finders/renbanana/tools/test_probe_finds_known_grids.py"
 finder-pytest := "finders/counting_shaded/test_counting_shaded.py"
 
@@ -109,10 +109,11 @@ test:
     uv run examples/_shared/check_layout.py
     uv run examples/skyscraper/verify.py
 
-# finders/renbanana's slow tests: the two --cover tests in full plus the slow
-# two-stage proof, a CP-SAT solve per known grid, minutes overall. Not part of
+# The slow finder tests: renbanana's two --cover tests in full plus the slow
+# two-stage proof, a CP-SAT solve per known grid, minutes overall; and the
+# Banabner hunt, one 1-worker solve of about three to four minutes. Not part of
 # check/check-full; run by hand after touching probe_inverted.py,
-# probe_circle_pattern.py or prove_two_stage.py.
+# probe_circle_pattern.py, prove_two_stage.py or finders/banabner/.
 [doc("Slow finder tests (a CP-SAT solve per known grid), by hand, minutes overall.")]
 test-finders-slow: (_run-tests finder-cover + " " + finder-slow)
 
