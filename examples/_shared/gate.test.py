@@ -44,6 +44,7 @@ HEAVY = {
 # that recipe must run for each.
 SLOW = {
     "uv run finders/renbanana/tools/test_prove_two_stage_slow.py",
+    "uv run finders/banabner/test_hunt.py",
 }
 
 # Finder tests the gate runs with a flag or another runner, not a plain
