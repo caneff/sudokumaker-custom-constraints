@@ -5,6 +5,9 @@
    both from the builder and from the committed difference-4 catalogue.
 3. A layer that hits the count cap takes its support from CP-SAT, and that
    support equals the enumerated one.
+4. Every layer of a shape with both sides <= 4 is enumerated in full: the
+   committed difference-4 catalogue has none truncated, and the three that the
+   100,000 cap used to cut hold their full-enumeration counts (#767).
 
 Hand work, difference 4. N(t) is the set of digits at least 4 from t:
 
@@ -118,5 +121,18 @@ for key, (count, truncated, support, circles, _) in capped.items():
 assert (
     bc.cpsat_support(2, 8, 5) == [] and bc.cpsat_support(3, 7, 5) == []
 )  # L_count 0 at 5
+
+# 4. Small shapes are never truncated, and the old truncated layers are exact.
+for shape, entry in committed.items():
+    a, b = map(int, shape.split("x"))
+    if max(a, b) > bc.UNCAPPED_SIDE:
+        continue
+    assert not entry["L_truncated"], (shape, "L")
+    for key, layer in entry["B"].items():
+        assert not layer.get("truncated"), (shape, key)
+assert committed["3x4"]["L_count"] == 139_524
+assert committed["4x4"]["B"]["1,1"]["count"] == 200_400
+assert committed["4x4"]["L_count"] == 2_107_212
+assert bc.cap_for(4, 4, 100) is None and bc.cap_for(3, 5, 100) == 100
 
 print("OK")
