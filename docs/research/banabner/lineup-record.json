@@ -1,0 +1,32 @@
+[
+ {
+  "d": "2026-10-09",
+  "t": "ruling",
+  "x": "Rules set by Chris: choco-banana, size circles, Dutch Chocolate (difference ≥ 4), nabner bananas, no givens, normal sudoku."
+ },
+ {
+  "d": "2026-10-09",
+  "t": "proven",
+  "x": "No chocolate rectangle has a side longer than 4. The cells just past a side of 5 or more form one straight banana group of 5 or more cells: exactly 5 is the I-pentomino, a rectangle, and more than 5 breaks nabner. So a long side must lie on the board edge, which forces the whole 9x9 board; that has 0 fillings with boxes, and any circle rules it out too. Argument by Chris."
+ },
+ {
+  "d": "2026-10-09",
+  "t": "proven",
+  "x": "Difference-4 rectangle catalogue built (#760). Every shape up to 3x3 and up to 2x4 is enumerated in full. 3x4 and 4x4 without boxes and 4x4 at box offset (1,1) stopped at a 100,000 fill-count cap; their digit domains and circle cells come from exact CP-SAT solves. Full counts: 3x4 = 139,524, 4x4 (1,1) = 200,400, 4x4 = 2,107,212. Since #767 (merged as 88a4902), every layer with both sides at most 4 is enumerated in full in the catalogue."
+ },
+ {
+  "d": "2026-10-09",
+  "t": "proven",
+  "x": "Legal grids exist. The first finder (#761) found one with seed 0 in 109 s on 4 workers; it passes the independent checker at difference 4 with nabner, and fails it at the Renbanana defaults, as it should."
+ },
+ {
+  "d": "2026-10-09",
+  "t": "claim",
+  "x": "Timing: 4 seeds, 1 worker each, reached a legal grid in 170–248 s, capped at 300 s. Worker's measurement, not yet re-run."
+ },
+ {
+  "d": "2026-10-09",
+  "t": "claim",
+  "x": "Speedups compared (#762): the same 4 seeds through the #761 model and the #762 model, 1 worker each, all 8 at once on the shared box. #761 model: 195, 217, 293, 310 s (mean 254 s). #762 model: 156, 226, 361, 365 s (mean 277 s). On these 4 seeds the speedups are not faster. Every run found a grid, and all 8 grids pass the checker. Worker's measurement, not yet re-run."
+ }
+]
