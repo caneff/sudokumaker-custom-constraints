@@ -56,3 +56,68 @@ A comparison of grids found per hour, or of a proof, is what would test it.
 
 The worker kept the speedups on by default, since #762 asks for them.
 `--no-speedups` turns them off. This is a claim for the reviewer to re-run.
+
+## 2026-10-09 — #764 two-hour hunt: preflight
+
+The preflight of `docs/agents/grid-finder-lessons.md`, answered before launch.
+
+1. **Known bounds, and does the variant obey them?** No givens are placed and
+   no uniqueness is asked: the hunt finds legal filled grids, so the 17-givens
+   bound says nothing here. The bounds that do apply are proven facts of these
+   rules, all in the model: chocolate rectangle sides <= 4 (`MAX_CHOC_SIDE`),
+   a banana has 3-5 cells (nabner allows at most five pairwise
+   non-consecutive digits; one or two cells form a rectangle), and a 5-cell
+   banana is exactly {1,3,5,7,9}.
+2. **What produced the corpus reasoned from?** The difference-4 rectangle
+   catalogue (#760, completed by #767: every layer with both sides <= 4
+   enumerated in full, no fill-count cap left inside the searched space). The
+   ten grids in `checked-grids/` come from #761/#762 seeds with the flags in
+   their `run` field. The hunt reasons from the catalogue only; it does not
+   read the earlier grids, and its own run starts with nothing forbidden.
+3. **Space or one orbit?** The lex-leader keeps one grid per orbit of the 8
+   board symmetries, and every found grid is forbidden by a no-good cut, so a
+   later seed must find a grid outside every earlier orbit. The driver dedupes
+   under D4 as a second check. Digit reversal (d -> 10-d) preserves every rule
+   but moves the circles, so it is deliberately not broken: checked on all ten
+   `checked-grids/` grids, each reversed grid passes `check` and is a different
+   D4 orbit. A reversed pair counts as two grids in this hunt.
+4. **Which lesson does the plan contradict?** "Compare strategies by hits per
+   CPU-minute, over enough runs": #762 compared the speedups on four seeds of
+   time to a first grid and found no gain, and the hunt keeps them on anyway.
+   The case differs because this hunt is an enumeration with cuts, not a
+   first-grid race: under the lex-leader one no-good cut removes a whole
+   8-grid orbit, and without it a rotated copy of a found grid stays legal and
+   costs a full solve to be thrown away as a duplicate. An INFEASIBLE, if one
+   comes, is also what the lex-leader and the facts are for.
+5. **What would make the result an artefact, and what control rules it out?**
+   A model bug that accepts an illegal grid: every grid is re-read inline by
+   `renbanana_verify.check` at difference 4 with nabner, a checker written from
+   the rules, and again by `build_lineup.py` before publishing. A model bug
+   that rejects legal grids would make an INFEASIBLE false and the count low:
+   the ten known grids, found partly without the speedups, are the control
+   (`test_known_grid.py` checks the pinned grid is accepted by the model).
+6. **Can the solver answer directly?** "How many grids exist" has no single
+   solve; the hunt asks the solver one question per seed (a new grid, or a
+   proof that none is left) and reports only what those answers say. A
+   timeout is labelled capped, never read as exhaustion.
+7. **Cheap necessary conditions** are #762's facts (odd 5-cell bananas, at
+   most 5 such cells per house, an even-digit placement avoiding them), kept on.
+
+**Speedups applied:** #762's facts and lex-leader; the catalogue on both the
+shading and the digit side; 8 CP-SAT portfolio workers on each solve (the
+seeds are sequential, since each forbids the grids before it).
+
+**Not applied, named:** per-task splits (e.g. fixing the top-left shading per
+split) to run seeds in parallel, not built and would need a split proof of
+coverage; warm start from the previous grid's solution as a hint, not built,
+and it would bias the search toward neighbours; reusing one incremental model
+across seeds instead of rebuilding it (a few seconds a seed, small against a
+solve of minutes); no C hot loop applies, the solve is CP-SAT's.
+
+**Launch:** `.scratch/run-hunt.sh 8` under `job-run --name banabner-hunt-764`:
+seeds 0:1000, `--timeout 1200` per seed, `--workers 8`, a 7200 s wall
+(`timeout -s TERM`), and `examples.jsonl`, `progress.jsonl`, `summary.json`
+and `run.json` copied into `docs/research/banabner/hunt-2h/` every 300 s. The
+hunt output itself lives in `~/.cache/banabner-hunt-764/out`. Expected wall
+clock: 2 h. The result decides how many grids the Banabner Lineup offers
+for puzzle setting, and whether the space ran dry (an INFEASIBLE) within 2 h.
