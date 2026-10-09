@@ -14,7 +14,10 @@ At difference 5 the output is byte for byte the committed
 write `rectangle-catalogue-d<difference>.json` beside it (#760).
 
 Counting every filling of a big shape is millions of fillings per layer at
-difference 4, so a layer's enumeration stops at `--count-cap` fillings. A layer
+difference 4, so a layer's enumeration stops at `--count-cap` fillings, except
+a shape with both sides <= 4 (`UNCAPPED_SIDE`), which is always enumerated in
+full: the banabner finder only places such rectangles, so each of their counts
+must be exact (#767). A layer
 that hit the cap is `truncated` (`L_truncated`, or `"truncated": true` on a box
 offset): its count is a floor, and its support, circle cells and
 satisfiability come from CP-SAT instead, which is exact. A layer that finished
@@ -32,6 +35,12 @@ from ortools.sat.python import cp_model
 CATALOGUE_DIR = Path(__file__).resolve().parents[3] / "docs/research/renbanana"
 DIGITS = range(1, 10)
 DEFAULT_COUNT_CAP = 100_000
+UNCAPPED_SIDE = 4
+
+
+def cap_for(a, b, count_cap):
+    """The cap for an `a x b` shape: none when both sides are <= UNCAPPED_SIDE."""
+    return None if max(a, b) <= UNCAPPED_SIDE else count_cap
 
 
 def default_max_side(difference):
@@ -164,7 +173,7 @@ def summarise(a, b, difference, offset=None, count_cap=DEFAULT_COUNT_CAP):
     example = None
     truncated = False
     for filling in enumerate_fillings(a, b, difference, offset):
-        if count == count_cap:
+        if count_cap is not None and count == count_cap:
             truncated = True
             break
         count += 1
@@ -189,8 +198,9 @@ def build(difference, max_side, count_cap=DEFAULT_COUNT_CAP):
     catalogue = {}
     for a in range(1, max_side + 1):
         for b in range(a, max_side + 1):
+            count_cap_ab = cap_for(a, b, count_cap)
             count, truncated, support, circles, _ = summarise(
-                a, b, difference, None, count_cap
+                a, b, difference, None, count_cap_ab
             )
             by_offset = {}
             for ro in range(3):
@@ -198,7 +208,7 @@ def build(difference, max_side, count_cap=DEFAULT_COUNT_CAP):
                     if ro + a > 9 or co + b > 9:
                         continue
                     n, cut, sup, circ, ex = summarise(
-                        a, b, difference, (ro, co), count_cap
+                        a, b, difference, (ro, co), count_cap_ab
                     )
                     by_offset[f"{ro},{co}"] = {
                         "count": n,
