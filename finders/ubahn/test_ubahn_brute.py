@@ -1,0 +1,115 @@
+"""The U-Bahn model against an exhaustive enumeration, on a 4x4 board with
+exactly 2 crosses in r2 (#773).
+
+A cross cannot sit on the border, so the two crosses are r2c2 and r2c3: their
+7 edges are on and the other 17 are free, 131,072 edge assignments. `brute`
+walks every one with the solver-free rules in `network.py`; the CP-SAT model
+must return the same networks under both connectivity encodings, and the
+finder's uniqueness verdict must match the count of networks that share a
+full set of outside numbers.
+
+    uv run finders/ubahn/test_ubahn_brute.py
+"""
+
+import sys
+from collections import Counter
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import brute
+import model
+import network
+from ortools.sat.python import cp_model
+
+ROWS = COLS = 4
+CROSSES = ((1, 1), (1, 2))
+EXACTLY = network.Exactly(2, network.CROSS, "r", 1)
+TIME_LIMIT = 10.0
+
+ok = True
+
+
+def check(name, cond):
+    global ok
+    status = "ok" if cond else "FAIL"
+    if not cond:
+        ok = False
+    print(f"{status}: {name}")
+
+
+forced = {e for cell in CROSSES for e in network.arm_edges(cell)}
+free = [e for e in network.all_edges(ROWS, COLS) if e not in forced]
+check("two crosses in r2 leave 17 free edges", len(free) == 17)
+
+space = brute.assignments(ROWS, COLS, forced)
+check("the space is 131,072 edge assignments", len(space) == 131072)
+
+valid = {
+    net
+    for net in space
+    if not network.why_not_network(net, ROWS, COLS)
+    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS - 1] == 2
+}
+# The counts a separate throwaway script gave for this space (#773).
+check(f"557 valid networks (got {len(valid)})", len(valid) == 557)
+
+by_numbers = Counter(network.outside_numbers(net, ROWS, COLS) for net in valid)
+check(
+    f"554 distinct full sets of outside numbers (got {len(by_numbers)})",
+    len(by_numbers) == 554,
+)
+unique = {
+    net for net in valid if by_numbers[network.outside_numbers(net, ROWS, COLS)] == 1
+}
+check(
+    f"551 networks unique under their full set (got {len(unique)})",
+    len(unique) == 551,
+)
+
+
+def model_networks(connectivity):
+    """Every network the model allows: solve, forbid the network on its edge
+    variables, solve again, until the model is infeasible."""
+    built = model.build(ROWS, COLS, connectivity, exactly=EXACTLY)
+    solver = cp_model.CpSolver()
+    solver.parameters.num_workers = 1
+    found = set()
+    while True:
+        status = solver.Solve(built.m)
+        if status == cp_model.INFEASIBLE:
+            return found
+        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            raise RuntimeError(solver.StatusName(status))
+        net = frozenset(e for e, var in built.edge.items() if solver.Value(var))
+        if net in found:
+            raise RuntimeError("the model returned a forbidden network again")
+        found.add(net)
+        built.m.add_bool_or(
+            [var.Not() if e in net else var for e, var in built.edge.items()]
+        )
+
+
+for connectivity in ("flow", "tree"):
+    got = model_networks(connectivity)
+    check(
+        f"{connectivity} model: the brute-force networks exactly "
+        f"({len(got - valid)} extra, {len(valid - got)} missing)",
+        got == valid,
+    )
+
+for connectivity in ("flow", "tree"):
+    wrong = []
+    for numbers, count in by_numbers.items():
+        status, _ = model.uniqueness(
+            ROWS, COLS, numbers, connectivity, time_limit=TIME_LIMIT, workers=1
+        )
+        if status != ("unique" if count == 1 else "not_unique"):
+            wrong.append((numbers, count, status))
+    check(
+        f"{connectivity} model: the uniqueness verdict matches the brute-force "
+        f"count on all {len(by_numbers)} sets of outside numbers "
+        f"(first mismatch: {wrong[:1]})",
+        not wrong,
+    )
+
+sys.exit(0 if ok else 1)

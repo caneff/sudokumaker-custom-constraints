@@ -1,0 +1,245 @@
+"""The U-Bahn finder's `hunt` CLI run (#773), black-box.
+
+A fresh 4x4 hunt with exactly 2 crosses in r2: every example it writes must
+be one of the networks the brute-force enumeration finds unique under its
+full set of outside numbers, and no two examples may be the same piece grid
+under the board's symmetries. Then `hunt verify DIR` over hand-written
+records, the flags the finder refuses, and a board that is not square. One
+CP-SAT worker; about ten seconds in all.
+
+    uv run finders/ubahn/test_ubahn_hunt.py
+"""
+
+import json
+import subprocess
+import sys
+import tempfile
+from collections import Counter
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "hunt"))
+import brute
+import network
+from dedupe import D4, canonical_key
+from subprocess_env import success_env
+from verified_io import read_verified
+
+FINDER = HERE / "ubahn_finder.py"
+ROWS = COLS = 4
+CROSSES = ((1, 1), (1, 2))
+EXACTLY = "2:cross:r2"
+
+ok = True
+
+
+def check(name, cond):
+    global ok
+    status = "ok" if cond else "FAIL"
+    if not cond:
+        ok = False
+    print(f"{status}: {name}")
+
+
+def run_cli(*args):
+    return subprocess.run(
+        [sys.executable, str(FINDER), *args],
+        capture_output=True,
+        text=True,
+        env=success_env(),
+    )
+
+
+def read_jsonl(path):
+    return [json.loads(line) for line in path.read_text().splitlines() if line]
+
+
+def record(net, rows=ROWS, cols=COLS, exactly=EXACTLY):
+    """The record of a network, written here by hand: `h` and `v` hold one
+    string per row of horizontal and of vertical edges, "1" where one is on."""
+    return {
+        "rows": rows,
+        "cols": cols,
+        "exactly": exactly,
+        "h": [
+            "".join(str(int(((r, c), (r, c + 1)) in net)) for c in range(cols - 1))
+            for r in range(rows)
+        ],
+        "v": [
+            "".join(str(int(((r, c), (r + 1, c)) in net)) for c in range(cols))
+            for r in range(rows - 1)
+        ],
+    }
+
+
+def network_of(rec):
+    """The network a record's `h` and `v` describe."""
+    net = set()
+    for r, bits in enumerate(rec["h"]):
+        net |= {((r, c), (r, c + 1)) for c, bit in enumerate(bits) if bit == "1"}
+    for r, bits in enumerate(rec["v"]):
+        net |= {((r, c), (r + 1, c)) for c, bit in enumerate(bits) if bit == "1"}
+    return frozenset(net)
+
+
+def mirrored(net, cols=COLS):
+    """The network reflected left to right."""
+    return frozenset(
+        tuple(sorted(((r, cols - 1 - c), (r2, cols - 1 - c2))))
+        for (r, c), (r2, c2) in net
+    )
+
+
+# The brute-force space of test_ubahn_brute.py: the networks with 2 crosses
+# in r2, and the ones alone under their full set of outside numbers.
+forced = {e for cell in CROSSES for e in network.arm_edges(cell)}
+valid = [
+    net
+    for net in brute.assignments(ROWS, COLS, forced)
+    if not network.why_not_network(net, ROWS, COLS)
+    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS - 1] == 2
+]
+by_numbers = Counter(network.outside_numbers(net, ROWS, COLS) for net in valid)
+unique = {
+    net for net in valid if by_numbers[network.outside_numbers(net, ROWS, COLS)] == 1
+}
+shared = sorted(set(valid) - unique, key=sorted)
+
+with tempfile.TemporaryDirectory() as d:
+    out = Path(d) / "hunt"
+    config = ["--rows", "4", "--cols", "4", "--exactly", EXACTLY, "--timeout", "10"]
+    r = run_cli(*config, "--out", str(out), "--seeds=0:40", "--workers", "1")
+    check(f"a 40-seed hunt exits 0 (stderr: {r.stderr[-500:]})", r.returncode == 0)
+
+    examples = read_jsonl(out / "examples.jsonl")
+    summary = json.loads((out / "summary.json").read_text())
+    check(f"the hunt wrote examples ({len(examples)})", len(examples) >= 10)
+    check(
+        "every example is a network the brute force finds unique",
+        all(network_of(ex) in unique for ex in examples),
+    )
+    check(
+        "every example records its own full set of outside numbers",
+        all(
+            (
+                tuple(map(tuple, ex["numbers"]["rows"])),
+                tuple(map(tuple, ex["numbers"]["cols"])),
+            )
+            == network.outside_numbers(network_of(ex), ROWS, COLS)
+            for ex in examples
+        ),
+    )
+    keys = [
+        canonical_key(network.piece_grid(network_of(ex), ROWS, COLS), D4)
+        for ex in examples
+    ]
+    check(
+        "every example's dedupe key is its piece grid, least under D4",
+        all(
+            tuple(ex["__dedupe_key__"]) == key
+            for ex, key in zip(examples, keys, strict=True)
+        ),
+    )
+    check("no two examples share a piece grid under D4", len(set(keys)) == len(keys))
+    check(
+        f"the hunt met and dropped duplicates ({summary.get('duplicates')})",
+        summary.get("duplicates", 0) > 0,
+    )
+    check(
+        "every seed is accounted for",
+        summary.get("seeds_done") == 40
+        and summary["examples"] + summary["duplicates"] + summary["empty"] == 40
+        and summary["rejected"] == 0,
+    )
+    check(
+        "run.json records the finder's config",
+        json.loads((out / "run.json").read_text()).get("config")
+        == {"rows": 4, "cols": 4, "exactly": EXACTLY, "timeout": 10.0},
+    )
+
+with tempfile.TemporaryDirectory() as d:
+    out = Path(d)
+    good = min(unique, key=sorted)
+    dead_end = good - {min(good)}
+    cases = [
+        ("a unique network", record(good), True, ""),
+        (
+            "a network that shares its outside numbers",
+            record(shared[0]),
+            False,
+            "not unique",
+        ),
+        (
+            "a unique network filed under another condition",
+            record(good, exactly="1:cross:r2"),
+            False,
+            "1:cross:r2",
+        ),
+        ("a network with a dead end", record(dead_end), False, "dead end"),
+        (
+            "two separate rings",
+            record(
+                frozenset(
+                    e
+                    for top in (0, 2)
+                    for e in (
+                        ((top, 0), (top, 1)),
+                        ((top + 1, 0), (top + 1, 1)),
+                        ((top, 0), (top + 1, 0)),
+                        ((top, 1), (top + 1, 1)),
+                    )
+                ),
+                exactly=None,
+            ),
+            False,
+            "not connected",
+        ),
+    ]
+    (out / "examples.jsonl").write_text(
+        "".join(json.dumps(rec) + "\n" for _, rec, _, _ in cases)
+    )
+    r = run_cli("verify", str(out))
+    check(f"hunt verify exits 0 (stderr: {r.stderr[-500:]})", r.returncode == 0)
+    _, verdicts = read_verified(out / "verified.jsonl")
+    for (name, _, want, reason), v in zip(cases, verdicts, strict=True):
+        check(f"verify: {name} -> {want}", v["ok"] is want)
+        if reason:
+            check(f"verify: {name} says why ({reason})", reason in v.get("reason", ""))
+
+with tempfile.TemporaryDirectory() as d:
+    board = ["--rows", "4", "--cols", "4"]
+    for flags, reason in (
+        ([*board, "--exactly", "2:cross"], "N:PIECE:rK"),
+        ([*board, "--exactly", "2:loop:r2"], "loop"),
+        ([*board, "--exactly", "2:cross:r5"], "r5"),
+        (["--rows", "1", "--cols", "4"], "2x2"),
+    ):
+        out = Path(d) / "refused"
+        r = run_cli(*flags, "--out", str(out), "--seeds=0:1", "--workers", "1")
+        check(
+            f"{' '.join(flags)} is refused, exit 2, naming {reason!r}",
+            r.returncode == 2 and reason in r.stderr and not out.exists(),
+        )
+
+with tempfile.TemporaryDirectory() as d:
+    # 2x8 has 16 cells, a square's count: D4 would take it for a 4x4.
+    out = Path(d) / "hunt"
+    r = run_cli(
+        "--rows", "2", "--cols", "8", "--timeout", "10",
+        "--out", str(out), "--seeds=0:12", "--workers", "1",
+    )  # fmt: skip
+    check(f"a 2x8 hunt exits 0 (stderr: {r.stderr[-500:]})", r.returncode == 0)
+    examples = read_jsonl(out / "examples.jsonl")
+    nets = [network_of(ex) for ex in examples]
+    check(f"the 2x8 hunt wrote examples ({len(examples)})", len(examples) >= 2)
+    check(
+        "every 2x8 example is a network",
+        all(not network.why_not_network(net, 2, 8) for net in nets),
+    )
+    check(
+        "no 2x8 example is the mirror image of another",
+        all(mirrored(a, 8) != b for a in nets for b in nets if a != b),
+    )
+
+sys.exit(0 if ok else 1)

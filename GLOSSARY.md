@@ -159,6 +159,27 @@ Use these terms exactly. Do not drift to synonyms.
   for it. It stays a finder rule until it is **promoted**: turned into a
   gridfind layer with its fixtures.
 
+### U-Bahn terms (`finders/ubahn/`)
+
+U-Bahn is a pencil puzzle, not a sudoku. **Line** and **path** already mean
+other things above, so the U-Bahn finder never uses either word. Rules and
+sources: `docs/research/2026-10-10-u-bahn-cpsat-finder.md`.
+
+- **network** — the whole drawing of one U-Bahn solution: the set of edges
+  that are on, an edge joining the centres of two orthogonally adjacent
+  cells. A network has at least one edge, no dead end, never leaves the
+  board, and is one connected whole.
+- **arm** — one of the up to four edges at a cell that are in the network. A
+  cell has 0, 2, 3 or 4 arms; a cell with one arm is a dead end.
+- **piece** — what a cell's arms make: a **turn** (two arms at a right
+  angle), a **straight** (two opposite arms), a **branch** (three) or a
+  **cross** (four). A cell with no arm is **empty** and holds no piece. A
+  piece is the same piece in any rotation.
+- **outside number** — how many of one piece a row or column holds. Each row
+  and each column has four, in the order turn, straight, branch, cross; the
+  **full set** is all of them, and it is what a U-Bahn puzzle gives the
+  solver. Not a **clue**, which is a ring cell of an outside-clue group.
+
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 
 ISOFILL fixes every region at ten cells; fillomino lets the digit set the size.
