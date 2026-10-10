@@ -89,11 +89,13 @@ def main():
                 f'<input id="{box}" type="checkbox" checked>' in html,
             )
         check("forced count", known["forcedCircles"] == 2)
-        # The page's own record of checked grids: ten grids, scores 13 down to 5.
+        # The page's own record of checked grids: every one listed, best first.
         record = Path(tmp) / "record.html"
-        bl.main([str(record), str(bl.ROOT / "docs/research/banabner/checked-grids")])
+        checked = bl.ROOT / "docs/research/banabner/checked-grids"
+        bl.main([str(record), str(checked)])
         scores = [d["value"] for d in data_of(record.read_text())]
-        check("the record's 10 grids all listed", len(scores) == 10, str(len(scores)))
+        n = len((checked / "examples.jsonl").read_text().splitlines())
+        check(f"the record's {n} grids all listed", len(scores) == n, str(len(scores)))
         check(
             "listed in circle-score order, best first",
             scores == sorted(scores, reverse=True) and scores[0] > scores[-1],
