@@ -91,6 +91,14 @@ def mirrored(net, cols=COLS):
     )
 
 
+def upturned(net, rows=ROWS):
+    """The network reflected top to bottom."""
+    return frozenset(
+        tuple(sorted(((rows - 1 - r, c), (rows - 1 - r2, c2))))
+        for (r, c), (r2, c2) in net
+    )
+
+
 # The brute-force space of test_ubahn_brute.py: the networks with 2 crosses
 # in r2, and the ones alone under their full set of outside numbers.
 forced = {e for cell in CROSSES for e in network.arm_edges(cell)}
@@ -236,6 +244,22 @@ with tempfile.TemporaryDirectory() as d:
     check(
         "every 2x8 example is a network",
         all(not network.why_not_network(net, 2, 8) for net in nets),
+    )
+    check(
+        "every 2x8 dedupe key is the least of the piece grid's four images",
+        all(
+            tuple(ex["__dedupe_key__"])
+            == min(
+                network.piece_grid(image, 2, 8)
+                for image in (
+                    net,
+                    mirrored(net, 8),
+                    upturned(net, 2),
+                    upturned(mirrored(net, 8), 2),
+                )
+            )
+            for ex, net in zip(examples, nets, strict=True)
+        ),
     )
     check(
         "no 2x8 example is the mirror image of another",
