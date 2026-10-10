@@ -2,12 +2,12 @@
 
 The wire format and the layout of three published U-Bahn links:
 docs/research/2026-10-10-u-bahn-penpa-link.md (§ numbers below are its).
-The board is the grid with `k` clue rows above and `k` clue columns to its
-left, ordinary cells of the table, with one row and one column of piece icons
-beside the grid; the top-left `(k-1)` square is left out of the cell list.
-The `k` pieces run from the outside in: [blank,] cross, branch, straight,
-turn (Chris's ruling on #774); blank is the option's fifth clue. The link
-opens in the Line tool and carries a lines-only answer check
+The board is the grid with `k` rows of outside numbers above and `k` columns
+of them to its left, ordinary cells of the table, with one row and one column
+of icons beside the grid; the top-left `(k-1)` square is left out of the cell
+list. The `k` kinds run from the outside in: [blank,] cross, branch,
+straight, turn (Chris's ruling on #774); the blank number is the option's
+fifth. The link opens in the Line tool and carries a lines-only answer check
 (`sol_loopline`, § 3).
 
 `link` returns the URL as one string. A link is a 10 KB blob: write it to a
@@ -15,11 +15,13 @@ file, never to chat.
 """
 
 import base64
+import copy
 import json
 import sys
 import zlib
 from itertools import pairwise
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # isort: split
@@ -29,9 +31,9 @@ PAGE = "https://swaroopg92.github.io/penpa-edit/"
 CELL_SIZE = 38
 MARGIN = 2  # hidden cells on every side of the table (§ 1.4)
 
-# The pieces from the outside in, as `network.KIND_NAMES` spells them.
+# The kinds from the outside in, as `network.KIND_NAMES` spells them.
 PIECE_ORDER = ("cross", "branch", "straight", "turn")
-BLANK_FIRST = ("blank", *PIECE_ORDER)
+KINDS_WITH_BLANK = ("blank", *PIECE_ORDER)
 
 # Abbreviations applied to the whole payload text, in this order (§ 1.2).
 COMPRESS_SUB = (
@@ -184,7 +186,7 @@ _MODE = {
 }
 
 # The cross icon's four flags are [right, down, left, up] (§ 1.5). Per piece,
-# the icon beside a strip of clue rows and beside a strip of clue columns.
+# the icon beside a row of outside numbers and beside a column of them.
 # The turn's icon sits in the one cell the innermost row and column share.
 _ICONS = {
     "cross": ([1, 1, 1, 1], [1, 1, 1, 1]),
@@ -192,7 +194,7 @@ _ICONS = {
     "straight": ([1, 0, 1, 0], [0, 1, 0, 1]),
     "turn": ([1, 1, 0, 0], [1, 1, 0, 0]),
 }
-BLANK_ICON = "□"  # a number's text: a blank cell has no line to draw
+BLANK_ICON = "□"  # a number's text: a blank cell has no arm to draw
 
 TITLE = "U-Bahn"
 RULES = (
@@ -200,17 +202,12 @@ RULES = (
     "cells, which may branch or turn, but may not have any dead ends. "
     "Lines of the network cross cells only through their centers."
     "\n"
-    "A number outside the grid says how many cells of the shape beside it "
-    "(from the outside in: {shapes}) the row or column holds."
+    "A number outside the grid says how many cells of the kind beside it "
+    "(from the outside in: {kinds}) the row or column holds."
 )
 _ESCAPES = ((",", "%2C"), ("\n", "%2D"), ("&", "%2E"), ("=", "%2F"))
-_SHAPE_WORDS = {
-    "blank": "no line at all",
-    "cross": "cross",
-    "branch": "branch",
-    "straight": "straight",
-    "turn": "turn",
-}
+# What the rules text calls a kind, where it is not the kind's own name.
+_KIND_WORDS = {"blank": "no arm at all"}
 
 
 def _json(value):
@@ -225,8 +222,9 @@ def _escape(text):
     return text
 
 
-def encrypt(text):
-    """Raw deflate, then base64 without padding (§ 1.2, `encrypt_data`)."""
+def deflate_base64(text):
+    """Raw deflate, then base64 without padding: Penpa+'s `encrypt_data`
+    (§ 1.2)."""
     deflater = zlib.compressobj(9, zlib.DEFLATED, -15)
     packed = deflater.compress(text.encode("utf-8")) + deflater.flush()
     return base64.b64encode(packed).decode("ascii").rstrip("=")
@@ -257,20 +255,58 @@ def _layer(**filled):
     for key in LAYER_KEYS:
         value = filled.get(key)
         if value is None:
-            value = json.loads(json.dumps(_LAYER_EMPTY.get(key, {})))
+            value = copy.deepcopy(_LAYER_EMPTY.get(key, {}))
         layer[key] = value
     return layer
 
 
-def _cell_list(nx, ny, k):
-    """Cell-centre indices of the table, row by row, without the notch."""
-    nx0 = nx + 2 * MARGIN
-    return [
-        x + y * nx0
-        for y in range(MARGIN, ny + MARGIN)
-        for x in range(MARGIN, nx + MARGIN)
-        if not (x < MARGIN + k - 1 and y < MARGIN + k - 1)
-    ]
+class _Table(NamedTuple):
+    """The board's geometry: `strips` rows and columns of outside numbers
+    round a `rows` by `cols` grid, on an `nx` by `ny` table padded to
+    `nx0` wide (§ 1.4)."""
+
+    strips: int
+    nx: int
+    ny: int
+    nx0: int
+
+    @property
+    def size(self):
+        return self.nx0 * (self.ny + 2 * MARGIN)
+
+    @property
+    def grid_origin(self):
+        """Padded x and y of the grid's first cell."""
+        return MARGIN + self.strips
+
+    def cell(self, x, y):
+        """Cell-centre index of padded (x, y)."""
+        return x + y * self.nx0
+
+    def grid_cell(self, r, c):
+        """Cell-centre index of grid cell (r, c)."""
+        g = self.grid_origin
+        return self.cell(g + c, g + r)
+
+    def vertex(self, x, y):
+        """Index of the vertex at the bottom-right corner of padded (x, y)."""
+        return self.size + self.cell(x, y)
+
+    def cell_list(self):
+        """Cell-centre indices of the table, row by row, without the notch."""
+        k = self.strips
+        return [
+            self.cell(x, y)
+            for y in range(MARGIN, self.ny + MARGIN)
+            for x in range(MARGIN, self.nx + MARGIN)
+            if not (x < MARGIN + k - 1 and y < MARGIN + k - 1)
+        ]
+
+
+def _table(rows, cols, blank_number):
+    strips = len(KINDS_WITH_BLANK if blank_number else PIECE_ORDER)
+    nx, ny = cols + strips, rows + strips
+    return _Table(strips, nx, ny, nx + 2 * MARGIN)
 
 
 def _deltas(indices):
@@ -278,69 +314,58 @@ def _deltas(indices):
     return [indices[0]] + [b - a for a, b in pairwise(indices)]
 
 
-def _rules_text(pieces):
-    return RULES.format(shapes=", ".join(_SHAPE_WORDS[p] for p in pieces))
+def _rules_text(kinds):
+    return RULES.format(kinds=", ".join(_KIND_WORDS.get(k, k) for k in kinds))
 
 
-def payload(rows, cols, found, blank_clue=False):
+def payload(rows, cols, found, blank_number=False):
     """The inflated, unabbreviated text of the `p` parameter: 19 lines."""
-    pieces = BLANK_FIRST if blank_clue else PIECE_ORDER
-    k = len(pieces)
-    nx, ny = cols + k, rows + k
-    nx0 = nx + 2 * MARGIN
-    size = nx0 * (ny + 2 * MARGIN)
-    g = MARGIN + k  # padded x and y of the grid's first cell
-
-    def cell(x, y):
-        return x + y * nx0
+    kinds = KINDS_WITH_BLANK if blank_number else PIECE_ORDER
+    t = _table(rows, cols, blank_number)
+    g = t.grid_origin
 
     row_numbers, col_numbers = network.outside_numbers(found, rows, cols)
-    kinds = [network.KIND_NAMES.index(p) for p in pieces]
     number = {}
-    for j, kind in enumerate(kinds):
+    for j, name in enumerate(kinds):
+        kind = network.KIND_NAMES.index(name)
         for c in range(cols):
-            number[cell(g + c, MARGIN + j)] = [str(col_numbers[c][kind]), 1, "1"]
+            number[t.cell(g + c, MARGIN + j)] = [str(col_numbers[c][kind]), 1, "1"]
         for r in range(rows):
-            number[cell(MARGIN + j, g + r)] = [str(row_numbers[r][kind]), 1, "1"]
+            number[t.cell(MARGIN + j, g + r)] = [str(row_numbers[r][kind]), 1, "1"]
 
     symbol = {}
-    for j, piece in enumerate(pieces):
-        if piece == "blank":
-            number[cell(g - 1, MARGIN + j)] = [BLANK_ICON, 1, "1"]
-            number[cell(MARGIN + j, g - 1)] = [BLANK_ICON, 1, "1"]
+    for j, name in enumerate(kinds):
+        if name == "blank":
+            number[t.cell(g - 1, MARGIN + j)] = [BLANK_ICON, 1, "1"]
+            number[t.cell(MARGIN + j, g - 1)] = [BLANK_ICON, 1, "1"]
             continue
-        beside_rows, beside_cols = _ICONS[piece]
-        # The icon for clue row y sits in the last clue column, and the icon
-        # for clue column x in the last clue row; the innermost piece's two
-        # icons are the one cell where those meet.
-        symbol[cell(g - 1, MARGIN + j)] = [beside_rows, "cross", 1]
-        symbol[cell(MARGIN + j, g - 1)] = [beside_cols, "cross", 1]
+        beside_rows, beside_cols = _ICONS[name]
+        # The icon of the row of numbers at y sits in the last number column,
+        # and the icon of the column at x in the last number row; the
+        # innermost kind's two icons are the one cell where those meet.
+        symbol[t.cell(g - 1, MARGIN + j)] = [beside_rows, "cross", 1]
+        symbol[t.cell(MARGIN + j, g - 1)] = [beside_cols, "cross", 1]
 
-    # Thick dividers along the right of the last clue column and the bottom
-    # of the last clue row, in vertex indices (§ 1.4), style 21.
-    def vertex(x, y):
-        return size + x + y * nx0
-
+    # Thick dividers along the right of the last number column and the bottom
+    # of the last number row, in vertex indices (§ 1.4), style 21.
     divider = {}
-    for y in range(MARGIN, ny + MARGIN):
-        a, b = vertex(g - 1, y - 1), vertex(g - 1, y)
-        divider[f"{a},{b}"] = 21
-    for x in range(MARGIN, nx + MARGIN):
-        a, b = vertex(x - 1, g - 1), vertex(x, g - 1)
-        divider[f"{a},{b}"] = 21
+    for y in range(MARGIN, t.ny + MARGIN):
+        divider[f"{t.vertex(g - 1, y - 1)},{t.vertex(g - 1, y)}"] = 21
+    for x in range(MARGIN, t.nx + MARGIN):
+        divider[f"{t.vertex(x - 1, g - 1)},{t.vertex(x, g - 1)}"] = 21
 
     question = _layer(number=number, symbol=symbol, lineE=divider)
-    center = center_point(nx, ny)
+    center = center_point(t.nx, t.ny)
     header = [
         "square",
-        str(nx),
-        str(ny),
+        str(t.nx),
+        str(t.ny),
         str(CELL_SIZE),
         "0",
         "1",
         "1",
-        str((nx + 1) * CELL_SIZE),
-        str((ny + 1) * CELL_SIZE),
+        str((t.nx + 1) * CELL_SIZE),
+        str((t.ny + 1) * CELL_SIZE),
         str(center),
         str(center),
         "0",
@@ -350,7 +375,7 @@ def payload(rows, cols, found, blank_clue=False):
         "Title: " + _escape(TITLE),
         "Author: ",
         "",
-        _escape(_rules_text(pieces)),
+        _escape(_rules_text(kinds)),
         "OFF",
         "false",
     ]
@@ -360,7 +385,7 @@ def payload(rows, cols, found, blank_clue=False):
         '["1","2","1"]~"line"~["1",3]',
         _json(question),
         "",
-        _json(_deltas(_cell_list(nx, ny, k))),
+        _json(_deltas(t.cell_list())),
         "[]",
         _json({flag: flag == "sol_loopline" for flag in CHECK_FLAGS}),
         '"x"',
@@ -378,18 +403,14 @@ def payload(rows, cols, found, blank_clue=False):
     return "\n".join(lines)
 
 
-def answer(rows, cols, found, blank_clue=False):
+def answer(rows, cols, found, blank_number=False):
     """The inflated text of the `a` parameter: the network's segments as
     `"<low>,<high>,1"` between cell-centre indices, sorted the way
     JavaScript sorts strings, in the second of six arrays (§ 3, § 5 step 9)."""
-    k = len(BLANK_FIRST if blank_clue else PIECE_ORDER)
-    nx0 = cols + k + 2 * MARGIN
-    g = MARGIN + k
-
-    def cell(rc):
-        return (g + rc[1]) + (g + rc[0]) * nx0
-
-    segments = sorted("{},{},1".format(*sorted((cell(a), cell(b)))) for a, b in found)
+    t = _table(rows, cols, blank_number)
+    segments = sorted(
+        "{},{},1".format(*sorted((t.grid_cell(*a), t.grid_cell(*b)))) for a, b in found
+    )
     return _json([[], segments, [], [], [], []])
 
 
@@ -400,11 +421,12 @@ def abbreviate(text):
     return text
 
 
-def link(rows, cols, found, blank_clue=False):
+def link(rows, cols, found, blank_number=False):
     """The Penpa+ solve link for a network on a `rows` by `cols` board: its
-    outside numbers as clues, its edges as the embedded answer."""
-    text = abbreviate(payload(rows, cols, found, blank_clue))
+    outside numbers as the numbers round the grid, its edges as the embedded
+    answer."""
+    text = abbreviate(payload(rows, cols, found, blank_number))
     return (
-        f"{PAGE}#m=solve&p={encrypt(text)}"
-        f"&a={encrypt(answer(rows, cols, found, blank_clue))}"
+        f"{PAGE}#m=solve&p={deflate_base64(text)}"
+        f"&a={deflate_base64(answer(rows, cols, found, blank_number))}"
     )

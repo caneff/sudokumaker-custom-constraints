@@ -3,9 +3,13 @@
 // the embedded answer check agrees with a drawn network. Run it in the local
 // session: it needs Chromium and the live Penpa+ page.
 //
-//   node finders/ubahn/penpa-browser-check.mjs LINKFILE [--shots DIR] [--clue-size 4|5]
+//   node finders/ubahn/penpa-browser-check.mjs LINKFILE [--shots DIR]
 //
-// Three drawings on fresh pages, each by mouse drags between the centres of
+// On the opened page it also reads the page's own state: the number strips'
+// icons run cross, branch, straight, turn from the outside in (a hollow square
+// first when the blank number is shown), and the header's centre point is the
+// one Penpa+'s own search_center computes. The number of strips is read off
+// the page. Then three drawings on fresh pages, each by mouse drags between the centres of
 // adjacent cells: the answer's own edges (the success dialog must come), the
 // answer with one edge missing, and the answer with one edge moved to a cell
 // pair that is not in it (neither may come). The solution comes from the
@@ -20,19 +24,24 @@ import zlib from 'node:zlib'
 import { chromium } from 'playwright'
 
 const args = process.argv.slice(2)
-const linkFile = args[0]
-const shots = args.includes('--shots') ? args[args.indexOf('--shots') + 1] : null
-if (!linkFile) {
-  console.error('usage: penpa-browser-check.mjs LINKFILE [--shots DIR] [--clue-size 4|5]')
+function refuse (why) {
+  console.error(`penpa-browser-check: ${why}`)
+  console.error('usage: penpa-browser-check.mjs LINKFILE [--shots DIR]')
   process.exit(2)
 }
-const clueSize = args.includes('--clue-size') ? Number(args[args.indexOf('--clue-size') + 1]) : 4
+const linkFile = args[0]
+if (!linkFile || linkFile.startsWith('--')) refuse('no link file given')
+const shotsAt = args.indexOf('--shots')
+if (shotsAt !== -1 && (!args[shotsAt + 1] || args[shotsAt + 1].startsWith('--'))) refuse('--shots needs a directory')
+const shots = shotsAt === -1 ? null : args[shotsAt + 1]
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 const redact = text => String(text).split(link).join('<link>').slice(0, 300)
 
 // The answer's segments as pairs of cell-centre indices.
-const answerParam = /[?#&]a=([^&]*)/.exec(link)[1]
+const answerMatch = /[?#&]a=([^&]*)/.exec(link)
+if (!answerMatch) refuse('the link has no a= answer parameter to draw from')
+const answerParam = answerMatch[1]
 const answer = JSON.parse(zlib.inflateRawSync(Buffer.from(answerParam, 'base64')).toString('utf8'))
 const edges = answer[1].map(entry => entry.split(',').slice(0, 2).map(Number))
 
@@ -80,11 +89,11 @@ async function verdict (page) {
 }
 
 // A neighbouring pair of grid cells that the answer does not use, as indices;
-// the grid is what lies past `clueSize` clue strips on the page's table.
+// the grid is what lies past the number strips on the page's table.
 async function strayEdge (page) {
-  const { nx, ny } = await page.evaluate(() => ({ nx: pu.nx, ny: pu.ny }))
+  const { nx, ny, strips } = await page.evaluate(() => ({ nx: pu.nx, ny: pu.ny, strips: pu.centerlist[0] % (pu.nx + 4) - 1 }))
   const nx0 = nx + 4
-  const first = 2 + clueSize
+  const first = 2 + strips
   const used = new Set(edges.map(e => e.join(',')))
   for (let y = first; y < ny + 2; y++) {
     for (let x = first; x < nx + 2; x++) {
@@ -114,6 +123,45 @@ try {
     const box = await opened.page.locator('#canvas').boundingBox()
     await opened.page.screenshot({ path: path.join(shots, 'opened.png'), clip: box })
   }
+  // The strips' icons: for each strip from the outside in, what the cell at
+  // the inner end of its row (and of its column) shows. Read from the page's
+  // own question layer, not from the link text.
+  const strips = await opened.page.evaluate(() => {
+    const t = pu.centerlist[0] % (pu.nx + 4) - 1
+    const nx0 = pu.nx + 4
+    const kindAt = (x, y) => {
+      const at = x + y * nx0
+      const sym = pu.pu_q.symbol[at]
+      if (!sym) return pu.pu_q.number[at] ? 'text:' + pu.pu_q.number[at][0] : 'none'
+      const f = sym[0]
+      const arms = f[0] + f[1] + f[2] + f[3]
+      if (arms === 4) return 'cross'
+      if (arms === 3) return 'branch'
+      return f[0] === f[2] ? 'straight' : 'turn'
+    }
+    const rows = []
+    const cols = []
+    for (let j = 0; j < t; j++) {
+      rows.push(kindAt(t + 1, 2 + j))
+      cols.push(kindAt(2 + j, t + 1))
+    }
+    return { t, rows, cols }
+  })
+  const ruled = ['cross', 'branch', 'straight', 'turn']
+  const wanted = strips.t === 5 ? ['text:\u25a1', ...ruled] : ruled
+  report('the icons run in the ruled order from the outside in, rows and columns',
+    JSON.stringify(strips.rows) === JSON.stringify(wanted) && JSON.stringify(strips.cols) === JSON.stringify(wanted),
+    `${strips.t} strips: rows ${strips.rows.join(',')}; columns ${strips.cols.join(',')}`)
+  const centre = await opened.page.evaluate(() => {
+    const header = pu.center_n
+    pu.center_n = 0
+    pu.search_center()
+    const computed = pu.center_n
+    pu.center_n = header
+    return { header, computed }
+  })
+  report("the header's centre point is the one Penpa+ computes",
+    centre.header === centre.computed, JSON.stringify(centre))
   report('nothing is solved before drawing', (await verdict(opened.page)).flag === 0)
   await opened.page.close()
 

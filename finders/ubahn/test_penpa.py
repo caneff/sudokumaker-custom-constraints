@@ -131,31 +131,32 @@ def read(path):
     return Decoded((FIXTURES / path).read_text().strip())
 
 
-def edges_of(decoded, clue_size):
+def edges_of(decoded, strips):
     """The answer's edges as ((r, c), (r2, c2)), counted from the grid's
-    first cell, which sits `clue_size` cells in from the board's corner."""
+    first cell, which sits `strips` cells in from the board's corner."""
     edges = set()
     for entry in decoded.answer[1]:
         a, b, style = entry.split(",")
         assert style == "1", entry
         (xa, ya), (xb, yb) = decoded.xy(int(a)), decoded.xy(int(b))
-        g = 2 + clue_size
+        g = 2 + strips
         edges.add(tuple(sorted(((ya - g, xa - g), (yb - g, xb - g)))))
     return frozenset(edges)
 
 
-def clues_of(decoded, clue_size, rows, cols):
-    """(per row, per column) clue lists as written: for each clue position
-    from the outside in, the number beside the grid. Rows read the columns
-    of clue cells, columns the clue rows."""
-    g = 2 + clue_size
+def numbers_of(decoded, strips, rows, cols):
+    """(per row, per column) lists of the outside numbers as written: for
+    each strip from the outside in, the number beside the grid, None where
+    the cell holds none. A row reads the strips that are columns of numbers,
+    a column the strips that are rows."""
+    g = 2 + strips
 
     def num(x, y):
         cell = decoded.number.get(x + y * decoded.nx0)
         return int(cell[0]) if cell and cell[0].isdigit() else None
 
-    by_row = [[num(2 + j, g + r) for j in range(clue_size)] for r in range(rows)]
-    by_col = [[num(g + c, 2 + j) for j in range(clue_size)] for c in range(cols)]
+    by_row = [[num(2 + j, g + r) for j in range(strips)] for r in range(rows)]
+    by_col = [[num(g + c, 2 + j) for j in range(strips)] for c in range(cols)]
     return by_row, by_col
 
 
@@ -218,17 +219,21 @@ check(
     ),
 )
 check(
-    "KNT's link holds 19 clue numbers and 7 cross icons",
+    "KNT's link holds 19 outside numbers and 7 cross icons",
     len(knt.number) == 19 and len(knt.symbol) == 7,
 )
+niverio_numbers = numbers_of(niverio, 4, 10, 10)
 check(
-    "Niverio's answer reproduces all 25 of its clue numbers, "
+    "Niverio's link holds 25 outside numbers",
+    sum(n is not None for part in niverio_numbers for row in part for n in row) == 25,
+)
+check(
+    "Niverio's answer reproduces all 25 of its outside numbers, "
     "cross-branch-straight-turn",
-    clues_of(niverio, 4, 10, 10)[0]
-    and all(
+    all(
         got is None or got == want
         for got_rows, want_rows in zip(
-            clues_of(niverio, 4, 10, 10),
+            numbers_of(niverio, 4, 10, 10),
             kind_counts(edges_of(niverio, 4), 10, 10, RULED),
             strict=True,
         )
@@ -259,7 +264,7 @@ check(
     url.startswith(penpa.PAGE + "#m=solve&p="),
 )
 check(
-    "the header reads a square board of cells plus four clue strips",
+    "the header reads a square board of cells plus four strips of numbers",
     d.header[0] == "square" and (d.nx, d.ny) == (8, 8),
 )
 check("the board has no hidden margin", d.space == [0, 0, 0, 0])
@@ -273,16 +278,16 @@ check(
 check("there are 19 payload lines", len(d.lines) == 19)
 
 numbers_in = network.outside_numbers(BLOCK, ROWS, COLS)
-by_row, by_col = clues_of(d, 4, ROWS, COLS)
+by_row, by_col = numbers_of(d, 4, ROWS, COLS)
 order = [network.KIND_NAMES.index(k) for k in RULED]
 check(
-    "the clue cells carry the outside numbers, cross-branch-straight-turn, "
+    "the number cells carry the outside numbers, cross-branch-straight-turn, "
     "from the outside in",
     by_row == [[numbers_in[0][r][k] for k in order] for r in range(ROWS)]
     and by_col == [[numbers_in[1][c][k] for k in order] for c in range(COLS)],
 )
 check(
-    "recounting the answer by degree through the layout gives the same clues",
+    "recounting the answer by degree through the layout gives the same numbers",
     (by_row, by_col) == kind_counts(edges_of(d, 4), ROWS, COLS, RULED),
 )
 check("the answer decodes to the finder's edges", edges_of(d, 4) == BLOCK)
@@ -302,10 +307,10 @@ check(
     "only the lines-only check flag is on",
     [k for k, v in d.flags.items() if v] == ["sol_loopline"],
 )
-# Every clue cell: 4 clue rows x 4 columns + 4 clue columns x 4 rows; the
+# Every number cell: 4 rows x 4 columns + 4 columns x 4 rows; the
 # icons are symbols, not numbers.
 check(
-    "32 clue numbers, zero shown as 0",
+    "32 outside numbers, zero shown as 0",
     len(d.number) == 32
     and all(v[0].isdigit() and v[1:] == [1, "1"] for v in d.number.values()),
 )
@@ -315,7 +320,7 @@ check(
 )
 sym = {d.xy(i): v[0] for i, v in d.symbol.items()}
 check(
-    "icons sit at the ends of the clue strips: cross, T, straight, then the "
+    "icons sit at the ends of the number strips: cross, T, straight, then the "
     "shared turn",
     sym[(5, 2)] == [1, 1, 1, 1]
     and sym[(5, 3)] == [1, 1, 1, 0]
@@ -369,13 +374,13 @@ check(
     == [[], ["66,67,1", "66,76,1", "67,77,1", "76,77,1"], [], [], [], []],
 )
 
-# --- The blank-clue option: a fifth row and column, outside the cross
-five = Decoded(penpa.link(ROWS, COLS, BLOCK, blank_clue=True))
+# --- The blank-number option: a fifth row and column, outside the cross
+five = Decoded(penpa.link(ROWS, COLS, BLOCK, blank_number=True))
 check("the blank option adds a fifth strip: board 9x9", (five.nx, five.ny) == (9, 9))
 order5 = [network.KIND_NAMES.index(k) for k in ["blank", *RULED]]
-b_rows, b_cols = clues_of(five, 5, ROWS, COLS)
+b_rows, b_cols = numbers_of(five, 5, ROWS, COLS)
 check(
-    "five clues each way, blank outermost, counts right",
+    "five outside numbers each way, blank outermost, counts right",
     b_rows == [[numbers_in[0][r][k] for k in order5] for r in range(ROWS)]
     and b_cols == [[numbers_in[1][c][k] for k in order5] for c in range(COLS)],
 )
@@ -388,18 +393,49 @@ check(
     len(five.number) == 5 * 8 + 2 and len(five.symbol) == 7,
 )
 check("the answer edges are unchanged by the option", edges_of(five, 5) == BLOCK)
-check("the option is off by default", len(d.number) == 32)
 
 # A non-square board: 3 rows by 5 columns.
 wide = Decoded(penpa.link(3, 5, BLOCK))
 check("a 3x5 board has a 9 by 7 table", (wide.nx, wide.ny) == (9, 7))
-w_rows, w_cols = clues_of(wide, 4, 3, 5)
+w_rows, w_cols = numbers_of(wide, 4, 3, 5)
 w_in = network.outside_numbers(BLOCK, 3, 5)
 check(
-    "a 3x5 board's clues and answer round-trip",
+    "a 3x5 board's outside numbers and answer round-trip",
     w_rows == [[w_in[0][r][k] for k in order] for r in range(3)]
     and w_cols == [[w_in[1][c][k] for k in order] for c in range(5)]
     and edges_of(wide, 4) == BLOCK,
+)
+
+# The centre points of the mixed and even-even tables are the values Penpa+'s
+# own search_center gave for these links in the browser check (2026-10-10),
+# which the five square published headers cannot cover.
+check(
+    "centre points of 9x8, 8x9 and 8x8 tables match Penpa+'s own",
+    [penpa.center_point(*nxy) for nxy in ((9, 8), (8, 9), (8, 8))] == [383, 545, 209],
+)
+check(
+    "a 4x5 board's header holds the 9x8 centre point",
+    Decoded(penpa.link(4, 5, BLOCK)).center == (383, 383),
+)
+
+# The link opens in the Line tool, and the dividers are the two thick lines
+# along the number strips' inner edge (vertex indices, written out here).
+check(
+    "line 2 opens the Line tool, normal, green",
+    d.lines[2] == '["1","2","1"]~"line"~["1",3]',
+)
+check(
+    "the mode object opens the solver's layer in the line tool",
+    json.loads(d.lines[11])["pu_a"]["edit_mode"] == "line"
+    and json.loads(d.lines[11])["qa"] == "pu_a",
+)
+S = 12 * 12
+want_dividers = {
+    f"{S + 5 + (y - 1) * 12},{S + 5 + y * 12}": 21 for y in range(2, 10)
+} | {f"{S + (x - 1) + 5 * 12},{S + x + 5 * 12}": 21 for x in range(2, 10)}
+check(
+    "the dividers are 16 style-21 edges at the strips' inner side",
+    d.layer["lineE"] == want_dividers,
 )
 
 # A link written twice is the same text.
@@ -481,19 +517,51 @@ with tempfile.TemporaryDirectory() as tmp:
                 ]
             )
         )
-        rows_, cols_ = clues_of(got, 4, 4, 4)
+        rows_, cols_ = numbers_of(got, 4, 4, 4)
         want = network.outside_numbers(net, 4, 4)
         good &= edges_of(got, 4) == net
         good &= rows_ == [[want[0][r_][k] for k in order] for r_ in range(4)]
         good &= cols_ == [[want[1][c][k] for k in order] for c in range(4)]
     check("every hunt link decodes to its record's numbers and edges", good)
 
-    r = run_cli("links", str(out), "--blank-clue")
-    check("`links --blank-clue` exits 0", r.returncode == 0)
+    r = run_cli("links", str(out), "--blank-number")
+    check("`links --blank-number` exits 0", r.returncode == 0)
     first = Decoded((out / "links" / f"{seeds[0]}.txt").read_text().strip())
-    check("`--blank-clue` writes the five-strip board", (first.nx, first.ny) == (9, 9))
+    check(
+        "`--blank-number` writes the five-strip board", (first.nx, first.ny) == (9, 9)
+    )
+
+    (out / "links" / "999.txt").write_text("stale\n")
+    r = run_cli("links", str(out))
+    check(
+        "a rerun replaces the link set: a stale file goes, the variant is named",
+        r.returncode == 0
+        and not (out / "links" / "999.txt").exists()
+        and "without the blank number" in r.stdout,
+    )
 
     r = run_cli("links", str(Path(tmp) / "nowhere"))
-    check("`links` on a missing directory exits 2", r.returncode == 2)
+    check(
+        "`links` on a missing directory exits 2 and says it is not a hunt directory",
+        r.returncode == 2 and "has no examples.jsonl: not a hunt directory" in r.stderr,
+    )
+
+    # A progress log with one example event too many: refused before any file.
+    bad = Path(tmp) / "bad"
+    bad.mkdir()
+    (bad / "examples.jsonl").write_text((out / "examples.jsonl").read_text())
+    (bad / "progress.jsonl").write_text(
+        (out / "progress.jsonl").read_text()
+        + json.dumps({"seed": 99, "outcome": "example"})
+        + "\n"
+    )
+    r = run_cli("links", str(bad))
+    check(
+        "`links` refuses an example count that disagrees with progress.jsonl, "
+        "naming it, and writes no links directory",
+        r.returncode == 2
+        and "example events in progress.jsonl" in r.stderr
+        and not (bad / "links").exists(),
+    )
 
 sys.exit(0 if ok else 1)

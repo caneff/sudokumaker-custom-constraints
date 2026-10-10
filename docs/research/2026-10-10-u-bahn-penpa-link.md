@@ -518,10 +518,16 @@ real hunt. All four passed every check. Results, each settling a § 7 item:
 - **Icon flags are [right, down, left, up]**: the row strip's branch icon
   draws left, right and down, the column strip's draws right, down and up.
   The arms reach the cell edges, so an icon looks like a piece of track.
+- **The ruled order renders as ruled.** From the outside in, rows and
+  columns alike: hollow square (only with the blank option), cross, branch,
+  straight, turn. The script reads this from the page's own question layer
+  and the screenshots agree.
 - **The blank icon** is a number cell whose text is U+25A1; it renders as a
   small hollow square.
-- **A 3x5 board** (nx 9, ny 7) is centred with the § 1.4 edge-midpoint rule
-  for mixed parity, which the five published headers could not test.
+- **The centre point matches Penpa+'s own.** The script sets `pu.center_n` to
+  0, calls `pu.search_center()` and compares: 209 (8x8 table), 84 (9x9), 71
+  (9x7), 383 (9x8) and 545 (8x9) all agree with § 1.4's rules, which covers
+  the mixed-parity edge-midpoint cases the five published headers could not.
 
 ## Sources
 
