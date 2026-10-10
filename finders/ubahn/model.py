@@ -2,8 +2,8 @@
 
 One boolean per edge is the decision; everything else is channelled from the
 edges. Per cell, one table over its arms lists the 12 legal arm patterns and
-the piece each one makes, so a dead end has no row. The pieces of a row or
-column sum to its outside numbers. Connectivity has two encodings: `flow`
+the piece each one makes (blank for no arm), so a dead end has no row. The
+pieces and blank cells of a row or column sum to its outside numbers. Connectivity has two encodings: `flow`
 (single-commodity flow, what the finder searches with) and `tree` (a spanning
 tree with level labels, the independent check). Both hang off the same root,
 the first used cell in reading order.
@@ -25,13 +25,13 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
-from network import BRANCH, CROSS, EMPTY, STRAIGHT, TURN, all_edges, arm_edges
+from network import BLANK, BRANCH, CROSS, STRAIGHT, TURN, all_edges, arm_edges
 from uniqueness import check_uniqueness
 
 # The 12 legal (north, east, south, west) arm patterns of a cell and the piece
 # each makes. The 4 patterns with one arm, the dead ends, are left out.
 PATTERNS = (
-    ((0, 0, 0, 0), EMPTY),
+    ((0, 0, 0, 0), BLANK),
     ((1, 0, 1, 0), STRAIGHT),
     ((0, 1, 0, 1), STRAIGHT),
     ((1, 1, 0, 0), TURN),
@@ -44,7 +44,8 @@ PATTERNS = (
     ((1, 1, 1, 0), BRANCH),
     ((1, 1, 1, 1), CROSS),
 )
-KINDS = (TURN, STRAIGHT, BRANCH, CROSS)
+# In the order of a row's or column's outside numbers.
+KINDS = (TURN, STRAIGHT, BRANCH, CROSS, BLANK)
 
 
 class Built(NamedTuple):
@@ -56,23 +57,21 @@ class Built(NamedTuple):
 
 def _add_pieces(m, edge, cells):
     """Channel each cell's piece from its arms. Returns `kind[cell, piece]`
-    and `used[cell]` booleans. An arm that would leave the board has no
-    variable, so only the patterns without it are listed."""
+    booleans, BLANK among the pieces, and `used[cell]`, the cell is not
+    blank. An arm that would leave the board has no variable, so only the
+    patterns without it are listed."""
     kind, used = {}, {}
     for cell in cells:
         arm_vars = [edge.get(e) for e in arm_edges(cell)]
         on_board = [i for i, var in enumerate(arm_vars) if var is not None]
         for k in KINDS:
             kind[cell, k] = m.new_bool_var(f"k{cell}_{k}")
-        used[cell] = m.new_bool_var(f"u{cell}")
+        used[cell] = kind[cell, BLANK].Not()
         m.add_allowed_assignments(
-            [arm_vars[i] for i in on_board]
-            + [kind[cell, k] for k in KINDS]
-            + [used[cell]],
+            [arm_vars[i] for i in on_board] + [kind[cell, k] for k in KINDS],
             [
                 tuple(pattern[i] for i in on_board)
                 + tuple(int(k == made) for k in KINDS)
-                + (int(made != EMPTY),)
                 for pattern, made in PATTERNS
                 if sum(pattern) == sum(pattern[i] for i in on_board)
             ],
@@ -154,7 +153,7 @@ def build(rows, cols, connectivity, *, exactly=None, numbers=None):
             for k, count in zip(KINDS, counts, strict=True):
                 m.add(sum(kind[(r, c), k] for r in range(rows)) == count)
         # The numbers fix how many cells are used: size the flow to that.
-        cap = sum(sum(counts) for counts in row_numbers)
+        cap = rows * cols - sum(counts[BLANK] for counts in row_numbers)
 
     root = _add_root(m, cells, used)
     add_connectivity = {"flow": _add_flow, "tree": _add_tree}[connectivity]

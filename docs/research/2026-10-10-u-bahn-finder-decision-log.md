@@ -3,7 +3,7 @@
 **Date:** 2026-10-10 · **Ticket:** #773 · **Code:** `finders/ubahn/`
 
 The base model and one condition ("exactly N of piece P in row or column
-K"). Rules and the model's reasoning: `2026-10-10-u-bahn-cpsat-finder.md`.
+K", P a piece or blank). Rules and the model's reasoning: `2026-10-10-u-bahn-cpsat-finder.md`.
 This file answers the preflight in `docs/agents/grid-finder-lessons.md` and
 records what was measured while building. No long hunt has been run.
 
@@ -49,6 +49,13 @@ All on one worker, this box, 2026-10-10.
   networks by solve, forbid, re-solve, and each gives the brute-force verdict
   on all 554 sets of outside numbers. About 3.7 s per encoding to list, about
   2 s per encoding for the 554 verdicts.
+- **That space cannot test connectivity.** The crosses' own cells leave no
+  free 2x2 block, so no edge set in it has two separate rings: with the
+  flow's edge gate or the tree's level rule deleted, and with the flood fill
+  deleted from the brute force, the test still passed. A second exhaustive
+  space covers it: 3x4, every one of its 131,072 edge assignments, with no
+  blank in r2. 365 edge sets there have no dead end, 16 of them are not
+  connected, and both encodings list exactly the 349 networks.
 - **A 6x6 run, 20 seeds, `--exactly 2:cross:r2`, a 5 s cap no solve reached.**
   1.3 s wall clock in all: 16 examples, 4 seeds whose network was not unique,
   no timeout, no duplicate. Twenty seeds is a sample, not a rate.
@@ -67,5 +74,9 @@ All on one worker, this box, 2026-10-10.
   rotation, so permuting cells is enough. A square board takes `dedupe.D4`;
   any other board takes the four maps that keep its shape, because D4 would
   read a 2x8 as a 4x4.
+- **Blank is counted (Chris's ruling on #773, 2026-10-10).** A condition may
+  name blank, and each row and column carries a fifth outside number for its
+  blank cells. It is the length less the other four, so the 554 distinct
+  full sets and every uniqueness verdict are unchanged.
 - **A condition is not symmetric, the dedupe is.** `2:cross:r2` holds on a
   network and its left-right mirror image, and the hunt keeps one of the two.

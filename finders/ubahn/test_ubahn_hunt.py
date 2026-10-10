@@ -106,7 +106,7 @@ valid = [
     net
     for net in brute.assignments(ROWS, COLS, forced)
     if not network.why_not_network(net, ROWS, COLS)
-    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS - 1] == 2
+    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS] == 2
 ]
 by_numbers = Counter(network.outside_numbers(net, ROWS, COLS) for net in valid)
 unique = {
@@ -136,6 +136,22 @@ with tempfile.TemporaryDirectory() as d:
             )
             == network.outside_numbers(network_of(ex), ROWS, COLS)
             for ex in examples
+        ),
+    )
+    check(
+        "every row and column has five outside numbers, blank last, that "
+        "add up to its length",
+        all(
+            len(counts) == 5
+            and sum(counts) == 4
+            and counts[4]
+            == sum(1 for cell in cells if not any(network.arms(network_of(ex), cell)))
+            for ex in examples
+            for axis, groups in (
+                ("rows", [[(i, j) for j in range(4)] for i in range(4)]),
+                ("cols", [[(j, i) for j in range(4)] for i in range(4)]),
+            )
+            for counts, cells in zip(ex["numbers"][axis], groups, strict=True)
         ),
     )
     keys = [
@@ -170,6 +186,7 @@ with tempfile.TemporaryDirectory() as d:
     out = Path(d)
     good = min(unique, key=sorted)
     dead_end = good - {min(good)}
+    good_blanks = sum(1 for c in range(COLS) if not any(network.arms(good, (0, c))))
     cases = [
         ("a unique network", record(good), True, ""),
         (
@@ -185,6 +202,18 @@ with tempfile.TemporaryDirectory() as d:
             "1:cross:r2",
         ),
         ("a network with a dead end", record(dead_end), False, "dead end"),
+        (
+            "a unique network filed under its own blank count in r1",
+            record(good, exactly=f"{good_blanks}:blank:r1"),
+            True,
+            "",
+        ),
+        (
+            "a unique network filed under another blank count in r1",
+            record(good, exactly=f"{good_blanks + 1}:blank:r1"),
+            False,
+            ":blank:r1",
+        ),
         (
             "two separate rings",
             record(

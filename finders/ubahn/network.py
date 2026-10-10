@@ -3,7 +3,7 @@
 A network is a frozenset of edges. An edge joins the centres of two
 orthogonally adjacent cells and is written `((r, c), (r2, c2))`, the earlier
 cell first. A cell's arms are the edges at it that are in the network; the
-arms give its piece. `why_not_network` is the rule check `verify` and the
+arms give its piece, and a cell with no arm is blank. `why_not_network` is the rule check `verify` and the
 brute-force test run: it shares no code with `model.py` but the board's
 geometry (`all_edges`, `arm_edges`).
 
@@ -12,9 +12,10 @@ The rules and their sources: docs/research/2026-10-10-u-bahn-cpsat-finder.md.
 
 from typing import NamedTuple
 
-EMPTY, TURN, STRAIGHT, BRANCH, CROSS = range(5)
-# The four pieces in the order a row's or column's outside numbers are given.
-PIECES = ("turn", "straight", "branch", "cross")
+TURN, STRAIGHT, BRANCH, CROSS, BLANK = range(5)
+# What a row's or column's outside numbers count, in the order they are
+# given: the four pieces, then the blank cells.
+COUNTED = ("turn", "straight", "branch", "cross", "blank")
 
 # A cell's piece drawn from its (north, east, south, west) arms.
 _DRAWN = {
@@ -59,12 +60,13 @@ def arms(network, cell):
 
 
 def piece(cell_arms):
-    """The piece a cell with these arms holds, or None for a dead end."""
+    """The piece a cell with these arms holds, BLANK for none, or None for a
+    dead end."""
     north, east, south, west = cell_arms
     count = north + east + south + west
     if count == 2:
         return STRAIGHT if north == south else TURN
-    return {0: EMPTY, 1: None, 3: BRANCH, 4: CROSS}[count]
+    return {0: BLANK, 1: None, 3: BRANCH, 4: CROSS}[count]
 
 
 def piece_grid(network, rows, cols):
@@ -95,7 +97,7 @@ def why_not_network(network, rows, cols):
         for edge in arm_edges(cell):
             if edge in network:
                 stack.extend(edge)
-    used = sum(1 for p in pieces if p != EMPTY)
+    used = sum(1 for p in pieces if p != BLANK)
     if len(reached) != used:
         return f"not connected: {len(reached)} of {used} used cells reached"
     return ""
@@ -103,13 +105,13 @@ def why_not_network(network, rows, cols):
 
 def outside_numbers(network, rows, cols):
     """(row numbers, column numbers): for each row, then each column, how
-    many of each piece it holds, in `PIECES` order. Only for a network with
-    no dead end."""
+    many of each piece it holds and how many blank cells, in `COUNTED`
+    order. Only for a network with no dead end."""
     pieces = piece_grid(network, rows, cols)
 
     def count(cells):
         held = [pieces[r * cols + c] for r, c in cells]
-        return tuple(held.count(p) for p in (TURN, STRAIGHT, BRANCH, CROSS))
+        return tuple(held.count(p) for p in range(len(COUNTED)))
 
     return (
         tuple(count([(r, c) for c in range(cols)]) for r in range(rows)),
@@ -126,7 +128,8 @@ def drawing(network, rows, cols):
 
 class Exactly(NamedTuple):
     """The condition "exactly `count` of `piece` in row or column `index`":
-    `axis` is "r" or "c", `index` counts from 0."""
+    `piece` is a piece or BLANK, `axis` is "r" or "c", `index` counts from
+    0."""
 
     count: int
     piece: int
@@ -140,7 +143,7 @@ class Exactly(NamedTuple):
         return [(r, self.index) for r in range(rows)]
 
     def holds(self, network, rows, cols):
-        """Whether the network meets the condition, by counting its pieces."""
+        """Whether the network meets the condition, by counting its cells."""
         held = [piece(arms(network, cell)) for cell in self.cells(rows, cols)]
         return held.count(self.piece) == self.count
 
@@ -157,17 +160,17 @@ class Exactly(NamedTuple):
             or parts[2][1:] == "0"
         ):
             raise ValueError(f"a condition is N:PIECE:rK or N:PIECE:cK, got {text!r}")
-        if parts[1] not in PIECES:
+        if parts[1] not in COUNTED:
             raise ValueError(
-                f"no piece named {parts[1]!r}: the pieces are {', '.join(PIECES)}"
+                f"no piece named {parts[1]!r}: a condition counts {', '.join(COUNTED)}"
             )
         return cls(
             int(parts[0]),
-            PIECES.index(parts[1]) + 1,
+            COUNTED.index(parts[1]),
             parts[2][0],
             int(parts[2][1:]) - 1,
         )
 
     def text(self):
         """The condition as `parse` reads it."""
-        return f"{self.count}:{PIECES[self.piece - 1]}:{self.axis}{self.index + 1}"
+        return f"{self.count}:{COUNTED[self.piece]}:{self.axis}{self.index + 1}"

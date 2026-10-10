@@ -86,8 +86,8 @@ test:
     # -- #498, #501); hunt's are a few seconds each with workers pinned to 1,
     # test_spec_483_e2e.py about six; qqrr's total about ten; the
     # galaxy-copycat human solver about 1.5 s; ubahn's brute-force agreement
-    # about 16 s (1,114 one-worker solves to list a 4x4 space under both
-    # connectivity encodings) and its hunt test about 5 s; counting_shaded is the one
+    # about 22 s (one-worker solves that list a 4x4 and a 3x4 space under
+    # both connectivity encodings) and its hunt test about 5 s; counting_shaded is the one
     # pytest suite in the repo, about 3 s, and compiles its C filter with the
     # system cc to check it against the Python one.
     shopt -s globstar

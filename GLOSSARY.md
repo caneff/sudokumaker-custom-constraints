@@ -173,12 +173,13 @@ sources: `docs/research/2026-10-10-u-bahn-cpsat-finder.md`.
   cell has 0, 2, 3 or 4 arms; a cell with one arm is a dead end.
 - **piece** — what a cell's arms make: a **turn** (two arms at a right
   angle), a **straight** (two opposite arms), a **branch** (three) or a
-  **cross** (four). A cell with no arm is **empty** and holds no piece. A
-  piece is the same piece in any rotation.
-- **outside number** — how many of one piece a row or column holds. Each row
-  and each column has four, in the order turn, straight, branch, cross; the
-  **full set** is all of them, and it is what a U-Bahn puzzle gives the
-  solver. Not a **clue**, which is a ring cell of an outside-clue group.
+  **cross** (four). A piece is the same piece in any rotation. A cell with
+  no arm is **blank**: it holds no piece, and is counted beside the four.
+- **outside number** — how many of one piece, or how many blank cells, a row
+  or column holds. Each row and each column has five, in the order turn,
+  straight, branch, cross, blank; the **full set** is all of them, and it is
+  what a U-Bahn puzzle gives the solver. The blank number is the row's or
+  column's length less the other four, so it tells the solver nothing new. Not a **clue**, which is a ring cell of an outside-clue group.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 

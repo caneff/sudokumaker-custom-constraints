@@ -13,7 +13,8 @@ capped solve `Empty("timeout ...")`.
 uniqueness with the spanning-tree encoding.
 
 Conditions are finder rules passed as flags. The one so far:
-`--exactly N:PIECE:rK` (or `cK`), exactly N of a piece in a row or column.
+`--exactly N:PIECE:rK` (or `cK`), exactly N of a piece in a row or column;
+PIECE is turn, straight, branch, cross, or blank for the cells with no arm.
 
     uv run finders/ubahn/ubahn_finder.py --out DIR --seeds 0:50 --workers 1 \\
         --rows 6 --cols 6 --exactly 2:cross:r2 --timeout 60
@@ -172,7 +173,8 @@ class UbahnFinder:
                 for r in range(rows - 1)
             ],
             "drawing": network.drawing(found, rows, cols),
-            # Per row and per column: turns, straights, branches, crosses.
+            # Per row and per column: turns, straights, branches, crosses,
+            # blank cells.
             "numbers": {"rows": row_numbers, "cols": col_numbers},
         }
 

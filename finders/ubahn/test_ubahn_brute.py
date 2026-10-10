@@ -8,6 +8,10 @@ must return the same networks under both connectivity encodings, and the
 finder's uniqueness verdict must match the count of networks that share a
 full set of outside numbers.
 
+A second space, 3x4 with no blank in r2, covers what the first cannot: a
+condition on blank cells, and edge sets with no dead end that are not
+connected.
+
     uv run finders/ubahn/test_ubahn_brute.py
 """
 
@@ -48,7 +52,7 @@ valid = {
     net
     for net in space
     if not network.why_not_network(net, ROWS, COLS)
-    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS - 1] == 2
+    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS] == 2
 }
 # The counts a separate throwaway script gave for this space (#773).
 check(f"557 valid networks (got {len(valid)})", len(valid) == 557)
@@ -67,10 +71,10 @@ check(
 )
 
 
-def model_networks(connectivity):
+def model_networks(connectivity, rows=ROWS, cols=COLS, exactly=EXACTLY):
     """Every network the model allows: solve, forbid the network on its edge
     variables, solve again, until the model is infeasible."""
-    built = model.build(ROWS, COLS, connectivity, exactly=EXACTLY)
+    built = model.build(rows, cols, connectivity, exactly=exactly)
     solver = cp_model.CpSolver()
     solver.parameters.num_workers = 1
     found = set()
@@ -110,6 +114,32 @@ for connectivity in ("flow", "tree"):
         f"count on all {len(by_numbers)} sets of outside numbers "
         f"(first mismatch: {wrong[:1]})",
         not wrong,
+    )
+
+# The 4x4 space above cannot hold two separate rings: the crosses' own cells
+# leave no free 2x2 block. A 3x4 board can, and "no blank in r2" keeps them:
+# every edge assignment of the board, 131,072 again, with no edge forced.
+NO_BLANK_R2 = network.Exactly(0, network.BLANK, "r", 1)
+filled = [
+    net
+    for net in brute.assignments(3, 4, set())
+    if net
+    and None not in network.piece_grid(net, 3, 4)
+    and network.outside_numbers(net, 3, 4)[0][1][network.BLANK] == 0
+]
+connected = {net for net in filled if not network.why_not_network(net, 3, 4)}
+check(
+    f"3x4 with no blank in r2: {len(filled)} edge sets have no dead end, "
+    f"{len(filled) - len(connected)} of them not connected",
+    0 < len(connected) < len(filled),
+)
+for connectivity in ("flow", "tree"):
+    got = model_networks(connectivity, 3, 4, NO_BLANK_R2)
+    check(
+        f"{connectivity} model, 3x4 with no blank in r2: the brute-force "
+        f"networks exactly ({len(got - connected)} extra, "
+        f"{len(connected - got)} missing)",
+        got == connected,
     )
 
 sys.exit(0 if ok else 1)
