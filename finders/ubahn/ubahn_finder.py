@@ -22,11 +22,19 @@ PIECE is turn, straight, branch, cross, or blank for the cells with no arm.
         --rows 6 --cols 6 --exactly 2:cross:r2 --timeout 60
     uv run finders/ubahn/ubahn_finder.py verify DIR
 
+`links DIR [--blank-clue]` writes a Penpa+ link per example to
+`DIR/links/<seed>.txt` (#774, `penpa.py`), the clues cross, branch, straight,
+turn from the outside in; `--blank-clue` adds a fifth, outside the cross, for
+the blank cells.
+
+    uv run finders/ubahn/ubahn_finder.py links DIR [--blank-clue]
+
 The driver's flags (`--out`, `--seeds`, `--workers`, ...) are its own
 (finders/hunt/driver.py).
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -39,6 +47,7 @@ sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
 import model
 import network
+import penpa
 from dedupe import D4
 from driver import run
 from protocol import Empty, Verdict
@@ -217,7 +226,52 @@ class UbahnFinder:
         )
 
 
+def write_links(out, blank_clue=False):
+    """Write `out/links/<seed>.txt`, one Penpa+ link per example of the hunt
+    in `out`, paired with its seed the way the driver pairs renders: the
+    k-th "example" event of progress.jsonl is the k-th examples.jsonl
+    record. Returns how many; raises ValueError, naming it, on a missing or
+    unpaired log or a record `candidate_from_record` refuses."""
+    out = Path(out)
+
+    def lines(name):
+        path = out / name
+        if not path.is_file():
+            raise ValueError(f"{out} has no {name}: not a hunt directory")
+        return [json.loads(line) for line in path.read_text().splitlines() if line]
+
+    records = lines("examples.jsonl")
+    seeds = [
+        e["seed"] for e in lines("progress.jsonl") if e.get("outcome") == "example"
+    ]
+    if len(seeds) != len(records):
+        raise ValueError(
+            f"{len(records)} examples but {len(seeds)} example events in progress.jsonl"
+        )
+    finder = UbahnFinder()
+    links = out / "links"
+    links.mkdir(exist_ok=True)
+    for seed, record in zip(seeds, records, strict=True):
+        rows, cols, found, _ = finder.candidate_from_record(record)
+        (links / f"{seed}.txt").write_text(
+            penpa.link(rows, cols, found, blank_clue) + "\n"
+        )
+    return len(records)
+
+
 def main(argv):
+    if argv[:1] == ["links"]:
+        parser = argparse.ArgumentParser(prog="ubahn_finder links")
+        parser.add_argument("dir")
+        parser.add_argument("--blank-clue", action="store_true")
+        args = parser.parse_args(argv[1:])
+        try:
+            count = write_links(args.dir, args.blank_clue)
+        except ValueError as e:
+            print(f"ubahn_finder links: {e}", file=sys.stderr)
+            return 2
+        print(f"wrote {count} links to {Path(args.dir) / 'links'}")
+        return 0
     parser = argparse.ArgumentParser(prog="ubahn_finder", add_help=False)
     parser.add_argument("--rows", type=int, default=DEFAULT_SIDE)
     parser.add_argument("--cols", type=int, default=DEFAULT_SIDE)

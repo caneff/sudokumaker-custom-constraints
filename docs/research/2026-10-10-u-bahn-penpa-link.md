@@ -498,6 +498,31 @@ grid with all `8n` clues:
 - Forks: the two Summation links point at `zwegner.github.io/penpa-edit`; I
   did not compare that fork's loader with `[P1]`.
 
+## 8. Browser check, 2026-10-10 (#774)
+
+Ran in the local session with `finders/ubahn/penpa-browser-check.mjs`
+(Playwright, headless Chromium) against the live swaroopg92 page, which
+announced Penpa+ v3.2.4, on links `finders/ubahn/penpa.py` made: a 4x4 hand
+network, the same with the blank option, a 3x5 board and a 6x6 network from a
+real hunt. All four passed every check. Results, each settling a § 7 item:
+
+- **Python's deflate output loads.** The page inflated `zlib.compressobj`
+  streams, unpadded base64 and the `#m=solve&p=…&a=…` form.
+- **The embedded check works headless.** Drawing the answer's edges with the
+  mouse in the green Line tool set `pu.sol_flag` to 1 and showed the
+  "Congratulations!" dialog; the answer with one edge missing, and a network
+  of the same size with one edge moved, did not. That is the § 3 reading, not
+  Icelom's. Its test may have drawn in another line style; I did not find out.
+- **The link opens in Line**, normal submode, green, in solving mode ("Solver
+  Mode (Answer Checking Enabled)").
+- **Icon flags are [right, down, left, up]**: the row strip's branch icon
+  draws left, right and down, the column strip's draws right, down and up.
+  The arms reach the cell edges, so an icon looks like a piece of track.
+- **The blank icon** is a number cell whose text is U+25A1; it renders as a
+  small hollow square.
+- **A 3x5 board** (nx 9, ny 7) is centred with the § 1.4 edge-midpoint rule
+  for mixed parity, which the five published headers could not test.
+
 ## Sources
 
 Repo files are cited inline as `path:line`. Outside sources:
