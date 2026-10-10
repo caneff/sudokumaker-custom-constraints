@@ -246,21 +246,24 @@ with tempfile.TemporaryDirectory() as d:
 with tempfile.TemporaryDirectory() as d:
     # A record `verify` cannot read is refused by name, never read as a
     # network with fewer edges or as a record with no condition.
-    out = Path(d)
     good = min(unique, key=sorted)
-    for name, damage, reason in (
+    for i, (name, damage, reason) in enumerate(
         (
-            "an edge row that is not 0s and 1s",
-            {"h": ["x1x", *record(good)["h"][1:]]},
-            "'x1x' of h",
-        ),
-        (
-            "an edge row of the wrong length",
-            {"v": ["1", *record(good)["v"][1:]]},
-            "'1' of v",
-        ),
-        ("an empty condition", {"exactly": ""}, "N:PIECE:rK"),
+            (
+                "an edge row that is not 0s and 1s",
+                {"h": ["x1x", *record(good)["h"][1:]]},
+                "'x1x' of h",
+            ),
+            (
+                "an edge row of the wrong length",
+                {"v": ["1", *record(good)["v"][1:]]},
+                "'1' of v",
+            ),
+            ("an empty condition", {"exactly": ""}, "N:PIECE:rK"),
+        )
     ):
+        out = Path(d) / str(i)
+        out.mkdir()
         (out / "examples.jsonl").write_text(
             json.dumps({**record(good), **damage}) + "\n"
         )
@@ -274,15 +277,17 @@ with tempfile.TemporaryDirectory() as d:
 
 with tempfile.TemporaryDirectory() as d:
     board = ["--rows", "4", "--cols", "4"]
-    for flags, reason in (
-        ([*board, "--exactly", "2:cross"], "N:PIECE:rK"),
-        ([*board, "--exactly", "2:loop:r2"], "loop"),
-        ([*board, "--exactly", "2:cross:r5"], "r5"),
-        ([*board, "--exactly", "2:cross:r00"], "N:PIECE:rK"),
-        ([*board, "--exactly", ""], "N:PIECE:rK"),
-        (["--rows", "1", "--cols", "4"], "2x2"),
+    for i, (flags, reason) in enumerate(
+        (
+            ([*board, "--exactly", "2:cross"], "N:PIECE:rK"),
+            ([*board, "--exactly", "2:loop:r2"], "loop"),
+            ([*board, "--exactly", "2:cross:r5"], "r5"),
+            ([*board, "--exactly", "2:cross:r00"], "N:PIECE:rK"),
+            ([*board, "--exactly", ""], "N:PIECE:rK"),
+            (["--rows", "1", "--cols", "4"], "2x2"),
+        )
     ):
-        out = Path(d) / "refused"
+        out = Path(d) / str(i)
         r = run_cli(*flags, "--out", str(out), "--seeds=0:1", "--workers", "1")
         check(
             f"{' '.join(flags)} is refused, exit 2, naming {reason!r}",
