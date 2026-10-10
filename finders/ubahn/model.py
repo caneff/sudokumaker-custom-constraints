@@ -25,10 +25,19 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
-from network import BLANK, BRANCH, CROSS, STRAIGHT, TURN, all_edges, arm_edges
+from network import (
+    BLANK,
+    BRANCH,
+    CROSS,
+    KINDS,
+    STRAIGHT,
+    TURN,
+    all_edges,
+    arm_edges,
+)
 from uniqueness import check_uniqueness
 
-# The 12 legal (north, east, south, west) arm patterns of a cell and the piece
+# The 12 legal (north, east, south, west) arm patterns of a cell and the kind
 # each makes. The 4 patterns with one arm, the dead ends, are left out.
 PATTERNS = (
     ((0, 0, 0, 0), BLANK),
@@ -44,8 +53,6 @@ PATTERNS = (
     ((1, 1, 1, 0), BRANCH),
     ((1, 1, 1, 1), CROSS),
 )
-# In the order of a row's or column's outside numbers.
-KINDS = (TURN, STRAIGHT, BRANCH, CROSS, BLANK)
 
 
 class Built(NamedTuple):
@@ -56,9 +63,8 @@ class Built(NamedTuple):
 
 
 def _add_pieces(m, edge, cells):
-    """Channel each cell's piece from its arms. Returns `kind[cell, piece]`
-    booleans, BLANK among the pieces, and `used[cell]`, the cell is not
-    blank. An arm that would leave the board has no variable, so only the
+    """Channel each cell's kind from its arms. Returns `kind[cell, k]`
+    booleans and `used[cell]`, the cell is not blank. An arm that would leave the board has no variable, so only the
     patterns without it are listed."""
     kind, used = {}, {}
     for cell in cells:
@@ -141,7 +147,7 @@ def build(rows, cols, connectivity, *, exactly=None, numbers=None):
     cap = rows * cols
     if exactly is not None:
         m.add(
-            sum(kind[cell, exactly.piece] for cell in exactly.cells(rows, cols))
+            sum(kind[cell, exactly.kind] for cell in exactly.cells(rows, cols))
             == exactly.count
         )
     if numbers is not None:
@@ -157,7 +163,7 @@ def build(rows, cols, connectivity, *, exactly=None, numbers=None):
 
     root = _add_root(m, cells, used)
     add_connectivity = {"flow": _add_flow, "tree": _add_tree}[connectivity]
-    add_connectivity(m, edge, cells, used, root, max(cap, 1))
+    add_connectivity(m, edge, cells, used, root, cap)
     return Built(m, edge)
 
 

@@ -2,10 +2,10 @@
 
 A fresh 4x4 hunt with exactly 2 crosses in r2: every example it writes must
 be one of the networks the brute-force enumeration finds unique under its
-full set of outside numbers, and no two examples may be the same piece grid
+full set of outside numbers, and no two examples may be the same grid of kinds
 under the board's symmetries. Then `hunt verify DIR` over hand-written
-records, the flags the finder refuses, and a board that is not square. One
-CP-SAT worker; about ten seconds in all.
+records, the flags and records the finder refuses, and a board that is not
+square. One CP-SAT worker; about five seconds in all.
 
     uv run finders/ubahn/test_ubahn_hunt.py
 """
@@ -14,7 +14,6 @@ import json
 import subprocess
 import sys
 import tempfile
-from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -28,7 +27,6 @@ from verified_io import read_verified
 
 FINDER = HERE / "ubahn_finder.py"
 ROWS = COLS = 4
-CROSSES = ((1, 1), (1, 2))
 EXACTLY = "2:cross:r2"
 
 ok = True
@@ -55,20 +53,21 @@ def read_jsonl(path):
     return [json.loads(line) for line in path.read_text().splitlines() if line]
 
 
-def record(net, rows=ROWS, cols=COLS, exactly=EXACTLY):
-    """The record of a network, written here by hand: `h` and `v` hold one
-    string per row of horizontal and of vertical edges, "1" where one is on."""
+def record(net, exactly=EXACTLY):
+    """The record of a 4x4 network, written here by hand: `h` and `v` hold
+    one string per row of horizontal and of vertical edges, "1" where one is
+    on."""
     return {
-        "rows": rows,
-        "cols": cols,
+        "rows": ROWS,
+        "cols": COLS,
         "exactly": exactly,
         "h": [
-            "".join(str(int(((r, c), (r, c + 1)) in net)) for c in range(cols - 1))
-            for r in range(rows)
+            "".join(str(int(((r, c), (r, c + 1)) in net)) for c in range(COLS - 1))
+            for r in range(ROWS)
         ],
         "v": [
-            "".join(str(int(((r, c), (r + 1, c)) in net)) for c in range(cols))
-            for r in range(rows - 1)
+            "".join(str(int(((r, c), (r + 1, c)) in net)) for c in range(COLS))
+            for r in range(ROWS - 1)
         ],
     }
 
@@ -83,7 +82,7 @@ def network_of(rec):
     return frozenset(net)
 
 
-def mirrored(net, cols=COLS):
+def mirrored(net, cols):
     """The network reflected left to right."""
     return frozenset(
         tuple(sorted(((r, cols - 1 - c), (r2, cols - 1 - c2))))
@@ -91,7 +90,7 @@ def mirrored(net, cols=COLS):
     )
 
 
-def upturned(net, rows=ROWS):
+def upturned(net, rows):
     """The network reflected top to bottom."""
     return frozenset(
         tuple(sorted(((rows - 1 - r, c), (rows - 1 - r2, c2))))
@@ -99,20 +98,8 @@ def upturned(net, rows=ROWS):
     )
 
 
-# The brute-force space of test_ubahn_brute.py: the networks with 2 crosses
-# in r2, and the ones alone under their full set of outside numbers.
-forced = {e for cell in CROSSES for e in network.arm_edges(cell)}
-valid = [
-    net
-    for net in brute.assignments(ROWS, COLS, forced)
-    if not network.why_not_network(net, ROWS, COLS)
-    and network.outside_numbers(net, ROWS, COLS)[0][1][network.CROSS] == 2
-]
-by_numbers = Counter(network.outside_numbers(net, ROWS, COLS) for net in valid)
-unique = {
-    net for net in valid if by_numbers[network.outside_numbers(net, ROWS, COLS)] == 1
-}
-shared = sorted(set(valid) - unique, key=sorted)
+unique = brute.two_crosses_in_r2().unique
+shared = sorted(brute.two_crosses_in_r2().valid - unique, key=sorted)
 
 with tempfile.TemporaryDirectory() as d:
     out = Path(d) / "hunt"
@@ -144,7 +131,7 @@ with tempfile.TemporaryDirectory() as d:
         all(
             len(counts) == 5
             and sum(counts) == 4
-            and counts[4]
+            and counts[network.BLANK]
             == sum(1 for cell in cells if not any(network.arms(network_of(ex), cell)))
             for ex in examples
             for axis, groups in (
@@ -155,17 +142,17 @@ with tempfile.TemporaryDirectory() as d:
         ),
     )
     keys = [
-        canonical_key(network.piece_grid(network_of(ex), ROWS, COLS), D4)
+        canonical_key(network.kind_grid(network_of(ex), ROWS, COLS), D4)
         for ex in examples
     ]
     check(
-        "every example's dedupe key is its piece grid, least under D4",
+        "every example's dedupe key is its grid of kinds, least under D4",
         all(
             tuple(ex["__dedupe_key__"]) == key
             for ex, key in zip(examples, keys, strict=True)
         ),
     )
-    check("no two examples share a piece grid under D4", len(set(keys)) == len(keys))
+    check("no two examples share a grid of kinds under D4", len(set(keys)) == len(keys))
     check(
         f"the hunt met and dropped duplicates ({summary.get('duplicates')})",
         summary.get("duplicates", 0) > 0,
@@ -203,6 +190,18 @@ with tempfile.TemporaryDirectory() as d:
         ),
         ("a network with a dead end", record(dead_end), False, "dead end"),
         (
+            "a unique network filed under a row off its board",
+            record(good, exactly="0:cross:r9"),
+            False,
+            "r9",
+        ),
+        (
+            "a unique network filed under a column off its board",
+            record(good, exactly="4:blank:c7"),
+            False,
+            "c7",
+        ),
+        (
             "a unique network filed under its own blank count in r1",
             record(good, exactly=f"{good_blanks}:blank:r1"),
             True,
@@ -215,7 +214,7 @@ with tempfile.TemporaryDirectory() as d:
             ":blank:r1",
         ),
         (
-            "two separate rings",
+            "two separate networks",
             record(
                 frozenset(
                     e
@@ -245,11 +244,42 @@ with tempfile.TemporaryDirectory() as d:
             check(f"verify: {name} says why ({reason})", reason in v.get("reason", ""))
 
 with tempfile.TemporaryDirectory() as d:
+    # A record `verify` cannot read is refused by name, never read as a
+    # network with fewer edges or as a record with no condition.
+    out = Path(d)
+    good = min(unique, key=sorted)
+    for name, damage, reason in (
+        (
+            "an edge row that is not 0s and 1s",
+            {"h": ["x1x", *record(good)["h"][1:]]},
+            "'x1x' of h",
+        ),
+        (
+            "an edge row of the wrong length",
+            {"v": ["1", *record(good)["v"][1:]]},
+            "'1' of v",
+        ),
+        ("an empty condition", {"exactly": ""}, "N:PIECE:rK"),
+    ):
+        (out / "examples.jsonl").write_text(
+            json.dumps({**record(good), **damage}) + "\n"
+        )
+        r = run_cli("verify", str(out))
+        check(
+            f"verify refuses {name}, exit 2, naming {reason!r}",
+            r.returncode == 2
+            and reason in r.stderr
+            and not (out / "verified.jsonl").exists(),
+        )
+
+with tempfile.TemporaryDirectory() as d:
     board = ["--rows", "4", "--cols", "4"]
     for flags, reason in (
         ([*board, "--exactly", "2:cross"], "N:PIECE:rK"),
         ([*board, "--exactly", "2:loop:r2"], "loop"),
         ([*board, "--exactly", "2:cross:r5"], "r5"),
+        ([*board, "--exactly", "2:cross:r00"], "N:PIECE:rK"),
+        ([*board, "--exactly", ""], "N:PIECE:rK"),
         (["--rows", "1", "--cols", "4"], "2x2"),
     ):
         out = Path(d) / "refused"
@@ -288,11 +318,11 @@ with tempfile.TemporaryDirectory() as d:
         all(not network.why_not_network(net, 2, 8) for net in nets),
     )
     check(
-        "every 2x8 dedupe key is the least of the piece grid's four images",
+        "every 2x8 dedupe key is the least of the kind grid's four images",
         all(
             tuple(ex["__dedupe_key__"])
             == min(
-                network.piece_grid(image, 2, 8)
+                network.kind_grid(image, 2, 8)
                 for image in (
                     net,
                     mirrored(net, 8),

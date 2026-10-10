@@ -8,9 +8,11 @@ proved to have no other network (solve, forbid, re-solve), on the hunt's
 `--workers`. A seed whose network is not unique is `Empty("not unique")`, a
 capped solve `Empty("timeout ...")`.
 
-`verify` shares no rule code with the search: it re-reads the network with
-`network.py` (dead ends, flood fill, the condition by counting) and re-proves
-uniqueness with the spanning-tree encoding.
+`verify` re-reads the network with `network.py`, which states the rules
+without the model (dead ends, flood fill, the condition by counting), and
+re-proves uniqueness with the spanning-tree encoding. That re-proof shares
+the search's piece table, number sums and root; only its connectivity is a
+second encoding.
 
 Conditions are finder rules passed as flags. The one so far:
 `--exactly N:PIECE:rK` (or `cK`), exactly N of a piece in a row or column;
@@ -55,7 +57,7 @@ class Candidate(NamedTuple):
 
 
 def board_symmetry(rows, cols):
-    """The group the piece grid dedupes under: the square's eight rotations
+    """The group the grid of kinds dedupes under: the square's eight rotations
     and reflections, or on any other board the four maps that keep its
     shape (identity, the two reflections, the half turn)."""
     if rows == cols:
@@ -134,6 +136,10 @@ class UbahnFinder:
         why = network.why_not_network(found, rows, cols)
         if why:
             return Verdict(False, why)
+        if exactly and not exactly.on_board(rows, cols):
+            return Verdict(
+                False, f"condition {exactly.text()} is off the {rows}x{cols} board"
+            )
         if exactly and not exactly.holds(found, rows, cols):
             return Verdict(False, f"condition {exactly.text()} does not hold")
         status, other = model.uniqueness(
@@ -179,20 +185,35 @@ class UbahnFinder:
         }
 
     def key(self, candidate):
-        return network.piece_grid(candidate.network, candidate.rows, candidate.cols)
+        return network.kind_grid(candidate.network, candidate.rows, candidate.cols)
 
     def candidate_from_record(self, record):
+        """Raises ValueError, naming it, on an edge row that is not the
+        board's width of 0s and 1s or a condition `Exactly.parse` refuses."""
+        rows, cols = record["rows"], record["cols"]
         found = set()
-        for r, bits in enumerate(record["h"]):
-            found |= {((r, c), (r, c + 1)) for c, bit in enumerate(bits) if bit == "1"}
-        for r, bits in enumerate(record["v"]):
-            found |= {((r, c), (r + 1, c)) for c, bit in enumerate(bits) if bit == "1"}
+        for name, step, count, width in (
+            ("h", (0, 1), rows, cols - 1),
+            ("v", (1, 0), rows - 1, cols),
+        ):
+            if len(record[name]) != count:
+                raise ValueError(f"{name} has {len(record[name])} rows, not {count}")
+            for r, bits in enumerate(record[name]):
+                if len(bits) != width or set(bits) - {"0", "1"}:
+                    raise ValueError(
+                        f"edge row {bits!r} of {name} is not {width} 0s and 1s"
+                    )
+                found |= {
+                    ((r, c), (r + step[0], c + step[1]))
+                    for c, bit in enumerate(bits)
+                    if bit == "1"
+                }
         exactly = record["exactly"]
         return Candidate(
-            record["rows"],
-            record["cols"],
+            rows,
+            cols,
             frozenset(found),
-            network.Exactly.parse(exactly) if exactly else None,
+            None if exactly is None else network.Exactly.parse(exactly),
         )
 
 
@@ -210,13 +231,13 @@ def main(argv):
         print("ubahn_finder: the smallest board with a network is 2x2", file=sys.stderr)
         return 2
     exactly = None
-    if own.exactly:
+    if own.exactly is not None:
         try:
             exactly = network.Exactly.parse(own.exactly)
         except ValueError as e:
             print(f"ubahn_finder: --exactly: {e}", file=sys.stderr)
             return 2
-        if exactly.index >= (own.rows if exactly.axis == "r" else own.cols):
+        if not exactly.on_board(own.rows, own.cols):
             print(
                 f"ubahn_finder: --exactly names {own.exactly.split(':')[2]}, "
                 f"off a {own.rows}x{own.cols} board",

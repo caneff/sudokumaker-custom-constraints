@@ -50,7 +50,7 @@ All on one worker, this box, 2026-10-10.
   on all 554 sets of outside numbers. About 3.7 s per encoding to list, about
   2 s per encoding for the 554 verdicts.
 - **That space cannot test connectivity.** The crosses' own cells leave no
-  free 2x2 block, so no edge set in it has two separate rings: with the
+  free 2x2 block, so no edge set in it has two separate loops: with the
   flow's edge gate or the tree's level rule deleted, and with the flood fill
   deleted from the brute force, the test still passed. A second exhaustive
   space covers it: 3x4, every one of its 131,072 edge assignments, with no
@@ -70,7 +70,7 @@ All on one worker, this box, 2026-10-10.
   the same network on every run, which a resumed hunt relies on.
 - **`verify` proves on one worker with the tree encoding**, so a verdict
   written by `hunt verify` is the same on every run.
-- **Symmetry.** The dedupe key is the piece grid; pieces do not change under
+- **Symmetry.** The dedupe key is the grid of kinds; a kind does not change under
   rotation, so permuting cells is enough. A square board takes `dedupe.D4`;
   any other board takes the four maps that keep its shape, because D4 would
   read a 2x8 as a 4x4.

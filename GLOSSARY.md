@@ -174,12 +174,16 @@ sources: `docs/research/2026-10-10-u-bahn-cpsat-finder.md`.
 - **piece** — what a cell's arms make: a **turn** (two arms at a right
   angle), a **straight** (two opposite arms), a **branch** (three) or a
   **cross** (four). A piece is the same piece in any rotation. A cell with
-  no arm is **blank**: it holds no piece, and is counted beside the four.
-- **outside number** — how many of one piece, or how many blank cells, a row
-  or column holds. Each row and each column has five, in the order turn,
-  straight, branch, cross, blank; the **full set** is all of them, and it is
-  what a U-Bahn puzzle gives the solver. The blank number is the row's or
-  column's length less the other four, so it tells the solver nothing new. Not a **clue**, which is a ring cell of an outside-clue group.
+  no arm is **blank** and holds no piece.
+- **kind** — what a cell is: one of the four pieces, or blank. Five in all,
+  always in the order turn, straight, branch, cross, blank. A condition
+  counts cells of one kind, and a hunt dedupes on the grid of kinds.
+- **outside number** — how many cells of one kind a row or column holds. A
+  U-Bahn puzzle gives the solver four per row and per column, one per piece;
+  some puzzles also show a fifth, for blank. The finder records all five,
+  and the **full set** is all of them. The blank number is the row's or
+  column's length less the other four, so it tells the solver nothing new.
+  Not a **clue**, which is a ring cell of an outside-clue group.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 
