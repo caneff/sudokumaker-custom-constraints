@@ -2,10 +2,15 @@
 puzzles (#776). Run by hand; no gate runs it.
 
     uv run finders/ubahn/time_sat.py [--reps N] [--time-limit SECONDS]
+    uv run finders/ubahn/time_sat.py --fillings CAP
 
 Prints a Markdown table: per puzzle, each check's verdict and its fastest of
 N runs in milliseconds, model build included, one core. A run the time limit
-stopped prints as "timeout" and its time is the cap, not a solve time.
+stopped prints as "timeout" and its time is the cap, not a solve time; its
+row agrees with nothing and the script exits 1.
+
+`--fillings CAP` prints instead how many fillings each puzzle's numbers have
+before connectivity is asked for, counted up to CAP.
 """
 
 import argparse
@@ -22,23 +27,24 @@ import sat_model
 from network import BLANK, BRANCH, CROSS, KINDS, STRAIGHT, TURN
 
 FIXTURE = HERE.parents[1] / "docs/research/2026-10-10-u-bahn-timing-puzzles.json"
-# The order the fixture writes a line's four numbers in; it leaves blank out.
+# The order the fixture writes a row's or column's four numbers in; it leaves
+# blank out.
 FIXTURE_ORDER = (CROSS, BRANCH, STRAIGHT, TURN)
 
 
 def fixture_numbers(puzzle):
     """One fixture puzzle's outside numbers as `network.outside_numbers`
-    returns them: a blank count added to each line, the kinds in `KINDS`
+    returns them: a blank count added to each row and column, the kinds in `KINDS`
     order."""
 
-    def line(counts, length):
+    def five(counts, length):
         by_kind = dict(zip(FIXTURE_ORDER, counts, strict=True))
         by_kind[BLANK] = length - sum(counts)
         return tuple(by_kind[k] for k in KINDS)
 
     return (
-        tuple(line(counts, puzzle["cols"]) for counts in puzzle["row_numbers"]),
-        tuple(line(counts, puzzle["rows"]) for counts in puzzle["col_numbers"]),
+        tuple(five(counts, puzzle["cols"]) for counts in puzzle["row_numbers"]),
+        tuple(five(counts, puzzle["rows"]) for counts in puzzle["col_numbers"]),
     )
 
 
@@ -64,11 +70,19 @@ def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--reps", type=int, default=3)
     parser.add_argument("--time-limit", type=float, default=60.0)
+    parser.add_argument(
+        "--fillings",
+        type=int,
+        metavar="CAP",
+        help="instead of timing, count each puzzle's fillings, up to CAP",
+    )
     args = parser.parse_args(argv)
+    if args.fillings is not None:
+        return count_fillings(args.fillings)
 
     print("| Puzzle | PySAT | ms | Cuts | CP-SAT flow | ms | Agree |")
     print("| --- | --- | --- | --- | --- | --- | --- |")
-    agree = True
+    all_agree = True
     for puzzle in fixture_puzzles():
         rows, cols = puzzle["rows"], puzzle["cols"]
         numbers = fixture_numbers(puzzle)
@@ -90,12 +104,33 @@ def main(argv):
             ),
             args.reps,
         )
-        agree = agree and sat == flow
+        # Two timeouts are two missing answers, not an agreement.
+        if "timeout" in (sat, flow):
+            agreed = "unknown"
+        else:
+            agreed = "yes" if sat == flow else "NO"
+        all_agree = all_agree and agreed == "yes"
         print(
             f"| {puzzle['name']} | {sat} | {sat_ms:.1f} | {cuts} "
-            f"| {flow} | {flow_ms:.1f} | {'yes' if sat == flow else 'NO'} |"
+            f"| {flow} | {flow_ms:.1f} | {agreed} |"
         )
-    return 0 if agree else 1
+    return 0 if all_agree else 1
+
+
+def count_fillings(cap):
+    """Print, per puzzle, how many fillings its numbers have in one part and
+    how many in several, counted up to `cap`."""
+    print("| Puzzle | In one part | In several parts | Counted |")
+    print("| --- | --- | --- | --- |")
+    for puzzle in fixture_puzzles():
+        counted = sat_model.fillings(
+            puzzle["rows"], puzzle["cols"], fixture_numbers(puzzle), cap=cap
+        )
+        print(
+            f"| {puzzle['name']} | {counted.connected} | {counted.not_connected} "
+            f"| {f'first {cap} only' if counted.capped else 'all'} |"
+        )
+    return 0
 
 
 if __name__ == "__main__":

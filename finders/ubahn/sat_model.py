@@ -5,8 +5,8 @@ edge, as there; each cell's kind is channelled from its arms by clauses, and
 the outside numbers are cardinality constraints. Connectivity is not encoded:
 the solver hands each full assignment to `_Connectivity.check_model`, which
 flood fills it and, when the network is in several parts, gives back one
-clause per part. The solver keeps those clauses, so the second solve of a
-uniqueness check starts with every cut the first one learned.
+clause per part. Both solves of a uniqueness check run on one solver, so a
+clause added in the first is still there in the second.
 
     docs/research/2026-10-10-u-bahn-optimization-queue.md,
     section "PySAT with lazy connectivity cuts"
@@ -16,6 +16,7 @@ import sys
 import time
 from itertools import product
 from pathlib import Path
+from typing import NamedTuple
 
 from pysat.card import CardEnc
 from pysat.engines import Propagator
@@ -23,7 +24,7 @@ from pysat.formula import IDPool
 from pysat.solvers import Cadical195
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from network import BLANK, KINDS, all_edges, arm_edges, kind_of
+from network import BLANK, KINDS, all_edges, arms_on_board, kind_of, rows_and_columns
 
 # CaDiCaL takes no wall-clock limit and cannot be interrupted through PySAT,
 # so a solve runs in slices of this many conflicts with the clock read
@@ -65,18 +66,6 @@ class _Connectivity(Propagator):
     def add_clause(self):
         return self.pending.pop() if self.pending else []
 
-    def on_assignment(self, lit, fixed=False):
-        pass
-
-    def on_new_level(self):
-        pass
-
-    def on_backtrack(self, to):
-        pass
-
-    def provide_reason(self, lit):
-        return []
-
 
 def _parts(on):
     """The connected parts of a set of edges, each a set of cells."""
@@ -106,15 +95,14 @@ def _piece_clauses(edge, kind, cells):
     fixes all five kind booleans."""
     clauses = []
     for cell in cells:
-        arm_vars = [edge.get(e) for e in arm_edges(cell)]
-        on_board = [i for i, var in enumerate(arm_vars) if var is not None]
+        on_board = arms_on_board(cell, edge)
         for bits in product((0, 1), repeat=len(on_board)):
             arms = [0, 0, 0, 0]
             for i, bit in zip(on_board, bits, strict=True):
                 arms[i] = bit
             unless = [
-                -arm_vars[i] if bit else arm_vars[i]
-                for i, bit in zip(on_board, bits, strict=True)
+                -var if bit else var
+                for var, bit in zip(on_board.values(), bits, strict=True)
             ]
             made = kind_of(arms)
             if made is None:
@@ -136,6 +124,43 @@ def _solve(solver, deadline):
     return None
 
 
+def _add_rules(solver, rows, cols, numbers):
+    """Every rule but connectivity, as clauses on `solver`. Returns the edge
+    variables keyed by edge and each cell's blank variable, or None when a
+    count is outside its row or column, which no board can hold."""
+    held_counts = rows_and_columns(rows, cols, numbers)
+    if any(
+        not 0 <= count <= len(held) for held, counts in held_counts for count in counts
+    ):
+        return None
+    pool = IDPool()
+    cells = [(r, c) for r in range(rows) for c in range(cols)]
+    edge = {e: pool.id(e) for e in all_edges(rows, cols)}
+    kind = {(cell, k): pool.id((cell, k)) for cell in cells for k in KINDS}
+    solver.append_formula(_piece_clauses(edge, kind, cells))
+    # A network has at least one edge.
+    solver.add_clause(list(edge.values()))
+    for held, counts in held_counts:
+        for k, count in zip(KINDS, counts, strict=True):
+            solver.append_formula(
+                CardEnc.equals(
+                    [kind[cell, k] for cell in held], bound=count, vpool=pool
+                )
+            )
+    return edge, {cell: kind[cell, BLANK] for cell in cells}
+
+
+def _edges_on(solver, edge):
+    """The edges the solver's model turns on."""
+    true = {lit for lit in solver.get_model() if lit > 0}
+    return frozenset(e for e, var in edge.items() if var in true)
+
+
+def _forbid(solver, edge, found):
+    """Rule out exactly this set of edges."""
+    solver.add_clause([-var if e in found else var for e, var in edge.items()])
+
+
 def uniqueness(rows, cols, numbers, *, time_limit):
     """Whether one full set of outside numbers has exactly one network.
 
@@ -144,42 +169,55 @@ def uniqueness(rows, cols, numbers, *, time_limit):
     connectivity clauses the check added. A timeout is never unique.
     """
     deadline = time.monotonic() + time_limit
-    pool = IDPool()
-    cells = [(r, c) for r in range(rows) for c in range(cols)]
-    edge = {e: pool.id(e) for e in all_edges(rows, cols)}
-    kind = {(cell, k): pool.id((cell, k)) for cell in cells for k in KINDS}
-
-    connectivity = _Connectivity(edge, {cell: kind[cell, BLANK] for cell in cells})
     with Cadical195() as solver:
+        rules = _add_rules(solver, rows, cols, numbers)
+        if rules is None:
+            return "infeasible", None, 0
+        edge, blank = rules
+        connectivity = _Connectivity(edge, blank)
         solver.connect_propagator(connectivity)
-        for var in (*edge.values(), *connectivity.blank.values()):
+        for var in (*edge.values(), *blank.values()):
             solver.observe(var)
-        solver.append_formula(_piece_clauses(edge, kind, cells))
-        solver.add_clause(list(edge.values()))
-        row_numbers, col_numbers = numbers
-        lines = [
-            ([(r, c) for c in range(cols)], counts)
-            for r, counts in enumerate(row_numbers)
-        ] + [
-            ([(r, c) for r in range(rows)], counts)
-            for c, counts in enumerate(col_numbers)
-        ]
-        for line, counts in lines:
-            for k, count in zip(KINDS, counts, strict=True):
-                solver.append_formula(
-                    CardEnc.equals(
-                        [kind[cell, k] for cell in line], bound=count, vpool=pool
-                    )
-                )
 
         answer = _solve(solver, deadline)
         if answer is None:
             return "timeout", None, connectivity.cuts
         if not answer:
             return "infeasible", None, connectivity.cuts
-        true = {lit for lit in solver.get_model() if lit > 0}
-        found = frozenset(e for e, var in edge.items() if var in true)
-        solver.add_clause([-var if e in found else var for e, var in edge.items()])
+        found = _edges_on(solver, edge)
+        _forbid(solver, edge, found)
         answer = _solve(solver, deadline)
         status = {None: "timeout", False: "unique", True: "not_unique"}[answer]
         return status, found, connectivity.cuts
+
+
+class Fillings(NamedTuple):
+    """How many fillings a set of outside numbers has in one part and how
+    many in several, and whether the count stopped at its cap."""
+
+    connected: int
+    not_connected: int
+    capped: bool
+
+
+def fillings(rows, cols, numbers, *, cap):
+    """Count the fillings of a full set of outside numbers: the sets of edges
+    with no dead end and those numbers, connected or not. Stops after `cap`
+    of them. The ones in one part are the networks; the others are what a
+    connectivity cut has to refuse."""
+    connected = not_connected = 0
+    with Cadical195() as solver:
+        rules = _add_rules(solver, rows, cols, numbers)
+        if rules is None:
+            return Fillings(0, 0, False)
+        edge, _ = rules
+        while solver.solve():
+            if connected + not_connected == cap:
+                return Fillings(connected, not_connected, True)
+            found = _edges_on(solver, edge)
+            if len(_parts(found)) == 1:
+                connected += 1
+            else:
+                not_connected += 1
+            _forbid(solver, edge, found)
+    return Fillings(connected, not_connected, False)

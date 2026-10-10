@@ -27,9 +27,9 @@ def check(name, cond):
     print(f"{status}: {name}")
 
 
-# The fixture writes a line as cross, branch, straight, turn and leaves the
+# The fixture writes a row or column as cross, branch, straight, turn and leaves the
 # blank count out. A 3x3 board whose top-left 2x2 block is a loop has blank
-# cells in every line, and `network.outside_numbers` counts them itself.
+# cells in every row and column, and `network.outside_numbers` counts them itself.
 loop = frozenset(network.all_edges(2, 2))
 entry = {
     "rows": 3,
@@ -41,7 +41,7 @@ check(
     "a fixture entry reads as the loop's own outside numbers, blanks included",
     time_sat.fixture_numbers(entry) == network.outside_numbers(loop, 3, 3),
 )
-# Each kind in its own line, so a swapped pair of kinds cannot pass.
+# A different count for each kind, so a swapped pair of kinds cannot pass.
 kinds = {
     "rows": 1,
     "cols": 12,
@@ -101,20 +101,127 @@ status, found, cuts = sat_model.uniqueness(
 )
 check(f"no time: timeout (got {status})", (status, found) == ("timeout", None))
 
+
+class Clock:
+    """A clock that reads 0 for its first `reads` readings and 100 after."""
+
+    def __init__(self, reads):
+        self.left = reads
+
+    def monotonic(self):
+        self.left -= 1
+        return 0.0 if self.left >= 0 else 100.0
+
+
+# "unique" comes from the second solve alone, so time must be able to run out
+# there too. The check reads the clock once to set its deadline and once
+# before each solve; a clock that jumps after two readings stops the second.
+real_time, sat_model.time = sat_model.time, Clock(2)
+try:
+    status, found, cuts = sat_model.uniqueness(
+        2, 2, network.outside_numbers(loop, 2, 2), time_limit=10.0
+    )
+finally:
+    sat_model.time = real_time
+check(
+    f"time runs out before the second solve: timeout, with the loop (got {status})",
+    (status, found) == ("timeout", loop),
+)
+
+# A set of numbers no board can hold reads infeasible, as the CP-SAT check
+# says: every cell blank, which leaves no edge on, and a count past the length
+# of its row.
+all_blank = (((0, 0, 0, 0, 2),) * 2,) * 2
+too_many = (((3, 0, 0, 0, 0), (0, 0, 0, 0, 2)), ((2, 0, 0, 0, 0), (1, 0, 0, 0, 1)))
+for name, numbers in (
+    ("every cell blank", all_blank),
+    ("3 turns in a row of 2", too_many),
+):
+    status, found, _ = sat_model.uniqueness(2, 2, numbers, time_limit=TIME_LIMIT)
+    reference, _ = model.uniqueness(
+        2, 2, numbers, "flow", time_limit=TIME_LIMIT, workers=1
+    )
+    check(
+        f"{name}: infeasible (got {status}; CP-SAT says {reference})",
+        (status, found, reference) == ("infeasible", None, "infeasible"),
+    )
+
+# `fillings` counts what the numbers allow before connectivity is asked for.
+check(
+    "fillings: the 2x2 loop is the one filling, in one part",
+    sat_model.fillings(2, 2, network.outside_numbers(loop, 2, 2), cap=10)
+    == sat_model.Fillings(1, 0, False),
+)
+check(
+    "fillings: the two loops are the one filling, in two parts",
+    sat_model.fillings(2, 5, network.outside_numbers(two_loops, 2, 5), cap=10)
+    == sat_model.Fillings(0, 1, False),
+)
+
 # The 4x4 space with 2 crosses in r2: the verdict on each full set of outside
 # numbers must match the brute-force count of networks that share it.
 space = brute.two_crosses_in_r2()
 wrong = []
+space_cuts = 0
 for numbers, count in space.by_numbers.items():
-    status, found, _ = sat_model.uniqueness(4, 4, numbers, time_limit=TIME_LIMIT)
+    status, found, cuts = sat_model.uniqueness(4, 4, numbers, time_limit=TIME_LIMIT)
+    space_cuts += cuts
     if status != ("unique" if count == 1 else "not_unique") or found not in space.valid:
         wrong.append((numbers, count, status))
 check(
     f"the verdict matches the brute-force count on all {len(space.by_numbers)} "
-    f"sets of outside numbers, each with a brute-force network "
-    f"(first mismatch: {wrong[:1]})",
+    f"sets of outside numbers, each with a brute-force network, {space_cuts} "
+    f"cuts in all (first mismatch: {wrong[:1]})",
     not wrong,
 )
+shared = next(numbers for numbers, count in space.by_numbers.items() if count == 2)
+check(
+    "fillings: 2 networks share a set of numbers; a cap of 1 stops at 1 and says so",
+    sat_model.fillings(4, 4, shared, cap=10) == sat_model.Fillings(2, 0, False)
+    and sat_model.fillings(4, 4, shared, cap=1) == sat_model.Fillings(1, 0, True),
+)
+
+# Two 4x4 sets of numbers that a filling in two parts shares with a network,
+# so a cut has to fire and must not take the network with it. `fillings`
+# counts both sorts without any cut; CP-SAT gives the verdict.
+CUT_AND_NETWORK = (
+    (
+        "one network beside one filling in two parts",
+        (
+            ((2, 0, 0, 0, 2), (4, 0, 0, 0, 0), (2, 1, 0, 0, 1), (2, 1, 0, 0, 1)),
+            ((2, 0, 0, 0, 2), (4, 0, 0, 0, 0), (2, 1, 0, 0, 1), (2, 1, 0, 0, 1)),
+        ),
+        sat_model.Fillings(1, 1, False),
+        "unique",
+    ),
+    (
+        "two networks beside two fillings in two parts",
+        (
+            ((2, 0, 0, 0, 2), (2, 2, 0, 0, 0), (2, 2, 0, 0, 0), (2, 0, 0, 0, 2)),
+            ((2, 1, 0, 0, 1),) * 4,
+        ),
+        sat_model.Fillings(2, 2, False),
+        "not_unique",
+    ),
+)
+for name, numbers, expected, verdict in CUT_AND_NETWORK:
+    counted = sat_model.fillings(4, 4, numbers, cap=10)
+    reference, _ = model.uniqueness(
+        4, 4, numbers, "flow", time_limit=TIME_LIMIT, workers=1
+    )
+    check(
+        f"{name}: counted so, and CP-SAT says {verdict}",
+        (counted, reference) == (expected, verdict),
+    )
+    status, found, cuts = sat_model.uniqueness(4, 4, numbers, time_limit=TIME_LIMIT)
+    check(
+        f"{name}: {verdict}, with a cut and a network (got {status}, {cuts} cuts)",
+        status == verdict
+        and cuts > 0
+        and found is not None
+        and not network.why_not_network(found, 4, 4)
+        and network.outside_numbers(found, 4, 4) == numbers,
+    )
 
 # The 15 timing puzzles: the same verdict as the CP-SAT flow check, and a
 # network that the solver-free rule check passes and that has the puzzle's
