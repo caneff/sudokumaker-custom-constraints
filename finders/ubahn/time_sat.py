@@ -26,7 +26,7 @@ import model
 import sat_model
 from network import BLANK, BRANCH, CROSS, KINDS, STRAIGHT, TURN
 
-FIXTURE = HERE.parents[1] / "docs/research/2026-10-10-u-bahn-timing-puzzles.json"
+FIXTURE = HERE / "fixtures/timing-puzzles.json"
 # The order the fixture writes a row's or column's four numbers in; it leaves
 # blank out.
 FIXTURE_ORDER = (CROSS, BRANCH, STRAIGHT, TURN)

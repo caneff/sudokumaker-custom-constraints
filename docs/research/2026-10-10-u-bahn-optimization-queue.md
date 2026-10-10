@@ -207,7 +207,8 @@ network, connected or not, by full enumeration:
 
 ## PySAT with lazy connectivity cuts (2026-10-10, #776)
 
-**PySAT is faster on all 15 fixture puzzles, 1.9 to 5.2 times, and added no
+**PySAT is faster on all 15 fixture puzzles
+(`finders/ubahn/fixtures/timing-puzzles.json`), 1.9 to 5.2 times, and added no
 connectivity cut on any of them.** That is not the same as connectivity never
 mattering: 4 of the 15 puzzles have fillings in several parts, and the check
 stopped before the solver proposed one. So the fixture shows that a SAT model
