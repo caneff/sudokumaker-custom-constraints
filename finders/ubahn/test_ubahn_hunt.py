@@ -270,6 +270,19 @@ with tempfile.TemporaryDirectory() as d:
     examples = read_jsonl(out / "examples.jsonl")
     nets = [network_of(ex) for ex in examples]
     check(f"the 2x8 hunt wrote examples ({len(examples)})", len(examples) >= 2)
+    # On this board some sampled network shares its outside numbers with
+    # another. The search itself must drop it, with the reason, and leave
+    # `verify` nothing to reject.
+    summary = json.loads((out / "summary.json").read_text())
+    reasons = [
+        e.get("empty_reason")
+        for e in read_jsonl(out / "progress.jsonl")
+        if e.get("outcome") == "empty"
+    ]
+    check(
+        f"a seed whose network is not unique is empty, saying so ({reasons})",
+        "not unique" in reasons and summary["rejected"] == 0,
+    )
     check(
         "every 2x8 example is a network",
         all(not network.why_not_network(net, 2, 8) for net in nets),
