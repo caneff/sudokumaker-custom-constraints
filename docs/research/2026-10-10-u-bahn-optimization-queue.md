@@ -192,7 +192,8 @@ network, connected or not, by full enumeration:
   `InitialPropagateWrapper`, demons) and `PyDecisionBuilder` in our install
   `[ran: attribute check only, nothing solved]`. It has no clause learning,
   and the 2017 answer above calls it deprecated in favour of CP-SAT.
-- **PySAT with CaDiCaL (not a dependency here).** `pysat.engines.Propagator`
+- **PySAT with CaDiCaL (not a dependency when this was written; added by
+  #776, see the last section).** `pysat.engines.Propagator`
   attaches user code to the SAT solver through the IPASIR-UP interface:
   `on_assignment`, `propagate`, `provide_reason`, `check_model`,
   `add_clause`. "External engines (pysat.engines)", PySAT documentation,
@@ -201,14 +202,17 @@ network, connected or not, by full enumeration:
   and keeps across the solve, forbid, re-solve loop. Costs: a new dependency
   (`python-sat`), the piece counts must be encoded as cardinality clauses,
   and a Python callback on every assignment is slow, so only the
-  full-model check is likely to pay. Unmeasured.
+  full-model check is likely to pay. Unmeasured here; measured in "PySAT
+  with lazy connectivity cuts" below.
 
 ## PySAT with lazy connectivity cuts (2026-10-10, #776)
 
-**PySAT is faster on all 15 fixture puzzles, 1.9 to 5.2 times, and no proof
-needed a single connectivity cut.** So the fixture shows that a SAT model
-with no flow variables beats the flow encoding on dense boards. It does not
-show whether learned cuts beat flow, because no cut was ever asked for.
+**PySAT is faster on all 15 fixture puzzles, 1.9 to 5.2 times, and added no
+connectivity cut on any of them.** That is not the same as connectivity never
+mattering: 4 of the 15 puzzles have fillings in several parts, and the check
+stopped before the solver proposed one. So the fixture shows that a SAT model
+with no flow variables beats the flow encoding on these boards. It does not
+show whether learned cuts beat flow.
 
 The check is `finders/ubahn/sat_model.py`: `python-sat 1.9.dev15`, solver
 `Cadical195`, a `pysat.engines.Propagator` whose `check_model` flood fills
@@ -248,32 +252,63 @@ reached the 60 s limit, so no row is capped.
 | 8x8 | 10.3 to 28.4 ms | 28.8 to 83.6 ms | 2.6 to 4.3 | PySAT, 5 of 5 |
 | 10x10 | 51.8 to 155.6 ms | 170.3 to 416.9 ms | 1.9 to 3.7 | PySAT, 5 of 5 |
 
-- **Cuts: 0 on every proof.** The same holds on all 554 number sets of the
-  4x4 space. The fixture's boards are dense (92 to 99 of 100 cells used at
-  10x10), and a full set of outside numbers on a dense board leaves no
-  filling in two parts for the solver to propose. The cut itself works: two
-  2x2 loops on a 2x5 board are refused with 2 cuts
-  (`test_ubahn_sat.py`).
-- **The propagator costs time even when it cuts nothing.** A throwaway run
-  of the same model with no propagator attached, valid here only because no
-  cut was needed, took 42 to 83 ms at 10x10 against 51 to 155 ms with it,
-  fastest of 3, same session. `is_lazy = True` did not stop CaDiCaL calling
-  back into Python: a profile of one 10x10 check counted 81,311
-  `on_assignment` calls and 39,740 `add_clause` calls. A plain loop (solve,
-  flood fill in Python, add the clause, solve again on the same solver) would
-  avoid that and keep the learned clauses. Not built.
+- **Cuts: 0 on every row, for two different reasons.** Only the 5 `unique`
+  rows are proofs, and each of those has exactly one filling, a network, so
+  there was nothing to cut. The 10 `not_unique` rows are not proofs: the check
+  stops at the second network, and CaDiCaL reached two networks before any
+  filling in several parts. Counting every filling with no cut at all:
+
+      uv run finders/ubahn/time_sat.py --fillings 300
+
+  | Puzzle | In one part | In several parts | Counted |
+  | --- | --- | --- | --- |
+  | 6x6 seed 0 | 2 | 0 | all |
+  | 6x6 seed 1 | 1 | 0 | all |
+  | 6x6 seed 2 | 1 | 0 | all |
+  | 6x6 seed 3 | 1 | 0 | all |
+  | 6x6 seed 4 | 2 | 0 | all |
+  | 8x8 seed 0 | 9 | 1 | all |
+  | 8x8 seed 1 | 1 | 0 | all |
+  | 8x8 seed 2 | 10 | 0 | all |
+  | 8x8 seed 3 | 1 | 0 | all |
+  | 8x8 seed 4 | 9 | 0 | all |
+  | 10x10 seed 0 | 295 | 5 | first 300 only |
+  | 10x10 seed 1 | 5 | 0 | all |
+  | 10x10 seed 2 | 56 | 0 | all |
+  | 10x10 seed 3 | 295 | 5 | first 300 only |
+  | 10x10 seed 4 | 221 | 79 | first 300 only |
+
+  The three capped rows are counts of the first 300 fillings the solver
+  listed, not totals or rates. So fillings in several parts exist on 8x8
+  seed 0 and on three of the five 10x10 boards, and a check that had to list
+  every network there, or prove one unique among them, would need cuts.
+- **The cut is tested where it fires.** `test_ubahn_sat.py` has two 4x4 sets
+  of numbers that a network shares with a filling in several parts (2 cuts
+  each, verdicts as CP-SAT gives them) and two 2x2 loops on a 2x5 board
+  (refused, 2 cuts). On the 554 number sets of the 4x4 space with 2 crosses
+  in r2 the test prints its total: 0 cuts.
+- **The propagator calls back into Python throughout the search, not only on
+  a full assignment.** `is_lazy = True` did not stop it:
+
+      uv run python -m cProfile -s ncalls finders/ubahn/time_sat.py --reps 1
+
+  counted 253,652 `on_assignment`, 124,756 `propagate` and 124,756
+  `add_clause` calls against 25 `check_model` calls, over one PySAT run of
+  each of the 15 puzzles. What those calls cost in time is not measured in
+  this repo. A plain loop (solve, flood fill in Python, add the clause, solve
+  again on the same solver) would make none of them and keep the learned
+  clauses. Not built.
 - **Time limit.** CaDiCaL takes no wall-clock limit through PySAT and
   `interrupt` raises `NotImplementedError`, so the check solves in slices of
   2,000 conflicts and reads the clock between slices. A limit can be overrun
   by up to one slice.
 - **JWKNT/logical-solver: not run.** Optional in the ticket.
-- **The static rectangle cuts were not added.** With no lazy cut needed on
-  these boards, they had nothing to remove.
+- **The static rectangle cuts were not added.** Optional in the ticket.
 
 **What this changes for the finder: nothing yet (the worker's reading, not a
 ruling).** The check is 2 to 5 times faster, but each one already costs under
 half a second, and nothing on record says uniqueness checks dominate a hunt.
-The question the prototype was built for is still open, because these 15
-puzzles never exercise connectivity. Before the finder takes on a second
-engine, time both checks on boards where the cut fires: sparser networks, or
-partial sets of outside numbers once the model takes them.
+The question the prototype was built for is still open: no run here made the
+solver learn from a cut on a board of hunt size. The fixture can answer it
+without new puzzles. Count all the networks of 8x8 seed 0 and of the three
+10x10 boards above with both engines, which forces the cuts, and compare.
