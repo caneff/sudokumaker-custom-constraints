@@ -1,5 +1,6 @@
 # The two gate tiers: `just check` is the fast loop, `just check-full`
-# is everything and runs on every pull request. This runs both recipes with
+# is everything and runs on every pull request. Both reach their suites
+# through the seam runner, `tests/all.sh`. This runs both recipes with
 # node, npx, uv and uvx replaced by stubs that log their argv and exit 0, then
 # checks what each tier would have run against the files on disk:
 #
@@ -17,20 +18,22 @@
 #   - lint runs `uv lock --check`, which fails when uv.lock no longer matches
 #     pyproject.toml;
 #   - no Python step passes --with, so every call uses the one synced project
-#     environment and nothing resolves per call.
+#     environment and nothing resolves per call;
+#   - the seam runner (`tests/all.sh`), which the recipes call and a worker
+#     runs narrowed, reaches exactly the suites check-full reaches, on the real
+#     tree and on a scratch tree with a new example and a new finder planted.
 #
 #   uv run examples/_shared/gate.test.py
 
 import ast
 import pathlib
-import shutil
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands
+from gate_lib import commands, gate_tree, runner_listing
 
 # The heavy tier, named file by file: `just test` skips exactly these by path.
 HEAVY = {
@@ -81,7 +84,7 @@ SCRIPTS = {
 
 
 def finder_tests(root=ROOT):
-    """Repo-relative paths of every finder test, as the recipe's bash glob sees
+    """Repo-relative paths of every finder test, as the runner's bash glob sees
     them: dot-directories are skipped there, so they are skipped here."""
     return sorted(
         rel
@@ -143,10 +146,10 @@ def pytest_style_outside_list(root=ROOT):
 def planted_finder_test_is_run():
     """A finder test no list can name must appear in what `just test` runs, and
     in what on_disk() demands -- else the glob here has gone narrower than the
-    recipe's, or the recipe's narrower than the tree."""
+    runner's, or the runner's narrower than the tree. A planted example's
+    tests and harness must be reached by check-full and by the runner alike."""
     with tempfile.TemporaryDirectory() as tmp:
-        tree = pathlib.Path(tmp)
-        shutil.copy(ROOT / "justfile", tree / "justfile")
+        tree = gate_tree(tmp)
         planted = tree / "finders/zz_new/deep"
         planted.mkdir(parents=True)
         (planted / "test_planted.py").touch()
@@ -169,6 +172,27 @@ def planted_finder_test_is_run():
         ran = set(commands("test", root=tree))
         assert demanded <= ran, f"just test misses {sorted(demanded - ran)}"
 
+        example = tree / "examples/zz_new"
+        example.mkdir(parents=True)
+        for name in ("zz.test.mjs", "zz.test.py", "soundness-harness.mjs"):
+            (example / name).touch()
+        demanded = on_disk(tree)
+        assert "node examples/zz_new/soundness-harness.mjs" in demanded, demanded
+        both_reach(demanded, root=tree)
+
+
+def both_reach(demanded, root=ROOT):
+    """`just check-full` and `tests/all.sh` reach the same suites, and every
+    demanded one: a test file one of them runs and the other does not is a
+    suite a worker's run and the gate disagree about."""
+    full = set(commands("check-full", root=root))
+    runner = set(runner_listing(root=root))
+    assert demanded <= runner, f"tests/all.sh does not run: {sorted(demanded - runner)}"
+    assert full == runner, (
+        f"check-full only: {sorted(full - runner)}; "
+        f"tests/all.sh only: {sorted(runner - full)}"
+    )
+
 
 if __name__ == "__main__":
     full = commands("check-full")
@@ -190,7 +214,7 @@ if __name__ == "__main__":
     assert not stale, f"exception lists name files that do not exist: {stale}"
 
     outside = pytest_style_outside_list()
-    assert not outside, f"pytest suites the recipe would run as scripts: {outside}"
+    assert not outside, f"pytest suites the runner would run as scripts: {outside}"
 
     planted_finder_test_is_run()
 
@@ -209,6 +233,7 @@ if __name__ == "__main__":
 
     missing = (on_disk() | LINT | SCRIPTS) - set(full)
     assert not missing, f"check-full does not run: {sorted(missing)}"
+    both_reach(on_disk() | LINT | SCRIPTS)
 
     harnesses = {c for c in on_disk() if c.endswith("soundness-harness.mjs")}
     added = set(full) - set(fast)
