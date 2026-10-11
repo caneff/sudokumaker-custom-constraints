@@ -123,10 +123,11 @@ others. If no step is forced from that state, say so.
 
 - **Seam**: `just check-full`
 - **Blind to**: the app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared checks and the suites of each example and finder the diff touches; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 The controller re-runs it on a PR merged into current `main` before the
 merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
+
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared checks and the suites of each example and finder the diff touches; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 

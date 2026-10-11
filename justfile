@@ -12,7 +12,7 @@ check: lint test
 check-full: check test-heavy soundness
 
 # The suites live in one place, tests/all.sh: every recipe below that runs
-# tests calls it with the tier it wants, so the gate and a worker's narrowed
+# tests calls it with the group it wants, so the gate and a worker's narrowed
 # run (`bash tests/all.sh --changed <base>`) read the same listing. The heavy
 # list and the finder exceptions are there too.
 
@@ -21,7 +21,7 @@ check-full: check test-heavy soundness
 # verbatim original/ snippets are excluded.
 [doc("Lint the Node and Python code and check uv.lock matches pyproject.toml.")]
 lint:
-    bash tests/all.sh --tier lint
+    bash tests/all.sh --group lint
 
 # Auto-fix + format in place.
 [doc("Auto-fix and format the Node and Python code in place.")]
@@ -32,11 +32,11 @@ fmt:
     uvx ruff format examples
     uvx ruff format finders
 
-# Every example's own tests except the heavy ones above, discovered by file
-# name so a new example needs no edit here. See docs/example-layout.md.
-# Builders (build_*.py) do not run here — only files named *.test.mjs /
-# *.test.py. A verify.py runs here only when it is cheap:
-# skyscraper's is one solve and is wired in below, isofill's searches for
+# Every shared, finder and example test except the heavy ones tests/all.sh
+# names, discovered by file name so a new example needs no edit here. See
+# docs/example-layout.md. Builders (build_*.py) do not run here — only files
+# named *.test.mjs / *.test.py. A verify.py runs here only when it is cheap:
+# skyscraper's is one solve and tests/all.sh names it, isofill's searches for
 # minutes and stays behind `just verify-isofill` (see there).
 #
 # Python runs in the one project environment (pyproject.toml, uv.lock), with
@@ -49,7 +49,7 @@ fmt:
 # JUST is for the tests that run recipes themselves (gate_lib.commands).
 [doc("Every unit test except the heavy and slow ones, found by glob.")]
 test:
-    JUST="{{just_executable()}}" bash tests/all.sh --tier test
+    JUST="{{just_executable()}}" bash tests/all.sh --group test
 
 # finders/renbanana's slow tests: the two --cover tests in full plus the slow
 # two-stage proof, a CP-SAT solve per known grid, minutes overall. Not part of
@@ -57,17 +57,17 @@ test:
 # probe_circle_pattern.py or prove_two_stage.py.
 [doc("Slow finder tests (a CP-SAT solve per known grid), by hand, minutes overall.")]
 test-finders-slow:
-    bash tests/all.sh --tier finders-slow
+    bash tests/all.sh --group finders-slow
 
 # The heavy tests `test` skips, run by `check-full`, as two CI-sized groups:
 # the fillomino pipeline (37s) and the two recovery probes (21s).
 [doc("Heavy group 1: the fillomino pipeline and generator tests, about 37 s.")]
 test-heavy-fillomino:
-    bash tests/all.sh --tier heavy-fillomino
+    bash tests/all.sh --group heavy-fillomino
 
 [doc("Heavy group 2: the skyscraper and hit-counts recovery probes, about 21 s.")]
 test-heavy-recovery:
-    bash tests/all.sh --tier heavy-recovery
+    bash tests/all.sh --group heavy-recovery
 
 # Both heavy groups, in order -- what `check-full` runs locally.
 [doc("Both heavy groups in order, what check-full runs locally.")]
@@ -101,7 +101,7 @@ verify-isofill:
 # invariant. Discovered by file name, same convention as `test` above.
 [doc("Soundness fuzz: every component keeps each cell's true value.")]
 soundness:
-    bash tests/all.sh --tier soundness
+    bash tests/all.sh --group soundness
 
 # Real-app timing for one example: baseline (committed PUZZLE_LINK.txt) vs a
 # candidate built from the working-tree component, on the recorded app (HAR

@@ -85,7 +85,7 @@ in `retired-examples.toml` and fails if such a directory comes back (#238).
 
 ## Optional files
 
-Run when present, skipped with a note when absent:
+Run when present, skipped when absent:
 
 | File | Notes |
 | --- | --- |

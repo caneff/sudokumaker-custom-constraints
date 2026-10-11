@@ -2,11 +2,11 @@
 # The seam runner: the one listing of the gate's suites. A suite is one
 # command (`uv run <file>`, `node <file>`, one lint step), and it is its own
 # label. With no flag this runs every suite `just check-full` runs, one at a
-# time on one core, in the same order. Files are found by glob from the tree
+# time, in the same order. Files are found by glob from the tree
 # on disk, so a new test needs no edit here; the lists below are the
 # exceptions, and examples/_shared/gate.test.py checks them against the tree.
 #
-#   bash tests/all.sh [--list] [--changed <base>] [--tier <tier>]
+#   bash tests/all.sh [--list] [--changed <base>] [--group <group>]
 #
 # `--list` prints the suites the run would cover, one per line, and runs none.
 #
@@ -19,20 +19,22 @@
 #     directory.
 # It widens to the whole seam when the diff touches what every suite depends
 # on (`place` below names those paths) or a path no rule places. A Markdown
-# file outside an example or a finder selects nothing more. The narrowing can
-# run too little only across an edge tests/suite-edges.txt does not list; the
-# controller re-runs the whole seam on the merged result before every merge.
+# file outside an example or a finder selects nothing more. The narrowing runs
+# too little when a suite reads another unit's directory that
+# tests/suite-edges.txt does not list, or a Markdown file outside its unit
+# that `place` does not name; the controller re-runs the whole seam on the
+# merged result before every merge.
 #
-# `--tier <tier>` runs one tier of the seam, which is how the justfile's
+# `--group <group>` runs one group of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
-# `heavy-fillomino`, `heavy-recovery`, `soundness`. `finders-slow` is a tier
+# `heavy-fillomino`, `heavy-recovery`, `soundness`. `finders-slow` is a group
 # outside the seam, run by hand through `just test-finders-slow`.
 #
 # One line per suite as it finishes (`PASS <suite>`); the first failing suite
 # prints `FAIL <suite>` and its whole output, and the run exits 1 there. The
 # last line states what ran: `N of M suites passed`, M being the whole seam
-# (or the whole tier), followed by `(narrowed: <units>)` or `(widened: <why>)`
-# on a `--changed` run and by `(tier: <tier>)` on a `--tier` run.
+# (or the whole group), followed by `(narrowed: <units>)` or `(widened: <why>)`
+# on a `--changed` run and by `(group: <group>)` on a `--group` run.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.
@@ -47,10 +49,10 @@ heavy_fillomino="examples/fillomino/pipeline.test.py examples/fillomino/generate
 heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
 
 # Finder tests (#662) that do not run as a plain `uv run <file>`:
-#   finder_slow:   the `finders-slow` tier only (a CP-SAT solve per known
+#   finder_slow:   the `finders-slow` group only (a CP-SAT solve per known
 #                  grid, minutes overall).
 #   finder_cover:  run with `--cover` (a subset, one grid per shape) in the
-#                  seam, and in full in the `finders-slow` tier.
+#                  seam, and in full in the `finders-slow` group.
 #   finder_pytest: the pytest suites, run as `uv run pytest <file> -q`.
 finder_slow="finders/renbanana/tools/test_prove_two_stage_slow.py"
 finder_cover="finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py finders/renbanana/tools/test_probe_finds_known_grids.py"
@@ -67,13 +69,13 @@ unit_of() { # <file>
   if [ "$top/$name" = examples/_shared ]; then echo always; else echo "$top/$name"; fi
 }
 
-suite() { printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$3"; } # <tier> <file> <command>
+emit() { printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$3"; } # <group> <file> <command>
 
-run_file() { # <tier> <file>: prints the suite that runs a test file
-  case $2 in *.mjs) suite "$1" "$2" "node $2" ;; *) suite "$1" "$2" "uv run $2" ;; esac
+run_file() { # <group> <file>: prints the suite that runs a test file
+  case $2 in *.mjs) emit "$1" "$2" "node $2" ;; *) emit "$1" "$2" "uv run $2" ;; esac
 }
 
-# Prints "<tier>\t<unit>\t<command>" per suite, in run order: lint, the shared
+# Prints "<group>\t<unit>\t<command>" per suite, in run order: lint, the shared
 # checks, every finder's tests, every example's tests, the heavy tests, the
 # soundness harnesses, and last the slow finder tests no seam run includes.
 suites() {
@@ -104,8 +106,8 @@ suites() {
   # system cc to check it against the Python one.
   for f in finders/**/test_*.py; do
     if listed "$finder_slow" "$f"; then continue
-    elif listed "$finder_pytest" "$f"; then suite test "$f" "uv run pytest $f -q"
-    elif listed "$finder_cover" "$f"; then suite test "$f" "uv run $f --cover"
+    elif listed "$finder_pytest" "$f"; then emit test "$f" "uv run pytest $f -q"
+    elif listed "$finder_cover" "$f"; then emit test "$f" "uv run $f --cover"
     else run_file test "$f"; fi
   done
   for dir in examples/*/; do
@@ -130,7 +132,9 @@ place() { # <file>
   IFS=/ read -r top name rest <<<"$1"
   case $1 in
     *[[:space:]]*) echo "whole no rule places $1" ;;
-    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/*)
+    # docs/builtin-components.md is the one Markdown file code reads: the
+    # shared component scan takes the built-in component list from it.
+    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
       echo "whole every suite depends on $1" ;;
     examples/_shared/*)
       # A shared test is one of the shared checks, which always run; any other
@@ -150,7 +154,7 @@ place() { # <file>
 # Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
 # units that read them, sorted) or `widened` (why the whole seam runs).
 scope() { # <base>
-  local files file kind what read reader touched
+  local files file kind what source reader touched
   [ -r tests/suite-edges.txt ] || {
     echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
   files=$(git diff --name-only --no-renames "$1...HEAD") || {
@@ -167,22 +171,30 @@ scope() { # <base>
   # One step only: a reader's own files did not change, so what reads the
   # reader is not affected.
   touched=$units
-  while read -r read reader _; do
-    case $read in "" | "#"*) continue ;; esac
-    listed "$touched" "$read" && ! listed "$units" "$reader" && units="$units $reader"
+  while read -r source reader _ || [ -n "$source" ]; do
+    case $source in "" | "#"*) continue ;; esac
+    [ -n "$reader" ] || {
+      echo "tests/all.sh: tests/suite-edges.txt: not '<directory read> <unit>': $source" >&2; exit 2; }
+    listed "$touched" "$source" && ! listed "$units" "$reader" && units="$units $reader"
   done <tests/suite-edges.txt
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
-usage() { echo "usage: tests/all.sh [--list] [--changed <base>] [--tier <tier>]" >&2; exit 2; }
+usage() { # <what is wrong>
+  echo "tests/all.sh: $1" >&2
+  echo "usage: tests/all.sh [--list] [--changed <base>] [--group <group>]" >&2
+  exit 2
+}
 
-list_only=0 base="" tier=""
+list_only=0 base="" group=""
 while [ $# -gt 0 ]; do
   case $1 in
     --list) list_only=1; shift ;;
-    --changed) [ $# -ge 2 ] || usage; base=$2; shift 2 ;;
-    --tier) [ $# -ge 2 ] || usage; tier=$2; shift 2 ;;
-    *) usage ;;
+    --changed | --group)
+      [ $# -ge 2 ] || usage "$1 needs a value"
+      if [ "$1" = --changed ]; then base=$2; else group=$2; fi
+      shift 2 ;;
+    *) usage "no flag named $1" ;;
   esac
 done
 
@@ -192,12 +204,13 @@ set +f; shopt -s nullglob globstar
 all=$(suites)
 set -f
 
-if [ -n "$tier" ]; then
-  tiers="lint test heavy-fillomino heavy-recovery soundness finders-slow"
-  listed "$tiers" "$tier" || {
-    echo "tests/all.sh: no tier named $tier (the tiers: $tiers)" >&2; exit 2; }
-  all=$(awk -F'\t' -v tier="$tier" '$1 == tier' <<<"$all")
-  note=" (tier: $tier)"
+if [ -n "$group" ]; then
+  case $group in
+    lint | test | heavy-fillomino | heavy-recovery | soundness | finders-slow) ;;
+    *) usage "no group named $group" ;;
+  esac
+  all=$(awk -F'\t' -v group="$group" '$1 == group' <<<"$all")
+  note=" (group: $group)"
 else
   all=$(awk -F'\t' '$1 != "finders-slow"' <<<"$all")
   note=""
@@ -228,7 +241,7 @@ while IFS= read -r suite; do
   else
     echo "FAIL $suite"
     printf '%s\n' "$out"
-    echo "$passed of $total suites passed before $suite failed"
+    echo "$passed of $total suites passed before $suite failed$note"
     exit 1
   fi
 done <<<"$selected"

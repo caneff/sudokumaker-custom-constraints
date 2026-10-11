@@ -21,19 +21,7 @@ from gate_lib import runner_listing as listing
 RUNNER = "tests/all.sh"
 
 
-def full_listing_is_check_full():
-    """With no flag the runner covers exactly the steps `just check-full` runs."""
-    listed = listing()
-    full = commands("check-full")
-    assert len(listed) == len(set(listed)), "tests/all.sh --list repeats a suite"
-    missing = set(full) - set(listed)
-    assert not missing, f"tests/all.sh does not run: {sorted(missing)}"
-    extra = set(listed) - set(full)
-    assert not extra, f"tests/all.sh runs steps check-full does not: {sorted(extra)}"
-    return len(listed)
-
-
-TIERS = ["lint", "test", "heavy-fillomino", "heavy-recovery", "soundness"]
+GROUPS = ["lint", "test", "heavy-fillomino", "heavy-recovery", "soundness"]
 
 # A stand-in for the runner that logs how it was called and runs nothing.
 LOGGING_RUNNER = '#!/bin/sh\necho "all.sh $*" >> "$GATE_LOG"\n'
@@ -41,43 +29,54 @@ LOGGING_RUNNER = '#!/bin/sh\necho "all.sh $*" >> "$GATE_LOG"\n'
 
 def the_recipes_call_the_runner():
     """The justfile keeps no listing of its own: `just check-full` is the
-    runner called once per tier, the tiers split the whole seam with no suite
-    in two of them, and the slow finder tests are a tier outside it."""
+    runner called once per group, the groups split the whole seam with no suite
+    in two of them, and the slow finder tests are a group outside it."""
     whole = listing()
-    split = [suite for tier in TIERS for suite in listing("--tier", tier)]
-    assert sorted(split) == sorted(whole), "the tiers do not split the whole seam"
+    split = [suite for group in GROUPS for suite in listing("--group", group)]
+    assert sorted(split) == sorted(whole), "the groups do not split the whole seam"
 
     with tempfile.TemporaryDirectory() as tmp:
         tree = gate_tree(tmp)
         (tree / RUNNER).write_text(LOGGING_RUNNER)
         assert commands("check-full", root=tree) == [
-            f"all.sh --tier {tier}" for tier in TIERS
-        ], "just check-full runs something other than the runner's tiers"
+            f"all.sh --group {group}" for group in GROUPS
+        ], "just check-full runs something other than the runner's groups"
         assert commands("test-finders-slow", root=tree) == [
-            "all.sh --tier finders-slow"
+            "all.sh --group finders-slow"
         ]
 
     with tempfile.TemporaryDirectory() as tmp:
         tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
-        assert listing("--tier", "finders-slow", root=tree) == [
+        assert listing("--group", "finders-slow", root=tree) == [
             "uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py",
             "uv run finders/renbanana/tools/test_probe_finds_known_grids.py",
             "uv run finders/renbanana/tools/test_prove_two_stage_slow.py",
         ]
-        r, ran = run_stubbed(["bash", RUNNER, "--tier", "soundness"], root=tree)
+        r, ran = run_stubbed(["bash", RUNNER, "--group", "soundness"], root=tree)
         assert ran == [c for c in WHOLE if c.endswith("soundness-harness.mjs")], ran
-        assert r.stdout.splitlines()[-1] == "3 of 3 suites passed (tier: soundness)"
+        assert r.stdout.splitlines()[-1] == "3 of 3 suites passed (group: soundness)"
 
         bare = gate_tree(tempfile.mkdtemp(dir=tmp))
-        r, ran = run_stubbed(["bash", RUNNER, "--tier", "soundness"], root=bare)
-        assert (r.returncode, ran) == (0, []), f"a tier with no suite:\n{r.stderr}"
-        assert r.stdout.splitlines()[-1] == "0 of 0 suites passed (tier: soundness)"
+        r, ran = run_stubbed(["bash", RUNNER, "--group", "soundness"], root=bare)
+        assert (r.returncode, ran) == (0, []), f"a group with no suite:\n{r.stderr}"
+        assert r.stdout.splitlines()[-1] == "0 of 0 suites passed (group: soundness)"
 
-        r = subprocess.run(
-            ["bash", RUNNER, "--tier", "fast"], cwd=tree, capture_output=True, text=True
-        )
-        assert r.returncode == 2, f"an unknown tier exits {r.returncode}, not 2"
-        assert "no tier named fast" in r.stderr, r.stderr
+        assert "no group named fast" in refusal(tree, "--group", "fast")
+        assert "no group named lint test" in refusal(tree, "--group", "lint test")
+        assert "--frobnicate" in refusal(tree, "--frobnicate")
+        assert "--changed needs a value" in refusal(tree, "--list", "--changed")
+
+
+def refusal(tree, *args):
+    """What the runner says on stderr when it refuses `args` with exit 2."""
+    r = subprocess.run(
+        ["bash", RUNNER, *args], cwd=tree, capture_output=True, text=True
+    )
+    assert r.returncode == 2, (
+        f"{args} exits {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
+    )
+    assert not r.stdout, f"a refused run printed a listing: {r.stdout}"
+    return r.stderr
 
 
 def scratch_tree(tmp, files):
@@ -93,11 +92,13 @@ def a_run_covers_its_listing():
     """A run executes the suites `--list` names, in that order, and its last
     line counts them."""
     listed = listing()
+    assert len(listed) == len(set(listed)), "tests/all.sh --list repeats a suite"
     r, ran = run_stubbed(["bash", RUNNER])
     assert r.returncode == 0, f"a stubbed full run failed:\n{r.stdout}{r.stderr}"
     assert ran == listed, "a full run does not execute its own --list, in order"
     last = r.stdout.splitlines()[-1]
     assert last == f"{len(listed)} of {len(listed)} suites passed", last
+    return len(listed)
 
 
 def a_failing_suite_stops_the_run():
@@ -241,6 +242,11 @@ WIDENED = [
     (["tests/all.sh"], "every suite depends on tests/all.sh"),
     (["tests/suite-edges.txt"], "every suite depends on tests/suite-edges.txt"),
     (["docs/boards/data.json"], "no rule places docs/boards/data.json"),
+    (["docs/two words.md"], "no rule places docs/two words.md"),
+    (
+        ["docs/builtin-components.md"],
+        "every suite depends on docs/builtin-components.md",
+    ),
     (["finders/top.py", "finders/ff/x.py"], "no rule places finders/top.py"),
 ]
 
@@ -254,10 +260,16 @@ NOT_EDGES = {
 }
 
 
-def edges(root=ROOT):
+def edges():
     """The (directory read, unit that reads it) pairs the runner widens by."""
-    lines = (root / EDGES).read_text().splitlines()
-    return {tuple(ln.split()[:2]) for ln in lines if ln.strip() and ln[0] != "#"}
+    pairs = set()
+    for line in (ROOT / EDGES).read_text().splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        fields = line.split()
+        assert len(fields) >= 2, f"{EDGES}: not '<directory read> <unit>': {line}"
+        pairs.add((fields[0], fields[1]))
+    return pairs
 
 
 def cross_unit_reads():
@@ -340,7 +352,6 @@ def git(tree, *args):
         ["git", *args], cwd=tree, env=env, capture_output=True, text=True
     )
     assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
-    return r.stdout.strip()
 
 
 def with_diff(tree, changed):
@@ -384,7 +395,7 @@ def a_diff_selects_its_suites():
             assert ran == listing("--changed", "base", root=tree), changed
             return r.stdout.splitlines()[-1]
 
-        (tree / EDGES).write_text("# a comment\nexamples/aa finders/gg  why\n")
+        (tree / EDGES).write_text("# a comment\nexamples/aa finders/gg  why")
         git(tree, "add", "-A")
         git(tree, "commit", "-q", "-m", "an edge")
         git(tree, "tag", "-f", "base")
@@ -408,22 +419,37 @@ def a_diff_selects_its_suites():
             got = last_line(changed)
             assert got == f"{m} of {m} suites passed (widened: {why})", got
 
-        r = subprocess.run(
-            ["bash", RUNNER, "--changed", "no-such-ref"],
-            cwd=tree,
-            capture_output=True,
-            text=True,
+        # A red narrowed run still says it was narrowed. The fixture's edit
+        # is a `#` line, which node refuses in a .mjs file; the new file is
+        # one more suite in the whole seam.
+        with_diff(tree, ["examples/bb/z.test.mjs"])
+        r, _ = run_stubbed(
+            ["bash", RUNNER, "--changed", "base"], root=tree, real=("node",)
         )
-        assert r.returncode == 2, f"an unreadable base exits {r.returncode}, not 2"
-        assert "cannot diff no-such-ref...HEAD" in r.stderr, r.stderr
+        out = r.stdout.splitlines()
+        assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}"
+        passed = sum(line.startswith("PASS ") for line in out)
+        assert out[-1] == (
+            f"{passed} of {m + 1} suites passed before node examples/bb/z.test.mjs "
+            "failed (narrowed: examples/bb)"
+        ), out[-1]
+
+        assert "cannot diff no-such-ref...HEAD" in refusal(
+            tree, "--changed", "no-such-ref"
+        )
+        (tree / EDGES).write_text("examples/aa\n")
+        said = refusal(tree, "--list", "--changed", "base")
+        assert f"{EDGES}: not '<directory read> <unit>': examples/aa" in said, said
+        (tree / EDGES).unlink()
+        said = refusal(tree, "--list", "--changed", "base")
+        assert f"cannot read {EDGES}" in said, said
 
 
 if __name__ == "__main__":
-    n = full_listing_is_check_full()
     a_diff_selects_its_suites()
     the_recipes_call_the_runner()
     every_cross_unit_read_is_an_edge()
     agents_md_names_both_commands()
-    a_run_covers_its_listing()
+    n = a_run_covers_its_listing()
     a_failing_suite_stops_the_run()
     print(f"seam_runner.test.py: {n} suites: ok")
