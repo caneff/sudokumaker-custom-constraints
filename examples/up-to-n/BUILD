@@ -40,3 +40,12 @@ for t in ["end-to-end", "marker-contract", "update-strength"]:
         extra_env_vars=["HOME", "UV_PROJECT_ENVIRONMENT"],
         timeout=300,
     )
+
+# Item 3 experiment: the one scoped test that already has test_* functions, run by Pants' own pytest.
+python_tests(
+    name="pytest",
+    sources=["build_link.test.py"],
+    dependencies=[":data", "./main.js:js", "./UpToNComponent.js:js", "examples/_shared/harness-lib.mjs:js"],
+    extra_env_vars=["PATH"],
+    timeout=300,
+)
