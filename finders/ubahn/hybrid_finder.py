@@ -70,7 +70,9 @@ board drawn is refused and nothing is written.
 numbers you supply and nothing else shown, drawn in the dotted grid under the
 combined rules. `--circles "CELLS"` are the cells that carry a circle, grid
 cells or number cells; `--numbers "CELLS"` are the number cells whose outside
-number is printed, every other number cell left empty. With neither flag the
+number is printed, every other number cell left empty. One set of flags
+applies to every example of the directory, so a hunt run with the same
+`--circles` condition makes every example carry them. With neither flag the
 board shows no circle and no number. A circled number cell shows its number
 only if it is also in `--numbers`. The link's answer check is the plain
 link's: the drawn lines, nothing else. `--blank-strip` draws the fifth strip
@@ -114,7 +116,13 @@ import penpa
 from dedupe import IDENTITY
 from driver import run, save_render_atomic
 from protocol import Empty, Verdict
-from ubahn_finder import DEFAULT_SIDE, DEFAULT_TIMEOUT, UbahnFinder, seeded_examples
+from ubahn_finder import (
+    DEFAULT_SIDE,
+    DEFAULT_TIMEOUT,
+    UbahnFinder,
+    replace_links,
+    seeded_examples,
+)
 from ubahn_finder import Candidate as PlainCandidate
 
 # Each engine offers `grid(conditions, rng, *, time_limit)`, a
@@ -341,7 +349,7 @@ def parse_cells(flag, text):
         raise ValueError(f"{flag}: {e}") from e
 
 
-def write_links(out, circles=frozenset(), numbers=frozenset(), blank_strip=False):
+def write_links(out, circles, numbers, blank_strip):
     """Write `out/links/<seed>.txt`, one Penpa+ link per example of the hunt
     in `out` (`ubahn_finder.seeded_examples`), showing the `circles` and the
     `numbers` given and no other circle or number. The fifth strip is drawn
@@ -382,12 +390,7 @@ def write_links(out, circles=frozenset(), numbers=frozenset(), blank_strip=False
             built[s] = penpa.link(rows, cols, found, strip, shown) + "\n"
         except ValueError as e:
             raise ValueError(f"seed {s}: {e}") from e
-    links = out / "links"
-    links.mkdir(exist_ok=True)
-    for stale in links.glob("*.txt"):
-        stale.unlink()
-    for s, text in built.items():
-        (links / f"{s}.txt").write_text(text)
+    links = replace_links(out, built)
     return [
         f"wrote {len(built)} links to {links}, {len(circles)} circles and "
         f"{len(numbers)} numbers given"
@@ -408,6 +411,9 @@ def main(argv):
     parser.add_argument("--engine", default=DEFAULT_ENGINE, choices=ENGINES)
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     own, rest = parser.parse_known_args(argv)
+    if own.numbers and rest[:1] != ["links"]:
+        print("hybrid_finder: --numbers is for `links` only", file=sys.stderr)
+        return 2
     if rest[:1] == ["verify"]:
         # A record carries its own board and conditions, and `verify` runs
         # no solver.

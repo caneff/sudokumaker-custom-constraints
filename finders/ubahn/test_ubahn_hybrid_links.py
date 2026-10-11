@@ -191,7 +191,10 @@ with tempfile.TemporaryDirectory() as tmp:
     )
     check("the answer decodes to the record's edges", edges_of(d, 4) == net)
     check("the rules text is the pasted one", d.rules == RULES)
-    check("the grid is drawn dotted", d.grid_style[0] == "2")
+    check(
+        "the grid is drawn dotted, in the payload and in the mode object",
+        d.grid_style[0] == "2" and d.mode["grid"][0] == "2",
+    )
     check(
         "the answer check is lines only",
         [k for k, v in d.flags.items() if v] == ["sol_loopline"],
@@ -234,6 +237,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # A circle that is not valid is refused by name; no file is touched.
     invalid = next(c for c in board if c not in valid)
+    before = (out / "links" / f"{seed}.txt").read_text()
     (out / "links" / "999.txt").write_text("stale\n")
     r = run_cli("--circles", hybrid.cell_name(invalid), "links", str(out))
     check(
@@ -243,8 +247,10 @@ with tempfile.TemporaryDirectory() as tmp:
         and f"value {board[invalid]}" in r.stderr,
     )
     check(
-        "a refused run leaves the links directory as it was",
-        (out / "links" / "999.txt").exists(),
+        "a refused run leaves the link set as it was: the stale file stays "
+        "and the seed's link is unchanged",
+        (out / "links" / "999.txt").exists()
+        and (out / "links" / f"{seed}.txt").read_text() == before,
     )
     r = run_cli("links", str(out))
     check(
@@ -252,6 +258,17 @@ with tempfile.TemporaryDirectory() as tmp:
         r.returncode == 0 and not (out / "links" / "999.txt").exists(),
     )
 
+    # A circle off the board is refused by its name, not as a raw tuple.
+    r = run_cli("--circles", "r9c9", "links", str(out))
+    check(
+        "a circle off the board is refused by name",
+        r.returncode == 2 and "circle r9c9 is off the 4x4 board" in r.stderr,
+    )
+    r = run_cli("--numbers", "r1:turn", "classify", "--rows", "4", "--cols", "4")
+    check(
+        "--numbers outside `links` is refused, not ignored",
+        r.returncode == 2 and "--numbers is for `links` only" in r.stderr,
+    )
     # A given number must be a number cell.
     r = run_cli("--numbers", "r1c1", "links", str(out))
     check(
@@ -270,6 +287,26 @@ with tempfile.TemporaryDirectory() as tmp:
         r.returncode == 2 and "not a hunt directory" in r.stderr,
     )
 
+    # --blank-strip on a four-strip record draws the fifth strip when the grid
+    # is still a hybrid grid with it, and is refused by name when it is not.
+    for k, (rec_k, seed_k) in enumerate(zip(records, seeds, strict=True)):
+        one_k = Path(tmp) / f"strip-{k}"
+        one_k.mkdir()
+        (one_k / "examples.jsonl").write_text(json.dumps(rec_k) + "\n")
+        (one_k / "progress.jsonl").write_text(
+            json.dumps({"seed": seed_k, "outcome": "example"}) + "\n"
+        )
+        net_k = network_of(rec_k)
+        why = hybrid.why_not_hybrid(net_k, 4, 4, (), True)
+        r = run_cli("--blank-strip", "links", str(one_k))
+        if why:
+            good = r.returncode == 2 and why in r.stderr
+            good = good and not (one_k / "links").exists()
+        else:
+            d_k = Decoded((one_k / "links" / f"{seed_k}.txt").read_text().strip())
+            good = r.returncode == 0 and (d_k.nx, d_k.ny) == (9, 9)
+        check(f"--blank-strip on a four-strip record {k}: {why or 'drawn'}", good)
+
     # --blank-strip: the fifth strip is drawn, and a hunt's own strip is kept.
     five = hunt(tmp, "five", "--blank-strip")
     r = run_cli("--numbers", "r1:blank", "links", str(five))
@@ -279,12 +316,21 @@ with tempfile.TemporaryDirectory() as tmp:
         if e.get("outcome") == "example"
     )
     d5 = Decoded((five / "links" / f"{seed5}.txt").read_text().strip())
+    rec5 = read_jsonl(five / "examples.jsonl")[
+        [
+            e["seed"]
+            for e in read_jsonl(five / "progress.jsonl")
+            if e.get("outcome") == "example"
+        ].index(seed5)
+    ]
+    value5 = hybrid.values(network_of(rec5), 4, 4, True)[0, -5]
     check(
         "a hunt with the blank strip links a nine-wide board with the blank "
-        "number printed",
+        "number printed, and it is the grid's blank count",
         r.returncode == 0
         and (d5.nx, d5.ny) == (9, 9)
-        and any(v[0].isdigit() for v in d5.number.values()),
+        and {i: v[0] for i, v in d5.number.items() if v[0].isdigit()}
+        == {table_index(d5, 5, (0, -5)): str(value5)},
     )
 
 sys.exit(0 if ok else 1)

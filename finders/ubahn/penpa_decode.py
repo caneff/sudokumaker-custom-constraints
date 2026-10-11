@@ -91,14 +91,23 @@ class Decoded:
         self.flags = json.loads(self.lines[7])
         self.title = unescape(self.header[15]).removeprefix("Title: ")
         self.rules = unescape(self.header[18])
-        self.grid_style = json.loads(self.lines[2].split("~")[0])
-        self.mode = json.loads(self.lines[11])
         deltas = json.loads(self.lines[5])
         self.centerlist = [deltas[0]]
         for step in deltas[1:]:
             self.centerlist.append(self.centerlist[-1] + step)
         answer = parameter(url, "a")
         self.answer = json.loads(inflate(answer)) if answer else None
+
+    @property
+    def grid_style(self):
+        """The grid line's three settings, read from payload line 2 only
+        when asked for: a published link may be shorter than the encoder's."""
+        return json.loads(self.lines[2].split("~")[0])
+
+    @property
+    def mode(self):
+        """The `mode` object, payload line 11, read when asked for."""
+        return json.loads(self.lines[11])
 
     @property
     def nx0(self):

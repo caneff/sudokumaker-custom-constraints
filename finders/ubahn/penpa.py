@@ -243,8 +243,8 @@ class Hybrid(NamedTuple):
     """What the hybrid link shows: the cells that carry a circle and the
     number cells whose outside number is printed, in `hybrid.py`'s cells."""
 
-    circles: frozenset = frozenset()
-    numbers: frozenset = frozenset()
+    circles: frozenset
+    numbers: frozenset
 
 
 def _json(value):
@@ -343,6 +343,13 @@ class _Table(NamedTuple):
         g = self.grid_origin
         return self.cell(g + c, g + r)
 
+    def number_cell(self, cell):
+        """Cell-centre index of a number cell `(r, -k)` or `(-k, c)`. Raises
+        ValueError on a grid cell or a cell this table does not hold."""
+        if min(cell) >= 0:
+            raise ValueError(f"cell {cell} is a grid cell, not a number cell")
+        return self.board_cell(cell)
+
     def cell_list(self):
         """Cell-centre indices of the table, row by row, without the notch."""
         k = self.strips
@@ -378,16 +385,19 @@ def payload(rows, cols, found, blank_number=False, hybrid=None):
     g = t.grid_origin
 
     row_numbers, col_numbers = network.outside_numbers(found, rows, cols)
+    # The table cells whose number is printed; None prints every one.
+    shown = None if hybrid is None else {t.number_cell(c) for c in hybrid.numbers}
     number = {}
     for j, name in enumerate(kinds):
         kind = network.KIND_NAMES.index(name)
-        strip = t.strips - j  # hybrid.py's strip k: 1 the innermost
         for c in range(cols):
-            if hybrid is None or (-strip, c) in hybrid.numbers:
-                number[t.cell(g + c, MARGIN + j)] = [str(col_numbers[c][kind]), 1, "1"]
+            at = t.cell(g + c, MARGIN + j)
+            if shown is None or at in shown:
+                number[at] = [str(col_numbers[c][kind]), 1, "1"]
         for r in range(rows):
-            if hybrid is None or (r, -strip) in hybrid.numbers:
-                number[t.cell(MARGIN + j, g + r)] = [str(row_numbers[r][kind]), 1, "1"]
+            at = t.cell(MARGIN + j, g + r)
+            if shown is None or at in shown:
+                number[at] = [str(row_numbers[r][kind]), 1, "1"]
 
     symbol = {}
     for j, name in enumerate(kinds):
@@ -415,10 +425,6 @@ def payload(rows, cols, found, blank_number=False, hybrid=None):
         mode = {**_MODE, "grid": DOTTED_GRID}
         for cell in hybrid.circles:
             symbol[t.board_cell(cell)] = copy.copy(CIRCLE)
-        for cell in hybrid.numbers:
-            t.board_cell(cell)
-            if min(cell) >= 0:
-                raise ValueError(f"cell {cell} is a grid cell, not a number cell")
 
     question = _layer(number=number, symbol=symbol, lineE=divider)
     center = center_point(t.nx, t.ny)
