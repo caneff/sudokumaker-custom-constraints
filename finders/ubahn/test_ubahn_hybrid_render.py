@@ -228,15 +228,20 @@ def hunt_dir(parent, name, records):
 
 
 def decoded(path):
-    """The PNG at `path`, decoded in full."""
+    """(format, image) of the picture file at `path`, decoded in full, or
+    (None, None) when there is no such file."""
+    if not Path(path).is_file():
+        return None, None
     with Image.open(path) as image:
         image.load()
         return image.format, image.convert("RGB")
 
 
 def same(image, picture):
-    return image.size == picture.image.size and (
-        image.tobytes() == picture.image.tobytes()
+    return (
+        image is not None
+        and image.size == picture.image.size
+        and image.tobytes() == picture.image.tobytes()
     )
 
 
