@@ -476,9 +476,7 @@ def a_diff_selects_its_suites():
         git(tree, "tag", "-f", "base")
         with_diff(tree, ["examples/aa/Component.js"])
         got = listing("--changed", "base", root=tree)
-        assert sorted(got) == sorted(ALWAYS + CODE + AA + GG), (
-            f"an edge selects {got}"
-        )
+        assert sorted(got) == sorted(ALWAYS + CODE + AA + GG), f"an edge selects {got}"
         with_diff(tree, ["finders/gg/x.py"])
         got = listing("--changed", "base", root=tree)
         assert sorted(got) == sorted(ALWAYS + GG), f"an edge runs backwards: {got}"
