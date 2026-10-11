@@ -74,3 +74,4 @@ Signatures reproduced from the [Chris-Tophski docs][src]; `CellId` is a cell id,
 | `PairComponent(name, filterOrMapping, cell1, cell2)` | A pair is valid iff `filter(d1,d2)` or `mapping[d1].has(d2)`. Alias `AsymmetricalPairComponent`. |
 | `WeakLinkComponent(name, c1, v1, c2, v2)` | If `c1=v1` then `c2≠v2`, and vice versa. |
 | `WeakLinksComponent(name, cells1, values1, cells2, values2)` | Set-to-set weak links. |
+<!-- spike 5d -->
