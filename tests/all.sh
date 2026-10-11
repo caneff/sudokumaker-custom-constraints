@@ -5,6 +5,8 @@
 # time, in the same order. Files are found by glob from the tree
 # on disk, so a new test needs no edit here; the lists below are the
 # exceptions, and examples/_shared/gate.test.py checks them against the tree.
+# A new shared test takes one line in tests/shared-tests.txt, its class for a
+# narrowed run, and examples/_shared/seam_runner.test.py fails until it has it.
 #
 #   bash tests/all.sh [--list] [--changed <base>] [--group <group>]
 #
@@ -12,10 +14,10 @@
 #
 # `--changed <base>` narrows the run to what the diff `<base>...HEAD` could
 # affect, by directory and not by import scan:
-#   - lint and the tree checks, always: the shared tests tests/tree-checks.txt
-#     names, which read finders/ or the gate's own wiring;
-#   - every other test under examples/_shared/, the shared example-code tests,
-#     unless the diff lies wholly inside finders/<name>/ directories;
+#   - lint and the tree checks, always: the tests under examples/_shared/
+#     that tests/shared-tests.txt classes `tree`, or gives no class;
+#   - the shared example-code tests, which it classes `code`, unless the diff
+#     lies wholly inside finders/<name>/ directories;
 #   - every suite of each examples/<name>/ and finders/<name>/ the diff
 #     touches: its tests, its heavy tests and its soundness harness;
 #   - every suite of a unit that tests/suite-edges.txt says reads a touched
@@ -23,12 +25,12 @@
 # It widens to the whole seam when the diff touches what every suite depends
 # on (`place` below names those paths) or a path no rule places. A Markdown
 # file outside an example or a finder selects no unit, and keeps the shared
-# example-code tests. So a finder-only run covers lint, the tree checks and
-# that finder's suites. The narrowing runs too little when a suite reads
-# another unit's directory that tests/suite-edges.txt does not list, a
-# Markdown file outside its unit that `place` does not name, or, for a shared
-# test tests/tree-checks.txt does not name, a file under finders/; the
-# controller re-runs the whole seam on the
+# example-code tests. So a finder-only run covers lint, the tree checks, that
+# finder's suites and the suites of each unit tests/suite-edges.txt says
+# reads it. The narrowing runs too little when a suite reads another unit's
+# directory that tests/suite-edges.txt does not list, a Markdown file outside
+# its unit that `place` does not name, or, for a shared test classed `code`,
+# a file under finders/; the controller re-runs the whole seam on the
 # merged result before every merge.
 #
 # `--group <group>` runs one group of the seam, which is how the justfile's
@@ -66,20 +68,29 @@ finder_pytest="finders/counting_shaded/test_counting_shaded.py"
 
 listed() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; } # <list> <file>
 
-# The tree checks: the first field of each line of tests/tree-checks.txt.
-[ -r tests/tree-checks.txt ] || {
-  echo "tests/all.sh: cannot read tests/tree-checks.txt" >&2; exit 2; }
-tree_checks=$(awk '!/^#/ && NF { print $1 }' tests/tree-checks.txt | xargs)
+# The shared example-code tests: the files tests/shared-tests.txt classes
+# `code`.
+[ -r tests/shared-tests.txt ] || {
+  echo "tests/all.sh: cannot read tests/shared-tests.txt" >&2; exit 2; }
+code_tests=""
+while read -r file class _ || [ -n "$file" ]; do
+  case $file in "" | "#"*) continue ;; esac
+  case $class in
+    tree) ;;
+    code) code_tests="$code_tests $file" ;;
+    *) echo "tests/all.sh: tests/shared-tests.txt: not '<file> tree|code': $file $class" >&2; exit 2 ;;
+  esac
+done <tests/shared-tests.txt
 
 # The unit that owns a test file: `examples/<name>` or `finders/<name>`, the
-# directory a `--changed` run selects it by. Lint and the tree checks belong
-# to `always`, every other shared test to `shared`.
+# directory a `--changed` run selects it by. A shared example-code test
+# belongs to `code`; lint and every other shared test belong to `always`.
 unit_of() { # <file>
   local top name
   IFS=/ read -r top name _ <<<"$1"
   if [ "$top/$name" != examples/_shared ]; then echo "$top/$name"
-  elif listed "$tree_checks" "$1"; then echo always
-  else echo shared; fi
+  elif listed "$code_tests" "$1"; then echo code
+  else echo always; fi
 }
 
 emit() { printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$3"; } # <group> <file> <command>
@@ -147,7 +158,7 @@ place() { # <file>
     *[[:space:]]*) echo "whole no rule places $1" ;;
     # docs/builtin-components.md is the one Markdown file code reads: the
     # shared component scan takes the built-in component list from it.
-    tests/all.sh | tests/suite-edges.txt | tests/tree-checks.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
+    tests/all.sh | tests/suite-edges.txt | tests/shared-tests.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
       echo "whole every suite depends on $1" ;;
     examples/_shared/*)
       # A changed shared test selects no unit and keeps the shared
@@ -167,20 +178,20 @@ place() { # <file>
 
 # Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
 # units that read them, sorted) or `widened` (why the whole seam runs), and
-# `shared` (`shared`, or empty when every changed file is a finder's and no
-# shared example-code test can be affected).
+# `code` (`code`, or empty when every changed file is a finder's, which
+# leaves the shared example-code tests out of the run).
 scope() { # <base>
   local files file kind what source reader touched
   [ -r tests/suite-edges.txt ] || {
     echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
   files=$(git diff --name-only --no-renames "$1...HEAD") || {
     echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
-  units="" widened="" shared=""
-  [ -n "$files" ] || shared=shared
+  units="" widened="" code=""
+  [ -n "$files" ] || code=code
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     read -r kind what <<<"$(place "$file")"
-    case "$kind $what" in "unit finders/"*) ;; *) shared=shared ;; esac
+    case "$kind $what" in "unit finders/"*) ;; *) code=code ;; esac
     case $kind in
       whole) widened=$what; return ;;
       unit) listed "$units" "$what" || units="$units $what" ;;
@@ -241,7 +252,7 @@ if [ -n "$base" ]; then
   if [ -n "$widened" ]; then
     note="$note (widened: $widened)"
   else
-    selected=$(awk -F'\t' -v keep=" always $shared $units " 'index(keep, " " $1 " ")' <<<"$all")
+    selected=$(awk -F'\t' -v keep=" always $code $units " 'index(keep, " " $1 " ")' <<<"$all")
     note="$note (narrowed: ${units:-no example or finder touched})"
   fi
 fi
