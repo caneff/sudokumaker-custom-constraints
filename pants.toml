@@ -13,6 +13,7 @@ pants_ignore = ["/.claude/", "/.scratch/", "node_modules/"]
 root_patterns = [
   "/finders/ubahn",
   "/finders/hunt",
+  "/finders/qqrr",
   "/examples/_shared",
   "/examples/up-to-n",
 ]
