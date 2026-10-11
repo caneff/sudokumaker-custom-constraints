@@ -129,7 +129,7 @@ merge, whether or not `main` has moved past the PR's merge base (about
 3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
 repo 2026-10-11).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared checks and the suites of each example and finder the diff touches; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests and the suites of each example and finder the diff touches; a finder-only diff runs lint, the tree checks (`tests/tree-checks.txt`) and that finder's suites, with no shared example-code test; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 

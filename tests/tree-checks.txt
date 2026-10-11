@@ -1,0 +1,18 @@
+# The tree checks for `tests/all.sh --changed`: one per line,
+#
+#   <file under examples/_shared/>  <why a finder change can break it>
+#
+# A tree check runs on every narrowed run, beside lint. Every other shared
+# test is a shared example-code test, which a diff lying wholly inside finders
+# skips. A shared test belongs here when it reads a file under finders/,
+# searches every tracked script, or checks the gate's own wiring.
+# examples/_shared/seam_runner.test.py fails when a shared test that does one
+# of those has no line here.
+examples/_shared/gate.test.py  reads every finder test file and checks that the gate runs it
+examples/_shared/seam_runner.test.py  scans finders/ for reads of another unit's directory
+examples/_shared/ci_workflow.test.py  compares the CI jobs with the suites check-full finds in the tree
+examples/_shared/recipe_discovery.test.py  checks that the recipes find a new finder test by glob
+examples/_shared/just_list.test.py  checks the justfile's recipe docs, part of the gate's wiring
+examples/_shared/app-solve-lib.test.mjs  greps every tracked script for a second copy of the verdict pattern
+examples/_shared/bundle-load.test.mjs  greps every tracked script for a second bundle splice
+examples/_shared/check_layout.py  the layout check, which reads every example and docs/research/
