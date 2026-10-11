@@ -5,11 +5,12 @@ on the 4x4 board.
 `climb` raises K until no grid reaches it or the time limit stops it. The
 brute force's 18 grids hold 2 such cells at most (`test_ubahn_number_circles.py`),
 so every example at K=2 is one of its 6, K=3 has no grid, and `climb` must
-report a maximum of 2, proven, on every engine. About ten seconds.
+report a maximum of 2, proven, on every engine. About twenty seconds.
 
     uv run finders/ubahn/test_ubahn_number_circles_hunt.py
 """
 
+import fcntl
 import itertools
 import json
 import subprocess
@@ -204,6 +205,85 @@ with tempfile.TemporaryDirectory() as d:
         and read_jsonl(out / "climb.jsonl") == steps,
     )
 
+    r2 = run_cli("climb", *BOARD, "--engine", engine, "--from", 1, "--out", out)
+    check(
+        f"climb rerun with another --from is refused ({r2.stderr.strip()[-50:]!r})",
+        r2.returncode == 2 and "--from" in r2.stderr,
+    )
+
+    # Another climb is in the directory: this one starts nothing.
+    with (out / "climb.jsonl").open("a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        r2 = run_cli("climb", *BOARD, "--engine", engine, "--out", out)
+    check(
+        f"climb into a directory another climb holds is refused "
+        f"({r2.stderr.strip()[-40:]!r})",
+        r2.returncode == 2 and "another climb" in r2.stderr and not r2.stdout,
+    )
+
+    # A log that two climbs wrote into is not a proof: a step under another
+    # board, or a step that does not follow from the one before, is refused
+    # and no maximum is printed.
+    other = {**steps[-1], "config": {**steps[-1]["config"], "rows": 5, "cols": 5}}
+    gap = {**steps[-1], "at_least": steps[-1]["at_least"] + 1}
+    for name, last in (("another board's step", other), ("a step out of order", gap)):
+        mixed = Path(d) / f"climb mixed {name}"
+        mixed.mkdir()
+        (mixed / "climb.jsonl").write_text(
+            "".join(json.dumps(step) + "\n" for step in [*steps[:-1], last])
+        )
+        r2 = run_cli("climb", *BOARD, "--engine", engine, "--out", mixed)
+        check(
+            f"climb on a log with {name} is refused, no maximum printed "
+            f"({r2.stderr.strip()[-60:]!r})",
+            r2.returncode == 2 and "maximum" not in r2.stdout,
+        )
+
+    # A step whose hunt directory is already finished, with no line of the
+    # log for it: the answer is read back, and no solve time is made up.
+    again = Path(d) / "climb read back"
+    run_cli("climb", *BOARD, "--out", again)
+    first, *_ = read_jsonl(again / "climb.jsonl")
+    (again / "climb.jsonl").unlink()
+    r2 = run_cli("climb", *BOARD, "--out", again)
+    reread = read_jsonl(again / "climb.jsonl")[0]
+    check(
+        f"climb reading a finished step back: the same count, the time not "
+        f"on record ({r2.stdout.splitlines()[:1]})",
+        r2.returncode == 0
+        and reread == {**first, "seconds": None}
+        and r2.stdout.splitlines()[0].endswith(", time not on record"),
+    )
+
+    # A step that ends any way but a grid, no grid or the time limit stops
+    # the climb: here the seed's grid was rejected by `verify`.
+    bad = Path(d) / "climb rejected"
+    args = ("climb", "--rows", 4, "--cols", 4, "--timeout", 0, "--out", bad)
+    run_cli(*args)
+    (bad / "climb.jsonl").unlink()
+    (bad / "at-least-0" / "progress.jsonl").write_text(
+        json.dumps({"event": "seed_done", "seed": 0, "outcome": "rejected"}) + "\n"
+    )
+    r2 = run_cli(*args)
+    check(
+        f"climb on a step `verify` rejected stops with no answer "
+        f"({r2.stderr.strip()[-60:]!r})",
+        r2.returncode == 2
+        and "ended on" in r2.stderr
+        and "no grid" not in r2.stdout
+        and not (bad / "climb.jsonl").read_text(),
+    )
+    # The driver refuses a step directory that holds files and no run.json.
+    bad = Path(d) / "climb refused"
+    (bad / "at-least-0").mkdir(parents=True)
+    (bad / "at-least-0" / "summary.json").write_text("{}")
+    r2 = run_cli("climb", *BOARD, "--out", bad)
+    check(
+        f"climb on a step the driver refuses stops with no answer "
+        f"({r2.stderr.strip()[-40:]!r})",
+        r2.returncode == 2 and "was refused" in r2.stderr and "grid" not in r2.stdout,
+    )
+
     # A step that reaches the time limit after a grid was found: the best
     # found, and no proof. The found step is the finished climb's first, as
     # a climb with no time left would have it on file.
@@ -249,11 +329,23 @@ with tempfile.TemporaryDirectory() as d:
         == [f"no grid found: at least {MOST + 1} has no grid on pysat-lazy"],
     )
 
-r = run_cli(*BOARD, "--number-circles", "-1", "--out", "unused", "--seeds=0:1")
-check(
-    f"--number-circles -1 is refused ({r.stderr.strip()!r})",
-    r.returncode == 2 and "--number-circles" in r.stderr,
-)
+# A flag refused before anything is written.
+with tempfile.TemporaryDirectory() as d:
+    unused = Path(d) / "unused"
+    r = run_cli(*BOARD, "--number-circles", "-1", "--out", unused, "--seeds=0:1")
+    check(
+        f"--number-circles -1 is refused ({r.stderr.strip()!r})",
+        r.returncode == 2 and "--number-circles" in r.stderr,
+    )
+    for flags, named in (
+        (["--number-circles", 3], "--from"),
+        (["--from", -1], "--from"),
+    ):
+        r = run_cli("climb", *BOARD, *flags, "--out", unused)
+        check(
+            f"climb {flags[0]} {flags[1]} is refused ({r.stderr.strip()!r})",
+            r.returncode == 2 and named in r.stderr and not unused.exists(),
+        )
 r = run_cli("--help")
 check(
     "--help names the condition and the climb",

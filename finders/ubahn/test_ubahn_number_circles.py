@@ -23,6 +23,7 @@ import hybrid
 import hybrid_finder
 import hybrid_model
 import hybrid_sat
+import network
 from ortools.sat.python import cp_model
 from pysat.solvers import Cadical195
 
@@ -141,12 +142,44 @@ def cpsat_takes(net, side, k):
     return status != cp_model.INFEASIBLE
 
 
-# Past any enumeration: a grid an engine found with no condition is pinned in
-# the clauses edge by edge, and the clauses must take it at the reader's own
-# count and refuse it one above, by both sets of rules. 4x4 only ever circles
-# a turn number cell.
-wrong, counts = [], []
-for side, seed in ((6, 0), (7, 1), (7, 2), (8, 3)):
+# Past any enumeration: a grid is pinned in the clauses edge by edge, and
+# both sets of rules must take it at the reader's own count and refuse it one
+# above. Two grids an engine found with no condition hold no such cell, so
+# for them only the refusal at 1 says anything. The other three are grids of
+# the climbs of record (docs/research/2026-10-11-u-bahn-number-circles), with
+# what 4x4 never has: a circle in an odd region, and the most a board holds.
+# 4x4 only ever circles a 2 or a 4.
+MOST_OF_6X6 = [  # 14: six 2s, five 3s, three 4s
+    "┌┬┬─┬┐",
+    "├┼┤┌┼┤",
+    "│└┤├┼┘",
+    "└─┼┴┤ ",
+    "┌┬┘┌┼┐",
+    "└┘ └┴┘",
+]
+A_FIVE = [  # 14: thirteen 2s and a 5
+    "┌┬┬─┬─┐",
+    "├┼┼┐└─┘",
+    "├┘├┼─┬┐",
+    "├┐│├┐││",
+    "├┼┤└┤││",
+    "├┘├┐│└┤",
+    "└─┴┴┴─┘",
+]
+MOST_OF_7X7 = [  # 18, all 2s
+    "┌┬──┬─┐",
+    "├┼┬┐│┌┤",
+    "│├┼┘├┼┤",
+    "│└┘ ├┘│",
+    "├─┬┬┼┐│",
+    "│┌┼┘└┼┤",
+    "└┴┴──┴┘",
+]
+pinned = [
+    (len(drawn), network.from_drawing(drawn))
+    for drawn in (MOST_OF_6X6, A_FIVE, MOST_OF_7X7)
+]
+for side, seed in ((6, 0), (7, 1)):
     (net,) = hybrid_sat.listing(
         hybrid.Conditions(side, side),
         hybrid_sat.LAZY,
@@ -154,15 +187,24 @@ for side, seed in ((6, 0), (7, 1), (7, 2), (8, 3)):
         time_limit=TIME_LIMIT,
         rng=random.Random(seed),
     ).grids
-    held = len(hybrid.number_cell_circles(hybrid.values(net, side, side)))
-    counts.append(held)
+    pinned.append((side, net))
+wrong, held_values = [], []
+for side, net in pinned:
+    board = hybrid.values(net, side, side)
+    values = sorted(board[cell] for cell in hybrid.number_cell_circles(board))
+    held_values.append(values)
     for name, asked in (("pysat", takes), ("cpsat", cpsat_takes)):
-        if not asked(net, side, held) or asked(net, side, held + 1):
-            wrong.append((name, side, seed, held))
+        if not asked(net, side, len(values)) or asked(net, side, len(values) + 1):
+            wrong.append((name, side, len(values)))
 check(
-    f"four found grids, 6x6 to 8x8, pinned: taken at the reader's count and "
-    f"refused one above (counts {counts}, wrong: {wrong})",
-    not wrong and max(counts) >= 3,
+    f"five grids pinned, holding 14, 14, 18, 0 and 0: taken at the reader's "
+    f"count and refused one above (wrong: {wrong})",
+    not wrong and [len(v) for v in held_values] == [14, 14, 18, 0, 0],
+)
+check(
+    f"the pinned grids hold a 3 and a 5 on number cells, in odd regions "
+    f"({held_values[0]}, {held_values[1]})",
+    held_values[0].count(3) == 5 and held_values[1].count(5) == 1,
 )
 
 
