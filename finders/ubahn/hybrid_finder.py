@@ -46,6 +46,19 @@ first grid found drawn under the answer:
 
 A time limit reached is always `timeout`, never one of the other three.
 
+`render DIR` draws every example of the hunt in DIR as a picture,
+`DIR/renders/<seed>.png` (`hybrid_render.py`, #791): the board with every
+outside number, the network, chocolate in one colour and a tint per banana,
+and a ring on every valid circle, each cell whose value is the size of its
+region; a circle that is one of the grid's conditions has a heavier ring in
+a second colour. A rerun replaces every picture there. `--seed N --png FILE`
+draws that one example to FILE instead. `--blank-strip` draws the fifth strip
+on a record of a hunt that had none; a grid that is no hybrid grid on the
+board drawn is refused and nothing is written.
+
+    uv run finders/ubahn/hybrid_finder.py render DIR [--blank-strip]
+    uv run finders/ubahn/hybrid_finder.py render DIR --seed N --png FILE
+
 The board's one symmetry is the reflection in the main diagonal, which swaps
 the row and column number cells; a left-right mirror image is another
 puzzle, since the number cells sit above and on the left only. A hunt
@@ -68,12 +81,13 @@ sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
 import hybrid
 import hybrid_model
+import hybrid_render
 import hybrid_sat
 import network
 from dedupe import IDENTITY
-from driver import run
+from driver import run, save_render_atomic
 from protocol import Empty, Verdict
-from ubahn_finder import DEFAULT_SIDE, DEFAULT_TIMEOUT, UbahnFinder
+from ubahn_finder import DEFAULT_SIDE, DEFAULT_TIMEOUT, UbahnFinder, seeded_examples
 from ubahn_finder import Candidate as PlainCandidate
 
 # Each engine offers `grid(conditions, rng, *, time_limit)`, a
@@ -231,6 +245,47 @@ def classify(conditions, engine, timeout, workers):
     return lines
 
 
+def write_pictures(out, blank_strip=False, seed=None, png=None):
+    """Draw the examples of the hunt in `out`, each under its seed
+    (`ubahn_finder.seeded_examples`): all of them to `out/renders/<seed>.png`,
+    or the one at `seed` to `png`. The fifth strip is drawn when
+    `blank_strip` is set or the record's own is. Returns the lines to print.
+    Raises ValueError, naming the seed, on a record the finder refuses or a
+    grid `hybrid_render.Picture` refuses, and names a missing or unpaired
+    log or a seed with no example."""
+    out = Path(out)
+    examples = seeded_examples(out)
+    if seed is not None:
+        examples = [(s, record) for s, record in examples if s == seed]
+        if not examples:
+            raise ValueError(f"seed {seed} has no example in {out}")
+    finder = HybridFinder(hybrid.Conditions(DEFAULT_SIDE, DEFAULT_SIDE))
+    # Every picture is drawn before any file is touched: a grid that is
+    # refused leaves renders/ as it was.
+    drawn = {}
+    for s, record in examples:
+        try:
+            (rows, cols, circles, _, own), found = finder.candidate_from_record(record)
+            drawn[s] = hybrid_render.Picture(
+                found, rows, cols, circles, blank_strip or own
+            ).image
+        except ValueError as e:
+            raise ValueError(f"seed {s}: {e}") from e
+    if seed is not None:
+        save_render_atomic(drawn[seed], Path(png))
+        return [f"wrote the picture of seed {seed} to {png}"]
+    renders = out / "renders"
+    renders.mkdir(exist_ok=True)
+    for s, image in drawn.items():
+        save_render_atomic(image, renders / f"{s}.png")
+    # A rerun replaces the whole set, so a picture left by an earlier
+    # example list never stays.
+    for stale in renders.glob("*.png"):
+        if stale.name not in {f"{s}.png" for s in drawn}:
+            stale.unlink()
+    return [f"wrote {len(drawn)} pictures to {renders}"]
+
+
 def main(argv):
     if argv[:1] in (["-h"], ["--help"]):
         print(__doc__)
@@ -248,6 +303,30 @@ def main(argv):
         # A record carries its own board and conditions, and `verify` runs
         # no solver.
         return run(HybridFinder(hybrid.Conditions(own.rows, own.cols)), rest)
+    if rest[:1] == ["render"]:
+        # A record carries its own board and conditions too; `--blank-strip`
+        # is the one flag of the finder's own that `render` reads.
+        mine = argparse.ArgumentParser(prog="hybrid_finder render")
+        mine.add_argument("dir")
+        mine.add_argument("--seed", type=int)
+        mine.add_argument("--png", metavar="FILE")
+        args = mine.parse_args(rest[1:])
+        try:
+            if (args.seed is None) != (args.png is None):
+                raise ValueError(
+                    "--seed N and --png FILE go together: "
+                    + (
+                        "--seed needs --png"
+                        if args.png is None
+                        else "--png needs --seed"
+                    )
+                )
+            lines = write_pictures(args.dir, own.blank_strip, args.seed, args.png)
+        except ValueError as e:
+            print(f"hybrid_finder render: {e}", file=sys.stderr)
+            return 2
+        print("\n".join(lines))
+        return 0
     try:
         if own.engine not in ENGINES:
             raise ValueError(

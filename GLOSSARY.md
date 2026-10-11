@@ -208,6 +208,9 @@ digit.
 - **circle** — a condition on one cell, grid cell or number cell: the cell's
   value equals the number of cells in its region. Nothing is printed in it.
   An uncircled cell promises nothing about size.
+- **valid circle** — a cell a circle could sit on in a given grid: its value
+  equals the number of cells in its region. Every circle of a grid's
+  conditions is one; the picture (`hybrid_finder.py render`) rings them all.
 - **engine** — a solver the hybrid's rules are written on, picked by the
   finder's `--engine`: `cpsat`, `pysat-lazy` or `pysat-propagator`. Every
   engine answers the same two calls, a grid for a seed and a classification.

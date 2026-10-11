@@ -317,6 +317,37 @@ Worker's choices, none a ruling:
   not all 65: it runs the lazy engine's clauses, and the full sweep on it
   would add about 8 s to the build loop.
 
+## Hybrid: the picture (#791)
+
+`hybrid_finder.py render DIR` draws each example of a hunt as
+`DIR/renders/<seed>.png`; `--seed N --png FILE` draws one. Chris asked for
+the picture on 2026-10-11 ("render that grid", "also render the choco
+banans", "the renderer should also circle valid circles", "make the turns
+look more connected"). No solver runs: values, regions and valid circles are
+`hybrid.py`'s.
+
+Worker's choices, none a ruling:
+
+- **A given circle's ring is purple and 7 px, a merely valid circle's red and
+  4 px.** Colour and weight both differ, so the two can be told apart in
+  greyscale too.
+- **A grid that is no hybrid grid on the board drawn is refused**, with the
+  rule reader's reason, and nothing is written. So a chocolate in a picture is
+  always a rectangle. `--blank-strip` on a four-strip record redraws the
+  regions over five strips, and most four-strip grids break there (10 of the
+  18 at 4x4): those are refused with the reason, not drawn.
+- **`--blank-strip` adds the strip; a record of a hunt that had it on is
+  drawn with five without the flag.**
+- **A directory's pictures go to `renders/`**, the directory the driver's own
+  `render` hook writes, under the same `<seed>.png` names, and a rerun
+  replaces the set. The hybrid finder has no `render` hook: a hunt writes no
+  picture until the command is run.
+- **Tints past the eighth banana are generated** (pale hues a golden-ratio
+  step apart), so no two bananas of one picture share a tint; the first eight
+  are the prototype's.
+- **A track bar is 8 px and runs 4 px past each cell centre**, as in the
+  picture Chris was shown. A ring on a grid cell is drawn under the track.
+
 ## Decisions
 
 - **Root.** The first used cell in reading order, stated as n² / 2
