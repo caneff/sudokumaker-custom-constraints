@@ -43,6 +43,13 @@ because the checker reads them and nothing under `docs/research/` does
   (spec #781): values, regions, circles, a terminal drawing. `brute.py R C`
   counts a tiny board's valid hybrid grids and classifies circle conditions;
   the 4x4 answers every engine must match are in the decision log, § Hybrid.
+  `hybrid_finder.py` is the hybrid finder on the hunt protocol (#783): the
+  conditions `--circles "r6:turn r2c3"`, `--exactly N:PIECE:rK` and
+  `--blank-strip` in, valid grids out, one per seed, each re-read by
+  `hybrid.py` in `verify`; `hybrid_finder.py classify` takes the same
+  conditions and answers `infeasible`, `unique`, `not_unique` or `timeout`;
+  `--help` prints the usage text. `--engine` picks the solver, `cpsat` the
+  only one so far: `hybrid_model.py`, the plain model plus the hybrid's rules.
   `ubahn_finder.py links DIR [--blank-number]` writes a Penpa+ link per example
   to `DIR/links/<seed>.txt` (`penpa.py`, #774; wire format
   `docs/research/2026-10-10-u-bahn-penpa-link.md`). The three published links

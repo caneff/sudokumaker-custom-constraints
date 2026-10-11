@@ -15,7 +15,8 @@ connected.
 
 The hybrid's answers (#782) are pinned at the end: the valid hybrid grids of
 the whole 4x4 board with no condition, and the class of seven circle
-conditions. No model reads them yet; they are what each engine must match.
+conditions. They are what each engine must match; `test_ubahn_hybrid_model.py`
+holds the CP-SAT engine to them (#783).
 
     uv run finders/ubahn/test_ubahn_brute.py
 """
