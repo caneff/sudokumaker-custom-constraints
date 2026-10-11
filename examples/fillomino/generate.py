@@ -33,8 +33,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "_shared"))
-import cpsat
 from ortools.sat.python import cp_model
+from sudoku_kit import cpsat
 
 # Seconds per solve when no caller names a cap. Every solve here is one solve
 # of one board, and a board that has not answered in ten minutes is a board

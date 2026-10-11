@@ -52,7 +52,7 @@ exists to teach.
   `verify.test.py` runs the same model at 4x4 in `just check`; only the
   full-board proofs are hand-run.
 
-  Every solve goes through `_shared/cpsat.py`, and the full-board proof is the
+  Every solve goes through `sudoku_kit.cpsat`, and the full-board proof is the
   one place in this repo that asks it for the portfolio rather than the
   reproducible one-worker configuration. A 10x10 ISOFILL model is out of a
   single worker's reach: `gen_24g.json` takes 187 s on the portfolio and hits

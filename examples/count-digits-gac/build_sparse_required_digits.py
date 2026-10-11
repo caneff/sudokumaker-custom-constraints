@@ -28,9 +28,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from board_kit import N, board_doc, box
 from board_kit import search as search_board
-from cpsat import sudoku_model
 from minify import minify_file, minify_js
 from sm_document import code_constraint, write_link
+from sudoku_kit.cpsat import sudoku_model
 
 HERE = pathlib.Path(__file__).parent
 BOARD_DIR = HERE / "required-digits" / "sparse"

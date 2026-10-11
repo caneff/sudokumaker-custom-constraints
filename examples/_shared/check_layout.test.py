@@ -30,10 +30,10 @@ from check_layout import (
     check_stale_backend_code,
     check_tree,
 )
-from link_codec import decode_puzzle, encode_link
 from manifest import load_manifest
 from minify import minify_file, minify_js
 from sm_document import code_constraint
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
 

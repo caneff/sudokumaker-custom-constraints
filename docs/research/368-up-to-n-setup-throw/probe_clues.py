@@ -4,7 +4,7 @@ import pathlib, random, sys
 sys.path.insert(0, "examples/_shared")
 sys.path.insert(0, "examples/up-to-n")
 from dataclasses import replace
-import link_codec
+from sudoku_kit import link_codec
 from build_size import SPEC
 from framebuild import build_doc, check, load_board, unique, _ring_name
 board = load_board(pathlib.Path("examples/up-to-n/gen.json"))

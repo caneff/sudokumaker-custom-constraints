@@ -23,7 +23,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "examples" / "_shared"))
-from link_codec import decode_puzzle, encode_link  # noqa: E402
+from sudoku_kit.link_codec import decode_puzzle, encode_link  # noqa: E402
 from link_swap import check_and_write, swap_component_code  # noqa: E402
 from minify import minify_js  # noqa: E402
 

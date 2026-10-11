@@ -31,12 +31,12 @@ from dataclasses import dataclass, replace
 from pathlib import PurePath
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import link_codec
 from component_scan import describe_mismatch, mismatch
 from frame import corner_cells, cosmetics, ring_cell
 from link_swap import frame_and_comment_only
 from minify import minify_file
 from sm_document import code_constraint, find_constraint
+from sudoku_kit import link_codec
 
 # Every generated link opens with a rules sentence (project rule). The Spec
 # picks it (`Spec.rules_prefix`); this is the default, and every choice opens
@@ -278,7 +278,7 @@ def unique(post_clue, board):
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
     # load_board) and a caller's Spec stay importable without one.
-    import cpsat
+    from sudoku_kit import cpsat
 
     n, bh, bw = board.n, board.bh, board.bw
     m, x = cpsat.sudoku_model(n, (bh, bw))

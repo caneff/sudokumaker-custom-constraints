@@ -1,8 +1,7 @@
 import json, sys
 from pathlib import Path
 root = Path(__file__).resolve().parent
-sys.path.insert(0, str(root / 'probe406-worktree/examples/_shared'))
-from link_codec import encode_link, decode_puzzle
+from sudoku_kit.link_codec import encode_link, decode_puzzle
 mode, out = sys.argv[1], sys.argv[2]
 doc = json.loads((root / 'doc.json').read_text())
 p = doc['puzzle']

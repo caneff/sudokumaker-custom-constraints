@@ -44,7 +44,7 @@ solution exists:
 2. Add a clause "not all cells equal `S1`".
 3. Solve again. Infeasible → the puzzle is unique.
 
-Steps 2 and 3 are `_shared/cpsat.py`: `forbid(m, x, assignment)` posts the
+Steps 2 and 3 are `sudoku_kit.cpsat` (the sudoku-kit library, pinned in `pyproject.toml`): `forbid(m, x, assignment)` posts the
 clause, `has_second_solution(m, x, first, limit)` posts it and solves, and
 `solver(limit)` is the configuration every proof runs under — one worker and
 seed 0, since CP-SAT's parallel portfolio races its workers and a proof that

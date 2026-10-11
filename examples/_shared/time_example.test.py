@@ -19,9 +19,9 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import time_example
-from link_codec import decode_puzzle, encode_link
 from manifest import load_manifest
 from minify import minify_file, minify_js
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 from time_example import (
     app_solve,
     build_candidate_doc,
@@ -42,7 +42,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, {str(HERE)!r})
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
 from minify import minify_file, minify_js
 

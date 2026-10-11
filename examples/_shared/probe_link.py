@@ -37,7 +37,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from link_codec import decode_puzzle, encode_link
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 
 def empty_interior(doc):

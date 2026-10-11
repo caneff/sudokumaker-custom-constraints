@@ -14,8 +14,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_original import build_original, frame_groups
-from link_codec import decode_puzzle
 from sm_document import write_link
+from sudoku_kit.link_codec import decode_puzzle
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"

@@ -14,7 +14,7 @@ import dataclasses
 
 from build_size import SPEC
 from framebuild import RingGlobal, load_board, unique
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 from verify import (
     boards,
     box_problems,

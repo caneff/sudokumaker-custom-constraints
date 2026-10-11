@@ -46,7 +46,7 @@ sys.path.insert(0, str(HERE))
 from build_size import SPEC
 from frame import ring_cell
 from framebuild import RingGlobal, load_board, unique
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 
 
 def interior_index(W, r, c):

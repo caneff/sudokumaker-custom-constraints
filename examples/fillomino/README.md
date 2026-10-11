@@ -331,7 +331,7 @@ grid, is dropped and retried with a fresh sub-seed, up to `max_tries`.
 `unique(board, givens)` wraps the same model's `solutions()` capped at 2 and
 raises `TimeoutError` past its `limit` (600s default) rather than returning a
 verdict — a timeout is never read as proof. It runs on the reproducible
-solver configuration (`_shared/cpsat.py`: one worker, seed 0), so a committed
+solver configuration (`sudoku_kit.cpsat`: one worker, seed 0), so a committed
 proof gives the same answer on every run; `sample` runs the portfolio, since
 what it draws is written to a gen JSON and proved from there.
 
