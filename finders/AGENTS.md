@@ -41,11 +41,13 @@ because the checker reads them and nothing under `docs/research/` does
   `docs/research/2026-10-10-u-bahn-finder-decision-log.md`.
   `hybrid.py` is the solver-free rule reader of the hybrid with Choco-Banana
   (spec #781): values, regions, circles, a terminal drawing. `brute.py R C`
-  counts a tiny board's valid hybrid grids and classifies circle conditions;
+  counts a tiny board's valid hybrid grids and classifies circle conditions,
+  with `--min-bananas N` under that condition too;
   the 4x4 answers every engine must match are in the decision log, § Hybrid.
   `hybrid_finder.py` is the hybrid finder on the hunt protocol (#783): the
-  conditions `--circles "r6:turn r2c3"`, `--exactly N:PIECE:rK` and
-  `--blank-strip` in, valid grids out, one per seed, each re-read by
+  conditions `--circles "r6:turn r2c3"`, `--exactly N:PIECE:rK`,
+  `--blank-strip` and `--min-bananas N` (at least N banana regions, #792,
+  on every engine) in, valid grids out, one per seed, each re-read by
   `hybrid.py` in `verify`; `hybrid_finder.py classify` takes the same
   conditions and answers `infeasible`, `unique`, `not_unique` or `timeout`;
   `--help` prints the usage text. `--engine` picks the solver: `cpsat`

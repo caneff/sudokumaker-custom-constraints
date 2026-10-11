@@ -349,6 +349,79 @@ Worker's choices, none a ruling:
 - **A track bar is 8 px and runs 4 px past each cell centre**, as in the
   picture Chris was shown. A ring on a grid cell is drawn under the track.
 
+## Hybrid: at least N banana regions (#792)
+
+`--min-bananas N` asks for N or more separate banana regions, counted over
+grid cells and number cells together as `hybrid.regions` finds them. One
+thread, this box, 2026-10-11.
+
+- **The 4x4 answers**, an exhaustive pass over the 18 valid grids: 16 have
+  one banana region and 2 have two, the two being each other's image in the
+  main diagonal. With the blank strip all 8 have one.
+
+  | Asked for | Grids | Class |
+  | --- | --- | --- |
+  | at least 1 | 18 | `not_unique` |
+  | at least 2 | 2 | `not_unique` |
+  | at least 2, `r2c4` circled | 1 | `unique` |
+  | at least 3 | 0 | `infeasible` |
+  | at least 2, blank strip | 0 | `infeasible` |
+
+  ```
+  uv run finders/ubahn/brute.py 4 4 --min-bananas 2 --circles "r2c4"
+  uv run finders/ubahn/brute.py 4 4 --min-bananas 3
+  uv run finders/ubahn/brute.py 4 4 --blank-strip --min-bananas 2
+  ```
+
+  `test_ubahn_hybrid_bananas.py` pins the table on the brute force, on each
+  of the three engines and on the CLI. A hunt on 4x4 asked for 2 writes one
+  example, since it dedupes under that reflection.
+- **5x5**, listed in full by `pysat-lazy` (31 grids) and counted by the rule
+  reader: every one has 2 banana regions or more, 6 have 3 or more, 4 have 4
+  or more, 4 have 5 or more, 2 have 6, none has 7. Each PySAT engine lists
+  exactly those grids for every N from 1 to 7, and `cpsat` gives the same
+  class.
+- **The encoding: labels, not a count and not a cut.** Every odd cell takes
+  exactly one of N labels, an even cell none; two odd cells side by side
+  take the same label; every label is taken by some cell. A label is then
+  the same all over a region, so N labels name N regions at least, and a
+  grid with N regions or more has such a labelling (a region past the N-th
+  takes any label). It is exact and every clause is local, so the solver
+  builds the condition into the search and no finished grid is refused for
+  it, on any engine. On the PySAT engines the labels are also ordered (a
+  cell takes label k only when an earlier cell in reading order takes label
+  k - 1), which leaves one labelling to refute where there were N!. The
+  CP-SAT model has no such ordering. Worker's choice, not a ruling; the
+  filer's other route, refusing a full grid with too few regions by a
+  clause over the cells that would have to change, was not built or timed.
+- **All three engines carry it**, so no engine refuses the flag.
+- **Time per grid at 7x7**, `pysat-lazy`, no other condition, one grid per
+  seed for seeds 0 to 49, a 60 s limit on each solve, timed around the
+  engine's `grid` call (model build included); every grid found was passed
+  by the rule reader with the condition. Load on the box was 9 to 15 while
+  it ran, so the seconds are for comparing rows, not a benchmark.
+
+  | N | Seeds | Found | Timeouts | Median s | Mean s | Slowest s |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | none | 50 | 50 | 0 | 0.058 | 0.073 | 0.229 |
+  | 2 | 50 | 50 | 0 | 0.083 | 0.090 | 0.243 |
+  | 5 | 50 | 50 | 0 | 0.311 | 0.340 | 0.938 |
+  | 8 | 50 | 50 | 0 | 0.914 | 1.082 | 2.886 |
+  | 12 | 15 (stopped) | 14 | 1 | 34.312 | 32.874 | 52.548 |
+
+  The N = 12 row is a run stopped by hand after 15 of its 50 seeds: its
+  median and mean are over the 14 found, and the one timeout is a timeout,
+  not a grid that does not exist. Nothing here says what the most banana
+  regions a 7x7 grid can have is.
+- **What the seeds gave without the condition** (a sample of 50, not the
+  board): 14 grids with one banana region, 14 with two, 10 with three, 10
+  with four, 2 with five. Asked for 5, the 50 grids had 5 (34), 6 (12),
+  7 (3) and 8 (1).
+- **A hunt's `run.json` names the condition only when it is asked for.**
+  The driver refuses to resume a hunt whose config differs, and a hunt from
+  before the condition has no such key. Every record carries `min_bananas`;
+  a record without it is read as asking for none.
+
 ## Hybrid: what the spec's review changed (#781)
 
 One review of the whole spec on `spec-781`, 2026-10-11. Its findings that

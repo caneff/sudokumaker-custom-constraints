@@ -20,6 +20,9 @@ engines check each other:
 - Circle: the cells of the circled cell's region are counted and the count
   is the cell's value (`_add_circle`). The chocolate and banana clauses
   shape the region, so a circle lists no rectangle and no bent shape.
+- At least N banana regions (#792): every odd cell takes one of N labels,
+  two odd cells side by side take the same one, and every label is taken
+  (`_add_bananas`). Nothing is counted and no full grid is refused for it.
 
 Connectivity is not encoded. `listing` solves, and a full grid whose network
 is in several parts is refused with `sat_model.cut_clauses`, the connectivity
@@ -166,7 +169,7 @@ def _add_values(pool, clauses, kind, conditions, true):
     `_at_least` gives it up to one more than its row or column can hold, and
     `odd[cell]` is the variable "this cell's value is odd", for every cell of
     the board."""
-    rows, cols, _, _, blank_strip = conditions
+    rows, cols, blank_strip = conditions.rows, conditions.cols, conditions.blank_strip
     odd = {}
     for cell in ((r, c) for r in range(rows) for c in range(cols)):
         odd[cell] = pool.id()
@@ -264,6 +267,38 @@ def _add_circle(pool, clauses, odd, value, circle, true):
         clauses += [[-size[j], value[j]], [size[j], -value[j]]]
 
 
+def _add_bananas(pool, clauses, odd, wanted):
+    """At least `wanted` banana regions. Each odd cell takes exactly one of
+    `wanted` labels and no even cell takes any; two odd cells side by side
+    take the same label, so a label is the same all over a region; and every
+    label is taken, so the labels name `wanted` regions at least. A grid
+    with that many regions has such a labelling, a region past the
+    `wanted`-th taking any label.
+
+    The labels are also put in order: a cell takes label k only when a cell
+    before it in reading order takes label k - 1. Any labelling can be
+    renamed to meet that, and it leaves the solver one labelling to refute
+    in place of every renaming of it."""
+    cells = sorted(odd)
+    label = {(cell, k): pool.id() for cell in cells for k in range(wanted)}
+    for i, cell in enumerate(cells):
+        mine = [label[cell, k] for k in range(wanted)]
+        clauses.append([-odd[cell], *mine])
+        clauses += [[-one, odd[cell]] for one in mine]
+        clauses += [[-a, -b] for j, a in enumerate(mine) for b in mine[:j]]
+        r, c = cell
+        for near in ((r, c + 1), (r + 1, c)):
+            if near in odd:
+                for k in range(wanted):
+                    clauses.append([-label[cell, k], -odd[near], label[near, k]])
+                    clauses.append([-label[near, k], -odd[cell], label[cell, k]])
+        clauses += [
+            [-label[cell, k], *(label[before, k - 1] for before in cells[:i])]
+            for k in range(1, wanted)
+        ]
+    clauses += [[label[cell, k] for cell in cells] for k in range(wanted)]
+
+
 def _piece_value(pool, clauses, kind, cell, true):
     """A grid cell's value in unary, as `_at_least` would give it, up to one
     more than any piece is worth."""
@@ -281,7 +316,7 @@ def rules(conditions):
     """Every rule but connectivity, for these conditions. Returns `(clauses,
     edge, blank)`: the edge variables keyed by edge and each grid cell's
     blank variable. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, _ = conditions
+    rows, cols, circles, exactly, _, min_bananas = conditions
     pool, edge, kind, clauses = sat_model.network_rules(rows, cols)
     true = pool.id()
     clauses.append([true])
@@ -297,6 +332,8 @@ def rules(conditions):
         counted = [kind[cell, exactly.kind] for cell in exactly.cells(rows, cols)]
         held = _at_least(pool, clauses, counted, exactly.count + 1, true)
         clauses += [[held[exactly.count]], [-held[exactly.count + 1]]]
+    if min_bananas:
+        _add_bananas(pool, clauses, odd, min_bananas)
     return clauses, edge, {cell: var for (cell, k), var in kind.items() if k == BLANK}
 
 

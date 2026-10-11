@@ -7,10 +7,12 @@ part.
 The hybrid's answers (#782) come from the same pass, judged by `hybrid.py`:
 
     uv run finders/ubahn/brute.py 4 4 [--blank-strip] [--draw] \
-        [--circles "r2c2 c1:turn"]...
+        [--min-bananas N] [--circles "r2c2 c1:turn"]...
 
 prints how many edge sets have no dead end, how many are valid hybrid grids,
-and each `--circles` condition's classification.
+how many of those have each number of banana regions, and each `--circles`
+condition's classification. `--min-bananas N` (#792) classifies each with
+at least N banana regions asked for as well, and the condition alone.
 """
 
 import argparse
@@ -116,15 +118,26 @@ def hybrid_grids(rows, cols, blank_strip=False):
     )
 
 
-def classify(rows, cols, circles, blank_strip=False):
-    """(word, count): how many valid hybrid grids meet these circles, and the
-    uniqueness check's word for it: "infeasible" for none, "unique" for one,
-    "not_unique" for more. A circle only ever rules a grid out, so the grids
-    with no condition are the ones to ask."""
+def banana_counts(rows, cols, blank_strip=False):
+    """{a number of banana regions: how many valid hybrid grids have it}."""
+    return Counter(
+        len(hybrid.bananas(hybrid.values(net, rows, cols, blank_strip)))
+        for net in hybrid_grids(rows, cols, blank_strip)
+    )
+
+
+def classify(rows, cols, circles, blank_strip=False, *, min_bananas=0):
+    """(word, count): how many valid hybrid grids meet these circles with at
+    least `min_bananas` banana regions, and the uniqueness check's word for
+    it: "infeasible" for none, "unique" for one, "not_unique" for more. A
+    condition only ever rules a grid out, so the grids with no condition are
+    the ones to ask."""
     count = sum(
         1
         for net in hybrid_grids(rows, cols, blank_strip)
-        if not hybrid.why_not_hybrid(net, rows, cols, circles, blank_strip)
+        if not hybrid.why_not_hybrid(
+            net, rows, cols, circles, blank_strip, min_bananas=min_bananas
+        )
     )
     return ("infeasible", "unique", "not_unique")[min(count, 2)], count
 
@@ -137,6 +150,13 @@ def main(argv):
     parser.add_argument("cols", type=int)
     parser.add_argument("--blank-strip", action="store_true")
     parser.add_argument("--draw", action="store_true", help="draw every valid grid")
+    parser.add_argument(
+        "--min-bananas",
+        type=int,
+        default=0,
+        metavar="N",
+        help="ask every classification for at least N banana regions too",
+    )
     parser.add_argument(
         "--circles",
         action="append",
@@ -152,10 +172,20 @@ def main(argv):
     strip = " with the blank strip" if blank_strip else ""
     print(f"{rows}x{cols}{strip}: {2**edges} edge sets, {kept} with no dead end")
     print(f"valid hybrid grids, no condition: {len(grids)}")
+    counts = banana_counts(rows, cols, blank_strip)
+    print(
+        "banana regions: "
+        + ", ".join(f"{counts[n]} grids with {n}" for n in sorted(counts))
+    )
+    asked = args.min_bananas
+    also = f", at least {asked} banana regions" if asked else ""
+    if asked:
+        word, count = classify(rows, cols, (), blank_strip, min_bananas=asked)
+        print(f"at least {asked} banana regions: {word} ({count})")
     for text in args.circles:
         circles = frozenset(hybrid.parse_cell(name) for name in text.split())
-        word, count = classify(rows, cols, circles, blank_strip)
-        print(f"circles {text}: {word} ({count})")
+        word, count = classify(rows, cols, circles, blank_strip, min_bananas=asked)
+        print(f"circles {text}{also}: {word} ({count})")
     if args.draw:
         for net in sorted(grids, key=sorted):
             print()

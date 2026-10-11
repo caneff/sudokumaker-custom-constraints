@@ -18,6 +18,11 @@ Conditions are flags:
                                cross or blank.
     --blank-strip              a fifth strip of number cells, for blank,
                                outside the cross. Off unless given.
+    --min-bananas N            at least N banana regions (#792): N or more
+                               separate regions of odd values, over grid
+                               cells and number cells together. Every engine
+                               builds it into the search; no finished grid
+                               is thrown away for it.
     --engine pysat-lazy        the solver the rules are written on: cpsat
                                (`hybrid_model.py`, connectivity as a flow),
                                pysat-lazy (`hybrid_sat.py`, a grid whose
@@ -131,7 +136,7 @@ def condition_symmetry(conditions):
     them on a square board whose circled cells are circled in the image too,
     with no piece-count condition, which names a row or a column. The
     reflection sends a cell's east arm to its image's south arm and back."""
-    rows, cols, circles, exactly, _ = conditions
+    rows, cols, circles, exactly, *_ = conditions
     if rows != cols or exactly or {(c, r) for r, c in circles} != set(circles):
         return IDENTITY
     cells = rows * cols
@@ -155,6 +160,10 @@ class HybridFinder:
             "engine": engine,
             "timeout": timeout,
         }
+        # Only when asked for: the driver refuses to resume a hunt whose
+        # config differs, and a hunt from before the condition has no such key.
+        if conditions.min_bananas:
+            self.config["min_bananas"] = conditions.min_bananas
 
     def propose(self, rng):
         status, found = ENGINES[self.engine].grid(
@@ -169,8 +178,10 @@ class HybridFinder:
         return Candidate(self.conditions, found)
 
     def verify(self, candidate):
-        (rows, cols, circles, exactly, blank_strip), found = candidate
-        why = hybrid.why_not_hybrid(found, rows, cols, circles, blank_strip)
+        (rows, cols, circles, exactly, blank_strip, min_bananas), found = candidate
+        why = hybrid.why_not_hybrid(
+            found, rows, cols, circles, blank_strip, min_bananas=min_bananas
+        )
         if why:
             return Verdict(False, why)
         if exactly and not exactly.on_board(rows, cols):
@@ -182,13 +193,14 @@ class HybridFinder:
         return Verdict(True)
 
     def record(self, candidate):
-        (rows, cols, circles, exactly, blank_strip), found = candidate
+        (rows, cols, circles, exactly, blank_strip, min_bananas), found = candidate
         return {
             # The plain finder's record of the network: the board, the
             # piece-count condition, the edge rows and the outside numbers.
             **UbahnFinder().record(PlainCandidate(rows, cols, found, exactly)),
             "circles": sorted(map(hybrid.cell_name, circles)),
             "blank_strip": blank_strip,
+            "min_bananas": min_bananas,
             "engine": self.engine,
             "drawing": hybrid.drawing(found, rows, cols, circles, blank_strip),
         }
@@ -209,12 +221,19 @@ class HybridFinder:
     def candidate_from_record(self, record):
         """Raises ValueError, naming it, on a circle `hybrid.parse_cell`
         refuses, anything the plain finder's reader refuses in the edge
-        rows and the piece-count condition, or a field the record lacks."""
+        rows and the piece-count condition, or a field the record lacks. A
+        record with no `min_bananas` is of a hunt from before that condition
+        (#792) and asks for none."""
         try:
             rows, cols, found, exactly = UbahnFinder().candidate_from_record(record)
             circles = frozenset(map(hybrid.parse_cell, record["circles"]))
             conditions = hybrid.Conditions(
-                rows, cols, circles, exactly, record["blank_strip"]
+                rows,
+                cols,
+                circles,
+                exactly,
+                record["blank_strip"],
+                record.get("min_bananas", 0),
             )
         except KeyError as e:
             raise ValueError(
@@ -226,7 +245,7 @@ class HybridFinder:
 def parse_conditions(args):
     """The `hybrid.Conditions` the flags name. Raises ValueError, naming the
     flag, on a board with no network, a cell or condition that does not
-    parse, or one that is off the board."""
+    parse, one that is off the board, or a number of banana regions under 1."""
     rows, cols = args.rows, args.cols
     if rows < 2 or cols < 2:
         raise ValueError("the smallest board with a network is 2x2")
@@ -255,7 +274,16 @@ def parse_conditions(args):
                 f"--exactly names {args.exactly.split(':')[2]}, "
                 f"off a {rows}x{cols} board"
             )
-    return hybrid.Conditions(rows, cols, frozenset(circles), exactly, args.blank_strip)
+    if args.min_bananas is not None and args.min_bananas < 1:
+        raise ValueError(f"--min-bananas takes 1 or more, got {args.min_bananas}")
+    return hybrid.Conditions(
+        rows,
+        cols,
+        frozenset(circles),
+        exactly,
+        args.blank_strip,
+        args.min_bananas or 0,
+    )
 
 
 def classify(conditions, engine, timeout, workers):
@@ -265,7 +293,7 @@ def classify(conditions, engine, timeout, workers):
     )
     lines = [f"{status}: {SAID[status]}"]
     if found is not None:
-        rows, cols, circles, _, blank_strip = conditions
+        rows, cols, circles, _, blank_strip, _ = conditions
         lines += hybrid.drawing(found, rows, cols, circles, blank_strip)
     return lines
 
@@ -290,7 +318,9 @@ def write_pictures(out, blank_strip=False, seed=None, png=None):
     drawn = {}
     for s, record in examples:
         try:
-            (rows, cols, circles, _, own), found = finder.candidate_from_record(record)
+            (rows, cols, circles, _, own, _), found = finder.candidate_from_record(
+                record
+            )
             drawn[s] = hybrid_render.Picture(
                 found, rows, cols, circles, blank_strip or own
             ).image
@@ -321,6 +351,7 @@ def main(argv):
     parser.add_argument("--circles", default="", metavar="CELLS")
     parser.add_argument("--exactly", metavar="N:PIECE:rK")
     parser.add_argument("--blank-strip", action="store_true")
+    parser.add_argument("--min-bananas", type=int, metavar="N")
     parser.add_argument("--engine", default=DEFAULT_ENGINE, choices=ENGINES)
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     own, rest = parser.parse_known_args(argv)
