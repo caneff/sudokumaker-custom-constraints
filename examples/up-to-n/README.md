@@ -262,3 +262,4 @@ RuntimeError: app-solve.mjs: /tmp/tmpuz1_9pfc/candidate_probe.txt: all 3 reps hi
 
 Without the prune the shipped board does not solve inside 300 s; with it, it
 solved in 14.5 s (2026-09-14, old rule; current time above). The refusal is the record: there is no ratio to print.
+<!-- spike 5c -->
