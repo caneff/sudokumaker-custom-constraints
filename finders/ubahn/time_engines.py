@@ -27,6 +27,9 @@ count is labelled capped, and its time is the limit, so it is left out of
 the time columns. An engine whose first 20 seeds of a case all time out
 stops on that case, and the case is labelled capped.
 
+Cuts and conflicts are the PySAT engines' own counts (`hybrid_sat.Listing`),
+added up over a case's timed solves.
+
 `classify` takes no seed, so its seeds are repeats of one call. The limit is
 per solve inside the CP-SAT engine's `classify`, which makes up to two, and
 over the whole call in the PySAT engines'; a `classify` that proves there is
@@ -192,10 +195,8 @@ def _row(ran):
     said = f" ({', '.join(sorted(set(found)))})" if ran.call == "classify" else ""
     timeouts = len(ran.solves) - len(timed)
 
-    def per_solve(counts):
-        if not timed or None in counts:
-            return "-"
-        return f"{statistics.median(counts):g}"
+    def total(counts):
+        return "-" if not timed or None in counts else str(sum(counts))
 
     return (
         f"| {ran.case} | {ran.engine} | {seeds} "
@@ -203,8 +204,8 @@ def _row(ran):
         f"| {sum(solve.status == 'infeasible' for solve in timed)} "
         f"| {timeouts}{' (capped)' if timeouts else ''} "
         f"| {times([solve.seconds for solve in timed])} "
-        f"| {per_solve([solve.cuts for solve in timed])} "
-        f"| {per_solve([solve.conflicts for solve in timed])} |"
+        f"| {total([solve.cuts for solve in timed])} "
+        f"| {total([solve.conflicts for solve in timed])} |"
     )
 
 
@@ -288,7 +289,7 @@ def report(rans):
     lines = [
         "| Case | Engine | Seeds | Found | Proven impossible | Timed out "
         "| Solves timed | Median ms | Mean ms | 90th ms | Max ms "
-        "| Cuts per solve | Conflicts per solve |",
+        "| Cuts | Conflicts |",
         "| " + " | ".join(["---"] * 13) + " |",
         *map(_row, rans),
         "",

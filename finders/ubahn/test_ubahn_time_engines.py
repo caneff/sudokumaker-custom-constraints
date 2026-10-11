@@ -171,7 +171,7 @@ def ran_of(engine, case, rows, *, call="grid", asked=None, capped=False):
 HEAD = (
     "| Case | Engine | Seeds | Found | Proven impossible | Timed out "
     "| Solves timed | Median ms | Mean ms | 90th ms | Max ms "
-    "| Cuts per solve | Conflicts per solve |"
+    "| Cuts | Conflicts |"
 )
 TALLY = [
     ran_of(
@@ -216,10 +216,10 @@ for name, row in {
     "a timed-out solve is its own column, labelled capped, and left out of "
     "the time columns": "| 8x8 | cpsat | 4 | 3 | 0 | 1 (capped) "
     "| 3 | 250.0 | 291.7 | 500.0 | 500.0 | - | - |",
-    "the lazy engine's cuts": "| 8x8 | pysat-lazy | 4 | 4 | 0 | 0 "
-    "| 4 | 62.5 | 62.5 | 62.5 | 62.5 | 2.5 | 0 |",
+    "the lazy engine's cuts, added up over its timed solves": "| 8x8 | pysat-lazy | 4 | 4 | 0 | 0 "
+    "| 4 | 62.5 | 62.5 | 62.5 | 62.5 | 10 | 0 |",
     "the propagator engine's conflicts": "| 8x8 | pysat-propagator | 2 | 2 | 0 "
-    "| 0 | 2 | 62.5 | 62.5 | 62.5 | 62.5 | 1 | 8 |",
+    "| 0 | 2 | 62.5 | 62.5 | 62.5 | 62.5 | 2 | 16 |",
     "a proof of no grid is its own column": "| none | cpsat | 3 | 0 | 3 | 0 "
     "| 3 | 500.0 | 500.0 | 500.0 | 500.0 | - | - |",
     "a case the cap rule stopped says so, with no time": "| none | pysat-lazy "
@@ -227,7 +227,7 @@ for name, row in {
     "| 0 | - | - | - | - | - | - |",
     "a case cut short says incomplete": "| none | pysat-propagator "
     "| 2 of 100 (incomplete) | 0 | 2 | 0 "
-    "| 2 | 250.0 | 250.0 | 250.0 | 250.0 | 0 | 3 |",
+    "| 2 | 250.0 | 250.0 | 250.0 | 250.0 | 0 | 6 |",
     "a classify that found a grid keeps its word": "| one | cpsat | 2 "
     "| 2 (unique) | 0 | 0 | 2 | 500.0 | 500.0 | 500.0 | 500.0 | - | - |",
 }.items():
