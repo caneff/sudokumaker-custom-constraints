@@ -127,6 +127,12 @@ for names, word, count in (
         f"{label}: a zero time limit reads timeout (got {late.status})",
         late == hybrid.Classified("timeout", None),
     )
+    # A limit below zero is reached too; the solver itself calls it invalid.
+    late = hybrid_model.classify(conditions, time_limit=-1, workers=1)
+    check(
+        f"{label}: a time limit below zero reads timeout (got {late.status})",
+        late == hybrid.Classified("timeout", None),
+    )
 
 # The piece-count condition, alone and together with circles.
 two_crosses = {g for g in grids if TWO_CROSSES.holds(g, 4, 4)}
@@ -174,6 +180,11 @@ check(
 check(
     "a grid for a seed: a zero time limit reads timeout",
     hybrid_model.grid(conditions, random.Random(0), time_limit=0)
+    == hybrid.Sampled("timeout", None),
+)
+check(
+    "a grid for a seed: a time limit below zero reads timeout",
+    hybrid_model.grid(conditions, random.Random(0), time_limit=-1)
     == hybrid.Sampled("timeout", None),
 )
 try:
