@@ -31,8 +31,8 @@ from count_board import (
 from count_board import (
     demo_backend_code as backend_code,
 )
-from link_codec import decode_puzzle
 from minify import minify_file
+from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
 

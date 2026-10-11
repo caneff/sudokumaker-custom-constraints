@@ -22,7 +22,6 @@ import sys
 import tempfile
 from unittest import mock
 
-import link_codec
 import no_ring
 from framebuild import (
     LOCAL_RULES_SUFFIX,
@@ -44,6 +43,7 @@ from framebuild import (
 )
 from minify import minify_file, minify_js
 from no_ring import NoRing
+from sudoku_kit import link_codec
 
 
 @contextlib.contextmanager

@@ -55,10 +55,10 @@ from framebuild import (
     frame_backend_code,
     house_gac_backend_code,
 )
-from link_codec import decode_puzzle
 from manifest import load_manifest
 from minify import INCLUDE_RE, minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
+from sudoku_kit.link_codec import decode_puzzle
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
 # components and a harness, and no board.

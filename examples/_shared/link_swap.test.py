@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 
-from link_codec import decode_puzzle, encode_link
 from link_swap import (
     blanked,
     check_and_write,
@@ -25,6 +24,7 @@ from link_swap import (
 )
 from minify import minify_file
 from sm_document import find_constraint
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
 LINK_FILE = HERE.parent / "skyscraper" / "PUZZLE_LINK.txt"

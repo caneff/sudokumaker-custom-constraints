@@ -7,7 +7,7 @@ sys.path.insert(0, str(HERE))
 
 from build_link import read_gen
 from flatmate_model import N, prove_recorded, rule_forced_flatmates, unique_solution
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 
 
 def verify(gen=HERE / "gen.json", link=HERE / "PUZZLE_LINK.txt"):

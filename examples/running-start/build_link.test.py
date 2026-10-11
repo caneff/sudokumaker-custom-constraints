@@ -10,8 +10,8 @@ sys.path.insert(0, str(HERE))
 from board_checks import check_local_board
 from build_link import CONSTRAINT_NAME, build_from_template, check
 from frame import ring_cell
-from link_codec import encode_link
 from link_swap import swap_build
+from sudoku_kit.link_codec import encode_link
 
 
 def running_start(values):

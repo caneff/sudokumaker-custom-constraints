@@ -38,8 +38,8 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
   - sweep 2 reads harness source for `load(...)` calls: it proves a harness
     loads the file and names `validate`, not that every draw reaches it.
 
-Left to their own suites in the same gate, not driven here: the CP-SAT base
-model and solve_unique (cpsat.test.py), loadBundle and the bundle-solve
+Left to their own suites, not driven here: the CP-SAT base model and
+solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
 import (bundle-load.test.mjs, bundle-solve.test.mjs), the framebuild lanes
 (framebuild.test.py), the finder-test glob (gate.test.py), the stamp guard
 (the fillomino and isofill stamp tests), and the finders' Renbanana model,
@@ -62,9 +62,9 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
 from check_layout import _js_code, check_example, check_research_loads
-from link_codec import decode_puzzle
 from manifest import load_manifest
 from sm_document import find_constraint, registering_constraint_name
+from sudoku_kit.link_codec import decode_puzzle
 from time_example import find_component_file, shipped_component_code
 
 SOURCE_EXAMPLE = "up-to-n"

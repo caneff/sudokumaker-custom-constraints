@@ -6,7 +6,7 @@
 
 import random
 
-from cpsat import SOLVED, solve_unique, solver, sudoku_model
+from sudoku_kit.cpsat import SOLVED, solve_unique, solver, sudoku_model
 
 N = 9
 

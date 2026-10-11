@@ -8,9 +8,9 @@ sys.path.insert(0, str(HERE))
 
 from build_clued import CONSTRAINT_NAME, build
 from build_original import frame_groups
-from link_codec import decode_puzzle
 from link_swap import frame_only
 from sm_document import find_constraint
+from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
 if __name__ == "__main__":

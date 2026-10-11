@@ -33,8 +33,8 @@ const FALLBACK_STEP_TYPES = [
 ]
 
 // Decodes a SudokuMaker link into its puzzle document. There is no JS
-// LZString decoder in this repo -- `pyproject.toml`'s `lzstring` (used by
-// examples/_shared/link_codec.py) is the only codec dependency -- so
+// LZString decoder in this repo -- the sudoku-kit library's link codec,
+// pinned in `pyproject.toml`, is the only codec dependency -- so
 // this shells out to the existing Python codec (link_codec_cli.py) rather
 // than adding one.
 export function decodeLinkFile (linkFile) {

@@ -18,9 +18,8 @@ from ortools.sat.python import cp_model
 
 root = Path(__file__).resolve().parent
 repo = root.parents[3]
-sys.path.insert(0, str(repo / "examples" / "_shared"))
-from cpsat import SOLVED, has_second_solution, solver
-from link_codec import decode_puzzle, encode_link
+from sudoku_kit.cpsat import SOLVED, has_second_solution, solver
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 out = Path(sys.argv[1])
 # The without-GAC link moved to examples/house-gac/base/PUZZLE_LINK.txt (#659).

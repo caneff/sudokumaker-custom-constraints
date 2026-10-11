@@ -8,13 +8,13 @@
 import pathlib
 import tempfile
 
-from link_codec import decode_puzzle
 from sm_document import (
     code_constraint,
     find_constraint,
     registering_constraint_name,
     write_link,
 )
+from sudoku_kit.link_codec import decode_puzzle
 
 
 def raises(fn, message):
