@@ -48,7 +48,7 @@ sys.path.insert(0, str(HERE.parent / "hunt"))
 import model
 import network
 import penpa
-from dedupe import D4  # pants: no-infer-dep
+from dedupe import D4
 from driver import run
 from protocol import Empty, Verdict
 

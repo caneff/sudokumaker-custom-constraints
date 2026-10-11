@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
-from dedupe import canonical_key  # pants: no-infer-dep
+from dedupe import canonical_key
 from protocol import Empty
 from ubahn_finder import Candidate, UbahnFinder
 

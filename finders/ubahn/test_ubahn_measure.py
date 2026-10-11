@@ -19,7 +19,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 import measure_baseline
 import model
-from dedupe import canonical_key  # pants: no-infer-dep
+from dedupe import canonical_key
 from protocol import Empty
 from ubahn_finder import UbahnFinder
 
