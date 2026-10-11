@@ -93,8 +93,9 @@ test:
     # one-worker solves; some 40 short subprocess starts), the two PySAT
     # engines against the same counts about 17 s and on the CLI about 18 s
     # (#784, #785; one CaDiCaL thread), its Penpa+ encoder
-    # test (#774) about 6 s, its PySAT agreement (#776) about 6 s and its
-    # baseline-measurement test (#777) about 4 s;
+    # test (#774) about 6 s, its PySAT agreement (#776) about 6 s, its
+    # baseline-measurement test (#777) about 4 s and its three-engine timing
+    # test (#786) about 1 s;
     # counting_shaded is the one
     # pytest suite in the repo, about 3 s, and compiles its C filter with the
     # system cc to check it against the Python one.

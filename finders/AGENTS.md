@@ -55,6 +55,12 @@ because the checker reads them and nothing under `docs/research/` does
   full grids or by a propagator during the search).
   `hybrid_sat.listing` returns up to a cap of grids with its cut and conflict
   counts.
+  `time_engines.py run --engine E --progress FILE` times one engine on
+  Chris's six cases and `time_engines.py report FILE...` prints the table and
+  the reading against the 2-times bar (#786; by hand, outside both gates). The
+  run of record and its progress files:
+  `docs/research/2026-10-10-u-bahn-optimization-queue.md`, § The three hybrid
+  engines, timed.
   `ubahn_finder.py links DIR [--blank-number]` writes a Penpa+ link per example
   to `DIR/links/<seed>.txt` (`penpa.py`, #774; wire format
   `docs/research/2026-10-10-u-bahn-penpa-link.md`). The three published links
