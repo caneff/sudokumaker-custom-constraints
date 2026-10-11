@@ -13,6 +13,10 @@ A second space, 3x4 with no blank in r2, covers what the first cannot: a
 condition on blank cells, and edge sets with no dead end that are not
 connected.
 
+The hybrid's answers (#782) are pinned at the end: the valid hybrid grids of
+the whole 4x4 board with no condition, and the class of seven circle
+conditions. No model reads them yet; they are what each engine must match.
+
     uv run finders/ubahn/test_ubahn_brute.py
 """
 
