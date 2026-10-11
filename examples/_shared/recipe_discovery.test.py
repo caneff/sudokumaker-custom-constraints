@@ -12,14 +12,13 @@
 #   uv run examples/_shared/recipe_discovery.test.py
 
 import pathlib
-import shutil
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands
+from gate_lib import commands, gate_tree
 
 if __name__ == "__main__":
     gens = sorted(ROOT.glob("examples/isofill/gen*.json"))
@@ -34,8 +33,7 @@ if __name__ == "__main__":
     assert not unproved, f"verify-isofill does not prove {unproved}"
 
     with tempfile.TemporaryDirectory() as tmp:
-        tree = pathlib.Path(tmp)
-        shutil.copy(ROOT / "justfile", tree / "justfile")
+        tree = gate_tree(tmp)
         (tree / "examples/_shared").mkdir(parents=True)
         (tree / "examples/isofill").mkdir(parents=True)
         (tree / "finders/zz_new/deep").mkdir(parents=True)
