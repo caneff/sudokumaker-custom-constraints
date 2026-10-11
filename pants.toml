@@ -19,10 +19,6 @@ root_patterns = [
 
 [python]
 interpreter_constraints = [">=3.11,<3.14"]
-enable_resolves = true
-
-[python.resolves]
-python-default = "3rdparty/python/default.lock"
 
 [python-infer]
 ambiguity_resolution = "by_source_root"
@@ -30,8 +26,3 @@ unowned_dependency_behavior = "ignore"
 
 [nodejs-infer]
 unowned_dependency_behavior = "ignore"
-
-# /usr/bin/python3.12 here has no ensurepip (python3-venv not installed), which Pex needs.
-# Point Pants at a uv-managed interpreter instead. Machine-specific path: spike only.
-[python-bootstrap]
-search_path = ["/home/caneff/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/bin"]
