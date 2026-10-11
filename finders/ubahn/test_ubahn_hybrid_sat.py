@@ -167,6 +167,15 @@ for engine in ENGINES:
         }
         check(f"{label}: the brute force counts {count}", len(want) == count)
         agrees(engine, label, hybrid.Conditions(4, 4, cells(*names), TWO_CROSSES), want)
+    # Conditions that "at least" would answer differently: of the 18 grids, 5
+    # have no cross in r2 and 5 have one, and 11 have 2 turns in r1.
+    for text, count in (("0:cross:r2", 5), ("1:cross:r2", 5), ("2:turn:r1", 11)):
+        exactly = network.Exactly.parse(text)
+        want = {g for g in grids if exactly.holds(g, 4, 4)}
+        check(f"4x4 with {text}: the brute force counts {count}", len(want) == count)
+        agrees(
+            engine, f"4x4 with {text}", hybrid.Conditions(4, 4, exactly=exactly), want
+        )
     # A count past the row's length has no grid.
     agrees(
         engine,
@@ -274,35 +283,72 @@ def takes(conditions, net):
         )
 
 
-# The circle rule where no enumeration reaches, on grids the engine found:
+# The circle rule where no enumeration reaches, on three grids an engine found:
 # the rules must take a circle exactly where the rule reader says the cell's
 # value is its region's size. Per grid: every such cell, each alone and all at
-# once, and every seventh of the others. These seeds' grids hold what smaller
-# boards do not, a number cell that can be circled in an odd region: of 3 cells
-# on the 7x7 boards, of 5 on the 10x10.
-refused, wrongly_taken, odd_regions = [], [], []
-for side, seed in ((7, 7), (7, 17), (10, 16)):
-    found = hybrid_sat.Engine(hybrid_sat.LAZY).grid(
-        hybrid.Conditions(side, side), random.Random(seed), time_limit=TIME_LIMIT
+# once, and every seventh of the others. The 7x7 and the 10x10 grid hold what
+# smaller boards do not, a number cell that can be circled in an odd region:
+# c1:branch in one of 3 cells, r8:straight in one of 5.
+BRANCH_OF_3 = [
+    "┌┬┬┬─┐ ",
+    "├┘├┼┐├┐",
+    "├─┼┴┘││",
+    "│┌┴┬┐└┤",
+    "├┼┬┤└┐│",
+    "└┴┤├┬┤│",
+    "  └┘└┴┘",
+]
+STRAIGHT_OF_5 = [
+    "┌┬┬┬─┐┌┐┌┐",
+    "├┼┼┤┌┤│└┘│",
+    "│├┴┴┤├┼┬┬┤",
+    "│├─┐│└┼┤││",
+    "│└─┴┴─┴┼┴┘",
+    "├┐┌┐┌─┬┼┬┐",
+    "├┼┴┼┼┐└┴┴┘",
+    "│└┐││└┬──┐",
+    "├┐└┤├┐│┌┐│",
+    "└┴─┘└┴┘└┴┘",
+]
+# r6c4 is a cross, worth 4, at one end of an even region of 5 cells in a row
+# or column: the 4 cells nearest it are all the cells within 3 steps, so only
+# a count that looks one step further tells this region from one of 4.
+CROSS_AT_AN_END = [
+    "┌┐ ┌─┬┐",
+    "├┴┐│┌┴┘",
+    "├┐├┼┤  ",
+    "└┘└┼┤┌┐",
+    "┌─┐│└┼┤",
+    "│┌┴┼┐├┘",
+    "└┴─┴┴┘ ",
+]
+refused, wrongly_taken, odd_regions = [], [], {}
+for drawn in (BRANCH_OF_3, STRAIGHT_OF_5, CROSS_AT_AN_END):
+    side, found = len(drawn), network.from_drawing(drawn)
+    check(
+        f"{side}x{side} {drawn[0]}: the rule reader passes the grid",
+        hybrid.failures(found, side, side) == [],
     )
-    board = hybrid.values(found.network, side, side)
+    board = hybrid.values(found, side, side)
     size = {cell: len(region) for region in hybrid.regions(board) for cell in region}
     can = {cell for cell in board if board[cell] == size[cell]}
-    odd_regions += [board[cell] for cell in can if min(cell) < 0 and board[cell] % 2]
+    odd_regions.update(
+        {hybrid.cell_name(cell): board[cell] for cell in can if board[cell] % 2}
+    )
     refused += [
-        (side, seed, sorted(circles))
+        (drawn[0], sorted(circles))
         for circles in [can, *({cell} for cell in can)]
-        if not takes(hybrid.Conditions(side, side, frozenset(circles)), found.network)
+        if not takes(hybrid.Conditions(side, side, frozenset(circles)), found)
     ]
     wrongly_taken += [
-        (side, seed, cell)
+        (drawn[0], cell)
         for cell in sorted(set(board) - can)[::7]
-        if takes(hybrid.Conditions(side, side, frozenset({cell})), found.network)
+        if takes(hybrid.Conditions(side, side, frozenset({cell})), found)
     ]
 check(
-    f"7x7 and 10x10: the grids hold number cells that can be circled in odd "
-    f"regions of 3 and of 5 ({sorted(odd_regions)})",
-    {3, 5} <= set(odd_regions),
+    f"7x7 and 10x10: number cells can be circled in odd regions of 3 and of 5 "
+    f"({odd_regions})",
+    odd_regions == {"c1:branch": 3, "r1:branch": 3, "r2:branch": 3, "r8:straight": 5},
 )
 check(
     f"7x7 and 10x10: the rules take every circle the rule reader does "
@@ -313,6 +359,16 @@ check(
     f"7x7 and 10x10: the rules refuse a circle the rule reader refuses "
     f"(taken: {wrongly_taken})",
     not wrongly_taken,
+)
+found = network.from_drawing(CROSS_AT_AN_END)
+check(
+    "7x7, a cross at an end of 5 even cells: the rule reader refuses its circle",
+    hybrid.failures(found, 7, 7, cells("r6c4"))
+    == ["circle at r6c4: value 4, region of 5 cells"],
+)
+check(
+    "7x7, a cross at an end of 5 even cells: the rules refuse its circle",
+    not takes(hybrid.Conditions(7, 7, cells("r6c4")), found),
 )
 
 sys.exit(0 if ok else 1)

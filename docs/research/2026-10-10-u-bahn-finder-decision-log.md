@@ -214,9 +214,10 @@ raises a conflict during the search. One thread, this box, 2026-10-11.
 - **The circle rule past any enumeration.** A grid an engine found is pinned
   in the clauses edge by edge, and the clauses must then take a circle
   exactly where the rule reader says the cell's value is its region's size.
-  The test runs it on two 7x7 grids and one 10x10 that hold a number cell
-  circled in an odd region: four of value 3 and one of value 5. No
-  disagreement.
+  The test runs it on a 7x7 and a 10x10 grid that hold number cells which
+  can be circled in an odd region, three of value 3 and one of value 5, and
+  on a 7x7 grid where a cross ends an even region of 5 cells in a row, which
+  a count one step too short would take for a region of 4. No disagreement.
 - **The spec's example condition has no grid on these engines either.** The
   controller asked for this as the independent check on the CP-SAT claim
   above (#784, comment of 2026-10-11): one core, 60 s limit.
