@@ -96,18 +96,21 @@ for engine in ENGINES:
     # every grid makes the solver propose them: each is refused by a cut, and
     # the list is still the brute force's.
     if engine == hybrid_sat.LAZY:
+        lazy_cuts = listed.cuts
         check(
             f"{engine}, 4x4, no condition: connectivity cuts were added "
             f"({listed.cuts}), and no conflict on a partial assignment",
             listed.cuts > 0 and listed.conflicts == 0,
         )
     # The propagator refuses them before the grid is full: it raises a
-    # conflict while some edge is still undecided.
+    # conflict while some edge is still undecided, so fewer full grids in
+    # several parts are left to cut.
     if engine == hybrid_sat.PROPAGATOR:
         check(
             f"{engine}, 4x4, no condition: conflicts were raised on partial "
-            f"assignments ({listed.conflicts}; {listed.cuts} cuts)",
-            listed.conflicts > 0,
+            f"assignments ({listed.conflicts}), and fewer cuts added than the "
+            f"lazy engine's {lazy_cuts} ({listed.cuts})",
+            listed.conflicts > 0 and listed.cuts < lazy_cuts,
         )
     # The blank strip is off unless asked for, and changes the answer when on.
     agrees(
