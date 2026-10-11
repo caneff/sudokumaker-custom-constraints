@@ -504,7 +504,7 @@ def write_links(out, circles, numbers, blank_strip):
     built = {}
     for s, record in examples:
         try:
-            (rows, cols, _, _, own), found = finder.candidate_from_record(record)
+            (rows, cols, _, _, own, _), found = finder.candidate_from_record(record)
             strip = blank_strip or own
             board = hybrid.number_cells(rows, cols, strip)
             for cell in sorted(circles):
