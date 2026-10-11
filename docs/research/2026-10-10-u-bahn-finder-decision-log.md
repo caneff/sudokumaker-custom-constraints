@@ -373,6 +373,127 @@ changed what a command does:
 - **`render` refuses a record with no `circles`**, a plain hunt's, by name
   and with exit 2.
 
+## Hybrid: the most valid circles on number cells (#794)
+
+Chris, 2026-10-11: "Lets say most circles in clue cells only (no grid)". A
+valid circle is a cell whose value is the size of its region; this target
+counts the ones on number cells, and a grid cell that is one counts for
+nothing. Four strips a side, no other condition. One worker, this box,
+2026-10-11.
+
+- **7x7: the maximum is 18, proven on `pysat-lazy`.** A grid with 18 was
+  found, and "at least 19" came back as no grid in 792.3 s, not as a time
+  limit reached. No step reached its 3,600 s limit. The climb took 2,434 s
+  of solving, 40.6 minutes on the wall clock, one CaDiCaL thread.
+
+  ```
+  uv run finders/ubahn/hybrid_finder.py climb --rows 7 --cols 7 \
+      --timeout 3600 --out docs/research/2026-10-11-u-bahn-number-circles/7x7
+  ```
+
+  | At least | Answer | Count in the grid found | Seconds |
+  | --- | --- | --- | --- |
+  | 0 | found | 4 | 0.1 |
+  | 5 | found | 6 | 2.3 |
+  | 7 | found | 7 | 1.7 |
+  | 8 | found | 9 | 1.8 |
+  | 10 | found | 10 | 21.8 |
+  | 11 | found | 11 | 13.6 |
+  | 12 | found | 12 | 35.4 |
+  | 13 | found | 13 | 133.2 |
+  | 14 | found | 14 | 156.0 |
+  | 15 | found | 15 | 108.2 |
+  | 16 | found | 16 | 386.3 |
+  | 17 | found | 17 | 197.3 |
+  | 18 | found | 18 | 584.3 |
+  | 19 | no grid, proven | | 792.3 |
+
+  Found: every K from 0 to 18. Proven impossible: 19, and so every K above
+  it. Timed out: none.
+- **The grid with 18**, as `hybrid.drawing` prints it; its record is
+  `docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/examples.jsonl`
+  and its picture `.../at-least-18/renders/0.png` (`hybrid_finder.py render`).
+
+  ```
+            ┼  0  1  2  0  1  2  0
+            ┬  2  3  3  1  3  1  3
+            ─  3  1  1  2  2  1  2
+   ┼  ├  │  ┌  2  2  1  3  1  3  2
+   0  2  3  2  ┌──┬────────┬─────┐
+   1  3  1  2  ├──┼──┬──┐  │  ┌──┤
+   2  3  1  1  │  ├──┼──┘  ├──┼──┤
+   0  1  2  3  │  └──┘     ├──┘  │
+   1  3  2  1  ├─────┬──┬──┼──┐  │
+   2  1  1  3  │  ┌──┼──┘  └──┼──┤
+   0  3  2  2  └──┴──┴────────┴──┘
+  ```
+
+  `hybrid_finder.py verify` takes it: the rule reader counts 18 valid
+  circles on number cells, with no solver. All 18 are a 2 in a chocolate of
+  two cells; the grid also holds 12 valid circles on grid cells, which the
+  count ignores. That 18 can be reached with 2s alone is a fact about this
+  one grid, not about every grid with 18.
+- **Smaller boards, the same command with `--timeout 600`**, each maximum
+  proven on `pysat-lazy` by "one more" coming back as no grid:
+
+  | Board | Maximum | "One more" has no grid, seconds | Checked against |
+  | --- | --- | --- | --- |
+  | 4x4 | 2 | not timed, in the tests | the brute force's 18 grids: 6 hold 2, 12 hold none |
+  | 5x5 | 6 | 2.1 | nothing enumerates a 5x5 |
+  | 6x6 | 14 | 30.8 | nothing enumerates a 6x6 |
+
+  Their outputs are `docs/research/2026-10-11-u-bahn-number-circles/5x5` and
+  `.../6x6`.
+- **What the proof rests on.** "No grid" is the solver's answer on the
+  clauses, so a rule stated too tightly would give a false maximum, and
+  `verify` cannot see that: it only reads grids that were found. Two
+  controls. At 4x4 each engine lists exactly the brute force's grids at
+  every K from 0 to 3, edge for edge. Four grids found with no condition, 6x6
+  to 8x8, are pinned edge by edge and both rule sets take each at the rule
+  reader's count and refuse it one above. Nothing enumerates a 7x7, and
+  the proof is one engine's.
+- **The filer's sample was no bound.** Its 550 grids from hunts with no such
+  objective topped out at 10. The solver was asked instead (preflight 6).
+
+Preflight for this hunt (`docs/agents/grid-finder-lessons.md`):
+
+1. **Known bounds.** None but the 56 number cells of a 7x7. None borrowed.
+2. **Corpus.** The filer's 550 grids, read as a starting point only.
+3. **Sampler coverage.** Not in question: each step is one solve for one
+   seed, and the answer that matters is a proof, not a sample.
+4. **Lesson contradicted.** None.
+5. **What would make the result an artefact.** A rule stated too tightly;
+   the controls above.
+6. **Can the solver answer it directly?** Yes, and it does.
+7. **Cheap necessary conditions.** None added.
+
+Speedups, named before the 7x7 run as the repo's rule asks. Applied: the
+default engine, by Chris's ruling of 2026-10-11; each step asks for
+one more than the last grid's own count, not for K + 1, which skipped six
+steps here; one direction only, a chosen number cell implies the circle rule
+and an unchosen one says nothing. Not applied, since no step timed out: a
+break of the board's one symmetry, the reflection in the main diagonal, which
+would at most halve the proof; one solver kept across K, so that what it
+learned carries over; a warm start from the last grid. The controller ruled
+the first two be added and K retried once if a step timed out; none did.
+
+Worker's choices, none a ruling:
+
+- **The condition is `--number-circles K`, and the hunt is `climb`.**
+- **It is on all three engines**, not the default alone: a flag one engine
+  ignored would return grids `verify` then rejects.
+- **Each step is a hunt directory of its own**, `DIR/at-least-K`, one seed,
+  so `verify` and `render` read the best grid with no new reader. The steps
+  are also lines of `DIR/climb.jsonl`, written as each ends; a rerun into
+  the same DIR goes on from the last line.
+- **A chosen circle reuses the circle rule**, the region counted in rounds,
+  for chocolate and banana alike. The filer's note suggested a rectangle of
+  that area for a chocolate; the 2x2 rule already makes the region a
+  rectangle, and the run did not need the cheaper statement.
+- **A record names its number cells that are valid circles**
+  (`number_cell_circles`), the rule reader's list, beside the K it was asked
+  for. A record older than the condition reads as K = 0.
+
 ## Decisions
 
 - **Root.** The first used cell in reading order, stated as n² / 2
