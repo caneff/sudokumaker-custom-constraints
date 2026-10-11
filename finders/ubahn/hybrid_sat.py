@@ -334,31 +334,49 @@ def listing(conditions, connectivity, *, cap, time_limit, rng=None):
     return Listing(tuple(grids), answer is None, cuts + watcher.late, watcher.conflicts)
 
 
+def sampled(found):
+    """A `Listing` capped at one grid, as a `hybrid.Sampled`."""
+    if found.grids:
+        return hybrid.Sampled("found", found.grids[0])
+    return hybrid.Sampled("timeout" if found.timed_out else "infeasible", None)
+
+
+def classified(found):
+    """A `Listing` capped at two grids, as a `hybrid.Classified`."""
+    status = (
+        "timeout"
+        if found.timed_out
+        else ("infeasible", "unique", "not_unique")[len(found.grids)]
+    )
+    return hybrid.Classified(status, next(iter(found.grids), None))
+
+
 class Engine(NamedTuple):
     """A PySAT engine as `hybrid_finder.ENGINES` holds one: `connectivity`
     says how it keeps the network in one part."""
 
     connectivity: str
 
+    def grid_listing(self, conditions, rng, *, time_limit):
+        """The `Listing` behind `grid`: the one grid, with the solve's cut
+        and conflict counts."""
+        return listing(
+            conditions, self.connectivity, cap=1, time_limit=time_limit, rng=rng
+        )
+
+    def classify_listing(self, conditions, *, time_limit):
+        """The `Listing` behind `classify`: up to two grids, with the cut
+        and conflict counts."""
+        return listing(conditions, self.connectivity, cap=2, time_limit=time_limit)
+
     def grid(self, conditions, rng, *, time_limit):
         """One grid that meets the conditions, steered by `rng`: the same
         grid on every run of a seed."""
-        found = listing(
-            conditions, self.connectivity, cap=1, time_limit=time_limit, rng=rng
-        )
-        if found.grids:
-            return hybrid.Sampled("found", found.grids[0])
-        return hybrid.Sampled("timeout" if found.timed_out else "infeasible", None)
+        return sampled(self.grid_listing(conditions, rng, time_limit=time_limit))
 
     def classify(self, conditions, *, time_limit, workers):
         """Whether the conditions have no grid, exactly one, or more than
         one. A time limit reached is "timeout", never one of the other
         three, and one limit covers the whole answer. CaDiCaL runs on one
         thread whatever `workers` says."""
-        found = listing(conditions, self.connectivity, cap=2, time_limit=time_limit)
-        status = (
-            "timeout"
-            if found.timed_out
-            else ("infeasible", "unique", "not_unique")[len(found.grids)]
-        )
-        return hybrid.Classified(status, next(iter(found.grids), None))
+        return classified(self.classify_listing(conditions, time_limit=time_limit))
