@@ -88,7 +88,8 @@ test:
     # galaxy-copycat human solver about 1.5 s; ubahn's brute-force agreement
     # about 22 s (one-worker solves that list a 4x4 and a 3x4 space under
     # both connectivity encodings), its hunt test about 5 s, its Penpa+ encoder
-    # test (#774) about 6 s and its PySAT agreement (#776) about 6 s;
+    # test (#774) about 6 s, its PySAT agreement (#776) about 6 s and its
+    # baseline-measurement test (#777) about 4 s;
     # counting_shaded is the one
     # pytest suite in the repo, about 3 s, and compiles its C filter with the
     # system cc to check it against the Python one.

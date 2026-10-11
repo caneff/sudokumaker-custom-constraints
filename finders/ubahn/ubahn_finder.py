@@ -93,9 +93,11 @@ class UbahnFinder:
         connectivity="flow",
     ):
         self.rows, self.cols, self.exactly, self.timeout = rows, cols, exactly, timeout
-        # Which connectivity encoding sampling and the uniqueness proof use.
-        # A constructor argument for the baseline measurement (#777), not a
-        # flag: a hunt always runs on flow, so it is not part of `config`.
+        # Which connectivity encoding the uniqueness proof uses; sampling
+        # always runs on flow, so a proof on tree is timed on the same
+        # networks. A constructor argument for the baseline measurement
+        # (#777), not a flag: a hunt always runs on flow, so it is not part
+        # of `config`.
         self.connectivity = connectivity
         self.symmetry = board_symmetry(rows, cols)
         self.config = {
@@ -108,9 +110,7 @@ class UbahnFinder:
     def sample(self, rng):
         """One network from the model, steered by `rng`; an `Empty` when
         the solve timed out or the condition has no network."""
-        built = model.build(
-            self.rows, self.cols, self.connectivity, exactly=self.exactly
-        )
+        built = model.build(self.rows, self.cols, "flow", exactly=self.exactly)
         # The seed picks which edges the search decides first and which way:
         # left to itself the solver returns the same dull network every time.
         order = list(built.edge.values())

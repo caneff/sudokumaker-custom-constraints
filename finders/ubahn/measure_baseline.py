@@ -10,7 +10,10 @@ each seed on one CP-SAT worker, with no `--exactly` condition, and prints a
 Markdown section: the sample size, the share of proposals unique under their
 full outside numbers, the time per sample and per uniqueness proof, and the
 seeds counted by cause. A seed whose network repeats an earlier unique one
-under the board's symmetries is a `duplicate`, as the hunt driver counts it.
+under the board's symmetries is a `duplicate`, keyed as the hunt driver keys
+it; `verify` is not run, so a driver's "rejected" cause has no row here.
+Sampling always runs on flow, as the shipped finder does; `--connectivity`
+picks the encoding of the uniqueness proof only.
 A solve the time limit stopped is a `timeout` cause and its time is the cap,
 so it is left out of the time columns and its count is labelled capped.
 One progress line per seed goes to stderr as it finishes.
@@ -39,7 +42,6 @@ CAUSES = (
     "not_unique",
     "timeout sampling",
     "timeout proving",
-    "infeasible",
 )
 
 
@@ -65,11 +67,11 @@ def measure(rows, cols, connectivity, seeds, *, timeout, progress=None):
         sample_s = time.perf_counter() - started
         prove_s = None
         if isinstance(found, Empty):
-            cause = (
-                "infeasible"
-                if found.reason.startswith("infeasible")
-                else "timeout sampling"
-            )
+            # No condition is set, so every network exists and the only
+            # empty answer the sampler can give is its time limit.
+            if not found.reason.startswith("timeout"):
+                raise RuntimeError(f"seed {seed}: sampling said {found.reason!r}")
+            cause = "timeout sampling"
         else:
             started = time.perf_counter()
             status = finder.prove(found)
@@ -165,7 +167,12 @@ def main(argv):
     parser.add_argument("--seeds", default="0:100", metavar="A:B")
     parser.add_argument("--timeout", type=float, default=60.0)
     args = parser.parse_args(argv)
-    first, last = (int(x) for x in args.seeds.split(":"))
+    try:
+        first, last = (int(x) for x in args.seeds.split(":"))
+    except ValueError:
+        parser.error(f"--seeds {args.seeds!r} is not A:B with whole numbers")
+    if last <= first:
+        parser.error(f"--seeds {args.seeds} names no seed: B must exceed A")
 
     def progress(o):
         proof = "-" if o.prove_s is None else f"{o.prove_s * 1000:.1f} ms"
