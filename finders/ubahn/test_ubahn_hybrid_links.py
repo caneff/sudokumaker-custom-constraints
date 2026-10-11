@@ -192,7 +192,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check("the answer decodes to the record's edges", edges_of(d, 4) == net)
     check("the rules text is the pasted one", d.rules == RULES)
     check("the grid is drawn dotted", d.grid_style[0] == "2")
-    check("the answer check is lines only", [k for k, v in d.flags.items() if v] == ["sol_loopline"])
+    check(
+        "the answer check is lines only",
+        [k for k, v in d.flags.items() if v] == ["sol_loopline"],
+    )
     plain = penpa.link(4, 4, net)
     check(
         "the answer part is the plain link's for the same network",
@@ -203,14 +206,20 @@ with tempfile.TemporaryDirectory() as tmp:
     # A given number that is also circled: both drawn.
     both = circle_number
     r = run_cli(
-        "--circles", hybrid.cell_name(both), "--numbers", hybrid.cell_name(both),
-        "links", str(out),
+        "--circles",
+        hybrid.cell_name(both),
+        "--numbers",
+        hybrid.cell_name(both),
+        "links",
+        str(out),
     )
     d = Decoded((out / "links" / f"{seed}.txt").read_text().strip())
     i = table_index(d, 4, both)
     check(
         "a circled given number shows the circle and its number",
-        r.returncode == 0 and i in d.symbol and d.number.get(i, [None])[0] == str(board[both]),
+        r.returncode == 0
+        and i in d.symbol
+        and d.number.get(i, [None])[0] == str(board[both]),
     )
 
     # Default: nothing given, nothing circled.
