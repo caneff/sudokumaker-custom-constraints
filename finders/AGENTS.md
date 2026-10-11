@@ -70,6 +70,11 @@ because the checker reads them and nothing under `docs/research/` does
   run of record and its progress files:
   `docs/research/2026-10-10-u-bahn-optimization-queue.md`, § The three hybrid
   engines, timed.
+  `time_bananas.py run --progress FILE` times one grid per seed for each
+  `--min-bananas N` and `time_bananas.py report FILE` prints the table (#792;
+  by hand, outside both gates). The run of record is in the decision log,
+  § Hybrid: at least N banana regions, and its rows in
+  `docs/research/2026-10-11-u-bahn-min-bananas-timing/`.
   `ubahn_finder.py links DIR [--blank-number]` writes a Penpa+ link per example
   to `DIR/links/<seed>.txt` (`penpa.py`, #774; wire format
   `docs/research/2026-10-10-u-bahn-penpa-link.md`). The three published links

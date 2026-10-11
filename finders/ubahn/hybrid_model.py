@@ -175,15 +175,15 @@ def _add_bananas(m, odd, wanted):
 def build(conditions):
     """The model of every hybrid grid that meets the conditions, as a
     `model.Built`. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, blank_strip, min_bananas = conditions
-    built = model.build(rows, cols, "flow", exactly=exactly)
+    rows, cols, circles = conditions.rows, conditions.cols, conditions.circles
+    built = model.build(rows, cols, "flow", exactly=conditions.exactly)
     value, odd = _add_parity(built.m, built.kind, conditions)
     for circle in sorted(circles):
         if circle not in odd:
             raise ValueError(f"circle off the board: {circle}")
     _add_chocolate(built.m, odd)
     _add_banana(built.m, odd)
-    lines = hybrid.number_cells(rows, cols, blank_strip)
+    lines = hybrid.number_cells(rows, cols, conditions.blank_strip)
     for circle in sorted(circles):
         # A piece is worth 4 at most; a number cell counts a row or column.
         largest = (
@@ -192,8 +192,8 @@ def build(conditions):
             else max(hybrid.PIECE_VALUE.values())
         )
         _add_circle(built.m, value, odd, circle, largest)
-    if min_bananas:
-        _add_bananas(built.m, odd, min_bananas)
+    if conditions.min_bananas:
+        _add_bananas(built.m, odd, conditions.min_bananas)
     return built
 
 

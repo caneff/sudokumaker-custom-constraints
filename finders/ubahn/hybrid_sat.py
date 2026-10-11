@@ -20,9 +20,10 @@ engines check each other:
 - Circle: the cells of the circled cell's region are counted and the count
   is the cell's value (`_add_circle`). The chocolate and banana clauses
   shape the region, so a circle lists no rectangle and no bent shape.
-- At least N banana regions (#792): every odd cell takes one of N labels,
-  two odd cells side by side take the same one, and every label is taken
-  (`_add_bananas`). Nothing is counted and no full grid is refused for it.
+- At least N banana regions (#792): every odd cell takes a label out of N,
+  two odd cells side by side take the same ones, a label needs the label
+  before it on an earlier cell, and every label is taken (`_add_bananas`).
+  Nothing is counted and no full grid is refused for it.
 
 Connectivity is not encoded. `listing` solves, and a full grid whose network
 is in several parts is refused with `sat_model.cut_clauses`, the connectivity
@@ -268,24 +269,25 @@ def _add_circle(pool, clauses, odd, value, circle, true):
 
 
 def _add_bananas(pool, clauses, odd, wanted):
-    """At least `wanted` banana regions. Each odd cell takes exactly one of
-    `wanted` labels and no even cell takes any; two odd cells side by side
-    take the same label, so a label is the same all over a region; and every
-    label is taken, so the labels name `wanted` regions at least. A grid
-    with that many regions has such a labelling, a region past the
-    `wanted`-th taking any label.
+    """At least `wanted` banana regions. An odd cell takes one label or more
+    out of `wanted` and an even cell none; two odd cells side by side take
+    the same labels, so a region's cells all take the same ones; a cell
+    takes label k only when a cell before it in reading order takes label
+    k - 1; and every label is taken.
 
-    The labels are also put in order: a cell takes label k only when a cell
-    before it in reading order takes label k - 1. Any labelling can be
-    renamed to meet that, and it leaves the solver one labelling to refute
-    in place of every renaming of it."""
+    That order is what makes the labels count regions. Number the regions by
+    their first cells in reading order, from 0: a region's first cell has
+    only cells of earlier regions before it, so region i takes no label past
+    i, and label `wanted - 1` being taken needs `wanted` regions. A grid
+    with that many has such a labelling: region i takes label i, and a
+    region past the last label takes the last one. No clause keeps a cell to
+    one label; the order makes it unnecessary."""
     cells = sorted(odd)
     label = {(cell, k): pool.id() for cell in cells for k in range(wanted)}
     for i, cell in enumerate(cells):
         mine = [label[cell, k] for k in range(wanted)]
         clauses.append([-odd[cell], *mine])
         clauses += [[-one, odd[cell]] for one in mine]
-        clauses += [[-a, -b] for j, a in enumerate(mine) for b in mine[:j]]
         r, c = cell
         for near in ((r, c + 1), (r + 1, c)):
             if near in odd:
@@ -316,7 +318,8 @@ def rules(conditions):
     """Every rule but connectivity, for these conditions. Returns `(clauses,
     edge, blank)`: the edge variables keyed by edge and each grid cell's
     blank variable. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, _, min_bananas = conditions
+    rows, cols, circles = conditions.rows, conditions.cols, conditions.circles
+    exactly, min_bananas = conditions.exactly, conditions.min_bananas
     pool, edge, kind, clauses = sat_model.network_rules(rows, cols)
     true = pool.id()
     clauses.append([true])

@@ -165,8 +165,12 @@ def condition_symmetry(conditions):
     them on a square board whose circled cells are circled in the image too,
     with no piece-count condition, which names a row or a column. The
     reflection sends a cell's east arm to its image's south arm and back."""
-    rows, cols, circles, exactly, *_ = conditions
-    if rows != cols or exactly or {(c, r) for r, c in circles} != set(circles):
+    rows, cols, circles = conditions.rows, conditions.cols, conditions.circles
+    if (
+        rows != cols
+        or conditions.exactly
+        or {(c, r) for r, c in circles} != set(circles)
+    ):
         return IDENTITY
     cells = rows * cols
     image = [c * cols + r for r in range(rows) for c in range(cols)]
@@ -207,9 +211,15 @@ class HybridFinder:
         return Candidate(self.conditions, found)
 
     def verify(self, candidate):
-        (rows, cols, circles, exactly, blank_strip, min_bananas), found = candidate
+        asked, found = candidate
+        rows, cols, exactly = asked.rows, asked.cols, asked.exactly
         why = hybrid.why_not_hybrid(
-            found, rows, cols, circles, blank_strip, min_bananas=min_bananas
+            found,
+            rows,
+            cols,
+            asked.circles,
+            asked.blank_strip,
+            min_bananas=asked.min_bananas,
         )
         if why:
             return Verdict(False, why)
@@ -222,16 +232,17 @@ class HybridFinder:
         return Verdict(True)
 
     def record(self, candidate):
-        (rows, cols, circles, exactly, blank_strip, min_bananas), found = candidate
+        asked, found = candidate
+        rows, cols, circles = asked.rows, asked.cols, asked.circles
         return {
             # The plain finder's record of the network: the board, the
             # piece-count condition, the edge rows and the outside numbers.
-            **UbahnFinder().record(PlainCandidate(rows, cols, found, exactly)),
+            **UbahnFinder().record(PlainCandidate(rows, cols, found, asked.exactly)),
             "circles": sorted(map(hybrid.cell_name, circles)),
-            "blank_strip": blank_strip,
-            "min_bananas": min_bananas,
+            "blank_strip": asked.blank_strip,
+            "min_bananas": asked.min_bananas,
             "engine": self.engine,
-            "drawing": hybrid.drawing(found, rows, cols, circles, blank_strip),
+            "drawing": hybrid.drawing(found, rows, cols, circles, asked.blank_strip),
         }
 
     def key(self, candidate):
@@ -239,7 +250,8 @@ class HybridFinder:
         cell's south arm. Two networks can have the same kind in every cell
         and both be valid grids, so the kinds alone would drop one of them
         as a repeat."""
-        (rows, cols, *_), found = candidate
+        asked, found = candidate
+        rows, cols = asked.rows, asked.cols
         cells = [(r, c) for r in range(rows) for c in range(cols)]
         return tuple(
             int(((r, c), (r + dr, c + dc)) in found)
@@ -250,19 +262,25 @@ class HybridFinder:
     def candidate_from_record(self, record):
         """Raises ValueError, naming it, on a circle `hybrid.parse_cell`
         refuses, anything the plain finder's reader refuses in the edge
-        rows and the piece-count condition, or a field the record lacks. A
-        record with no `min_bananas` is of a hunt from before that condition
-        (#792) and asks for none."""
+        rows and the piece-count condition, a `min_bananas` that is no whole
+        number of 0 or more, or a field the record lacks. A record with no
+        `min_bananas` is of a hunt from before that condition (#792) and asks
+        for none; `record` has written the field in every record since."""
         try:
             rows, cols, found, exactly = UbahnFinder().candidate_from_record(record)
             circles = frozenset(map(hybrid.parse_cell, record["circles"]))
+            min_bananas = record.get("min_bananas", 0)
+            if type(min_bananas) is not int or min_bananas < 0:
+                raise ValueError(
+                    f"min_bananas is {min_bananas!r}: it is a whole number, 0 or more"
+                )
             conditions = hybrid.Conditions(
                 rows,
                 cols,
                 circles,
                 exactly,
                 record["blank_strip"],
-                record.get("min_bananas", 0),
+                min_bananas,
             )
         except KeyError as e:
             raise ValueError(
@@ -322,8 +340,13 @@ def classify(conditions, engine, timeout, workers):
     )
     lines = [f"{status}: {SAID[status]}"]
     if found is not None:
-        rows, cols, circles, _, blank_strip, _ = conditions
-        lines += hybrid.drawing(found, rows, cols, circles, blank_strip)
+        lines += hybrid.drawing(
+            found,
+            conditions.rows,
+            conditions.cols,
+            conditions.circles,
+            conditions.blank_strip,
+        )
     return lines
 
 
@@ -347,11 +370,13 @@ def write_pictures(out, blank_strip=False, seed=None, png=None):
     drawn = {}
     for s, record in examples:
         try:
-            (rows, cols, circles, _, own, _), found = finder.candidate_from_record(
-                record
-            )
+            asked, found = finder.candidate_from_record(record)
             drawn[s] = hybrid_render.Picture(
-                found, rows, cols, circles, blank_strip or own
+                found,
+                asked.rows,
+                asked.cols,
+                asked.circles,
+                blank_strip or asked.blank_strip,
             ).image
         except ValueError as e:
             raise ValueError(f"seed {s}: {e}") from e
@@ -396,8 +421,9 @@ def write_links(out, circles, numbers, blank_strip):
     built = {}
     for s, record in examples:
         try:
-            (rows, cols, _, _, own), found = finder.candidate_from_record(record)
-            strip = blank_strip or own
+            asked, found = finder.candidate_from_record(record)
+            rows, cols = asked.rows, asked.cols
+            strip = blank_strip or asked.blank_strip
             board = hybrid.number_cells(rows, cols, strip)
             for cell in sorted(circles):
                 r, c = cell

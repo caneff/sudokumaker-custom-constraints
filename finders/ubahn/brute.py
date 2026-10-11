@@ -153,7 +153,6 @@ def main(argv):
     parser.add_argument(
         "--min-bananas",
         type=int,
-        default=0,
         metavar="N",
         help="ask every classification for at least N banana regions too",
     )
@@ -165,6 +164,9 @@ def main(argv):
         help="circled cells to classify, as in 'r2c2 c1:turn'; may repeat",
     )
     args = parser.parse_args(argv)
+    if args.min_bananas is not None and args.min_bananas < 1:
+        # The finder's own refusal (`hybrid_finder.parse_conditions`).
+        parser.error(f"--min-bananas takes 1 or more, got {args.min_bananas}")
     rows, cols, blank_strip = args.rows, args.cols, args.blank_strip
     edges = len(network.all_edges(rows, cols))
     kept = sum(1 for _ in no_dead_end(rows, cols))
@@ -173,11 +175,12 @@ def main(argv):
     print(f"{rows}x{cols}{strip}: {2**edges} edge sets, {kept} with no dead end")
     print(f"valid hybrid grids, no condition: {len(grids)}")
     counts = banana_counts(rows, cols, blank_strip)
-    print(
-        "banana regions: "
-        + ", ".join(f"{counts[n]} grids with {n}" for n in sorted(counts))
-    )
-    asked = args.min_bananas
+    if counts:
+        print(
+            "banana regions: "
+            + ", ".join(f"{counts[n]} grids with {n}" for n in sorted(counts))
+        )
+    asked = args.min_bananas or 0
     also = f", at least {asked} banana regions" if asked else ""
     if asked:
         word, count = classify(rows, cols, (), blank_strip, min_bananas=asked)

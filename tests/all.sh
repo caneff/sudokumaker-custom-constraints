@@ -133,7 +133,7 @@ suites() {
   # (#784, #785; one CaDiCaL thread), its three-engine timing test (#786)
   # about 1 s, its picture test (#791) about 4 s (no solver), its
   # end-to-end chain (#781) about 11 s and its banana-region condition
-  # (#792) about 35 s on all three engines; counting_shaded is the one
+  # (#792) about 50 s on all three engines; counting_shaded is the one
   # pytest suite in the repo, about 3 s, and compiles its C filter with the
   # system cc to check it against the Python one.
   for f in finders/**/test_*.py; do

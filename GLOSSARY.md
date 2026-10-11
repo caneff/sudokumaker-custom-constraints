@@ -204,7 +204,8 @@ digit.
 - **chocolate** — a region of even values. It must be a rectangle; a square
   counts.
 - **banana** — a region of odd values. It must not be a rectangle, so a
-  single odd cell on its own is never one.
+  single odd cell on its own is never one. Written **banana region** where
+  bananas are counted: the finder's `--min-bananas N` asks for N or more.
 - **circle** — a condition on one cell, grid cell or number cell: the cell's
   value equals the number of cells in its region. The circle itself carries
   no digit; a circled number cell shows its number only when that number is a
