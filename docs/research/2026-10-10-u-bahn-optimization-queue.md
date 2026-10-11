@@ -300,7 +300,8 @@ reached the 60 s limit, so no row is capped.
   each of the 15 puzzles. What those calls cost in time is not measured in
   this repo. A plain loop (solve, flood fill in Python, add the clause, solve
   again on the same solver) would make none of them and keep the learned
-  clauses. Not built.
+  clauses. Not built here; the hybrid's `pysat-lazy` engine is that loop
+  (`hybrid_sat.py`, #784).
 - **Time limit.** CaDiCaL takes no wall-clock limit through PySAT and
   `interrupt` raises `NotImplementedError`, so the check solves in slices of
   2,000 conflicts and reads the clock between slices. A limit can be overrun

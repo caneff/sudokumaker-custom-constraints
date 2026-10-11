@@ -17,8 +17,14 @@ Conditions are flags:
                                cross or blank.
     --blank-strip              a fifth strip of number cells, for blank,
                                outside the cross. Off unless given.
-    --engine cpsat             the solver the model is written on; cpsat
-                               (`hybrid_model.py`) is the only one so far.
+    --engine cpsat             the solver the rules are written on: cpsat
+                               (`hybrid_model.py`, connectivity as a flow),
+                               pysat-lazy (`hybrid_sat.py`, a grid whose
+                               network is in several parts is cut and the
+                               solve goes on) or pysat-propagator (the same
+                               clauses, with a propagator that refuses a
+                               network broken apart before the grid is
+                               full). cpsat unless given.
     --timeout SECONDS          the limit on one solve, 60 unless given.
 
     uv run finders/ubahn/hybrid_finder.py --out DIR --seeds 0:50 --workers 1 \\
@@ -62,6 +68,7 @@ sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
 import hybrid
 import hybrid_model
+import hybrid_sat
 import network
 from dedupe import IDENTITY
 from driver import run
@@ -72,7 +79,11 @@ from ubahn_finder import Candidate as PlainCandidate
 # Each engine offers `grid(conditions, rng, *, time_limit)`, a
 # `hybrid.Sampled`, and `classify(conditions, *, time_limit, workers)`, a
 # `hybrid.Classified`.
-ENGINES = {"cpsat": hybrid_model}
+ENGINES = {
+    "cpsat": hybrid_model,
+    "pysat-lazy": hybrid_sat.Engine(hybrid_sat.LAZY),
+    "pysat-propagator": hybrid_sat.Engine(hybrid_sat.PROPAGATOR),
+}
 DEFAULT_ENGINE = "cpsat"
 
 # The classification's words as Chris reads them.
