@@ -195,6 +195,40 @@ with tempfile.TemporaryDirectory() as d:
         and read_jsonl(out / "climb.jsonl") == steps,
     )
 
+    r2 = run_cli("climb", "--rows", 4, "--cols", 4, "--timeout", 5, "--out", out)
+    check(
+        f"climb into a directory another time limit wrote is refused "
+        f"({r2.stderr.strip()[:60]!r})",
+        r2.returncode == 2
+        and "holds a climb under" in r2.stderr
+        and read_jsonl(out / "climb.jsonl") == steps,
+    )
+
+    # A step that reaches the time limit after a grid was found: the best
+    # found, and no proof. The found step is the finished climb's first, as
+    # a climb with no time left would have it on file.
+    out = Path(d) / "climb stopped"
+    out.mkdir()
+    first = {**steps[0], "config": {**steps[0]["config"], "timeout": 0.0}}
+    (out / "climb.jsonl").write_text(json.dumps(first) + "\n")
+    r = run_cli(
+        "climb", "--rows", 4, "--cols", 4, "--timeout", 0, "--engine", engine,
+        "--out", out,
+    )  # fmt: skip
+    held, k = first["count"], first["count"] + 1
+    check(
+        f"climb stopped by the time limit above a found grid: best found "
+        f"{held}, not proven ({r.stdout.splitlines()[-2:]})",
+        r.returncode == 0
+        and r.stdout.splitlines()[-3:]
+        == [
+            f"at least {k}: timeout, time limit reached, 0.0 s",
+            f"best found {held}: not proven, at least {k} reached the time "
+            f"limit on {engine}",
+            f"best grid: {out / first['dir']} (seed 0)",
+        ],
+    )
+
     # The time limit reached is never a proof.
     out = Path(d) / "climb timeout"
     r = run_cli("climb", "--rows", 4, "--cols", 4, "--timeout", 0, "--out", out)
