@@ -86,8 +86,9 @@ test:
     # -- #498, #501); hunt's are a few seconds each with workers pinned to 1,
     # test_spec_483_e2e.py about six; qqrr's total about ten; the
     # galaxy-copycat human solver about 1.5 s; ubahn's brute-force agreement
-    # about 22 s (one-worker solves that list a 4x4 and a 3x4 space under
-    # both connectivity encodings), its hunt test about 5 s, its Penpa+ encoder
+    # about 28 s (one-worker solves that list a 4x4 and a 3x4 space under
+    # both connectivity encodings, and the hybrid's whole-4x4 counts, #782,
+    # about 6 s of it), its hunt test about 5 s, its Penpa+ encoder
     # test (#774) about 6 s, its PySAT agreement (#776) about 6 s and its
     # baseline-measurement test (#777) about 4 s;
     # counting_shaded is the one

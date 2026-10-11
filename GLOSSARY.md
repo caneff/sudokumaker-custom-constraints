@@ -185,6 +185,30 @@ sources: `docs/research/2026-10-10-u-bahn-cpsat-finder.md`.
   column's length less the other four, so it tells the solver nothing new.
   Not a **clue**, which is a ring cell of an outside-clue group.
 
+The hybrid lays Choco-Banana over a U-Bahn board (spec #781; rules read by
+`finders/ubahn/hybrid.py`). A **value** is what a cell is worth there: a grid
+cell's piece (blank 0, turn 1, straight 2, branch 3, cross 4), a number
+cell's outside number. A hybrid **region** is a maximal orthogonally connected
+set of cells whose values share a parity, grid cells and number cells
+together; it is not the region-building **region** below, which shares a
+digit.
+
+- **number cell** — a cell of the board that holds one outside number. They
+  lie in strips above the grid and to its left, one strip per kind: cross,
+  branch, straight, turn from the outside in, with the blank strip an optional
+  fifth outside the cross. The solver of a hybrid is given none of the
+  numbers; each is read from the network.
+- **icon cell** — the cell at the head of a strip, showing the piece the
+  strip counts. Decoration, and a wall: no region holds one. The corner
+  outside the icon cells is off the board.
+- **chocolate** — a region of even values. It must be a rectangle; a square
+  counts.
+- **banana** — a region of odd values. It must not be a rectangle, so a
+  single odd cell on its own is never one.
+- **circle** — a condition on one cell, grid cell or number cell: the cell's
+  value equals the number of cells in its region. Nothing is printed in it.
+  An uncircled cell promises nothing about size.
+
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 
 ISOFILL fixes every region at ten cells; fillomino lets the digit set the size.
