@@ -162,7 +162,7 @@ def _add_circle(m, value, odd, circle, largest, chosen=None):
 def build(conditions):
     """The model of every hybrid grid that meets the conditions, as a
     `model.Built`. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, blank_strip, number_circles = conditions
+    rows, cols, circles, exactly, blank_strip, *_ = conditions
     built = model.build(rows, cols, "flow", exactly=exactly)
     value, odd = _add_parity(built.m, built.kind, conditions)
     for circle in sorted(circles):
@@ -179,11 +179,11 @@ def build(conditions):
             else max(hybrid.PIECE_VALUE.values())
         )
         _add_circle(built.m, value, odd, circle, largest)
-    if number_circles:
+    if conditions.number_circles:
         chosen = {cell: built.m.new_bool_var(f"chosen{cell}") for cell in lines}
         for cell, var in chosen.items():
             _add_circle(built.m, value, odd, cell, len(lines[cell][1]), var)
-        built.m.add(sum(chosen.values()) >= number_circles)
+        built.m.add(sum(chosen.values()) >= conditions.number_circles)
     return built
 
 

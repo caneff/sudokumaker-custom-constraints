@@ -239,8 +239,11 @@ class HybridFinder:
         return Candidate(self.conditions, found)
 
     def verify(self, candidate):
-        (rows, cols, circles, exactly, blank_strip, at_least), found = candidate
-        why = hybrid.why_not_hybrid(found, rows, cols, circles, blank_strip, at_least)
+        conditions, found = candidate
+        rows, cols, circles, exactly, blank_strip, *_ = conditions
+        why = hybrid.why_not_hybrid(
+            found, rows, cols, circles, blank_strip, conditions.number_circles
+        )
         if why:
             return Verdict(False, why)
         if exactly and not exactly.on_board(rows, cols):
@@ -252,7 +255,8 @@ class HybridFinder:
         return Verdict(True)
 
     def record(self, candidate):
-        (rows, cols, circles, exactly, blank_strip, at_least), found = candidate
+        conditions, found = candidate
+        rows, cols, circles, exactly, blank_strip, *_ = conditions
         board = hybrid.values(found, rows, cols, blank_strip)
         return {
             # The plain finder's record of the network: the board, the
@@ -260,7 +264,7 @@ class HybridFinder:
             **UbahnFinder().record(PlainCandidate(rows, cols, found, exactly)),
             "circles": sorted(map(hybrid.cell_name, circles)),
             "blank_strip": blank_strip,
-            "number_circles": at_least,
+            "number_circles": conditions.number_circles,
             # The reader's own count, whatever the condition asked for.
             "number_cell_circles": [
                 hybrid.cell_name(cell) for cell in hybrid.number_cell_circles(board)
@@ -351,7 +355,7 @@ def classify(conditions, engine, timeout, workers):
     )
     lines = [f"{status}: {SAID[status]}"]
     if found is not None:
-        rows, cols, circles, _, blank_strip, _ = conditions
+        rows, cols, circles, _, blank_strip, *_ = conditions
         lines += hybrid.drawing(found, rows, cols, circles, blank_strip)
     return lines
 
@@ -504,7 +508,7 @@ def write_pictures(out, blank_strip=False, seed=None, png=None):
     for s, record in examples:
         try:
             conditions, found = finder.candidate_from_record(record)
-            rows, cols, circles, _, own, _ = conditions
+            rows, cols, circles, _, own, *_ = conditions
             drawn[s] = hybrid_render.Picture(
                 found, rows, cols, circles, blank_strip or own
             ).image
@@ -551,7 +555,7 @@ def write_links(out, circles, numbers, blank_strip):
     built = {}
     for s, record in examples:
         try:
-            (rows, cols, _, _, own, _), found = finder.candidate_from_record(record)
+            (rows, cols, _, _, own, *_), found = finder.candidate_from_record(record)
             strip = blank_strip or own
             board = hybrid.number_cells(rows, cols, strip)
             for cell in sorted(circles):

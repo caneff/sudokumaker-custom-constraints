@@ -171,7 +171,7 @@ def _add_values(pool, clauses, kind, conditions, true):
     `_at_least` gives it up to one more than its row or column can hold, and
     `odd[cell]` is the variable "this cell's value is odd", for every cell of
     the board."""
-    rows, cols, _, _, blank_strip, _ = conditions
+    rows, cols, _, _, blank_strip, *_ = conditions
     odd = {}
     for cell in ((r, c) for r in range(rows) for c in range(cols)):
         odd[cell] = pool.id()
@@ -288,7 +288,8 @@ def rules(conditions):
     """Every rule but connectivity, for these conditions. Returns `(clauses,
     edge, blank)`: the edge variables keyed by edge and each grid cell's
     blank variable. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, _, number_circles = conditions
+    rows, cols, circles, exactly, *_ = conditions
+    number_circles = conditions.number_circles
     pool, edge, kind, clauses = sat_model.network_rules(rows, cols)
     true = pool.id()
     clauses.append([true])
