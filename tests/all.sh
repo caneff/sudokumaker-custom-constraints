@@ -131,8 +131,10 @@ suites() {
   # (#783, one-worker solves; some 40 short subprocess starts), the two PySAT
   # engines against the same counts about 17 s and on the CLI about 18 s
   # (#784, #785; one CaDiCaL thread), its three-engine timing test (#786)
-  # about 1 s, its picture test (#791) about 4 s (no solver) and its
-  # end-to-end chain (#781) about 11 s; counting_shaded is the one
+  # about 1 s, its picture test (#791) about 4 s (no solver), its
+  # end-to-end chain (#781) about 11 s, and its number-cell-circle condition
+  # (#794) about 12 s against those counts on all three engines and about
+  # 18 s on the CLI with its climb; counting_shaded is the one
   # pytest suite in the repo, about 3 s, and compiles its C filter with the
   # system cc to check it against the Python one.
   for f in finders/**/test_*.py; do
