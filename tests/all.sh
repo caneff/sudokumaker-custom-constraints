@@ -193,7 +193,7 @@ all=$(suites)
 set -f
 
 if [ -n "$tier" ]; then
-  tiers=$(cut -f1 <<<"$all" | uniq | xargs)
+  tiers="lint test heavy-fillomino heavy-recovery soundness finders-slow"
   listed "$tiers" "$tier" || {
     echo "tests/all.sh: no tier named $tier (the tiers: $tiers)" >&2; exit 2; }
   all=$(awk -F'\t' -v tier="$tier" '$1 == tier' <<<"$all")
@@ -216,11 +216,12 @@ if [ -n "$base" ]; then
 fi
 selected=$(cut -f2 <<<"$selected")
 
-if [ "$list_only" = 1 ]; then printf '%s\n' "$selected"; exit 0; fi
+if [ "$list_only" = 1 ]; then [ -z "$selected" ] || printf '%s\n' "$selected"; exit 0; fi
 
-total=$(wc -l <<<"$all")
+total=$(grep -c . <<<"$all")
 passed=0
 while IFS= read -r suite; do
+  [ -n "$suite" ] || continue
   if out=$($suite 2>&1 </dev/null); then
     echo "PASS $suite"
     passed=$((passed + 1))

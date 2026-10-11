@@ -68,6 +68,11 @@ def the_recipes_call_the_runner():
         assert ran == [c for c in WHOLE if c.endswith("soundness-harness.mjs")], ran
         assert r.stdout.splitlines()[-1] == "3 of 3 suites passed (tier: soundness)"
 
+        bare = gate_tree(tempfile.mkdtemp(dir=tmp))
+        r, ran = run_stubbed(["bash", RUNNER, "--tier", "soundness"], root=bare)
+        assert (r.returncode, ran) == (0, []), f"a tier with no suite:\n{r.stderr}"
+        assert r.stdout.splitlines()[-1] == "0 of 0 suites passed (tier: soundness)"
+
         r = subprocess.run(
             ["bash", RUNNER, "--tier", "fast"], cwd=tree, capture_output=True, text=True
         )
@@ -180,7 +185,7 @@ FIXTURE = [
     "justfile",
     "uv.lock",
     "docs/notes.md",
-    "docs/research/data.json",
+    "docs/boards/data.json",
     "examples/_shared/s.test.py",
     "examples/_shared/lib.py",
     "examples/aa/a.test.mjs",
@@ -235,7 +240,7 @@ WIDENED = [
     (["uv.lock"], "every suite depends on uv.lock"),
     (["tests/all.sh"], "every suite depends on tests/all.sh"),
     (["tests/suite-edges.txt"], "every suite depends on tests/suite-edges.txt"),
-    (["docs/research/data.json"], "no rule places docs/research/data.json"),
+    (["docs/boards/data.json"], "no rule places docs/boards/data.json"),
     (["finders/top.py", "finders/ff/x.py"], "no rule places finders/top.py"),
 ]
 
