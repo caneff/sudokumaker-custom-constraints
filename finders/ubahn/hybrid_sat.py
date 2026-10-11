@@ -1,0 +1,269 @@
+"""The hybrid's rules on PySAT with CaDiCaL (#784): U-Bahn with Choco-Banana
+laid over the grid cells and the number cells (spec #781).
+
+A second engine beside `hybrid_model.py`, behind the finder's `--engine`
+flag. The network's own rules are `sat_model.py`'s clauses; the hybrid's are
+stated here from the spec and from `hybrid.py`'s reader, not carried over
+from the CP-SAT model, so the two engines check each other:
+
+- A cell's value: a grid cell's is its piece's, a number cell's is a count
+  of one kind over its row or column, kept in unary by `_at_least`. Each
+  cell has one variable for "its value is odd".
+- Chocolate: no 2x2 window holds exactly three even cells, a cell off the
+  board counting as not even. Three even cells of a window are one group,
+  and a connected group is a rectangle exactly when no window holds three
+  of its cells.
+- Banana: one clause per rectangle of board cells forbids "every cell of it
+  odd and every cell beside it even", which is an odd group that is that
+  rectangle.
+
+Connectivity is not encoded. `listing` solves, and a full grid whose network
+is in several parts is cut with `sat_model.cut_clauses` and the solve goes
+on, on the same solver, so what it learned is kept.
+"""
+
+import sys
+import time
+from pathlib import Path
+from typing import NamedTuple
+
+from pysat.solvers import Cadical195
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hybrid
+import sat_model
+from network import BLANK, KINDS
+
+# How an engine keeps the network in one part.
+LAZY = "lazy"
+
+
+class Listing(NamedTuple):
+    """Grids that meet a set of conditions, in the order found: all of them
+    when there are fewer than the cap asked for and `timed_out` is False.
+    `cuts` is how many connectivity clauses the solves added for full grids
+    in several parts."""
+
+    grids: tuple
+    timed_out: bool
+    cuts: int
+
+
+def _at_least(pool, clauses, literals, top, true):
+    """Count how many of `literals` are true, in unary: returns `g`, where
+    `g[j]` is true exactly when at least `j` of them are, for `j` from 0 to
+    `top`. `true` is a variable that is always true."""
+    row = [true] + [-true] * top
+    for literal in literals:
+        new = [true]
+        for j in range(1, top + 1):
+            # At least j already, or this one after at least j - 1.
+            g = pool.id()
+            had, below = row[j], row[j - 1]
+            clauses += [
+                [-had, g],
+                [-literal, -below, g],
+                [-g, had, literal],
+                [-g, had, below],
+            ]
+            new.append(g)
+        row = new
+    return row
+
+
+def _add_values(pool, clauses, kind, conditions, true):
+    """Returns `(count, odd)`: `count[number cell]` is its value in unary, as
+    `_at_least` gives it up to one more than its row or column can hold, and
+    `odd[cell]` is the variable "this cell's value is odd", for every cell of
+    the board."""
+    rows, cols, _, _, blank_strip = conditions
+    odd = {}
+    for cell in ((r, c) for r in range(rows) for c in range(cols)):
+        odd[cell] = pool.id()
+        clauses += [
+            [-kind[cell, k], odd[cell] if hybrid.PIECE_VALUE[k] % 2 else -odd[cell]]
+            for k in KINDS
+        ]
+    count = {}
+    for cell, (k, line) in hybrid.number_cells(rows, cols, blank_strip).items():
+        counted = [kind[held, k] for held in line]
+        count[cell] = _at_least(pool, clauses, counted, len(line) + 1, true)
+        odd[cell] = pool.id()
+        # The value is j when at least j are counted and not j + 1.
+        clauses += [
+            [-count[cell][j], count[cell][j + 1], odd[cell] if j % 2 else -odd[cell]]
+            for j in range(len(line) + 1)
+        ]
+    return count, odd
+
+
+def _chocolate(odd):
+    """The clauses that make every even group a rectangle."""
+    clauses = []
+    corners = {(r - dr, c - dc) for r, c in odd for dr in (0, 1) for dc in (0, 1)}
+    for r, c in sorted(corners):
+        window = [(r, c), (r, c + 1), (r + 1, c), (r + 1, c + 1)]
+        for fourth in window:
+            three = [cell for cell in window if cell != fourth]
+            if all(cell in odd for cell in three):
+                # Not all three even, unless the fourth is even too.
+                unless = [-odd[fourth]] if fourth in odd else []
+                clauses.append([odd[cell] for cell in three] + unless)
+    return clauses
+
+
+def _banana(odd):
+    """The clauses that keep every odd group from being a rectangle."""
+    clauses = []
+    board_rows = sorted({r for r, _ in odd})
+    board_cols = sorted({c for _, c in odd})
+    for top in board_rows:
+        for left in board_cols:
+            for bottom in range(top, board_rows[-1] + 1):
+                for right in range(left, board_cols[-1] + 1):
+                    held = [range(top, bottom + 1), range(left, right + 1)]
+                    inside = [(r, c) for r in held[0] for c in held[1]]
+                    if any(cell not in odd for cell in inside):
+                        continue
+                    beside = [(r, c) for r in (top - 1, bottom + 1) for c in held[1]]
+                    beside += [(r, c) for r in held[0] for c in (left - 1, right + 1)]
+                    clauses.append(
+                        [-odd[cell] for cell in inside]
+                        + [odd[cell] for cell in beside if cell in odd]
+                    )
+    return clauses
+
+
+def _neighbours(cell):
+    r, c = cell
+    return [(r - 1, c), (r, c + 1), (r + 1, c), (r, c - 1)]
+
+
+def _add_circle(pool, clauses, odd, value, circle, true):
+    """The circled cell's value is the number of cells of its group. `value`
+    is that value in unary, with a last entry no value reaches.
+
+    The group is found in rounds. Round 0 reaches the circled cell alone; a
+    cell is reached in a round when its value has the circled cell's parity
+    and it, or a cell beside it, was reached in the round before. Each round
+    reaches at least one cell more until the whole group is reached, so after
+    as many rounds as the largest value the cells reached number the group's
+    size, or more than any value when the group is larger than that."""
+    top = len(value) - 1
+    reached = {circle: true}
+    same = {}
+    for _ in range(top - 1):
+        before, reached = reached, {circle: true}
+        near = {n for cell in before for n in _neighbours(cell) if n in odd}
+        for cell in sorted((near | set(before)) - {circle}):
+            if cell not in same:
+                same[cell] = pool.id()
+                clauses += [
+                    [-same[cell], -odd[cell], odd[circle]],
+                    [-same[cell], odd[cell], -odd[circle]],
+                    [same[cell], odd[cell], odd[circle]],
+                    [same[cell], -odd[cell], -odd[circle]],
+                ]
+            sources = [before[n] for n in (cell, *_neighbours(cell)) if n in before]
+            reached[cell] = pool.id()
+            clauses += [[-reached[cell], same[cell]], [-reached[cell], *sources]]
+            clauses += [[-source, -same[cell], reached[cell]] for source in sources]
+    size = _at_least(pool, clauses, list(reached.values()), top, true)
+    for j in range(1, top + 1):
+        clauses += [[-size[j], value[j]], [size[j], -value[j]]]
+
+
+def _piece_value(pool, clauses, kind, cell, true):
+    """A grid cell's value in unary, as `_at_least` would give it, up to one
+    more than any piece is worth."""
+    top = max(hybrid.PIECE_VALUE.values()) + 1
+    value = [true] + [pool.id() for _ in range(top)]
+    clauses += [
+        [-kind[cell, k], value[j] if hybrid.PIECE_VALUE[k] >= j else -value[j]]
+        for k in KINDS
+        for j in range(1, top + 1)
+    ]
+    return value
+
+
+def rules(conditions):
+    """Every rule but connectivity, for these conditions. Returns `(clauses,
+    edge, blank)`: the edge variables keyed by edge and each grid cell's
+    blank variable. Raises ValueError on a circle that is off the board."""
+    rows, cols, circles, exactly, _ = conditions
+    pool, edge, kind, clauses = sat_model.network_rules(rows, cols)
+    true = pool.id()
+    clauses.append([true])
+    count, odd = _add_values(pool, clauses, kind, conditions, true)
+    clauses += _chocolate(odd)
+    clauses += _banana(odd)
+    for circle in sorted(circles):
+        if circle not in odd:
+            raise ValueError(f"circle off the board: {circle}")
+        value = count.get(circle) or _piece_value(pool, clauses, kind, circle, true)
+        _add_circle(pool, clauses, odd, value, circle, true)
+    if exactly is not None:
+        counted = [kind[cell, exactly.kind] for cell in exactly.cells(rows, cols)]
+        held = _at_least(pool, clauses, counted, exactly.count + 1, true)
+        clauses += [[held[exactly.count]], [-held[exactly.count + 1]]]
+    return clauses, edge, {cell: var for (cell, k), var in kind.items() if k == BLANK}
+
+
+def listing(conditions, connectivity, *, cap, time_limit, rng=None):
+    """Up to `cap` grids that meet the conditions, as a `Listing`. A time
+    limit of zero or less is reached before any solve. `rng` steers the
+    search: it picks which way each edge is tried first, so a seed gives the
+    same grids every run and another seed other ones."""
+    if time_limit <= 0:
+        return Listing((), True, 0)
+    deadline = time.monotonic() + time_limit
+    clauses, edge, blank = rules(conditions)
+    grids, cuts = [], 0
+    with Cadical195(bootstrap_with=clauses) as solver:
+        if rng is not None:
+            solver.set_phases(
+                [var if rng.random() < 0.5 else -var for var in edge.values()]
+            )
+        while len(grids) < cap:
+            answer = sat_model.solve(solver, deadline)
+            if not answer:
+                return Listing(tuple(grids), answer is None, cuts)
+            found = sat_model.edges_on(solver, edge)
+            cut = sat_model.cut_clauses(edge, blank, found)
+            if cut:
+                solver.append_formula(cut)
+                cuts += len(cut)
+                continue
+            grids.append(found)
+            sat_model.forbid(solver, edge, found)
+    return Listing(tuple(grids), False, cuts)
+
+
+class Engine(NamedTuple):
+    """A PySAT engine as `hybrid_finder.ENGINES` holds one: `connectivity`
+    says how it keeps the network in one part."""
+
+    connectivity: str
+
+    def grid(self, conditions, rng, *, time_limit):
+        """One grid that meets the conditions, steered by `rng`: the same
+        grid on every run of a seed."""
+        found = listing(
+            conditions, self.connectivity, cap=1, time_limit=time_limit, rng=rng
+        )
+        if found.grids:
+            return hybrid.Sampled("found", found.grids[0])
+        return hybrid.Sampled("timeout" if found.timed_out else "infeasible", None)
+
+    def classify(self, conditions, *, time_limit, workers):
+        """Whether the conditions have no grid, exactly one, or more than
+        one. A time limit reached is "timeout", never one of the other
+        three, and one limit covers the whole answer. CaDiCaL runs on one
+        thread whatever `workers` says."""
+        found = listing(conditions, self.connectivity, cap=2, time_limit=time_limit)
+        status = (
+            "timeout"
+            if found.timed_out
+            else ("infeasible", "unique", "not_unique")[len(found.grids)]
+        )
+        return hybrid.Classified(status, next(iter(found.grids), None))
