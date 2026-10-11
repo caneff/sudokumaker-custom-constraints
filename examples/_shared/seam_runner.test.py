@@ -7,7 +7,6 @@
 
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -15,18 +14,10 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands, run_stubbed
+from gate_lib import commands, gate_tree, run_stubbed
+from gate_lib import runner_listing as listing
 
 RUNNER = "tests/all.sh"
-
-
-def listing(*args, root=ROOT):
-    """The suites `tests/all.sh --list <args>` names, in order."""
-    r = subprocess.run(
-        ["bash", RUNNER, "--list", *args], cwd=root, capture_output=True, text=True
-    )
-    assert r.returncode == 0, f"tests/all.sh --list {args} failed:\n{r.stderr}"
-    return r.stdout.splitlines()
 
 
 def full_listing_is_check_full():
@@ -41,10 +32,51 @@ def full_listing_is_check_full():
     return len(listed)
 
 
+TIERS = ["lint", "test", "heavy-fillomino", "heavy-recovery", "soundness"]
+
+# A stand-in for the runner that logs how it was called and runs nothing.
+LOGGING_RUNNER = '#!/bin/sh\necho "all.sh $*" >> "$GATE_LOG"\n'
+
+
+def the_recipes_call_the_runner():
+    """The justfile keeps no listing of its own: `just check-full` is the
+    runner called once per tier, the tiers split the whole seam with no suite
+    in two of them, and the slow finder tests are a tier outside it."""
+    whole = listing()
+    split = [suite for tier in TIERS for suite in listing("--tier", tier)]
+    assert sorted(split) == sorted(whole), "the tiers do not split the whole seam"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = gate_tree(tmp)
+        (tree / RUNNER).write_text(LOGGING_RUNNER)
+        assert commands("check-full", root=tree) == [
+            f"all.sh --tier {tier}" for tier in TIERS
+        ], "just check-full runs something other than the runner's tiers"
+        assert commands("test-finders-slow", root=tree) == [
+            "all.sh --tier finders-slow"
+        ]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
+        assert listing("--tier", "finders-slow", root=tree) == [
+            "uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py",
+            "uv run finders/renbanana/tools/test_probe_finds_known_grids.py",
+            "uv run finders/renbanana/tools/test_prove_two_stage_slow.py",
+        ]
+        r, ran = run_stubbed(["bash", RUNNER, "--tier", "soundness"], root=tree)
+        assert ran == [c for c in WHOLE if c.endswith("soundness-harness.mjs")], ran
+        assert r.stdout.splitlines()[-1] == "3 of 3 suites passed (tier: soundness)"
+
+        r = subprocess.run(
+            ["bash", RUNNER, "--tier", "fast"], cwd=tree, capture_output=True, text=True
+        )
+        assert r.returncode == 2, f"an unknown tier exits {r.returncode}, not 2"
+        assert "no tier named fast" in r.stderr, r.stderr
+
+
 def scratch_tree(tmp, files):
-    """A tree holding the runner and `files` (path -> text), nothing else."""
-    tree = pathlib.Path(tmp)
-    shutil.copytree(ROOT / "tests", tree / "tests")
+    """A tree holding the gate and `files` (path -> text), nothing else."""
+    tree = gate_tree(tmp)
     for rel, text in files.items():
         (tree / rel).parent.mkdir(parents=True, exist_ok=True)
         (tree / rel).write_text(text)
@@ -275,6 +307,7 @@ def a_diff_selects_its_suites():
 if __name__ == "__main__":
     n = full_listing_is_check_full()
     a_diff_selects_its_suites()
+    the_recipes_call_the_runner()
     a_run_covers_its_listing()
     a_failing_suite_stops_the_run()
     print(f"seam_runner.test.py: {n} suites: ok")

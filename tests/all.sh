@@ -6,7 +6,7 @@
 # on disk, so a new test needs no edit here; the lists below are the
 # exceptions, and examples/_shared/gate.test.py checks them against the tree.
 #
-#   bash tests/all.sh [--list] [--changed <base>]
+#   bash tests/all.sh [--list] [--changed <base>] [--tier <tier>]
 #
 # `--list` prints the suites the run would cover, one per line, and runs none.
 #
@@ -21,10 +21,16 @@
 # run too little only across an edge this file cannot see; the controller
 # re-runs the whole seam on the merged result before every merge.
 #
+# `--tier <tier>` runs one tier of the seam, which is how the justfile's
+# recipes reach their suites: `lint`, `test` (every test but the heavy ones),
+# `heavy-fillomino`, `heavy-recovery`, `soundness`. `finders-slow` is a tier
+# outside the seam, run by hand through `just test-finders-slow`.
+#
 # One line per suite as it finishes (`PASS <suite>`); the first failing suite
 # prints `FAIL <suite>` and its whole output, and the run exits 1 there. The
-# last line states what ran: `N of M suites passed`, M being the whole seam,
-# followed by `(narrowed: <units>)` or `(widened: <why>)` on a `--changed` run.
+# last line states what ran: `N of M suites passed`, M being the whole seam
+# (or the whole tier), followed by `(narrowed: <units>)` or `(widened: <why>)`
+# on a `--changed` run and by `(tier: <tier>)` on a `--tier` run.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.
@@ -39,9 +45,10 @@ heavy_fillomino="examples/fillomino/pipeline.test.py examples/fillomino/generate
 heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
 
 # Finder tests (#662) that do not run as a plain `uv run <file>`:
-#   finder_slow:   never part of the seam (a CP-SAT solve per known grid,
-#                  minutes overall).
-#   finder_cover:  run with `--cover` (a subset, one grid per shape).
+#   finder_slow:   the `finders-slow` tier only (a CP-SAT solve per known
+#                  grid, minutes overall).
+#   finder_cover:  run with `--cover` (a subset, one grid per shape) in the
+#                  seam, and in full in the `finders-slow` tier.
 #   finder_pytest: the pytest suites, run as `uv run pytest <file> -q`.
 finder_slow="finders/renbanana/tools/test_prove_two_stage_slow.py"
 finder_cover="finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py finders/renbanana/tools/test_probe_finds_known_grids.py"
@@ -58,45 +65,59 @@ unit_of() { # <file>
   if [ "$top/$name" = examples/_shared ]; then echo always; else echo "$top/$name"; fi
 }
 
-suite() { printf '%s\t%s\n' "$(unit_of "$1")" "$2"; } # <file> <command>
+suite() { printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$3"; } # <tier> <file> <command>
 
-run_file() { # <file>: prints the suite that runs a test file
-  case $1 in *.mjs) suite "$1" "node $1" ;; *) suite "$1" "uv run $1" ;; esac
+run_file() { # <tier> <file>: prints the suite that runs a test file
+  case $2 in *.mjs) suite "$1" "$2" "node $2" ;; *) suite "$1" "$2" "uv run $2" ;; esac
 }
 
-# Prints "<unit>\t<command>" per suite of the whole seam, in run order: lint,
-# the shared checks, every finder's tests, every example's tests, the heavy
-# tests, the soundness harnesses.
+# Prints "<tier>\t<unit>\t<command>" per suite, in run order: lint, the shared
+# checks, every finder's tests, every example's tests, the heavy tests, the
+# soundness harnesses, and last the slow finder tests no seam run includes.
 suites() {
   local f dir
   # Lint: StandardJS on the Node code, ruff (check + format check) on the
   # Python, and uv.lock still matching pyproject.toml. The verbatim original/
   # snippets are excluded by package.json's standard.ignore.
-  printf 'always\t%s\n' \
+  printf 'lint\talways\t%s\n' \
     "npx standard" \
     "uvx ruff check examples" "uvx ruff check finders" \
     "uvx ruff format --check examples" "uvx ruff format --check finders" \
     "uv lock --check"
   for f in examples/_shared/*.test.mjs examples/_shared/*.test.py; do
-    run_file "$f"
+    run_file test "$f"
   done
-  suite examples/_shared/check_layout.py "uv run examples/_shared/check_layout.py"
+  run_file test examples/_shared/check_layout.py
+  # Cost, for the box's sake: the renbanana tests are under 10 s each
+  # (test_max_house_circles.py is one CP-SAT solve pinned to one worker; the
+  # two --cover subsets are about 7 s and 25 s, so an over-constrained
+  # encoding fails CI -- #498, #501); hunt's are a few seconds each with
+  # workers pinned to 1, test_spec_483_e2e.py about six; qqrr's total about
+  # ten; the galaxy-copycat human solver about 1.5 s; ubahn's brute-force
+  # agreement about 22 s (one-worker solves that list a 4x4 and a 3x4 space
+  # under both connectivity encodings), its hunt test about 5 s, its Penpa+
+  # encoder test (#774) about 6 s, its PySAT agreement (#776) about 6 s and
+  # its baseline-measurement test (#777) about 4 s; counting_shaded is the one
+  # pytest suite in the repo, about 3 s, and compiles its C filter with the
+  # system cc to check it against the Python one.
   for f in finders/**/test_*.py; do
     if listed "$finder_slow" "$f"; then continue
-    elif listed "$finder_pytest" "$f"; then suite "$f" "uv run pytest $f -q"
-    elif listed "$finder_cover" "$f"; then suite "$f" "uv run $f --cover"
-    else run_file "$f"; fi
+    elif listed "$finder_pytest" "$f"; then suite test "$f" "uv run pytest $f -q"
+    elif listed "$finder_cover" "$f"; then suite test "$f" "uv run $f --cover"
+    else run_file test "$f"; fi
   done
   for dir in examples/*/; do
     [ "$dir" = examples/_shared/ ] && continue
     for f in "$dir"*.test.mjs "$dir"*.test.py; do
-      listed "$heavy_fillomino $heavy_recovery" "$f" || run_file "$f"
+      listed "$heavy_fillomino $heavy_recovery" "$f" || run_file test "$f"
     done
   done
   # A shipped Skyscrapers board, proved: one solve per global board.
-  run_file examples/skyscraper/verify.py
-  for f in $heavy_fillomino $heavy_recovery; do run_file "$f"; done
-  for f in examples/*/soundness-harness.mjs; do run_file "$f"; done
+  run_file test examples/skyscraper/verify.py
+  for f in $heavy_fillomino; do run_file heavy-fillomino "$f"; done
+  for f in $heavy_recovery; do run_file heavy-recovery "$f"; done
+  for f in examples/*/soundness-harness.mjs; do run_file soundness "$f"; done
+  for f in $finder_cover $finder_slow; do run_file finders-slow "$f"; done
 }
 
 # Where one changed file lands. Prints `unit <examples|finders>/<name>` when a
@@ -142,13 +163,14 @@ scope() { # <base>
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
-usage() { echo "usage: tests/all.sh [--list] [--changed <base>]" >&2; exit 2; }
+usage() { echo "usage: tests/all.sh [--list] [--changed <base>] [--tier <tier>]" >&2; exit 2; }
 
-list_only=0 base=""
+list_only=0 base="" tier=""
 while [ $# -gt 0 ]; do
   case $1 in
     --list) list_only=1; shift ;;
     --changed) [ $# -ge 2 ] || usage; base=$2; shift 2 ;;
+    --tier) [ $# -ge 2 ] || usage; tier=$2; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -159,14 +181,26 @@ set +f; shopt -s nullglob globstar
 all=$(suites)
 set -f
 
-selected=$all note=""
+if [ -n "$tier" ]; then
+  tiers=$(cut -f1 <<<"$all" | uniq | xargs)
+  listed "$tiers" "$tier" || {
+    echo "tests/all.sh: no tier named $tier (the tiers: $tiers)" >&2; exit 2; }
+  all=$(awk -F'\t' -v tier="$tier" '$1 == tier' <<<"$all")
+  note=" (tier: $tier)"
+else
+  all=$(awk -F'\t' '$1 != "finders-slow"' <<<"$all")
+  note=""
+fi
+all=$(cut -f2- <<<"$all")
+
+selected=$all
 if [ -n "$base" ]; then
   scope "$base"
   if [ -n "$widened" ]; then
-    note=" (widened: $widened)"
+    note="$note (widened: $widened)"
   else
     selected=$(awk -F'\t' -v keep=" always $units " 'index(keep, " " $1 " ")' <<<"$all")
-    note=" (narrowed: ${units:-no example or finder touched})"
+    note="$note (narrowed: ${units:-no example or finder touched})"
   fi
 fi
 selected=$(cut -f2 <<<"$selected")

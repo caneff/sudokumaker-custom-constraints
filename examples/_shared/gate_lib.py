@@ -46,3 +46,24 @@ def commands(recipe, root=ROOT):
     r, ran = run_stubbed([just, "--justfile", str(root / "justfile"), recipe], root)
     assert r.returncode == 0, f"just {recipe} failed:\n{r.stdout}{r.stderr}"
     return ran
+
+
+def gate_tree(tmp):
+    """A scratch tree holding the gate itself -- the justfile and the seam
+    runner it calls -- and no test file."""
+    tree = pathlib.Path(tmp)
+    shutil.copy(ROOT / "justfile", tree / "justfile")
+    shutil.copytree(ROOT / "tests", tree / "tests")
+    return tree
+
+
+def runner_listing(*args, root=ROOT):
+    """The suites `tests/all.sh --list <args>` names from `root`, in order."""
+    r = subprocess.run(
+        ["bash", "tests/all.sh", "--list", *args],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, f"tests/all.sh --list {args} failed:\n{r.stderr}"
+    return r.stdout.splitlines()
