@@ -5,7 +5,6 @@ python_sources(
     overrides={
         "test_penpa.py": {"dependencies": [":fixtures", "./ubahn_finder.py:src"]},
         "test_ubahn_hunt.py": {"dependencies": ["./ubahn_finder.py:src"]},
-        "time_sat.py": {"dependencies": [":fixtures"]},
     },
 )
 files(name="fixtures", sources=["fixtures/*"])
