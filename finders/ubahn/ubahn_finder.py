@@ -228,12 +228,11 @@ class UbahnFinder:
         )
 
 
-def write_links(out, blank_number=False):
-    """Write `out/links/<seed>.txt`, one Penpa+ link per example of the hunt
-    in `out`, paired with its seed the way the driver pairs renders: the
-    k-th "example" event of progress.jsonl is the k-th examples.jsonl
-    record. Returns how many; raises ValueError, naming it, on a missing or
-    unpaired log or a record `candidate_from_record` refuses."""
+def seeded_examples(out):
+    """[(seed, record)] for every example of the hunt in `out`, paired the
+    way the driver pairs renders: the k-th "example" event of progress.jsonl
+    is the k-th examples.jsonl record. Raises ValueError, naming it, on a
+    missing or unpaired log."""
     out = Path(out)
 
     def lines(name):
@@ -250,12 +249,22 @@ def write_links(out, blank_number=False):
         raise ValueError(
             f"{len(records)} examples but {len(seeds)} example events in progress.jsonl"
         )
+    return list(zip(seeds, records, strict=True))
+
+
+def write_links(out, blank_number=False):
+    """Write `out/links/<seed>.txt`, one Penpa+ link per example of the hunt
+    in `out`, each under its seed (`seeded_examples`). Returns how many;
+    raises ValueError, naming it, on a missing or unpaired log or a record
+    `candidate_from_record` refuses."""
+    out = Path(out)
+    examples = seeded_examples(out)
     finder = UbahnFinder()
     # Every link is built before any file is touched: a record the finder
     # refuses leaves links/ as it was, and a rerun replaces the whole set,
     # so a file left by an earlier example list or variant never stays.
     built = {}
-    for seed, record in zip(seeds, records, strict=True):
+    for seed, record in examples:
         rows, cols, found, _ = finder.candidate_from_record(record)
         built[seed] = penpa.link(rows, cols, found, blank_number) + "\n"
     links = out / "links"
@@ -264,7 +273,7 @@ def write_links(out, blank_number=False):
         stale.unlink()
     for seed, text in built.items():
         (links / f"{seed}.txt").write_text(text)
-    return len(records)
+    return len(examples)
 
 
 def main(argv):

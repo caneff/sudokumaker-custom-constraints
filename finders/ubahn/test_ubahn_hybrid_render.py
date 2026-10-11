@@ -1,20 +1,31 @@
 """The hybrid grid's picture (#791), read back by pixel.
 
 The grid is the decision log's one 4x4 grid with `c1:turn` and `r2c4`
-circled (§ Hybrid), drawn in the docstring of `GRID` below with its regions
-worked out by hand. No solver runs; under a second.
+circled (§ Hybrid), drawn above `GRID` below with its regions worked out by
+hand. Then the `render` command, black-box, over a hunt directory written
+here by hand. No solver runs; about three seconds, a dozen subprocess
+starts.
 
     uv run finders/ubahn/test_ubahn_hybrid_render.py
 """
 
+import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "hunt"))
 import hybrid
 import hybrid_render
 import network
+from subprocess_env import success_env
+
+FINDER = HERE / "hybrid_finder.py"
 
 ok = True
 
@@ -163,6 +174,188 @@ check(
 check(
     "a blank cell, r4c1, has no network in it",
     not count(picture, "r4c1", hybrid_render.NETWORK),
+)
+
+
+# The `render` command. Two records as a hunt writes them, their edge rows
+# read off the drawings by hand: GRID under its two circles at seed 3, and at
+# seed 7 the grid with every edge on, which is a hybrid grid with four strips
+# and with five.
+FULL = network.from_drawing(["┌┬┬┐", "├┼┼┤", "├┼┼┤", "└┴┴┘"])
+GRID_RECORD = {
+    "rows": 4,
+    "cols": 4,
+    "exactly": None,
+    "h": ["111", "110", "110", "011"],
+    "v": ["1011", "1111", "0111"],
+    "circles": ["c1:turn", "r2c4"],
+    "blank_strip": False,
+}
+FULL_RECORD = {
+    "rows": 4,
+    "cols": 4,
+    "exactly": None,
+    "h": ["111", "111", "111", "111"],
+    "v": ["1111", "1111", "1111"],
+    "circles": [],
+    "blank_strip": False,
+}
+
+
+def run_cli(*args):
+    return subprocess.run(
+        [sys.executable, str(FINDER), *args],
+        capture_output=True,
+        text=True,
+        env=success_env(),
+    )
+
+
+def hunt_dir(parent, name, records):
+    """A hunt directory holding these {seed: record}, with a seed that found
+    nothing between them, as progress.jsonl pairs them."""
+    out = Path(parent) / name
+    out.mkdir()
+    (out / "examples.jsonl").write_text(
+        "".join(json.dumps(record) + "\n" for record in records.values())
+    )
+    events = [{"seed": 0, "outcome": "empty"}]
+    events += [{"seed": seed, "outcome": "example"} for seed in records]
+    (out / "progress.jsonl").write_text(
+        "".join(json.dumps(event) + "\n" for event in events)
+    )
+    return out
+
+
+def decoded(path):
+    """The PNG at `path`, decoded in full."""
+    with Image.open(path) as image:
+        image.load()
+        return image.format, image.convert("RGB")
+
+
+def same(image, picture):
+    return image.size == picture.image.size and (
+        image.tobytes() == picture.image.tobytes()
+    )
+
+
+def names(directory):
+    return sorted(p.name for p in directory.iterdir())
+
+
+four = hybrid_render.Picture(FULL, 4, 4)
+five = hybrid_render.Picture(FULL, 4, 4, blank_strip=True)
+check(
+    "the blank strip adds one strip to each side of the picture",
+    five.image.size == tuple(side + hybrid_render.CELL for side in four.image.size),
+)
+check(
+    "the fifth strip's number cells are drawn: c1:blank is filled",
+    fill(five, "c1:blank") == hybrid_render.CHOCOLATE,
+)
+
+with tempfile.TemporaryDirectory() as d:
+    out = hunt_dir(d, "hunt", {3: GRID_RECORD, 7: FULL_RECORD})
+    (out / "renders").mkdir()
+    (out / "renders" / "99.png").write_text("left by an earlier example list")
+    r = run_cli("render", str(out))
+    check(f"`render DIR` exits 0 (stderr: {r.stderr[-500:]})", r.returncode == 0)
+    check(
+        "one PNG per example, named by seed, and nothing else: no temporary "
+        f"file, no picture of an earlier list ({names(out / 'renders')})",
+        names(out / "renders") == ["3.png", "7.png"],
+    )
+    pictures = {seed: decoded(out / "renders" / f"{seed}.png") for seed in (3, 7)}
+    check(
+        "each file decodes as a PNG",
+        all(kind == "PNG" for kind, _ in pictures.values()),
+    )
+    check(
+        "seed 3's picture is the grid's, its two conditions ringed as given",
+        same(pictures[3][1], picture),
+    )
+    check("seed 7's picture is the other grid's", same(pictures[7][1], four))
+    check(
+        "`render` says how many it wrote and where, and prints no link",
+        "2 pictures" in r.stdout
+        and str(out / "renders") in r.stdout
+        and len(r.stdout) + len(r.stderr) < 500
+        and "http" not in r.stdout + r.stderr,
+    )
+
+    one = Path(d) / "one.png"
+    r = run_cli("render", str(out), "--seed", "7", "--png", str(one))
+    check(
+        f"`render DIR --seed 7 --png FILE` writes that one grid to FILE "
+        f"(stderr: {r.stderr[-300:]})",
+        r.returncode == 0
+        and same(decoded(one)[1], four)
+        and names(Path(d)) == ["hunt", "one.png"],
+    )
+    check(
+        "and prints no link",
+        len(r.stdout) + len(r.stderr) < 500 and "http" not in r.stdout + r.stderr,
+    )
+
+    # The blank strip: by the flag, or by a record of a hunt that had it on.
+    r = run_cli("render", str(out), "--seed", "7", "--png", str(one), "--blank-strip")
+    check(
+        f"`--blank-strip` draws five strips (stderr: {r.stderr[-300:]})",
+        r.returncode == 0 and same(decoded(one)[1], five),
+    )
+    with_blank = hunt_dir(d, "blank", {7: {**FULL_RECORD, "blank_strip": True}})
+    r = run_cli("render", str(with_blank))
+    check(
+        "a record of a hunt with the blank strip on is drawn with five strips",
+        r.returncode == 0 and same(decoded(with_blank / "renders" / "7.png")[1], five),
+    )
+
+    # A grid that is no hybrid grid on the board drawn is refused, and no
+    # picture of the directory is touched: GRID breaks on the fifth strip.
+    before = {p.name: p.read_bytes() for p in (out / "renders").iterdir()}
+    r = run_cli("render", str(out), "--blank-strip")
+    check(
+        f"`render DIR --blank-strip` refuses seed 3, exit 2, naming the seed "
+        f"and the broken rule ({r.stderr.strip()!r})",
+        r.returncode == 2
+        and "seed 3" in r.stderr
+        and "c1:blank" in r.stderr
+        and not r.stdout,
+    )
+    check(
+        "and leaves renders/ as it was",
+        {p.name: p.read_bytes() for p in (out / "renders").iterdir()} == before,
+    )
+
+    dead_end = hunt_dir(
+        d, "dead-end", {1: {**FULL_RECORD, "h": ["011", "111", "111", "111"]}}
+    )
+    for name, args, reason in (
+        ("a directory that is no hunt's", [d], "examples.jsonl"),
+        (
+            "a seed with no example",
+            [str(out), "--seed", "0", "--png", str(one)],
+            "seed 0",
+        ),
+        ("--seed with no --png", [str(out), "--seed", "7"], "--png"),
+        ("--png with no --seed", [str(out), "--png", str(one)], "--seed"),
+        ("a network with a dead end", [str(dead_end)], "dead end"),
+    ):
+        r = run_cli("render", *args)
+        check(
+            f"render refuses {name}, exit 2, naming {reason!r} ({r.stderr.strip()[-200:]!r})",
+            r.returncode == 2 and reason in r.stderr and not r.stdout,
+        )
+    check(
+        "a refused grid leaves no renders/ behind", not (dead_end / "renders").exists()
+    )
+
+r = run_cli("--help")
+check(
+    "--help names the render command and its flags",
+    r.returncode == 0
+    and all(word in r.stdout for word in ("render DIR", "--seed", "--png", "renders/")),
 )
 
 sys.exit(0 if ok else 1)
