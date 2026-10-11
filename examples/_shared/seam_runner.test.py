@@ -5,6 +5,7 @@
 #
 #   uv run examples/_shared/seam_runner.test.py
 
+import os
 import pathlib
 import shutil
 import subprocess
@@ -91,8 +92,189 @@ def a_failing_suite_stops_the_run():
         ), out[-1]
 
 
+LINT = [
+    "npx standard",
+    "uvx ruff check examples",
+    "uvx ruff check finders",
+    "uvx ruff format --check examples",
+    "uvx ruff format --check finders",
+    "uv lock --check",
+]
+
+# What every narrowed run of the fixture keeps: lint and the shared checks.
+ALWAYS = LINT + [
+    "uv run examples/_shared/s.test.py",
+    "uv run examples/_shared/check_layout.py",
+]
+
+AA = ["node examples/aa/a.test.mjs", "node examples/aa/soundness-harness.mjs"]
+BB = ["uv run examples/bb/b.test.py", "node examples/bb/soundness-harness.mjs"]
+FILLOMINO = [
+    "node examples/fillomino/x.test.mjs",
+    "uv run examples/fillomino/pipeline.test.py",
+    "uv run examples/fillomino/generate.test.py",
+    "node examples/fillomino/soundness-harness.mjs",
+]
+# Named by path in the runner, so they are in every tree's seam.
+SKYSCRAPER = [
+    "uv run examples/skyscraper/verify.py",
+    "node examples/skyscraper/recovery-probe.test.mjs",
+]
+HIT_COUNTS = ["node examples/hit-counts/recovery-probe.test.mjs"]
+FF = ["uv run finders/ff/test_f.py", "uv run finders/ff/deep/test_g.py"]
+GG = ["uv run finders/gg/test_h.py"]
+HUNT = ["uv run finders/hunt/test_hunt.py"]
+COUNTING = ["uv run pytest finders/counting_shaded/test_counting_shaded.py -q"]
+RENBANANA = ["uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover"]
+
+# The fixture's whole seam. The slow renbanana test is in the tree and in no run.
+WHOLE = (
+    ALWAYS
+    + AA
+    + BB
+    + FILLOMINO
+    + FF
+    + GG
+    + HUNT
+    + COUNTING
+    + RENBANANA
+    + SKYSCRAPER
+    + HIT_COUNTS
+)
+
+FIXTURE = [
+    "justfile",
+    "uv.lock",
+    "docs/notes.md",
+    "docs/research/data.json",
+    "examples/_shared/s.test.py",
+    "examples/_shared/lib.py",
+    "examples/aa/a.test.mjs",
+    "examples/aa/soundness-harness.mjs",
+    "examples/aa/README.md",
+    "examples/bb/b.test.py",
+    "examples/bb/soundness-harness.mjs",
+    "examples/fillomino/x.test.mjs",
+    "examples/fillomino/pipeline.test.py",
+    "examples/fillomino/generate.test.py",
+    "examples/fillomino/soundness-harness.mjs",
+    "examples/skyscraper/recovery-probe.test.mjs",
+    "examples/hit-counts/recovery-probe.test.mjs",
+    "finders/top.py",
+    "finders/ff/test_f.py",
+    "finders/ff/deep/test_g.py",
+    "finders/gg/test_h.py",
+    "finders/hunt/test_hunt.py",
+    "finders/counting_shaded/test_counting_shaded.py",
+    "finders/renbanana/tools/test_prove_two_stage_slow.py",
+    "finders/renbanana/tools/test_probe_finds_known_grids.py",
+]
+
+# A diff (the files one commit adds or edits) and the suites it must select.
+NARROWED = [
+    (["finders/ff/deep/model.py"], ALWAYS + FF),
+    (["finders/counting_shaded/filter.c"], ALWAYS + COUNTING),
+    (["finders/renbanana/tools/probe.py"], ALWAYS + RENBANANA),
+    (["examples/fillomino/Component.js"], ALWAYS + FILLOMINO),
+    (["examples/skyscraper/SkyscraperComponent.js"], ALWAYS + SKYSCRAPER),
+    (["examples/aa/README.md", "finders/gg/notes.md"], ALWAYS + AA + GG),
+    (
+        ["examples/bb/new.test.mjs", "finders/gg/test_new.py"],
+        ALWAYS + BB + GG + ["node examples/bb/new.test.mjs", "uv run finders/gg/test_new.py"],
+    ),
+    (["examples/_shared/s.test.py"], ALWAYS),
+    (["docs/notes.md", "README.md", "finders/AGENTS.md"], ALWAYS),
+    ([], ALWAYS),
+]
+
+# A diff that widens to the whole seam, and the reason the last line gives.
+WIDENED = [
+    (["examples/_shared/lib.py"], "shared example code changed: examples/_shared/lib.py"),
+    (["finders/hunt/driver.py"], "finders/hunt/ changed: finders/hunt/driver.py"),
+    (["justfile"], "every suite depends on justfile"),
+    (["uv.lock"], "every suite depends on uv.lock"),
+    (["tests/all.sh"], "every suite depends on tests/all.sh"),
+    (["docs/research/data.json"], "no rule places docs/research/data.json"),
+    (["finders/top.py", "finders/ff/x.py"], "no rule places finders/top.py"),
+]
+
+
+def git(tree, *args):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    for who in ("AUTHOR", "COMMITTER"):
+        env[f"GIT_{who}_NAME"] = "fixture"
+        env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
+    r = subprocess.run(["git", *args], cwd=tree, env=env, capture_output=True, text=True)
+    assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
+    return r.stdout.strip()
+
+
+def with_diff(tree, changed):
+    """Commit an edit to each of `changed` on top of the fixture's base."""
+    git(tree, "reset", "-q", "--hard", "base")
+    git(tree, "clean", "-qfd")
+    for rel in changed:
+        (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+        with (tree / rel).open("a") as f:
+            f.write("# changed\n")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "--allow-empty", "-m", "change")
+
+
+def a_diff_selects_its_suites():
+    """`--changed <base>` keeps lint, the shared checks and the suites of each
+    example and finder the diff touches; it widens to the whole seam when the
+    diff touches what every suite depends on or a path no rule places; and the
+    run's last line names the units or the reason."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
+        git(tree, "init", "-q")
+        git(tree, "add", "-A")
+        git(tree, "commit", "-q", "-m", "base")
+        git(tree, "tag", "base")
+        assert sorted(listing(root=tree)) == sorted(WHOLE), listing(root=tree)
+
+        for changed, want in NARROWED:
+            with_diff(tree, changed)
+            got = listing("--changed", "base", root=tree)
+            assert sorted(got) == sorted(want), f"{changed} selects {got}"
+        for changed, _ in WIDENED:
+            with_diff(tree, changed)
+            got = listing("--changed", "base", root=tree)
+            assert sorted(got) == sorted(WHOLE), f"{changed} selects {got}"
+
+        def last_line(changed):
+            with_diff(tree, changed)
+            r, ran = run_stubbed(["bash", RUNNER, "--changed", "base"], root=tree)
+            assert r.returncode == 0, f"{changed}:\n{r.stdout}{r.stderr}"
+            assert ran == listing("--changed", "base", root=tree), changed
+            return r.stdout.splitlines()[-1]
+
+        m = len(WHOLE)
+        assert last_line(["finders/ff/x.py", "examples/aa/y.js"]) == (
+            f"{len(ALWAYS + AA + FF)} of {m} suites passed "
+            "(narrowed: examples/aa finders/ff)"
+        )
+        assert last_line(["docs/notes.md"]) == (
+            f"{len(ALWAYS)} of {m} suites passed (narrowed: no example or finder touched)"
+        )
+        for changed, why in WIDENED:
+            got = last_line(changed)
+            assert got == f"{m} of {m} suites passed (widened: {why})", got
+
+        r = subprocess.run(
+            ["bash", RUNNER, "--changed", "no-such-ref"],
+            cwd=tree,
+            capture_output=True,
+            text=True,
+        )
+        assert r.returncode == 2, f"an unreadable base exits {r.returncode}, not 2"
+        assert "cannot diff no-such-ref...HEAD" in r.stderr, r.stderr
+
+
 if __name__ == "__main__":
     n = full_listing_is_check_full()
+    a_diff_selects_its_suites()
     a_run_covers_its_listing()
     a_failing_suite_stops_the_run()
     print(f"seam_runner.test.py: {n} suites: ok")
