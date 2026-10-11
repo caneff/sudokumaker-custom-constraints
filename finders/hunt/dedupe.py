@@ -116,3 +116,4 @@ def canonical_key(grid, group):
         _validate_custom_group(maps, len(grid))
     return min(tuple(grid[i] for i in cell_map) for cell_map in maps)
 # spike 5a
+raise RuntimeError("spike mutation")
