@@ -1,7 +1,0 @@
-13:53:35.36 [ERROR] 1 Exception encountered:
-
-Engine traceback:
-  in `test` goal
-
-ResolveError: Directory 'examples/up-to-n/.golden' does not contain any BUILD files.
-

@@ -1,5 +1,0 @@
-13:52:34.99 [WARN] Pants cannot infer owners for the following imports in the target examples/up-to-n/build_link.test.py:py:
-
-  * ortools.sat.python.cp_model (line: 32)
-
-If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
