@@ -438,3 +438,4 @@ export function finishHarness (ok) {
   console.log(ok ? 'PASS' : 'FAIL')
   process.exit(ok ? 0 : 1)
 }
+// spike 5b
