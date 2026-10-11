@@ -40,3 +40,5 @@ for t in ["end-to-end", "marker-contract", "update-strength"]:
         extra_env_vars=["HOME", "UV_PROJECT_ENVIRONMENT"],
         timeout=300,
     )
+
+javascript_tests(name="jstests", sources=["marker-contract.test.mjs"])
