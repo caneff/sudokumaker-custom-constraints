@@ -1,8 +1,8 @@
-"""The hybrid's rules on PySAT with CaDiCaL (#784): U-Bahn with Choco-Banana
-laid over the grid cells and the number cells (spec #781).
+"""The hybrid's rules on PySAT with CaDiCaL (#784, #785): U-Bahn with
+Choco-Banana laid over the grid cells and the number cells (spec #781).
 
-A second engine beside `hybrid_model.py`, behind the finder's `--engine`
-flag. The network's own rules are `sat_model.py`'s clauses; the hybrid's are
+Two engines beside `hybrid_model.py`, behind the finder's `--engine` flag,
+on the same clauses. The network's own rules are `sat_model.py`'s clauses; the hybrid's are
 stated here from the spec and from `hybrid.py`'s reader, not carried over
 from the CP-SAT model, so the two engines check each other:
 
@@ -19,7 +19,10 @@ from the CP-SAT model, so the two engines check each other:
 
 Connectivity is not encoded. `listing` solves, and a full grid whose network
 is in several parts is cut with `sat_model.cut_clauses` and the solve goes
-on, on the same solver, so what it learned is kept.
+on, on the same solver, so what it learned is kept. That is all the `lazy`
+engine does. The `propagator` engine also connects `_Watcher`, which follows
+the edges as the solver decides them and raises a conflict as soon as the
+edges that are on can no longer be joined.
 """
 
 import sys
@@ -27,6 +30,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
+from pysat.engines import Propagator
 from pysat.solvers import Cadical195
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,17 +40,99 @@ from network import BLANK, KINDS
 
 # How an engine keeps the network in one part.
 LAZY = "lazy"
+PROPAGATOR = "propagator"
 
 
 class Listing(NamedTuple):
     """Grids that meet a set of conditions, in the order found: all of them
     when there are fewer than the cap asked for and `timed_out` is False.
     `cuts` is how many connectivity clauses the solves added for full grids
-    in several parts."""
+    in several parts, and `conflicts` how many the propagator raised while
+    some edge was still undecided."""
 
     grids: tuple
     timed_out: bool
     cuts: int
+    conflicts: int
+
+
+class _Watcher(Propagator):
+    """The connectivity propagator: it is told each edge the solver turns
+    on or off, and refuses an assignment in which two edges that are on are
+    kept apart by edges that are off."""
+
+    def __init__(self, edge):
+        super().__init__()
+        self.ends = {var: e for e, var in edge.items()}
+        self.on = {}
+        # The variables assigned at each decision level. One the solver has
+        # fixed is on no level and outlives every backtrack.
+        self.levels = [[]]
+        self.fixed = set()
+        self.changed = False
+        self.pending = []
+        self.conflicts = self.late = 0
+
+    def on_assignment(self, lit, fixed=False):
+        var = abs(lit)
+        self.on[var] = lit > 0
+        if fixed:
+            self.fixed.add(var)
+        else:
+            self.levels[-1].append(var)
+        self.changed = True
+
+    def on_new_level(self):
+        self.levels.append([])
+
+    def on_backtrack(self, to):
+        while len(self.levels) > to + 1:
+            for var in self.levels.pop():
+                if var not in self.fixed:
+                    self.on.pop(var, None)
+
+    def propagate(self):
+        if self.changed:
+            self.changed = False
+            clause = self._refusal()
+            if clause:
+                self.pending.append(clause)
+                if len(self.on) < len(self.ends):
+                    self.conflicts += 1
+                else:
+                    self.late += 1
+        return []
+
+    def add_clause(self):
+        return self.pending.pop() if self.pending else []
+
+    def _refusal(self):
+        """A clause the current assignment breaks, or None when the edges
+        that are on can still be joined. With the cells one of them reaches
+        over edges not turned off, and another edge that is on outside those
+        cells: if both are on, some edge leaving those cells is on. That
+        holds for every network, whatever is assigned."""
+        on = [var for var, is_on in self.on.items() if is_on]
+        if len(on) < 2:
+            return None
+        beside = {}
+        for var, (a, b) in self.ends.items():
+            if self.on.get(var, True):
+                beside.setdefault(a, []).append(b)
+                beside.setdefault(b, []).append(a)
+        reach, stack = set(), [self.ends[on[0]][0]]
+        while stack:
+            cell = stack.pop()
+            if cell not in reach:
+                reach.add(cell)
+                stack += beside[cell]
+        apart = next((var for var in on if self.ends[var][0] not in reach), None)
+        if apart is None:
+            return None
+        leaving = [
+            var for var, (a, b) in self.ends.items() if (a in reach) != (b in reach)
+        ]
+        return [-on[0], -apart, *leaving]
 
 
 def _at_least(pool, clauses, literals, top, true):
@@ -216,8 +302,13 @@ def listing(conditions, connectivity, *, cap, time_limit, rng=None):
     same grids every run and another seed other ones."""
     deadline = time.monotonic() + time_limit
     clauses, edge, blank = rules(conditions)
-    grids, cuts = [], 0
+    grids, cuts, answer = [], 0, True
+    watcher = _Watcher(edge)
     with Cadical195(bootstrap_with=clauses) as solver:
+        if connectivity == PROPAGATOR:
+            solver.connect_propagator(watcher)
+            for var in edge.values():
+                solver.observe(var)
         if rng is not None:
             solver.set_phases(
                 [var if rng.random() < 0.5 else -var for var in edge.values()]
@@ -225,7 +316,7 @@ def listing(conditions, connectivity, *, cap, time_limit, rng=None):
         while len(grids) < cap:
             answer = sat_model.solve(solver, deadline)
             if not answer:
-                return Listing(tuple(grids), answer is None, cuts)
+                break
             found = sat_model.edges_on(solver, edge)
             cut = sat_model.cut_clauses(edge, blank, found)
             if cut:
@@ -234,7 +325,8 @@ def listing(conditions, connectivity, *, cap, time_limit, rng=None):
                 continue
             grids.append(found)
             sat_model.forbid(solver, edge, found)
-    return Listing(tuple(grids), False, cuts)
+    # A conflict the propagator raised on a full set of edges is a cut.
+    return Listing(tuple(grids), answer is None, cuts + watcher.late, watcher.conflicts)
 
 
 class Engine(NamedTuple):

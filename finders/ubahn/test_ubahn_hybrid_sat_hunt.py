@@ -1,4 +1,4 @@
-"""The hybrid finder's CLI on its PySAT engines (#784), black-box.
+"""The hybrid finder's CLI on its PySAT engines (#784, #785), black-box.
 
 `test_ubahn_hybrid_hunt.py` is the CLI's own test, on the CP-SAT engine. This
 one runs the hunt and `classify` again with `--engine` naming each PySAT
@@ -28,7 +28,7 @@ from subprocess_env import success_env
 
 FINDER = HERE / "hybrid_finder.py"
 BOARD = ["--rows", "4", "--cols", "4", "--timeout", "10"]
-ENGINES = ("pysat-lazy",)
+ENGINES = ("pysat-lazy", "pysat-propagator")
 # A record carries its own board and conditions.
 READER = hybrid_finder.HybridFinder(hybrid.Conditions(4, 4))
 
@@ -202,6 +202,11 @@ for engine in ENGINES:
 check(
     "--engine pysat-lazy is the PySAT engine with lazy connectivity cuts",
     hybrid_finder.ENGINES["pysat-lazy"] == hybrid_sat.Engine(hybrid_sat.LAZY),
+)
+check(
+    "--engine pysat-propagator is the one with the connectivity propagator",
+    hybrid_finder.ENGINES.get("pysat-propagator")
+    == hybrid_sat.Engine(hybrid_sat.PROPAGATOR),
 )
 r = run_cli("--help")
 check(

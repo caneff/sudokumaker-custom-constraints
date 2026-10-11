@@ -19,9 +19,12 @@ Conditions are flags:
                                outside the cross. Off unless given.
     --engine cpsat             the solver the rules are written on: cpsat
                                (`hybrid_model.py`, connectivity as a flow),
-                               or pysat-lazy (`hybrid_sat.py`, a grid whose
+                               pysat-lazy (`hybrid_sat.py`, a grid whose
                                network is in several parts is cut and the
-                               solve goes on). cpsat unless given.
+                               solve goes on) or pysat-propagator (the same
+                               clauses, with a propagator that refuses a
+                               network broken apart before the grid is
+                               full). cpsat unless given.
     --timeout SECONDS          the limit on one solve, 60 unless given.
 
     uv run finders/ubahn/hybrid_finder.py --out DIR --seeds 0:50 --workers 1 \\
@@ -79,6 +82,7 @@ from ubahn_finder import Candidate as PlainCandidate
 ENGINES = {
     "cpsat": hybrid_model,
     "pysat-lazy": hybrid_sat.Engine(hybrid_sat.LAZY),
+    "pysat-propagator": hybrid_sat.Engine(hybrid_sat.PROPAGATOR),
 }
 DEFAULT_ENGINE = "cpsat"
 

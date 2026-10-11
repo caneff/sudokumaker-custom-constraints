@@ -1,4 +1,5 @@
-"""The hybrid's PySAT engines against the exhaustive 4x4 answers (#784).
+"""The hybrid's PySAT engines against the exhaustive 4x4 answers (#784,
+#785).
 
 `test_ubahn_brute.py` pins what the brute force finds on the whole 4x4 board:
 18 valid hybrid grids, 8 with the blank strip, 8 with exactly 2 crosses in r2,
@@ -25,7 +26,7 @@ from pysat.solvers import Cadical195
 
 TIME_LIMIT = 10.0
 TWO_CROSSES = network.Exactly.parse("2:cross:r2")
-ENGINES = (hybrid_sat.LAZY,)
+ENGINES = (hybrid_sat.LAZY, hybrid_sat.PROPAGATOR)
 
 ok = True
 
@@ -90,8 +91,16 @@ for engine in ENGINES:
     if engine == hybrid_sat.LAZY:
         check(
             f"{engine}, 4x4, no condition: connectivity cuts were added "
-            f"({listed.cuts})",
-            listed.cuts > 0,
+            f"({listed.cuts}), and no conflict on a partial assignment",
+            listed.cuts > 0 and listed.conflicts == 0,
+        )
+    # The propagator refuses them before the grid is full: it raises a
+    # conflict while some edge is still undecided.
+    if engine == hybrid_sat.PROPAGATOR:
+        check(
+            f"{engine}, 4x4, no condition: conflicts were raised on partial "
+            f"assignments ({listed.conflicts}; {listed.cuts} cuts)",
+            listed.conflicts > 0,
         )
     # The blank strip is off unless asked for, and changes the answer when on.
     agrees(
