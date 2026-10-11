@@ -124,8 +124,10 @@ others. If no step is forced from that state, say so.
 - **Seam**: `just check-full`
 - **Blind to**: the app — solve time (`just time`), how a link renders and solves in sudokumaker.app, and anything a browser probe checks rather than a Node or Python test asserts
 
-The controller re-runs it on a PR merged into current `main` before the
-merge, when `main` has moved past the PR's merge base (about 3½ min, 1 core).
+The controller re-runs it on a PR merged into current `main` before every
+merge, whether or not `main` has moved past the PR's merge base (about
+3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
+repo 2026-10-11).
 
 ## Commands
 
