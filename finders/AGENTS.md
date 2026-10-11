@@ -55,6 +55,12 @@ because the checker reads them and nothing under `docs/research/` does
   full grids or by a propagator during the search).
   `hybrid_sat.listing` returns up to a cap of grids with its cut and conflict
   counts.
+  `hybrid_finder.py render DIR` draws each example of a hunt as a picture,
+  `DIR/renders/<seed>.png` (`hybrid_render.py`, #791): the board with its
+  outside numbers and network, chocolate in one colour and a tint per banana,
+  a ring on every valid circle and a heavier one in a second colour on a
+  circle that is a condition; `--seed N --png FILE` draws one example and
+  `--blank-strip` the fifth strip.
   `time_engines.py run --engine E --progress FILE` times one engine on
   Chris's six cases and `time_engines.py report FILE...` prints the table and
   the reading against the 2-times bar (#786; by hand, outside both gates). The
