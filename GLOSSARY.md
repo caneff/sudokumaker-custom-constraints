@@ -206,8 +206,12 @@ digit.
 - **banana** — a region of odd values. It must not be a rectangle, so a
   single odd cell on its own is never one.
 - **circle** — a condition on one cell, grid cell or number cell: the cell's
-  value equals the number of cells in its region. Nothing is printed in it.
-  An uncircled cell promises nothing about size.
+  value equals the number of cells in its region. The circle itself carries
+  no digit; a circled number cell shows its number only when that number is a
+  **given number**. An uncircled cell promises nothing about size.
+- **given number** — a number cell whose outside number is printed on the
+  hybrid's Penpa+ link (`hybrid_finder.py links --numbers`). Every other
+  number cell is drawn empty; the solver is not asked to enter any of them.
 - **valid circle** — a cell a circle could sit on in a given grid: its value
   equals the number of cells in its region. Every circle of a grid's
   conditions is one; the picture (`hybrid_finder.py render`) rings them all.
