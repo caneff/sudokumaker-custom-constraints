@@ -15,7 +15,6 @@ root_patterns = [
   "/finders/hunt",
   "/examples/_shared",
   "/examples/up-to-n",
-  "/",
 ]
 
 [python]
