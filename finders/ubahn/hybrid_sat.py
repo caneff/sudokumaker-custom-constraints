@@ -20,6 +20,11 @@ engines check each other:
 - Circle: the cells of the circled cell's region are counted and the count
   is the cell's value (`_add_circle`). The chocolate and banana clauses
   shape the region, so a circle lists no rectangle and no bent shape.
+- At least K valid circles on number cells (#794): every number cell has a
+  variable that, when true, makes the circle rule hold there, and at least K
+  of them are true. A grid cell has none, so it counts for nothing. The
+  variable says nothing when false: a cell may be a valid circle with its
+  variable false, which the count does not need.
 
 Connectivity is not encoded. `listing` solves, and a full grid whose network
 is in several parts is refused with `sat_model.cut_clauses`, the connectivity
@@ -166,7 +171,7 @@ def _add_values(pool, clauses, kind, conditions, true):
     `_at_least` gives it up to one more than its row or column can hold, and
     `odd[cell]` is the variable "this cell's value is odd", for every cell of
     the board."""
-    rows, cols, _, _, blank_strip = conditions
+    rows, cols, _, _, blank_strip, _ = conditions
     odd = {}
     for cell in ((r, c) for r in range(rows) for c in range(cols)):
         odd[cell] = pool.id()
@@ -229,9 +234,10 @@ def _neighbours(cell):
     return [(r - 1, c), (r, c + 1), (r + 1, c), (r, c - 1)]
 
 
-def _add_circle(pool, clauses, odd, value, circle, true):
+def _add_circle(pool, clauses, odd, value, circle, true, chosen=None):
     """The circled cell's value is the number of cells of its region.
-    `value` is that value in unary, with a last entry no value reaches.
+    `value` is that value in unary, with a last entry no value reaches. With
+    `chosen`, a variable, that holds only when `chosen` is true.
 
     The region is found in rounds. Round 0 reaches the circled cell alone; a
     cell is reached in a round when its value has the circled cell's parity
@@ -260,8 +266,9 @@ def _add_circle(pool, clauses, odd, value, circle, true):
             clauses += [[-reached[cell], same[cell]], [-reached[cell], *sources]]
             clauses += [[-source, -same[cell], reached[cell]] for source in sources]
     size = _at_least(pool, clauses, list(reached.values()), top, true)
+    unless = [] if chosen is None else [-chosen]
     for j in range(1, top + 1):
-        clauses += [[-size[j], value[j]], [size[j], -value[j]]]
+        clauses += [[*unless, -size[j], value[j]], [*unless, size[j], -value[j]]]
 
 
 def _piece_value(pool, clauses, kind, cell, true):
@@ -281,7 +288,7 @@ def rules(conditions):
     """Every rule but connectivity, for these conditions. Returns `(clauses,
     edge, blank)`: the edge variables keyed by edge and each grid cell's
     blank variable. Raises ValueError on a circle that is off the board."""
-    rows, cols, circles, exactly, _ = conditions
+    rows, cols, circles, exactly, _, number_circles = conditions
     pool, edge, kind, clauses = sat_model.network_rules(rows, cols)
     true = pool.id()
     clauses.append([true])
@@ -297,6 +304,12 @@ def rules(conditions):
         counted = [kind[cell, exactly.kind] for cell in exactly.cells(rows, cols)]
         held = _at_least(pool, clauses, counted, exactly.count + 1, true)
         clauses += [[held[exactly.count]], [-held[exactly.count + 1]]]
+    if number_circles:
+        chosen = {cell: pool.id() for cell in sorted(count)}
+        for cell, var in chosen.items():
+            _add_circle(pool, clauses, odd, count[cell], cell, true, var)
+        held = _at_least(pool, clauses, list(chosen.values()), number_circles, true)
+        clauses.append([held[number_circles]])
     return clauses, edge, {cell: var for (cell, k), var in kind.items() if k == BLANK}
 
 

@@ -131,7 +131,7 @@ def condition_symmetry(conditions):
     them on a square board whose circled cells are circled in the image too,
     with no piece-count condition, which names a row or a column. The
     reflection sends a cell's east arm to its image's south arm and back."""
-    rows, cols, circles, exactly, _ = conditions
+    rows, cols, circles, exactly, *_ = conditions
     if rows != cols or exactly or {(c, r) for r, c in circles} != set(circles):
         return IDENTITY
     cells = rows * cols
@@ -169,8 +169,10 @@ class HybridFinder:
         return Candidate(self.conditions, found)
 
     def verify(self, candidate):
-        (rows, cols, circles, exactly, blank_strip), found = candidate
-        why = hybrid.why_not_hybrid(found, rows, cols, circles, blank_strip)
+        (rows, cols, circles, exactly, blank_strip, at_least), found = candidate
+        why = hybrid.why_not_hybrid(
+            found, rows, cols, circles, blank_strip, at_least
+        )
         if why:
             return Verdict(False, why)
         if exactly and not exactly.on_board(rows, cols):
@@ -182,7 +184,7 @@ class HybridFinder:
         return Verdict(True)
 
     def record(self, candidate):
-        (rows, cols, circles, exactly, blank_strip), found = candidate
+        (rows, cols, circles, exactly, blank_strip, _), found = candidate
         return {
             # The plain finder's record of the network: the board, the
             # piece-count condition, the edge rows and the outside numbers.
@@ -265,7 +267,7 @@ def classify(conditions, engine, timeout, workers):
     )
     lines = [f"{status}: {SAID[status]}"]
     if found is not None:
-        rows, cols, circles, _, blank_strip = conditions
+        rows, cols, circles, _, blank_strip, _ = conditions
         lines += hybrid.drawing(found, rows, cols, circles, blank_strip)
     return lines
 
@@ -290,7 +292,8 @@ def write_pictures(out, blank_strip=False, seed=None, png=None):
     drawn = {}
     for s, record in examples:
         try:
-            (rows, cols, circles, _, own), found = finder.candidate_from_record(record)
+            conditions, found = finder.candidate_from_record(record)
+            rows, cols, circles, _, own, _ = conditions
             drawn[s] = hybrid_render.Picture(
                 found, rows, cols, circles, blank_strip or own
             ).image
