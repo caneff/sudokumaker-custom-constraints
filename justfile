@@ -88,7 +88,9 @@ test:
     # galaxy-copycat human solver about 1.5 s; ubahn's brute-force agreement
     # about 28 s (one-worker solves that list a 4x4 and a 3x4 space under
     # both connectivity encodings, and the hybrid's whole-4x4 counts, #782,
-    # about 6 s of it), its hunt test about 5 s, its Penpa+ encoder
+    # about 6 s of it), its hunt test about 5 s, the hybrid's CP-SAT engine
+    # against those counts about 15 s and its finder's CLI about 25 s (#783,
+    # one-worker solves; some 40 short subprocess starts), its Penpa+ encoder
     # test (#774) about 6 s, its PySAT agreement (#776) about 6 s and its
     # baseline-measurement test (#777) about 4 s;
     # counting_shaded is the one

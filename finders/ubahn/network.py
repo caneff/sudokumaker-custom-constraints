@@ -147,6 +147,18 @@ def drawing(network, rows, cols):
     ]
 
 
+def from_drawing(lines):
+    """The network a `drawing` shows."""
+    arms_of = {char: cell_arms for cell_arms, char in DRAWN.items()}
+    edges = set()
+    for r, line in enumerate(lines):
+        for c, char in enumerate(line):
+            _, east, south, _ = arm_edges((r, c))
+            _, has_east, has_south, _ = arms_of[char]
+            edges |= {e for e, has in ((east, has_east), (south, has_south)) if has}
+    return frozenset(edges)
+
+
 class Exactly(NamedTuple):
     """The condition "exactly `count` cells of `kind` in row or column
     `index`": `axis` is "r" or "c", `index` counts from 0."""

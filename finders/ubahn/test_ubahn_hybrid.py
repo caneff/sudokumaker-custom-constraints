@@ -97,16 +97,7 @@ def cells(*names):
     return [hybrid.parse_cell(name) for name in names]
 
 
-def from_drawing(lines):
-    """The network a drawing of box characters shows."""
-    arms_of = {char: arms for arms, char in network.DRAWN.items()}
-    edges = set()
-    for r, line in enumerate(lines):
-        for c, char in enumerate(line):
-            _, east, south, _ = network.arm_edges((r, c))
-            _, has_east, has_south, _ = arms_of[char]
-            edges |= {e for e, has in ((east, has_east), (south, has_south)) if has}
-    return frozenset(edges)
+from_drawing = network.from_drawing
 
 
 def value_rows(net, rows, cols, blank_strip=False):

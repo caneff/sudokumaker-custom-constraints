@@ -16,6 +16,7 @@ Rules as Chris ruled them: spec #781.
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import network
@@ -35,6 +36,48 @@ PIECE_VALUE = {
 def strips(blank_strip=False):
     """How many strips of number cells each side has."""
     return 5 if blank_strip else 4
+
+
+class Conditions(NamedTuple):
+    """What a hybrid grid is asked to meet: the board, the circled cells,
+    the piece-count condition (a `network.Exactly`, or None) and whether the
+    blank strip is on."""
+
+    rows: int
+    cols: int
+    circles: frozenset = frozenset()
+    exactly: network.Exactly | None = None
+    blank_strip: bool = False
+
+
+class Sampled(NamedTuple):
+    """An engine's grid for a seed: `status` is "found" with the network, or
+    "infeasible" (no grid meets the conditions) or "timeout" with None."""
+
+    status: str
+    network: frozenset | None
+
+
+class Classified(NamedTuple):
+    """An engine's classification of a set of conditions, in the uniqueness
+    check's words: "infeasible" for no grid, "unique" for exactly one,
+    "not_unique" for more, "timeout" when the time limit was reached.
+    `network` is the first grid found, or None when there is none."""
+
+    status: str
+    network: frozenset | None
+
+
+def number_cells(rows, cols, blank_strip=False):
+    """{number cell: (the kind it counts, the grid cells it counts over)},
+    every row's then every column's, strip by strip."""
+    lines = {}
+    for k in range(1, strips(blank_strip) + 1):
+        for r in range(rows):
+            lines[r, -k] = (k - 1, [(r, c) for c in range(cols)])
+        for c in range(cols):
+            lines[-k, c] = (k - 1, [(r, c) for r in range(rows)])
+    return lines
 
 
 def values(net, rows, cols, blank_strip=False):

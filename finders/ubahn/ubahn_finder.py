@@ -39,8 +39,6 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-from ortools.sat.python import cp_model
-
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
@@ -111,27 +109,12 @@ class UbahnFinder:
         """One network from the model, steered by `rng`; an `Empty` when
         the solve timed out or the condition has no network."""
         built = model.build(self.rows, self.cols, "flow", exactly=self.exactly)
-        # The seed picks which edges the search decides first and which way:
-        # left to itself the solver returns the same dull network every time.
-        order = list(built.edge.values())
-        rng.shuffle(order)
-        built.m.add_decision_strategy(
-            [var if rng.random() < 0.5 else var.Not() for var in order],
-            cp_model.CHOOSE_FIRST,
-            cp_model.SELECT_MAX_VALUE,
-        )
-        solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = self.timeout
-        solver.parameters.num_workers = 1
-        solver.parameters.search_branching = cp_model.FIXED_SEARCH
-        status = solver.Solve(built.m)
-        if status == cp_model.UNKNOWN:
+        status, found = model.sample(built, rng, time_limit=self.timeout)
+        if status == "timeout":
             return Empty("timeout sampling a network")
-        if status == cp_model.INFEASIBLE:
+        if status == "infeasible":
             return Empty("infeasible: no network meets the condition")
-        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            raise RuntimeError(solver.StatusName(status))
-        return frozenset(e for e, var in built.edge.items() if solver.Value(var))
+        return found
 
     def prove(self, found):
         """Whether the network's full set of outside numbers has no other

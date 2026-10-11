@@ -123,6 +123,70 @@ Worker's choices, none a ruling:
 - **`failures` lists every broken rule**, and `why_not_hybrid` is its first.
   The tests need the whole list to show a grid breaks one rule only.
 
+## Hybrid: the CP-SAT finder (#783)
+
+`hybrid_model.py` is the plain flow model with the hybrid's rules on top, and
+`hybrid_finder.py` puts it on the hunt protocol and adds `classify`. One
+worker, this box, 2026-10-11.
+
+- **It matches the 4x4 answers.** Listed by solve, forbid, re-solve until
+  infeasible, the model gives the brute force's grids edge for edge: the 18
+  with no condition, the 8 with the blank strip, the 8 with 2 crosses in r2,
+  and each of the seven circle conditions above, whose `classify` words are
+  the table's. `test_ubahn_hybrid_model.py`, about 15 s.
+- **No tiny board has a circle in an odd group.** By brute force, no valid
+  grid of 3x3, 3x4, 3x5, 3x6, 4x4 or 4x5 has an odd cell whose value is its
+  region's size (0, 4, 0, 49, 18 and 124 valid grids; 4x5 takes 78 s). So
+  that case is tested on 5x5: with r1c2 circled the model has exactly one
+  grid, checked by hand, where r1c2 is a branch in a bent group of three.
+  The model alone, not a second program, says it is the only one.
+- **5x5 has 31 valid grids** by the model's own listing, run to infeasible
+  (19 s); no enumeration confirms the count.
+- **The circle rule past any enumeration.** A grid the model found is pinned
+  in the model edge by edge, and the model must then take a circle exactly
+  where the rule reader says the cell's value is its region's size. Run by
+  hand over every board cell of 12 grids at 6x6, 10 at 7x7 and 8 at 5x8: no
+  disagreement. The 7x7 and 5x8 grids held 4 circles in odd groups, 2 on grid
+  cells and 2 on number cells, all of value 3. The test keeps a smaller run (3 grids at
+  6x6). This is a sample of grids, not a proof of the encoding.
+- **The spec's example condition has no grid, by this model.** 7x7 with
+  `r6:straight r6:turn r7:straight r7:turn` circled is infeasible, in half a
+  second by `classify` and about 2 s per seed in a hunt, and so is the three
+  without `r7:turn`. Every single circle, every
+  pair and the other three triples have more than one grid. One engine says
+  so; nothing enumerates a 7x7. The circle positions were read from a picture
+  (spec #781, Further Notes), so the reading may be what is wrong. One fact by
+  hand: a bottom row's turns come in pairs, so `r7:turn` is always even.
+- **First timings, a handful of seeds, not a measurement.** A grid for a
+  seed with no condition: about 0.2 s at 6x6 and 0.35 s at 7x7, process
+  start included, 4 seeds each, all found.
+
+Worker's choices, none a ruling:
+
+- **The board's only symmetry is the reflection in the main diagonal.** The
+  number cells sit above and on the left, so a left-right mirror image moves
+  the grid away from its row numbers: of the 18 grids at 4x4, 8 have a mirror
+  image that is not valid, and every transpose is valid. The hunt dedupes
+  under that reflection when the board is square, every circle's image is
+  circled and there is no piece-count condition; otherwise under nothing. A
+  piece-count condition names a row or a column, which the reflection swaps.
+  The plain finder still dedupes under D4 whatever its condition (below).
+- **A circle is one encoding for both parities**: a membership boolean per
+  cell within reach, closed under same-parity neighbours, connected by a flow
+  from the circled cell, as many as the cell's value. The chocolate and
+  banana rules shape the region, so a circle in a chocolate needs no list of
+  rectangles and a circle in a banana no list of polyominoes.
+- **A hybrid seed is one solve, with no uniqueness proof.** The finder
+  returns valid grids; whether a set of conditions is a puzzle is `classify`'s
+  question.
+- **`classify` gives each of its two solves the whole time limit**, as the
+  plain uniqueness check does, so it can take twice `--timeout`. A limit of
+  zero or less is `timeout` before any solve.
+- **`--circles` takes one quoted list**, in `brute.py`'s cell names.
+- **`model.py` gained `sample` and `network_uniqueness`**, the plain finder's
+  own steering and uniqueness tail moved there unchanged so the hybrid calls
+  them; `network.from_drawing` moved out of the rule reader's test.
+
 ## Decisions
 
 - **Root.** The first used cell in reading order, stated as n² / 2
