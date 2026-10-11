@@ -7,6 +7,7 @@
 
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -108,7 +109,7 @@ def a_failing_suite_stops_the_run():
                 "examples/bb/third.test.mjs": "console.log('third ran')\n",
             },
         )
-        r, ran = run_stubbed(["bash", RUNNER], root=tree, real=("node",))
+        r, _ = run_stubbed(["bash", RUNNER], root=tree, real=("node",))
         out = r.stdout.splitlines()
         assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}{r.stderr}"
         assert "PASS node examples/aa/first.test.mjs" in out, r.stdout
@@ -134,7 +135,8 @@ LINT = [
 ]
 
 # What every narrowed run of the fixture keeps: lint and the shared checks.
-ALWAYS = LINT + [
+ALWAYS = [
+    *LINT,
     "uv run examples/_shared/s.test.py",
     "uv run examples/_shared/check_layout.py",
 ]
@@ -212,7 +214,10 @@ NARROWED = [
     (["examples/aa/README.md", "finders/gg/notes.md"], ALWAYS + AA + GG),
     (
         ["examples/bb/new.test.mjs", "finders/gg/test_new.py"],
-        ALWAYS + BB + GG + ["node examples/bb/new.test.mjs", "uv run finders/gg/test_new.py"],
+        ALWAYS
+        + BB
+        + GG
+        + ["node examples/bb/new.test.mjs", "uv run finders/gg/test_new.py"],
     ),
     (["examples/_shared/s.test.py"], ALWAYS),
     (["docs/notes.md", "README.md", "finders/AGENTS.md"], ALWAYS),
@@ -221,14 +226,104 @@ NARROWED = [
 
 # A diff that widens to the whole seam, and the reason the last line gives.
 WIDENED = [
-    (["examples/_shared/lib.py"], "shared example code changed: examples/_shared/lib.py"),
+    (
+        ["examples/_shared/lib.py"],
+        "shared example code changed: examples/_shared/lib.py",
+    ),
     (["finders/hunt/driver.py"], "finders/hunt/ changed: finders/hunt/driver.py"),
     (["justfile"], "every suite depends on justfile"),
     (["uv.lock"], "every suite depends on uv.lock"),
     (["tests/all.sh"], "every suite depends on tests/all.sh"),
+    (["tests/suite-edges.txt"], "every suite depends on tests/suite-edges.txt"),
     (["docs/research/data.json"], "no rule places docs/research/data.json"),
     (["finders/top.py", "finders/ff/x.py"], "no rule places finders/top.py"),
 ]
+
+
+EDGES = "tests/suite-edges.txt"
+
+# Scan hits that are not a read of the other directory, each with its reason.
+NOT_EDGES = {
+    # A rules-text test's list of jargon words the text must not contain.
+    ("examples/dutch-flatmates", "examples/isofill"),
+}
+
+
+def edges(root=ROOT):
+    """The (directory read, unit that reads it) pairs the runner widens by."""
+    lines = (root / EDGES).read_text().splitlines()
+    return {tuple(ln.split()[:2]) for ln in lines if ln.strip() and ln[0] != "#"}
+
+
+def cross_unit_reads():
+    """(unit, other unit) for every tracked code line under an example or a
+    finder that names another one's directory: a relative or repo path into
+    it, or its bare name as a string. Comment lines are skipped, `#include`
+    directives are not. finders/hunt/ and examples/_shared/ are not targets:
+    a change to either runs the whole seam."""
+    tracked = subprocess.run(
+        ["git", "ls-files", "examples", "finders"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    units = sorted({"/".join(f.split("/")[:2]) for f in tracked if f.count("/") >= 2})
+    targets = {
+        u: re.compile(
+            r"(\.\./|examples/|finders/)%s/|[\"']%s[\"']"
+            % ((re.escape(u.split("/")[1]),) * 2)
+        )
+        for u in units
+        if u not in ("examples/_shared", "finders/hunt")
+    }
+    found = set()
+    for f in tracked:
+        unit = "/".join(f.split("/")[:2])
+        if unit not in units or unit == "examples/_shared":
+            continue
+        if not f.endswith((".py", ".mjs", ".js")):
+            continue
+        for line in (ROOT / f).read_text(encoding="utf-8").splitlines():
+            text = line.strip()
+            if text.startswith(("#", "//")) and "#include" not in text:
+                continue
+            found |= {
+                (unit, u) for u, rx in targets.items() if u != unit and rx.search(line)
+            }
+    return found
+
+
+def every_cross_unit_read_is_an_edge():
+    """A suite that reads another example's or finder's files runs when that
+    directory changes: every such read the scan finds is listed in
+    tests/suite-edges.txt, and every listed edge names two directories."""
+    listed = edges()
+    stale = sorted(d for edge in listed for d in edge if not (ROOT / d).is_dir())
+    assert not stale, f"{EDGES} names directories that do not exist: {stale}"
+    unlisted = sorted(
+        (read, unit)
+        for unit, read in cross_unit_reads() - NOT_EDGES
+        if (read, unit) not in listed
+    )
+    assert not unlisted, (
+        f"a unit reads another's directory with no line in {EDGES} "
+        f"(as '<directory read> <unit>'), or in NOT_EDGES here: {unlisted}"
+    )
+
+
+def agents_md_names_both_commands():
+    """AGENTS.md § End-to-end seam keeps the Seam and Blind-to lines other
+    skills read, and names the narrowed command beside them."""
+    text = (ROOT / "AGENTS.md").read_text()
+    section = text.split("## End-to-end seam\n", 1)[1].split("\n## ", 1)[0]
+    lines = section.splitlines()
+    assert "- **Seam**: `just check-full`" in lines, section
+    assert any(ln.startswith("- **Blind to**: the app") for ln in lines), section
+    assert any(
+        ln.startswith("- **Narrowed**: `bash tests/all.sh --changed origin/main`")
+        for ln in lines
+    ), section
 
 
 def git(tree, *args):
@@ -236,7 +331,9 @@ def git(tree, *args):
     for who in ("AUTHOR", "COMMITTER"):
         env[f"GIT_{who}_NAME"] = "fixture"
         env[f"GIT_{who}_EMAIL"] = "fixture@example.invalid"
-    r = subprocess.run(["git", *args], cwd=tree, env=env, capture_output=True, text=True)
+    r = subprocess.run(
+        ["git", *args], cwd=tree, env=env, capture_output=True, text=True
+    )
     assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
     return r.stdout.strip()
 
@@ -282,11 +379,23 @@ def a_diff_selects_its_suites():
             assert ran == listing("--changed", "base", root=tree), changed
             return r.stdout.splitlines()[-1]
 
+        (tree / EDGES).write_text("# a comment\nexamples/aa finders/gg  why\n")
+        git(tree, "add", "-A")
+        git(tree, "commit", "-q", "-m", "an edge")
+        git(tree, "tag", "-f", "base")
+        with_diff(tree, ["examples/aa/Component.js"])
+        got = listing("--changed", "base", root=tree)
+        assert sorted(got) == sorted(ALWAYS + AA + GG), f"an edge selects {got}"
+        with_diff(tree, ["finders/gg/x.py"])
+        got = listing("--changed", "base", root=tree)
+        assert sorted(got) == sorted(ALWAYS + GG), f"an edge runs backwards: {got}"
+
         m = len(WHOLE)
-        assert last_line(["finders/ff/x.py", "examples/aa/y.js"]) == (
-            f"{len(ALWAYS + AA + FF)} of {m} suites passed "
-            "(narrowed: examples/aa finders/ff)"
-        )
+        got = last_line(["finders/ff/x.py", "examples/bb/y.js"])
+        assert got == (
+            f"{len(ALWAYS + BB + FF)} of {m} suites passed "
+            "(narrowed: examples/bb finders/ff)"
+        ), got
         assert last_line(["docs/notes.md"]) == (
             f"{len(ALWAYS)} of {m} suites passed (narrowed: no example or finder touched)"
         )
@@ -308,6 +417,8 @@ if __name__ == "__main__":
     n = full_listing_is_check_full()
     a_diff_selects_its_suites()
     the_recipes_call_the_runner()
+    every_cross_unit_read_is_an_edge()
+    agents_md_names_both_commands()
     a_run_covers_its_listing()
     a_failing_suite_stops_the_run()
     print(f"seam_runner.test.py: {n} suites: ok")

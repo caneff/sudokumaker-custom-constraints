@@ -14,12 +14,14 @@
 # affect, by directory and not by import scan:
 #   - lint and the shared checks under examples/_shared/, always;
 #   - every suite of each examples/<name>/ and finders/<name>/ the diff
-#     touches: its tests, its heavy tests and its soundness harness.
+#     touches: its tests, its heavy tests and its soundness harness;
+#   - every suite of a unit that tests/suite-edges.txt says reads a touched
+#     directory.
 # It widens to the whole seam when the diff touches what every suite depends
 # on (`place` below names those paths) or a path no rule places. A Markdown
 # file outside an example or a finder selects nothing more. The narrowing can
-# run too little only across an edge this file cannot see; the controller
-# re-runs the whole seam on the merged result before every merge.
+# run too little only across an edge tests/suite-edges.txt does not list; the
+# controller re-runs the whole seam on the merged result before every merge.
 #
 # `--tier <tier>` runs one tier of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
@@ -128,7 +130,7 @@ place() { # <file>
   IFS=/ read -r top name rest <<<"$1"
   case $1 in
     *[[:space:]]*) echo "whole no rule places $1" ;;
-    tests/all.sh | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/*)
+    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/*)
       echo "whole every suite depends on $1" ;;
     examples/_shared/*)
       # A shared test is one of the shared checks, which always run; any other
@@ -145,10 +147,12 @@ place() { # <file>
   esac
 }
 
-# Reads the diff `<base>...HEAD` and sets `units` (the touched units, sorted)
-# or `widened` (why the whole seam runs).
+# Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
+# units that read them, sorted) or `widened` (why the whole seam runs).
 scope() { # <base>
-  local files file kind what
+  local files file kind what read reader touched
+  [ -r tests/suite-edges.txt ] || {
+    echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
   files=$(git diff --name-only --no-renames "$1...HEAD") || {
     echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
   units="" widened=""
@@ -160,6 +164,13 @@ scope() { # <base>
       unit) listed "$units" "$what" || units="$units $what" ;;
     esac
   done <<<"$files"
+  # One step only: a reader's own files did not change, so what reads the
+  # reader is not affected.
+  touched=$units
+  while read -r read reader _; do
+    case $read in "" | "#"*) continue ;; esac
+    listed "$touched" "$read" && ! listed "$units" "$reader" && units="$units $reader"
+  done <tests/suite-edges.txt
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
