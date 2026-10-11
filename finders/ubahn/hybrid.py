@@ -153,6 +153,17 @@ def regions(board):
     return found
 
 
+def valid_circles(board):
+    """The cells a circle could sit on, sorted: every cell, grid cell or
+    number cell, whose value is the number of cells of its region."""
+    return sorted(
+        cell
+        for region in regions(board)
+        for cell in region
+        if board[cell] == len(region)
+    )
+
+
 def _box(region):
     """(top, left, height, width) of the smallest box that holds the region."""
     top, left = (min(cell[i] for cell in region) for i in (0, 1))
@@ -206,17 +217,27 @@ def why_not_hybrid(net, rows, cols, circles=(), blank_strip=False):
     return next(iter(failures(net, rows, cols, circles, blank_strip)), "")
 
 
-def _icon(cell):
-    """What the icon cell at `cell` shows, or "" when it is none: the head
-    of a strip, in the strip's last row or column before the grid."""
+def icon_arms(cell):
+    """The (north, east, south, west) arms of the piece the icon cell at
+    `cell` shows, or None when it is no icon cell: the head of a strip, in
+    the strip's last row or column before the grid. The blank strip's icon
+    has no arm."""
     r, c = cell
-    if -1 not in (r, c):
-        return ""
+    if -1 not in (r, c) or max(r, c) >= 0:
+        return None
     name = network.KIND_NAMES[-min(r, c) - 1]
     if name == "blank":
-        return penpa.BLANK_ICON
+        return (0, 0, 0, 0)
     right, down, left, up = penpa.ICONS[name][0 if c == -1 else 1]
-    return network.DRAWN[up, right, down, left]
+    return (up, right, down, left)
+
+
+def _icon(cell):
+    """What the icon cell at `cell` shows, or "" when it is none."""
+    cell_arms = icon_arms(cell)
+    if cell_arms is None:
+        return ""
+    return network.DRAWN[cell_arms] if any(cell_arms) else penpa.BLANK_ICON
 
 
 def drawing(net, rows, cols, circles=(), blank_strip=False):
