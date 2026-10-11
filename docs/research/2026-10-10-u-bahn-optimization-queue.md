@@ -21,7 +21,8 @@ measure, because it decides which half of this list matters.
   are unique under full outside numbers, time per sample, time per uniqueness
   proof, and where the proof time goes (connectivity or counts). Rejections
   counted by cause, as the lessons file asks. Measured in "Baseline at 6x6
-  and 8x8" below (#777).
+  and 8x8" below (#777), except where the proof time goes: connectivity
+  against counts is not split out there.
 
 ## 1. The uniqueness proof
 
@@ -318,86 +319,84 @@ without new puzzles. Count all the networks of 8x8 seed 0 and of the three
 ## Baseline at 6x6 and 8x8 (2026-10-11, #777)
 
 **On the finder's own proposal step, with no condition: 79% of 6x6 proposals
-and 46% of 8x8 proposals are unique under their full outside numbers; a
-proposal costs about 46 ms at 6x6 and 142 ms at 8x8, of which the uniqueness
-proof is about a fifth.** Sampling the network is the larger share, not the
-proof. Every number below is a median of 500 seeds per cell unless it says
-otherwise; no cell is a hand-picked puzzle.
+and 46% of 8x8 proposals are unique under their full outside numbers. A
+proposal costs about 47 ms at 6x6 and 144 ms at 8x8 on flow, and the
+uniqueness proof is about a fifth of that.** Sampling the network is the
+larger share, not the proof. 500 seeds per cell, none timed out, no cell is a
+hand-picked puzzle.
 
-What ran: `measure_baseline.py` at `d021f4c`, which calls the finder's own
+What ran: `measure_baseline.py` at `9773868`, which calls the finder's own
 `sample` and `prove` (the two halves of `propose`, split for this ticket) per
-seed on one CP-SAT worker, so a seed gives the same network the hunt's seed
-would. One core, box load about 0.5 to 1.0, one hunt at a time, in this order:
+seed on one CP-SAT worker, so a seed gives the network the hunt's same seed
+would. Sampling is always flow, as shipped; `--connectivity` picks the
+encoding of the uniqueness proof only, so the `tree` rows prove the very same
+networks. One core, box load about 1, one hunt at a time, in this order:
 
-    job-run --name ubahn-777-baseline -- bash -c '
+    job-run --name ubahn-777-baseline-2 -- bash -c '
       for size in 6 8; do for conn in flow tree; do
         uv run finders/ubahn/measure_baseline.py --rows $size --cols $size \
           --connectivity $conn --seeds 0:500 --timeout 60
       done; done'
 
-Wall clock 14 min, of which 8 min was the eight 60 s sampling timeouts on
-8x8 tree. A rerun of one cell is its own line (`--rows 6 --cols 6
---connectivity flow --seeds 0:500`, about 25 s); the per-seed progress goes
-to stderr.
+Wall clock 3 min 19 s. One cell reruns alone as
+`uv run finders/ubahn/measure_baseline.py --rows 6 --cols 6 --connectivity
+flow --seeds 0:500` (about 25 s); the per-seed lines go to stderr.
 
-How to read the table:
+How to read the tables:
 
-- **Share unique** is unique over seeds whose proof reached a verdict.
-  Timeouts are left out and counted, never read as unique or not.
-- **Sampling** is the solve that draws the network, `model.build` included;
-  **proof** is `model.uniqueness` on that network's full outside numbers,
-  build included. Both run in the same encoding, so the `tree` rows sample
-  from the tree model too. The shipped finder samples with flow and proves
-  with flow, so the `flow` rows are the baseline; the `tree` rows are the
-  second encoding's cost on the identical seeds.
-- **Duplicate** counts a unique network whose grid of kinds repeats an
-  earlier unique one under the board's symmetries (D4 here). 0 of 396 and 0
-  of 230: no repeats in these 500 seeds on either board, so dedupe cost
-  nothing here.
+- **Unique** is unique over the seeds whose proof reached a verdict; a seed
+  the time limit stopped is counted and left out of the share and the time
+  columns, never read as unique or not.
+- **Sample** is the solve that draws the network, `model.build` included.
+  **Proof** is `model.uniqueness` on that network's full outside numbers,
+  build included. **Proposal** is the two together. **Proof share** is the
+  proof's median over the proposal's median.
+- **Duplicate** is a unique network whose grid of kinds repeats an earlier
+  unique one under the board's symmetries, keyed as the hunt driver keys it.
+  `verify` is not run, so the driver's "rejected" cause has no row here.
 
-| Board | Encoding | Seeds | Decided | Unique | Not unique | Timeout (capped) |
-| --- | --- | --- | --- | --- | --- | --- |
-| 6x6 | flow | 500 | 500 | 396 (79%) | 104 | 0 |
-| 6x6 | tree | 500 | 500 | 396 (79%) | 104 | 0 |
-| 8x8 | flow | 500 | 500 | 230 (46%) | 270 | 0 |
-| 8x8 | tree | 500 | 492 | 228 (46%) | 264 | 8, all sampling (capped at 60 s) |
+| Board | Proof encoding | Seeds | Decided | Unique | Not unique | Duplicate | Timeout |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 6x6 | flow | 500 | 500 | 396 (79%) | 104 | 0 | 0 |
+| 6x6 | tree | 500 | 500 | 396 (79%) | 104 | 0 | 0 |
+| 8x8 | flow | 500 | 500 | 230 (46%) | 270 | 0 | 0 |
+| 8x8 | tree | 500 | 500 | 230 (46%) | 270 | 0 | 0 |
 
-| Board | Encoding | Sample median ms | Proof median ms | Proposal median ms | Proof share | Slowest sample ms |
-| --- | --- | --- | --- | --- | --- | --- |
-| 6x6 | flow | 34.9 | 10.3 | 45.6 | 23% | 47 |
-| 6x6 | tree | 27.5 | 11.9 | 40.0 | 30% | 24,486 |
-| 8x8 | flow | 109.0 | 31.8 | 142.3 | 22% | 145 |
-| 8x8 | tree | 75.9 | 36.3 | 114.9 | 32% | 30,298 (and 8 at the 60 s cap) |
+| Board | Proof encoding | Sample median ms | Proof median ms | Proof 90th ms | Proof max ms | Proposal median ms | Proof share |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 6x6 | flow | 35.7 | 10.8 | 15.3 | 32.0 | 46.9 | 23% |
+| 6x6 | tree | 35.6 | 12.2 | 18.2 | 36.5 | 48.4 | 25% |
+| 8x8 | flow | 110.8 | 32.3 | 52.6 | 326.4 | 144.1 | 22% |
+| 8x8 | tree | 110.8 | 37.2 | 56.4 | 157.5 | 148.3 | 25% |
 
-- **Flow and tree give the same rates.** 396 and 396 unique at 6x6; at 8x8
-  230 and 228 unique, 270 and 264 not unique, the 8 tree seeds that timed
-  out in sampling making up the difference. The seeds are the same but the
-  two encodings draw different networks from one seed, so this compares
-  rates, not networks.
-- **Tree is quicker at the median and has a heavy tail.** Its median sample
-  is 21% (6x6) and 30% (8x8) under flow's, but one 6x6 sample took 24.5 s and
-  8 of 500 at 8x8 hit the 60 s cap. Flow's slowest sample is 47 and 145 ms.
-  Its proof is 15% to 14% slower than flow's, with a worst case under 160 ms,
-  so the tail is the sampling solve, not the proof.
-- **The proof is cheap and its time barely varies:** 90th percentile 14.7 ms
-  (6x6) and 51.2 ms (8x8) on flow, worst 36 and 326 ms. A not-unique
-  seed's check stops at its second network, and still costs more than a
-  unique one's proof: median 14.0 vs 9.5 ms (6x6 flow), 35.7 vs 26.6 ms
-  (8x8 flow), read off the per-seed progress lines.
+- **Flow and tree agree on every seed.** They prove the same 1000 networks
+  and give the same cause on all of them, so the equal counts are by
+  construction; what differs is cost. Tree's proof is 13% (6x6) and 15% (8x8)
+  slower at the median and has no worse a tail than flow's.
+- **Sampling is about 76% to 77% of a proposal's median time.** A speedup of
+  the proof alone is worth at most a fifth of a no-condition hunt's
+  per-proposal cost.
+- **A not-unique seed's check stops at its second network and still costs
+  more than a unique one's proof:** median 14.6 vs 9.9 ms (6x6 flow), 36.4
+  vs 27.3 ms (8x8 flow), read off the per-seed progress lines.
+- **No repeats in these 500 seeds** on either board: dedupe cost nothing.
+- **An earlier run sampled with tree as well** (`d021f4c`, 14 min wall clock,
+  the same 500 seeds per cell, replaced by the run above). Tree sampling had
+  medians of 27.5 ms (6x6) and 75.9 ms (8x8), under flow's, and a heavy
+  tail: one 6x6 sample took 24.5 s and 8 of the 500 at 8x8 reached the 60 s
+  limit, which is 8 of that run's 14 minutes. It drew the same networks as
+  flow, so the tail is the tree sampler's cost, not a different draw. The
+  shipped finder samples with flow, so it never meets it.
 - **Against the hand-sampled fixture** (the "First measurements" section: 3
   of 5 unique at 6x6, 2 of 5 at 8x8; flow proofs 9 to 15 ms and 31 to 81
-  ms): the finder's own draws are unique more often (79% and 46%) than that
-  fixture's dense samples, and the proof times match the fixture's range.
-  The fixture's 5 per size cannot tell 3 of 5 from 79%; this run's counts
-  can.
+  ms): the finder's own draws are unique more often than the fixture's dense
+  samples (79% and 46%), and the proof times sit in the fixture's range. The
+  fixture's 5 per size cannot tell 3 of 5 from 79%; 500 can.
 - **What this decides for the queue.** At 6x6 four proposals in five need no
-  stripping to be a puzzle, and a proposal is 46 ms, so the full-clue check
-  is not the bottleneck at either size; at 8x8 more than half the proposals
-  are not unique and pay a proof for it. Sampling is about 77% of a
-  proposal's median time on flow, so a speedup of the proof alone is worth at most a
-  fifth of a no-condition hunt's per-proposal cost. Hunts under a condition
-  (`--exactly`) and stripping are not measured here: this is the
-  no-condition baseline the ticket asked for.
-- **Not measured:** 10x10 (the ticket asked for 6x6 and 8x8); any condition;
-  more than one worker; the time a sample spends in `model.build` against the
-  solve.
+  stripping to be a puzzle and a proposal is under 50 ms, so the full-clue
+  check is not the bottleneck at either size; at 8x8 more than half the
+  proposals are not unique and pay a proof for it. Hunts under a condition
+  (`--exactly`) and stripping are not measured here.
+- **Not measured:** 10x10; any condition; more than one worker; where the
+  proof time goes (connectivity against the counts); the time a sample
+  spends in `model.build` against its solve.
