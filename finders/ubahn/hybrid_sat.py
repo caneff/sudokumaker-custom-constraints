@@ -214,8 +214,6 @@ def listing(conditions, connectivity, *, cap, time_limit, rng=None):
     limit of zero or less is reached before any solve. `rng` steers the
     search: it picks which way each edge is tried first, so a seed gives the
     same grids every run and another seed other ones."""
-    if time_limit <= 0:
-        return Listing((), True, 0)
     deadline = time.monotonic() + time_limit
     clauses, edge, blank = rules(conditions)
     grids, cuts = [], 0

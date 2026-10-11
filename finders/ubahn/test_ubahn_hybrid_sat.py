@@ -247,7 +247,6 @@ for engine in ENGINES:
     )
 
 
-
 def takes(conditions, net):
     """Whether the engines' rules for these conditions allow this grid."""
     clauses, edge, _ = hybrid_sat.rules(conditions)
