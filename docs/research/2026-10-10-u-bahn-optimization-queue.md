@@ -372,7 +372,8 @@ How to read the tables:
 - **Flow and tree agree on every seed.** They prove the same 1000 networks
   and give the same cause on all of them, so the equal counts are by
   construction; what differs is cost. Tree's proof is 13% (6x6) and 15% (8x8)
-  slower at the median and has no worse a tail than flow's.
+  slower at the median and 90th percentile; its worst proof is 36.5 vs 32.0
+  ms at 6x6 and 157.5 vs 326.4 ms at 8x8.
 - **Sampling is about 76% to 77% of a proposal's median time.** A speedup of
   the proof alone is worth at most a fifth of a no-condition hunt's
   per-proposal cost.
