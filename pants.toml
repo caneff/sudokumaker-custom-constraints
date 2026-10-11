@@ -22,6 +22,7 @@ root_patterns = [
 interpreter_constraints = [">=3.11,<3.14"]
 
 [python-infer]
+ambiguity_resolution = "by_source_root"
 unowned_dependency_behavior = "ignore"
 
 [nodejs-infer]
