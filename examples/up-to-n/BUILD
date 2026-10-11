@@ -26,7 +26,7 @@ test_shell_command(
     tools=["uv", "node"],
     workdir="/",
     execution_dependencies=["./build_link.test.py:py", "//:uvproject"],
-    extra_env_vars=["HOME", "UV_PROJECT_ENVIRONMENT"],
+    extra_env_vars=["HOME"],
     timeout=300,
 )
 
@@ -37,6 +37,6 @@ for t in ["end-to-end", "marker-contract", "update-strength"]:
         tools=["node", "uv"],
         workdir="/",
         execution_dependencies=[f"./{t}.test.mjs:js", "//:uvproject"],
-        extra_env_vars=["HOME", "UV_PROJECT_ENVIRONMENT"],
+        extra_env_vars=["HOME"],
         timeout=300,
     )
