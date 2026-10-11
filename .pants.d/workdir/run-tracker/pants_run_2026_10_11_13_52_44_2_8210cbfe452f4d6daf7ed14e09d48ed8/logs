@@ -1,0 +1,194 @@
+13:52:44.01 [ERROR] service failure for <pants.pantsd.service.scheduler_service.SchedulerService object at 0x77e449696e40>.
+13:52:44.01 [INFO] Waiting for ongoing runs to complete before exiting...
+13:52:44.19 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:end-to-end.test`
+13:52:44.19 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_measure`
+13:52:44.19 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_hunt`
+13:52:44.19 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:update-strength.test`
+13:52:44.22 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:update-strength.test` (0.0s)
+13:52:44.22 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:marker-contract.test`
+13:52:44.22 [ERROR] Completed: Test with shell command - examples/up-to-n:update-strength.test (0.2s) - failed (exit code 1).
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'examples/up-to-n/UpToNComponent.js'
+    at readFileSync (node:fs:441:20)
+    at readFile (file:examples/_shared/include.mjs:23:67)
+    at assembleSource (file:examples/_shared/include.mjs:26:10)
+    at read (file:examples/_shared/harness-lib.mjs:84:21)
+    at load (file:examples/_shared/harness-lib.mjs:89:69)
+    at file:examples/up-to-n/update-strength.test.mjs:16:13
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'examples/up-to-n/UpToNComponent.js'
+}
+
+Node.js v24.15.0
+
+
+13:52:44.23 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:end-to-end.test` (0.0s)
+13:52:44.24 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_sat`
+13:52:44.24 [ERROR] Completed: Test with shell command - examples/up-to-n:end-to-end.test (0.2s) - failed (exit code 1).
+error: Failed to spawn: `examples/_shared/link_codec_cli.py`
+  Caused by: No such file or directory (os error 2)
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: uv run examples/_shared/link_codec_cli.py examples/up-to-n/PUZZLE_LINK_4x4.txt
+error: Failed to spawn: `examples/_shared/link_codec_cli.py`
+  Caused by: No such file or directory (os error 2)
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execFileSync (node:child_process:961:15)
+    at decodeLinkFile (file:examples/_shared/bundle-solve-lib.mjs:41:15)
+    at load (file:examples/up-to-n/end-to-end.test.mjs:55:8)
+    at file:examples/up-to-n/end-to-end.test.mjs:82:26
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 2,
+  signal: null,
+  output: [
+    null,
+    '',
+    'error: Failed to spawn: `examples/_shared/link_codec_cli.py`\n' +
+      '  Caused by: No such file or directory (os error 2)\n'
+  ],
+  pid: 47688,
+  stdout: '',
+  stderr: 'error: Failed to spawn: `examples/_shared/link_codec_cli.py`\n' +
+    '  Caused by: No such file or directory (os error 2)\n'
+}
+
+Node.js v24.15.0
+
+
+13:52:44.25 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:marker-contract.test` (0.0s)
+13:52:44.25 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_brute`
+13:52:44.25 [ERROR] Completed: Test with shell command - examples/up-to-n:marker-contract.test (0.2s) - failed (exit code 1).
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'examples/up-to-n/main.js'
+    at readFileSync (node:fs:441:20)
+    at readFile (file:examples/_shared/include.mjs:23:67)
+    at assembleSource (file:examples/_shared/include.mjs:26:10)
+    at file:examples/up-to-n/marker-contract.test.mjs:7:13
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'examples/up-to-n/main.js'
+}
+
+Node.js v24.15.0
+
+
+13:52:46.64 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_hunt` (2.5s)
+13:52:46.64 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:build_link.test`
+13:52:46.64 [ERROR] Completed: Test with shell command - finders/ubahn:test_ubahn_hunt (2.6s) - failed (exit code 1).
+FAIL: a 40-seed hunt exits 0 (stderr: /home/caneff/src/sudokumaker-custom-constraints/.claude/worktrees/spike-pants/.venv/bin/python3: can't open file 'finders/ubahn/ubahn_finder.py': [Errno 2] No such file or directory
+)
+
+Traceback (most recent call last):
+  File "finders/ubahn/test_ubahn_hunt.py", line 110, in <module>
+    examples = read_jsonl(out / "examples.jsonl")
+  File "finders/ubahn/test_ubahn_hunt.py", line 53, in read_jsonl
+    return [json.loads(line) for line in path.read_text().splitlines() if line]
+                                         ~~~~~~~~~~~~~~^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/tmp1fj9dkao/hunt/examples.jsonl'
+
+
+13:52:47.04 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:build_link.test` (0.4s)
+13:52:47.04 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_penpa`
+13:52:47.04 [ERROR] Completed: Test with shell command - examples/up-to-n:build_link.test (3.0s) - failed (exit code 1).
+Traceback (most recent call last):
+  File "examples/up-to-n/build_link.test.py", line 235, in <module>
+    fn()
+    ~~^^
+  File "examples/up-to-n/build_link.test.py", line 101, in test_model_and_validate_agree_on_hand_built_lines
+    js = validate_accepts(cases)
+  File "examples/up-to-n/build_link.test.py", line 82, in validate_accepts
+    res = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+    ...<3 lines>...
+        check=True,
+    )
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['node', '--input-type=module', '-e', '\nimport { makeIo, makePuzzle, installGlobals } from \'./examples/_shared/harness-lib.mjs\'\nconst { load } = makeIo("examples/up-to-n")\nconst mod = load(\'UpToNComponent.js\', [\'setParams\', \'validate\'])\ninstallGlobals(1, 9)\nconst out = [[[3, 1, 4, 2], 4, 4], [[3, 1, 4, 2], 4, 3], [[3, 1, 4, 2], 4, 5], [[3, 1, 4, 2], 3, 0], [[3, 1, 4, 2], 3, 1], [[3, 1, 4, 2], 2, 8], [[3, 1, 4, 2], 2, 7], [[3, 1, 4, 2], 2, 9], [[2, 2, 1, 3], 1, 4], [[2, 2, 1, 3], 1, 3], [[2, 2, 1, 3], 1, 5], [[1, 4, 4, 2], 4, 1], [[1, 4, 4, 2], 4, 0], [[1, 4, 4, 2], 4, 2], [[2, 3, 2, 3], 4, 5], [[2, 3, 2, 3], 4, 10], [[6, 5, 4, 3, 2, 1], 1, 20], [[6, 5, 4, 3, 2, 1], 1, 19], [[6, 5, 4, 3, 2, 1], 1, 21], [[9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 20], [[9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 19], [[9, 8, 1, 2, 3, 4, 5, 6, 7], 3, 21], [[1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 36], [[1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 35], [[1, 2, 3, 4, 5, 6, 7, 8, 9], 9, 37], [[7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 0], [[7, 2, 3, 4, 5, 6, 1, 8, 9], 7, 1], [[3, 1, 2, 4], 2, 4], [[3, 1, 2, 4], 2, 3], [[3, 1, 2, 4], 2, 5], [[4, 1, 6, 2, 5, 3], 2, 11], [[4, 1, 6, 2, 5, 3], 2, 10], [[4, 1, 6, 2, 5, 3], 2, 12], [[9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 12], [[9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 11], [[9, 2, 1, 5, 6, 4, 7, 3, 8], 5, 13]].map(([digits, target, clue]) => {\n  const truth = Object.fromEntries(digits.map((d, i) => [i, d]))\n  const inst = {}\n  mod.setParams(inst, digits.map((_, i) => i), target, clue)\n  return mod.validate(inst, makePuzzle(truth, (c, v) => [v], { kind: \'bare\' }))\n})\nconsole.log(JSON.stringify(out))\n']' returned non-zero exit status 1.
+
+
+13:52:47.10 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_penpa` (0.1s)
+13:52:47.11 [ERROR] Completed: Test with shell command - finders/ubahn:test_penpa (3.1s) - failed (exit code 1).
+Traceback (most recent call last):
+  File "finders/ubahn/test_penpa.py", line 203, in <module>
+    knt = read("publ-knt.txt")
+  File "finders/ubahn/test_penpa.py", line 131, in read
+    return Decoded((FIXTURES / path).read_text().strip())
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'finders/ubahn/fixtures/publ-knt.txt'
+
+
+13:52:47.72 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_sat` (3.5s)
+13:52:47.72 [ERROR] Completed: Test with shell command - finders/ubahn:test_ubahn_sat (3.7s) - failed (exit code 1).
+ok: a fixture entry reads as the loop's own outside numbers, blanks included
+ok: cross, branch, straight, turn land on their own kinds
+ok: 2x2 loop: unique, the loop itself, no cut (got unique, 0 cuts)
+ok: two loops: no dead end, and not a network
+ok: two loops: infeasible, by a cut (got infeasible, 2 cuts)
+ok: no time: timeout (got timeout)
+ok: time runs out before the second solve: timeout, with the loop (got timeout)
+ok: every cell blank: infeasible (got infeasible; CP-SAT says infeasible)
+ok: 3 turns in a row of 2: infeasible (got infeasible; CP-SAT says infeasible)
+ok: fillings: the 2x2 loop is the one filling, in one part
+ok: fillings: the two loops are the one filling, in two parts
+ok: the verdict matches the brute-force count on all 554 sets of outside numbers, each with a brute-force network, 0 cuts in all (first mismatch: [])
+ok: fillings: 2 networks share a set of numbers; a cap of 1 stops at 1 and says so
+ok: one network beside one filling in two parts: counted so, and CP-SAT says unique
+ok: one network beside one filling in two parts: unique, with a cut and a network (got unique, 2 cuts)
+ok: two networks beside two fillings in two parts: counted so, and CP-SAT says not_unique
+ok: two networks beside two fillings in two parts: not_unique, with a cut and a network (got not_unique, 2 cuts)
+
+Traceback (most recent call last):
+  File "finders/ubahn/test_ubahn_sat.py", line 229, in <module>
+    puzzles = time_sat.fixture_puzzles()
+  File "finders/ubahn/time_sat.py", line 53, in fixture_puzzles
+    return json.loads(FIXTURE.read_text())["puzzles"]
+                      ~~~~~~~~~~~~~~~~~^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'finders/ubahn/fixtures/timing-puzzles.json'
+
+
+13:52:49.30 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_measure` (5.1s)
+13:52:49.30 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_measure (5.3s) - succeeded.
+13:53:12.48 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_brute` (28.2s)
+13:53:12.48 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_brute (28.5s) - succeeded.

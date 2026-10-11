@@ -1,0 +1,52 @@
+13:53:43.17 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_sat`
+13:53:43.17 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_ubahn_hunt`
+13:53:43.17 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:marker-contract.test`
+13:53:43.17 [INFO] Starting: Running the `test_shell_command` at `finders/ubahn:test_penpa`
+13:53:43.17 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_brute (0.2s) - succeeded.
+13:53:43.17 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_measure (0.2s) - succeeded.
+13:53:43.20 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:marker-contract.test` (0.0s)
+13:53:43.20 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:update-strength.test`
+13:53:43.20 [INFO] Completed: Test with shell command - examples/up-to-n:marker-contract.test (0.2s) - succeeded.
+13:53:44.16 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:update-strength.test` (1.0s)
+13:53:44.16 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:build_link.test`
+13:53:44.16 [INFO] Completed: Test with shell command - examples/up-to-n:update-strength.test (1.2s) - succeeded.
+13:53:44.85 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:build_link.test` (0.7s)
+13:53:44.85 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:end-to-end.test`
+13:53:44.85 [ERROR] Completed: Test with shell command - examples/up-to-n:build_link.test (1.9s) - failed (exit code 1).
+ok test_model_and_validate_agree_on_hand_built_lines
+
+Traceback (most recent call last):
+  File "examples/up-to-n/build_link.test.py", line 235, in <module>
+    fn()
+    ~~^^
+  File "examples/up-to-n/build_link.test.py", line 200, in test_every_committed_board_is_unique_and_rebuilds_without_a_search
+    assert NoRing(SPEC).rebuild(n, pair=files) + "\n" == link, (
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "examples/_shared/framebuild.py", line 708, in rebuild
+    doc = self.build_doc(board)
+  File "examples/_shared/no_ring.py", line 155, in build_doc
+    grid_backend_constraint(),
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "examples/_shared/no_ring.py", line 29, in grid_backend_constraint
+    title, minify_file(pathlib.Path(__file__).parent / f"{name}.js")
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "examples/_shared/minify.py", line 85, in minify_file
+    path.read_text(), base_dir=path.parent, keep_comments=keep_comments
+    ~~~~~~~~~~~~~~^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/caneff/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'examples/_shared/grid-rowcol.js'
+
+
+13:53:45.49 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_penpa` (2.3s)
+13:53:45.50 [INFO] Completed: Test with shell command - finders/ubahn:test_penpa (2.5s) - succeeded.
+13:53:46.13 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:end-to-end.test` (1.3s)
+13:53:46.13 [INFO] Completed: Test with shell command - examples/up-to-n:end-to-end.test (3.1s) - succeeded.
+13:53:49.05 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_sat` (5.9s)
+13:53:49.05 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_sat (6.1s) - succeeded.
+13:53:50.57 [INFO] Completed: Running the `test_shell_command` at `finders/ubahn:test_ubahn_hunt` (7.4s)
+13:53:50.57 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_hunt (7.6s) - succeeded.

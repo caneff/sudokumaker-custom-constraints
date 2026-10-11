@@ -1,0 +1,11 @@
+13:54:09.71 [INFO] Completed: Test with shell command - finders/ubahn:test_penpa (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_brute (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_hunt (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - examples/up-to-n:marker-contract.test (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_measure (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - finders/ubahn:test_ubahn_sat (0.1s) - succeeded.
+13:54:09.71 [INFO] Completed: Test with shell command - examples/up-to-n:update-strength.test (0.1s) - succeeded.
+13:54:09.72 [INFO] Completed: Test with shell command - examples/up-to-n:end-to-end.test (0.1s) - succeeded.
+13:54:09.74 [INFO] Starting: Running the `test_shell_command` at `examples/up-to-n:build_link.test`
+13:54:11.24 [INFO] Completed: Running the `test_shell_command` at `examples/up-to-n:build_link.test` (1.5s)
+13:54:11.24 [INFO] Completed: Test with shell command - examples/up-to-n:build_link.test (1.6s) - succeeded.

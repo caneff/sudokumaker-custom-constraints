@@ -1,0 +1,284 @@
+13:52:36.01 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/include.mjs:js:
+
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.02 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/golden-runner.mjs:js:
+
+  * child_process
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.02 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/cpsat.py:py:
+
+  * ortools.sat.python.cp_model (line: 27)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.06 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/include.test.mjs:js:
+
+  * assert
+  * child_process
+  * fs
+  * os
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.06 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/harness-lib.test.mjs:js:
+
+  * assert
+  * child_process
+  * fs
+  * os
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.07 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-index.mjs:js:
+
+  * acorn
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.08 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-dom.mjs:js:
+
+  * fs
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.09 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/frame-geometry.test.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.09 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/frame-lines.test.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.10 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-solve-lib.test.mjs:js:
+
+  * assert
+  * child_process
+  * url
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.11 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/cpsat.test.py:py:
+
+  * ortools.sat.python.cp_model (line: 10)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.12 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/frame-rowcol.test.mjs:js:
+
+  * assert
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.12 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/grid-rowcol.test.mjs:js:
+
+  * assert
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.13 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/frame-corners.test.mjs:js:
+
+  * assert
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.14 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/house-gac.test.mjs:js:
+
+  * assert
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.14 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-load.mjs:js:
+
+  * crypto
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.14 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-solve-lib.mjs:js:
+
+  * child_process
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.15 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-session.mjs:js:
+
+  * playwright
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.15 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-load.test.mjs:js:
+
+  * assert
+  * child_process
+  * fs
+  * os
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.16 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/global-backends.test.mjs:js:
+
+  * assert
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.16 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-index.test.mjs:js:
+
+  * assert
+  * fs
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.16 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-strip-lib.test.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.17 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-solve.mjs:js:
+
+  * fs
+  * url
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.17 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-strip.mjs:js:
+
+  * fs
+  * path
+  * playwright
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.19 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/bundle-solve.test.mjs:js:
+
+  * assert
+  * child_process
+  * fs
+  * os
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.19 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-session.test.mjs:js:
+
+  * assert
+  * fs
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.19 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/link_codec.py:py:
+
+  * lzstring.LZString (line: 10)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.19 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/app-solve.mjs:js:
+
+  * fs
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.21 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/frame-probe.mjs:js:
+
+  * fs
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.21 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/line-kind.test.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.27 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/whole-grid-backends.test.mjs:js:
+
+  * assert
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.29 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/recovery-lib.test.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.32 [WARN] Pants cannot infer owners for the following imports in the target examples/_shared/whole-grid-mains.test.mjs:js:
+
+  * assert
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.39 [WARN] Pants cannot infer owners for the following imports in the target examples/up-to-n/marker-contract.test.mjs:js:
+
+  * assert
+  * path
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.45 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/test_render_hook.py:src:
+
+  * PIL.Image (line: 564)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.46 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/test_minimizer.py:src:
+
+  * ortools.sat.python.cp_model (line: 10)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.47 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/render.py:src:
+
+  * PIL.Image (line: 11)
+  * PIL.ImageDraw (line: 11)
+  * PIL.ImageFont (line: 11)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.47 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/driver.py:src:
+
+  * PIL.Image (line: 705)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.47 [WARN] Pants cannot infer owners for the following imports in the target examples/up-to-n/soundness-harness.mjs:js:
+
+  * assert
+
+If you do not expect an import to be inferable, add `// pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.48 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/test_spec_483_e2e.py:src:
+
+  * ortools.sat.python.cp_model (line: 35)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.52 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/test_uniqueness.py:src:
+
+  * ortools.sat.python.cp_model (line: 17)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.52 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/test_watchdog.py:src:
+
+  * ortools.sat.python.cp_model (line: 24)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.52 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/watchdog.py:src:
+
+  * ortools.sat.python.cp_model (line: 11)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.54 [WARN] Pants cannot infer owners for the following imports in the target finders/ubahn/ubahn_finder.py:src:
+
+  * ortools.sat.python.cp_model (line: 42)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.55 [WARN] Pants cannot infer owners for the following imports in the target finders/hunt/uniqueness.py:src:
+
+  * ortools.sat.python.cp_model (line: 10)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.55 [WARN] Pants cannot infer owners for the following imports in the target finders/ubahn/test_ubahn_brute.py:src:
+
+  * ortools.sat.python.cp_model (line: 26)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
+13:52:36.56 [WARN] Pants cannot infer owners for the following imports in the target finders/ubahn/sat_model.py:src:
+
+  * pysat.card.CardEnc (line: 21)
+  * pysat.engines.Propagator (line: 22)
+  * pysat.formula.IDPool (line: 23)
+  * pysat.solvers.Cadical195 (line: 24)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.

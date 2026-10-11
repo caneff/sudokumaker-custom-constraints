@@ -1,5 +1,24 @@
-python_sources(name="py", sources=["*.py"])
-javascript_sources(name="js", sources=["*.mjs", "*.js"])
+python_sources(
+    name="py",
+    sources=["*.py"],
+    overrides={
+        "build_link.test.py": {
+            "dependencies": [":data", "./main.js:js", "./UpToNComponent.js:js", "examples/_shared/harness-lib.mjs:js"],
+        },
+        "build_size.py": {"dependencies": [":data", "./UpToNComponent.js:js"]},
+    },
+)
+javascript_sources(
+    name="js",
+    sources=["*.mjs", "*.js", ".golden/*.js"],
+    overrides={
+        "UpToNComponent.js": {"dependencies": ["examples/_shared/line-kind.js:js"]},  # `// #include`
+        "end-to-end.test.mjs": {"dependencies": [":data", "./main.js:js", "./UpToNComponent.js:js"]},
+        "marker-contract.test.mjs": {"dependencies": ["./main.js:js"]},
+        "update-strength.test.mjs": {"dependencies": ["./UpToNComponent.js:js", "examples/up-to-n/.golden/UpToNComponent.floor.js:../js"]},
+    },
+)
+files(name="data", sources=["*.json", "PUZZLE_LINK*.txt"])
 
 test_shell_command(
     name="build_link.test",

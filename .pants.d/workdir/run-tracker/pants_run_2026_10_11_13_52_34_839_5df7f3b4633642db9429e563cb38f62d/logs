@@ -1,0 +1,5 @@
+13:52:34.85 [WARN] Pants cannot infer owners for the following imports in the target finders/ubahn/model.py:src:
+
+  * ortools.sat.python.cp_model (line: 22)
+
+If you do not expect an import to be inferable, add `# pants: no-infer-dep` to the import line. Otherwise, see https://www.pantsbuild.org/2.33/docs/using-pants/troubleshooting-common-issues#import-errors-and-missing-dependencies for common problems.
