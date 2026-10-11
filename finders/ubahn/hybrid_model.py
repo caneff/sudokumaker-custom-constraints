@@ -10,7 +10,7 @@ makes it.
   is odd when its count is, one XOR over its row or column.
 - **Chocolate.** No 2x2 window holds exactly three even cells, a cell off
   the board (an icon cell, the corner) counting as not even. Three even
-  cells of a window are one group with a notch, and a group with no such
+  cells of a window are one region with a notch, and a region with no such
   window is a rectangle.
 - **Banana.** One clause per rectangle of board cells: all of it odd with
   every bordering cell even is forbidden.

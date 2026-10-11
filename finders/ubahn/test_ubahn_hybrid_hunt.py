@@ -6,9 +6,9 @@ for those conditions, and no two examples the same grid under the symmetry
 those conditions leave. Then `verify DIR` over hand-written records, each a
 grid `test_ubahn_hybrid.py` works out by hand; the `classify` command against
 the decision log's table, § Hybrid; and the flags the finder refuses. Every
-run names `--engine cpsat` but the last, which leaves the flag out and reads
-the default engine off the records. One CP-SAT worker; about fifteen seconds
-in all.
+run that solves names `--engine cpsat` but the last, which leaves the flag
+out and reads the default engine off the records; the refused runs stop
+before any engine is asked. One CP-SAT worker; about twenty seconds in all.
 
     uv run finders/ubahn/test_ubahn_hybrid_hunt.py
 """
@@ -24,7 +24,9 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 import brute
 import hybrid
+import hybrid_finder
 import network
+from dedupe import canonical_key
 from subprocess_env import success_env
 from verified_io import read_verified
 
@@ -98,8 +100,19 @@ def mirrored(net, cols=4):
     )
 
 
-def kinds(net):
-    return network.kind_grid(net, 4, 4)
+def kinds(net, rows=4, cols=4):
+    return network.kind_grid(net, rows, cols)
+
+
+def arms(net, rows=4, cols=4):
+    """The network as a dedupe key holds it: every cell's east arm, row by
+    row, then every cell's south arm."""
+    return tuple(
+        int(((r, c), (r + dr, c + dc)) in net)
+        for dr, dc in ((0, 1), (1, 0))
+        for r in range(rows)
+        for c in range(cols)
+    )
 
 
 def meeting(names, exactly=None):
@@ -152,6 +165,42 @@ def accounted(name, summary, seeds=40):
     )
 
 
+# Two valid 6x6 grids with the same kind in every cell: the branches at r4c4
+# and r5c4 face different ways. A repeat is the same network, so they are
+# two grids to the hunt, and each is one with its own transpose.
+PAIR = [
+    network.from_drawing(rows)
+    for rows in (
+        ["┌┬┬┬┬┐", "├┤├┘├┘", "├┤├┐├┐", "├┴┴┴┴┤", "├──┬┬┤", "└──┴┴┘"],
+        ["┌┬┬┬┬┐", "├┤├┘├┘", "├┤├┐├┐", "├┴┴┤├┤", "├──┤├┤", "└──┴┴┘"],
+    )
+]
+finder = hybrid_finder.HybridFinder(hybrid.Conditions(6, 6))
+pair = [hybrid_finder.Candidate(finder.conditions, net) for net in PAIR]
+check(
+    "6x6: two valid grids share every cell's kind",
+    PAIR[0] != PAIR[1]
+    and kinds(PAIR[0], 6, 6) == kinds(PAIR[1], 6, 6)
+    and all(finder.verify(candidate).ok for candidate in pair),
+)
+
+
+def canonical(candidate):
+    return canonical_key(finder.key(candidate), finder.symmetry)
+
+
+check(
+    "6x6: the hunt keeps them apart, and folds each onto its transpose",
+    canonical(pair[0]) != canonical(pair[1])
+    and all(
+        canonical(candidate)
+        == canonical(
+            hybrid_finder.Candidate(finder.conditions, transposed(candidate.network))
+        )
+        for candidate in pair
+    ),
+)
+
 with tempfile.TemporaryDirectory() as d:
     examples, summary, _, config = hunt(d, "no condition")
     nets = [network_of(ex) for ex in examples]
@@ -161,10 +210,9 @@ with tempfile.TemporaryDirectory() as d:
         all(net in grids for net in nets),
     )
     check(
-        "no condition: a dedupe key is the grid of kinds or its transpose's, "
-        "whichever is less",
+        "no condition: a dedupe key is the network or its transpose, whichever is less",
         all(
-            tuple(ex["__dedupe_key__"]) == min(kinds(net), kinds(transposed(net)))
+            tuple(ex["__dedupe_key__"]) == min(arms(net), arms(transposed(net)))
             for ex, net in zip(examples, nets, strict=True)
         ),
     )
@@ -216,7 +264,7 @@ with tempfile.TemporaryDirectory() as d:
         "r2c2 circled: no example is the transpose of another, and all of "
         "the grids are reached up to it",
         all(transposed(a) != b for a in nets for b in nets if a != b)
-        and {min(kinds(net), kinds(transposed(net))) for net in want}
+        and {min(arms(net), arms(transposed(net))) for net in want}
         == {tuple(ex["__dedupe_key__"]) for ex in examples},
     )
     check(
@@ -241,16 +289,35 @@ with tempfile.TemporaryDirectory() as d:
         len(nets) == len(want) and set(nets) == want,
     )
     check(
-        "r2c4 circled: a dedupe key is the grid of kinds as it stands",
+        "r2c4 circled: a dedupe key is the network as it stands",
         all(
-            tuple(ex["__dedupe_key__"]) == kinds(net)
+            tuple(ex["__dedupe_key__"]) == arms(net)
             for ex, net in zip(examples, nets, strict=True)
         ),
     )
     accounted("r2c4 circled", summary)
 
     # A piece-count condition names a row or a column, which the transpose
-    # swaps: it leaves no symmetry either. Together with circles.
+    # swaps: it leaves no symmetry either. No cross sits on the border, so
+    # "no cross in r1" keeps every grid and its transpose: with no circle to
+    # break the reflection, both must be examples.
+    examples, summary, _, _ = hunt(d, "no cross in r1", "--exactly", "0:cross:r1")
+    nets = [network_of(ex) for ex in examples]
+    check(
+        "no cross in r1: a dedupe key is the network as it stands",
+        nets
+        and all(
+            tuple(ex["__dedupe_key__"]) == arms(net)
+            for ex, net in zip(examples, nets, strict=True)
+        ),
+    )
+    check(
+        f"no cross in r1: a grid and its transpose are two examples ({len(nets)})",
+        any(transposed(a) == b for a in nets for b in nets if a != b),
+    )
+    accounted("no cross in r1", summary)
+
+    # Together with circles.
     examples, summary, _, _ = hunt(
         d, "two crosses", "--circles", "c1:turn c4:turn", "--exactly", "2:cross:r2"
     )
@@ -324,16 +391,16 @@ with tempfile.TemporaryDirectory() as d:
             "",
         ),
         (
-            "an odd group that is a rectangle",
+            "a banana that is a rectangle",
             record(LOOP2, 2, 2),
             False,
-            "odd group at r1c1 is a 2x2 rectangle",
+            "banana at r1c1 is a 2x2 rectangle",
         ),
         (
-            "an even group that is no rectangle",
+            "a chocolate that is no rectangle",
             record(U_SHAPE, 3, 4),
             False,
-            "even group at c1:straight is not a rectangle",
+            "chocolate at c1:straight is not a rectangle",
         ),
         (
             "a circled cell whose value is not its region's size",
@@ -346,7 +413,7 @@ with tempfile.TemporaryDirectory() as d:
             "the same grid with the blank strip on",
             record(C_SHAPE, blank_strip=True),
             False,
-            "even group at r1:blank is not a rectangle",
+            "chocolate at r1:blank is not a rectangle",
         ),
         (
             "a valid grid filed under another piece count",
@@ -429,11 +496,17 @@ for flags, word, said in (
         r.returncode == 0 and first == [f"{word}: {said}"],
     )
     # A time limit reached is a timeout whatever the true answer is.
-    r = run_cli("classify", "--rows", "4", "--cols", "4", *flags, "--timeout", "0")
-    check(
-        f"classify {label} with a zero time limit: timeout ({r.stdout.strip()!r})",
-        r.returncode == 0 and r.stdout.splitlines() == ["timeout: time limit reached"],
-    )
+    for limit in ("0", "-1"):
+        r = run_cli(
+            "classify", "--rows", "4", "--cols", "4", "--engine", "cpsat",
+            *flags, f"--timeout={limit}",
+        )  # fmt: skip
+        check(
+            f"classify {label} on cpsat with a time limit of {limit}: timeout "
+            f"({r.stdout.strip()!r}, stderr: {r.stderr[-200:]})",
+            r.returncode == 0
+            and r.stdout.splitlines() == ["timeout: time limit reached"],
+        )
 
 # The one grid of a unique condition is drawn under the answer, circles in
 # brackets.
@@ -470,7 +543,10 @@ with tempfile.TemporaryDirectory() as d:
             r.returncode == 2 and reason in r.stderr and not r.stdout,
         )
     # The blank number cell is on the board once the blank strip is on.
-    r = run_cli("classify", *board, "--blank-strip", "--circles", "r1:blank")
+    r = run_cli(
+        "classify", *board, "--engine", "cpsat", "--blank-strip",
+        "--circles", "r1:blank",
+    )  # fmt: skip
     check(
         f"classify takes r1:blank with the blank strip on ({r.stdout[:20]!r})",
         r.returncode == 0 and r.stdout.startswith("infeasible: no grid"),

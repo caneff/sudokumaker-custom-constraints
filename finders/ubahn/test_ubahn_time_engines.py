@@ -11,6 +11,7 @@ tally. One worker; a few seconds in all.
 
 import contextlib
 import io
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -427,5 +428,95 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _ = cli("run", "--engine", "clingo", "--progress", str(lazy))
     check("run: an unknown engine is refused", code == 2)
     check("the refusals solved nothing", solve_lines(lazy) == 3)
+
+
+def progress_file(path, *lines):
+    path.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    return str(path)
+
+
+def asked(engine, count, case="8x8"):
+    return {
+        "asked": {
+            "engine": engine,
+            "case": case,
+            "call": "grid",
+            "asked": count,
+            "timeout": 60.0,
+        }
+    }
+
+
+def solved(engine, seed, status, seconds, case="8x8"):
+    return {
+        "solve": {
+            "engine": engine,
+            "case": case,
+            "seed": seed,
+            "status": status,
+            "seconds": seconds,
+        }
+    }
+
+
+# Hand-written progress files, no solver: a second run over other seeds.
+with tempfile.TemporaryDirectory() as tmp:
+    base = [asked("cpsat", 4, case) for case in ("8x8", "10x10")] + [
+        solved("cpsat", seed, "found", 1.0, case)
+        for case in ("8x8", "10x10")
+        for seed in range(4)
+    ]
+    twice = []
+    for case in ("8x8", "10x10"):
+        twice += [
+            asked("pysat-lazy", 2, case),
+            solved("pysat-lazy", 0, "found", 0.1, case),
+            solved("pysat-lazy", 1, "found", 0.1, case),
+            asked("pysat-lazy", 2, case),
+            solved("pysat-lazy", 2, "timeout", 60.0, case),
+            solved("pysat-lazy", 3, "timeout", 60.0, case),
+        ]
+    _, text = cli(
+        "report",
+        progress_file(Path(tmp) / "cpsat.jsonl", *base),
+        progress_file(Path(tmp) / "lazy.jsonl", *twice),
+    )
+    check(
+        "report: a second run over other seeds counts every seed on file "
+        "(4 seeds, 2 found, 2 timed out)",
+        "| 8x8 | pysat-lazy | 4 | 2 | 0 | 2 (capped) | 2 |" in text,
+    )
+    check(
+        "report: its timeouts label the ratio and the verdict capped",
+        "| 8x8 | pysat-lazy | 1000.0 | 100.0 | 10.00 (capped) |" in text
+        and "- `pysat-lazy` is at least 2 times faster than `cpsat` at 8x8 and "
+        "10x10: yes (capped)"
+        in text,
+    )
+
+    shrunk = progress_file(
+        Path(tmp) / "shrunk.jsonl",
+        asked("cpsat", 25),
+        *(solved("cpsat", seed, "timeout", 60.0) for seed in range(20)),
+        {"capped": {"engine": "cpsat", "case": "8x8"}},
+        asked("cpsat", 20),
+    )
+    _, text = cli("report", shrunk)
+    check(
+        "report: a cap does not outlive a run that asks for no more seeds "
+        "than were solved",
+        "| 8x8 | cpsat | 20 | 0 | 0 | 20 (capped) |" in text and "20 of 20" not in text,
+    )
+
+    odd = progress_file(
+        Path(tmp) / "odd.jsonl",
+        asked("cpsat", 1),
+        {"stopped": {"engine": "cpsat", "case": "8x8"}},
+    )
+    code, text = cli("report", odd)
+    check(
+        "report: a line of an unknown kind is refused, never read as a cap",
+        code == 2 and "| 8x8 |" not in text,
+    )
 
 sys.exit(0 if ok else 1)

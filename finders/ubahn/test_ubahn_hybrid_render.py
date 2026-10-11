@@ -333,8 +333,17 @@ with tempfile.TemporaryDirectory() as d:
         {p.name: p.read_bytes() for p in (out / "renders").iterdir()} == before,
     )
 
+    # The refused record comes after a good one: nothing is written until
+    # every picture is drawn, so the good one leaves no file either.
     dead_end = hunt_dir(
-        d, "dead-end", {1: {**FULL_RECORD, "h": ["011", "111", "111", "111"]}}
+        d,
+        "dead-end",
+        {1: FULL_RECORD, 2: {**FULL_RECORD, "h": ["011", "111", "111", "111"]}},
+    )
+    plain = hunt_dir(
+        d,
+        "plain",
+        {1: {k: v for k, v in FULL_RECORD.items() if k != "circles"}},
     )
     for name, args, reason in (
         ("a directory that is no hunt's", [d], "examples.jsonl"),
@@ -346,6 +355,7 @@ with tempfile.TemporaryDirectory() as d:
         ("--seed with no --png", [str(out), "--seed", "7"], "--png"),
         ("--png with no --seed", [str(out), "--png", str(one)], "--seed"),
         ("a network with a dead end", [str(dead_end)], "dead end"),
+        ("a record with no circles, a plain hunt's", [str(plain)], "'circles'"),
     ):
         r = run_cli("render", *args)
         check(
@@ -353,7 +363,8 @@ with tempfile.TemporaryDirectory() as d:
             r.returncode == 2 and reason in r.stderr and not r.stdout,
         )
     check(
-        "a refused grid leaves no renders/ behind", not (dead_end / "renders").exists()
+        "a grid refused after a good one leaves no renders/ behind",
+        not (dead_end / "renders").exists(),
     )
 
 r = run_cli("--help")

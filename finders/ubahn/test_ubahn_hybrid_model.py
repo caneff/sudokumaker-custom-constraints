@@ -8,8 +8,8 @@ the same way. The class words and counts below are the decision log's table,
 § Hybrid, written out again; the grids are the brute force's, judged by the
 solver-free rule reader.
 
-No 4x4 grid has a circle in an odd group, so the last block leaves the brute
-force for a 5x5 board, where a circled r1c2 is a branch in a bent group of
+No 4x4 grid has a circle in a banana, so the last block leaves the brute
+force for a 5x5 board, where a circled r1c2 is a branch in a bent banana of
 three: a grid checked by hand, which the engine must call the only one, and
 the engine's own grids without the circle, of which the rule reader must keep
 what the engine keeps with it.
@@ -47,6 +47,15 @@ def check(name, cond):
     if not cond:
         ok = False
     print(f"{status}: {name}")
+
+
+def said(call, *args, **kwargs):
+    """What a call answers, or the error it raises: a guard that is gone
+    then fails its own check instead of ending the run."""
+    try:
+        return call(*args, **kwargs)
+    except Exception as e:
+        return e
 
 
 def cells(*names):
@@ -128,9 +137,9 @@ for names, word, count in (
         late == hybrid.Classified("timeout", None),
     )
     # A limit below zero is reached too; the solver itself calls it invalid.
-    late = hybrid_model.classify(conditions, time_limit=-1, workers=1)
+    late = said(hybrid_model.classify, conditions, time_limit=-1, workers=1)
     check(
-        f"{label}: a time limit below zero reads timeout (got {late.status})",
+        f"{label}: a time limit below zero reads timeout (got {late!r})",
         late == hybrid.Classified("timeout", None),
     )
 
@@ -184,7 +193,7 @@ check(
 )
 check(
     "a grid for a seed: a time limit below zero reads timeout",
-    hybrid_model.grid(conditions, random.Random(0), time_limit=-1)
+    said(hybrid_model.grid, conditions, random.Random(0), time_limit=-1)
     == hybrid.Sampled("timeout", None),
 )
 try:
@@ -193,8 +202,8 @@ try:
 except ValueError as e:
     check("a circle on an icon cell is refused", "off the board" in str(e))
 
-# A circle in an odd group, which no 4x4 grid has. On this 5x5 grid, checked
-# by hand, r1c2 is a branch (3). Its group is r1c1, r1c2 and r2c1: a turn, the
+# A circle in a banana, which no 4x4 grid has. On this 5x5 grid, checked
+# by hand, r1c2 is a branch (3). Its region is r1c1, r1c2 and r2c1: a turn, the
 # branch and a branch, bent, so no rectangle. Round it everything is even: the
 # straight at r1c3, the cross at r2c2, the straight at r3c1, and the turn
 # numbers of rows 1 and 2 (2, 0) and of columns 1 and 2 (2, 0).

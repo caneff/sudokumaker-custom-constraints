@@ -457,9 +457,9 @@ How to read the table:
   circles on `r6:straight r6:turn r7:straight r7:turn` have no grid on any
   engine, as the decision log already had it, so both example cases land in
   the proven-impossible column. Three engines agree; two of them share every
-  clause but connectivity, and nothing enumerates a 7x7. The controller has
-  asked Chris whether the circles were misread from the picture (#786,
-  comment of 2026-10-11); a corrected condition would be a new case.
+  clause but connectivity, and nothing enumerates a 7x7. Chris confirmed on
+  2026-10-11 that the circles were read correctly from his picture, so no
+  grid stands as that layout's result.
 - **`classify` takes no seed**, so its 100 seeds are 100 repeats of one call.
   The 60 s limit is per solve inside the CP-SAT engine's `classify`, which
   makes up to two, and over the whole call in the PySAT engines'. Here every
@@ -492,7 +492,7 @@ How to read the table:
   example, where `classify` on the same conditions, which takes no seed,
   stays at 0.41 s. The PySAT engines prove it in about 40 to 50 ms either
   way.
-- **The lazy engine's cuts are rare:** 43 to 86 over 100 solves with no
+- **The lazy engine's cuts are rare:** 39 to 86 over 100 solves with no
   condition, under one a solve. The propagator raises 6 to 16 conflicts a
   solve and leaves almost no cut to add, and it is about half as fast as the
   lazy engine: it is Python called on every edge the solver assigns.

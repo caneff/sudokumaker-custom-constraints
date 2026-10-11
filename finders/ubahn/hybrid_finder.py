@@ -3,8 +3,9 @@ Choco-Banana laid over the grid cells and the number cells (spec #781).
 
 Conditions in, valid hybrid grids out, one per seed, repeats removed. The
 model is built from the conditions and solved once per seed, steered by the
-seed's own random order over the edges; nothing is sampled first and thrown
-away. The solver is given no outside number. `verify` re-reads every grid
+seed (on cpsat its own random order and direction over the edges, on the
+PySAT engines its own random first guess for each edge); nothing is sampled
+first and thrown away. The solver is given no outside number. `verify` re-reads every grid
 with `hybrid.py`, which states the rules with no solver.
 
 Conditions are flags:
@@ -26,6 +27,9 @@ Conditions are flags:
                                network broken apart before the grid is
                                full). pysat-lazy unless given.
     --timeout SECONDS          the limit on one solve, 60 unless given.
+                               `classify` makes up to two solves: on cpsat
+                               each has the whole limit, on the PySAT
+                               engines one limit covers both.
 
     uv run finders/ubahn/hybrid_finder.py --out DIR --seeds 0:50 --workers 1 \\
         --rows 7 --cols 7 \\
@@ -38,6 +42,8 @@ first grid found drawn under the answer:
 
     uv run finders/ubahn/hybrid_finder.py classify --rows 4 --cols 4 \\
         --circles "c1:turn r2c4" [--workers 1]
+
+`--workers` is cpsat's: the PySAT engines run on one thread whatever it says.
 
     infeasible: no grid
     unique: exactly one grid
@@ -119,17 +125,20 @@ class Candidate(NamedTuple):
 
 
 def condition_symmetry(conditions):
-    """The group a grid of kinds dedupes under: the identity and the
-    reflection in the main diagonal when that reflection keeps the
-    conditions, the identity alone when it moves one. It keeps them on a
-    square board whose circled cells are circled in the image too, with no
-    piece-count condition, which names a row or a column."""
+    """The group a grid's key (`HybridFinder.key`) dedupes under: the
+    identity and the reflection in the main diagonal when that reflection
+    keeps the conditions, the identity alone when it moves one. It keeps
+    them on a square board whose circled cells are circled in the image too,
+    with no piece-count condition, which names a row or a column. The
+    reflection sends a cell's east arm to its image's south arm and back."""
     rows, cols, circles, exactly, _ = conditions
     if rows != cols or exactly or {(c, r) for r, c in circles} != set(circles):
         return IDENTITY
+    cells = rows * cols
+    image = [c * cols + r for r in range(rows) for c in range(cols)]
     return [
-        tuple(range(rows * cols)),
-        tuple(c * cols + r for r in range(rows) for c in range(cols)),
+        tuple(range(2 * cells)),
+        tuple([cells + i for i in image] + image),
     ]
 
 
@@ -155,6 +164,8 @@ class HybridFinder:
             return Empty("timeout sampling a grid")
         if status == "infeasible":
             return Empty("infeasible: no grid meets the conditions")
+        if found is None:
+            raise RuntimeError(f"{self.engine} answered {status!r} with no grid")
         return Candidate(self.conditions, found)
 
     def verify(self, candidate):
@@ -183,18 +194,32 @@ class HybridFinder:
         }
 
     def key(self, candidate):
-        conditions, found = candidate
-        return network.kind_grid(found, conditions.rows, conditions.cols)
+        """The network itself: every cell's east arm, row by row, then every
+        cell's south arm. Two networks can have the same kind in every cell
+        and both be valid grids, so the kinds alone would drop one of them
+        as a repeat."""
+        (rows, cols, *_), found = candidate
+        cells = [(r, c) for r in range(rows) for c in range(cols)]
+        return tuple(
+            int(((r, c), (r + dr, c + dc)) in found)
+            for dr, dc in ((0, 1), (1, 0))
+            for r, c in cells
+        )
 
     def candidate_from_record(self, record):
         """Raises ValueError, naming it, on a circle `hybrid.parse_cell`
-        refuses or anything the plain finder's reader refuses in the edge
-        rows and the piece-count condition."""
-        rows, cols, found, exactly = UbahnFinder().candidate_from_record(record)
-        circles = frozenset(map(hybrid.parse_cell, record["circles"]))
-        conditions = hybrid.Conditions(
-            rows, cols, circles, exactly, record["blank_strip"]
-        )
+        refuses, anything the plain finder's reader refuses in the edge
+        rows and the piece-count condition, or a field the record lacks."""
+        try:
+            rows, cols, found, exactly = UbahnFinder().candidate_from_record(record)
+            circles = frozenset(map(hybrid.parse_cell, record["circles"]))
+            conditions = hybrid.Conditions(
+                rows, cols, circles, exactly, record["blank_strip"]
+            )
+        except KeyError as e:
+            raise ValueError(
+                f"the record has no {e.args[0]!r}: no hybrid hunt wrote it"
+            ) from e
         return Candidate(conditions, found)
 
 
@@ -296,7 +321,7 @@ def main(argv):
     parser.add_argument("--circles", default="", metavar="CELLS")
     parser.add_argument("--exactly", metavar="N:PIECE:rK")
     parser.add_argument("--blank-strip", action="store_true")
-    parser.add_argument("--engine", default=DEFAULT_ENGINE)
+    parser.add_argument("--engine", default=DEFAULT_ENGINE, choices=ENGINES)
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     own, rest = parser.parse_known_args(argv)
     if rest[:1] == ["verify"]:
@@ -328,10 +353,6 @@ def main(argv):
         print("\n".join(lines))
         return 0
     try:
-        if own.engine not in ENGINES:
-            raise ValueError(
-                f"--engine: no engine named {own.engine!r}: {', '.join(ENGINES)}"
-            )
         conditions = parse_conditions(own)
     except ValueError as e:
         print(f"hybrid_finder: {e}", file=sys.stderr)

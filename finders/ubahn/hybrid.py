@@ -130,7 +130,7 @@ def parse_cell(text):
 
 def regions(board):
     """The board's regions, each a frozenset of cells: the orthogonally
-    connected groups of cells whose values share a parity. A cell that is not
+    connected sets of cells whose values share a parity. A cell that is not
     on the board (an icon cell, the area off it) joins nothing, so it is a
     wall. In reading order of each region's first cell."""
     found = []
@@ -189,14 +189,14 @@ def failures(net, rows, cols, circles=(), blank_strip=False):
         full = len(region) == height * width
         if board[min(region)] % 2:
             if full:
-                reasons.append(f"odd group at {name} is a {height}x{width} rectangle")
+                reasons.append(f"banana at {name} is a {height}x{width} rectangle")
         elif top < 0 and left < 0:
             # The box reaches from one side's number cells to the other's, so
             # it holds the corner, where no cell is on the board.
-            reasons.append(f"even group at {name} would need an icon cell")
+            reasons.append(f"chocolate at {name} would need an icon cell")
         elif not full:
             reasons.append(
-                f"even group at {name} is not a rectangle: "
+                f"chocolate at {name} is not a rectangle: "
                 f"{len(region)} cells in a {height}x{width} box"
             )
     size = {cell: len(region) for region in found for cell in region}

@@ -74,18 +74,18 @@ check(
     with_blank[1, -5] == 1 and with_blank[0, -5] == 0,
 )
 
-# An odd group that is a rectangle, and nothing else wrong. The loop of a 2x2
+# A banana that is a rectangle, and nothing else wrong. The loop of a 2x2
 # board is four turns, a 2x2 block of 1s. Every number cell is even (2 turns
 # per row and column, 0 of the rest), so each side's strips are one even
 # rectangle, 2x4 on the left and 4x2 above.
 LOOP2 = ring(0, 0, 1, 1)
 check(
     "2x2 loop: the only failure is its odd 2x2 block",
-    hybrid.failures(LOOP2, 2, 2) == ["odd group at r1c1 is a 2x2 rectangle"],
+    hybrid.failures(LOOP2, 2, 2) == ["banana at r1c1 is a 2x2 rectangle"],
 )
 check(
     "why_not_hybrid gives the first failure",
-    hybrid.why_not_hybrid(LOOP2, 2, 2) == "odd group at r1c1 is a 2x2 rectangle",
+    hybrid.why_not_hybrid(LOOP2, 2, 2) == "banana at r1c1 is a 2x2 rectangle",
 )
 check(
     "a set of edges that is no network fails as the plain reader says",
@@ -176,11 +176,11 @@ check(
     == ["circle off the board: (-1, -1)", "circle off the board: (0, -5)"],
 )
 
-# An even group that is not a rectangle, and nothing else wrong, checked by
+# A chocolate that is not a rectangle, and nothing else wrong, checked by
 # hand. Above the grid the straights' row is all 0 and the turns' row is
 # 2 1 1 2: the 0s and the two 2s make a U of 6 cells. The crosses' corner 0s
 # stand alone, the left strips are one 3x4 even rectangle, r2's two crosses
-# are a 1x2, and both odd groups are bent.
+# are a 1x2, and both bananas are bent.
 U_SHAPE = from_drawing(["┌┐┌┐", "├┼┼┤", "└┴┴┘"])
 check(
     "U shape: the board's values as worked by hand",
@@ -196,16 +196,16 @@ check(
     ],
 )
 check(
-    "U shape: the only failure is the even group that is no rectangle",
+    "U shape: the only failure is the chocolate that is no rectangle",
     hybrid.failures(U_SHAPE, 3, 4)
-    == ["even group at c1:straight is not a rectangle: 6 cells in a 2x4 box"],
+    == ["chocolate at c1:straight is not a rectangle: 6 cells in a 2x4 box"],
 )
 
 # A region that would need an icon cell, and nothing else wrong, checked by
 # hand. r1c1 is blank, so it joins column 1's turn number above it (2) to row
 # 1's turn number on its left (2), and through them every even number cell of
-# both sides. The icon cell between those two numbers is a wall: the group
-# bends round it and cannot be a rectangle. The one odd group (the turns'
+# both sides. The icon cell between those two numbers is a wall: the region
+# bends round it and cannot be a rectangle. The one banana (the turns'
 # numbers of columns 2 and 3 and the ten pieces under them) is bent too.
 ROUND_THE_ICON = from_drawing([" ┌┐ ", "┌┤├┐", "└┴┴┘"])
 check(
@@ -224,7 +224,7 @@ check(
 check(
     "round the icon: the only failure names the icon cell",
     hybrid.failures(ROUND_THE_ICON, 3, 4)
-    == ["even group at c1:cross would need an icon cell"],
+    == ["chocolate at c1:cross would need an icon cell"],
 )
 
 # The blank strip changes the board. Without it this grid is valid: the left
@@ -241,7 +241,7 @@ check("C shape: valid with no blank strip", hybrid.failures(C_SHAPE, 4, 4) == []
 check(
     "C shape: the blank strip joins two rectangles into a C",
     hybrid.failures(C_SHAPE, 4, 4, blank_strip=True)
-    == ["even group at r1:blank is not a rectangle: 12 cells in a 4x5 box"],
+    == ["chocolate at r1:blank is not a rectangle: 12 cells in a 4x5 box"],
 )
 check(
     "four loops: still valid with the blank strip",

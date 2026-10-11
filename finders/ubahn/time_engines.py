@@ -304,8 +304,12 @@ def report(rans):
 
 def read_progress(paths):
     """The runs these progress files hold, as `Ran`s in the order their
-    cases were first asked for. A case asked for twice is one run: the
-    seeds asked and the limit are its latest."""
+    cases were first asked for. A case asked for twice is one run with its
+    latest limit. Its seeds asked are the latest count, or every seed with a
+    solve on file when a second run over other seeds left more of them, so a
+    timeout among them still shows the run as short. A cap stands only while
+    seeds are missing. Raises ValueError on a line that is no `asked`,
+    `solve` or `capped`."""
     asked, solves, capped = {}, {}, set()
     for path in paths:
         for line in Path(path).read_text().splitlines():
@@ -316,16 +320,22 @@ def read_progress(paths):
                 solves.setdefault(key, {})
             elif kind == "solve":
                 solves[key][fields["seed"]] = Solve(**fields)
-            else:
+            elif kind == "capped":
                 capped.add(key)
-    return [
-        Ran(
-            **fields,
-            solves=tuple(solve for _, solve in sorted(solves[key].items())),
-            capped=key in capped,
+            else:
+                raise ValueError(f"{path}: no progress line is a {kind!r}")
+    rans = []
+    for key, fields in asked.items():
+        held = tuple(solve for _, solve in sorted(solves[key].items()))
+        count = max(fields["asked"], len(held))
+        rans.append(
+            Ran(
+                **{**fields, "asked": count},
+                solves=held,
+                capped=key in capped and len(held) < count,
+            )
         )
-        for key, fields in asked.items()
-    ]
+    return rans
 
 
 def _run(args):
@@ -396,10 +406,10 @@ def main(argv):
     reports = commands.add_parser("report")
     reports.add_argument("progress", nargs="+", metavar="FILE")
     args = parser.parse_args(argv)
-    if args.command == "report":
-        print(report(read_progress(args.progress)))
-        return 0
     try:
+        if args.command == "report":
+            print(report(read_progress(args.progress)))
+            return 0
         args.seeds = seed_range(args.seeds)
         return _run(args)
     except ValueError as e:

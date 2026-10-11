@@ -1,6 +1,7 @@
-"""Spec #781 end to end, through the commands Chris runs: a hunt on the
-default engine, `verify`, `classify` on every engine, `render`, the timing
-script's run and report, and the plain finder beside them.
+"""Spec #781 end to end, through the commands Chris runs: the enumeration,
+a hunt on the default engine with each kind of condition, `verify`,
+`render`, `classify` on every engine, the timing script's run and report,
+and the plain finder beside them.
 
 One chain on small boards, each step reading the files the step before
 wrote. The other hybrid tests each take one command against the brute
@@ -11,7 +12,7 @@ picture reads to a person. The pictures are checked here for existing and
 decoding only; `test_ubahn_hybrid_render.py` reads pixels at chosen points,
 and nothing but an open of the PNG says the board reads as the puzzle.
 
-One solver thread throughout; about ten seconds.
+One solver thread throughout; about fifteen seconds.
 
     uv run finders/ubahn/test_ubahn_hybrid_e2e.py
 """
@@ -28,6 +29,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 from subprocess_env import success_env
+from verified_io import read_verified
 
 BOARD = ["--rows", "4", "--cols", "4", "--timeout", "10"]
 ENGINES = ("cpsat", "pysat-lazy", "pysat-propagator")
@@ -37,6 +39,7 @@ ANSWERS = (
     ((), "not_unique"),
     (("--circles", "c1:turn r2c4"), "unique"),
     (("--circles", "r2c2 r2c4"), "infeasible"),
+    (("--blank-strip",), "not_unique"),
 )
 
 ok = True
@@ -63,6 +66,31 @@ def read_jsonl(path):
     return [json.loads(line) for line in path.read_text().splitlines() if line]
 
 
+def verified(script, out, examples):
+    """Whether `verify` read every example of the hunt in `out` and passed
+    each one. Its exit status is 0 whatever the verdicts, so the verdicts
+    are read from the file it writes."""
+    r = run_script(script, "verify", str(out))
+    if r.returncode != 0:
+        return False
+    stamp, verdicts = read_verified(out / "verified.jsonl")
+    return (
+        stamp == {"verified_examples": len(examples)}
+        and len(verdicts) == len(examples)
+        and all(v["ok"] is True for v in verdicts)
+    )
+
+
+r = run_script("brute.py", "4", "4", "--circles", "c1:turn r2c4")
+check(
+    f"the enumeration: 18 valid 4x4 grids, one with c1:turn and r2c4 circled "
+    f"({r.stdout.splitlines()[1:]})",
+    r.returncode == 0
+    and "valid hybrid grids, no condition: 18" in r.stdout
+    and "circles c1:turn r2c4: unique (1)" in r.stdout,
+)
+
+
 with tempfile.TemporaryDirectory() as d:
     out = Path(d) / "hunt"
     r = run_script(
@@ -79,10 +107,29 @@ with tempfile.TemporaryDirectory() as d:
         all(ex["circles"] == ["r2c2"] for ex in examples),
     )
 
-    r = run_script("hybrid_finder.py", "verify", str(out))
     check(
-        f"verify, the solver-free reader, passes every example ({r.stdout[-200:]})",
-        r.returncode == 0,
+        "verify, the solver-free reader, passes every example of the hunt",
+        verified("hybrid_finder.py", out, examples),
+    )
+
+    # Number-cell circles together with the piece-count condition: the
+    # decision log's two grids, on the default engine.
+    both = Path(d) / "both"
+    r = run_script(
+        "hybrid_finder.py", *BOARD, "--circles", "c1:turn c4:turn",
+        "--exactly", "2:cross:r2",
+        "--out", str(both), "--seeds=0:20", "--workers", "1",
+    )  # fmt: skip
+    found = read_jsonl(both / "examples.jsonl") if r.returncode == 0 else []
+    check(
+        f"hunt, c1:turn and c4:turn circled with 2 crosses in r2: both grids, "
+        f"each once, verified ({len(found)})",
+        len(found) == 2
+        and all(
+            ex["circles"] == ["c1:turn", "c4:turn"] and ex["exactly"] == "2:cross:r2"
+            for ex in found
+        )
+        and verified("hybrid_finder.py", both, found),
     )
 
     r = run_script("hybrid_finder.py", "render", str(out))
@@ -154,7 +201,9 @@ with tempfile.TemporaryDirectory() as d:
         f"the plain finder still hunts, with no engine in its config ({config})",
         r.returncode == 0 and "engine" not in config,
     )
-    r = run_script("ubahn_finder.py", "verify", str(plain))
-    check("the plain finder's verify passes its own hunt", r.returncode == 0)
+    check(
+        "the plain finder's verify passes every example of its own hunt",
+        verified("ubahn_finder.py", plain, read_jsonl(plain / "examples.jsonl")),
+    )
 
 sys.exit(0 if ok else 1)
