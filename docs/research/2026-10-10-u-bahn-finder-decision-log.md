@@ -202,7 +202,7 @@ raises a conflict during the search. One thread, this box, 2026-10-11.
   the table's. `test_ubahn_hybrid_sat.py`, about 17 s.
 - **Connectivity is at work on that listing.** Listing the 18 on the lazy
   engine adds 4 connectivity cuts. On the propagator engine it raises 10
-  conflicts while some edge is still undecided, and 1 cut.
+  conflicts while some edge is still undecided, and adds 1 cut.
 - **5x5 has 31 valid grids on both engines, the CP-SAT engine's count.**
   Three engines now give 31, the PySAT ones in under a second; no enumeration
   confirms it. With r1c2 circled both keep the bent three alone. On the lazy
@@ -303,6 +303,16 @@ Worker's choices, none a ruling:
   every network whatever is assigned, so a wrong reading of the solver's
   state could cost a conflict but never a grid. The propagator only raises
   conflicts; it forces no edge on.
+- **What no test sees of the propagator.** Two planted bugs in its
+  bookkeeping pass every test: forgetting that a fixed edge outlives a
+  backtrack, and keeping one decision level too many. Either leaves it with
+  a wrong picture of the search, which costs conflicts and never a grid, and
+  the agreed tests read grids and counts only. A third, never un-assigning on
+  backtrack, is caught: the propagator then adds 131 cuts on the 4x4 listing
+  where the lazy engine adds 4, and the test holds it under the lazy
+  engine's count. Checked once by hand instead: after each of 378
+  satisfiable solves (4x4, 6x6, 8x8, no condition) the propagator's edges
+  were the solver's model, every edge, with fixed edges among them.
 - **The propagator engine's 5x5 circle sweep is every fifth cell** plus r1c2,
   not all 65: it runs the lazy engine's clauses, and the full sweep on it
   would add about 8 s to the build loop.
