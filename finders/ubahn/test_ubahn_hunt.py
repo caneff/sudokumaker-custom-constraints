@@ -21,7 +21,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hunt"))
 import brute
 import network
-from dedupe import D4, canonical_key
+from dedupe import D4, canonical_key  # pants: no-infer-dep
 from subprocess_env import success_env
 from verified_io import read_verified
 
