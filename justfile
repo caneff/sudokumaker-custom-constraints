@@ -96,7 +96,8 @@ test:
     # test (#774) about 6 s, its PySAT agreement (#776) about 6 s, its
     # baseline-measurement test (#777) about 4 s, its three-engine timing
     # test (#786) about 1 s and the hybrid's picture test (#791) about 4 s
-    # (no solver; a dozen subprocess starts);
+    # (no solver; a dozen subprocess starts), and the hybrid's end-to-end
+    # chain (#781) about 8 s (one-thread solves on 4x4 and 6x6);
     # counting_shaded is the one
     # pytest suite in the repo, about 3 s, and compiles its C filter with the
     # system cc to check it against the Python one.
