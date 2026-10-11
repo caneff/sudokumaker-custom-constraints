@@ -53,9 +53,11 @@ def cells(*names):
     return frozenset(hybrid.parse_cell(name) for name in names)
 
 
-def engine_grids(conditions):
+def engine_grids(conditions, valid):
     """Every grid the engine's model allows: solve, forbid the grid on its
-    edge variables, solve again, until the model is infeasible."""
+    edge variables, solve again, until the model is infeasible. It stops at
+    the first grid `valid` refuses, with that grid in what it returns: a
+    model that has lost a rule allows too many grids to list."""
     built = hybrid_model.build(conditions)
     solver = cp_model.CpSolver()
     solver.parameters.num_workers = 1
@@ -70,16 +72,18 @@ def engine_grids(conditions):
         if net in found:
             raise RuntimeError("the model returned a forbidden grid again")
         found.add(net)
+        if not valid(net):
+            return found
         built.m.add_bool_or(
             [var.Not() if e in net else var for e, var in built.edge.items()]
         )
 
 
 def agrees(name, conditions, want):
-    got = engine_grids(conditions)
+    got = engine_grids(conditions, want.__contains__)
     check(
         f"{name}: the brute-force grids exactly, {len(want)} of them "
-        f"({len(got - want)} extra, {len(want - got)} missing)",
+        f"({len(got - want)} or more extra, {len(want - got)} missing)",
         got == want,
     )
 
@@ -207,16 +211,18 @@ check(
 # circle lists every grid with 2 branches in r1; the rule reader says which
 # of them the circle keeps.
 TWO_BRANCHES_R1 = network.Exactly.parse("2:branch:r1")
-loose = engine_grids(hybrid.Conditions(5, 5, exactly=TWO_BRANCHES_R1))
+
+
+def two_branches(net):
+    return not hybrid.why_not_hybrid(net, 5, 5) and TWO_BRANCHES_R1.holds(net, 5, 5)
+
+
+loose = engine_grids(hybrid.Conditions(5, 5, exactly=TWO_BRANCHES_R1), two_branches)
 kept = {g for g in loose if not hybrid.why_not_hybrid(g, 5, 5, BRANCH_AT)}
 check(
     f"5x5, 2 branches in r1: the rule reader passes every grid ({len(loose)}), "
     f"each with its 2 branches",
-    len(loose) > 1
-    and all(
-        not hybrid.why_not_hybrid(g, 5, 5) and TWO_BRANCHES_R1.holds(g, 5, 5)
-        for g in loose
-    ),
+    len(loose) > 1 and all(map(two_branches, loose)),
 )
 check("5x5, 2 branches in r1: the circle keeps the bent three", kept == {BENT_THREE})
 agrees(
