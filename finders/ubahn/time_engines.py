@@ -51,7 +51,7 @@ sys.path.insert(0, str(HERE.parent / "hunt"))
 # isort: split
 import hybrid
 import hybrid_sat
-from hybrid_finder import DEFAULT_ENGINE, ENGINES, Candidate, HybridFinder
+from hybrid_finder import ENGINES, Candidate, HybridFinder
 from measure_baseline import seed_range, times
 from ubahn_finder import DEFAULT_TIMEOUT
 
@@ -61,6 +61,8 @@ CAP_AFTER = 20
 # Chris's bar (spec #781): a PySAT engine wins only if it is at least this
 # many times faster than CP-SAT at every one of these cases.
 BAR = 2
+# The engine the bar is read against, whatever the finder's default is.
+BASE_ENGINE = "cpsat"
 BAR_CASES = ("8x8", "10x10")
 
 # The words of a call that found a grid.
@@ -220,15 +222,15 @@ def _bar(rans):
     """The lines that read the runs against the bar: per case, the base
     engine's median over each other engine's, and per engine whether that is
     at least `BAR` at every case of `BAR_CASES`."""
-    base = {ran.case: ran for ran in rans if ran.engine == DEFAULT_ENGINE}
+    base = {ran.case: ran for ran in rans if ran.engine == BASE_ENGINE}
     lines = [
-        f"| Case | Engine | `{DEFAULT_ENGINE}` median ms | Engine median ms "
-        f"| Times faster than `{DEFAULT_ENGINE}` |",
+        f"| Case | Engine | `{BASE_ENGINE}` median ms | Engine median ms "
+        f"| Times faster than `{BASE_ENGINE}` |",
         "| --- | --- | --- | --- | --- |",
     ]
     ratios, capped = {}, {}
     for ran in rans:
-        if ran.engine == DEFAULT_ENGINE or ran.case not in base:
+        if ran.engine == BASE_ENGINE or ran.case not in base:
             continue
         ours, theirs = _median_ms(base[ran.case]), _median_ms(ran)
         label = " (capped)" if _short(base[ran.case]) or _short(ran) else ""
@@ -246,7 +248,7 @@ def _bar(rans):
             f"| {f'{ratio:.2f}' if known else 'unknown'}{label} |"
         )
     lines.append("")
-    for engine in dict.fromkeys(r.engine for r in rans if r.engine != DEFAULT_ENGINE):
+    for engine in dict.fromkeys(r.engine for r in rans if r.engine != BASE_ENGINE):
         read = [ratios.get(engine, {}).get(case) for case in BAR_CASES]
         if any(ratio is not None and ratio < BAR for ratio in read):
             verdict = "no"
@@ -256,7 +258,7 @@ def _bar(rans):
             verdict = "yes"
         lines.append(
             f"- `{engine}` is at least {BAR} times faster than "
-            f"`{DEFAULT_ENGINE}` at {' and '.join(BAR_CASES)}: {verdict}"
+            f"`{BASE_ENGINE}` at {' and '.join(BAR_CASES)}: {verdict}"
             f"{' (capped)' if capped.get(engine) else ''}"
         )
     return lines

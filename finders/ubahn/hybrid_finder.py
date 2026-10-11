@@ -17,14 +17,14 @@ Conditions are flags:
                                cross or blank.
     --blank-strip              a fifth strip of number cells, for blank,
                                outside the cross. Off unless given.
-    --engine cpsat             the solver the rules are written on: cpsat
+    --engine pysat-lazy        the solver the rules are written on: cpsat
                                (`hybrid_model.py`, connectivity as a flow),
                                pysat-lazy (`hybrid_sat.py`, a grid whose
                                network is in several parts is cut and the
                                solve goes on) or pysat-propagator (the same
                                clauses, with a propagator that refuses a
                                network broken apart before the grid is
-                               full). cpsat unless given.
+                               full). pysat-lazy unless given.
     --timeout SECONDS          the limit on one solve, 60 unless given.
 
     uv run finders/ubahn/hybrid_finder.py --out DIR --seeds 0:50 --workers 1 \\
@@ -84,7 +84,9 @@ ENGINES = {
     "pysat-lazy": hybrid_sat.Engine(hybrid_sat.LAZY),
     "pysat-propagator": hybrid_sat.Engine(hybrid_sat.PROPAGATOR),
 }
-DEFAULT_ENGINE = "cpsat"
+# Chris ruled PySAT with lazy cuts the default on 2026-10-11, on the timing
+# in docs/research/2026-10-10-u-bahn-optimization-queue.md (#786).
+DEFAULT_ENGINE = "pysat-lazy"
 
 # The classification's words as Chris reads them.
 SAID = {

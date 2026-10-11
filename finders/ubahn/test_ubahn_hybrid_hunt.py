@@ -5,8 +5,10 @@ condition: every example must be one of the brute force's valid hybrid grids
 for those conditions, and no two examples the same grid under the symmetry
 those conditions leave. Then `verify DIR` over hand-written records, each a
 grid `test_ubahn_hybrid.py` works out by hand; the `classify` command against
-the decision log's table, § Hybrid; and the flags the finder refuses. One
-CP-SAT worker; about fifteen seconds in all.
+the decision log's table, § Hybrid; and the flags the finder refuses. Every
+run names `--engine cpsat` but the last, which leaves the flag out and reads
+the default engine off the records. One CP-SAT worker; about fifteen seconds
+in all.
 
     uv run finders/ubahn/test_ubahn_hybrid_hunt.py
 """
@@ -27,7 +29,7 @@ from subprocess_env import success_env
 from verified_io import read_verified
 
 FINDER = HERE / "hybrid_finder.py"
-BOARD = ["--rows", "4", "--cols", "4", "--timeout", "10"]
+BOARD = ["--rows", "4", "--cols", "4", "--timeout", "10", "--engine", "cpsat"]
 
 ok = True
 
@@ -490,5 +492,25 @@ check(
         )
     ),
 )
+check(
+    "--help says pysat-lazy is the engine unless one is given",
+    "pysat-lazy unless given" in r.stdout and "cpsat unless given" not in r.stdout,
+)
+
+# The default engine is PySAT with lazy cuts (Chris's ruling, 2026-10-11).
+with tempfile.TemporaryDirectory() as d:
+    out = Path(d) / "default engine"
+    r = run_cli(
+        "--rows", "4", "--cols", "4", "--timeout", "10",
+        "--out", str(out), "--seeds=0:3", "--workers", "1",
+    )  # fmt: skip
+    examples = read_jsonl(out / "examples.jsonl") if r.returncode == 0 else []
+    check(
+        "no --engine: the hunt runs on pysat-lazy, in every record and in run.json",
+        bool(examples)
+        and all(ex["engine"] == "pysat-lazy" for ex in examples)
+        and json.loads((out / "run.json").read_text())["config"]["engine"]
+        == "pysat-lazy",
+    )
 
 sys.exit(0 if ok else 1)

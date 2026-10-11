@@ -49,8 +49,9 @@ because the checker reads them and nothing under `docs/research/` does
   `hybrid.py` in `verify`; `hybrid_finder.py classify` takes the same
   conditions and answers `infeasible`, `unique`, `not_unique` or `timeout`;
   `--help` prints the usage text. `--engine` picks the solver: `cpsat`
-  (`hybrid_model.py`, the plain model plus the hybrid's rules, the default),
-  or `pysat-lazy` and `pysat-propagator` (`hybrid_sat.py`, #784 and #785: the
+  (`hybrid_model.py`, the plain model plus the hybrid's rules), or
+  `pysat-lazy`, the default by Chris's ruling of 2026-10-11, and
+  `pysat-propagator` (`hybrid_sat.py`, #784 and #785: the
   rules as clauses over `sat_model.py`'s, with connectivity kept by cuts on
   full grids or by a propagator during the search).
   `hybrid_sat.listing` returns up to a cap of grids with its cut and conflict

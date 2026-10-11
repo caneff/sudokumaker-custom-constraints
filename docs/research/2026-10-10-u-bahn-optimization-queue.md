@@ -409,8 +409,8 @@ How to read the tables:
 than 2 times faster than CP-SAT at 8x8 and at 10x10. `pysat-lazy` is 8.4 and
 11.2 times faster at the median, `pysat-propagator` 3.9 and 5.7 times.** No
 solve of the 1,800 reached the 60 s limit, so no count below is capped and the
-cap rule never fired. The verdict at the end is a reading for Chris to rule
-on; the hybrid finder's default engine is unchanged (`cpsat`).
+cap rule never fired. Chris ruled on the verdict at the end on 2026-10-11:
+the hybrid finder's default engine is now `pysat-lazy`.
 
 What ran: `time_engines.py` at `b3f460b`, the hybrid of spec #781 (U-Bahn
 with Choco-Banana over grid cells and number cells), one engine at a time,
@@ -527,7 +527,13 @@ reading.
 - `pysat-propagator` is at least 2 times faster than `cpsat` at 8x8 and 10x10: yes
 
 By the bar, PySAT wins, and of the two the lazy engine is the faster at every
-case. Nothing is changed by this note: `--engine` still defaults to `cpsat`.
+case.
+
+**Ruled by Chris, 2026-10-11:** `pysat-lazy` is the default `--engine` of the
+hybrid finder and of its `classify` command. `cpsat` and `pysat-propagator`
+stay selectable, and the plain U-Bahn finder stays on CP-SAT. The timing
+above ran while `--engine` still defaulted to `cpsat`; every command line
+in this section names its engine, so none of them reads differently now.
 
 **Not measured:** a condition that has grids (every circle case timed here is
 the one infeasible example); `classify` on a condition with one grid or
