@@ -60,6 +60,69 @@ All on one worker, this box, 2026-10-10.
   1.3 s wall clock in all: 16 examples, 4 seeds whose network was not unique,
   no timeout, no duplicate. Twenty seeds is a sample, not a rate.
 
+## Hybrid: the 4x4 answers (#782)
+
+U-Bahn with Choco-Banana over grid cells and number cells, as spec #781 rules
+it. One worker, this box, 2026-10-11. Every count below is an exhaustive pass
+over the stated space, about 2 s; none is sampled or capped.
+
+- **The space.** The whole 4x4 board with no condition: 24 edges, 2^24 =
+  16,777,216 edge sets. The 131,072 the spec names is the conditioned space
+  above (17 free edges), not the board; the controller ruled on #782 that
+  "no condition" means the whole board. `brute.no_dead_end` reaches it by
+  dropping a cell left with one arm as it goes, which leaves **16,372** edge
+  sets; `hybrid.py`, the solver-free rule reader, judges each of them.
+- **4x4 holds valid hybrid grids: 18.** Of the 16,372, 15,593 are U-Bahn
+  networks and **18** are valid hybrid grids. **8** of the 18 have exactly 2
+  crosses in r2, the conditioned space above. With the blank strip on, **8**
+  of the 18 stay valid and no other grid becomes valid.
+- **Circle conditions**, in the uniqueness check's words:
+
+  | Circled cells | Grids | Class |
+  | --- | --- | --- |
+  | none | 18 | `not_unique` |
+  | `r2c2` | 4 | `not_unique` |
+  | `c1:turn r2c4` | 1 | `unique` |
+  | `r1:turn r4c2` | 1 | `unique` |
+  | `r2c2 r2c4` | 0 | `infeasible` |
+  | `c4:turn r4:turn` | 0 | `infeasible` |
+  | `r1c1` | 0 | `infeasible` |
+
+  No single circled cell gives exactly one grid: each of the 12 cells that
+  can be circled in any grid can be circled in 2, 4 or 5 of them. Only turn
+  number cells and grid cells are ever circleable at 4x4.
+- **Commands.**
+
+  ```
+  uv run finders/ubahn/brute.py 4 4 --circles "r2c2" \
+      --circles "c1:turn r2c4" --circles "r1:turn r4c2" \
+      --circles "r2c2 r2c4" --circles "c4:turn r4:turn" --circles "r1c1"
+  uv run finders/ubahn/brute.py 4 4 --blank-strip
+  ```
+
+  `--draw` adds a drawing of every valid grid. `test_ubahn_brute.py` pins
+  every number above but the 15,593.
+- **Two programs agree.** A throwaway script kept outside the repo listed all
+  2^24 edge sets with numpy, filtered dead ends by bit counts and judged the
+  rest with rule code of its own (a value matrix, regions by label
+  propagation). It gave the same 16,372, the same 18 grids edge for edge, and
+  for each grid the same cells that can be circled. The 8 in the conditioned
+  space I also counted by eye from the 18 drawings.
+- **The pruning is checked against the unpruned list** on the 3x4 board,
+  where both fit in the test: the same edge sets, the empty one included.
+
+Worker's choices, none a ruling:
+
+- **A region whose box holds the corner is reported as needing an icon
+  cell.** An icon cell is a wall, so the failure is always an even region
+  that is no rectangle; the reader gives it its own reason when the region's
+  bounding box reaches from one side's number cells to the other's.
+- **Cells are named `r2c3`, `r2:turn`, `c3:cross`**, and held as `(r, c)`
+  with a number cell's strip as a negative index, so the blank strip adds
+  cells without moving any.
+- **`failures` lists every broken rule**, and `why_not_hybrid` is its first.
+  The tests need the whole list to show a grid breaks one rule only.
+
 ## Decisions
 
 - **Root.** The first used cell in reading order, stated as n² / 2

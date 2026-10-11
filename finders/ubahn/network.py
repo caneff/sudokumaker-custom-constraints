@@ -20,7 +20,7 @@ KIND_NAMES = ("turn", "straight", "branch", "cross", "blank")
 TURN, STRAIGHT, BRANCH, CROSS, BLANK = KINDS = range(len(KIND_NAMES))
 
 # A cell's kind drawn from its (north, east, south, west) arms.
-_DRAWN = {
+DRAWN = {
     (0, 0, 0, 0): " ",
     (1, 0, 1, 0): "│",
     (0, 1, 0, 1): "─",
@@ -143,7 +143,7 @@ def rows_and_columns(rows, cols, numbers):
 def drawing(network, rows, cols):
     """The network as one string per row, a box-drawing character per cell."""
     return [
-        "".join(_DRAWN[arms(network, (r, c))] for c in range(cols)) for r in range(rows)
+        "".join(DRAWN[arms(network, (r, c))] for c in range(cols)) for r in range(rows)
     ]
 
 

@@ -39,6 +39,10 @@ because the checker reads them and nothing under `docs/research/` does
   step per seed and cause (#777; by hand, outside both gates). Conditions
   arrive one at a time as finder rules. Preflight answers and measurements:
   `docs/research/2026-10-10-u-bahn-finder-decision-log.md`.
+  `hybrid.py` is the solver-free rule reader of the hybrid with Choco-Banana
+  (spec #781): values, regions, circles, a terminal drawing. `brute.py R C`
+  counts a tiny board's valid hybrid grids and classifies circle conditions;
+  the 4x4 answers every engine must match are in the decision log, § Hybrid.
   `ubahn_finder.py links DIR [--blank-number]` writes a Penpa+ link per example
   to `DIR/links/<seed>.txt` (`penpa.py`, #774; wire format
   `docs/research/2026-10-10-u-bahn-penpa-link.md`). The three published links
