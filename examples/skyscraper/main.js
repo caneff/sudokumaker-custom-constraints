@@ -16,3 +16,4 @@ for (const g of groups) {
   const name = `the skyscraper clue at ${helpers.naming.getCellName(g.clue)}`
   puzzle.addConstraintComponent(new SkyscraperOneSidedComponent(name, g.clue, g.line))
 }
+// spike 5c

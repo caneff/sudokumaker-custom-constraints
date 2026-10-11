@@ -51,3 +51,4 @@ variant) built and shipped end to end:
 - Beginner guide: <https://kammer.xyz/blog/sudokumaker/>
 - Constraint catalog (spreadsheet): see `docs/catalog.md` for the link.
 - Author's intro videos: <https://www.youtube.com/@chameleon_yura/videos>
+<!-- spike 5c -->
