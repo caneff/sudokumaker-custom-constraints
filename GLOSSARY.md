@@ -208,6 +208,12 @@ digit.
 - **circle** — a condition on one cell, grid cell or number cell: the cell's
   value equals the number of cells in its region. Nothing is printed in it.
   An uncircled cell promises nothing about size.
+- **engine** — a solver the hybrid's rules are written on, picked by the
+  finder's `--engine`: `cpsat`, `pysat-lazy` or `pysat-propagator`. Every
+  engine answers the same two calls, a grid for a seed and a classification.
+- **connectivity cut** — a clause added to a solve after it proposed a full
+  grid whose network is in several parts: it refuses that grid and the solve
+  goes on. Not the region-building **cut** below.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 

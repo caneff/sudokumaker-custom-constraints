@@ -2,27 +2,31 @@
 Choco-Banana laid over the grid cells and the number cells (spec #781).
 
 Two engines beside `hybrid_model.py`, behind the finder's `--engine` flag,
-on the same clauses. The network's own rules are `sat_model.py`'s clauses; the hybrid's are
-stated here from the spec and from `hybrid.py`'s reader, not carried over
-from the CP-SAT model, so the two engines check each other:
+both on the clauses `rules` builds. The network's own rules are
+`sat_model.py`'s clauses. The hybrid's are stated here from the spec and from
+`hybrid.py`'s reader, not carried over from the CP-SAT model, so that the
+engines check each other:
 
 - A cell's value: a grid cell's is its piece's, a number cell's is a count
   of one kind over its row or column, kept in unary by `_at_least`. Each
   cell has one variable for "its value is odd".
 - Chocolate: no 2x2 window holds exactly three even cells, a cell off the
-  board counting as not even. Three even cells of a window are one group,
-  and a connected group is a rectangle exactly when no window holds three
-  of its cells.
+  board counting as not even. Three even cells of a window are in one
+  region, and a region is a rectangle exactly when no window holds three of
+  its cells.
 - Banana: one clause per rectangle of board cells forbids "every cell of it
-  odd and every cell beside it even", which is an odd group that is that
+  odd and every cell beside it even", which is an odd region that is that
   rectangle.
+- Circle: the cells of the circled cell's region are counted and the count
+  is the cell's value (`_add_circle`). The chocolate and banana clauses
+  shape the region, so a circle lists no rectangle and no bent shape.
 
 Connectivity is not encoded. `listing` solves, and a full grid whose network
-is in several parts is cut with `sat_model.cut_clauses` and the solve goes
-on, on the same solver, so what it learned is kept. That is all the `lazy`
-engine does. The `propagator` engine also connects `_Watcher`, which follows
-the edges as the solver decides them and raises a conflict as soon as the
-edges that are on can no longer be joined.
+is in several parts is refused with `sat_model.cut_clauses`, the connectivity
+cut, and the solve goes on, on the same solver, so what it learned is kept.
+That is all the `lazy` engine does. The `propagator` engine also connects
+`_Watcher`, which follows the edges as the solver decides them and raises a
+conflict as soon as the edges that are on can no longer be joined.
 """
 
 import sys
@@ -46,9 +50,9 @@ PROPAGATOR = "propagator"
 class Listing(NamedTuple):
     """Grids that meet a set of conditions, in the order found: all of them
     when there are fewer than the cap asked for and `timed_out` is False.
-    `cuts` is how many connectivity clauses the solves added for full grids
-    in several parts, and `conflicts` how many the propagator raised while
-    some edge was still undecided."""
+    `cuts` is how many connectivity cuts the solves added, each a clause for
+    a full grid whose network is in several parts, and `conflicts` how many
+    conflicts the propagator raised while some edge was still undecided."""
 
     grids: tuple
     timed_out: bool
@@ -171,20 +175,20 @@ def _add_values(pool, clauses, kind, conditions, true):
             for k in KINDS
         ]
     count = {}
-    for cell, (k, line) in hybrid.number_cells(rows, cols, blank_strip).items():
-        counted = [kind[held, k] for held in line]
-        count[cell] = _at_least(pool, clauses, counted, len(line) + 1, true)
+    for cell, (k, over) in hybrid.number_cells(rows, cols, blank_strip).items():
+        counted = [kind[held, k] for held in over]
+        count[cell] = _at_least(pool, clauses, counted, len(over) + 1, true)
         odd[cell] = pool.id()
         # The value is j when at least j are counted and not j + 1.
         clauses += [
             [-count[cell][j], count[cell][j + 1], odd[cell] if j % 2 else -odd[cell]]
-            for j in range(len(line) + 1)
+            for j in range(len(over) + 1)
         ]
     return count, odd
 
 
 def _chocolate(odd):
-    """The clauses that make every even group a rectangle."""
+    """The clauses that make every even region a rectangle."""
     clauses = []
     corners = {(r - dr, c - dc) for r, c in odd for dr in (0, 1) for dc in (0, 1)}
     for r, c in sorted(corners):
@@ -199,7 +203,7 @@ def _chocolate(odd):
 
 
 def _banana(odd):
-    """The clauses that keep every odd group from being a rectangle."""
+    """The clauses that keep every odd region from being a rectangle."""
     clauses = []
     board_rows = sorted({r for r, _ in odd})
     board_cols = sorted({c for _, c in odd})
@@ -226,15 +230,16 @@ def _neighbours(cell):
 
 
 def _add_circle(pool, clauses, odd, value, circle, true):
-    """The circled cell's value is the number of cells of its group. `value`
-    is that value in unary, with a last entry no value reaches.
+    """The circled cell's value is the number of cells of its region.
+    `value` is that value in unary, with a last entry no value reaches.
 
-    The group is found in rounds. Round 0 reaches the circled cell alone; a
+    The region is found in rounds. Round 0 reaches the circled cell alone; a
     cell is reached in a round when its value has the circled cell's parity
     and it, or a cell beside it, was reached in the round before. Each round
-    reaches at least one cell more until the whole group is reached, so after
-    as many rounds as the largest value the cells reached number the group's
-    size, or more than any value when the group is larger than that."""
+    reaches at least one cell more until the whole region is reached, so
+    after as many rounds as the largest value the cells reached number the
+    region's size, or more than any value when the region is larger than
+    that."""
     top = len(value) - 1
     reached = {circle: true}
     same = {}

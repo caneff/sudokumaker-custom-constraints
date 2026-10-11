@@ -10,6 +10,9 @@ clause added in the first is still there in the second.
 
     docs/research/2026-10-10-u-bahn-optimization-queue.md,
     section "PySAT with lazy connectivity cuts"
+
+`hybrid_sat.py`, the hybrid's PySAT engines, builds on `network_rules`,
+`cut_clauses` and the solve helpers here.
 """
 
 import sys

@@ -90,7 +90,9 @@ test:
     # both connectivity encodings, and the hybrid's whole-4x4 counts, #782,
     # about 6 s of it), its hunt test about 5 s, the hybrid's CP-SAT engine
     # against those counts about 15 s and its finder's CLI about 25 s (#783,
-    # one-worker solves; some 40 short subprocess starts), its Penpa+ encoder
+    # one-worker solves; some 40 short subprocess starts), the two PySAT
+    # engines against the same counts about 17 s and on the CLI about 18 s
+    # (#784, #785; one CaDiCaL thread), its Penpa+ encoder
     # test (#774) about 6 s, its PySAT agreement (#776) about 6 s and its
     # baseline-measurement test (#777) about 4 s;
     # counting_shaded is the one

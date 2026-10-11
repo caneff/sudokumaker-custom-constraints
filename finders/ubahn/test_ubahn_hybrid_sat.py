@@ -6,9 +6,16 @@
 and the class of seven circle conditions. Each engine must list the same
 grids and classify each condition the same way. The class words and counts
 below are the decision log's table, § Hybrid, written out again; the grids
-are the brute force's, judged by the solver-free rule reader.
+are the brute force's, judged by the solver-free rule reader. Listing the 18
+is also where connectivity is seen at work: the lazy engine adds connectivity
+cuts, and the propagator engine raises conflicts on partial assignments.
 
-One CaDiCaL thread.
+No 4x4 grid has a circle in an odd region, so the circle rule is then held to
+the rule reader on larger boards: every 5x5 grid with each cell circled
+alone, and grids the engine found at 7x7 and 10x10, where a number cell can
+be circled in an odd region.
+
+One CaDiCaL thread; about seventeen seconds.
 
     uv run finders/ubahn/test_ubahn_hybrid_sat.py
 """
@@ -215,9 +222,9 @@ for engine in ENGINES:
             == hybrid.Sampled("timeout", None),
         )
 
-# A circle in an odd group, which no 4x4 grid has. On this 5x5 grid, worked
-# by hand in `test_ubahn_hybrid_model.py`, r1c2 is a branch in a bent group of
-# three.
+# A circle in an odd region, which no 4x4 grid has. On this 5x5 grid, worked
+# by hand in `test_ubahn_hybrid_model.py`, r1c2 is a branch in a bent region
+# of three.
 BENT_THREE = network.from_drawing(["┌┬─┬┐", "├┼┬┤│", "│├┘├┤", "├┴┬┼┘", "└─┴┘ "])
 check(
     "5x5 bent three: the rule reader passes it with r1c2 circled",
@@ -228,12 +235,14 @@ for engine in ENGINES:
     # each one, and the count is the CP-SAT engine's own (decision log,
     # § Hybrid: the CP-SAT finder).
     every = set(agrees_with_reader(engine, "5x5, no condition", 5, 31))
-    # Then every cell of the board circled alone. A circle only ever rules a
+    # Then a cell of the board circled alone. A circle only ever rules a
     # grid out, so the rule reader says which of the 31 each circle keeps.
-    board = hybrid.values(BENT_THREE, 5, 5)
+    # Every cell on the lazy engine; the propagator engine runs the same
+    # clauses, so r1c2 and every fifth cell.
+    board = sorted(hybrid.values(BENT_THREE, 5, 5))
     kept = {
         cell: {g for g in every if not hybrid.why_not_hybrid(g, 5, 5, [cell])}
-        for cell in sorted(board)
+        for cell in (board if engine == hybrid_sat.LAZY else [(0, 1), *board[::5]])
     }
     check("5x5: r1c2 circled keeps the bent three alone", kept[0, 1] == {BENT_THREE})
     wrong = [
@@ -250,7 +259,7 @@ for engine in ENGINES:
         != want
     ]
     check(
-        f"{engine}, 5x5: each of the {len(kept)} cells circled alone keeps the "
+        f"{engine}, 5x5: each of {len(kept)} cells circled alone keeps the "
         f"grids the rule reader keeps (wrong: {wrong})",
         not wrong,
     )
@@ -269,9 +278,9 @@ def takes(conditions, net):
 # the rules must take a circle exactly where the rule reader says the cell's
 # value is its region's size. Per grid: every such cell, each alone and all at
 # once, and every seventh of the others. These seeds' grids hold what smaller
-# boards do not, a number cell that can be circled in an odd group: of 3 cells
+# boards do not, a number cell that can be circled in an odd region: of 3 cells
 # on the 7x7 boards, of 5 on the 10x10.
-refused, wrongly_taken, odd_groups = [], [], []
+refused, wrongly_taken, odd_regions = [], [], []
 for side, seed in ((7, 7), (7, 17), (10, 16)):
     found = hybrid_sat.Engine(hybrid_sat.LAZY).grid(
         hybrid.Conditions(side, side), random.Random(seed), time_limit=TIME_LIMIT
@@ -279,7 +288,7 @@ for side, seed in ((7, 7), (7, 17), (10, 16)):
     board = hybrid.values(found.network, side, side)
     size = {cell: len(region) for region in hybrid.regions(board) for cell in region}
     can = {cell for cell in board if board[cell] == size[cell]}
-    odd_groups += [board[cell] for cell in can if min(cell) < 0 and board[cell] % 2]
+    odd_regions += [board[cell] for cell in can if min(cell) < 0 and board[cell] % 2]
     refused += [
         (side, seed, sorted(circles))
         for circles in [can, *({cell} for cell in can)]
@@ -292,8 +301,8 @@ for side, seed in ((7, 7), (7, 17), (10, 16)):
     ]
 check(
     f"7x7 and 10x10: the grids hold number cells that can be circled in odd "
-    f"groups of 3 and of 5 ({sorted(odd_groups)})",
-    {3, 5} <= set(odd_groups),
+    f"regions of 3 and of 5 ({sorted(odd_regions)})",
+    {3, 5} <= set(odd_regions),
 )
 check(
     f"7x7 and 10x10: the rules take every circle the rule reader does "

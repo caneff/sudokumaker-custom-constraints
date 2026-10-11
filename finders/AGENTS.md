@@ -35,7 +35,7 @@ because the checker reads them and nothing under `docs/research/` does
   hunt protocol: `ubahn_finder.py` its docstring and flags, `model.py` the
   CP-SAT model, `network.py` the solver-free rules `verify` reads;
   `sat_model.py` is a prototype second uniqueness check on PySAT (#776), which
-  the finder does not call. `measure_baseline.py` times a hunt's proposal
+  the plain finder does not call. `measure_baseline.py` times a hunt's proposal
   step per seed and cause (#777; by hand, outside both gates). Conditions
   arrive one at a time as finder rules. Preflight answers and measurements:
   `docs/research/2026-10-10-u-bahn-finder-decision-log.md`.
@@ -48,8 +48,13 @@ because the checker reads them and nothing under `docs/research/` does
   `--blank-strip` in, valid grids out, one per seed, each re-read by
   `hybrid.py` in `verify`; `hybrid_finder.py classify` takes the same
   conditions and answers `infeasible`, `unique`, `not_unique` or `timeout`;
-  `--help` prints the usage text. `--engine` picks the solver, `cpsat` the
-  only one so far: `hybrid_model.py`, the plain model plus the hybrid's rules.
+  `--help` prints the usage text. `--engine` picks the solver: `cpsat`
+  (`hybrid_model.py`, the plain model plus the hybrid's rules, the default),
+  or `pysat-lazy` and `pysat-propagator` (`hybrid_sat.py`, #784 and #785: the
+  rules as clauses over `sat_model.py`'s, with connectivity kept by cuts on
+  full grids or by a propagator during the search).
+  `hybrid_sat.listing` returns up to a cap of grids with its cut and conflict
+  counts.
   `ubahn_finder.py links DIR [--blank-number]` writes a Penpa+ link per example
   to `DIR/links/<seed>.txt` (`penpa.py`, #774; wire format
   `docs/research/2026-10-10-u-bahn-penpa-link.md`). The three published links
