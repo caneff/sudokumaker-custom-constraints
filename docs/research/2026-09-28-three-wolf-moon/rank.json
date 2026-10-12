@@ -1,0 +1,6566 @@
+[
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 59,
+"specific": 300,
+"distant": 188
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 60,
+"specific": 300,
+"distant": 188
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 61,
+"specific": 300,
+"distant": 188
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 62,
+"specific": 300,
+"distant": 188
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 44,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 45,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 46,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 47,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 48,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 44,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 45,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 46,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 47,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 48,
+"specific": 225,
+"distant": 132
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 36,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 37,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 38,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 36,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 37,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 38,
+"specific": 232,
+"distant": 117
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 44,
+"specific": 210,
+"distant": 90
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 45,
+"specific": 210,
+"distant": 90
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 44,
+"specific": 210,
+"distant": 90
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 45,
+"specific": 210,
+"distant": 90
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 54,
+"specific": 178,
+"distant": 79
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 55,
+"specific": 178,
+"distant": 79
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 53,
+"specific": 178,
+"distant": 79
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 54,
+"specific": 178,
+"distant": 79
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 55,
+"specific": 178,
+"distant": 79
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 52,
+"specific": 177,
+"distant": 78
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 53,
+"specific": 177,
+"distant": 78
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 52,
+"specific": 177,
+"distant": 78
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 44,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 45,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 46,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 47,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 48,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 44,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 45,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 46,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 47,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 48,
+"specific": 163,
+"distant": 73
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 52,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 53,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 54,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 55,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 52,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 53,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 54,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 55,
+"specific": 219,
+"distant": 69
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 36,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 37,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 38,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 39,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 40,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 36,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 37,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 38,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 39,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 40,
+"specific": 178,
+"distant": 69
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 35,
+"specific": 152,
+"distant": 66
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 52,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 53,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 54,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 55,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 52,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 53,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 54,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 55,
+"specific": 188,
+"distant": 65
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 10,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 11,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 12,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 13,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 14,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 15,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 10,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 11,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 12,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 13,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 14,
+"specific": 91,
+"distant": 64
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 51,
+"specific": 150,
+"distant": 47
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 51,
+"specific": 150,
+"distant": 47
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 28,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 29,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 30,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 31,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 32,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 28,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 29,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 30,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 31,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 32,
+"specific": 125,
+"distant": 41
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 51,
+"specific": 88,
+"distant": 36
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 51,
+"specific": 88,
+"distant": 36
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 58,
+"specific": 70,
+"distant": 36
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 35,
+"specific": 94,
+"distant": 35
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 19,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 20,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 21,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 22,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 23,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 19,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 20,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 21,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 22,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 23,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 24,
+"specific": 78,
+"distant": 33
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 3,
+"specific": 45,
+"distant": 33
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 7,
+"specific": 45,
+"distant": 33
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 43,
+"specific": 70,
+"distant": 28
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 43,
+"specific": 70,
+"distant": 28
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 50,
+"specific": 67,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 52,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 53,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 54,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 55,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 56,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 57,
+"specific": 54,
+"distant": 28
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 28,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 29,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 30,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 31,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 32,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 27,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 28,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 29,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 30,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 31,
+"specific": 90,
+"distant": 27
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 27,
+"specific": 68,
+"distant": 25
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 49,
+"specific": 61,
+"distant": 23
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 50,
+"specific": 61,
+"distant": 23
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 49,
+"specific": 61,
+"distant": 23
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 50,
+"specific": 61,
+"distant": 23
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 50,
+"specific": 50,
+"distant": 23
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 48,
+"specific": 55,
+"distant": 22
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 48,
+"specific": 55,
+"distant": 22
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 44,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 45,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 46,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 47,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 44,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 45,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 46,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 47,
+"specific": 54,
+"distant": 22
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 49,
+"specific": 48,
+"distant": 22
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 49,
+"specific": 48,
+"distant": 22
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 42,
+"specific": 58,
+"distant": 20
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 42,
+"specific": 58,
+"distant": 20
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 44,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 45,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 46,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 47,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 48,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 44,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 45,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 46,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 47,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 48,
+"specific": 46,
+"distant": 20
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 34,
+"specific": 53,
+"distant": 18
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 34,
+"specific": 53,
+"distant": 18
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 1,
+"specific": 22,
+"distant": 18
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 36,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 37,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 38,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 39,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 40,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 41,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 36,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 37,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 38,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 39,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 40,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 41,
+"specific": 43,
+"distant": 14
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 28,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 29,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 30,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 31,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 32,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 33,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 28,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 29,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 30,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 31,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 32,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 33,
+"specific": 42,
+"distant": 13
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 27,
+"specific": 39,
+"distant": 13
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 51,
+"specific": 39,
+"distant": 12
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 51,
+"specific": 39,
+"distant": 12
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 43,
+"specific": 27,
+"distant": 12
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 27,
+"specific": 61,
+"distant": 11
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 43,
+"specific": 25,
+"distant": 11
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 27,
+"specific": 58,
+"distant": 10
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 35,
+"specific": 38,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 34,
+"specific": 32,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 35,
+"specific": 32,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 34,
+"specific": 32,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 28,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 29,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 30,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 31,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 32,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 33,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 28,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 29,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 30,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 31,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 32,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 33,
+"specific": 30,
+"distant": 9
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 1,
+"specific": 12,
+"distant": 9
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 9,
+"specific": 11,
+"distant": 9
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 42,
+"specific": 14,
+"distant": 8
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 26,
+"specific": 36,
+"distant": 7
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 18,
+"specific": 28,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 49,
+"specific": 27,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 50,
+"specific": 27,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 49,
+"specific": 27,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 50,
+"specific": 27,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 10,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 11,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 12,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 13,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 14,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 15,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 10,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 11,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 12,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 13,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 14,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 15,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 44,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 45,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 46,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 47,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 48,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 44,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 45,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 46,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 47,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 48,
+"specific": 26,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 36,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 37,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 38,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 39,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 40,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 41,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 36,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 37,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 38,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 39,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 40,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 41,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 42,
+"specific": 13,
+"distant": 7
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 43,
+"specific": 22,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 36,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 37,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 38,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 39,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 40,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 41,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 42,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 36,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 37,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 38,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 39,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 40,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 41,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 42,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 43,
+"specific": 18,
+"distant": 6
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 35,
+"specific": 14,
+"distant": 6
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 35,
+"specific": 14,
+"distant": 6
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 1,
+"specific": 13,
+"distant": 6
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 35,
+"specific": 10,
+"distant": 6
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 43,
+"specific": 25,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 36,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 37,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 38,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 39,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 40,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 41,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 42,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 43,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 36,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 37,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 38,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 39,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 40,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 41,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 42,
+"specific": 23,
+"distant": 5
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 34,
+"specific": 12,
+"distant": 4
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 34,
+"specific": 12,
+"distant": 4
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 27,
+"specific": 18,
+"distant": 3
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 25,
+"specific": 12,
+"distant": 3
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 26,
+"specific": 12,
+"distant": 3
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 25,
+"specific": 12,
+"distant": 3
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 1,
+"specific": 9,
+"distant": 2
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 1,
+"specific": 8,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 27,
+"specific": 6,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 27,
+"specific": 5,
+"distant": 2
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 42,
+"specific": 5,
+"distant": 2
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 43,
+"specific": 5,
+"distant": 2
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 42,
+"specific": 5,
+"distant": 2
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 43,
+"specific": 5,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 19,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 20,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 21,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 22,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 23,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 24,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 25,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 26,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 19,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 20,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 21,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 22,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 23,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 24,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 25,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 26,
+"specific": 3,
+"distant": 2
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 43,
+"specific": 7,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 43,
+"specific": 7,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 28,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 29,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 30,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 31,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 32,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 33,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 28,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 29,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 30,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 31,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 32,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 33,
+"specific": 5,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 42,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 42,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 36,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 37,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 38,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 39,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 40,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 41,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 36,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 37,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 38,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 39,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 40,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 41,
+"specific": 4,
+"distant": 1
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 27,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 27,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 36,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 37,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 38,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 39,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 40,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 41,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 36,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 37,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 38,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 39,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 40,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 41,
+"specific": 3,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 27,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 28,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 29,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 30,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 31,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 32,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 33,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 34,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 27,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 28,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 29,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 30,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 31,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 32,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 33,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 34,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 35,
+"specific": 1,
+"distant": 1
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 51,
+"specific": 12,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 18,
+"specific": 7,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 1,
+"specific": 7,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 10,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 11,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 12,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 13,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 14,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 15,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 16,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 17,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 10,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 11,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 12,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 13,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 14,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 15,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 16,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 17,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 18,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 19,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 20,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 21,
+"specific": 6,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 19,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 20,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 21,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 22,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 23,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 24,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 25,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 26,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 19,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 20,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 21,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 22,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 23,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 24,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 25,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 26,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 35,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 1,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 1,
+"specific": 5,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 19,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 20,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 21,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 22,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 23,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 24,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 18,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 19,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 20,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 21,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 22,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 23,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 24,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 19,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 20,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 21,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 22,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 23,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 24,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 25,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 26,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 19,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 20,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 21,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 22,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 23,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 24,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 25,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 26,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 28,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 29,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 30,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 31,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 32,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 33,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 34,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 35,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 28,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 29,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 30,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 31,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 32,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 33,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 34,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 44,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 45,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 46,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 47,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 48,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 49,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 50,
+"specific": 4,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 18,
+"specific": 3,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 1,
+"specific": 3,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 35,
+"specific": 3,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 1,
+"specific": 3,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 1,
+"specific": 3,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 2,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 2,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 1,
+"specific": 2,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 8,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 2,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 9,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 7,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 9,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 3,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 9,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 2,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 18,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 1,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 35,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 27,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 18,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 19,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 20,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 21,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 22,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 23,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 24,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 25,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 26,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 18,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 19,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 20,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 21,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 22,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 23,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 24,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 25,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 26,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 35,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 35,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 2,
+"specific": 1,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-7 r1c8-r2c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\7 r8c1-r9c2",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/1 r1c2-r2c1",
+"sum": 1,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/1 r1c2-r2c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/1 r1c2-r2c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/1 r1c2-r2c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/1 r1c2-r2c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/15 r8c9-r9c8",
+"sum": 1,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/15 r8c9-r9c8",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/15 r8c9-r9c8",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/15 r8c9-r9c8",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/15 r8c9-r9c8",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-6 r1c7-r3c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\6 r7c1-r9c3",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/2 r1c3-r3c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 1,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/14 r7c9-r9c7",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-5 r1c6-r4c9",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\5 r6c1-r9c4",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/3 r1c4-r4c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/13 r6c9-r9c6",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-4 r1c5-r5c9",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\4 r5c1-r9c5",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/4 r1c5-r5c1",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/12 r5c9-r9c5",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-3 r1c4-r6c9",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\3 r4c1-r9c6",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/5 r1c6-r6c1",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 1,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/11 r4c9-r9c4",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-2 r1c3-r7c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\2 r3c1-r9c7",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/6 r1c7-r7c1",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/10 r3c9-r9c3",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\-1 r1c2-r8c9",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\1 r2c1-r9c8",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/7 r1c8-r8c1",
+"sum": 35,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/9 r2c9-r9c2",
+"sum": 35,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "\\0 r1c1-r9c9",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 2,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 3,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 4,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 5,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 6,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 7,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 8,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 9,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 10,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 11,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 12,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 13,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 14,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 15,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 16,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 17,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 18,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 19,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 20,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 21,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 22,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 23,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 24,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 25,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 26,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 27,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 28,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 29,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 30,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 31,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 32,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 33,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 34,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 35,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 36,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 37,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 38,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 39,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 40,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 41,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 42,
+"specific": 0,
+"distant": 0
+},
+{
+"diag": "/8 r1c9-r9c1",
+"sum": 43,
+"specific": 0,
+"distant": 0
+}
+]
