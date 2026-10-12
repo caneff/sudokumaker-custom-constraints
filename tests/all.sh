@@ -5,8 +5,6 @@
 # time, in the same order. Files are found by glob from the tree
 # on disk, so a new test needs no edit here; the lists below are the
 # exceptions, and examples/_shared/gate.test.py checks them against the tree.
-# A new shared test takes one line in tests/shared-tests.txt, its class for a
-# narrowed run, and examples/_shared/seam_runner.test.py fails until it has it.
 #
 #   bash tests/all.sh [--list] [--changed <base>] [--group <group>]
 #
@@ -14,29 +12,21 @@
 #
 # `--changed <base>` narrows the run to what the diff `<base>...HEAD` could
 # affect, by directory and not by import scan:
-#   - lint and the tree checks, always: the tests under examples/_shared/
-#     that tests/shared-tests.txt classes `tree`, or gives no class;
-#   - the shared example-code tests, which it classes `code`, unless the diff
-#     lies wholly inside finders/<name>/ directories;
-#   - every suite of each examples/<name>/ and finders/<name>/ the diff
-#     touches: its tests, its heavy tests and its soundness harness;
+#   - lint and the shared tests under examples/_shared/, always;
+#   - every suite of each examples/<name>/ the diff touches: its tests, its
+#     heavy tests and its soundness harness;
 #   - every suite of a unit that tests/suite-edges.txt says reads a touched
 #     directory.
 # It widens to the whole seam when the diff touches what every suite depends
 # on (`place` below names those paths) or a path no rule places. A Markdown
-# file outside an example or a finder selects no unit, and keeps the shared
-# example-code tests. So a finder-only run covers lint, the tree checks, that
-# finder's suites and the suites of each unit tests/suite-edges.txt says
-# reads it. The narrowing runs too little when a suite reads another unit's
-# directory that tests/suite-edges.txt does not list, a Markdown file outside
-# its unit that `place` does not name, or, for a shared test classed `code`,
-# a file under finders/; the controller re-runs the whole seam on the
-# merged result before every merge.
+# file outside an example selects no unit. The narrowing runs too little when
+# a suite reads another unit's directory that tests/suite-edges.txt does not
+# list, or a Markdown file outside its unit that `place` does not name; the
+# controller re-runs the whole seam on the merged result before every merge.
 #
 # `--group <group>` runs one group of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
-# `heavy-fillomino`, `heavy-recovery`, `soundness`. `finders-slow` is a group
-# outside the seam, run by hand through `just test-finders-slow`.
+# `heavy-fillomino`, `heavy-recovery`, `soundness`.
 #
 # One line per suite as it finishes (`PASS <suite>`); the first failing suite
 # prints `FAIL <suite>` and its whole output, and the run exits 1 there. The
@@ -56,40 +46,14 @@ cd "$root" || exit 1
 heavy_fillomino="examples/fillomino/pipeline.test.py examples/fillomino/generate.test.py"
 heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
 
-# Finder tests (#662) that do not run as a plain `uv run <file>`:
-#   finder_slow:   the `finders-slow` group only (a CP-SAT solve per known
-#                  grid, minutes overall).
-#   finder_cover:  run with `--cover` (a subset, one grid per shape) in the
-#                  seam, and in full in the `finders-slow` group.
-#   finder_pytest: the pytest suites, run as `uv run pytest <file> -q`.
-finder_slow="finders/renbanana/tools/test_prove_two_stage_slow.py"
-finder_cover="finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py finders/renbanana/tools/test_probe_finds_known_grids.py"
-finder_pytest="finders/counting_shaded/test_counting_shaded.py"
-
 listed() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; } # <list> <file>
 
-# The shared example-code tests: the files tests/shared-tests.txt classes
-# `code`.
-[ -r tests/shared-tests.txt ] || {
-  echo "tests/all.sh: cannot read tests/shared-tests.txt" >&2; exit 2; }
-code_tests=""
-while read -r file class _ || [ -n "$file" ]; do
-  case $file in "" | "#"*) continue ;; esac
-  case $class in
-    tree) ;;
-    code) code_tests="$code_tests $file" ;;
-    *) echo "tests/all.sh: tests/shared-tests.txt: not '<file> tree|code': $file $class" >&2; exit 2 ;;
-  esac
-done <tests/shared-tests.txt
-
-# The unit that owns a test file: `examples/<name>` or `finders/<name>`, the
-# directory a `--changed` run selects it by. A shared example-code test
-# belongs to `code`; lint and every other shared test belong to `always`.
+# The unit that owns a test file: `examples/<name>`, the directory a
+# `--changed` run selects it by. Lint and the shared tests belong to `always`.
 unit_of() { # <file>
   local top name
   IFS=/ read -r top name _ <<<"$1"
   if [ "$top/$name" != examples/_shared ]; then echo "$top/$name"
-  elif listed "$code_tests" "$1"; then echo code
   else echo always; fi
 }
 
@@ -100,8 +64,7 @@ run_file() { # <group> <file>: prints the suite that runs a test file
 }
 
 # Prints "<group>\t<unit>\t<command>" per suite, in run order: lint, the shared
-# tests, every finder's tests, every example's tests, the heavy tests, the
-# soundness harnesses, and last the slow finder tests no seam run includes.
+# tests, every example's tests, the heavy tests and the soundness harnesses.
 suites() {
   local f dir
   # Lint: StandardJS on the Node code, ruff (check + format check) on the
@@ -109,41 +72,12 @@ suites() {
   # snippets are excluded by package.json's standard.ignore.
   printf 'lint\talways\t%s\n' \
     "npx standard" \
-    "uvx ruff check examples" "uvx ruff check finders" \
-    "uvx ruff format --check examples" "uvx ruff format --check finders" \
+    "uvx ruff check examples" "uvx ruff format --check examples" \
     "uv lock --check"
   for f in examples/_shared/*.test.mjs examples/_shared/*.test.py; do
     run_file test "$f"
   done
   run_file test examples/_shared/check_layout.py
-  # Cost, for the box's sake: the renbanana tests are under 10 s each
-  # (test_max_house_circles.py is one CP-SAT solve pinned to one worker; the
-  # two --cover subsets are about 7 s and 25 s, so an over-constrained
-  # encoding fails CI -- #498, #501); hunt's are a few seconds each with
-  # workers pinned to 1, test_spec_483_e2e.py about six; qqrr's total about
-  # ten; the galaxy-copycat human solver about 1.5 s; ubahn's brute-force
-  # agreement about 28 s (one-worker solves that list a 4x4 and a 3x4 space
-  # under both connectivity encodings, and the hybrid's whole-4x4 counts,
-  # #782, about 6 s of it), its hunt test about 5 s, its Penpa+
-  # encoder test (#774) about 6 s, its PySAT agreement (#776) about 6 s and
-  # its baseline-measurement test (#777) about 4 s; the hybrid's CP-SAT
-  # engine against those counts about 15 s and its finder's CLI about 25 s
-  # (#783, one-worker solves; some 40 short subprocess starts), the two PySAT
-  # engines against the same counts about 17 s and on the CLI about 18 s
-  # (#784, #785; one CaDiCaL thread), its three-engine timing test (#786)
-  # about 1 s, its picture test (#791) about 4 s (no solver), its
-  # end-to-end chain (#781) about 11 s, its banana-region condition
-  # (#792) about 50 s on all three engines, and its number-cell-circle
-  # condition (#794) about 12 s against those counts on all three engines and
-  # about 18 s on the CLI with its climb; counting_shaded is the one
-  # pytest suite in the repo, about 3 s, and compiles its C filter with the
-  # system cc to check it against the Python one.
-  for f in finders/**/test_*.py; do
-    if listed "$finder_slow" "$f"; then continue
-    elif listed "$finder_pytest" "$f"; then emit test "$f" "uv run pytest $f -q"
-    elif listed "$finder_cover" "$f"; then emit test "$f" "uv run $f --cover"
-    else run_file test "$f"; fi
-  done
   for dir in examples/*/; do
     [ "$dir" = examples/_shared/ ] && continue
     for f in "$dir"*.test.mjs "$dir"*.test.py; do
@@ -155,10 +89,9 @@ suites() {
   for f in $heavy_fillomino; do run_file heavy-fillomino "$f"; done
   for f in $heavy_recovery; do run_file heavy-recovery "$f"; done
   for f in examples/*/soundness-harness.mjs; do run_file soundness "$f"; done
-  for f in $finder_cover $finder_slow; do run_file finders-slow "$f"; done
 }
 
-# Where one changed file lands. Prints `unit <examples|finders>/<name>` when a
+# Where one changed file lands. Prints `unit examples/<name>` when a
 # unit owns it, `whole <why>` when the whole seam must run, and nothing when
 # lint and the shared tests already cover it.
 place() { # <file>
@@ -168,40 +101,34 @@ place() { # <file>
     *[[:space:]]*) echo "whole no rule places $1" ;;
     # docs/builtin-components.md is the one Markdown file code reads: the
     # shared component scan takes the built-in component list from it.
-    tests/all.sh | tests/suite-edges.txt | tests/shared-tests.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
+    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
       echo "whole every suite depends on $1" ;;
     examples/_shared/*)
-      # A changed shared test selects no unit and keeps the shared
-      # example-code tests in the run; any other shared file is code the
-      # examples load.
+      # A changed shared test selects no unit; any other shared file is code
+      # the examples load.
       case $rest in
         */* | "") echo "whole shared example code changed: $1" ;;
         *.test.mjs | *.test.py) ;;
         *) echo "whole shared example code changed: $1" ;;
       esac ;;
-    finders/hunt/*) echo "whole finders/hunt/ changed: $1" ;;
-    examples/*/* | finders/*/*) echo "unit $top/$name" ;;
+    examples/*/*) echo "unit $top/$name" ;;
     *.md) ;;
     *) echo "whole no rule places $1" ;;
   esac
 }
 
 # Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
-# units that read them, sorted) or `widened` (why the whole seam runs), and
-# `code` (`code`, or empty when every changed file is a finder's, which
-# leaves the shared example-code tests out of the run).
+# units that read them, sorted) or `widened` (why the whole seam runs).
 scope() { # <base>
   local files file kind what source reader touched
   [ -r tests/suite-edges.txt ] || {
     echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
   files=$(git diff --name-only --no-renames "$1...HEAD") || {
     echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
-  units="" widened="" code=""
-  [ -n "$files" ] || code=code
+  units="" widened=""
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     read -r kind what <<<"$(place "$file")"
-    case "$kind $what" in "unit finders/"*) ;; *) code=code ;; esac
     case $kind in
       whole) widened=$what; return ;;
       unit) listed "$units" "$what" || units="$units $what" ;;
@@ -239,19 +166,18 @@ done
 
 # The tree is globbed here and nowhere else; `set -f` holds everywhere else so
 # a suite command is word-split without its path being expanded.
-set +f; shopt -s nullglob globstar
+set +f; shopt -s nullglob
 all=$(suites)
 set -f
 
 if [ -n "$group" ]; then
   case $group in
-    lint | test | heavy-fillomino | heavy-recovery | soundness | finders-slow) ;;
+    lint | test | heavy-fillomino | heavy-recovery | soundness) ;;
     *) usage "no group named $group" ;;
   esac
   all=$(awk -F'\t' -v group="$group" '$1 == group' <<<"$all")
   note=" (group: $group)"
 else
-  all=$(awk -F'\t' '$1 != "finders-slow"' <<<"$all")
   note=""
 fi
 all=$(cut -f2- <<<"$all")
@@ -262,8 +188,8 @@ if [ -n "$base" ]; then
   if [ -n "$widened" ]; then
     note="$note (widened: $widened)"
   else
-    selected=$(awk -F'\t' -v keep=" always $code $units " 'index(keep, " " $1 " ")' <<<"$all")
-    note="$note (narrowed: ${units:-no example or finder touched})"
+    selected=$(awk -F'\t' -v keep=" always $units " 'index(keep, " " $1 " ")' <<<"$all")
+    note="$note (narrowed: ${units:-no example touched})"
   fi
 fi
 selected=$(cut -f2 <<<"$selected")

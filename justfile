@@ -14,7 +14,7 @@ check-full: check test-heavy soundness
 # The suites live in one place, tests/all.sh: every recipe below that runs
 # tests calls it with the group it wants, so the gate and a worker's narrowed
 # run (`bash tests/all.sh --changed <base>`) read the same listing. The heavy
-# list and the finder exceptions are there too.
+# list is there too.
 
 # Lint the Node code (StandardJS) and the Python generators (ruff check +
 # format check), and fail when uv.lock no longer matches pyproject.toml. The
@@ -28,11 +28,9 @@ lint:
 fmt:
     npx standard --fix
     uvx ruff check --fix examples
-    uvx ruff check --fix finders
     uvx ruff format examples
-    uvx ruff format finders
 
-# Every shared, finder and example test except the heavy ones tests/all.sh
+# Every shared and example test except the heavy ones tests/all.sh
 # names, discovered by file name so a new example needs no edit here. See
 # docs/example-layout.md. Builders (build_*.py) do not run here — only files
 # named *.test.mjs / *.test.py. A verify.py runs here only when it is cheap:
@@ -47,17 +45,9 @@ fmt:
 # commit.
 #
 # JUST is for the tests that run recipes themselves (gate_lib.commands).
-[doc("Every unit test except the heavy and slow ones, found by glob.")]
+[doc("Every unit test except the heavy ones, found by glob.")]
 test:
     JUST="{{just_executable()}}" bash tests/all.sh --group test
-
-# finders/renbanana's slow tests: the two --cover tests in full plus the slow
-# two-stage proof, a CP-SAT solve per known grid, minutes overall. Not part of
-# check/check-full; run by hand after touching probe_inverted.py,
-# probe_circle_pattern.py or prove_two_stage.py.
-[doc("Slow finder tests (a CP-SAT solve per known grid), by hand, minutes overall.")]
-test-finders-slow:
-    bash tests/all.sh --group finders-slow
 
 # The heavy tests `test` skips, run by `check-full`, as two CI-sized groups:
 # the fillomino pipeline (37s) and the two recovery probes (21s).

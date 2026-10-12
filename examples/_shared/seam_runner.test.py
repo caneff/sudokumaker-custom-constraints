@@ -29,8 +29,8 @@ LOGGING_RUNNER = '#!/bin/sh\necho "all.sh $*" >> "$GATE_LOG"\n'
 
 def the_recipes_call_the_runner():
     """The justfile keeps no listing of its own: `just check-full` is the
-    runner called once per group, the groups split the whole seam with no suite
-    in two of them, and the slow finder tests are a group outside it."""
+    runner called once per group, and the groups split the whole seam with no
+    suite in two of them."""
     whole = listing()
     split = [suite for group in GROUPS for suite in listing("--group", group)]
     assert sorted(split) == sorted(whole), "the groups do not split the whole seam"
@@ -41,17 +41,9 @@ def the_recipes_call_the_runner():
         assert commands("check-full", root=tree) == [
             f"all.sh --group {group}" for group in GROUPS
         ], "just check-full runs something other than the runner's groups"
-        assert commands("test-finders-slow", root=tree) == [
-            "all.sh --group finders-slow"
-        ]
 
     with tempfile.TemporaryDirectory() as tmp:
         tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
-        assert listing("--group", "finders-slow", root=tree) == [
-            "uv run finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py",
-            "uv run finders/renbanana/tools/test_probe_finds_known_grids.py",
-            "uv run finders/renbanana/tools/test_prove_two_stage_slow.py",
-        ]
         r, ran = run_stubbed(["bash", RUNNER, "--group", "soundness"], root=tree)
         assert ran == [c for c in WHOLE if c.endswith("soundness-harness.mjs")], ran
         assert r.stdout.splitlines()[-1] == "3 of 3 suites passed (group: soundness)"
@@ -134,23 +126,18 @@ def a_failing_suite_stops_the_run():
 LINT = [
     "npx standard",
     "uvx ruff check examples",
-    "uvx ruff check finders",
     "uvx ruff format --check examples",
-    "uvx ruff format --check finders",
     "uv lock --check",
 ]
 
-# What every narrowed run of the fixture keeps: lint, the tree checks, and
-# s.test.py, a shared test tests/shared-tests.txt gives no class.
+# What every narrowed run of the fixture keeps: lint and the shared tests.
 ALWAYS = [
     *LINT,
     "uv run examples/_shared/gate.test.py",
     "uv run examples/_shared/s.test.py",
+    "uv run examples/_shared/frame.test.py",
     "uv run examples/_shared/check_layout.py",
 ]
-# The fixture's shared example-code test: in every narrowed run but one whose
-# diff lies wholly inside finders.
-CODE = ["uv run examples/_shared/frame.test.py"]
 
 AA = ["node examples/aa/a.test.mjs", "node examples/aa/soundness-harness.mjs"]
 BB = ["uv run examples/bb/b.test.py", "node examples/bb/soundness-harness.mjs"]
@@ -166,27 +153,9 @@ SKYSCRAPER = [
     "node examples/skyscraper/recovery-probe.test.mjs",
 ]
 HIT_COUNTS = ["node examples/hit-counts/recovery-probe.test.mjs"]
-FF = ["uv run finders/ff/test_f.py", "uv run finders/ff/deep/test_g.py"]
-GG = ["uv run finders/gg/test_h.py"]
-HUNT = ["uv run finders/hunt/test_hunt.py"]
-COUNTING = ["uv run pytest finders/counting_shaded/test_counting_shaded.py -q"]
-RENBANANA = ["uv run finders/renbanana/tools/test_probe_finds_known_grids.py --cover"]
-
-# The fixture's whole seam. The slow renbanana test is in the tree and in no run.
-WHOLE = (
-    ALWAYS
-    + CODE
-    + AA
-    + BB
-    + FILLOMINO
-    + FF
-    + GG
-    + HUNT
-    + COUNTING
-    + RENBANANA
-    + SKYSCRAPER
-    + HIT_COUNTS
-)
+# The fixture's whole seam. The test files outside examples/ are in the tree
+# and in no run.
+WHOLE = ALWAYS + AA + BB + FILLOMINO + SKYSCRAPER + HIT_COUNTS
 
 FIXTURE = [
     "justfile",
@@ -208,38 +177,24 @@ FIXTURE = [
     "examples/fillomino/soundness-harness.mjs",
     "examples/skyscraper/recovery-probe.test.mjs",
     "examples/hit-counts/recovery-probe.test.mjs",
-    "finders/top.py",
-    "finders/ff/test_f.py",
-    "finders/ff/deep/test_g.py",
-    "finders/gg/test_h.py",
-    "finders/hunt/test_hunt.py",
-    "finders/counting_shaded/test_counting_shaded.py",
-    "finders/renbanana/tools/test_prove_two_stage_slow.py",
-    "finders/renbanana/tools/test_probe_finds_known_grids.py",
+    "outside/test_o.py",
+    "outside/deep/o.test.py",
 ]
 
 # A diff (the files one commit adds or edits) and the suites it must select.
 NARROWED = [
-    (["finders/ff/deep/model.py"], ALWAYS + FF),
-    (["finders/counting_shaded/filter.c"], ALWAYS + COUNTING),
-    (["finders/renbanana/tools/probe.py"], ALWAYS + RENBANANA),
-    (["finders/ff/x.py", "finders/gg/notes.md"], ALWAYS + FF + GG),
-    (["examples/fillomino/Component.js"], ALWAYS + CODE + FILLOMINO),
-    (["examples/skyscraper/SkyscraperComponent.js"], ALWAYS + CODE + SKYSCRAPER),
-    (["examples/aa/README.md", "finders/gg/notes.md"], ALWAYS + CODE + AA + GG),
+    (["examples/fillomino/Component.js"], ALWAYS + FILLOMINO),
+    (["examples/skyscraper/SkyscraperComponent.js"], ALWAYS + SKYSCRAPER),
+    (["examples/aa/README.md", "examples/bb/notes.md"], ALWAYS + AA + BB),
     (
-        ["examples/bb/new.test.mjs", "finders/gg/test_new.py"],
-        ALWAYS
-        + CODE
-        + BB
-        + GG
-        + ["node examples/bb/new.test.mjs", "uv run finders/gg/test_new.py"],
+        ["examples/bb/new.test.mjs"],
+        ALWAYS + BB + ["node examples/bb/new.test.mjs"],
     ),
-    (["examples/_shared/s.test.py"], ALWAYS + CODE),
-    (["examples/_shared/gate.test.py"], ALWAYS + CODE),
-    (["docs/notes.md", "README.md", "finders/AGENTS.md"], ALWAYS + CODE),
-    (["finders/ff/x.py", "docs/notes.md"], ALWAYS + CODE + FF),
-    ([], ALWAYS + CODE),
+    (["examples/_shared/s.test.py"], ALWAYS),
+    (["examples/_shared/gate.test.py"], ALWAYS),
+    (["docs/notes.md", "README.md", "outside/AGENTS.md"], ALWAYS),
+    (["examples/aa/x.py", "docs/notes.md"], ALWAYS + AA),
+    ([], ALWAYS),
 ]
 
 # A diff that widens to the whole seam, and the reason the last line gives.
@@ -248,19 +203,17 @@ WIDENED = [
         ["examples/_shared/lib.py"],
         "shared example code changed: examples/_shared/lib.py",
     ),
-    (["finders/hunt/driver.py"], "finders/hunt/ changed: finders/hunt/driver.py"),
     (["justfile"], "every suite depends on justfile"),
     (["uv.lock"], "every suite depends on uv.lock"),
     (["tests/all.sh"], "every suite depends on tests/all.sh"),
     (["tests/suite-edges.txt"], "every suite depends on tests/suite-edges.txt"),
-    (["tests/shared-tests.txt"], "every suite depends on tests/shared-tests.txt"),
     (["docs/boards/data.json"], "no rule places docs/boards/data.json"),
     (["docs/two words.md"], "no rule places docs/two words.md"),
     (
         ["docs/builtin-components.md"],
         "every suite depends on docs/builtin-components.md",
     ),
-    (["finders/top.py", "finders/ff/x.py"], "no rule places finders/top.py"),
+    (["outside/test_o.py", "examples/aa/x.py"], "no rule places outside/test_o.py"),
 ]
 
 
@@ -286,13 +239,13 @@ def edges():
 
 
 def cross_unit_reads():
-    """(unit, other unit) for every tracked code line under an example or a
-    finder that names another one's directory: a relative or repo path into
-    it, or its bare name as a string. Comment lines are skipped, `#include`
-    directives are not. finders/hunt/ and examples/_shared/ are not targets:
-    a change to either runs the whole seam."""
+    """(unit, other unit) for every tracked code line under an example that
+    names another one's directory: a relative or repo path into it, or its
+    bare name as a string. Comment lines are skipped, `#include` directives
+    are not. examples/_shared/ is not a target: a change to it runs the whole
+    seam."""
     tracked = subprocess.run(
-        ["git", "ls-files", "examples", "finders"],
+        ["git", "ls-files", "examples"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -301,11 +254,10 @@ def cross_unit_reads():
     units = sorted({"/".join(f.split("/")[:2]) for f in tracked if f.count("/") >= 2})
     targets = {
         u: re.compile(
-            r"(\.\./|examples/|finders/)%s/|[\"']%s[\"']"
-            % ((re.escape(u.split("/")[1]),) * 2)
+            r"(\.\./|examples/)%s/|[\"']%s[\"']" % ((re.escape(u.split("/")[1]),) * 2)
         )
         for u in units
-        if u not in ("examples/_shared", "finders/hunt")
+        if u != "examples/_shared"
     }
     found = set()
     for f in tracked:
@@ -325,7 +277,7 @@ def cross_unit_reads():
 
 
 def every_cross_unit_read_is_an_edge():
-    """A suite that reads another example's or finder's files runs when that
+    """A suite that reads another example's files runs when that
     directory changes: every such read the scan finds is listed in
     tests/suite-edges.txt, and every listed edge names two directories."""
     listed = edges()
@@ -342,64 +294,9 @@ def every_cross_unit_read_is_an_edge():
     )
 
 
-CLASSES = "tests/shared-tests.txt"
-
-
-def shared_classes():
-    """{file: class} from tests/shared-tests.txt, `tree` or `code`."""
-    classes = {}
-    for line in (ROOT / CLASSES).read_text().splitlines():
-        if not line.strip() or line.startswith("#"):
-            continue
-        file, cls, *why = line.split()
-        assert file not in classes, f"{CLASSES} names {file} twice"
-        assert cls in ("tree", "code"), f"{CLASSES}: {file} is neither tree nor code"
-        assert why or cls == "code", f"{CLASSES}: {file} is a tree check with no reason"
-        classes[file] = cls
-    return classes
-
-
-def every_shared_test_has_a_class():
-    """Every suite the runner runs from examples/_shared/ has one line in
-    tests/shared-tests.txt, which names no other file. On the real tree's file
-    names, a diff inside finders/ubahn/ selects lint, the tree checks and the
-    U-Bahn tests, and a diff inside one example selects every shared test."""
-    whole = listing()
-    suite_of = {s.split()[-1]: s for s in whole if "examples/_shared/" in s}
-    classes = shared_classes()
-    unclassed = sorted(set(suite_of) - set(classes))
-    assert not unclassed, (
-        f"a shared test is neither a tree check nor a shared example-code test: "
-        f"give each a line in {CLASSES}: {unclassed}"
-    )
-    stale = sorted(set(classes) - set(suite_of))
-    assert not stale, f"{CLASSES} names a file that is not a shared suite: {stale}"
-
-    ubahn = [suite for suite in whole if "finders/ubahn/" in suite]
-    example = [suite for suite in whole if "examples/up-to-n/" in suite]
-    assert ubahn, "the runner lists no finders/ubahn/ suite to select"
-    assert example, "the runner lists no examples/up-to-n/ suite to select"
-    with tempfile.TemporaryDirectory() as tmp:
-        files = [suite.split()[-1] for suite in whole if "/" in suite.split()[-1]]
-        tree = scratch_tree(tmp, dict.fromkeys(files, ""))
-        git(tree, "init", "-q")
-        git(tree, "add", "-A")
-        git(tree, "commit", "-q", "-m", "base")
-        git(tree, "tag", "base")
-        with_diff(tree, ["finders/ubahn/model.py"])
-        got = listing("--changed", "base", root=tree)
-        want = LINT + [suite_of[f] for f, c in classes.items() if c == "tree"] + ubahn
-        assert sorted(got) == sorted(want), f"a U-Bahn diff selects {got}"
-        with_diff(tree, ["examples/up-to-n/Component.js"])
-        got = listing("--changed", "base", root=tree)
-        want = LINT + list(suite_of.values()) + example
-        assert sorted(got) == sorted(want), f"an example diff selects {got}"
-
-
 def agents_md_names_both_commands():
     """AGENTS.md § End-to-end seam keeps the Seam and Blind-to lines other
-    skills read, names the narrowed command beside them, and says what a
-    finder-only run covers."""
+    skills read, and names the narrowed command beside them."""
     text = (ROOT / "AGENTS.md").read_text()
     section = text.split("## End-to-end seam\n", 1)[1].split("\n## ", 1)[0]
     lines = section.splitlines()
@@ -411,9 +308,6 @@ def agents_md_names_both_commands():
         if ln.startswith("- **Narrowed**: `bash tests/all.sh --changed origin/main`")
     ]
     assert len(narrowed) == 1, section
-    assert "finder-only" in narrowed[0] and CLASSES in narrowed[0], (
-        f"the Narrowed line does not say what a finder-only run covers: {narrowed[0]}"
-    )
 
 
 def git(tree, *args):
@@ -440,11 +334,9 @@ def with_diff(tree, changed):
 
 
 def a_diff_selects_its_suites():
-    """`--changed <base>` keeps lint, the tree checks and the suites of each
-    example and finder the diff touches, and the shared example-code tests
-    unless the diff lies wholly inside finders, where a shared test with no
-    class still runs; it widens to the whole seam when the
-    diff touches what every suite depends on or a path no rule places; and the
+    """`--changed <base>` keeps lint, the shared tests and the suites of each
+    example the diff touches; it widens to the whole seam when the diff
+    touches what every suite depends on or a path no rule places; and the
     run's last line names the units or the reason."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
@@ -470,30 +362,25 @@ def a_diff_selects_its_suites():
             assert ran == listing("--changed", "base", root=tree), changed
             return r.stdout.splitlines()[-1]
 
-        (tree / EDGES).write_text("# a comment\nexamples/aa finders/gg  why")
+        (tree / EDGES).write_text("# a comment\nexamples/aa examples/bb  why")
         git(tree, "add", "-A")
         git(tree, "commit", "-q", "-m", "an edge")
         git(tree, "tag", "-f", "base")
         with_diff(tree, ["examples/aa/Component.js"])
         got = listing("--changed", "base", root=tree)
-        assert sorted(got) == sorted(ALWAYS + CODE + AA + GG), f"an edge selects {got}"
-        with_diff(tree, ["finders/gg/x.py"])
+        assert sorted(got) == sorted(ALWAYS + AA + BB), f"an edge selects {got}"
+        with_diff(tree, ["examples/bb/x.py"])
         got = listing("--changed", "base", root=tree)
-        assert sorted(got) == sorted(ALWAYS + GG), f"an edge runs backwards: {got}"
+        assert sorted(got) == sorted(ALWAYS + BB), f"an edge runs backwards: {got}"
 
         m = len(WHOLE)
-        got = last_line(["finders/ff/x.py", "examples/bb/y.js"])
+        got = last_line(["examples/fillomino/x.py", "examples/bb/y.js"])
         assert got == (
-            f"{len(ALWAYS + CODE + BB + FF)} of {m} suites passed "
-            "(narrowed: examples/bb finders/ff)"
-        ), got
-        got = last_line(["finders/ff/x.py"])
-        assert got == (
-            f"{len(ALWAYS + FF)} of {m} suites passed (narrowed: finders/ff)"
+            f"{len(ALWAYS + BB + FILLOMINO)} of {m} suites passed "
+            "(narrowed: examples/bb examples/fillomino)"
         ), got
         assert last_line(["docs/notes.md"]) == (
-            f"{len(ALWAYS + CODE)} of {m} suites passed "
-            "(narrowed: no example or finder touched)"
+            f"{len(ALWAYS)} of {m} suites passed (narrowed: no example touched)"
         )
         for changed, why in WIDENED:
             got = last_line(changed)
@@ -523,21 +410,12 @@ def a_diff_selects_its_suites():
         (tree / EDGES).unlink()
         said = refusal(tree, "--list", "--changed", "base")
         assert f"cannot read {EDGES}" in said, said
-        (tree / CLASSES).write_text("examples/_shared/frame.test.py cod\n")
-        said = refusal(tree, "--list")
-        assert (
-            f"{CLASSES}: not '<file> tree|code': examples/_shared/frame.test.py cod"
-            in said
-        ), said
-        (tree / CLASSES).unlink()
-        assert f"cannot read {CLASSES}" in refusal(tree, "--list"), CLASSES
 
 
 if __name__ == "__main__":
     a_diff_selects_its_suites()
     the_recipes_call_the_runner()
     every_cross_unit_read_is_an_edge()
-    every_shared_test_has_a_class()
     agents_md_names_both_commands()
     n = a_run_covers_its_listing()
     a_failing_suite_stops_the_run()

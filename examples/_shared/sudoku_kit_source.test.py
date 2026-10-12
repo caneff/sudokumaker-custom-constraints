@@ -18,7 +18,6 @@ TAG = "v0.1.0"
 LOCAL_COPIES = [
     "examples/_shared/cpsat.py",
     "examples/_shared/link_codec.py",
-    "finders/hunt/uniqueness.py",
 ]
 
 # `import cpsat`, `from link_codec import ...`, `from examples._shared import
