@@ -19,14 +19,12 @@ import tomllib
 
 import check_layout
 from check_layout import (
-    GRANDFATHERED_RESEARCH_PY,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
     check_research_loads,
-    check_research_python,
     check_stale_backend_code,
     check_tree,
 )
@@ -1087,27 +1085,6 @@ if __name__ == "__main__":
     ) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
-    # a grandfathered docs/research/*.py path passes -- it was already on the
-    # tree when this rule landed
-    grandfathered = sorted(GRANDFATHERED_RESEARCH_PY)[0]
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        target = root / grandfathered
-        target.parent.mkdir(parents=True)
-        target.write_text("# grandfathered\n")
-        assert check_research_python(root) == [], check_research_python(root)
-
-    # a new docs/research/*.py path fails and names it, plus finders/
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        target = root / "docs" / "research" / "zzz" / "x.py"
-        target.parent.mkdir(parents=True)
-        target.write_text("# new\n")
-        violations = check_research_python(root)
-        assert len(violations) == 1, violations
-        assert "docs/research/zzz/x.py" in violations[0], violations[0]
-        assert "finders/" in violations[0], violations[0]
-
     # a link in a board's own subdirectory is gated like one at the top level:
     # the share criteria and the name grammar both reach it, and the
     # violation names its path inside the example
@@ -1232,15 +1209,13 @@ if __name__ == "__main__":
         violations = check_research_loads(root)
         assert len(violations) == 1 and "examples/a/b.py" in violations[0], violations
 
-    # the no-args run `just test` makes applies both research rules to the repo
+    # the no-args run `just test` makes applies the research rule to the repo
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         (root / "examples" / "_shared").mkdir(parents=True)
         (root / "examples" / "_shared" / "z.mjs").write_text(
             "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
         )
-        (root / "docs" / "research" / "zzz").mkdir(parents=True)
-        (root / "docs" / "research" / "zzz" / "x.py").write_text("# new\n")
         real_root = check_layout.REPO_ROOT
         out = io.StringIO()
         try:
@@ -1251,7 +1226,6 @@ if __name__ == "__main__":
             check_layout.REPO_ROOT = real_root
         assert code == 1, out.getvalue()
         assert "examples/_shared/z.mjs:1: loads from docs/research/" in out.getvalue()
-        assert "docs/research/zzz/x.py" in out.getvalue(), out.getvalue()
 
     # the gate's own files name docs/research/ to police it, and pass
     with tempfile.TemporaryDirectory() as tmp:

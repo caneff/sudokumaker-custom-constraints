@@ -83,7 +83,7 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 
 - **A solver's UNKNOWN or timeout is never "no solution" and never a pass.**
   Only a proven INFEASIBLE rules a case out. See
-  `docs/agents/grid-finder-lessons.md`.
+  `docs/agents/grid-finder-lessons.md` in `caneff/grid-hunts`.
 
 ## Comments describe the code, not its history
 

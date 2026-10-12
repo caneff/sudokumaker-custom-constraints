@@ -41,9 +41,8 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
 Left to their own suites, not driven here: the CP-SAT base model and
 solve_unique (the sudoku-kit library's own tests), loadBundle and the bundle-solve
 import (bundle-load.test.mjs, bundle-solve.test.mjs), the framebuild lanes
-(framebuild.test.py), the finder-test glob (gate.test.py), the stamp guard
-(the fillomino and isofill stamp tests), and the finders' Renbanana model,
-half-stateful refusal and hunt tests.
+(framebuild.test.py), and the stamp guard (the fillomino and isofill stamp
+tests).
 
     uv run examples/_shared/spec_649_closing.test.py
 """
