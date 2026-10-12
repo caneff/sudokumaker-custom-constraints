@@ -1,9 +1,9 @@
 # One obvious entrypoint for the gate, in two tiers (#411). `check` is the
-# loop: lint and every test except the heavy ones, about half a minute.
+# loop: lint and every test except the heavy ones, about 1¾ min.
 # `check-full` is everything, and CI runs it on every pull request.
 
 # Fast gate, for the build loop: lint and the unit tests.
-[doc("Fast gate for the build loop: lint plus every test except the heavy ones, about 30 s.")]
+[doc("Fast gate for the build loop: lint plus every test except the heavy ones, about 1¾ min.")]
 check: lint test
 
 # Full gate (run before opening a PR): the fast gate, the heavy tests, and the

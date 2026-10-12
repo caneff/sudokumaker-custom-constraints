@@ -110,7 +110,7 @@ repo 2026-10-11).
 ## Commands
 
 - **Build loop:** `just check` — lint and every test but the heavy ones, about
-  30 s. Run it before each commit.
+  1¾ min on one core (104 s measured 2026-10-12). Run it before each commit.
 - **Full gate — run before opening a PR or calling a task done:**
   `just check-full` — `check` plus the heavy tests (the fillomino pipeline and
   generator, the skyscraper and hit-counts recovery probes) and the soundness
