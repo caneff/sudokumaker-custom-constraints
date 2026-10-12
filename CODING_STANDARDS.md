@@ -82,8 +82,10 @@ Thin on purpose: the load-bearing detail lives in `docs/`, and each rule points 
 ## A solver's UNKNOWN is not an answer
 
 - **A solver's UNKNOWN or timeout is never "no solution" and never a pass.**
-  Only a proven INFEASIBLE rules a case out. See
-  `docs/agents/grid-finder-lessons.md`.
+  Only a proven INFEASIBLE rules a case out. `solve_unique` (sudoku-kit's
+  `cpsat`) raises on a timeout for that reason, and the library's uniqueness
+  check reports `timeout` as its own status. The cases that taught the rule
+  are in `docs/agents/grid-finder-lessons.md` in `caneff/grid-hunts`.
 
 ## Comments describe the code, not its history
 

@@ -34,11 +34,11 @@ from framebuild import (
     house_gac_constraint,
     refresh_frame_backends,
 )
-from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import find_constraint
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
 COMPONENTS = ["RunningStartComponent.js", "RunningStartPairComponent.js"]

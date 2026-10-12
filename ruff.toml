@@ -15,9 +15,3 @@ line-length = 88
 
 [lint]
 select = ["F", "I", "B", "UP", "SIM", "C4", "PIE", "PERF", "RET", "PTH", "RUF"]
-
-# finders/qqrr/hunt (#603): the hunt drivers keep their run-time shape, so
-# results stay reproducible; only style rules that would rewrite their file and
-# glob handling are waived, not the pyflakes, import, B905 or RUF059 checks.
-[lint.per-file-ignores]
-"finders/qqrr/hunt/*.py" = ["SIM115", "PTH", "PERF401", "RUF001", "RUF005"]

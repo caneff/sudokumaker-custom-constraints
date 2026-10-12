@@ -9,8 +9,8 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import read_board
-from cpsat import SOLVED, solver
 from flatmate_model import N, build_model, count_plain_completions
+from sudoku_kit.cpsat import SOLVED, solver
 
 
 def bad_fives(grid):

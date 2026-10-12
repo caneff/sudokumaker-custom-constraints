@@ -9,7 +9,6 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-import cpsat
 from build_size import (
     CONSTRAINT_NAME,
     MINIMAL_9X9,
@@ -25,11 +24,12 @@ from framebuild import (
     make_lines,
     unique,
 )
-from link_codec import decode_puzzle
 from link_swap import swap_build
 from minify import minify_file
 from no_ring import NoRing
 from ortools.sat.python import cp_model
+from sudoku_kit import cpsat
+from sudoku_kit.link_codec import decode_puzzle
 
 # (digits, target, sum before the first target or None), worked by hand
 # rather than by any copy of the rule.

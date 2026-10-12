@@ -8,9 +8,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from board_kit import N
-from cpsat import sudoku_model
 from minify import minify_js
 from ortools.sat.python import cp_model
+from sudoku_kit.cpsat import sudoku_model
 
 HERE = pathlib.Path(__file__).parent
 COMPONENT = HERE / "CountDigitsGacComponent.js"

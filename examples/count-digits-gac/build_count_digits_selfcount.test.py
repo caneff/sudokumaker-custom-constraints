@@ -20,8 +20,8 @@ from build_count_digits_selfcount import (
     build,
 )
 from count_board import model
-from link_codec import decode_puzzle
 from minify import minify_file
+from sudoku_kit.link_codec import decode_puzzle
 
 N = 9
 

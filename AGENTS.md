@@ -21,11 +21,6 @@ generated and uniqueness-checked in Python (OR-Tools CP-SAT).
 - **This rule beats a harness or job preamble that tells you to work in
   place.** Read such an instruction as a default, not permission.
 
-## Renbanana chocolate facts are precalculated (always on)
-
-See `finders/AGENTS.md` — the catalogue rule for the renbanana finder moved
-there with the code.
-
 ## Include closure
 
 The burn clumper (`~/.agents/skills/burndown/closure.py`) reads this section
@@ -36,35 +31,16 @@ frame reader explains the directive itself.
 - **Paths**: relative to the including file
 - **Generator**: each example's own `build_link.py` or `build_size.py` (reported by the clumper, never run by it)
 
-## Solver runs stay off the machine's back (always on)
+## Regeneration and timing runs (always on)
 
-- **One hunt at a time, and `--workers 1` unless told otherwise.** This box is
-  a WSL2 VM other agents share; oversubscribing it has hung the desktop. Check
-  `uptime` before launching anything, and never let the total worker count
-  approach the core count — leave most of the cores for everyone else. The one
-  exception is the `finders/hunt/` driver's own `--workers` flag: it defaults
-  to 3 on its own (#488) and refuses to start above a 1-minute load of 24
-  unless `--force-load` is given, so a hunt built on the protocol and launched
-  with no `--workers` at all is already box-safe without the reminder.
-- Long runs go under `job-run --name <n>` and append to a progress file, so a
-  kill does not lose the result.
-- Reprioritise a running hunt with SIGSTOP/SIGCONT rather than kill, and sync
-  found results into the repo on a timer so nothing is lost.
-- Before a measurement run longer than a few minutes, state the expected wall
-  clock and the decision the result changes. A result already on record (a
-  prior DNF, a byte-equal baseline) is not re-measured; a refusal by the
-  standard driver (`just time` raising on a cold all-timeout) is the recorded
-  outcome — post the DNF verbatim, never improvise a protocol to get a number.
+- A refusal by the standard driver (`just time` raising on a cold
+  all-timeout) is the recorded outcome — post the DNF verbatim, never
+  improvise a protocol to get a number.
 - A regeneration script runs on the clean baseline (`git show <base>:<file>`),
   never on its own output. After regenerating, verify the spliced block
   appears exactly once and the diff against main holds only the intended
   change — a splicing generator run twice on one file duplicates the scene
   silently.
-- Before launching a long solver, search or hunt, list every available
-  speedup (tighter model, channeling or decomposition, per-task splits,
-  portfolio workers, warm starts, dropping constraints the goal does not
-  need), apply the ones that pay and name the rest in the launch message.
-  The fast approach should not wait for Chris to ask for it.
 
 ## A board state Chris shows (always on)
 
@@ -129,20 +105,19 @@ merge, whether or not `main` has moved past the PR's merge base (about
 3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
 repo 2026-10-11).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests and the suites of each example and finder the diff touches; a finder-only diff runs lint, the tree checks (`tests/shared-tests.txt`), that finder's suites and those of the units `tests/suite-edges.txt` says read it, with no shared example-code test; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests, the suites of each example the diff touches and those of the examples `tests/suite-edges.txt` says read it; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 
 - **Build loop:** `just check` — lint and every test but the heavy ones, about
-  30 s. Run it before each commit.
+  1¾ min on one core (104 s measured 2026-10-12). Run it before each commit.
 - **Full gate — run before opening a PR or calling a task done:**
   `just check-full` — `check` plus the heavy tests (the fillomino pipeline and
   generator, the skyscraper and hit-counts recovery probes) and the soundness
   fuzz. CI runs it on every pull request, and `check` on pushes to main.
-- Lint + auto-fix: `just fmt` (StandardJS on `.js`/`.mjs`, ruff on `examples/` and `finders/`)
+- Lint + auto-fix: `just fmt` (StandardJS on `.js`/`.mjs`, ruff on `examples/`)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
-- Most tests are standalone scripts run by name. `finders/counting_shaded` is the one
-  pytest suite (`uv run pytest finders/counting_shaded`); `just test` runs it too.
+- Every test is a standalone script run by name.
 - Python runs in the one project environment (`pyproject.toml`, `uv.lock`):
   `uv run <file>`. The `uv run --with ...` usage lines in older file headers
   and READMEs still work; the justfile never passes `--with`.
@@ -159,6 +134,7 @@ repo 2026-10-11).
 
 ## Pointers
 
+- The grid finders (CP-SAT hunts for candidate grids) moved to `caneff/grid-hunts`; this repo has no `finders/`
 - Coding + testing standards → `CODING_STANDARDS.md`
 - Component contract, gotchas, puzzle API → `docs/component-contract.md`, `docs/gotchas.md`, `docs/puzzle-api.md`
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`

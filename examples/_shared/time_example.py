@@ -32,12 +32,12 @@ HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
-from link_codec import decode_puzzle
 from link_swap import replace_constraint_code
 from manifest import load_manifest
 from minify import minify_file
 from probe_link import empty_link_file
 from sm_document import find_constraint, registering_constraint_name, write_link
+from sudoku_kit.link_codec import decode_puzzle
 
 APP_SOLVE = HERE / "app-solve.mjs"
 JSON_LINE = re.compile(r"^JSON: (.+)$", re.MULTILINE)

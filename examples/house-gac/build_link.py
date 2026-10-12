@@ -47,13 +47,13 @@ COMPONENT = HERE.parent / "_shared/HouseGacComponent.js"
 BACKEND = HERE / "main.js"
 
 sys.path.insert(0, str(REPO / "examples/_shared"))
-from cpsat import solve_unique, sudoku_model
 from framebuild import NO_RING_RULES_PREFIX
-from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from manifest import load_manifest
 from minify import minify_file
 from sm_document import code_constraint, find_constraint
+from sudoku_kit.cpsat import solve_unique, sudoku_model
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 MANIFEST = load_manifest(HERE)
 CONSTRAINT_NAME = MANIFEST.constraint_name

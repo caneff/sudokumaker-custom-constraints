@@ -19,13 +19,13 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-import cpsat
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
-from link_codec import decode_puzzle
 from outside_rule import post_membership, window_length_by_region
 from sm_document import find_constraint
+from sudoku_kit import cpsat
+from sudoku_kit.link_codec import decode_puzzle
 
 SOLVE_LIMIT = 120
 

@@ -3,7 +3,7 @@
 #   <directory read> <unit whose suites read it>  <why>
 #
 # A change under the first directory also runs the second unit's suites. Only
-# an example or a finder reading another one's files needs a line: a change to
-# examples/_shared/ or finders/hunt/ runs the whole seam already.
+# an example reading another one's files needs a line: a change to
+# examples/_shared/ runs the whole seam already.
 # examples/_shared/seam_runner.test.py fails when a read has no line here.
 examples/outside-sudoku examples/count-digits-gac  build_required_digits.py builds its link from outside-sudoku's files

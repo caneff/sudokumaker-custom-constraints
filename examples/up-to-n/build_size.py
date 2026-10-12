@@ -34,7 +34,6 @@ import sys
 from dataclasses import replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-import link_codec
 from framebuild import (
     NO_RING_RULES_PREFIX,
     Spec,
@@ -44,6 +43,7 @@ from framebuild import (
     unique,
 )
 from no_ring import NoRing
+from sudoku_kit import link_codec
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"

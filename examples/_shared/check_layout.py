@@ -55,10 +55,10 @@ from framebuild import (
     frame_backend_code,
     house_gac_backend_code,
 )
-from link_codec import decode_puzzle
 from manifest import load_manifest
 from minify import INCLUDE_RE, minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
+from sudoku_kit.link_codec import decode_puzzle
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
 # components and a harness, and no board.
@@ -206,54 +206,6 @@ def check_gen_link_pairing(example_dir, manifest):
     return violations
 
 
-# Exactly the docs/research/*.py paths present when this rule landed:
-# docs/research reads as not-code to the global gate, so finder
-# code kept landing there instead of finders/ and ruff never saw it. This
-# list only SHRINKS as paths move to finders/ -- a new directory must not be
-# added to it; new finder code goes in finders/ from the start.
-GRANDFATHERED_RESEARCH_PY = frozenset(
-    {
-        "docs/research/367-no-ring-board-type/build_docs.py",
-        "docs/research/368-up-to-n-setup-throw/probe_clues.py",
-        "docs/research/406-gac-demo/tools/build9.py",
-        "docs/research/406-gac-demo/tools/build_hard.py",
-        "docs/research/406-gac-demo/tools/build_plain.py",
-        "docs/research/406-gac-demo/tools/build_variant.py",
-        "docs/research/406-gac-demo/tools/gap2.py",
-        "docs/research/406-gac-demo/tools/hard.py",
-        "docs/research/406-gac-demo/tools/subset_gac_equivalence.py",
-        "docs/research/408-house-gac/build-house-gac-links.py",
-        "docs/research/408-house-gac/house_gac_links.py",
-        "docs/research/408-house-gac/link-delta-house-gac.py",
-        "docs/research/fillomino-baseline/build_link.py",
-    }
-)
-
-
-def check_research_python(repo_root):
-    """Return one violation string per `.py` file under `repo_root`'s
-    docs/research/ that is not in GRANDFATHERED_RESEARCH_PY.
-
-    docs/research/ reads as not-code to the global gate (it is not code per
-    AGENTS.md's Gate 2), so finder code landing there skips the code lane and
-    ruff never sees it. Finder code belongs in finders/ instead.
-    """
-    repo_root = pathlib.Path(repo_root)
-    research_dir = repo_root / "docs" / "research"
-    if not research_dir.is_dir():
-        return []
-
-    violations = []
-    for path in sorted(research_dir.rglob("*.py")):
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in GRANDFATHERED_RESEARCH_PY:
-            continue
-        violations.append(
-            f"{rel}: new .py file under docs/research/ -- finder code goes in finders/"
-        )
-    return violations
-
-
 # A path into docs/research/, in each spelling a loader writes it: one string,
 # path.join's separate arguments (on one line or several), or a pathlib `/`
 # chain.
@@ -267,6 +219,7 @@ RESEARCH_INSPECTORS = frozenset(
         "examples/_shared/check_layout.test.py",
         "examples/_shared/gate.test.py",
         "examples/_shared/spec_649_closing.test.py",
+        "examples/_shared/spec_748_closing.test.py",
     }
 )
 
@@ -317,9 +270,8 @@ def check_research_loads(repo_root):
 
     docs/research/ holds records, not live code: a file the gate's code
     loads from there is maintained source the gate never lints. A citation in
-    a comment or docstring is not a load. Finders read their catalogues and
-    hunt outputs from docs/research/, where they live as data, so finders/ is
-    not scanned, and neither is a dot directory (scratch) or node_modules.
+    a comment or docstring is not a load. A dot directory (scratch) and
+    node_modules are not scanned.
 
     It reads text, not a parse tree, so a pass is not proof: a path segment
     held in a variable, and code hidden behind a `//` or `/*` that sits after
@@ -951,16 +903,14 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
-    # docs/research/ sits beside examples/ at the repo root, not inside the
-    # argv root, so it is found relative to this file rather than `root` --
-    # but only for the real, no-args invocation `just check` makes. A test
-    # that passes an explicit root is pointed at a temp tree on purpose, and
-    # must stay hermetic: scanning this file's real repo location in that
-    # case would fail check_layout.test.py's subprocess cases on whatever
-    # scratch .py another session happens to have under docs/research/ right
-    # now, unrelated to the temp tree under test.
+    # The research-load scan reads the whole repo, found relative to this file
+    # rather than `root` -- but only for the real, no-args invocation `just
+    # check` makes. A test that passes an explicit root is pointed at a temp
+    # tree on purpose, and must stay hermetic: scanning this file's real repo
+    # location in that case would fail check_layout.test.py's subprocess cases
+    # on whatever another session has under examples/ right now, unrelated to
+    # the temp tree under test.
     if len(argv) <= 1:
-        violations.extend(check_research_python(REPO_ROOT))
         violations.extend(check_research_loads(REPO_ROOT))
     for v in violations:
         print(v)

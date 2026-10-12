@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, "examples/_shared")
 sys.path.insert(0, "docs/research/408-house-gac")
 from house_gac_links import BASE_LINK, FORMS, HERE, with_filter  # noqa: E402
-from link_codec import decode_puzzle, encode_link  # noqa: E402
+from sudoku_kit.link_codec import decode_puzzle, encode_link  # noqa: E402
 
 base = decode_puzzle(BASE_LINK.read_text().strip())
 by_name = {component.stem: component for component in FORMS}

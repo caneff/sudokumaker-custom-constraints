@@ -17,7 +17,7 @@ from board_kit import (
     givens_of,
     search,
 )
-from cpsat import sudoku_model
+from sudoku_kit.cpsat import sudoku_model
 
 
 def plain_model(groups, givens):

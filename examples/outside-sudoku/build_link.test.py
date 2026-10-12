@@ -7,9 +7,9 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_link import CONSTRAINT_NAME
-from link_codec import decode_puzzle
 from link_swap import swap_build
 from sm_document import find_constraint
+from sudoku_kit.link_codec import decode_puzzle
 
 if __name__ == "__main__":
     board = HERE / "PUZZLE_LINK.txt"

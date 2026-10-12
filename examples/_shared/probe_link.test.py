@@ -7,13 +7,13 @@
 import pathlib
 import tempfile
 
-from link_codec import decode_puzzle, encode_link
 from probe_link import (
     check_searchable,
     empty_interior,
     empty_link_file,
     strip_to_givens,
 )
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
 SRC = HERE.parent / "skyscraper" / "PUZZLE_LINK_6x6.txt"
