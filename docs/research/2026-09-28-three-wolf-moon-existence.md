@@ -47,7 +47,7 @@ Values: each werewolf's value is its digit + 1, with 9 becoming 1, in all three 
   reified membership booleans per cell, sums per house.
 - Checker: plain loops over the 1-based grid, no solver code. Control: swapping
   r1c1/r1c2 is rejected.
-- Scripts were run from `.scratch/wolf/` (git-ignored): `solve.py`, `check.py`.
+- Scripts were run from `docs/research/2026-09-28-three-wolf-moon/` (git-ignored): `solve.py`, `check.py`.
 
 ## Preflight answers (docs/agents/grid-finder-lessons.md)
 
@@ -77,7 +77,7 @@ Open follow-ups, not run: solution count (ii) and a puzzle built on a grid (iii)
 
 ## Inherent truths of the setup (2026-09-28)
 
-Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
+Oracle: `docs/research/2026-09-28-three-wolf-moon/truths.py`, one CP-SAT feasibility solve per claim,
 1 worker, all OPTIMAL/INFEASIBLE (no timeouts). Exhaustive over all 729
 (cell, digit) pairs, all 4 band combos per band, all 36 stack combos per stack.
 
@@ -135,7 +135,7 @@ Oracle: `.scratch/wolf/truths.py`, one CP-SAT feasibility solve per claim,
   column wolf, r2c1 as row wolf), at most one of them; r8c9–r9c8 the same
   with 8s.
 - Crossing bullets share cells; a pinned wolf value subtracts from both.
-- Box 1 mini-puzzle (solver-enumerated, `.scratch/wolf/box1.py`, all 504
+- Box 1 mini-puzzle (solver-enumerated, `docs/research/2026-09-28-three-wolf-moon/box1.py`, all 504
   placements OPTIMAL/INFEASIBLE): digits 1,2,3 have only 10 arrangements.
   1@r2c2: 2@r1c2 3@r3c1 | 2@r1c2 3@r3c2 | 2@r2c1 3@r2c3.
   1@r2c3: 2@r1c2 3@r3c1 | 2@r1c2 3@r3c2.
@@ -193,11 +193,11 @@ r9c1 (row wolf 9, value 1).
 
 ## Single-bullet search (2026-09-28)
 
-`.scratch/wolf/bullets.py` (job `wolf-bullets`, 1 worker, 113 min): every
+`docs/research/2026-09-28-three-wolf-moon/bullets.py` (job `wolf-bullets`, 1 worker, 113 min): every
 diagonal of length 2–9 in both directions × every sum 0..9·length = 1452
 cases; 1214 fully covered, 238 infeasible, 0 timeouts. Per case: all
 (cell, digit) eliminations the bullet alone forces beyond the 63 rule bans
-(solution cover until INFEASIBLE). Ranking (`.scratch/wolf/rank.py`): the
+(solution cover until INFEASIBLE). Ranking (`docs/research/2026-09-28-three-wolf-moon/rank.py`): the
 elimination set of "sum ≥ 1" (intersection over nonzero sums) is removed,
 and only eliminations outside the diagonal's own boxes count as distant.
 
