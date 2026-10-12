@@ -1,0 +1,1575 @@
+docs/agents/grid-finder-lessons.md	the grid-finder lessons doc, named by the ticket
+docs/research/2026-09-14-copycat-scan.md	describes the scan finders/copycat-scan ran
+docs/research/2026-09-14-galaxy-copycat-design.md	design note of finders/galaxy-copycat
+docs/research/2026-09-14-galaxy-copycat/boards/board1-l4-feasible.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board1-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board1-three-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-coverage.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-l1sums.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-l4-feasible.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-l4-msets.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-l4-rank.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10-three-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10b-l4-feasible.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10b-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board10b-r1c3.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board11-pair.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board12-coverage.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board12-l1sums.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board12-l4-feasible.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board12-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board12-three-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board13-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board13-five-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-forced.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-four-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-link-state.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair4.lines.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair4.pairs.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair4.rank.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7-52.unique.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.lines.0.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.lines.1.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.lines.2.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.lines.3.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.pairs.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.rank.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.unique-dedup.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-pair7.unique-unshuffled.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-quad4.0.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-quad4.1.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board14-quad4.rank.jsonl	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board17-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board17-six-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board18-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board18-pair-r1c1.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-1-L5only-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-1-L6only-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-1-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-1-step5.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-1.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-2-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-2.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-3-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-3.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-4-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-4.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-5-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board19-pair22-5.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board2-column7.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board20-repeat-A-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board20-repeat-A.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board20-repeat-B-candidates.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board20-repeat-B.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board21-pair7-1.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board22-pair7-copycats.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board23-pair7-ladder.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board24-pair7-counts.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board25-pair7-relaxed.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board26-pair7-human.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board27-pair34x52.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board28-pair43x25-solved.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board3-columns78.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board4-box6-share.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board5-box6-row4.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board5-multisets.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board6-three-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board6b-col9.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board6b-l4-feasible.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board6b-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board7-pair.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board8-pair.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board9-l4-search.log	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/board9-three-lines.json	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/boards/length7-splits.txt	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat/segment_openers.out	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-lmd-hybrid-scan.md	describes the scan finders/lmd-hybrid-scan ran
+docs/research/2026-09-15-counting-shaded-all-visible.md	describes a finders/counting_shaded hunt
+docs/research/2026-09-15-counting-shaded-eight-probe.md	describes a finders/counting_shaded probe
+docs/research/2026-09-16-circle-pattern-shared-sizes.md	describes finders/renbanana/tools/probe_circle_pattern.py
+docs/research/2026-09-16-counting-shaded-connected-decision-log.md	decision log of finders/counting_shaded, named in its code
+docs/research/2026-09-16-counting-shaded-connected.md	describes the connected hunt of finders/counting_shaded
+docs/research/2026-09-16-finder-plumbing-share.md	describes the plumbing the finders share (finders/hunt)
+docs/research/2026-09-16-renbanana-two-stage-uniqueness.md	describes finders/renbanana/tools/prove_two_stage.py
+docs/research/2026-09-22-qqrr-explorer.html	explorer page of the finders/qqrr hunt, named in its code
+docs/research/2026-09-22-qqrr-opener-verdict.md	describes the finders/qqrr checker's verdict on the opener
+docs/research/2026-09-22-qqrr-tie-hunt.md	describes a finders/qqrr hunt
+docs/research/2026-09-22-qqrr-tie-r5c1.md	describes a finders/qqrr hunt, named in its code
+docs/research/2026-09-22-qqrr-tie-sample.md	describes a finders/qqrr hunt
+docs/research/2026-09-27-qqrr-tie-pilot.md	describes the finders/qqrr tie-finder pilot
+docs/research/2026-09-27-qqrr-tie-pilot/examples.jsonl	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-27-qqrr-tie-pilot/progress.jsonl	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-27-qqrr-tie-pilot/run.json	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-27-qqrr-tie-pilot/state.json	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-27-qqrr-tie-pilot/summary.json	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-28-qqrr-tie-kill-resume.md	describes the kill-and-resume run of the tie finder
+docs/research/2026-09-28-qqrr-tie-kill-resume/examples.jsonl	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-09-28-qqrr-tie-kill-resume/progress.jsonl	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-09-28-qqrr-tie-kill-resume/run.json	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-09-28-qqrr-tie-kill-resume/state.json	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-09-28-qqrr-tie-kill-resume/summary.json	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-10-03-hunt-tests-under-load.md	describes the finders/hunt tests under load
+docs/research/2026-10-03-qqrr-tie-warm-demo/examples.jsonl	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-demo/progress.jsonl	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-demo/run.json	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-demo/state.json	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-demo/summary.json	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-source/examples.jsonl	warm-start input finders/qqrr/hunt/README.md names
+docs/research/2026-10-10-u-bahn-cpsat-finder.md	rules and model note of finders/ubahn
+docs/research/2026-10-10-u-bahn-existing-solvers.md	prior-art search for finders/ubahn
+docs/research/2026-10-10-u-bahn-finder-decision-log.md	decision log of finders/ubahn, named in its code
+docs/research/2026-10-10-u-bahn-forced-facts.md	describes facts the finders/ubahn model forces
+docs/research/2026-10-10-u-bahn-optimization-queue.md	timing record of finders/ubahn, named in its code
+docs/research/2026-10-10-u-bahn-penpa-link.md	describes finders/ubahn/penpa.py, named in its code
+docs/research/2026-10-11-u-bahn-hybrid-engine-timing/cpsat.jsonl	progress files written by finders/ubahn/time_engines.py
+docs/research/2026-10-11-u-bahn-hybrid-engine-timing/pysat-lazy.jsonl	progress files written by finders/ubahn/time_engines.py
+docs/research/2026-10-11-u-bahn-hybrid-engine-timing/pysat-propagator.jsonl	progress files written by finders/ubahn/time_engines.py
+docs/research/2026-10-11-u-bahn-min-bananas-timing/pysat-lazy-7x7.jsonl	timing data of finders/ubahn, named in finders/AGENTS.md
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-0/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-0/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-0/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-0/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-5/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-5/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-5/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-5/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-6/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-6/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-6/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-6/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-6/verified.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-7/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-7/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-7/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/at-least-7/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/5x5/climb.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-0/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-0/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-0/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-0/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-1/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-1/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-1/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-1/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-10/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-10/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-10/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-10/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-12/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-12/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-12/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-12/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-13/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-13/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-13/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-13/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-14/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-14/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-14/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-14/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-14/verified.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-15/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-15/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-15/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-15/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-4/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-4/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-4/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-4/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-5/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-5/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-5/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-5/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-7/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-7/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-7/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-7/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-9/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-9/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-9/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/at-least-9/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/6x6/climb.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-0/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-0/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-0/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-0/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-10/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-10/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-10/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-10/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-11/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-11/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-11/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-11/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-12/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-12/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-12/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-12/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-13/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-13/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-13/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-13/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-14/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-14/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-14/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-14/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-15/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-15/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-15/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-15/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-16/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-16/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-16/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-16/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-17/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-17/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-17/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-17/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/renders/0.png	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-18/verified.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-19/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-19/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-19/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-19/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-5/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-5/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-5/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-5/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-7/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-7/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-7/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-7/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-8/examples.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-8/progress.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-8/run.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/at-least-8/summary.json	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-number-circles/7x7/climb.jsonl	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-sparse-8x8-timing.md	timing of the finders/ubahn models on one puzzle
+docs/research/counting_shaded/allvisible-25-puzzle.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/allvisible-25-solution.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/allvisible-31-puzzle.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/allvisible-31-solution.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/allvisible-hits.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/connected-corpus.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/eight-probe.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/examples-verified.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/pinned-r9c12-22-solution.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/pinned-r9c12-24-nogrid.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/pinned-r9c12-alldigits.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/pinned-r9c12-alldigits.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-latin-both-connected-unique.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-latin-both-connected-unique.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-latin-cave-clues.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-latin-grid1-marks.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-r2c6-r6c1.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-r6c1-r6c5.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-self-unique.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-self-unique.png	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-unique.jsonl	data the finders/counting_shaded tests read
+docs/research/counting_shaded/six-by-six-unique.png	data the finders/counting_shaded tests read
+docs/research/renbanana/CIRCLE-VALUES.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/CIRCLED-PAIRS.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/FEASIBILITY.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/INVERSION.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/MAXIMIZATION.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/OPENER-UNIQUE.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/RECTANGLE-CATALOGUE.md	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/full/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/full/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_0/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_0/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_1/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_1/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_2/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_2/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_3/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_3/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_4/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/loose_4/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/rec-full/recycled.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/ab-renban/rec-loose/recycled.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/bugrepro/repro.log	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-2x4/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-2x4/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-2x4/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-2x4/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circ2/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_000.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_001.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_002.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_003.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_004.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_005.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_006.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_007.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_008.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_009.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_010.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_011.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_012.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_013.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_014.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_015.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_016.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_017.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_018.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_019.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_020.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_021.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_022.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_023.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_024.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_025.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_026.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_027.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_028.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_029.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_030.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_031.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_032.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_033.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_034.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_035.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_036.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_037.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_038.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_039.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_040.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_041.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_042.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_043.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_044.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_045.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_046.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_047.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_048.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_049.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_050.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_051.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_052.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_053.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_054.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_055.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_056.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_057.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_058.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_059.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_060.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_061.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_062.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_063.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_064.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_065.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_066.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_067.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_068.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_069.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_070.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_071.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_072.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_073.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_074.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_075.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_076.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_077.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_078.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_079.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_080.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_081.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_082.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_083.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_084.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_085.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_086.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_087.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_088.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_089.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_090.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_091.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_092.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_093.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_094.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_095.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_096.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_097.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_098.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_099.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_100.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_101.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_102.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_103.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_104.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_105.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_106.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_107.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_108.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_109.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_110.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_111.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_112.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_113.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_114.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_115.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_116.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_117.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-pattern/cand_118.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-witnesses/block3x3_circled.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-witnesses/run5.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-witnesses/run6.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circle-witnesses/run7_circled.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circled/cand_000.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-circled/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-fully-circled/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-house/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-multi2/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-multi2/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-multi2/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only22/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only22/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only22/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only22/cand_03.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only22/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/cand_03.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/cand_04.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-only23/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-small/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_000.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_001.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_002.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_003.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_004.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_005.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_006.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_007.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_008.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_009.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_010.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_011.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_012.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_013.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_014.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_015.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-two-circles/cand_016.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_03.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_04.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_05.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_06.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_07.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_08.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_09.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_10.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_11.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_12.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_13.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_14.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_15.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_16.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_17.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_18.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_19.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_20.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_21.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_22.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_23.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_24.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_25.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_26.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_27.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_28.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_29.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_30.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_31.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/cand_32.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_03.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_04.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_05.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_06.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_07.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_08.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_09.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_10.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_11.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_12.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_13.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_14.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_15.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_16.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_17.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_18.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_19.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_20.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/cand_21.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates-walk2/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_00.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_01.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_02.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_03.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_04.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_05.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_06.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/cand_07.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/candidates/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-pairs-all/pairs.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-pairs-all/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-pairs/pairs.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-pairs/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-seeds.txt	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/circled-sets/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/pass1/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/pass1/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/pass2/proof.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/pass2/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/rec1/recycled.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/harvest-320/rec2/recycled.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/lineup.html	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/opener/solution.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/pair-hunt-all/hunt.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/pair-hunt-all/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/pair-hunt/hunt.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/pair-hunt/stats.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/pool-want2/probe-0.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/probe-inverted/probe.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/rectangle-catalogue.json	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/small-seeds.txt	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/tools/lineup_template.html	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/tools/run_arm.sh	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/tools/run_overnight.sh	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/tools/run_walk.sh	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-only22_cand_02.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk2_cand_08.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk2_cand_09.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk2_cand_10.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk_cand_12.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk_cand_14.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk_cand_16.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/candidates-walk_cand_18.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-circled_cand_000.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_01.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_02.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_02.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_03.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only22_cand_03.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only23_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only23_cand_01.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only23_cand_02.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only23_cand_03.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-only23_cand_04.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_08.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_08.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_09.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_09.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_10.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk2_cand_10.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_11.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_12.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_12.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_13.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_13.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_14.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_14.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_15.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_16.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_16.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_17.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_17.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_18.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates-walk_cand_18.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates_cand_04.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-circled/keys/candidates_cand_07.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-2x4_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-circled_cand_000.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk2_cand_08.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk2_cand_08.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk2_cand_09.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk2_cand_09.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk2_cand_11.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates-walk_cand_20.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk-small/keys/candidates_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-2x4_cand_01.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-multi2_cand_00.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-multi2_cand_02.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-only22_cand_01.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-only22_cand_02.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-only22_cand_03.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates-only23_cand_01.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates_cand_00.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates_cand_01.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates_cand_03.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates_cand_05.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk/candidates_cand_06.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_02.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_04.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_05.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_07.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_08.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_10.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_11.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_13.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_15.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_16.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_18.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_19.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_21.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_22.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_27.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/candidates-walk_cand_30.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_01.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_02.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_03.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_04.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_05.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_06.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_07.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_08.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_09.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_10.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_11.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_12.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_13.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_14.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_15.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_16.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_17.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_18.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_19.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_20.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_21.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_22.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_23.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_24.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_25.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_26.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_27.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_28.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_29.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_30.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_31.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk2/keys/candidates-walk_cand_32.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/candidates-walk2_cand_02.jsonl	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_00.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_01.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_01.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_02.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_02.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_03.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_03.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_04.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_04.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_05.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_05.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_06.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_06.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_07.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_08.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_08.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_09.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_09.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_10.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_10.legal	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/walk3/keys/candidates-walk2_cand_11.keys	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/witness-2x3.png	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/witness-3x3.png	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/renbanana/witness.png	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/zombo-brainanas-generation.md	describes finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/BRAINANAS.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/DOTS.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/FORCED.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/PAIRS.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/SWAP.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/UPPER_LEFT.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/.grids	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_bal36.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_balspread.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_box9.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_box9_3.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_box9_cross.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_box9_spread.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_dist25.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_minuniq.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99b68.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99b8d1.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99digits.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99fills.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99free.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99g4.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99g4near.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99g4nearIU.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99ring.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pair99var.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pairb24.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pairg5.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pairone5.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pairopt.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_pairpock.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_plant.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_spread.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_tpl720.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_tri3.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_tri3w66.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_tri3wdot.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_tri68w.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_want2a.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_want2b.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_want3.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/PROGRESS_x9.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/bal36_300.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/bal36_300.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_700.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_700.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_701.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_701.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_702.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_702.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_704.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_704.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_705.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_705.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_706.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_706.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_707.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_707.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_708.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_708.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_709.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_709.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_710.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_710.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_711.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_711.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_712.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_712.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_713.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_713.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_714.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_714.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_718.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_718.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_719.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_719.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_720.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_720.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_cross_1020.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_cross_1020.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_spread_920.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/box9_spread_920.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/dist25_400.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/dist25_400.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/groups_5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/groups_5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99_r9c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99_r9c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99_r9c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99_r9c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w3_s2_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w3_s2_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w3_s4_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w3_s4_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s1_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s1_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s3_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s3_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s5_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b68_UI_w6_s5_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s2_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s2_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s4_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w3_s4_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s1_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s1_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s3_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99b8d1_UI_w6_s3_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99digits_UI_d4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f00.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f00.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f01.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f01.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f02.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f02.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f03.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f03.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f05.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f05.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f06.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f06.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f07.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f07.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f08.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f08.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f09.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f09.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f10.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f10.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f11.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n0_f11.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f00.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f00.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f01.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f01.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f02.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f02.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f03.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f03.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f04.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n1_f04.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f00.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f00.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f01.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f01.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f03.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f03.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f04.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f04.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f05.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f05.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f06.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f06.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f07.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f07.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f08.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f08.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f09.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f09.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f10.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f10.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f11.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99fills_n2_f11.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99free_r9c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99free_r9c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99free_r9c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99free_r9c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_IU_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_IU_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_IU_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_IU_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s6.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s6.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4nearIU_IU_w3_s7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99g4near_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w3_s2_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w3_s2_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w3_s4_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w3_s4_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s1_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s1_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s3_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s3_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s5_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99ring_UI_w6_s5_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w3_s4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_IU_w6_s5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w3_s4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair99var_UI_w6_s5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r7c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r7c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r7c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r7c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r8c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c7_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r8c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c8_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r8c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r7c9_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r8c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r8c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r8c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r8c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r9c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r9c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c7_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c8_r9c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c8_r9c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c9_r9c7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c9_r9c7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c9_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r8c9_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c7_r9c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c7_r9c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c7_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c7_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c8_r9c9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pair_r9c8_r9c9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r7c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c9_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c9_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c8_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r7c9_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r8c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r8c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r8c9_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairb24_r9c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r7c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c9_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c9_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c8_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r7c9_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r8c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r8c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r8c9_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairopt_r9c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r7c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c9_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c9_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_II.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_II.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c8_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c8_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c8_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r7c9_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r8c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r8c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r8c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r8c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c7_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c7_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c7_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c7_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r8c9_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c8_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c8_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c9_IU.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c9_IU.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c9_UI.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/pairpock_r9c7_r9c9_UI.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/probe_bal37.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/probe_bal37.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/probe_circ13.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/probe_circ13.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/spread_500.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/spread_500.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_10.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_10.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_17.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_17.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tpl720_8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_IU_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_IU_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_IU_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_IU_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3_UI_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3w66_IU_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r4c3r4c4_UI_w3_s0_g4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r4c3r4c4_UI_w3_s0_g4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c4r6c5_UI_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s0_g3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s0_g3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s10.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s10.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s6.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s6.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w3_s8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s3.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s3.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s5.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s5.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/tri3wdot_r6c5r7c5_UI_w6_s9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_10.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_10.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_4.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_4.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_6.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_6.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_9.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2a_9.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_100.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_100.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_102.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_102.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_103.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want2b_103.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_200.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_200.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_201.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_201.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_202.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_202.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_203.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/want3_203.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c7_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c7_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c7_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c7_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w3_s2.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w3_s2.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c8_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c9_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c9_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c9_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r7c9_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r8c9_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r8c9_w3_s0.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r8c9_w6_s1.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/found/x9_r8c9_w6_s1.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/pairs8_partial.log	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/kill9/none_grid.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/kill9/results.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/pinx_IU.log	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/pinx_UI.log	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/pocket4/results.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/tri68w/PROGRESS.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/tri68w/sweep.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/probes/x9/killers.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/seed200.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/seed200_full.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/three_size7.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/three_size7.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/README.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/arm.sh	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/lineup_template.html	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/memlog.sh	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/sync.sh	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/sync_loop.sh	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/tools/tpl/opener720.txt	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/PROGRESS_minuniq.md	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d0_nb_r6c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d0_nb_r6c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d1_final.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d1_final.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d1_nb_r6c8.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99digits_UI_d1_nb_r6c8.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99g4_UI_w3_s0.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99g4_UI_w3_s0_nb.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/pair99g4_UI_w3_s0_nb.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r7c8_w3_s0_nb.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r7c8_w3_s0_nb.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r7c9_w6_s1_nb.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r7c9_w6_s1_nb.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r8c9_w3_s0_nb.json	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas/unique/x9_r8c9_w3_s0_nb.png	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+finders/AGENTS.md	finder code; the ticket moves all of finders/
+finders/CLAUDE.md	finder code; the ticket moves all of finders/
+finders/copycat-scan/parse_copycat.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/allvisible.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/batch_count.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/census.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/charvest.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/check_hit.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/conftest.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/connected.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/counting_shaded_fast.c	finder code; the ticket moves all of finders/
+finders/counting_shaded/dense.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/fastclimb.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/gridenum.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/gridfirst.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/harvest.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/joint.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/jointharvest.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/maxpinned.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/minimal.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/pinharvest.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/probe.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/recheck_ceiling.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/recheck_pins.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/render.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/shapeenum.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/shapes.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/target/.gitignore	finder code; the ticket moves all of finders/
+finders/counting_shaded/test_counting_shaded.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/README.md	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/cave_circle.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/cave_unique.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/cc_search.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/marks_sheet.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/pairsheet.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/pinpuzzle.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/regions.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/tools/verify_render.py	finder code; the ticket moves all of finders/
+finders/counting_shaded/verify_all.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/copycat_rsl_solver.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/distinct_grids.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/distinct_values.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/find_l4_all.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/find_pair4.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/find_pair7.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/find_quad4.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/find_repeats.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/human_solver.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/line_multisets_on_grid.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/other_pair_sums.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/rank_l4.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/rank_pair4.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/rank_residual.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/residual.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/segment_openers.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/symmetric_region_tilings.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/test_human_solver.py	finder code; the ticket moves all of finders/
+finders/galaxy-copycat/test_setup_from_link.py	finder code; the ticket moves all of finders/
+finders/hunt/dedupe.py	finder code; the ticket moves all of finders/
+finders/hunt/driver.py	finder code; the ticket moves all of finders/
+finders/hunt/grid.py	finder code; the ticket moves all of finders/
+finders/hunt/minimizer.py	finder code; the ticket moves all of finders/
+finders/hunt/printer.py	finder code; the ticket moves all of finders/
+finders/hunt/protocol.py	finder code; the ticket moves all of finders/
+finders/hunt/render.py	finder code; the ticket moves all of finders/
+finders/hunt/subprocess_env.py	finder code; the ticket moves all of finders/
+finders/hunt/test_dedupe.py	finder code; the ticket moves all of finders/
+finders/hunt/test_finder_config.py	finder code; the ticket moves all of finders/
+finders/hunt/test_grid.py	finder code; the ticket moves all of finders/
+finders/hunt/test_hunt_resume.py	finder code; the ticket moves all of finders/
+finders/hunt/test_hunt_verify.py	finder code; the ticket moves all of finders/
+finders/hunt/test_minimizer.py	finder code; the ticket moves all of finders/
+finders/hunt/test_printer.py	finder code; the ticket moves all of finders/
+finders/hunt/test_render.py	finder code; the ticket moves all of finders/
+finders/hunt/test_render_hook.py	finder code; the ticket moves all of finders/
+finders/hunt/test_spec_483_e2e.py	finder code; the ticket moves all of finders/
+finders/hunt/test_toy_hunt.py	finder code; the ticket moves all of finders/
+finders/hunt/test_watchdog.py	finder code; the ticket moves all of finders/
+finders/hunt/test_workers_load.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_config_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_render_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_slow_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_stateful_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/toy_tiny_key_finder.py	finder code; the ticket moves all of finders/
+finders/hunt/verified_io.py	finder code; the ticket moves all of finders/
+finders/hunt/watchdog.py	finder code; the ticket moves all of finders/
+finders/lmd-hybrid-scan/fetch_pages.py	finder code; the ticket moves all of finders/
+finders/lmd-hybrid-scan/parse_pages.py	finder code; the ticket moves all of finders/
+finders/qqrr/OPENER_LINK.txt	finder code; the ticket moves all of finders/
+finders/qqrr/OPENER_NOTES.md	finder code; the ticket moves all of finders/
+finders/qqrr/checker.py	finder code; the ticket moves all of finders/
+finders/qqrr/grids.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/README.md	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/chan_big.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/chan_sweep.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/check_3436.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/hunt_common.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/measure.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/pair_sweep.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/scheduler4.sh	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/sync_presets.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_chan_sweep_pool.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_hunt_common.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_hunt_consumers.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_hunt_smoke.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_tie_finder.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/test_tie_warm.py	finder code; the ticket moves all of finders/
+finders/qqrr/hunt/tie_finder.py	finder code; the ticket moves all of finders/
+finders/qqrr/model.py	finder code; the ticket moves all of finders/
+finders/qqrr/opener.json	finder code; the ticket moves all of finders/
+finders/qqrr/oracle.py	finder code; the ticket moves all of finders/
+finders/qqrr/qqrr_cpsat.py	finder code; the ticket moves all of finders/
+finders/qqrr/test_checker.py	finder code; the ticket moves all of finders/
+finders/qqrr/test_model.py	finder code; the ticket moves all of finders/
+finders/qqrr/test_oracle.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/analyse_walk.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/build_lineup.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/canon.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/count_circled_pairs.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/count_circled_sets.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/hunt_circled_pair.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/max_house_circles.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/pick_seeds.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/probe_circle_pattern.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/probe_inverted.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/probe_neighbourhood.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/probe_walk.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/probe_which_rule_binds.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/prove_pair.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/prove_two_stage.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/recycle_hits.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/repro_renban_bug.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_canon.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_catalogue_is_used.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_covering_grids.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_max_house_circles.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_probe_circle_cost.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_probe_circle_enumerate_exhaustion.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_probe_circle_pattern_accepts_known_grids.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_probe_finds_known_grids.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_probe_known_solution.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_prove_two_stage.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_prove_two_stage_slow.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/test_renbanana_model.py	finder code; the ticket moves all of finders/
+finders/renbanana/tools/walk_to_candidates.py	finder code; the ticket moves all of finders/
+finders/renbanana_cpsat.py	finder code; the ticket moves all of finders/
+finders/renbanana_model.py	finder code; the ticket moves all of finders/
+finders/renbanana_render.py	finder code; the ticket moves all of finders/
+finders/renbanana_verify.py	finder code; the ticket moves all of finders/
+finders/ubahn/brute.py	finder code; the ticket moves all of finders/
+finders/ubahn/fixtures/publ-dandelo.txt	finder code; the ticket moves all of finders/
+finders/ubahn/fixtures/publ-knt.txt	finder code; the ticket moves all of finders/
+finders/ubahn/fixtures/publ-niverio.txt	finder code; the ticket moves all of finders/
+finders/ubahn/fixtures/timing-puzzles.json	finder code; the ticket moves all of finders/
+finders/ubahn/hybrid.py	finder code; the ticket moves all of finders/
+finders/ubahn/hybrid_finder.py	finder code; the ticket moves all of finders/
+finders/ubahn/hybrid_model.py	finder code; the ticket moves all of finders/
+finders/ubahn/hybrid_render.py	finder code; the ticket moves all of finders/
+finders/ubahn/hybrid_sat.py	finder code; the ticket moves all of finders/
+finders/ubahn/measure_baseline.py	finder code; the ticket moves all of finders/
+finders/ubahn/model.py	finder code; the ticket moves all of finders/
+finders/ubahn/network.py	finder code; the ticket moves all of finders/
+finders/ubahn/penpa-browser-check.mjs	finder code; the ticket moves all of finders/
+finders/ubahn/penpa.py	finder code; the ticket moves all of finders/
+finders/ubahn/penpa_decode.py	finder code; the ticket moves all of finders/
+finders/ubahn/sat_model.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_penpa.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_brute.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hunt.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_bananas.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_e2e.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_hunt.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_links.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_model.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_render.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_sat.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_hybrid_sat_hunt.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_measure.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_number_circles.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_number_circles_hunt.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_sat.py	finder code; the ticket moves all of finders/
+finders/ubahn/test_ubahn_time_engines.py	finder code; the ticket moves all of finders/
+finders/ubahn/time_bananas.py	finder code; the ticket moves all of finders/
+finders/ubahn/time_engines.py	finder code; the ticket moves all of finders/
+finders/ubahn/time_sat.py	finder code; the ticket moves all of finders/
+finders/ubahn/ubahn_finder.py	finder code; the ticket moves all of finders/
+finders/zombo_brainanas_cpsat.py	finder code; the ticket moves all of finders/
+finders/zombo_brainanas_render.py	finder code; the ticket moves all of finders/

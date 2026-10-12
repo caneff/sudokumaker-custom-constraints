@@ -1,0 +1,39 @@
+finders	finder code; the ticket moves all of finders/
+docs/agents/grid-finder-lessons.md	the grid-finder lessons doc, named by the ticket
+docs/research/2026-09-14-copycat-scan.md	describes the scan finders/copycat-scan ran
+docs/research/2026-09-14-galaxy-copycat	boards and results finders/galaxy-copycat reads and writes
+docs/research/2026-09-14-galaxy-copycat-design.md	design note of finders/galaxy-copycat
+docs/research/2026-09-14-lmd-hybrid-scan.md	describes the scan finders/lmd-hybrid-scan ran
+docs/research/2026-09-15-counting-shaded-all-visible.md	describes a finders/counting_shaded hunt
+docs/research/2026-09-15-counting-shaded-eight-probe.md	describes a finders/counting_shaded probe
+docs/research/2026-09-16-circle-pattern-shared-sizes.md	describes finders/renbanana/tools/probe_circle_pattern.py
+docs/research/2026-09-16-counting-shaded-connected-decision-log.md	decision log of finders/counting_shaded, named in its code
+docs/research/2026-09-16-counting-shaded-connected.md	describes the connected hunt of finders/counting_shaded
+docs/research/2026-09-16-finder-plumbing-share.md	describes the plumbing the finders share (finders/hunt)
+docs/research/2026-09-16-renbanana-two-stage-uniqueness.md	describes finders/renbanana/tools/prove_two_stage.py
+docs/research/2026-09-22-qqrr-explorer.html	explorer page of the finders/qqrr hunt, named in its code
+docs/research/2026-09-22-qqrr-opener-verdict.md	describes the finders/qqrr checker's verdict on the opener
+docs/research/2026-09-22-qqrr-tie-hunt.md	describes a finders/qqrr hunt
+docs/research/2026-09-22-qqrr-tie-r5c1.md	describes a finders/qqrr hunt, named in its code
+docs/research/2026-09-22-qqrr-tie-sample.md	describes a finders/qqrr hunt
+docs/research/2026-09-27-qqrr-tie-pilot	hunt directory written by finders/qqrr/hunt/tie_finder.py
+docs/research/2026-09-27-qqrr-tie-pilot.md	describes the finders/qqrr tie-finder pilot
+docs/research/2026-09-28-qqrr-tie-kill-resume	hunt directory finders/hunt/test_spec_483_e2e.py names
+docs/research/2026-09-28-qqrr-tie-kill-resume.md	describes the kill-and-resume run of the tie finder
+docs/research/2026-10-03-hunt-tests-under-load.md	describes the finders/hunt tests under load
+docs/research/2026-10-03-qqrr-tie-warm-demo	hunt directory written by the finders/qqrr tie finder
+docs/research/2026-10-03-qqrr-tie-warm-source	warm-start input finders/qqrr/hunt/README.md names
+docs/research/2026-10-10-u-bahn-cpsat-finder.md	rules and model note of finders/ubahn
+docs/research/2026-10-10-u-bahn-existing-solvers.md	prior-art search for finders/ubahn
+docs/research/2026-10-10-u-bahn-finder-decision-log.md	decision log of finders/ubahn, named in its code
+docs/research/2026-10-10-u-bahn-forced-facts.md	describes facts the finders/ubahn model forces
+docs/research/2026-10-10-u-bahn-optimization-queue.md	timing record of finders/ubahn, named in its code
+docs/research/2026-10-10-u-bahn-penpa-link.md	describes finders/ubahn/penpa.py, named in its code
+docs/research/2026-10-11-u-bahn-hybrid-engine-timing	progress files written by finders/ubahn/time_engines.py
+docs/research/2026-10-11-u-bahn-min-bananas-timing	timing data of finders/ubahn, named in finders/AGENTS.md
+docs/research/2026-10-11-u-bahn-number-circles	hunt directories written by finders/ubahn/hybrid_finder.py climb
+docs/research/2026-10-11-u-bahn-sparse-8x8-timing.md	timing of the finders/ubahn models on one puzzle
+docs/research/counting_shaded	data the finders/counting_shaded tests read
+docs/research/renbanana	catalogue, notes and hunt output finders/renbanana reads and writes
+docs/research/zombo-brainanas	hunt output and drivers of finders/zombo_brainanas_cpsat.py
+docs/research/zombo-brainanas-generation.md	describes finders/zombo_brainanas_cpsat.py
