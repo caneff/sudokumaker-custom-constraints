@@ -57,10 +57,10 @@ unit_of() { # <file>
   else echo always; fi
 }
 
-emit() { printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$3"; } # <group> <file> <command>
-
 run_file() { # <group> <file>: prints the suite that runs a test file
-  case $2 in *.mjs) emit "$1" "$2" "node $2" ;; *) emit "$1" "$2" "uv run $2" ;; esac
+  local run="uv run"
+  case $2 in *.mjs) run=node ;; esac
+  printf '%s\t%s\t%s\n' "$1" "$(unit_of "$2")" "$run $2"
 }
 
 # Prints "<group>\t<unit>\t<command>" per suite, in run order: lint, the shared

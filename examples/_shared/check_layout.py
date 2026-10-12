@@ -219,6 +219,7 @@ RESEARCH_INSPECTORS = frozenset(
         "examples/_shared/check_layout.test.py",
         "examples/_shared/gate.test.py",
         "examples/_shared/spec_649_closing.test.py",
+        "examples/_shared/spec_748_closing.test.py",
     }
 )
 

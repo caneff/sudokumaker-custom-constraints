@@ -77,7 +77,8 @@ Takes the shipped `examples/outside-sudoku/PUZZLE_LINK.txt` and replaces its
 `examples/count-digits-gac/build_required_digits.test.py` (part of `just
 test`) checks the rebuild is byte-identical and leaves the shipped links
 untouched. This script stays in `examples/count-digits-gac/`, not here, because
-`docs/research/` refuses a new `.py` file (`check_research_python`, #469).
+ruff and the gate read it there and nothing lints a `.py` file under
+`docs/research/`.
 These two links stay in `docs/research/`, not as `examples/outside-sudoku/`'s
 own boards, because they are not that example's board:
 `examples/_shared/check_layout.py` requires a shipped component to be one
@@ -210,7 +211,7 @@ node examples/_shared/app-solve.mjs base.txt 1 [--after-logical]   # then cand.t
 
 The committed `gen.json` was drawn with `--search 2 --groups 20 --required 5`
 (overlap is the default). Its grid comes from CP-SAT's portfolio search,
-which is not reproducible from the seed (`examples/_shared/cpsat.py`), so a
+which is not reproducible from the seed (`sudoku_kit.cpsat`, the sudoku-kit library), so a
 rerun draws a different board: `gen.json` is the artifact, `--search` is a
 one-shot for drawing another.
 

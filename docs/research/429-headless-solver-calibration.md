@@ -65,9 +65,8 @@ GAC link yields exactly one solution" acceptance criterion and as
 ```
 uv run python3 -c "
 import sys, json
-sys.path.insert(0, 'examples/_shared')
-from link_codec import decode_puzzle
-from cpsat import SOLVED, has_second_solution, solver
+from sudoku_kit.link_codec import decode_puzzle
+from sudoku_kit.cpsat import SOLVED, has_second_solution, solver
 from ortools.sat.python import cp_model
 
 doc = decode_puzzle(open('docs/research/406-gac-demo/PUZZLE_LINK_without_gac.txt').read().strip())

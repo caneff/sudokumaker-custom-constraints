@@ -39,11 +39,17 @@ def run_stubbed(argv, root=ROOT, real=()):
         return r, log.read_text().splitlines()
 
 
-def commands(recipe, root=ROOT):
-    """The commands `just <recipe>` runs from `root`, one string each, in order."""
+def just_executable():
     just = os.environ.get("JUST") or shutil.which("just")
     assert just, "no just executable: set JUST or put just on PATH"
-    r, ran = run_stubbed([just, "--justfile", str(root / "justfile"), recipe], root)
+    return just
+
+
+def commands(recipe, root=ROOT):
+    """The commands `just <recipe>` runs from `root`, one string each, in order."""
+    r, ran = run_stubbed(
+        [just_executable(), "--justfile", str(root / "justfile"), recipe], root
+    )
     assert r.returncode == 0, f"just {recipe} failed:\n{r.stdout}{r.stderr}"
     return ran
 

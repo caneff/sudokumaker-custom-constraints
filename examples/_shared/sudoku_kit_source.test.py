@@ -1,7 +1,8 @@
-# The CP-SAT helper, the link codec and the uniqueness check have one home,
-# the sudoku-kit library (#750): this repo pins it by tag, keeps no copy of
-# its own, imports none by the old local name, and reaches into no gridfind
-# checkout. Checked on the tracked tree, the lock file and one real link.
+# The CP-SAT helper and the link codec have one home, the sudoku-kit library
+# (#750): this repo pins it by tag, keeps no copy of its own, imports neither
+# as a module of this repo, and no tracked file names a path into a gridfind
+# checkout in one of GRIDFIND_PATH's spellings. Checked on the tracked tree,
+# the lock file and one real link.
 #
 #   uv run examples/_shared/sudoku_kit_source.test.py
 
@@ -25,16 +26,20 @@ LOCAL_COPIES = [
 # a module of this repo instead of the library's.
 LOCAL_IMPORT = re.compile(
     r"^\s*(?:"
-    r"(?:from|import)\s+(?:cpsat|link_codec|uniqueness)\b"
+    r"(?:from|import)\s+(?:cpsat|link_codec)\b"
     r"|from\s+examples\._shared\s+import\s+.*\b(?:cpsat|link_codec)\b"
     r"|(?:from|import)\s+examples\._shared\.(?:cpsat|link_codec)\b"
     r")",
     re.MULTILINE,
 )
 
-# The two spellings of a path into a gridfind checkout: in prose or a shell
-# line, and as a pathlib join.
-GRIDFIND_PATHS = ["~/src/gridfind", 'src" / "gridfind"']
+# A path into a gridfind checkout: `~/src/gridfind` in prose or a shell line,
+# and `src` joined to `gridfind` in code, as one string or as the separate
+# arguments of path.join or a pathlib `/` chain. An absolute path a research
+# note records (`/home/<user>/src/gridfind`) is not a reach and is not matched.
+GRIDFIND_PATH = re.compile(
+    rb"""~/src/gridfind|['"]src/gridfind['"/]|['"]src['"]\s*[,/]\s*['"]gridfind"""
+)
 
 
 def tracked(*patterns):
@@ -73,11 +78,9 @@ def nothing_imports_a_local_copy():
 
 def nothing_reaches_into_gridfind():
     hits = [
-        f"{p}: {needle}"
+        f"{p}: {m.group().decode()}"
         for p in tracked()
-        for text in [(ROOT / p).read_bytes()]
-        for needle in GRIDFIND_PATHS
-        if needle.encode() in text
+        for m in GRIDFIND_PATH.finditer((ROOT / p).read_bytes())
     ]
     assert not hits, "paths into a gridfind checkout:\n" + "\n".join(hits)
 

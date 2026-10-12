@@ -16,7 +16,6 @@ import json
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from sudoku_kit.link_codec import decode_puzzle
 
 

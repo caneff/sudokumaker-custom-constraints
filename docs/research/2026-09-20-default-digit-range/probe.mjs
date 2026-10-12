@@ -44,12 +44,16 @@ function rangelessDoc (w) {
   }
 }
 
+// The sudoku-kit codec, which refuses a document that does not decode back.
+const ENCODE = `import json, sys
+from sudoku_kit.link_codec import encode_link
+print(encode_link(json.load(open(sys.argv[1]))))`
+
 function encode (doc) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rangeless-'))
   const json = path.join(dir, 'board.json')
   fs.writeFileSync(json, JSON.stringify(doc))
-  return execFileSync('uv', ['run', '--directory', path.join(os.homedir(), 'src/gridfind'),
-    'python', 'scripts/link_file.py', 'encode', json, '-'], { encoding: 'utf8' }).trim()
+  return execFileSync('uv', ['run', 'python', '-c', ENCODE, json], { encoding: 'utf8' }).trim()
 }
 
 const CELL_TRANSFORM = /^translate\(\d+ \d+\) scale\(25\)$/

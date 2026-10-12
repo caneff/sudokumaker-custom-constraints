@@ -26,7 +26,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "_shared"))
 from ortools.sat.python import cp_model
 from sudoku_kit import cpsat
 
