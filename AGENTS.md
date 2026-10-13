@@ -140,7 +140,7 @@ repo 2026-10-11).
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
 - The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
-- Pants behind the seam runner: a unit is wired by its own `BUILD` file, with `suite(...)` from `tests/pants_prelude.py`; `tests/all.sh`'s header says how the runner uses it; what the first unit measured → `docs/research/2026-10-13-pants-first-unit.md`
+- Pants behind the seam runner: a unit is wired by its own `BUILD` file, with `suite(...)` from `tests/pants_prelude.py`; `tests/all.sh`'s header says how the runner uses it; what the first unit measured → `docs/research/2026-10-13-pants-first-unit.md`; the shared tests, and the ones named on `tests/sandbox-exceptions.txt` because they cannot run in the sandbox → `docs/research/2026-10-13-pants-shared-tests.md`
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`
 - Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`
