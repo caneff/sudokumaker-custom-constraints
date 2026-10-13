@@ -8,6 +8,7 @@
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -15,7 +16,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands, gate_tree, run_stubbed
+from gate_lib import by_mechanism, commands, gate_tree, run_logged, run_stubbed
 from gate_lib import runner_listing as listing
 
 RUNNER = "tests/all.sh"
@@ -412,8 +413,156 @@ def a_diff_selects_its_suites():
         assert f"cannot read {EDGES}" in said, said
 
 
+UP_TO_N = [
+    "uv run examples/up-to-n/build_link.test.py",
+    "node examples/up-to-n/end-to-end.test.mjs",
+    "node examples/up-to-n/marker-contract.test.mjs",
+    "node examples/up-to-n/update-strength.test.mjs",
+]
+UP_TO_N_HARNESS = "node examples/up-to-n/soundness-harness.mjs"
+
+
+def wired_suites_go_through_pants():
+    """On the real tree a full run and `--group test` send the up-to-n suites
+    through Pants and print `PASS <suite>` for each, the last line keeps its
+    format, and `--list` names the same suites with no Pants to ask."""
+    for args, want, note in (
+        ((), [*UP_TO_N, UP_TO_N_HARNESS], ""),
+        (("--group", "test"), UP_TO_N, " (group: test)"),
+    ):
+        r, log = run_logged(["bash", RUNNER, *args])
+        assert r.returncode == 0, f"{args}:\n{r.stdout}{r.stderr}"
+        loop, pants = by_mechanism(log)
+        out = r.stdout.splitlines()
+        for suite in want:
+            assert suite in pants, f"{args}: {suite} is not run through Pants"
+            assert suite not in loop, f"{args}: {suite} also runs outside Pants"
+            assert f"PASS {suite}" in out, f"{args}: no PASS line for {suite}"
+        if args:
+            assert UP_TO_N_HARNESS not in loop + pants, "--group test ran a harness"
+        n = len(listing(*args))
+        assert out[-1] == f"{n} of {n} suites passed{note}", out[-1]
+
+    r, log = run_logged(["bash", RUNNER, "--list"], absent=("pants",))
+    assert r.returncode == 0, f"--list with no pants:\n{r.stderr}"
+    assert r.stdout.splitlines() == listing(), "--list changes with no pants"
+    r, log = run_logged(["bash", RUNNER, "--list"])
+    assert not log, f"--list called a tool: {log}"
+
+    # Lint holds no test file, so it has nothing to ask Pants about.
+    r, log = run_logged(["bash", RUNNER, "--group", "lint"], absent=("pants",))
+    assert r.returncode == 0, f"--group lint with no pants:\n{r.stderr}"
+
+
+READS = "import fs from 'node:fs'\nfs.readFileSync('examples/aa/%s.txt')\n"
+
+# A unit wired into Pants: two suites, each reading one file of its unit, and
+# only one of the two files declared as an input.
+WIRED_UNIT = {
+    "pyproject.toml": "",
+    "uv.lock": "",
+    "BUILD": 'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n',
+    "examples/aa/BUILD": (
+        'javascript_sources(name="js", sources=["*.mjs"])\n'
+        'files(name="data", sources=["declared.txt"])\n'
+        'suite("declared.test.mjs", needs=[":data"])\n'
+        'suite("undeclared.test.mjs", needs=[":data"])\n'
+    ),
+    "examples/aa/declared.txt": "",
+    "examples/aa/undeclared.txt": "",
+    "examples/aa/declared.test.mjs": READS % "declared",
+    "examples/aa/undeclared.test.mjs": READS % "undeclared",
+}
+
+
+def wired_tree(tmp):
+    """A scratch tree with one unit wired into Pants. Its node_modules and
+    .venv are absolute symlinks, as in a worktree that borrows another
+    checkout's: Pants stops on one it reads, so it must ignore both."""
+    borrowed = pathlib.Path(tmp) / "borrowed"
+    (pathlib.Path(tmp) / "tree").mkdir()
+    tree = scratch_tree(pathlib.Path(tmp) / "tree", WIRED_UNIT)
+    shutil.copy(ROOT / "pants.toml", tree / "pants.toml")
+    for name in ("node_modules", ".venv"):
+        (borrowed / name).mkdir(parents=True)
+        (tree / name).symlink_to(borrowed / name)
+    return tree
+
+
+def an_undeclared_read_fails_the_suite():
+    """A wired suite that reads a file its unit did not declare fails, with
+    its output shown, and the failure is that file missing from the sandbox:
+    the file is in the tree, and the suite passes when run from the tree."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = wired_tree(tmp)
+        declared, undeclared = (
+            f"node examples/aa/{name}.test.mjs" for name in ("declared", "undeclared")
+        )
+        direct = subprocess.run(undeclared.split(), cwd=tree, capture_output=True)
+        assert direct.returncode == 0, f"the suite fails outside Pants: {direct.stderr}"
+
+        r, _ = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
+        out = r.stdout.splitlines()
+        assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}{r.stderr}"
+        assert f"PASS {declared}" in out, r.stdout
+        assert f"FAIL {undeclared}" in out, r.stdout
+        shown = out[out.index(f"FAIL {undeclared}") :]
+        assert any(
+            "ENOENT" in line and "examples/aa/undeclared.txt" in line for line in shown
+        ), f"the failure shown is not the undeclared file missing:\n{r.stdout}"
+        assert out[-1].endswith(f"suites passed before {undeclared} failed"), out[-1]
+
+
+def the_sandbox_gets_the_trees_python():
+    """uv builds a wired suite's environment inside the sandbox, from the
+    interpreter the tree's own environment was built from: the runner names
+    it, so uv does not pick another one (or download one) in there."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = wired_tree(tmp)
+        (tree / "examples/aa/BUILD").write_text(
+            'javascript_sources(name="js", sources=["*.mjs"])\n'
+            'suite("python.test.mjs")\n'
+        )
+        (tree / "examples/aa/python.test.mjs").write_text(
+            "console.log('UV_PYTHON=' + process.env.UV_PYTHON)\nprocess.exit(1)\n"
+        )
+        base = pathlib.Path(sys.executable).resolve()
+        (tree / ".venv/bin").mkdir()
+        (tree / ".venv/bin/python").symlink_to(base)
+        r, _ = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
+        out = r.stdout.splitlines()
+        assert "FAIL node examples/aa/python.test.mjs" in out, r.stdout + r.stderr
+        assert f"UV_PYTHON={base}" in out, f"not the tree's interpreter:\n{r.stdout}"
+
+
+def no_pants_runs_no_suite():
+    """A tree with a pants.toml and no working Pants exits 2 naming the
+    install, and reports no suite as passed: a wired suite never falls back to
+    running outside the sandbox."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = wired_tree(tmp)
+        r, log = run_logged(
+            ["bash", RUNNER], root=tree, real=("node",), absent=("pants",)
+        )
+        assert r.returncode == 2, f"exit {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
+        assert "Install the Pants launcher" in r.stderr, r.stderr
+        assert (r.stdout, log) == ("", []), (
+            f"a suite ran with no pants: {r.stdout}{log}"
+        )
+
+        (tree / "pants.toml").write_text("[GLOBAL\n")
+        r, log = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
+        assert r.returncode == 2, f"exit {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
+        assert "`pants list` failed" in r.stderr, r.stderr
+        assert (r.stdout, log) == ("", []), f"a suite ran on a broken pants: {r.stdout}"
+
+
 if __name__ == "__main__":
     a_diff_selects_its_suites()
+    wired_suites_go_through_pants()
+    an_undeclared_read_fails_the_suite()
+    the_sandbox_gets_the_trees_python()
+    no_pants_runs_no_suite()
     the_recipes_call_the_runner()
     every_cross_unit_read_is_an_edge()
     agents_md_names_both_commands()

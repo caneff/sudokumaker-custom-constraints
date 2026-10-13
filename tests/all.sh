@@ -24,6 +24,15 @@
 # list, or a Markdown file outside its unit that `place` does not name; the
 # controller re-runs the whole seam on the merged result before every merge.
 #
+# A suite Pants has a test target for runs through Pants, in its sandbox: a
+# folder holding only the files the suite's unit declared, so a read nobody
+# declared fails the suite. The runner keeps no list of those suites. It asks
+# Pants for its test targets on every run that holds a test file, and the
+# target of a suite is `<directory>:<file>` (tests/pants_prelude.py). Every
+# other suite runs here, from the tree. `--list` asks nothing. A tree with a
+# pants.toml and no working `pants` runs no suite and exits 2: a wired suite
+# never runs outside its sandbox.
+#
 # `--group <group>` runs one group of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
 # `heavy-fillomino`, `heavy-recovery`, `soundness`.
@@ -146,6 +155,25 @@ scope() { # <base>
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
+# Sets `wired`: Pants's test targets, one address per line. Anything else
+# Pants prints lands there too and matches no suite's target.
+ask_pants() {
+  command -v pants >/dev/null || {
+    echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH." \
+      "Install the Pants launcher (https://www.pantsbuild.org/stable/docs/getting-started/installing-pants);" \
+      "a suite wired into Pants never runs outside its sandbox, so no suite was run." >&2
+    exit 2; }
+  wired=$(pants --filter-target-type=test_shell_command list :: 2>&1 </dev/null) || {
+    echo "tests/all.sh: \`pants list\` failed, so the suites wired into Pants are not known and no suite was run:" >&2
+    printf '%s\n' "$wired" >&2; exit 2; }
+}
+
+# The Pants target a suite's test file would have: `<directory>:<file>`.
+target_of() { # <suite>
+  local file=${1##* }
+  echo "${file%/*}:${file##*/}"
+}
+
 usage() { # <what is wrong>
   echo "tests/all.sh: $1" >&2
   echo "usage: tests/all.sh [--list] [--changed <base>] [--group <group>]" >&2
@@ -196,11 +224,25 @@ selected=$(cut -f2 <<<"$selected")
 
 if [ "$list_only" = 1 ]; then [ -z "$selected" ] || printf '%s\n' "$selected"; exit 0; fi
 
+# uv builds a wired suite's environment inside the sandbox. It is told to
+# build it from the interpreter the tree's own environment was built from, so
+# a suite gets one Python inside the sandbox and outside it. Left to search,
+# uv takes what the sandbox's PATH offers or downloads the newest CPython.
+python=""
+[ ! -x .venv/bin/python ] || python=$(readlink -f .venv/bin/python)
+
+wired=""
+if [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then ask_pants; fi
+
 total=$(grep -c . <<<"$all")
 passed=0
 while IFS= read -r suite; do
   [ -n "$suite" ] || continue
-  if out=$($suite 2>&1 </dev/null); then
+  run=$suite
+  if grep -qxF -- "$(target_of "$suite")" <<<"$wired"; then
+    run="env ${python:+UV_PYTHON=$python} pants test $(target_of "$suite")"
+  fi
+  if out=$($run 2>&1 </dev/null); then
     echo "PASS $suite"
     passed=$((passed + 1))
   else
