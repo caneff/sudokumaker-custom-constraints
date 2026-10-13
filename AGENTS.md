@@ -77,6 +77,14 @@ others. If no step is forced from that state, say so.
   `check_layout.py` finds the other no-ring boards from their backend
   (`is_no_ring`) or from a `"sudoku"` document type (`is_sudoku_document`).
 
+## Solution paths (always on)
+
+- **Never publish a solution path.** This repo is public, so a solve path for
+  a puzzle never goes into a commit, PR, issue, gist or artifact, here or
+  anywhere else. Work it in the git-ignored `.scratch/` and open the file for
+  Chris. (Chris, 2026-10-13: "Never ever publish solution paths". The list of
+  channels is the agent's reading of "publish".)
+
 ## The solver bundle is on file — read it, do not guess (always on)
 
 - **Before you write a call against `puzzle` or `helpers`, or state what the
