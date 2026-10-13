@@ -1171,7 +1171,7 @@
               };
             return;
           }
-          case OuterPosition.BottomRight: {
+          case OuterPosition.BottomLeft: {
             const diagonalLengthBottomRight = Math.min(this.width, this.height);
             for (
               let diagonalIndexBottomRight = 0;
@@ -1184,7 +1184,7 @@
               };
             return;
           }
-          case OuterPosition.BottomLeft: {
+          case OuterPosition.BottomRight: {
             const diagonalLengthBottomLeft = Math.min(this.width, this.height);
             for (
               let diagonalIndexBottomLeft = 0;
@@ -5315,16 +5315,16 @@
       }
     }
     getIsDone({ cells: cells }) {
-      for (let cellIndex = 0; cellIndex < this.cellIds.length; cellIndex++) {
-        const candidates = cells[this.cellIds[cellIndex]].candidates;
-        for (
-          let otherCellIndex = cellIndex + 1;
-          otherCellIndex < this.cellIds.length;
-          otherCellIndex++
-        ) {
-          const otherCandidates = cells[this.cellIds[cellIndex]].candidates;
-          if ((candidates & otherCandidates) !== 0) return !1;
-        }
+      let seenGroups = 0;
+      for (const cellId of this.cellIds) {
+        const candidates = cells[cellId].candidates;
+        let cellGroups = 0;
+        for (let groupIndex = 0; groupIndex < this.groups.length; groupIndex++)
+          candidates & this.groups[groupIndex] &&
+            (cellGroups |= 1 << groupIndex);
+        if ((seenGroups & cellGroups) !== 0)
+          return !1;
+        seenGroups |= cellGroups;
       }
       return !0;
     }
@@ -10380,7 +10380,7 @@
         (digitForLow) => digitForLow < midpoint,
       ),
       highMask = +digitsHelper.createFilteredDigitSet(
-        (digitForHigh) => digitForHigh < midpoint,
+        (digitForHigh) => digitForHigh > midpoint,
       );
     return groups.includes(lowMask) && groups.includes(highMask);
   }

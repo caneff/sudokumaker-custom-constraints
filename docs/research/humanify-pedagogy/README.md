@@ -1,6 +1,6 @@
 # humanify-pedagogy: the app's solver bundle, renamed and read
 
-`bundle.claude.js` is the same program as the app's `solver-Bv75x3BJ.js`
+`bundle.claude.js` is the same program as the app's `solver-PA_paHYG.js`
 (`bundle.min.js` here), with every identifier renamed for reading. Public
 method names, decorator display names and string literals are the app's own;
 everything else was inferred and `tools/verify.mjs` proves the rename kept

@@ -4,7 +4,8 @@ An explanatory reference for everything a custom constraint can reach: the
 `puzzle` object, change objects, the component contract, every `helpers.*`
 namespace, the utility globals, and all built-in components. Each entry was
 written by reading the function body in the app's solver bundle
-(`solver-Bv75x3BJ.js` as served by sudokumaker.app), not inferred from its
+(`solver-PA_paHYG.js` as served by sudokumaker.app, app build
+`v2026.10.05-a3aef4c`), not inferred from its
 name.
 
 Line citations (`bundle.claude.js:<line>`) point into a copy of that bundle
@@ -41,10 +42,14 @@ Caveats:
 Places where the bundle's own behaviour looks wrong. Each is also flagged in
 place as a `Discrepancy` note in the entry concerned.
 
+Fixed by the app's update to `solver-PA_paHYG.js` (confirmed by running the
+renamed bundle, `docs/research/humanify-pedagogy/tools/bugcheck.mjs`): the
+`BottomRight`/`BottomLeft` straight rays started at the wrong corner, and
+`groupsArePolarityPair` built both masks from `digit < midpoint`.
+
 | # | Finding |
 |-|-|
-| 1 | `getCoordsPointedAtByOuterClue`: straight-ray outer clues from the `BottomRight` and `BottomLeft` corners start at the wrong corner, and all four corner cases assume a square board. Do not trust a bottom-corner straight ray. **Confirmed by running the bundle**: on a 9x9 the ray for the bottom-right outer corner starts at (0,8), the bottom-left cell, and the bottom-left ray starts at (8,8). |
-| 2 | `groupsArePolarityPair` builds its low and high masks with the same `digit < midpoint` test, so both are the low half. **Confirmed by running the bundle** on 1..9: the genuine pair {1..4},{6..9} still passes, but so does {1..4} with {5}, or with itself, while {6..9} paired with anything but the low half fails. Any two-group list containing the low half is described as "polarity (low/high)". Present in the minified original too. |
+| 1 | `getCoordsPointedAtByOuterClue`: all four corner cases of the straight ray assume a square board: they run `min(width, height)` steps along the true diagonal, which is not the visual diagonal of a non-square grid. Do not trust a corner straight ray on a non-square board. |
 
 ## The puzzle object, change objects and the component contract
 
@@ -1230,18 +1235,13 @@ coordinates.
   `(-1,1)`; `TopLeft`+`Negative` `(1,1)`; `TopRight`+`Positive` `(-1,1)`;
   `BottomLeft`+`Positive` `(1,-1)`; `BottomRight`+`Negative` `(-1,-1)`.
 
-> Discrepancy (bundle bug, not a doc one): in the straight-ray branch the
-> `BottomRight` case yields `{x: i, y: height-1-i}` — starting at the
-> *bottom-left* corner and walking up-right — and `BottomLeft` yields
-> `{x: width-1-i, y: height-1-i}`, starting at the bottom-right
-> (`bundle.claude.js:1183` and `bundle.claude.js:1195`). The two corners are
-> swapped relative to `TopLeft`/`TopRight`, which are correct. Don't trust a
-> bottom-corner outer clue's straight ray. Also, all four corner cases assume
-> a square board: they run `min(width, height)` steps along the true diagonal,
-> which is not the visual diagonal of a non-square grid. Run on a 9x9: the
-> bottom-right outer corner's ray starts (0,8), (1,7), (2,6); the bottom-left
-> corner's starts (8,8), (7,7), (6,6); the two top corners start at their own
-> corner.
+> Discrepancy (bundle bug, not a doc one): all four corner cases assume a
+> square board: they run `min(width, height)` steps along the true diagonal,
+> which is not the visual diagonal of a non-square grid. (The `BottomRight` and
+> `BottomLeft` cases used to start at each other's corner; the app's update to
+> `solver-PA_paHYG.js` swapped the labels. On a 9x9 the bottom-right outer
+> corner's ray now starts (8,8), (7,7), (6,6) and the bottom-left corner's
+> (0,8), (1,7), (2,6).)
 
 #### `getCellsPointedAtByOuterClue(outerCellId, diagonalType)`
 Same walk as `getCoordsPointedAtByOuterClue`, yielding cell ids. Inherits every
@@ -2275,11 +2275,11 @@ Each cell takes its digit from a different one of the given digit groups
   removes that whole group from every *other* cell. Yields
   `RemoveCandidatesFromCell` per pair.
 - **validate** Not overridden.
-- **Notes** `getIsDone` reads `cells[cellIndex]` twice instead of comparing
-  against `otherCellIndex`, so it compares a cell's candidates with themselves
-  and returns false whenever any cell has candidates. The practical effect is
-  that the component is never retired early, which costs time but is sound.
-  Cost is O(cells² × groups) per update.
+- **Notes** `getIsDone` ORs, per cell, the bit of every group the cell's
+  candidates touch, and returns false when two cells touch a common group.
+  (Before the app's update to `solver-PA_paHYG.js` it compared a cell's
+  candidates with themselves, so the component was never retired early; that
+  was sound but slow.) Cost is O(cells² × groups) per update.
 
 ### DiverseGroups (`class DiverseGroupsComponent extends CompositeComponent`)
 
@@ -4604,16 +4604,12 @@ equals one of the residue classes of the spec's digits modulo `classCount`.
 `bundle.claude.js:10375`. Intended to detect the low/high split around the
 midpoint of the digit range, checking that `groups` holds both the low mask and
 the high mask.
-- **Notes:** in the bundle both masks are built with the same predicate
-  (`digit < midpoint`), so `lowMask` and `highMask` are identical and the
-  function really asks only whether the low group is present among two groups.
-  A low/high pair still passes; so would a pair of low plus anything.
-
-> Discrepancy: `bundle.claude.js:10382` builds `highMask` with
-> `digitForHigh < midpoint`, the same test as `lowMask` at line 10380, so both
-> masks are the low half. Run on a 1..9 spec: `[{1..4}, {6..9}]` → true, but
-> `[{1..4}, {5}]` and `[{1..4}, {1..4}]` → true as well, and `[{6..9}, {1}]` →
-> false. Any pair that contains the low half counts as a polarity pair.
+- **Notes:** `lowMask` is the digits below the midpoint and `highMask` the
+  digits above it, so the midpoint digit of an odd range belongs to neither.
+  `[{1..4}, {6..9}]` is a pair; `[{1..4}, {5}]`, `[{1..4}, {1..4}]` and
+  `[{6..9}, {1}]` are not. (Before the app's update to `solver-PA_paHYG.js`
+  both masks used `digit < midpoint`, so any pair containing the low half
+  passed.)
 
 #### `groupsAreEntropySets(groups, spec)`
 
