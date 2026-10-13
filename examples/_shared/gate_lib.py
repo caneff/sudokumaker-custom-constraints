@@ -60,14 +60,15 @@ def sandbox_exceptions(root=ROOT):
     return listed
 
 
-def pants(*args, root=ROOT):
+def pants(*args, root=ROOT, env=None):
     """The real Pants, run from `root` with its work directory outside the
-    tree and removed afterwards: a test leaves no `.pants.d/` behind."""
+    tree and removed afterwards: a test leaves no `.pants.d/` behind. `env`
+    adds to the environment."""
     with tempfile.TemporaryDirectory() as workdir:
         return subprocess.run(
             ["pants", *args],
             cwd=root,
-            env={**os.environ, "PANTS_WORKDIR": workdir},
+            env={**os.environ, **(env or {}), "PANTS_WORKDIR": workdir},
             capture_output=True,
             text=True,
         )

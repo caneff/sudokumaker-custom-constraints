@@ -20,6 +20,7 @@ from gate_lib import (
     by_mechanism,
     commands,
     gate_tree,
+    pants,
     pants_suites,
     run_logged,
     run_stubbed,
@@ -567,15 +568,34 @@ def an_undeclared_read_fails_the_suite():
 def the_sandbox_gets_the_trees_python():
     """uv builds a wired suite's environment inside the sandbox, from the
     interpreter the tree's own environment was built from: the runner names
-    it, so uv does not pick another one (or download one) in there."""
+    it, so uv does not pick another one (or download one) in there. A node
+    suite finds it in UV_PYTHON, for the `uv run` it starts. A Python suite
+    runs on it and does not hand UV_PYTHON on: a second `uv run` under it,
+    of a script outside the project, would lose the project's environment."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = wired_tree(tmp)
         (tree / "examples/aa/BUILD").write_text(
             'javascript_sources(name="js", sources=["*.mjs"])\n'
+            'python_sources(name="py", sources=["*.py"])\n'
             'suite("python.test.mjs")\n'
+            'suite("python.test.py")\n'
         )
         (tree / "examples/aa/python.test.mjs").write_text(
             "console.log('UV_PYTHON=' + process.env.UV_PYTHON)\nprocess.exit(1)\n"
+        )
+        (tree / "examples/aa/python.test.py").write_text(
+            "import os, sys\n"
+            "print('runs on', os.path.realpath(sys.executable))\n"
+            "print('hands on', os.environ.get('UV_PYTHON'))\n"
+            "sys.exit(1)\n"
+        )
+        # A project uv can read: the Python suite runs the real uv.
+        (tree / "pyproject.toml").write_text(
+            '[project]\nname = "fixture"\nversion = "0"\nrequires-python = ">=3.11"\n'
+        )
+        (tree / "uv.lock").write_text(
+            'version = 1\nrequires-python = ">=3.11"\n\n[[package]]\n'
+            'name = "fixture"\nversion = "0"\nsource = { virtual = "." }\n'
         )
         base = pathlib.Path(sys.executable).resolve()
         (tree / ".venv/bin").mkdir()
@@ -584,6 +604,17 @@ def the_sandbox_gets_the_trees_python():
         out = r.stdout.splitlines()
         assert "FAIL node examples/aa/python.test.mjs" in out, r.stdout + r.stderr
         assert f"UV_PYTHON={base}" in out, f"not the tree's interpreter:\n{r.stdout}"
+
+        # The Python suite, with the real uv, as the runner starts it.
+        r = pants(
+            "test",
+            "examples/aa:python.test.py",
+            root=tree,
+            env={"UV_PYTHON": str(base)},
+        )
+        out = r.stderr.splitlines()
+        assert f"runs on {base}" in out, f"not the tree's interpreter:\n{r.stderr}"
+        assert "hands on None" in out, f"UV_PYTHON reaches the suite:\n{r.stderr}"
 
 
 def no_pants_runs_no_suite():
