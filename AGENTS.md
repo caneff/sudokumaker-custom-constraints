@@ -105,7 +105,7 @@ merge, whether or not `main` has moved past the PR's merge base (about
 3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
 repo 2026-10-11).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests, the suites of each example the diff touches and those of the examples `tests/suite-edges.txt` says read it; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the tests on `tests/sandbox-exceptions.txt`, and each suite Pants lists among the dependents of a file the diff changed, shared tests included; no directory decides, and a changed path Pants cannot place widens the run to the whole seam; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 
@@ -140,6 +140,7 @@ repo 2026-10-11).
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
 - The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
+- Pants behind the seam runner: wiring an example or a new test file, the exception list, the measurements → `docs/pants.md`
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`
 - Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`

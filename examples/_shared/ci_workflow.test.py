@@ -79,6 +79,9 @@ if __name__ == "__main__":
         "run: npm ci",
         "uses: astral-sh/setup-uv@v5",
         "run: uv sync",
+        # The seam runner sends wired suites through Pants, and exits 2 on a
+        # leg that has none installed.
+        "uses: pantsbuild/actions/init-pants@v11",
     ):
         assert gate_steps.count(step) == 1, (
             f"expected one shared '{step}' step in the gate job, "

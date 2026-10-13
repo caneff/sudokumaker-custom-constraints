@@ -44,6 +44,15 @@ jobs:
       - name: uv sync
         run: uv sync
 
+      # The Pants launcher, cached with the Pants it downloads. Only the
+      # install is cached: pants.toml turns the result cache off, so every
+      # suite still runs on every leg.
+      - name: Install Pants
+        uses: pantsbuild/actions/init-pants@v11
+        with:
+          gha-cache-key: v0
+          named-caches-hash: ${{ hashFiles('pants.toml') }}
+
       - name: Gate (${{ matrix.recipe }})
         if: github.event_name == 'pull_request' || matrix.recipe == 'check'
         run: uvx --from rust-just just ${{ matrix.recipe }}

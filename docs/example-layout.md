@@ -16,8 +16,9 @@ so a missing required file or a bad link name fails the gate.
 | `*Component.js` (at least one) | The pasted constraint snippet(s). One example, `house-gac`, ships none of its own: its one component lives in `examples/_shared/` on purpose, shared with every other board that registers the same filter, and its `example.toml`'s `shared_component` names it there instead of demanding a local copy that could drift |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
+| `BUILD` | Wires the example's suites into Pants, one `suite(...)` line per test file and for the harness; `gate.test.py` fails on a test file with no line (see `docs/pants.md`) |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
-| `update-strength.test.mjs` | Never-weaker fuzz through `harness-lib.strengthSweep`; floor pinned at the commit that adds it, or frozen as a committed copy when the floor lands in the same squash-merged PR as the component (up-to-n's `.golden/UpToNComponent.floor.js`) |
+| `update-strength.test.mjs` | Never-weaker fuzz through `harness-lib.strengthSweep`; the floor is a frozen copy under `.golden/`, named `<stem>.<commit>.js` for the commit it came from, or `<stem>.floor.js` when the floor landed in the same squash-merged PR as the component (up-to-n's) |
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |
 | `PUZZLE_LINK.txt` | The shipped board — the one link a reader opens |
 | `PUZZLE_LINK_local.txt` | The local-lane board |
@@ -89,11 +90,11 @@ Run when present, skipped when absent:
 
 | File | Notes |
 | --- | --- |
-| `.golden/` | Regression goldens for the recovery/speed probes |
+| `.golden/` | Regression goldens for the recovery/speed probes, and the strength tests' frozen floors |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`framebuild.main`) |
 | `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and is named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
-| any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed. A test named in a `heavy_*` list in `tests/all.sh` runs under `just test-heavy` instead, so only `check-full` runs it |
+| any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed; it needs its `suite(...)` line in the example's `BUILD`. A test named in a `heavy_*` list in `tests/all.sh` runs under `just test-heavy` instead, so only `check-full` runs it |
 
 ## Link grammar
 
@@ -310,10 +311,12 @@ The splice happens wherever the source is turned into something that runs:
 builder writes, and `assembleSource` (`examples/_shared/include.mjs`) for the
 Node tests, harnesses and probes. A path resolves against the including file's
 own directory; a missing file, a cycle, or a directive naming no path stops the
-build. `loadAt` in `harness-lib.mjs` splices too, but from the tree at the commit
-(`assembleSource` takes a reader, and `loadAt` passes `git show`), so a pinned
-update-strength floor loads with the includes it shipped with, even after the
-included file has changed. An include the commit does not carry stops the load.
+build. A pinned update-strength floor is a frozen copy under the example's
+`.golden/`, named `<stem>.<commit>.js` for the commit it was taken from and
+written with its includes already spliced in as of that commit, so it loads
+as it shipped even after an included file has changed. The suite runs in
+Pants's sandbox, which holds no git history, so the floor is a file and not a
+`git show`.
 
 Because a paste target's body can arrive through a directive, anything that
 judges what a file does reads the ASSEMBLED text, not the raw file:

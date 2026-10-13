@@ -14,21 +14,25 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadAt } = makeIo(HERE)
+const { load } = makeIo(HERE)
 
+// The floors are frozen copies in `.golden/`, named for the commit each came
+// from, not `git show` reads: the Pants sandbox holds no git history.
+// Raising a floor means replacing its copy,
+// and the commit in its name, in the same commit as the stronger component.
 // The floor: the components as they stand at the commit that pins this test.
 const REF_COMMIT = 'db93523'
 // The per-line and opposite-pair components no longer exist in the tree. This is the
 // commit that last shipped them, gates and all — the strength the pair
 // component has to match.
 const REPLACED_COMMIT = '7b3f9af'
-// Collision: at that commit `HitCountsPairComponent.js` is the OLD opposite-pair
-// component, not the pair component under test (which was then called
-// HitCountsJointComponent.js). Each floor names the file as it was at its commit.
-const OPPOSITE_PAIR_REF_FILE = 'HitCountsPairComponent.js'
+// At that commit `HitCountsPairComponent.js` is the OLD opposite-pair component,
+// not the pair component under test (which was then called
+// HitCountsJointComponent.js): `.golden/HitCountsPairComponent.7b3f9af.js` is
+// the old one. Each floor names the file as it was at its commit.
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
@@ -41,8 +45,8 @@ function stateOf (start, houses) {
 
 {
   const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
-  const lineRef = loadAt(REPLACED_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
-  const pairRef = loadAt(REPLACED_COMMIT, OPPOSITE_PAIR_REF_FILE, ['setParams', 'update'])
+  const lineRef = load(`.golden/HitCountsComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update', 'initialize'])
+  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update'])
   const PA = 300
   const PB = 301
 
@@ -101,7 +105,7 @@ function stateOf (start, houses) {
   // The floor still has its `initialize`; the current file leaves the load
   // pass to the base, which runs `update` once -- the fixpoint's first pass.
   const cur = load('HitCountsComponent.js', ['setParams', 'update'])
-  const ref = loadAt(REF_COMMIT, 'HitCountsComponent.js', ['setParams', 'update', 'initialize'])
+  const ref = load(`.golden/HitCountsComponent.${REF_COMMIT}.js`, ['setParams', 'update', 'initialize'])
   const CLUE = 100
   const LINE = [0, 1, 2, 3, 4, 5, 6, 7, 8]
   installGlobals(0, 9)
@@ -163,7 +167,7 @@ function stateOf (start, houses) {
 {
   installGlobals(0, 4)
   const cur = load('HitCountsPairComponent.js', ['setParams', 'update'])
-  const pairRef = loadAt(REPLACED_COMMIT, OPPOSITE_PAIR_REF_FILE, ['setParams', 'update'])
+  const pairRef = load(`.golden/HitCountsPairComponent.${REPLACED_COMMIT}.js`, ['setParams', 'update'])
   const CA = 400
   const CB = 401
   const LINE = [20, 21, 22, 23]
@@ -259,7 +263,7 @@ function stateOf (start, houses) {
   installGlobals(0, 4)
   const NAMES = ['setParams', 'update']
   const cur = load('HitCountsPairComponent.js', NAMES)
-  const ref = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE, NAMES)
+  const ref = load(CASE_SWEEP_REF, NAMES)
   const CA = 400
   const CB = 401
   const LINE = [30, 31, 32, 33]
@@ -289,7 +293,7 @@ function stateOf (start, houses) {
 {
   const NAMES = ['setParams', 'update']
   const cur = load('SideSumComponent.js', NAMES)
-  const ref = loadAt(REF_COMMIT, 'SideSumComponent.js', NAMES)
+  const ref = load(`.golden/SideSumComponent.${REF_COMMIT}.js`, NAMES)
   const N = 9
   const SIDE = [200, 201, 202, 203, 204, 205, 206, 207, 208]
   // The side sum fires only while all N perpendicular lines are full houses of

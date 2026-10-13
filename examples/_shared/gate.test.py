@@ -21,18 +21,39 @@
 #     environment and nothing resolves per call;
 #   - the seam runner (`tests/all.sh`), which the recipes call and a worker
 #     runs narrowed, reaches exactly the suites check-full reaches, on the real
-#     tree and on a scratch tree with a new example planted.
+#     tree and on a scratch tree with a new example planted;
+#   - every test file is run by exactly one mechanism: the runner's own loop,
+#     or Pants in its sandbox for a suite Pants has a test target for. A file
+#     run by both, or by neither, fails here.
+#   - every test file is run through Pants, or is on the exception list
+#     (tests/sandbox-exceptions.txt) with its reason: a test file in neither
+#     or in both fails here, and so does an entry with no reason or one that
+#     names no test file of the seam. A narrowed run (`tests/all.sh
+#     --changed`) leaves every selection to Pants and runs the excepted tests
+#     always, so a test file in neither would be one nothing selects for a
+#     reason.
 #
 #   uv run examples/_shared/gate.test.py
 
 import pathlib
+import shutil
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands, gate_tree, runner_listing
+from gate_lib import (
+    EXCEPTIONS,
+    ROOT_BUILD,
+    by_mechanism,
+    commands,
+    gate_tree,
+    pants_suites,
+    run_logged,
+    runner_listing,
+    sandbox_exceptions,
+)
 
 # The heavy tier, named file by file: `just test` skips exactly these by path.
 HEAVY = {
@@ -122,6 +143,110 @@ def both_reach(demanded, root=ROOT):
     )
 
 
+def one_mechanism_per_file():
+    """A whole run sends every suite Pants has a test target for through
+    Pants and no other, and runs every test file once: a wired suite the loop
+    also runs is run by both, and one neither reaches is run by nothing."""
+    r, log = run_logged(["bash", "tests/all.sh"])
+    assert r.returncode == 0, f"a stubbed full run failed:\n{r.stdout}{r.stderr}"
+    loop, pants = by_mechanism(log)
+    wired = set(pants_suites().values())
+    assert "uv run examples/up-to-n/build_link.test.py" in wired, (
+        f"Pants has no test target for the up-to-n suites: {sorted(wired)}"
+    )
+    both = sorted(set(loop) & (set(pants) | wired))
+    assert not both, f"run by the loop and wired into Pants: {both}"
+    assert sorted(pants) == sorted(wired), (
+        f"Pants targets the runner does not run: {sorted(wired - set(pants))}; "
+        f"run through Pants twice or with no target: "
+        f"{sorted(c for c in pants if pants.count(c) > 1 or c not in wired)}"
+    )
+    for suite in sorted(on_disk()):
+        n = (loop + pants).count(suite)
+        assert n == 1, f"{suite} is run {n} times, not once"
+    return len(pants)
+
+
+def test_files_are_wired_or_excepted(root=ROOT):
+    """Every test file of the seam under `root` is wired into Pants or named
+    on the exception list, never both, and the list names nothing else."""
+    excepted = sandbox_exceptions(root)
+    wired = set(pants_suites(root).values())
+    suites = {c for c in runner_listing(root=root) if c not in LINT}
+    for suite in sorted(suites):
+        file = suite.split()[-1]
+        assert (suite in wired) != (file in excepted), (
+            f"{suite} is "
+            + ("wired into Pants and" if suite in wired else "neither wired nor")
+            + f" on {EXCEPTIONS}"
+        )
+    stale = sorted(set(excepted) - {c.split()[-1] for c in suites})
+    assert not stale, f"{EXCEPTIONS} names what is no test file of the seam: {stale}"
+    return len(excepted)
+
+
+def an_exception_needs_a_reason():
+    """An entry of the exception list with no reason is refused."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = gate_tree(tmp)
+        for entry, ok in (
+            ("examples/_shared/x.test.py", False),
+            ("examples/_shared/x.test.py   ", False),
+            ("examples/_shared/x.test.py it printed `no such file`", True),
+        ):
+            (tree / EXCEPTIONS).write_text(f"# a comment\n\n{entry}\n")
+            try:
+                sandbox_exceptions(tree)
+                refused = False
+            except AssertionError as e:
+                refused = "has no reason" in str(e)
+            assert refused != ok, f"exception entry {entry!r}: refused={refused}"
+
+
+def a_test_file_in_neither_is_refused():
+    """On a scratch tree with one suite wired: a test file with no Pants
+    target and no entry on the exception list fails the check by name, the
+    entry passes it, and an entry for the wired suite fails it too."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = gate_tree(tmp)
+        shutil.copy(ROOT / "pants.toml", tree / "pants.toml")
+        files = {
+            "pyproject.toml": "",
+            "uv.lock": "",
+            "BUILD": ROOT_BUILD,
+            "examples/aa/BUILD": (
+                'javascript_sources(name="js", sources=["*.mjs"])\n'
+                'suite("wired.test.mjs")\n'
+            ),
+            "examples/aa/wired.test.mjs": "",
+            "examples/aa/planted.test.mjs": "",
+        }
+        for rel, text in files.items():
+            (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tree / rel).write_text(text)
+        wired, planted = "examples/aa/wired.test.mjs", "examples/aa/planted.test.mjs"
+        # The suites the runner names by path are in every tree's seam.
+        named = [
+            c.split()[-1]
+            for c in runner_listing(root=tree)
+            if c not in LINT and "examples/aa/" not in c
+        ]
+        for extra, want in (
+            ([], f"node {planted} is neither wired nor on {EXCEPTIONS}"),
+            ([planted], None),
+            ([planted, wired], f"node {wired} is wired into Pants and on {EXCEPTIONS}"),
+        ):
+            (tree / EXCEPTIONS).write_text(
+                "".join(f"{file} a reason\n" for file in named + extra)
+            )
+            try:
+                test_files_are_wired_or_excepted(tree)
+                said = None
+            except AssertionError as e:
+                said = str(e)
+            assert said == want, f"with {extra} excepted the check said: {said}"
+
+
 if __name__ == "__main__":
     full = commands("check-full")
     fast = commands("check")
@@ -157,4 +282,12 @@ if __name__ == "__main__":
     only_fast = set(fast) - set(full)
     assert not only_fast, f"check runs steps check-full skips: {sorted(only_fast)}"
 
-    print(f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps: ok")
+    wired = one_mechanism_per_file()
+    an_exception_needs_a_reason()
+    a_test_file_in_neither_is_refused()
+    excepted = test_files_are_wired_or_excepted()
+
+    print(
+        f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps, "
+        f"{wired} through Pants, {excepted} excepted from its sandbox: ok"
+    )
