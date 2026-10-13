@@ -1172,19 +1172,6 @@
             return;
           }
           case OuterPosition.BottomLeft: {
-            const diagonalLengthBottomRight = Math.min(this.width, this.height);
-            for (
-              let diagonalIndexBottomRight = 0;
-              diagonalIndexBottomRight < diagonalLengthBottomRight;
-              diagonalIndexBottomRight++
-            )
-              yield {
-                x: diagonalIndexBottomRight,
-                y: this.height - 1 - diagonalIndexBottomRight,
-              };
-            return;
-          }
-          case OuterPosition.BottomRight: {
             const diagonalLengthBottomLeft = Math.min(this.width, this.height);
             for (
               let diagonalIndexBottomLeft = 0;
@@ -1192,8 +1179,21 @@
               diagonalIndexBottomLeft++
             )
               yield {
-                x: this.width - 1 - diagonalIndexBottomLeft,
+                x: diagonalIndexBottomLeft,
                 y: this.height - 1 - diagonalIndexBottomLeft,
+              };
+            return;
+          }
+          case OuterPosition.BottomRight: {
+            const diagonalLengthBottomRight = Math.min(this.width, this.height);
+            for (
+              let diagonalIndexBottomRight = 0;
+              diagonalIndexBottomRight < diagonalLengthBottomRight;
+              diagonalIndexBottomRight++
+            )
+              yield {
+                x: this.width - 1 - diagonalIndexBottomRight,
+                y: this.height - 1 - diagonalIndexBottomRight,
               };
           }
         }

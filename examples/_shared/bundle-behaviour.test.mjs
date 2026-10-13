@@ -1,7 +1,8 @@
-// Tests for three bundle behaviours docs/research/bundle-api-reference.md
-// documents (the app's update to solver-PA_paHYG.js fixed all three), run on
-// the vendored bundle. A refresh of the bundle that brings one back, or a doc
-// that drifts from the bundle, fails here.
+// Tests for three behaviours of the vendored solver bundle that
+// docs/research/bundle-api-reference.md describes: the straight ray from each
+// bottom outer corner, groupsArePolarityPair, and DifferentGroups.getIsDone.
+// `verify.mjs` compares the renamed bundle with the minified chunk modulo
+// identifier names, so a swapped property name or case label is visible only here.
 // Run: node examples/_shared/bundle-behaviour.test.mjs
 
 import assert from 'assert'

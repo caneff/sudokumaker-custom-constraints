@@ -174,8 +174,7 @@ SM_LIVE=1 node examples/_shared/app-solve.mjs <link> 1   # loads live, rewrites 
 ```
 
 Check the version the readout prints, and say in the commit which build the
-new recording holds. The last re-record, and how the timing
-baselines moved under it: `docs/research/770-har-rerecord.md`. `SM_OFFLINE=1` cuts the browser's network, which proves
+new recording holds. `SM_OFFLINE=1` cuts the browser's network, which proves
 a replay is complete rather than quietly falling through to the live site.
 With no HAR on disk (a fresh clone that skipped it), the first run records one
 itself.

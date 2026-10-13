@@ -42,11 +42,6 @@ Caveats:
 Places where the bundle's own behaviour looks wrong. Each is also flagged in
 place as a `Discrepancy` note in the entry concerned.
 
-Fixed by the app's update to `solver-PA_paHYG.js` (confirmed by running the
-renamed bundle, `docs/research/humanify-pedagogy/tools/bugcheck.mjs`): the
-`BottomRight`/`BottomLeft` straight rays started at the wrong corner, and
-`groupsArePolarityPair` built both masks from `digit < midpoint`.
-
 | # | Finding |
 |-|-|
 | 1 | `getCoordsPointedAtByOuterClue`: all four corner cases of the straight ray assume a square board: they run `min(width, height)` steps along the true diagonal, which is not the visual diagonal of a non-square grid. Do not trust a corner straight ray on a non-square board. |
@@ -1237,11 +1232,10 @@ coordinates.
 
 > Discrepancy (bundle bug, not a doc one): all four corner cases assume a
 > square board: they run `min(width, height)` steps along the true diagonal,
-> which is not the visual diagonal of a non-square grid. (The `BottomRight` and
-> `BottomLeft` cases used to start at each other's corner; the app's update to
-> `solver-PA_paHYG.js` swapped the labels. On a 9x9 the bottom-right outer
-> corner's ray now starts (8,8), (7,7), (6,6) and the bottom-left corner's
-> (0,8), (1,7), (2,6).)
+> which is not the visual diagonal of a non-square grid. Run on a 9x9: the
+> bottom-right outer corner's ray starts (8,8), (7,7), (6,6); the bottom-left
+> corner's starts (0,8), (1,7), (2,6); the two top corners start at their own
+> corner.
 
 #### `getCellsPointedAtByOuterClue(outerCellId, diagonalType)`
 Same walk as `getCoordsPointedAtByOuterClue`, yielding cell ids. Inherits every
@@ -2277,9 +2271,7 @@ Each cell takes its digit from a different one of the given digit groups
 - **validate** Not overridden.
 - **Notes** `getIsDone` ORs, per cell, the bit of every group the cell's
   candidates touch, and returns false when two cells touch a common group.
-  (Before the app's update to `solver-PA_paHYG.js` it compared a cell's
-  candidates with themselves, so the component was never retired early; that
-  was sound but slow.) Cost is O(cells² × groups) per update.
+  Cost is O(cells² × groups) per update.
 
 ### DiverseGroups (`class DiverseGroupsComponent extends CompositeComponent`)
 
@@ -4607,9 +4599,7 @@ the high mask.
 - **Notes:** `lowMask` is the digits below the midpoint and `highMask` the
   digits above it, so the midpoint digit of an odd range belongs to neither.
   `[{1..4}, {6..9}]` is a pair; `[{1..4}, {5}]`, `[{1..4}, {1..4}]` and
-  `[{6..9}, {1}]` are not. (Before the app's update to `solver-PA_paHYG.js`
-  both masks used `digit < midpoint`, so any pair containing the low half
-  passed.)
+  `[{6..9}, {1}]` are not.
 
 #### `groupsAreEntropySets(groups, spec)`
 
