@@ -237,11 +237,12 @@ Two frame boards have no `gen_*.json` and so no `--rebuild`:
 no arguments, and `numbered-rooms/PUZZLE_LINK.txt`, which is hand-built and
 takes `build_link.py --refresh` (that also pins its digit range and rewrites its
 rules text — nothing else writes either; both values belong to that one board,
-so `--refresh` rewrites it alone and refuses `--board`). Both go through
-`framebuild.refresh_frame_backends`. numbered-rooms has three more hand-built
-links derived from `PUZZLE_LINK.txt`, so `build_original.py` and
-`build_clued.py` run after the refresh. After such a rebuild, re-check every link
-in the live app and record what it said:
+so `--refresh` touches this example's own links only and refuses `--board`).
+Both go through `framebuild.refresh_frame_backends`. numbered-rooms has three
+more hand-built links derived from `PUZZLE_LINK.txt` (`_original`, `_clued`,
+`_clued_original`); `--refresh` drives `build_original` and `build_clued`
+itself after the rewrite, so one refresh leaves all four in step. After such a
+rebuild, re-check every link in the live app and record what it said:
 `docs/frame-link-verdicts.md` holds that sweep.
 
 ## Board naming
