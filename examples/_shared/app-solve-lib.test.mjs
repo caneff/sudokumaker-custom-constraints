@@ -363,7 +363,10 @@ assert.strictEqual(
   const driver = fileURLToPath(new URL('./app-solve.mjs', import.meta.url))
   const env = { ...process.env, APP_SOLVE_LOADAVG: '9999' }
   const refused = spawnSync('node', [driver, 'link.txt', '1', '--refuse-busy'], { encoding: 'utf8', env })
-  assert.notStrictEqual(refused.status, 0)
+  // Exit 2 is the refusal itself: any other non-zero exit is the driver
+  // failing later, on the missing link file.
+  assert.strictEqual(refused.status, 2)
+  assert.doesNotMatch(refused.stderr, /ENOENT/)
   assert.match(refused.stderr, /busy/i)
   assert.match(refused.stderr, /9999/)
   // No flag: warns, then goes on (here to fail on the missing link file).
