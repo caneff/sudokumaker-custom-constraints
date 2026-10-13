@@ -14,7 +14,7 @@
 
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, fixpointAll, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
-import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
+import { CLUES, cell, LINES, CANDS, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -29,9 +29,10 @@ const REF_COMMIT = 'db93523'
 // commit that last shipped them, gates and all — the strength the pair
 // component has to match.
 const REPLACED_COMMIT = '7b3f9af'
-// Collision: at that commit `HitCountsPairComponent.js` is the OLD opposite-pair
-// component, not the pair component under test (which was then called
-// HitCountsJointComponent.js). Each floor names the file as it was at its commit.
+// At that commit `HitCountsPairComponent.js` is the OLD opposite-pair component,
+// not the pair component under test (which was then called
+// HitCountsJointComponent.js): `.golden/HitCountsPairComponent.7b3f9af.js` is
+// the old one. Each floor names the file as it was at its commit.
 
 const { rnd } = makeRng(2024)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)
@@ -262,7 +263,7 @@ function stateOf (start, houses) {
   installGlobals(0, 4)
   const NAMES = ['setParams', 'update']
   const cur = load('HitCountsPairComponent.js', NAMES)
-  const ref = load(`.golden/${CASE_SWEEP_REF_FILE.replace('.js', `.${CASE_SWEEP_COMMIT}.js`)}`, NAMES)
+  const ref = load(CASE_SWEEP_REF, NAMES)
   const CA = 400
   const CB = 401
   const LINE = [30, 31, 32, 33]

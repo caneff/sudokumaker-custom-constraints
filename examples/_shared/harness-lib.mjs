@@ -8,9 +8,7 @@
 // helpers.digits.{minDigit,maxDigit}. Call installGlobals once before running.
 
 import assert from 'assert'
-import { realpathSync } from 'fs'
-import { join, relative, sep } from 'path'
-import { execFileSync } from 'child_process'
+import { join } from 'path'
 import { Script } from 'vm'
 import { assembleSource } from './include.mjs'
 
@@ -77,9 +75,9 @@ export function installGlobals (minDigit, maxDigit) {
 // after `patch(source)` when one is given -- the file keeps its own name
 // either way, so V8 coverage (c8) still attributes the run to it;
 // `loadSource` does the same for source a caller already holds, which is how a
-// harness runs one component twice with a flag at the top of the file flipped;
-// `loadAt` does the same for the file as it stood at a git commit, which is how
-// a strength test holds a component to the floor it set.
+// harness runs one component twice with a flag at the top of the file flipped.
+// A strength test holds a component to the floor it set by loading a frozen
+// copy of the earlier version from its example's `.golden/` with `load`.
 export function makeIo (here) {
   const read = f => assembleSource(join(here, f))
   // vm.Script instead of eval so V8 coverage (c8) attributes the component's
@@ -87,19 +85,7 @@ export function makeIo (here) {
   const evalNamed = (src, names, filename = 'loadSource.js') =>
     new Script('(function(){' + src + '\n return {' + names.join(',') + '};})()', { filename }).runInThisContext()
   const load = (file, names, patch = src => src) => evalNamed(patch(read(file)), names, join(here, file))
-  const git = args => execFileSync('git', args, { cwd: here, encoding: 'utf8' })
-  // Splices the includes from the tree at `commit`, not the working tree, so a
-  // pinned component loads as it shipped. Paths are made repo-relative for
-  // `git show`, so `here` is realpath'd to match `--show-toplevel` (a checkout
-  // reached through a symlink). A symlink committed inside the repo is not
-  // followed: `git show` returns its target string, so include real files.
-  const loadAt = (commit, file, names) => {
-    const top = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
-    const atCommit = abs => git(['show', `${commit}:${relative(top, abs).split(sep).join('/')}`])
-    const src = assembleSource(join(realpathSync(here), file), [], atCommit)
-    return evalNamed(src, names, `${join(here, file)}@${commit}`)
-  }
-  return { read, load, loadAt, loadSource: evalNamed }
+  return { read, load, loadSource: evalNamed }
 }
 
 // Edit component source at an anchor that has to be there exactly once: a

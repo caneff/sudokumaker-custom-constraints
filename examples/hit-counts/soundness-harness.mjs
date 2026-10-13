@@ -23,7 +23,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, makeSeeder, housesOf, patchSource, shuffle, total, fixpoint, fixpointAll, violates, fuzzSoundness, makeWaker, finishHarness } from '../_shared/harness-lib.mjs'
 import { frameGeometry } from '../_shared/frame-geometry.mjs'
-import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
+import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_REF } from './fixture.mjs'
 
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
@@ -273,7 +273,7 @@ console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the hous
 // The case-sweep floor is a frozen copy in `.golden/`, named for its commit, not a
 // `git show` read (the Pants sandbox holds no git history). Raising it means
 // replacing the copy in the same commit as the stronger component.
-const caseSweep = load(`.golden/${CASE_SWEEP_REF_FILE.replace('.js', `.${CASE_SWEEP_COMMIT}.js`)}`, ['setParams', 'update', 'validate'])
+const caseSweep = load(CASE_SWEEP_REF, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {

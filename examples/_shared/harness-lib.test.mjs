@@ -3,7 +3,7 @@
 
 import assert from 'assert'
 import { execFileSync } from 'child_process'
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'fs'
+import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import {
@@ -221,39 +221,6 @@ installGlobals(1, 9)
 // A cage is named after its SMALLEST cell, whatever order the cells come in.
 assert.strictEqual(globalThis.helpers.naming.getCageName('region', [10, 1, 5]), 'the region at R1C2')
 assert.strictEqual(globalThis.helpers.naming.getCellName(10), 'R2C2')
-
-// makeIo().loadAt assembles an #include as of the commit
-// `read` splices includes from the working tree; `loadAt` splices them from the
-// tree at the commit, so a pinned component that carries a directive still
-// loads as it shipped -- even after the included file has since changed.
-{
-  const repo = mkdtempSync(join(tmpdir(), 'loadat-'))
-  const git = args => execFileSync('git', args, { cwd: repo, encoding: 'utf8' })
-  const commit = msg => git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-am', msg])
-  mkdirSync(join(repo, 'ex'))
-  mkdirSync(join(repo, '_shared'))
-  writeFileSync(join(repo, 'ex', 'comp.js'), '// #include ../_shared/seg.js\nfunction f () { return seg() }\n')
-  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 2 }\n')
-  git(['init', '-q'])
-  git(['add', '-A'])
-  commit('init')
-  const first = git(['rev-parse', 'HEAD']).trim()
-  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 3 }\n')
-  commit('change seg')
-  writeFileSync(join(repo, '_shared', 'seg.js'), 'function seg () { return 4 }\n') // uncommitted
-  const { loadAt, load } = makeIo(join(repo, 'ex'))
-  assert.strictEqual(loadAt(first, 'comp.js', ['f']).f(), 2, 'the include is read as of the commit')
-  assert.strictEqual(loadAt('HEAD', 'comp.js', ['f']).f(), 3, 'not from the working tree')
-  assert.strictEqual(load('comp.js', ['f']).f(), 4, 'while `load` reads the working tree')
-  // an include the commit does not carry stops the load
-  writeFileSync(join(repo, 'ex', 'bad.js'), '// #include nope.js\n')
-  git(['add', '-A'])
-  commit('bad')
-  assert.throws(() => loadAt('HEAD', 'bad.js', ['f']), /nope\.js/)
-  // a checkout reached through a symlink still resolves against the toplevel
-  symlinkSync(repo, repo + '-link')
-  assert.strictEqual(makeIo(join(repo + '-link', 'ex')).loadAt(first, 'comp.js', ['f']).f(), 2)
-}
 
 // A change builder takes a DigitSet or a raw bitmask, and nothing else. Why
 // either is fine, and why an array is not: see `maskOf` in harness-lib.mjs.

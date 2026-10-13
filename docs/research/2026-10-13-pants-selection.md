@@ -4,6 +4,13 @@
 sets it. One box (WSL2), 1-minute load about 1. Every number is one worker's
 measurement, to re-run with the command shown.
 
+**Changed since, by #819 and the spec's review the same day.** No suite keeps
+a directory rule: a suite Pants has no target for always runs. A changed file
+no target owns widens the run to the whole seam, and so does a deleted file,
+because Pants answers from the tree as it is now and no longer lists the
+suite that still imports a module that is gone. `.gitignore` is a source of
+`//:runner`. `tests/all.sh`'s header is the current rule.
+
 ## One Pants call per run: 8 s for five suites, against 16 s
 
 The five `examples/up-to-n` suites, three repetitions each way, measured as

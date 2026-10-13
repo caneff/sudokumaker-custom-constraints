@@ -5,6 +5,14 @@ sets it. The unit is `examples/_shared`: 42 suites (41 test files and
 `check_layout.py`). Every result is one worker's run, to re-run with
 `pants test examples/_shared:<file>`.
 
+**Changed since, by later slices of #809 the same day.** `time_example.test.py`
+is wired: #815 fixed the `UV_PYTHON` hand-off in `tests/pants_prelude.py`.
+The ninth excepted suite is `known_edges.test.py`, which starts Pants inside
+the sandbox. `harness-lib.test.mjs` no longer starts git. The runner makes
+one Pants call per run. `tests/sandbox-exceptions.txt` is the current list,
+each entry with its reason, `seam_runner.test.py`'s included; the counts and
+reasons below are #818's as measured.
+
 ## Result: 33 wired, 9 excepted
 
 33 suites run in the sandbox. 9 cannot, and `tests/sandbox-exceptions.txt`

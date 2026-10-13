@@ -5,6 +5,12 @@ process, no result cache (`pants.toml`). One box (WSL2), 1-minute load under 2.
 The unit is `examples/up-to-n`: five suites, wired by its `BUILD` file. Every
 number is one worker's measurement, to re-run with the command shown.
 
+**Changed since, by later slices of #809 the same day.** The runner now makes
+one `pants test` call per run, not one per suite, and gives Pants a temporary
+work directory outside the tree, so the per-suite cost and the `.pants.d/`
+described below are #814's runner, not today's
+(`docs/research/2026-10-13-pants-selection.md`).
+
 ## Wall time: Pants costs about 2 s per suite
 
 The five suites, one after another, three repetitions. "Loop" is the command

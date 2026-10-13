@@ -47,6 +47,7 @@ for file in [
     "frame-geometry.test.mjs",
     "frame.test.py",
     "framebuild.test.py",
+    "harness-lib.test.mjs",
     "manifest.test.py",
     "minify.test.py",
     "recovery-lib.test.mjs",
@@ -68,8 +69,6 @@ for file in [
 
 # Starts include_agreement.py as a subprocess, and reads shared .js by path.
 suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
-# Builds a git repository of its own in a temporary directory.
-suite("harness-lib.test.mjs", needs=[":data"], tools=["git"])
 
 # These read the tree: they scan every example, or read other examples' files
 # by path (a shipped link, a builder, a main.js). Their input is the whole

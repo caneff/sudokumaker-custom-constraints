@@ -18,18 +18,14 @@ const { load } = makeIo(HERE)
 // `git show` reads (the Pants sandbox holds no git history). Raising one means
 // replacing the copy, and the commit in its name, in the same commit as the
 // stronger component.
-const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('SkyscraperPairComponent.js', NAMES)
-// The file carried a different name at the pinned commit, so the floor names its own path.
-const REF_FILE = 'SkyscraperLineComponent.js'
-const ref = load(`.golden/${REF_FILE.replace('.js', `.${REF_COMMIT}.js`)}`, NAMES)
+// Each file carried a different name at its pinned commit, so the floor names its own path.
+const ref = load('.golden/SkyscraperLineComponent.db93523.js', NAMES)
 
-const ONE_SIDED_REF_COMMIT = 'c776ab7'
-const ONE_SIDED_REF_FILE = 'SkyscraperRunningCapComponent.js'
 const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
 const oneSidedCur = load(ONE_SIDED_FILE, NAMES)
-const oneSidedRef = load(`.golden/${ONE_SIDED_REF_FILE.replace('.js', `.${ONE_SIDED_REF_COMMIT}.js`)}`, NAMES)
+const oneSidedRef = load('.golden/SkyscraperRunningCapComponent.c776ab7.js', NAMES)
 
 const { rnd } = makeRng(31415)
 

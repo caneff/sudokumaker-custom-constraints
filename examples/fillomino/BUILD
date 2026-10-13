@@ -24,13 +24,8 @@ for file in [
 ]:
     suite(file, needs=[":py", ":js", ":data"])
 
-# Seconds: about 5 to 7 times the run measured through Pants (see the PR).
-TIMEOUTS = {
-    "pipeline.test.py": 120,
-    "generate.test.py": 120,
-}
-
 # The heavy tests keep their groups in tests/all.sh; the sandbox changes only
-# where they run.
-for file in TIMEOUTS:
-    suite(file, needs=[":py", ":js", ":data"], timeout=TIMEOUTS[file])
+# where they run. Each timeout is about 5 to 7 times the run measured through
+# Pants on 2026-10-13, one core.
+suite("pipeline.test.py", needs=[":py", ":js", ":data"], timeout=120)  # ran in 19.6 s
+suite("generate.test.py", needs=[":py", ":js", ":data"], timeout=120)  # ran in 21.0 s
