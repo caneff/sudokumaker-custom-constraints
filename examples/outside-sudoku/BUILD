@@ -1,10 +1,17 @@
 python_sources(name="py", sources=["**/*.py"])
-javascript_sources(name="js", sources=["**/*.mjs", "**/*.js"])
+javascript_sources(
+    name="js",
+    sources=["**/*.mjs", "**/*.js"],
+    overrides={
+        # `// #include ../_shared/frame-lines.js`.
+        "main-global.js": {"dependencies": ["examples/_shared/frame-lines.js:js"]},
+    },
+)
 files(name="data", sources=["**/*.json", "**/*.toml", "**/*.md", "**/PUZZLE_LINK*.txt"])
 
-# Coarse on purpose: every suite of the unit gets the whole unit, and the
-# shared directory's code, since a suite reads the component, the boards and
-# the shared helpers by path.
+# Coarse on purpose: every suite of the unit gets the whole unit, since a suite
+# reads the component, the boards and the page script by path. Files outside
+# the unit are named one by one.
 for file in [
     "backends.test.mjs",
     "build_link.test.py",
@@ -13,4 +20,4 @@ for file in [
     "update-strength.test.mjs",
     "verify.test.py",
 ]:
-    suite(file, needs=[":py", ":js", ":data", "examples/_shared:py", "examples/_shared:js"])
+    suite(file, needs=[":py", ":js", ":data"])
