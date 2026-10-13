@@ -1,12 +1,12 @@
-# The shared tests that cannot run in Pants's sandbox (tests/pants_prelude.py),
-# one per line:
+# The tests that cannot run in Pants's sandbox (tests/pants_prelude.py), one
+# per line:
 #
 #   <test file> <reason, quoting what failed in the sandbox>
 #
 # An entry stays on the seam runner's own loop for good, and is run on every
-# narrowed run. examples/_shared/gate.test.py checks this list: every shared
-# test is wired into Pants or named here, never both, and an entry with no
-# reason fails it.
+# narrowed run: Pants selects every other suite. examples/_shared/gate.test.py
+# checks this list: every test file of the seam is wired into Pants or named
+# here, never both, and an entry with no reason fails it.
 #
 # npm packages: pants.toml keeps node_modules out of every sandbox, and Node
 # resolves an ES module import from no other place.
@@ -22,4 +22,4 @@ examples/_shared/ci_workflow.test.py `pants peek failed`: `IntrinsicError: Faile
 examples/_shared/known_edges.test.py `pants dependents failed`: `InvalidFieldException: BUILD:12: Invalid field value for 'sources' in target //:tree: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
 examples/_shared/gate.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
 examples/_shared/recipe_discovery.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
-examples/_shared/seam_runner.test.py a scratch-tree diff selects no example's suites, `AssertionError: ['examples/fillomino/Component.js'] selects ['npx standard', ..., 'uv run examples/_shared/check_layout.py']`, cause not found; past that it calls the same `pants_suites` on the real tree
+examples/_shared/seam_runner.test.py a stubbed run of a scratch tree does not run its own listing, `AssertionError: ['examples/aa/README.md']` from `assert ran == got, changed` in `no_pants_toml_widens`, cause not found; past that it calls the same `pants_suites` on the real tree

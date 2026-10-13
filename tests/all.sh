@@ -19,26 +19,33 @@
 # suite and exits 2: a wired suite never runs outside its sandbox.
 #
 # `--changed <base>` narrows the run to what the diff `<base>...HEAD` could
-# affect:
-#   - lint and the shared tests under examples/_shared/, always;
+# affect, and Pants is the one that says what that is:
+#   - lint, always;
 #   - a wired suite when Pants lists it among the dependents, at any distance,
 #     of a file the diff changed or deleted. Pants knows a suite's imports and
 #     the inputs its unit declared, and the sandbox holds nothing else, so a
 #     file Pants does not connect to a suite is a file that suite cannot read.
-#     Pants also counts a change not yet committed;
-#   - a suite that is not wired by directory, as before Pants: every suite of
-#     each examples/<name>/ the diff touches, and of a unit that
-#     tests/suite-edges.txt says reads a touched directory. Shared example
-#     code selects every such suite, since nothing says which of them load it.
-# It widens to the whole seam when the diff touches what every suite depends
-# on (`place` below names those paths) or a path no rule places, and when
-# Pants gives no answer about the diff, or one that cannot be read; the last
-# line then says why. A narrowed run never rests on no answer. `--list` with
-# `--changed` asks Pants the same question; `--list` alone asks nothing. In a
-# tree with no pants.toml no suite is wired, and shared example code widens.
-# The narrowing still runs too little when a suite that is not wired reads
-# another unit's directory that tests/suite-edges.txt does not list; the
-# controller re-runs the whole seam on the merged result before every merge.
+#     A shared test is selected this way like any other, and so is a touched
+#     example's soundness harness, which declares its whole unit. A suite that
+#     declares the whole repository (`//:tree`) is selected by any change.
+#     Every wired suite declares `//:runner` (this file, pants.toml and the
+#     prelude) and `//:uvproject`, so a change to one of those selects them
+#     all. Pants also counts a change not yet committed;
+#   - a suite Pants has no target for, always: nothing says what it reads.
+#     Those are the tests on tests/sandbox-exceptions.txt and no other, which
+#     examples/_shared/gate.test.py checks.
+# No directory decides anything. The run widens to the whole seam when Pants
+# gives no answer about the diff or one that cannot be read, when the tree has
+# no pants.toml, and when Pants cannot place a path the diff changed; the last
+# line then says why. A narrowed run never rests on no answer. Pants places a
+# path when some target owns it: its answer then holds a target of that file.
+# `//:tree` owns every file Pants reads, so in this repository the paths it
+# cannot place are the ones pants.toml's `pants_ignore` names. A deleted path
+# needs no placing: no suite can read a file that is gone, and Pants selects
+# the suites of a target whose sources named it. Only the committed diff is
+# checked for placing. `--list` with `--changed` asks Pants the same question;
+# `--list` alone asks nothing. The controller re-runs the whole seam on the
+# merged result before every merge.
 #
 # `--group <group>` runs one group of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
@@ -55,7 +62,7 @@
 # passed`, M being the whole seam (or the whole group), with `before <suite>
 # failed` naming the first failure, followed by `(narrowed: <units>)` or
 # `(widened: <why>)` on a `--changed` run and by `(group: <group>)` on a
-# `--group` run.
+# `--group` run. The units are those of the wired suites Pants selected.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.
@@ -71,13 +78,12 @@ heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/
 
 listed() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; } # <list> <file>
 
-# The unit that owns a test file: `examples/<name>`, the directory a
-# `--changed` run selects it by. Lint and the shared tests belong to `always`.
+# The unit that owns a test file: `examples/<name>`, the name a narrowed run's
+# last line gives it. Lint belongs to `always`.
 unit_of() { # <file>
   local top name
   IFS=/ read -r top name _ <<<"$1"
-  if [ "$top/$name" != examples/_shared ]; then echo "$top/$name"
-  else echo always; fi
+  echo "$top/$name"
 }
 
 run_file() { # <group> <file>: prints the suite that runs a test file
@@ -114,67 +120,6 @@ suites() {
   for f in examples/*/soundness-harness.mjs; do run_file soundness "$f"; done
 }
 
-# Where one changed file lands. Prints `unit examples/<name>` when a
-# unit owns it, `shared <file>` for shared example code, `whole <why>` when
-# the whole seam must run, and nothing when lint and the shared tests already
-# cover it.
-place() { # <file>
-  local top name rest
-  IFS=/ read -r top name rest <<<"$1"
-  case $1 in
-    *[[:space:]]*) echo "whole no rule places $1" ;;
-    # docs/builtin-components.md is the one Markdown file code reads: the
-    # shared component scan takes the built-in component list from it.
-    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
-      echo "whole every suite depends on $1" ;;
-    examples/_shared/*)
-      # A changed shared test selects no unit; any other shared file is code
-      # the examples load.
-      case $rest in
-        */* | "") echo "shared $1" ;;
-        *.test.mjs | *.test.py) ;;
-        *) echo "shared $1" ;;
-      esac ;;
-    examples/*/*) echo "unit $top/$name" ;;
-    *.md) ;;
-    *) echo "whole no rule places $1" ;;
-  esac
-}
-
-# Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
-# units that read them, sorted), `shared` (1 when shared example code changed)
-# or `widened` (why the whole seam runs).
-scope() { # <base>
-  local files file kind what source reader touched
-  [ -r tests/suite-edges.txt ] || {
-    echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
-  files=$(git diff --name-only --no-renames "$1...HEAD") || {
-    echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
-  units="" widened="" shared=0
-  while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    read -r kind what <<<"$(place "$file")"
-    case $kind in
-      whole) widened=$what; return ;;
-      unit) listed "$units" "$what" || units="$units $what" ;;
-      shared)
-        # With no Pants to say which suites load the file, every suite may.
-        [ -e pants.toml ] || { widened="shared example code changed: $what"; return; }
-        shared=1 ;;
-    esac
-  done <<<"$files"
-  # One step only: a reader's own files did not change, so what reads the
-  # reader is not affected.
-  touched=$units
-  while read -r source reader _ || [ -n "$source" ]; do
-    case $source in "" | "#"*) continue ;; esac
-    [ -n "$reader" ] || {
-      echo "tests/all.sh: tests/suite-edges.txt: not '<directory read> <unit>': $source" >&2; exit 2; }
-    listed "$touched" "$source" && ! listed "$units" "$reader" && units="$units $reader"
-  done <tests/suite-edges.txt
-  units=$(printf '%s\n' $units | sort | xargs)
-}
-
 # Pants writes a work directory (`.pants.d/`) into the tree it runs in, which
 # is ignored content a workspace cannot be removed with. Every Pants call of a
 # run gets one outside the tree instead, this run's own and removed when the
@@ -203,13 +148,20 @@ ask_pants() {
 
 in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
 
-# Asks Pants which wired suites the diff `<base>...HEAD` reaches: the test
-# targets that depend, at any distance, on a file the diff changed or deleted.
-# Sets `wired` and `affected`, one address per line each. Sets `widened`
-# instead when Pants gives no answer or one that cannot be read: a line that
-# is not a wired suite's address. The narrowing never rests on no answer.
+# Asks Pants what the diff `<base>...HEAD` reaches: the targets that own a
+# file the diff changed or deleted, and every target that depends on one, at
+# any distance. Sets `wired` and `affected`, one address per line each; the
+# wired suites among `affected` are the ones the diff selects. Sets `widened`
+# instead when there is no Pants to ask, when Pants gives no answer or one
+# that is not a list of addresses, and when the answer holds no target of a
+# changed file that is still in the tree (`//<file>:<target>` or
+# `<file>:<target>`): no target owns that file, so Pants cannot place it.
 ask_what_changed() { # <base>
-  local line
+  local changed line file
+  changed=$(git diff --name-only --no-renames "$1...HEAD") || {
+    echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
+  [ -e pants.toml ] || {
+    widened="no pants.toml, so nothing says what the diff affects"; return; }
   command -v pants >/dev/null || {
     widened="no Pants to say what the diff affects"
     echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH, so the run is not narrowed." >&2
@@ -219,13 +171,19 @@ ask_what_changed() { # <base>
     wired="" widened="Pants could not say which suites are wired"
     cat "$scratch/err" >&2; return; }
   affected=$(pants --changed-since="$1" --changed-dependents=transitive \
-    --filter-target-type=test_shell_command list 2>"$scratch/err" </dev/null) || {
+    list 2>"$scratch/err" </dev/null) || {
     widened="Pants could not say what the diff affects"
     cat "$scratch/err" >&2; return; }
   while IFS= read -r line; do
-    [ -z "$line" ] || in_lines "$wired" "$line" || {
-      widened="Pants named what is no wired suite: $line"; return; }
+    case $line in "" | *:*) ;; *) widened="Pants's answer cannot be read: $line"; return ;; esac
   done <<<"$affected"
+  while IFS= read -r file; do
+    [ -e "$file" ] || [ -L "$file" ] || continue
+    case $'\n'"$affected" in
+      *$'\n'"$file:"* | *$'\n'"//$file:"*) ;;
+      *) widened="Pants cannot place $file"; return ;;
+    esac
+  done <<<"$changed"
 }
 
 # The Pants target a suite's test file would have: `<directory>:<file>`.
@@ -270,32 +228,25 @@ else
 fi
 all=$(cut -f2- <<<"$all")
 
-# A narrowed run keeps lint and the shared tests; a wired suite Pants says the
-# diff reaches; and a suite that is not wired when the directory rule selects
-# its unit, or when shared example code changed, since nothing says what such
-# a suite reads.
-selected=$all wired="" affected=""
+# A narrowed run keeps lint, every suite Pants has no target for, and the
+# wired suites Pants says the diff reaches.
+selected=$all wired="" affected="" widened=""
 if [ -n "$base" ]; then
-  scope "$base"
-  [ -n "$widened" ] || [ ! -e pants.toml ] || ask_what_changed "$base"
+  ask_what_changed "$base"
   if [ -n "$widened" ]; then
     note="$note (widened: $widened)"
   else
-    selected=""
+    selected="" units=""
     while IFS=$'\t' read -r unit suite; do
       [ -n "$suite" ] || continue
-      if [ "$unit" != always ]; then
-        if in_lines "$wired" "$(target_of "$suite")"; then
-          in_lines "$affected" "$(target_of "$suite")" || continue
-        else
-          [ "$shared" = 1 ] || listed "$units" "$unit" || continue
-        fi
+      if in_lines "$wired" "$(target_of "$suite")"; then
+        in_lines "$affected" "$(target_of "$suite")" || continue
         listed "$units" "$unit" || units="$units $unit"
       fi
       selected="$selected$unit"$'\t'"$suite"$'\n'
     done <<<"$all"
     units=$(printf '%s\n' $units | sort | xargs)
-    note="$note (narrowed: ${units:-no example touched})"
+    note="$note (narrowed: ${units:-no wired suite})"
   fi
 fi
 selected=$(cut -f2 <<<"$selected")
