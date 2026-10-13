@@ -8,9 +8,9 @@
 # from it and every dependency the unit's BUILD file declares on it, then
 # `needs` (what the suite reads that no import shows), plus pyproject.toml and
 # uv.lock: `uv run` builds the environment inside the sandbox. `//:runner` is
-# what every wired suite runs under (the seam runner, pants.toml and this
-# file). No suite reads those; declaring them is how a change to one selects
-# every wired suite on a narrowed run.
+# what every wired suite runs under (the seam runner, pants.toml, this file
+# and .gitignore). No suite reads those; declaring them is how a change to
+# one selects every wired suite on a narrowed run.
 #
 # The toolchain is not sealed: uv and node come from the PATH, and uv finds
 # its installs and its cache under HOME, or in UV_CACHE_DIR where one is set

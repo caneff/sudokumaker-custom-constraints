@@ -28,22 +28,24 @@
 #     A shared test is selected this way like any other, and so is a touched
 #     example's soundness harness, which declares its whole unit. A suite that
 #     declares the whole repository (`//:tree`) is selected by any change.
-#     Every wired suite declares `//:runner` (this file, pants.toml and the
-#     prelude) and `//:uvproject`, so a change to one of those selects them
+#     Every wired suite declares `//:runner` (this file, pants.toml, the
+#     prelude and .gitignore, which Pants reads to leave files out of every
+#     sandbox) and `//:uvproject`, so a change to one of those selects them
 #     all. Pants also counts a change not yet committed;
 #   - a suite Pants has no target for, always: nothing says what it reads.
 #     Those are the tests on tests/sandbox-exceptions.txt and no other, which
 #     examples/_shared/gate.test.py checks.
 # No directory decides anything. The run widens to the whole seam when Pants
 # gives no answer about the diff or one that cannot be read, when the tree has
-# no pants.toml, and when Pants cannot place a path the diff changed; the last
-# line then says why. A narrowed run never rests on no answer. Pants places a
+# no pants.toml, when the diff deletes a file, and when Pants cannot place a
+# path the diff changed; the last line then says why. A narrowed run never rests on no answer. Pants places a
 # path when some target owns it: its answer then holds a target of that file.
 # `//:tree` owns every file Pants reads, so in this repository the paths it
-# cannot place are the ones pants.toml's `pants_ignore` names. A deleted path
-# needs no placing: no suite can read a file that is gone, and Pants selects
-# the suites of a target whose sources named it. Only the committed diff is
-# checked for placing. `--list` with `--changed` asks Pants the same question;
+# cannot place are the ones pants.toml's `pants_ignore` names. A deleted file
+# widens because Pants answers from the tree as it is now: there, a suite's
+# import of a module that is gone resolves to nothing, so the suite that
+# still imports it is not among the dependents Pants lists. Only the
+# committed diff is checked for deletions and for placing. `--list` with `--changed` asks Pants the same question;
 # `--list` alone asks nothing. The controller re-runs the whole seam on the
 # merged result before every merge.
 #
@@ -132,29 +134,50 @@ leave_no_workdir() {
   export PANTS_WORKDIR=$scratch/workdir
 }
 
-# Sets `wired`: Pants's test targets, one address per line. Anything else
-# Pants prints lands there too and matches no suite's target.
+in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
+
+# The one question "which suites are wired": sets `wired` to Pants's test
+# targets, one address per line, and returns non-zero, with what Pants said in
+# `$scratch/err`, when Pants fails or its answer is not a list of addresses
+# that holds at least one of this tree's suites. An answer that named none of
+# them would read as "nothing is wired" and send every suite out of its
+# sandbox.
+which_are_wired() {
+  local line suite
+  leave_no_workdir
+  wired=$(pants --filter-target-type=test_shell_command list :: 2>"$scratch/err" </dev/null) ||
+    { wired=""; return 1; }
+  while IFS= read -r line; do
+    case $line in "" | *:*) ;; *)
+      echo "not a target address: $line" >"$scratch/err"; wired=""; return 1 ;;
+    esac
+  done <<<"$wired"
+  while IFS=$'\t' read -r _ _ suite; do
+    [ -z "$suite" ] || ! in_lines "$wired" "$(target_of "$suite")" || return 0
+  done <<<"$seam"
+  echo "Pants named no suite of this tree as a test target; it said: ${wired:-nothing}" >"$scratch/err"
+  wired=""; return 1
+}
+
+# Sets `wired` for a run, or runs nothing: no suite is run on no answer.
 ask_pants() {
   command -v pants >/dev/null || {
     echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH." \
       "Install the Pants launcher (https://www.pantsbuild.org/stable/docs/getting-started/installing-pants);" \
       "a suite wired into Pants never runs outside its sandbox, so no suite was run." >&2
     exit 2; }
-  leave_no_workdir
-  wired=$(pants --filter-target-type=test_shell_command list :: 2>&1 </dev/null) || {
+  which_are_wired || {
     echo "tests/all.sh: \`pants list\` failed, so the suites wired into Pants are not known and no suite was run:" >&2
-    printf '%s\n' "$wired" >&2; exit 2; }
+    cat "$scratch/err" >&2; exit 2; }
 }
 
-in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
-
 # Asks Pants what the diff `<base>...HEAD` reaches: the targets that own a
-# file the diff changed or deleted, and every target that depends on one, at
-# any distance. Sets `wired` and `affected`, one address per line each; the
+# file the diff changed, and every target that depends on one, at any
+# distance. Sets `wired` and `affected`, one address per line each; the
 # wired suites among `affected` are the ones the diff selects. Sets `widened`
-# instead when there is no Pants to ask, when Pants gives no answer or one
-# that is not a list of addresses, and when the answer holds no target of a
-# changed file that is still in the tree (`//<file>:<target>` or
+# instead when the diff deletes a file, when there is no Pants to ask, when
+# Pants gives no answer or one that is not a list of addresses, and when the
+# answer holds no target of a changed file (`//<file>:<target>` or
 # `<file>:<target>`): no target owns that file, so Pants cannot place it.
 ask_what_changed() { # <base>
   local changed line file
@@ -162,13 +185,16 @@ ask_what_changed() { # <base>
     echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
   [ -e pants.toml ] || {
     widened="no pants.toml, so nothing says what the diff affects"; return; }
+  while IFS= read -r file; do
+    [ -z "$file" ] || [ -e "$file" ] || [ -L "$file" ] || {
+      widened="$file was deleted, and Pants cannot say what read it"; return; }
+  done <<<"$changed"
   command -v pants >/dev/null || {
     widened="no Pants to say what the diff affects"
     echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH, so the run is not narrowed." >&2
     return; }
-  leave_no_workdir
-  wired=$(pants --filter-target-type=test_shell_command list :: 2>"$scratch/err" </dev/null) || {
-    wired="" widened="Pants could not say which suites are wired"
+  which_are_wired || {
+    widened="Pants could not say which suites are wired"
     cat "$scratch/err" >&2; return; }
   affected=$(pants --changed-since="$1" --changed-dependents=transitive \
     list 2>"$scratch/err" </dev/null) || {
@@ -178,7 +204,7 @@ ask_what_changed() { # <base>
     case $line in "" | *:*) ;; *) widened="Pants's answer cannot be read: $line"; return ;; esac
   done <<<"$affected"
   while IFS= read -r file; do
-    [ -e "$file" ] || [ -L "$file" ] || continue
+    [ -n "$file" ] || continue
     case $'\n'"$affected" in
       *$'\n'"$file:"* | *$'\n'"//$file:"*) ;;
       *) widened="Pants cannot place $file"; return ;;
@@ -215,6 +241,7 @@ done
 set +f; shopt -s nullglob
 all=$(suites)
 set -f
+seam=$all # every suite of the tree, whatever group or diff narrows the run
 
 if [ -n "$group" ]; then
   case $group in
@@ -253,13 +280,6 @@ selected=$(cut -f2 <<<"$selected")
 
 if [ "$list_only" = 1 ]; then [ -z "$selected" ] || printf '%s\n' "$selected"; exit 0; fi
 
-# uv builds a wired suite's environment inside the sandbox. It is told to
-# build it from the interpreter the tree's own environment was built from, so
-# a suite gets one Python inside the sandbox and outside it. Left to search,
-# uv takes what the sandbox's PATH offers or downloads the newest CPython.
-python=""
-[ ! -x .venv/bin/python ] || python=$(readlink -f .venv/bin/python)
-
 if [ -z "$wired" ] && [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then
   ask_pants
 fi
@@ -284,11 +304,21 @@ while IFS= read -r suite; do
   fi
 done <<<"$selected"
 
+# uv builds a wired suite's environment inside the sandbox. It is told to
+# build it from the interpreter the tree's own environment was built from, so
+# a suite gets one Python inside the sandbox and outside it. Left to search,
+# uv takes what the sandbox's PATH offers or downloads the newest CPython.
+# Read here, after the suites above: in a tree with no environment yet, the
+# first `uv run` among them is what builds it.
+python=""
+[ ! -x .venv/bin/python ] || python=$(readlink -f .venv/bin/python)
+
 # The wired suites, in one Pants call. A suite passed when Pants printed its
 # result line, `✓ <target> succeeded in <time>.`, and in no other case: one
 # Pants was asked to run and did not report is a failure.
 if [ -n "$batch" ]; then
-  out=$(env ${python:+UV_PYTHON=$python} pants test $targets 2>&1 </dev/null)
+  out=$([ -z "$python" ] || export UV_PYTHON=$python
+    pants test $targets 2>&1 </dev/null)
   status=$?
   succeeded=$(awk '$1 == "✓" && $3 == "succeeded" && NF == 5 { print $2 }' <<<"$out")
   failed=""

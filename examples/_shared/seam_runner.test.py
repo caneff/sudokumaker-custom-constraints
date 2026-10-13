@@ -16,6 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from gate_lib import (
+    ROOT_BUILD,
     by_mechanism,
     commands,
     gate_tree,
@@ -333,13 +334,6 @@ def wired_suites_run_in_one_pants_call():
     ), out[-1]
 
 
-# The two root targets tests/pants_prelude.py puts under every wired suite.
-ROOT_BUILD = (
-    'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n'
-    'files(name="runner", sources=["pants.toml", "tests/all.sh", '
-    '"tests/pants_prelude.py"])\n'
-)
-
 READS = "import fs from 'node:fs'\nfs.readFileSync('examples/aa/%s.txt')\n"
 
 # A unit wired into Pants: two suites, each reading one file of its unit, and
@@ -415,7 +409,9 @@ def the_sandbox_gets_the_trees_python():
     it, so uv does not pick another one (or download one) in there. A node
     suite finds it in UV_PYTHON, for the `uv run` it starts. A Python suite
     runs on it and does not hand UV_PYTHON on: a second `uv run` under it,
-    of a script outside the project, would lose the project's environment."""
+    of a script outside the project, would lose the project's environment.
+    The runner reads the interpreter after its own loop: in a tree with no
+    environment yet, a suite of that loop is what builds it."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = wired_tree(tmp)
         (tree / "examples/aa/BUILD").write_text(
@@ -442,8 +438,13 @@ def the_sandbox_gets_the_trees_python():
             'name = "fixture"\nversion = "0"\nsource = { virtual = "." }\n'
         )
         base = pathlib.Path(sys.executable).resolve()
-        (tree / ".venv/bin").mkdir()
-        (tree / ".venv/bin/python").symlink_to(base)
+        # No environment when the run starts: a suite of the runner's own
+        # loop builds it, as the first `uv run` of a fresh tree does.
+        (tree / "examples/skyscraper/recovery-probe.test.mjs").write_text(
+            "import fs from 'node:fs'\n"
+            "fs.mkdirSync('.venv/bin', { recursive: true })\n"
+            f"fs.symlinkSync({str(base)!r}, '.venv/bin/python')\n"
+        )
         r, _ = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
         out = r.stdout.splitlines()
         assert "FAIL node examples/aa/python.test.mjs" in out, r.stdout + r.stderr
@@ -481,6 +482,15 @@ def no_pants_runs_no_suite():
         assert r.returncode == 2, f"exit {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
         assert "`pants list` failed" in r.stderr, r.stderr
         assert (r.stdout, log) == ("", []), f"a suite ran on a broken pants: {r.stdout}"
+
+        # A Pants that names none of the tree's suites has not said "nothing
+        # is wired": no suite leaves its sandbox on that answer.
+        shutil.copy(ROOT / "pants.toml", tree / "pants.toml")
+        (tree / "examples/aa/BUILD").unlink()
+        r, log = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
+        assert r.returncode == 2, f"exit {r.returncode}, not 2:\n{r.stdout}{r.stderr}"
+        assert "Pants named no suite of this tree" in r.stderr, r.stderr
+        assert (r.stdout, log) == ("", []), f"a suite ran unsandboxed: {r.stdout}"
 
 
 # A tree where Pants decides: the shared directory and three units wired.
@@ -559,8 +569,6 @@ SELECTED = [
     # One shared helper: the suites that import it, the shared one among
     # them, and no other.
     (["examples/_shared/lib.py"], [], S_LIB + S_TREE + S_AA[:1]),
-    # A deleted helper still selects what imported it.
-    ([], ["examples/_shared/other.py"], S_TREE + S_BB),
     # A unit's fixture: that unit's suites, its harness among them, and the
     # suite of another unit that declares the file.
     (["examples/aa/board.txt"], [], S_TREE + S_AA + S_CC),
@@ -575,13 +583,19 @@ SELECTED = [
     (["uv.lock"], [], S_WHOLE[len(S_ALWAYS) :]),
     (["tests/all.sh"], [], S_WHOLE[len(S_ALWAYS) :]),
     (["tests/pants_prelude.py"], [], S_WHOLE[len(S_ALWAYS) :]),
-    # A file that is gone needs no placing: no suite can read it.
-    ([], ["outside/gone.txt"], []),
+    # Pants leaves a file .gitignore names out of every sandbox.
+    ([".gitignore"], [], S_WHOLE[len(S_ALWAYS) :]),
     ([], [], []),
 ]
 
 # A path no target owns: Pants cannot place it, so the whole seam runs.
 UNPLACED = "outside/x.txt"
+
+# A deleted file: Pants answers from the tree as it is now, where a suite's
+# import of a file that is gone resolves to nothing, so it cannot say which
+# suites read it. The whole seam runs, whether a suite imported the file
+# (`other`) or none could (`outside/gone.txt`).
+DELETED = ["examples/_shared/other.py", "outside/gone.txt"]
 
 
 def selection_tree(tmp):
@@ -602,7 +616,8 @@ def selection_tree(tmp):
 def pants_selects_every_suite():
     """`--changed <base> --list` is lint, the suites Pants has no target for,
     and the wired suites Pants says the diff reaches: no directory decides.
-    A changed path no target owns widens to the whole seam."""
+    A changed path no target owns widens to the whole seam, and so does a
+    deleted one."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = selection_tree(tmp)
         assert sorted(listing(root=tree)) == sorted(S_WHOLE), listing(root=tree)
@@ -615,6 +630,10 @@ def pants_selects_every_suite():
         with_diff(tree, [UNPLACED, "examples/aa/board.txt"])
         got = listing("--changed", "base", root=tree)
         assert sorted(got) == sorted(S_WHOLE), f"{UNPLACED} selects {got}"
+        for gone in DELETED:
+            with_diff(tree, ["examples/aa/board.txt"], [gone])
+            got = listing("--changed", "base", root=tree)
+            assert sorted(got) == sorted(S_WHOLE), f"deleting {gone} selects {got}"
 
 
 def a_failed_query_widens():
@@ -657,6 +676,14 @@ def a_failed_query_widens():
             f"Pants cannot place {UNPLACED}",
             changed=["examples/aa:a2.test.mjs", "examples/aa/board.txt:data"],
         )
+
+        # A deleted file is one Pants is not asked about.
+        with_diff(tree, ["examples/aa/board.txt"], DELETED[:1])
+        widened(
+            f"{DELETED[0]} was deleted, and Pants cannot say what read it",
+            changed=["examples/aa:a2.test.mjs", "examples/aa/board.txt:data"],
+        )
+        with_diff(tree, ["examples/aa/board.txt"], [])
 
         # No Pants to ask: the listing is the whole seam.
         r, _ = run_logged(

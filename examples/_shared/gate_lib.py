@@ -41,6 +41,14 @@ esac
 
 TOOLS = ("node", "npx", "uv", "uvx", "pants")
 
+# The two root targets tests/pants_prelude.py puts under every wired suite, as
+# a scratch tree's root BUILD file declares them.
+ROOT_BUILD = (
+    'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n'
+    'files(name="runner", sources=[".gitignore", "pants.toml", "tests/all.sh", '
+    '"tests/pants_prelude.py"])\n'
+)
+
 # The shared tests that cannot run in Pants's sandbox, one per line:
 # `<test file> <reason>`. An entry stays on the runner's own loop for good.
 EXCEPTIONS = "tests/sandbox-exceptions.txt"

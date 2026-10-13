@@ -45,6 +45,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from gate_lib import (
     EXCEPTIONS,
+    ROOT_BUILD,
     by_mechanism,
     commands,
     gate_tree,
@@ -212,11 +213,7 @@ def a_test_file_in_neither_is_refused():
         files = {
             "pyproject.toml": "",
             "uv.lock": "",
-            "BUILD": (
-                'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n'
-                'files(name="runner", sources=["pants.toml", "tests/all.sh", '
-                '"tests/pants_prelude.py"])\n'
-            ),
+            "BUILD": ROOT_BUILD,
             "examples/aa/BUILD": (
                 'javascript_sources(name="js", sources=["*.mjs"])\n'
                 'suite("wired.test.mjs")\n'

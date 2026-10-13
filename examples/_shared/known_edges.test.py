@@ -54,6 +54,16 @@ KNOWN_EDGES = [
         ["uv run examples/outside-sudoku/build_link.test.py"],
         ["uv run examples/count-digits-gac/build_required_digits.test.py"],
     ),
+    (
+        ".gitignore",
+        "Pants leaves a file it names out of every sandbox, a suite's fixture included",
+        [
+            "node examples/up-to-n/update-strength.test.mjs",
+            "uv run examples/fillomino/build_link.test.py",
+            "uv run examples/_shared/frame.test.py",
+        ],
+        [],
+    ),
 ]
 
 
