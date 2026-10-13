@@ -9,6 +9,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from board_checks import check_local_board
+import build_link
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from link_swap import swap_build
@@ -107,7 +108,53 @@ def check_wrapper_links():
         )
 
 
+DERIVED = (
+    "PUZZLE_LINK_original.txt",
+    "PUZZLE_LINK_clued.txt",
+    "PUZZLE_LINK_clued_original.txt",
+)
+
+
+def check_refresh_drives_derived_links():
+    """`refresh()` rewrites PUZZLE_LINK.txt and then the three links derived
+    from it, so one refresh leaves all four in step. Run in a scratch copy of
+    the four committed links: nothing here touches the tree."""
+    names = ("PUZZLE_LINK.txt",) + DERIVED
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        for n in names:
+            (root / n).write_bytes((HERE / n).read_bytes())
+
+        build_link.refresh(root)
+        for n in names:
+            assert (root / n).read_bytes() == (HERE / n).read_bytes(), (
+                f"{n}: a refresh on the unchanged tree must rebuild it byte "
+                "for byte"
+            )
+
+        # Change the rules text alone: the failure the derived links used to
+        # hide behind a green check.
+        was = build_link.COMMENT
+        build_link.COMMENT = was + " (edited)"
+        try:
+            build_link.refresh(root)
+        finally:
+            build_link.COMMENT = was
+        base = decode_puzzle((root / "PUZZLE_LINK.txt").read_text().strip())
+        assert base["puzzle"]["comment"].endswith("(edited)")
+        for n in DERIVED:
+            doc = decode_puzzle((root / n).read_text().strip())
+            assert doc["puzzle"]["comment"] == base["puzzle"]["comment"], (
+                f"{n}: rules text did not follow the refresh"
+            )
+            assert (doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"]) == (
+                base["puzzle"]["minDigit"],
+                base["puzzle"]["maxDigit"],
+            ), f"{n}: digit range did not follow the refresh"
+
+
 if __name__ == "__main__":
+    check_refresh_drives_derived_links()
     check_shipped_link()
     check_wrapper_links()
     check_refresh_rejects_another_board()

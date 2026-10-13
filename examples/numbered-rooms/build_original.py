@@ -59,8 +59,8 @@ def build_original(base):
     return original
 
 
-def build(out_dir=HERE):
-    ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+def build(out_dir=HERE, board=HERE / "PUZZLE_LINK.txt"):
+    ours = decode_puzzle(board.read_text().strip())
     return write_link(build_original(ours), out_dir / "PUZZLE_LINK_original.txt")
 
 

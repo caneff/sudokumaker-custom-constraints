@@ -8,6 +8,8 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
+import build_clued
+import build_original
 from framebuild import RULES_PREFIX, refresh_frame_backends
 from link_swap import swap_main
 from manifest import load_manifest
@@ -41,8 +43,9 @@ COMMENT = RULES_PREFIX + (
 DIGITS = (1, 9)
 
 
-def refresh():
-    """Rewrite PUZZLE_LINK.txt in place: this board's own backend and the
+def refresh(root=HERE):
+    """Rewrite PUZZLE_LINK.txt in place, then the three links derived from it:
+    this board's own backend and the
     frame's shared ones as they stand in the tree, the digit range those
     backends read, and the rules text.
 
@@ -65,9 +68,13 @@ def refresh():
     this is the only writer that can satisfy it.
 
     PUZZLE_LINK.txt is the source of truth for this example's three other
-    hand-built links, so build_original.py and build_clued.py run after it.
+    hand-built links (_original, _clued, _clued_original), so this drives
+    build_original and build_clued after the rewrite: one refresh leaves all
+    four in step, and a change to COMMENT alone cannot strand the derived
+    links on the old rules text. `root` is the directory holding the four
+    links, the example's own folder by default.
     """
-    board_path = HERE / "PUZZLE_LINK.txt"
+    board_path = root / "PUZZLE_LINK.txt"
     doc = decode_puzzle(board_path.read_text().strip())
     lc = find_constraint(doc, CONSTRAINT_NAME)
     lc["definition"]["backend"]["code"] = minify_file(HERE / "main-global.js")
@@ -75,6 +82,8 @@ def refresh():
     doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"] = DIGITS
     doc["puzzle"]["comment"] = COMMENT
     write_link(doc, board_path)
+    build_original.build(root, board_path)
+    build_clued.build(root, board_path)
     return board_path
 
 
@@ -82,8 +91,9 @@ def rebuild(args, parser):
     if not args.refresh:
         parser.error("give --component with --out, or --refresh")
     if args.board:
-        parser.error("--refresh rewrites PUZZLE_LINK.txt alone; drop --board")
-    print(f"refreshed {refresh().name}")
+        parser.error("--refresh rewrites this example's own links; drop --board")
+    refresh()
+    print("refreshed PUZZLE_LINK.txt and the three links derived from it")
 
 
 if __name__ == "__main__":
@@ -92,6 +102,7 @@ if __name__ == "__main__":
         "--refresh",
         action="store_true",
         help="bring the board link up to date in place: the shared frame\n"
-        "backends, the digit range, the rules text",
+        "backends, the digit range, the rules text; then rebuild the\n"
+        "_original, _clued and _clued_original links derived from it",
     )
     swap_main(HERE, p, rebuild)
