@@ -7,7 +7,6 @@
 
 import os
 import pathlib
-import re
 import shutil
 import subprocess
 import sys
@@ -144,7 +143,7 @@ LINT = [
     "uv lock --check",
 ]
 
-# What every narrowed run of the fixture keeps: lint and the shared tests.
+# The fixture's lint steps and shared tests.
 ALWAYS = [
     *LINT,
     "uv run examples/_shared/gate.test.py",
@@ -195,118 +194,6 @@ FIXTURE = [
     "outside/deep/o.test.py",
 ]
 
-# A diff (the files one commit adds or edits) and the suites it must select.
-NARROWED = [
-    (["examples/fillomino/Component.js"], ALWAYS + FILLOMINO),
-    (["examples/skyscraper/SkyscraperComponent.js"], ALWAYS + SKYSCRAPER),
-    (["examples/aa/README.md", "examples/bb/notes.md"], ALWAYS + AA + BB),
-    (
-        ["examples/bb/new.test.mjs"],
-        ALWAYS + BB + ["node examples/bb/new.test.mjs"],
-    ),
-    (["examples/_shared/s.test.py"], ALWAYS),
-    (["examples/_shared/gate.test.py"], ALWAYS),
-    (["docs/notes.md", "README.md", "outside/AGENTS.md"], ALWAYS),
-    (["examples/aa/x.py", "docs/notes.md"], ALWAYS + AA),
-    ([], ALWAYS),
-]
-
-# A diff that widens to the whole seam, and the reason the last line gives.
-WIDENED = [
-    (
-        ["examples/_shared/lib.py"],
-        "shared example code changed: examples/_shared/lib.py",
-    ),
-    (["justfile"], "every suite depends on justfile"),
-    (["uv.lock"], "every suite depends on uv.lock"),
-    (["tests/all.sh"], "every suite depends on tests/all.sh"),
-    (["tests/suite-edges.txt"], "every suite depends on tests/suite-edges.txt"),
-    (["docs/boards/data.json"], "no rule places docs/boards/data.json"),
-    (["docs/two words.md"], "no rule places docs/two words.md"),
-    (
-        ["docs/builtin-components.md"],
-        "every suite depends on docs/builtin-components.md",
-    ),
-    (["outside/test_o.py", "examples/aa/x.py"], "no rule places outside/test_o.py"),
-]
-
-
-EDGES = "tests/suite-edges.txt"
-
-# Scan hits that are not a read of the other directory, each with its reason.
-NOT_EDGES = {
-    # A rules-text test's list of jargon words the text must not contain.
-    ("examples/dutch-flatmates", "examples/isofill"),
-}
-
-
-def edges():
-    """The (directory read, unit that reads it) pairs the runner widens by."""
-    pairs = set()
-    for line in (ROOT / EDGES).read_text().splitlines():
-        if not line.strip() or line.startswith("#"):
-            continue
-        fields = line.split()
-        assert len(fields) >= 2, f"{EDGES}: not '<directory read> <unit>': {line}"
-        pairs.add((fields[0], fields[1]))
-    return pairs
-
-
-def cross_unit_reads():
-    """(unit, other unit) for every tracked code line under an example that
-    names another one's directory: a relative or repo path into it, or its
-    bare name as a string. Comment lines are skipped, `#include` directives
-    are not. examples/_shared/ is not a target: a change to it runs the whole
-    seam."""
-    tracked = subprocess.run(
-        ["git", "ls-files", "examples"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.splitlines()
-    units = sorted({"/".join(f.split("/")[:2]) for f in tracked if f.count("/") >= 2})
-    targets = {
-        u: re.compile(
-            r"(\.\./|examples/)%s/|[\"']%s[\"']" % ((re.escape(u.split("/")[1]),) * 2)
-        )
-        for u in units
-        if u != "examples/_shared"
-    }
-    found = set()
-    for f in tracked:
-        unit = "/".join(f.split("/")[:2])
-        if unit not in units or unit == "examples/_shared":
-            continue
-        if not f.endswith((".py", ".mjs", ".js")):
-            continue
-        for line in (ROOT / f).read_text(encoding="utf-8").splitlines():
-            text = line.strip()
-            if text.startswith(("#", "//")) and "#include" not in text:
-                continue
-            found |= {
-                (unit, u) for u, rx in targets.items() if u != unit and rx.search(line)
-            }
-    return found
-
-
-def every_cross_unit_read_is_an_edge():
-    """A suite that reads another example's files runs when that
-    directory changes: every such read the scan finds is listed in
-    tests/suite-edges.txt, and every listed edge names two directories."""
-    listed = edges()
-    stale = sorted(d for edge in listed for d in edge if not (ROOT / d).is_dir())
-    assert not stale, f"{EDGES} names directories that do not exist: {stale}"
-    unlisted = sorted(
-        (read, unit)
-        for unit, read in cross_unit_reads() - NOT_EDGES
-        if (read, unit) not in listed
-    )
-    assert not unlisted, (
-        f"a unit reads another's directory with no line in {EDGES} "
-        f"(as '<directory read> <unit>'), or in NOT_EDGES here: {unlisted}"
-    )
-
 
 def agents_md_names_both_commands():
     """AGENTS.md § End-to-end seam keeps the Seam and Blind-to lines other
@@ -350,11 +237,10 @@ def with_diff(tree, changed, deleted=()):
     git(tree, "commit", "-q", "--allow-empty", "-m", "change")
 
 
-def a_diff_selects_its_suites():
-    """`--changed <base>` keeps lint, the shared tests and the suites of each
-    example the diff touches; it widens to the whole seam when the diff
-    touches what every suite depends on or a path no rule places; and the
-    run's last line names the units or the reason."""
+def no_pants_toml_widens():
+    """A tree with no pants.toml has nothing to say what a diff affects, so
+    `--changed <base>` is the whole seam whatever the diff holds, and the last
+    line says why. A base git does not know is refused."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = scratch_tree(tmp, dict.fromkeys(FIXTURE, ""))
         git(tree, "init", "-q")
@@ -362,71 +248,22 @@ def a_diff_selects_its_suites():
         git(tree, "commit", "-q", "-m", "base")
         git(tree, "tag", "base")
         assert sorted(listing(root=tree)) == sorted(WHOLE), listing(root=tree)
-
-        for changed, want in NARROWED:
-            with_diff(tree, changed)
-            got = listing("--changed", "base", root=tree)
-            assert sorted(got) == sorted(want), f"{changed} selects {got}"
-        for changed, _ in WIDENED:
+        m = len(WHOLE)
+        for changed in (["examples/aa/README.md"], ["docs/notes.md"], []):
             with_diff(tree, changed)
             got = listing("--changed", "base", root=tree)
             assert sorted(got) == sorted(WHOLE), f"{changed} selects {got}"
-
-        def last_line(changed):
-            with_diff(tree, changed)
             r, ran = run_stubbed(["bash", RUNNER, "--changed", "base"], root=tree)
             assert r.returncode == 0, f"{changed}:\n{r.stdout}{r.stderr}"
-            assert ran == listing("--changed", "base", root=tree), changed
-            return r.stdout.splitlines()[-1]
-
-        (tree / EDGES).write_text("# a comment\nexamples/aa examples/bb  why")
-        git(tree, "add", "-A")
-        git(tree, "commit", "-q", "-m", "an edge")
-        git(tree, "tag", "-f", "base")
-        with_diff(tree, ["examples/aa/Component.js"])
-        got = listing("--changed", "base", root=tree)
-        assert sorted(got) == sorted(ALWAYS + AA + BB), f"an edge selects {got}"
-        with_diff(tree, ["examples/bb/x.py"])
-        got = listing("--changed", "base", root=tree)
-        assert sorted(got) == sorted(ALWAYS + BB), f"an edge runs backwards: {got}"
-
-        m = len(WHOLE)
-        got = last_line(["examples/fillomino/x.py", "examples/bb/y.js"])
-        assert got == (
-            f"{len(ALWAYS + BB + FILLOMINO)} of {m} suites passed "
-            "(narrowed: examples/bb examples/fillomino)"
-        ), got
-        assert last_line(["docs/notes.md"]) == (
-            f"{len(ALWAYS)} of {m} suites passed (narrowed: no example touched)"
-        )
-        for changed, why in WIDENED:
-            got = last_line(changed)
-            assert got == f"{m} of {m} suites passed (widened: {why})", got
-
-        # A red narrowed run still says it was narrowed. The fixture's edit
-        # is a `#` line, which node refuses in a .mjs file; the new file is
-        # one more suite in the whole seam.
-        with_diff(tree, ["examples/bb/z.test.mjs"])
-        r, _ = run_stubbed(
-            ["bash", RUNNER, "--changed", "base"], root=tree, real=("node",)
-        )
-        out = r.stdout.splitlines()
-        assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}"
-        passed = sum(line.startswith("PASS ") for line in out)
-        assert out[-1] == (
-            f"{passed} of {m + 1} suites passed before node examples/bb/z.test.mjs "
-            "failed (narrowed: examples/bb)"
-        ), out[-1]
+            assert ran == got, changed
+            assert r.stdout.splitlines()[-1] == (
+                f"{m} of {m} suites passed "
+                "(widened: no pants.toml, so nothing says what the diff affects)"
+            ), r.stdout.splitlines()[-1]
 
         assert "cannot diff no-such-ref...HEAD" in refusal(
             tree, "--changed", "no-such-ref"
         )
-        (tree / EDGES).write_text("examples/aa\n")
-        said = refusal(tree, "--list", "--changed", "base")
-        assert f"{EDGES}: not '<directory read> <unit>': examples/aa" in said, said
-        (tree / EDGES).unlink()
-        said = refusal(tree, "--list", "--changed", "base")
-        assert f"cannot read {EDGES}" in said, said
 
 
 UP_TO_N = [
@@ -496,6 +333,13 @@ def wired_suites_run_in_one_pants_call():
     ), out[-1]
 
 
+# The two root targets tests/pants_prelude.py puts under every wired suite.
+ROOT_BUILD = (
+    'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n'
+    'files(name="runner", sources=["pants.toml", "tests/all.sh", '
+    '"tests/pants_prelude.py"])\n'
+)
+
 READS = "import fs from 'node:fs'\nfs.readFileSync('examples/aa/%s.txt')\n"
 
 # A unit wired into Pants: two suites, each reading one file of its unit, and
@@ -503,7 +347,7 @@ READS = "import fs from 'node:fs'\nfs.readFileSync('examples/aa/%s.txt')\n"
 WIRED_UNIT = {
     "pyproject.toml": "",
     "uv.lock": "",
-    "BUILD": 'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n',
+    "BUILD": ROOT_BUILD,
     "examples/aa/BUILD": (
         'javascript_sources(name="js", sources=["*.mjs"])\n'
         'files(name="data", sources=["declared.txt"])\n'
@@ -639,21 +483,30 @@ def no_pants_runs_no_suite():
         assert (r.stdout, log) == ("", []), f"a suite ran on a broken pants: {r.stdout}"
 
 
-# A tree where Pants decides: the shared directory and two units wired, one
-# unit (cc) not. `lib` is imported by the shared test and by one suite of aa;
-# `other` by bb's suite only; every suite of aa declares aa's board.
+# A tree where Pants decides: the shared directory and three units wired.
+# `lib` is imported by one shared test and by one suite of aa; `other` by bb's
+# suite only; every suite of aa declares aa's board, and so does cc's, which
+# is the one read across units. `t.test.py` declares the whole tree, which
+# here is everything but outside/. `e.test.py` has no target: the stand-in
+# for a test on the exception list.
 SELECTION_TREE = {
     "pyproject.toml": "",
     "uv.lock": "",
     "docs/notes.md": "",
-    "BUILD": 'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n',
-    "tests/suite-edges.txt": "examples/bb examples/cc  cc reads bb's files\n",
+    "outside/x.txt": "",
+    "outside/gone.txt": "",
+    "BUILD": ROOT_BUILD
+    + 'files(name="tree", sources=["*", "docs/**", "examples/**", "tests/**"])\n',
     "examples/_shared/BUILD": (
-        'python_sources(name="py", sources=["*.py"])\nsuite("s.test.py")\n'
+        'python_sources(name="py", sources=["*.py"])\n'
+        'suite("s.test.py")\n'
+        'suite("t.test.py", needs=["//:tree"])\n'
     ),
     "examples/_shared/lib.py": "",
     "examples/_shared/other.py": "",
     "examples/_shared/s.test.py": "import lib\n",
+    "examples/_shared/t.test.py": "",
+    "examples/_shared/e.test.py": "",
     "examples/aa/BUILD": (
         'python_sources(name="py", sources=["*.py"])\n'
         'javascript_sources(name="js", sources=["*.mjs"])\n'
@@ -670,47 +523,65 @@ SELECTION_TREE = {
         'python_sources(name="py", sources=["*.py"])\nsuite("b.test.py")\n'
     ),
     "examples/bb/b.test.py": "import other\n",
+    "examples/cc/BUILD": (
+        'javascript_sources(name="js", sources=["*.mjs"])\n'
+        'suite("c.test.mjs", needs=["examples/aa/board.txt:data"])\n'
+    ),
     "examples/cc/c.test.mjs": "",
-    "examples/cc/soundness-harness.mjs": "",
 }
+# What every narrowed run keeps: lint and the suites Pants has no target for.
+# On the real tree those are the exception list's; here they are e.test.py and
+# the suites the runner names by path.
 S_ALWAYS = [
     *LINT,
-    "uv run examples/_shared/s.test.py",
+    "uv run examples/_shared/e.test.py",
     "uv run examples/_shared/check_layout.py",
+    "uv run examples/fillomino/pipeline.test.py",
+    "uv run examples/fillomino/generate.test.py",
+    *SKYSCRAPER,
+    *HIT_COUNTS,
 ]
+S_LIB = ["uv run examples/_shared/s.test.py"]
+# The whole-tree check: any change Pants can place selects it.
+S_TREE = ["uv run examples/_shared/t.test.py"]
 S_AA = [
     "uv run examples/aa/a.test.py",
     "node examples/aa/a2.test.mjs",
     "node examples/aa/soundness-harness.mjs",
 ]
 S_BB = ["uv run examples/bb/b.test.py"]
-S_CC = ["node examples/cc/c.test.mjs", "node examples/cc/soundness-harness.mjs"]
-# Not wired either: the suites the runner names by path.
-S_NAMED = [
-    "uv run examples/fillomino/pipeline.test.py",
-    "uv run examples/fillomino/generate.test.py",
-    *SKYSCRAPER,
-    *HIT_COUNTS,
-]
-S_WHOLE = S_ALWAYS + S_AA + S_BB + S_CC + S_NAMED
+S_CC = ["node examples/cc/c.test.mjs"]
+S_WHOLE = S_ALWAYS + S_LIB + S_TREE + S_AA + S_BB + S_CC
 
 # A diff of the selection tree (files edited, files deleted) and the suites
-# Pants and the directory rule select for it between them.
+# Pants selects for it, beside lint and the suites it has no target for.
 SELECTED = [
-    # One shared helper: the wired suite that imports it and no other wired
-    # one, and every suite that is not wired, since nothing says what those read.
-    (["examples/_shared/lib.py"], [], S_ALWAYS + S_AA[:1] + S_CC + S_NAMED),
+    # One shared helper: the suites that import it, the shared one among
+    # them, and no other.
+    (["examples/_shared/lib.py"], [], S_LIB + S_TREE + S_AA[:1]),
     # A deleted helper still selects what imported it.
-    ([], ["examples/_shared/other.py"], S_ALWAYS + S_BB + S_CC + S_NAMED),
-    # A wired unit's fixture: that unit's suites, its harness among them.
-    (["examples/aa/board.txt"], [], S_ALWAYS + S_AA),
-    # A wired unit an edge says an unwired one reads.
-    (["examples/bb/b.test.py"], [], S_ALWAYS + S_BB + S_CC),
-    # An unwired unit keeps the directory rule.
-    (["examples/cc/Component.js"], [], S_ALWAYS + S_CC),
-    (["docs/notes.md"], [], S_ALWAYS),
-    (["uv.lock"], [], S_WHOLE),
+    ([], ["examples/_shared/other.py"], S_TREE + S_BB),
+    # A unit's fixture: that unit's suites, its harness among them, and the
+    # suite of another unit that declares the file.
+    (["examples/aa/board.txt"], [], S_TREE + S_AA + S_CC),
+    # The edge runs one way: cc reads aa, and nothing reads bb or cc.
+    (["examples/bb/b.test.py"], [], S_TREE + S_BB),
+    (["examples/cc/c.test.mjs"], [], S_TREE + S_CC),
+    # Docs only: the whole-tree check and nothing else.
+    (["docs/notes.md"], [], S_TREE),
+    # A changed shared test selects itself.
+    (["examples/_shared/s.test.py"], [], S_LIB + S_TREE),
+    # What every wired suite runs under selects every one of them.
+    (["uv.lock"], [], S_WHOLE[len(S_ALWAYS) :]),
+    (["tests/all.sh"], [], S_WHOLE[len(S_ALWAYS) :]),
+    (["tests/pants_prelude.py"], [], S_WHOLE[len(S_ALWAYS) :]),
+    # A file that is gone needs no placing: no suite can read it.
+    ([], ["outside/gone.txt"], []),
+    ([], [], []),
 ]
+
+# A path no target owns: Pants cannot place it, so the whole seam runs.
+UNPLACED = "outside/x.txt"
 
 
 def selection_tree(tmp):
@@ -728,48 +599,64 @@ def selection_tree(tmp):
     return tree
 
 
-def pants_selects_the_wired_suites():
-    """On a tree with wired units, `--changed <base> --list` is lint, the
-    shared tests, the wired suites Pants says the diff reaches, and the
-    directory rule's answer for the suites that are not wired."""
+def pants_selects_every_suite():
+    """`--changed <base> --list` is lint, the suites Pants has no target for,
+    and the wired suites Pants says the diff reaches: no directory decides.
+    A changed path no target owns widens to the whole seam."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = selection_tree(tmp)
         assert sorted(listing(root=tree)) == sorted(S_WHOLE), listing(root=tree)
         for changed, deleted, want in SELECTED:
             with_diff(tree, changed, deleted)
             got = listing("--changed", "base", root=tree)
-            assert sorted(got) == sorted(want), (
-                f"{changed + deleted} selects {got}, not {want}"
+            assert sorted(got) == sorted(S_ALWAYS + want), (
+                f"{changed + deleted} selects {got}, not {S_ALWAYS + want}"
             )
+        with_diff(tree, [UNPLACED, "examples/aa/board.txt"])
+        got = listing("--changed", "base", root=tree)
+        assert sorted(got) == sorted(S_WHOLE), f"{UNPLACED} selects {got}"
 
 
 def a_failed_query_widens():
-    """When Pants cannot say what a diff affects, the run is the whole seam
-    and its last line says why: it never narrows on no answer."""
+    """When Pants cannot say what a diff affects, or cannot place a path the
+    diff changed, the run is the whole seam and its last line says why: it
+    never narrows on no answer."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = selection_tree(tmp)
         with_diff(tree, ["examples/aa/board.txt"], [])
         m = len(S_WHOLE)
 
+        def widened(why, **stub):
+            r, ran = run_stubbed(
+                ["bash", RUNNER, "--changed", "base"], root=tree, **stub
+            )
+            assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+            assert sorted(ran) == sorted(S_WHOLE), f"the run narrowed to {ran}"
+            assert r.stdout.splitlines()[-1] == (
+                f"{m} of {m} suites passed (widened: {why})"
+            ), r.stdout.splitlines()[-1]
+            return r
+
         # The stub fails the question.
-        r, ran = run_stubbed(["bash", RUNNER, "--changed", "base"], root=tree)
-        assert r.returncode == 0, f"{r.stdout}{r.stderr}"
-        assert sorted(ran) == sorted(S_WHOLE), f"the run narrowed to {ran}"
-        assert r.stdout.splitlines()[-1] == (
-            f"{m} of {m} suites passed "
-            "(widened: Pants could not say what the diff affects)"
-        ), r.stdout.splitlines()[-1]
+        r = widened("Pants could not say what the diff affects")
         assert "planted: no answer" in r.stderr, r.stderr
 
-        # An answer that names no wired suite is no answer.
-        r, ran = run_stubbed(
-            ["bash", RUNNER, "--changed", "base"], root=tree, changed=["no such suite"]
+        # An answer that is no list of addresses is no answer.
+        widened(
+            "Pants's answer cannot be read: no such suite",
+            changed=["examples/aa/board.txt:data", "no such suite"],
         )
-        assert sorted(ran) == sorted(S_WHOLE), f"the run narrowed to {ran}"
-        assert r.stdout.splitlines()[-1] == (
-            f"{m} of {m} suites passed "
-            "(widened: Pants named what is no wired suite: no such suite)"
-        ), r.stdout.splitlines()[-1]
+
+        # An answer that names no owner of a changed path.
+        widened(
+            "Pants cannot place examples/aa/board.txt",
+            changed=["examples/aa:a2.test.mjs", "examples/aa/board.txt.bak:data"],
+        )
+        with_diff(tree, ["examples/aa/board.txt", UNPLACED])
+        widened(
+            f"Pants cannot place {UNPLACED}",
+            changed=["examples/aa:a2.test.mjs", "examples/aa/board.txt:data"],
+        )
 
         # No Pants to ask: the listing is the whole seam.
         r, _ = run_logged(
@@ -784,39 +671,63 @@ def a_failed_query_widens():
 
 def a_narrowed_run_says_so():
     """A narrowed run's last line counts what ran against the whole seam and
-    names the units, so a run of lint and the shared tests alone never reads
-    as the whole seam passing."""
+    names the units whose suites Pants selected, so a run of lint and the
+    excepted tests alone never reads as the whole seam passing. A red one
+    says it too."""
     with tempfile.TemporaryDirectory() as tmp:
         tree = selection_tree(tmp)
         m = len(S_WHOLE)
 
-        def last_line(changed, affected, want):
+        def run(changed, affected, want, **stub):
             with_diff(tree, changed, [])
             r, ran = run_stubbed(
-                ["bash", RUNNER, "--changed", "base"], root=tree, changed=affected
+                ["bash", RUNNER, "--changed", "base"],
+                root=tree,
+                changed=affected,
+                **stub,
             )
-            assert r.returncode == 0, f"{changed}:\n{r.stdout}{r.stderr}"
             assert sorted(ran) == sorted(want), f"{changed} ran {ran}"
-            return r.stdout.splitlines()[-1]
+            return r
 
-        got = last_line(
-            ["examples/aa/board.txt"],
-            ["examples/aa:a2.test.mjs", "examples/aa:soundness-harness.mjs"],
-            S_ALWAYS + S_AA[1:],
-        )
-        assert got == (
-            f"{len(S_ALWAYS) + 2} of {m} suites passed (narrowed: examples/aa)"
-        ), got
-        got = last_line(["docs/notes.md"], [], S_ALWAYS)
-        assert got == (
-            f"{len(S_ALWAYS)} of {m} suites passed (narrowed: no example touched)"
-        ), got
+        board = ["examples/aa/board.txt"]
+        answer = [
+            "examples/aa/board.txt:data",
+            "//examples/aa/board.txt:../../tree",
+            "examples/_shared:t.test.py",
+            "examples/aa:a2.test.mjs",
+            "examples/aa:soundness-harness.mjs",
+        ]
+        r = run(board, answer, S_ALWAYS + S_TREE + S_AA[1:])
+        assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+        assert r.stdout.splitlines()[-1] == (
+            f"{len(S_ALWAYS) + 3} of {m} suites passed "
+            "(narrowed: examples/_shared examples/aa)"
+        ), r.stdout.splitlines()[-1]
+
+        r = run(["docs/notes.md"], ["//docs/notes.md:../x"], S_ALWAYS)
+        assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+        assert r.stdout.splitlines()[-1] == (
+            f"{len(S_ALWAYS)} of {m} suites passed (narrowed: no wired suite)"
+        ), r.stdout.splitlines()[-1]
         assert len(S_ALWAYS) < m
+
+        silent = "node examples/aa/a2.test.mjs"
+        r = run(
+            board,
+            answer,
+            S_ALWAYS + S_TREE + S_AA[1:],
+            unreported="examples/aa:a2.test.mjs",
+        )
+        assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}"
+        assert r.stdout.splitlines()[-1] == (
+            f"{len(S_ALWAYS) + 2} of {m} suites passed before {silent} failed "
+            "(narrowed: examples/_shared examples/aa)"
+        ), r.stdout.splitlines()[-1]
 
 
 if __name__ == "__main__":
-    a_diff_selects_its_suites()
-    pants_selects_the_wired_suites()
+    no_pants_toml_widens()
+    pants_selects_every_suite()
     a_failed_query_widens()
     a_narrowed_run_says_so()
     wired_suites_go_through_pants()
@@ -825,7 +736,6 @@ if __name__ == "__main__":
     the_sandbox_gets_the_trees_python()
     no_pants_runs_no_suite()
     the_recipes_call_the_runner()
-    every_cross_unit_read_is_an_edge()
     agents_md_names_both_commands()
     n = a_run_covers_its_listing()
     a_failing_suite_stops_the_run()

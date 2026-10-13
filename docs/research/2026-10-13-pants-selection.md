@@ -91,3 +91,38 @@ sandbox with uv 0.13.0 and a virtual environment's `python3` first on the
 `PATH`, and `UV_PYTHON=/usr/bin/python3.12`. **Not reproduced: CI's empty
 managed-Python directory.** `HOME` reaches the sandbox, so uv's own CPython
 installs were visible in that run.
+
+## Every selection from Pants: what #819 added
+
+2026-10-13, ticket #819. One worker's reading, to re-run with the command
+shown.
+
+The narrowed run now asks the same query with no `--filter-target-type`:
+
+```
+pants --changed-since=<base> --changed-dependents=transitive list
+```
+
+The answer then holds the owners of the changed files as well as their
+dependents, 2 s on the real tree for a two-commit diff:
+
+| Changed path | What the answer holds for it |
+|---|---|
+| a file a target in its own directory owns | `examples/aa/board.txt:data` |
+| a file a root target owns | `//uv.lock:uvproject`, `//docs/notes.md:../tree` |
+| a file two targets own | one line per owner |
+| a deleted file a glob still matches | the generator, `examples/_shared:py`, and no line naming the file |
+| a file no target owns | no line |
+| a `BUILD` file | every target it defines, and its own file target when `//:tree` owns it |
+
+So the runner reads "Pants cannot place this path" off the answer: a changed
+file still in the tree with no line `<file>:` or `//<file>:`. A deleted file
+cannot be checked that way and needs no check, since no suite can read it.
+On the real tree `//:tree` owns `.github/workflows/ci.yml`, `.gitignore`,
+`pants.toml` and each `BUILD` file (`pants list <file>`), so the paths Pants
+cannot place there are the ones `pants_ignore` names.
+
+`tests/all.sh`, `pants.toml` and `tests/pants_prelude.py` are owned by
+`//:tree` alone unless declared, and a change to one would then select only
+the whole-tree suites. `//:runner` names the three, and the prelude puts it
+under every suite.

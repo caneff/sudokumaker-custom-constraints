@@ -7,7 +7,10 @@
 # The sandbox holds the file's own source target, so every import Pants infers
 # from it and every dependency the unit's BUILD file declares on it, then
 # `needs` (what the suite reads that no import shows), plus pyproject.toml and
-# uv.lock: `uv run` builds the environment inside the sandbox.
+# uv.lock: `uv run` builds the environment inside the sandbox. `//:runner` is
+# what every wired suite runs under (the seam runner, pants.toml and this
+# file). No suite reads those; declaring them is how a change to one selects
+# every wired suite on a narrowed run.
 #
 # The toolchain is not sealed: uv and node come from the PATH, and uv finds
 # its installs and its cache under HOME, or in UV_CACHE_DIR where one is set
@@ -35,7 +38,7 @@ def suite(file, needs=(), tools=(), timeout=600):
         command=command,
         tools=["uv", "node", *tools],
         workdir="/",
-        execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject"],
+        execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject", "//:runner"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
         timeout=timeout,
     )

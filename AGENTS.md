@@ -105,7 +105,7 @@ merge, whether or not `main` has moved past the PR's merge base (about
 3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
 repo 2026-10-11).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests, and each suite Pants lists among the dependents of a file the diff changed; a suite not wired into Pants is still selected by directory and by `tests/suite-edges.txt`; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the tests on `tests/sandbox-exceptions.txt`, and each suite Pants lists among the dependents of a file the diff changed, shared tests included; no directory decides, and a changed path Pants cannot place widens the run to the whole seam; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 
