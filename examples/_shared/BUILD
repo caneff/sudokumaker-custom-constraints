@@ -1,9 +1,22 @@
 python_sources(
     name="py",
     sources=["*.py"],
-    # These read shared .js files by computed name; coarse on purpose (every shared .js).
+    # Shared .js files read by path, which no import shows. Each is named: a
+    # blanket `:js` here would put every shared .js under every suite whose
+    # unit imports framebuild.
     overrides={
-        ("framebuild.py", "no_ring.py"): {"dependencies": [":js"]},
+        "framebuild.py": {
+            "dependencies": [
+                # FRAME_BACKENDS, read in frame_backend_code.
+                "./frame-rowcol.js:js",
+                "./frame-corners.js:js",
+                # house_gac_backend_code.
+                "./house-gac.js:js",
+                "./HouseGacComponent.js:js",
+            ]
+        },
+        # GRID_BACKEND, read in grid_backend_constraint.
+        "no_ring.py": {"dependencies": ["./grid-rowcol.js:js"]},
         "component_scan.py": {"dependencies": ["//:builtin-components"]},
     },
 )
@@ -14,6 +27,8 @@ javascript_sources(
     overrides={
         "bundle-solve-lib.mjs": {"dependencies": ["./link_codec_cli.py:py"]},
         "bundle-load.mjs": {"dependencies": [":vendor"]},
+        # `// #include ../_shared/bit-helpers.js`.
+        "HouseGacComponent.js": {"dependencies": ["./bit-helpers.js:js"]},
     },
 )
 files(name="vendor", sources=["vendor/*"])
