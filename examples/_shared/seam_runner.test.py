@@ -16,7 +16,14 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import by_mechanism, commands, gate_tree, run_logged, run_stubbed
+from gate_lib import (
+    by_mechanism,
+    commands,
+    gate_tree,
+    pants_suites,
+    run_logged,
+    run_stubbed,
+)
 from gate_lib import runner_listing as listing
 
 RUNNER = "tests/all.sh"
@@ -82,13 +89,18 @@ def scratch_tree(tmp, files):
 
 
 def a_run_covers_its_listing():
-    """A run executes the suites `--list` names, in that order, and its last
-    line counts them."""
+    """A run executes the suites `--list` names, each once, and its last line
+    counts them."""
     listed = listing()
     assert len(listed) == len(set(listed)), "tests/all.sh --list repeats a suite"
     r, ran = run_stubbed(["bash", RUNNER])
     assert r.returncode == 0, f"a stubbed full run failed:\n{r.stdout}{r.stderr}"
-    assert ran == listed, "a full run does not execute its own --list, in order"
+    wired = set(pants_suites().values())
+    in_order = [s for s in listed if s not in wired] + [s for s in listed if s in wired]
+    assert ran == in_order, (
+        "a full run does not execute its own --list: the suites of its own "
+        "loop in order, then the ones wired into Pants in order"
+    )
     last = r.stdout.splitlines()[-1]
     assert last == f"{len(listed)} of {len(listed)} suites passed", last
     return len(listed)
@@ -454,6 +466,32 @@ def wired_suites_go_through_pants():
     assert r.returncode == 0, f"--group lint with no pants:\n{r.stderr}"
 
 
+def wired_suites_run_in_one_pants_call():
+    """A run starts Pants once for every wired suite it holds, and a wired
+    suite Pants does not report as passed is a failure: it gets a FAIL line,
+    no PASS line, and the run exits 1."""
+    r, log = run_logged(["bash", RUNNER, "--group", "test"])
+    assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+    calls = [line for line in log if line.startswith("pants ") and " test " in line]
+    assert len(calls) == 1, f"{len(calls)} `pants test` calls, not one"
+    _, pants = by_mechanism(calls)
+    assert set(UP_TO_N) < set(pants), f"the one call holds {pants}"
+
+    silent = UP_TO_N[2]
+    r, _ = run_logged(
+        ["bash", RUNNER, "--group", "test"],
+        unreported="examples/up-to-n:marker-contract.test.mjs",
+    )
+    out = r.stdout.splitlines()
+    assert r.returncode == 1, f"exit {r.returncode}, not 1:\n{r.stdout}{r.stderr}"
+    assert f"FAIL {silent}" in out, f"no FAIL line for {silent}:\n{r.stdout}"
+    assert f"PASS {silent}" not in out, f"{silent} passed with no result"
+    n = len(listing("--group", "test"))
+    assert out[-1] == (
+        f"{n - 1} of {n} suites passed before {silent} failed (group: test)"
+    ), out[-1]
+
+
 READS = "import fs from 'node:fs'\nfs.readFileSync('examples/aa/%s.txt')\n"
 
 # A unit wired into Pants: two suites, each reading one file of its unit, and
@@ -472,6 +510,10 @@ WIRED_UNIT = {
     "examples/aa/undeclared.txt": "",
     "examples/aa/declared.test.mjs": READS % "declared",
     "examples/aa/undeclared.test.mjs": READS % "undeclared",
+    # The runner names these two by path, and its own loop runs them, for
+    # real where node is real, before Pants runs the wired ones.
+    "examples/skyscraper/recovery-probe.test.mjs": "",
+    "examples/hit-counts/recovery-probe.test.mjs": "",
 }
 
 
@@ -511,6 +553,12 @@ def an_undeclared_read_fails_the_suite():
             "ENOENT" in line and "examples/aa/undeclared.txt" in line for line in shown
         ), f"the failure shown is not the undeclared file missing:\n{r.stdout}"
         assert out[-1].endswith(f"suites passed before {undeclared} failed"), out[-1]
+
+        # Neither the run nor this file's own question to Pants leaves Pants's
+        # work directory in the tree.
+        assert pants_suites(tree), "the fixture wires no suite"
+        left = sorted(p.name for p in tree.iterdir() if p.name.startswith(".pants"))
+        assert not left, f"Pants's work directory is left in the tree: {left}"
 
 
 def the_sandbox_gets_the_trees_python():
@@ -560,6 +608,7 @@ def no_pants_runs_no_suite():
 if __name__ == "__main__":
     a_diff_selects_its_suites()
     wired_suites_go_through_pants()
+    wired_suites_run_in_one_pants_call()
     an_undeclared_read_fails_the_suite()
     the_sandbox_gets_the_trees_python()
     no_pants_runs_no_suite()

@@ -155,6 +155,18 @@ scope() { # <base>
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
+# Pants writes a work directory (`.pants.d/`) into the tree it runs in, which
+# is ignored content a workspace cannot be removed with. Every Pants call of a
+# run gets one outside the tree instead, this run's own and removed when the
+# run ends, so two runs share no state through it.
+scratch=""
+leave_no_workdir() {
+  [ -z "$scratch" ] || return 0
+  scratch=$(mktemp -d) || { echo "tests/all.sh: mktemp failed" >&2; exit 2; }
+  trap 'rm -rf "$scratch"' EXIT
+  export PANTS_WORKDIR=$scratch/workdir
+}
+
 # Sets `wired`: Pants's test targets, one address per line. Anything else
 # Pants prints lands there too and matches no suite's target.
 ask_pants() {
@@ -163,10 +175,13 @@ ask_pants() {
       "Install the Pants launcher (https://www.pantsbuild.org/stable/docs/getting-started/installing-pants);" \
       "a suite wired into Pants never runs outside its sandbox, so no suite was run." >&2
     exit 2; }
+  leave_no_workdir
   wired=$(pants --filter-target-type=test_shell_command list :: 2>&1 </dev/null) || {
     echo "tests/all.sh: \`pants list\` failed, so the suites wired into Pants are not known and no suite was run:" >&2
     printf '%s\n' "$wired" >&2; exit 2; }
 }
+
+in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
 
 # The Pants target a suite's test file would have: `<directory>:<file>`.
 target_of() { # <suite>
@@ -236,13 +251,14 @@ if [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then ask_pant
 
 total=$(grep -c . <<<"$all")
 passed=0
+batch="" targets=""
 while IFS= read -r suite; do
   [ -n "$suite" ] || continue
-  run=$suite
-  if grep -qxF -- "$(target_of "$suite")" <<<"$wired"; then
-    run="env ${python:+UV_PYTHON=$python} pants test $(target_of "$suite")"
+  if in_lines "$wired" "$(target_of "$suite")"; then
+    batch="$batch$suite"$'\n' targets="$targets $(target_of "$suite")"
+    continue
   fi
-  if out=$($run 2>&1 </dev/null); then
+  if out=$($suite 2>&1 </dev/null); then
     echo "PASS $suite"
     passed=$((passed + 1))
   else
@@ -252,4 +268,48 @@ while IFS= read -r suite; do
     exit 1
   fi
 done <<<"$selected"
+
+# The wired suites, in one Pants call. A suite passed when Pants printed its
+# result line, `✓ <target> succeeded in <time>.`, and in no other case: one
+# Pants was asked to run and did not report is a failure.
+if [ -n "$batch" ]; then
+  out=$(env ${python:+UV_PYTHON=$python} pants test $targets 2>&1 </dev/null)
+  status=$?
+  succeeded=$(awk '$1 == "✓" && $3 == "succeeded" && NF == 5 { print $2 }' <<<"$out")
+  failed=""
+  while IFS= read -r suite; do
+    [ -n "$suite" ] || continue
+    if in_lines "$succeeded" "$(target_of "$suite")"; then
+      echo "PASS $suite"
+      passed=$((passed + 1))
+    else
+      failed="$failed$suite"$'\n'
+    fi
+  done <<<"$batch"
+  shown=0
+  while IFS= read -r suite; do
+    [ -n "$suite" ] || continue
+    echo "FAIL $suite"
+    # The suite's own output: Pants logs it under the line that says the
+    # target failed, up to its next log line.
+    if ! awk -v said="Completed: Test with shell command - $(target_of "$suite") (" '
+      /^[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9] \[[A-Z]+\] / { show = index($0, said) > 0 }
+      /^(✓|✕) / { show = 0 }
+      show { print; found = 1 }
+      END { exit !found }' <<<"$out"; then
+      echo "tests/all.sh: Pants did not report $(target_of "$suite") as passed or as failed."
+      [ "$shown" = 1 ] || { echo "All Pants printed:"; printf '%s\n' "$out"; }
+      shown=1
+    fi
+  done <<<"$failed"
+  if [ -n "$failed" ]; then
+    echo "$passed of $total suites passed before ${failed%%$'\n'*} failed$note"
+    exit 1
+  fi
+  [ "$status" = 0 ] || {
+    echo "tests/all.sh: \`pants test\` exited $status with every suite reported as passed:"
+    printf '%s\n' "$out"
+    echo "$passed of $total suites passed before \`pants test\` failed$note"
+    exit 1; }
+fi
 echo "$passed of $total suites passed$note"
