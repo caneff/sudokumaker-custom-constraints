@@ -64,9 +64,20 @@ The component's own file in this repo carries:
 the overview and step comments being *present*.
 
 **The link ships that source stripped of every comment (#385).** `minify.py`
-drops all of them, `//!` included, and it is worth 30% of a link's bytes. So a
-recipient who opens the link reads the algorithm and not a word about it. That
-is a real loss, taken deliberately and for now: how a reuser gets the
-commentary is unresolved and is its own piece of work. Until it is solved, this
-criterion is checked against the file in the tree, and no criterion here claims
-the recipient is handed documentation.
+drops all of them, `//!` included, and it is worth 30% of a link's bytes. So
+the plain link hands a recipient the algorithm and not a word about it. That
+loss is taken deliberately (Chris, 2026-10-04, #391): the rules text gets no
+pointer line, and an example gets no annotated twin by default.
+
+What a reader who wants the commentary gets depends on the example:
+
+- **A twin exists** — `PUZZLE_LINK*_annotated.txt`, the same board through the
+  comment-keeping minify (`--keep-comments`, #433). Hand that file to the
+  reader. `ls examples/*/PUZZLE_LINK*annotated* examples/*/*/PUZZLE_LINK*annotated*`
+  lists them: `house-gac`, `dutch-flatmates` (`PUZZLE_LINK_0g_annotated.txt`)
+  and `count-digits-gac/sparse`.
+- **No twin exists** — the recipient gets the code without commentary. Build a
+  twin only when someone asks for one.
+
+Check the criterion against the file in the tree either way; the blob in the
+plain link is not where the comments live.

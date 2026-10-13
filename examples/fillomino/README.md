@@ -295,7 +295,9 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
    short per-step comments through the scan, the walk, the doors and the bound.
    **None of it ships** (#385): `minify.py` strips every comment from the copy
    baked into the link, so a recipient reads the algorithm and nothing about
-   it. The criterion is checked against the file, not against the blob.
+   it. Fillomino has no annotated twin, so the recipient gets the code without
+   commentary; one is built only on request (#391). The criterion is checked
+   against the file in the tree, not against the blob.
 
 ## Paste into SudokuMaker
 
