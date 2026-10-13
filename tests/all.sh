@@ -1,47 +1,61 @@
 #!/usr/bin/env bash
 # The seam runner: the one listing of the gate's suites. A suite is one
 # command (`uv run <file>`, `node <file>`, one lint step), and it is its own
-# label. With no flag this runs every suite `just check-full` runs, one at a
-# time, in the same order. Files are found by glob from the tree
-# on disk, so a new test needs no edit here; the lists below are the
-# exceptions, and examples/_shared/gate.test.py checks them against the tree.
+# label. With no flag this runs every suite `just check-full` runs. Files are
+# found by glob from the tree on disk, so a new test needs no edit here; the
+# lists below are the exceptions, and examples/_shared/gate.test.py checks
+# them against the tree.
 #
 #   bash tests/all.sh [--list] [--changed <base>] [--group <group>]
 #
 # `--list` prints the suites the run would cover, one per line, and runs none.
 #
-# `--changed <base>` narrows the run to what the diff `<base>...HEAD` could
-# affect, by directory and not by import scan:
-#   - lint and the shared tests under examples/_shared/, always;
-#   - every suite of each examples/<name>/ the diff touches: its tests, its
-#     heavy tests and its soundness harness;
-#   - every suite of a unit that tests/suite-edges.txt says reads a touched
-#     directory.
-# It widens to the whole seam when the diff touches what every suite depends
-# on (`place` below names those paths) or a path no rule places. A Markdown
-# file outside an example selects no unit. The narrowing runs too little when
-# a suite reads another unit's directory that tests/suite-edges.txt does not
-# list, or a Markdown file outside its unit that `place` does not name; the
-# controller re-runs the whole seam on the merged result before every merge.
+# A suite Pants has a test target for is wired: it runs through Pants, in its
+# sandbox, a folder holding only the files the suite's unit declared, so a
+# read nobody declared fails the suite. The runner keeps no list of those
+# suites. It asks Pants for its test targets, and the target of a suite is
+# `<directory>:<file>` (tests/pants_prelude.py). Every other suite runs here,
+# from the tree. A tree with a pants.toml and no working `pants` runs no
+# suite and exits 2: a wired suite never runs outside its sandbox.
 #
-# A suite Pants has a test target for runs through Pants, in its sandbox: a
-# folder holding only the files the suite's unit declared, so a read nobody
-# declared fails the suite. The runner keeps no list of those suites. It asks
-# Pants for its test targets on every run that holds a test file, and the
-# target of a suite is `<directory>:<file>` (tests/pants_prelude.py). Every
-# other suite runs here, from the tree. `--list` asks nothing. A tree with a
-# pants.toml and no working `pants` runs no suite and exits 2: a wired suite
-# never runs outside its sandbox.
+# `--changed <base>` narrows the run to what the diff `<base>...HEAD` could
+# affect:
+#   - lint and the shared tests under examples/_shared/, always;
+#   - a wired suite when Pants lists it among the dependents, at any distance,
+#     of a file the diff changed or deleted. Pants knows a suite's imports and
+#     the inputs its unit declared, and the sandbox holds nothing else, so a
+#     file Pants does not connect to a suite is a file that suite cannot read.
+#     Pants also counts a change not yet committed;
+#   - a suite that is not wired by directory, as before Pants: every suite of
+#     each examples/<name>/ the diff touches, and of a unit that
+#     tests/suite-edges.txt says reads a touched directory. Shared example
+#     code selects every such suite, since nothing says which of them load it.
+# It widens to the whole seam when the diff touches what every suite depends
+# on (`place` below names those paths) or a path no rule places, and when
+# Pants gives no answer about the diff, or one that cannot be read; the last
+# line then says why. A narrowed run never rests on no answer. `--list` with
+# `--changed` asks Pants the same question; `--list` alone asks nothing. In a
+# tree with no pants.toml no suite is wired, and shared example code widens.
+# The narrowing still runs too little when a suite that is not wired reads
+# another unit's directory that tests/suite-edges.txt does not list; the
+# controller re-runs the whole seam on the merged result before every merge.
 #
 # `--group <group>` runs one group of the seam, which is how the justfile's
 # recipes reach their suites: `lint`, `test` (every test but the heavy ones),
 # `heavy-fillomino`, `heavy-recovery`, `soundness`.
 #
-# One line per suite as it finishes (`PASS <suite>`); the first failing suite
+# The suites that are not wired run first, one at a time, in listing order:
+# one line per suite as it finishes (`PASS <suite>`); the first failing one
 # prints `FAIL <suite>` and its whole output, and the run exits 1 there. The
-# last line states what ran: `N of M suites passed`, M being the whole seam
-# (or the whole group), followed by `(narrowed: <units>)` or `(widened: <why>)`
-# on a `--changed` run and by `(group: <group>)` on a `--group` run.
+# wired suites then run in one Pants call, since Pants takes about 2 s to
+# start. Pants does not stop at the first failure, so that call runs all of
+# them: `PASS <suite>` for each one Pants reports as passed, then `FAIL
+# <suite>` and its output for every other, and exit 1. A wired suite Pants
+# did not report is a failure. The last line states what ran: `N of M suites
+# passed`, M being the whole seam (or the whole group), with `before <suite>
+# failed` naming the first failure, followed by `(narrowed: <units>)` or
+# `(widened: <why>)` on a `--changed` run and by `(group: <group>)` on a
+# `--group` run.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.

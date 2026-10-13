@@ -105,7 +105,7 @@ merge, whether or not `main` has moved past the PR's merge base (about
 3½ min, 1 core; Chris's ruling 6a, agent-skills #1496, confirmed for this
 repo 2026-10-11).
 
-- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests, the suites of each example the diff touches and those of the examples `tests/suite-edges.txt` says read it; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
+- **Narrowed**: `bash tests/all.sh --changed origin/main` — lint, the shared tests, and each suite Pants lists among the dependents of a file the diff changed; a suite not wired into Pants is still selected by directory and by `tests/suite-edges.txt`; a worker's one suite run before "PR up". `tests/all.sh` with no flag runs the same suites as the seam, and its header states the narrowing rules
 
 ## Commands
 
@@ -140,7 +140,7 @@ repo 2026-10-11).
 - The app bundle's full extracted API surface (names + arities, generated) → `docs/bundle-api-index.md`
 - The explanatory API reference (every method's behaviour, read from the bundle) → `docs/research/bundle-api-reference.md`; the renamed bundle and its tools → `docs/research/humanify-pedagogy/README.md`
 - Testing + generation → `docs/testing-and-generation.md`
-- Pants behind the seam runner: a unit is wired by its own `BUILD` file, with `suite(...)` from `tests/pants_prelude.py`; `tests/all.sh`'s header says how the runner uses it; what the first unit measured → `docs/research/2026-10-13-pants-first-unit.md`; the shared tests, and the ones named on `tests/sandbox-exceptions.txt` because they cannot run in the sandbox → `docs/research/2026-10-13-pants-shared-tests.md`
+- Pants behind the seam runner: a unit is wired by its own `BUILD` file, with `suite(...)` from `tests/pants_prelude.py`; `tests/all.sh`'s header says how the runner uses it; what the first unit measured → `docs/research/2026-10-13-pants-first-unit.md`; how a narrowed run asks Pants, and what one call per run costs → `docs/research/2026-10-13-pants-selection.md`; the shared tests, and the ones named on `tests/sandbox-exceptions.txt` because they cannot run in the sandbox → `docs/research/2026-10-13-pants-shared-tests.md`
 - Example layout: required files, link grammar, board naming, the shared
   frame reader and its `#include` → `docs/example-layout.md`
 - Sharing a puzzle link: the pre-share criteria → `docs/share-checklist.md`
