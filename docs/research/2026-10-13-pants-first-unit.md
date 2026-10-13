@@ -45,19 +45,35 @@ reachable. **Not measured: a cold uv cache.** The sandbox's `PATH` holds only
 the tools the suite names, and no `git`, so a fetch of the git dependency
 from inside the sandbox is expected to fail.
 
-## What CI showed: the sandbox must see the Python and the cache uv uses outside
+## What CI showed: uv picks its own Python inside the sandbox
 
 The first CI run of this change (run 38387790715, `check` leg) failed on
 `node examples/up-to-n/end-to-end.test.mjs`. Outside the sandbox the leg's
 `uv sync` printed `Using CPython 3.12.3 interpreter at: /usr/bin/python3`.
-Inside it, with only `uv` and `node` on the `PATH` and no uv-installed Python
-under `HOME`, uv downloaded CPython 3.15.0 and stopped: `ortools==9.15.6755`
-has no wheel for `cp315`. This box never showed it, because uv has its own
-CPython 3.14 installed under `HOME` and prefers it.
+Inside it uv downloaded CPython 3.15.0 and stopped: `ortools==9.15.6755` has
+no wheel for `cp315`. This box never showed it, because uv has its own
+CPython 3.14 installed under `HOME` and takes that first.
 
-Two changes in `tests/pants_prelude.py` answer it: `python3` is one of the
-sandbox's tools, and `UV_CACHE_DIR` is passed through (`astral-sh/setup-uv`
-sets it on CI, so `HOME` alone did not reach the cache `uv sync` had warmed).
+Putting `python3` among the sandbox's tools did not fix it (run 38388402672,
+same failure). CI runs the gate as `uvx --from rust-just just <recipe>`, and
+`uvx` puts its tool environment first on the `PATH`, so the first `python3`
+Pants finds there belongs to a virtual environment. `uv run` will not build a
+project environment from one: it finds it, passes over it and downloads.
+Reproduced here with uv 0.13.0 (CI's version), an empty
+`UV_PYTHON_INSTALL_DIR` and a `PATH` holding only such a `python3`.
+
+What answers it: `tests/all.sh` passes `UV_PYTHON`, the resolved path of the
+tree's own `.venv/bin/python`, to every `pants test` call, and the sandbox
+lets it through. A suite then gets the same interpreter inside the sandbox
+and outside it. `UV_CACHE_DIR` is let through too: `astral-sh/setup-uv` sets
+it on CI, so `HOME` alone does not reach the cache `uv sync` warmed.
+
+With both, CI run 38389689616 passed on all four legs: the five up-to-n
+suites through Pants, `sudoku-kit` included, from the cache `uv sync` warmed.
+
+Pants also reads the whole tree and stops on an absolute symlink, which a
+`.venv` holds. The real tree is safe through `.gitignore`; `pants.toml` now
+ignores `/.venv/` itself, so a tree with no `.gitignore` is safe too.
 
 ## Pants's download cache is shared across worktrees
 
