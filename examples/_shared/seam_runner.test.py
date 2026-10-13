@@ -476,8 +476,16 @@ WIRED_UNIT = {
 
 
 def wired_tree(tmp):
-    tree = scratch_tree(tmp, WIRED_UNIT)
+    """A scratch tree with one unit wired into Pants. Its node_modules and
+    .venv are absolute symlinks, as in a worktree that borrows another
+    checkout's: Pants stops on one it reads, so it must ignore both."""
+    borrowed = pathlib.Path(tmp) / "borrowed"
+    (pathlib.Path(tmp) / "tree").mkdir()
+    tree = scratch_tree(pathlib.Path(tmp) / "tree", WIRED_UNIT)
     shutil.copy(ROOT / "pants.toml", tree / "pants.toml")
+    for name in ("node_modules", ".venv"):
+        (borrowed / name).mkdir(parents=True)
+        (tree / name).symlink_to(borrowed / name)
     return tree
 
 
@@ -519,7 +527,7 @@ def the_sandbox_gets_the_trees_python():
             "console.log('UV_PYTHON=' + process.env.UV_PYTHON)\nprocess.exit(1)\n"
         )
         base = pathlib.Path(sys.executable).resolve()
-        (tree / ".venv/bin").mkdir(parents=True)
+        (tree / ".venv/bin").mkdir()
         (tree / ".venv/bin/python").symlink_to(base)
         r, _ = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
         out = r.stdout.splitlines()
