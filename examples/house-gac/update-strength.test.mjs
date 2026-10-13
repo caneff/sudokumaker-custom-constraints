@@ -11,11 +11,13 @@ import { join } from 'path'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-// The component lives in `_shared`, not owned by this example, so `loadAt`
-// (which resolves a commit path off `git rev-parse --show-prefix` of its own
-// `here`) is rooted at `_shared` itself rather than passed a `../` path --
-// git does not normalize the dotted path `loadAt` would otherwise build.
-const { load, loadAt } = makeIo(join(HERE, '..', '_shared'))
+// The component lives in `_shared`, not owned by this example, so `load` is
+// rooted at `_shared` itself. The floor is a frozen copy in this example's
+// `.golden/`, named for the commit it came from, not a `git show` read: the
+// Pants sandbox holds no git history. Raising the floor means replacing that
+// copy in the same commit as the stronger component.
+const { load } = makeIo(join(HERE, '..', '_shared'))
+const { load: loadGolden } = makeIo(join(HERE, '.golden'))
 
 const N = 9
 installGlobals(1, N) // the component reads helpers.digits at load time
@@ -23,7 +25,7 @@ installGlobals(1, N) // the component reads helpers.digits at load time
 const REF_COMMIT = '3279a3d'
 const NAMES = ['setParams', 'update']
 const cur = load('HouseGacComponent.js', NAMES)
-const ref = loadAt(REF_COMMIT, 'HouseGacComponent.js', NAMES)
+const ref = loadGolden(`HouseGacComponent.${REF_COMMIT}.js`, NAMES)
 
 const { rnd } = makeRng(422)
 
