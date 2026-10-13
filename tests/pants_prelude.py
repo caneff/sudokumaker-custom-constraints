@@ -42,3 +42,50 @@ def suite(file, needs=(), tools=(), timeout=600):
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
         timeout=timeout,
     )
+
+
+# The one shape of an example's unit: its code, its data, and a `suite(...)`
+# per test file. An example's BUILD file is one `unit(...)` call, and what it
+# passes is what no import shows. Every unit gets the same globs, so a file
+# type a unit gains is in its sandbox with no edit, and no unit drifts from
+# another: `**` takes the unit's subdirectories (`.golden/`, `original/`,
+# `required-digits/`) too. Every suite of the unit declares the whole unit;
+# this is coarse on purpose, since a suite reads the component, the page
+# script and the boards by path. A file in another unit is named one by one,
+# never by its whole directory.
+#
+#   suites       the test files and the soundness harness, one suite each
+#   py_edges     {python file: [what it reads by path or starts, which no
+#                import shows]}, each a target address
+#   js_edges     the same for a JavaScript file: a `// #include`, a file
+#                read by path
+#   needs        files of other units every suite reads, by name
+#   timeouts     {suite file: seconds} for a suite that runs past the default
+#                600; about 5 to 7 times the run measured through Pants
+
+
+def unit(suites, py_edges=None, js_edges=None, needs=(), timeouts=None):
+    def overrides(edges):
+        return {file: {"dependencies": deps} for file, deps in (edges or {}).items()}
+
+    python_sources(name="py", sources=["**/*.py"], overrides=overrides(py_edges))
+    javascript_sources(
+        name="js", sources=["**/*.mjs", "**/*.js"], overrides=overrides(js_edges)
+    )
+    files(
+        name="data",
+        sources=[
+            "**/*.json",
+            "**/*.jsonl",
+            "**/*.toml",
+            "**/*.md",
+            "**/*.tsv",
+            "**/*.txt",
+        ],
+    )
+    for file in suites:
+        suite(
+            file,
+            needs=[":py", ":js", ":data", *needs],
+            timeout=(timeouts or {}).get(file, 600),
+        )

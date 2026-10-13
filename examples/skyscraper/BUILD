@@ -1,32 +1,21 @@
-python_sources(name="py", sources=["*.py"])
-javascript_sources(
-    name="js",
-    sources=["*.mjs", "*.js", ".golden/*.js", "original/*.js"],
-    overrides={
+unit(
+    suites=[
+        "build_link.test.py",
+        "build_original.test.py",
+        "verify.test.py",
+        "verify.py",
+        "empty-line.test.mjs",
+        "update-strength.test.mjs",
+        "soundness-harness.mjs",
+        # The heavy test keeps its group in tests/all.sh; the sandbox changes
+        # only where it runs.
+        "recovery-probe.test.mjs",
+    ],
+    js_edges={
         # `// #include`, which no import shows.
-        "SkyscraperPairComponent.js": {"dependencies": ["examples/_shared/line-kind.js:js"]},
-        "main-global.js": {"dependencies": ["examples/_shared/frame-lines.js:js"]},
+        "SkyscraperPairComponent.js": ["examples/_shared/line-kind.js:js"],
+        "main-global.js": ["examples/_shared/frame-lines.js:js"],
     },
+    # Measured through Pants on 2026-10-13, one core: 17.7 s.
+    timeouts={"recovery-probe.test.mjs": 120},
 )
-files(
-    name="data",
-    sources=["*.json", "*.jsonl", "*.toml", "*.md", "*.tsv", "*.txt", ".golden/*.txt"],
-)
-
-# Coarse on purpose: every suite of the unit gets the whole unit, since a
-# suite reads the component, the page script and the boards by path.
-for file in [
-    "build_link.test.py",
-    "build_original.test.py",
-    "verify.test.py",
-    "verify.py",
-    "empty-line.test.mjs",
-    "update-strength.test.mjs",
-    "soundness-harness.mjs",
-]:
-    suite(file, needs=[":py", ":js", ":data"])
-
-# The heavy tests keep their groups in tests/all.sh; the sandbox changes only
-# where they run. Each timeout is about 5 to 7 times the run measured through
-# Pants on 2026-10-13, one core.
-suite("recovery-probe.test.mjs", needs=[":py", ":js", ":data"], timeout=120)  # ran in 17.7 s

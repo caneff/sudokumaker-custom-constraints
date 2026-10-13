@@ -9,29 +9,42 @@ selected, when it widens to the whole seam, and what its last line says.
 
 ## Wiring an example
 
-An example is a unit, wired by its own `BUILD` file. A new example needs one,
-or `examples/_shared/gate.test.py` fails naming each of its test files.
+An example is a unit, wired by its own `BUILD` file, which is one `unit(...)`
+call (`unit` is in `tests/pants_prelude.py`). A new example needs one, or
+`examples/_shared/gate.test.py` fails naming each of its test files.
 `examples/up-to-n/BUILD` is the shortest worked one:
 
-- `python_sources` and `javascript_sources` for the unit's code. Pants infers
-  what a file imports. An edge no import shows is an `overrides` entry on the
-  file that has it, with a comment saying what reads it: a `// #include`, a
-  file read by path, a script started as a subprocess.
-- `files(name="data", ...)` for the unit's non-code files. This is coarse on
-  purpose: every suite of the unit gets the whole unit.
-- One `suite("<file>", needs=[...])` per test file and for the soundness
-  harness. `suite` is in `tests/pants_prelude.py`; it takes `tools=` for a
-  program the suite starts and `timeout=` in seconds.
+- `suites=[...]`: one suite per test file and for the soundness harness. A
+  suite that runs past the default 600 s takes a `timeouts={file: seconds}`
+  entry.
+- `py_edges` and `js_edges`: an edge no import shows is an entry on the file
+  that has it, with a comment saying what reads it: a `// #include`, a file
+  read by path, a script started as a subprocess.
+- The unit's code and data are the same globs in every unit (`**/*.py`,
+  `**/*.mjs`, `**/*.js`, and `**/*.json`, `**/*.jsonl`, `**/*.toml`,
+  `**/*.md`, `**/*.tsv`, `**/*.txt` for the data), so no unit's globs drift from another's.
+  Every suite of the unit gets the whole unit: coarse on purpose.
+- `needs=[...]` for a file of another unit a suite reads, named one by one:
+  `examples/count-digits-gac/BUILD` names
+  `examples/outside-sudoku/PUZZLE_LINK.txt:data`.
 
-A file in another unit is named one by one, never by its whole directory:
-`examples/count-digits-gac/BUILD` names `examples/outside-sudoku/PUZZLE_LINK.txt`.
+A file in another unit is named one by one, never by its whole directory. This
+holds for the shared directory's own suites too: `examples/_shared/BUILD`
+names each board and component `link_swap.test.py`, `probe_link.test.py`,
+`bundle-solve.test.mjs` and the two whole-grid tests read, and keeps
+`//:tree` for the suites that scan every example (`check_layout.py`,
+`size_builders.test.py`, `global-backends.test.mjs` and the like). A file in
+a subdirectory of a unit is addressed `<dir>/<file>:../data`.
+
+`//:tree` is every file but `.git`. A suite that asks git for the tracked
+files is on the exception list, below.
 
 ## Adding a test file
 
 The runner finds a test file by its name, so it is in the gate at once. Until
-it has a `suite(...)` line in its unit's `BUILD` file it has no sandbox, and
+it is named in its unit's `BUILD` file it has no sandbox, and
 the gate test fails naming it. Pants's `BUILD` files cannot list a directory,
-so that one line is the edit a new test file costs.
+so that one name is the edit a new test file costs.
 
 ## A test that cannot run in the sandbox
 
@@ -39,6 +52,17 @@ so that one line is the edit a new test file costs.
 entry runs from the tree, on every narrowed run. The gate test holds the list
 equal to the test files with no Pants target, and fails an entry with no
 reason. "It was hard" is not a reason; a quoted error is.
+
+## A suite that starts Pants, the runner or `just`
+
+`gate.test.py`, `seam_runner.test.py`, `ci_workflow.test.py`,
+`known_edges.test.py` and `recipe_discovery.test.py` start the real Pants
+from the sandbox's root. They are wired like any suite, with the tools they
+start named: the sandbox's PATH holds the tools a suite names and nothing
+else, so a missing one fails the suite or, worse, changes what the runner
+prints. `pants.toml` ignores `/_binary_shims_*`, the tool links the outer Pants
+keeps in that root. Do not name `env`: the shim for it would run
+`~/.local/bin/env`, a file uv leaves there that is no program.
 
 ## A strength test's floor
 
@@ -59,3 +83,6 @@ changed the runner, the note's first paragraph says so.
   exception list's errors, suites that pass in a sandbox missing their inputs.
 - `docs/research/2026-10-13-pants-selection.md`: what Pants answers for a
   diff, one Pants call per run, the work directory, `UV_PYTHON`.
+- `docs/research/2026-10-14-pants-narrow-tree.md`: #829's follow-up: the five
+  suites taken off `//:tree`, `.git` out of it, the cause of the
+  `seam_runner.test.py` exception, one shape for a unit.
