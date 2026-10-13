@@ -101,8 +101,9 @@ suites() {
 }
 
 # Where one changed file lands. Prints `unit examples/<name>` when a
-# unit owns it, `whole <why>` when the whole seam must run, and nothing when
-# lint and the shared tests already cover it.
+# unit owns it, `shared <file>` for shared example code, `whole <why>` when
+# the whole seam must run, and nothing when lint and the shared tests already
+# cover it.
 place() { # <file>
   local top name rest
   IFS=/ read -r top name rest <<<"$1"
@@ -116,9 +117,9 @@ place() { # <file>
       # A changed shared test selects no unit; any other shared file is code
       # the examples load.
       case $rest in
-        */* | "") echo "whole shared example code changed: $1" ;;
+        */* | "") echo "shared $1" ;;
         *.test.mjs | *.test.py) ;;
-        *) echo "whole shared example code changed: $1" ;;
+        *) echo "shared $1" ;;
       esac ;;
     examples/*/*) echo "unit $top/$name" ;;
     *.md) ;;
@@ -127,20 +128,25 @@ place() { # <file>
 }
 
 # Reads the diff `<base>...HEAD` and sets `units` (the touched units and the
-# units that read them, sorted) or `widened` (why the whole seam runs).
+# units that read them, sorted), `shared` (1 when shared example code changed)
+# or `widened` (why the whole seam runs).
 scope() { # <base>
   local files file kind what source reader touched
   [ -r tests/suite-edges.txt ] || {
     echo "tests/all.sh: cannot read tests/suite-edges.txt" >&2; exit 2; }
   files=$(git diff --name-only --no-renames "$1...HEAD") || {
     echo "tests/all.sh: cannot diff $1...HEAD" >&2; exit 2; }
-  units="" widened=""
+  units="" widened="" shared=0
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     read -r kind what <<<"$(place "$file")"
     case $kind in
       whole) widened=$what; return ;;
       unit) listed "$units" "$what" || units="$units $what" ;;
+      shared)
+        # With no Pants to say which suites load the file, every suite may.
+        [ -e pants.toml ] || { widened="shared example code changed: $what"; return; }
+        shared=1 ;;
     esac
   done <<<"$files"
   # One step only: a reader's own files did not change, so what reads the
@@ -182,6 +188,31 @@ ask_pants() {
 }
 
 in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
+
+# Asks Pants which wired suites the diff `<base>...HEAD` reaches: the test
+# targets that depend, at any distance, on a file the diff changed or deleted.
+# Sets `wired` and `affected`, one address per line each. Sets `widened`
+# instead when Pants gives no answer or one that cannot be read: a line that
+# is not a wired suite's address. The narrowing never rests on no answer.
+ask_what_changed() { # <base>
+  local line
+  command -v pants >/dev/null || {
+    widened="no Pants to say what the diff affects"
+    echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH, so the run is not narrowed." >&2
+    return; }
+  leave_no_workdir
+  wired=$(pants --filter-target-type=test_shell_command list :: 2>"$scratch/err" </dev/null) || {
+    wired="" widened="Pants could not say which suites are wired"
+    cat "$scratch/err" >&2; return; }
+  affected=$(pants --changed-since="$1" --changed-dependents=transitive \
+    --filter-target-type=test_shell_command list 2>"$scratch/err" </dev/null) || {
+    widened="Pants could not say what the diff affects"
+    cat "$scratch/err" >&2; return; }
+  while IFS= read -r line; do
+    [ -z "$line" ] || in_lines "$wired" "$line" || {
+      widened="Pants named what is no wired suite: $line"; return; }
+  done <<<"$affected"
+}
 
 # The Pants target a suite's test file would have: `<directory>:<file>`.
 target_of() { # <suite>
@@ -225,13 +256,31 @@ else
 fi
 all=$(cut -f2- <<<"$all")
 
-selected=$all
+# A narrowed run keeps lint and the shared tests; a wired suite Pants says the
+# diff reaches; and a suite that is not wired when the directory rule selects
+# its unit, or when shared example code changed, since nothing says what such
+# a suite reads.
+selected=$all wired="" affected=""
 if [ -n "$base" ]; then
   scope "$base"
+  [ -n "$widened" ] || [ ! -e pants.toml ] || ask_what_changed "$base"
   if [ -n "$widened" ]; then
     note="$note (widened: $widened)"
   else
-    selected=$(awk -F'\t' -v keep=" always $units " 'index(keep, " " $1 " ")' <<<"$all")
+    selected=""
+    while IFS=$'\t' read -r unit suite; do
+      [ -n "$suite" ] || continue
+      if [ "$unit" != always ]; then
+        if in_lines "$wired" "$(target_of "$suite")"; then
+          in_lines "$affected" "$(target_of "$suite")" || continue
+        else
+          [ "$shared" = 1 ] || listed "$units" "$unit" || continue
+        fi
+        listed "$units" "$unit" || units="$units $unit"
+      fi
+      selected="$selected$unit"$'\t'"$suite"$'\n'
+    done <<<"$all"
+    units=$(printf '%s\n' $units | sort | xargs)
     note="$note (narrowed: ${units:-no example touched})"
   fi
 fi
@@ -246,8 +295,9 @@ if [ "$list_only" = 1 ]; then [ -z "$selected" ] || printf '%s\n' "$selected"; e
 python=""
 [ ! -x .venv/bin/python ] || python=$(readlink -f .venv/bin/python)
 
-wired=""
-if [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then ask_pants; fi
+if [ -z "$wired" ] && [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then
+  ask_pants
+fi
 
 total=$(grep -c . <<<"$all")
 passed=0

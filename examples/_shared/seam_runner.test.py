@@ -334,14 +334,17 @@ def git(tree, *args):
     assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
 
 
-def with_diff(tree, changed):
-    """Commit an edit to each of `changed` on top of the fixture's base."""
+def with_diff(tree, changed, deleted=()):
+    """Commit an edit to each of `changed`, and the removal of each of
+    `deleted`, on top of the fixture's base."""
     git(tree, "reset", "-q", "--hard", "base")
     git(tree, "clean", "-qfd")
     for rel in changed:
         (tree / rel).parent.mkdir(parents=True, exist_ok=True)
         with (tree / rel).open("a") as f:
             f.write("# changed\n")
+    for rel in deleted:
+        (tree / rel).unlink()
     git(tree, "add", "-A")
     git(tree, "commit", "-q", "--allow-empty", "-m", "change")
 
@@ -605,8 +608,186 @@ def no_pants_runs_no_suite():
         assert (r.stdout, log) == ("", []), f"a suite ran on a broken pants: {r.stdout}"
 
 
+# A tree where Pants decides: the shared directory and two units wired, one
+# unit (cc) not. `lib` is imported by the shared test and by one suite of aa;
+# `other` by bb's suite only; every suite of aa declares aa's board.
+SELECTION_TREE = {
+    "pyproject.toml": "",
+    "uv.lock": "",
+    "docs/notes.md": "",
+    "BUILD": 'files(name="uvproject", sources=["pyproject.toml", "uv.lock"])\n',
+    "tests/suite-edges.txt": "examples/bb examples/cc  cc reads bb's files\n",
+    "examples/_shared/BUILD": (
+        'python_sources(name="py", sources=["*.py"])\nsuite("s.test.py")\n'
+    ),
+    "examples/_shared/lib.py": "",
+    "examples/_shared/other.py": "",
+    "examples/_shared/s.test.py": "import lib\n",
+    "examples/aa/BUILD": (
+        'python_sources(name="py", sources=["*.py"])\n'
+        'javascript_sources(name="js", sources=["*.mjs"])\n'
+        'files(name="data", sources=["*.txt"])\n'
+        'suite("a.test.py", needs=[":data"])\n'
+        'suite("a2.test.mjs", needs=[":data"])\n'
+        'suite("soundness-harness.mjs", needs=[":data"])\n'
+    ),
+    "examples/aa/board.txt": "",
+    "examples/aa/a.test.py": "import lib\n",
+    "examples/aa/a2.test.mjs": "",
+    "examples/aa/soundness-harness.mjs": "",
+    "examples/bb/BUILD": (
+        'python_sources(name="py", sources=["*.py"])\nsuite("b.test.py")\n'
+    ),
+    "examples/bb/b.test.py": "import other\n",
+    "examples/cc/c.test.mjs": "",
+    "examples/cc/soundness-harness.mjs": "",
+}
+S_ALWAYS = [
+    *LINT,
+    "uv run examples/_shared/s.test.py",
+    "uv run examples/_shared/check_layout.py",
+]
+S_AA = [
+    "uv run examples/aa/a.test.py",
+    "node examples/aa/a2.test.mjs",
+    "node examples/aa/soundness-harness.mjs",
+]
+S_BB = ["uv run examples/bb/b.test.py"]
+S_CC = ["node examples/cc/c.test.mjs", "node examples/cc/soundness-harness.mjs"]
+# Not wired either: the suites the runner names by path.
+S_NAMED = [
+    "uv run examples/fillomino/pipeline.test.py",
+    "uv run examples/fillomino/generate.test.py",
+    *SKYSCRAPER,
+    *HIT_COUNTS,
+]
+S_WHOLE = S_ALWAYS + S_AA + S_BB + S_CC + S_NAMED
+
+# A diff of the selection tree (files edited, files deleted) and the suites
+# Pants and the directory rule select for it between them.
+SELECTED = [
+    # One shared helper: the wired suite that imports it and no other wired
+    # one, and every suite that is not wired, since nothing says what those read.
+    (["examples/_shared/lib.py"], [], S_ALWAYS + S_AA[:1] + S_CC + S_NAMED),
+    # A deleted helper still selects what imported it.
+    ([], ["examples/_shared/other.py"], S_ALWAYS + S_BB + S_CC + S_NAMED),
+    # A wired unit's fixture: that unit's suites, its harness among them.
+    (["examples/aa/board.txt"], [], S_ALWAYS + S_AA),
+    # A wired unit an edge says an unwired one reads.
+    (["examples/bb/b.test.py"], [], S_ALWAYS + S_BB + S_CC),
+    # An unwired unit keeps the directory rule.
+    (["examples/cc/Component.js"], [], S_ALWAYS + S_CC),
+    (["docs/notes.md"], [], S_ALWAYS),
+    (["uv.lock"], [], S_WHOLE),
+]
+
+
+def selection_tree(tmp):
+    tree = wired_tree(tmp)
+    for rel, text in SELECTION_TREE.items():
+        (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tree / rel).write_text(text)
+    for rel in WIRED_UNIT:
+        if rel.startswith("examples/aa/") and rel not in SELECTION_TREE:
+            (tree / rel).unlink()
+    git(tree, "init", "-q")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", "base")
+    git(tree, "tag", "base")
+    return tree
+
+
+def pants_selects_the_wired_suites():
+    """On a tree with wired units, `--changed <base> --list` is lint, the
+    shared tests, the wired suites Pants says the diff reaches, and the
+    directory rule's answer for the suites that are not wired."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = selection_tree(tmp)
+        assert sorted(listing(root=tree)) == sorted(S_WHOLE), listing(root=tree)
+        for changed, deleted, want in SELECTED:
+            with_diff(tree, changed, deleted)
+            got = listing("--changed", "base", root=tree)
+            assert sorted(got) == sorted(want), (
+                f"{changed + deleted} selects {got}, not {want}"
+            )
+
+
+def a_failed_query_widens():
+    """When Pants cannot say what a diff affects, the run is the whole seam
+    and its last line says why: it never narrows on no answer."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = selection_tree(tmp)
+        with_diff(tree, ["examples/aa/board.txt"], [])
+        m = len(S_WHOLE)
+
+        # The stub fails the question.
+        r, ran = run_stubbed(["bash", RUNNER, "--changed", "base"], root=tree)
+        assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+        assert sorted(ran) == sorted(S_WHOLE), f"the run narrowed to {ran}"
+        assert r.stdout.splitlines()[-1] == (
+            f"{m} of {m} suites passed "
+            "(widened: Pants could not say what the diff affects)"
+        ), r.stdout.splitlines()[-1]
+        assert "planted: no answer" in r.stderr, r.stderr
+
+        # An answer that names no wired suite is no answer.
+        r, ran = run_stubbed(
+            ["bash", RUNNER, "--changed", "base"], root=tree, changed=["no such suite"]
+        )
+        assert sorted(ran) == sorted(S_WHOLE), f"the run narrowed to {ran}"
+        assert r.stdout.splitlines()[-1] == (
+            f"{m} of {m} suites passed "
+            "(widened: Pants named what is no wired suite: no such suite)"
+        ), r.stdout.splitlines()[-1]
+
+        # No Pants to ask: the listing is the whole seam.
+        r, _ = run_logged(
+            ["bash", RUNNER, "--list", "--changed", "base"],
+            root=tree,
+            absent=("pants",),
+        )
+        assert r.returncode == 0, r.stderr
+        assert sorted(r.stdout.splitlines()) == sorted(S_WHOLE), r.stdout
+        assert "no `pants` is on the PATH" in r.stderr, r.stderr
+
+
+def a_narrowed_run_says_so():
+    """A narrowed run's last line counts what ran against the whole seam and
+    names the units, so a run of lint and the shared tests alone never reads
+    as the whole seam passing."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = selection_tree(tmp)
+        m = len(S_WHOLE)
+
+        def last_line(changed, affected, want):
+            with_diff(tree, changed, [])
+            r, ran = run_stubbed(
+                ["bash", RUNNER, "--changed", "base"], root=tree, changed=affected
+            )
+            assert r.returncode == 0, f"{changed}:\n{r.stdout}{r.stderr}"
+            assert sorted(ran) == sorted(want), f"{changed} ran {ran}"
+            return r.stdout.splitlines()[-1]
+
+        got = last_line(
+            ["examples/aa/board.txt"],
+            ["examples/aa:a2.test.mjs", "examples/aa:soundness-harness.mjs"],
+            S_ALWAYS + S_AA[1:],
+        )
+        assert got == (
+            f"{len(S_ALWAYS) + 2} of {m} suites passed (narrowed: examples/aa)"
+        ), got
+        got = last_line(["docs/notes.md"], [], S_ALWAYS)
+        assert got == (
+            f"{len(S_ALWAYS)} of {m} suites passed (narrowed: no example touched)"
+        ), got
+        assert len(S_ALWAYS) < m
+
+
 if __name__ == "__main__":
     a_diff_selects_its_suites()
+    pants_selects_the_wired_suites()
+    a_failed_query_widens()
+    a_narrowed_run_says_so()
     wired_suites_go_through_pants()
     wired_suites_run_in_one_pants_call()
     an_undeclared_read_fails_the_suite()
