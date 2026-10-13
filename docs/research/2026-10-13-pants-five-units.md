@@ -5,7 +5,7 @@
 by its own `BUILD` file like `examples/up-to-n` (see
 `2026-10-13-pants-first-unit.md`).
 
-## Wired: 22 of 25 suites
+## Wired: 24 of 27 suites
 
 `bash tests/all.sh --changed origin/spec-809` passed 73 of 115 suites with 0
 failures. Every unit gives each suite the whole unit (Python, JavaScript, data)
