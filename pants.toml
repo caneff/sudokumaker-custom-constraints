@@ -16,7 +16,7 @@ pantsd = false
 process_execution_local_parallelism = 1
 # No caching: a selected suite runs every time.
 local_cache = false
-pants_ignore = ["/.claude/", "/.scratch/", "node_modules/"]
+pants_ignore = ["/.claude/", "/.scratch/", "/.venv/", "node_modules/"]
 
 # Every directory a script puts on sys.path: the shared directory and each
 # example. Inference does not read sys.path.insert; these roots are what make

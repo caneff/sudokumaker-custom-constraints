@@ -9,11 +9,10 @@
 # `needs` (what the suite reads that no import shows), plus pyproject.toml and
 # uv.lock: `uv run` builds the environment inside the sandbox.
 #
-# The toolchain is not sealed, so uv must find in the sandbox what it finds
-# outside it: `python3` from the PATH, its own installs and cache under HOME,
-# and UV_CACHE_DIR where one is set (CI sets it). Without `python3` and with
-# no install of its own, uv downloads the newest CPython, which the locked
-# packages may have no wheel for.
+# The toolchain is not sealed: uv and node come from the PATH, and uv finds
+# its installs and its cache under HOME, or in UV_CACHE_DIR where one is set
+# (CI sets it). UV_PYTHON is the interpreter tests/all.sh names, the one the
+# tree's own environment was built from.
 
 
 def suite(file, needs=()):
@@ -21,9 +20,9 @@ def suite(file, needs=()):
     test_shell_command(
         name=file,
         command=f"{run} {build_file_dir()}/{file}",
-        tools=["uv", "node", "python3"],
+        tools=["uv", "node"],
         workdir="/",
         execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject"],
-        extra_env_vars=["HOME", "UV_CACHE_DIR"],
+        extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
         timeout=600,
     )

@@ -224,6 +224,13 @@ selected=$(cut -f2 <<<"$selected")
 
 if [ "$list_only" = 1 ]; then [ -z "$selected" ] || printf '%s\n' "$selected"; exit 0; fi
 
+# uv builds a wired suite's environment inside the sandbox. It is told to
+# build it from the interpreter the tree's own environment was built from, so
+# a suite gets one Python inside the sandbox and outside it. Left to search,
+# uv takes what the sandbox's PATH offers or downloads the newest CPython.
+python=""
+[ ! -x .venv/bin/python ] || python=$(readlink -f .venv/bin/python)
+
 wired=""
 if [ -e pants.toml ] && grep -qE '^(uv run|node) ' <<<"$selected"; then ask_pants; fi
 
@@ -233,7 +240,7 @@ while IFS= read -r suite; do
   [ -n "$suite" ] || continue
   run=$suite
   if grep -qxF -- "$(target_of "$suite")" <<<"$wired"; then
-    run="pants test $(target_of "$suite")"
+    run="env ${python:+UV_PYTHON=$python} pants test $(target_of "$suite")"
   fi
   if out=$($run 2>&1 </dev/null); then
     echo "PASS $suite"

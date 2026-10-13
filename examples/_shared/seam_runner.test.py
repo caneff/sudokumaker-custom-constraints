@@ -505,6 +505,28 @@ def an_undeclared_read_fails_the_suite():
         assert out[-1].endswith(f"suites passed before {undeclared} failed"), out[-1]
 
 
+def the_sandbox_gets_the_trees_python():
+    """uv builds a wired suite's environment inside the sandbox, from the
+    interpreter the tree's own environment was built from: the runner names
+    it, so uv does not pick another one (or download one) in there."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = wired_tree(tmp)
+        (tree / "examples/aa/BUILD").write_text(
+            'javascript_sources(name="js", sources=["*.mjs"])\n'
+            'suite("python.test.mjs")\n'
+        )
+        (tree / "examples/aa/python.test.mjs").write_text(
+            "console.log('UV_PYTHON=' + process.env.UV_PYTHON)\nprocess.exit(1)\n"
+        )
+        base = pathlib.Path(sys.executable).resolve()
+        (tree / ".venv/bin").mkdir(parents=True)
+        (tree / ".venv/bin/python").symlink_to(base)
+        r, _ = run_logged(["bash", RUNNER], root=tree, real=("node", "pants"))
+        out = r.stdout.splitlines()
+        assert "FAIL node examples/aa/python.test.mjs" in out, r.stdout + r.stderr
+        assert f"UV_PYTHON={base}" in out, f"not the tree's interpreter:\n{r.stdout}"
+
+
 def no_pants_runs_no_suite():
     """A tree with a pants.toml and no working Pants exits 2 naming the
     install, and reports no suite as passed: a wired suite never falls back to
@@ -531,6 +553,7 @@ if __name__ == "__main__":
     a_diff_selects_its_suites()
     wired_suites_go_through_pants()
     an_undeclared_read_fails_the_suite()
+    the_sandbox_gets_the_trees_python()
     no_pants_runs_no_suite()
     the_recipes_call_the_runner()
     every_cross_unit_read_is_an_edge()

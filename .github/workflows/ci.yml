@@ -53,15 +53,6 @@ jobs:
           gha-cache-key: v0
           named-caches-hash: ${{ hashFiles('pants.toml') }}
 
-      - name: TEMP diagnose sandbox python (#814)
-        if: matrix.recipe == 'check'
-        run: |
-          echo "PATH=$PATH"; which -a python3 python || true
-          pants --keep-sandboxes=always test examples/up-to-n:end-to-end.test.mjs 2>&1 | grep -E "Preserving|Using CPython|Downloading|✓|✕" || true
-          for sb in /tmp/pants-sandbox-*; do echo "== $sb"; ls -a $sb | head -20; for f in $sb/_binary_shims_*/*; do echo "-- $f"; cat $f; done; done
-          sb=$(ls -d /tmp/pants-sandbox-*/_binary_shims_* | tail -1)
-          cd $(dirname $sb) && env -i HOME=$HOME UV_CACHE_DIR=$UV_CACHE_DIR PATH=$sb $sb/uv python find -v 2>&1 | tail -25 || true
-
       - name: Gate (${{ matrix.recipe }})
         if: github.event_name == 'pull_request' || matrix.recipe == 'check'
         run: uvx --from rust-just just ${{ matrix.recipe }}
