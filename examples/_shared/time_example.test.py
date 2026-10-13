@@ -711,16 +711,23 @@ if __name__ == "__main__":
     # Machine load (#387): the driver's busy verdict survives combine_reps and
     # reaches the pasted row's verdict cell; the verdict word itself is unchanged.
     def rep(median, loads, busy):
-        return {"median": median, "version": "v1", "loads": loads, "busy": busy,
-                "loadThreshold": 16}
+        return {
+            "median": median,
+            "version": "v1",
+            "loads": loads,
+            "busy": busy,
+            "loadThreshold": 16,
+        }
 
     quiet = time_example.combine_reps(
         "b.txt", [rep(100, [{"before": 1.0, "after": 2.0}], False)]
     )
     hot = time_example.combine_reps(
         "b.txt",
-        [rep(100, [{"before": 1.0, "after": 2.0}], False),
-         rep(100, [{"before": 27.7, "after": 3.0}], True)],
+        [
+            rep(100, [{"before": 1.0, "after": 2.0}], False),
+            rep(100, [{"before": 27.7, "after": 3.0}], True),
+        ],
     )
     assert quiet["busy"] is False and hot["busy"] is True
     assert hot["maxLoad"] == 27.7 and hot["loadThreshold"] == 16
@@ -731,9 +738,10 @@ if __name__ == "__main__":
     assert flagged.endswith("| PASS (BUSY load 27.7 > 16) |"), flagged
     assert time_example._flag_busy(row, verdict, "") == row
     # A driver without load fields (an older JSON line) is not busy.
-    assert time_example.combine_reps(
-        "b.txt", [{"median": 5, "version": "v1"}]
-    )["busy"] is False
+    assert (
+        time_example.combine_reps("b.txt", [{"median": 5, "version": "v1"}])["busy"]
+        is False
+    )
 
     # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the
