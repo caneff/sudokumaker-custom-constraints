@@ -578,6 +578,7 @@ class Lane:
     A lane owns everything that differs between kinds of board: its document
     (`build_doc`), its drawn groups (`drawn`, None for a lane that draws
     none), its own half of `check` (`_check_lane`), its file names (`files`),
+    the sentence its rules text opens with (`rules_prefix`),
     the backend file its constraint runs (`backend`), and what a rebuild
     refreshes rather than compares (`generated`: the shared backends' titles;
     `derived`: constraint types recomputed from the board). `paths` is

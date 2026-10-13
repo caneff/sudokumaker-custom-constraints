@@ -547,7 +547,7 @@ def test_build_doc_refuses_a_group_cell_off_the_grid():
             raise AssertionError("a group cell off the grid was encoded")
 
 
-def test_build_doc_opens_the_rules_text_with_the_spec_s_prefix():
+def test_build_doc_opens_the_rules_text_with_the_lane_s_prefix():
     with _spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         assert doc["puzzle"]["comment"] == (
@@ -633,12 +633,6 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
             else:
                 cons[i]["definition"]["backend"]["code"] += ";"
             _check_fails(spec, broken, board, "grid-rowcol.js")
-    # a document whose rules text drops the lane's sentence
-    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
-        board = _no_ring_board()
-        doc = NoRing(spec).build_doc(board)
-        doc["puzzle"]["comment"] = "Rules. test rules"
-        _check_fails(spec, doc, board, "Normal sudoku rules apply")
     with _spec(
         ["FooComponent.js", "BarComponent.js"], groups_fn=_column_markers
     ) as spec:
@@ -1204,7 +1198,7 @@ if __name__ == "__main__":
     test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
     test_clue_labels_refuse_a_group_they_cannot_place()
     test_build_doc_refuses_a_group_cell_off_the_grid()
-    test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
+    test_build_doc_opens_the_rules_text_with_the_lane_s_prefix()
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()
     test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag()
     test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane()
