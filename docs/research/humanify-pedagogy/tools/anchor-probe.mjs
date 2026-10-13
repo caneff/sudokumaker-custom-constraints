@@ -1,6 +1,6 @@
 // Probe for issues #445 and #447: click three in-body a.ref links whose targets
-// are far apart on the built Constraint API page, plus every link whose target
-// sits inside the collapsed "Under the hood" <details> (the section is
+// are far apart on the built Constraint API page, plus one link per target
+// that sits inside the collapsed "Under the hood" <details> (the section is
 // re-collapsed before each), wait 1.2s, and report
 // where each target actually landed relative to the viewport top. A landed
 // link reads 0..20px (the page's scroll-margin-top is 12px); a smooth-scroll
@@ -66,9 +66,8 @@ new Promise(async (resolve) => {
     if (links.length < 3) return links
     return [links[0], links[Math.floor(links.length / 2)], links[links.length - 1]]
   }
-  // One link per hood target, from outside the hood where possible. The drift
-  // depends on where the nav entry sits, so every target is tried: a sample of
-  // two missed all three of today's offenders.
+  // One a.ref link per hood target, from outside the hood where possible. The
+  // drift depends on where the nav entry sits, so every target is tried.
   function hoodLinks() {
     if (!hood) return []
     var byTarget = {}
@@ -110,6 +109,7 @@ const results = JSON.parse(out)
 // A page with too few main-body ref links (a bad path, a 404, a page that
 // changed shape) must fail loudly rather than report PASS on zero evidence.
 const nHood = results.filter((r) => r.hood).length
+// Fewer than two hood targets cannot exercise the hood path at all.
 if (results.length - nHood < 3 || nHood < 2) {
   console.error(`FAIL: found ${results.length - nHood} body and ${nHood} hood link(s) to test (need 3 and 2) — check the built file and URL`)
   process.exit(1)
