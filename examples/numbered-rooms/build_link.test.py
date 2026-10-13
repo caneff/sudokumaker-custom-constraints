@@ -8,8 +8,8 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from board_checks import check_local_board
 import build_link
+from board_checks import check_local_board
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from link_swap import swap_build
@@ -119,7 +119,7 @@ def check_refresh_drives_derived_links():
     """`refresh()` rewrites PUZZLE_LINK.txt and then the three links derived
     from it, so one refresh leaves all four in step. Run in a scratch copy of
     the four committed links: nothing here touches the tree."""
-    names = ("PUZZLE_LINK.txt",) + DERIVED
+    names = ("PUZZLE_LINK.txt", *DERIVED)
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         for n in names:
@@ -128,8 +128,7 @@ def check_refresh_drives_derived_links():
         build_link.refresh(root)
         for n in names:
             assert (root / n).read_bytes() == (HERE / n).read_bytes(), (
-                f"{n}: a refresh on the unchanged tree must rebuild it byte "
-                "for byte"
+                f"{n}: a refresh on the unchanged tree must rebuild it byte for byte"
             )
 
         # Change the rules text and the digit range: each must reach the
