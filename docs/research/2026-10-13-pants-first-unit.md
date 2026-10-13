@@ -42,9 +42,22 @@ the commit `uv.lock` pins.
 
 That is with uv's cache warm, which `HOME` in the sandbox's environment makes
 reachable. **Not measured: a cold uv cache.** The sandbox's `PATH` holds only
-`uv` and `node`, and no `git`, so a fetch of the git dependency from inside
-the sandbox is expected to fail. A box or a CI leg that has run `uv sync` (CI
-does, before the gate) has the cache warm.
+the tools the suite names, and no `git`, so a fetch of the git dependency
+from inside the sandbox is expected to fail.
+
+## What CI showed: the sandbox must see the Python and the cache uv uses outside
+
+The first CI run of this change (run 38387790715, `check` leg) failed on
+`node examples/up-to-n/end-to-end.test.mjs`. Outside the sandbox the leg's
+`uv sync` printed `Using CPython 3.12.3 interpreter at: /usr/bin/python3`.
+Inside it, with only `uv` and `node` on the `PATH` and no uv-installed Python
+under `HOME`, uv downloaded CPython 3.15.0 and stopped: `ortools==9.15.6755`
+has no wheel for `cp315`. This box never showed it, because uv has its own
+CPython 3.14 installed under `HOME` and prefers it.
+
+Two changes in `tests/pants_prelude.py` answer it: `python3` is one of the
+sandbox's tools, and `UV_CACHE_DIR` is passed through (`astral-sh/setup-uv`
+sets it on CI, so `HOME` alone did not reach the cache `uv sync` had warmed).
 
 ## Pants's download cache is shared across worktrees
 
