@@ -12,20 +12,20 @@
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadAt } = makeIo(HERE)
+const { load } = makeIo(HERE)
 
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('SkyscraperPairComponent.js', NAMES)
 // The file carried a different name at the pinned commit, so the floor names its own path.
 const REF_FILE = 'SkyscraperLineComponent.js'
-const ref = loadAt(REF_COMMIT, REF_FILE, NAMES)
+const ref = load(`.golden/${REF_FILE.replace('.js', `.${REF_COMMIT}.js`)}`, NAMES)
 
 const ONE_SIDED_REF_COMMIT = 'c776ab7'
 const ONE_SIDED_REF_FILE = 'SkyscraperRunningCapComponent.js'
 const ONE_SIDED_FILE = 'SkyscraperOneSidedComponent.js'
 const oneSidedCur = load(ONE_SIDED_FILE, NAMES)
-const oneSidedRef = loadAt(ONE_SIDED_REF_COMMIT, ONE_SIDED_REF_FILE, NAMES)
+const oneSidedRef = load(`.golden/${ONE_SIDED_REF_FILE.replace('.js', `.${ONE_SIDED_REF_COMMIT}.js`)}`, NAMES)
 
 const { rnd } = makeRng(31415)
 

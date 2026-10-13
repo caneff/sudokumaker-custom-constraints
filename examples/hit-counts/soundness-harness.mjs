@@ -26,7 +26,7 @@ import { frameGeometry } from '../_shared/frame-geometry.mjs'
 import { CLUES, cell, LINES, CANDS, TRUTH, HOUSES, CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE } from './fixture.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadAt } = makeIo(HERE)
+const { load } = makeIo(HERE)
 const { rnd } = makeRng()
 
 installGlobals(0, 9)
@@ -270,7 +270,7 @@ console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the hous
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
-const caseSweep = loadAt(CASE_SWEEP_COMMIT, CASE_SWEEP_REF_FILE, ['setParams', 'update', 'validate'])
+const caseSweep = load(`.golden/${CASE_SWEEP_REF_FILE.replace('.js', `.${CASE_SWEEP_COMMIT}.js`)}`, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,
   draw: () => {

@@ -92,11 +92,11 @@ assert.strictEqual(weaker, 0)
 // directed silent-region demo below is what only the growth test passes.
 assert.ok(stronger > 0, 'the component must remove a candidate the baseline keeps on some state')
 
-// The fixpoint floor: rung 2 (the growth test) exactly as it shipped, read out
-// of git. The component must never prune one candidate less than it, and must
-// reach something it does not -- the cut-starve demo at the end of this file.
+// The fixpoint floor: rung 2 (the growth test) exactly as it shipped, a frozen
+// copy in `.golden/` (the Pants sandbox holds no git history). The component
+// must never prune one candidate less than it, and must reach something it does not -- the cut-starve demo at the end of this file.
 const SHIPPED = 'ac20771'
-const shippedRung2 = io.loadAt(SHIPPED, 'FillominoComponent.js', ['setParams', 'update'])
+const shippedRung2 = io.load(`.golden/FillominoComponent.${SHIPPED}.js`, ['setParams', 'update'])
 const { rnd: frnd } = makeRng(4242)
 let floorStates = 0
 let pastRung2 = 0
