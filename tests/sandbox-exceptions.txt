@@ -22,3 +22,8 @@ examples/_shared/ci_workflow.test.py `pants peek failed`: `IntrinsicError: Faile
 examples/_shared/gate.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
 examples/_shared/recipe_discovery.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
 examples/_shared/seam_runner.test.py a scratch-tree diff selects no example's suites, `AssertionError: ['examples/fillomino/Component.js'] selects ['npx standard', ..., 'uv run examples/_shared/check_layout.py']`, cause not found; past that it calls the same `pants_suites` on the real tree
+#
+# A second `uv run` under the suite's own, with uv 0.13.0 (CI's version): the
+# runner hands every sandbox UV_PYTHON, and that uv then builds the inner
+# run's environment from that interpreter and not from the project's.
+examples/_shared/time_example.test.py on CI `subprocess.CalledProcessError: Command '['uv', 'run', '--with', 'lzstring', '/tmp/tmp<id>/backend-changed/build_link.py', ...]' returned non-zero exit status 1`; the inner run's own error, reproduced here with uv 0.13.0, is `ModuleNotFoundError: No module named 'sudoku_kit'`

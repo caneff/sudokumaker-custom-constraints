@@ -72,11 +72,10 @@ for file in [
 ]:
     suite(file, needs=["//:tree"])
 
-# The same, and they ask git for the tracked files or build a repository.
+# The same, and they ask git for the tracked files.
 for file in [
     "bundle-load.test.mjs",
     "sudoku_kit_source.test.py",
-    "time_example.test.py",
 ]:
     suite(file, needs=["//:tree"], tools=["git"])
 
