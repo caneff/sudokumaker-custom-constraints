@@ -269,13 +269,19 @@ def test_a_lane_refuses_a_spec_of_another_kind():
 
 
 def test_run_and_rebuild_check_the_link_before_writing_it():
-    # The lanes' entry points, not only `check` called by hand: a Spec whose
-    # rules text drops the project sentence fails inside run and rebuild.
+    # The lanes' entry points, not only `check` called by hand: a lane whose
+    # document drops the project sentence fails inside run and rebuild.
+    class Unruled(RingGlobal):
+        def build_doc(self, board):
+            doc = super().build_doc(board)
+            doc["puzzle"]["comment"] = "Rules. test rules"
+            return doc
+
     n, bh, bw = 4, 2, 2
     fields = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
-    with _spec(["FooComponent.js"], rules_prefix="Rules. ", **fields) as spec:
+    with _spec(["FooComponent.js"], **fields) as spec:
         try:
-            RingGlobal(spec).run(n, bh, bw, range(101, 103))
+            Unruled(spec).run(n, bh, bw, range(101, 103))
         except AssertionError as e:
             assert "Normal sudoku rules apply" in str(e), e
         else:
@@ -283,9 +289,8 @@ def test_run_and_rebuild_check_the_link_before_writing_it():
         assert not RingGlobal(spec).files(n)[0].exists()
     with _spec(["FooComponent.js"], **fields) as spec:
         main(spec, [str(n), str(bh), str(bw), "2"])
-        unruled = dataclasses.replace(spec, rules_prefix="Rules. ")
         try:
-            RingGlobal(unruled).rebuild(n)
+            Unruled(spec).rebuild(n)
         except AssertionError as e:
             assert "Normal sudoku rules apply" in str(e), e
         else:
@@ -542,20 +547,14 @@ def test_build_doc_refuses_a_group_cell_off_the_grid():
             raise AssertionError("a group cell off the grid was encoded")
 
 
-def test_build_doc_opens_the_rules_text_with_the_spec_s_prefix():
+def test_build_doc_opens_the_rules_text_with_the_lane_s_prefix():
     with _spec(["FooComponent.js"]) as spec:
         _, doc, _ = _build(spec)
         assert doc["puzzle"]["comment"] == (
             "Normal sudoku rules apply on the inner grid. test rules"
         )
-    with _spec(["FooComponent.js"], rules_prefix="Normal sudoku rules apply. ") as spec:
-        _, doc, _ = _build(spec)
-        assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
-    with _spec(
-        ["FooComponent.js"],
-        groups_fn=_column_markers,
-        rules_prefix="Normal sudoku rules apply. ",
-    ) as spec:
+    # a no-ring board has no inner grid to name: the lane picks the sentence
+    with _spec(["FooComponent.js"], groups_fn=_column_markers) as spec:
         doc = NoRing(spec).build_doc(_no_ring_board())
         assert doc["puzzle"]["comment"] == "Normal sudoku rules apply. test rules"
 
@@ -574,7 +573,6 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
     with _spec(
         ["FooComponent.js"],
         groups_fn=_column_markers,
-        rules_prefix="Normal sudoku rules apply. ",
     ) as spec:
         board = _no_ring_board()
         doc = NoRing(spec).build_doc(board)
@@ -635,14 +633,6 @@ def test_check_accepts_a_no_ring_board_and_still_catches_its_faults():
             else:
                 cons[i]["definition"]["backend"]["code"] += ";"
             _check_fails(spec, broken, board, "grid-rowcol.js")
-    # the Spec chooses the sentence, but not one without the project rule
-    with _spec(
-        ["FooComponent.js"], groups_fn=_column_markers, rules_prefix="Rules. "
-    ) as spec:
-        board = _no_ring_board()
-        _check_fails(
-            spec, NoRing(spec).build_doc(board), board, "Normal sudoku rules apply"
-        )
     with _spec(
         ["FooComponent.js", "BarComponent.js"], groups_fn=_column_markers
     ) as spec:
@@ -662,7 +652,6 @@ def test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag():
             clue_fn=_first_digit,
             cp_sat_clue_fn=_post_first_digit,
             groups_fn=_column_markers,
-            rules_prefix="Normal sudoku rules apply. ",
         ) as spec:
             assert lane_kinds(spec) == (NoRing,)
             main(spec, [str(n), str(bh), str(bw), "2", *flags])
@@ -680,7 +669,6 @@ def test_rebuild_reproduces_a_no_ring_link_and_guards_its_typed_clues():
         clue_fn=_first_digit,
         cp_sat_clue_fn=_post_first_digit,
         groups_fn=_column_markers,
-        rules_prefix="Normal sudoku rules apply. ",
     ) as spec:
         main(spec, [str(n), str(bh), str(bw), "2", "--local"])
         link_path, gen_path = NoRing(spec).files(n)
@@ -1210,7 +1198,7 @@ if __name__ == "__main__":
     test_build_doc_without_a_ring_numbers_wide_boxes_across_the_row()
     test_clue_labels_refuse_a_group_they_cannot_place()
     test_build_doc_refuses_a_group_cell_off_the_grid()
-    test_build_doc_opens_the_rules_text_with_the_spec_s_prefix()
+    test_build_doc_opens_the_rules_text_with_the_lane_s_prefix()
     test_check_accepts_a_no_ring_board_and_still_catches_its_faults()
     test_main_builds_a_no_ring_spec_s_one_lane_under_any_flag()
     test_each_ring_lane_s_check_holds_a_built_document_to_its_own_lane()

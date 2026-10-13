@@ -38,13 +38,12 @@ from minify import minify_file
 from sm_document import code_constraint, find_constraint
 from sudoku_kit import link_codec
 
-# Every generated link opens with a rules sentence (project rule). The Spec
-# picks it (`Spec.rules_prefix`); this is the default, and every choice opens
-# with REQUIRED_RULES_OPENING. A no-ring board has no inner grid to name, so
-# it opens with NO_RING_RULES_PREFIX instead.
+# Every generated link opens with a rules sentence (project rule). The board's
+# shape picks it, through its lane's `rules_prefix`: a ring board opens with
+# RULES_PREFIX, and a no-ring board, which has no inner grid to name, with
+# NO_RING_RULES_PREFIX.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
-REQUIRED_RULES_OPENING = "Normal sudoku rules apply"
 
 
 @dataclass
@@ -104,9 +103,6 @@ class Spec:
     # them: grid (row, column) cells and the value typed into each group
     # (None for an empty one). None, the default, is a ring example.
     groups_fn: Callable | None = None
-    # The sentence the rules text opens with. A no-ring board has no "inner
-    # grid" to name, so its example passes its own.
-    rules_prefix: str = RULES_PREFIX
 
 
 # Seconds per solve in `unique`. A frame board this size is proved in
@@ -582,6 +578,7 @@ class Lane:
     A lane owns everything that differs between kinds of board: its document
     (`build_doc`), its drawn groups (`drawn`, None for a lane that draws
     none), its own half of `check` (`_check_lane`), its file names (`files`),
+    the sentence its rules text opens with (`rules_prefix`),
     the backend file its constraint runs (`backend`), and what a rebuild
     refreshes rather than compares (`generated`: the shared backends' titles;
     `derived`: constraint types recomputed from the board). `paths` is
@@ -590,6 +587,9 @@ class Lane:
 
     spec: Spec
     derived = frozenset()
+    # The sentence the rules text opens with; a lane whose board has no inner
+    # grid to name overrides it.
+    rules_prefix = RULES_PREFIX
 
     def __post_init__(self):
         kinds = lane_kinds(self.spec)
@@ -631,14 +631,8 @@ class Lane:
         spec, n = self.spec, board.n
         back = link_codec.decode_puzzle(link)
         assert back == doc, "link does not decode back to the built document"
-        # The Spec picks the sentence, so the builder cannot be the only
-        # witness to it: whatever an example chooses still opens with the
-        # project rule.
-        assert spec.rules_prefix.startswith(REQUIRED_RULES_OPENING), (
-            f"the Spec's rules prefix must open with {REQUIRED_RULES_OPENING!r}"
-        )
-        assert doc["puzzle"]["comment"].startswith(spec.rules_prefix), (
-            "the rules text must open with the required sentence"
+        assert doc["puzzle"]["comment"].startswith(self.rules_prefix), (
+            f"the rules text must open with the required sentence {self.rules_prefix!r}"
         )
         # A cell holds a value only when it is a given: a non-given value
         # ships as an entered digit, and the recipient opens a board already
@@ -828,7 +822,7 @@ class _RingLane(Lane):
             *cosmetics(W, cells),
         ]
 
-        comment = spec.rules_prefix + spec.comment_fn(n) + self._rules_close(board)
+        comment = self.rules_prefix + spec.comment_fn(n) + self._rules_close(board)
         return puzzle_document(spec, board, W, cells, constraints, comment)
 
 
