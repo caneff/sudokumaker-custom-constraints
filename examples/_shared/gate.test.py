@@ -21,7 +21,10 @@
 #     environment and nothing resolves per call;
 #   - the seam runner (`tests/all.sh`), which the recipes call and a worker
 #     runs narrowed, reaches exactly the suites check-full reaches, on the real
-#     tree and on a scratch tree with a new example planted.
+#     tree and on a scratch tree with a new example planted;
+#   - every test file is run by exactly one mechanism: the runner's own loop,
+#     or Pants in its sandbox for a suite Pants has a test target for. A file
+#     run by both, or by neither, fails here.
 #
 #   uv run examples/_shared/gate.test.py
 
@@ -32,7 +35,14 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from gate_lib import commands, gate_tree, runner_listing
+from gate_lib import (
+    by_mechanism,
+    commands,
+    gate_tree,
+    pants_suites,
+    run_logged,
+    runner_listing,
+)
 
 # The heavy tier, named file by file: `just test` skips exactly these by path.
 HEAVY = {
@@ -122,6 +132,30 @@ def both_reach(demanded, root=ROOT):
     )
 
 
+def one_mechanism_per_file():
+    """A whole run sends every suite Pants has a test target for through
+    Pants and no other, and runs every test file once: a wired suite the loop
+    also runs is run by both, and one neither reaches is run by nothing."""
+    r, log = run_logged(["bash", "tests/all.sh"])
+    assert r.returncode == 0, f"a stubbed full run failed:\n{r.stdout}{r.stderr}"
+    loop, pants = by_mechanism(log)
+    wired = set(pants_suites().values())
+    assert "uv run examples/up-to-n/build_link.test.py" in wired, (
+        f"Pants has no test target for the up-to-n suites: {sorted(wired)}"
+    )
+    both = sorted(set(loop) & (set(pants) | wired))
+    assert not both, f"run by the loop and wired into Pants: {both}"
+    assert sorted(pants) == sorted(wired), (
+        f"Pants targets the runner does not run: {sorted(wired - set(pants))}; "
+        f"run through Pants twice or with no target: "
+        f"{sorted(c for c in pants if pants.count(c) > 1 or c not in wired)}"
+    )
+    for suite in sorted(on_disk()):
+        n = (loop + pants).count(suite)
+        assert n == 1, f"{suite} is run {n} times, not once"
+    return len(pants)
+
+
 if __name__ == "__main__":
     full = commands("check-full")
     fast = commands("check")
@@ -157,4 +191,9 @@ if __name__ == "__main__":
     only_fast = set(fast) - set(full)
     assert not only_fast, f"check runs steps check-full skips: {sorted(only_fast)}"
 
-    print(f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps: ok")
+    wired = one_mechanism_per_file()
+
+    print(
+        f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps, "
+        f"{wired} through Pants: ok"
+    )

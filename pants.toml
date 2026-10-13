@@ -1,0 +1,38 @@
+# Pants runs the suites of each wired unit in its sandbox, behind the seam
+# runner (tests/all.sh); nobody calls it by hand to run the gate. A unit is
+# wired by its own BUILD file, so wiring one adds no line here.
+[GLOBAL]
+pants_version = "2.33.1"
+backend_packages = [
+  "pants.backend.python",
+  "pants.backend.shell",
+  "pants.backend.experimental.adhoc",
+  "pants.backend.experimental.javascript",
+]
+build_file_prelude_globs = ["tests/pants_prelude.py"]
+# No daemon: many worktrees share this box, and each would hold a resident one.
+pantsd = false
+# One process at a time: the gate is one core.
+process_execution_local_parallelism = 1
+# No caching: a selected suite runs every time.
+local_cache = false
+pants_ignore = ["/.claude/", "/.scratch/", "node_modules/"]
+
+# Every directory a script puts on sys.path: the shared directory and each
+# example. Inference does not read sys.path.insert; these roots are what make
+# `import framebuild` resolve.
+[source]
+root_patterns = ["/examples/*"]
+
+[python]
+interpreter_constraints = [">=3.11"]
+
+[python-infer]
+ambiguity_resolution = "by_source_root"
+unowned_dependency_behavior = "ignore"
+
+[nodejs-infer]
+unowned_dependency_behavior = "ignore"
+
+[test]
+force = true
