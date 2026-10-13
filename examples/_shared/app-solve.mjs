@@ -44,7 +44,7 @@
 
 import fs from 'fs'
 import os from 'os'
-import { parseArgs, repLine, medianLine, solveSummary, readLoad, busyMessage, busyThreshold } from './app-solve-lib.mjs'
+import { parseArgs, repLine, medianLine, solveSummary, readLoad, busyMessage, timeReps, loadSummary } from './app-solve-lib.mjs'
 import { withApp, solveInApp } from './app-session.mjs'
 
 const { linkFile, reps, iconName, ringClues, afterLogical, refuseBusy } = parseArgs(process.argv.slice(2))
@@ -56,11 +56,11 @@ const loadLog = []
 function noteLoad (when) {
   const load = readLoad()
   loadLog.push({ when, load })
-  const msg = busyMessage([{ when, load }], cpus)
+  const msg = busyMessage(load, when, cpus)
   if (msg) {
     console.error(msg)
     if (refuseBusy) {
-      console.error('refused: --refuse-busy is set and the machine is busy; no timing was taken.')
+      console.error(`refused: --refuse-busy is set and the machine was busy ${when}; this run is void.`)
       process.exit(2)
     }
   }
@@ -71,19 +71,16 @@ noteLoad('before the run')
 const link = fs.readFileSync(linkFile, 'utf8').trim()
 
 const rows = await withApp({ live: false }, async app => {
-  const results = []
-  for (let k = 0; k < reps; k++) {
+  return timeReps(reps, noteLoad, async () => {
     // A fresh context per rep keeps the reps independent (see withApp).
     const page = await app.newPage()
     // A component under measurement may console.log('[probe] ...') counters
     // (calls, skips); relay only those lines, the site's own logging stays out.
     page.on('console', m => { if (m.text().startsWith('[probe]')) console.log(m.text()) })
-    const loadBefore = noteLoad(`before rep ${k + 1}`)
     const r = await solveInApp(page, link, { iconName, afterLogical, ringClues, name: linkFile })
-    results.push({ ...r, loadBefore, loadAfter: noteLoad(`after rep ${k + 1}`) })
     await app.closePage(page) // flushes a HAR recording
-  }
-  return results
+    return r
+  })
 })
 
 const mode = afterLogical ? 'after-logical' : 'cold'
@@ -96,11 +93,4 @@ console.log(medianLine(rows))
 // version so every printed row names the build it measured, and the rep
 // counts (solveSummary) so the driver can name a null median's timeout.
 const version = rows.map(r => r.version).find(Boolean) ?? null
-console.log('JSON: ' + JSON.stringify({
-  ...solveSummary(rows),
-  version,
-  cpus,
-  loadThreshold: busyThreshold(cpus),
-  loads: rows.map(r => ({ before: r.loadBefore, after: r.loadAfter })),
-  busy: busyMessage(loadLog, cpus) !== null
-}))
+console.log('JSON: ' + JSON.stringify({ ...solveSummary(rows), version, ...loadSummary(rows, loadLog, cpus) }))

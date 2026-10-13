@@ -63,19 +63,49 @@ export const busyThreshold = cpus => cpus / 2
 // drives the CLI on a busy box without having one.
 export function readLoad (env = process.env) {
   const stub = env.APP_SOLVE_LOADAVG
-  return stub != null && stub !== '' ? parseFloat(stub) : os.loadavg()[0]
+  if (stub == null || stub === '') return os.loadavg()[0]
+  const load = Number(stub)
+  // A stub that is not a number would read as a quiet machine (NaN is never
+  // above a threshold), so it is refused by name.
+  if (!Number.isFinite(load)) throw new Error(`APP_SOLVE_LOADAVG must be a number, got '${stub}'`)
+  return load
 }
 
-// `loads` is [{ when, load }]. The warning text naming the worst reading and
-// the threshold, or null when every reading is at or below the threshold.
-export function busyMessage (loads, cpus) {
+// A reading is busy when it is above the threshold; at the threshold is quiet.
+export const isBusy = (load, cpus) => load > busyThreshold(cpus)
+
+// The warning text for one reading, or null when it is quiet.
+export function busyMessage (load, when, cpus) {
+  if (!isBusy(load, cpus)) return null
   const limit = busyThreshold(cpus)
-  const worst = loads.filter(l => l.load > limit).sort((a, b) => b.load - a.load)[0]
-  if (!worst) return null
-  return `WARNING: machine busy: one-minute load average ${worst.load.toFixed(2)} ${worst.when} ` +
+  return `WARNING: machine busy: one-minute load average ${load.toFixed(2)} ${when} ` +
     `is above ${limit} (half of ${cpus} cores). A solve time read now is not trustworthy; ` +
     'time on a quiet machine (docs/real-app-timing.md, "Quiet machine"). ' +
     'Pass --refuse-busy to stop instead of warn.'
+}
+
+// Run `reps` reps, reading the load before and after each through `noteLoad`
+// (which may throw to refuse). Returns each rep's result with loadBefore and
+// loadAfter added. `runOne(k)` times rep k.
+export async function timeReps (reps, noteLoad, runOne) {
+  const rows = []
+  for (let k = 0; k < reps; k++) {
+    const loadBefore = noteLoad(`before rep ${k + 1}`)
+    const r = await runOne(k)
+    rows.push({ ...r, loadBefore, loadAfter: noteLoad(`after rep ${k + 1}`) })
+  }
+  return rows
+}
+
+// The JSON line's load fields: every rep's before/after, the threshold, and
+// whether any reading anywhere in the run (loadLog, [{ when, load }]) was busy.
+export function loadSummary (rows, loadLog, cpus) {
+  return {
+    cpus,
+    loadThreshold: busyThreshold(cpus),
+    loads: rows.map(r => ({ before: r.loadBefore, after: r.loadAfter })),
+    busy: loadLog.some(l => isBusy(l.load, cpus))
+  }
 }
 
 // Each verdict the app can print, in the order readVerdict tries them: a

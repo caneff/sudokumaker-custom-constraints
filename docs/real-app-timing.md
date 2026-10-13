@@ -284,8 +284,10 @@ the method, not a running log.
   before and after every rep, prints both on the rep row (`load 1.25->3.50`) and
   in the JSON line (`loads`, `loadThreshold`, `busy`), and prints a `WARNING`
   on stderr when either reading is above **half the core count**. `just time`
-  forwards that warning. Pass `--refuse-busy` to `app-solve.mjs` to exit 2
-  before the next rep instead. A row taken under a warning is not a
+  forwards that warning and marks the pasted row's verdict cell
+  (`PASS (BUSY load 27.7 > 16)`), so the row says so after the terminal is
+  gone. Pass `--refuse-busy` to `app-solve.mjs` to exit 2
+  at the first busy reading instead, which voids the run. A row taken under a warning is not a
   measurement: re-run it once the load is down, and never ship a ratio or the
   #326 absolute ceiling from one. Check with `uptime` before a run.
 - **Match the technique set.** The Solutions finder defaults to "singles only".
