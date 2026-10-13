@@ -13,10 +13,14 @@ dropping it fails the suite on that file.
 | Suite | Declared (each by name) | Dropped input -> the failure |
 |---|---|---|
 | `whole-grid-mains.test.mjs` | `isofill/main.js`, `fillomino/main.js` | `ENOENT: no such file or directory, open 'examples/fillomino/main.js'` |
-| `whole-grid-backends.test.mjs` | the same two | BACKENDS_FAILURE |
+| `whole-grid-backends.test.mjs` | the same two | `ENOENT: no such file or directory, open 'examples/fillomino/main.js'` |
 | `probe_link.test.py` | `skyscraper/PUZZLE_LINK_6x6.txt`, `isofill/PUZZLE_LINK.txt` | `FileNotFoundError ... 'examples/skyscraper/PUZZLE_LINK_6x6.txt'` |
 | `bundle-solve.test.mjs` | `house-gac/base/PUZZLE_LINK.txt`, `numbered-rooms/PUZZLE_LINK_clued.txt` | `FileNotFoundError ... 'examples/numbered-rooms/PUZZLE_LINK_clued.txt'` |
 | `link_swap.test.py` | 5 boards and components, 5 `build_link.py`, 5 `example.toml`, `house-gac/main.js` | each fails on its own file |
+
+`just_list.test.py` reads only the justfile (`just --dump`), so it declares
+`//:justfile`; without it, `CalledProcessError: Command '[... 'just',
+'--justfile', 'justfile', '--dump', ...]' returned non-zero exit status 1`.
 
 Declared and then dropped because the suite passed without them: the shared
 `:data` (none of the three reads a shared `.toml` or `.har`), and for
