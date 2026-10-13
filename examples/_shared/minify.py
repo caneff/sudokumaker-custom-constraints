@@ -52,10 +52,13 @@
 # the build naming the line. `keep_comments=True` never refuses on the text --
 # every line survives as written, bar the lint directive and the blank line
 # after it. The prune still has to tell code from commentary, so each kept line
-# carries a comment-stripped view (`_code_view`) that the dynamic-dispatch guard
-# and the reference count read; a line the scan cannot read is its own view,
-# which at worst keeps a function or refuses the prune, never prunes wrongly.
+# carries a comment-stripped view (`_code_view`) that the dynamic-dispatch guard,
+# the brace count and the reference count read. A line the scan cannot read is
+# marked unreadable, and the prune refuses outright when a spliced-in file is
+# present: past such a line the view can no longer tell a template literal's
+# text from a comment, so it cannot vouch that a name is unreferenced.
 
+import collections
 import pathlib
 import re
 
@@ -81,6 +84,16 @@ _DYNAMIC_RE = re.compile(
 )
 
 
+# One assembled line: `text` as it ships, whether it came from a `#include`,
+# `code` (the line with every comment removed -- `text` itself outside
+# `keep_comments`), and whether the scan could read it to make that view.
+_Line = collections.namedtuple("_Line", "text included code readable")
+
+
+class _ScanRefusal(AssertionError):
+    """A construct the comment scan cannot read (it names the line)."""
+
+
 def minify_file(path, keep_comments=False):
     """`minify_js` on `path`'s text, with includes resolved against its own
     directory. Every caller that ships a file's code into a link uses this."""
@@ -102,19 +115,19 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=(), keep_comments=Fal
     a link whose whole point is a reader inside the app's code box learning
     the filter from its own commentary. Includes still
     resolve and dead top-level functions still prune the same way; a
-    computed-dispatch site still refuses the prune rather than guessing."""
+    computed-dispatch site, or a line the scan cannot read in a file that
+    splices an include, still refuses the prune rather than guessing."""
     lines = _splice_and_strip(src, drop_blocks, base_dir, _stack, keep_comments)
     if not _stack:  # the outermost call sees the whole assembled script
         lines = _prune_dead_includes(lines)
-    return "\n".join(text for text, _included, _code in lines) + "\n"
+    return "\n".join(line.text for line in lines) + "\n"
 
 
 def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
-    """`(line, included, code)` triples for `src`, includes spliced in and
-    comments stripped (unless `keep_comments`). `included` is true for every line
-    that came from a `#include` (at any depth), false for the top-level file's
-    own lines -- the split `_prune_dead_includes` scopes itself to. `code` is
-    the line with every comment removed: the line itself unless `keep_comments`."""
+    """`_Line`s for `src`, includes spliced in and comments stripped (unless
+    `keep_comments`). `included` is true for every line that came from a
+    `#include` (at any depth), false for the top-level file's own lines -- the
+    split `_prune_dead_includes` scopes itself to."""
     included = bool(stack)
     out = []
     frames = ()  # open template literals / block comments, carried across lines
@@ -144,14 +157,14 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
             )
             continue
         if keep_comments:  # every line survives as written
-            code, view_frames = _code_view(line, view_frames)
-            out.append((line.rstrip(), included, code))
+            code, view_frames, readable = _code_view(line, view_frames)
+            out.append(_Line(line.rstrip(), included, code, readable))
             continue
         text, frames = _strip_line(line, frames, drop_blocks)
         if any(f != _BLOCK for f in frames):  # a template literal runs on:
-            out.append((text, included, text))  # content, blanks included
+            out.append(_Line(text, included, text, True))  # content, blanks too
         elif text.strip():
-            out.append((text.rstrip(), included, text.rstrip()))
+            out.append(_Line(text.rstrip(), included, text.rstrip(), True))
     assert not frames, (
         f"{'block comment' if frames[-1] == _BLOCK else 'template literal'} never closes, which this strip cannot read"
     )
@@ -208,14 +221,15 @@ def _skip_regex(line, i):
 
 
 def _code_view(line, frames):
-    """`(code, frames)` for a line of a `keep_comments` file: its comments
-    removed, multi-line blocks included. A construct the scan cannot read makes
-    the line its own view and clears the carried state -- the conservative
-    reading, since commentary then only ever adds to what the prune sees."""
+    """`(code, frames, readable)` for a line of a `keep_comments` file: its
+    comments removed, multi-line blocks included. A construct the scan cannot
+    read makes the line its own view, clears the carried state and reports
+    `readable` False, which `_prune_dead_includes` refuses on."""
     try:
-        return _strip_line(line, frames, True, lenient=True)
-    except AssertionError:
-        return line, ()
+        code, frames = _strip_line(line, frames, True, lenient=True)
+    except _ScanRefusal:
+        return line, (), False
+    return code, frames, True
 
 
 def _strip_line(line, frames, drop_blocks, lenient=False):
@@ -230,7 +244,7 @@ def _strip_line(line, frames, drop_blocks, lenient=False):
     i, n = 0, len(line)
 
     def confused(what):
-        raise AssertionError(f"{what}, which this strip cannot read: {line!r}")
+        raise _ScanRefusal(f"{what}, which this strip cannot read: {line!r}")
 
     while i < n:
         c = line[i]
@@ -311,7 +325,7 @@ def _strip_line(line, frames, drop_blocks, lenient=False):
 
 
 def _include(rest, drop_blocks, base_dir, stack, keep_comments):
-    """The minified `(line, included, code)` triples for the file one `// #include`
+    """The minified `_Line`s for the file one `// #include`
     names -- the caller splices them straight into its own list."""
     rel = rest.strip()
     assert rel and len(rel.split()) == 1, (
@@ -335,7 +349,12 @@ def _prune_dead_includes(lines):
     for what counts as a reference and when this refuses instead of guessing."""
     # Scanned over the comment-free view: a kept comment is neither a dispatch
     # site nor a reference. The line count matches `lines`, so spans index both.
-    whole = "\n".join(code for _text, _included, code in lines)
+    unreadable = next((line for line in lines if not line.readable), None)
+    assert unreadable is None or not any(line.included for line in lines), (
+        "refuses to prune: a line this strip cannot read hides what follows it "
+        f"from the reference count: {unreadable.text!r}"
+    )
+    whole = "\n".join(line.code for line in lines)
     dynamic = _DYNAMIC_RE.search(whole)
     assert not dynamic, (
         f"refuses to prune: {dynamic.group(0)!r} could reach a function by a "
@@ -345,10 +364,9 @@ def _prune_dead_includes(lines):
     spans = []  # (start, end) inclusive, over `lines`
     i, n = 0, len(lines)
     while i < n:
-        _text, included, code = lines[i]
-        decl = _FUNC_DECL_RE.match(code)
-        if decl and included:
-            depth = code.count("{") - code.count("}")
+        decl = _FUNC_DECL_RE.match(lines[i].code)
+        if decl and lines[i].included:
+            depth = lines[i].code.count("{") - lines[i].code.count("}")
             end = i
             while depth > 0:
                 end += 1
@@ -356,7 +374,7 @@ def _prune_dead_includes(lines):
                     f"function {decl.group(1)!r} never closes its brace, which "
                     "this strip cannot read"
                 )
-                end_code = lines[end][2]
+                end_code = lines[end].code
                 depth += end_code.count("{") - end_code.count("}")
             spans.append((i, end, decl.group(1)))
             i = end + 1
@@ -366,7 +384,7 @@ def _prune_dead_includes(lines):
     drop = set()
     for start, end, name in spans:
         pattern = re.compile(rf"\b{re.escape(name)}\b")
-        span_text = "\n".join(code for _text, _included, code in lines[start : end + 1])
+        span_text = "\n".join(line.code for line in lines[start : end + 1])
         used_elsewhere = len(pattern.findall(whole)) - len(pattern.findall(span_text))
         if used_elsewhere == 0:
             drop.update(range(start, end + 1))
@@ -375,11 +393,11 @@ def _prune_dead_includes(lines):
             # function had no blank line before it, when it is the only gap
             if (
                 end + 1 < n
-                and not lines[end + 1][0].strip()
-                and (start == 0 or not lines[start - 1][0].strip())
+                and not lines[end + 1].text.strip()
+                and (start == 0 or not lines[start - 1].text.strip())
             ):
                 drop.add(end + 1)
-    return [pair for idx, pair in enumerate(lines) if idx not in drop]
+    return [line for idx, line in enumerate(lines) if idx not in drop]
 
 
 if __name__ == "__main__":

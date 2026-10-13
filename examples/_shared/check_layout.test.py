@@ -97,10 +97,10 @@ def _link(
     (house-gac; `house_gac_renamed` implies it). `borrowed_rowcol` adds a
     constraint of that name with no components, the shape of a borrowed
     rows-and-columns backend (house-gac's "Rows & Columns"); `house_gac_renamed`
-    takes "annotated" to embed the shared component through the comment-keeping
-    minify mode, as an `_annotated` link does (its other values are above).
-    `annotated_copy` does the same for every shared backend and component the
-    link carries, so a "stale" one is stale against the comment-keeping build.
+    values are above. `annotated_copy` embeds every shared backend and component
+    the link carries, and the standalone component, through the
+    comment-keeping minify mode, as an `_annotated` link does; a "stale" one is
+    then stale against that build.
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -161,7 +161,7 @@ def _link(
         # the rename), carrying only the shared HouseGacComponent.js.
         comp_code = minify_file(
             HERE / "HouseGacComponent.js",
-            keep_comments=house_gac_renamed == "annotated",
+            keep_comments=annotated_copy,
         )
         if house_gac_renamed == "stale_component":
             comp_code += "\n// an older copy"
@@ -828,7 +828,9 @@ if __name__ == "__main__":
         "generator_less_links": ["PUZZLE_LINK.txt", "PUZZLE_LINK_annotated.txt"],
     }
     keeps = {**handmade, "annotated_keeps_comments": True}
-    annotated = {"PUZZLE_LINK_annotated.txt": _link(house_gac_renamed="annotated")}
+    annotated = {
+        "PUZZLE_LINK_annotated.txt": _link(house_gac_renamed=True, annotated_copy=True)
+    }
     plain_and_annotated = {
         "PUZZLE_LINK.txt": _link(house_gac_renamed=True),
         **annotated,
@@ -849,7 +851,9 @@ if __name__ == "__main__":
     violations = annotated_violations(handmade, annotated)
     assert len(violations) == 1 and "stale" in violations[0].lower(), violations
     # the plain link given the comment-keeping copy is stale even under the key
-    plain_annotated_copy = {"PUZZLE_LINK.txt": _link(house_gac_renamed="annotated")}
+    plain_annotated_copy = {
+        "PUZZLE_LINK.txt": _link(house_gac_renamed=True, annotated_copy=True)
+    }
     violations = annotated_violations(keeps, plain_annotated_copy)
     assert len(violations) == 1 and "PUZZLE_LINK.txt" in violations[0], violations
 
@@ -891,6 +895,8 @@ if __name__ == "__main__":
     violations = annotated_violations(
         frame_keeps, {"PUZZLE_LINK.txt": _link(**shared_backends)}
     )
+    # one stale copy per shared file the link carries: frame-rowcol.js,
+    # frame-corners.js, house-gac.js, HouseGacComponent.js and grid-rowcol.js
     assert len(violations) == 5 and all("PUZZLE_LINK.txt" in v for v in violations), (
         violations
     )

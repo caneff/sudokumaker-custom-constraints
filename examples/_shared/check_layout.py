@@ -516,13 +516,13 @@ def frame_backend_files(keep_comments=False):
     return files
 
 
-def house_gac_component_file():
+def house_gac_component_file(keep_comments=False):
     """(component name, source file name, its minified code in the tree) for
     the house-GAC filter's one component -- `check_stale_backend_code` compares
     it against a link's own copy the same way it compares the backend, since
     HouseGacComponent.js is not a per-example file `check_components` would
-    ever look for."""
-    _, _, code = house_gac_backend_code()
+    ever look for. `keep_comments` is the copy an annotated link embeds."""
+    _, _, code = house_gac_backend_code(keep_comments)
     return (HOUSE_GAC_COMPONENT_NAME, f"{HOUSE_GAC_COMPONENT_NAME}.js", code)
 
 
@@ -662,8 +662,10 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     name its own `components` list omits.
 
     `minify_js` drops comments, so editing a backend file's prose leaves every
-    committed link valid; only a real code change makes them stale, and a stale
-    link genuinely runs different code from the one under review.
+    plain committed link valid; only a real code change makes them stale, and a
+    stale link genuinely runs different code from the one under review. An
+    `_annotated` link under `annotated_keeps_comments` embeds the
+    comment-keeping copy, so a prose edit does stale it: rebuild it too.
     """
     name = example_dir.name
     # An annotated link embeds the shared backends and the shared component
@@ -674,11 +676,9 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
         "_"
     )
     current = frame_backend_files(keep_comments=annotated)
-    comp_name, comp_source, comp_want = house_gac_component_file()
-    if annotated:
-        comp_want = minify_file(
-            pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
-        )
+    comp_name, comp_source, comp_want = house_gac_component_file(
+        keep_comments=annotated
+    )
     violations = []
     for constraint in puzzle.get("constraints", []):
         definition = constraint.get("definition") or {}
