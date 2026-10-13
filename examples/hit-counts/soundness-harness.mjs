@@ -270,6 +270,9 @@ console.log('mirrored-pair exclusion:', exclusion.beaten, 'states where the hous
 // and through the case sweep it replaced on a full house of 1..n. Every state is
 // seeded around a real permutation and its two true clues, so a state where the
 // matching removed a true value is a soundness bug, not a strength win.
+// The case-sweep floor is a frozen copy in `.golden/`, named for its commit, not a
+// `git show` read (the Pants sandbox holds no git history). Raising it means
+// replacing the copy in the same commit as the stronger component.
 const caseSweep = load(`.golden/${CASE_SWEEP_REF_FILE.replace('.js', `.${CASE_SWEEP_COMMIT}.js`)}`, ['setParams', 'update', 'validate'])
 const permutation = fuzzBeating('permutation sweep', {
   iters: 20000,

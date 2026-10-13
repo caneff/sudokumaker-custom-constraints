@@ -14,6 +14,10 @@ import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, shuffle, s
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
+// Both floors are frozen copies in `.golden/`, named for their commit, not
+// `git show` reads (the Pants sandbox holds no git history). Raising one means
+// replacing the copy, and the commit in its name, in the same commit as the
+// stronger component.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('SkyscraperPairComponent.js', NAMES)

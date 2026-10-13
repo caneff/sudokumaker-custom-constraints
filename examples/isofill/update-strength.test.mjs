@@ -12,7 +12,10 @@ import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSw
 const HERE = import.meta.dirname
 const { load } = makeIo(HERE)
 
-// The floor: the component as it stands at the commit that pins this test.
+// The floor: the component as it stands at the commit that pins this test, a
+// frozen copy in `.golden/` (the Pants sandbox holds no git history). Raising it
+// means replacing the copy, and the commit in its name, in the same commit as
+// the stronger component.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('IsofillComponent.js', NAMES)

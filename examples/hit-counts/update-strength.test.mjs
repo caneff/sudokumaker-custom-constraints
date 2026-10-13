@@ -21,6 +21,8 @@ const { load } = makeIo(HERE)
 
 // The floors are frozen copies in `.golden/`, named for the commit each came
 // from, not `git show` reads: the Pants sandbox holds no git history.
+// Raising a floor means replacing its copy,
+// and the commit in its name, in the same commit as the stronger component.
 // The floor: the components as they stand at the commit that pins this test.
 const REF_COMMIT = 'db93523'
 // The per-line and opposite-pair components no longer exist in the tree. This is the
