@@ -91,6 +91,7 @@ const argKinds = {
   'same-class set': (C) => C.from(second),
   'other-class set': (C) => (C === Real ? DigitSet : Real).from(second),
   mask: () => 0b10100100,
+  'own mask': (C) => +C.from(first),
   'superset mask': () => 0b1111111111,
   'empty mask': () => 0
 }
