@@ -5,3 +5,8 @@ files(name="uvproject", sources=["pyproject.toml", "uv.lock"])
 # The one Markdown file code reads: examples/_shared/component_scan.py takes
 # the built-in component list from it.
 files(name="builtin-components", sources=["docs/builtin-components.md"])
+
+# The whole repository, for a suite that reads the tree: one that scans every
+# example, asks git for the tracked files, or reads other units' files by
+# path. The `.git` entry is in it, since git answers from there.
+files(name="tree", sources=["**"])

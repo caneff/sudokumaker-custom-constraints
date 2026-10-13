@@ -25,6 +25,10 @@
 #   - every test file is run by exactly one mechanism: the runner's own loop,
 #     or Pants in its sandbox for a suite Pants has a test target for. A file
 #     run by both, or by neither, fails here.
+#   - every shared test is run through Pants, or is on the exception list
+#     (tests/sandbox-exceptions.txt) with its reason: a shared test in neither
+#     or in both fails here, and so does an entry with no reason or one that
+#     names no shared test.
 #
 #   uv run examples/_shared/gate.test.py
 
@@ -36,12 +40,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from gate_lib import (
+    EXCEPTIONS,
     by_mechanism,
     commands,
     gate_tree,
     pants_suites,
     run_logged,
     runner_listing,
+    sandbox_exceptions,
 )
 
 # The heavy tier, named file by file: `just test` skips exactly these by path.
@@ -156,6 +162,42 @@ def one_mechanism_per_file():
     return len(pants)
 
 
+def shared_tests_are_wired_or_excepted():
+    """Every shared suite is wired into Pants or named on the exception list,
+    never both, and the list names nothing else."""
+    excepted = sandbox_exceptions()
+    wired = set(pants_suites().values())
+    shared = {c for c in runner_listing() if " examples/_shared/" in c}
+    for suite in sorted(shared):
+        file = suite.split()[-1]
+        assert (suite in wired) != (file in excepted), (
+            f"{suite} is "
+            + ("wired into Pants and" if suite in wired else "neither wired nor")
+            + f" on {EXCEPTIONS}"
+        )
+    stale = sorted(set(excepted) - {c.split()[-1] for c in shared})
+    assert not stale, f"{EXCEPTIONS} names what is not a shared test: {stale}"
+    return len(excepted)
+
+
+def an_exception_needs_a_reason():
+    """An entry of the exception list with no reason is refused."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = gate_tree(tmp)
+        for entry, ok in (
+            ("examples/_shared/x.test.py", False),
+            ("examples/_shared/x.test.py   ", False),
+            ("examples/_shared/x.test.py it printed `no such file`", True),
+        ):
+            (tree / EXCEPTIONS).write_text(f"# a comment\n\n{entry}\n")
+            try:
+                sandbox_exceptions(tree)
+                refused = False
+            except AssertionError as e:
+                refused = "has no reason" in str(e)
+            assert refused != ok, f"exception entry {entry!r}: refused={refused}"
+
+
 if __name__ == "__main__":
     full = commands("check-full")
     fast = commands("check")
@@ -192,8 +234,10 @@ if __name__ == "__main__":
     assert not only_fast, f"check runs steps check-full skips: {sorted(only_fast)}"
 
     wired = one_mechanism_per_file()
+    an_exception_needs_a_reason()
+    excepted = shared_tests_are_wired_or_excepted()
 
     print(
         f"gate.test.py: check {len(fast)} steps, check-full {len(full)} steps, "
-        f"{wired} through Pants: ok"
+        f"{wired} through Pants, {excepted} excepted from its sandbox: ok"
     )

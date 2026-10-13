@@ -12,15 +12,16 @@
 # The toolchain is not sealed: uv and node come from the PATH, and uv finds
 # its installs and its cache under HOME, or in UV_CACHE_DIR where one is set
 # (CI sets it). UV_PYTHON is the interpreter tests/all.sh names, the one the
-# tree's own environment was built from.
+# tree's own environment was built from. The sandbox's PATH holds uv, node and
+# what `tools` names, and nothing else: a suite that starts `git` names it.
 
 
-def suite(file, needs=()):
+def suite(file, needs=(), tools=()):
     kind, run = ("py", "uv run") if file.endswith(".py") else ("js", "node")
     test_shell_command(
         name=file,
         command=f"{run} {build_file_dir()}/{file}",
-        tools=["uv", "node"],
+        tools=["uv", "node", *tools],
         workdir="/",
         execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],

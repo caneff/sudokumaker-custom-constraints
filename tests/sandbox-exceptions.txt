@@ -1,0 +1,24 @@
+# The shared tests that cannot run in Pants's sandbox (tests/pants_prelude.py),
+# one per line:
+#
+#   <test file> <reason, quoting what failed in the sandbox>
+#
+# An entry stays on the seam runner's own loop for good, and is run on every
+# narrowed run. examples/_shared/gate.test.py checks this list: every shared
+# test is wired into Pants or named here, never both, and an entry with no
+# reason fails it.
+#
+# npm packages: pants.toml keeps node_modules out of every sandbox, and Node
+# resolves an ES module import from no other place.
+examples/_shared/app-session.test.mjs the Chromium session never starts: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright' imported from examples/_shared/app-session.mjs`
+examples/_shared/app-solve-lib.test.mjs it starts app-solve.mjs, which stops on the same import: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright' imported from examples/_shared/app-session.mjs`
+examples/_shared/bundle-index.test.mjs `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'acorn' imported from examples/_shared/bundle-index.mjs`
+examples/_shared/spec_649_closing.test.py it copies the nearest node_modules directory and finds none: `StopIteration` from `next(d / "node_modules" for d in (ROOT, *ROOT.parents) if (d / "node_modules").is_dir())`
+#
+# Pants started inside Pants's sandbox: gate_lib.pants_suites asks the real
+# Pants for its test targets, from the sandbox root, where the outer Pants
+# keeps its own tool links.
+examples/_shared/ci_workflow.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
+examples/_shared/gate.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
+examples/_shared/recipe_discovery.test.py `pants peek failed`: `IntrinsicError: Failed to read link "_binary_shims_<sha>": Absolute symlink: "/tmp/immutable_inputs<id>/.tmp<id>/<sha>"`
+examples/_shared/seam_runner.test.py a scratch-tree diff selects no example's suites, `AssertionError: ['examples/fillomino/Component.js'] selects ['npx standard', ..., 'uv run examples/_shared/check_layout.py']`, cause not found; past that it calls the same `pants_suites` on the real tree
