@@ -329,6 +329,10 @@ def app_solve(link_path, reps, ring_clues=False, after_logical=False):
             f"app-solve.mjs failed on {link_path}:\n"
             f"{result.stdout[-800:]}{result.stderr[-800:]}"
         )
+    # The driver's busy-machine warning (#387) goes to stderr; a success must
+    # not swallow it, or `just time` prints a row with no sign the box was busy.
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
     return result.stdout
 
 
@@ -368,8 +372,40 @@ def combine_reps(link_path, reps):
         "version": finished[0]["version"] if finished else None,
         "repsRun": len(reps),
         "repsTimedOut": len(reps) - len(finished),
+        # The driver's machine-load verdict (#387): any rep read busy, and the
+        # worst reading, so the pasted row can say the box was not quiet.
+        "busy": any(r.get("busy") for r in reps),
+        "maxLoad": max(
+            (
+                v
+                for r in reps
+                for pair in r.get("loads", [])
+                for v in (pair.get("before"), pair.get("after"))
+                if v is not None
+            ),
+            default=None,
+        ),
+        "loadThreshold": next(
+            (r["loadThreshold"] for r in reps if "loadThreshold" in r), None
+        ),
     }
     return check_app_solve_result(link_path, data)
+
+
+def busy_note(*timed):
+    """` (BUSY load 27.7 > 16)` when any of the timed links' reps read a busy
+    machine, else ''. It goes on the pasted row's verdict cell, so a row taken
+    on a loaded box says so after the terminal is gone (#387)."""
+    hot = [t for t in timed if t and t.get("busy")]
+    if not hot:
+        return ""
+    worst = max(t["maxLoad"] for t in hot if t.get("maxLoad") is not None)
+    return f" (BUSY load {worst:.1f} > {hot[0]['loadThreshold']:g})"
+
+
+def _flag_busy(row, verdict, note):
+    """`row` with `note` after its verdict cell; the verdict itself is unchanged."""
+    return row.replace(f"| {verdict} |", f"| {verdict}{note} |") if note else row
 
 
 def build_row(date, version, board, baseline_ms, candidate_ms=None):
@@ -488,12 +524,15 @@ def run(example_dir, ring_clues=False, board=None, component=None):
                 ring_clues,
                 after_logical,
             )
+            note = busy_note(base, cand)
             if byte_equal:
-                rows.append(build_row(date, base["version"], label, base["median"]))
+                row, verdict = build_row(date, base["version"], label, base["median"])
+                rows.append((_flag_busy(row, verdict, note), verdict))
                 continue
-            rows.append(
-                build_row(date, base["version"], label, base["median"], cand["median"])
+            row, verdict = build_row(
+                date, base["version"], label, base["median"], cand["median"]
             )
+            rows.append((_flag_busy(row, verdict, note), verdict))
             ratios.append(row_ratio(base["median"], cand["median"]))
 
         return rows, (ship_verdict(ratios) if ratios else None)

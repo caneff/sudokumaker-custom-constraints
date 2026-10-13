@@ -2,6 +2,7 @@
 // under node:assert without a browser. See docs/real-app-timing.md.
 
 import { parseArgs as parseCli } from 'node:util'
+import os from 'node:os'
 
 // The app prints "✨ Solved took 3.7s" for the first solution, then "This is
 // a unique solution. took 0.4s" once the uniqueness search finishes.
@@ -22,13 +23,13 @@ import { parseArgs as parseCli } from 'node:util'
 // usage error: a misspelt --after-logical would otherwise run the cold row
 // and print it as the row asked for. Split out here because it is the one
 // branchy part of app-solve.mjs a browser is not needed to exercise.
-const USAGE = 'usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical]'
+const USAGE = 'usage: app-solve.mjs <link_file> [reps] [icon_name] [--ring-clues] [--after-logical] [--refuse-busy]'
 export function parseArgs (argv) {
   let parsed
   try {
     parsed = parseCli({
       args: argv,
-      options: { 'ring-clues': { type: 'boolean' }, 'after-logical': { type: 'boolean' } },
+      options: { 'ring-clues': { type: 'boolean' }, 'after-logical': { type: 'boolean' }, 'refuse-busy': { type: 'boolean' } },
       allowPositionals: true
     })
   } catch (e) {
@@ -45,7 +46,65 @@ export function parseArgs (argv) {
     // search that proves uniqueness, and the only one worth timing by default.
     iconName: iconArg || 'ShowCandidates',
     ringClues: parsed.values['ring-clues'] === true,
-    afterLogical: parsed.values['after-logical'] === true
+    afterLogical: parsed.values['after-logical'] === true,
+    refuseBusy: parsed.values['refuse-busy'] === true
+  }
+}
+
+// Machine load. A solve time read on a busy box is not a measurement: #384's
+// same board read 12.2s and 23.6s at a load of 27.7 on 32 cores. The driver
+// reads the one-minute load average before and after each rep, prints both on
+// the row and in the JSON line, and warns -- or, with --refuse-busy, stops --
+// when either reading is above half the core count. Half, not "2 per core":
+// 27.7 on 32 cores is under 1 per core and already corrupted that run.
+export const busyThreshold = cpus => cpus / 2
+
+// The one-minute load average. APP_SOLVE_LOADAVG stubs it, for the test that
+// drives the CLI on a busy box without having one.
+export function readLoad (env = process.env) {
+  const stub = env.APP_SOLVE_LOADAVG
+  if (stub == null || stub === '') return os.loadavg()[0]
+  const load = Number(stub)
+  // A stub that is not a number would read as a quiet machine (NaN is never
+  // above a threshold), so it is refused by name.
+  if (!Number.isFinite(load)) throw new Error(`APP_SOLVE_LOADAVG must be a number, got '${stub}'`)
+  return load
+}
+
+// A reading is busy when it is above the threshold; at the threshold is quiet.
+export const isBusy = (load, cpus) => load > busyThreshold(cpus)
+
+// The warning text for one reading, or null when it is quiet.
+export function busyMessage (load, when, cpus) {
+  if (!isBusy(load, cpus)) return null
+  const limit = busyThreshold(cpus)
+  return `WARNING: machine busy: one-minute load average ${load.toFixed(2)} ${when} ` +
+    `is above ${limit} (half of ${cpus} cores). A solve time read now is not trustworthy; ` +
+    'time on a quiet machine (docs/real-app-timing.md, "Quiet machine"). ' +
+    'Pass --refuse-busy to stop instead of warn.'
+}
+
+// Run `reps` reps, reading the load before and after each through `noteLoad`
+// (which may throw to refuse). Returns each rep's result with loadBefore and
+// loadAfter added. `runOne(k)` times rep k.
+export async function timeReps (reps, noteLoad, runOne) {
+  const rows = []
+  for (let k = 0; k < reps; k++) {
+    const loadBefore = noteLoad(`before rep ${k + 1}`)
+    const r = await runOne(k)
+    rows.push({ ...r, loadBefore, loadAfter: noteLoad(`after rep ${k + 1}`) })
+  }
+  return rows
+}
+
+// The JSON line's load fields: every rep's before/after, the threshold, and
+// whether any reading anywhere in the run (loadLog, [{ when, load }]) was busy.
+export function loadSummary (rows, loadLog, cpus) {
+  return {
+    cpus,
+    loadThreshold: busyThreshold(cpus),
+    loads: rows.map(r => ({ before: r.loadBefore, after: r.loadAfter })),
+    busy: loadLog.some(l => isBusy(l.load, cpus))
   }
 }
 
@@ -91,13 +150,16 @@ export const median = xs => {
 
 const fmtMs = v => (v == null ? 'n/a' : `${v}ms`)
 
+// The one-minute load before and after the rep, when the driver read it.
+const loadSuffix = r => (r.loadBefore == null ? '' : `  load ${r.loadBefore.toFixed(2)}->${r.loadAfter.toFixed(2)}`)
+
 export function repLine (r) {
   if (r.verdict === 'timeout') {
-    return r.first != null
+    return (r.first != null
       ? `  first ${r.first}ms, no verdict  [timeout]`
-      : '  no first solve, no verdict  [timeout]'
+      : '  no first solve, no verdict  [timeout]') + loadSuffix(r)
   }
-  return `  first ${fmtMs(r.first)}  unique ${fmtMs(r.unique)}  sum ${fmtMs(r.sum)}  [${r.verdict}]`
+  return `  first ${fmtMs(r.first)}  unique ${fmtMs(r.unique)}  sum ${fmtMs(r.sum)}  [${r.verdict}]${loadSuffix(r)}`
 }
 
 // Medians of first, unique, and sum over the reps that returned a verdict
