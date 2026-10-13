@@ -22,6 +22,24 @@ PANTS_STUB = STUB + 'case " $* " in *" list "*) cat "$GATE_PANTS_TARGETS" ;; esa
 
 TOOLS = ("node", "npx", "uv", "uvx", "pants")
 
+# The shared tests that cannot run in Pants's sandbox, one per line:
+# `<test file> <reason>`. An entry stays on the runner's own loop for good.
+EXCEPTIONS = "tests/sandbox-exceptions.txt"
+
+
+def sandbox_exceptions(root=ROOT):
+    """The exception list under `root`: test file -> why it cannot run in the
+    sandbox. An entry with no reason, or a file named twice, fails here."""
+    listed = {}
+    for line in (root / EXCEPTIONS).read_text().splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        file, _, reason = line.partition(" ")
+        assert reason.strip(), f"{EXCEPTIONS}: {file} has no reason"
+        assert file not in listed, f"{EXCEPTIONS}: {file} is listed twice"
+        listed[file] = reason.strip()
+    return listed
+
 
 @functools.cache
 def pants_suites(root=ROOT):
