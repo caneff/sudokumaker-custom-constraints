@@ -1,4 +1,4 @@
 # Generated puzzle links kept out of review captures (multi-axis-code-review § 4).
-# Each PUZZLE_LINK*.txt is one ~10 KB encoded SudokuMaker link written by an example's build_link.py or build_size.py (AGENTS.md § Puzzle links); the builder is the source, the link is its output.
+# Each PUZZLE_LINK*.txt is one ~10 KB encoded SudokuMaker link, generated output rather than hand-written source (AGENTS.md § Puzzle links).
 # A plain pathspec, not `:(glob)`: the capture wraps each line as `:(exclude)<line>`, which cannot nest magic, and a plain `*` crosses `/`, so this matches at any depth.
 *PUZZLE_LINK*.txt
