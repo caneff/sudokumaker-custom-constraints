@@ -16,7 +16,7 @@
 # what `tools` names, and nothing else: a suite that starts `git` names it.
 
 
-def suite(file, needs=(), tools=()):
+def suite(file, needs=(), tools=(), timeout=600):
     kind, run = ("py", "uv run") if file.endswith(".py") else ("js", "node")
     test_shell_command(
         name=file,
@@ -25,5 +25,5 @@ def suite(file, needs=(), tools=()):
         workdir="/",
         execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
-        timeout=600,
+        timeout=timeout,
     )
