@@ -219,11 +219,15 @@ def an_undeclared_read_is_loud(tree):
     r = pants("test", SANDBOXED, root=tree)
     assert r.returncode == 0, f"{SANDBOXED} fails in its sandbox:\n{r.stderr}"
 
-    build = tree / "examples/up-to-n/BUILD"
-    declared = 'suite(file, needs=[":py", ":js", ":data"])'
-    assert declared in build.read_text(), "up-to-n's BUILD no longer reads this way"
-    build.write_text(
-        build.read_text().replace(declared, 'suite(file, needs=[":data"])')
+    # Every unit's suites get their code from the one `unit(...)`, so the
+    # prelude is where a unit stops declaring it.
+    prelude = tree / "tests/pants_prelude.py"
+    declared = 'needs=[":py", ":js", ":data", *needs],'
+    assert declared in prelude.read_text(), (
+        "the prelude's unit no longer reads this way"
+    )
+    prelude.write_text(
+        prelude.read_text().replace(declared, 'needs=[":data", *needs],')
     )
     r = pants("test", SANDBOXED, root=tree)
     assert r.returncode != 0, f"{SANDBOXED} passes with {UNDECLARED} undeclared"

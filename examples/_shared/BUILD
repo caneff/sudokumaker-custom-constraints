@@ -70,38 +70,121 @@ for file in [
 # Starts include_agreement.py as a subprocess, and reads shared .js by path.
 suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
 
-# These read the tree: they scan every example, or read other examples' files
-# by path (a shipped link, a builder, a main.js). Their input is the whole
-# repository until each example's own targets can be named.
+# These read the tree: they scan every example.
 for file in [
-    "bundle-solve.test.mjs",
     "check_layout.py",
     "check_layout.test.py",
     "global-backends.test.mjs",
-    "link_swap.test.py",
-    "probe_link.test.py",
     "size_builders.test.py",
-    "whole-grid-backends.test.mjs",
-    "whole-grid-mains.test.mjs",
 ]:
     suite(file, needs=["//:tree"])
 
-# The same, and they ask git for the tracked files.
-for file in [
-    "bundle-load.test.mjs",
-    "sudoku_kit_source.test.py",
-]:
-    suite(file, needs=["//:tree"], tools=["git"])
+# Not here: bundle-load.test.mjs (`git grep`) and sudoku_kit_source.test.py
+# (`git ls-files`) ask git for the tracked files, and //:tree holds no .git.
+# Both are on tests/sandbox-exceptions.txt.
+
+# The whole-grid mains: the two backends each assembles, read by path.
+for file in ["whole-grid-backends.test.mjs", "whole-grid-mains.test.mjs"]:
+    suite(
+        file,
+        needs=[
+            "examples/isofill/main.js:js",
+            "examples/fillomino/main.js:js",
+        ],
+    )
+
+# Rewrites a skyscraper and an isofill board, which it reads by path.
+suite(
+    "probe_link.test.py",
+    needs=[
+        "examples/skyscraper/PUZZLE_LINK_6x6.txt:data",
+        "examples/isofill/PUZZLE_LINK.txt:data",
+    ],
+)
+
+# Swaps components into shipped boards, and starts each example's build_link.py
+# as a subprocess to see what it refuses. A path it only names in argv, which
+# the refusal comes before anything opens (an isofill component, `gen_24g.json`,
+# a `main.js`), is not declared.
+suite(
+    "link_swap.test.py",
+    needs=[
+        "examples/skyscraper/PUZZLE_LINK.txt:data",
+        "examples/hit-counts/PUZZLE_LINK.txt:data",
+        "examples/hit-counts/HitCountsPairComponent.js:js",
+        "examples/numbered-rooms/PUZZLE_LINK_local.txt:data",
+        "examples/numbered-rooms/NumberedRoomsComponent.js:js",
+        "examples/isofill/build_link.py:py",
+        "examples/fillomino/build_link.py:py",
+        "examples/numbered-rooms/build_link.py:py",
+        "examples/running-start/build_link.py:py",
+        "examples/house-gac/build_link.py:py",
+        "examples/house-gac/main.js:js",
+        "examples/house-gac/PUZZLE_LINK.txt:data",
+        "examples/house-gac/base/PUZZLE_LINK.txt:../data",
+        # Each build_link.py reads its manifest.
+        "examples/isofill/example.toml:data",
+        "examples/fillomino/example.toml:data",
+        "examples/numbered-rooms/example.toml:data",
+        "examples/running-start/example.toml:data",
+        "examples/house-gac/example.toml:data",
+    ],
+)
+
+# Solves two shipped boards in the app's bundle, which it reads by path.
+suite(
+    "bundle-solve.test.mjs",
+    needs=[
+        "examples/house-gac/base/PUZZLE_LINK.txt:../data",
+        "examples/numbered-rooms/PUZZLE_LINK_clued.txt:data",
+    ],
+)
 
 # Scans every example for its timed component, and builds a git repository of
 # its own in a temporary directory.
 suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 
 # Reads the justfile through `just --dump`.
-suite("just_list.test.py", needs=["//:tree"], tools=["just"])
+suite("just_list.test.py", needs=["//:justfile"], tools=["just"])
+# What `bash tests/all.sh` calls by name; a sandbox's PATH holds these and
+# nothing else.
+RUNNER_TOOLS = ["bash", "dirname", "awk", "cut"]
 # Lists the seam through `bash tests/all.sh --list`, which starts these.
 suite(
     "spec_748_closing.test.py",
     needs=["//:tree"],
-    tools=["bash", "dirname", "awk", "cut"],
+    tools=RUNNER_TOOLS,
 )
+
+# Each starts the real Pants, `bash tests/all.sh` or `just`, from the sandbox's
+# root, so they need `pants`, `just` and what the runner calls by name on the
+# PATH. The sandbox's PATH holds the tools named here and nothing else, and a
+# missing one does not always fail the suite: it can change what the runner
+# prints. `pants.toml` ignores `/_binary_shims_*`, the links the outer Pants
+# keeps in that root. Not `env`: its shim runs `~/.local/bin/env`, which is
+# no program.
+for file in [
+    "ci_workflow.test.py",
+    "gate.test.py",
+    "known_edges.test.py",
+    "recipe_discovery.test.py",
+    "seam_runner.test.py",
+]:
+    suite(
+        file,
+        needs=["//:tree"],
+        tools=[
+            *RUNNER_TOOLS,
+            "pants",
+            "just",
+            "sh",
+            "git",
+            "cat",
+            "mktemp",
+            "rm",
+            "sort",
+            "grep",
+            "basename",
+            "readlink",
+        ],
+    )

@@ -113,13 +113,23 @@ def pants_suites(root=ROOT):
     return suites
 
 
-def path_without(names):
-    """PATH with every directory that holds one of `names` dropped."""
-    return os.pathsep.join(
-        d
-        for d in os.environ["PATH"].split(os.pathsep)
-        if not any(os.access(pathlib.Path(d) / n, os.X_OK) for n in names)
-    )
+def path_without(names, scratch):
+    """PATH with `names` not on it. A directory that holds one of them is
+    replaced by a copy in `scratch` of its other entries, as symlinks: in
+    Pants's sandbox the PATH is one directory holding every tool, so dropping
+    the directory would drop `bash` with the name."""
+    dirs = []
+    for i, d in enumerate(os.environ["PATH"].split(os.pathsep)):
+        if not any(os.access(pathlib.Path(d) / n, os.X_OK) for n in names):
+            dirs.append(d)
+            continue
+        kept = pathlib.Path(scratch) / f"path{i}"
+        kept.mkdir()
+        for entry in pathlib.Path(d).iterdir():
+            if entry.name not in names:
+                (kept / entry.name).symlink_to(entry)
+        dirs.append(str(kept))
+    return os.pathsep.join(dirs)
 
 
 def run_logged(argv, root=ROOT, real=(), absent=(), changed=None, unreported=""):
@@ -150,7 +160,7 @@ def run_logged(argv, root=ROOT, real=(), absent=(), changed=None, unreported="")
         log.touch()
         env = {
             **os.environ,
-            "PATH": f"{bin_dir}{os.pathsep}{path_without(absent)}",
+            "PATH": f"{bin_dir}{os.pathsep}{path_without(absent, tmp)}",
             "GATE_LOG": str(log),
             "GATE_PANTS_TARGETS": str(targets),
             "GATE_PANTS_CHANGED": str(affected),

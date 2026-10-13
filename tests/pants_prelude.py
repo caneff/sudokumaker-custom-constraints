@@ -1,5 +1,6 @@
-# The one shape of a wired suite. `suite("x.test.py")` in a unit's BUILD file
-# runs that file in Pants's sandbox with the command the seam runner
+# The one shape of a wired suite. `suite("x.test.py")`, which `unit(...)`
+# (below) calls once per test file and which a BUILD file with its own needs
+# calls directly, runs that file in Pants's sandbox with the command the seam runner
 # (tests/all.sh) names it by, `uv run <file>` or `node <file>`, from the
 # sandbox root. The target is named for the file, which is how the runner
 # finds the target of a suite: `<directory>:<file>`.
@@ -23,7 +24,7 @@
 # names, and nothing else: a suite that starts `git` names it.
 
 
-def suite(file, needs=(), tools=(), timeout=600):
+def suite(file, needs=(), tools=(), timeout=None):
     path = f"{build_file_dir()}/{file}"
     if file.endswith(".py"):
         kind = "py"
@@ -40,5 +41,59 @@ def suite(file, needs=(), tools=(), timeout=600):
         workdir="/",
         execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject", "//:runner"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
-        timeout=timeout,
+        timeout=timeout or 600,
     )
+
+
+# The one shape of an example's unit: its code, its data, and a `suite(...)`
+# per test file. An example's BUILD file is one `unit(...)` call, and what it
+# passes is what no import shows. Every unit gets the same globs, so a file
+# type a unit gains is in its sandbox with no edit, and no unit drifts from
+# another: `**` takes the unit's subdirectories (`.golden/`, `original/`,
+# `required-digits/`) too. Every suite of the unit declares the whole unit;
+# this is coarse on purpose, since a suite reads the component, the page
+# script and the boards by path. A file in another unit is named one by one,
+# never by its whole directory.
+#
+#   suites       the test files and the soundness harness, one suite each
+#   py_edges     {python file: [what it reads by path or starts, which no
+#                import shows]}, each a target address
+#   js_edges     the same for a JavaScript file: a `// #include`, a file
+#                read by path
+#   needs        files of other units every suite reads, by name
+#   timeouts     {suite file: seconds}: a ceiling in place of the default 600
+#                for a suite whose run was measured through Pants, about 5 to
+#                7 times that run. A name that is no suite of the unit fails
+#                the BUILD file
+
+
+def unit(suites, py_edges=None, js_edges=None, needs=(), timeouts=None):
+    def overrides(edges):
+        return {file: {"dependencies": deps} for file, deps in (edges or {}).items()}
+
+    python_sources(name="py", sources=["**/*.py"], overrides=overrides(py_edges))
+    javascript_sources(
+        name="js", sources=["**/*.mjs", "**/*.js"], overrides=overrides(js_edges)
+    )
+    files(
+        name="data",
+        sources=[
+            "**/*.json",
+            "**/*.jsonl",
+            "**/*.toml",
+            "**/*.md",
+            "**/*.tsv",
+            "**/*.txt",
+        ],
+    )
+    ceilings = dict(timeouts or {})
+    for file in suites:
+        suite(
+            file,
+            needs=[":py", ":js", ":data", *needs],
+            timeout=ceilings.pop(file, None),
+        )
+    if ceilings:
+        raise ValueError(
+            f"{build_file_dir()}: timeouts name no suite: {sorted(ceilings)}"
+        )

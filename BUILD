@@ -15,7 +15,13 @@ files(
 # the built-in component list from it.
 files(name="builtin-components", sources=["docs/builtin-components.md"])
 
-# The whole repository, for a suite that reads the tree: one that scans every
-# example, asks git for the tracked files, or reads other units' files by
-# path. The `.git` entry is in it, since git answers from there.
-files(name="tree", sources=["**"])
+# The whole repository but its `.git`, for a suite that scans every example.
+# `.git` is a pointer file in a worktree and a whole directory (60 MB in the
+# primary checkout) in a plain clone, copied into every sandbox and able to
+# change under the snapshot when another session commits. A suite that asks git
+# for the tracked files is on tests/sandbox-exceptions.txt and runs from the
+# tree.
+# The justfile, for the suite that reads only it.
+files(name="justfile", sources=["justfile"])
+
+files(name="tree", sources=["**", "!.git", "!.git/**"])

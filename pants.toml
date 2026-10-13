@@ -19,7 +19,7 @@ local_cache = false
 # No trailing slash on the last two: a worktree may borrow another checkout's
 # node_modules or .venv through a symlink, which a directory-only pattern
 # does not cover, and Pants stops on an absolute symlink it reads.
-pants_ignore = ["/.claude/", "/.scratch/", "/.venv", "node_modules"]
+pants_ignore = ["/.claude/", "/.scratch/", "/.venv", "node_modules", "/_binary_shims_*"]
 
 # Every directory a script puts on sys.path: the shared directory and each
 # example. Inference does not read sys.path.insert; these roots are what make

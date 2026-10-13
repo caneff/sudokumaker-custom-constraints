@@ -272,7 +272,8 @@ if [ -n "$base" ]; then
       fi
       selected="$selected$unit"$'\t'"$suite"$'\n'
     done <<<"$all"
-    units=$(printf '%s\n' $units | sort | xargs)
+    units=$(printf '%s\n' $units | sort)
+    units=${units//$'\n'/ }
     note="$note (narrowed: ${units:-no wired suite})"
   fi
 fi
