@@ -120,8 +120,8 @@ link runs", #268).
   unique.** The proof above is of the inner grid. The app's "Find all solutions"
   also counts each blank clue, and this rule leaves a blank clue free within its
   window, so each one multiplies the count. Filling the blank clues from the
-  solution makes the app read unique. The evidence is
-  `docs/research/398-outside-sudoku-not-unique.md`.
+  solution makes the app read unique. Evidence and scripts:
+  `docs/research/398-outside-sudoku-not-unique.md`; the choice of fix is #835.
 
 ### Regenerating
 
