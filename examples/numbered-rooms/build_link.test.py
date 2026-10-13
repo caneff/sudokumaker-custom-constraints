@@ -132,16 +132,18 @@ def check_refresh_drives_derived_links():
                 "for byte"
             )
 
-        # Change the rules text alone: the failure the derived links used to
-        # hide behind a green check.
-        was = build_link.COMMENT
-        build_link.COMMENT = was + " (edited)"
+        # Change the rules text and the digit range: each must reach the
+        # derived links.
+        was = build_link.COMMENT, build_link.DIGITS
+        build_link.COMMENT = was[0] + " (edited)"
+        build_link.DIGITS = (0, 9)
         try:
             build_link.refresh(root)
         finally:
-            build_link.COMMENT = was
+            build_link.COMMENT, build_link.DIGITS = was
         base = decode_puzzle((root / "PUZZLE_LINK.txt").read_text().strip())
         assert base["puzzle"]["comment"].endswith("(edited)")
+        assert base["puzzle"]["minDigit"] == 0
         for n in DERIVED:
             doc = decode_puzzle((root / n).read_text().strip())
             assert doc["puzzle"]["comment"] == base["puzzle"]["comment"], (

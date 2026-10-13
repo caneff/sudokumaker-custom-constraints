@@ -44,12 +44,12 @@ DIGITS = (1, 9)
 
 
 def refresh(root=HERE):
-    """Rewrite PUZZLE_LINK.txt in place, then the three links derived from it:
-    this board's own backend and the
+    """Rewrite PUZZLE_LINK.txt in place -- this board's own backend and the
     frame's shared ones as they stand in the tree, the digit range those
-    backends read, and the rules text.
+    backends read, and the rules text -- then rebuild the three links derived
+    from it.
 
-    PUZZLE_LINK.txt and no other board. DIGITS and COMMENT describe this
+    This board and its three derived links, no other board. DIGITS and COMMENT describe this
     one hand-built 9x9; stamped on a smaller board they would give six-cell
     interior lines a nine-digit range -- the very degradation the range is
     declared to prevent -- and rules text for a different puzzle.
@@ -84,7 +84,6 @@ def refresh(root=HERE):
     write_link(doc, board_path)
     build_original.build(root, board_path)
     build_clued.build(root, board_path)
-    return board_path
 
 
 def rebuild(args, parser):
