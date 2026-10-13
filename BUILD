@@ -21,4 +21,7 @@ files(name="builtin-components", sources=["docs/builtin-components.md"])
 # change under the snapshot when another session commits. A suite that asks git
 # for the tracked files is on tests/sandbox-exceptions.txt and runs from the
 # tree.
+# The justfile, for the suite that reads only it.
+files(name="justfile", sources=["justfile"])
+
 files(name="tree", sources=["**", "!.git", "!.git/**"])

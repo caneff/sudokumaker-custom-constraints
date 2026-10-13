@@ -15,15 +15,14 @@ call (`unit` is in `tests/pants_prelude.py`). A new example needs one, or
 `examples/up-to-n/BUILD` is the shortest worked one:
 
 - `suites=[...]`: one suite per test file and for the soundness harness. A
-  suite that runs past the default 600 s takes a `timeouts={file: seconds}`
-  entry.
+  suite measured through Pants takes a `timeouts={file: seconds}` ceiling in
+  place of the default 600 s; a name that is no suite fails the `BUILD` file.
 - `py_edges` and `js_edges`: an edge no import shows is an entry on the file
   that has it, with a comment saying what reads it: a `// #include`, a file
   read by path, a script started as a subprocess.
-- The unit's code and data are the same globs in every unit (`**/*.py`,
-  `**/*.mjs`, `**/*.js`, and `**/*.json`, `**/*.jsonl`, `**/*.toml`,
-  `**/*.md`, `**/*.tsv`, `**/*.txt` for the data), so no unit's globs drift from another's.
-  Every suite of the unit gets the whole unit: coarse on purpose.
+- The unit's code and data are the same globs in every unit (`unit` in
+  `tests/pants_prelude.py` states them), so no unit's globs drift from
+  another's. Every suite of the unit gets the whole unit: coarse on purpose.
 - `needs=[...]` for a file of another unit a suite reads, named one by one:
   `examples/count-digits-gac/BUILD` names
   `examples/outside-sudoku/PUZZLE_LINK.txt:data`.
@@ -83,6 +82,6 @@ changed the runner, the note's first paragraph says so.
   exception list's errors, suites that pass in a sandbox missing their inputs.
 - `docs/research/2026-10-13-pants-selection.md`: what Pants answers for a
   diff, one Pants call per run, the work directory, `UV_PYTHON`.
-- `docs/research/2026-10-14-pants-narrow-tree.md`: #829's follow-up: the five
+- `docs/research/2026-10-13-pants-narrow-tree.md`: #829's follow-up: the five
   suites taken off `//:tree`, `.git` out of it, the cause of the
   `seam_runner.test.py` exception, one shape for a unit.

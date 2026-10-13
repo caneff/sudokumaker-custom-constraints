@@ -16,7 +16,7 @@ so a missing required file or a bad link name fails the gate.
 | `*Component.js` (at least one) | The pasted constraint snippet(s). One example, `house-gac`, ships none of its own: its one component lives in `examples/_shared/` on purpose, shared with every other board that registers the same filter, and its `example.toml`'s `shared_component` names it there instead of demanding a local copy that could drift |
 | `build_link.py` | Builds `PUZZLE_LINK.txt` (and variants) from a generated board |
 | `build_link.test.py` | Tests `build_link.py` |
-| `BUILD` | Wires the example's suites into Pants: one `unit(...)` call listing each test file and the harness; `gate.test.py` fails on a test file with no line (see `docs/pants.md`) |
+| `BUILD` | Wires the example's suites into Pants: one `unit(...)` call listing each test file and the harness; `gate.test.py` fails on a test file the call does not name (see `docs/pants.md`) |
 | `soundness-harness.mjs` | The soundness fuzz — zero removed true candidates |
 | `update-strength.test.mjs` | Never-weaker fuzz through `harness-lib.strengthSweep`; the floor is a frozen copy under `.golden/`, named `<stem>.<commit>.js` for the commit it came from, or `<stem>.floor.js` when the floor landed in the same squash-merged PR as the component (up-to-n's) |
 | `OPTIMIZATION_LOG.md` | Table of speed attempts, kept or rejected, with why |

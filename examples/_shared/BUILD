@@ -145,21 +145,24 @@ suite(
 suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 
 # Reads the justfile through `just --dump`.
-suite("just_list.test.py", needs=["//:tree"], tools=["just"])
+suite("just_list.test.py", needs=["//:justfile"], tools=["just"])
+# What `bash tests/all.sh` calls by name; a sandbox's PATH holds these and
+# nothing else.
+RUNNER_TOOLS = ["bash", "dirname", "awk", "cut"]
 # Lists the seam through `bash tests/all.sh --list`, which starts these.
 suite(
     "spec_748_closing.test.py",
     needs=["//:tree"],
-    tools=["bash", "dirname", "awk", "cut"],
+    tools=RUNNER_TOOLS,
 )
 
 # Each starts the real Pants, `bash tests/all.sh` or `just`, from the sandbox's
-# root, so they need `pants` and what the runner and the recipes call by name
-# on the PATH: the sandbox's PATH holds the tools named here and nothing else,
-# and a missing one makes the runner print the wrong thing without failing
-# (seam_runner.test.py saw `(narrowed: no wired suite)` for want of `xargs`'s
-# `echo`). `pants.toml` ignores `/_binary_shims_*`, the links the outer Pants
-# keeps in that root.
+# root, so they need `pants`, `just` and what the runner calls by name on the
+# PATH. The sandbox's PATH holds the tools named here and nothing else, and a
+# missing one does not always fail the suite: it can change what the runner
+# prints. `pants.toml` ignores `/_binary_shims_*`, the links the outer Pants
+# keeps in that root. Not `env`: its shim runs `~/.local/bin/env`, which is
+# no program.
 for file in [
     "ci_workflow.test.py",
     "gate.test.py",
@@ -171,14 +174,11 @@ for file in [
         file,
         needs=["//:tree"],
         tools=[
+            *RUNNER_TOOLS,
             "pants",
             "just",
             "sh",
-            "bash",
             "git",
-            "dirname",
-            "awk",
-            "cut",
             "cat",
             "mktemp",
             "rm",

@@ -1,6 +1,6 @@
 # Pants: `//:tree` narrowed, `.git` out, the nested-Pants group wired (#829)
 
-2026-10-14, ticket #829 (follow-ups of the spec review of #809). Pants 2.33.1.
+2026-10-13, ticket #829 (follow-ups of the spec review of #809). Pants 2.33.1.
 Every result is one worker's run through `pants test examples/_shared:<file>`
 (the command `tests/all.sh` uses, with `UV_PYTHON` set), on this checkout.
 
@@ -12,7 +12,8 @@ dropping it fails the suite on that file.
 
 | Suite | Declared (each by name) | Dropped input -> the failure |
 |---|---|---|
-| `whole-grid-mains.test.mjs`, `whole-grid-backends.test.mjs` | `isofill/main.js`, `fillomino/main.js` | `ENOENT: no such file or directory, open 'examples/fillomino/main.js'` |
+| `whole-grid-mains.test.mjs` | `isofill/main.js`, `fillomino/main.js` | `ENOENT: no such file or directory, open 'examples/fillomino/main.js'` |
+| `whole-grid-backends.test.mjs` | the same two | BACKENDS_FAILURE |
 | `probe_link.test.py` | `skyscraper/PUZZLE_LINK_6x6.txt`, `isofill/PUZZLE_LINK.txt` | `FileNotFoundError ... 'examples/skyscraper/PUZZLE_LINK_6x6.txt'` |
 | `bundle-solve.test.mjs` | `house-gac/base/PUZZLE_LINK.txt`, `numbered-rooms/PUZZLE_LINK_clued.txt` | `FileNotFoundError ... 'examples/numbered-rooms/PUZZLE_LINK_clued.txt'` |
 | `link_swap.test.py` | 5 boards and components, 5 `build_link.py`, 5 `example.toml`, `house-gac/main.js` | each fails on its own file |
@@ -26,7 +27,8 @@ the run before anything opens them.
 
 The suites that stay on `//:tree` scan a directory: `check_layout.py`,
 `check_layout.test.py`, `size_builders.test.py`, `global-backends.test.mjs`,
-and `time_example.test.py`, `just_list.test.py`, `spec_748_closing.test.py`.
+`time_example.test.py` and `spec_748_closing.test.py`. `just_list.test.py`
+reads only the justfile, so it declares `//:justfile`.
 
 ## C4: `.git` out of `//:tree`
 
