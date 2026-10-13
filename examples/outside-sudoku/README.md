@@ -116,6 +116,12 @@ link runs", #268).
   run it; run it after changing the board or the rule.
 - Every non-given cell decodes as `{}` — no solution digit and no hidden clue
   ships pre-typed. `build_size.test.py` checks the same of every sized board.
+- **The app reads every shipped link "not unique", and the board is still
+  unique.** The proof above is of the inner grid. The app's "Find all solutions"
+  also counts each blank clue, and this rule leaves a blank clue free within its
+  window, so each one multiplies the count. Filling the blank clues from the
+  solution makes the app read unique. The evidence is
+  `docs/research/398-outside-sudoku-not-unique.md`.
 
 ### Regenerating
 
