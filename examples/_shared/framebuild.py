@@ -411,12 +411,13 @@ FRAME_BACKENDS = (
 )
 
 
-def frame_backend_code():
+def frame_backend_code(keep_comments=False):
     """The frame's own two backends as `(constraint name, minified code)`,
-    read from the working tree."""
+    read from the working tree. `keep_comments` is the annotated-link build."""
     shared = pathlib.Path(__file__).parent
     return [
-        (title, minify_file(shared / f"{name}.js")) for name, title in FRAME_BACKENDS
+        (title, minify_file(shared / f"{name}.js", keep_comments))
+        for name, title in FRAME_BACKENDS
     ]
 
 
@@ -450,14 +451,15 @@ HOUSE_GAC_COMPONENT_NAME = "HouseGacComponent"
 HOUSE_GAC_MAX_CELLS = 9
 
 
-def house_gac_backend_code():
+def house_gac_backend_code(keep_comments=False):
     """`(constraint name, minified backend code, minified component code)` for
-    the shared house-GAC filter, read from the working tree."""
+    the shared house-GAC filter, read from the working tree. `keep_comments`
+    is the annotated-link build."""
     shared = pathlib.Path(__file__).parent
     return (
         HOUSE_GAC_BACKEND_TITLE,
-        minify_file(shared / "house-gac.js"),
-        minify_file(shared / f"{HOUSE_GAC_COMPONENT_NAME}.js"),
+        minify_file(shared / "house-gac.js", keep_comments),
+        minify_file(shared / f"{HOUSE_GAC_COMPONENT_NAME}.js", keep_comments),
     )
 
 
