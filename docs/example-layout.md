@@ -125,10 +125,10 @@ Examples: `PUZZLE_LINK.txt`, `PUZZLE_LINK_6x6.txt`, `PUZZLE_LINK_clued.txt`,
 
 `annotated`, like `clued` and `original`, names a hand-built twin of another
 committed link's board rather than its own fresh CP-SAT search — see
-`NO_GENERATOR_TAGS` in `check_layout.py`, and `examples/house-gac/README.md`
-for the one link that carries it today: same board and givens as
-`PUZZLE_LINK.txt`, its embedded code kept uncompressed (comments and blank
-lines in, the lint directive out) for a reader inside the app's own code box.
+`NO_GENERATOR_TAGS` in `check_layout.py`. Its embedded code is kept
+uncompressed (comments and blank lines in, the lint directive out) for a
+reader inside the app's own code box; which examples ship one, and which board
+each carries, is `docs/share-checklist.md` § 4.
 
 `PUZZLE_LINK.txt` is the **shipped link** — the one a reader opens. Any other
 `PUZZLE_LINK_*.txt` is a **variant link**.

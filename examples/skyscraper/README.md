@@ -278,9 +278,9 @@ The three mechanical criteria, checked by `check_layout.py`:
    `//!` note per step of the sweep — 58 `//!` lines in all.
    **None of it ships** (#385): `minify.py` strips every comment from the copy
    baked into the link, so a recipient opening this board reads the algorithm
-   and nothing about it. Skyscraper has no annotated twin, so the recipient gets
-   the code without commentary; one is built only on request (#391). The
-   criterion is checked against the file in the tree, not against the blob.
+   and nothing about it. Skyscraper has no annotated twin (`../../docs/share-checklist.md` § 4
+   says what that leaves a recipient). The criterion is checked against the
+   file in the tree, not against the blob.
 
 ## Paste into SudokuMaker
 

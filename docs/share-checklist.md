@@ -71,13 +71,19 @@ pointer line, and an example gets no annotated twin by default.
 
 What a reader who wants the commentary gets depends on the example:
 
-- **A twin exists** — `PUZZLE_LINK*_annotated.txt`, the same board through the
-  comment-keeping minify (`--keep-comments`, #433). Hand that file to the
-  reader. `ls examples/*/PUZZLE_LINK*annotated* examples/*/*/PUZZLE_LINK*annotated*`
-  lists them: `house-gac`, `dutch-flatmates` (`PUZZLE_LINK_0g_annotated.txt`)
-  and `count-digits-gac/sparse`.
-- **No twin exists** — the recipient gets the code without commentary. Build a
-  twin only when someone asks for one.
+- **A twin exists** — `PUZZLE_LINK*_annotated.txt`, a link whose embedded code
+  goes through the comment-keeping minify (`--keep-comments`, #433). Hand that
+  file to the reader, and check which board it carries: `ls
+  examples/*/PUZZLE_LINK*annotated* examples/*/*/PUZZLE_LINK*annotated*` lists
+  `house-gac`, `dutch-flatmates` and `count-digits-gac/sparse`. dutch-flatmates'
+  twin is of its 0-given timing board `PUZZLE_LINK_0g.txt`, not of the shipped
+  `PUZZLE_LINK.txt`, so it is not the board to hand a solver.
+- **No twin exists** — the plain link strips the comments, so the recipient
+  gets the code without commentary. Build a twin only when someone asks for
+  one. The exception is a builder that keeps comments in the plain link
+  itself: `count-digits-gac`'s `demo`, `demo-counter-outside` and `self-count`
+  links carry them (`keep_comments=True` in `count_board.py` and
+  `build_count_digits_demo.py`), with no `_annotated` file beside them.
 
 Check the criterion against the file in the tree either way; the blob in the
 plain link is not where the comments live.
