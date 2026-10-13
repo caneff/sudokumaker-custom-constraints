@@ -5,7 +5,7 @@
 import assert from 'assert'
 import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
-import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary } from './app-solve-lib.mjs'
+import { VERDICT_PATTERN, parseArgs, parseReadout, parseVersion, repLine, medianLine, marksRejected, countEnteredValues, solveSummary, busyThreshold, readLoad, busyMessage } from './app-solve-lib.mjs'
 
 // first "took" only, no verdict yet: all three times report null
 // The solve phase printed its "took" but the uniqueness search has not
@@ -235,7 +235,8 @@ assert.strictEqual(parseVersion('no footer here'), null)
     reps: 7,
     iconName: 'ShowCandidates',
     ringClues: false,
-    afterLogical: false
+    afterLogical: false,
+    refuseBusy: false
   })
 
   // all three positionals given
@@ -244,7 +245,8 @@ assert.strictEqual(parseVersion('no footer here'), null)
     reps: 3,
     iconName: 'CheckSolution',
     ringClues: false,
-    afterLogical: false
+    afterLogical: false,
+    refuseBusy: false
   })
 
   // a flag never becomes a positional, wherever it sits -- this is the one
@@ -255,14 +257,16 @@ assert.strictEqual(parseVersion('no footer here'), null)
     reps: 3,
     iconName: 'ShowCandidates',
     ringClues: true,
-    afterLogical: false
+    afterLogical: false,
+    refuseBusy: false
   })
   assert.deepStrictEqual(parseArgs(['--after-logical', 'link.txt', '3']), {
     linkFile: 'link.txt',
     reps: 3,
     iconName: 'ShowCandidates',
     ringClues: false,
-    afterLogical: true
+    afterLogical: true,
+    refuseBusy: false
   })
 
   // both flags together, the shape time_example.py's driver call uses
@@ -317,6 +321,55 @@ assert.strictEqual(parseVersion('no footer here'), null)
   assert.notStrictEqual(run.status, 0)
   assert.match(run.stderr, /usage: app-solve.mjs/)
   assert.match(run.stderr, /after-logic/, 'the message names the flag that was refused')
+}
+
+// --refuse-busy is a known flag, anywhere on the line.
+assert.strictEqual(parseArgs(['--refuse-busy', 'link.txt']).refuseBusy, true)
+assert.strictEqual(parseArgs(['link.txt']).refuseBusy, false)
+
+// Machine load (#387): the busy threshold is half the core count, a load
+// reader is stubbable, and a busy box names itself in a warning.
+{
+  assert.strictEqual(busyThreshold(32), 16)
+  assert.strictEqual(readLoad({ APP_SOLVE_LOADAVG: '27.7' }), 27.7)
+  assert.strictEqual(typeof readLoad({}), 'number', 'the real reader answers when no stub is set')
+
+  // The #384 reading: 27.7 on 32 cores, under 1 per core, is already busy.
+  const warn = busyMessage([{ when: 'before rep 1', load: 27.7 }], 32)
+  assert.match(warn, /27\.7/)
+  assert.match(warn, /before rep 1/)
+  assert.match(warn, /16/, 'names the threshold')
+  assert.match(warn, /--refuse-busy/)
+  // At the threshold is quiet: only a load above it warns.
+  assert.strictEqual(busyMessage([{ when: 'before rep 1', load: 16 }, { when: 'after rep 1', load: 0.2 }], 32), null)
+  // The worst reading is the one named.
+  assert.match(busyMessage([{ when: 'before rep 1', load: 17 }, { when: 'after rep 1', load: 20 }], 32), /20/)
+}
+
+// A rep row carries its load before and after; a row with no load reading
+// (older callers) prints exactly as before.
+assert.strictEqual(
+  repLine({ first: 2300, unique: 400, sum: 2700, verdict: 'unique', loadBefore: 1.25, loadAfter: 3.5 }),
+  '  first 2300ms  unique 400ms  sum 2700ms  [unique]  load 1.25->3.50'
+)
+assert.strictEqual(
+  repLine({ first: 6800, unique: null, sum: null, verdict: 'timeout', loadBefore: 0, loadAfter: 0.1 }),
+  '  first 6800ms, no verdict  [timeout]  load 0.00->0.10'
+)
+
+// The driver, on a stubbed load above the threshold: --refuse-busy exits
+// non-zero before any browser opens; without it the warning is printed.
+{
+  const driver = fileURLToPath(new URL('./app-solve.mjs', import.meta.url))
+  const env = { ...process.env, APP_SOLVE_LOADAVG: '9999' }
+  const refused = spawnSync('node', [driver, 'link.txt', '1', '--refuse-busy'], { encoding: 'utf8', env })
+  assert.notStrictEqual(refused.status, 0)
+  assert.match(refused.stderr, /busy/i)
+  assert.match(refused.stderr, /9999/)
+  // No flag: warns, then goes on (here to fail on the missing link file).
+  const warned = spawnSync('node', [driver, 'no-such-link.txt', '1'], { encoding: 'utf8', env })
+  assert.match(warned.stderr, /WARNING.*busy/is)
+  assert.match(warned.stderr, /9999/)
 }
 
 console.log('app-solve-lib.test.mjs: all seams pass')

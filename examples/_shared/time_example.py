@@ -329,6 +329,10 @@ def app_solve(link_path, reps, ring_clues=False, after_logical=False):
             f"app-solve.mjs failed on {link_path}:\n"
             f"{result.stdout[-800:]}{result.stderr[-800:]}"
         )
+    # The driver's busy-machine warning (#387) goes to stderr; a success must
+    # not swallow it, or `just time` prints a row with no sign the box was busy.
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
     return result.stdout
 
 
