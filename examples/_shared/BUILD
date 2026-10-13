@@ -48,6 +48,7 @@ for file in [
     "frame.test.py",
     "framebuild.test.py",
     "harness-lib.test.mjs",
+    "harness-parity.test.mjs",
     "manifest.test.py",
     "minify.test.py",
     "recovery-lib.test.mjs",
