@@ -94,6 +94,10 @@ for file in [
 ]:
     suite(file, needs=["//:tree"], tools=["git"])
 
+# Scans every example for its timed component, and builds a git repository of
+# its own in a temporary directory.
+suite("time_example.test.py", needs=["//:tree"], tools=["git"])
+
 # Reads the justfile through `just --dump`.
 suite("just_list.test.py", needs=["//:tree"], tools=["just"])
 # Lists the seam through `bash tests/all.sh --list`, which starts these.

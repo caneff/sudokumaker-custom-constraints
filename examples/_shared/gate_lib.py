@@ -16,9 +16,28 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 STUB = '#!/bin/sh\necho "$(basename "$0") $*" >> "$GATE_LOG"\n'
 
-# The stand-in for Pants: it logs like the others, and answers the runner's
-# question -- which test targets are there? -- with what the real Pants said.
-PANTS_STUB = STUB + 'case " $* " in *" list "*) cat "$GATE_PANTS_TARGETS" ;; esac\n'
+# The stand-in for Pants. It logs like the others and answers the runner's
+# three questions. Which test targets are there: what the real Pants said.
+# What does a diff affect: the addresses in $GATE_PANTS_CHANGED, and a failure
+# when that file is not there. Run these targets: one result line per target,
+# as the real Pants prints it, but none for $GATE_PANTS_UNREPORTED.
+PANTS_STUB = (
+    STUB
+    + """case " $* " in
+  *" --changed-since="*)
+    [ -r "$GATE_PANTS_CHANGED" ] || { echo "planted: no answer" >&2; exit 1; }
+    cat "$GATE_PANTS_CHANGED" ;;
+  *" list "*) cat "$GATE_PANTS_TARGETS" ;;
+  *" test "*)
+    for arg; do
+      case $arg in
+        -* | test | "$GATE_PANTS_UNREPORTED") ;;
+        *) echo "✓ $arg succeeded in 0.00s." ;;
+      esac
+    done ;;
+esac
+"""
+)
 
 TOOLS = ("node", "npx", "uv", "uvx", "pants")
 
@@ -41,21 +60,49 @@ def sandbox_exceptions(root=ROOT):
     return listed
 
 
+def pants(*args, root=ROOT, env=None):
+    """The real Pants, run from `root` with its work directory outside the
+    tree and removed afterwards: a test leaves no `.pants.d/` behind. `env`
+    adds to the environment."""
+    with tempfile.TemporaryDirectory() as workdir:
+        return subprocess.run(
+            ["pants", *args],
+            cwd=root,
+            env={**os.environ, **(env or {}), "PANTS_WORKDIR": workdir},
+            capture_output=True,
+            text=True,
+        )
+
+
+def suite_of(address):
+    """The suite a test target runs, as the runner names it: the target of
+    `uv run <directory>/<file>` or `node <directory>/<file>` is
+    `<directory>:<file>` (tests/pants_prelude.py)."""
+    directory, file = address.split(":")
+    run = "uv run" if file.endswith(".py") else "node"
+    return f"{run} {directory}/{file}"
+
+
 @functools.cache
 def pants_suites(root=ROOT):
     """The suites Pants runs in its sandbox under `root`: target address ->
-    the command that target runs, read from the real Pants. A tree with no
-    pants.toml has none."""
+    the suite, read from the real Pants. The command each target runs must
+    start that suite's tool on that suite's file. A tree with no pants.toml
+    has none."""
     if not (root / "pants.toml").exists():
         return {}
-    r = subprocess.run(
-        ["pants", "--filter-target-type=test_shell_command", "peek", "::"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-    )
+    r = pants("--filter-target-type=test_shell_command", "peek", "::", root=root)
     assert r.returncode == 0, f"pants peek failed in {root}:\n{r.stderr}"
-    return {t["address"]: t["command"] for t in json.loads(r.stdout or "[]")}
+    suites = {}
+    for target in json.loads(r.stdout or "[]"):
+        suite = suite_of(target["address"])
+        tool, file = suite.rsplit(" ", 1)
+        said = target["command"].split()
+        assert said[-1] == file and tool.split()[0] in said, (
+            f"{target['address']} runs `{target['command']}`, not {suite}"
+        )
+        suites[target["address"]] = suite
+    return suites
 
 
 def path_without(names):
@@ -67,16 +114,22 @@ def path_without(names):
     )
 
 
-def run_logged(argv, root=ROOT, real=(), absent=()):
+def run_logged(argv, root=ROOT, real=(), absent=(), changed=None, unreported=""):
     """Run `argv` from `root` with node, npx, uv, uvx and pants replaced by
     stubs that log their argv and exit 0, except the names in `real`; a name in
-    `absent` is on the PATH neither as a stub nor for real. Returns the
-    finished process and the log, one line per stubbed call, in order."""
+    `absent` is on the PATH neither as a stub nor for real. The Pants stub
+    answers "what does the diff affect" with the addresses in `changed`, and
+    fails that question when `changed` is None; it reports every target it is
+    told to run as passed, except `unreported`. Returns the finished process
+    and the log, one line per stubbed call, in order."""
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir = pathlib.Path(tmp) / "bin"
         bin_dir.mkdir()
         targets = pathlib.Path(tmp) / "targets"
         targets.write_text("")
+        affected = pathlib.Path(tmp) / "changed"
+        if changed is not None:
+            affected.write_text("".join(f"{a}\n" for a in changed))
         for name in TOOLS:
             if name in real or name in absent:
                 continue
@@ -92,6 +145,8 @@ def run_logged(argv, root=ROOT, real=(), absent=()):
             "PATH": f"{bin_dir}{os.pathsep}{path_without(absent)}",
             "GATE_LOG": str(log),
             "GATE_PANTS_TARGETS": str(targets),
+            "GATE_PANTS_CHANGED": str(affected),
+            "GATE_PANTS_UNREPORTED": unreported,
         }
         r = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True)
         return r, log.read_text().splitlines()
@@ -100,30 +155,27 @@ def run_logged(argv, root=ROOT, real=(), absent=()):
 def by_mechanism(log, root=ROOT):
     """Splits a log into the suites the runner's own loop ran and the suites
     it sent through Pants, each as the suite's command, in order. The
-    runner's question to Pants is not a suite and is in neither."""
+    runner's questions to Pants are not suites and are in neither."""
     loop, pants = [], []
     for line in log:
         tool, *args = line.split()
         if tool != "pants":
             loop.append(line)
         elif "test" in args:
-            (address,) = args[args.index("test") + 1 :]
-            assert address in pants_suites(root), f"no Pants test target {address}"
-            pants.append(pants_suites(root)[address])
+            for address in args[args.index("test") + 1 :]:
+                assert address in pants_suites(root), f"no Pants test target {address}"
+                pants.append(pants_suites(root)[address])
         else:
             assert "list" in args, f"the runner calls Pants for something else: {line}"
     return loop, pants
 
 
-def run_stubbed(argv, root=ROOT, real=()):
+def run_stubbed(argv, root=ROOT, real=(), **stub):
     """`run_logged`, with each suite sent through Pants read back as the
     command it runs: the suites `argv` ran, by either mechanism, in order."""
-    r, log = run_logged(argv, root, real)
-    ran = []
-    for line in log:
-        loop, pants = by_mechanism([line], root)
-        ran += loop + pants
-    return r, ran
+    r, log = run_logged(argv, root, real, **stub)
+    loop, pants = by_mechanism(log, root)
+    return r, loop + pants
 
 
 def just_executable():
