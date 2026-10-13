@@ -116,3 +116,27 @@ whose `.git` directory is large (the primary checkout's is 59 MB).
 
 Each wired suite pays Pants's start-up, about 2 s (#814's note). 33 suites
 add about 70 s to a full seam until #815 makes it one call per run.
+
+## The shared `.js` files `framebuild.py` reads, named
+
+#814 gave `framebuild.py` and `no_ring.py` every shared `.js` (`:js`). Both
+read a fixed set by path, so each is now its own edge: `framebuild.py` reads
+`frame-rowcol.js` and `frame-corners.js` (`FRAME_BACKENDS`), `house-gac.js`
+and `HouseGacComponent.js` (`house_gac_backend_code`); `no_ring.py` reads
+`grid-rowcol.js`; `HouseGacComponent.js` includes `bit-helpers.js`. Six
+edges replace the two blanket ones.
+
+Suites that `pants dependents --transitive examples/_shared/<file>` lists,
+out of 75 test targets (the shared directory, up-to-n and #817's five
+units), before and after:
+
+| File | Shared suites | Other units' suites, before | After |
+|---|---|---|---|
+| `line-kind.js` | 21 | 27 | 18 |
+| `bit-helpers.js` | 22 | 27 | 27 |
+| `frame-lines.js` | 21 | 27 | 13 |
+
+`bit-helpers.js` does not move: every unit that imports `framebuild` reaches
+it through `HouseGacComponent.js`, which `framebuild.py` reads. The shared
+count is 13 suites on `//:tree` and 8 on `:js`, which hold every shared
+file by declaration. The full seam passed after the change, 115 of 115.
