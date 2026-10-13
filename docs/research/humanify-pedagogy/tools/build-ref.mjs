@@ -676,7 +676,8 @@ ${body}
     if(activeItem&&activeItem!==found)activeItem.li.classList.remove('active');
     if(activeH3&&activeH3!==h3)activeH3.li.classList.remove('open');
     activeItem=found;activeH3=h3;if(found)found.li.classList.add('active');if(h3)h3.li.classList.add('open');
-    if(found&&!q.value.trim()){var r=found.a.getBoundingClientRect(),nr=nav.getBoundingClientRect();if(r.top<nr.top+40||r.bottom>nr.bottom-40)found.a.scrollIntoView({block:'center'})}}
+    // Move the nav panel only: scrollIntoView also scrolls the document, which drifted hood hash jumps (#447).
+    if(found&&!q.value.trim()){var r=found.a.getBoundingClientRect(),nr=nav.getBoundingClientRect();if(r.top<nr.top+40||r.bottom>nr.bottom-40)nav.scrollTop+=r.top-nr.top-(nav.clientHeight-r.height)/2}}
   window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(spy)}},{passive:true});
   document.addEventListener('keydown',function(e){if(e.key==='/'&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();q.focus();q.select()}});
   q.addEventListener('keydown',function(e){if(e.key==='Escape'){q.value='';applyView();spy()}
