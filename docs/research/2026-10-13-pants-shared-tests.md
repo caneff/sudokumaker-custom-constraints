@@ -74,9 +74,11 @@ Eleven suites need nothing past `:data`: Pants infers the rest from imports.
 `//:tree` is coarser than the spec asks for a file in another unit ("named
 one by one"). The other examples had no `BUILD` file when this was written
 (#816 and #817 add them), so a named edge had no target to name. Six of the
-fourteen read named files only (`bundle-solve.test.mjs`, `link_swap.test.py`,
-`probe_link.test.py`, `spec_748_closing.test.py`, `whole-grid-backends.test.mjs`,
-`whole-grid-mains.test.mjs` were not read closely enough to say which); they
+fourteen read other examples' files by a written path
+(`bundle-solve.test.mjs`, `link_swap.test.py`, `probe_link.test.py`,
+`spec_748_closing.test.py`, `whole-grid-backends.test.mjs`,
+`whole-grid-mains.test.mjs`). Whether each of them also scans a directory
+was not established. Those six are the ones that
 can be narrowed once every unit has targets.
 
 Six suites also name tools, since the sandbox's `PATH` holds only `uv`,
