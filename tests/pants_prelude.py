@@ -15,7 +15,7 @@
 # tree's own environment was built from.
 
 
-def suite(file, needs=()):
+def suite(file, needs=(), timeout=600):
     kind, run = ("py", "uv run") if file.endswith(".py") else ("js", "node")
     test_shell_command(
         name=file,
@@ -24,5 +24,5 @@ def suite(file, needs=()):
         workdir="/",
         execution_dependencies=[f"./{file}:{kind}", *needs, "//:uvproject"],
         extra_env_vars=["HOME", "UV_CACHE_DIR", "UV_PYTHON"],
-        timeout=600,
+        timeout=timeout,
     )
