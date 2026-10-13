@@ -107,7 +107,7 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // one marked "Disable for solver" carries `solverIgnored: true`
   // (docs/research/count-digits-gac/demo/README.md). The app's main thread
   // hands the solver only `enabled && !solverIgnored` constraints
-  // (`getConstraintsForSolver` in main-D44ZZMA9.js), so the bundle never reads
+  // (`getConstraintsForSolver` in main-IgwNn95P.js), so the bundle never reads
   // either key. Both are dropped here so a probe solves what the app would.
   const constraints = p.constraints
     .filter(config => !config.disabled && !config.solverIgnored)

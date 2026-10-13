@@ -51,8 +51,8 @@ console.log('bundle-solve-lib: buildStartMessage skips disabled constraints ok')
 
 // buildStartMessage: a constraint marked "Disable for solver" is not sent
 // either. The app saves it as `solverIgnored: true` and hands the
-// solver only `enabled && !solverIgnored` constraints (main-D44ZZMA9.js
-// `Ec.save`, `getConstraintsForSolver`).
+// solver only `enabled && !solverIgnored` constraints (main-IgwNn95P.js
+// `getConstraintsForSolver`).
 {
   const on = { type: 1, regions: [0, 0, 0, 0] }
   const ignored = { type: 1, regions: [0, 0, 1, 1], solverIgnored: true }

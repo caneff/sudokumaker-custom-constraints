@@ -15,7 +15,7 @@ import { join } from 'path'
 export const BUNDLE_PATH = join(import.meta.dirname, 'vendor', 'bundle.claude.js')
 // sha256 of the bundle every caller was written against. A different file
 // means the line numbers and binding names the callers cite may have moved.
-const BUNDLE_SHA = '312461e131246b041caf73b9c53258b940ecc002a85bef3bcf7b0d50bb437066'
+const BUNDLE_SHA = '880cc37932592124bea279e74a64442c2865a30f3c4651dfc01dee2a5280a3ef'
 
 const TAIL = '})();'
 
