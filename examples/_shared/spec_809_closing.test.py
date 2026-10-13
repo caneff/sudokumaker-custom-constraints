@@ -223,7 +223,9 @@ def an_undeclared_read_is_loud(tree):
     # prelude is where a unit stops declaring it.
     prelude = tree / "tests/pants_prelude.py"
     declared = 'needs=[":py", ":js", ":data", *needs],'
-    assert declared in prelude.read_text(), "the prelude's unit no longer reads this way"
+    assert declared in prelude.read_text(), (
+        "the prelude's unit no longer reads this way"
+    )
     prelude.write_text(
         prelude.read_text().replace(declared, 'needs=[":data", *needs],')
     )
