@@ -110,7 +110,7 @@ place() { # <file>
     *[[:space:]]*) echo "whole no rule places $1" ;;
     # docs/builtin-components.md is the one Markdown file code reads: the
     # shared component scan takes the built-in component list from it.
-    tests/all.sh | tests/suite-edges.txt | tests/pants_prelude.py | pants.toml | BUILD | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
+    tests/all.sh | tests/suite-edges.txt | justfile | pyproject.toml | uv.lock | package.json | package-lock.json | .github/workflows/* | docs/builtin-components.md)
       echo "whole every suite depends on $1" ;;
     examples/_shared/*)
       # A changed shared test selects no unit; any other shared file is code
@@ -155,19 +155,17 @@ scope() { # <base>
   units=$(printf '%s\n' $units | sort | xargs)
 }
 
-# Sets `wired`: Pants's test targets, one address per line.
+# Sets `wired`: Pants's test targets, one address per line. Anything else
+# Pants prints lands there too and matches no suite's target.
 ask_pants() {
-  local err
   command -v pants >/dev/null || {
     echo "tests/all.sh: this tree has a pants.toml and no \`pants\` is on the PATH." \
       "Install the Pants launcher (https://www.pantsbuild.org/stable/docs/getting-started/installing-pants);" \
       "a suite wired into Pants never runs outside its sandbox, so no suite was run." >&2
     exit 2; }
-  err=$(mktemp) || exit 2
-  wired=$(pants --filter-target-type=test_shell_command list :: 2>"$err" </dev/null) || {
+  wired=$(pants --filter-target-type=test_shell_command list :: 2>&1 </dev/null) || {
     echo "tests/all.sh: \`pants list\` failed, so the suites wired into Pants are not known and no suite was run:" >&2
-    cat "$err" >&2; rm -f "$err"; exit 2; }
-  rm -f "$err"
+    printf '%s\n' "$wired" >&2; exit 2; }
 }
 
 # The Pants target a suite's test file would have: `<directory>:<file>`.
