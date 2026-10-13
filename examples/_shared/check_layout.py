@@ -500,17 +500,18 @@ def declared_houses(puzzle):
 FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 
 
-def frame_backend_files():
+def frame_backend_files(keep_comments=False):
     """`{constraint name: (source file name, its minified code in the tree)}`
     for the frame's two always-on shared backends, plus the opt-in house-GAC
     filter and a no-ring board's whole-grid rows and columns when a link
     carries them -- `check_stale_backend_code` only checks a title it finds in a
-    link's own constraints, so an opt-in backend needs no separate gate here."""
-    code = dict(frame_backend_code())
+    link's own constraints, so an opt-in backend needs no separate gate here.
+    `keep_comments` is the copy an annotated link embeds."""
+    code = dict(frame_backend_code(keep_comments))
     files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
-    gac_title, gac_backend_code, _ = house_gac_backend_code()
+    gac_title, gac_backend_code, _ = house_gac_backend_code(keep_comments)
     files[gac_title] = ("house-gac.js", gac_backend_code)
-    grid = grid_backend_constraint()["definition"]
+    grid = grid_backend_constraint(keep_comments)["definition"]
     files[grid["name"]] = (f"{GRID_BACKEND[0]}.js", grid["backend"]["code"])
     return files
 
@@ -665,13 +666,16 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     link genuinely runs different code from the one under review.
     """
     name = example_dir.name
-    current = frame_backend_files()
+    # An annotated link embeds the shared backends and the shared component
+    # through the comment-keeping minify mode, not the usual full strip --
+    # compare it against those copies instead, or every rebuild would read as
+    # stale. The manifest says which example builds one.
+    annotated = manifest.annotated_keeps_comments and "annotated" in link.stem.split(
+        "_"
+    )
+    current = frame_backend_files(keep_comments=annotated)
     comp_name, comp_source, comp_want = house_gac_component_file()
-    # An annotated link embeds the shared component through the
-    # comment-keeping minify mode, not the usual full strip -- compare it
-    # against that copy instead, or every rebuild would read as stale. The
-    # manifest says which example builds one.
-    if manifest.annotated_keeps_comments and "annotated" in link.stem.split("_"):
+    if annotated:
         comp_want = minify_file(
             pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
         )

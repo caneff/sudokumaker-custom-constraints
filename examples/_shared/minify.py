@@ -49,8 +49,12 @@
 # parser, and it refuses rather than guesses: a block comment that does not
 # close on its line, an unterminated string, template or regex, and a "/" whose
 # reading (division or regex) depends on more than the token before it, all stop
-# the build naming the line. `keep_comments=True` never scans -- every line
-# survives as written, bar the lint directive and the blank line after it.
+# the build naming the line. `keep_comments=True` never refuses on the text --
+# every line survives as written, bar the lint directive and the blank line
+# after it. The prune still has to tell code from commentary, so each kept line
+# carries a comment-stripped view (`_code_view`) that the dynamic-dispatch guard
+# and the reference count read; a line the scan cannot read is its own view,
+# which at worst keeps a function or refuses the prune, never prunes wrongly.
 
 import pathlib
 import re
@@ -102,17 +106,19 @@ def minify_js(src, drop_blocks=True, base_dir=None, _stack=(), keep_comments=Fal
     lines = _splice_and_strip(src, drop_blocks, base_dir, _stack, keep_comments)
     if not _stack:  # the outermost call sees the whole assembled script
         lines = _prune_dead_includes(lines)
-    return "\n".join(text for text, _included in lines) + "\n"
+    return "\n".join(text for text, _included, _code in lines) + "\n"
 
 
 def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
-    """`(line, included)` pairs for `src`, includes spliced in and comments
-    stripped (unless `keep_comments`). `included` is true for every line that
-    came from a `#include` (at any depth), false for the top-level file's own
-    lines -- the split `_prune_dead_includes` scopes itself to."""
+    """`(line, included, code)` triples for `src`, includes spliced in and
+    comments stripped (unless `keep_comments`). `included` is true for every line
+    that came from a `#include` (at any depth), false for the top-level file's
+    own lines -- the split `_prune_dead_includes` scopes itself to. `code` is
+    the line with every comment removed: the line itself unless `keep_comments`."""
     included = bool(stack)
     out = []
     frames = ()  # open template literals / block comments, carried across lines
+    view_frames = ()  # the same, for the keep_comments code view
     after_lint = False  # the last line read was a dropped lint directive
     for line in src.splitlines():
         if keep_comments:
@@ -137,14 +143,15 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
                 )
             )
             continue
-        if keep_comments:  # never scanned: every line survives as written
-            out.append((line.rstrip(), included))
+        if keep_comments:  # every line survives as written
+            code, view_frames = _code_view(line, view_frames)
+            out.append((line.rstrip(), included, code))
             continue
         text, frames = _strip_line(line, frames, drop_blocks)
         if any(f != _BLOCK for f in frames):  # a template literal runs on:
-            out.append((text, included))  # its text is content, blanks included
+            out.append((text, included, text))  # content, blanks included
         elif text.strip():
-            out.append((text.rstrip(), included))
+            out.append((text.rstrip(), included, text.rstrip()))
     assert not frames, (
         f"{'block comment' if frames[-1] == _BLOCK else 'template literal'} never closes, which this strip cannot read"
     )
@@ -152,6 +159,7 @@ def _splice_and_strip(src, drop_blocks, base_dir, stack, keep_comments):
 
 
 _BLOCK = "block"  # frame: inside a block comment that is being kept
+_DROPPED = "dropped"  # frame: inside a block comment the code view drops
 # After one of these a "/" cannot be a division, so it opens a regex literal.
 _REGEX_AFTER = "(,=:[!&|?;{"
 # After a word ending in one of these a "/" cannot be a division either, but
@@ -199,12 +207,24 @@ def _skip_regex(line, i):
     return j + 1 if j < len(line) else -1
 
 
-def _strip_line(line, frames, drop_blocks):
+def _code_view(line, frames):
+    """`(code, frames)` for a line of a `keep_comments` file: its comments
+    removed, multi-line blocks included. A construct the scan cannot read makes
+    the line its own view and clears the carried state -- the conservative
+    reading, since commentary then only ever adds to what the prune sees."""
+    try:
+        return _strip_line(line, frames, True, lenient=True)
+    except AssertionError:
+        return line, ()
+
+
+def _strip_line(line, frames, drop_blocks, lenient=False):
     """`(text, frames)`: `line` with its comments removed. `frames` is the
     stack carried in from earlier lines and out to later ones: None while
     inside a template literal's own text, an int (the brace depth) inside one of
     its `${...}` expressions, `_BLOCK` inside a kept block comment. A construct
-    this scan cannot read stops the build naming the line."""
+    this scan cannot read stops the build naming the line. `lenient` lets a
+    dropped block comment run across lines (`_DROPPED`) instead of refusing."""
     frames = list(frames)
     out = []
     i, n = 0, len(line)
@@ -215,7 +235,12 @@ def _strip_line(line, frames, drop_blocks):
     while i < n:
         c = line[i]
         nxt = line[i + 1] if i + 1 < n else ""
-        if frames and frames[-1] == _BLOCK:  # in a kept multi-line block
+        if frames and frames[-1] == _DROPPED:  # in a dropped multi-line block
+            end = line.find("*/", i)
+            i = n if end < 0 else end + 2
+            if end >= 0:
+                frames.pop()
+        elif frames and frames[-1] == _BLOCK:  # in a kept multi-line block
             end = line.find("*/", i)
             stop = n if end < 0 else end + 2
             out.append(line[i:stop])
@@ -254,6 +279,9 @@ def _strip_line(line, frames, drop_blocks):
                 if not drop_blocks:
                     out.append(line[i : end + 2])
                 i = end + 2
+            elif drop_blocks and lenient:
+                frames.append(_DROPPED)
+                i = n
             elif drop_blocks:
                 confused("unpaired block-comment marker")
             else:  # kept: its text is not code, so it is not scanned
@@ -283,7 +311,7 @@ def _strip_line(line, frames, drop_blocks):
 
 
 def _include(rest, drop_blocks, base_dir, stack, keep_comments):
-    """The minified `(line, included)` pairs for the file one `// #include`
+    """The minified `(line, included, code)` triples for the file one `// #include`
     names -- the caller splices them straight into its own list."""
     rel = rest.strip()
     assert rel and len(rel.split()) == 1, (
@@ -305,7 +333,9 @@ def _prune_dead_includes(lines):
     """`lines` with a spliced-in top-level function dropped whenever the
     assembled script never refers to its name again. See the module docstring
     for what counts as a reference and when this refuses instead of guessing."""
-    whole = "\n".join(text for text, _included in lines)
+    # Scanned over the comment-free view: a kept comment is neither a dispatch
+    # site nor a reference. The line count matches `lines`, so spans index both.
+    whole = "\n".join(code for _text, _included, code in lines)
     dynamic = _DYNAMIC_RE.search(whole)
     assert not dynamic, (
         f"refuses to prune: {dynamic.group(0)!r} could reach a function by a "
@@ -315,10 +345,10 @@ def _prune_dead_includes(lines):
     spans = []  # (start, end) inclusive, over `lines`
     i, n = 0, len(lines)
     while i < n:
-        text, included = lines[i]
-        decl = _FUNC_DECL_RE.match(text)
+        _text, included, code = lines[i]
+        decl = _FUNC_DECL_RE.match(code)
         if decl and included:
-            depth = text.count("{") - text.count("}")
+            depth = code.count("{") - code.count("}")
             end = i
             while depth > 0:
                 end += 1
@@ -326,8 +356,8 @@ def _prune_dead_includes(lines):
                     f"function {decl.group(1)!r} never closes its brace, which "
                     "this strip cannot read"
                 )
-                end_text, _ = lines[end]
-                depth += end_text.count("{") - end_text.count("}")
+                end_code = lines[end][2]
+                depth += end_code.count("{") - end_code.count("}")
             spans.append((i, end, decl.group(1)))
             i = end + 1
         else:
@@ -336,7 +366,7 @@ def _prune_dead_includes(lines):
     drop = set()
     for start, end, name in spans:
         pattern = re.compile(rf"\b{re.escape(name)}\b")
-        span_text = "\n".join(text for text, _included in lines[start : end + 1])
+        span_text = "\n".join(code for _text, _included, code in lines[start : end + 1])
         used_elsewhere = len(pattern.findall(whole)) - len(pattern.findall(span_text))
         if used_elsewhere == 0:
             drop.update(range(start, end + 1))

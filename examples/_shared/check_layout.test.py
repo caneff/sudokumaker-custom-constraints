@@ -29,7 +29,7 @@ from check_layout import (
     check_tree,
 )
 from manifest import load_manifest
-from minify import minify_file, minify_js
+from minify import minify_file
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
 
@@ -53,6 +53,7 @@ def _link(
     grid_backend=None,
     ringless=False,
     borrowed_rowcol=None,
+    annotated_copy=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -98,6 +99,8 @@ def _link(
     rows-and-columns backend (house-gac's "Rows & Columns"); `house_gac_renamed`
     takes "annotated" to embed the shared component through the comment-keeping
     minify mode, as an `_annotated` link does (its other values are above).
+    `annotated_copy` does the same for every shared backend and component the
+    link carries, so a "stale" one is stale against the comment-keeping build.
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -138,14 +141,14 @@ def _link(
     ):
         if not wanted:
             continue
-        code = minify_js((HERE / source).read_text())
+        code = minify_file(HERE / source, keep_comments=annotated_copy)
         if wanted == "stale":
             code = code + "\n// an older copy"
         components = (
             [
                 (
                     component,
-                    minify_file(HERE / f"{component}.js")
+                    minify_file(HERE / f"{component}.js", keep_comments=annotated_copy)
                     + ("\n// an older copy" if wanted == "stale_component" else ""),
                 )
             ]
@@ -849,6 +852,48 @@ if __name__ == "__main__":
     plain_annotated_copy = {"PUZZLE_LINK.txt": _link(house_gac_renamed="annotated")}
     violations = annotated_violations(keeps, plain_annotated_copy)
     assert len(violations) == 1 and "PUZZLE_LINK.txt" in violations[0], violations
+
+    # The shared frame backends follow the same rule: under the key, an
+    # `_annotated` link carrying them is read against their comment-keeping
+    # build (#443), and a plain link under the key still reads against the
+    # stripped one. A tampered annotated backend fails like a tampered plain one.
+    shared_backends = {
+        "frame_backend": True,
+        "corners_backend": True,
+        "house_gac_backend": True,
+        "grid_backend": True,
+        "houses": "none",
+        "ringless": True,
+        "annotated_copy": True,
+    }
+    frame_keeps = {**keeps, "digits_exceed_lines": True}
+    annotated_frame = {"PUZZLE_LINK_annotated.txt": _link(**shared_backends)}
+    got = annotated_violations(frame_keeps, annotated_frame)
+    assert got == [], got
+    for tamper, source in (
+        ("frame_backend", "frame-rowcol.js"),
+        ("corners_backend", "frame-corners.js"),
+        ("house_gac_backend", "house-gac.js"),
+    ):
+        tampered = {**shared_backends, tamper: "stale"}
+        violations = annotated_violations(
+            frame_keeps, {"PUZZLE_LINK_annotated.txt": _link(**tampered)}
+        )
+        assert len(violations) == 1 and f"stale copy of {source}" in violations[0], (
+            violations
+        )
+    tampered = {**shared_backends, "house_gac_backend": "stale_component"}
+    violations = annotated_violations(
+        frame_keeps, {"PUZZLE_LINK_annotated.txt": _link(**tampered)}
+    )
+    assert len(violations) == 1 and "HouseGacComponent.js" in violations[0], violations
+    # an annotated copy in a plain link under the key is stale
+    violations = annotated_violations(
+        frame_keeps, {"PUZZLE_LINK.txt": _link(**shared_backends)}
+    )
+    assert len(violations) == 5 and all("PUZZLE_LINK.txt" in v for v in violations), (
+        violations
+    )
 
     # A frame link that declares no digit range leaves it to the app default
     # (1..9 whatever the grid size), not to the document. The source text

@@ -21,12 +21,14 @@ from sm_document import code_constraint
 GRID_BACKEND = ("grid-rowcol", "Grid Rows and Columns")
 
 
-def grid_backend_constraint():
+def grid_backend_constraint(keep_comments=False):
     """The whole-grid rows-and-columns constraint a no-ring board ships, its
-    code read from the working tree."""
+    code read from the working tree. `keep_comments` is the annotated-link
+    build."""
     name, title = GRID_BACKEND
     return code_constraint(
-        title, minify_file(pathlib.Path(__file__).parent / f"{name}.js")
+        title,
+        minify_file(pathlib.Path(__file__).parent / f"{name}.js", keep_comments),
     )
 
 
