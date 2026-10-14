@@ -946,9 +946,8 @@ with.
 
 ## #327: a running open-cell count as a fast reject
 
-Rejected on the screen, 1.03× (incremental) and 1.09× (recount) over the 19
-frozen fixtures. The numbers and the reading are in `OPTIMIZATION_LOG.md`
-under `## #327`. The screen is committed: `node
-examples/fillomino/open-count-screen.mjs`, built on `open-count-lib.mjs`, so
-the next bound idea screens against the same 19 boards without a scratch
-script.
+Rejected on the screen, 1.01× over the 19 frozen fixtures. The numbers and
+the reading are in `OPTIMIZATION_LOG.md` under `## #327`. The screen is
+committed: `node examples/fillomino/bound-screen.mjs`, built on
+`bound-screen-lib.mjs`, so the next bound idea screens against the same 19
+boards without a scratch script.
