@@ -100,9 +100,40 @@ def test_a_filled_clue_outside_its_window_fails_loud():
         raise AssertionError("a clue outside its window passed")
 
 
+def test_the_build_runs_its_window_check():
+    # make_twin fills from inside the window, so the guard cannot fire on a
+    # real board; a check that raises proves the build calls it.
+    real = build_clued.check_twin
+
+    def refuse(*_):
+        raise AssertionError("window check ran")
+
+    build_clued.check_twin = refuse
+    try:
+        build_clued.make_twin(_decode(HERE / "PUZZLE_LINK_4x4.txt"))
+    except AssertionError as e:
+        assert "window check ran" in str(e), e
+    else:
+        raise AssertionError("make_twin never called check_twin")
+    finally:
+        build_clued.check_twin = real
+
+
+def test_an_unfilled_clue_fails_loud():
+    base = _decode(HERE / "PUZZLE_LINK_4x4.txt")
+    try:
+        build_clued.check_twin(base, base, build_clued.solve(base))
+    except AssertionError as e:
+        assert "not filled" in str(e), e
+    else:
+        raise AssertionError("a twin with a blank clue passed")
+
+
 if __name__ == "__main__":
     test_names_follow_the_link_grammar()
     test_each_twin_fills_only_blank_outside_clues_and_reproduces()
     test_a_board_that_is_not_unique_fails_loud()
     test_a_filled_clue_outside_its_window_fails_loud()
+    test_the_build_runs_its_window_check()
+    test_an_unfilled_clue_fails_loud()
     print("ok")

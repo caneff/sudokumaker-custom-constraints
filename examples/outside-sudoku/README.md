@@ -148,6 +148,12 @@ into the committed board:
       --component examples/outside-sudoku/OutsideSudokuComponent.js \
       --out examples/outside-sudoku/PUZZLE_LINK.txt
 
+The `_clued` twins carry the component code too, so swapping alone leaves them
+stale. `build_link.py --refresh` re-encodes the four boards from their seeds and
+then rebuilds the twins:
+
+    uv run --with lzstring --with ortools examples/outside-sudoku/build_link.py --refresh
+
 ## The local board
 
 `PUZZLE_LINK_local.txt` is the local lane's board: the same 11x11 frame with

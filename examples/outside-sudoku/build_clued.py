@@ -16,10 +16,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from outside_rule import window_length_by_region
 from sm_document import write_link
 from sudoku_kit.link_codec import decode_puzzle
-from verify import clue_groups, solve_board
+from verify import clue_groups, solve_board, window
 
 HERE = pathlib.Path(__file__).parent
 
@@ -47,17 +46,6 @@ def solve(link):
     assert first is not None, "the board has no solution"
     assert unique, "the board is not unique: a twin would fix a guess"
     return first
-
-
-def window(link, group):
-    """The cells a clue's digit must appear in."""
-    doc = link["puzzle"]
-    W = doc["width"]
-    region = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
-    row = [i // W for i in range(W * W)]
-    column = [i % W for i in range(W * W)]
-    line = group[1:]
-    return line[: window_length_by_region(line, region, row, column)]
 
 
 def check_twin(base, twin, solution):
@@ -91,9 +79,9 @@ def make_twin(base):
     return twin
 
 
-def build(out_dir=HERE, boards=BOARDS, src_dir=HERE):
-    for board in boards:
-        base = decode_puzzle((src_dir / board).read_text().strip())
+def build(out_dir=HERE):
+    for board in BOARDS:
+        base = decode_puzzle((HERE / board).read_text().strip())
         write_link(make_twin(base), out_dir / twin_name(board))
 
 

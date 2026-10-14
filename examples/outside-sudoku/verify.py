@@ -19,15 +19,16 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
+from manifest import load_manifest
 from outside_rule import post_membership, window_length_by_region
 from sm_document import find_constraint
 from sudoku_kit import cpsat
 from sudoku_kit.link_codec import decode_puzzle
 
 SOLVE_LIMIT = 120
+CONSTRAINT_NAME = load_manifest(HERE).constraint_name
 
 
 def clue_groups(link, W, n):
@@ -46,6 +47,17 @@ def clue_groups(link, W, n):
     return groups
 
 
+def window(link, group):
+    """The cells a clue's digit must appear in: the first `w` cells of its line."""
+    doc = link["puzzle"]
+    W = doc["width"]
+    region = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
+    row = [i // W for i in range(W * W)]
+    column = [i % W for i in range(W * W)]
+    line = group[1:]
+    return line[: window_length_by_region(line, region, row, column)]
+
+
 def solve_board(link):
     """The board's own CP-SAT proof: `(first, unique, shown, givens)`.
 
@@ -58,8 +70,6 @@ def solve_board(link):
     n = W - 2
     cells = doc["cells"]
     region = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
-    row = [i // W for i in range(W * W)]
-    column = [i % W for i in range(W * W)]
     interior = [i for i in range(W * W) if region[i] >= 0]
 
     houses = {}
@@ -74,15 +84,13 @@ def solve_board(link):
 
     shown = 0
     for group in clue_groups(link, W, n):
-        clue, *line = group
+        clue = group[0]
         # A hidden clue constrains nothing: the solver may fill it with any
         # window digit.
         if not cells[clue].get("given"):
             continue
         shown += 1
-        value = cells[clue]["value"]
-        w = window_length_by_region(line, region, row, column)
-        post_membership(m, x, line[:w], value, str(clue))
+        post_membership(m, x, window(link, group), cells[clue]["value"], str(clue))
 
     givens = sum(1 for i in interior if cells[i].get("given"))
     first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
