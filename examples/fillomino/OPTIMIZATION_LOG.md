@@ -140,6 +140,17 @@ islands in place of the diff. It patched only the head of `update`, so the
 shipped body scanned a second time; it read 1.09×, was dominated by the diff
 variant on every board, and was dropped.
 
-The component is unchanged. The screen does not show a gain on the set, which
-is what earns the live clock under #327's gate, the same call #312 made for
-the bound at quiescence and k-bounded floods. LIVE_ROW_PLACEHOLDER
+The component is unchanged. The set shows no gain, but two boards do, so the
+variant was also run through `just time fillomino` (a throwaway worktree with
+the patch applied to the component, app v2026.10.05-a3aef4c, the shipped 6x6
+board, the driver's 3 reps):
+
+| Date | App | Example | Cold | Variant | Ratio | Verdict |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| 2026-10-14 | v2026.10.05-a3aef4c | fillomino | 4200ms | 4300ms | 1.02 | FAIL |
+| 2026-10-14 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+`two-row rule: NO SHIP`. The shipped board is near the measurement floor, so
+this row cannot show a gain the two fast boards might; it shows the check
+costs nothing it could pay back there. Rejected on both clocks, the same call
+#312 made for the bound at quiescence and k-bounded floods.
