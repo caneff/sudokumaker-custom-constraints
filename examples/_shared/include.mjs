@@ -16,20 +16,16 @@ import { dirname, resolve } from 'path'
 
 const INCLUDE = /^\s*\/\/\s*#include\b(.*)$/
 
-// `readFile` reads one file's text by absolute path: the working tree by
-// default, or `git show` at a commit for `loadAt` in harness-lib.mjs, so a
-// pinned component splices the includes it shipped with. It throws for a file
-// that does not exist.
-export function assembleSource (path, stack = [], readFile = p => readFileSync(p, 'utf8')) {
+export function assembleSource (path, stack = []) {
   const here = resolve(path)
   if (stack.includes(here)) throw new Error(`#include cycle through ${here}`)
-  return readFile(here).split('\n').map(line => {
+  return readFileSync(here, 'utf8').split('\n').map(line => {
     const m = INCLUDE.exec(line)
     if (!m) return line
     const rel = m[1].trim()
     if (!rel || rel.split(/\s+/).length !== 1) {
       throw new Error(`an #include names exactly one path, which this one does not: ${JSON.stringify(m[1])}`)
     }
-    return assembleSource(resolve(dirname(here), rel), [...stack, here], readFile).replace(/\n$/, '')
+    return assembleSource(resolve(dirname(here), rel), [...stack, here]).replace(/\n$/, '')
   }).join('\n')
 }

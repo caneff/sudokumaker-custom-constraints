@@ -64,7 +64,7 @@ import pathlib, sys
 from dataclasses import replace
 HERE = pathlib.Path("examples/up-to-n").resolve()
 sys.path.insert(0, str(HERE.parent / "_shared")); sys.path.insert(0, str(HERE))
-import link_codec
+from sudoku_kit import link_codec
 from build_size import SPEC, target_digit
 from framebuild import build_doc, check, load_board, save_board
 

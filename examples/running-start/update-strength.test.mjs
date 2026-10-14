@@ -1,7 +1,12 @@
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadAt } = makeIo(HERE)
+const { load } = makeIo(HERE)
+
+// The floors are frozen copies in `.golden/`, named for the commit each came
+// from, not `git show` reads: the Pants sandbox holds no git history. Raising
+// a floor means replacing its copy in the same commit as the stronger
+// component.
 
 // The floor: the components at the commit that pins this test. Every state
 // below declares a HOUSE: the floor compares neighbours strictly everywhere,
@@ -13,9 +18,9 @@ const { load, loadAt } = makeIo(HERE)
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const curLine = load('RunningStartComponent.js', NAMES)
-const refLine = loadAt(REF_COMMIT, 'RunningStartComponent.js', NAMES)
+const refLine = load(`.golden/RunningStartComponent.${REF_COMMIT}.js`, NAMES)
 const curPair = load('RunningStartPairComponent.js', NAMES)
-const refPair = loadAt(REF_COMMIT, 'RunningStartPairComponent.js', NAMES)
+const refPair = load(`.golden/RunningStartPairComponent.${REF_COMMIT}.js`, NAMES)
 
 const { rnd } = makeRng(4104)
 const randomSet = (lo, hi) => randomCandidates(rnd, lo, hi)

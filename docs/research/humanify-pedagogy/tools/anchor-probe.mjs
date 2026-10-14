@@ -1,8 +1,11 @@
-// Probe for issue #445: click three in-body a.ref links whose targets are far
-// apart on the built Constraint API page, wait 1.2s, and report where each
-// target actually landed relative to the viewport top. A landed link reads
-// 0..20px (the page's scroll-margin-top is 12px); a smooth-scroll interrupt
-// reads tens of thousands of px off.
+// Probe for issues #445 and #447: click three in-body a.ref links whose targets
+// are far apart on the built Constraint API page, plus one link per target
+// that sits inside the collapsed "Under the hood" <details> (the section is
+// re-collapsed before each), wait 1.2s, and report
+// where each target actually landed relative to the viewport top. A landed
+// link reads 0..20px (the page's scroll-margin-top is 12px); a smooth-scroll
+// interrupt reads tens of thousands of px off, and a scroll-spy that scrolls
+// the document after a hood jump reads about -85px.
 //
 // Usage: node anchor-probe.mjs <built.html>
 // Requires `shot-scraper` and `python3` on PATH (installed separately, not
@@ -50,11 +53,8 @@ async function waitForServer (p, deadlineMs = 5000) {
 
 const js = `
 new Promise(async (resolve) => {
+  var hood = document.getElementById('under-the-hood')
   function farApartLinks() {
-    // Targets under "Under the hood" are collapsed by default and go through
-    // a separate reveal path with its own nav-scroll-spy interaction; this
-    // probe sticks to ordinary visible-section links, per the ticket.
-    var hood = document.getElementById('under-the-hood')
     var links = Array.from(document.querySelectorAll('main a.ref[href^="#"]'))
       .map(function (a) {
         var t = document.getElementById(a.getAttribute('href').slice(1))
@@ -66,18 +66,33 @@ new Promise(async (resolve) => {
     if (links.length < 3) return links
     return [links[0], links[Math.floor(links.length / 2)], links[links.length - 1]]
   }
-  var picks = farApartLinks()
+  // One a.ref link per hood target, from outside the hood where possible. The
+  // drift depends on where the nav entry sits, so every target is tried.
+  function hoodLinks() {
+    if (!hood) return []
+    var byTarget = {}
+    Array.from(document.querySelectorAll('a.ref[href^="#"]')).forEach(function (a) {
+      var h = a.getAttribute('href')
+      var t = document.getElementById(h.slice(1))
+      if (!t || t === hood || !hood.contains(t)) return
+      var cur = byTarget[h]
+      if (!cur || (cur.inside && !hood.contains(a))) byTarget[h] = { a: a, hood: true, inside: hood.contains(a) }
+    })
+    return Object.keys(byTarget).map(function (h) { return byTarget[h] })
+  }
+  var picks = farApartLinks().concat(hoodLinks())
   var results = []
   for (var i = 0; i < picks.length; i++) {
+    if (hood) hood.open = false
     window.scrollTo(0, 0)
     await new Promise(function (r) { setTimeout(r, 50) })
     var href = picks[i].a.getAttribute('href')
-    picks[i].a.scrollIntoView({ block: 'center' })
+    if (!picks[i].hood) picks[i].a.scrollIntoView({ block: 'center' })
     picks[i].a.click()
     await new Promise(function (r) { setTimeout(r, 1200) })
     var target = document.getElementById(href.slice(1))
     var top = target ? target.getBoundingClientRect().top : null
-    results.push({ href: href, top: top })
+    results.push({ href: href, top: top, hood: !!picks[i].hood })
   }
   resolve(results)
 })
@@ -93,8 +108,10 @@ const results = JSON.parse(out)
 
 // A page with too few main-body ref links (a bad path, a 404, a page that
 // changed shape) must fail loudly rather than report PASS on zero evidence.
-if (results.length < 3) {
-  console.error(`FAIL: only found ${results.length} eligible link(s) to test (need 3) — check the built file and URL`)
+const nHood = results.filter((r) => r.hood).length
+// Fewer than two hood targets cannot exercise the hood path at all.
+if (results.length - nHood < 3 || nHood < 2) {
+  console.error(`FAIL: found ${results.length - nHood} body and ${nHood} hood link(s) to test (need 3 and 2) — check the built file and URL`)
   process.exit(1)
 }
 
@@ -102,7 +119,7 @@ let allLanded = true
 for (const r of results) {
   const landed = r.top !== null && r.top >= 0 && r.top <= 20
   if (!landed) allLanded = false
-  console.log(`${landed ? 'OK  ' : 'MISS'} ${r.href} top=${r.top}`)
+  console.log(`${landed ? 'OK  ' : 'MISS'} ${r.hood ? 'hood ' : 'body '}${r.href} top=${r.top}`)
 }
 console.log(allLanded ? 'PASS: all links landed within 0..20px' : 'FAIL: at least one link missed')
 process.exit(allLanded ? 0 : 1)

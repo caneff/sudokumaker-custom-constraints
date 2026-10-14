@@ -169,8 +169,8 @@ uv run examples/count-digits-gac/build_sparse_count_digits.py --keep-comments # 
 ```
 
 The script lives in `examples/count-digits-gac/`, on the shared board kit
-(`board_kit.py`); `docs/research/` refuses a new `.py` file
-(`check_research_python`, #469).
+(`board_kit.py`), where ruff and the gate read it; nothing lints a `.py`
+file under `docs/research/`.
 
 ### Reproduce
 

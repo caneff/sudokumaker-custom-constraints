@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from framebuild import Lane, named_files, puzzle_document
+from framebuild import NO_RING_RULES_PREFIX, Lane, named_files, puzzle_document
 from minify import minify_file
 from sm_document import code_constraint
 
@@ -21,12 +21,14 @@ from sm_document import code_constraint
 GRID_BACKEND = ("grid-rowcol", "Grid Rows and Columns")
 
 
-def grid_backend_constraint():
+def grid_backend_constraint(keep_comments=False):
     """The whole-grid rows-and-columns constraint a no-ring board ships, its
-    code read from the working tree."""
+    code read from the working tree. `keep_comments` is the annotated-link
+    build."""
     name, title = GRID_BACKEND
     return code_constraint(
-        title, minify_file(pathlib.Path(__file__).parent / f"{name}.js")
+        title,
+        minify_file(pathlib.Path(__file__).parent / f"{name}.js", keep_comments),
     )
 
 
@@ -104,6 +106,8 @@ class NoRing(Lane):
 
     name = "no-ring"
     backend = "main.js"
+    # No ring means no inner grid to name.
+    rules_prefix = NO_RING_RULES_PREFIX
     # A no-ring board ships the grid backend in place of the two frame ones.
     generated = (GRID_BACKEND[1],)
     # `check` holds the clue labels to the drawn groups, and a rebuild
@@ -156,7 +160,7 @@ class NoRing(Lane):
             self.example_constraint(groups),
             *([labels] if labels else []),
         ]
-        comment = spec.rules_prefix + spec.comment_fn(n)
+        comment = self.rules_prefix + spec.comment_fn(n)
         return puzzle_document(spec, board, n, cells, constraints, comment)
 
     def _check_lane(self, lc, doc, board):

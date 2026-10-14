@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 import generate
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 
 SPEC = json.loads((HERE / "gen.json").read_text())
 SIDE = len(SPEC["grid"])

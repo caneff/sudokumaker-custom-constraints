@@ -17,10 +17,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 from framebuild import frame_groups as _frame_groups
 from framebuild import make_lines
-from link_codec import decode_puzzle
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
 from sm_document import GROUPS_INPUT, find_constraint, write_link
+from sudoku_kit.link_codec import decode_puzzle
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -59,8 +59,8 @@ def build_original(base):
     return original
 
 
-def build(out_dir=HERE):
-    ours = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+def build(out_dir=HERE, board=HERE / "PUZZLE_LINK.txt"):
+    ours = decode_puzzle(board.read_text().strip())
     return write_link(build_original(ours), out_dir / "PUZZLE_LINK_original.txt")
 
 

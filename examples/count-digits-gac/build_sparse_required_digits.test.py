@@ -19,7 +19,7 @@ from build_sparse_required_digits import (
     is_house,
     model,
 )
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
 

@@ -13,9 +13,9 @@ import json
 import pathlib
 
 from frame import ring_cell
-from link_codec import decode_puzzle
 from minify import minify_file
 from sm_document import find_constraint, registering_constraint_name
+from sudoku_kit.link_codec import decode_puzzle
 
 
 def check_local_board(example_dir, tag, component, clue):

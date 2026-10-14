@@ -26,9 +26,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "_shared"))
-import cpsat
 from ortools.sat.python import cp_model
+from sudoku_kit import cpsat
 
 # Seconds per solve when no caller names a cap. A 10x10 proof runs in minutes;
 # past ten, the run reports no verdict rather than waiting on one.

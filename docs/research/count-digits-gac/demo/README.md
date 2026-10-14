@@ -263,7 +263,7 @@ node examples/_shared/app-solve.mjs docs/research/count-digits-gac/demo/PUZZLE_L
 on, for timing outside the app's menu. The counter-outside link rebuilds with
 `--gen docs/research/count-digits-gac/demo/gen_counter_outside.json` (the link name follows the gen).
 
-**Uniqueness** is proved by CP-SAT through `examples/_shared/cpsat.py` (the
+**Uniqueness** is proved by CP-SAT through `sudoku_kit.cpsat`, the sudoku-kit library (the
 `count_board.model()` and `board_kit.count_solutions()`), from the 17 givens, in the
 test. **Readability caveat:** the app draws cosmetic cages as thin dashed
 outlines, and the groups grow at random, so two groups that meet can be

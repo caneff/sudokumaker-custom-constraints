@@ -120,7 +120,7 @@ puzzle state per candidate but copies the component set by reference —
 copy constructor, then `const o = this.state.clone(); ... yield* new
 Qt(o, this).findSolutions()`. So every search node shares one component object,
 and nothing written on `instance` is undone on backtrack. **[verified]**
-(`solver-Bv75x3BJ.js`, extracted from `examples/_shared/sudokumaker.har`.)
+(`solver-PA_paHYG.js`, extracted from `examples/_shared/sudokumaker.har`.)
 
 `puzzle.stop()` is the other half of that asymmetry. It becomes an
 `AbortSolver` change that fails **the cloned state** — the search loop simply

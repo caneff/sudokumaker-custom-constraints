@@ -19,9 +19,9 @@ from build_link import (
     read_gen,
 )
 from framebuild import NO_RING_RULES_PREFIX
-from link_codec import decode_puzzle
 from link_swap import swap_build
 from no_ring import GRID_BACKEND
+from sudoku_kit.link_codec import decode_puzzle
 from verify import verify
 
 if __name__ == "__main__":

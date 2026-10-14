@@ -147,17 +147,6 @@ Use these terms exactly. Do not drift to synonyms.
   where a comparison actually uses it. Not to be confused with the baseline
   half of a same-board pair, which need not live under `original/`. See
   `docs/example-layout.md`.
-- **finder** — code that searches for grids fitting a rule, under `finders/`.
-  Unlike **generation**, which builds one example's puzzle, a finder explores a
-  rule's space for candidates worth building on.
-- **hunt** — one run of a finder: it writes candidates and a summary to an
-  output directory. Not a finder: one finder runs many hunts.
-- **hunt protocol** — the shared contract a finder follows so every hunt writes
-  the same output directory, dedupes the same way, and can resume after a
-  kill. It carries no finder rule.
-- **finder rule** — a rule a finder states itself because gridfind has no layer
-  for it. It stays a finder rule until it is **promoted**: turned into a
-  gridfind layer with its fixtures.
 
 ### Region-building terms (shared by `examples/isofill/` and fillomino)
 

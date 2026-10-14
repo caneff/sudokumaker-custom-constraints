@@ -1,25 +1,23 @@
 // The never-weaker fuzz is the old-vs-new comparison OPTIMIZATION_LOG.md asks
 // of every rewrite: the k=1 ordering trap is invisible to the soundness harness.
 
-import { execFileSync } from 'child_process'
 import assert from 'assert'
 import { installGlobals, makeIo, makeRng, makeLine, makePuzzle, fixpoint, housesOf, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadSource } = makeIo(HERE)
+const { load } = makeIo(HERE)
 const NAMES = ['setParams', 'update']
 const cur = load('NumberedRoomsComponent.js', NAMES)
 
 // One floor per kind, each the component that owned that kind before the
-// merge. The bare floor's file no longer exists in the tree, so both are read
-// straight out of git history by path.
+// merge. The bare floor's file no longer exists in the tree, so both are frozen
+// copies in `.golden/`, named for the commit each came from, not `git show`
+// reads: the Pants sandbox holds no git history.
 const FLOORS = {
-  house: ['143b34d', 'examples/numbered-rooms/NumberedRoomsComponent.js'],
-  bare: ['56e707a', 'examples/numbered-rooms-lines/NumberedRoomsLinesComponent.js']
+  house: '.golden/NumberedRoomsComponent.143b34d.js',
+  bare: '.golden/NumberedRoomsLinesComponent.56e707a.js'
 }
-const gitShow = (commit, path) =>
-  execFileSync('git', ['show', `${commit}:${path}`], { cwd: HERE, encoding: 'utf8' })
-const floor = kind => loadSource(gitShow(...FLOORS[kind]), NAMES)
+const floor = kind => load(FLOORS[kind], NAMES)
 
 // The pre-merge drawn-line floor reads a `distinct` flag as its fourth
 // setParams argument; the current component reads the kind off the puzzle and

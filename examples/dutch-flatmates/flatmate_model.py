@@ -5,13 +5,9 @@
 # flatmate_model.test.py and validate.test.mjs that check the two against it.
 
 import dataclasses
-import pathlib
-import sys
 
 from ortools.sat.python import cp_model
-
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "_shared"))
-from cpsat import SOLVED, solve_unique, solver, sudoku_model
+from sudoku_kit.cpsat import SOLVED, solve_unique, solver, sudoku_model
 
 N = 9
 BOX = 3

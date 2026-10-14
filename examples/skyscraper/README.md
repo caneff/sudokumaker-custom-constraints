@@ -276,10 +276,11 @@ The three mechanical criteria, checked by `check_layout.py`:
    the peak split, the subset DP and its state, why soundness holds, and the
    permutation precondition both entry points re-check) and carries a short
    `//!` note per step of the sweep — 58 `//!` lines in all.
-   **None of it ships** (#385):
-   `minify.py` strips every comment from the copy baked into the link, so a
-   recipient opening this board reads the algorithm and nothing about it. The
-   criterion is checked against that file, not against the blob.
+   **None of it ships** (#385): `minify.py` strips every comment from the copy
+   baked into the link, so a recipient opening this board reads the algorithm
+   and nothing about it. Skyscraper has no annotated twin (`../../docs/share-checklist.md` § 4
+   says what that leaves a recipient). The criterion is checked against the
+   file in the tree, not against the blob.
 
 ## Paste into SudokuMaker
 

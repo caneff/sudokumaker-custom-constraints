@@ -9,6 +9,7 @@
 #   uv run --with lzstring examples/_shared/time_example.test.py
 
 import contextlib
+import io
 import json
 import pathlib
 import subprocess
@@ -19,9 +20,9 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 import time_example
-from link_codec import decode_puzzle, encode_link
 from manifest import load_manifest
 from minify import minify_file, minify_js
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 from time_example import (
     app_solve,
     build_candidate_doc,
@@ -42,7 +43,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, {str(HERE)!r})
-from link_codec import decode_puzzle
+from sudoku_kit.link_codec import decode_puzzle
 from link_swap import check_and_write, swap_component_code
 from minify import minify_file, minify_js
 
@@ -689,7 +690,12 @@ if __name__ == "__main__":
 
     time_example.subprocess.run = fake_run
     try:
-        assert app_solve("board.txt", 3) == "OUT\n"
+        # A successful run forwards the driver's stderr (its busy-machine
+        # warning, #387) instead of swallowing it.
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            assert app_solve("board.txt", 3) == "OUT\n"
+        assert err.getvalue() == "ERR\n", err.getvalue()
         assert app_solve("board.txt", 1, ring_clues=True, after_logical=True) == "OUT\n"
         try:
             app_solve("fail.txt", 1)
@@ -701,6 +707,41 @@ if __name__ == "__main__":
     node = ["node", str(time_example.APP_SOLVE)]
     assert seen[0] == [*node, "board.txt", "3"]
     assert seen[1] == [*node, "board.txt", "1", "--ring-clues", "--after-logical"]
+
+    # Machine load (#387): the driver's busy verdict survives combine_reps and
+    # reaches the pasted row's verdict cell; the verdict word itself is unchanged.
+    def rep(median, loads, busy):
+        return {
+            "median": median,
+            "version": "v1",
+            "loads": loads,
+            "busy": busy,
+            "loadThreshold": 16,
+        }
+
+    quiet = time_example.combine_reps(
+        "b.txt", [rep(100, [{"before": 1.0, "after": 2.0}], False)]
+    )
+    hot = time_example.combine_reps(
+        "b.txt",
+        [
+            rep(100, [{"before": 1.0, "after": 2.0}], False),
+            rep(100, [{"before": 27.7, "after": 3.0}], True),
+        ],
+    )
+    assert quiet["busy"] is False and hot["busy"] is True
+    assert hot["maxLoad"] == 27.7 and hot["loadThreshold"] == 16
+    assert time_example.busy_note(quiet, quiet) == ""
+    assert time_example.busy_note(quiet, hot) == " (BUSY load 27.7 > 16)"
+    row, verdict = time_example.build_row("2026-10-13", "v1", "b", 100, 80)
+    flagged = time_example._flag_busy(row, verdict, time_example.busy_note(hot))
+    assert flagged.endswith("| PASS (BUSY load 27.7 > 16) |"), flagged
+    assert time_example._flag_busy(row, verdict, "") == row
+    # A driver without load fields (an older JSON line) is not busy.
+    assert (
+        time_example.combine_reps("b.txt", [{"median": 5, "version": "v1"}])["busy"]
+        is False
+    )
 
     # run()'s success path, with the one live-app call faked out.
     # `fake_solve` records how it was called, so these cases assert on the

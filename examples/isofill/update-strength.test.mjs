@@ -10,13 +10,16 @@ import { readFileSync } from 'fs'
 import { installGlobals, makeIo, makeRng, fixpoint, randomCandidates, strengthSweep } from '../_shared/harness-lib.mjs'
 
 const HERE = import.meta.dirname
-const { load, loadAt } = makeIo(HERE)
+const { load } = makeIo(HERE)
 
-// The floor: the component as it stands at the commit that pins this test.
+// The floor: the component as it stands at the commit that pins this test, a
+// frozen copy in `.golden/` (the Pants sandbox holds no git history). Raising it
+// means replacing the copy, and the commit in its name, in the same commit as
+// the stronger component.
 const REF_COMMIT = 'db93523'
 const NAMES = ['setParams', 'update']
 const cur = load('IsofillComponent.js', NAMES)
-const ref = loadAt(REF_COMMIT, 'IsofillComponent.js', NAMES)
+const ref = load(`.golden/IsofillComponent.${REF_COMMIT}.js`, NAMES)
 
 const { rnd } = makeRng(9001)
 const REPS = 500

@@ -1,0 +1,13 @@
+unit(
+    suites=[
+        "build_link.test.py",
+        "flatmate_model.test.py",
+        "end-to-end.test.mjs",
+        "no-five.test.mjs",
+        "support-equivalence.test.mjs",
+        "update-prune.test.mjs",
+        "update-strength.test.mjs",
+        "validate.test.mjs",
+        "soundness-harness.mjs",
+    ],
+)

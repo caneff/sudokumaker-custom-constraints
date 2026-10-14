@@ -412,6 +412,81 @@ def test_refuses_to_prune_when_a_name_could_be_reached_dynamically():
         raise AssertionError("expected a refusal for a dynamic call")
 
 
+def test_keep_comments_scans_code_not_commentary_for_dynamic_dispatch():
+    # A kept comment that explains why the code avoids `eval(` is not a call.
+    got = minify_js(
+        "//! we never call eval(x) here\nfunction f () { return 1 }\nf()\n",
+        keep_comments=True,
+    )
+    assert got == "//! we never call eval(x) here\nfunction f () { return 1 }\nf()\n"
+    # A multi-line block comment is commentary on every line it spans.
+    src = "/* never\n   new Function(x) or obj[key]()\n*/\nconst a = 1\n"
+    assert minify_js(src, keep_comments=True) == src
+
+
+def test_keep_comments_still_refuses_real_dynamic_dispatch():
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("function used () { return 1 }\n")
+        (root / "main.js").write_text(
+            "// #include seg.js\n//! note\nused()\nwindow[key]()  // eval(x)\n"
+        )
+        try:
+            minify_file(root / "main.js", keep_comments=True)
+        except AssertionError as e:
+            assert "computed name" in str(e), str(e)
+            return
+        raise AssertionError("expected a refusal for a dynamic call")
+
+
+def test_a_function_named_only_in_a_comment_prunes_with_and_without_keep_comments():
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        # `unused` names itself and holds a brace in its own comments: the
+        # reference count and the brace count both read code, not commentary
+        (root / "seg.js").write_text(
+            "function used () { return 1 }\n"
+            "function unused () {\n"
+            "  // unused is never called { here\n"
+            "  return 2\n"
+            "}\n"
+        )
+        (root / "main.js").write_text(
+            "// #include seg.js\n//! unused() is gone\n/* and unused */\nused()\n"
+        )
+        plain = minify_file(root / "main.js")
+        kept = minify_file(root / "main.js", keep_comments=True)
+    assert plain == "function used () { return 1 }\nused()\n", repr(plain)
+    assert "function unused" not in kept and "function used" in kept, repr(kept)
+    assert "//! unused() is gone" in kept, repr(kept)
+
+
+def test_keep_comments_refuses_the_prune_past_a_line_it_cannot_read():
+    # `i++ / 2` is a slash the scan cannot classify. The text still survives
+    # whole, but past it the code view cannot tell the template literal's own
+    # `//` from a comment, so the `${fooRef()}` reference may be hidden: the
+    # prune refuses rather than drop a function the shipped code calls.
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "seg.js").write_text("function fooRef () { return 1 }\n")
+        (root / "main.js").write_text(
+            "// #include seg.js\n"
+            "const t = i++ / 2 + `multi\n"
+            "  see http://x ${fooRef()}`\n"
+        )
+        try:
+            minify_file(root / "main.js", keep_comments=True)
+        except AssertionError as e:
+            assert "cannot read" in str(e) and "prune" in str(e), str(e)
+            return
+        raise AssertionError("expected the prune to refuse past an unreadable line")
+
+
+def test_keep_comments_without_includes_never_refuses_on_an_unreadable_line():
+    src = "const q = i++ / 2\nconst a = 1\n"
+    assert minify_js(src, keep_comments=True) == src
+
+
 def test_refuses_a_directive_with_no_path():
     # "// #include" alone is not an ordinary comment to drop: it is a
     # half-written directive, and guessing what it meant is the ambiguity this
@@ -461,5 +536,10 @@ if __name__ == "__main__":
     test_prunes_and_keeps_multiline_spliced_functions_by_brace_count()
     test_never_prunes_the_including_files_own_unused_function()
     test_refuses_to_prune_when_a_name_could_be_reached_dynamically()
+    test_keep_comments_scans_code_not_commentary_for_dynamic_dispatch()
+    test_keep_comments_still_refuses_real_dynamic_dispatch()
+    test_a_function_named_only_in_a_comment_prunes_with_and_without_keep_comments()
+    test_keep_comments_refuses_the_prune_past_a_line_it_cannot_read()
+    test_keep_comments_without_includes_never_refuses_on_an_unreadable_line()
     test_refuses_a_directive_with_no_path()
     print("ok")

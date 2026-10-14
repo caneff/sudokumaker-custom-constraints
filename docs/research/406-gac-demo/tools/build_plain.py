@@ -1,8 +1,7 @@
 import json, re, sys, random
 from pathlib import Path
 root = Path(__file__).resolve().parent
-sys.path.insert(0, str(root / 'probe406-worktree/examples/_shared'))
-from link_codec import encode_link, decode_puzzle
+from sudoku_kit.link_codec import encode_link, decode_puzzle
 
 # The true grid, taken from the run that finished 81/81.
 sol = {}

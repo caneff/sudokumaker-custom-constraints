@@ -19,15 +19,16 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-import cpsat
-from build_link import CONSTRAINT_NAME
 from frame import ring_cell
 from framebuild import make_lines
-from link_codec import decode_puzzle
+from manifest import load_manifest
 from outside_rule import post_membership, window_length_by_region
 from sm_document import find_constraint
+from sudoku_kit import cpsat
+from sudoku_kit.link_codec import decode_puzzle
 
 SOLVE_LIMIT = 120
+CONSTRAINT_NAME = load_manifest(HERE).constraint_name
 
 
 def clue_groups(link, W, n):
@@ -46,16 +47,29 @@ def clue_groups(link, W, n):
     return groups
 
 
-def main(argv):
-    path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
-    link = decode_puzzle(path.read_text().strip())
+def window(link, group):
+    """The cells a clue's digit must appear in: the first `w` cells of its line."""
+    doc = link["puzzle"]
+    W = doc["width"]
+    region = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
+    row = [i // W for i in range(W * W)]
+    column = [i % W for i in range(W * W)]
+    line = group[1:]
+    return line[: window_length_by_region(line, region, row, column)]
+
+
+def solve_board(link):
+    """The board's own CP-SAT proof: `(first, unique, shown, givens)`.
+
+    `first` maps every interior cell to its digit in one solution (None when
+    there is none) and `unique` says no second inner grid exists. Blank clues
+    post nothing, so uniqueness is of the inner grid, which is what the
+    carve loop proved."""
     doc = link["puzzle"]
     W = doc["width"]
     n = W - 2
     cells = doc["cells"]
     region = next(c for c in doc["constraints"] if c.get("type") == 1)["regions"]
-    row = [i // W for i in range(W * W)]
-    column = [i % W for i in range(W * W)]
     interior = [i for i in range(W * W) if region[i] >= 0]
 
     houses = {}
@@ -70,20 +84,25 @@ def main(argv):
 
     shown = 0
     for group in clue_groups(link, W, n):
-        clue, *line = group
+        clue = group[0]
         # A hidden clue constrains nothing: the solver may fill it with any
         # window digit.
         if not cells[clue].get("given"):
             continue
         shown += 1
-        value = cells[clue]["value"]
-        w = window_length_by_region(line, region, row, column)
-        post_membership(m, x, line[:w], value, str(clue))
+        post_membership(m, x, window(link, group), cells[clue]["value"], str(clue))
 
     givens = sum(1 for i in interior if cells[i].get("given"))
-    print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
-
     first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
+    return first, unique, shown, givens
+
+
+def main(argv):
+    path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
+    link = decode_puzzle(path.read_text().strip())
+    n = link["puzzle"]["width"] - 2
+    first, unique, shown, givens = solve_board(link)
+    print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
     assert first is not None, "the shipped board has no solution"
     assert unique, "the shipped board has two solutions"
     print("ok — exactly one solution")

@@ -21,10 +21,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 import build_size
 from framebuild import RingGlobal, frame_groups, load_board
-from link_codec import encode_link
 from link_swap import frame_only, replace_constraint_code
 from minify import minify_file
 from sm_document import GROUPS_INPUT, find_constraint, write_link
+from sudoku_kit.link_codec import encode_link
 
 HERE = pathlib.Path(__file__).parent
 ORIG = HERE / "original"

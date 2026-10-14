@@ -14,8 +14,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_original import build_original, frame_groups
-from link_codec import decode_puzzle
 from sm_document import write_link
+from sudoku_kit.link_codec import decode_puzzle
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Custom Numbered Rooms"
@@ -78,8 +78,8 @@ def fill_ring(doc, values, groups):
     return doc
 
 
-def build(out_dir=HERE):
-    base = decode_puzzle((HERE / "PUZZLE_LINK.txt").read_text().strip())
+def build(out_dir=HERE, board=HERE / "PUZZLE_LINK.txt"):
+    base = decode_puzzle(board.read_text().strip())
     values = [int(d) for d in SOLUTION]
     assert len(values) == len(base["puzzle"]["cells"]), "SOLUTION is the wrong size"
     verify_solution(base, values)

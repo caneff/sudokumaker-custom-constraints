@@ -1,8 +1,7 @@
 import json, sys
 from pathlib import Path
 root = Path(__file__).resolve().parent
-sys.path.insert(0, str(root / 'probe406-worktree/examples/_shared'))
-from link_codec import encode_link, decode_puzzle
+from sudoku_kit.link_codec import encode_link, decode_puzzle
 sys.path.insert(0, str(root))
 from hard import GRIDS
 

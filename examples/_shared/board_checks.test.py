@@ -11,9 +11,9 @@ import tempfile
 
 from board_checks import check_local_board
 from frame import ring_cell
-from link_codec import encode_link
 from minify import minify_file
 from sm_document import code_constraint
+from sudoku_kit.link_codec import encode_link
 
 GRID = [[1, 2, 3, 4], [3, 4, 1, 2], [2, 1, 4, 3], [4, 3, 2, 1]]
 KEYS = [f"{side}{i}" for side in "LRTB" for i in range(4)]

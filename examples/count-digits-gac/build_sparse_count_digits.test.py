@@ -16,8 +16,8 @@ from build_sparse_count_digits import (
     build,
 )
 from count_board import BASELINE_NAME, CANDIDATE_NAME, COMPONENT, model
-from link_codec import decode_puzzle
 from minify import minify_file
+from sudoku_kit.link_codec import decode_puzzle
 from untouched import leaves_untouched
 
 NAMES = ["PUZZLE_LINK.txt", "PUZZLE_LINK_original.txt"]

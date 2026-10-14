@@ -11,10 +11,10 @@ import json
 import pathlib
 from collections.abc import Callable
 
-from link_codec import decode_puzzle, encode_link
 from link_swap import swap_main
 from minify import minify_file
 from sm_document import code_constraint
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 
 @dataclasses.dataclass(frozen=True)

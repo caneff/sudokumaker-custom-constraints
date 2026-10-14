@@ -75,6 +75,8 @@ line as its window. That is weaker than the rule, never unsound.
 | `PUZZLE_LINK.txt`, `gen.json` | The shipped board, on the global lane (see below) |
 | `PUZZLE_LINK_local.txt`, `gen_local.json` | The same frame, on the local lane |
 | `PUZZLE_LINK_<n>x<n>.txt`, `gen_<n>x<n>.json` | The smaller boards and their seed data |
+| `build_clued.py` (+ test) | Builds the four `_clued` twins; `build_link.py --refresh` re-encodes the boards and rebuilds them |
+| `PUZZLE_LINK_clued.txt`, `PUZZLE_LINK_4x4_clued.txt`, `PUZZLE_LINK_6x6_clued.txt`, `PUZZLE_LINK_clued_local.txt` | The twins: each board with every outside clue given |
 
 ## The two backends
 
@@ -116,6 +118,26 @@ link runs", #268).
   run it; run it after changing the board or the rule.
 - Every non-given cell decodes as `{}` — no solution digit and no hidden clue
   ships pre-typed. `build_size.test.py` checks the same of every sized board.
+- **The app reads every shipped link "not unique", and the board is still
+  unique.** The proof above is of the inner grid. The app's "Find all solutions"
+  also counts each blank clue, and this rule leaves a blank clue free within its
+  window, so each one multiplies the count. Filling the blank clues from the
+  solution makes the app read unique, which is what the `_clued` twins do
+  (below). Evidence and scripts:
+  `docs/research/398-outside-sudoku-not-unique.md`.
+
+### The `_clued` twins
+
+Each board has a twin with every blank outside clue filled: `PUZZLE_LINK_clued.txt`,
+`PUZZLE_LINK_4x4_clued.txt`, `PUZZLE_LINK_6x6_clued.txt` and
+`PUZZLE_LINK_clued_local.txt`. A solver who wants "Find all solutions" to agree
+with the proof uses a twin, at the cost of being given every clue; the
+unclued board keeps the puzzle as designed. A twin differs from its board only
+in the blank clue cells, each set to the digit its window's first cell holds in
+the board's own CP-SAT solution (`build_clued.py`, which fails if the board is
+not unique or a filled clue is not in its window). The app reads all four
+unique (`docs/frame-link-verdicts.md`). Rebuild them with
+`uv run --with lzstring --with ortools examples/outside-sudoku/build_link.py --refresh`.
 
 ### Regenerating
 
@@ -125,6 +147,12 @@ into the committed board:
     uv run --with lzstring examples/outside-sudoku/build_link.py \
       --component examples/outside-sudoku/OutsideSudokuComponent.js \
       --out examples/outside-sudoku/PUZZLE_LINK.txt
+
+The `_clued` twins carry the component code too, so swapping alone leaves them
+stale. `build_link.py --refresh` re-encodes the four boards from their seeds and
+then rebuilds the twins:
+
+    uv run --with lzstring --with ortools examples/outside-sudoku/build_link.py --refresh
 
 ## The local board
 

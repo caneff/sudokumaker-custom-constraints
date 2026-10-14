@@ -34,9 +34,7 @@ import sys
 from dataclasses import replace
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "_shared"))
-import link_codec
 from framebuild import (
-    NO_RING_RULES_PREFIX,
     Spec,
     load_board,
     main,
@@ -44,6 +42,7 @@ from framebuild import (
     unique,
 )
 from no_ring import NoRing
+from sudoku_kit import link_codec
 
 HERE = pathlib.Path(__file__).parent
 CONSTRAINT_NAME = "Up to N"
@@ -125,7 +124,6 @@ SPEC = Spec(
     comment_fn=rule_text,
     groups_fn=markers,
     bent_lines=False,
-    rules_prefix=NO_RING_RULES_PREFIX,
 )
 
 MINIMAL_9X9 = (HERE / "PUZZLE_LINK_9x9.txt", HERE / "gen_9x9.json")

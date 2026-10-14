@@ -15,6 +15,10 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
   component's `update`.
 - **Tool.** Run `just time <example>` (add `--ring-clues` for an example whose
   clues live in the ring: numbered-rooms, skyscraper).
+- **Quiet machine.** Non-deterministic solve off, and no other solver or gate
+  running: the driver warns when the one-minute load average is above half the
+  core count, and a row taken under that warning is not a measurement (§
+  Caveats, "Time on a quiet machine").
 - **Two rows per fixture.** Every fixture is timed twice: **cold**, from the
   stripped board, and **after-logical**, from the state a player reaches once
   the app's own logical solver has run. A deduction can pay off from an empty
@@ -273,6 +277,19 @@ the method, not a running log.
 - **Turn non-deterministic solve off.** `app-solve.mjs` does this before every
   run; it is what makes the reps agree (the medians above vary by <5% run to
   run). With it on, the same board swings 10×–20× and the numbers are noise.
+- **Time on a quiet machine.** Another solver, a build or a test gate on the
+  same box makes the same board read 2× slower: #384's identical link, component
+  and driver read 12.2 s and 23.6 s at a one-minute load average of 27.7 on 32
+  cores, and both readings were voided. `app-solve.mjs` reads the load average
+  before and after every rep, prints both on the rep row (`load 1.25->3.50`) and
+  in the JSON line (`loads`, `loadThreshold`, `busy`), and prints a `WARNING`
+  on stderr when either reading is above **half the core count**. `just time`
+  forwards that warning and marks the pasted row's verdict cell
+  (`PASS (BUSY load 27.7 > 16)`), so the row says so after the terminal is
+  gone. Pass `--refuse-busy` to `app-solve.mjs` to exit 2
+  at the first busy reading instead, which voids the run. A row taken under a warning is not a
+  measurement: re-run it once the load is down, and never ship a ratio or the
+  #326 absolute ceiling from one. Check with `uptime` before a run.
 - **Match the technique set.** The Solutions finder defaults to "singles only".
   Turning on the heavier techniques (X-Wings, by contradiction, …) makes a weak
   component crawl for minutes on the same board. `app-solve.mjs` leaves the

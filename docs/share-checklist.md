@@ -64,9 +64,26 @@ The component's own file in this repo carries:
 the overview and step comments being *present*.
 
 **The link ships that source stripped of every comment (#385).** `minify.py`
-drops all of them, `//!` included, and it is worth 30% of a link's bytes. So a
-recipient who opens the link reads the algorithm and not a word about it. That
-is a real loss, taken deliberately and for now: how a reuser gets the
-commentary is unresolved and is its own piece of work. Until it is solved, this
-criterion is checked against the file in the tree, and no criterion here claims
-the recipient is handed documentation.
+drops all of them, `//!` included, and it is worth 30% of a link's bytes. So
+the plain link hands a recipient the algorithm and not a word about it. That
+loss is taken deliberately (Chris, 2026-10-04, #391): the rules text gets no
+pointer line, and an example gets no annotated twin by default.
+
+What a reader who wants the commentary gets depends on the example:
+
+- **A twin exists** — `PUZZLE_LINK*_annotated.txt`, a link whose embedded code
+  goes through the comment-keeping minify (`--keep-comments`, #433). Hand that
+  file to the reader, and check which board it carries: `ls
+  examples/*/PUZZLE_LINK*annotated* examples/*/*/PUZZLE_LINK*annotated*` lists
+  `house-gac`, `dutch-flatmates` and `count-digits-gac/sparse`. dutch-flatmates'
+  twin is of its 0-given timing board `PUZZLE_LINK_0g.txt`, not of the shipped
+  `PUZZLE_LINK.txt`, so it is not the board to hand a solver.
+- **No twin exists** — the plain link strips the comments, so the recipient
+  gets the code without commentary. Build a twin only when someone asks for
+  one. The exception is a builder that keeps comments in the plain link
+  itself: `count-digits-gac`'s `demo`, `demo-counter-outside` and `self-count`
+  links carry them (`keep_comments=True` in `count_board.py` and
+  `build_count_digits_demo.py`), with no `_annotated` file beside them.
+
+Check the criterion against the file in the tree either way; the blob in the
+plain link is not where the comments live.

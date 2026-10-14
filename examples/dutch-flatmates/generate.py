@@ -17,7 +17,6 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from cpsat import SOLVED, solver
 from flatmate_model import (
     build_model,
     count_plain_completions,
@@ -25,6 +24,7 @@ from flatmate_model import (
     rule_forced_flatmates,
     unique_solution,
 )
+from sudoku_kit.cpsat import SOLVED, solver
 
 SEARCH_LIMIT = 30
 # Plain sudoku completions are what the app's search has to cover before the rule

@@ -19,21 +19,19 @@ import tomllib
 
 import check_layout
 from check_layout import (
-    GRANDFATHERED_RESEARCH_PY,
     NO_RING_RULES_PREFIX,
     RULES_PREFIX,
     check_digit_range,
     check_gen_frame_backends,
     check_gen_json_parses,
     check_research_loads,
-    check_research_python,
     check_stale_backend_code,
     check_tree,
 )
-from link_codec import decode_puzzle, encode_link
 from manifest import load_manifest
-from minify import minify_file, minify_js
+from minify import minify_file
 from sm_document import code_constraint
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 HERE = pathlib.Path(__file__).parent
 
@@ -55,6 +53,7 @@ def _link(
     grid_backend=None,
     ringless=False,
     borrowed_rowcol=None,
+    annotated_copy=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -98,8 +97,10 @@ def _link(
     (house-gac; `house_gac_renamed` implies it). `borrowed_rowcol` adds a
     constraint of that name with no components, the shape of a borrowed
     rows-and-columns backend (house-gac's "Rows & Columns"); `house_gac_renamed`
-    takes "annotated" to embed the shared component through the comment-keeping
-    minify mode, as an `_annotated` link does (its other values are above).
+    values are above. `annotated_copy` embeds every shared backend and component
+    the link carries, and the standalone component, through the
+    comment-keeping minify mode, as an `_annotated` link does; a "stale" one is
+    then stale against that build.
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -140,14 +141,14 @@ def _link(
     ):
         if not wanted:
             continue
-        code = minify_js((HERE / source).read_text())
+        code = minify_file(HERE / source, keep_comments=annotated_copy)
         if wanted == "stale":
             code = code + "\n// an older copy"
         components = (
             [
                 (
                     component,
-                    minify_file(HERE / f"{component}.js")
+                    minify_file(HERE / f"{component}.js", keep_comments=annotated_copy)
                     + ("\n// an older copy" if wanted == "stale_component" else ""),
                 )
             ]
@@ -160,7 +161,7 @@ def _link(
         # the rename), carrying only the shared HouseGacComponent.js.
         comp_code = minify_file(
             HERE / "HouseGacComponent.js",
-            keep_comments=house_gac_renamed == "annotated",
+            keep_comments=annotated_copy,
         )
         if house_gac_renamed == "stale_component":
             comp_code += "\n// an older copy"
@@ -827,7 +828,9 @@ if __name__ == "__main__":
         "generator_less_links": ["PUZZLE_LINK.txt", "PUZZLE_LINK_annotated.txt"],
     }
     keeps = {**handmade, "annotated_keeps_comments": True}
-    annotated = {"PUZZLE_LINK_annotated.txt": _link(house_gac_renamed="annotated")}
+    annotated = {
+        "PUZZLE_LINK_annotated.txt": _link(house_gac_renamed=True, annotated_copy=True)
+    }
     plain_and_annotated = {
         "PUZZLE_LINK.txt": _link(house_gac_renamed=True),
         **annotated,
@@ -848,9 +851,55 @@ if __name__ == "__main__":
     violations = annotated_violations(handmade, annotated)
     assert len(violations) == 1 and "stale" in violations[0].lower(), violations
     # the plain link given the comment-keeping copy is stale even under the key
-    plain_annotated_copy = {"PUZZLE_LINK.txt": _link(house_gac_renamed="annotated")}
+    plain_annotated_copy = {
+        "PUZZLE_LINK.txt": _link(house_gac_renamed=True, annotated_copy=True)
+    }
     violations = annotated_violations(keeps, plain_annotated_copy)
     assert len(violations) == 1 and "PUZZLE_LINK.txt" in violations[0], violations
+
+    # The shared frame backends follow the same rule: under the key, an
+    # `_annotated` link carrying them is read against their comment-keeping
+    # build (#443), and a plain link under the key still reads against the
+    # stripped one. A tampered annotated backend fails like a tampered plain one.
+    shared_backends = {
+        "frame_backend": True,
+        "corners_backend": True,
+        "house_gac_backend": True,
+        "grid_backend": True,
+        "houses": "none",
+        "ringless": True,
+        "annotated_copy": True,
+    }
+    frame_keeps = {**keeps, "digits_exceed_lines": True}
+    annotated_frame = {"PUZZLE_LINK_annotated.txt": _link(**shared_backends)}
+    got = annotated_violations(frame_keeps, annotated_frame)
+    assert got == [], got
+    for tamper, source in (
+        ("frame_backend", "frame-rowcol.js"),
+        ("corners_backend", "frame-corners.js"),
+        ("house_gac_backend", "house-gac.js"),
+    ):
+        tampered = {**shared_backends, tamper: "stale"}
+        violations = annotated_violations(
+            frame_keeps, {"PUZZLE_LINK_annotated.txt": _link(**tampered)}
+        )
+        assert len(violations) == 1 and f"stale copy of {source}" in violations[0], (
+            violations
+        )
+    tampered = {**shared_backends, "house_gac_backend": "stale_component"}
+    violations = annotated_violations(
+        frame_keeps, {"PUZZLE_LINK_annotated.txt": _link(**tampered)}
+    )
+    assert len(violations) == 1 and "HouseGacComponent.js" in violations[0], violations
+    # an annotated copy in a plain link under the key is stale
+    violations = annotated_violations(
+        frame_keeps, {"PUZZLE_LINK.txt": _link(**shared_backends)}
+    )
+    # one stale copy per shared file the link carries: frame-rowcol.js,
+    # frame-corners.js, house-gac.js, HouseGacComponent.js and grid-rowcol.js
+    assert len(violations) == 5 and all("PUZZLE_LINK.txt" in v for v in violations), (
+        violations
+    )
 
     # A frame link that declares no digit range leaves it to the app default
     # (1..9 whatever the grid size), not to the document. The source text
@@ -1087,27 +1136,6 @@ if __name__ == "__main__":
     ) as (root, _):
         assert check_tree(root) == [], check_tree(root)
 
-    # a grandfathered docs/research/*.py path passes -- it was already on the
-    # tree when this rule landed
-    grandfathered = sorted(GRANDFATHERED_RESEARCH_PY)[0]
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        target = root / grandfathered
-        target.parent.mkdir(parents=True)
-        target.write_text("# grandfathered\n")
-        assert check_research_python(root) == [], check_research_python(root)
-
-    # a new docs/research/*.py path fails and names it, plus finders/
-    with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        target = root / "docs" / "research" / "zzz" / "x.py"
-        target.parent.mkdir(parents=True)
-        target.write_text("# new\n")
-        violations = check_research_python(root)
-        assert len(violations) == 1, violations
-        assert "docs/research/zzz/x.py" in violations[0], violations[0]
-        assert "finders/" in violations[0], violations[0]
-
     # a link in a board's own subdirectory is gated like one at the top level:
     # the share criteria and the name grammar both reach it, and the
     # violation names its path inside the example
@@ -1232,15 +1260,13 @@ if __name__ == "__main__":
         violations = check_research_loads(root)
         assert len(violations) == 1 and "examples/a/b.py" in violations[0], violations
 
-    # the no-args run `just test` makes applies both research rules to the repo
+    # the no-args run `just test` makes applies the research rule to the repo
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         (root / "examples" / "_shared").mkdir(parents=True)
         (root / "examples" / "_shared" / "z.mjs").write_text(
             "const u = new URL('../../docs/research/l.txt', import.meta.url)\n"
         )
-        (root / "docs" / "research" / "zzz").mkdir(parents=True)
-        (root / "docs" / "research" / "zzz" / "x.py").write_text("# new\n")
         real_root = check_layout.REPO_ROOT
         out = io.StringIO()
         try:
@@ -1251,7 +1277,6 @@ if __name__ == "__main__":
             check_layout.REPO_ROOT = real_root
         assert code == 1, out.getvalue()
         assert "examples/_shared/z.mjs:1: loads from docs/research/" in out.getvalue()
-        assert "docs/research/zzz/x.py" in out.getvalue(), out.getvalue()
 
     # the gate's own files name docs/research/ to police it, and pass
     with tempfile.TemporaryDirectory() as tmp:

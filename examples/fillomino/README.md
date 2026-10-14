@@ -295,7 +295,9 @@ link in the example (all 51: this board, 19 `-rung1` + 19 `-rung25` + 9
    short per-step comments through the scan, the walk, the doors and the bound.
    **None of it ships** (#385): `minify.py` strips every comment from the copy
    baked into the link, so a recipient reads the algorithm and nothing about
-   it. The criterion is checked against the file, not against the blob.
+   it. Fillomino has no annotated twin (`../../docs/share-checklist.md` § 4
+   says what that leaves a recipient). The criterion is checked against the
+   file in the tree, not against the blob.
 
 ## Paste into SudokuMaker
 
@@ -331,7 +333,7 @@ grid, is dropped and retried with a fresh sub-seed, up to `max_tries`.
 `unique(board, givens)` wraps the same model's `solutions()` capped at 2 and
 raises `TimeoutError` past its `limit` (600s default) rather than returning a
 verdict — a timeout is never read as proof. It runs on the reproducible
-solver configuration (`_shared/cpsat.py`: one worker, seed 0), so a committed
+solver configuration (`sudoku_kit.cpsat`: one worker, seed 0), so a committed
 proof gives the same answer on every run; `sample` runs the portfolio, since
 what it draws is written to a gen JSON and proved from there.
 
@@ -364,6 +366,17 @@ minimal clue set in the live app; the generator itself carries no strip step.
   must settle each exactly where a fresh instance does. That is the hazard the
   snapshot introduces and the one the fixpoint floor cannot see — the floor
   builds a fresh instance per state.
+- `bound-screen-lib.test.mjs` — the bound screen's library (#327): the
+  open-cell-count variant answers as the baseline does, kills a directed state
+  no other rule kills, keeps its running counts true across a run of states,
+  stays sound, and the screen's loop refuses an empty run and counts a variant
+  that disagrees. Alongside it, `bound-screen.mjs` is the committed **screen**
+  for a cheap-bound idea: the shipped component and each variant solve the 19
+  frozen fixtures offline and the screen prints nodes, passes and time per
+  fixture. Run `node examples/fillomino/bound-screen.mjs` (about 3 min, one
+  core; `--reps N` sets the best-of count). A new idea is a source patch and a
+  key in `bound-screen-lib.mjs`'s `loadVariants`. The #327 run is in
+  `OPTIMIZATION_LOG.md`.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
 - `pipeline.test.py` — the chain on the shipped board: CP-SAT proves the

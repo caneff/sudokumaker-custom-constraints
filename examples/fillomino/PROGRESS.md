@@ -943,3 +943,11 @@ logic pass finishes it before any search). CP-SAT proves it unique in 5.4s,
 no timeout (`generate.py unique`). This becomes the example's `gen.json` /
 `PUZZLE_LINK.txt`, replacing the 6x6 puzz.link demo board rung 1 shipped
 with.
+
+## #327: a running open-cell count as a fast reject
+
+Rejected on the screen (1.01× over the 19 frozen fixtures) and on `just time` (1.02×, NO SHIP). The numbers and
+the reading are in `OPTIMIZATION_LOG.md` under `## #327`. The screen is
+committed: `node examples/fillomino/bound-screen.mjs`, built on
+`bound-screen-lib.mjs`, so the next bound idea screens against the same 19
+boards without a scratch script.

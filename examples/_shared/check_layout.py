@@ -55,10 +55,10 @@ from framebuild import (
     frame_backend_code,
     house_gac_backend_code,
 )
-from link_codec import decode_puzzle
 from manifest import load_manifest
 from minify import INCLUDE_RE, minify_file
 from no_ring import GRID_BACKEND, grid_backend_constraint
+from sudoku_kit.link_codec import decode_puzzle
 
 # What a boardless example (manifest `boardless = true`) still needs: it ships
 # components and a harness, and no board.
@@ -206,54 +206,6 @@ def check_gen_link_pairing(example_dir, manifest):
     return violations
 
 
-# Exactly the docs/research/*.py paths present when this rule landed:
-# docs/research reads as not-code to the global gate, so finder
-# code kept landing there instead of finders/ and ruff never saw it. This
-# list only SHRINKS as paths move to finders/ -- a new directory must not be
-# added to it; new finder code goes in finders/ from the start.
-GRANDFATHERED_RESEARCH_PY = frozenset(
-    {
-        "docs/research/367-no-ring-board-type/build_docs.py",
-        "docs/research/368-up-to-n-setup-throw/probe_clues.py",
-        "docs/research/406-gac-demo/tools/build9.py",
-        "docs/research/406-gac-demo/tools/build_hard.py",
-        "docs/research/406-gac-demo/tools/build_plain.py",
-        "docs/research/406-gac-demo/tools/build_variant.py",
-        "docs/research/406-gac-demo/tools/gap2.py",
-        "docs/research/406-gac-demo/tools/hard.py",
-        "docs/research/406-gac-demo/tools/subset_gac_equivalence.py",
-        "docs/research/408-house-gac/build-house-gac-links.py",
-        "docs/research/408-house-gac/house_gac_links.py",
-        "docs/research/408-house-gac/link-delta-house-gac.py",
-        "docs/research/fillomino-baseline/build_link.py",
-    }
-)
-
-
-def check_research_python(repo_root):
-    """Return one violation string per `.py` file under `repo_root`'s
-    docs/research/ that is not in GRANDFATHERED_RESEARCH_PY.
-
-    docs/research/ reads as not-code to the global gate (it is not code per
-    AGENTS.md's Gate 2), so finder code landing there skips the code lane and
-    ruff never sees it. Finder code belongs in finders/ instead.
-    """
-    repo_root = pathlib.Path(repo_root)
-    research_dir = repo_root / "docs" / "research"
-    if not research_dir.is_dir():
-        return []
-
-    violations = []
-    for path in sorted(research_dir.rglob("*.py")):
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in GRANDFATHERED_RESEARCH_PY:
-            continue
-        violations.append(
-            f"{rel}: new .py file under docs/research/ -- finder code goes in finders/"
-        )
-    return violations
-
-
 # A path into docs/research/, in each spelling a loader writes it: one string,
 # path.join's separate arguments (on one line or several), or a pathlib `/`
 # chain.
@@ -267,6 +219,7 @@ RESEARCH_INSPECTORS = frozenset(
         "examples/_shared/check_layout.test.py",
         "examples/_shared/gate.test.py",
         "examples/_shared/spec_649_closing.test.py",
+        "examples/_shared/spec_748_closing.test.py",
     }
 )
 
@@ -317,9 +270,8 @@ def check_research_loads(repo_root):
 
     docs/research/ holds records, not live code: a file the gate's code
     loads from there is maintained source the gate never lints. A citation in
-    a comment or docstring is not a load. Finders read their catalogues and
-    hunt outputs from docs/research/, where they live as data, so finders/ is
-    not scanned, and neither is a dot directory (scratch) or node_modules.
+    a comment or docstring is not a load. A dot directory (scratch) and
+    node_modules are not scanned.
 
     It reads text, not a parse tree, so a pass is not proof: a path segment
     held in a variable, and code hidden behind a `//` or `/*` that sits after
@@ -548,28 +500,29 @@ def declared_houses(puzzle):
 FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
 
 
-def frame_backend_files():
+def frame_backend_files(keep_comments=False):
     """`{constraint name: (source file name, its minified code in the tree)}`
     for the frame's two always-on shared backends, plus the opt-in house-GAC
     filter and a no-ring board's whole-grid rows and columns when a link
     carries them -- `check_stale_backend_code` only checks a title it finds in a
-    link's own constraints, so an opt-in backend needs no separate gate here."""
-    code = dict(frame_backend_code())
+    link's own constraints, so an opt-in backend needs no separate gate here.
+    `keep_comments` is the copy an annotated link embeds."""
+    code = dict(frame_backend_code(keep_comments))
     files = {title: (f"{stem}.js", code[title]) for stem, title in FRAME_BACKENDS}
-    gac_title, gac_backend_code, _ = house_gac_backend_code()
+    gac_title, gac_backend_code, _ = house_gac_backend_code(keep_comments)
     files[gac_title] = ("house-gac.js", gac_backend_code)
-    grid = grid_backend_constraint()["definition"]
+    grid = grid_backend_constraint(keep_comments)["definition"]
     files[grid["name"]] = (f"{GRID_BACKEND[0]}.js", grid["backend"]["code"])
     return files
 
 
-def house_gac_component_file():
+def house_gac_component_file(keep_comments=False):
     """(component name, source file name, its minified code in the tree) for
     the house-GAC filter's one component -- `check_stale_backend_code` compares
     it against a link's own copy the same way it compares the backend, since
     HouseGacComponent.js is not a per-example file `check_components` would
-    ever look for."""
-    _, _, code = house_gac_backend_code()
+    ever look for. `keep_comments` is the copy an annotated link embeds."""
+    _, _, code = house_gac_backend_code(keep_comments)
     return (HOUSE_GAC_COMPONENT_NAME, f"{HOUSE_GAC_COMPONENT_NAME}.js", code)
 
 
@@ -709,20 +662,23 @@ def check_stale_backend_code(example_dir, link, puzzle, manifest):
     name its own `components` list omits.
 
     `minify_js` drops comments, so editing a backend file's prose leaves every
-    committed link valid; only a real code change makes them stale, and a stale
-    link genuinely runs different code from the one under review.
+    plain committed link valid; only a real code change makes them stale, and a
+    stale link genuinely runs different code from the one under review. An
+    `_annotated` link under `annotated_keeps_comments` embeds the
+    comment-keeping copy, so a prose edit does stale it: rebuild it too.
     """
     name = example_dir.name
-    current = frame_backend_files()
-    comp_name, comp_source, comp_want = house_gac_component_file()
-    # An annotated link embeds the shared component through the
-    # comment-keeping minify mode, not the usual full strip -- compare it
-    # against that copy instead, or every rebuild would read as stale. The
-    # manifest says which example builds one.
-    if manifest.annotated_keeps_comments and "annotated" in link.stem.split("_"):
-        comp_want = minify_file(
-            pathlib.Path(__file__).parent / f"{comp_name}.js", keep_comments=True
-        )
+    # An annotated link embeds the shared backends and the shared component
+    # through the comment-keeping minify mode, not the usual full strip --
+    # compare it against those copies instead, or every rebuild would read as
+    # stale. The manifest says which example builds one.
+    annotated = manifest.annotated_keeps_comments and "annotated" in link.stem.split(
+        "_"
+    )
+    current = frame_backend_files(keep_comments=annotated)
+    comp_name, comp_source, comp_want = house_gac_component_file(
+        keep_comments=annotated
+    )
     violations = []
     for constraint in puzzle.get("constraints", []):
         definition = constraint.get("definition") or {}
@@ -951,16 +907,14 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 def main(argv):
     root = argv[1] if len(argv) > 1 else "examples"
     violations = check_tree(root)
-    # docs/research/ sits beside examples/ at the repo root, not inside the
-    # argv root, so it is found relative to this file rather than `root` --
-    # but only for the real, no-args invocation `just check` makes. A test
-    # that passes an explicit root is pointed at a temp tree on purpose, and
-    # must stay hermetic: scanning this file's real repo location in that
-    # case would fail check_layout.test.py's subprocess cases on whatever
-    # scratch .py another session happens to have under docs/research/ right
-    # now, unrelated to the temp tree under test.
+    # The research-load scan reads the whole repo, found relative to this file
+    # rather than `root` -- but only for the real, no-args invocation `just
+    # check` makes. A test that passes an explicit root is pointed at a temp
+    # tree on purpose, and must stay hermetic: scanning this file's real repo
+    # location in that case would fail check_layout.test.py's subprocess cases
+    # on whatever another session has under examples/ right now, unrelated to
+    # the temp tree under test.
     if len(argv) <= 1:
-        violations.extend(check_research_python(REPO_ROOT))
         violations.extend(check_research_loads(REPO_ROOT))
     for v in violations:
         print(v)

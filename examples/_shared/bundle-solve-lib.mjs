@@ -33,8 +33,8 @@ const FALLBACK_STEP_TYPES = [
 ]
 
 // Decodes a SudokuMaker link into its puzzle document. There is no JS
-// LZString decoder in this repo -- `pyproject.toml`'s `lzstring` (used by
-// examples/_shared/link_codec.py) is the only codec dependency -- so
+// LZString decoder in this repo -- the sudoku-kit library's link codec,
+// pinned in `pyproject.toml`, is the only codec dependency -- so
 // this shells out to the existing Python codec (link_codec_cli.py) rather
 // than adding one.
 export function decodeLinkFile (linkFile) {
@@ -107,7 +107,7 @@ export function buildStartMessage (doc, { stepTypes = FALLBACK_STEP_TYPES } = {}
   // one marked "Disable for solver" carries `solverIgnored: true`
   // (docs/research/count-digits-gac/demo/README.md). The app's main thread
   // hands the solver only `enabled && !solverIgnored` constraints
-  // (`getConstraintsForSolver` in main-D44ZZMA9.js), so the bundle never reads
+  // (`getConstraintsForSolver` in main-IgwNn95P.js), so the bundle never reads
   // either key. Both are dropped here so a probe solves what the app would.
   const constraints = p.constraints
     .filter(config => !config.disabled && !config.solverIgnored)

@@ -51,6 +51,10 @@ held across all three readings.
 | `examples/outside-sudoku/PUZZLE_LINK_4x4.txt` | not-unique | 200 ms |
 | `examples/outside-sudoku/PUZZLE_LINK_6x6.txt` | not-unique | 300 ms |
 | `examples/outside-sudoku/PUZZLE_LINK_local.txt` | not-unique | 900 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_4x4_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_6x6_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_clued_local.txt` | unique | 0 ms |
 | `examples/running-start/PUZZLE_LINK.txt` | unique | 1600 ms |
 | `examples/running-start/PUZZLE_LINK_4x4.txt` | unique | 0 ms |
 | `examples/running-start/PUZZLE_LINK_6x6.txt` | unique | 0 ms |
@@ -70,13 +74,29 @@ held across all three readings.
 
 **Four not-unique — outside-sudoku, all of its boards.** CP-SAT proves each of
 them unique (`verify.py`, and the carve loop that made them), and the app
-disagrees. That disagreement is **older than #394**: the committed links as of
+disagrees. The cause is settled in
+`docs/research/398-outside-sudoku-not-unique.md` (#398): neither side is wrong.
+CP-SAT proves the **inner grid** unique; the app counts every cell, and a blank
+outside clue is a cell that this rule leaves free (the clue only has to appear
+in its window). Every app solution of the 4x4 and 6x6 boards has the same inner
+grid and a different ring, and filling the blank clues from the CP-SAT solution
+makes the app read all four boards unique.
+
+The disagreement is **older than #394**: the committed links as of
 `311934a`, the commit before the frame change, were re-run in the app for this
 record and every one came back not-unique —
 `PUZZLE_LINK_4x4.txt` 200 ms, `PUZZLE_LINK_6x6.txt` 300 ms,
 `PUZZLE_LINK.txt` 500 ms, `PUZZLE_LINK_local.txt` 900 ms. So neither the frame
-change nor its fix round caused it, and nothing here explains it either; it
-wants its own ticket.
+change nor its fix round caused it.
+
+**Outside-sudoku's four `_clued` twins read unique (#835).** Each is its
+board with every blank outside clue filled from the board's own CP-SAT
+solution (`examples/outside-sudoku/build_clued.py`), read 2026-10-14 with
+`app-solve.mjs <link> 1` (bundle `v2026.10.05-a3aef4c`) and
+`bundle-solve.mjs <link> 1`: all four `[unique]`, 1 solution. A solver who
+wants "Find all solutions" to agree with the proof uses a twin, and is given
+every clue. The four rows above are additions to the 2026-09-09 sweep, whose
+counts stay as written.
 
 **Five timeouts — the slow baselines, by design.** The app stops at its own
 300 s limit and `app-solve.mjs` reports `[timeout]`:

@@ -4,7 +4,7 @@
 
 import pathlib
 
-from link_codec import decode_puzzle, encode_link
+from sudoku_kit.link_codec import decode_puzzle, encode_link
 
 # The input a constraint declares when its board ships drawn groups: main.js
 # reads them as `input.groups` (docs/example-layout.md).

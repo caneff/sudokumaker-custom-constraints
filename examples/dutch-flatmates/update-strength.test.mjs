@@ -1,9 +1,10 @@
-// The floor is a frozen copy, `.golden/DutchFlatmatesComponent.floor.js`, not a
-// `REF_COMMIT` read with `loadAt` as the siblings do. The component and its
-// floor land in one squash-merged pull request, and a squash rewrites every
-// commit on the branch: a sha pinned there names a commit main never holds, so
-// `git show` would fail on main. Raising the floor means replacing that copy in
-// the same commit as the stronger component.
+// The floor is a frozen copy, `.golden/DutchFlatmatesComponent.floor.js`, as every
+// strength test's floor is: the Pants sandbox the suite runs in holds no git
+// history to read an earlier version from. The siblings name their copy for
+// the commit it came from; this one has no such commit, because the component
+// and its floor landed in one squash-merged pull request, and a squash
+// rewrites every commit on the branch. Raising the floor means replacing that
+// copy in the same commit as the stronger component.
 
 import { join } from 'path'
 import { readFileSync } from 'fs'

@@ -8,13 +8,14 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
+import build_link
 from board_checks import check_local_board
 from build_link import CONSTRAINT_NAME
 from frame import ring_cell
-from link_codec import decode_puzzle
 from link_swap import swap_build
 from minify import minify_file
 from sm_document import find_constraint
+from sudoku_kit.link_codec import decode_puzzle
 
 
 def numbered_room(values):
@@ -107,7 +108,54 @@ def check_wrapper_links():
         )
 
 
+DERIVED = (
+    "PUZZLE_LINK_original.txt",
+    "PUZZLE_LINK_clued.txt",
+    "PUZZLE_LINK_clued_original.txt",
+)
+
+
+def check_refresh_drives_derived_links():
+    """`refresh()` rewrites PUZZLE_LINK.txt and then the three links derived
+    from it, so one refresh leaves all four in step. Run in a scratch copy of
+    the four committed links: nothing here touches the tree."""
+    names = ("PUZZLE_LINK.txt", *DERIVED)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        for n in names:
+            (root / n).write_bytes((HERE / n).read_bytes())
+
+        build_link.refresh(root)
+        for n in names:
+            assert (root / n).read_bytes() == (HERE / n).read_bytes(), (
+                f"{n}: a refresh on the unchanged tree must rebuild it byte for byte"
+            )
+
+        # Change the rules text and the digit range: each must reach the
+        # derived links.
+        was = build_link.COMMENT, build_link.DIGITS
+        build_link.COMMENT = was[0] + " (edited)"
+        build_link.DIGITS = (0, 9)
+        try:
+            build_link.refresh(root)
+        finally:
+            build_link.COMMENT, build_link.DIGITS = was
+        base = decode_puzzle((root / "PUZZLE_LINK.txt").read_text().strip())
+        assert base["puzzle"]["comment"].endswith("(edited)")
+        assert base["puzzle"]["minDigit"] == 0
+        for n in DERIVED:
+            doc = decode_puzzle((root / n).read_text().strip())
+            assert doc["puzzle"]["comment"] == base["puzzle"]["comment"], (
+                f"{n}: rules text did not follow the refresh"
+            )
+            assert (doc["puzzle"]["minDigit"], doc["puzzle"]["maxDigit"]) == (
+                base["puzzle"]["minDigit"],
+                base["puzzle"]["maxDigit"],
+            ), f"{n}: digit range did not follow the refresh"
+
+
 if __name__ == "__main__":
+    check_refresh_drives_derived_links()
     check_shipped_link()
     check_wrapper_links()
     check_refresh_rejects_another_board()
