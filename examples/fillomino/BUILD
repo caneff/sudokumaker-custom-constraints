@@ -3,6 +3,7 @@ unit(
         "build_link.test.py",
         "hunt_offline.test.py",
         "hunt-lib.test.mjs",
+        "open-count-lib.test.mjs",
         "stamp-wrap.test.mjs",
         "update-strength.test.mjs",
         "soundness-harness.mjs",

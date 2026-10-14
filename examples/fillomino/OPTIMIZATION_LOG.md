@@ -20,6 +20,7 @@ this example's README under `## Timing`.
 | 2026-09-03 | Rung 2.5: bound at quiescence — island rules to a standstill, then one bound pass (#312) | no | Fixpoint-identical and 1.30× slower. Buys no bound passes (3.05 → 3.18 per state) because the island rules already quiesce in about one pass, and pays for a confirming island pass at every quiet point (3.05 → 5.49). |
 | 2026-09-03 | Rung 2.5: k-bounded floods with safe marks — stop a flood at `k` cells (#312) | no | Fixpoint-identical and 1.00× — with dirty components the floods are already small, and stopping early moves work rather than removing it. Fifteen lines and one ordering trap (the safe mark must be read before the visited stamp) for no signal. |
 | 2026-09-03 | Rung 3: cut starve per island, behind ISOFILL's dominator-tree `cutFilter` (#309) | yes | 18 of the 19 fixtures SHIP against rung 2.5; cold time over the set falls **0.08×** and the median fixture **0.04×**. The nineteenth, cap9-seed5, is a measurement-floor row — rung 2.5 already finishes it in 100 ms and rung 3 reads the same 100 ms. The full rows are in the README's `## Timing`. |
+| 2026-10-14 | Rung 3: a running open-cell count as a fast reject ahead of the walks (#327) | no | Fixpoint-identical; 1.03× (incremental diff) and 1.09× (recount) over the 19 fixtures. Nodes fall on two boards (cap12-seed18 0.51×, cap12-seed9 0.61×) and the check's cost shows on the other 17. Full table in `## #327` below. |
 
 ## Rung 2's own cost choices
 
@@ -68,3 +69,75 @@ Recorded so a later measurement can overturn them by name.
   fix, not a speed choice, and it costs one flood per island per call on top of
   the scan. If the clock later objects, the alternative is a dirty flag that
   re-floods only after `update` has yielded — same result, more state.
+
+## #327: a running open-cell count as a fast reject (rejected on the screen)
+
+The idea: keep a board-wide count of placed cells per digit and of open cells,
+and kill a state before any walk runs when the digits placed need more open
+cells than are left. A digit `d` with a placed cell has a region of `d` cells
+holding at most every placed `d`, so it needs at least `d - placed(d)` open
+cells, and regions of different digits are disjoint, so the needs add. `need >
+open` has no fill.
+
+Two variants, both source patches over the shipped component
+(`open-count-lib.mjs`), neither a second component file:
+
+- **incremental** — the count the ticket asked for. The solver sends no change
+  events and no backtrack signal, so a count survives only by a per-call diff
+  of each cell's placed digit against the row the last call saw, moving the
+  counts by the difference. That diff is one 81-cell read loop per call.
+- **recount** — the same check taking the per-digit counts from `scan`'s
+  islands, which already visit every placed cell: no extra read, no snapshot.
+
+Seams: `open-count-lib.test.mjs` — both variants give the baseline's verdict and
+grid on small boards, kill a directed state no other rule kills in one call,
+follow the board down and back up on one instance, match the baseline's
+fixpoint in both directions on 150 states around a solution, and keep every
+true value over 3000 fuzzed states per variant on each of the shipped and
+varied fixtures (0 violations).
+
+The screen is `node examples/fillomino/open-count-screen.mjs`, the 19 frozen
+fixtures, best of 5 whole solves, one core. Both variants return the
+baseline's verdict and grid on every fixture. cap9-seed3 spends the 200,000
+node budget in all three, so its row compares time at an equal, unfinished
+search.
+
+| Fixture | Nodes, baseline | Nodes, variant | ms, baseline | ms, incremental | Ratio | ms, recount | Ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 9x9-cap12-seed10 | 2715 | 2715 | 116.2 | 109.0 | 0.94× | 125.8 | 1.08× |
+| 9x9-cap12-seed11 | 27888 | 27888 | 1998.8 | 1987.2 | 0.99× | 2122.9 | 1.06× |
+| 9x9-cap12-seed13 | 1032 | 1032 | 85.9 | 88.3 | 1.03× | 92.7 | 1.08× |
+| 9x9-cap12-seed14 | 50 | 50 | 6.3 | 6.8 | 1.08× | 7.1 | 1.12× |
+| 9x9-cap12-seed16 | 0 | 0 | 0.7 | 0.7 | 1.05× | 0.7 | 1.04× |
+| 9x9-cap12-seed17 | 115 | 115 | 7.6 | 8.0 | 1.06× | 8.3 | 1.10× |
+| 9x9-cap12-seed18 | 11907 | 8764 | 665.8 | 341.2 | 0.51× | 375.7 | 0.56× |
+| 9x9-cap12-seed20 | 242 | 242 | 20.3 | 20.8 | 1.03× | 21.7 | 1.07× |
+| 9x9-cap12-seed3 | 456 | 456 | 39.9 | 41.9 | 1.05× | 42.8 | 1.07× |
+| 9x9-cap12-seed4 | 7 | 7 | 1.5 | 1.5 | 1.03× | 1.6 | 1.06× |
+| 9x9-cap12-seed5 | 125499 | 125499 | 6952.2 | 7232.1 | 1.04× | 7603.1 | 1.09× |
+| 9x9-cap12-seed8 | 0 | 0 | 0.7 | 0.8 | 1.12× | 0.8 | 1.13× |
+| 9x9-cap12-seed9 | 4755 | 3348 | 205.4 | 126.2 | 0.61× | 135.0 | 0.66× |
+| 9x9-cap9-seed1 | 34321 | 34321 | 3162.1 | 3235.5 | 1.02× | 3421.0 | 1.08× |
+| 9x9-cap9-seed10 | 110 | 110 | 8.1 | 8.4 | 1.04× | 9.3 | 1.15× |
+| 9x9-cap9-seed18 | 1760 | 1760 | 101.4 | 106.7 | 1.05× | 112.9 | 1.11× |
+| 9x9-cap9-seed20 | 21 | 21 | 2.3 | 2.4 | 1.08× | 2.5 | 1.11× |
+| 9x9-cap9-seed3 | 200000 | 200000 | 12856.1 | 13661.8 | 1.06× | 14452.2 | 1.12× |
+| 9x9-cap9-seed5 | 2219 | 2219 | 170.7 | 179.3 | 1.05× | 187.7 | 1.10× |
+| **Total** | 413097 | 408547 | 26402.0 | 27158.8 | 1.03× | 28723.8 | 1.09× |
+
+**Verdict: rejected.** The set's time goes **1.03×** (incremental) and **1.09×**
+(recount); neither is near the 0.9× the gate asks for. The count has a
+mechanism: it removes dead subtrees, taking cap12-seed18 from 11907 to 8764
+nodes (0.51× time) and cap12-seed9 from 4755 to 3348 (0.61×). On the other
+17 fixtures the node count does not move, so what shows is the cost of the
+check, 0.94× to 1.12× per board at millisecond scale. The two wins are on
+boards that take 0.7 s and 0.2 s, while the set's time sits in cap12-seed5
+(7 s), cap9-seed3 (13 s) and cap9-seed1 (3 s), where the check buys nothing.
+The recount costs more than the diff because the island walk it rides on runs
+every call, and the early return it adds sits before `islandRule` regardless.
+
+The component is unchanged and nothing was timed in the live app: the screen
+does not clear the bar that earns the clock, the same call #312 made for the
+bound at quiescence and k-bounded floods. The check is dominated on the
+fixtures that matter; if a later hunt wants the two boards it speeds up, the
+patch is in `open-count-lib.mjs`.
