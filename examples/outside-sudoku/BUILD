@@ -1,6 +1,7 @@
 unit(
     suites=[
         "backends.test.mjs",
+        "build_clued.test.py",
         "build_link.test.py",
         "build_size.test.py",
         "soundness-harness.mjs",

@@ -51,6 +51,10 @@ held across all three readings.
 | `examples/outside-sudoku/PUZZLE_LINK_4x4.txt` | not-unique | 200 ms |
 | `examples/outside-sudoku/PUZZLE_LINK_6x6.txt` | not-unique | 300 ms |
 | `examples/outside-sudoku/PUZZLE_LINK_local.txt` | not-unique | 900 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_4x4_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_6x6_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_clued.txt` | unique | 0 ms |
+| `examples/outside-sudoku/PUZZLE_LINK_clued_local.txt` | unique | 0 ms |
 | `examples/running-start/PUZZLE_LINK.txt` | unique | 1600 ms |
 | `examples/running-start/PUZZLE_LINK_4x4.txt` | unique | 0 ms |
 | `examples/running-start/PUZZLE_LINK_6x6.txt` | unique | 0 ms |
@@ -84,6 +88,15 @@ record and every one came back not-unique —
 `PUZZLE_LINK_4x4.txt` 200 ms, `PUZZLE_LINK_6x6.txt` 300 ms,
 `PUZZLE_LINK.txt` 500 ms, `PUZZLE_LINK_local.txt` 900 ms. So neither the frame
 change nor its fix round caused it.
+
+**Outside-sudoku's four `_clued` twins read unique (#835).** Each is its
+board with every blank outside clue filled from the board's own CP-SAT
+solution (`examples/outside-sudoku/build_clued.py`), read 2026-10-14 with
+`app-solve.mjs <link> 1` (bundle `v2026.10.05-a3aef4c`) and
+`bundle-solve.mjs <link> 1`: all four `[unique]`, 1 solution. A solver who
+wants "Find all solutions" to agree with the proof uses a twin, and is given
+every clue. The four rows above are additions to the 2026-09-09 sweep, whose
+counts stay as written.
 
 **Five timeouts — the slow baselines, by design.** The app stops at its own
 300 s limit and `app-solve.mjs` reports `[timeout]`:
