@@ -46,9 +46,13 @@ def clue_groups(link, W, n):
     return groups
 
 
-def main(argv):
-    path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
-    link = decode_puzzle(path.read_text().strip())
+def solve_board(link):
+    """The board's own CP-SAT proof: `(first, unique, shown, givens)`.
+
+    `first` maps every interior cell to its digit in one solution (None when
+    there is none) and `unique` says no second inner grid exists. Blank clues
+    post nothing, so uniqueness is of the inner grid, which is what the
+    carve loop proved."""
     doc = link["puzzle"]
     W = doc["width"]
     n = W - 2
@@ -81,9 +85,16 @@ def main(argv):
         post_membership(m, x, line[:w], value, str(clue))
 
     givens = sum(1 for i in interior if cells[i].get("given"))
-    print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
-
     first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
+    return first, unique, shown, givens
+
+
+def main(argv):
+    path = pathlib.Path(argv[1]) if len(argv) > 1 else HERE / "PUZZLE_LINK.txt"
+    link = decode_puzzle(path.read_text().strip())
+    n = link["puzzle"]["width"] - 2
+    first, unique, shown, givens = solve_board(link)
+    print(f"{path.name} ({n}x{n}): {givens} interior givens, {shown} shown clues")
     assert first is not None, "the shipped board has no solution"
     assert unique, "the shipped board has two solutions"
     print("ok — exactly one solution")
