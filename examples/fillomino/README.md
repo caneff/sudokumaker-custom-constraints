@@ -366,6 +366,17 @@ minimal clue set in the live app; the generator itself carries no strip step.
   must settle each exactly where a fresh instance does. That is the hazard the
   snapshot introduces and the one the fixpoint floor cannot see — the floor
   builds a fresh instance per state.
+- `bound-screen-lib.test.mjs` — the bound screen's library (#327): the
+  open-cell-count variant answers as the baseline does, kills a directed state
+  no other rule kills, keeps its running counts true across a run of states,
+  stays sound, and the screen's loop refuses an empty run and counts a variant
+  that disagrees. Alongside it, `bound-screen.mjs` is the committed **screen**
+  for a cheap-bound idea: the shipped component and each variant solve the 19
+  frozen fixtures offline and the screen prints nodes, passes and time per
+  fixture. Run `node examples/fillomino/bound-screen.mjs` (about 3 min, one
+  core; `--reps N` sets the best-of count). A new idea is a source patch and a
+  key in `bound-screen-lib.mjs`'s `loadVariants`. The #327 run is in
+  `OPTIMIZATION_LOG.md`.
 - `build_link.test.py` — the committed component reproduces `PUZZLE_LINK.txt`
   exactly, and `--component` / `--board` change only the component's code.
 - `pipeline.test.py` — the chain on the shipped board: CP-SAT proves the
