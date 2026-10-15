@@ -336,6 +336,12 @@ def app_solve(link_path, reps, ring_clues=False, after_logical=False):
     return result.stdout
 
 
+def rep_order(links, rnd):
+    """The order one round times `links` in: the lead alternates by round
+    (first link first in round 0), so neither always gets the colder slot."""
+    return links if rnd % 2 == 0 else links[::-1]
+
+
 def run_app_solve(
     baseline_link, candidate_link=None, ring_clues=False, after_logical=False
 ):
@@ -348,8 +354,7 @@ def run_app_solve(
     links = [baseline_link] + ([candidate_link] if candidate_link else [])
     data = {link: [] for link in links}
     for rnd in range(REPS):
-        order = links if rnd % 2 == 0 else links[::-1]
-        for link in order:
+        for link in rep_order(links, rnd):
             stdout = app_solve(link, 1, ring_clues, after_logical)
             data[link].append(read_app_solve_json(stdout))
     timed = [combine_reps(link, data[link]) for link in links]
@@ -430,6 +435,22 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
         f"{ratio:.2f} | {verdict} |"
     )
     return row, verdict
+
+
+def build_link_row(date, version, board, a_ms, b_ms=None, note=""):
+    """`just time-link`'s paste-ready row, same columns as build_row. The
+    verdict cell holds no ship verdict -- no candidate component is involved,
+    so the two-row rule does not apply. With one link (b_ms None) the
+    candidate and ratio cells are empty; with two, the ratio is b/a
+    (row_ratio: a 0ms `a` has none, or INF). `note` (busy_note) follows the
+    verdict cell."""
+    if b_ms is None:
+        b_cell, cell = "—", "—"
+    else:
+        b_cell = f"{b_ms}ms"
+        ratio = row_ratio(a_ms, b_ms)
+        cell = "—" if ratio is None else "∞" if ratio == INF else f"{ratio:.2f}"
+    return f"| {date} | {version} | {board} | {a_ms}ms | {b_cell} | {cell} | —{note} |"
 
 
 INF = float("inf")
