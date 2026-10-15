@@ -33,7 +33,9 @@ def run(link_a, link_b=None, ring_clues=False):
             raise FileNotFoundError(f"missing {link}")
     if len(links) == 2 and links[0].resolve() == links[1].resolve():
         raise ValueError(f"both links are the same file: {links[0]}")
-    board = " vs ".join(link.name for link in links)
+    # "(a)" and "(b)" say which side the b/a ratio reads, so two files with
+    # the same name (a link before and after a change) stay distinguishable.
+    board = f"{links[0].name} (a) vs {links[1].name} (b)" if link_b else links[0].name
     date = datetime.date.today().isoformat()
     rows = []
     for after_logical in (False, True):
@@ -54,14 +56,28 @@ def run(link_a, link_b=None, ring_clues=False):
     return rows
 
 
-if __name__ == "__main__":
+def main(argv):
+    """The CLI: print the rows, or exit non-zero with a one-line reason. Only
+    the first line of an error is printed: a driver failure carries its
+    stdout/stderr tail, and Playwright's navigation errors quote the link
+    (AGENTS.md: never print a link)."""
     p = argparse.ArgumentParser()
     p.add_argument("link_file")
     p.add_argument("link_file_b", nargs="?")
     p.add_argument("--ring-clues", action="store_true")
-    a = p.parse_args()
+    a = p.parse_args(argv)
     try:
-        for row in run(a.link_file, a.link_file_b, ring_clues=a.ring_clues):
-            print(row)
+        rows = run(a.link_file, a.link_file_b, ring_clues=a.ring_clues)
     except (FileNotFoundError, ValueError, RuntimeError) as e:
-        sys.exit(f"time-link: {e}")
+        first = str(e).splitlines()[0] if str(e) else type(e).__name__
+        suffix = (
+            " (driver output withheld: it may quote the link)" if "\n" in str(e) else ""
+        )
+        return f"time-link: {first}{suffix}"
+    for row in rows:
+        print(row)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

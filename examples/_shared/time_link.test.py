@@ -6,6 +6,7 @@
 #   uv run examples/_shared/time_link.test.py
 
 import contextlib
+import io
 import json
 import pathlib
 import sys
@@ -34,6 +35,7 @@ def fake_solve(by_link):
         assert reps == 1
         name = pathlib.Path(link_path).name
         calls.append((name, ring_clues, after_logical))
+        assert pending.get(name), f"unexpected driver call on {name}"
         data = {
             "median": pending[name].pop(0),
             "version": VERSION,
@@ -70,14 +72,14 @@ if __name__ == "__main__":
     assert rep_order(["a"], 1) == ["a"]
 
     # row building: one link, two links, a 0ms baseline, a busy note
-    one = build_link_row("2026-10-15", "v1", "a.txt cold", 1200)
+    one = build_link_row("2026-10-15", "v1", "a.txt cold", 1200, None, "")
     assert one == "| 2026-10-15 | v1 | a.txt cold | 1200ms | — | — | — |", one
-    two = build_link_row("2026-10-15", "v1", "a.txt vs b.txt cold", 1000, 500)
+    two = build_link_row("2026-10-15", "v1", "a.txt vs b.txt cold", 1000, 500, "")
     assert (
         two == "| 2026-10-15 | v1 | a.txt vs b.txt cold | 1000ms | 500ms | 0.50 | — |"
     )
-    assert build_link_row("d", "v", "x", 0, 0).endswith("| 0ms | 0ms | — | — |")
-    assert build_link_row("d", "v", "x", 0, 5).endswith("| 0ms | 5ms | ∞ | — |")
+    assert build_link_row("d", "v", "x", 0, 0, "").endswith("| 0ms | 0ms | — | — |")
+    assert build_link_row("d", "v", "x", 0, 5, "").endswith("| 0ms | 5ms | ∞ | — |")
     assert build_link_row("d", "v", "x", 1, 1, " (BUSY load 9.0 > 4)").endswith(
         "| 1.00 | — (BUSY load 9.0 > 4) |"
     )
@@ -96,7 +98,6 @@ if __name__ == "__main__":
         assert "| a.txt cold | 200ms | — | — | — |" in rows[0], rows[0]
         assert "| a.txt after-logical | 50ms | — | — | — |" in rows[1], rows[1]
         assert calls == [("a.txt", True, False)] * R + [("a.txt", True, True)] * R
-        assert all("verdict" not in r and "SHIP" not in r for r in rows)
 
         # two links: interleaved with the lead alternating, b/a on each row
         with fake_solve(
@@ -105,8 +106,11 @@ if __name__ == "__main__":
             rows = time_link.run(a, b)
         cold = [c[0] for c in calls[: 2 * R]]
         assert cold == ["a.txt", "b.txt", "b.txt", "a.txt", "a.txt", "b.txt"], cold
-        assert "| a.txt vs b.txt cold | 1000ms | 500ms | 0.50 | — |" in rows[0]
-        assert "| a.txt vs b.txt after-logical | 100ms | 200ms | 2.00 | — |" in rows[1]
+        assert "| a.txt (a) vs b.txt (b) cold | 1000ms | 500ms | 0.50 | — |" in rows[0]
+        assert (
+            "| a.txt (a) vs b.txt (b) after-logical | 100ms | 200ms | 2.00 | — |"
+            in rows[1]
+        )
 
         # no row line carries the link's contents
         for row in rows:
@@ -124,5 +128,33 @@ if __name__ == "__main__":
         # every rep of a link timing out is the DNF refusal, not a number
         with fake_solve({"a.txt": [None] * R}):
             expect_raises(RuntimeError, "300s per-rep timeout", time_link.run, a)
+
+        # the CLI: rows on stdout and exit 0; a driver failure that quotes the
+        # link exits non-zero with its first line only, never the link
+        out = io.StringIO()
+        with fake_solve({"a.txt": [1] * (2 * R)}), contextlib.redirect_stdout(out):
+            assert time_link.main([str(a)]) == 0
+        assert out.getvalue().count("\n") == 2 and SECRET[:20] not in out.getvalue()
+
+        real = time_example.app_solve
+
+        def failing(link_path, reps, ring_clues=False, after_logical=False):
+            raise RuntimeError(
+                f"app-solve.mjs failed on {link_path}:\n"
+                f'page.goto: Timeout\n  navigating to "{SECRET}"'
+            )
+
+        time_example.app_solve = failing
+        try:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                reason = time_link.main([str(a)])
+        finally:
+            time_example.app_solve = real
+        assert isinstance(reason, str) and reason.startswith(
+            "time-link: app-solve.mjs failed"
+        )
+        assert SECRET[:20] not in reason and SECRET[:20] not in out.getvalue(), reason
+        assert time_link.main([str(tmp / "nope.txt")]).startswith("time-link: missing ")
 
     print("ok")

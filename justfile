@@ -107,5 +107,7 @@ time example *flags:
 # after-logical rows, 3 reps each. Two links are interleaved and compared (b/a).
 # The link is timed as given, never stripped. See docs/real-app-timing.md.
 [doc("Real-app timing of any link file (two files: interleaved b/a comparison); prints cold and after-logical rows. Add --ring-clues for edge-clue boards.")]
-time-link link_file *rest:
-    uv run examples/_shared/time_link.py {{link_file}} {{rest}}
+[no-cd]
+[positional-arguments]
+time-link *args:
+    uv run {{justfile_directory()}}/examples/_shared/time_link.py "$@"
