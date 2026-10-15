@@ -73,7 +73,9 @@ if __name__ == "__main__":
     one = build_link_row("2026-10-15", "v1", "a.txt cold", 1200)
     assert one == "| 2026-10-15 | v1 | a.txt cold | 1200ms | — | — | — |", one
     two = build_link_row("2026-10-15", "v1", "a.txt vs b.txt cold", 1000, 500)
-    assert two == "| 2026-10-15 | v1 | a.txt vs b.txt cold | 1000ms | 500ms | 0.50 | — |"
+    assert (
+        two == "| 2026-10-15 | v1 | a.txt vs b.txt cold | 1000ms | 500ms | 0.50 | — |"
+    )
     assert build_link_row("d", "v", "x", 0, 0).endswith("| 0ms | 0ms | — | — |")
     assert build_link_row("d", "v", "x", 0, 5).endswith("| 0ms | 5ms | ∞ | — |")
     assert build_link_row("d", "v", "x", 1, 1, " (BUSY load 9.0 > 4)").endswith(
@@ -112,10 +114,10 @@ if __name__ == "__main__":
 
         # a missing file, and the same file twice, fail before any timing
         with fake_solve({}) as calls:
+            expect_raises(FileNotFoundError, "missing", time_link.run, tmp / "nope.txt")
             expect_raises(
-                FileNotFoundError, "missing", time_link.run, tmp / "nope.txt"
+                FileNotFoundError, "nope.txt", time_link.run, a, tmp / "nope.txt"
             )
-            expect_raises(FileNotFoundError, "nope.txt", time_link.run, a, tmp / "nope.txt")
             expect_raises(ValueError, "same file", time_link.run, a, a)
         assert calls == []
 
