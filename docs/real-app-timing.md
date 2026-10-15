@@ -50,9 +50,19 @@ this deduction pay for itself?" (CODING_STANDARDS.md) on the engine that ships.
 - **Link vs link, when no component changed.** A change to the *board* --
   regenerated links, a different constraint shape -- leaves `just time` with
   no candidate to build, so it prints baseline-only rows and no ratio. Time
-  the committed link before the change against the committed link after it,
-  and say in the README that the row is that comparison rather than a
-  `just time` row.
+  the committed link before the change against the committed link after it
+  with `just time-link <before> <after>`, and say in the README that the row is
+  that comparison rather than a `just time` row.
+- **Any link: `just time-link`.** `just time-link <link_file>` times one link at
+  any path, inside the repo or not, and prints the cold and after-logical rows
+  (3 reps each, non-deterministic solve off). `just time-link <a> <b>`
+  interleaves one rep per link per round, the lead alternating, and prints
+  both medians and the b/a ratio on each row. The link is timed as given:
+  nothing is stripped (`probe_link.py` does that), so a link with entered
+  ring clues needs `--ring-clues`. The verdict cell is `—`: no candidate
+  component is involved, so the two-row rule does not apply. A link whose
+  every rep times out ends in the same refusal as `just time`. It drives
+  sudokumaker.app only; SudokuPad links are not timed.
 - **Interleave a comparison, one rep per variant per round.** Never run each
   variant as a block. Under machine load the blocks drifted far enough to
   reverse their own ordering twice, and the same pair read 1.00x/1.22x one way

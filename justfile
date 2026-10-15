@@ -102,3 +102,12 @@ soundness:
 [doc("Real-app timing of one example on the recorded app (HAR replay of sudokumaker.app; SM_LIVE=1 re-records it); prints a paste-ready row.")]
 time example *flags:
     uv run examples/_shared/time_example.py {{example}} {{flags}}
+
+# Real-app timing of any link file (inside or outside the repo): cold and
+# after-logical rows, 3 reps each. Two links are interleaved and compared (b/a).
+# The link is timed as given, never stripped. See docs/real-app-timing.md.
+[doc("Real-app timing of any link file (two files: interleaved b/a comparison); prints cold and after-logical rows. Add --ring-clues for edge-clue boards.")]
+[no-cd]
+[positional-arguments]
+time-link *args:
+    uv run {{justfile_directory()}}/examples/_shared/time_link.py "$@"

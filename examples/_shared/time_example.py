@@ -336,6 +336,12 @@ def app_solve(link_path, reps, ring_clues=False, after_logical=False):
     return result.stdout
 
 
+def rep_order(links, rnd):
+    """The order one round times `links` in: the lead alternates by round
+    (first link first in round 0), so neither always gets the colder slot."""
+    return links if rnd % 2 == 0 else links[::-1]
+
+
 def run_app_solve(
     baseline_link, candidate_link=None, ring_clues=False, after_logical=False
 ):
@@ -348,8 +354,7 @@ def run_app_solve(
     links = [baseline_link] + ([candidate_link] if candidate_link else [])
     data = {link: [] for link in links}
     for rnd in range(REPS):
-        order = links if rnd % 2 == 0 else links[::-1]
-        for link in order:
+        for link in rep_order(links, rnd):
             stdout = app_solve(link, 1, ring_clues, after_logical)
             data[link].append(read_app_solve_json(stdout))
     timed = [combine_reps(link, data[link]) for link in links]
@@ -408,6 +413,12 @@ def _flag_busy(row, verdict, note):
     return row.replace(f"| {verdict} |", f"| {verdict}{note} |") if note else row
 
 
+def _row(date, version, board, baseline, candidate, ratio, verdict):
+    """The one 7-column paste-ready row, shared by build_row and
+    build_link_row so the two cannot drift apart."""
+    return f"| {date} | {version} | {board} | {baseline} | {candidate} | {ratio} | {verdict} |"
+
+
 def build_row(date, version, board, baseline_ms, candidate_ms=None):
     """The paste-ready row and its verdict. candidate_ms=None means
     byte-equal code: baseline-only row, verdict BASELINE. PASS means
@@ -415,21 +426,42 @@ def build_row(date, version, board, baseline_ms, candidate_ms=None):
     rule is ship_verdict's job. A 0ms baseline has no ratio: NO TIME when the
     candidate is 0ms too, FAIL when it is not."""
     if candidate_ms is None:
-        row = f"| {date} | {version} | {board} | {baseline_ms}ms | — | — | BASELINE |"
+        row = _row(date, version, board, f"{baseline_ms}ms", "—", "—", "BASELINE")
         return row, "BASELINE"
     ratio = row_ratio(baseline_ms, candidate_ms)
     if ratio is None:
-        row = f"| {date} | {version} | {board} | 0ms | 0ms | — | NO TIME |"
+        row = _row(date, version, board, "0ms", "0ms", "—", "NO TIME")
         return row, "NO TIME"
     if ratio == INF:
-        row = f"| {date} | {version} | {board} | 0ms | {candidate_ms}ms | ∞ | FAIL |"
+        row = _row(date, version, board, "0ms", f"{candidate_ms}ms", "∞", "FAIL")
         return row, "FAIL"
     verdict = "PASS" if ratio <= 0.9 else "FAIL"
-    row = (
-        f"| {date} | {version} | {board} | {baseline_ms}ms | {candidate_ms}ms | "
-        f"{ratio:.2f} | {verdict} |"
+    row = _row(
+        date,
+        version,
+        board,
+        f"{baseline_ms}ms",
+        f"{candidate_ms}ms",
+        f"{ratio:.2f}",
+        verdict,
     )
     return row, verdict
+
+
+def build_link_row(date, version, board, a_ms, b_ms, note):
+    """`just time-link`'s paste-ready row, same columns as build_row. The
+    verdict cell holds no ship verdict -- no candidate component is involved,
+    so the two-row rule does not apply. With one link (b_ms None) the
+    candidate and ratio cells are empty; with two, the ratio is b/a
+    (row_ratio: a 0ms `a` has none, or INF). `note` (busy_note, "" when the
+    box was quiet) follows the verdict cell."""
+    if b_ms is None:
+        b_cell, cell = "—", "—"
+    else:
+        b_cell = f"{b_ms}ms"
+        ratio = row_ratio(a_ms, b_ms)
+        cell = "—" if ratio is None else "∞" if ratio == INF else f"{ratio:.2f}"
+    return _row(date, version, board, f"{a_ms}ms", b_cell, cell, f"—{note}")
 
 
 INF = float("inf")

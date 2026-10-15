@@ -146,6 +146,10 @@ suite(
 # its own in a temporary directory.
 suite("time_example.test.py", needs=["//:tree"], tools=["git"])
 
+# Row building and argument handling for `just time-link`; the browser call is
+# faked.
+suite("time_link.test.py")
+
 # Reads the justfile through `just --dump`.
 suite("just_list.test.py", needs=["//:justfile"], tools=["just"])
 # What `bash tests/all.sh` calls by name; a sandbox's PATH holds these and
