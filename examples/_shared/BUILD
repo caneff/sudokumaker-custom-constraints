@@ -65,6 +65,7 @@ for file in [
     "grid-rowcol.test.mjs",
     "house-gac.test.mjs",
     "line-kind.test.mjs",
+    "stamp.test.mjs",
 ]:
     suite(file, needs=[":data", ":js"])
 

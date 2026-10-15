@@ -22,6 +22,14 @@ installGlobals(1, n)
 // `stamp` is where the counter starts. A wrapped run's mask is pre-filled with
 // small stamps, the values the restarted counter walks through: a guard that
 // restarts the counter without clearing the mask reads them as visited.
+// The constructor allocates the mask through newStampMarks (#736): the cap it
+// records is what bumpStamp wraps at, and a bare Int32Array would never wrap.
+{
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  assert.strictEqual(inst.mask.stampCap, 0x7FFFFFFF, 'the mask was not allocated through newStampMarks')
+}
+
 const run = (stamp, reps) => {
   const out = []
   for (let rep = 0; rep < reps; rep++) {

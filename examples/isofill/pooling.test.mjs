@@ -26,6 +26,16 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   assert.match(p._stopped, /evenly/)
 }
 
+// The constructor allocates both stamped arrays through newStampMarks (#736):
+// the cap it records is what bumpStamp wraps at, and a bare Uint32Array would
+// never wrap.
+{
+  const inst = {}
+  mod.setParams(inst, CELLS)
+  assert.strictEqual(inst.mask.stampCap, 0xFFFFFFFF, 'the mask was not allocated through newStampMarks')
+  assert.strictEqual(inst.targets.stampCap, 0xFFFFFFFF, 'the targets were not allocated through newStampMarks')
+}
+
 {
   const p = makePuzzle(truth, seed)
   p.getCandidates = () => { throw new Error('scan called getCandidates; read getCandidatesBitMask') }
