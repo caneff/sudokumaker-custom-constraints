@@ -8,6 +8,7 @@
 #
 #   uv run examples/_shared/ci_workflow.test.py
 
+import json
 import pathlib
 import re
 import sys
@@ -20,10 +21,16 @@ from gate_lib import commands
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 
-def matrix_recipes(text):
-    m = re.search(r"recipe:\s*\[([^\]]*)\]", text)
-    assert m, "ci.yml has no `recipe: [...]` matrix to run the gate jobs from"
-    return [r.strip() for r in m.group(1).split(",") if r.strip()]
+def matrix_lists(text):
+    """The matrix's two literal lists: (per-change, scheduled).
+
+    The matrix is one `fromJSON((<events>) && '[...]' || '[...]')` expression, so
+    a push or pull request and a scheduled or manual run each get their own
+    list. Quoted JSON lists are read with a narrow regex.
+    """
+    m = re.search(r"recipe:\s*\$\{\{\s*fromJSON\(.*?&&\s*'(\[[^']*\])'\s*\|\|\s*'(\[[^']*\])'", text)
+    assert m, "ci.yml has no `recipe: ${{ fromJSON(... && '[..]' || '[..]') }}` matrix"
+    return json.loads(m.group(1)), json.loads(m.group(2))
 
 
 def job_blocks(text):
@@ -61,8 +68,21 @@ def step_lines(body):
 if __name__ == "__main__":
     text = WORKFLOW.read_text()
 
-    recipes = matrix_recipes(text)
-    assert recipes, "ci.yml's gate matrix lists no recipes"
+    per_change, recipes = matrix_lists(text)
+    assert per_change == ["narrowed"], (
+        f"a push or pull request runs only the narrowed seam, got {per_change}"
+    )
+    assert recipes, "ci.yml's scheduled matrix lists no recipes"
+
+    # Triggers: per-change runs on push and pull_request, the full matrix on a
+    # nightly cron and by hand. No full run per change (Chris, 2026-10-16).
+    for trigger in ("push:", "pull_request:", "schedule:", "workflow_dispatch:"):
+        assert re.search(rf"^  {trigger}", text, re.M), f"ci.yml lacks `{trigger}`"
+    assert re.search(r"-\s*cron:", text), "ci.yml's schedule has no cron"
+    cond = re.search(r"fromJSON\((.*?)&&\s*'\[", text).group(1)
+    assert "push" in cond and "pull_request" in cond, (
+        "the per-change list must be chosen by the push and pull_request events"
+    )
 
     # Shared setup: one steps template for every matrix leg, not one copied
     # per job. The gate job's own steps hold each setup step exactly once, and
@@ -91,21 +111,25 @@ if __name__ == "__main__":
             f"'{step}' is copied into another job; the gate matrix is the one home"
         )
 
-    # `just check` still runs alone on a push to main; the rest are PR-only.
-    # The guard has to sit on the Gate *step* -- `matrix` isn't in scope for
-    # a job-level `if`, so pin the guard immediately above the line that
-    # actually runs `just <recipe>`, not just anywhere in the file (a
-    # job-level `if:` -- which GitHub silently mis-evaluates rather than
-    # rejects -- would satisfy a bare substring search).
-    step_guard = re.search(
-        r"if:\s*.*matrix\.recipe == 'check'.*\n\s*run: uvx --from rust-just just \$\{\{ matrix\.recipe \}\}",
+    # The narrowed leg runs `tests/all.sh --changed <base>`, the base being the
+    # PR base on a pull request and `github.event.before` on a push, and
+    # widens to the bare full seam on an all-zeros `before`, saying so.
+    assert "bash tests/all.sh --changed" in text, "no narrowed seam run"
+    assert "github.base_ref" in text, "a pull request's base is its base_ref"
+    assert "github.event.before" in text, "a push's base is github.event.before"
+    assert "0000000000000000000000000000000000000000" in text, (
+        "an all-zeros `before` must widen to the full seam"
+    )
+    assert re.search(r"widen", text, re.I), "the widening must be said in the step log"
+    # The run log is a path the job uploads, so CI runs are counted (#845).
+    assert "SEAM_RUNS_LOG" in text and "actions/upload-artifact" in text, (
+        "the job must set SEAM_RUNS_LOG and upload it"
+    )
+    # Each recipe step guards on the matrix leg, not on the job.
+    assert re.search(
+        r"if:\s*matrix\.recipe != 'narrowed'.*\n\s*run: uvx --from rust-just just \$\{\{ matrix\.recipe \}\}",
         text,
-    )
-    assert step_guard, (
-        "the push-to-main guard must be the `if:` on the Gate step itself, "
-        "immediately before `run: uvx --from rust-just just ${{ matrix.recipe }}` -- "
-        "a job-level `if:` can't see `matrix` and would skip every leg on push"
-    )
+    ), "the recipe step must be guarded by `matrix.recipe != 'narrowed'`"
 
     # The coverage claim: running every matrix recipe once, together, must
     # reproduce exactly what `just check-full` runs -- no less (a heavy test
@@ -122,4 +146,4 @@ if __name__ == "__main__":
     extra = split - full
     assert not extra, f"CI matrix runs steps check-full does not: {sorted(extra)}"
 
-    print(f"ci_workflow.test.py: {len(recipes)} matrix recipes cover check-full: ok")
+    print(f"ci_workflow.test.py: {len(recipes)} scheduled recipes cover check-full: ok")

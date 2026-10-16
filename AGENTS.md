@@ -122,7 +122,7 @@ repo 2026-10-11).
 - **Full gate — run before opening a PR or calling a task done:**
   `just check-full` — `check` plus the heavy tests (the fillomino pipeline and
   generator, the skyscraper and hit-counts recovery probes) and the soundness
-  fuzz. CI runs it on every pull request, and `check` on pushes to main.
+  fuzz. CI runs it nightly and on `workflow_dispatch`; a push or pull request runs the narrowed seam.
 - Lint + auto-fix: `just fmt` (StandardJS on `.js`/`.mjs`, ruff on `examples/`)
 - Tests: `just test` — heavy tests: `just test-heavy` — soundness fuzz: `just soundness`
 - Every test is a standalone script run by name.

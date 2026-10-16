@@ -1,5 +1,5 @@
 # The two gate tiers: `just check` is the fast loop, `just check-full`
-# is everything and runs on every pull request. Both reach their suites
+# is everything and runs nightly in CI. Both reach their suites
 # through the seam runner, `tests/all.sh`. This runs both recipes with
 # node, npx, uv and uvx replaced by stubs that log their argv and exit 0, then
 # checks what each tier would have run against the files on disk:
