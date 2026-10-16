@@ -65,10 +65,24 @@
 # failed` naming the first failure, followed by `(narrowed: <units>)` or
 # `(widened: <why>)` on a `--changed` run and by `(group: <group>)` on a
 # `--group` run. The units are those of the wired suites Pants selected.
+#
+# Every run that ran suites appends one JSON line to a log outside the
+# checkout, a workspace being deleted after its merge: `$SEAM_RUNS_LOG`, else
+# `${XDG_CACHE_HOME:-$HOME/.cache}/sudokumaker-custom-constraints/seam-runs.jsonl`.
+# The line holds `time`, `sha` (HEAD, null when git cannot say), `base` (the `--changed` base or null),
+# `mode` (`full`, `narrowed`, `widened`, or `group` when no base narrows it),
+# `group`, `reason` (the `widened:` text or null), `passed` and `total` (the
+# last line's N and M), `ok`, and `seconds` of wall clock. A log that cannot be
+# written (no SEAM_RUNS_LOG and no XDG_CACHE_HOME or HOME to build it from, or
+# an unwritable path) changes neither the exit status nor the last line: one
+# stderr line names the failure. `--list` and a refused run ran nothing and log nothing.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+# A relative SEAM_RUNS_LOG names a path from where the caller stands, not from
+# the checkout this script moves into.
+case ${SEAM_RUNS_LOG:-} in "" | /*) ;; *) SEAM_RUNS_LOG=$PWD/$SEAM_RUNS_LOG ;; esac
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd) || exit 1
 cd "$root" || exit 1
 
@@ -132,6 +146,41 @@ leave_no_workdir() {
   scratch=$(mktemp -d) || { echo "tests/all.sh: mktemp failed" >&2; exit 2; }
   trap 'rm -rf "$scratch"' EXIT
   export PANTS_WORKDIR=$scratch/workdir
+}
+
+json_str() { # <text>: prints it as a JSON string, or null when empty
+  local t=$1
+  [ -n "$t" ] || { printf null; return; }
+  t=${t//\\/\\\\}; t=${t//\"/\\\"}; t=${t//$'\n'/\\n}; t=${t//$'\t'/\\t}
+  printf '"%s"' "$t"
+}
+
+# Appends this run's row to the run log; `finish <status>` ends the run with it.
+log_run() { # <exit status>
+  local cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+  local log=${SEAM_RUNS_LOG:-${cache:+$cache/sudokumaker-custom-constraints/seam-runs.jsonl}}
+  [ -n "$log" ] || {
+    echo "tests/all.sh: could not write the run log: SEAM_RUNS_LOG, XDG_CACHE_HOME and HOME are all unset" >&2
+    return; }
+  local mode=full ok=false sha why
+  if [ -n "$base" ]; then
+    mode=narrowed; [ -z "$widened" ] || mode=widened
+  elif [ -n "$group" ]; then
+    mode=group
+  fi
+  [ "$1" != 0 ] || ok=true
+  sha=$(git rev-parse HEAD 2>/dev/null) || sha=""
+  why=$({
+    mkdir -p "${log%/*}" &&
+      printf '{"time":%s,"sha":%s,"base":%s,"mode":"%s","group":%s,"reason":%s,"passed":%s,"total":%s,"ok":%s,"seconds":%s}\n' \
+        "$(json_str "$(printf '%(%Y-%m-%dT%H:%M:%S%z)T' -1)")" "$(json_str "$sha")" "$(json_str "$base")" \
+        "$mode" "$(json_str "$group")" "$(json_str "$widened")" "$passed" "$total" "$ok" "$SECONDS" >>"$log"
+  } 2>&1) || echo "tests/all.sh: could not write the run log $log: ${why:-failed}" >&2
+}
+
+finish() { # <exit status>
+  log_run "$1"
+  exit "$1"
 }
 
 in_lines() { case $'\n'"$1"$'\n' in *$'\n'"$2"$'\n'*) return 0 ;; esac; return 1; } # <lines> <line>
@@ -301,7 +350,7 @@ while IFS= read -r suite; do
     echo "FAIL $suite"
     printf '%s\n' "$out"
     echo "$passed of $total suites passed before $suite failed$note"
-    exit 1
+    finish 1
   fi
 done <<<"$selected"
 
@@ -350,12 +399,13 @@ if [ -n "$batch" ]; then
   done <<<"$failed"
   if [ -n "$failed" ]; then
     echo "$passed of $total suites passed before ${failed%%$'\n'*} failed$note"
-    exit 1
+    finish 1
   fi
   [ "$status" = 0 ] || {
     echo "tests/all.sh: \`pants test\` exited $status with every suite reported as passed:"
     printf '%s\n' "$out"
     echo "$passed of $total suites passed before \`pants test\` failed$note"
-    exit 1; }
+    finish 1; }
 fi
 echo "$passed of $total suites passed$note"
+finish 0
