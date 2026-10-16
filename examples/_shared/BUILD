@@ -63,11 +63,18 @@ for file in [
     "frame-lines.test.mjs",
     "frame-rowcol.test.mjs",
     "grid-rowcol.test.mjs",
+    "grid_to_link.test.py",
     "house-gac.test.mjs",
     "line-kind.test.mjs",
     "stamp.test.mjs",
 ]:
     suite(file, needs=[":data", ":js"])
+
+# Starts grid_to_link.py as a subprocess, and runs the solver bundle.
+suite("hard-sweep-lib.test.mjs", needs=[":data", ":js", "./grid_to_link.py:py"])
+
+# Starts grid_to_link.py, bundle-solve.mjs and hard-sweep.mjs as subprocesses.
+suite("spec_427_closing.test.mjs", needs=[":data", ":js", "./grid_to_link.py:py"])
 
 # Starts include_agreement.py as a subprocess, and reads shared .js by path.
 suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
