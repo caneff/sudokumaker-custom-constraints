@@ -112,3 +112,26 @@ node examples/_shared/hard-sweep.mjs run --template blank.txt --out out --shard 
   top95=docs/research/sudoku-hard-corpus-pass1/top95.txt   # shards 0/8 .. 7/8
 node examples/_shared/hard-sweep.mjs merge --out out --table table.tsv
 ```
+
+## Browser rows for the top five, and the miss record (#432)
+
+The top five, built with `grid_to_link.py` and timed in the recorded app
+(`just time-link`, 3 reps, non-deterministic solve off, app
+v2026.10.05-a3aef4c, 2026-10-16). The driver refused none of them. Rows have
+100 ms resolution.
+
+| rank | grid | cold | after-logical |
+| --- | --- | --- | --- |
+| 1 | `royle17.txt` line 45949 | 0 ms | 0 ms |
+| 2 | `royle17.txt` line 4237 | 100 ms | 0 ms |
+| 3 | `top1465.txt` line 61 | 100 ms | 0 ms |
+| 4 | `royle17.txt` line 7975 | 0 ms | 0 ms |
+| 5 | `top1465.txt` line 811 | 0 ms | 0 ms |
+
+**Miss.** Nothing reaches 5 s, so `examples/house-gac/PUZZLE_LINK.txt` stays
+the 25-given demo. The slowest grid is rank 1 (`royle17.txt` line 45949):
+2646.6 ms cold in Node, 0 ms cold and 0 ms after-logical in the browser. The
+corpus was 50,710 scored grids (49,150 Royle 17-clue, 1,465 top1465, 95 top95).
+Pass 2 (#431) was closed unpursued: 40 distinct 21-clue grids, none at 20, no
+sweep. The Node-to-browser calibration (17-23x) held at the top of the range:
+the top five read 0-100 ms. #427 is relabelled `backlog`.

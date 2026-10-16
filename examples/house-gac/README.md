@@ -184,6 +184,13 @@ near zero under "Find all solutions", GAC filter or not). The filter's real
 payoff is AutoStep reach (the table above), not search cost; #427 is the
 open search for a classic 9x9 where GAC alone moves the search-cost row.
 
+#432 closed that search without a hit. The five slowest of 50,710 scored
+classic grids (Royle 17-clue collection, top1465, top95) timed 0-100 ms cold
+and 0 ms after-logical in the app (`just time-link`, 3 reps, 2026-10-16,
+v2026.10.05-a3aef4c); none reaches 5 s, so `PUZZLE_LINK.txt` stays this
+demo. Slowest grid, rows and corpus sizes:
+`docs/research/sudoku-hard-corpus-pass1.md` § Browser rows for the top five.
+
 #458 (raw-mask removals, module-scratch `freePositions`, no
 `instance.cells` write) timed against the link before it, from a checkout
 of `main` with the change applied uncommitted:
