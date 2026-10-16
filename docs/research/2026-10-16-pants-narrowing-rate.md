@@ -36,9 +36,11 @@ What caused the 13 widenings:
 
 The `tests/all.sh` and `ci.yml` widenings are correct: a change to the runner
 or to CI really does touch every suite. The `no rule places` lines are the
-runner's wording from before #819 removed the directory rules, so some of
-those runs may predate full Pants selection. A docs-only path widening the run
-(`bundle.min.js`, `review-generated-paths.txt`) is the one avoidable class here.
+runner's wording from before #819 removed the directory rules; today's runner
+says `Pants cannot place <file>`. Those runs predate full Pants selection, and
+the docs-only class they show is gone: at `3717319` (a commit adding only
+this note), `bash tests/all.sh --changed 3717319~1 --list` selected 22 of the
+122 entries a plain `--list` prints, not the whole seam.
 
 ## How it was counted
 
