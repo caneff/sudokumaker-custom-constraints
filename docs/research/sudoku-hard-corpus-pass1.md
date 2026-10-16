@@ -1,21 +1,26 @@
 # Pass 1: ranking two public hard-sudoku lists by SM search time (#430, spec #427)
 
-**Result: no grid clears 5 s cold.** The slowest of 50,710 grids takes 2.65 s in
-the Node harness, which is about 0.12-0.17 s in the browser. A classic 9x9 from
-these lists does not make SudokuMaker's solver search long enough to time
-GAC on; the cutoff would be 78-113 s of Node time.
+**Result: no grid clears 5 s cold.** The slowest of 50,710 scored rows takes
+2.65 s in the Node harness, which is about 0.12-0.16 s in the browser. A
+classic 9x9 from these lists does not make SudokuMaker's solver search long
+enough to time GAC on; the cutoff would be 85-114 s of Node time.
 
 ## What was scored
 
 | source | file | grids | origin |
 | --- | --- | --- | --- |
 | Royle's 17-clue collection | `sudoku-hard-corpus-pass1/royle17.txt` | 49,151 | `http://staffhome.ecm.uwa.edu.au/~00013890/sudoku17`, read from the Wayback Machine copy `https://web.archive.org/web/2020/http://staffhome.ecm.uwa.edu.au/~00013890/sudoku17` (the live host did not answer) |
-| enjoysudoku "hardest" list, top1465 | `sudoku-hard-corpus-pass1/top1465.txt` | 1,465 | `http://magictour.free.fr/top1465`; one trailing blank line dropped |
-| enjoysudoku "hardest" list, top95 | `sudoku-hard-corpus-pass1/top95.txt` | 95 | `http://magictour.free.fr/top95`; a trailing DOS end-of-file byte (`^Z`) dropped |
+| magictour top1465 | `sudoku-hard-corpus-pass1/top1465.txt` | 1,465 | `http://magictour.free.fr/top1465`; one trailing blank line dropped |
+| magictour top95 | `sudoku-hard-corpus-pass1/top95.txt` | 95 | `http://magictour.free.fr/top95`; a trailing DOS end-of-file byte (`^Z`) dropped |
 
-The enjoysudoku lists come from a mirror (magictour.free.fr), not from
-forum.enjoysudoku.com; I did not check them against the forum thread. Both
-are 81-character grid strings, `.` for blank. Royle's uses `0`.
+The spec named the enjoysudoku forum's hardest list. What was swept in its
+place is magictour.free.fr's top1465 and top95, older hard lists (credited to
+dukuso) that are not taken from forum.enjoysudoku.com and were not checked
+against the forum thread, so they stand in for that list rather than being
+it. Both are 81-character grid strings, `.` for blank. Royle's uses `0`.
+
+The corpora overlap: the 50,710 scored rows are 50,547 distinct grids, and a
+grid in two files is scored once per file.
 
 `sha256` of the committed files:
 
@@ -45,8 +50,10 @@ were already measured at 0-200 ms in the browser. One of them (AntiDFS, a
 - Run: 8 shards under `job-run` (`smcc-430-sweep`), each with `ulimit -v 2 GB`,
   box load average 2.6 at launch. Wall clock under 4 minutes.
 - Failure signatures: all 8 shards exited 0, no solver error (no `.err` file),
-  no stale `.cur` file, and 50,710 rows = 49,150 + 1,465 + 95. Every row
-  has exactly one solution.
+  and 50,710 rows = 49,150 + 1,465 + 95. Every row has exactly one solution.
+  This run predates the sweep's `.done` markers and merge's completeness
+  check (added in the #427 review), so its completeness rests on that row
+  count.
 
 The full table is `sudoku-hard-corpus-pass1/sweep-table.tsv`: `source`, `line`
 (1-based line of the committed corpus file), `solutions`, `ms`, slowest first.
@@ -75,7 +82,9 @@ separate `bundle-solve.mjs <link> 5` run, median of 5 reps in one process.
 | 4 | `royle17.txt` line 7975 | 1431.8 | 1008 |
 | 5 | `top1465.txt` line 811 | 1363.9 | 992 |
 
-Every one is a unique grid in the sweep. Read the grids off the line numbers.
+Each has exactly one solution. Ranks 4 and 5 are also in a second file: rank
+4 is `top1465.txt` line 1191 (rank 7), rank 5 is `top95.txt` line 13 (rank 14).
+Read the grids off the line numbers.
 
 ## Does any clear 5 s cold?
 
@@ -90,8 +99,8 @@ builder on the two boards `429-headless-solver-calibration.md` used (5 reps,
 
 (#429 measured 22.1x and 15.5x with the other builder.) The browser rows have
 100 ms resolution, so the factor is good to about +/-25%. The slowest cold
-row, 2646.6 ms, divided by 15.5-22.7, is 117-171 ms in the browser. To clear
-5 s, a grid needs 77-113 s in Node.
+row, 2646.6 ms, divided by 17.0-22.7, is 117-156 ms in the browser. To clear
+5 s, a grid needs 85-114 s in Node.
 
 **Caveat on the calibration.** Both calibration boards are fast 21-clue
 grids. The one board on record whose browser time is long (the Skyscrapers
@@ -133,5 +142,7 @@ the 25-given demo. The slowest grid is rank 1 (`royle17.txt` line 45949):
 2646.6 ms cold in Node, 0 ms cold and 0 ms after-logical in the browser. The
 corpus was 50,710 scored grids (49,150 Royle 17-clue, 1,465 top1465, 95 top95).
 Pass 2 (#431) was closed unpursued: 40 distinct 21-clue grids, none at 20, no
-sweep. The Node-to-browser calibration (17-23x) held at the top of the range:
-the top five read 0-100 ms. #427 is relabelled `backlog`.
+sweep. The calibration predicts 117-156 ms for rank 1, which read 0 ms; the top five
+read 0-100 ms, at or below that estimate, so the factor overstates the
+browser's time here rather than understating it. #427 stays open, labelled
+`backlog`, until a third idea exists (#427 § Miss).
