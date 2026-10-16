@@ -807,7 +807,9 @@ def a_run_appends_one_row_to_the_log():
         )
         assert r.returncode == 1
 
-        full, group, widened, narrowed, failed = rows_of(log)
+        rows = rows_of(log)
+        assert len(rows) == 5, f"{len(rows)} rows for 5 finished runs: {rows}"
+        full, group, widened, narrowed, failed = rows
         assert full["mode"] == "full" and group["mode"] == "group", (full, group)
         assert (full["passed"], full["total"], full["ok"]) == (m, m, True), full
         assert full["sha"] == head(flat) and full["base"] is None, full
@@ -822,7 +824,7 @@ def a_run_appends_one_row_to_the_log():
         assert failed["ok"] is False and failed["passed"] < failed["total"], failed
         for row in (full, group, widened, narrowed, failed):
             assert isinstance(row["seconds"], int) and row["seconds"] >= 0, row
-        assert len(rows_of(log)) == 5, "--list or a refusal wrote a row"
+        assert len(rows_of(log)) == 5, "a --list run wrote a row"
 
         # A log that cannot be written: a file stands where its directory goes.
         blocked = pathlib.Path(tmp) / "blocked"
