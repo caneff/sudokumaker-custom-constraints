@@ -154,7 +154,7 @@ suite("time_link.test.py")
 suite("just_list.test.py", needs=["//:justfile"], tools=["just"])
 # What `bash tests/all.sh` calls by name; a sandbox's PATH holds these and
 # nothing else.
-RUNNER_TOOLS = ["bash", "dirname", "awk", "cut"]
+RUNNER_TOOLS = ["bash", "dirname", "awk", "cut", "mkdir"]
 # Lists the seam through `bash tests/all.sh --list`, which starts these.
 suite(
     "spec_748_closing.test.py",

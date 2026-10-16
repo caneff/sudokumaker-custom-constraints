@@ -5,6 +5,7 @@
 #
 #   uv run examples/_shared/seam_runner.test.py
 
+import json
 import os
 import pathlib
 import shutil
@@ -752,11 +753,95 @@ def a_narrowed_run_says_so():
         ), r.stdout.splitlines()[-1]
 
 
+def rows_of(path):
+    """The rows of a run log, parsed; none when the file is not there."""
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def a_run_appends_one_row_to_the_log():
+    """Every finished run appends one JSON line to the file `SEAM_RUNS_LOG`
+    names: the checkout's HEAD, the `--changed` base, the mode, the widen
+    reason, suites passed and total, pass or fail, and wall-clock seconds. A
+    log that cannot be written changes neither the exit code nor the last
+    line; it costs one stderr line naming the failure."""
+    with tempfile.TemporaryDirectory() as tmp:
+        log = pathlib.Path(tmp) / "cache" / "sub" / "seam-runs.jsonl"
+
+        def run(tree, *args, **stub):
+            r, ran = run_stubbed(
+                ["bash", RUNNER, *args], root=tree, runs_log=log, **stub
+            )
+            return r, ran
+
+        def head(tree):
+            return subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=tree, capture_output=True, text=True
+            ).stdout.strip()
+
+        for sub in ("flat", "sel"):
+            (pathlib.Path(tmp) / sub).mkdir()
+        flat = scratch_tree(tmp + "/flat", dict.fromkeys(FIXTURE, ""))
+        git(flat, "init", "-q")
+        git(flat, "add", "-A")
+        git(flat, "commit", "-q", "-m", "base")
+        git(flat, "tag", "base")
+        m = len(WHOLE)
+
+        r, _ = run(flat)
+        assert r.returncode == 0, r.stderr
+        r, _ = run(flat, "--group", "soundness")
+        r, _ = run(flat, "--changed", "base")
+        sel = selection_tree(tmp + "/sel")
+        with_diff(sel, ["examples/aa/board.txt"])
+        answer = ["examples/aa/board.txt:data", "examples/aa:a2.test.mjs"]
+        r, _ = run(sel, "--changed", "base", changed=answer)
+        r, _ = run(sel, "--list")
+        r, _ = run(
+            sel,
+            "--changed",
+            "base",
+            changed=answer,
+            unreported="examples/aa:a2.test.mjs",
+        )
+        assert r.returncode == 1
+
+        full, group, widened, narrowed, failed = rows_of(log)
+        assert full["mode"] == "full" and group["mode"] == "group", (full, group)
+        assert (full["passed"], full["total"], full["ok"]) == (m, m, True), full
+        assert full["sha"] == head(flat) and full["base"] is None, full
+        assert full["reason"] is None and group["group"] == "soundness", (full, group)
+        assert (group["passed"], group["total"]) == (3, 3), group
+        assert widened["mode"] == "widened" and widened["base"] == "base", widened
+        assert widened["reason"] == (
+            "no pants.toml, so nothing says what the diff affects"
+        ), widened
+        assert narrowed["mode"] == "narrowed" and narrowed["reason"] is None, narrowed
+        assert narrowed["sha"] == head(sel) and narrowed["ok"] is True, narrowed
+        assert failed["ok"] is False and failed["passed"] < failed["total"], failed
+        for row in (full, group, widened, narrowed, failed):
+            assert isinstance(row["seconds"], int) and row["seconds"] >= 0, row
+        assert len(rows_of(log)) == 5, "--list or a refusal wrote a row"
+
+        # A log that cannot be written: a file stands where its directory goes.
+        blocked = pathlib.Path(tmp) / "blocked"
+        blocked.write_text("")
+        r, _ = run_stubbed(
+            ["bash", RUNNER], root=flat, runs_log=blocked / "seam-runs.jsonl"
+        )
+        assert r.returncode == 0, f"a log failure changed the exit:\n{r.stderr}"
+        assert r.stdout.splitlines()[-1] == f"{m} of {m} suites passed", r.stdout
+        said = [line for line in r.stderr.splitlines() if "seam-runs.jsonl" in line]
+        assert len(said) == 1, f"no single stderr line naming the failure:\n{r.stderr}"
+
+
 if __name__ == "__main__":
     no_pants_toml_widens()
     pants_selects_every_suite()
     a_failed_query_widens()
     a_narrowed_run_says_so()
+    a_run_appends_one_row_to_the_log()
     wired_suites_go_through_pants()
     wired_suites_run_in_one_pants_call()
     an_undeclared_read_fails_the_suite()

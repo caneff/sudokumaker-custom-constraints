@@ -132,14 +132,18 @@ def path_without(names, scratch):
     return os.pathsep.join(dirs)
 
 
-def run_logged(argv, root=ROOT, real=(), absent=(), changed=None, unreported=""):
+def run_logged(
+    argv, root=ROOT, real=(), absent=(), changed=None, unreported="", runs_log=None
+):
     """Run `argv` from `root` with node, npx, uv, uvx and pants replaced by
     stubs that log their argv and exit 0, except the names in `real`; a name in
     `absent` is on the PATH neither as a stub nor for real. The Pants stub
     answers "what does the diff affect" with the addresses in `changed`, and
     fails that question when `changed` is None; it reports every target it is
-    told to run as passed, except `unreported`. Returns the finished process
-    and the log, one line per stubbed call, in order."""
+    told to run as passed, except `unreported`. The runner's own run log
+    (`SEAM_RUNS_LOG`) is `runs_log`, or a file in the scratch directory, so a
+    test run never writes the developer's real one. Returns the finished
+    process and the log, one line per stubbed call, in order."""
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir = pathlib.Path(tmp) / "bin"
         bin_dir.mkdir()
@@ -165,6 +169,7 @@ def run_logged(argv, root=ROOT, real=(), absent=(), changed=None, unreported="")
             "GATE_PANTS_TARGETS": str(targets),
             "GATE_PANTS_CHANGED": str(affected),
             "GATE_PANTS_UNREPORTED": unreported,
+            "SEAM_RUNS_LOG": str(runs_log or pathlib.Path(tmp) / "seam-runs.jsonl"),
         }
         r = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True)
         return r, log.read_text().splitlines()
