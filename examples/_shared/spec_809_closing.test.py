@@ -24,8 +24,8 @@ WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
   - the app: solve time (`just time`) and how a link renders and solves in
     sudokumaker.app. No link's bytes are meant to change in this spec, and
     nothing here opens one.
-  - GitHub CI: that the workflow's Pants install step works and its four
-    gate legs pass with every suite uncached. ci_workflow.test.py pins the
+  - GitHub CI: that the workflow's Pants install step works and its gate
+    legs (one narrowed leg per change, four nightly) pass with every suite uncached. ci_workflow.test.py pins the
     workflow's text; only a run on GitHub shows it working, and the spec's
     integration pull request is that run.
   - the toolchain: node, uv and the Python interpreter are not sealed in the
