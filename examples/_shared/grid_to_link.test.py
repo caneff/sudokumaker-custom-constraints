@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from grid_to_link import grid_to_link, read_grids
+from grid_to_link import grid_to_link
 from sudoku_kit.link_codec import decode_puzzle
 
 # Platinum Blonde, from docs/research/406-gac-demo/hard/README.md's source list.
@@ -50,28 +50,23 @@ def test_rules_text_is_the_ringless_sentence():
     assert p["comment"].startswith("Normal sudoku rules apply.")
 
 
-def test_bad_grids_are_refused():
-    for bad in [
-        "",
-        PLATINUM[:-1],
-        PLATINUM + ".",
-        PLATINUM[:-1] + "x",
-        PLATINUM[:-1] + "A",
+def test_bad_grids_are_refused_with_the_reason():
+    # Each reason is the check's own message: a character int() would also
+    # refuse must still be refused by the character check, by name.
+    for bad, reason in [
+        ("", "81 characters, got 0"),
+        (PLATINUM[:-1], "81 characters, got 80"),
+        (PLATINUM + ".", "81 characters, got 82"),
+        (PLATINUM[:-1] + "x", "got ['x']"),
+        (PLATINUM[:-1] + "A", "got ['A']"),
+        (PLATINUM[:-1] + " ", "got [' ']"),
     ]:
         try:
             grid_to_link(bad)
-        except ValueError:
+        except ValueError as e:
+            assert reason in str(e), f"{bad!r}: {e}"
             continue
         raise AssertionError(f"accepted {bad!r}")
-
-
-def test_read_grids_skips_blank_lines_and_trailing_text(tmp_path=None):
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as d:
-        f = Path(d) / "g.txt"
-        f.write_text(f"{PLATINUM}\n\n{PLATINUM_ZEROS}  near worst case\n")
-        assert read_grids(f) == [PLATINUM, PLATINUM_ZEROS]
 
 
 if __name__ == "__main__":

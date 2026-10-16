@@ -1,7 +1,8 @@
-# A plain 9x9 sudoku grid string in, a SudokuMaker puzzle link out. It builds
-# the board docs/research/406-gac-demo/tools/build_hard.py builds for a hard
-# classic: a custom 9x9 whose boxes are a region constraint and whose rows and
-# columns are the shared whole-grid backend (grid-rowcol.js), no other rule.
+# A plain 9x9 sudoku grid string in, a SudokuMaker puzzle link out: a custom
+# 9x9 whose boxes are a region constraint and whose rows and columns are the
+# shared whole-grid backend (grid-rowcol.js), no other rule. The board shape is
+# docs/research/406-gac-demo/tools/build_hard.py's hard classic; that builder
+# carries its own row/column backend (rowcol9-main.js) instead.
 #
 #   uv run examples/_shared/grid_to_link.py <grid_string> [<link_file>]
 
@@ -29,7 +30,7 @@ def check_grid(grid):
     return grid
 
 
-def grid_to_doc(grid, name="Hard classic"):
+def grid_to_doc(grid):
     """The puzzle document for `grid`: its non-blank characters are givens."""
     check_grid(grid)
     cells = [{} if ch in BLANKS else {"given": True, "value": int(ch)} for ch in grid]
@@ -37,7 +38,7 @@ def grid_to_doc(grid, name="Hard classic"):
     return {
         "formatVersion": "1.6.0",
         "puzzle": {
-            "name": name,
+            "name": "Hard classic",
             "author": "",
             "comment": NO_RING_RULES_PREFIX.strip(),
             "type": "custom",
@@ -54,19 +55,14 @@ def grid_to_doc(grid, name="Hard classic"):
     }
 
 
-def grid_to_link(grid, name="Hard classic"):
+def grid_to_link(grid):
     """The SudokuMaker link for `grid`."""
-    return encode_link(grid_to_doc(grid, name))
-
-
-def read_grids(path):
-    """The grids in a corpus file: the first 81-character token of each
-    non-blank line. Royle's file is bare grids; the plb file trails a comment."""
-    lines = pathlib.Path(path).read_text().splitlines()
-    return [check_grid(line.split()[0]) for line in lines if line.strip()]
+    return encode_link(grid_to_doc(grid))
 
 
 if __name__ == "__main__":
+    if len(sys.argv) not in (2, 3):
+        sys.exit("usage: grid_to_link.py <grid_string> [<link_file>]")
     link = grid_to_link(sys.argv[1])
     if len(sys.argv) > 2:
         pathlib.Path(sys.argv[2]).write_text(link + "\n")

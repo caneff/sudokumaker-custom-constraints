@@ -73,6 +73,13 @@ for file in [
 # Starts grid_to_link.py as a subprocess, and runs the solver bundle.
 suite("hard-sweep-lib.test.mjs", needs=[":data", ":js", "./grid_to_link.py:py"])
 
+# Starts grid_to_link.py, bundle-solve.mjs and hard-sweep.mjs as subprocesses,
+# and reads the committed pass-1 corpora and sweep table.
+suite(
+    "spec_427_closing.test.mjs",
+    needs=[":data", ":js", "./grid_to_link.py:py", "//:hard-corpus-pass1"],
+)
+
 # Starts include_agreement.py as a subprocess, and reads shared .js by path.
 suite("include.test.mjs", needs=[":data", ":js", "./include_agreement.py:py"])
 

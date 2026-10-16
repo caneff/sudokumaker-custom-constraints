@@ -6,12 +6,12 @@
 
 import assert from 'assert'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { decodeLinkFile, solveDocument } from './bundle-solve-lib.mjs'
 import {
-  gridToDoc, parseShard, shardOwns, formatRow, parseRow, doneKeys, rankRows, readGrids
+  gridToDoc, parseShard, shardOwns, formatRow, parseRow, doneKeys, rankRows, readGrids, readRows
 } from './hard-sweep-lib.mjs'
 
 const HERE = import.meta.dirname
@@ -31,7 +31,11 @@ const tmp = mkdtempSync(join(tmpdir(), 'hard-sweep-'))
   const template = decodeLinkFile(zeros)
   assert.deepStrictEqual(gridToDoc(template, PLATINUM), built)
   assert.deepStrictEqual(gridToDoc(template, PLATINUM.replace(/\./g, '0')), built)
-  assert.throws(() => gridToDoc(template, PLATINUM.slice(1)), /81/)
+  assert.throws(() => gridToDoc(template, PLATINUM.slice(1)), /81 characters, got 80/)
+  // what grid_to_link.py's check_grid refuses, refused with its reason
+  for (const ch of ['x', 'A', ' ']) {
+    assert.throws(() => gridToDoc(template, PLATINUM.slice(1) + ch), { message: `a grid holds digits and . or 0, got ${JSON.stringify([ch])}` })
+  }
 }
 
 // The harness accepts the document: exactly one solution, the known one.
@@ -56,9 +60,22 @@ for (let line = 1; line <= 40; line++) {
   const row = formatRow({ source: 'royle17', line: 7, solutions: 1, ms: 12.3456 })
   assert.strictEqual(row, 'royle17\t7\t1\t12.35')
   assert.deepStrictEqual(parseRow(row), { source: 'royle17', line: 7, solutions: 1, ms: 12.35 })
-  const file = join(tmp, 'shard.tsv')
-  writeFileSync(file, row + '\n' + 'top95\t3\t1\t5\n' + 'half-written')
-  assert.deepStrictEqual([...doneKeys(file)].sort(), ['royle17\t7', 'top95\t3'])
+  for (const bad of ['test\t1\t1\t', 'top95\t3\t1', 'top95\tx\t1\t5.00', 'a\t1\t1\t5']) {
+    assert.throws(() => parseRow(bad), /not a sweep row/)
+  }
+  const second = formatRow({ source: 'top95', line: 3, solutions: 1, ms: 5 })
+  // A kill can cut the last row anywhere, four fields with an empty ms included:
+  // none of it is a key, and the file is truncated back to its last whole row.
+  for (const cut of ['half-written', 'test\t1\t1\t', 'test\t1\t1\t3.1']) {
+    const file = join(tmp, 'shard.tsv')
+    writeFileSync(file, row + '\n' + second + '\n' + cut)
+    assert.throws(() => readRows(file), /last line is cut off/)
+    assert.deepStrictEqual([...doneKeys(file)].sort(), ['royle17\t7', 'top95\t3'])
+    assert.strictEqual(readFileSync(file, 'utf8'), row + '\n' + second + '\n')
+  }
+  const garbled = join(tmp, 'garbled.tsv')
+  writeFileSync(garbled, row + '\nnot a row\n')
+  assert.throws(() => doneKeys(garbled), /not a sweep row/)
   assert.deepStrictEqual([...doneKeys(join(tmp, 'absent.tsv'))], [])
 }
 
@@ -68,10 +85,11 @@ for (let line = 1; line <= 40; line++) {
   const rows = [
     { source: 'b', line: 1, solutions: 1, ms: 5 },
     { source: 'a', line: 2, solutions: 1, ms: 9 },
+    { source: 'a', line: 4, solutions: 1, ms: 5 },
     { source: 'a', line: 1, solutions: 1, ms: 5 },
     { source: 'a', line: 3, solutions: 0, ms: 1 }
   ]
-  assert.deepStrictEqual(rankRows(rows).map(r => `${r.source}${r.line}`), ['a2', 'a1', 'b1', 'a3'])
+  assert.deepStrictEqual(rankRows(rows).map(r => `${r.source}${r.line}`), ['a2', 'a1', 'a4', 'b1', 'a3'])
 }
 
 // readGrids keeps the line number of the file, blank lines counted.
