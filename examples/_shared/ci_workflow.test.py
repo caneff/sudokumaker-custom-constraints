@@ -198,6 +198,8 @@ if __name__ == "__main__":
 
     # Each leg-specific step guards on its own leg.
     steps = steps_of(jobs["gate"])
+    # A suite run through Pants shells out to `just`, so every leg has one on PATH.
+    assert step(steps, "Install just")["run"] == "uv tool install rust-just"
     narrowed = step(steps, "Narrowed seam")
     assert narrowed["if"] == "matrix.recipe == 'narrowed'", narrowed["if"]
     recipe_step = step(steps, "Gate (")

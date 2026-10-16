@@ -50,6 +50,11 @@ jobs:
       - name: uv sync
         run: uv sync
 
+      # Suites run through Pants (just_list.test.py, gate.test.py) call a
+      # `just` binary on PATH; `uvx` alone leaves none installed.
+      - name: Install just
+        run: uv tool install rust-just
+
       # The Pants launcher, cached with the Pants it downloads. Only the
       # install is cached: pants.toml turns the result cache off, so every
       # suite still runs on every leg.
