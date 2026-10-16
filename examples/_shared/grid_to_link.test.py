@@ -38,6 +38,10 @@ def test_board_is_plain_9x9_with_rows_columns_and_boxes():
     assert (p["width"], p["height"], len(p["cells"])) == (9, 9, 81)
     regions = next(c for c in p["constraints"] if c["type"] == 1)["regions"]
     assert regions[:12] == [0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0]
+    # the box rows below the first, read off cell positions (row 3 col 0,
+    # row 3 col 3, row 6 col 0, the last cell)
+    assert [regions[27], regions[30], regions[54], regions[80]] == [3, 4, 6, 8]
+    assert sorted(regions) == sorted(list(range(9)) * 9)
     assert any(c["type"] == 1000 for c in p["constraints"])  # rows and columns
 
 
