@@ -59,14 +59,18 @@ jobs:
           gha-cache-key: v0
           named-caches-hash: ${{ hashFiles('pants.toml') }}
 
+      # Every leg's runner-side run log (#845) goes to one path the job uploads,
+      # so CI runs, scheduled ones included, are counted. `runner` is not in
+      # scope for a job-level `env`, so the path is set through GITHUB_ENV.
+      - name: Point the seam run log at an uploaded path
+        run: echo "SEAM_RUNS_LOG=$RUNNER_TEMP/seam-runs.jsonl" >> "$GITHUB_ENV"
+
       # The base is the PR base on a pull request and the push's `before` on a
       # push. An all-zeros `before` (a new branch) or one the clone lacks (a
       # force-push) has no base: widen to the full seam and say so.
-      # SEAM_RUNS_LOG is a path the job uploads, so CI runs are counted (#845).
       - name: Narrowed seam
         if: matrix.recipe == 'narrowed'
         env:
-          SEAM_RUNS_LOG: ${{ runner.temp }}/seam-runs.jsonl
           BASE_REF: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
         run: |
@@ -77,20 +81,18 @@ jobs:
           fi
           if [ "$base" = 0000000000000000000000000000000000000000 ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             echo "::notice::no usable base ($base): widening to the full seam"
-            echo "widening: running the full seam, no base to narrow against"
             bash tests/all.sh
           else
             bash tests/all.sh --changed "$base"
           fi
 
-      - name: Upload seam run log
-        if: always() && matrix.recipe == 'narrowed'
-        uses: actions/upload-artifact@v4
-        with:
-          name: seam-runs
-          path: ${{ runner.temp }}/seam-runs.jsonl
-          if-no-files-found: ignore
-
       - name: Gate (${{ matrix.recipe }})
         if: matrix.recipe != 'narrowed'
         run: uvx --from rust-just just ${{ matrix.recipe }}
+
+      - name: Upload seam run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seam-runs-${{ matrix.recipe }}
+          path: ${{ runner.temp }}/seam-runs.jsonl
