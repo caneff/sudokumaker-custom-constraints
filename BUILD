@@ -15,10 +15,6 @@ files(
 # the built-in component list from it.
 files(name="builtin-components", sources=["docs/builtin-components.md"])
 
-# The hard-classic pass-1 record (#430): its corpora and sweep table, which
-# examples/_shared/spec_427_closing.test.mjs reads.
-files(name="hard-corpus-pass1", sources=["docs/research/sudoku-hard-corpus-pass1/*"])
-
 # The whole repository but its `.git`, for a suite that scans every example.
 # `.git` is a pointer file in a worktree and a whole directory (60 MB in the
 # primary checkout) in a plain clone, copied into every sandbox and able to

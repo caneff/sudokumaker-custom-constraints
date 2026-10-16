@@ -14,18 +14,15 @@
 //      while a shard is not done or a shard logged a solver error (that shard
 //      also exits 1);
 //
-// then reads the committed pass-1 record: sweep-table.tsv has a row for every
-// corpus grid but the known misses, each with one solution, slowest first.
-//
 // WHAT A GREEN RUN DOES NOT COVER (this seam is blind to it):
 //   - the app: the browser rows on record (#432's top five, `just time-link`)
 //     and any solve time in sudokumaker.app. The Node milliseconds here are a
 //     ranking, never the number on record (docs/research/
 //     429-headless-solver-calibration.md); no browser is opened.
-//   - the corpora's provenance: that royle17.txt, top1465.txt and top95.txt
-//     are what their source URLs serve. Only their committed shape is read.
-//   - the full sweep's own numbers: the table is read, not re-scored; a
-//     50,710-grid sweep is an 8-core job, not a test.
+//   - the committed pass-1 record (docs/research/sudoku-hard-corpus-pass1/):
+//     its corpora, their provenance, and its sweep table are not read here,
+//     since examples/ code does not load docs/research/ (check_layout.py's
+//     research rule); nor is the 50,710-grid sweep re-run, an 8-core job.
 //
 // Run: node examples/_shared/spec_427_closing.test.mjs
 
@@ -36,8 +33,6 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const HERE = import.meta.dirname
-const ROOT = join(HERE, '..', '..')
-const RECORD = join(ROOT, 'docs/research/sudoku-hard-corpus-pass1')
 const tmp = mkdtempSync(join(tmpdir(), 'spec-427-'))
 
 // Platinum Blonde's unique solution (hard-sweep-lib.test.mjs); a solved grid
@@ -111,25 +106,6 @@ const tableRows = file => readFileSync(file, 'utf8').trim().split('\n').slice(1)
   const refused = table(out, join(out, 'table.tsv'))
   assert.notStrictEqual(refused.status, 0)
   assert.match(refused.stderr, /merge refused, no table written: solver errors in shard-0\.err/)
-}
-
-// The committed record: every corpus grid but the known misses has one row,
-// one solution each, slowest first.
-{
-  const strip = g => g.replace(/0/g, '.')
-  const corpusLines = name => readFileSync(join(RECORD, `${name}.txt`), 'utf8').split('\n')
-    .map((t, i) => ({ line: i + 1, grid: t.trim().split(/\s+/)[0] })).filter(g => g.grid)
-  const known = new Set(corpusLines('known-misses').map(g => strip(g.grid)))
-  const want = new Set()
-  for (const source of ['royle17', 'top1465', 'top95']) {
-    for (const { line, grid } of corpusLines(source)) if (!known.has(strip(grid))) want.add(`${source}\t${line}`)
-  }
-  const rows = tableRows(join(RECORD, 'sweep-table.tsv'))
-  assert.deepStrictEqual(new Set(rows.map(r => `${r[0]}\t${r[1]}`)), want)
-  assert.strictEqual(rows.length, want.size)
-  assert.ok(rows.every(r => r[2] === '1'))
-  const ms = rows.map(r => Number(r[3]))
-  assert.ok(ms.every((m, i) => i === 0 || ms[i - 1] >= m))
 }
 
 console.log('ok')
