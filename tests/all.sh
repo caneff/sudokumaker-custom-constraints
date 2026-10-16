@@ -69,16 +69,20 @@
 # Every run that ran suites appends one JSON line to a log outside the
 # checkout, a workspace being deleted after its merge: `$SEAM_RUNS_LOG`, else
 # `${XDG_CACHE_HOME:-$HOME/.cache}/sudokumaker-custom-constraints/seam-runs.jsonl`.
-# The line holds `time`, `sha` (HEAD), `base` (the `--changed` base or null),
+# The line holds `time`, `sha` (HEAD, null when git cannot say), `base` (the `--changed` base or null),
 # `mode` (`full`, `narrowed`, `widened`, or `group` when no base narrows it),
 # `group`, `reason` (the `widened:` text or null), `passed` and `total` (the
 # last line's N and M), `ok`, and `seconds` of wall clock. A log that cannot be
-# written changes neither the exit status nor the last line: one stderr line
-# names the failure. `--list` and a refused run ran nothing and log nothing.
+# written (no SEAM_RUNS_LOG and no XDG_CACHE_HOME or HOME to build it from, or
+# an unwritable path) changes neither the exit status nor the last line: one
+# stderr line names the failure. `--list` and a refused run ran nothing and log nothing.
 set -uf
 # A caller's GIT_DIR or GIT_INDEX_FILE (a git hook sets both) would point the
 # diff below, and every suite that calls git, at that caller's repository.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+# A relative SEAM_RUNS_LOG names a path from where the caller stands, not from
+# the checkout this script moves into.
+case ${SEAM_RUNS_LOG:-} in "" | /*) ;; *) SEAM_RUNS_LOG=$PWD/$SEAM_RUNS_LOG ;; esac
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd) || exit 1
 cd "$root" || exit 1
 
@@ -154,7 +158,10 @@ json_str() { # <text>: prints it as a JSON string, or null when empty
 # Appends this run's row to the run log; `finish <status>` ends the run with it.
 log_run() { # <exit status>
   local cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
-  local log=${SEAM_RUNS_LOG:-${cache:-/nonexistent-no-HOME}/sudokumaker-custom-constraints/seam-runs.jsonl}
+  local log=${SEAM_RUNS_LOG:-${cache:+$cache/sudokumaker-custom-constraints/seam-runs.jsonl}}
+  [ -n "$log" ] || {
+    echo "tests/all.sh: could not write the run log: SEAM_RUNS_LOG, XDG_CACHE_HOME and HOME are all unset" >&2
+    return; }
   local mode=full ok=false sha why
   if [ -n "$base" ]; then
     mode=narrowed; [ -z "$widened" ] || mode=widened

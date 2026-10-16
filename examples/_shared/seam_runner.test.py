@@ -222,6 +222,7 @@ def git(tree, *args):
         ["git", *args], cwd=tree, env=env, capture_output=True, text=True
     )
     assert r.returncode == 0, f"git {args} failed in the fixture:\n{r.stderr}"
+    return r.stdout.strip()
 
 
 def with_diff(tree, changed, deleted=()):
@@ -760,82 +761,186 @@ def rows_of(path):
     return [json.loads(line) for line in path.read_text().splitlines()]
 
 
+def subdir(tmp, name):
+    path = pathlib.Path(tmp) / name
+    path.mkdir()
+    return path
+
+
+def logged_tree(tmp, name):
+    """A scratch tree of the fixture, committed and tagged `base`."""
+    tree = scratch_tree(subdir(tmp, name), dict.fromkeys(FIXTURE, ""))
+    git(tree, "init", "-q")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", "base")
+    git(tree, "tag", "base")
+    return tree
+
+
 def a_run_appends_one_row_to_the_log():
     """Every finished run appends one JSON line to the file `SEAM_RUNS_LOG`
     names: the checkout's HEAD, the `--changed` base, the mode, the widen
     reason, suites passed and total, pass or fail, and wall-clock seconds. A
-    log that cannot be written changes neither the exit code nor the last
-    line; it costs one stderr line naming the failure."""
+    `--list` run, which ran nothing, logs nothing."""
     with tempfile.TemporaryDirectory() as tmp:
         log = pathlib.Path(tmp) / "cache" / "sub" / "seam-runs.jsonl"
 
         def run(tree, *args, **stub):
-            r, ran = run_stubbed(
-                ["bash", RUNNER, *args], root=tree, runs_log=log, **stub
-            )
-            return r, ran
+            r, _ = run_stubbed(["bash", RUNNER, *args], root=tree, runs_log=log, **stub)
+            return r
 
-        def head(tree):
-            return subprocess.run(
-                ["git", "rev-parse", "HEAD"], cwd=tree, capture_output=True, text=True
-            ).stdout.strip()
-
-        for sub in ("flat", "sel"):
-            (pathlib.Path(tmp) / sub).mkdir()
-        flat = scratch_tree(tmp + "/flat", dict.fromkeys(FIXTURE, ""))
-        git(flat, "init", "-q")
-        git(flat, "add", "-A")
-        git(flat, "commit", "-q", "-m", "base")
-        git(flat, "tag", "base")
+        flat = logged_tree(tmp, "flat")
         m = len(WHOLE)
-
-        r, _ = run(flat)
-        assert r.returncode == 0, r.stderr
-        r, _ = run(flat, "--group", "soundness")
-        r, _ = run(flat, "--changed", "base")
-        sel = selection_tree(tmp + "/sel")
+        assert run(flat).returncode == 0
+        assert run(flat, "--group", "soundness").returncode == 0
+        assert run(flat, "--changed", "base").returncode == 0
+        sel = selection_tree(subdir(tmp, "sel"))
         with_diff(sel, ["examples/aa/board.txt"])
         answer = ["examples/aa/board.txt:data", "examples/aa:a2.test.mjs"]
-        r, _ = run(sel, "--changed", "base", changed=answer)
-        r, _ = run(sel, "--list")
-        r, _ = run(
+        assert run(sel, "--changed", "base", changed=answer).returncode == 0
+        assert run(sel, "--list").returncode == 0
+        failing = run(
             sel,
             "--changed",
             "base",
             changed=answer,
             unreported="examples/aa:a2.test.mjs",
         )
-        assert r.returncode == 1
+        assert failing.returncode == 1
 
         rows = rows_of(log)
         assert len(rows) == 5, f"{len(rows)} rows for 5 finished runs: {rows}"
         full, group, widened, narrowed, failed = rows
         assert full["mode"] == "full" and group["mode"] == "group", (full, group)
         assert (full["passed"], full["total"], full["ok"]) == (m, m, True), full
-        assert full["sha"] == head(flat) and full["base"] is None, full
-        assert full["reason"] is None and group["group"] == "soundness", (full, group)
+        assert full["sha"] == git(flat, "rev-parse", "HEAD"), full
+        assert full["base"] is None and full["reason"] is None, full
+        assert group["group"] == "soundness" and group["ok"] is True, group
         assert (group["passed"], group["total"]) == (3, 3), group
         assert widened["mode"] == "widened" and widened["base"] == "base", widened
+        assert widened["ok"] is True, widened
         assert widened["reason"] == (
             "no pants.toml, so nothing says what the diff affects"
         ), widened
         assert narrowed["mode"] == "narrowed" and narrowed["reason"] is None, narrowed
-        assert narrowed["sha"] == head(sel) and narrowed["ok"] is True, narrowed
+        assert narrowed["sha"] == git(sel, "rev-parse", "HEAD"), narrowed
+        assert narrowed["ok"] is True, narrowed
         assert failed["ok"] is False and failed["passed"] < failed["total"], failed
-        for row in (full, group, widened, narrowed, failed):
+        for row in rows:
             assert isinstance(row["seconds"], int) and row["seconds"] >= 0, row
-        assert len(rows_of(log)) == 5, "a --list run wrote a row"
 
-        # A log that cannot be written: a file stands where its directory goes.
+
+def a_row_is_valid_json_whatever_the_reason_says():
+    """A widen reason names a changed path, which can hold a quote or a
+    backslash: the row is still one JSON line that reads back as the reason."""
+    with tempfile.TemporaryDirectory() as tmp:
+        log = pathlib.Path(tmp) / "seam-runs.jsonl"
+        sel = selection_tree(subdir(tmp, "sel"))
+        odd = 'we"ird\\x.txt'
+        with_diff(sel, [odd, "examples/aa/board.txt"])
+        r, _ = run_stubbed(
+            ["bash", RUNNER, "--changed", "base"],
+            root=sel,
+            runs_log=log,
+            changed=["examples/aa/board.txt:data"],
+        )
+        assert r.returncode == 0, r.stderr
+        (row,) = rows_of(log)
+        # git quotes such a path in its listing, and the reason carries that.
+        assert row["reason"].startswith('"we\\"ird\\\\x'), row
+
+
+def a_slow_run_logs_its_wall_clock():
+    """`seconds` is the run's wall clock, not a constant."""
+    with tempfile.TemporaryDirectory() as tmp:
+        log = pathlib.Path(tmp) / "seam-runs.jsonl"
+        tree = scratch_tree(
+            tmp,
+            {"examples/aa/slow.test.mjs": "setTimeout(() => {}, 2200)\n"},
+        )
+        r, _ = run_stubbed(
+            ["bash", RUNNER, "--group", "test"],
+            root=tree,
+            real=("node",),
+            runs_log=log,
+        )
+        assert r.returncode == 0, r.stdout + r.stderr
+        (row,) = rows_of(log)
+        assert row["seconds"] >= 2, row
+
+
+def every_failing_exit_logs_its_row():
+    """A run that fails logs a row on each of the runner's three failing
+    exits: a suite of its own loop, a suite Pants did not report as passed,
+    and a `pants test` that exits non-zero with every suite reported."""
+    with tempfile.TemporaryDirectory() as tmp:
+        log = pathlib.Path(tmp) / "seam-runs.jsonl"
+        loop = scratch_tree(
+            subdir(tmp, "loop"), {"examples/aa/bad.test.mjs": "process.exit(3)\n"}
+        )
+        r, _ = run_stubbed(["bash", RUNNER], root=loop, real=("node",), runs_log=log)
+        assert r.returncode == 1, r.stdout + r.stderr
+        sel = selection_tree(subdir(tmp, "sel"))
+        with_diff(sel, ["examples/aa/board.txt"])
+        answer = ["examples/aa/board.txt:data", "examples/aa:a2.test.mjs"]
+        r, _ = run_stubbed(
+            ["bash", RUNNER, "--changed", "base"],
+            root=sel,
+            runs_log=log,
+            changed=answer,
+            pants_status=1,
+        )
+        assert r.returncode == 1, r.stdout + r.stderr
+        rows = rows_of(log)
+        assert [row["ok"] for row in rows] == [False, False], rows
+
+
+def a_log_that_cannot_be_written_costs_one_stderr_line():
+    """A log that cannot be written changes neither the exit code nor the last
+    line; it costs one stderr line naming the failure. So does a run with
+    nowhere to build the log's path from."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = logged_tree(tmp, "flat")
+        m = len(WHOLE)
         blocked = pathlib.Path(tmp) / "blocked"
         blocked.write_text("")
-        r, _ = run_stubbed(
-            ["bash", RUNNER], root=flat, runs_log=blocked / "seam-runs.jsonl"
+        no_home = {"SEAM_RUNS_LOG": None, "XDG_CACHE_HOME": None, "HOME": None}
+        for log, extra in (
+            (blocked / "seam-runs.jsonl", None),
+            (None, no_home),
+        ):
+            r, _ = run_stubbed(["bash", RUNNER], root=tree, runs_log=log, extra=extra)
+            assert r.returncode == 0, f"a log failure changed the exit:\n{r.stderr}"
+            assert r.stdout.splitlines()[-1] == f"{m} of {m} suites passed", r.stdout
+            said = [x for x in r.stderr.splitlines() if "could not write" in x]
+            assert len(said) == 1, f"not one stderr line naming it:\n{r.stderr}"
+
+
+def a_relative_log_path_is_the_callers():
+    """A relative `SEAM_RUNS_LOG` is read from where the caller stands, not
+    from the checkout the runner moves into; a bare file name is a file."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = logged_tree(tmp, "flat")
+        here = pathlib.Path(tmp) / "caller"
+        here.mkdir()
+        env = {**os.environ, "SEAM_RUNS_LOG": "runs.jsonl"}
+        r = subprocess.run(
+            ["bash", str(tree / RUNNER), "--group", "soundness"],
+            cwd=here,
+            env=env,
+            capture_output=True,
+            text=True,
         )
-        assert r.returncode == 0, f"a log failure changed the exit:\n{r.stderr}"
-        assert r.stdout.splitlines()[-1] == f"{m} of {m} suites passed", r.stdout
-        said = [line for line in r.stderr.splitlines() if "seam-runs.jsonl" in line]
-        assert len(said) == 1, f"no single stderr line naming the failure:\n{r.stderr}"
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert len(rows_of(here / "runs.jsonl")) == 1, list(here.iterdir())
+        assert not (tree / "runs.jsonl").exists()
+
+
+def tests_do_not_write_the_developers_log():
+    """`run_logged` points the runner at a scratch log unless told a path, so
+    no test run appends to the real one."""
+    r, _ = run_logged(["bash", "-c", 'printf %s "$SEAM_RUNS_LOG"'])
+    assert r.stdout and "sudokumaker-custom-constraints" not in r.stdout, r.stdout
 
 
 if __name__ == "__main__":
@@ -844,6 +949,12 @@ if __name__ == "__main__":
     a_failed_query_widens()
     a_narrowed_run_says_so()
     a_run_appends_one_row_to_the_log()
+    a_row_is_valid_json_whatever_the_reason_says()
+    a_slow_run_logs_its_wall_clock()
+    every_failing_exit_logs_its_row()
+    a_log_that_cannot_be_written_costs_one_stderr_line()
+    a_relative_log_path_is_the_callers()
+    tests_do_not_write_the_developers_log()
     wired_suites_go_through_pants()
     wired_suites_run_in_one_pants_call()
     an_undeclared_read_fails_the_suite()
