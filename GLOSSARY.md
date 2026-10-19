@@ -202,6 +202,15 @@ vocabulary. Where a term belongs to only one of them, the entry says so.
   fillomino matches per island.
 - **tour** (ISOFILL) — a lower bound on region size from the distances between
   three placed cells.
+- **fortress rule** (fortress fillomino) — every region is strictly larger than
+  all its orthogonally neighbouring regions, or strictly smaller than all of
+  them. A rule on every region, not a clue. Not SudokuMaker's built-in
+  **fortress** constraint, which marks shaded cells greater than their
+  unshaded neighbours. _Avoid_: fortress cell, fortress constraint (both name
+  the built-in).
+- **peak** / **pit** (fortress fillomino) — a region larger than all its
+  neighbours is a peak; one smaller than all of them is a pit. Every
+  neighbouring pair is one peak and one pit, the peak the larger.
 
 ## Invariants
 
