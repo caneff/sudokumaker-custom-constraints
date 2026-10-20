@@ -68,21 +68,65 @@ Limits of this measurement:
 - The 30 boards come from greedy given-removal and are mostly easy. Hard
   hand-set squishdokus were not tested.
 
+## Embedded squishdoku (9x9)
+
+Chris's variant: a 9x9 Latin square (rows and columns hold 1-9, no 3x3 boxes)
+with the 7x7 squishdoku grid on r2c2-r8c8. Template:
+`embedded-template-link.txt`.
+
+- **414 cell pairs are forced to differ** beyond rows, columns and the nine
+  boxes; none is forced equal. Exhaustive over all 3,240 pairs
+  (`embedded_houses.py`).
+- **43 nine-cell houses cover all 414.** Up to rotation and reflection they
+  form 15 classes, lettered A-O in `build_embedded_template.py`:
+  - A-D (13 houses) lie inside the squish area and are exactly the 7x7's 13.
+  - E-O (30 houses) reach the outer ring. They hold only because rows and
+    columns are full 9-cell houses here. Several are far from local, for
+    example class L, which is rows 1, 5, 9 crossed with columns 1, 5, 9.
+- The template registers all 43, named by class (`extra region E3`). It also
+  draws a solid border round r2c2-r8c8 in `examples/_shared/frame.py`'s
+  border style, so the squish area is visible.
+
+Twenty minimal unique puzzles (12-14 givens) on three variants, scored as in
+the 7x7 table. This comparison ran from a scratch generator that is not
+committed; the template itself rebuilds from the scripts here.
+
+| variant | total logic steps | boards solved by logic alone | median findAll | summed findAll |
+| --- | --- | --- | --- | --- |
+| rows, columns, boxes | 829 | 5 / 20 | 148 ms | 2780 ms |
+| + 13 inner houses | 1180 | 9 / 20 | 150 ms | 3478 ms |
+| + all 43 | 1270 | 15 / 20 | 57 ms | 2535 ms |
+
+More total steps here means the logical solver got further before it
+stalled, not that it worked harder. In the real app (v2026.10.05-a3aef4c)
+one of the harder boards opened, read `[unique]`, and solved in 0 ms on both
+the 13-house and the 43-house version, so the app's timer cannot separate
+them at this size either.
+
 ## Rebuild
 
 From this directory. `original.json` is the catalog link decoded with
 gridfind's `scripts/link_file.py decode` (see the `sm-link` skill).
 
 ```
+# encode IN OUT: write IN's puzzle document to OUT as a link (sudoku-kit's codec)
+encode() { uv run python -c 'import json, sys; from sudoku_kit.link_codec import encode_link; open(sys.argv[2], "w").write(encode_link(json.load(open(sys.argv[1]))))' "$1" "$2"; }
+
 uv run --with networkx python implied_houses.py houses.json
 node check_backend.mjs backend.js houses.json
 python build_template.py original.json backend.js template.json
-uv run --directory ~/src/gridfind python scripts/link_file.py encode "$PWD/template.json" "$PWD/template-link.txt"
+encode template.json template-link.txt
 
 # the comparison table
 uv run python make_boards.py original.json template.json boards 30
-for f in boards/*.json; do uv run --directory ~/src/gridfind python scripts/link_file.py encode "$PWD/$f" "$PWD/${f%.json}.link.txt"; done
+for f in boards/*.json; do encode "$f" "${f%.json}.link.txt"; done
 node score_boards.mjs boards/*.link.txt
+
+# the embedded 9x9 template (the sweep takes about 100 s on one core)
+uv run --with networkx python embedded_houses.py embedded-houses.json
+python build_embedded_template.py original.json embedded-houses.json embedded-backend.js embedded-template.json
+node check_backend.mjs embedded-backend.js embedded-houses.json
+encode embedded-template.json embedded-template-link.txt
 ```
 
 These scripts are frozen research scripts. Nothing in the repo runs them.
