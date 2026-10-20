@@ -109,21 +109,24 @@ From this directory. `original.json` is the catalog link decoded with
 gridfind's `scripts/link_file.py decode` (see the `sm-link` skill).
 
 ```
+# encode IN OUT: write IN's puzzle document to OUT as a link (sudoku-kit's codec)
+encode() { uv run python -c 'import json, sys; from sudoku_kit.link_codec import encode_link; open(sys.argv[2], "w").write(encode_link(json.load(open(sys.argv[1]))))' "$1" "$2"; }
+
 uv run --with networkx python implied_houses.py houses.json
 node check_backend.mjs backend.js houses.json
 python build_template.py original.json backend.js template.json
-uv run --directory ~/src/gridfind python scripts/link_file.py encode "$PWD/template.json" "$PWD/template-link.txt"
+encode template.json template-link.txt
 
 # the comparison table
 uv run python make_boards.py original.json template.json boards 30
-for f in boards/*.json; do uv run --directory ~/src/gridfind python scripts/link_file.py encode "$PWD/$f" "$PWD/${f%.json}.link.txt"; done
+for f in boards/*.json; do encode "$f" "${f%.json}.link.txt"; done
 node score_boards.mjs boards/*.link.txt
 
 # the embedded 9x9 template (the sweep takes about 100 s on one core)
 uv run --with networkx python embedded_houses.py embedded-houses.json
 python build_embedded_template.py original.json embedded-houses.json embedded-backend.js embedded-template.json
 node check_backend.mjs embedded-backend.js embedded-houses.json
-uv run --directory ~/src/gridfind python scripts/link_file.py encode "$PWD/embedded-template.json" "$PWD/embedded-template-link.txt"
+encode embedded-template.json embedded-template-link.txt
 ```
 
 These scripts are frozen research scripts. Nothing in the repo runs them.
