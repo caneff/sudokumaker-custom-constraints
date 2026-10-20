@@ -103,6 +103,23 @@ class Spec:
     # them: grid (row, column) cells and the value typed into each group
     # (None for an empty one). None, the default, is a ring example.
     groups_fn: Callable | None = None
+    # The interior, for an example whose grid is not a sudoku. All four default
+    # to today's sudoku behaviour, so an example that sets none of them builds
+    # the same link it always did.
+    # grid_fn(rng, n, bh, bw) -> the solved interior, as rows of digits; None
+    # draws `make_grid`'s sudoku.
+    grid_fn: Callable | None = None
+    # model_fn(n, box) -> (m, x): the CP-SAT interior `unique` posts givens and
+    # clues onto, with `x` keyed by (row, column); None builds
+    # `cpsat.sudoku_model`.
+    model_fn: Callable | None = None
+    # Does the ring board declare the interior's boxes as regions? False
+    # leaves the document with no region constraint at all.
+    box_regions: bool = True
+    # Does the ring board carry the frame-rowcol backend, which declares the
+    # interior's rows and columns as houses? False leaves it out; the
+    # frame-corners backend stays, since it pins cells no interior reaches.
+    rowcol_houses: bool = True
 
 
 # Seconds per solve in `unique`. A frame board this size is proved in
@@ -262,14 +279,15 @@ def repeating_lines(grid, lines):
     ]
 
 
-def unique(post_clue, board):
+def unique(post_clue, board, model_fn=None):
     """True when `board`'s interior has exactly one solution, False when it has
     more, None when there is no verdict -- either the first solve found nothing
     inside the time limit (a timeout or an unsatisfiable model) or the search
     for a second solution spent the limit without one.
 
-    `post_clue` is a Spec's cp_sat_clue_fn; unique() needs nothing else off the
-    Spec, so a caller with its own line geometry can reuse it.
+    `post_clue` is a Spec's cp_sat_clue_fn and `model_fn` its model_fn (None:
+    the sudoku model); unique() needs nothing else off the Spec, so a caller
+    with its own line geometry can reuse it.
     """
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
@@ -277,7 +295,7 @@ def unique(post_clue, board):
     from sudoku_kit import cpsat
 
     n, bh, bw = board.n, board.bh, board.bw
-    m, x = cpsat.sudoku_model(n, (bh, bw))
+    m, x = (model_fn or cpsat.sudoku_model)(n, (bh, bw))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
     # sorted: `active` is a set, whose iteration order is randomized per
@@ -309,7 +327,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     for seed in seeds:
         lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
         rng = random.Random(seed)
-        grid = make_grid(rng, n, bh, bw)
+        grid = (spec.grid_fn or make_grid)(rng, n, bh, bw)
         if paths and not repeating_lines(grid, lines):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
@@ -331,14 +349,20 @@ def generate(spec, n, bh, bw, seeds, paths=False):
         givens = {}
         cells_all = [(r, c) for r in range(n) for c in range(n)]
         rng.shuffle(cells_all)
-        if not unique(spec.cp_sat_clue_fn, base):
+        if not unique(spec.cp_sat_clue_fn, base, spec.model_fn):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
-                if unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
+                if unique(
+                    spec.cp_sat_clue_fn,
+                    replace(base, givens=dict(givens)),
+                    spec.model_fn,
+                ):
                     break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
-            if not unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
+            if not unique(
+                spec.cp_sat_clue_fn, replace(base, givens=dict(givens)), spec.model_fn
+            ):
                 givens[cell] = v
         print(f"  seed {seed}: interior givens = {len(givens)}")
         if best is None or len(givens) < len(best.givens):
@@ -352,10 +376,12 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     rng.shuffle(order)
     for k in order:
         active.discard(k)
-        if not unique(spec.cp_sat_clue_fn, replace(board, active=set(active))):
+        if not unique(
+            spec.cp_sat_clue_fn, replace(board, active=set(active)), spec.model_fn
+        ):
             active.add(k)
     board = replace(board, active=active)
-    assert unique(spec.cp_sat_clue_fn, board) is True
+    assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
     if paths:
         # The property the board exists to carry. Asserted here so a
         # regeneration that loses it fails loud instead of shipping a board
@@ -754,7 +780,20 @@ class _RingLane(Lane):
     board, its frame backends and cosmetics. They differ in the groups they
     draw, whether House GAC may ride along, and the rules text's close."""
 
-    generated = tuple(title for _, title in FRAME_BACKENDS)
+    @property
+    def generated(self):
+        """The frame backends this lane's links carry, by title."""
+        return tuple(title for title, _ in self._frame_backends())
+
+    def _frame_backends(self):
+        """`frame_backend_code()` less frame-rowcol when the Spec's interior
+        has no row/column houses."""
+        code = dict(frame_backend_code())
+        return [
+            (title, code[title])
+            for stem, title in FRAME_BACKENDS
+            if stem != "frame-rowcol" or self.spec.rowcol_houses
+        ]
 
     def build_doc(self, board):
         """Assemble the whole SudokuMaker document for `board`."""
@@ -807,13 +846,13 @@ class _RingLane(Lane):
         #   frame-corners  pins the four corner cells, which no line, region or
         #                  house reaches; without it the app calls the board
         #                  not unique.
-        frame_backends = frame_backend_code()
+        frame_backends = self._frame_backends()
 
         # The cap is `house_gac_constraint`'s to enforce -- it raises below
         # when the lane opts in and n is too big -- so it is checked once, for
         # every caller, not duplicated here.
         constraints = [
-            {"type": 1, "regions": regions},
+            *([{"type": 1, "regions": regions}] if spec.box_regions else []),
             {"type": 0},
             *(spec.extra_cages(interior) if spec.extra_cages else []),
             self.example_constraint(self.drawn(board)),
