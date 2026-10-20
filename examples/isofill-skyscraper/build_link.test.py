@@ -1,12 +1,13 @@
-# Three checks on the shipped link.
+# Two checks on the shipped link.
 #
 # 1. Swapping either shipped component back into PUZZLE_LINK.txt reproduces it
 #    byte for byte. What a swap may change is link_swap.test.py's.
 # 2. Rebuilding the board from gen.json against the code in the tree
 #    (build_size.py --rebuild 9) reproduces it byte for byte, so the link is
 #    neither stale against the components nor against the backend.
-# 3. check_layout accepts the example: a ring board with no sudoku prefix, no
-#    houses, and its global lane alone.
+#
+# That check_layout accepts the example is check_layout.py's own run over the
+# tree, in the same gate.
 
 import pathlib
 import sys
@@ -17,7 +18,6 @@ sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
 from build_size import COMPONENTS, SPEC
-from check_layout import check_example
 from framebuild import RingGlobal
 from link_swap import swap_build
 
@@ -34,8 +34,5 @@ if __name__ == "__main__":
     assert RingGlobal(SPEC).rebuild(9) == shipped, (
         "build_size.py --rebuild 9 must reproduce PUZZLE_LINK.txt"
     )
-
-    violations = check_example(HERE)
-    assert violations == [], violations
 
     print("ok")
