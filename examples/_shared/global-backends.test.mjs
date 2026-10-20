@@ -33,7 +33,7 @@
 // backend that passes it through is caught here.
 
 import { join } from 'path'
-import { existsSync, readdirSync } from 'fs'
+import { existsSync, readdirSync, readFileSync } from 'fs'
 import assert from 'assert'
 import { frameGeometry } from './frame-geometry.mjs'
 import { runBackend } from './backend-runner.mjs'
@@ -288,6 +288,13 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
 // asymmetric frame to bite on.
 const BOARDS = [[11, 11], [11, 8]]
 
+// The global backends whose interior must be square, and which must throw on
+// a rectangular board before registering anything: isofill-skyscraper's
+// ISOFILL interior has as many regions as its side, so a 9x6 interior has no
+// meaning. Named, not a blanket rule -- any other backend must build the 11x8
+// frame.
+const SQUARE_ONLY = ['isofill-skyscraper']
+
 // Not every backend names a side or takes a pair, so the side and pair checks
 // are counted across all of them: a loop that finds no component to check
 // would pass whatever the backends build, and the two checks would be dead.
@@ -296,6 +303,13 @@ let pairChecks = 0
 for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main-global.js'))
   for (const [W, H] of BOARDS) {
+    if (W !== H && SQUARE_ONLY.includes(name)) {
+      const p = mockPuzzle(W, H)
+      assert.throws(() => runBackend(src, { puzzle: p, helpers }), /needs a square interior/,
+        `${name}/main-global.js on ${W}x${H} must refuse a rectangular interior`)
+      assert.strictEqual(p.registered.length, 0, `${name}/main-global.js on ${W}x${H} half-registered before refusing`)
+      continue
+    }
     const r = checkBackend(name, src, W, H)
     sideChecks += r.sideChecks
     pairChecks += r.pairChecks
@@ -306,13 +320,21 @@ assert.ok(pairChecks > 0, 'no backend registered a pair component: the pair chec
 
 // An example has a local lane exactly when it has both paste targets: main.js
 // reading the author's drawn groups and main-global.js building the frame
-// itself (docs/example-layout.md). `dirs` is already that list. fillomino and
-// isofill have no main-global.js and so appear in neither -- each is a
-// whole-grid constraint with no outside frame at all, and its lone main.js
-// builds its cell list from the board size rather than from drawn groups.
-for (const name of dirs) {
+// itself (docs/example-layout.md). Every global backend has one, except an
+// example whose manifest says `lanes = "global"` (isofill-skyscraper): it
+// ships its ring board's global lane alone. fillomino and isofill have no
+// main-global.js and so appear in neither -- each is a whole-grid constraint
+// with no outside frame at all, and its lone main.js builds its cell list from
+// the board size rather than from drawn groups.
+const globalOnly = name => /^lanes\s*=\s*"global"\s*$/m.test(readFileSync(join(EXAMPLES, name, 'example.toml'), 'utf8'))
+const localDirs = dirs.filter(name => !globalOnly(name))
+for (const name of localDirs) {
   assert.ok(existsSync(join(EXAMPLES, name, 'main.js')),
     `${name} has a main-global.js and must have the main.js that is its other lane`)
+}
+for (const name of dirs.filter(globalOnly)) {
+  assert.ok(!existsSync(join(EXAMPLES, name, 'main.js')),
+    `${name} says lanes = "global" and must ship no main.js`)
 }
 
 // A drawn group as framebuild.frame_groups ships it: the clue's ring cell,
@@ -368,7 +390,7 @@ function localCases (W, H) {
 const BENT_SKIPPER = 'outside-sudoku'
 
 let localRuns = 0
-for (const name of dirs) {
+for (const name of localDirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main.js'))
   for (const [W, H] of BOARDS) {
     const registered = {}
@@ -384,4 +406,4 @@ for (const name of dirs) {
   }
 }
 
-console.log(`PASS (${dirs.length} global backends, ${dirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)
+console.log(`PASS (${dirs.length} global backends, ${localDirs.length} local backends, ${localRuns} local runs, ${BOARDS.length} board shapes)`)

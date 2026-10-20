@@ -25,6 +25,7 @@ from unittest import mock
 import no_ring
 from framebuild import (
     LOCAL_RULES_SUFFIX,
+    RULES_PREFIX,
     Board,
     RingGlobal,
     RingLocal,
@@ -1246,8 +1247,23 @@ def test_rebuild_reproduces_a_non_sudoku_interior_link():
         assert RingGlobal(spec).rebuild(n) + "\n" == link_path.read_text()
 
 
+def test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence():
+    # A non-sudoku interior has no sudoku rules to name: its Spec opens the
+    # rules text itself, and the lane's check holds the link to that opening.
+    with _spec(["FooComponent.js"], rules_prefix="", **_TOY) as spec:
+        lane = RingGlobal(spec)
+        link, doc, board = _build(spec)
+        assert doc["puzzle"]["comment"] == spec.comment_fn(board.n)
+        lane.check(link, doc, board)
+    with _spec(["FooComponent.js"]) as spec:
+        assert spec.rules_prefix is None
+        _, doc, _ = _build(spec)
+        assert doc["puzzle"]["comment"].startswith(RULES_PREFIX)
+
+
 if __name__ == "__main__":
     test_spec_interior_fields_default_to_the_sudoku_behaviour()
+    test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence()
     test_generate_and_unique_use_the_spec_s_own_grid_and_model()
     test_build_doc_without_box_regions_or_rowcol_houses_declares_neither()
     test_rebuild_reproduces_a_non_sudoku_interior_link()

@@ -1,6 +1,7 @@
 # verify.py's parts, tested apart from the disk wiring check() does: link_board
-# reads the shipped link, mismatches / box_problems / grid_problems compare it
-# to the recorded board, and framebuild.unique is the proof itself. Every
+# (ring_link.py) reads the shipped link, mismatches (ring_link.py) /
+# box_problems / grid_problems compare it to the recorded board, and
+# framebuild.unique is the proof itself. Every
 # expectation comes from gen.json, so a regenerated board changes no line here.
 
 import pathlib
@@ -14,15 +15,9 @@ import dataclasses
 
 from build_size import SPEC
 from framebuild import RingGlobal, load_board, unique
+from ring_link import interior_index, link_board, mismatches
 from sudoku_kit.link_codec import decode_puzzle
-from verify import (
-    boards,
-    box_problems,
-    grid_problems,
-    interior_index,
-    link_board,
-    mismatches,
-)
+from verify import boards, box_problems, grid_problems
 
 
 def _shipped():

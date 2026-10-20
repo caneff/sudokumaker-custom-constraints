@@ -306,6 +306,22 @@ if __name__ == "__main__":
         violations = check_tree(root)
         assert violations == [], violations
 
+    # a `lanes = "global"` example ships main-global.js alone: no main.js
+    # and no local board, and dropping main-global.js names it
+    global_only = [
+        f
+        for f in REQUIRED
+        if f not in ("main.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=global_only, manifest={"lanes": "global"}) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+    no_backend = [f for f in global_only if f != "main-global.js"]
+    with example(files=no_backend, manifest={"lanes": "global"}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "missing required file main-global.js" in violations[0]
+
     # a split example ships a local board: both halves of the pair are
     # required, and each is named on its own. Dropping one half also
     # leaves the other unpaired, so two violations fire, not one --

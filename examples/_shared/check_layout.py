@@ -78,7 +78,8 @@ REQUIRED_FILES = [
 # The local lane's own files. PUZZLE_LINK.txt is the GLOBAL-lane board in
 # every split example, so the local lane needs a board of its own: the link
 # plus the gen JSON that records it. An example whose manifest says
-# `lanes = "single"` ships main.js alone and neither.
+# `lanes = "single"` ships main.js alone and neither; one that says
+# `lanes = "global"` ships main-global.js in main.js's place, and neither.
 REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 
 # Examples folded into another and deleted, name -> the example that took over.
@@ -830,11 +831,14 @@ def check_example(example_dir):
     except (FileNotFoundError, ValueError) as e:
         return [f'{name}: {e} (docs/example-layout.md, "The manifest")']
 
+    required_files = BOARDLESS_REQUIRED_FILES if manifest.boardless else REQUIRED_FILES
+    if manifest.lanes == "global":
+        required_files = [
+            "main-global.js" if f == "main.js" else f for f in required_files
+        ]
     violations = [
         f"{name}: missing required file {required}"
-        for required in (
-            BOARDLESS_REQUIRED_FILES if manifest.boardless else REQUIRED_FILES
-        )
+        for required in required_files
         if not (example_dir / required).is_file()
     ]
 

@@ -120,6 +120,10 @@ class Spec:
     # interior's rows and columns as houses? False leaves it out; the
     # frame-corners backend stays, since it pins cells no interior reaches.
     rowcol_houses: bool = True
+    # The sentence a ring board's rules text opens with; None is RULES_PREFIX.
+    # An interior with no sudoku rules to name sets "" and states its whole
+    # rule in comment_fn.
+    rules_prefix: str | None = None
 
 
 # Seconds per solve in `unique`. A frame board this size is proved in
@@ -794,6 +798,13 @@ class _RingLane(Lane):
             for stem, title in FRAME_BACKENDS
             if stem != "frame-rowcol" or self.spec.rowcol_houses
         ]
+
+    @property
+    def rules_prefix(self):
+        """The Spec's own opening sentence, else the sudoku one."""
+        if self.spec.rules_prefix is None:
+            return RULES_PREFIX
+        return self.spec.rules_prefix
 
     def build_doc(self, board):
         """Assemble the whole SudokuMaker document for `board`."""
