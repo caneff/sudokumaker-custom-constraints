@@ -353,14 +353,16 @@ def generate(spec, n, bh, bw, seeds, paths=False):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
                 if unique(
-                    spec.cp_sat_clue_fn, replace(base, givens=dict(givens)), spec.model_fn
+                    spec.cp_sat_clue_fn,
+                    replace(base, givens=dict(givens)),
+                    spec.model_fn,
                 ):
                     break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
             if not unique(
-                    spec.cp_sat_clue_fn, replace(base, givens=dict(givens)), spec.model_fn
-                ):
+                spec.cp_sat_clue_fn, replace(base, givens=dict(givens)), spec.model_fn
+            ):
                 givens[cell] = v
         print(f"  seed {seed}: interior givens = {len(givens)}")
         if best is None or len(givens) < len(best.givens):
@@ -786,9 +788,10 @@ class _RingLane(Lane):
     def _frame_backends(self):
         """`frame_backend_code()` less frame-rowcol when the Spec's interior
         has no row/column houses."""
+        code = dict(frame_backend_code())
         return [
-            (title, code)
-            for (stem, _), (title, code) in zip(FRAME_BACKENDS, frame_backend_code())
+            (title, code[title])
+            for stem, title in FRAME_BACKENDS
             if stem != "frame-rowcol" or self.spec.rowcol_houses
         ]
 

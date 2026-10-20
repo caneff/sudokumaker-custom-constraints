@@ -1199,12 +1199,12 @@ def _striped_model(n, box):
     return m, x
 
 
-_TOY = dict(
-    grid_fn=_striped_grid,
-    model_fn=_striped_model,
-    box_regions=False,
-    rowcol_houses=False,
-)
+_TOY = {
+    "grid_fn": _striped_grid,
+    "model_fn": _striped_model,
+    "box_regions": False,
+    "rowcol_houses": False,
+}
 
 
 def test_spec_interior_fields_default_to_the_sudoku_behaviour():
@@ -1229,7 +1229,7 @@ def test_generate_and_unique_use_the_spec_s_own_grid_and_model():
 
 def test_build_doc_without_box_regions_or_rowcol_houses_declares_neither():
     with _spec(["FooComponent.js"], **_TOY) as spec:
-        _, doc, board = _build(spec)
+        _, doc, _ = _build(spec)
         constraints = doc["puzzle"]["constraints"]
         assert not [c for c in constraints if c.get("type") == 1], "box regions"
         names = [c.get("definition", {}).get("name") for c in constraints]
