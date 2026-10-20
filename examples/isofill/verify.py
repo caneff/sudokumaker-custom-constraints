@@ -107,11 +107,9 @@ if __name__ == "__main__":
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         board = Board.of_doc(doc)
-        # The one proof here that does NOT run reproducible. A 10x10 ISOFILL
-        # model is out of reach of a single worker: gen_24g.json is 187s on
-        # the portfolio and hits the 600s limit with no verdict at
-        # num_workers=1, and gen.json is 12s against more than twenty minutes.
-        # Nothing this prints is committed except the verdict itself, and the
+        # The one proof here that does NOT run reproducible: a 10x10 ISOFILL
+        # proof has been out of a single worker's reach (README, "verify.py",
+        # has the numbers). Nothing this prints is committed except the verdict itself, and the
         # verdict is a property of the model, not of the search -- the two
         # configurations agree wherever both terminate, and only one of them
         # terminates. See README, "verify.py".

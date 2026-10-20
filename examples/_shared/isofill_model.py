@@ -4,8 +4,8 @@ board (examples/isofill-skyscraper/build_size.py), so both prove on one model.
 
 Rule: N regions of N orthogonally connected cells, one digit per region, all N
 digits present. Modelled as exact counts plus a single-commodity flow per
-digit: one root cell sends N - 1 units, every other cell of that digit absorbs
-one, and flow moves only between orthogonal neighbours that both hold the
+digit: the digit's first cell in reading order sends N - 1 units, every other
+cell of that digit absorbs one, and flow moves only between orthogonal neighbours that both hold the
 digit. A cut-off cell starves, so a split region is infeasible.
 """
 
@@ -64,7 +64,24 @@ def model(board, givens):
             m.Add(x[p] == d).OnlyEnforceIf(holds[p])
             m.Add(x[p] != d).OnlyEnforceIf(holds[p].Not())
         m.Add(sum(holds.values()) == n)
-        root = {p: m.NewBoolVar(f"r{d}{p}") for p in board.cells}
+        # The root is the digit's first cell in reading order, so a grid has
+        # one root per digit, not one per cell of the region: with the root
+        # free, the exclusion solve of a uniqueness proof refutes each region
+        # once for every cell it could grow from (one 9x9 ring board: 17.8 s
+        # free, 2.0 s pinned).
+        root = {}
+        earlier = None  # some cell before p holds d
+        for p in board.cells:
+            root[p] = m.NewBoolVar(f"r{d}{p}")
+            if earlier is None:
+                m.Add(root[p] == holds[p])
+                earlier = holds[p]
+                continue
+            m.AddBoolAnd([holds[p], earlier.Not()]).OnlyEnforceIf(root[p])
+            m.AddBoolOr([holds[p].Not(), earlier]).OnlyEnforceIf(root[p].Not())
+            seen = m.NewBoolVar(f"s{d}{p}")
+            m.AddMaxEquality(seen, [earlier, holds[p]])
+            earlier = seen
         m.AddExactlyOne(root.values())
         flow = {e: m.NewIntVar(0, n - 1, f"f{d}{e}") for e in board.edges}
         for (p, q), f in flow.items():

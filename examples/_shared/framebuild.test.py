@@ -1261,8 +1261,25 @@ def test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence():
         assert doc["puzzle"]["comment"].startswith(RULES_PREFIX)
 
 
+def test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit():
+    # A carve limit no solve can meet: every carve-time proof comes back with
+    # no verdict, so the carve keeps every given it adds and hides no clue --
+    # and the board it returns still proves unique under the full limit.
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], carve_limit=1e-9, **_TOY) as spec:
+        board = generate(spec, n, bh, bw, range(101, 102))
+        assert len(board.givens) == n * n
+        assert board.active == set(make_lines(n))
+        assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
+    with _spec(["FooComponent.js"], **_TOY) as spec:
+        assert spec.carve_limit is None
+        board = generate(spec, n, bh, bw, range(101, 102))
+        assert not board.givens
+
+
 if __name__ == "__main__":
     test_spec_interior_fields_default_to_the_sudoku_behaviour()
+    test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit()
     test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence()
     test_generate_and_unique_use_the_spec_s_own_grid_and_model()
     test_build_doc_without_box_regions_or_rowcol_houses_declares_neither()

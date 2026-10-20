@@ -124,12 +124,20 @@ class Spec:
     # An interior with no sudoku rules to name sets "" and states its whole
     # rule in comment_fn.
     rules_prefix: str | None = None
+    # Seconds per solve while carving: a carve step is kept only when its
+    # proof finishes inside this. None is SOLVE_LIMIT. A model whose proofs
+    # run near SOLVE_LIMIT sets a smaller one, so the board it ships proves
+    # with room to spare under the full limit -- `generate`'s final check and
+    # the example's verify.py both run at SOLVE_LIMIT.
+    carve_limit: float | None = None
 
 
-# Seconds per solve in `unique`. A frame board this size is proved in
+# Seconds per solve in `unique`. A sudoku frame board is proved in
 # milliseconds, so a solve anywhere near the cap is a carve that has gone
 # wrong; `unique` returns None for it, which the carve loop reads as "not
-# unique" and the final assert in `generate` turns into a loud failure.
+# unique" and the final assert in `generate` turns into a loud failure. An
+# interior whose proofs take seconds (ISOFILL) carves under a smaller
+# `Spec.carve_limit`, keeping this cap as its margin.
 SOLVE_LIMIT = 10
 
 # A bent-path link's rules text closes with this: its lines are drawn paths,
@@ -283,7 +291,7 @@ def repeating_lines(grid, lines):
     ]
 
 
-def unique(post_clue, board, model_fn=None):
+def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     """True when `board`'s interior has exactly one solution, False when it has
     more, None when there is no verdict -- either the first solve found nothing
     inside the time limit (a timeout or an unsatisfiable model) or the search
@@ -291,7 +299,8 @@ def unique(post_clue, board, model_fn=None):
 
     `post_clue` is a Spec's cp_sat_clue_fn and `model_fn` its model_fn (None:
     the sudoku model); unique() needs nothing else off the Spec, so a caller
-    with its own line geometry can reuse it.
+    with its own line geometry can reuse it. `limit` is the seconds each of
+    the two solves may spend.
     """
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
@@ -309,7 +318,7 @@ def unique(post_clue, board, model_fn=None):
         cells = board.lines[k]
         post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
     try:
-        first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
+        first, unique = cpsat.solve_unique(m, x, limit)
     except TimeoutError:
         # No verdict either way: a first solve that spent the limit, or a
         # second one that did, reads as a first solve that found nothing.
@@ -327,6 +336,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     and carve draws are the same whether or not paths are drawn.
     """
     box = (bh, bw)
+    carve_limit = spec.carve_limit or SOLVE_LIMIT
     best = None
     for seed in seeds:
         lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
@@ -353,19 +363,23 @@ def generate(spec, n, bh, bw, seeds, paths=False):
         givens = {}
         cells_all = [(r, c) for r in range(n) for c in range(n)]
         rng.shuffle(cells_all)
-        if not unique(spec.cp_sat_clue_fn, base, spec.model_fn):
+        if not unique(spec.cp_sat_clue_fn, base, spec.model_fn, carve_limit):
             for cell in cells_all:
                 givens[cell] = grid[cell[0]][cell[1]]
                 if unique(
                     spec.cp_sat_clue_fn,
                     replace(base, givens=dict(givens)),
                     spec.model_fn,
+                    carve_limit,
                 ):
                     break
         for cell in list(givens.keys()):
             v = givens.pop(cell)
             if not unique(
-                spec.cp_sat_clue_fn, replace(base, givens=dict(givens)), spec.model_fn
+                spec.cp_sat_clue_fn,
+                replace(base, givens=dict(givens)),
+                spec.model_fn,
+                carve_limit,
             ):
                 givens[cell] = v
         print(f"  seed {seed}: interior givens = {len(givens)}")
@@ -381,7 +395,10 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     for k in order:
         active.discard(k)
         if not unique(
-            spec.cp_sat_clue_fn, replace(board, active=set(active)), spec.model_fn
+            spec.cp_sat_clue_fn,
+            replace(board, active=set(active)),
+            spec.model_fn,
+            carve_limit,
         ):
             active.add(k)
     board = replace(board, active=active)
