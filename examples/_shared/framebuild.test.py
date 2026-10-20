@@ -1182,7 +1182,75 @@ def test_main_reads_the_process_argv_only_when_handed_none():
         assert link_path.exists()
 
 
+# A toy non-sudoku interior: every cell of row r holds r + 1. Rows repeat a
+# digit, so neither the sudoku grid nor the sudoku model could ever agree with
+# it -- a pass proves the Spec's own grid and model were used.
+def _striped_grid(rng, n, bh, bw):
+    return [[r + 1] * n for r in range(n)]
+
+
+def _striped_model(n, box):
+    from ortools.sat.python import cp_model
+
+    m = cp_model.CpModel()
+    x = {(r, c): m.NewIntVar(1, n, f"x{r}{c}") for r in range(n) for c in range(n)}
+    for (r, _), v in x.items():
+        m.Add(v == r + 1)
+    return m, x
+
+
+_TOY = dict(
+    grid_fn=_striped_grid,
+    model_fn=_striped_model,
+    box_regions=False,
+    rowcol_houses=False,
+)
+
+
+def test_spec_interior_fields_default_to_the_sudoku_behaviour():
+    with _spec(["FooComponent.js"]) as spec:
+        assert spec.grid_fn is None
+        assert spec.model_fn is None
+        assert spec.box_regions is True
+        assert spec.rowcol_houses is True
+
+
+def test_generate_and_unique_use_the_spec_s_own_grid_and_model():
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], **_TOY) as spec:
+        board = generate(spec, n, bh, bw, range(101, 103))
+        assert board.grid == _striped_grid(None, n, bh, bw)
+        # the model pins every cell, so no interior given is needed
+        assert not board.givens
+        assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
+        # the sudoku model, with nothing pinned, has many solutions
+        assert unique(spec.cp_sat_clue_fn, board) is False
+
+
+def test_build_doc_without_box_regions_or_rowcol_houses_declares_neither():
+    with _spec(["FooComponent.js"], **_TOY) as spec:
+        _, doc, board = _build(spec)
+        constraints = doc["puzzle"]["constraints"]
+        assert not [c for c in constraints if c.get("type") == 1], "box regions"
+        names = [c.get("definition", {}).get("name") for c in constraints]
+        assert "Frame Rows and Columns" not in names
+        # the corners stay pinned: no line, region or house reaches them
+        assert "Frame Corners" in names
+
+
+def test_rebuild_reproduces_a_non_sudoku_interior_link():
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], **_TOY) as spec:
+        main(spec, [str(n), str(bh), str(bw), "2"])
+        link_path, _ = RingGlobal(spec).files(n)
+        assert RingGlobal(spec).rebuild(n) + "\n" == link_path.read_text()
+
+
 if __name__ == "__main__":
+    test_spec_interior_fields_default_to_the_sudoku_behaviour()
+    test_generate_and_unique_use_the_spec_s_own_grid_and_model()
+    test_build_doc_without_box_regions_or_rowcol_houses_declares_neither()
+    test_rebuild_reproduces_a_non_sudoku_interior_link()
     test_check_passes_when_the_backend_registers_the_declared_component()
     test_check_catches_a_shipped_component_the_backend_never_registers()
     test_check_catches_a_document_that_is_not_the_board_s_size()
