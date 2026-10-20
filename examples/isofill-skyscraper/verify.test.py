@@ -4,8 +4,8 @@
 #
 # No test hides a shown clue to see the proof fail, as skyscraper's does: one
 # removal costs 8-17 s and often ends at the time limit with no verdict. The
-# shipped board has one interior given, so verify.py's own unique verdict
-# already rests on the clue model.
+# shipped board has no interior given, so verify.py's own unique verdict
+# already rests on the clue model alone.
 
 import pathlib
 import sys
@@ -43,9 +43,9 @@ def test_grid_problems_speaks_for_each_of_its_three_checks():
     _, board = _shipped()
     assert grid_problems(board) == []
 
-    bent = dict(board.givens)
-    key = next(iter(sorted(bent)))
-    bent[key] = bent[key] % 9 + 1
+    # A given that disagrees with the grid; added, since the shipped board
+    # may carry no interior given at all.
+    bent = {**board.givens, (0, 0): board.grid[0][0] % 9 + 1}
     out = grid_problems(dataclasses.replace(board, givens=bent))
     assert out and all(m.startswith("given") for m in out)
 

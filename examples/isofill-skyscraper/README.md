@@ -6,15 +6,16 @@ Each ring cell counts the buildings visible along its row or column, reading
 inward; a building the same height as the tallest so far is hidden. Blank ring
 cells are interactive: the solver fills them as the line decides them.
 
-Spec #855. This board is its first slice (#858); #859 searches region layouts
-for a board whose givens sit in the ring alone, and times the link.
+Spec #855. Its first slice (#858) shipped a board with one interior given;
+#859 searched region layouts for a board whose givens sit in the ring alone,
+and found one.
 
 ## The shipped board
 
-`PUZZLE_LINK.txt`, recorded in `gen.json`: seed 101, **1 interior given, 22
-shown clues, 14 interactive**. 30 of its 36 clued lines repeat a digit. Its
-proof takes 2.9 s + 2.3 s (first solve, exclusion solve) on one CP-SAT worker,
-against `framebuild`'s 10 s cap per solve.
+`PUZZLE_LINK.txt`, recorded in `gen.json`: seed 106, **no interior givens,
+18 shown clues, 18 interactive**. Every given is a ring clue. 30 of its 36
+lines repeat a digit. `verify.py` proves it unique in about 5 s, inside
+`framebuild`'s 10 s cap per solve.
 
 ## How it is built
 
@@ -32,11 +33,22 @@ against `framebuild`'s 10 s cap per solve.
   `rowcol_houses=False`); the frame-corners backend still pins the corners.
   The rules text opens on the ISOFILL rule, with no sudoku sentence
   (`rules_prefix=""`).
-- **Carve**: `framebuild.generate`'s own: interior givens with every clue
-  shown, then clues hidden while the board stays unique. A step is kept only
-  when it proves inside 3 s a solve (`carve_limit=3`), so the shipped proof has
-  margin under the 10 s cap. Three seeds were carved; seed 101 needed the
-  fewest givens (1, against 10 and 18).
+- **Carve**: the ring-only search (`ring_only=True`,
+  `framebuild.ring_only_search`). Each seed draws a layout; a layout an
+  earlier seed drew is skipped. A layout unique on its full ring alone has its
+  clues hidden while it stays unique, and the layout with the fewest shown
+  clues ships. Had no layout been unique on its ring, the search would have
+  fallen back to `generate`'s default carve, interior givens first (spec
+  ruling 2). A step is kept only when it proves inside 3 s a solve
+  (`carve_limit=3`), so the shipped proof has margin under the 10 s cap.
+- **The search (#859)**: 200 seeds drew 40 distinct layouts (the sampler
+  repeats itself; 160 seeds were skipped). 5 were unique on the ring alone
+  inside 3 s: seeds 106 and 115 carved to 18 shown clues, 270 to 23, 161 to
+  24, 110 to 29. Seed 106 ships, the earlier of the tie. One sampled layout
+  proved its full ring in 17.9 s and was read as not unique: the 3 s limit
+  trades such layouts for the margin above. The ambiguity the other layouts
+  carry is a pair of neighbouring cells of two regions trading digits where
+  neither is a record on any line through it, so no clue changes.
 
 The clue rule is stated three times, and they agree:
 
@@ -81,19 +93,26 @@ There is no local lane (`example.toml`: `lanes = "global"`).
 ## Regenerate
 
 ```
-uv run examples/isofill-skyscraper/build_size.py 9 3 3 3      # fresh search, 3 seeds
+uv run examples/isofill-skyscraper/build_size.py 9 3 3 200    # fresh search, 200 seeds
 uv run examples/isofill-skyscraper/build_size.py --rebuild 9  # re-encode gen.json
 uv run examples/isofill-skyscraper/verify.py
 ```
 
 The box arguments are the builder's grammar only; this board has no boxes. A
-fresh search runs the sampler on the CP-SAT portfolio (8 workers, ~20 s a
-seed), then carves on one worker: about 2-3 minutes a seed.
+fresh search runs the sampler on the CP-SAT portfolio (8 workers, 1-5 s a
+seed), proves each new layout's ring on one worker, and carves each
+ring-unique one: the 200-seed search took about 18 minutes. Run it under
+`job-run`. The sampler's portfolio races, so a rerun draws other layouts.
 
 ## Timing
 
-The app solves the shipped link (`app-solve.mjs`, one rep each, recorded app
-v2026.10.05-a3aef4c, non-deterministic solve off): cold, unique in 100 ms;
-after the app's logical solver, solved by logic alone (0 ms). These are a
-check that it solves, not the timing rows: #859 records
-`just time isofill-skyscraper`.
+`just time isofill-skyscraper --ring-clues` (3 reps, non-deterministic solve
+off, recorded app replay):
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-20 | v2026.10.05-a3aef4c | isofill-skyscraper | 200ms | — | — | BASELINE |
+| 2026-10-20 | v2026.10.05-a3aef4c | isofill-skyscraper after-logical | 0ms | — | — | BASELINE |
+
+No component changed, so the rows are a baseline with no ratio. After the
+app's logical solver the board is solved by logic alone (0 ms).
