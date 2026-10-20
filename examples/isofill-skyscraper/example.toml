@@ -1,0 +1,5 @@
+timed_component = "IsofillComponent"
+constraint_name = "ISOFILL Skyscrapers"
+lanes = "global"
+rules_prefix = "none"
+houses = false

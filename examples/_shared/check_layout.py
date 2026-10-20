@@ -499,6 +499,8 @@ def declared_houses(puzzle):
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.
 FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
+# ...and the corner pin's, which only a ring board carries.
+CORNERS_TITLE = dict(FRAME_BACKENDS)["frame-corners"]
 
 
 def frame_backend_files(keep_comments=False):
@@ -557,11 +559,20 @@ def interior_cells(puzzle, width, height):
     """The ids of the cells a region constraint places in a region.
 
     That is the interior of a frame board: its ring is outside every region and
-    has no house of its own. A board with no region constraint is all interior.
+    has no house of its own. A board with no region constraint is all interior,
+    unless it carries the frame's corner pin: then it is a ring board that
+    draws no boxes (isofill-skyscraper), and its interior is every cell off the
+    ring.
     """
     regions = next(
         (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
     )
+    if regions is None and CORNERS_TITLE in carried_backend_titles(puzzle):
+        return {
+            i
+            for i in range(width * height)
+            if 0 < i // width < height - 1 and 0 < i % width < width - 1
+        }
     if regions is None:
         return set(range(width * height))
     return {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
