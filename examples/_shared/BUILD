@@ -85,6 +85,7 @@ for file in [
     "check_layout.test.py",
     "global-backends.test.mjs",
     "size_builders.test.py",
+    "spec_855_closing.test.py",
 ]:
     suite(file, needs=["//:tree"])
 

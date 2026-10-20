@@ -33,11 +33,16 @@ from build_size import MIN_DIGIT, SPEC
 from framebuild import FRAME_BACKENDS, RingGlobal, load_board, unique
 from isofill_model import Board as IsofillBoard
 from isofill_model import model
-from ortools.sat.python import cp_model
 from ring_link import mismatches
+from sudoku_kit import cpsat
 from sudoku_kit.link_codec import decode_puzzle
 
 ROWCOL_TITLE = dict(FRAME_BACKENDS)["frame-rowcol"]
+
+# Seconds per solve for this gate's proofs: well past what the shipped board
+# takes (OPTIMIZATION_LOG.md has the figure), so a loaded box does not turn a
+# sound board red, and a model that slows past it still fails loud.
+GATE_LIMIT = 60
 
 
 def house_problems(doc):
@@ -57,10 +62,10 @@ def grid_problems(board):
     m, x = model(IsofillBoard.of(n, MIN_DIGIT), {})
     for (r, c), v in x.items():
         m.Add(v == grid[r][c])
-    s = cp_model.CpSolver()
-    s.parameters.num_workers = 1
-    status = s.Solve(m)
-    assert status != cp_model.UNKNOWN, "no verdict on the pinned grid"
+    status = cpsat.solver(GATE_LIMIT).Solve(m)
+    assert status in (*cpsat.SOLVED, cpsat.cp_model.INFEASIBLE), (
+        f"no verdict on the pinned grid: {status.name}"
+    )
     read = {
         key: SPEC.clue_fn([grid[r][c] for (r, c) in cells], cells, board.box)
         for key, cells in board.lines.items()
@@ -68,7 +73,7 @@ def grid_problems(board):
     return (
         (
             []
-            if status != cp_model.INFEASIBLE
+            if status in cpsat.SOLVED
             else ["the recorded grid is not an ISOFILL solution"]
         )
         + [
@@ -101,7 +106,7 @@ def check(board, link_file):
         f"{link_file.name}: the recorded solution does not solve the recorded "
         "board:\n  " + "\n  ".join(bad)
     )
-    verdict = unique(SPEC.cp_sat_clue_fn, board, SPEC.model_fn)
+    verdict = unique(SPEC.cp_sat_clue_fn, board, SPEC.model_fn, GATE_LIMIT)
     # None is no verdict -- a solve spent the time limit, or the model is
     # unsatisfiable. Reporting it as "two solutions" would send a reader
     # hunting the wrong bug.

@@ -107,8 +107,8 @@ if __name__ == "__main__":
     else:
         doc = json.loads(Path(sys.argv[1]).read_text())
         board = Board.of_doc(doc)
-        # The one proof here that does NOT run reproducible: a 10x10 ISOFILL
-        # proof has been out of a single worker's reach (README, "verify.py",
+        # The one proof here that does NOT run reproducible: the portfolio is
+        # the configuration measured on the 10x10 proofs (README, "verify.py",
         # has the numbers). Nothing this prints is committed except the verdict itself, and the
         # verdict is a property of the model, not of the search -- the two
         # configurations agree wherever both terminate, and only one of them

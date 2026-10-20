@@ -6,16 +6,15 @@ Each ring cell counts the buildings visible along its row or column, reading
 inward; a building the same height as the tallest so far is hidden. Blank ring
 cells are interactive: the solver fills them as the line decides them.
 
-Spec #855. Its first slice (#858) shipped a board with one interior given;
-#859 searched region layouts for a board whose givens sit in the ring alone,
-and found one.
+Built for spec #855: every given sits in the ring.
 
 ## The shipped board
 
 `PUZZLE_LINK.txt`, recorded in `gen.json`: seed 106, **no interior givens,
 18 shown clues, 18 interactive**. Every given is a ring clue. 30 of its 36
-lines repeat a digit. `verify.py` proves it unique in about 5 s, inside
-`framebuild`'s 10 s cap per solve.
+lines repeat a digit. `verify.py` proves it unique in about 5 s on one
+worker (5.05 s and 5.7 s measured 2026-10-20), under a gate limit of 60 s a
+solve.
 
 ## How it is built
 
@@ -37,16 +36,19 @@ lines repeat a digit. `verify.py` proves it unique in about 5 s, inside
   `framebuild.ring_only_search`). Each seed draws a layout; a layout an
   earlier seed drew is skipped. A layout unique on its full ring alone has its
   clues hidden while it stays unique, and the layout with the fewest shown
-  clues ships. Had no layout been unique on its ring, the search would have
-  fallen back to `generate`'s default carve, interior givens first (spec
-  ruling 2). A step is kept only when it proves inside 3 s a solve
-  (`carve_limit=3`), so the shipped proof has margin under the 10 s cap.
+  clues ships. A step is kept only when it proves inside 3 s a solve
+  (`carve_limit=3`), so the shipped proof has margin under `generate`'s
+  final 10 s check. A layout whose ring proof reaches no verdict inside 3 s
+  is neither unique nor not: when no layout proves unique, each such layout
+  is proved again at 10 s before the search gives up. Had none proved unique,
+  the search would have fallen back to `generate`'s default carve, interior
+  givens first, over the same layouts (spec ruling 2).
 - **The search (#859)**: 200 seeds drew 40 distinct layouts (the sampler
   repeats itself; 160 seeds were skipped). 5 were unique on the ring alone
   inside 3 s: seeds 106 and 115 carved to 18 shown clues, 270 to 23, 161 to
   24, 110 to 29. Seed 106 ships, the earlier of the tie. One sampled layout
-  proved its full ring in 17.9 s and was read as not unique: the 3 s limit
-  trades such layouts for the margin above. The ambiguity the other layouts
+  proves its full ring in 17.9 s: no verdict inside 3 s, and past the 10 s
+  retry too, so the 3 s limit trades such layouts for the margin above. The ambiguity the other layouts
   carry is a pair of neighbouring cells of two regions trading digits where
   neither is a record on any line through it, so no clue changes.
 
@@ -56,8 +58,8 @@ The clue rule is stated three times, and they agree:
 - `add_visible` posts it to CP-SAT as a running maximum: a cell is visible
   when it is greater than the maximum before it, so a tie is hidden. Spec #855
   asked for a model of its own on the grounds that skyscraper's `add_visibility`
-  assumes a permutation line. It does not (`skyscraper/build_size.py:78`
-  compares each cell with every earlier one, which is exact on a repeating
+  assumes a permutation line. It does not (`add_visibility` in
+  `skyscraper/build_size.py` compares each cell with every earlier one, which is exact on a repeating
   line). Chris ruled for the running-max model anyway (2026-10-20): one max
   and one boolean per cell, where the pairwise model posts one per pair.
 - `SkyscraperOneSidedComponent` (`ALLOW_TIES = false`) is the rule in the app.

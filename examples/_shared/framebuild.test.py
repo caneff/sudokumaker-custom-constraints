@@ -23,10 +23,12 @@ import sys
 import tempfile
 from unittest import mock
 
+import framebuild
 import no_ring
 from framebuild import (
     LOCAL_RULES_SUFFIX,
     RULES_PREFIX,
+    SOLVE_LIMIT,
     Board,
     RingGlobal,
     RingLocal,
@@ -1319,10 +1321,111 @@ def test_a_ring_only_search_falls_back_to_interior_givens():
             board = generate(spec, n, bh, bw, range(101, 103))
         assert board.givens
         assert unique(spec.cp_sat_clue_fn, board) is True
-        assert "2 layouts tried, none unique on the ring alone" in out.getvalue()
+        assert "2 layouts tried, none proved unique on the ring alone" in out.getvalue()
+
+
+def _no_verdict_unless(keep):
+    """`framebuild.unique` with every proof `keep(board, limit)` refuses
+    answered None, the verdict a solve that spent its limit returns."""
+    real = framebuild.unique
+
+    def proof(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
+        return real(post_clue, board, model_fn, limit) if keep(board, limit) else None
+
+    return mock.patch.object(framebuild, "unique", proof)
+
+
+def test_a_ring_only_search_proves_a_no_verdict_layout_again_at_the_full_limit():
+    # Every carve-limit proof times out. The layout is not read as "not
+    # unique": it is proved again at SOLVE_LIMIT and ships ring-only, every
+    # clue kept, since no hiding step could be proved.
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], ring_only=True, carve_limit=1, **_TOY) as spec:
+        out = io.StringIO()
+        with (
+            _no_verdict_unless(lambda b, limit: limit == SOLVE_LIMIT),
+            contextlib.redirect_stdout(out),
+        ):
+            board = generate(spec, n, bh, bw, range(101, 102))
+        assert not board.givens and board.active == set(make_lines(n))
+        log = out.getvalue()
+        assert "seed 101: no verdict on the ring alone inside the carve limit" in log
+        assert "1 layouts tried, 1 unique on the ring alone" in log
+
+
+def test_a_ring_only_fallback_reports_the_layouts_that_never_reached_a_verdict():
+    # No ring-only proof reaches a verdict at any limit: the search falls back
+    # to interior givens and says the layout was unproved, not "not unique".
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
+        out = io.StringIO()
+        with (
+            _no_verdict_unless(lambda b, limit: bool(b.givens)),
+            contextlib.redirect_stdout(out),
+        ):
+            board = generate(spec, n, bh, bw, range(101, 102))
+        assert board.givens
+        log = out.getvalue()
+        assert "seed 101: still no verdict on the ring alone" in log
+        assert (
+            "none proved unique on the ring alone (1 with no verdict at "
+            f"{SOLVE_LIMIT} s); falling back to interior givens"
+        ) in log
+        assert "not unique on the ring alone" not in log
+
+
+def test_a_ring_only_fallback_carves_the_layouts_the_search_drew():
+    # The fallback carves the grids the search tried, not a fresh draw: a
+    # sampler need not redraw a seed's grid the same way twice.
+    n, bh, bw = 4, 2, 2
+    draws = itertools.count()
+
+    def drifting_grid(rng, n, bh, bw):
+        grid = make_grid(rng, n, bh, bw)
+        if next(draws):
+            grid = grid[::-1]  # a second draw of the same seed lands elsewhere
+        return grid
+
+    with _spec(["FooComponent.js"], ring_only=True, grid_fn=drifting_grid) as spec:
+        with contextlib.redirect_stdout(io.StringIO()):
+            board = generate(spec, n, bh, bw, range(101, 102))
+        assert board.grid == make_grid(random.Random(101), n, bh, bw)
+        assert next(draws) == 1, "the fallback drew the layout again"
+
+
+def test_generate_refuses_a_board_its_final_proof_does_not_confirm():
+    # The carve proves at its own limit; the board ships only when the full
+    # limit proves it too.
+    n, bh, bw = 4, 2, 2
+    with (
+        _spec(["FooComponent.js"], carve_limit=1, **_TOY) as spec,
+        _no_verdict_unless(lambda b, limit: limit != SOLVE_LIMIT),
+        contextlib.redirect_stdout(io.StringIO()),
+    ):
+        try:
+            generate(spec, n, bh, bw, range(101, 102))
+        except AssertionError as e:
+            assert "not proved unique" in str(e)
+        else:
+            raise AssertionError("shipped a board the full limit never proved")
+
+
+def test_a_ring_only_search_refuses_bent_paths():
+    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
+        try:
+            generate(spec, 4, 2, 2, range(101, 102), paths=True)
+        except ValueError as e:
+            assert "straight frame lines" in str(e)
+        else:
+            raise AssertionError("a ring-only search drew bent paths")
 
 
 if __name__ == "__main__":
+    test_a_ring_only_search_proves_a_no_verdict_layout_again_at_the_full_limit()
+    test_a_ring_only_fallback_reports_the_layouts_that_never_reached_a_verdict()
+    test_a_ring_only_fallback_carves_the_layouts_the_search_drew()
+    test_generate_refuses_a_board_its_final_proof_does_not_confirm()
+    test_a_ring_only_search_refuses_bent_paths()
     test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues()
     test_a_ring_only_search_skips_a_layout_it_has_already_tried()
     test_a_ring_only_search_falls_back_to_interior_givens()

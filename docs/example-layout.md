@@ -96,7 +96,7 @@ Run when present, skipped when absent:
 | `.golden/` | Regression goldens for the recovery/speed probes, and the strength tests' frozen floors |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`framebuild.main`) |
-| `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and isofill-skyscraper's one ~6 s proof, both named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
+| `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and isofill-skyscraper's one proof of a few seconds (its README has the time), both named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed; it needs its name in the `suites=[...]` of the example's `BUILD`. A test named in a `heavy_*` list in `tests/all.sh` runs under `just test-heavy` instead, so only `check-full` runs it |
 
 ## Link grammar
@@ -167,9 +167,11 @@ link from its committed `gen_*.json` with the example's
 `build_size.py --rebuild <n>`.
 
 The frame's own two shared backends (`_shared/frame-rowcol.js`,
-`_shared/frame-corners.js`) go stale the same way, and every framebuilt link
-carries a copy of both: a real change to either means rebuilding all of them in
-that commit. `check_stale_backend_code` compares each embedded copy against the
+`_shared/frame-corners.js`) go stale the same way. Every framebuilt link
+carries a copy of frame-corners, and of frame-rowcol unless its Spec's interior
+has no row/column houses (`rowcol_houses=False`, as isofill-skyscraper's): a
+real change to either means rebuilding every link that carries it in that
+commit. `check_stale_backend_code` compares each embedded copy against the
 file in the tree and names the stale one; `check_houses` steps aside for a link
 that carries the row/column backend, rather than counting missing rows at it,
 and for a `"sudoku"` document, whose rows and columns the app adds itself
