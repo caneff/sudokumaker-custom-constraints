@@ -1,4 +1,3 @@
-timed_component = "HouseComponent"
 lanes = "single"
 rules_prefix = "none"
 houses_only = true

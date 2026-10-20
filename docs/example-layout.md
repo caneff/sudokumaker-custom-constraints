@@ -216,7 +216,7 @@ it declares its houses in a `postprocessJSON` function too, the same blind
 spot a static decode has for the frame's backend. house-gac does not own or
 rebuild that backend, so there is no `check_stale_backend_code`-style staleness
 check for it; the example's `example.toml` `rowcol_backend` names the one
-constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
+constraint, scoped to that one example, that `declares_rows_and_columns`
 recognizes.
 
 The same check requires a frame link to declare `minDigit`/`maxDigit`. The app

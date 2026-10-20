@@ -60,9 +60,16 @@ def build_template(spec):
     return encode_link(doc)
 
 
-def puzzle_links(spec):
+def gen_files(spec):
     """The gen JSONs of the board's generated puzzles, by given count."""
     return sorted(spec.dir.glob("gen_*g.json"))
+
+
+def link_path(gen_path):
+    """The puzzle link a gen JSON builds: gen_<n>g.json -> PUZZLE_LINK_<n>g.txt."""
+    return gen_path.with_name(
+        gen_path.name.replace("gen_", "PUZZLE_LINK_").replace(".json", ".txt")
+    )
 
 
 def build_puzzle(spec, gen):
@@ -82,11 +89,9 @@ def write_all(spec):
     base = decode_puzzle(template.read_text().strip())
     doc = decode_puzzle(build_template(spec))
     check_and_write(base, doc, spec.constraint, template)
-    for gen_path in puzzle_links(spec):
+    for gen_path in gen_files(spec):
         gen = json.loads(gen_path.read_text())
-        out = spec.dir / gen_path.name.replace("gen_", "PUZZLE_LINK_").replace(
-            ".json", ".txt"
-        )
+        out = link_path(gen_path)
         write_link(decode_puzzle(build_puzzle(spec, gen)), out)
         print(f"wrote {out.relative_to(HERE)}")
 
@@ -112,7 +117,9 @@ def rebuild(args, _parser):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(
+        description="Rebuild the squishdoku links, or generate a new puzzle."
+    )
     p.add_argument("--generate", choices=[s.name for s in BOARDS])
     p.add_argument("--seed", type=int, default=0)
     swap_main(HERE, p, rebuild)

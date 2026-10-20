@@ -489,6 +489,24 @@ def ship_verdict(ratios):
     return "SHIP" if min(real) <= 0.9 and max(real) <= 1.1 else "NO SHIP"
 
 
+def check_backend_current(board, base_doc):
+    """Raises ValueError unless the board's code backend is the minified
+    `main.js` beside it, the file a houses-only example's links are built from:
+    a `main.js` edited since the link was built would be timed as the old
+    code. The fix is the example's `build_link.py`."""
+    main_js = board.parent / "main.js"
+    backends = [
+        c["definition"]["backend"]["code"]
+        for c in base_doc["puzzle"]["constraints"]
+        if c.get("definition", {}).get("backend", {}).get("code")
+    ]
+    if main_js.is_file() and minify_file(main_js) not in backends:
+        raise ValueError(
+            f"{main_js} differs from the backend in {board.name}; rebuild the "
+            "link with the example's build_link.py before timing it"
+        )
+
+
 def run(example_dir, ring_clues=False, board=None, component=None):
     """Time one example end to end in both modes and return
     ([(row, verdict), ...], ship) -- one entry per row (cold, then
@@ -501,7 +519,8 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     PUZZLE_LINK.txt to time; the printed row's board label then names it.
     `component` names the registered component to follow, over the manifest's
     timed_component -- which board registers which component is the caller's
-    to say."""
+    to say. A houses_only example has no component: `component` is refused, and
+    the rows are the baseline's alone (check_backend_current)."""
     mode = "empty" if ring_clues else "strip"
     baseline_link = example_dir / (board or "PUZZLE_LINK.txt")
     if not baseline_link.exists():
@@ -526,27 +545,35 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     # longer exists in this tree, so there is nothing to time against.
     base_doc = decode_puzzle(baseline_link.read_text().strip())
     # A houses-only example registers no component of its own, so there is no
-    # working-tree edit to swap in: its rows are the baseline alone.
+    # working-tree edit to swap in: its rows are the baseline alone, of the
+    # link as it stands. A backend edited since the link was built would be
+    # timed as the old code, so that is refused.
     houses_only = load_manifest(example_dir).houses_only
-    component_file = (
-        None
-        if houses_only
-        else find_component_file(example_dir, base_doc, component=component)
-    )
+    if houses_only:
+        if component is not None:
+            raise ValueError(
+                f"{example_dir.name} is houses_only and registers no component; "
+                "--component has nothing to name"
+            )
+        check_backend_current(baseline_link, base_doc)
+        component_file = None
+    else:
+        component_file = find_component_file(example_dir, base_doc, component=component)
     board_label = f"{example_dir.name} ({board})" if board else example_dir.name
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
 
         candidate_link = tmp / "candidate.txt"
-        byte_equal = houses_only or build_candidate_doc(
+        # Baseline rows only: byte-equal code, or nothing to swap in.
+        baseline_only = houses_only or build_candidate_doc(
             example_dir, component_file, candidate_link, base_doc, board=board
         )
 
         baseline_probe = tmp / "baseline_probe.txt"
         empty_link_file(baseline_link, baseline_probe, mode)
         candidate_probe = tmp / "candidate_probe.txt"
-        if not byte_equal:
+        if not baseline_only:
             empty_link_file(candidate_link, candidate_probe, mode)
 
         date = datetime.date.today().isoformat()
@@ -559,12 +586,12 @@ def run(example_dir, ring_clues=False, board=None, component=None):
             label = board_label + (" after-logical" if after_logical else "")
             base, cand = run_app_solve(
                 baseline_probe,
-                None if byte_equal else candidate_probe,
+                None if baseline_only else candidate_probe,
                 ring_clues,
                 after_logical,
             )
             note = busy_note(base, cand)
-            if byte_equal:
+            if baseline_only:
                 row, verdict = build_row(date, base["version"], label, base["median"])
                 rows.append((_flag_busy(row, verdict, note), verdict))
                 continue

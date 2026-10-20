@@ -561,15 +561,18 @@ def has_sudoku_rules(puzzle):
     )
 
 
-def declares_rows_and_columns_in_js(manifest, puzzle):
-    """Does this link carry a constraint that builds its own row and column
-    houses in JS, invisible to declared_houses' static read of the document?
-    The frame's shared row/col backend, a no-ring board's whole-grid one, or
-    the one borrowed backend the manifest's rowcol_backend names (house-gac's
+def declares_rows_and_columns(manifest, puzzle):
+    """Does this link get its row and column houses from something other than
+    a region or cage, which declared_houses' static read of the document
+    would miss? Either a constraint that builds them in JS, or the bare
+    `SudokuRules` constraint (type 2003, `has_sudoku_rules`), which the app
+    expands into them. The JS cases: the frame's shared row/col backend, a
+    no-ring board's whole-grid one, or the one borrowed backend the manifest's rowcol_backend names (house-gac's
     "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified;
     nothing here compares it to a file in the tree). Scoped per example,
     not by name alone: a name match on some other example's own unrelated
-    constraint must not silently exempt it too."""
+    constraint must not silently exempt it too. SudokuRules carries no name to
+    match and is the app's own constraint, so it is recognised on any example."""
     if carries_frame_rowcol(puzzle) or is_no_ring(puzzle) or has_sudoku_rules(puzzle):
         return True
     return manifest.rowcol_backend is not None and any(
@@ -634,8 +637,8 @@ def check_houses(example_dir, link, puzzle, manifest):
     # is already present. Whether the copy embedded there is the current one is
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
-    # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(manifest, puzzle) or is_sudoku_document(puzzle):
+    # declares_rows_and_columns).
+    if declares_rows_and_columns(manifest, puzzle) or is_sudoku_document(puzzle):
         return []
 
     houses = declared_houses(puzzle)

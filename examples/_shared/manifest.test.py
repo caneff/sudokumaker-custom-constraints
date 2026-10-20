@@ -82,6 +82,13 @@ annotated_keeps_comments = true
     assert m.rules_prefix == "none" and m.houses is True
     tmp.cleanup()
 
+    # a houses_only example registers no component, so it needs no
+    # timed_component; every other manifest still does
+    tmp, d = manifest_in("houses_only = true\n")
+    m = load_manifest(d)
+    assert m.houses_only is True and m.timed_component is None
+    tmp.cleanup()
+
     # a missing manifest names the file it wanted
     tmp, d = manifest_in(None)
     raises(FileNotFoundError, d, str(d / MANIFEST_NAME))

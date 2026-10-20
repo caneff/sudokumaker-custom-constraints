@@ -81,5 +81,5 @@ const HOUSES = {
 }
 for (const [cls, houses] of Object.entries(HOUSES)) {
   houses.forEach((cells, k) => puzzle.addConstraintComponent(
-    new HouseComponent(`extra region ${cls}${k + 1}`, cells)))
+    new HouseComponent(`extra house ${cls}${k + 1}`, cells)))
 }

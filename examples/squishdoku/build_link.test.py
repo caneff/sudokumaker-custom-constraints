@@ -15,7 +15,7 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-from build_link import BOARDS, build_puzzle, build_template, puzzle_links
+from build_link import BOARDS, build_puzzle, build_template, gen_files, link_path
 from link_swap import blanked
 from sm_document import find_constraint
 from squish_board import has_one_solution
@@ -38,19 +38,17 @@ if __name__ == "__main__":
         # a rules text that opens on the board, not on the sudoku sentence
         assert not base["puzzle"]["comment"].startswith("Normal sudoku rules")
 
-        links = puzzle_links(spec)
+        links = gen_files(spec)
         assert links, f"{spec.name} ships no generated puzzle"
         for gen_path in links:
             gen = json.loads(gen_path.read_text())
             n = len(gen["givens"])
-            link_path = gen_path.with_name(
-                gen_path.name.replace("gen_", "PUZZLE_LINK_").replace(".json", ".txt")
-            )
-            assert link_path.name == f"PUZZLE_LINK_{n}g.txt", (gen_path.name, n)
+            link_file = link_path(gen_path)
+            assert link_file.name == f"PUZZLE_LINK_{n}g.txt", (gen_path.name, n)
 
             # the committed puzzle link is what the gen JSON builds
             link = build_puzzle(spec, gen)
-            assert link == link_path.read_text().strip(), f"{link_path}: stale"
+            assert link == link_file.read_text().strip(), f"{link_file}: stale"
 
             # same board as the template, plus the givens and nothing else
             doc = decode_puzzle(link)
@@ -59,14 +57,14 @@ if __name__ == "__main__":
                 cell.clear()
             assert blanked(cleared, spec.constraint) == blanked(
                 base, spec.constraint
-            ), f"{link_path}: differs from the template beyond its givens"
+            ), f"{link_file}: differs from the template beyond its givens"
             cells = doc["puzzle"]["cells"]
             assert {i for i, c in enumerate(cells) if c.get("given")} == {
                 int(i) for i in gen["givens"]
             }
             assert all(
                 "value" not in c for i, c in enumerate(cells) if not c.get("given")
-            ), f"{link_path}: a non-given cell holds a value"
+            ), f"{link_file}: a non-given cell holds a value"
 
             # exactly one solution
             assert has_one_solution(

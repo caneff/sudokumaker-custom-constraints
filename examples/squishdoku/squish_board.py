@@ -77,11 +77,18 @@ def registered_houses(backend):
     return json.loads(out)
 
 
-def can_repeat(board, i, j):
-    """Can cells i and j hold the same digit under the board's rules?"""
+def can_repeat(board, i, j, limit=60):
+    """Can cells i and j hold the same digit under the board's rules? Raises
+    TimeoutError when CP-SAT reaches no verdict within `limit` seconds: a
+    solve that did not finish proves nothing about the pair."""
     m, x = model(board)
     m.Add(x[i] == x[j])
-    return solver(60).Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    status = solver(limit).Solve(m)
+    if status == cp_model.INFEASIBLE:
+        return False
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        return True
+    raise TimeoutError(f"CP-SAT reached no verdict on cells {i} and {j}: {status}")
 
 
 def unforced_pairs(board, cells):
@@ -103,7 +110,9 @@ def generate(board, seed):
     rng = random.Random(seed)
     m, x = model(board)
     s = solver(60, reproducible=False, seed=seed, randomize=True)
-    assert s.Solve(m) in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    status = s.Solve(m)
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        raise RuntimeError(f"CP-SAT found no solution to the empty board: {status}")
     grid = {i: s.Value(v) for i, v in enumerate(x)}
     givens = dict(grid)
     for cell in rng.sample(range(board.cells), board.cells):
