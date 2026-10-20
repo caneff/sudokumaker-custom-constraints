@@ -79,6 +79,7 @@ LINT = {
 SCRIPTS = {
     "uv run examples/_shared/check_layout.py",
     "uv run examples/skyscraper/verify.py",
+    "uv run examples/isofill-skyscraper/verify.py",
 }
 
 # Everything `just fmt` rewrites: the Node code and the Python under examples/.

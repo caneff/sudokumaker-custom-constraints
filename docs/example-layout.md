@@ -29,7 +29,9 @@ every example except one with no local/global duality: it ships `main.js`
 alone. The reason is either a whole-grid or fixed-geometry constraint with no
 drawn groups to split a local lane from, or groups drawn but no global lane,
 the clues being typed into them. Each such example's manifest says
-`lanes = "single"`, and `check_layout.py` reads it.
+`lanes = "single"`, and `check_layout.py` reads it. A ring board that ships
+its global lane and no local one ships `main-global.js` in `main.js`'s place
+and says `lanes = "global"`.
 
 ## The manifest
 
@@ -43,7 +45,7 @@ violation.
 | --- | --- | --- |
 | `timed_component` | The registered component `just time` follows (`--component` overrides it for one run). Required | — |
 | `constraint_name` | The constraint's name on its board, for a builder that reads it | none |
-| `lanes` | `"split"` (local and global lane) or `"single"` (`main.js` alone; the case for a whole-grid or fixed-geometry constraint, or one whose clues are typed into its groups) | `"split"` |
+| `lanes` | `"split"` (local and global lane), `"single"` (`main.js` alone; the case for a whole-grid or fixed-geometry constraint, or one whose clues are typed into its groups) or `"global"` (`main-global.js` alone; a ring board that ships no local lane, isofill-skyscraper's) | `"split"` |
 | `rules_prefix` | What the link's rules text opens on: `"inner-grid"`, `"ringless"` (a plain board with no clue ring) or `"none"` (not sudoku) | `"inner-grid"` |
 | `houses` | `false` for a bare board with no row, column or box rule | `true` |
 | `digits_exceed_lines` | `true` where the digit range is deliberately wider than the interior lines | `false` |
@@ -94,7 +96,7 @@ Run when present, skipped when absent:
 | `.golden/` | Regression goldens for the recovery/speed probes, and the strength tests' frozen floors |
 | `recovery-probe.mjs` (+ test) | Recovery probe and its test |
 | `build_size.py` | Builds boards at other sizes, and re-encodes a committed one with `--rebuild <n>` — current component code, no fresh CP-SAT search (`framebuild.main`) |
-| `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and is named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
+| `verify.py` | Uniqueness proof (CP-SAT). Never auto-discovered — wire it in yourself or leave it out: skyscraper's is a few sub-second solves and isofill-skyscraper's one proof of a few seconds (its README has the time), both named in `tests/all.sh`, which `just test` runs, isofill's searches for minutes and waits for `just verify-isofill`, outside-sudoku's is slow and is run by hand from its README |
 | any other `*.test.mjs` / `*.test.py` | Picked up by `just test`, no justfile edit needed; it needs its name in the `suites=[...]` of the example's `BUILD`. A test named in a `heavy_*` list in `tests/all.sh` runs under `just test-heavy` instead, so only `check-full` runs it |
 
 ## Link grammar
@@ -165,9 +167,11 @@ link from its committed `gen_*.json` with the example's
 `build_size.py --rebuild <n>`.
 
 The frame's own two shared backends (`_shared/frame-rowcol.js`,
-`_shared/frame-corners.js`) go stale the same way, and every framebuilt link
-carries a copy of both: a real change to either means rebuilding all of them in
-that commit. `check_stale_backend_code` compares each embedded copy against the
+`_shared/frame-corners.js`) go stale the same way. Every framebuilt link
+carries a copy of frame-corners, and of frame-rowcol unless its Spec's interior
+has no row/column houses (`rowcol_houses=False`, as isofill-skyscraper's): a
+real change to either means rebuilding every link that carries it in that
+commit. `check_stale_backend_code` compares each embedded copy against the
 file in the tree and names the stale one; `check_houses` steps aside for a link
 that carries the row/column backend, rather than counting missing rows at it,
 and for a `"sudoku"` document, whose rows and columns the app adds itself

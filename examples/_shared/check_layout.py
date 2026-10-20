@@ -91,7 +91,8 @@ REQUIRED_FILES = [
 # The local lane's own files. PUZZLE_LINK.txt is the GLOBAL-lane board in
 # every split example, so the local lane needs a board of its own: the link
 # plus the gen JSON that records it. An example whose manifest says
-# `lanes = "single"` ships main.js alone and neither.
+# `lanes = "single"` ships main.js alone and neither; one that says
+# `lanes = "global"` ships main-global.js in main.js's place, and neither.
 REQUIRED_LOCAL_FILES = ["PUZZLE_LINK_local.txt", "gen_local.json"]
 
 # Examples folded into another and deleted, name -> the example that took over.
@@ -511,6 +512,8 @@ def declared_houses(puzzle):
 # sweep too. It is the handle that says "this board meant to declare its lines
 # in JS" even when the code embedded under it is an old copy.
 FRAME_ROWCOL_CONSTRAINT = dict(FRAME_BACKENDS)["frame-rowcol"]
+# ...and the corner pin's, which only a ring board carries.
+CORNERS_TITLE = dict(FRAME_BACKENDS)["frame-corners"]
 
 
 def frame_backend_files(keep_comments=False):
@@ -585,11 +588,20 @@ def interior_cells(puzzle, width, height):
     """The ids of the cells a region constraint places in a region.
 
     That is the interior of a frame board: its ring is outside every region and
-    has no house of its own. A board with no region constraint is all interior.
+    has no house of its own. A board with no region constraint is all interior,
+    unless it carries the frame's corner pin: then it is a ring board that
+    draws no boxes (isofill-skyscraper), and its interior is every cell off the
+    ring.
     """
     regions = next(
         (c["regions"] for c in puzzle.get("constraints", []) if "regions" in c), None
     )
+    if regions is None and CORNERS_TITLE in carried_backend_titles(puzzle):
+        return {
+            i
+            for i in range(width * height)
+            if 0 < i // width < height - 1 and 0 < i % width < width - 1
+        }
     if regions is None:
         return set(range(width * height))
     return {i for i, r in enumerate(regions) if isinstance(r, int) and r >= 0}
@@ -850,6 +862,8 @@ def required_files(manifest):
         return BOARDLESS_REQUIRED_FILES
     if manifest.houses_only:
         return HOUSES_ONLY_REQUIRED_FILES
+    if manifest.lanes == "global":
+        return ["main-global.js" if f == "main.js" else f for f in REQUIRED_FILES]
     return REQUIRED_FILES
 
 

@@ -69,9 +69,9 @@ others. If no step is forced from that state, say so.
   `javascript` do not echo the URL and need nothing.
 - **Every generated link's rules text starts with "Normal sudoku rules apply on
   the inner grid."** `framebuild.py` adds it through `RULES_PREFIX`; a builder
-  that sets `comment` itself must add the sentence. Exceptions: isofill and
-  fillomino are not sudoku and skip the line (`rules_prefix = "none"` in their
-  `example.toml`). A ringless sudoku board has no inner grid to name, so its
+  that sets `comment` itself must add the sentence. Exceptions: an example
+  that is not sudoku skips the line (`rules_prefix = "none"` in its
+  `example.toml`): isofill, isofill-skyscraper, fillomino and squishdoku. A ringless sudoku board has no inner grid to name, so its
   text opens "Normal sudoku rules apply." (`NO_RING_RULES_PREFIX` in
   `framebuild.py`); its `example.toml` says `rules_prefix = "ringless"`, and
   `check_layout.py` finds the other no-ring boards from their backend

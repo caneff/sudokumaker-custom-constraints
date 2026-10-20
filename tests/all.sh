@@ -132,6 +132,8 @@ suites() {
   done
   # A shipped Skyscrapers board, proved: one solve per global board.
   run_file test examples/skyscraper/verify.py
+  # The shipped ISOFILL Skyscrapers board: one proof (its README has the time).
+  run_file test examples/isofill-skyscraper/verify.py
   for f in $heavy_fillomino; do run_file heavy-fillomino "$f"; done
   for f in $heavy_recovery; do run_file heavy-recovery "$f"; done
   for f in examples/*/soundness-harness.mjs; do run_file soundness "$f"; done

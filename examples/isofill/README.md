@@ -54,10 +54,12 @@ exists to teach.
 
   Every solve goes through `sudoku_kit.cpsat`, and the full-board proof is the
   one place in this repo that asks it for the portfolio rather than the
-  reproducible one-worker configuration. A 10x10 ISOFILL model is out of a
-  single worker's reach: `gen_24g.json` takes 187 s on the portfolio and hits
-  the 600 s limit with no verdict at all at `num_workers=1`, and `gen.json`
-  takes 12 s against more than twenty minutes. Only the verdict is committed,
+  reproducible one-worker configuration. The portfolio proves every committed
+  board in under a minute; the one-worker configuration is not measured on
+  this model, so the proof keeps the portfolio
+  (`../isofill-skyscraper/OPTIMIZATION_LOG.md` has the times, and those from
+  before the flow root was pinned, when one worker reached no verdict in
+  600 s). Only the verdict is committed,
   and a verdict is a property of the model rather than of the search — the two
   configurations agree wherever both terminate, and here only one of them
   does.
@@ -399,9 +401,10 @@ uv run --with ortools examples/isofill/verify.py examples/isofill/gen.json     #
 uv run --with ortools examples/isofill/verify.py examples/isofill/gen_44g.json # -> unique
 ```
 
-`verify.py` models the rule as exact counts (ten cells per digit) plus a
-single-commodity flow per digit for connectivity: one root cell sends nine
-units, every other cell of that digit absorbs one, and flow moves only between
+`verify.py` models the rule (`examples/_shared/isofill_model.py`, shared with
+isofill-skyscraper) as exact counts (ten cells per digit) plus a
+single-commodity flow per digit for connectivity: the digit's first cell in
+reading order sends nine units, every other cell of that digit absorbs one, and flow moves only between
 orthogonal neighbours that both hold the digit. A cut-off cell starves, so a
 split region is infeasible. Uniqueness is one no-good cut: solve, forbid that
 grid, and require `INFEASIBLE`. A solver timeout raises — it is never reported

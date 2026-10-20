@@ -34,8 +34,9 @@ fmt:
 # names, discovered by file name so a new example needs no edit here. See
 # docs/example-layout.md. Builders (build_*.py) do not run here — only files
 # named *.test.mjs / *.test.py. A verify.py runs here only when it is cheap:
-# skyscraper's is one solve and tests/all.sh names it, isofill's searches for
-# minutes and stays behind `just verify-isofill` (see there).
+# skyscraper's and isofill-skyscraper's are a few solves and tests/all.sh names
+# them, isofill's searches for minutes and stays behind `just verify-isofill`
+# (see there).
 #
 # Python runs in the one project environment (pyproject.toml, uv.lock), with
 # ortools in it so a test can prove uniqueness the way the

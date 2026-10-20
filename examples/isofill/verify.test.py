@@ -39,16 +39,12 @@ def test_two_boards_in_one_process_do_not_read_each_other():
 
 
 def test_sample_reports_a_spent_time_cap_as_a_timeout():
-    limit = verify.LIMIT
-    verify.LIMIT = 0.0001
     try:
-        verify.sample(Board.of(9, 1), seed=1)
+        verify.sample(Board.of(9, 1), seed=1, limit=0.0001)
     except TimeoutError as e:
         assert "seed 1" in str(e), e
     else:
         raise AssertionError("a spent time cap returned a grid")
-    finally:
-        verify.LIMIT = limit
 
 
 if __name__ == "__main__":

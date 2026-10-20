@@ -40,8 +40,9 @@ from sudoku_kit import link_codec
 
 # Every generated link opens with a rules sentence (project rule). The board's
 # shape picks it, through its lane's `rules_prefix`: a ring board opens with
-# RULES_PREFIX, and a no-ring board, which has no inner grid to name, with
-# NO_RING_RULES_PREFIX.
+# RULES_PREFIX unless its Spec names its own opening (`Spec.rules_prefix`, ""
+# for an interior with no sudoku rules), and a no-ring board, which has no
+# inner grid to name, with NO_RING_RULES_PREFIX.
 RULES_PREFIX = "Normal sudoku rules apply on the inner grid. "
 NO_RING_RULES_PREFIX = "Normal sudoku rules apply. "
 
@@ -103,12 +104,52 @@ class Spec:
     # them: grid (row, column) cells and the value typed into each group
     # (None for an empty one). None, the default, is a ring example.
     groups_fn: Callable | None = None
+    # The interior, for an example whose grid is not a sudoku: grid_fn,
+    # model_fn, box_regions and rowcol_houses. Each defaults to the sudoku
+    # interior, so an example that sets none of them builds a sudoku board.
+    # grid_fn(rng, n, bh, bw) -> the solved interior, as rows of digits; None
+    # draws `make_grid`'s sudoku.
+    grid_fn: Callable | None = None
+    # model_fn(n, box) -> (m, x): the CP-SAT interior `unique` posts givens and
+    # clues onto, with `x` keyed by (row, column); None builds
+    # `cpsat.sudoku_model`.
+    model_fn: Callable | None = None
+    # Does the ring board declare the interior's boxes as regions? False
+    # leaves the document with no region constraint at all.
+    box_regions: bool = True
+    # Does the ring board carry the frame-rowcol backend, which declares the
+    # interior's rows and columns as houses? False leaves it out; the
+    # frame-corners backend stays, since it pins cells no interior reaches.
+    rowcol_houses: bool = True
+    # The sentence a ring board's rules text opens with; None is RULES_PREFIX.
+    # An interior with no sudoku rules to name sets "" and states its whole
+    # rule in comment_fn.
+    rules_prefix: str | None = None
+    # Seconds per solve while carving: a carve step is kept only when its
+    # proof finishes inside this. None is SOLVE_LIMIT. A model whose proofs
+    # run near SOLVE_LIMIT sets a smaller one, so the board it ships proves
+    # with room to spare under `generate`'s final check, which runs at
+    # SOLVE_LIMIT.
+    carve_limit: float | None = None
+    # Does the search look for a board with no interior givens first? True
+    # draws each seed's layout once (a layout an earlier seed drew is
+    # skipped), proves each on its full ring alone, carves the ring of every
+    # layout proved unique there, and keeps the one with the fewest shown
+    # clues. A layout whose proof reaches no verdict inside carve_limit is
+    # neither: it is proved again at SOLVE_LIMIT before the search gives up on
+    # it. Only when no layout proves unique on its ring does it fall back to
+    # the default carve, interior givens first, over the same layouts. False
+    # stops at the first board with the fewest givens and carves only its
+    # ring.
+    ring_only: bool = False
 
 
-# Seconds per solve in `unique`. A frame board this size is proved in
+# Seconds per solve in `unique`. A sudoku frame board is proved in
 # milliseconds, so a solve anywhere near the cap is a carve that has gone
-# wrong; `unique` returns None for it, which the carve loop reads as "not
-# unique" and the final assert in `generate` turns into a loud failure.
+# wrong; `unique` returns None for it, which a carve step reads as "keep this
+# given or clue" (no proof, so no removal) and the final assert in `generate`
+# turns into a loud failure. An interior whose proofs take seconds (ISOFILL)
+# carves under a smaller `Spec.carve_limit`, keeping this cap as its margin.
 SOLVE_LIMIT = 10
 
 # A bent-path link's rules text closes with this: its lines are drawn paths,
@@ -262,14 +303,16 @@ def repeating_lines(grid, lines):
     ]
 
 
-def unique(post_clue, board):
+def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     """True when `board`'s interior has exactly one solution, False when it has
     more, None when there is no verdict -- either the first solve found nothing
     inside the time limit (a timeout or an unsatisfiable model) or the search
     for a second solution spent the limit without one.
 
-    `post_clue` is a Spec's cp_sat_clue_fn; unique() needs nothing else off the
-    Spec, so a caller with its own line geometry can reuse it.
+    `post_clue` is a Spec's cp_sat_clue_fn and `model_fn` its model_fn (None:
+    the sudoku model); unique() needs nothing else off the Spec, so a caller
+    with its own line geometry can reuse it. `limit` is the seconds each of
+    the two solves may spend.
     """
     # Imported here, not at module scope: the search is the only part of this
     # file that needs a solver, so document assembly (build_doc, check,
@@ -277,7 +320,7 @@ def unique(post_clue, board):
     from sudoku_kit import cpsat
 
     n, bh, bw = board.n, board.bh, board.bw
-    m, x = cpsat.sudoku_model(n, (bh, bw))
+    m, x = (model_fn or cpsat.sudoku_model)(n, (bh, bw))
     for (r, c), v in board.givens.items():
         m.Add(x[r, c] == v)
     # sorted: `active` is a set, whose iteration order is randomized per
@@ -287,7 +330,7 @@ def unique(post_clue, board):
         cells = board.lines[k]
         post_clue(m, x, cells, board.clue[k], n, _ring_name(k), board.box)
     try:
-        first, unique = cpsat.solve_unique(m, x, SOLVE_LIMIT)
+        first, unique = cpsat.solve_unique(m, x, limit)
     except TimeoutError:
         # No verdict either way: a first solve that spent the limit, or a
         # second one that did, reads as a first solve that found nothing.
@@ -303,59 +346,21 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     a bent-path board that happens to repeat nothing proves nothing about bare
     lines. The geometry is drawn from its own random stream, so a seed's grid
     and carve draws are the same whether or not paths are drawn.
-    """
-    box = (bh, bw)
-    best = None
-    for seed in seeds:
-        lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
-        rng = random.Random(seed)
-        grid = make_grid(rng, n, bh, bw)
-        if paths and not repeating_lines(grid, lines):
-            print(f"  seed {seed}: skipped, no line repeats a digit")
-            continue
-        # every line clued while carving givens
-        base = Board(
-            n=n,
-            bh=bh,
-            bw=bw,
-            grid=grid,
-            clue={
-                k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
-                for k, cells in lines.items()
-            },
-            givens={},
-            active=set(lines),
-            lines=lines,
-            seed=seed,
-        )
-        givens = {}
-        cells_all = [(r, c) for r in range(n) for c in range(n)]
-        rng.shuffle(cells_all)
-        if not unique(spec.cp_sat_clue_fn, base):
-            for cell in cells_all:
-                givens[cell] = grid[cell[0]][cell[1]]
-                if unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
-                    break
-        for cell in list(givens.keys()):
-            v = givens.pop(cell)
-            if not unique(spec.cp_sat_clue_fn, replace(base, givens=dict(givens))):
-                givens[cell] = v
-        print(f"  seed {seed}: interior givens = {len(givens)}")
-        if best is None or len(givens) < len(best.givens):
-            best = replace(base, givens=dict(givens))
-    assert best is not None, "no seed produced a board to carve"
 
-    board = best
-    active = set(board.active)
-    rng = random.Random(board.seed * 7)
-    order = sorted(active)  # sorted: see the note on set order in unique()
-    rng.shuffle(order)
-    for k in order:
-        active.discard(k)
-        if not unique(spec.cp_sat_clue_fn, replace(board, active=set(active))):
-            active.add(k)
-    board = replace(board, active=active)
-    assert unique(spec.cp_sat_clue_fn, board) is True
+    A `spec.ring_only` search draws each seed's layout once, tries
+    `ring_only_search` on them first and falls back to the interior-given
+    carve over the same layouts only when it finds nothing.
+    """
+    if spec.ring_only and paths:
+        raise ValueError("a ring-only search reads the straight frame lines only")
+    layouts = _layouts(spec, n, bh, bw, seeds) if spec.ring_only else None
+    board = ring_only_search(spec, n, bh, bw, layouts) if spec.ring_only else None
+    if board is None:
+        board = hide_clues(spec, _fewest_givens(spec, n, bh, bw, seeds, paths, layouts))
+    assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True, (
+        f"seed {board.seed}: the carved board is not proved unique under the "
+        f"{SOLVE_LIMIT} s limit"
+    )
     if paths:
         # The property the board exists to carry. Asserted here so a
         # regeneration that loses it fails loud instead of shipping a board
@@ -369,6 +374,150 @@ def generate(spec, n, bh, bw, seeds, paths=False):
         f"clues interactive (hidden)={4 * n - len(board.active)}"
     )
     return board
+
+
+def _carve_proof(spec, board, limit=None):
+    """`unique` for one carve step: the Spec's clue rule and model, under its
+    carve limit (`limit` overrides it)."""
+    if limit is None:
+        limit = SOLVE_LIMIT if spec.carve_limit is None else spec.carve_limit
+    return unique(spec.cp_sat_clue_fn, board, spec.model_fn, limit)
+
+
+def _full_ring(spec, grid, lines, n, bh, bw, seed):
+    """`grid` as a board with no givens and every line's clue shown."""
+    box = (bh, bw)
+    return Board(
+        n=n,
+        bh=bh,
+        bw=bw,
+        grid=grid,
+        clue={
+            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
+            for k, cells in lines.items()
+        },
+        givens={},
+        active=set(lines),
+        lines=lines,
+        seed=seed,
+    )
+
+
+def _layouts(spec, n, bh, bw, seeds):
+    """{seed: grid} for each seed's layout, a layout an earlier seed drew
+    left out. Drawn once, because a sampler need not redraw a seed's grid
+    the same way twice: the search and its fallback carve these grids."""
+    out = {}
+    seen = set()
+    for seed in seeds:
+        grid = (spec.grid_fn or make_grid)(random.Random(seed), n, bh, bw)
+        layout = tuple(map(tuple, grid))
+        if layout in seen:
+            print(f"  seed {seed}: skipped, an earlier seed drew this layout")
+            continue
+        seen.add(layout)
+        out[seed] = grid
+    return out
+
+
+def ring_only_search(spec, n, bh, bw, layouts):
+    """The board with no interior givens and the fewest shown clues across
+    `layouts` ({seed: grid}), or None when no layout proves unique on its
+    full ring. A layout whose carve-limit proof reaches no verdict is proved
+    again at SOLVE_LIMIT before it is given up on, and the search reports how
+    many never reached one, since "no verdict" is not "not unique". Prints
+    how many layouts it tried and what it found."""
+    lines = make_lines(n)
+    found, open_ = [], []
+
+    def carve(seed, base):
+        carved = hide_clues(spec, base)
+        print(f"  seed {seed}: unique on the ring alone, {len(carved.active)} shown")
+        found.append(carved)
+
+    for seed, grid in layouts.items():
+        base = _full_ring(spec, grid, lines, n, bh, bw, seed)
+        verdict = _carve_proof(spec, base)
+        if verdict is None:
+            print(f"  seed {seed}: no verdict on the ring alone inside the carve limit")
+            open_.append(base)
+        elif verdict:
+            carve(seed, base)
+        else:
+            print(f"  seed {seed}: not unique on the ring alone")
+    unproved = 0
+    if not found:
+        for base in open_:
+            verdict = _carve_proof(spec, base, SOLVE_LIMIT)
+            if verdict:
+                carve(base.seed, base)
+            else:
+                unproved += verdict is None
+                print(
+                    f"  seed {base.seed}: "
+                    + ("not unique" if verdict is False else "still no verdict")
+                    + f" on the ring alone at {SOLVE_LIMIT} s"
+                )
+    # min keeps the first of a tie, so the earliest seed wins it
+    best = min(found, key=lambda b: len(b.active), default=None)
+    print(
+        f"ring-only search: {len(layouts)} layouts tried, "
+        + (
+            f"{len(found)} unique on the ring alone; best seed {best.seed}, "
+            f"{len(best.active)} clues shown"
+            if best
+            else "none proved unique on the ring alone"
+            + (f" ({unproved} with no verdict at {SOLVE_LIMIT} s)" if unproved else "")
+            + "; falling back to interior givens"
+        )
+    )
+    return best
+
+
+def _fewest_givens(spec, n, bh, bw, seeds, paths, layouts=None):
+    """The first board, over `seeds` (or the drawn `layouts`, {seed: grid}),
+    carved to the fewest interior givens with every clue shown."""
+    best = None
+    for seed in layouts or seeds:
+        lines = make_paths(random.Random(seed * 13), n) if paths else make_lines(n)
+        rng = random.Random(seed)
+        grid = layouts[seed] if layouts else (spec.grid_fn or make_grid)(rng, n, bh, bw)
+        if paths and not repeating_lines(grid, lines):
+            print(f"  seed {seed}: skipped, no line repeats a digit")
+            continue
+        # every line clued while carving givens
+        base = _full_ring(spec, grid, lines, n, bh, bw, seed)
+        givens = {}
+        cells_all = [(r, c) for r in range(n) for c in range(n)]
+        rng.shuffle(cells_all)
+        if not _carve_proof(spec, base):
+            for cell in cells_all:
+                givens[cell] = grid[cell[0]][cell[1]]
+                if _carve_proof(spec, replace(base, givens=dict(givens))):
+                    break
+        for cell in list(givens.keys()):
+            v = givens.pop(cell)
+            if not _carve_proof(spec, replace(base, givens=dict(givens))):
+                givens[cell] = v
+        print(f"  seed {seed}: interior givens = {len(givens)}")
+        if best is None or len(givens) < len(best.givens):
+            best = replace(base, givens=dict(givens))
+    assert best is not None, "no seed produced a board to carve"
+    return best
+
+
+def hide_clues(spec, board):
+    """`board` with each shown clue hidden, in an order drawn from its seed,
+    whenever the board stays unique without it."""
+    active = set(board.active)
+    rng = random.Random(board.seed * 7)
+    order = sorted(active)  # sorted: see the note on set order in unique()
+    rng.shuffle(order)
+    for k in order:
+        active.discard(k)
+        if not _carve_proof(spec, replace(board, active=set(active))):
+            active.add(k)
+    return replace(board, active=active)
 
 
 def frame_groups(n, lines):
@@ -754,7 +903,27 @@ class _RingLane(Lane):
     board, its frame backends and cosmetics. They differ in the groups they
     draw, whether House GAC may ride along, and the rules text's close."""
 
-    generated = tuple(title for _, title in FRAME_BACKENDS)
+    @property
+    def generated(self):
+        """The frame backends this lane's links carry, by title."""
+        return tuple(title for title, _ in self._frame_backends())
+
+    def _frame_backends(self):
+        """`frame_backend_code()` less frame-rowcol when the Spec's interior
+        has no row/column houses."""
+        code = dict(frame_backend_code())
+        return [
+            (title, code[title])
+            for stem, title in FRAME_BACKENDS
+            if stem != "frame-rowcol" or self.spec.rowcol_houses
+        ]
+
+    @property
+    def rules_prefix(self):
+        """The Spec's own opening sentence, else the sudoku one."""
+        if self.spec.rules_prefix is None:
+            return RULES_PREFIX
+        return self.spec.rules_prefix
 
     def build_doc(self, board):
         """Assemble the whole SudokuMaker document for `board`."""
@@ -797,8 +966,9 @@ class _RingLane(Lane):
             for c in range(n):
                 regions[idx(r + 1, c + 1)] = (r // bh) * (n // bw) + (c // bw)
 
-        # The frame's own two backends, shared by every example (their rules
-        # live in the files' own headers):
+        # The frame's own backends (their rules live in the files' own
+        # headers); every ring board carries frame-corners, and frame-rowcol
+        # unless its Spec's interior has no row/column houses:
         #   frame-rowcol   declares the interior's rows and columns as named
         #                  houses, and hands SudokuPad the same lines at
         #                  publish time. A region constraint gives BOXES ONLY,
@@ -807,13 +977,13 @@ class _RingLane(Lane):
         #   frame-corners  pins the four corner cells, which no line, region or
         #                  house reaches; without it the app calls the board
         #                  not unique.
-        frame_backends = frame_backend_code()
+        frame_backends = self._frame_backends()
 
         # The cap is `house_gac_constraint`'s to enforce -- it raises below
         # when the lane opts in and n is too big -- so it is checked once, for
         # every caller, not duplicated here.
         constraints = [
-            {"type": 1, "regions": regions},
+            *([{"type": 1, "regions": regions}] if spec.box_regions else []),
             {"type": 0},
             *(spec.extra_cages(interior) if spec.extra_cages else []),
             self.example_constraint(self.drawn(board)),

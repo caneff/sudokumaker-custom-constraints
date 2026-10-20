@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 MANIFEST_NAME = "example.toml"
 
-LANES = ("split", "single")
+LANES = ("split", "single", "global")
 RULES_PREFIXES = ("inner-grid", "ringless", "none")
 
 
@@ -22,6 +22,7 @@ class Manifest:
     # "split": a local lane (main.js, drawn groups) and a global lane
     # (main-global.js). "single": main.js alone -- a whole-grid or
     # fixed-geometry constraint, or one whose clues are typed into its groups.
+    # "global": main-global.js alone -- a ring board that ships no local lane.
     lanes: str = "split"
     # What a link's rules text must open on: RULES_PREFIX ("inner-grid"),
     # NO_RING_RULES_PREFIX ("ringless" -- a plain board with no clue ring), or
