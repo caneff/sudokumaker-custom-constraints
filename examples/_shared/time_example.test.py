@@ -354,6 +354,9 @@ if __name__ == "__main__":
             continue
         if load_manifest(example_dir).boardless:
             continue
+        # a houses-only example registers no component of its own: nothing to follow
+        if load_manifest(example_dir).houses_only:
+            continue
         doc = decode_puzzle((example_dir / "PUZZLE_LINK.txt").read_text().strip())
         got = find_component_file(example_dir, doc)
         assert got.is_file(), (example_dir.name, got)
@@ -826,6 +829,50 @@ if __name__ == "__main__":
             rows, ship = run(example_dir)
         assert [r[1] for r in rows] == ["FAIL", "FAIL"]
         assert ship == "NO SHIP"
+
+    # a houses-only example has no component to swap: its rows are the
+    # baseline alone, built from its committed link, with no candidate and no
+    # ship verdict -- and no build_link.py run
+    def houses_example(tmp, main_js="console.log('houses')\n"):
+        example_dir = pathlib.Path(tmp) / "houses"
+        example_dir.mkdir()
+        base_doc = _widget_doc(minify_js(main_js), "")
+        (example_dir / "PUZZLE_LINK.txt").write_text(encode_link(base_doc) + "\n")
+        (example_dir / "build_link.py").write_text("raise SystemExit('must not run')\n")
+        (example_dir / "example.toml").write_text("houses_only = true\n")
+        (example_dir / "main.js").write_text("console.log('houses')\n")
+        return example_dir
+
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = houses_example(tmp)
+        with fake_solve({B: [0] * R + [0] * R}) as calls:
+            rows, ship = run(example_dir)
+        assert [r[1] for r in rows] == ["BASELINE", "BASELINE"], rows
+        assert ship is None
+        assert rows[0][0].endswith("| 0ms | — | — | BASELINE |"), rows[0][0]
+        assert calls == [(B, False, False)] * R + [(B, False, True)] * R
+
+        # --component names a component the example does not have: refused
+        try:
+            with fake_solve({B: [0] * R * 2}):
+                run(example_dir, component="WidgetComponent")
+        except ValueError as e:
+            assert "houses_only" in str(e) and "--component" in str(e), e
+        else:
+            raise AssertionError("--component was ignored for a houses-only example")
+
+    # a main.js edited since the link was built would be timed as the old
+    # code: refused, naming the rebuild
+    with tempfile.TemporaryDirectory() as tmp:
+        example_dir = houses_example(tmp)
+        (example_dir / "main.js").write_text("console.log('edited')\n")
+        try:
+            with fake_solve({B: [0] * R * 2}):
+                run(example_dir)
+        except ValueError as e:
+            assert "main.js" in str(e) and "build_link.py" in str(e), e
+        else:
+            raise AssertionError("a stale link was timed as the working-tree code")
 
     # a byte-equal working tree has no candidate to judge: baseline-only rows
     # and no verdict, and the driver is never asked to time a candidate link

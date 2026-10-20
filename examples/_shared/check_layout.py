@@ -64,6 +64,19 @@ from sudoku_kit.link_codec import decode_puzzle
 # components and a harness, and no board.
 BOARDLESS_REQUIRED_FILES = ["README.md", "soundness-harness.mjs"]
 
+# What a houses-only example (manifest `houses_only = true`) needs: its backend
+# registers only built-in `HouseComponent`s, so there is no component to fuzz,
+# and one CP-SAT test proving every registered house is forced replaces the
+# harness, the strength fuzz and the optimization log.
+HOUSES_ONLY_REQUIRED_FILES = [
+    "README.md",
+    "main.js",
+    "build_link.py",
+    "build_link.test.py",
+    "forced_houses.test.py",
+    "PUZZLE_LINK.txt",
+]
+
 REQUIRED_FILES = [
     "README.md",
     "main.js",
@@ -535,16 +548,32 @@ def carries_frame_rowcol(puzzle):
     )
 
 
-def declares_rows_and_columns_in_js(manifest, puzzle):
-    """Does this link carry a constraint that builds its own row and column
-    houses in JS, invisible to declared_houses' static read of the document?
-    The frame's shared row/col backend, a no-ring board's whole-grid one, or
-    the one borrowed backend the manifest's rowcol_backend names (house-gac's
+# The constraint type of `SudokuRules`: the app expands it into a house for
+# every row and column of the grid (a custom document can carry it too).
+SUDOKU_RULES_TYPE = 2003
+
+
+def has_sudoku_rules(puzzle):
+    """Does this link carry the bare `SudokuRules` constraint, which gives the
+    grid every row and column as a house without a region or cage saying so?"""
+    return any(
+        c.get("type") == SUDOKU_RULES_TYPE for c in puzzle.get("constraints", [])
+    )
+
+
+def declares_rows_and_columns(manifest, puzzle):
+    """Does this link get its row and column houses from something other than
+    a region or cage, which declared_houses' static read of the document
+    would miss? Either a constraint that builds them in JS, or the bare
+    `SudokuRules` constraint (type 2003, `has_sudoku_rules`), which the app
+    expands into them. The JS cases: the frame's shared row/col backend, a
+    no-ring board's whole-grid one, or the one borrowed backend the manifest's rowcol_backend names (house-gac's
     "Rows & Columns", docs/research/406-gac-demo's own, carried unmodified;
     nothing here compares it to a file in the tree). Scoped per example,
     not by name alone: a name match on some other example's own unrelated
-    constraint must not silently exempt it too."""
-    if carries_frame_rowcol(puzzle) or is_no_ring(puzzle):
+    constraint must not silently exempt it too. SudokuRules carries no name to
+    match and is the app's own constraint, so it is recognised on any example."""
+    if carries_frame_rowcol(puzzle) or is_no_ring(puzzle) or has_sudoku_rules(puzzle):
         return True
     return manifest.rowcol_backend is not None and any(
         (c.get("definition") or {}).get("name") == manifest.rowcol_backend
@@ -608,8 +637,8 @@ def check_houses(example_dir, link, puzzle, manifest):
     # is already present. Whether the copy embedded there is the current one is
     # `check_stale_backend_code`'s question, with its own message and its own fix
     # (a borrowed backend named in the manifest has no such check -- see
-    # declares_rows_and_columns_in_js).
-    if declares_rows_and_columns_in_js(manifest, puzzle) or is_sudoku_document(puzzle):
+    # declares_rows_and_columns).
+    if declares_rows_and_columns(manifest, puzzle) or is_sudoku_document(puzzle):
         return []
 
     houses = declared_houses(puzzle)
@@ -815,6 +844,15 @@ def check_gen_frame_backends(example_dir):
     return violations
 
 
+def required_files(manifest):
+    """The files an example with this manifest must carry."""
+    if manifest.boardless:
+        return BOARDLESS_REQUIRED_FILES
+    if manifest.houses_only:
+        return HOUSES_ONLY_REQUIRED_FILES
+    return REQUIRED_FILES
+
+
 def check_example(example_dir):
     """Return one violation string per problem found in `example_dir`."""
     name = example_dir.name
@@ -832,9 +870,7 @@ def check_example(example_dir):
 
     violations = [
         f"{name}: missing required file {required}"
-        for required in (
-            BOARDLESS_REQUIRED_FILES if manifest.boardless else REQUIRED_FILES
-        )
+        for required in required_files(manifest)
         if not (example_dir / required).is_file()
     ]
 
@@ -845,7 +881,7 @@ def check_example(example_dir):
                 f"{name}: declared shared component {manifest.shared_component!r} "
                 f"has no file at {shared_file}"
             )
-    elif not list(example_dir.glob("*Component.js")):
+    elif not manifest.houses_only and not list(example_dir.glob("*Component.js")):
         violations.append(f"{name}: missing required file *Component.js")
 
     if manifest.lanes == "split" and not manifest.boardless:

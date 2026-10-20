@@ -52,6 +52,7 @@ violation.
 | `annotated_keeps_comments` | `true` where the example's `_annotated` link embeds the shared component through the comment-keeping minify, so `check_stale_backend_code` compares it against that copy (`house-gac`) | `false` |
 | `rowcol_backend` | The name a borrowed, non-frame rows-and-columns backend ships under | none |
 | `boardless` | `true` for an example that holds components and the harness that checks them and ships no board of its own: it needs only `README.md`, a `*Component.js` and `soundness-harness.mjs` (`count-digits-gac`) | `false` |
+| `houses_only` | `true` for a board whose backend registers only built-in `HouseComponent`s: no component of its own, so no `*Component.js`, `soundness-harness.mjs`, `update-strength.test.mjs` or `OPTIMIZATION_LOG.md`. It needs `README.md`, `main.js`, `build_link.py`, `build_link.test.py`, `PUZZLE_LINK.txt` and `forced_houses.test.py`, one CP-SAT test proving no two cells of any registered house can be equal. `just time` then reports baseline rows only (`squishdoku`) | `false` |
 
 `rules_prefix = "none"` and `houses = false` stay two separate fields: each is
 its own question, and a new non-sudoku example argues both (2026-09-07 ruling).
@@ -170,7 +171,9 @@ that commit. `check_stale_backend_code` compares each embedded copy against the
 file in the tree and names the stale one; `check_houses` steps aside for a link
 that carries the row/column backend, rather than counting missing rows at it,
 and for a `"sudoku"` document, whose rows and columns the app adds itself
-(`SudokuRules`, `bundle.claude.js:11450-11456`).
+(`SudokuRules`, `bundle.claude.js:11450-11456`). A `"custom"` document that
+carries the bare `SudokuRules` constraint (type 2003, squishdoku's) gets its
+rows and columns the same way, so the check steps aside for it too.
 Both backends need this sweep, and `frame-corners.js` needs it most: it
 registers a built-in `PredefinedCandidatesComponent`, so its constraint ships no
 component file and the component check above has no set to compare it against.
@@ -213,7 +216,7 @@ it declares its houses in a `postprocessJSON` function too, the same blind
 spot a static decode has for the frame's backend. house-gac does not own or
 rebuild that backend, so there is no `check_stale_backend_code`-style staleness
 check for it; the example's `example.toml` `rowcol_backend` names the one
-constraint, scoped to that one example, that `declares_rows_and_columns_in_js`
+constraint, scoped to that one example, that `declares_rows_and_columns`
 recognizes.
 
 The same check requires a frame link to declare `minDigit`/`maxDigit`. The app
