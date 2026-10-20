@@ -168,9 +168,10 @@ SKYSCRAPER = [
     "node examples/skyscraper/recovery-probe.test.mjs",
 ]
 HIT_COUNTS = ["node examples/hit-counts/recovery-probe.test.mjs"]
+ISOFILL_SKYSCRAPER = ["uv run examples/isofill-skyscraper/verify.py"]
 # The fixture's whole seam. The test files outside examples/ are in the tree
 # and in no run.
-WHOLE = ALWAYS + AA + BB + FILLOMINO + SKYSCRAPER + HIT_COUNTS
+WHOLE = ALWAYS + AA + BB + FILLOMINO + SKYSCRAPER + ISOFILL_SKYSCRAPER + HIT_COUNTS
 
 FIXTURE = [
     "justfile",
@@ -551,6 +552,7 @@ S_ALWAYS = [
     "uv run examples/fillomino/pipeline.test.py",
     "uv run examples/fillomino/generate.test.py",
     *SKYSCRAPER,
+    *ISOFILL_SKYSCRAPER,
     *HIT_COUNTS,
 ]
 S_LIB = ["uv run examples/_shared/s.test.py"]

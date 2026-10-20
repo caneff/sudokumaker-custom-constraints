@@ -28,7 +28,7 @@ from check_layout import (
     check_stale_backend_code,
     check_tree,
 )
-from manifest import load_manifest
+from manifest import Manifest, load_manifest
 from minify import minify_file
 from sm_document import code_constraint
 from sudoku_kit.link_codec import decode_puzzle, encode_link
@@ -305,6 +305,22 @@ if __name__ == "__main__":
     with example(files=missing, name="whole-grid", manifest=WHOLE_GRID) as (root, _):
         violations = check_tree(root)
         assert violations == [], violations
+
+    # a `lanes = "global"` example ships main-global.js alone: no main.js
+    # and no local board, and dropping main-global.js names it
+    global_only = [
+        f
+        for f in REQUIRED
+        if f not in ("main.js", "PUZZLE_LINK_local.txt", "gen_local.json")
+    ]
+    with example(files=global_only, manifest={"lanes": "global"}) as (root, _):
+        violations = check_tree(root)
+        assert violations == [], violations
+    no_backend = [f for f in global_only if f != "main-global.js"]
+    with example(files=no_backend, manifest={"lanes": "global"}) as (root, _):
+        violations = check_tree(root)
+        assert len(violations) == 1, violations
+        assert "missing required file main-global.js" in violations[0]
 
     # a split example ships a local board: both halves of the pair are
     # required, and each is named on its own. Dropping one half also
@@ -1032,6 +1048,33 @@ if __name__ == "__main__":
         _link(frame_backend=True, houses="none", digits=None)
     )
     assert stale_found == [] and len(range_found) == 1, (stale_found, range_found)
+
+    # a ring board with no box regions (isofill-skyscraper's) still has a
+    # ring: the corner pin says so, and its interior lines are the n cells
+    # inside it, not the whole board's width
+    ring_no_boxes = {
+        "width": 5,
+        "height": 5,
+        "minDigit": 1,
+        "maxDigit": 3,
+        "cells": [{} for _ in range(25)],
+        "constraints": [{"definition": {"name": "Frame Corners"}}],
+    }
+    widget = pathlib.Path("widget")
+    found = check_digit_range(
+        widget,
+        widget / "PUZZLE_LINK.txt",
+        ring_no_boxes,
+        Manifest(timed_component="WidgetComponent"),
+    )
+    assert found == [], found
+    found = check_digit_range(
+        widget,
+        widget / "PUZZLE_LINK.txt",
+        dict(ring_no_boxes, maxDigit=5),
+        Manifest(timed_component="WidgetComponent"),
+    )
+    assert len(found) == 1 and "3 cell interior lines" in found[0], found
 
     # ...and a board with no frame backend at all is not asked for one
     plain = _link(digits=None)
