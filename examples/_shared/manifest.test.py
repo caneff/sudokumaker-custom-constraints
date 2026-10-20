@@ -45,6 +45,7 @@ if __name__ == "__main__":
     assert m.rowcol_backend is None
     assert m.constraint_name is None
     assert m.boardless is False
+    assert m.houses_only is False
     assert m.annotated_keeps_comments is False
     tmp.cleanup()
 
@@ -61,6 +62,7 @@ shared_component = "SharedComponent"
 generator_less_links = ["PUZZLE_LINK.txt"]
 rowcol_backend = "Rows & Columns"
 boardless = true
+houses_only = true
 annotated_keeps_comments = true
 """
     )
@@ -71,12 +73,20 @@ annotated_keeps_comments = true
     assert m.generator_less_links == ("PUZZLE_LINK.txt",)
     assert m.rowcol_backend == "Rows & Columns"
     assert m.boardless is True and m.annotated_keeps_comments is True
+    assert m.houses_only is True
     tmp.cleanup()
 
     # rules_prefix = "none" and houses stay two separate fields
     tmp, d = manifest_in('timed_component = "W"\nrules_prefix = "none"\n')
     m = load_manifest(d)
     assert m.rules_prefix == "none" and m.houses is True
+    tmp.cleanup()
+
+    # a houses_only example registers no component, so it needs no
+    # timed_component; every other manifest still does
+    tmp, d = manifest_in("houses_only = true\n")
+    m = load_manifest(d)
+    assert m.houses_only is True and m.timed_component is None
     tmp.cleanup()
 
     # a missing manifest names the file it wanted
@@ -91,6 +101,7 @@ annotated_keeps_comments = true
         ('timed_component = "W"\nlanes = "both"\n', ("lanes", "both")),
         ('timed_component = "W"\nrules_prefix = "sudoku"\n', ("rules_prefix",)),
         ('timed_component = "W"\nhouses = "no"\n', ("houses",)),
+        ('timed_component = "W"\nhouses_only = "yes"\n', ("houses_only",)),
         ('timed_component = "W"\ngenerator_less_links = "a.txt"\n', ("generator",)),
         ('timed_component = "W"\nlanes = \n', ("Invalid",)),
     ]:

@@ -54,6 +54,7 @@ def _link(
     ringless=False,
     borrowed_rowcol=None,
     annotated_copy=False,
+    sudoku_rules=False,
 ):
     """A minimal encoded puzzle link: one given cell, the rest empty, and one
     custom constraint whose backend registers the components it ships.
@@ -100,7 +101,9 @@ def _link(
     values are above. `annotated_copy` embeds every shared backend and component
     the link carries, and the standalone component, through the
     comment-keeping minify mode, as an `_annotated` link does; a "stale" one is
-    then stale against that build.
+    then stale against that build. `sudoku_rules` adds the bare type-2003
+    constraint (`SudokuRules`), which the app expands into every row and
+    column of the grid.
     """
     if grid_backend is None:
         grid_backend = no_ring is not None
@@ -132,6 +135,8 @@ def _link(
                 "cages": [{"cells": [c, c + 3, c + 6], "value": 0} for c in range(3)],
             }
         )
+    if sudoku_rules:
+        house_constraints.append({"type": 2003})
     extra = []
     for wanted, source, title, component in (
         (frame_backend, "frame-rowcol.js", "Frame Rows and Columns", None),
@@ -1365,6 +1370,40 @@ if __name__ == "__main__":
         (d / "PUZZLE_LINK_bogus.txt").write_text(_link())
         violations = check_tree(root)
         assert any("link name" in v for v in violations), violations
+
+    # a houses_only example (a backend of built-in houses, proved by one CP-SAT
+    # test) needs neither a component, the soundness harness, the strength fuzz
+    # nor the optimization log -- and still needs its own six files
+    HOUSES_ONLY = [
+        "README.md",
+        "main.js",
+        "build_link.py",
+        "build_link.test.py",
+        "forced_houses.test.py",
+        "PUZZLE_LINK.txt",
+    ]
+    EMPTY_TEMPLATE = {"houses_only": True, **SINGLE_LANE, **HAND_MADE}
+    with example(files=HOUSES_ONLY, manifest=EMPTY_TEMPLATE) as (root, d):
+        assert check_tree(root) == [], check_tree(root)
+        for missing in HOUSES_ONLY:
+            (d / missing).rename(d / "held")
+            violations = check_tree(root)
+            assert any(
+                "missing required file" in v and missing in v for v in violations
+            ), (missing, violations)
+            (d / "held").rename(d / missing)
+    # without the flag the same files lack the component and the harness
+    with example(files=HOUSES_ONLY, manifest={**SINGLE_LANE, **HAND_MADE}) as (root, _):
+        violations = check_tree(root)
+        assert any("soundness-harness.mjs" in v for v in violations), violations
+        assert any("*Component.js" in v for v in violations), violations
+
+    # a board whose rows and columns come from SudokuRules (type 2003) declares
+    # them: boxes alone are a violation, boxes plus SudokuRules are not
+    with example(
+        contents={"PUZZLE_LINK.txt": _link(houses="boxes", sudoku_rules=True)}
+    ) as (root, _):
+        assert check_tree(root) == [], check_tree(root)
 
     # a manifest's shared_component must exist in _shared/
     with example(manifest={"shared_component": "NoSuchComponent"}) as (root, _):

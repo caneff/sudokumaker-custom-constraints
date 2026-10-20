@@ -61,6 +61,7 @@ HEAVY = {
     "uv run examples/fillomino/generate.test.py",
     "node examples/skyscraper/recovery-probe.test.mjs",
     "node examples/hit-counts/recovery-probe.test.mjs",
+    "uv run examples/squishdoku/embedded_forced_houses.test.py",
 }
 
 # Research tests run by hand, after touching what they cover.

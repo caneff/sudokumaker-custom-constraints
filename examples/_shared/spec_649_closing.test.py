@@ -307,7 +307,9 @@ def step_app_session(tmp, ex):
 def sweep_timed_components(tree):
     for manifest in sorted((tree / "examples").glob("*/example.toml")):
         ex = manifest.parent
-        if load_manifest(ex).boardless:
+        traits = load_manifest(ex)
+        # no board to time, or no component of its own to follow
+        if traits.boardless or traits.houses_only:
             continue
         doc = decode_puzzle((ex / "PUZZLE_LINK.txt").read_text().strip())
         assert find_component_file(ex, doc).is_file(), ex.name

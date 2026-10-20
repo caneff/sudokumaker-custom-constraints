@@ -14,8 +14,9 @@ RULES_PREFIXES = ("inner-grid", "ringless", "none")
 
 @dataclass(frozen=True)
 class Manifest:
-    # The registered component `just time` follows.
-    timed_component: str
+    # The registered component `just time` follows. None only for a houses_only
+    # example, which registers no component of its own.
+    timed_component: str | None
     # The name of the constraint on the example's board, where a builder reads it.
     constraint_name: str | None = None
     # "split": a local lane (main.js, drawn groups) and a global lane
@@ -43,6 +44,11 @@ class Manifest:
     # True: no shipped board of its own -- the example holds components and the
     # harness that checks them, so the board files are not required.
     boardless: bool = False
+    # True: the backend registers only built-in `HouseComponent`s, so the
+    # example ships no component of its own, no soundness harness and no
+    # strength fuzz -- one CP-SAT test proving every registered house is
+    # forced stands in for them.
+    houses_only: bool = False
 
 
 def _check(path, key, value):
@@ -56,6 +62,7 @@ def _check(path, key, value):
         "houses",
         "digits_exceed_lines",
         "boardless",
+        "houses_only",
         "annotated_keeps_comments",
     ):
         ok = isinstance(value, bool)
@@ -81,6 +88,7 @@ def load_manifest(example_dir):
     unknown = sorted(set(raw) - set(Manifest.__annotations__))
     if unknown:
         raise ValueError(f"{path}: unknown key(s) {', '.join(unknown)}")
-    if "timed_component" not in raw:
+    if "timed_component" not in raw and raw.get("houses_only") is not True:
         raise ValueError(f"{path}: missing timed_component")
-    return Manifest(**{key: _check(path, key, value) for key, value in raw.items()})
+    fields = {key: _check(path, key, value) for key, value in raw.items()}
+    return Manifest(**{"timed_component": None, **fields})

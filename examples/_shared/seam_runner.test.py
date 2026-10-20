@@ -169,9 +169,19 @@ SKYSCRAPER = [
 ]
 HIT_COUNTS = ["node examples/hit-counts/recovery-probe.test.mjs"]
 ISOFILL_SKYSCRAPER = ["uv run examples/isofill-skyscraper/verify.py"]
+SQUISHDOKU = ["uv run examples/squishdoku/embedded_forced_houses.test.py"]
 # The fixture's whole seam. The test files outside examples/ are in the tree
 # and in no run.
-WHOLE = ALWAYS + AA + BB + FILLOMINO + SKYSCRAPER + ISOFILL_SKYSCRAPER + HIT_COUNTS
+WHOLE = (
+    ALWAYS
+    + AA
+    + BB
+    + FILLOMINO
+    + SKYSCRAPER
+    + ISOFILL_SKYSCRAPER
+    + HIT_COUNTS
+    + SQUISHDOKU
+)
 
 FIXTURE = [
     "justfile",
@@ -554,6 +564,7 @@ S_ALWAYS = [
     *SKYSCRAPER,
     *ISOFILL_SKYSCRAPER,
     *HIT_COUNTS,
+    *SQUISHDOKU,
 ]
 S_LIB = ["uv run examples/_shared/s.test.py"]
 # The whole-tree check: any change Pants can place selects it.
