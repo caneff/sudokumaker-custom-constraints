@@ -854,7 +854,8 @@ if __name__ == "__main__":
 
         # --component names a component the example does not have: refused
         try:
-            run(example_dir, component="WidgetComponent")
+            with fake_solve({B: [0] * R * 2}):
+                run(example_dir, component="WidgetComponent")
         except ValueError as e:
             assert "houses_only" in str(e) and "--component" in str(e), e
         else:
@@ -866,7 +867,8 @@ if __name__ == "__main__":
         example_dir = houses_example(tmp)
         (example_dir / "main.js").write_text("console.log('edited')\n")
         try:
-            run(example_dir)
+            with fake_solve({B: [0] * R * 2}):
+                run(example_dir)
         except ValueError as e:
             assert "main.js" in str(e) and "build_link.py" in str(e), e
         else:
