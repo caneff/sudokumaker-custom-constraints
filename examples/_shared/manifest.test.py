@@ -45,6 +45,7 @@ if __name__ == "__main__":
     assert m.rowcol_backend is None
     assert m.constraint_name is None
     assert m.boardless is False
+    assert m.houses_only is False
     assert m.annotated_keeps_comments is False
     tmp.cleanup()
 
@@ -61,6 +62,7 @@ shared_component = "SharedComponent"
 generator_less_links = ["PUZZLE_LINK.txt"]
 rowcol_backend = "Rows & Columns"
 boardless = true
+houses_only = true
 annotated_keeps_comments = true
 """
     )
@@ -71,6 +73,7 @@ annotated_keeps_comments = true
     assert m.generator_less_links == ("PUZZLE_LINK.txt",)
     assert m.rowcol_backend == "Rows & Columns"
     assert m.boardless is True and m.annotated_keeps_comments is True
+    assert m.houses_only is True
     tmp.cleanup()
 
     # rules_prefix = "none" and houses stay two separate fields
@@ -91,6 +94,7 @@ annotated_keeps_comments = true
         ('timed_component = "W"\nlanes = "both"\n', ("lanes", "both")),
         ('timed_component = "W"\nrules_prefix = "sudoku"\n', ("rules_prefix",)),
         ('timed_component = "W"\nhouses = "no"\n', ("houses",)),
+        ('timed_component = "W"\nhouses_only = "yes"\n', ("houses_only",)),
         ('timed_component = "W"\ngenerator_less_links = "a.txt"\n', ("generator",)),
         ('timed_component = "W"\nlanes = \n', ("Invalid",)),
     ]:

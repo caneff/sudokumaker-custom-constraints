@@ -1,0 +1,5 @@
+timed_component = "HouseComponent"
+lanes = "single"
+rules_prefix = "none"
+houses_only = true
+generator_less_links = ["PUZZLE_LINK.txt"]

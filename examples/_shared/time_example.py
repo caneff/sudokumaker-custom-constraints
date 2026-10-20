@@ -525,14 +525,21 @@ def run(example_dir, ring_clues=False, board=None, component=None):
     # two disagree and the run refuses: the baseline that link used to be no
     # longer exists in this tree, so there is nothing to time against.
     base_doc = decode_puzzle(baseline_link.read_text().strip())
-    component_file = find_component_file(example_dir, base_doc, component=component)
+    # A houses-only example registers no component of its own, so there is no
+    # working-tree edit to swap in: its rows are the baseline alone.
+    houses_only = load_manifest(example_dir).houses_only
+    component_file = (
+        None
+        if houses_only
+        else find_component_file(example_dir, base_doc, component=component)
+    )
     board_label = f"{example_dir.name} ({board})" if board else example_dir.name
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
 
         candidate_link = tmp / "candidate.txt"
-        byte_equal = build_candidate_doc(
+        byte_equal = houses_only or build_candidate_doc(
             example_dir, component_file, candidate_link, base_doc, board=board
         )
 

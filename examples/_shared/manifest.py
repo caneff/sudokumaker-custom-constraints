@@ -42,6 +42,11 @@ class Manifest:
     # True: no shipped board of its own -- the example holds components and the
     # harness that checks them, so the board files are not required.
     boardless: bool = False
+    # True: the backend registers only built-in `HouseComponent`s, so the
+    # example ships no component of its own, no soundness harness and no
+    # strength fuzz -- one CP-SAT test proving every registered house is
+    # forced stands in for them.
+    houses_only: bool = False
 
 
 def _check(path, key, value):
@@ -55,6 +60,7 @@ def _check(path, key, value):
         "houses",
         "digits_exceed_lines",
         "boardless",
+        "houses_only",
         "annotated_keeps_comments",
     ):
         ok = isinstance(value, bool)

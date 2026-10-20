@@ -86,11 +86,12 @@ case ${SEAM_RUNS_LOG:-} in "" | /*) ;; *) SEAM_RUNS_LOG=$PWD/$SEAM_RUNS_LOG ;; e
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd) || exit 1
 cd "$root" || exit 1
 
-# The heavy tests: an end-to-end generation run or a recovery probe over many
-# boards, ten to twenty seconds each. Named as two groups so CI can run them
-# as separate jobs (examples/_shared/ci_workflow.test.py checks this).
+# The heavy tests: an end-to-end generation run, a recovery probe over many
+# boards, or a CP-SAT proof of about 1,500 solves (the embedded squishdoku's
+# 43 houses), ten to twenty seconds each. Named as two groups so CI can run
+# them as separate jobs (examples/_shared/ci_workflow.test.py checks this).
 heavy_fillomino="examples/fillomino/pipeline.test.py examples/fillomino/generate.test.py"
-heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs"
+heavy_recovery="examples/skyscraper/recovery-probe.test.mjs examples/hit-counts/recovery-probe.test.mjs examples/squishdoku/embedded_forced_houses.test.py"
 
 listed() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; } # <list> <file>
 
