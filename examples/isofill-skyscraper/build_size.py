@@ -105,6 +105,9 @@ SPEC = Spec(
     # only when it proves inside 3 s a solve, so the shipped board proves
     # with about 3x margin under framebuild's 10 s cap.
     carve_limit=3,
+    # Spec #855 ruling 2: givens in the ring only, across every sampled
+    # layout, before any interior given.
+    ring_only=True,
 )
 
 if __name__ == "__main__":

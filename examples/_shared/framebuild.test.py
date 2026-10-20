@@ -14,6 +14,7 @@
 
 import contextlib
 import dataclasses
+import io
 import itertools
 import json
 import pathlib
@@ -1277,7 +1278,54 @@ def test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit():
         assert not board.givens
 
 
+def test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues():
+    # Seeds 101 and 102 are both unique on their full ring of first-digit
+    # clues; carved alone, 101 keeps 5 clues shown and 102 keeps 4. The
+    # default search stops at the first board with no givens, so it ships
+    # 101; the ring-only search carves both rings and ships 102.
+    n, bh, bw = 4, 2, 2
+    rule = {"clue_fn": _first_digit, "cp_sat_clue_fn": _post_first_digit}
+    with _spec(["FooComponent.js"], **rule) as spec:
+        assert spec.ring_only is False
+        assert generate(spec, n, bh, bw, range(101, 103)).seed == 101
+    with _spec(["FooComponent.js"], ring_only=True, **rule) as spec:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            board = generate(spec, n, bh, bw, range(101, 103))
+        assert (board.seed, board.givens, len(board.active)) == (102, {}, 4)
+        assert unique(_post_first_digit, board) is True
+        assert "2 layouts tried, 2 unique on the ring alone" in out.getvalue()
+
+
+def test_a_ring_only_search_skips_a_layout_it_has_already_tried():
+    # The toy interior draws the same striped grid for every seed: one layout,
+    # however many seeds.
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], ring_only=True, **_TOY) as spec:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            board = generate(spec, n, bh, bw, range(101, 104))
+        assert board.seed == 101 and not board.givens
+        assert "1 layouts tried, 1 unique on the ring alone" in out.getvalue()
+
+
+def test_a_ring_only_search_falls_back_to_interior_givens():
+    # Clues that constrain nothing: no layout is unique on its ring, so the
+    # search falls back to the default carve, which adds interior givens.
+    n, bh, bw = 4, 2, 2
+    with _spec(["FooComponent.js"], ring_only=True) as spec:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            board = generate(spec, n, bh, bw, range(101, 103))
+        assert board.givens
+        assert unique(spec.cp_sat_clue_fn, board) is True
+        assert "2 layouts tried, none unique on the ring alone" in out.getvalue()
+
+
 if __name__ == "__main__":
+    test_a_ring_only_search_keeps_the_layout_with_the_fewest_shown_clues()
+    test_a_ring_only_search_skips_a_layout_it_has_already_tried()
+    test_a_ring_only_search_falls_back_to_interior_givens()
     test_spec_interior_fields_default_to_the_sudoku_behaviour()
     test_a_carve_keeps_only_the_steps_proved_inside_the_spec_s_carve_limit()
     test_a_ring_spec_s_own_rules_prefix_replaces_the_sudoku_sentence()
