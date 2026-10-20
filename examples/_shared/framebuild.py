@@ -130,6 +130,14 @@ class Spec:
     # with room to spare under the full limit -- `generate`'s final check and
     # the example's verify.py both run at SOLVE_LIMIT.
     carve_limit: float | None = None
+    # Does the search look for a board with no interior givens first? True
+    # proves each seed's layout on its full ring alone, carves the ring of
+    # every layout that is unique there, and keeps the one with the fewest
+    # shown clues; a layout an earlier seed drew is skipped. Only when no
+    # layout is unique on its ring does it fall back to the default carve,
+    # interior givens first. False stops at the first board with the fewest
+    # givens and carves only its ring.
+    ring_only: bool = False
 
 
 # Seconds per solve in `unique`. A sudoku frame board is proved in
@@ -334,8 +342,89 @@ def generate(spec, n, bh, bw, seeds, paths=False):
     a bent-path board that happens to repeat nothing proves nothing about bare
     lines. The geometry is drawn from its own random stream, so a seed's grid
     and carve draws are the same whether or not paths are drawn.
+
+    A `spec.ring_only` search tries `ring_only_search` first and falls back
+    to the interior-given carve only when it finds nothing.
     """
+    if spec.ring_only and paths:
+        raise ValueError("a ring-only search reads the straight frame lines only")
+    board = ring_only_search(spec, n, bh, bw, seeds) if spec.ring_only else None
+    if board is None:
+        board = hide_clues(spec, _fewest_givens(spec, n, bh, bw, seeds, paths))
+    assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
+    if paths:
+        # The property the board exists to carry. Asserted here so a
+        # regeneration that loses it fails loud instead of shipping a board
+        # whose every line is a house in disguise.
+        repeats = repeating_lines(board.grid, board.lines)
+        assert repeats, "no line carries a repeated digit"
+        print(f"  lines with a repeated digit: {len(repeats)} of {len(board.lines)}")
+    print(
+        f"CHOSEN seed {board.seed}: interior givens={len(board.givens)}, "
+        f"clues shown={len(board.active)}, "
+        f"clues interactive (hidden)={4 * n - len(board.active)}"
+    )
+    return board
+
+
+def _full_ring(spec, grid, lines, n, bh, bw, seed):
+    """`grid` as a board with no givens and every line's clue shown."""
     box = (bh, bw)
+    return Board(
+        n=n,
+        bh=bh,
+        bw=bw,
+        grid=grid,
+        clue={
+            k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
+            for k, cells in lines.items()
+        },
+        givens={},
+        active=set(lines),
+        lines=lines,
+        seed=seed,
+    )
+
+
+def ring_only_search(spec, n, bh, bw, seeds):
+    """The board with no interior givens and the fewest shown clues across
+    the layouts `seeds` draw, or None when no layout is unique on its full
+    ring. Prints how many distinct layouts it tried and what it found."""
+    carve_limit = spec.carve_limit or SOLVE_LIMIT
+    lines = make_lines(n)
+    seen = set()
+    found = []
+    for seed in seeds:
+        grid = (spec.grid_fn or make_grid)(random.Random(seed), n, bh, bw)
+        layout = tuple(map(tuple, grid))
+        if layout in seen:
+            print(f"  seed {seed}: skipped, an earlier seed drew this layout")
+            continue
+        seen.add(layout)
+        base = _full_ring(spec, grid, lines, n, bh, bw, seed)
+        if not unique(spec.cp_sat_clue_fn, base, spec.model_fn, carve_limit):
+            print(f"  seed {seed}: not unique on the ring alone")
+            continue
+        carved = hide_clues(spec, base)
+        print(f"  seed {seed}: unique on the ring alone, {len(carved.active)} shown")
+        found.append(carved)
+    # min keeps the first of a tie, so the earliest seed wins it
+    best = min(found, key=lambda b: len(b.active), default=None)
+    print(
+        f"ring-only search: {len(seen)} layouts tried, "
+        + (
+            f"{len(found)} unique on the ring alone; best seed {best.seed}, "
+            f"{len(best.active)} clues shown"
+            if best
+            else "none unique on the ring alone; falling back to interior givens"
+        )
+    )
+    return best
+
+
+def _fewest_givens(spec, n, bh, bw, seeds, paths):
+    """The first board, over `seeds`, carved to the fewest interior givens
+    with every clue shown."""
     carve_limit = spec.carve_limit or SOLVE_LIMIT
     best = None
     for seed in seeds:
@@ -346,20 +435,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
             print(f"  seed {seed}: skipped, no line repeats a digit")
             continue
         # every line clued while carving givens
-        base = Board(
-            n=n,
-            bh=bh,
-            bw=bw,
-            grid=grid,
-            clue={
-                k: spec.clue_fn([grid[r][c] for (r, c) in cells], cells, box)
-                for k, cells in lines.items()
-            },
-            givens={},
-            active=set(lines),
-            lines=lines,
-            seed=seed,
-        )
+        base = _full_ring(spec, grid, lines, n, bh, bw, seed)
         givens = {}
         cells_all = [(r, c) for r in range(n) for c in range(n)]
         rng.shuffle(cells_all)
@@ -386,8 +462,13 @@ def generate(spec, n, bh, bw, seeds, paths=False):
         if best is None or len(givens) < len(best.givens):
             best = replace(base, givens=dict(givens))
     assert best is not None, "no seed produced a board to carve"
+    return best
 
-    board = best
+
+def hide_clues(spec, board):
+    """`board` with each shown clue hidden, in an order drawn from its seed,
+    whenever the board stays unique without it."""
+    carve_limit = spec.carve_limit or SOLVE_LIMIT
     active = set(board.active)
     rng = random.Random(board.seed * 7)
     order = sorted(active)  # sorted: see the note on set order in unique()
@@ -401,21 +482,7 @@ def generate(spec, n, bh, bw, seeds, paths=False):
             carve_limit,
         ):
             active.add(k)
-    board = replace(board, active=active)
-    assert unique(spec.cp_sat_clue_fn, board, spec.model_fn) is True
-    if paths:
-        # The property the board exists to carry. Asserted here so a
-        # regeneration that loses it fails loud instead of shipping a board
-        # whose every line is a house in disguise.
-        repeats = repeating_lines(board.grid, board.lines)
-        assert repeats, "no line carries a repeated digit"
-        print(f"  lines with a repeated digit: {len(repeats)} of {len(board.lines)}")
-    print(
-        f"CHOSEN seed {board.seed}: interior givens={len(board.givens)}, "
-        f"clues shown={len(board.active)}, "
-        f"clues interactive (hidden)={4 * n - len(board.active)}"
-    )
-    return board
+    return replace(board, active=active)
 
 
 def frame_groups(n, lines):
