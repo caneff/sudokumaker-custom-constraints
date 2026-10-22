@@ -4,8 +4,8 @@ unique, the shipped component solves it offline from its link through
 other cell empty.
 
 It runs on two boards: the shipped one (`gen.json`, `PUZZLE_LINK.txt`) and a
-rectangular one (`gen-rect.json`, seven wide and five high), whose link is
-built here from the gen with `build_link.build` and the shipped component.
+rectangular one (`gen_7x5.json`, `PUZZLE_LINK_7x5.txt`, seven wide and five
+high).
 
 Each step is covered elsewhere on its own; what only this test covers is that
 the three agree on ONE board -- the proof, the component and the link cannot
@@ -23,7 +23,6 @@ HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "_shared"))
 sys.path.insert(0, str(HERE))
 
-import build_link
 import generate
 from sudoku_kit.link_codec import decode_puzzle
 
@@ -73,12 +72,8 @@ with tempfile.TemporaryDirectory() as tmp:
     shipped = json.loads((HERE / "gen.json").read_text())
     run(shipped, (HERE / "PUZZLE_LINK.txt").read_text().strip(), tmp)
 
-    rect = json.loads((HERE / "gen-rect.json").read_text())
-    assert len(rect["grid"]) != len(rect["grid"][0]), "gen-rect.json must not be square"
-    link, doc, n_clues = build_link.build(
-        HERE / f"{build_link.TIMED_COMPONENT}.js", HERE / "gen-rect.json"
-    )
-    build_link.check(link, doc, n_clues)
-    run(rect, link, tmp)
+    rect = json.loads((HERE / "gen_7x5.json").read_text())
+    assert len(rect["grid"]) != len(rect["grid"][0]), "gen_7x5.json must not be square"
+    run(rect, (HERE / "PUZZLE_LINK_7x5.txt").read_text().strip(), tmp)
 
 print("pipeline.test.py: proof -> component -> link all agree, square and rectangular")

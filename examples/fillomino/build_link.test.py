@@ -18,4 +18,12 @@ if __name__ == "__main__":
         "the committed component must reproduce PUZZLE_LINK.txt exactly"
     )
 
+    rect, rect_doc, rect_clues = build(
+        HERE / f"{TIMED_COMPONENT}.js", HERE / "gen_7x5.json"
+    )
+    check(rect, rect_doc, rect_clues)
+    assert rect == (HERE / "PUZZLE_LINK_7x5.txt").read_text().strip(), (
+        "the committed component must reproduce PUZZLE_LINK_7x5.txt exactly"
+    )
+
     print("ok")
