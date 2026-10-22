@@ -867,7 +867,7 @@ them as committed. Each row below is `just time-link` (link against link,
 interleaved) of the fixture's board and givens rebuilt with today's `main.js`:
 the frozen component (a) against the rewrite (b). The rebuilt links were built
 in `.scratch/` and are not committed. "Slowest" is by rung 3's cold row in the
-rung 3 against rung 2.5 table below: cap9-seed10 (1800 ms), cap12-seed11
+rung 3 against rung 2.5 table above: cap9-seed10 (1800 ms), cap12-seed11
 (1000 ms) and cap9-seed3 (1000 ms).
 
 | Date | App version | Fixture | Before (a) | After (b) | Ratio |
