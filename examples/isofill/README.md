@@ -137,7 +137,7 @@ for (let y = 0; y < 10; y++) {
     cells.push(id | 0)
   }
 }
-puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells))
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells, side, side))
 ```
 
 The constructor arguments after the name go to `setParams` and

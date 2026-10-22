@@ -10,13 +10,14 @@
 // walk to `domFold` and the starve verdict to `starveVerdict`. It owns
 // `instance.nbrs`, `domOrder`, `idom`, `ddep`, `domCount` and `skip`.
 
-// Orthogonal neighbours by index arithmetic; cells are row-major on a square.
-function neighbours (i, side) {
+// Orthogonal neighbours by index arithmetic; cells are row-major on a
+// `width` x `height` board.
+function neighbours (i, width, height) {
   const out = []
-  if (i % side > 0) out.push(i - 1)
-  if (i % side < side - 1) out.push(i + 1)
-  if (i >= side) out.push(i - side)
-  if (i + side < side * side) out.push(i + side)
+  if (i % width > 0) out.push(i - 1)
+  if (i % width < width - 1) out.push(i + 1)
+  if (i >= width) out.push(i - width)
+  if (i + width < width * height) out.push(i + width)
   return out
 }
 

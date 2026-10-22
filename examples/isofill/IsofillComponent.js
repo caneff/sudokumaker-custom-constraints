@@ -42,10 +42,9 @@ function getAffectedCells (cells) {
   return cells
 }
 
-function setParams (instance, cells) {
+function setParams (instance, cells, width, height) {
   instance.cells = cells
-  instance.side = Math.round(Math.sqrt(cells.length))
-  instance.nbrs = cells.map((_, i) => neighbours(i, instance.side))
+  instance.nbrs = cells.map((_, i) => neighbours(i, width, height))
   instance.mask = newStampMarks(Uint32Array, cells.length)
   instance.targets = newStampMarks(Uint32Array, cells.length)
   instance.stamp = 0
@@ -67,18 +66,18 @@ function setParams (instance, cells) {
   instance.ddep = new Int16Array(cells.length)
   instance.domCount = new Int16Array(cells.length)
   instance.skip = new Uint8Array(cells.length)
-  instance.border = perimeter(instance.side)
+  instance.border = perimeter(width, height)
   instance.value = new Int8Array(cells.length)
   instance.at = new Int16Array(instance.border.length)
   instance.dig = new Int8Array(instance.border.length)
 }
 
-function perimeter (side) {
+function perimeter (width, height) {
   const out = []
-  for (let x = 0; x < side; x++) out.push(x)
-  for (let y = 1; y < side; y++) out.push(y * side + side - 1)
-  for (let x = side - 2; x >= 0; x--) out.push((side - 1) * side + x)
-  for (let y = side - 2; y >= 1; y--) out.push(y * side)
+  for (let x = 0; x < width; x++) out.push(x)
+  for (let y = 1; y < height; y++) out.push(y * width + width - 1)
+  for (let x = width - 2; x >= 0; x--) out.push((height - 1) * width + x)
+  for (let y = height - 2; y >= 1; y--) out.push(y * width)
   return out
 }
 

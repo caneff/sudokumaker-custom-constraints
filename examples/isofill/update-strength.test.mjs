@@ -49,7 +49,7 @@ JSON.parse(readFileSync(join(HERE, 'gen.json'), 'utf8')).grid
 
 const apply = (mod, p) => {
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   fixpoint(mod, inst, p)
 }
 

@@ -46,7 +46,7 @@ function removals (mod, start) {
     removeCandidatesFromCell: (s, c) => { log.push(`[${[...s].sort((a, b) => a - b).join('')}]@${c}`); p.removeCandidatesFromCell(s, c) }
   }
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   fixpoint(mod, inst, rec)
   return log.join('|')
 }

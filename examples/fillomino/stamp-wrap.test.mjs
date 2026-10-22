@@ -26,7 +26,7 @@ installGlobals(1, n)
 // records is what bumpStamp wraps at, and a bare Int32Array would never wrap.
 {
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, n, n)
   assert.strictEqual(inst.mask.stampCap, 0x7FFFFFFF, 'the mask was not allocated through newStampMarks')
 }
 
@@ -36,7 +36,7 @@ const run = (stamp, reps) => {
     const r = makeRng(2000 + rep).rnd
     const p = makePuzzle(truth, (c, v) => randomCandidates(r, 1, n, v))
     const inst = {}
-    mod.setParams(inst, CELLS)
+    mod.setParams(inst, CELLS, n, n)
     if (stamp) {
       inst.stamp = stamp
       for (let i = 0; i < inst.mask.length; i++) inst.mask[i] = 1 + (i * 7 + rep) % 60

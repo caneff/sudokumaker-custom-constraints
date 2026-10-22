@@ -96,7 +96,7 @@ def the_manifest_and_the_layout_gate_accept_it():
 
 def the_backend_registers_both_components_with_ties_hidden():
     main = (EXAMPLE / "main-global.js").read_text()
-    assert "new IsofillComponent('ISOFILL', interior)" in main
+    assert "new IsofillComponent('ISOFILL', interior, nw, nh)" in main
     assert "for (const { clue, line } of lines)" in main
     assert "new SkyscraperOneSidedComponent(name, clue, line)" in main
     sky = (EXAMPLE / "SkyscraperOneSidedComponent.js").read_text()

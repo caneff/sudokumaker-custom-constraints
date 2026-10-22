@@ -43,7 +43,7 @@ const seeder = makeSeeder(rnd, ALL)
 function run (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   return { p, v: violates(mod, inst, p, truth) }
 }
 
@@ -61,7 +61,7 @@ grid('gen_35g_silent.json').forEach((row, r) => [...row].forEach((ch, x) => { si
 function once (truth, seed) {
   const p = makePuzzle(truth, seed)
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   Array.from(mod.update(inst, p))
   return p
 }
@@ -75,7 +75,7 @@ for (const [name, truth, seed] of [['rows', rows, seeder], ['bent', bent, seeder
     iters: FUZZ,
     draw: () => {
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, N, N)
       return { truth, seed, parts: [{ mod, inst }] }
     }
   }).failures
@@ -231,14 +231,14 @@ const readsPerCell = new Map()
 const getMask = onePass.getCandidatesBitMask.bind(onePass)
 onePass.getCandidatesBitMask = c => { readsPerCell.set(c, (readsPerCell.get(c) || 0) + 1); return getMask(c) }
 const onePassInst = {}
-mod.setParams(onePassInst, CELLS)
+mod.setParams(onePassInst, CELLS, N, N)
 Array.from(mod.update(onePassInst, onePass))
 const reads = [...readsPerCell.values()].reduce((a, b) => a + b, 0)
 const onePassOk = reads > 0 && Math.max(...readsPerCell.values()) === 1
 // Validate: full valid grid passes; swap two cells across regions (still ten each) fails
 const full = makePuzzle(bent, (c, v) => [v])
 const inst = {}
-mod.setParams(inst, CELLS)
+mod.setParams(inst, CELLS, N, N)
 const swapped = { ...bent, 0: bent[99], 99: bent[0] }
 const swapP = makePuzzle(swapped, (c, v) => [v])
 const validateOk = mod.validate(inst, full) === true && mod.validate(inst, swapP) === false
@@ -254,13 +254,13 @@ const bad9 = fuzzSoundness('isofill 9x9 fixture', {
   iters: FUZZ,
   draw: () => {
     const inst = {}
-    mod.setParams(inst, CELLS9)
+    mod.setParams(inst, CELLS9, N9, N9)
     return { truth: rows9, seed: seeder9, parts: [{ mod, inst }] }
   }
 }).failures
 const cap9 = makePuzzle(rows9, (c, v) => (v === 1 ? [v] : ALL9))
 const cap9Inst = {}
-mod.setParams(cap9Inst, CELLS9)
+mod.setParams(cap9Inst, CELLS9, N9, N9)
 Array.from(mod.update(cap9Inst, cap9))
 const cap9Ok = CELLS9.slice(N9).every(c => !cap9.getCandidates(c).has(1))
 const CHECKS = {

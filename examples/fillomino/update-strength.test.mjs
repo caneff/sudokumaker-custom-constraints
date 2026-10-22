@@ -34,10 +34,10 @@ const ref = makeIo(BASELINE).load('FillominoComponent.js', ['initialize', 'updat
 const { rnd } = makeRng(9001)
 const REPS = 300
 
-const apply = (mod, p, CELLS) => {
+const apply = (mod, p, CELLS, side) => {
   const inst = { cells: CELLS }
   if (mod.setParams) {
-    mod.setParams(inst, CELLS)
+    mod.setParams(inst, CELLS, side, side)
     fixpoint(mod, inst, p)
     return
   }
@@ -66,7 +66,7 @@ let stronger = 0
 for (const [name, { truth, n: N }] of [['shipped', shipped], ['varied', varied]]) {
   installGlobals(1, N)
   const CELLS = Array.from({ length: N * N }, (_, i) => i)
-  const applyN = (mod, p) => apply(mod, p, CELLS)
+  const applyN = (mod, p) => apply(mod, p, CELLS, N)
   let fixtureWeaker = 0
   let fixtureStronger = 0
   for (let rep = 0; rep < REPS; rep++) {
@@ -105,7 +105,7 @@ let pastRung2 = 0
 for (const { truth, n } of [shipped, varied]) {
   installGlobals(1, n)
   const CELLS = Array.from({ length: n * n }, (_, i) => i)
-  const applyN = (mod, p) => apply(mod, p, CELLS)
+  const applyN = (mod, p) => apply(mod, p, CELLS, n)
   for (let rep = 0; rep < 100; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(frnd, 1, n, truth[c]))
@@ -141,12 +141,12 @@ for (const { truth, n } of [shipped, varied]) {
   installGlobals(1, n)
   const CELLS = Array.from({ length: n * n }, (_, i) => i)
   const reused = { cells: CELLS }
-  cur.setParams(reused, CELLS)
+  cur.setParams(reused, CELLS, n, n)
   for (let rep = 0; rep < 200; rep++) {
     const start = new Map()
     for (const c of CELLS) start.set(c, randomCandidates(brnd, 1, n, truth[c]))
     const fresh = { cells: CELLS }
-    cur.setParams(fresh, CELLS)
+    cur.setParams(fresh, CELLS, n, n)
     assert.deepStrictEqual(settle(reused, start, CELLS), settle(fresh, start, CELLS),
       'a reused instance settled a state somewhere a fresh one does not')
     reuseStates++
@@ -158,7 +158,7 @@ console.log('fillomino reused instance:', reuseStates, 'states, same fixpoint as
 // 6x6 board, unrelated to gen.json's shape.
 installGlobals(1, 6)
 const CELLS6 = Array.from({ length: 36 }, (_, i) => i)
-const applyOn6 = (mod, p) => apply(mod, p, CELLS6)
+const applyOn6 = (mod, p) => apply(mod, p, CELLS6, 6)
 
 // The silent-region win, directed. No cell is placed, so every baseline rule
 // is idle -- they all start from a placed island. r0c0's two neighbours drop

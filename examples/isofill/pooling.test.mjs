@@ -20,7 +20,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   for (const c of cells) short[c] = truth[c]
   const p = makePuzzle(short, (c, v) => [v])
   const inst = {}
-  mod.setParams(inst, cells)
+  mod.setParams(inst, cells, N, N)
   Array.from(mod.update(inst, p))
   assert.notStrictEqual(p._stopped, null, 'an uneven board must yield puzzle.stop')
   assert.match(p._stopped, /evenly/)
@@ -31,7 +31,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
 // never wrap.
 {
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   assert.strictEqual(inst.mask.stampCap, 0xFFFFFFFF, 'the mask was not allocated through newStampMarks')
   assert.strictEqual(inst.targets.stampCap, 0xFFFFFFFF, 'the targets were not allocated through newStampMarks')
 }
@@ -40,7 +40,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   const p = makePuzzle(truth, seed)
   p.getCandidates = () => { throw new Error('scan called getCandidates; read getCandidatesBitMask') }
   const inst = {}
-  mod.setParams(inst, CELLS)
+  mod.setParams(inst, CELLS, N, N)
   Array.from(mod.update(inst, p))
 }
 
@@ -49,7 +49,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
   const run = stamp => {
     const p = makePuzzle(truth, (c, v) => (c % 3 === 0 ? [v] : randomCandidates(makeRng(c).rnd, 0, 9, v)))
     const inst = {}
-    mod.setParams(inst, CELLS)
+    mod.setParams(inst, CELLS, N, N)
     if (stamp) { inst.stamp = stamp; inst.targetStamp = stamp }
     fixpoint(mod, inst, p)
     return CELLS.map(c => [...p._cand.get(c)].join(''))
@@ -66,7 +66,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
       const r = makeRng(1000 + rep).rnd
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, N, N)
       if (stamp) inst.targetStamp = stamp
       Array.from(mod.update(inst, p))
       out.push(CELLS.map(c => [...p._cand.get(c)].join('')).join(','))
@@ -84,7 +84,7 @@ const seed = (c, v) => randomCandidates(rnd, 0, 9, v)
     for (let rep = 0; rep < 60; rep++) {
       const r = makeRng(3000 + rep).rnd
       const inst = {}
-      mod.setParams(inst, CELLS)
+      mod.setParams(inst, CELLS, N, N)
       Array.from(mod.update(inst, makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))))
       if (below !== null) inst.budget.seenStamp = 0xFFFFFFFF - below
       const p = makePuzzle(truth, (c, v) => randomCandidates(r, 0, 9, v))
