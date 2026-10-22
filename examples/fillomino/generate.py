@@ -119,9 +119,7 @@ def model(board, givens):
 
 
 def rows(board, s, x):
-    return [
-        [s.Value(x[r, c]) for c in range(board.width)] for r in range(board.height)
-    ]
+    return [[s.Value(x[r, c]) for c in range(board.width)] for r in range(board.height)]
 
 
 def is_striped(grid):

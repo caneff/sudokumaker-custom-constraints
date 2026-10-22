@@ -65,9 +65,13 @@ def test_rectangular_board_is_proved_and_sampled():
     again = Board.of_doc(doc)
     assert (again.width, again.height) == (6, 4), again
     # The same cells give the same verdict whichever way round the board lies.
-    assert unique(
-        Board.of(4, 6, height=6), {(r, c): grid[c][r] for r in range(6) for c in range(4)}
-    ) is True
+    assert (
+        unique(
+            Board.of(4, 6, height=6),
+            {(r, c): grid[c][r] for r in range(6) for c in range(4)},
+        )
+        is True
+    )
 
 
 def test_dropped_grid_logs_seed_and_clue_set():
