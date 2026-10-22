@@ -9,13 +9,15 @@ houses. Ten regions of ten cells cover the hundred cells, and all ten digits
 appear, so each digit is exactly one orthogonally connected island of ten cells.
 Rule source: Marty Sears' *Homogeneous* (Logic Masters Deutschland).
 
-The same code serves any square board whose digit count equals its side: N
-regions of N cells on an N×N board with digits 1–N (a 9×9 with 1–9), or N+1
-regions of N+1 cells on an (N+1)×(N+1) board with digits 0–N (the 10×10
-above). `main.js` reads the side from `puzzle.spec.size.width` (and checks the height); the component
+The same code serves any W×H board whose cells split evenly among the digits:
+D regions of cells/D cells each. A square N×N board with digits 1–N (a 9×9 with
+1–9) or N+1 regions on an (N+1)×(N+1) board with digits 0–N (the 10×10 above)
+are the square cases; a 6×4 board with digits 1–4 has four regions of six.
+`main.js` reads the width and height from `puzzle.spec.size`; the component
 reads the digit range from `helpers.digits` and stops the branch (`puzzle.stop`,
 which reaches the step log) when the cells do not split evenly among the
-digits. `main.js` also refuses a non-square board before registering. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
+digits. A rectangle's link ships `maxDigit` when the range ends below 9, and its
+gen JSON names `digits` when the digit count is not the width. `gen_9x9.json` / `PUZZLE_LINK_9x9.txt` is
 the 9×9 instance (27 givens; sampled and stripped with `verify.py strip 7 9 1`,
 the app proves it unique in 0.2 s).
 
@@ -128,16 +130,17 @@ paste `main.js` as the main code. Add one component segment named
 ## The global pattern
 
 ```js
+const { width, height } = puzzle.spec.size
 const cells = []
-for (let y = 0; y < 10; y++) {
-  for (let x = 0; x < 10; x++) {
+for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
     const id = helpers.cellIds.getIdFromCoordsSafe({ x, y })
     // A miss is undefined, and `undefined | 0` is cell 0: keep it loud.
     if (id === undefined) throw new Error(`ISOFILL: no cell at x=${x}, y=${y}`)
     cells.push(id | 0)
   }
 }
-puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells, side, side))
+puzzle.addConstraintComponent(new IsofillComponent('ISOFILL', cells, width, height))
 ```
 
 The constructor arguments after the name go to `setParams` and
