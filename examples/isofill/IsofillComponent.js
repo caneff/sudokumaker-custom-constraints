@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars -- setParams/update/validate/getAffectedCells are the component API SudokuMaker calls by name, not dead code */
-//! ISOFILL. Divide the grid into N regions of N orthogonally connected cells;
-//! every cell in a region holds the same digit; all N digits appear. So each
-//! digit fills exactly N cells. N is the digit count, which must equal the
-//! board side: a 10x10 with digits 0-9, or a 9x9 with digits 1-9.
+//! ISOFILL. Divide the grid into one orthogonally connected region per digit;
+//! every cell in a region holds the same digit; all the digits appear. So each
+//! digit fills exactly N cells, N = cells / digit count. The board is any
+//! width x height whose cells split evenly (a 10x10 with digits 0-9, a 9x9
+//! with digits 1-9, a 6x4 with digits 1-4); an uneven split stops the branch.
 //!
 //! One whole-grid component, six deductions per digit and two across digits:
 //!   Cap:   a digit already in N cells leaves every other cell.

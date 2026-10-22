@@ -1,5 +1,4 @@
-# The houseless board isofill and fillomino share: a custom width x height
-# board with no
+# The houseless board isofill and fillomino share: a custom W x H board with no
 # rows, columns or boxes, built from scratch out of a gen JSON (the grid and
 # its clue cells) and the example's main.js and one component. There is no
 # template -- such a board is small enough to write out. What differs between
@@ -22,10 +21,11 @@ from sudoku_kit.link_codec import decode_puzzle, encode_link
 class BareBoard:
     """One example's houseless board.
 
-    `digit_range(spec, n)` (n is the longer side) returns `(lo, hi, fields)`: the digits the board
+    `digit_range(spec, n)` returns `(lo, hi, fields)`: the digits the board
     plays and the range fields the puzzle document ships for them, which may
-    be none (the app's default). `rule` is the rules text, formatted with
-    `n`, `lo` and `hi`."""
+    be none (the app's default); `n` is the width. `rule` is the rules text,
+    formatted with `n`, `lo`, `hi`, `width`, `height`, `count` (the digits) and
+    `size` (cells per digit, rounded down)."""
 
     dir: pathlib.Path
     name: str
@@ -38,9 +38,10 @@ class BareBoard:
         Returns (link, doc, number of givens)."""
         spec = json.loads(pathlib.Path(puzzle_path).read_text())
         clues = {tuple(p) for p in spec["clues"]}
-        height, width = len(spec["grid"]), len(spec["grid"][0])
-        n = max(width, height)
+        height = len(spec["grid"])
+        n = width = len(spec["grid"][0])
         lo, hi, fields = self.digit_range(spec, n)
+        count = hi - lo + 1
         # a cell holds a value only when it is a clue: a non-given value ships
         # as an entered digit and the recipient opens a solved board
         cells = [
@@ -57,7 +58,15 @@ class BareBoard:
                 "width": width,
                 "height": height,
                 **fields,
-                "comment": self.rule.format(n=n, lo=lo, hi=hi),
+                "comment": self.rule.format(
+                    n=n,
+                    lo=lo,
+                    hi=hi,
+                    width=width,
+                    height=height,
+                    count=count,
+                    size=width * height // count,
+                ),
                 "cells": cells,
                 "constraints": [
                     # the built-in "Given digits" constraint every frame
@@ -81,9 +90,14 @@ class BareBoard:
         p = back["puzzle"]
         width, height = p["width"], p["height"]
         assert p["type"] == "custom"
-        n = max(width, height)
         lo = p.get("minDigit", 1)
-        assert lo + n - 1 <= 9, "n digits must fit the app's 0-9 range"
+        # no maxDigit means the app's 9: one digit per cell of the longer side
+        if "maxDigit" in p:
+            assert lo <= p["maxDigit"] <= 9, "digits must fit the app's 0-9 range"
+        else:
+            assert lo + max(width, height) - 1 <= 9, (
+                "digits must fit the app's 0-9 range"
+            )
         assert len(p["cells"]) == width * height and not any("houses" in k for k in p)
         # every non-given cell must be empty, or the board ships entered digits
         assert all(c.get("given") or c == {} for c in p["cells"])
