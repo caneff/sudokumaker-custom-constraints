@@ -816,3 +816,89 @@ the same board as `gen_15g.json` / `PUZZLE_LINK_15g.txt`.
 Tag 03 (CJK, 14 x 15, Logic Masters 00054B) timed out at 1200 s on the repo
 model at digits 1..9 and at 1..15: no verdict for either
 (`docs/research/fillomino-tag03-verdict.md`).
+
+## Readable for sharing (#870)
+
+The component and the two files it includes (`_shared/dominator.js`,
+`_shared/stamp.js`) were rewritten for a setter who reads some JavaScript: the
+rules in puzzle words, **island** and **region** defined once, each rule's code
+under the comment that explains it, and new names (the map is at the top of
+*What the component deduces*). The deductions did not change.
+`equivalence.test.mjs` holds the rewrite to a frozen copy of the component as
+it stood before (`.golden/FillominoComponent.95bf886.js`, includes spliced in).
+It runs a search on each of the 19 frozen fixtures and fuzzes states around a
+solution and away from one, and it requires the same removals, cell by cell and
+in the same order, on every call. Each call runs twice, once with removals
+applied as made and once with them held to the end of the call. The committed
+links were rebuilt, and `PUZZLE_LINK_annotated.txt` is the shipped board with
+the comments kept.
+
+No deduction was added or removed, so the bar is 1.1x or under on both rows,
+3 reps, non-deterministic solve off, interleaved.
+
+`just time fillomino`, the shipped board:
+
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino | 4300ms | 4500ms | 1.05 | FAIL |
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | NO TIME |
+
+`FAIL` and `NO SHIP` read the 0.9x deduction rule. The gate-change bar holds:
+1.05x cold, and 0 ms on both sides after the logic pass.
+
+**The two fast paths, measured.** The rewrite was written plain first. Two
+fast paths stay, each behind a helper named for what it answers, because the
+plain version misses the bar on the shipped board. Each row is the rewrite with
+only that helper made plain, against the committed link:
+
+| Variant | Cold | After logical | Verdict |
+| --- | --- | --- | --- |
+| `hasCandidate` reads `getCandidates(cell).has(digit)` instead of the candidate bitmask | 4300ms → 4900ms, 1.14x | 0ms / 0ms | misses 1.1x; the bitmask read stays |
+| no `cellsRegionCanSkip` shortcut: rule 4 re-searches every empty cell of the room | 4400ms → 4900ms, 1.11x | 0ms / 0ms | misses 1.1x; the shortcut stays |
+
+**The three slowest frozen rung-25 fixtures.** `just time fillomino --board
+timing-fixture-9x9-cap9-seed10-rung25.txt` refuses:
+
+```
+ValueError: fillomino: no backend file (main.js, main-global.js, house-gac.js) matches the committed 'Fillomino' backend; the likeliest cause is an uncommitted fillomino/PUZZLE_LINK*.txt rebuilt against edited code -- the baseline it used to be no longer exists in this tree
+```
+
+The fixtures still embed the square-only `main.js` from before #867, which
+hands the component no width or height, so today's component cannot run inside
+them as committed. Each row below is `just time-link` (link against link,
+interleaved) of the fixture's board and givens rebuilt with today's `main.js`:
+the frozen component (a) against the rewrite (b). The rebuilt links were built
+in `.scratch/` and are not committed. "Slowest" is by rung 3's cold row in the
+rung 3 against rung 2.5 table below: cap9-seed10 (1800 ms), cap12-seed11
+(1000 ms) and cap9-seed3 (1000 ms).
+
+| Date | App version | Fixture | Before (a) | After (b) | Ratio |
+| --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap9-seed10 cold | 1700ms | 1700ms | 1.00 |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap9-seed10 after-logical | 0ms | 0ms | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap12-seed11 cold | 900ms | 900ms | 1.00 |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap12-seed11 after-logical | 700ms | 700ms | 1.00 |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap9-seed3 cold | 800ms | 800ms | 1.00 |
+| 2026-10-22 | v2026.10.05-a3aef4c | cap9-seed3 after-logical | 0ms | 0ms | — |
+
+**Sanity boards, not the bar.** Two published puzzles, each built from
+`.scratch/` with today's `main.js`, digits 1-9, frozen component (a) against
+the rewrite (b), `just time-link`. Neither board nor any link built from it is
+committed.
+
+- "Squeeze Play" by Thomas Snyder, gmpuzzles.com/s/130309Sque, CC BY-NC-ND 3.0.
+  10x10, 34 givens.
+- "Tag 03 - Fillomino" by CJK, Logic Masters Deutschland puzzle 00054B. 14x15,
+  56 givens.
+
+| Date | App version | Board | Before (a) | After (b) | Ratio |
+| --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | Squeeze Play cold | 100ms | 100ms | 1.00 |
+| 2026-10-22 | v2026.10.05-a3aef4c | Squeeze Play after-logical | 0ms | 0ms | — |
+
+Tag 03 has no row. The driver refused on the frozen component's cold reps:
+
+```
+time-link: app-solve.mjs: .../tag-b.txt: all 3 reps hit the 300s per-rep timeout (3 timed out)
+```
+
+That is the recorded outcome; no other protocol was tried. The board is not
+proven unique on the repo model either (`docs/research/fillomino-tag03-verdict.md`).
