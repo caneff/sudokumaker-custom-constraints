@@ -30,7 +30,6 @@ const MODS = {
   SkyscraperOneSidedComponent: load('SkyscraperOneSidedComponent.js', NAMES)
 }
 
-
 // build_size.py's `visible`: the buildings strictly taller than every one
 // before them, a tie hidden.
 function visible (line) {

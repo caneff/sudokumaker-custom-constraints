@@ -89,9 +89,7 @@ def isofill_grid(rng, n, _bh, _bw, height=None, digits=None):
     sampler draws it on the portfolio with a seed taken off `rng`. The
     portfolio's several workers race, so a seed does not reproduce its grid;
     gen.json records the grid, and a rebuild reads it from there."""
-    rows = sample(
-        Board.of(n, MIN_DIGIT, height, digits), seed=rng.randrange(1, 2**31)
-    )
+    rows = sample(Board.of(n, MIN_DIGIT, height, digits), seed=rng.randrange(1, 2**31))
     return [[int(ch) for ch in row] for row in rows]
 
 

@@ -354,7 +354,9 @@ def unique(post_clue, board, model_fn=None, limit=SOLVE_LIMIT):
     # and so the CP-SAT search path, the same on every run.
     for k in sorted(board.active):
         cells = board.lines[k]
-        post_clue(m, x, cells, board.clue[k], board.digit_count, _ring_name(k), board.box)
+        post_clue(
+            m, x, cells, board.clue[k], board.digit_count, _ring_name(k), board.box
+        )
     try:
         first, unique = cpsat.solve_unique(m, x, limit)
     except TimeoutError:
@@ -390,7 +392,9 @@ def generate(spec, n, bh, bw, seeds, paths=False, shape=None):
     if spec.ring_only and paths:
         raise ValueError("a ring-only search reads the straight frame lines only")
     layouts = _layouts(spec, n, bh, bw, seeds, shape) if spec.ring_only else None
-    board = ring_only_search(spec, n, bh, bw, layouts, shape) if spec.ring_only else None
+    board = (
+        ring_only_search(spec, n, bh, bw, layouts, shape) if spec.ring_only else None
+    )
     if board is None:
         board = hide_clues(
             spec, _fewest_givens(spec, n, bh, bw, seeds, paths, layouts, shape)
@@ -1220,7 +1224,9 @@ def main(spec, argv=None):
         p.error("a rectangle needs --height and --digits together")
     if args.height is not None and args.local:
         p.error("a rectangle is built on the global lane only")
-    shape = {} if args.digits is None else {"height": args.height, "digits": args.digits}
+    shape = (
+        {} if args.digits is None else {"height": args.height, "digits": args.digits}
+    )
     if args.rebuild and (args.box_height is not None or args.box_width is not None):
         p.error("--rebuild re-encodes a committed board: pass n and the lane only")
     if args.rebuild:
