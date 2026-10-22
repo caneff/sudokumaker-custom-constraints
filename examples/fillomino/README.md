@@ -773,3 +773,23 @@ the shipped component removes 23432 candidates the vendored baseline keeps over
 removes and it keeps. Against rung 2 itself, over the fixpoint floor's 200
 states, cut starve removes 856 candidates rung 2 settles on and gives none
 back.
+
+## Any width and height (#867)
+
+`main.js` reads the board's width and height, so the shipped link's embedded
+code changed while the component did not. This row is `just time-link` of the
+committed link before the change against after it, not a `just time` row (no
+component changed, so `just time` has no candidate to build):
+
+| Date | App version | Board | Before | After | Ratio | Row |
+|---|---|---|---|---|---|---|
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino cold | 4500ms | 4400ms | 0.98 | — |
+| 2026-10-22 | v2026.10.05-a3aef4c | fillomino after-logical | 0ms | 0ms | — | — |
+
+The soundness harness and the update-strength gate also run on a 7 wide, 5 high
+fixture (zero violations, zero weaker cells), and `pipeline.test.py` carries
+the same board as `gen_15g.json` / `PUZZLE_LINK_15g.txt`.
+
+Tag 03 (CJK, 14 x 15, Logic Masters 00054B) timed out at 1200 s on the repo
+model at digits 1..9 and at 1..15: no verdict for either
+(`docs/research/fillomino-tag03-verdict.md`).
