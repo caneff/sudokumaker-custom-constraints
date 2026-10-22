@@ -14,6 +14,21 @@ and #309 (**rung 3**, cut starve). The ladder is complete.
 
 ## What the component deduces
 
+The component was rewritten for a setter in #870, with the same deductions
+in the same order and new names. This README, and the history in it, keeps the
+older names; the code uses the new ones:
+
+| This README | `FillominoComponent.js` |
+| --- | --- |
+| `scan` | `findIslands` |
+| overflow, seal, starve, force (`islandRule`) | rules 1-3, `islandRules`: too big, finished, room to grow |
+| the walk | `roomToGrow` |
+| cut starve (`cutStarveRule`) | rule 4, `neededCellsRule`: cells the region can't do without |
+| the dominator filter (`cutFilter`) | `cellsRegionCanSkip`, with `dominator.js`'s bottlenecks |
+| doors, merge overflow, merge starve, one door (`doorRules`) | rule 5, `exitRules` |
+| component bound (`componentBound`) | rule 6, `smallPocketsRule`: pockets too small |
+| stamps (`bumpStamp`, `newStampMarks`) | visit marks (`nextVisit`, `newVisitMarks`) |
+
 One whole-grid `update`. Each call makes one grid scan that finds the
 **islands** — a maximal connected set of placed cells of one digit. Two
 adjacent cells holding `k` lie in one region, so an island of digit `k` with
