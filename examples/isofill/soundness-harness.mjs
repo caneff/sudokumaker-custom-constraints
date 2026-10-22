@@ -304,11 +304,20 @@ const rectOnce = (shape, truth, seed) => {
 // Cap: column 0 holds six 0s, so no other cell of the 10x6 may be 0.
 const rectCap = rectOnce(wide, colsWide, (c, v) => (v === 0 ? [v] : ALL10))
 const rectCapOk = wide.cells.every(c => c % wide.w === 0 || !rectCap.getCandidates(c).has(0))
-// Perimeter arc: round the 10x6 border cells 0 and 59 are digit 0, cells 9 and
-// 50 digit 1, in the order 0, 1, 0, 1. A border walk that took the board for a
-// square would put them elsewhere and find nothing wrong.
-const rectArc = rectOnce(wide, colsWide, c => (c === 0 || c === 59 ? [0] : c === 9 || c === 50 ? [1] : ALL10))
-const rectArcOk = wide.cells.some(c => rectArc.getCandidates(c).size === 0)
+// Perimeter arc, on an edge only a rectangle has. These boards hold regions of
+// fifteen cells, so the walks have slack to spare and the border rule alone
+// sees the interleave, as it does on the square. Along the bottom row of a
+// 15x10, digit 0 sits at cells 141 and 143 and digit 1 at 142 and 145, read
+// 0, 1, 0, 1 round the border. A border walk that took the board for a
+// square would not have that row on the border.
+const wide2 = { w: 15, h: 10, cells: shapeCells(15, 10) }
+const tall2 = { w: 10, h: 15, cells: shapeCells(10, 15) }
+const zeros = shape => Object.fromEntries(shape.cells.map(c => [c, 0]))
+const rectArcBottom = rectOnce(wide2, zeros(wide2), c => (c === 141 || c === 143 ? [0] : c === 142 || c === 145 ? [1] : ALL10))
+const rectArcBottomOk = wide2.cells.some(c => rectArcBottom.getCandidates(c).size === 0)
+// The same along the left column of a 10x15: cells 110 and 130 are 0, 120 and 140 are 1.
+const rectArcLeft = rectOnce(tall2, zeros(tall2), c => (c === 110 || c === 130 ? [0] : c === 120 || c === 140 ? [1] : ALL10))
+const rectArcLeftOk = tall2.cells.some(c => rectArcLeft.getCandidates(c).size === 0)
 // An uneven split stops the branch: seven cells do not divide among ten digits.
 const sevenCells = shapeCells(7, 1)
 const uneven = makePuzzle(Object.fromEntries(sevenCells.map(c => [c, 0])), () => ALL10)
@@ -339,7 +348,8 @@ const CHECKS = {
   'perimeter arc fired': arcOk,
   'perimeter flank fired': flankOk,
   'rect cap fired': rectCapOk,
-  'rect perimeter arc fired': rectArcOk,
+  'rect bottom-row arc fired': rectArcBottomOk,
+  'rect left-column arc fired': rectArcLeftOk,
   'uneven split stops': unevenOk,
   validate: validateOk
 }
