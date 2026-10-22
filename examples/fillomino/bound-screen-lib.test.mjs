@@ -102,7 +102,7 @@ const SHORT = [0, 0, 0, 0, 1, 0, 0, 12, 0, 0, 1, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
       iters: 3000,
       draw: () => {
         const inst = {}
-        incremental.setParams(inst, CELLS, 9, 9)
+        incremental.setParams(inst, CELLS, n, n)
         return { truth, seed, parts: [{ mod: incremental, inst }] }
       }
     })
