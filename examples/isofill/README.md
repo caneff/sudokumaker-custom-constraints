@@ -1016,3 +1016,22 @@ removal sequence — the filter may only remove work. It asserts both directions
 of the split too: the filter must clear cells, and the re-walk must still run.
 Soundness: 6 x 2,000 tests with 0 violations on `just soundness`, and 6 x
 20,000 on the deep run.
+
+### Shared helpers rewritten for reading (#870)
+
+The two files this component includes, `_shared/dominator.js` and
+`_shared/stamp.js`, were rewritten for a reader of fillomino's annotated link,
+and their names changed with them: `domFold` → `findBottlenecks`, `subtreeSums`
+→ `countCellsBehind`, `starveVerdict` → `markCellsNotNeeded`, `bumpStamp` →
+`nextVisit`, `newStampMarks` → `newVisitMarks`, and the fields `domOrder`,
+`idom`, `ddep`, `domCount`, `skip` → `order`, `bottleneck`,
+`bottleneckDepth`, `behind`, `notNeeded`. This component only follows the
+renames; it adds and removes no deduction, so the bar is 1.1x or under on both
+rows. `just time isofill`, 3 reps, non-deterministic solve off:
+
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill | 400ms | 400ms | 1.00 | FAIL |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill after-logical | 0ms | 0ms | — | NO TIME |
+
+`FAIL` and the `NO SHIP` line read the 0.9x deduction rule; the gate-change bar
+holds (1.00x cold, after-logical 0 ms on both sides). Every committed link was
+rebuilt and decodes identical to its old copy apart from this component's code.

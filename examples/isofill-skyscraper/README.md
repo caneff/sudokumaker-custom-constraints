@@ -122,3 +122,20 @@ off, recorded app replay):
 
 No component changed, so the rows are a baseline with no ratio. After the
 app's logical solver the board is solved by logic alone (0 ms).
+
+### Shared helpers rewritten for reading (#870)
+
+`IsofillComponent.js` includes `_shared/dominator.js` and `_shared/stamp.js`,
+which #870 rewrote and renamed for fillomino's annotated link (the renames are
+listed in `../isofill/README.md`). No deduction changed, so the bar is 1.1x or
+under on both rows. `just time isofill-skyscraper --ring-clues`, 3 reps,
+non-deterministic solve off:
+
+| date | app version | fixture | baseline | candidate | ratio | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper | 200ms | 200ms | 1.00 | FAIL |
+| 2026-10-22 | v2026.10.05-a3aef4c | isofill-skyscraper after-logical | 0ms | 0ms | — | NO TIME |
+
+`FAIL` reads the 0.9x deduction rule; the gate-change bar holds. The link was
+rebuilt from the committed one and decodes identical to it apart from that
+component's code.
