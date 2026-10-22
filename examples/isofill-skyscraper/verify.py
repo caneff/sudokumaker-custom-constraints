@@ -58,8 +58,8 @@ def house_problems(doc):
 
 
 def grid_problems(board):
-    n, grid = board.n, board.grid
-    m, x = model(IsofillBoard.of(n, MIN_DIGIT), {})
+    grid = board.grid
+    m, x = model(IsofillBoard.of(board.n, MIN_DIGIT, board.rows, board.digit_count), {})
     for (r, c), v in x.items():
         m.Add(v == grid[r][c])
     status = cpsat.solver(GATE_LIMIT).Solve(m)
@@ -91,11 +91,12 @@ def grid_problems(board):
 
 
 def check(board, link_file):
-    n, givens, active, clue = board.n, board.givens, board.active, board.clue
+    n, rows = board.n, board.rows
+    givens, active, clue = board.givens, board.active, board.clue
     doc = decode_puzzle(link_file.read_text().strip())["puzzle"]
-    assert doc["width"] == n + 2, (
-        f"{link_file.name} is {doc['width'] - 2}x{doc['width'] - 2}, "
-        f"not the {n}x{n} board gen records"
+    assert (doc["width"], doc["height"]) == (n + 2, rows + 2), (
+        f"{link_file.name} is {doc['width'] - 2}x{doc['height'] - 2}, "
+        f"not the {n}x{rows} board gen records"
     )
     bad = mismatches(doc, givens, {k: clue[k] for k in active}) + house_problems(doc)
     assert not bad, f"{link_file.name} is not the recorded board:\n  " + "\n  ".join(
@@ -116,7 +117,7 @@ def check(board, link_file):
     )
     assert verdict is True, f"{link_file.name} has more than one solution"
     print(
-        f"{link_file.name} ({n}x{n}): {len(givens)} interior givens, "
+        f"{link_file.name} ({n}x{rows}): {len(givens)} interior givens, "
         f"{len(active)} shown clues of {len(board.lines)} -- matches gen, grid "
         "solves it, exactly one solution"
     )

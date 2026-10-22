@@ -288,13 +288,6 @@ function checkBackend (name, src, W, H, { groups = null, file = 'main-global.js'
 // asymmetric frame to bite on.
 const BOARDS = [[11, 11], [11, 8]]
 
-// The global backends whose interior must be square, and which must throw on
-// a rectangular board before registering anything: isofill-skyscraper's
-// ISOFILL interior has as many regions as its side, so a 9x6 interior has no
-// meaning. Named, not a blanket rule -- any other backend must build the 11x8
-// frame.
-const SQUARE_ONLY = ['isofill-skyscraper']
-
 // Not every backend names a side or takes a pair, so the side and pair checks
 // are counted across all of them: a loop that finds no component to check
 // would pass whatever the backends build, and the two checks would be dead.
@@ -303,17 +296,22 @@ let pairChecks = 0
 for (const name of dirs) {
   const src = assembleSource(join(EXAMPLES, name, 'main-global.js'))
   for (const [W, H] of BOARDS) {
-    if (W !== H && SQUARE_ONLY.includes(name)) {
-      const p = mockPuzzle(W, H)
-      assert.throws(() => runBackend(src, { puzzle: p, helpers }), /needs a square interior/,
-        `${name}/main-global.js on ${W}x${H} must refuse a rectangular interior`)
-      assert.strictEqual(p.registered.length, 0, `${name}/main-global.js on ${W}x${H} half-registered before refusing`)
-      continue
-    }
     const r = checkBackend(name, src, W, H)
     sideChecks += r.sideChecks
     pairChecks += r.pairChecks
   }
+}
+// isofill-skyscraper's ISOFILL interior is any rectangle: on 11x8 the one
+// IsofillComponent gets the 9x6 interior's width and height and its cells
+// row-major, which is the left-clue lines read in row order.
+{
+  const p = mockPuzzle(11, 8)
+  runBackend(assembleSource(join(EXAMPLES, 'isofill-skyscraper', 'main-global.js')), { puzzle: p, helpers })
+  const [iso] = p.registered.filter(c => c.ctor === 'IsofillComponent')
+  const [, cells, w, h] = iso.args
+  assert.deepStrictEqual([w, h], [9, 6], 'isofill-skyscraper on 11x8 hands ISOFILL the 9x6 interior')
+  assert.deepStrictEqual(cells.map(Number), Array.from({ length: 54 }, (_, i) => (Math.floor(i / 9) + 1) * 11 + (i % 9) + 1),
+    'isofill-skyscraper on 11x8 hands ISOFILL its interior cells row-major')
 }
 assert.ok(sideChecks > 0, 'no backend registered a side-labelled component: the side check checked nothing')
 assert.ok(pairChecks > 0, 'no backend registered a pair component: the pair check checked nothing')
